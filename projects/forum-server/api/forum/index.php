@@ -8,11 +8,14 @@
  * Routes:
  *   POST   register                           Register an install; returns api_key
  *   GET    categories                         List all active boards with counts
- *   POST   categories                         Mod: create a new board
- *   GET    threads?cat=N&page=N&tag=slug      List threads (pinned first, then newest active)
- *   GET    threads/{id}                       Thread + replies + reactions + solved state
- *   POST   threads                            Create a thread (rate-limited)
- *   PATCH  threads/{id}                       Mod: pin / lock flags; own/mod: edit body
+ *   POST   categories                         Admin/mod key: create a new board
+ *   PATCH  categories/{id}                    Admin/mod key: rename / reorder / show-hide a board
+ *   GET    threads?cat=&tag=&flag=&sort=&filter=  List threads (sort: active|new|views|unread; filter: unread|following)
+ *   GET    threads/{id}                       Thread + replies + reactions + solved + is_following
+ *   POST   threads                            Create a thread (rate-limited; accepts flag)
+ *   PATCH  threads/{id}                       Mod: pin/lock; own/mod: edit body or set flag
+ *   POST   threads/{id}/follow                Follow a thread
+ *   DELETE threads/{id}/follow                Unfollow a thread
  *   DELETE threads/{id}                       Soft-delete own thread (mod: any)
  *   POST   threads/{id}/replies               Add a reply (rate-limited)
  *   POST   threads/{id}/attachments           Attach an image to a thread (own/mod; multipart "image")
@@ -35,6 +38,8 @@
  *   GET    notifications?page=N               Get notifications for this install
  *   POST   notifications/read                 Mark notification(s) as read
  *   PATCH  installs/me                        Update display_name when blog name changes
+ *   GET    installs                           Admin/God: roster of blogs with roles
+ *   PATCH  installs/{id}/role                 Admin/God: promote / demote a blog (strictly-below cap)
  */
 
 /**
@@ -148,10 +153,28 @@ function is_mod(): bool {
     return false;
 }
 
-/** Returns true if the authenticated install has the moderator flag, or the global mod key is used. */
+/**
+ * Numeric role of an install row: 0 user, 1 power, 2 moderator, 3 admin.
+ * "God" is not a role — it is the FORUM_MOD_KEY holder (Smack Central), handled
+ * out-of-band by is_mod(). Falls back to the is_moderator flag if the role column
+ * is somehow absent from the row (pre-migration safety).
+ */
+function install_role(?array $install): int {
+    if (!$install) return 0;
+    if (isset($install['role'])) return (int)$install['role'];
+    return !empty($install['is_moderator']) ? 2 : 0;
+}
+
+/** Returns true if the caller has moderator power (role >= 2) or the global mod key. */
 function is_install_mod(?array $install = null): bool {
     if (is_mod()) return true;
-    return $install && !empty($install['is_moderator']);
+    return install_role($install) >= 2;
+}
+
+/** Returns true if the caller can administer boards & promote up to moderator (role >= 3) or the mod key. */
+function is_install_admin(?array $install = null): bool {
+    if (is_mod()) return true;
+    return install_role($install) >= 3;
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -180,18 +203,28 @@ function make_excerpt(string $body, int $len = 300): string {
  *
  * $exempt skips the limit entirely — used for moderators (a trusted vendor/mod
  * key answering many owners must not be throttled by the anti-spam caps).
+ * $role raises the caps for power users (role >= 1) without exempting them.
  */
-function check_rate_limit(int $install_id, string $action, bool $exempt = false): void {
+function check_rate_limit(int $install_id, string $action, bool $exempt = false, int $role = 0): void {
     if ($exempt) return;
 
     $pdo = get_pdo();
 
+    // Base caps (ordinary users).
     $windows = [
         'thread' => ['seconds' => 3600, 'max' => 3],
         'reply'  => ['seconds' => 3600, 'max' => 10],
         'react'  => ['seconds' => 600,  'max' => 30],
         'attach' => ['seconds' => 3600, 'max' => 40],
     ];
+
+    // Power users (role >= 1): roomier windows, still bounded against spam.
+    if ($role >= 1) {
+        $windows['thread']['max'] = 12;
+        $windows['reply']['max']  = 40;
+        $windows['react']['max']  = 120;
+        $windows['attach']['max'] = 160;
+    }
 
     if (!isset($windows[$action])) return;
     $w = $windows[$action];
@@ -308,6 +341,22 @@ function create_reply_notifications(int $reply_id, int $thread_id, int $actor_in
              VALUES (?, 'reply_to_watched', ?, ?, ?, ?, ?)"
         )->execute([$pid, $thread_id, $reply_id, $actor_name, $actor_domain, $thread_title]);
         $notified[] = $pid;
+    }
+
+    // Followers who haven't already been notified as author/participant.
+    $fstmt = $pdo->prepare(
+        "SELECT install_id FROM ss_forum_follows WHERE thread_id = ? AND install_id != ?"
+    );
+    $fstmt->execute([$thread_id, $actor_install_id]);
+    foreach (array_column($fstmt->fetchAll(), 'install_id') as $fid) {
+        $fid = (int)$fid;
+        if ($fid === $actor_install_id || in_array($fid, $notified)) continue;
+        $pdo->prepare(
+            "INSERT INTO ss_forum_notifications
+             (install_id, type, thread_id, reply_id, actor_name, actor_domain, thread_title)
+             VALUES (?, 'reply_to_followed', ?, ?, ?, ?, ?)"
+        )->execute([$fid, $thread_id, $reply_id, $actor_name, $actor_domain, $thread_title]);
+        $notified[] = $fid;
     }
 }
 
@@ -485,7 +534,7 @@ function handle_attachment_upload(string $target_type, int $target_id, array $in
         api_error(409, 'TOO_MANY_ATTACHMENTS', 'That post already has the maximum of ' . FORUM_MAX_ATTACH_PER . ' images.');
     }
 
-    check_rate_limit((int)$install['id'], 'attach', is_install_mod($install));
+    check_rate_limit((int)$install['id'], 'attach', is_install_mod($install), install_role($install));
 
     if (empty($_FILES['image']) || !is_array($_FILES['image'])) {
         api_error(400, 'NO_FILE', 'Attach the image in a multipart field named "image" (the whole request may also exceed the server upload limit).');
@@ -591,10 +640,11 @@ if ($method === 'GET' && $path === 'categories') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /categories — create a new board (mod key required)
+// POST /categories — create a new board (admin blog, or the mod/God key)
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'POST' && $path === 'categories') {
-    if (!is_mod()) api_error(403, 'FORBIDDEN', 'Moderator key required to create boards.');
+    $install = is_mod() ? null : require_auth();
+    if (!is_install_admin($install)) api_error(403, 'FORBIDDEN', 'Admin (or moderator key) required to create boards.');
 
     $b    = body();
     $name = trim($b['name']        ?? '');
@@ -631,75 +681,128 @@ if ($method === 'POST' && $path === 'categories') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /threads?cat=N&page=N&tag=slug
+// PATCH /categories/{id} — rename / reorder / show-hide a board (admin or mod key)
+// Slug is immutable (keeps URLs stable). is_active=0 hides the board everywhere.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'categories' && ctype_digit($parts[1])) {
+    $install = is_mod() ? null : require_auth();
+    if (!is_install_admin($install)) api_error(403, 'FORBIDDEN', 'Admin (or moderator key) required to manage boards.');
+
+    $cat_id = (int)$parts[1];
+    $b      = body();
+    $pdo    = get_pdo();
+
+    $stmt = $pdo->prepare("SELECT * FROM ss_forum_categories WHERE id = ? LIMIT 1");
+    $stmt->execute([$cat_id]);
+    $cat = $stmt->fetch();
+    if (!$cat) api_error(404, 'CATEGORY_NOT_FOUND', 'Board not found.');
+
+    $name      = array_key_exists('name', $b)        ? trim((string)$b['name'])        : $cat['name'];
+    $desc      = array_key_exists('description', $b) ? trim((string)$b['description']) : (string)$cat['description'];
+    $sort      = array_key_exists('sort_order', $b)  ? (int)$b['sort_order']           : (int)$cat['sort_order'];
+    $is_active = array_key_exists('is_active', $b)   ? ($b['is_active'] ? 1 : 0)        : (int)$cat['is_active'];
+
+    if ($name === '') api_error(400, 'MISSING_FIELDS', 'name cannot be empty.');
+    if (mb_strlen($name) > 100) api_error(400, 'NAME_TOO_LONG', 'name must be 100 chars or fewer.');
+
+    $pdo->prepare(
+        "UPDATE ss_forum_categories SET name = ?, description = ?, sort_order = ?, is_active = ? WHERE id = ?"
+    )->execute([$name, $desc, $sort, $is_active, $cat_id]);
+
+    respond(['status' => 'updated', 'id' => $cat_id, 'name' => $name, 'is_active' => (bool)$is_active]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /threads?cat=N&page=N&tag=slug&flag=support&sort=new&filter=unread
 // Returns thread list with excerpts, last-reply info, solved state, unread flag.
 // ─────────────────────────────────────────────────────────────────────────────
 if ($method === 'GET' && $path === 'threads') {
     $install  = require_auth();
     $pdo      = get_pdo();
-    $cat_id   = (int)($_GET['cat']  ?? 0);
-    $tag_slug = trim($_GET['tag']   ?? '');
+    $cat_id   = (int)($_GET['cat']   ?? 0);
+    $tag_slug = trim($_GET['tag']    ?? '');
+    $flag     = trim($_GET['flag']   ?? '');
+    $sort     = trim($_GET['sort']   ?? 'active');
+    $filter   = trim($_GET['filter'] ?? '');
     $page     = max(1, (int)($_GET['page'] ?? 1));
     $per_page = 25;
     $offset   = ($page - 1) * $per_page;
+    $caller_id = (int)$install['id'];
 
-    $where  = "t.is_deleted = 0";
-    $params = [];
+    $allowed_flags = ['none', 'chat', 'support', 'question', 'brag'];
+    $flag_filter   = in_array($flag, $allowed_flags, true) ? $flag : '';
 
-    if ($cat_id > 0) {
-        $where   .= " AND t.category_id = ?";
-        $params[] = $cat_id;
+    // rs = caller read state (drives unread), fo = caller follow (drives following).
+    // Both are in every query so filter/sort/select can reference them; each takes
+    // the caller id as its placeholder, in this textual order.
+    $joins       = "LEFT JOIN ss_forum_read_state rs ON rs.thread_id = t.id AND rs.install_id = ?
+                    LEFT JOIN ss_forum_follows    fo ON fo.thread_id = t.id AND fo.install_id = ?";
+    $join_params = [$caller_id, $caller_id];
+
+    // Tag filter: join through pivot (its placeholder follows the rs/fo ones).
+    $tag_join   = '';
+    $tag_params = [];
+    if ($tag_slug !== '') {
+        $tag_join   = "JOIN ss_forum_thread_tags tt2 ON tt2.thread_id = t.id
+                       JOIN ss_forum_tags tg2 ON tg2.id = tt2.tag_id AND tg2.slug = ?";
+        $tag_params = [$tag_slug];
     }
 
-    // Tag filter: join through pivot
-    $tag_join = '';
-    if ($tag_slug !== '') {
-        $tag_join  = "JOIN ss_forum_thread_tags tt2 ON tt2.thread_id = t.id
-                      JOIN ss_forum_tags tg2 ON tg2.id = tt2.tag_id AND tg2.slug = ?";
-        $params_tag = [$tag_slug];
-        // prepend to params (tag join params come before WHERE params in the query)
-        $params_for_count = array_merge($params_tag, $params);
-    } else {
-        $tag_join = '';
-        $params_tag = [];
-        $params_for_count = $params;
+    // WHERE (its placeholders follow the join ones).
+    $where        = "t.is_deleted = 0";
+    $where_params = [];
+    if ($cat_id > 0)         { $where .= " AND t.category_id = ?"; $where_params[] = $cat_id; }
+    if ($flag_filter !== '') { $where .= " AND t.flag = ?";        $where_params[] = $flag_filter; }
+    if ($filter === 'following') { $where .= " AND fo.install_id IS NOT NULL"; }
+    if ($filter === 'unread')    { $where .= " AND (rs.read_reply_count IS NULL OR t.reply_count > rs.read_reply_count)"; }
+
+    // ORDER BY — whitelisted, so the value is never interpolated blindly.
+    switch ($sort) {
+        case 'new':    $order_by = "t.created_at DESC"; break;
+        case 'views':  $order_by = "t.view_count DESC, t.last_reply_at DESC"; break;
+        case 'unread': $order_by = "(rs.read_reply_count IS NULL OR t.reply_count > rs.read_reply_count) DESC, t.last_reply_at DESC"; break;
+        case 'active':
+        default:       $sort = 'active'; $order_by = "t.is_pinned DESC, t.last_reply_at DESC"; break;
     }
 
     $count_stmt = $pdo->prepare(
         "SELECT COUNT(DISTINCT t.id)
-         FROM ss_forum_threads t $tag_join
+         FROM ss_forum_threads t
+         $joins
+         $tag_join
          WHERE $where"
     );
-    $count_stmt->execute($params_for_count);
+    $count_stmt->execute(array_merge($join_params, $tag_params, $where_params));
     $total = (int)$count_stmt->fetchColumn();
 
-    $list_params = array_merge($params_tag, $params, [$per_page, $offset]);
     $stmt = $pdo->prepare("
-        SELECT t.id, t.category_id, t.display_name, t.title, t.excerpt,
+        SELECT t.id, t.category_id, t.display_name, t.title, t.excerpt, t.flag,
                t.is_pinned, t.is_locked, t.is_solved, t.solved_reply_id,
                t.reply_count, t.view_count, t.reaction_count, t.tag_cache,
                t.last_reply_at, t.last_reply_display_name, t.last_reply_domain,
                t.created_at,
                c.name AS category_name, c.slug AS category_slug,
                i.domain AS author_domain,
-               rs.read_reply_count
+               rs.read_reply_count,
+               (fo.install_id IS NOT NULL) AS is_following
         FROM ss_forum_threads t
         JOIN ss_forum_categories c ON c.id = t.category_id
         LEFT JOIN ss_forum_installs i ON i.id = t.install_id
-        LEFT JOIN ss_forum_read_state rs ON rs.thread_id = t.id AND rs.install_id = ?
+        $joins
         $tag_join
         WHERE $where
-        ORDER BY t.is_pinned DESC, t.last_reply_at DESC
+        ORDER BY $order_by
         LIMIT ? OFFSET ?
     ");
-    $stmt->execute(array_merge([$install['id']], $list_params));
+    $stmt->execute(array_merge($join_params, $tag_params, $where_params, [$per_page, $offset]));
     $threads = $stmt->fetchAll();
 
-    // Annotate with has_new (replies since last read)
+    // Annotate with has_new (replies since last read) + following flag
     foreach ($threads as &$t) {
         $read_count = $t['read_reply_count'];
-        $t['has_new']  = ($read_count === null) ? true : ((int)$t['reply_count'] > (int)$read_count);
+        $t['has_new']   = ($read_count === null) ? true : ((int)$t['reply_count'] > (int)$read_count);
         $t['is_unread'] = ($read_count === null);
+        $t['is_following'] = (bool)$t['is_following'];
         unset($t['read_reply_count']);
 
         // Expand tag_cache into array for clients
@@ -713,6 +816,8 @@ if ($method === 'GET' && $path === 'threads') {
         'page'          => $page,
         'per_page'      => $per_page,
         'has_more'      => ($offset + count($threads)) < $total,
+        'sort'          => $sort,
+        'filter'        => $filter,
         'caller_is_mod' => is_install_mod($install),
     ]);
 }
@@ -804,6 +909,13 @@ if ($method === 'GET' && count($parts) === 2 && $parts[0] === 'threads' && ctype
     $rs = $rs_stmt->fetch();
     $thread['caller_read_reply_count'] = $rs ? (int)$rs['read_reply_count'] : null;
 
+    // Following state for caller
+    $fo_stmt = $pdo->prepare(
+        "SELECT 1 FROM ss_forum_follows WHERE install_id = ? AND thread_id = ? LIMIT 1"
+    );
+    $fo_stmt->execute([$install['id'], $thread_id]);
+    $thread['is_following'] = (bool)$fo_stmt->fetchColumn();
+
     respond([
         'thread'        => $thread,
         'replies'       => $replies,
@@ -817,7 +929,7 @@ if ($method === 'GET' && count($parts) === 2 && $parts[0] === 'threads' && ctype
 if ($method === 'POST' && $path === 'threads') {
     $install = require_auth();
 
-    check_rate_limit((int)$install['id'], 'thread', is_install_mod($install));
+    check_rate_limit((int)$install['id'], 'thread', is_install_mod($install), install_role($install));
 
     $b      = body();
     $cat_id = (int)trim($b['category_id'] ?? 0);
@@ -829,6 +941,10 @@ if ($method === 'POST' && $path === 'threads') {
     }
     if (mb_strlen($title) > 200)   api_error(400, 'TITLE_TOO_LONG', 'Title must be 200 characters or fewer.');
     if (mb_strlen($text)  > 20000) api_error(400, 'BODY_TOO_LONG',  'Body must be 20,000 characters or fewer.');
+
+    // Author-chosen post flag (chat/support/question/brag). Unknown values fall back to 'none'.
+    $flag = trim($b['flag'] ?? 'none');
+    if (!in_array($flag, ['none', 'chat', 'support', 'question', 'brag'], true)) $flag = 'none';
 
     $pdo = get_pdo();
 
@@ -844,9 +960,9 @@ if ($method === 'POST' && $path === 'threads') {
     try {
         $pdo->prepare(
             "INSERT INTO ss_forum_threads
-             (category_id, install_id, display_name, title, body, excerpt,
+             (category_id, install_id, display_name, title, body, excerpt, flag,
               last_reply_display_name, last_reply_domain)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )->execute([
             $cat_id,
             $install['id'],
@@ -854,6 +970,7 @@ if ($method === 'POST' && $path === 'threads') {
             $title,
             $text,
             $excerpt,
+            $flag,
             $install['display_name'],
             $install['domain'],
         ]);
@@ -869,7 +986,7 @@ if ($method === 'POST' && $path === 'threads') {
         api_error(500, 'SERVER_ERROR', 'Failed to create thread.');
     }
 
-    respond(['thread_id' => $thread_id], 201);
+    respond(['thread_id' => $thread_id, 'flag' => $flag], 201);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -918,6 +1035,19 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'threads' && cty
         respond(['status' => 'updated', 'excerpt' => $new_excerpt]);
     }
 
+    // ── Author/mod: set post flag (chat/support/question/brag) ───────────────
+    if (isset($b['flag'])) {
+        if (!$is_own && !$is_mod_caller) {
+            api_error(403, 'FORBIDDEN', 'You can only flag your own threads.');
+        }
+        $flag = trim($b['flag']);
+        if (!in_array($flag, ['none', 'chat', 'support', 'question', 'brag'], true)) {
+            api_error(400, 'INVALID_FLAG', 'flag must be one of: none, chat, support, question, brag.');
+        }
+        $pdo->prepare("UPDATE ss_forum_threads SET flag = ? WHERE id = ?")->execute([$flag, $thread_id]);
+        respond(['status' => 'updated', 'flag' => $flag]);
+    }
+
     // ── Mod flags (pin/lock) ───────────────────────────────────────────────
     if (isset($b['is_pinned']) || isset($b['is_locked'])) {
         if (!$is_mod_caller) {
@@ -935,7 +1065,7 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'threads' && cty
         respond(['status' => 'updated', 'is_pinned' => (bool)$pinned, 'is_locked' => (bool)$locked]);
     }
 
-    api_error(400, 'MISSING_FIELDS', 'Provide body (to edit content) or is_pinned/is_locked (mod flags).');
+    api_error(400, 'MISSING_FIELDS', 'Provide body (edit content), flag (post type), or is_pinned/is_locked (mod flags).');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -980,7 +1110,7 @@ if ($method === 'POST'
     $install   = require_auth();
     $thread_id = (int)$parts[1];
 
-    check_rate_limit((int)$install['id'], 'reply', is_install_mod($install));
+    check_rate_limit((int)$install['id'], 'reply', is_install_mod($install), install_role($install));
 
     $b    = body();
     $text = trim($b['body'] ?? '');
@@ -1171,7 +1301,7 @@ if (count($parts) === 3 && $parts[0] === 'threads' && ctype_digit($parts[1]) && 
     if (!$tstmt->fetch()) api_error(404, 'THREAD_NOT_FOUND', 'Thread not found.');
 
     if ($method === 'POST') {
-        check_rate_limit((int)$install['id'], 'react');
+        check_rate_limit((int)$install['id'], 'react', is_install_mod($install), install_role($install));
 
         $b     = body();
         $emoji = trim($b['emoji'] ?? '');
@@ -1239,7 +1369,7 @@ if (count($parts) === 3 && $parts[0] === 'replies' && ctype_digit($parts[1]) && 
     if (!$rstmt->fetch()) api_error(404, 'REPLY_NOT_FOUND', 'Reply not found.');
 
     if ($method === 'POST') {
-        check_rate_limit((int)$install['id'], 'react');
+        check_rate_limit((int)$install['id'], 'react', is_install_mod($install), install_role($install));
 
         $b     = body();
         $emoji = trim($b['emoji'] ?? '');
@@ -1626,6 +1756,94 @@ if ($method === 'POST' && count($parts) === 3 && $parts[0] === 'attachments' && 
 
     $pdo->prepare("UPDATE ss_forum_attachments SET is_deleted = 0 WHERE id = ?")->execute([$aid]);
     respond(['status' => 'restored']);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST   /threads/{id}/follow  — follow a thread (get replies even if you never posted)
+// DELETE /threads/{id}/follow  — unfollow
+// ─────────────────────────────────────────────────────────────────────────────
+if (count($parts) === 3 && $parts[0] === 'threads' && ctype_digit($parts[1]) && $parts[2] === 'follow') {
+    $install   = require_auth();
+    $thread_id = (int)$parts[1];
+    $pdo       = get_pdo();
+
+    $tstmt = $pdo->prepare("SELECT id FROM ss_forum_threads WHERE id = ? AND is_deleted = 0 LIMIT 1");
+    $tstmt->execute([$thread_id]);
+    if (!$tstmt->fetch()) api_error(404, 'THREAD_NOT_FOUND', 'Thread not found.');
+
+    if ($method === 'POST') {
+        $pdo->prepare(
+            "INSERT IGNORE INTO ss_forum_follows (install_id, thread_id) VALUES (?, ?)"
+        )->execute([$install['id'], $thread_id]);
+        respond(['status' => 'following']);
+    }
+    if ($method === 'DELETE') {
+        $pdo->prepare(
+            "DELETE FROM ss_forum_follows WHERE install_id = ? AND thread_id = ?"
+        )->execute([$install['id'], $thread_id]);
+        respond(['status' => 'unfollowed']);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /installs — roster of registered blogs with roles (admin blog, or God key).
+// Powers BOARD LORD's promote/demote screen.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($method === 'GET' && $path === 'installs') {
+    $god    = is_mod();
+    $caller = $god ? null : require_auth();
+    if (!is_install_admin($caller)) api_error(403, 'FORBIDDEN', 'Admin (or God key) required.');
+    $pdo = get_pdo();
+    $rows = $pdo->query(
+        "SELECT id, domain, display_name, role, is_moderator, is_banned, ss_version, last_seen_at, registered_at
+         FROM ss_forum_installs
+         ORDER BY role DESC, last_seen_at DESC
+         LIMIT 500"
+    )->fetchAll();
+    respond(['installs' => $rows]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /installs/{id}/role — promote / demote a blog.
+// God key (Smack Central) can set any role incl. admin. An admin blog can set
+// roles strictly below its own, on blogs strictly below its own. Mods & below
+// cannot. Keeps is_moderator mirrored to (role >= 2).
+// ─────────────────────────────────────────────────────────────────────────────
+if ($method === 'PATCH' && count($parts) === 3 && $parts[0] === 'installs' && ctype_digit($parts[1]) && $parts[2] === 'role') {
+    $god        = is_mod();
+    $caller     = $god ? null : require_auth();
+    $caller_lvl = $god ? 4 : install_role($caller);   // God ranks above admin (4)
+    $target_id  = (int)$parts[1];
+    $b          = body();
+    $pdo        = get_pdo();
+
+    if ($caller_lvl < 3) api_error(403, 'FORBIDDEN', 'Only admins (or God) can change roles.');
+
+    if (!array_key_exists('role', $b)) {
+        api_error(400, 'MISSING_FIELDS', 'role is required (0 user, 1 power, 2 moderator, 3 admin).');
+    }
+    $new_role = (int)$b['role'];
+    if ($new_role < 0 || $new_role > 3) api_error(400, 'INVALID_ROLE', 'role must be 0-3.');
+
+    $stmt = $pdo->prepare("SELECT id, role, is_moderator FROM ss_forum_installs WHERE id = ? LIMIT 1");
+    $stmt->execute([$target_id]);
+    $target = $stmt->fetch();
+    if (!$target) api_error(404, 'INSTALL_NOT_FOUND', 'Install not found.');
+
+    if (!$god && (int)$caller['id'] === $target_id) {
+        api_error(403, 'FORBIDDEN', 'You cannot change your own role.');
+    }
+
+    // Strictly-below cap: only set roles below your own, on blogs below your own.
+    if ($new_role >= $caller_lvl || install_role($target) >= $caller_lvl) {
+        api_error(403, 'FORBIDDEN', 'You can only set roles below your own, on blogs below your own.');
+    }
+
+    $is_moderator = $new_role >= 2 ? 1 : 0;
+    $pdo->prepare("UPDATE ss_forum_installs SET role = ?, is_moderator = ? WHERE id = ?")
+        ->execute([$new_role, $is_moderator, $target_id]);
+
+    respond(['status' => 'updated', 'install_id' => $target_id, 'role' => $new_role]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
