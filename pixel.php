@@ -318,20 +318,20 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
 
     <nav class="sx-nav">
       <div class="sx-nav-top">
-        <a data-panel="home" class="active"><span class="sx-ic">&#8962;</span>Home</a>
-        <a data-panel="local"><span class="sx-ic">&#9776;</span>Local</a>
-        <a data-panel="global"><span class="sx-ic">&#127760;</span>Global</a>
+        <a href="?panel=home" data-panel="home" class="active"><span class="sx-ic">&#8962;</span>Home</a>
+        <a href="?panel=local" data-panel="local"><span class="sx-ic">&#9776;</span>Local</a>
+        <a href="?panel=global" data-panel="global"><span class="sx-ic">&#127760;</span>Global</a>
       </div>
       <div class="sx-nav-list">
-        <a data-panel="discover"><span class="sx-ic">&#9673;</span>Discover</a>
-        <a data-panel="direct"><span class="sx-ic">&#9993;</span>Direct Messages</a>
-        <a data-panel="notifications"><span class="sx-ic">&#9825;</span>Notifications<?php if ($sv_unread > 0): ?><span class="sx-badge"><?php echo (int)$sv_unread; ?></span><?php endif; ?></a>
-        <a data-panel="profile"><span class="sx-ic">&#9728;</span>Profile</a>
+        <a href="?panel=discover" data-panel="discover"><span class="sx-ic">&#9673;</span>Discover</a>
+        <a href="?panel=direct" data-panel="direct"><span class="sx-ic">&#9993;</span>Direct Messages</a>
+        <a href="?panel=notifications" data-panel="notifications"><span class="sx-ic">&#9825;</span>Notifications<?php if ($sv_unread > 0): ?><span class="sx-badge"><?php echo (int)$sv_unread; ?></span><?php endif; ?></a>
+        <a href="?panel=profile" data-panel="profile"><span class="sx-ic">&#9728;</span>Profile</a>
       </div>
     </nav>
 
     <div class="sx-foot">
-      <a href="index.php">Back to blog</a><a href="#">Help</a><a href="#">Privacy</a><a href="#">Terms</a>
+      <a href="index.php">Back to blog</a><a href="smack-help.php?topic=fedboard">Help</a><a href="privacy-policy.php">Privacy</a>
       <span>FEDIVERSE</span>
     </div>
   </aside>
