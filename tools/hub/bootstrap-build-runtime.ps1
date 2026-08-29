@@ -42,8 +42,8 @@ try {
     & $pythonPath -m pip install --disable-pip-version-check -r (Join-Path $PSScriptRoot 'requirements.txt')
     if ($LASTEXITCODE -ne 0) { throw 'Could not install the SNAP SLAPPER build requirements.' }
 
-    & $pythonPath -c 'import tkinter as tk; root=tk.Tk(); root.withdraw(); root.destroy()'
-    if ($LASTEXITCODE -ne 0) { throw 'The isolated runtime was installed, but its Tk runtime did not start.' }
+    & $pythonPath -c 'from PySide6.QtWidgets import QApplication; app=QApplication([]); app.quit()'
+    if ($LASTEXITCODE -ne 0) { throw 'The isolated runtime was installed, but its Qt runtime did not start.' }
 
     Write-Host "Build runtime ready: $pythonPath"
 }

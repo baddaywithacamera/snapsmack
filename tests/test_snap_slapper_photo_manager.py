@@ -254,18 +254,19 @@ class ImmutableOriginalTests(unittest.TestCase):
         self.assertEqual(self.original_hash, file_hash(self.source))
 
     def test_slapper_package_excludes_credential_and_network_modules(self):
-        spec_path = os.path.join(HUB_ROOT, "snap_slapper.spec")
+        spec_path = os.path.join(HUB_ROOT, "slapper_qt.spec")
         with open(spec_path, "r", encoding="utf-8") as handle:
             spec = handle.read()
 
-        self.assertIn("('snap_home.py', 'snap_paths.py')", spec)
-        for forbidden in ("snap_creds.py", "snap_vault.py", "snap_discovery.py",
-                          "snap_profiles.py", "snap_enrich.py"):
+        self.assertIn("'snap_home', 'snap_log', 'snap_profiles'", spec)
+        for forbidden in ("snap_creds", "snap_vault", "snap_discovery", "snap_enrich"):
             self.assertNotIn(forbidden, spec)
 
         build_path = os.path.join(HUB_ROOT, "build.bat")
         with open(build_path, "r", encoding="utf-8") as handle:
             build = handle.read()
+        self.assertIn("slapper_qt.spec", build)
+        self.assertNotIn("--clean snap_slapper.spec", build)
         smoke_position = build.index('start "" /wait "dist\\snap_slapper\\SNAP SLAPPER.exe"')
         promote_position = build.index('SNAP SLAPPER.exe.new')
         self.assertLess(smoke_position, promote_position)

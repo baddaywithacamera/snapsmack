@@ -7,7 +7,7 @@
 # SECAUDIT 051 posture: only the modules the standalone editor actually imports
 # ride along. Verified imports from tools/hub: editor_engine, built_in_lewks,
 # found_textures, photo_manager; from tools/_shared: snap_home, snap_log,
-# snap_profiles. No credential/fleet modules (snap_creds/enrich/library) are
+# snap_profiles. Credential, enrichment, and fleet-discovery modules are not
 # imported, so PyInstaller does not bundle them.
 import os
 import sys
