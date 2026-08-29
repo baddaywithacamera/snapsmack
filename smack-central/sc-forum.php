@@ -119,6 +119,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
     // ── Board management ─────────────────────────────────────────────────────
+    } elseif ($action === 'add_category') {
+        $name = trim($_POST['cat_name']        ?? '');
+        $slug = trim($_POST['cat_slug']        ?? '');
+        $desc = trim($_POST['cat_description'] ?? '');
+        if ($name === '' || mb_strlen($name) > 100) {
+            $flash = 'Board name is required (1–100 characters).';
+        } else {
+            if ($slug === '') $slug = $name;
+            $slug = preg_replace('/[^a-z0-9-]/', '-', strtolower($slug));
+            $slug = trim(preg_replace('/-+/', '-', $slug), '-');
+            if ($slug === '')          $slug = 'board';
+            if (mb_strlen($slug) > 50) $slug = rtrim(mb_substr($slug, 0, 50), '-');
+            $next = (int)$db->query("SELECT COALESCE(MAX(sort_order),0)+1 FROM ss_forum_categories")->fetchColumn();
+            try {
+                $db->prepare(
+                    "INSERT INTO ss_forum_categories (slug, name, description, sort_order, is_active)
+                     VALUES (?, ?, ?, ?, 1)"
+                )->execute([$slug, $name, $desc, $next]);
+                $flash = 'Board created: ' . $name;
+            } catch (PDOException $e) {
+                $flash = ((string)$e->getCode() === '23000')
+                    ? 'A board with that slug already exists — try a different name or slug.'
+                    : 'Could not create board.';
+            }
+        }
     } elseif ($action === 'toggle_category' && !empty($_POST['id'])) {
         $db->prepare("UPDATE ss_forum_categories SET is_active = 1 - is_active WHERE id = ?")->execute([(int)$_POST['id']]);
         $flash = 'Board visibility toggled.';
@@ -1153,6 +1178,30 @@ $installs = $db->query("
       <?php endforeach; ?>
       </tbody>
     </table>
+  </div>
+</div>
+
+<div class="sc-box">
+  <div class="sc-box-header">
+    <span class="sc-box-title">New Board</span>
+  </div>
+  <div class="sc-box-body">
+    <form method="post">
+      <input type="hidden" name="action" value="add_category">
+      <p>
+        <label class="sc-dim">NAME</label><br>
+        <input type="text" name="cat_name" maxlength="100" placeholder="e.g. Photo Walks" required>
+      </p>
+      <p>
+        <label class="sc-dim">SLUG <span class="sc-dim">(optional — made from the name if blank)</span></label><br>
+        <input type="text" name="cat_slug" maxlength="50" placeholder="photo-walks">
+      </p>
+      <p>
+        <label class="sc-dim">DESCRIPTION <span class="sc-dim">(optional)</span></label><br>
+        <input type="text" name="cat_description" maxlength="255" placeholder="What is this board for?">
+      </p>
+      <button class="sc-btn">Create Board</button>
+    </form>
   </div>
 </div>
 
