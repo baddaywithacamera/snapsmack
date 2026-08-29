@@ -10,6 +10,14 @@
 
 # SnapSmack Changelog
 
+## 0.7.580 "FIRM FOOTING" — 2026-08-28
+
+- **The forum database now heals itself all the way from the original version.**
+  The live forum had never been upgraded past its very first schema, so the new
+  ranks/flags/follows had nothing to attach to and every thread view errored. The
+  schema sync now adds every column added since day one, in one safe pass — so
+  0.7.579's BOARD LORD backend actually works on a long-lived forum.
+
 ## 0.7.579 "PULL UP A CHAIR" — 2026-08-28
 
 - **The forum grew ranks, follows, flags, and real sorting** (BOARD LORD backend).
