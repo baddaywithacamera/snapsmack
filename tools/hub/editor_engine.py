@@ -1120,9 +1120,12 @@ class EditorDocument:
                                 int(right * image.width), int(bottom * image.height)))
         if max_size:
             image.thumbnail(max_size, Image.Resampling.LANCZOS)
-        # Keep only the latest proxy so memory stays bounded — one drag reuses one
-        # key; changing geometry or the viewport size simply rebuilds it.
-        self._proxy_cache = {key: image}
+        # Keep a few proxies, not just the latest: each tick renders at TWO sizes
+        # (viewport preview + 512px histogram), so a 1-entry cache would thrash and
+        # rebuild every tick. Cap at 4 (insertion-ordered) to stay bounded.
+        self._proxy_cache[key] = image
+        while len(self._proxy_cache) > 4:
+            self._proxy_cache.pop(next(iter(self._proxy_cache)))
         return image
 
     def invalidate_cache(self):
