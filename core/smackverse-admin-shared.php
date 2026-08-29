@@ -12,6 +12,10 @@
  */
 if (!isset($pdo)) { require_once __DIR__ . '/auth-smack.php'; }
 if (!function_exists('sv_enabled')) { require_once __DIR__ . '/smackverse.php'; }
+// Step-up gate (reauth_verify) is used by the SMACKCAST relay handler below,
+// which runs BEFORE the two handlers that load reauth.php inline — so load it
+// here or "Enable Relay" fatals with "Call to undefined function reauth_verify".
+if (!function_exists('reauth_verify')) { require_once __DIR__ . '/reauth.php'; }
 $sv_self = basename($_SERVER['SCRIPT_NAME'] ?? 'smack-smackverse.php');
 
 $msg = '';
