@@ -632,6 +632,9 @@ def test_library_scan_and_open():
         APP.processEvents(); time.sleep(0.01)
     lib._open_item(lib.list.item(0))
     assert lib._editors and lib._editors[0].doc is not None
+    opened = len(lib._editors)
+    lib._open_item(lib.list.item(0))
+    assert len(lib._editors) == opened, "the same activation must not open a duplicate editor"
 
 
 def test_zoom_actual_shows_native_pixels():
