@@ -25,6 +25,8 @@ class ImageView(QGraphicsView):
     cropped = Signal(float, float, float, float)
     # emitted when the canvas is clicked in retouch mode, as normalized (x, y)
     retouch_clicked = Signal(float, float)
+    # normalized canvas movement for the selected movable layer
+    layer_dragged = Signal(float, float, bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -46,12 +48,25 @@ class ImageView(QGraphicsView):
         self._crop_rect_item = None
         self._crop_origin = None
         self._retouch_mode = False
+        self._layer_move_mode = False
+        self._layer_drag_point = None
         # Before/After split: original on the left of the divider, edited on the
         # right, drag anywhere to move the split.
         self._compare = False
         self._orig_pixmap = None
         self._edit_pixmap = None
         self._divider = 0.5
+
+    def set_layer_move_mode(self, enabled):
+        """Let a selected text/image layer be dragged directly on the photo."""
+        self._layer_move_mode = bool(enabled)
+        self._layer_drag_point = None
+        if enabled:
+            self.setDragMode(QGraphicsView.NoDrag)
+            self.viewport().setCursor(Qt.SizeAllCursor)
+        elif not (self._crop_mode or self._retouch_mode or self._compare):
+            self.setDragMode(QGraphicsView.ScrollHandDrag)
+            self.viewport().unsetCursor()
 
     def set_retouch_mode(self, enabled):
         self._retouch_mode = enabled
@@ -184,6 +199,9 @@ class ImageView(QGraphicsView):
                 self._scene.addItem(self._crop_rect_item)
             self._crop_rect_item.setRect(QRectF(self._crop_origin, self._crop_origin))
             return
+        if self._layer_move_mode and self._has_image and event.button() == Qt.LeftButton:
+            self._layer_drag_point = self.mapToScene(event.position().toPoint())
+            return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -193,6 +211,16 @@ class ImageView(QGraphicsView):
         if self._crop_mode and self._crop_origin is not None:
             current = self.mapToScene(event.position().toPoint())
             self._crop_rect_item.setRect(QRectF(self._crop_origin, current).normalized())
+            return
+        if self._layer_move_mode and self._layer_drag_point is not None and \
+                (event.buttons() & Qt.LeftButton):
+            current = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            if scene.width() and scene.height():
+                self.layer_dragged.emit(
+                    (current.x() - self._layer_drag_point.x()) / scene.width(),
+                    (current.y() - self._layer_drag_point.y()) / scene.height(), False)
+            self._layer_drag_point = current
             return
         super().mouseMoveEvent(event)
 
@@ -206,6 +234,10 @@ class ImageView(QGraphicsView):
                                   rect.top() / scene.height(),
                                   rect.right() / scene.width(),
                                   rect.bottom() / scene.height())
+            return
+        if self._layer_move_mode and self._layer_drag_point is not None:
+            self._layer_drag_point = None
+            self.layer_dragged.emit(0.0, 0.0, True)
             return
         super().mouseReleaseEvent(event)
 

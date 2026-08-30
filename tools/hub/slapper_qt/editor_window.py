@@ -388,6 +388,8 @@ class EditorWindow(QMainWindow):
         self.view = ImageView(self)
         self.view.cropped.connect(self._apply_crop)
         self.view.retouch_clicked.connect(self._add_retouch)
+        self.view.layer_dragged.connect(self._move_active_layer)
+        self._layer_drag_changed = False
 
         self.filmstrip = Filmstrip(self)
         self.filmstrip.open_requested.connect(self._open_from_filmstrip)
@@ -1170,6 +1172,34 @@ class EditorWindow(QMainWindow):
         self.target_label.setText(f"Editing: {self._active_name()}")
         self._sync_controls_from_doc()
         self._update_text_panel()
+        self._sync_canvas_layer_mode()
+
+    def _active_layer(self):
+        if not self.doc or self.active_target == BASE:
+            return None
+        return next((layer for layer in self.doc.layers
+                     if layer.get("id") == self.active_target), None)
+
+    def _sync_canvas_layer_mode(self):
+        layer = self._active_layer()
+        movable = bool(layer and layer.get("type") in {"image", "text"} and
+                       layer.get("fit", "original") == "original")
+        self.view.set_layer_move_mode(movable)
+
+    def _move_active_layer(self, dx, dy, finished):
+        layer = self._active_layer()
+        if layer is None or layer.get("type") not in {"image", "text"}:
+            return
+        if not finished and (dx or dy):
+            transform = layer.setdefault("transform", self.doc.default_transform())
+            transform["x"] = max(-1.0, min(2.0, float(transform.get("x", .5)) + dx))
+            transform["y"] = max(-1.0, min(2.0, float(transform.get("y", .5)) + dy))
+            self._layer_drag_changed = True
+            self._schedule_render()
+        elif finished and self._layer_drag_changed:
+            self._layer_drag_changed = False
+            self.doc.record("Move layer")
+            self._update_title()
 
     def request_render(self):
         self._render_preview()
@@ -1182,6 +1212,7 @@ class EditorWindow(QMainWindow):
         self.target_label.setText(f"Editing: {self._active_name()}")
         self._sync_controls_from_doc()
         self._update_text_panel()
+        self._sync_canvas_layer_mode()
         self._render_preview()
         self._update_title()
 
@@ -1205,6 +1236,7 @@ class EditorWindow(QMainWindow):
         self.target_label.setText("Editing: Base image")
         self._sync_controls_from_doc()
         self._update_text_panel()
+        self._sync_canvas_layer_mode()
         self._render_preview(keep_view=False)
         self._update_title()
         self._refresh_filmstrip()
@@ -1240,6 +1272,7 @@ class EditorWindow(QMainWindow):
         self.target_label.setText("Editing: Base image")
         self._sync_controls_from_doc()
         self._update_text_panel()
+        self._sync_canvas_layer_mode()
         self._render_preview(keep_view=False)
         self._update_title()
         self._refresh_filmstrip()
@@ -1324,6 +1357,7 @@ class EditorWindow(QMainWindow):
             self.text_section.setVisible(False)
             self.mask_section.setVisible(False)
             self._sync_controls_from_doc()
+            self._sync_canvas_layer_mode()
         self.status.showMessage(
             "Advanced mode" if advanced else "Normal mode — simple editing")
 
@@ -1746,6 +1780,7 @@ class EditorWindow(QMainWindow):
         if self.active_target not in ids:
             self.active_target = BASE
         self.target_label.setText(f"Editing: {self._active_name()}")
+        self._sync_canvas_layer_mode()
 
     def undo(self):
         if self.doc and self.doc.undo():
