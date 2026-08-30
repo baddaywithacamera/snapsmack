@@ -41,6 +41,7 @@ from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 from PIL import Image, ImageOps
 
 from . import theme
+from . import BUILD_VERSION
 from .editor_window import EditorWindow
 from .catalog import Catalog
 from .organizer_ops import import_photos, batch_rename
@@ -284,7 +285,7 @@ class _ScanTask(QRunnable):
 class LibraryWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SNAP SLAPPER — Library")
+        self.setWindowTitle(f"SNAP SLAPPER — Library (build {BUILD_VERSION})")
         self.resize(1180, 780)
         self._pool = QThreadPool.globalInstance()
         self._scan_pool = QThreadPool(self)
@@ -749,7 +750,7 @@ class LibraryWindow(QMainWindow):
         self._icons.clear()
         self._stamps.clear()
         title = "All Catalog Photos" if kind == "catalog" else f"Album — {name}"
-        self.setWindowTitle(f"SNAP SLAPPER — {title}")
+        self.setWindowTitle(f"SNAP SLAPPER — {title} (build {BUILD_VERSION})")
         self._populate()
 
     def _selected_tree_folder(self):
@@ -1276,7 +1277,9 @@ class LibraryWindow(QMainWindow):
         self._stamps.clear()
         self.list.clear()
         self._items.clear()
-        self.setWindowTitle(f"SNAP SLAPPER — {os.path.basename(folder) or folder}")
+        self.setWindowTitle(
+            f"SNAP SLAPPER — {os.path.basename(folder) or folder} "
+            f"(build {BUILD_VERSION})")
         scope = "folder and subfolders" if recursive else "folder only"
         self.status.showMessage(f"Scanning {scope}…  {folder}")
         self._scan_pool.start(_ScanTask(
