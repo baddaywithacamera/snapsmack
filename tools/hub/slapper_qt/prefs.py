@@ -16,6 +16,7 @@ DEFAULTS = {
     "texture_site_hint": "foundtextures",
     "mode": "advanced",            # "normal" (Picasa-simple) or "advanced"
     "filmstrip_visible": True,     # show the folder filmstrip under the canvas
+    "editor_maximized": False,     # reopen editor windows in their last maximized state
     "library_folders_visible": True,   # show the library's left folder tree
     "library_include_subfolders": False,  # recurse below selected library folder
     "library_sort": "name",        # library grid sort: name / date_new / date_old

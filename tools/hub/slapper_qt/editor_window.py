@@ -102,7 +102,10 @@ class EditorWindow(QMainWindow):
         # check shows real detail, not an upscaled preview).
         self._zoom_actual = False
         from . import prefs as _prefs
-        self._filmstrip_visible = bool(_prefs.load().get("filmstrip_visible", True))
+        stored_prefs = _prefs.load()
+        self._filmstrip_visible = bool(stored_prefs.get("filmstrip_visible", True))
+        self._restore_maximized = bool(stored_prefs.get("editor_maximized", False))
+        self._window_state_restored = False
 
         self._build_toolbar()
         self._build_canvas()
@@ -2175,6 +2178,20 @@ class EditorWindow(QMainWindow):
         self._refresh_actions()
 
     # --- Close guard --------------------------------------------------------
+    def showEvent(self, event):  # noqa: N802 — Qt override
+        """Restore maximized state once, after Qt has created the native window."""
+        super().showEvent(event)
+        if not self._window_state_restored:
+            self._window_state_restored = True
+            if self._restore_maximized:
+                QTimer.singleShot(0, self.showMaximized)
+
+    def _save_window_state(self):
+        from . import prefs as _prefs
+        values = _prefs.load()
+        values["editor_maximized"] = self.isMaximized()
+        _prefs.save(values)
+
     def _confirm_discard(self):
         if self.doc and self.doc.is_dirty():
             answer = QMessageBox.question(
@@ -2186,6 +2203,7 @@ class EditorWindow(QMainWindow):
 
     def closeEvent(self, event):
         if self._confirm_discard():
+            self._save_window_state()
             self._clear_recovery()   # deliberate close — discard the recovery copy
             event.accept()
         else:

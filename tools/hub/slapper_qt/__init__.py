@@ -9,7 +9,7 @@ The Tk application (``editor_ui.py``) is left completely intact and runnable so
 nothing is lost while the Qt shell is built out phase by phase.
 """
 
-BUILD_VERSION = "0.7.23"
+BUILD_VERSION = "0.7.24"
 
 __all__ = ["theme", "engine_bridge", "widgets", "editor_window", "app",
            "BUILD_VERSION"]
