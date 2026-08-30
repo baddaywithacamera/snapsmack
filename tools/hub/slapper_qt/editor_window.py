@@ -14,7 +14,7 @@ from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QCheckBox,
     QFileDialog, QMessageBox, QLabel, QButtonGroup, QPushButton, QLineEdit,
-    QColorDialog, QComboBox, QStackedWidget,
+    QColorDialog, QComboBox, QStackedWidget, QInputDialog,
 )
 from PySide6.QtGui import QColor
 
@@ -300,6 +300,12 @@ class EditorWindow(QMainWindow):
         self.act_export.setShortcut(QKeySequence.Save)
         self.act_export.triggered.connect(self.export_image)
         bar.addAction(self.act_export)
+
+        self.act_blog_copy = QAction("Blog Copy…", self)
+        self.act_blog_copy.setToolTip(
+            "Prepare a local upload copy using a profile configured in THE HUB")
+        self.act_blog_copy.triggered.connect(self.prepare_blog_copy)
+        bar.addAction(self.act_blog_copy)
 
         self.act_prefs = QAction("Preferences", self)
         self.act_prefs.triggered.connect(self.open_preferences)
@@ -1840,6 +1846,54 @@ class EditorWindow(QMainWindow):
         self.doc.mark_saved()
         self._update_title()
         self.status.showMessage(f"Exported {os.path.basename(path)}")
+
+    def prepare_blog_copy(self):
+        if not self.doc:
+            QMessageBox.information(self, "Blog Copy", "Open a photograph first.")
+            return
+        try:
+            import snap_profiles
+            profiles = snap_profiles.list_profiles()
+        except Exception as exc:  # noqa: BLE001
+            self._error("Blog Copy", f"THE HUB profiles could not be read:\n{exc}")
+            return
+        if not profiles:
+            QMessageBox.information(
+                self, "Blog Copy",
+                "No shared blog profiles were found. Add the blog in THE HUB first.")
+            return
+        labels = [f"{p.get('name') or p.get('site_url')} — {p.get('site_url')}"
+                  for p in profiles]
+        label, accepted = QInputDialog.getItem(
+            self, "Prepare Blog Copy", "Blog profile:", labels, 0, False)
+        if not accepted:
+            return
+        profile = profiles[labels.index(label)]
+        from . import publishing_contract
+        try:
+            summary = publishing_contract.describe(profile)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Blog Copy", str(exc))
+            return
+        answer = QMessageBox.question(
+            self, "Prepare local blog copy?",
+            summary + "\n\nThis prepares a local file only. It does not upload or publish.",
+            QMessageBox.Yes | QMessageBox.Cancel)
+        if answer != QMessageBox.Yes:
+            return
+        from . import prefs
+        settings = prefs.load()
+        copyright_text = (settings["copyright_text"]
+                          if settings["add_copyright_if_missing"] else "")
+        try:
+            target, _manifest, _data = publishing_contract.prepare(
+                self.doc, profile, copyright_text=copyright_text)
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Blog copy failed", str(exc))
+            return
+        self.status.showMessage(
+            f"Prepared {os.path.basename(target)} — ready in the local staging folder",
+            9000)
 
     # --- Rendering ----------------------------------------------------------
     def _schedule_render(self):
