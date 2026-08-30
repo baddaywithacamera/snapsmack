@@ -15,6 +15,14 @@ from PyInstaller.utils.hooks import collect_submodules
 
 _src        = SPECPATH                                             # tools/hub
 _shared_dir = os.path.normpath(os.path.join(_src, '..', '_shared'))
+_license_dir = os.path.normpath(os.path.join(_src, '..', '..', 'licenses'))
+_external_notices = [
+    os.path.join(_license_dir, name) for name in (
+        'xpano-external-tool-notice.txt',
+        'rawtherapee-external-tool-notice.txt',
+        'darktable-external-tool-notice.txt',
+    )
+]
 
 # Make hub + shared importable so collect_submodules can enumerate the package.
 for _p in (_src, _shared_dir):
@@ -33,7 +41,7 @@ a = Analysis(
     [os.path.join(_src, 'run_slapper_qt.py')],
     pathex=[_src, _shared_dir],
     binaries=[],
-    datas=[],
+    datas=[(path, 'licenses') for path in _external_notices],
     hiddenimports=_hidden,
     hookspath=[],
     hooksconfig={},

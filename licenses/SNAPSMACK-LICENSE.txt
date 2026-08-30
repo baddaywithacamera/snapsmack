@@ -246,6 +246,13 @@ licenses. Users must respect the terms for fjGallery (MIT), DotMatrix, Tiny5,
 Blackcasper, and FlottFlott (SIL OFL). Detailed information for these assets
 is located in the /licenses directory of the installation.
 
+Optional external programs including RawTherapee, darktable, and XPANO remain
+separately installed, separately licensed programs. SNAPSMACK does not bundle,
+link, vendor, copy, or incorporate their binaries or source. When requested by
+the user, SNAP SLAPPER invokes them only as distinct operating-system processes
+and exchanges command-line arguments and files across that process boundary.
+Their notices and upstream links are located in the /licenses directory.
+
 This license is not compatible with the GNU General Public License (GPL) or
 its variants. Code licensed under the GPL may not be incorporated into this
 Software or any Fork without explicit written permission from the copyright

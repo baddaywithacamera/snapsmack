@@ -22,6 +22,7 @@ DEFAULTS = {
     "library_sort": "name",        # library grid sort: name / date_new / date_old
     "library_folder_font_size": 11, # readable folder-tree text
     "library_splitter_sizes": [260, 920],  # remembered folder/grid widths
+    "panomerge_xpano_path": "", # separately installed XPANO executable
 }
 
 

@@ -1115,6 +1115,28 @@ def test_keyboard_shortcuts_and_help_topics():
     assert "glass-box" in dict(TOPICS)["LEWKS"].lower()
 
 
+def test_panomerge_command_and_library_action():
+    from slapper_qt.panomerge import XpanoEngine, build_command
+    one = _image("pano-01.jpg", (160, 120), (90, 110, 140))
+    two = _image("pano-02.jpg", (160, 120), (100, 120, 150))
+    output = os.path.join(TMP, "merged panorama.tif")
+    fake = os.path.join(TMP, "Xpano.exe")
+    with open(fake, "wb") as handle:
+        handle.write(b"fake")
+    engine = XpanoEngine("XPANO", (fake,))
+    command = build_command(engine, [one, two], output)
+    assert command == [fake, os.path.abspath(one), os.path.abspath(two),
+                       f"--output={os.path.abspath(output)}"]
+    try:
+        build_command(engine, [one], output)
+        assert False, "one photograph must not be accepted"
+    except ValueError:
+        pass
+    library = LibraryWindow()
+    assert library.act_panomerge.text() == "PANOMERGE…"
+    assert "XPANO" in library.act_panomerge.toolTip()
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for test in tests:
