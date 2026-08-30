@@ -425,6 +425,40 @@ def test_raw_handoff_uses_safe_process_arguments():
     assert kwargs["shell"] is False
 
 
+def test_local_blog_copy_contract_is_safe_and_auditable():
+    import json
+    from slapper_qt import publishing_contract
+
+    source = _image("blog-master.jpg", (1200, 800), (70, 120, 170))
+    source_hash = editor_engine.photo_manager.content_hash(source)
+    staging = os.path.join(TMP, "blog-stage")
+    os.makedirs(staging)
+    profile = {
+        "name": "Example Blog", "site_url": "https://example.test",
+        "extras": {"local_uploads_dir": staging,
+                   "capabilities": {"contract_version": 1,
+                                    "max_image_width": 640,
+                                    "max_image_height": 480,
+                                    "preferred_extension": ".jpg",
+                                    "preferred_quality": 88,
+                                    "strip_gps": True}},
+    }
+    target, manifest_path, manifest = publishing_contract.prepare(
+        editor_engine.EditorDocument(source), profile)
+    assert os.path.isfile(target) and os.path.isfile(manifest_path)
+    assert editor_engine.photo_manager.content_hash(source) == source_hash
+    with Image.open(target) as output:
+        assert output.width <= 640 and output.height <= 480
+    with open(manifest_path, encoding="utf-8") as handle:
+        stored = json.load(handle)
+    assert stored == manifest and stored["status"] == "prepared"
+    assert stored["source_sha256"] == source_hash
+    # Repeating is collision-safe and cannot silently overwrite the first copy.
+    second, _, _ = publishing_contract.prepare(
+        editor_engine.EditorDocument(source), profile)
+    assert second != target and os.path.isfile(target)
+
+
 def test_retouch():
     win = _editor(_image("ret.jpg", (300, 200)))
     win.act_heal.setChecked(True)
