@@ -26,6 +26,8 @@ class ImageView(QGraphicsView):
     cropped = Signal(float, float, float, float)
     # emitted when the canvas is clicked in retouch mode, as normalized (x, y)
     retouch_clicked = Signal(float, float)
+    # emitted when the canvas is clicked with the neutral-colour eyedropper
+    neutral_clicked = Signal(float, float)
     # normalized canvas movement for the selected movable layer
     layer_dragged = Signal(float, float, bool)
     # corner index, normalized x/y, and whether the drag has finished
@@ -54,6 +56,7 @@ class ImageView(QGraphicsView):
         self._crop_rect_item = None
         self._crop_origin = None
         self._retouch_mode = False
+        self._neutral_mode = False
         self._layer_move_mode = False
         self._layer_drag_point = None
         self._perspective_mode = False
@@ -149,6 +152,13 @@ class ImageView(QGraphicsView):
         self.setDragMode(QGraphicsView.NoDrag if enabled
                          else QGraphicsView.ScrollHandDrag)
         self.setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+
+    def set_neutral_mode(self, enabled):
+        """Turn the white-balance eyedropper on without changing the photo."""
+        self._neutral_mode = bool(enabled)
+        self.setDragMode(QGraphicsView.NoDrag if enabled
+                         else QGraphicsView.ScrollHandDrag)
+        self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
 
     def set_crop_mode(self, enabled):
         self._crop_mode = enabled
@@ -273,6 +283,14 @@ class ImageView(QGraphicsView):
             return
         if self._compare and self._has_image and event.button() == Qt.LeftButton:
             self._set_divider_from(event)
+            return
+        if self._neutral_mode and self._has_image and event.button() == Qt.LeftButton:
+            point = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            if scene.contains(point) and scene.width() and scene.height():
+                self.neutral_clicked.emit(
+                    (point.x() - scene.left()) / scene.width(),
+                    (point.y() - scene.top()) / scene.height())
             return
         if self._retouch_mode and self._has_image and event.button() == Qt.LeftButton:
             point = self.mapToScene(event.position().toPoint())

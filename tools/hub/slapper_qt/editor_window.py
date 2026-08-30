@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QColor
 
-from PIL import ImageOps
+from PIL import ImageOps, ImageStat
 
 from . import masks
 
@@ -61,14 +61,14 @@ GROUPS = [
         ("vibrance", "Vibrance", -100, 100, 1, 0),
     ]),
     ("PRESENCE", [
-        ("clarity", "Clarity", -100, 100, 1, 0),
-        ("texture", "Texture", -100, 100, 1, 0),
-        ("dehaze", "Dehaze", -100, 100, 1, 0),
         ("sharpen", "Sharpen", -100, 100, 1, 0),
     ]),
     ("EFFECTS", [
         ("vignette", "Vignette", -100, 100, 1, 0),
         ("vignette_feather", "Vignette Feather", 0, 100, 1, 50),
+        ("texture", "Texture", -100, 100, 1, 0),
+        ("clarity", "Clarity", -100, 100, 1, 0),
+        ("dehaze", "Dehaze", -100, 100, 1, 0),
         ("grain", "Grain", -100, 100, 1, 0),
     ]),
     ("LEVELS", [
@@ -85,7 +85,7 @@ IMAGE_FILTER = ("Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp);;"
 # everything. These name what stays visible in Normal.
 NORMAL_SECTIONS = {"LIGHT", "COLOUR", "EFFECTS", "BLACK + WHITE", "GEOMETRY"}
 NORMAL_ROWS = {"brightness", "contrast", "highlights", "shadows",
-               "temperature", "saturation", "vibrance", "vignette"}
+               "temperature", "tint", "saturation", "vibrance", "vignette"}
 
 
 class EditorWindow(QMainWindow):
@@ -406,6 +406,7 @@ class EditorWindow(QMainWindow):
         self.view = ImageView(self)
         self.view.cropped.connect(self._apply_crop)
         self.view.retouch_clicked.connect(self._add_retouch)
+        self.view.neutral_clicked.connect(self._apply_neutral_sample)
         self.view.layer_dragged.connect(self._move_active_layer)
         self.view.perspective_corner_dragged.connect(self._move_perspective_corner)
         self._layer_drag_changed = False
@@ -493,6 +494,7 @@ class EditorWindow(QMainWindow):
 
         # Split-tone controls live in the COLOUR section
         if "COLOUR" in self._sections:
+            self._sections["COLOUR"].add(self._build_neutral_picker())
             self._sections["COLOUR"].add(self._build_split_tone())
 
         # Smart-sharpen detail controls sit under the PRESENCE Sharpen slider
@@ -1527,6 +1529,91 @@ class EditorWindow(QMainWindow):
         self._render_preview()
         self._update_title()
         self.status.showMessage("Auto-enhanced — tweak any slider to taste")
+
+    def _build_neutral_picker(self):
+        """Ordinary JPEG white balance: sample a neutral patch on the photo."""
+        wrap = QWidget()
+        row = QHBoxLayout(wrap)
+        row.setContentsMargins(12, 7, 12, 7)
+        row.setSpacing(8)
+        self.neutral_picker = QPushButton("Pick Neutral Colour…")
+        self.neutral_picker.setCheckable(True)
+        self.neutral_picker.setCursor(Qt.PointingHandCursor)
+        self.neutral_picker.setToolTip(
+            "Click, then click a grey card or neutral grey/white area in the photo. "
+            "Avoid blown highlights and crushed blacks.")
+        self.neutral_picker.toggled.connect(self._toggle_neutral_picker)
+        row.addWidget(self.neutral_picker, 1)
+        return wrap
+
+    def _toggle_neutral_picker(self, checked):
+        if checked and not self.doc:
+            self.neutral_picker.blockSignals(True)
+            self.neutral_picker.setChecked(False)
+            self.neutral_picker.blockSignals(False)
+            self._error("Open a photo first",
+                        "Open a photograph before choosing a neutral colour.")
+            return
+        self.view.set_neutral_mode(checked)
+        if checked:
+            self.status.showMessage(
+                "Neutral Picker — click a grey card or neutral grey/white area")
+        else:
+            self.status.showMessage("Neutral Picker off")
+
+    def _apply_neutral_sample(self, x, y):
+        """Balance temperature/tint from the median of a small rendered patch."""
+        if not self.doc:
+            return
+        try:
+            image = self.doc.render((1600, 1600)).convert("RGB")
+            px = max(0, min(image.width - 1, round(x * (image.width - 1))))
+            py = max(0, min(image.height - 1, round(y * (image.height - 1))))
+            radius = max(3, round(min(image.size) * 0.006))
+            patch = image.crop((max(0, px - radius), max(0, py - radius),
+                                min(image.width, px + radius + 1),
+                                min(image.height, py + radius + 1)))
+            red, green, blue = ImageStat.Stat(patch).median
+        except Exception as error:  # noqa: BLE001
+            self._error("Neutral sample failed", str(error))
+            return
+
+        darkest, brightest = min(red, green, blue), max(red, green, blue)
+        if brightest < 18:
+            self.status.showMessage(
+                "That sample is crushed black — choose a lighter neutral area", 7000)
+            return
+        if darkest > 247 or brightest >= 254:
+            self.status.showMessage(
+                "That sample is blown white — choose a neutral area with visible detail",
+                7000)
+            return
+
+        target = self.active_adjustments()
+        if target is None:
+            return
+        old_temperature = float(target.get("temperature", 0.0))
+        old_tint = float(target.get("tint", 0.0))
+        temperature = max(-100, min(100,
+            old_temperature + (blue - red) * 0.5))
+        tint = max(-100, min(100,
+            old_tint + (((red + blue) / 2.0) - green) * 0.4))
+        target["temperature"] = round(temperature)
+        target["tint"] = round(tint)
+        self.rows["temperature"].set_value(target["temperature"])
+        self.rows["tint"].set_value(target["tint"])
+        self.doc.record("Neutral white balance")
+        self._render_preview()
+        self._update_title()
+
+        self.neutral_picker.blockSignals(True)
+        self.neutral_picker.setChecked(False)
+        self.neutral_picker.blockSignals(False)
+        self.view.set_neutral_mode(False)
+        self.status.showMessage(
+            f"Neutral balance set from RGB {red:.0f}, {green:.0f}, {blue:.0f} — "
+            f"Temperature {target['temperature']:+.0f}, Tint {target['tint']:+.0f}",
+            9000)
 
     def open_lewks(self):
         if not self.doc:
