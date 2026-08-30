@@ -81,7 +81,7 @@ def _shared_root():
 # as defence in depth even though nothing globs now.
 _R = _shared_root()
 ROSTER = [
-    ("SNAP SLAPPER",        "photo manager",        [os.path.join(_R, "snap_slapper", "SNAP SLAPPER.exe")]),
+    ("SNAP SLAPPER",        "photo manager and editor", [os.path.join(_R, "snap_slapper", "SNAP SLAPPER.exe")]),
     ("SMACK YOUR BATCH UP", "batch poster",         [os.path.join(_R, "sybu", "sybu.exe")]),
     ("GET YOUR SHIT SORTED", "offline sorter",      [os.path.join(_R, "gyss", "GET YOUR SHIT SORTED.exe")]),
     ("COLD SNAP",           "offline poster",       [os.path.join(_R, "coldsnap", "coldsnap.exe")]),
