@@ -317,7 +317,7 @@ class EditorWindow(QMainWindow):
         bar.addSeparator()
         mode_label = QLabel("Editor mode")
         mode_label.setObjectName("ControlName")
-        bar.addWidget(mode_label)
+        bar.insertWidget(self.act_undo, mode_label)
         self.mode_combo = QComboBox()
         self.mode_combo.addItem("Normal", "normal")
         self.mode_combo.addItem("Advanced", "advanced")
@@ -325,7 +325,22 @@ class EditorWindow(QMainWindow):
         self.mode_combo.setToolTip(
             "Normal shows the essential controls; Advanced shows everything")
         self.mode_combo.currentIndexChanged.connect(self._on_mode_combo_changed)
-        bar.addWidget(self.mode_combo)
+        bar.insertWidget(self.act_undo, self.mode_combo)
+
+        # Keep essentials and the mode switch on the first row. Editing tools
+        # get a dedicated second row instead of vanishing behind Qt's tiny
+        # overflow chevron on ordinary laptop-sized windows.
+        self.addToolBarBreak(Qt.TopToolBarArea)
+        tools_bar = self.addToolBar("Editing Tools")
+        tools_bar.setMovable(False)
+        for action in (
+                self.act_crop, self.act_heal, self.act_redeye,
+                self.act_compare, self.act_filmstrip,
+                self.act_recipe_save, self.act_recipe_apply,
+                self.act_lewks, self.act_textures, self.act_save_project,
+                self.act_prefs):
+            bar.removeAction(action)
+            tools_bar.addAction(action)
 
         # Toolbar actions hidden in Normal mode (Advanced-only).
         self._advanced_actions = [

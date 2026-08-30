@@ -19,6 +19,7 @@ copy, rename, new folders, Recycle Bin, and Explorer access.
 import os
 import shutil
 import time
+import photo_manager
 
 from PySide6.QtCore import (
     Qt, QObject, QRunnable, QThreadPool, Signal, QSize, QDir, QTimer,
@@ -31,13 +32,14 @@ from PySide6.QtWidgets import (
     QMainWindow, QListWidget, QListWidgetItem, QFileDialog, QLabel, QSlider,
     QWidget, QHBoxLayout, QComboBox, QLineEdit, QTreeView, QSplitter,
     QFileSystemModel, QAbstractItemView, QInputDialog, QMessageBox, QMenu,
-    QToolButton,
+    QToolButton, QDockWidget, QVBoxLayout, QPushButton, QCheckBox,
 )
 
 from PIL import Image, ImageOps
 
 from . import theme
 from .editor_window import EditorWindow
+from .catalog import Catalog
 
 try:
     import snap_log
@@ -144,7 +146,7 @@ class _FolderTree(QTreeView):
 
 
 class _FileSignals(QObject):
-    finished = Signal(object, object, str, bool)  # done, errors, target, copy
+    finished = Signal(object, object, str, bool, object)
 
 
 class _FileTask(QRunnable):
@@ -161,7 +163,7 @@ class _FileTask(QRunnable):
         done, errors = _transfer_photo_files(
             self.paths, self.destination, self.copy_files)
         self.signals.finished.emit(
-            done, errors, self.destination, self.copy_files)
+            done, errors, self.destination, self.copy_files, self.paths)
 
 _EXIF_DATETIME_ORIGINAL = 0x9003
 _EXIF_IFD = 0x8769
@@ -296,6 +298,7 @@ class LibraryWindow(QMainWindow):
         self._scan_signals.ready.connect(self._on_scan_ready)
         self._file_signals = _FileSignals()
         self._file_signals.finished.connect(self._on_transfer_finished)
+        self.catalog = Catalog()
 
         from . import prefs
         settings = prefs.load()
@@ -363,6 +366,7 @@ class LibraryWindow(QMainWindow):
         self.list.itemClicked.connect(self._show_info)
         self.list.currentItemChanged.connect(
             lambda cur, _prev: self._show_info(cur))
+        self.list.itemSelectionChanged.connect(self._selection_changed)
         self.list.customContextMenuRequested.connect(self._photo_context_menu)
 
         self.split = QSplitter(Qt.Horizontal)
@@ -377,6 +381,7 @@ class LibraryWindow(QMainWindow):
             self.split.setSizes([260, 920])
         self.split.splitterMoved.connect(self._splitter_moved)
         self.setCentralWidget(self.split)
+        self._build_catalog_dock()
 
         self.tree.setVisible(folders_visible)
         self.act_folders.setChecked(folders_visible)
@@ -386,8 +391,11 @@ class LibraryWindow(QMainWindow):
 
     # --- Toolbar ------------------------------------------------------------
     def _build_toolbar(self):
-        bar = self.addToolBar("Main")
+        bar = self.addToolBar("Organize")
         bar.setMovable(False)
+        self.addToolBarBreak(Qt.TopToolBarArea)
+        view_bar = self.addToolBar("Browse and View")
+        view_bar.setMovable(False)
 
         self.act_open = QAction("Choose Folder", self)
         self.act_open.triggered.connect(self.choose_folder)
@@ -397,20 +405,24 @@ class LibraryWindow(QMainWindow):
         self.act_folders.setCheckable(True)
         self.act_folders.setToolTip("Show or hide the folder tree")
         self.act_folders.toggled.connect(self._toggle_folders)
-        bar.addAction(self.act_folders)
+        view_bar.addAction(self.act_folders)
 
         self.act_subfolders = QAction("Subfolders: OFF", self)
         self.act_subfolders.setCheckable(True)
         self.act_subfolders.setToolTip(
             "OFF — show photographs only from the selected folder")
         self.act_subfolders.toggled.connect(self._subfolders_toggled)
-        bar.addAction(self.act_subfolders)
+        view_bar.addAction(self.act_subfolders)
 
-        bar.addSeparator()
+        view_bar.addSeparator()
 
         self.act_edit = QAction("Edit Selected", self)
         self.act_edit.triggered.connect(self._open_selected)
         bar.addAction(self.act_edit)
+
+        self.act_import = QAction("Import Photos…", self)
+        self.act_import.triggered.connect(self._import_photos)
+        bar.addAction(self.act_import)
 
         self.act_new_folder = QAction("New Folder…", self)
         self.act_new_folder.setShortcut(QKeySequence("Ctrl+Shift+N"))
@@ -425,15 +437,25 @@ class LibraryWindow(QMainWindow):
         self.act_move.triggered.connect(lambda: self._choose_transfer(False))
         self.act_copy = QAction("Copy to Folder…", self)
         self.act_copy.triggered.connect(lambda: self._choose_transfer(True))
-        self.act_trash = QAction("Move to Recycle Bin…", self)
+        self.act_trash = QAction("Move to SNAP SLAPPER Trash…", self)
         self.act_trash.setShortcut(QKeySequence.Delete)
         self.act_trash.triggered.connect(self._trash_selected)
         self.act_show_folder = QAction("Show in Folder", self)
         self.act_show_folder.triggered.connect(self._show_in_folder)
+        self.act_restore_trash = QAction("Restore Last Trashed Photo", self)
+        self.act_restore_trash.triggered.connect(self._restore_trash)
+        self.act_rotate_left = QAction("Create Rotated Copies — Left", self)
+        self.act_rotate_left.triggered.connect(lambda: self._rotate_selected(90))
+        self.act_rotate_right = QAction("Create Rotated Copies — Right", self)
+        self.act_rotate_right.triggered.connect(lambda: self._rotate_selected(-90))
+        self.act_find_duplicates = QAction("Find Exact Duplicates", self)
+        self.act_find_duplicates.triggered.connect(self._find_duplicates)
 
         organize_menu = QMenu(self)
         for action in (self.act_new_folder, self.act_rename,
                        self.act_move, self.act_copy, self.act_trash,
+                       self.act_restore_trash, self.act_rotate_left,
+                       self.act_rotate_right, self.act_find_duplicates,
                        self.act_show_folder):
             organize_menu.addAction(action)
         organize_button = QToolButton()
@@ -450,8 +472,10 @@ class LibraryWindow(QMainWindow):
         file_menu.addAction(self.act_edit)
         file_menu.addAction(self.act_show_folder)
         organize_bar_menu = self.menuBar().addMenu("Organize")
-        for action in (self.act_new_folder, self.act_rename,
-                       self.act_move, self.act_copy, self.act_trash):
+        for action in (self.act_import, self.act_new_folder, self.act_rename,
+                       self.act_move, self.act_copy, self.act_trash,
+                       self.act_restore_trash, self.act_rotate_left,
+                       self.act_rotate_right, self.act_find_duplicates):
             organize_bar_menu.addAction(action)
 
         act_help = QAction("Help", self)
@@ -459,19 +483,19 @@ class LibraryWindow(QMainWindow):
         act_help.triggered.connect(self._open_help)
         bar.addAction(act_help)
 
-        bar.addSeparator()
+        view_bar.addSeparator()
 
         # Sort control
         sort_label = QLabel("Sort")
         sort_label.setObjectName("ControlName")
-        bar.addWidget(sort_label)
+        view_bar.addWidget(sort_label)
         self.sort_combo = QComboBox()
         for key, name in SORTS:
             self.sort_combo.addItem(name, key)
         index = self.sort_combo.findData(self._sort)
         self.sort_combo.setCurrentIndex(index if index >= 0 else 0)
         self.sort_combo.currentIndexChanged.connect(self._sort_changed)
-        bar.addWidget(self.sort_combo)
+        view_bar.addWidget(self.sort_combo)
 
         # Search box
         self.search = QLineEdit()
@@ -479,13 +503,25 @@ class LibraryWindow(QMainWindow):
         self.search.setClearButtonEnabled(True)
         self.search.setFixedWidth(200)
         self.search.textChanged.connect(self._apply_filter)
-        bar.addWidget(self.search)
+        view_bar.addWidget(self.search)
+
+        self.catalog_filter = QComboBox()
+        for label, value in (
+                ("All photos", "all"), ("Favorites", "favorites"),
+                ("Rated", "rated"), ("Unrated", "unrated"),
+                ("5 stars", "5"), ("4+ stars", "4+"),
+                ("3+ stars", "3+")):
+            self.catalog_filter.addItem(label, value)
+        self.catalog_filter.setToolTip("Filter by catalogue rating or favorite")
+        self.catalog_filter.currentIndexChanged.connect(
+            lambda _index: self._apply_filter(self.search.text()))
+        view_bar.addWidget(self.catalog_filter)
 
         # thumbnail size control on the right
         spacer = QWidget()
         spacer.setSizePolicy(spacer.sizePolicy().horizontalPolicy().Expanding,
                              spacer.sizePolicy().verticalPolicy().Preferred)
-        bar.addWidget(spacer)
+        view_bar.addWidget(spacer)
         size_wrap = QWidget()
         size_layout = QHBoxLayout(size_wrap)
         size_layout.setContentsMargins(0, 0, 8, 0)
@@ -500,7 +536,7 @@ class LibraryWindow(QMainWindow):
         self.size_slider.valueChanged.connect(
             lambda v: self.list.setIconSize(QSize(v, v)))
         size_layout.addWidget(self.size_slider)
-        bar.addWidget(size_wrap)
+        view_bar.addWidget(size_wrap)
 
         folder_size_wrap = QWidget()
         folder_size_layout = QHBoxLayout(folder_size_wrap)
@@ -516,7 +552,43 @@ class LibraryWindow(QMainWindow):
         self.folder_size_slider.setToolTip("Make folder names smaller or larger")
         self.folder_size_slider.valueChanged.connect(self._folder_font_changed)
         folder_size_layout.addWidget(self.folder_size_slider)
-        bar.addWidget(folder_size_wrap)
+        view_bar.addWidget(folder_size_wrap)
+
+    def _build_catalog_dock(self):
+        dock = QDockWidget("PHOTO INFO", self)
+        dock.setObjectName("CatalogInfo")
+        dock.setMinimumWidth(230)
+        panel = QWidget()
+        layout = QVBoxLayout(panel)
+        self.info_name = QLabel("Select a photo")
+        self.info_name.setWordWrap(True)
+        layout.addWidget(self.info_name)
+        self.favorite_check = QCheckBox("♥ Favorite")
+        layout.addWidget(self.favorite_check)
+        rating_label = QLabel("Rating")
+        rating_label.setObjectName("ControlName")
+        layout.addWidget(rating_label)
+        self.rating_combo = QComboBox()
+        self.rating_combo.addItem("No rating", 0)
+        for value in range(1, 6):
+            self.rating_combo.addItem("★" * value, value)
+        layout.addWidget(self.rating_combo)
+        tags_label = QLabel("Tags — comma separated")
+        tags_label.setObjectName("ControlName")
+        layout.addWidget(tags_label)
+        self.tags_edit = QLineEdit()
+        self.tags_edit.setPlaceholderText("family, mountains, 2026")
+        layout.addWidget(self.tags_edit)
+        save = QPushButton("Save Details")
+        save.clicked.connect(self._save_selected_details)
+        layout.addWidget(save)
+        album = QPushButton("Add to Album…")
+        album.clicked.connect(self._add_selected_to_album)
+        layout.addWidget(album)
+        layout.addStretch(1)
+        dock.setWidget(panel)
+        self.addDockWidget(Qt.RightDockWidgetArea, dock)
+        self.catalog_dock = dock
 
     # --- Folder tree --------------------------------------------------------
     def _toggle_folders(self, checked):
@@ -534,6 +606,56 @@ class LibraryWindow(QMainWindow):
     def _selected_photo_paths(self):
         return [item.data(Qt.UserRole) for item in self.list.selectedItems()
                 if item.data(Qt.UserRole)]
+
+    def _selection_changed(self):
+        paths = self._selected_photo_paths()
+        if not paths:
+            self.info_name.setText("Select a photo")
+            return
+        if len(paths) > 1:
+            self.info_name.setText(f"{len(paths)} photos selected")
+            self.favorite_check.setChecked(False)
+            self.rating_combo.setCurrentIndex(0)
+            self.tags_edit.clear()
+            return
+        path = paths[0]
+        details = self.catalog.details(path)
+        self.info_name.setText(os.path.basename(path))
+        self.favorite_check.setChecked(details["favorite"])
+        self.rating_combo.setCurrentIndex(
+            self.rating_combo.findData(details["rating"]))
+        self.tags_edit.setText(details["tags"])
+
+    def _save_selected_details(self):
+        paths = self._selected_photo_paths()
+        if not paths:
+            QMessageBox.information(self, "Photo Info", "Select one or more photos first.")
+            return
+        self.catalog.set_details(
+            paths, favorite=self.favorite_check.isChecked(),
+            rating=self.rating_combo.currentData() or 0,
+            replace_tags=self.tags_edit.text())
+        self._populate()
+        self.status.showMessage(f"Saved details for {len(paths)} photo(s)", 5000)
+
+    def _add_selected_to_album(self):
+        paths = self._selected_photo_paths()
+        if not paths:
+            QMessageBox.information(self, "Albums", "Select one or more photos first.")
+            return
+        existing = sorted(self.catalog.albums, key=str.lower)
+        prompt = "Album name:"
+        if existing:
+            prompt += "\n\nExisting: " + ", ".join(existing)
+        name, accepted = QInputDialog.getText(self, "Add to Album", prompt)
+        if accepted and name.strip():
+            try:
+                self.catalog.add_to_album(name, paths)
+            except (OSError, ValueError) as exc:
+                QMessageBox.warning(self, "Could not save album", str(exc))
+                return
+            self.status.showMessage(
+                f"Added {len(paths)} photo(s) to {name.strip()}", 5000)
 
     def _selected_tree_folder(self):
         index = self.tree.currentIndex()
@@ -566,7 +688,33 @@ class LibraryWindow(QMainWindow):
         for action in (self.act_edit, self.act_rename, self.act_move,
                        self.act_copy, self.act_trash, self.act_show_folder):
             menu.addAction(action)
-        menu.exec(self.list.mapToGlobal(position))
+        menu.addSeparator()
+        favorite = menu.addAction("Toggle Favorite")
+        rating_menu = menu.addMenu("Set Rating")
+        rating_actions = {}
+        for value in range(0, 6):
+            label = "No rating" if value == 0 else ("★" * value)
+            rating_actions[rating_menu.addAction(label)] = value
+        add_tags = menu.addAction("Add Tags…")
+        add_album = menu.addAction("Add to Album…")
+        chosen = menu.exec(self.list.mapToGlobal(position))
+        paths = self._selected_photo_paths()
+        if chosen == favorite:
+            make_favorite = not all(
+                self.catalog.details(path)["favorite"] for path in paths)
+            self.catalog.set_details(paths, favorite=make_favorite)
+            self._populate()
+        elif chosen in rating_actions:
+            self.catalog.set_details(paths, rating=rating_actions[chosen])
+            self._populate()
+        elif chosen == add_tags:
+            tags, accepted = QInputDialog.getText(
+                self, "Add Tags", "Comma-separated tags to add:")
+            if accepted and tags.strip():
+                self.catalog.set_details(paths, add_tags=tags)
+                self._populate()
+        elif chosen == add_album:
+            self._add_selected_to_album()
 
     def _folder_context_menu(self, position):
         index = self.tree.indexAt(position)
@@ -652,6 +800,7 @@ class LibraryWindow(QMainWindow):
         except OSError as exc:
             QMessageBox.warning(self, "Could not rename", str(exc))
             return
+        self.catalog.move_path(path, target)
         if folder and self._folder:
             try:
                 inside = os.path.commonpath([self._folder, path]) == path
@@ -670,6 +819,63 @@ class LibraryWindow(QMainWindow):
             selected = dialog.selectedFiles()
             return selected[0] if selected else ""
         return ""
+
+    def _import_photos(self):
+        dialog = QFileDialog(self, "Choose photos to import")
+        dialog.setFileMode(QFileDialog.ExistingFiles)
+        dialog.setNameFilter(
+            "Photos (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp *.gif "
+            "*.dng *.nef *.cr2 *.cr3 *.arw *.orf *.rw2 *.raf)")
+        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        if not dialog.exec():
+            return
+        paths = dialog.selectedFiles()
+        if not paths:
+            return
+        destination = self._choose_destination("Import photos into folder")
+        if not destination:
+            return
+        try:
+            outputs = photo_manager.copy_files(paths, destination)
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Import failed", str(exc))
+            return
+        self.status.showMessage(
+            f"Imported {len(outputs)} photo(s) into {destination}", 6000)
+        if self._folder and os.path.normcase(self._folder) == os.path.normcase(destination):
+            self._reload_current()
+
+    def _rotate_selected(self, degrees):
+        paths = self._selected_photo_paths()
+        if not paths:
+            QMessageBox.information(self, "Rotate", "Select one or more photos first.")
+            return
+        answer = QMessageBox.question(
+            self, "Create Rotated Copies",
+            f"Create rotated copies of {len(paths)} photo(s)?\n\n"
+            "The originals will not be changed.",
+            QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel)
+        if answer != QMessageBox.Yes:
+            return
+        try:
+            outputs = photo_manager.rotate_files(paths, degrees)
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Rotation failed", str(exc))
+            return
+        self.status.showMessage(f"Created {len(outputs)} rotated copy/copies", 6000)
+        self._reload_current()
+
+    def _find_duplicates(self):
+        groups = photo_manager.duplicate_groups(self._paths)
+        duplicates = {os.path.normcase(os.path.abspath(path))
+                      for group in groups for path in group}
+        self.list.clearSelection()
+        for path, item in self._items.items():
+            if os.path.normcase(os.path.abspath(path)) in duplicates:
+                item.setSelected(True)
+        self.status.showMessage(
+            f"Found {len(groups)} duplicate group(s); "
+            f"selected {len(duplicates)} files", 8000)
 
     def _choose_transfer(self, copy_files):
         paths = self._selected_photo_paths()
@@ -691,7 +897,7 @@ class LibraryWindow(QMainWindow):
         self._pool.start(_FileTask(
             paths, destination, copy_files, self._file_signals))
 
-    def _on_transfer_finished(self, done, errors, destination, copy_files):
+    def _on_transfer_finished(self, done, errors, destination, copy_files, sources):
         if errors:
             detail = "\n".join(errors[:8])
             if len(errors) > 8:
@@ -699,6 +905,15 @@ class LibraryWindow(QMainWindow):
             QMessageBox.warning(self, "Some photos were not organized", detail)
         verb = "Copied" if copy_files else "Moved"
         if done:
+            by_name = {os.path.normcase(os.path.basename(path)): path
+                       for path in sources}
+            for target in done:
+                source = by_name.get(os.path.normcase(os.path.basename(target)))
+                if source:
+                    if copy_files:
+                        self.catalog.copy_path(source, target)
+                    else:
+                        self.catalog.move_path(source, target)
             self.status.showMessage(
                 f"{verb} {len(done)} photo(s) to {destination}", 6000)
         self._reload_current()
@@ -706,22 +921,33 @@ class LibraryWindow(QMainWindow):
     def _trash_selected(self):
         paths = self._selected_photo_paths()
         if not paths:
-            QMessageBox.information(self, "Recycle Bin", "Select one or more photos first.")
+            QMessageBox.information(self, "Trash", "Select one or more photos first.")
             return
         answer = QMessageBox.question(
-            self, "Move to Recycle Bin",
-            f"Move {len(paths)} selected photo(s) to the Windows Recycle Bin?",
+            self, "Move to SNAP SLAPPER Trash",
+            f"Move {len(paths)} selected photo(s) to recoverable SNAP SLAPPER Trash?",
             QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel)
         if answer != QMessageBox.Yes:
             return
-        failed = []
-        for path in paths:
-            if not QFile.moveToTrash(path):
-                failed.append(path)
-        if failed:
-            QMessageBox.warning(
-                self, "Could not recycle some photos", "\n".join(failed[:8]))
+        try:
+            photo_manager.trash_files(
+                paths, self.catalog.trash_root, self.catalog.trash_path)
+        except OSError as exc:
+            QMessageBox.warning(self, "Trash failed", str(exc))
+            return
         self._reload_current()
+
+    def _restore_trash(self):
+        try:
+            restored = photo_manager.restore_last_trash(self.catalog.trash_path)
+        except OSError as exc:
+            QMessageBox.warning(self, "Restore failed", str(exc))
+            return
+        if restored:
+            self.status.showMessage(f"Restored {restored[0]}", 7000)
+            self._reload_current()
+        else:
+            QMessageBox.information(self, "SNAP SLAPPER Trash", "Trash is empty.")
 
     def _show_in_folder(self):
         paths = self._selected_photo_paths()
@@ -845,7 +1071,13 @@ class LibraryWindow(QMainWindow):
             end = min(offset + 150, len(paths))
             for path in paths[offset:end]:
                 icon = self._icons.get(path, placeholder)
-                item = QListWidgetItem(icon, os.path.basename(path))
+                details = self.catalog.details(path)
+                badges = ("♥ " if details["favorite"] else "") + \
+                    ("★" * details["rating"])
+                label = os.path.basename(path)
+                if badges:
+                    label = f"{badges}\n{label}"
+                item = QListWidgetItem(icon, label)
                 item.setData(Qt.UserRole, path)
                 item.setToolTip(path)
                 self.list.addItem(item)
@@ -872,9 +1104,24 @@ class LibraryWindow(QMainWindow):
 
     def _apply_filter(self, text):
         needle = (text or "").strip().lower()
+        catalog_filter = self.catalog_filter.currentData() \
+            if hasattr(self, "catalog_filter") else "all"
         shown = 0
         for path, item in self._items.items():
-            match = needle in os.path.basename(path).lower()
+            details = self.catalog.details(path)
+            haystack = " ".join((os.path.basename(path), details["tags"])).lower()
+            match = not needle or needle in haystack
+            rating = details["rating"]
+            if catalog_filter == "favorites":
+                match = match and details["favorite"]
+            elif catalog_filter == "rated":
+                match = match and rating > 0
+            elif catalog_filter == "unrated":
+                match = match and rating == 0
+            elif str(catalog_filter).endswith("+"):
+                match = match and rating >= int(str(catalog_filter)[0])
+            elif str(catalog_filter).isdigit():
+                match = match and rating == int(catalog_filter)
             item.setHidden(not match)
             if match:
                 shown += 1
