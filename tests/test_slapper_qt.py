@@ -22,7 +22,7 @@ HUB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                    "tools", "hub")
 sys.path.insert(0, HUB)
 
-from PIL import Image                                    # noqa: E402
+from PIL import Image, ImageChops                        # noqa: E402
 import editor_engine                                     # noqa: E402
 from PySide6.QtWidgets import QApplication               # noqa: E402
 from PySide6.QtCore import QDir, QThreadPool             # noqa: E402
@@ -553,6 +553,56 @@ def test_geometry():
     assert win.doc.geometry["flip_x"] and win.flip_h_btn.isChecked()
     win._reset_geometry()
     assert win.doc.geometry["rotation"] == 0.0 and not win.doc.geometry["flip_x"]
+
+
+def test_perspective_geometry_and_project_round_trip():
+    path = _image("perspective.jpg", (320, 240))
+    source_hash = editor_engine.photo_manager.content_hash(path)
+    doc = editor_engine.EditorDocument(path)
+    neutral = doc.render()
+
+    doc.geometry["perspective_vertical"] = 45.0
+    doc.geometry["perspective_horizontal"] = -25.0
+    corrected = doc.render()
+    assert corrected.size != neutral.size
+
+    doc.geometry["perspective_edges"] = "transparent"
+    doc.geometry["perspective_corners"] = [
+        [0.08, 0.04], [0.96, 0.0], [0.90, 0.94], [0.02, 1.0]]
+    transparent = doc.render()
+    assert transparent.mode == "RGBA" and transparent.size == (320, 240)
+    assert transparent.getchannel("A").getextrema()[0] == 0
+
+    project = os.path.join(TMP, "perspective.slapper")
+    doc.save_project(project)
+    loaded = editor_engine.EditorDocument.load_project(project)
+    assert loaded.geometry["perspective_vertical"] == 45.0
+    assert loaded.geometry["perspective_horizontal"] == -25.0
+    assert loaded.geometry["perspective_corners"] == doc.geometry["perspective_corners"]
+    assert ImageChops.difference(doc.render(), loaded.render()).getbbox() is None
+    recipe_target = editor_engine.EditorDocument(path)
+    recipe_target.apply_recipe(doc.recipe())
+    assert recipe_target.geometry["perspective_vertical"] == 45.0
+    assert recipe_target.geometry["perspective_corners"] == doc.geometry["perspective_corners"]
+    assert editor_engine.photo_manager.content_hash(path) == source_hash
+
+    opened = EditorWindow()
+    assert opened.open_project_path(project)
+    assert opened.doc.geometry["perspective_vertical"] == 45.0
+
+    win = _editor(path)
+    win._on_perspective("perspective_vertical", 30)
+    win._on_perspective("perspective_horizontal", -10)
+    win._move_perspective_corner(0, .12, .08, True)
+    assert win.doc.geometry["perspective_vertical"] == 30
+    assert win.doc.geometry["perspective_horizontal"] == -10
+    assert win.doc.geometry["perspective_corners"][0] == [.12, .08]
+    win.free_perspective_btn.setChecked(True)
+    assert win.view._perspective_mode and len(win.view._perspective_handles) == 4
+    assert len(win.view._perspective_grid) == 4
+    win._reset_geometry()
+    assert win.doc.geometry["perspective_vertical"] == 0.0
+    assert win.doc.geometry["perspective_corners"][0] == [0.0, 0.0]
 
 
 def test_library_scan_and_open():

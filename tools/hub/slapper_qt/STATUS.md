@@ -115,6 +115,14 @@ identity, so every existing look/project renders unchanged.
   Custom filters are identified honestly as raster checkpoints rather than being
   misrepresented as native Photoshop adjustment layers.
 
+## Added for build 0.7.563
+- Non-destructive straight-line-preserving perspective correction: vertical and
+  horizontal sliders plus four freely draggable corner handles and a live 3×3
+  alignment grid.
+- Safe Auto Crop and Transparent Edges modes. Perspective survives undo,
+  `.slapper` save/open, recipes, batch application, previews, and full-resolution
+  export; source photographs remain unchanged.
+
 ## Not yet built (later phases)
 - Found Textures: category/album filter, favourite, local categories (search +
   import done). Rights-based hide/flag needs the gyss/photos API to expose a

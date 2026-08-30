@@ -41,7 +41,10 @@ def main(argv=None):
     target = next((c for c in argv[1:] if c and not c.startswith("-")), None)
     if target:
         window = EditorWindow()
-        window.open_path(target)
+        if os.path.splitext(target)[1].lower() == ".slapper":
+            window.open_project_path(target)
+        else:
+            window.open_path(target)
     else:
         window = LibraryWindow()
     window.show()

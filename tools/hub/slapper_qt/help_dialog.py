@@ -92,7 +92,12 @@ TOPICS = [
      "The Hub."),
     ("Crop, geometry, and retouch",
      "Crop shows the full frame — drag a rectangle to crop; toggle Crop off "
-     "without drawing to cancel. GEOMETRY rotates/straightens and flips. RETOUCH "
+     "without drawing to cancel. GEOMETRY rotates/straightens and flips. Its "
+     "Vertical and Horizontal perspective sliders correct converging lines. "
+     "Free Corners displays a 3×3 grid: drag any red corner to fan or narrow "
+     "the image while straight lines remain straight. Auto Crop removes empty "
+     "edges; Transparent Edges preserves the full canvas for PNG, TIFF, or PSD. "
+     "Perspective is saved in projects and recipes. RETOUCH "
      "has Heal and Red-Eye: turn one on and click blemishes; adjust Spot size or "
      "Clear all."),
     ("Projects, recipes, and export",
