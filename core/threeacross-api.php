@@ -458,8 +458,12 @@ if ($sub === 'posts' && $method === 'POST') {
 
         $img_slug = uz_unique_img_slug($pdo, uz_slug_base($ig_id, $post_date, $seq));
 
-        $sort_row   = $pdo->query("SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM snap_images")->fetch(PDO::FETCH_ASSOC);
-        $sort_order = (int)($sort_row['n'] ?? 1);
+        // sort_order=0 keeps a fresh batch image in the recency group at the TOP of
+        // the archive (index.php: "sort_order ASC, id DESC" — 0-group first, newest
+        // id first). Positive sort_order is the MANUALLY-curated band BELOW it (see
+        // core/gram-client-authoring.php). Auto-stamping MAX+1 buried every batch
+        // post under the whole backlog — the "new posts never go to top" bug.
+        $sort_order = 0;
 
         // Generate the 400px square + aspect thumbnails the skins expect. The
         // uploaded JPEG is already on disk (saved by threeacross/upload). Without
