@@ -13,6 +13,7 @@ network and are unit-tested; ``search`` and ``download`` do the HTTP.
 import datetime
 import json
 import os
+import re
 import urllib.parse
 import urllib.request
 
@@ -65,12 +66,15 @@ def full_url_from_thumb(thumb_url):
     return thumb_url.replace("/thumbs/a_", "/", 1) if thumb_url else ""
 
 
-def search_url(site_url, query="", category_id=None, page=1, per_page=40):
+def search_url(site_url, query="", category_id=None, page=1, per_page=40,
+               rights="all"):
     base = site_url.rstrip("/") + "/api.php"
     params = {"route": "gyss/photos", "search": query or "",
               "limit": int(per_page), "offset": (max(1, int(page)) - 1) * int(per_page)}
     if category_id:
         params["category_id"] = int(category_id)
+    if rights in {"clear", "unclear", "unknown"}:
+        params["rights"] = rights
     return base + "?" + urllib.parse.urlencode(params)
 
 
@@ -92,8 +96,10 @@ def parse_response(payload, site_url):
             "thumb_url": thumb,
             "full_url": full_url_from_thumb(thumb),
             "source_site": site_url,
-            # rights aren't in this endpoint yet; treat unknown as flagged.
-            "licence": photo.get("licence") or photo.get("rights") or "unknown",
+            "source_page_url": photo.get("source_page_url") or "",
+            "highres_download_url": photo.get("highres_download_url") or "",
+            "licence": photo.get("licence") or "unknown",
+            "rights_status": photo.get("rights_status") or "unknown",
             "retrieved_at": retrieved,
         })
     return textures, int(payload.get("total") or len(textures))
@@ -101,20 +107,30 @@ def parse_response(payload, site_url):
 
 def provenance(texture):
     """The attribution block stored on an imported texture layer."""
-    return {
+    value = {
         "texture_id": texture.get("id"),
         "title": texture.get("title"),
         "source_url": texture.get("full_url"),
+        "source_page_url": texture.get("source_page_url", ""),
+        "highres_download_url": texture.get("highres_download_url", ""),
         "source_site": texture.get("source_site"),
         "licence": texture.get("licence", "unknown"),
+        "rights_status": texture.get("rights_status", "unknown"),
         "retrieved_at": texture.get("retrieved_at"),
     }
+    try:
+        import texture_assets
+        value["asset_ref"] = texture_assets.reference(value)
+    except Exception:  # noqa: BLE001
+        pass
+    return value
 
 
 # --- Network ----------------------------------------------------------------
-def search(site_url, api_key, query="", category_id=None, page=1, per_page=40, timeout=15):
+def search(site_url, api_key, query="", category_id=None, page=1, per_page=40,
+           rights="all", timeout=15):
     """Search the Found Textures site. Returns (textures, total)."""
-    url = search_url(site_url, query, category_id, page, per_page)
+    url = search_url(site_url, query, category_id, page, per_page, rights)
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     _log.info("Found Textures search: %s", url)
     if requests is not None:
@@ -140,10 +156,27 @@ def fetch_bytes(url, api_key=None, timeout=20):
         return resp.read()
 
 
+def highres_fetch_url(url):
+    """Turn a public Google Drive share link into its download endpoint.
+
+    The original share URL is still retained in provenance.  This conversion
+    only prevents the downloader from caching Google's HTML viewer as though it
+    were a texture image.
+    """
+    if not url:
+        return ""
+    match = re.search(r"/file/d/([A-Za-z0-9_-]+)", url)
+    if not match:
+        match = re.search(r"[?&]id=([A-Za-z0-9_-]+)", url)
+    if match and "drive.google.com" in urllib.parse.urlparse(url).netloc.lower():
+        return "https://drive.google.com/uc?export=download&id=" + match.group(1)
+    return url
+
+
 def cache_dir():
     try:
-        import snap_home
-        directory = os.path.join(snap_home.home(), "snap_slapper", "textures")
+        import texture_assets
+        directory = texture_assets.files_dir()
     except Exception:  # noqa: BLE001
         directory = os.path.join(os.path.expanduser("~"), "SnapSmack", "textures")
     os.makedirs(directory, exist_ok=True)
@@ -152,12 +185,20 @@ def cache_dir():
 
 def download(texture, api_key=None, timeout=30):
     """Download a texture's full image into the local cache; return the path."""
-    url = texture.get("full_url")
+    highres = texture.get("highres_download_url") or ""
+    url = highres_fetch_url(highres) if highres else texture.get("full_url")
     if not url:
         raise ValueError("Texture has no image URL")
-    name = f"ft_{texture.get('id', 'x')}_{os.path.basename(urllib.parse.urlparse(url).path)}"
+    source_name = os.path.basename(urllib.parse.urlparse(
+        texture.get("full_url") or url).path) or "texture.jpg"
+    name = f"ft_{texture.get('id', 'x')}_{source_name}"
     dest = os.path.join(cache_dir(), name)
     if os.path.isfile(dest) and os.path.getsize(dest) > 0:
+        try:
+            import texture_assets
+            texture_assets.register(provenance(texture), dest)
+        except Exception:  # noqa: BLE001
+            pass
         return dest                                  # already cached
     _log.info("Found Textures download: %s -> %s", url, dest)
     data = fetch_bytes(url, api_key, timeout=timeout)
@@ -165,6 +206,11 @@ def download(texture, api_key=None, timeout=30):
     with open(tmp, "wb") as handle:
         handle.write(data)
     os.replace(tmp, dest)
+    try:
+        import texture_assets
+        texture_assets.register(provenance(texture), dest)
+    except Exception:  # noqa: BLE001
+        _log.exception("Could not register texture in the shared library")
     return dest
 
 # ===== SNAPSMACK EOF =====

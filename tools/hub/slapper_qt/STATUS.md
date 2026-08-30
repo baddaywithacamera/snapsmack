@@ -70,7 +70,12 @@ identity, so every existing look/project renders unchanged.
 - **Retouch** — spot heal + red-eye click tool, adjustable size, clear all.
 - **Found Textures layer** — search foundtextures.ca, thumbnail grid, add a
   texture as a layer with fit (cover/contain/stretch/tile/original) + blend;
-  provenance (id/source/site/licence/date) preserved in the `.slapper`.
+  rights filter defaults to CLEAR RIGHTS, every result is visibly badged, and
+  unclear/unknown imports require confirmation; provenance
+  (id/source/site/rights/licence/date/high-resolution restore URL) is preserved
+  in the `.slapper`. Files are indexed once under the existing shared library;
+  LEWKS and recipes carry references only. Missing first-party assets offer a
+  user-confirmed restore; missing third-party assets fail loudly by name/layer.
   (`found_textures.py` client + `textures_dialog.py`; live fetch verified by
   the user, not in-sandbox.)
 - `.slapper` project save/open; recipe save/apply; metadata-preserving export.
@@ -80,6 +85,10 @@ identity, so every existing look/project renders unchanged.
 - **LEWKS gallery** — 14 built-in looks previewed live on the current photo at
   an adjustable strength; applies as a non-destructive layer (engine
   `stack_layers`, never flattens base).
+- **TEACH ME** — inspects the real stored instructions of any built-in LEWK in
+  pedagogical order, explains direction and strength in ordinary photographer
+  language, hides exact values behind SHOW SETTINGS, supports
+  per-step toggles and hold-for-before comparison, and creates an editable copy.
 - **Offline Help** (F1) — searchable, 12 Qt-specific topics.
 - **Autosave / crash recovery** — recovery copy under
   `C:\snapsmack\snap_slapper\recovery`; restore-on-reopen prompt.
@@ -124,9 +133,8 @@ identity, so every existing look/project renders unchanged.
   export; source photographs remain unchanged.
 
 ## Not yet built (later phases)
-- Found Textures: category/album filter, favourite, local categories (search +
-  import done). Rights-based hide/flag needs the gyss/photos API to expose a
-  rights field (server-side change).
+- Found Textures: category/album filter, favourite, and local categories
+  (search, import, and rights filtering are done).
 - 100% loupe polish: render only the visible viewport crop at native res
   (instead of the whole photo) so editing while held at 100% stays fast on
   very large files. Correct-but-slower full-native render ships now.

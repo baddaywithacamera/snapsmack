@@ -73,6 +73,9 @@ class LewksDialog(QDialog):
         self.caption = QLabel("Pick a look — the previews are on your photo.")
         self.caption.setObjectName("TargetLabel")
         actions.addWidget(self.caption, 1)
+        teach_btn = QPushButton("TEACH ME")
+        teach_btn.clicked.connect(self.teach_selected)
+        actions.addWidget(teach_btn)
         apply_btn = QPushButton("Apply LEWK")
         apply_btn.setObjectName("LayerAddBtn")
         apply_btn.clicked.connect(self.apply_selected)
@@ -127,5 +130,16 @@ class LewksDialog(QDialog):
         lewk_id = items[0].data(Qt.UserRole)
         self.host.apply_lewk(lewk_id, self.strength.value())
         self.accept()
+
+    def teach_selected(self):
+        items = self.grid.selectedItems()
+        if not items:
+            return
+        lewk_id = items[0].data(Qt.UserRole)
+        lewk = next((entry for entry in self._lewks if entry["id"] == lewk_id), None)
+        if lewk is None:
+            return
+        from .teach_me_dialog import TeachMeDialog
+        TeachMeDialog(self.host, lewk, self.strength.value(), self).exec()
 
 # ===== SNAPSMACK EOF =====

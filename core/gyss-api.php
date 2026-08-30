@@ -237,6 +237,7 @@ if ($resource === 'prompt' && $method === 'POST') {
 //   date_to      — ISO date string (optional)
 //   category_id  — int (optional)
 //   album_id     — int (optional)
+//   rights       — clear | unclear | unknown | all (optional)
 //   limit        — int, default 200, max 500
 //   offset       — int, default 0
 // =============================================================================
@@ -254,6 +255,7 @@ if ($resource === 'photos' && $method === 'GET') {
     $date_to     = $_GET['date_to']     ?? '';
     $category_id = isset($_GET['category_id']) ? (int)$_GET['category_id'] : null;
     $album_id    = isset($_GET['album_id'])    ? (int)$_GET['album_id']    : null;
+    $rights      = strtolower(trim((string)($_GET['rights'] ?? 'all')));
     $limit       = min((int)($_GET['limit']  ?? 200), 500);
     $offset      = max((int)($_GET['offset'] ?? 0), 0);
     if ($limit < 1) $limit = 200;
@@ -277,6 +279,15 @@ if ($resource === 'photos' && $method === 'GET') {
     if ($album_id !== null) {
         $where[]  = 'EXISTS (SELECT 1 FROM snap_image_album_map am WHERE am.image_id = i.id AND am.album_id = ?)';
         $params[] = $album_id;
+    }
+    if ($rights === 'clear') {
+        $where[] = "EXISTS (SELECT 1 FROM snap_image_tags rit JOIN snap_tags rt ON rt.id = rit.tag_id WHERE rit.image_id = i.id AND rt.slug = 'certifiedrights')";
+    } elseif ($rights === 'unclear') {
+        $where[] = "EXISTS (SELECT 1 FROM snap_image_tags rit JOIN snap_tags rt ON rt.id = rit.tag_id WHERE rit.image_id = i.id AND rt.slug = 'unclearrights')";
+    } elseif ($rights === 'unknown') {
+        $where[] = "NOT EXISTS (SELECT 1 FROM snap_image_tags rit JOIN snap_tags rt ON rt.id = rit.tag_id WHERE rit.image_id = i.id AND rt.slug IN ('certifiedrights', 'unclearrights'))";
+    } elseif ($rights !== 'all' && $rights !== '') {
+        gy_err('Invalid rights filter; use clear, unclear, unknown, or all', 400);
     }
 
     $where_sql = implode(' AND ', $where);
@@ -303,8 +314,16 @@ if ($resource === 'photos' && $method === 'GET') {
                 i.img_description AS description,
                 i.sort_order,
                 i.img_file,
+                i.img_slug,
+                i.download_url,
                 i.img_date        AS posted_date,
                 i.modified_at,
+                i.img_license,
+                CASE
+                    WHEN EXISTS (SELECT 1 FROM snap_image_tags rit JOIN snap_tags rt ON rt.id = rit.tag_id WHERE rit.image_id = i.id AND rt.slug = 'unclearrights') THEN 'unclear'
+                    WHEN EXISTS (SELECT 1 FROM snap_image_tags rit JOIN snap_tags rt ON rt.id = rit.tag_id WHERE rit.image_id = i.id AND rt.slug = 'certifiedrights') THEN 'clear'
+                    ELSE 'unknown'
+                END AS rights_status,
                 (SELECT c2.id       FROM snap_image_cat_map cm2 JOIN snap_categories c2 ON c2.id = cm2.category_id WHERE cm2.image_id = i.id LIMIT 1) AS category_id,
                 (SELECT c2.cat_name FROM snap_image_cat_map cm2 JOIN snap_categories c2 ON c2.id = cm2.category_id WHERE cm2.image_id = i.id LIMIT 1) AS category_name,
                 (SELECT a2.id         FROM snap_image_album_map am2 JOIN snap_albums a2 ON a2.id = am2.album_id WHERE am2.image_id = i.id LIMIT 1) AS album_id,
@@ -329,12 +348,16 @@ if ($resource === 'photos' && $method === 'GET') {
             'sort_order'    => (int)$row['sort_order'],
             'posted_date'   => $row['posted_date'],
             'modified_at'   => $row['modified_at'],
+            'licence'       => $row['img_license'],
+            'rights_status' => $row['rights_status'],
             'category_id'   => $row['category_id'] !== null ? (int)$row['category_id'] : null,
             'category_name' => $row['category_name'],
             'album_id'      => $row['album_id'] !== null ? (int)$row['album_id'] : null,
             'album_name'    => $row['album_name'],
             'filename'      => basename((string)$row['img_file']),
             'thumb_url'     => gy_thumb_url($row['img_file']),
+            'source_page_url' => BASE_URL . ltrim((string)$row['img_slug'], '/'),
+            'highres_download_url' => snap_api_safe_link((string)$row['download_url']),
         ];
     }
 
