@@ -414,7 +414,10 @@ class LibraryWindow(QMainWindow):
 
         self.act_new_folder = QAction("New Folder…", self)
         self.act_new_folder.setShortcut(QKeySequence("Ctrl+Shift+N"))
+        self.act_new_folder.setToolTip(
+            "Create a folder inside the selected folder (Ctrl+Shift+N)")
         self.act_new_folder.triggered.connect(self._new_folder)
+        bar.addAction(self.act_new_folder)
         self.act_rename = QAction("Rename…", self)
         self.act_rename.setShortcut(QKeySequence("F2"))
         self.act_rename.triggered.connect(self._rename_selected)
