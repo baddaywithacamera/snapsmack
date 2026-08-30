@@ -26,7 +26,7 @@ _hidden = collect_submodules('slapper_qt') + [
     'snap_home', 'snap_log', 'snap_profiles',
     'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
     'PySide6.QtPrintSupport',
-    'PIL', 'PIL.Image',
+    'PIL', 'PIL.Image', 'psd_tools',
 ]
 
 a = Analysis(
@@ -41,7 +41,7 @@ a = Analysis(
     # Nothing here uses these; excluding keeps the exe lean. tkinter excluded
     # because this is the Qt build (no Tk, no PIL.ImageTk).
     excludes=['torch', 'torchvision', 'tensorflow', 'keras', 'scipy', 'sklearn',
-              'skimage', 'matplotlib', 'transformers', 'pandas', 'numpy', 'cv2',
+              'skimage', 'matplotlib', 'transformers', 'pandas', 'cv2',
               'google', 'googleapiclient', 'bs4', 'imagehash', 'IPython',
               'notebook', 'streamlit', 'gradio', 'tkinter'],
     noarchive=False,
