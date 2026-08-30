@@ -1,9 +1,12 @@
 """Filter gallery and editable controls for non-destructive filter layers."""
 
+import random
+
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFormLayout,
-    QSlider, QCheckBox, QComboBox, QDialogButtonBox,
+    QSlider, QCheckBox, QComboBox, QDialogButtonBox, QColorDialog,
 )
 
 import slapper_filters
@@ -58,6 +61,14 @@ class FiltersDialog(QDialog):
                 control = QSlider(Qt.Horizontal)
                 control.setRange(*RANGES[key]); control.setValue(int(value))
                 control.valueChanged.connect(lambda number, k=key: self._set(k, number))
+            elif key in {"primary", "secondary", "tint"} and isinstance(value, list):
+                control = QPushButton("Choose…")
+                self._show_colour(control, value)
+                control.clicked.connect(
+                    lambda _checked=False, k=key, button=control: self._pick_colour(k, button))
+            elif key == "seed":
+                control = QPushButton("Randomize")
+                control.clicked.connect(lambda _checked=False, k=key: self._randomize(k))
             else:
                 continue
             form.addRow(key.replace("_", " ").title(), control)
@@ -75,6 +86,25 @@ class FiltersDialog(QDialog):
 
     def _set(self, key, value):
         self.layer["settings"][key] = value
+        self.host.request_render()
+
+    @staticmethod
+    def _show_colour(button, value):
+        colour = QColor(*value[:3])
+        button.setStyleSheet(
+            f"background:{colour.name()};color:{'#000' if colour.lightness() > 145 else '#fff'}")
+
+    def _pick_colour(self, key, button):
+        value = self.layer["settings"].get(key, [255, 255, 255])
+        colour = QColorDialog.getColor(QColor(*value[:3]), self, "Choose filter colour")
+        if colour.isValid():
+            rgb = [colour.red(), colour.green(), colour.blue()]
+            self.layer["settings"][key] = rgb
+            self._show_colour(button, rgb)
+            self.host.request_render()
+
+    def _randomize(self, key):
+        self.layer["settings"][key] = random.SystemRandom().randint(1, 2_147_483_647)
         self.host.request_render()
 
     def accept(self):
