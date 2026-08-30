@@ -453,12 +453,15 @@ class LibraryWindow(QMainWindow):
         self.act_rotate_right.triggered.connect(lambda: self._rotate_selected(-90))
         self.act_find_duplicates = QAction("Find Exact Duplicates", self)
         self.act_find_duplicates.triggered.connect(self._find_duplicates)
+        self.act_export_selection = QAction("Batch Export…", self)
+        self.act_export_selection.triggered.connect(self._export_selected)
 
         organize_menu = QMenu(self)
         for action in (self.act_new_folder, self.act_rename,
                        self.act_batch_rename, self.act_move, self.act_copy, self.act_trash,
                        self.act_restore_trash, self.act_rotate_left,
                        self.act_rotate_right, self.act_find_duplicates,
+                       self.act_export_selection,
                        self.act_show_folder):
             organize_menu.addAction(action)
         organize_button = QToolButton()
@@ -479,7 +482,8 @@ class LibraryWindow(QMainWindow):
                        self.act_batch_rename,
                        self.act_move, self.act_copy, self.act_trash,
                        self.act_restore_trash, self.act_rotate_left,
-                       self.act_rotate_right, self.act_find_duplicates):
+                       self.act_rotate_right, self.act_find_duplicates,
+                       self.act_export_selection):
             organize_bar_menu.addAction(action)
 
         act_help = QAction("Help", self)
@@ -911,6 +915,33 @@ class LibraryWindow(QMainWindow):
         self.status.showMessage(
             f"Found {len(groups)} duplicate group(s); "
             f"selected {len(duplicates)} files", 8000)
+
+    def _export_selected(self):
+        paths = self._selected_photo_paths()
+        if not paths:
+            QMessageBox.information(self, "Batch Export", "Select photos first.")
+            return
+        destination = self._choose_destination("Export copies into folder")
+        if not destination:
+            return
+        max_size, accepted = QInputDialog.getInt(
+            self, "Batch Export", "Maximum width/height in pixels (0 = full size):",
+            2048, 0, 30000, 1)
+        if not accepted:
+            return
+        quality, accepted = QInputDialog.getInt(
+            self, "Batch Export", "JPEG quality:", 90, 40, 100, 1)
+        if not accepted:
+            return
+        try:
+            outputs = photo_manager.export_files(
+                paths, destination, max_size=max_size, quality=quality,
+                sharpen=True)
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Batch export failed", str(exc))
+            return
+        self.status.showMessage(
+            f"Exported {len(outputs)} photo(s) to {destination}", 7000)
 
     def _choose_transfer(self, copy_files):
         paths = self._selected_photo_paths()
