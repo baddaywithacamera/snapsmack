@@ -309,6 +309,19 @@ function ms_spoke_pull_roster(PDO $pdo, array $settings): array
     return $r;
 }
 
+// snap_multisite_nodes.last_backup_status is enum('ok','failed','unknown'), but a
+// spoke reports SMACKBACK words like 'clean'/'partial' — which TRUNCATE and (under
+// strict SQL mode) fatal the whole UPDATE. Map, don't trust. Guarded so it can also
+// live in smack-multisite.php without a redeclare, whichever loads first.
+if (!function_exists('ms_norm_backup_status')) {
+    function ms_norm_backup_status($s): string {
+        $s = strtolower(trim((string)$s));
+        if ($s === 'failed') return 'failed';
+        if ($s === 'ok' || $s === 'clean' || $s === 'partial') return 'ok';
+        return 'unknown';
+    }
+}
+
 /**
  * Hub -> spoke, single node: fetch this spoke's live heartbeat and write its
  * vitals (including the fediverse rollup counters) back into snap_multisite_nodes.
@@ -348,9 +361,7 @@ function ms_pull_heartbeat(PDO $pdo, array $node): bool
         return false;
     }
 
-    $backup_status = function_exists('ms_norm_backup_status')
-        ? ms_norm_backup_status($hb['last_backup_status'] ?? 'unknown')
-        : (string)($hb['last_backup_status'] ?? 'unknown');
+    $backup_status = ms_norm_backup_status($hb['last_backup_status'] ?? 'unknown');
 
     $pdo->prepare("
         UPDATE snap_multisite_nodes SET
