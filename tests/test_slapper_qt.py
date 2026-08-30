@@ -897,6 +897,12 @@ def test_editable_filter_layers_and_project_roundtrip():
     cool = slapper_filters.apply_filter(original, "light_leak", {"warmth": -100})
     assert ImageChops.difference(warm, cool).getbbox()
 
+    source_hash = editor_engine.photo_manager.content_hash(path)
+    batch_dir = os.path.join(TMP, "filter-batch")
+    outputs = editor_engine.batch_apply([path], recipe, batch_dir)
+    assert len(outputs) == 1 and os.path.isfile(outputs[0])
+    assert editor_engine.photo_manager.content_hash(path) == source_hash
+
 
 def test_keyboard_shortcuts_and_help_topics():
     from slapper_qt.help_dialog import TOPICS

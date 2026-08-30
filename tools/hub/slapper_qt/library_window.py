@@ -20,6 +20,7 @@ import os
 import shutil
 import time
 import photo_manager
+import editor_engine
 
 from PySide6.QtCore import (
     Qt, QObject, QRunnable, QThreadPool, Signal, QSize, QDir, QTimer,
@@ -462,6 +463,8 @@ class LibraryWindow(QMainWindow):
         self.act_find_duplicates.triggered.connect(self._find_duplicates)
         self.act_export_selection = QAction("Batch Export…", self)
         self.act_export_selection.triggered.connect(self._export_selected)
+        self.act_apply_recipe = QAction("Apply Recipe to Selection…", self)
+        self.act_apply_recipe.triggered.connect(self._apply_recipe_selected)
         self.act_slideshow = QAction("Slideshow", self)
         self.act_slideshow.setShortcut(QKeySequence("F5"))
         self.act_slideshow.triggered.connect(self._start_slideshow)
@@ -477,7 +480,7 @@ class LibraryWindow(QMainWindow):
                        self.act_restore_trash, self.act_rotate_left,
                        self.act_undo_files,
                        self.act_rotate_right, self.act_find_duplicates,
-                       self.act_export_selection,
+                       self.act_export_selection, self.act_apply_recipe,
                        self.act_show_folder):
             organize_menu.addAction(action)
         organize_button = QToolButton()
@@ -511,7 +514,7 @@ class LibraryWindow(QMainWindow):
                        self.act_restore_trash, self.act_rotate_left,
                        self.act_undo_files,
                        self.act_rotate_right, self.act_find_duplicates,
-                       self.act_export_selection):
+                       self.act_export_selection, self.act_apply_recipe):
             organize_bar_menu.addAction(action)
         output_bar_menu = self.menuBar().addMenu("Present")
         output_bar_menu.addAction(self.act_slideshow)
@@ -1027,6 +1030,32 @@ class LibraryWindow(QMainWindow):
             return
         self.status.showMessage(
             f"Exported {len(outputs)} photo(s) to {destination}", 7000)
+
+    def _apply_recipe_selected(self):
+        paths = self._require_selected("Apply Recipe")
+        if not paths:
+            return
+        recipe_path, _ = QFileDialog.getOpenFileName(
+            self, "Choose SNAP SLAPPER Recipe", "", "SNAP SLAPPER recipe (*.slaprecipe)")
+        if not recipe_path:
+            return
+        destination = self._choose_destination("Save edited copies into folder")
+        if not destination:
+            return
+        try:
+            from . import prefs
+            settings = prefs.load()
+            outputs = editor_engine.batch_apply(
+                paths, editor_engine.load_recipe(recipe_path), destination,
+                quality=int(settings["export_quality"]),
+                copyright_text=(settings["copyright_text"]
+                                if settings["add_copyright_if_missing"] else ""),
+                strip_gps=bool(settings["strip_gps"]))
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Recipe batch failed", str(exc))
+            return
+        self.status.showMessage(
+            f"Applied recipe to {len(outputs)} photo(s); originals unchanged", 7000)
 
     def _require_selected(self, title):
         paths = self._selected_photo_paths()
