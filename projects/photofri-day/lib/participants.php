@@ -9,7 +9,7 @@
  * follow-back, so leaving means leaving everywhere (Starter Kit + SnapSmack global
  * feed removal hang off this same row — v0.3 §4).
  *
- * Reuses the SMACKVERSE relay AP primitives verbatim (keys, signature verify,
+ * Reuses the FEDIVERSE relay AP primitives verbatim (keys, signature verify,
  * SSRF-guarded signed delivery). This file is the photofri-specific policy layer.
  */
 

@@ -125,7 +125,7 @@ include 'core/sidebar.php';
                         ENABLE SOCIAL DOCK <span class="field-tip" data-tip="Floating profile links visible on every public page. When downloads are enabled for an image, the download button appears in the dock automatically.">ⓘ</span>
                     </label>
                     <?php
-                    $_fedi_on   = ($settings['smackverse_enabled'] ?? '0') === '1';
+                    $_fedi_on   = ($settings['fediverse_enabled'] ?? '0') === '1';
                     $_fedi_kind = (($settings['site_mode'] ?? 'photoblog') === 'smacktalk') ? 'Mastodon' : 'Pixelfed';
                     ?>
                     <label style="margin-top:8px;display:block;<?php echo $_fedi_on ? '' : 'opacity:.55;'; ?>">

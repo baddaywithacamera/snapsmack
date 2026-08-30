@@ -691,8 +691,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         // New content is live — flush the page cache so it appears immediately.
         require_once __DIR__ . '/core/page-cache.php';
         page_cache_purge_all();
-        if (($settings['smackverse_enabled'] ?? '0') === '1') {
-            require_once __DIR__ . '/core/smackverse-kick.php';
+        if (($settings['fediverse_enabled'] ?? '0') === '1') {
+            require_once __DIR__ . '/core/fediverse-kick.php';
             sv_kick_delivery();
         }
 

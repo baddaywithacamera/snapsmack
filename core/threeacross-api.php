@@ -901,7 +901,7 @@ if ($sub === 'gram/post' && $method === 'POST') {
     // Belt-and-suspenders: DDL before beginTransaction() (ALTER implicit-commits).
     $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_alt VARCHAR(500) NULL");
     // Self-heal a drifted snap_posts (missing fedi_enabled etc.) — the cause of the
-    // "Unknown column 'fedi_enabled'" 500s on sites that never ran SMACKVERSE.
+    // "Unknown column 'fedi_enabled'" 500s on sites that never ran FEDIVERSE.
     snapsmack_gram_ensure_post_columns($pdo);
 
     $pdo->beginTransaction();

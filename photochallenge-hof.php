@@ -14,7 +14,7 @@
  * Last non-empty line of this file MUST match the line above.
  */
 require_once __DIR__ . '/core/db.php';
-require_once __DIR__ . '/core/smackverse.php';
+require_once __DIR__ . '/core/fediverse.php';
 require_once __DIR__ . '/core/photochallenge.php';
 
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")

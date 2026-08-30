@@ -3,15 +3,15 @@
  * SNAPSMACK - PHOTO CHALLENGE (FEDISTRUCTURE spoke profile)
  *
  * The photofri.day / artfri.day logic, built as a THIN policy layer on top of
- * the site's single SMACKVERSE actor. It adds NO crypto, NO second actor, NO
+ * the site's single FEDIVERSE actor. It adds NO crypto, NO second actor, NO
  * duplicated federation stack — every signed request, inbox verify, delivery,
- * follow and timeline ingest is core/smackverse.php's (sv_*). This file only
+ * follow and timeline ingest is core/fediverse.php's (sv_*). This file only
  * adds the challenge policy: follow = JOIN, unfollow = LEAVE, and a board that
  * reads the posts the CMS already ingests.
  *
  * Enable per-install with snap_settings 'photochallenge_enabled' = '1'. When
  * off (every ordinary blog), every function here is inert — the inbox hook in
- * core/smackverse.php is guarded by function_exists()+pc_enabled().
+ * core/fediverse.php is guarded by function_exists()+pc_enabled().
  *
  * No image belonging to a participant is ever stored: the board reads
  * snap_ap_timeline, which holds only the origin permalink + hotlinked image
@@ -858,7 +858,7 @@ function pc_activate_due_prompts(PDO $pdo, array &$settings): int {
     pc_refresh_prompt_pointers($pdo, $settings);
     require_once __DIR__ . '/page-cache.php';
     if (function_exists('page_cache_purge_all')) page_cache_purge_all();     // card appears immediately
-    require_once __DIR__ . '/smackverse-kick.php';
+    require_once __DIR__ . '/fediverse-kick.php';
     if (function_exists('sv_kick_delivery')) sv_kick_delivery();             // federate the freshly-published card
     return $dropped;
 }

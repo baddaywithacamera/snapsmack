@@ -10,7 +10,7 @@ participant list is the population for the Starter Kit + the SnapSmack global fe
 ## Layout
 - `public/` = **docroot** (front controller `index.php` + `.htaccess`). Put the landing
   `index.html` + `img/` INSIDE `public/` so `/` serves the page and its assets.
-- `lib/` = AP primitives (`db.php`, `ap.php` — reused from the SMACKVERSE relay, crypto
+- `lib/` = AP primitives (`db.php`, `ap.php` — reused from the FEDIVERSE relay, crypto
   verbatim) + `participants.php` (join/leave/follow-back inbox).
 - `schema.sql`, `config.sample.php`, `cron/drain.php`.
 

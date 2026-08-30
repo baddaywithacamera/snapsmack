@@ -66,9 +66,9 @@ function px_bearer(PDO $pdo): array {
     if (!$row) px_json(['error'=>'The access token is invalid'],401); return $row;
 }
 function px_actor(PDO $pdo): array {
-    $base=px_base(); $user=px_setting($pdo,'smackverse_username','snapsmack');
-    $name=px_setting($pdo,'smackverse_display_name',px_setting($pdo,'site_name','GRAMOFSMACK'));
-    $avatar=px_setting($pdo,'smackverse_avatar',''); if ($avatar && !preg_match('#^https?://#',$avatar)) $avatar=$base.ltrim($avatar,'/');
+    $base=px_base(); $user=px_setting($pdo,'fediverse_username','snapsmack');
+    $name=px_setting($pdo,'fediverse_display_name',px_setting($pdo,'site_name','GRAMOFSMACK'));
+    $avatar=px_setting($pdo,'fediverse_avatar',''); if ($avatar && !preg_match('#^https?://#',$avatar)) $avatar=$base.ltrim($avatar,'/');
     $mode=px_mode($pdo);$countSql=$mode==='photoblog'?"SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date<=NOW()":($mode==='smacktalk'?"SELECT COUNT(*) FROM snap_posts WHERE status='published' AND created_at<=NOW() AND post_type='longform'":"SELECT COUNT(*) FROM snap_posts WHERE status='published' AND created_at<=NOW() AND post_type IN ('single','carousel','panorama')");
     return ['id'=>'1','username'=>$user,'acct'=>$user,'display_name'=>$name,'locked'=>false,'bot'=>false,
       'discoverable'=>true,'group'=>false,'created_at'=>'2020-01-01T00:00:00.000Z','note'=>px_setting($pdo,'site_description',''),

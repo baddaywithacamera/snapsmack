@@ -1,9 +1,9 @@
 <?php
 /**
- * SNAPSMACK - SMACKVERSE - Followers & Delivery
+ * SNAPSMACK - FEDIVERSE - Followers & Delivery
  *
- * One of the three pages split out of the old monolithic SMACKVERSE page
- * (0.7.405). Shares core/smackverse-admin-shared.php for settings, POST
+ * One of the three pages split out of the old monolithic FEDIVERSE page
+ * (0.7.405). Shares core/fediverse-admin-shared.php for settings, POST
  * handlers and render state; this page renders only its own sections.
  *
  * SNAPSMACK_EOF_HEADER
@@ -11,8 +11,8 @@
  * Last non-empty line of this file MUST match the line above.
  */
 require_once 'core/auth-smack.php';
-require_once 'core/smackverse.php';
-require_once 'core/smackverse-admin-shared.php';
+require_once 'core/fediverse.php';
+require_once 'core/fediverse-admin-shared.php';
 
 $page_title = 'Fediverse - Followers & Delivery';
 include 'core/admin-header.php';
@@ -53,13 +53,13 @@ include 'core/sidebar.php';
                 <td>WebFinger rewrite (.htaccess)</td>
                 <td><?php echo $sv_rewrite_ok
                     ? '&#10003; found'
-                    : '&#10007; missing — add: <code>RewriteRule ^\.well-known/webfinger$ smackverse.php?ap=webfinger [QSA,L]</code>'; ?></td>
+                    : '&#10007; missing — add: <code>RewriteRule ^\.well-known/webfinger$ fediverse.php?ap=webfinger [QSA,L]</code>'; ?></td>
             </tr>
             <tr>
                 <td>AP path routes (.htaccess)</td>
                 <td><?php echo $sv_aproute_ok
                     ? '&#10003; found'
-                    : '&#10007; missing — add: <code>RewriteRule ^ap/(.+)$ smackverse.php?appath=$1 [L,QSA]</code> (re-toggle Fediverse or run REPAIR .htaccess)'; ?></td>
+                    : '&#10007; missing — add: <code>RewriteRule ^ap/(.+)$ fediverse.php?appath=$1 [L,QSA]</code> (re-toggle Fediverse or run REPAIR .htaccess)'; ?></td>
             </tr>
             <tr>
                 <td>Signing key</td>
@@ -90,7 +90,7 @@ include 'core/sidebar.php';
                     <?php else: ?>
                         &#9888; automatic running is turned off, and this host won&rsquo;t let SnapSmack schedule jobs.
                         Turn automatic running back on, or add this line on the server:
-                        <code>*/10 * * * * php <?php echo htmlspecialchars(__DIR__); ?>/cron-smackverse.php</code>
+                        <code>*/10 * * * * php <?php echo htmlspecialchars(__DIR__); ?>/cron-fediverse.php</code>
                     <?php endif; ?>
                 </td>
             </tr>

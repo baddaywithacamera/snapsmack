@@ -13,8 +13,8 @@ $_pc_sections = [
         'smack-admin.php', 'smack-post-solo.php', 'smack-manage.php',
         'smack-edit.php', 'smack-comments.php', 'smack-pages.php',
     ],
-    'smackverse' => [
-        'smack-fediverse.php', 'smack-dms.php', 'smack-smackverse.php',
+    'fediverse' => [
+        'smack-fediverse.php', 'smack-dms.php', 'smack-fediverse-portal.php',
         'smack-sv-followers.php', 'smack-sv-tools.php',
     ],
     'pimp' => [
@@ -64,7 +64,7 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                 </ul>
             </div>
 
-            <div class="nav-section<?php echo $_pc_active === 'smackverse' ? ' open' : ''; ?>" data-section="smackverse">
+            <div class="nav-section<?php echo $_pc_active === 'fediverse' ? ' open' : ''; ?>" data-section="fediverse">
                 <button type="button" class="nav-section-toggle">
                     <span class="nav-section-label">FEDIVERSE</span>
                     <span class="nav-section-arrow"></span>
@@ -73,7 +73,7 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                     <li><a href="pixel.php" target="_blank" rel="noopener">Pixelfed &#8599;</a></li>
                     <li class="<?php echo $_pc_active_class('smack-fediverse.php'); ?>"><a href="smack-fediverse.php">Interactions</a></li>
                     <li class="<?php echo $_pc_active_class('smack-dms.php'); ?>"><a href="smack-dms.php">Messages</a></li>
-                    <li class="<?php echo $_pc_active_class('smack-smackverse.php'); ?>"><a href="smack-smackverse.php">Federation</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-fediverse-portal.php'); ?>"><a href="smack-fediverse-portal.php">Federation</a></li>
                     <li class="<?php echo $_pc_active_class('smack-sv-followers.php'); ?>"><a href="smack-sv-followers.php">Followers</a></li>
                     <li class="<?php echo $_pc_active_class('smack-sv-tools.php'); ?>"><a href="smack-sv-tools.php">Push &amp; Tools</a></li>
                 </ul>

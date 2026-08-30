@@ -86,7 +86,7 @@ function fb_roster(PDO $pdo, array $settings): array {
     $rows = [];
     try {
         $rows = $pdo->query("SELECT site_url,site_name,role,status,maintenance_mode,
-                            software_version,smackverse_enabled,fedboard_sso_enabled FROM snap_multisite_nodes")
+                            software_version,fediverse_enabled,fedboard_sso_enabled FROM snap_multisite_nodes")
                     ->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
         try {
@@ -100,7 +100,7 @@ function fb_roster(PDO $pdo, array $settings): array {
         $by_url[strtolower($current_url)] = [
             'site_url'=>$current_url, 'site_name'=>$current_name, 'role'=>$current_role,
             'status'=>'active', 'maintenance_mode'=>0, 'software_version'=>SNAPSMACK_VERSION_SHORT,
-            'smackverse_enabled'=>($settings['smackverse_enabled'] ?? '0') === '1' ? 1 : 0,
+            'fediverse_enabled'=>($settings['fediverse_enabled'] ?? '0') === '1' ? 1 : 0,
             'fedboard_sso_enabled'=>1,
             'current'=>true,
         ];
@@ -129,7 +129,7 @@ function fb_roster(PDO $pdo, array $settings): array {
         $r['available'] = !empty($r['current']) || (
             ($r['status'] ?? 'offline') === 'active'
             && empty($r['maintenance_mode'])
-            && (($r['role'] ?? '') === 'hub' || !empty($r['smackverse_enabled']))
+            && (($r['role'] ?? '') === 'hub' || !empty($r['fediverse_enabled']))
             && (($r['role'] ?? '') === 'hub' || !empty($r['fedboard_sso_enabled']))
             && $version !== '' && version_compare($version, '0.7.547', '>=')
         );

@@ -49,7 +49,7 @@ switch ($path) {
         $n = (int)relay_db()->query("SELECT COUNT(*) FROM relay_subscribers WHERE state='active'")->fetchColumn();
         relay_out([
             'version'           => '2.0',
-            'software'          => ['name' => 'smackverse-relay', 'version' => '1.0'],
+            'software'          => ['name' => 'photoblogs-relay', 'version' => '1.0'],
             'protocols'         => ['activitypub'],
             'services'          => ['inbound' => [], 'outbound' => []],
             'openRegistrations' => (relay_setting('open_mode', 'allowlist') === 'open'),

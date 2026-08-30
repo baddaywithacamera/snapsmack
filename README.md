@@ -27,7 +27,7 @@ The same engine fits whether you post one frame at a time or run a full grid:
 - **GRAMOFSMACK** — *Got Zuck-fucked?* The Instagram-style square grid you already know — carousel posts, panorama trigrams, and a full post modal with likes and comments — self-hosted and free of billionaires.
 - **SMACKTALK** — *For photographers who write.* Long-form words alongside the images, for when the photograph needs the story too.
 
-## SMACKVERSE — you speak Fediverse
+## FEDIVERSE — you speak Fediverse
 
 Your photoblog speaks ActivityPub. It shows up across the Fediverse as its own Pixelfed-compatible instance — comments, likes, boosts, and referral traffic included — without handing your art to a stranger's server. Two-way: browse, heart, reply, and follow right from your admin, and your grid federates in the exact order you set it.
 
