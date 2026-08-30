@@ -96,25 +96,32 @@ identity, so every existing look/project renders unchanged.
   a freshly opened photo starts fitted. Editing while held at 100% re-renders
   full-resolution, so it is slower than Fit — flip to Fit for fast tuning.
 
-## Not yet built (next phases)
-- Filters: the four-filter foundation from `docs/snap-slapper-filter-spec.md`
-  (engine has no filter functions yet — needs engine work).
+## Added for build 0.7.561
+- Persistent catalogue sources, ratings, tags, favourites, albums, filtering,
+  recoverable SNAP SLAPPER Trash, duplicate-aware imports, transactional batch
+  rename, move/copy history and undo, rotated copies, and selected-photo export.
+- Editable Orton, Film Grain, Light Leak, and Pastel filter layers with masks,
+  recipes, deterministic seeds, colour controls, direct Light Leak placement,
+  project persistence, and selected-photo batch application.
+- Colour-range masks and direct canvas movement for text/image layers.
+- Slideshow, JPEG contact sheets, printing, and visible Present/Print commands.
+- Safe RAW handoff to RawTherapee, darktable, or a chosen external application.
+- Hub-profile `Blog Copy` preparation: local-only, collision-safe staging copies
+  with an auditable `.snapstage.json` manifest; it never uploads or publishes.
+- Real per-run crash logging, readable 12–13px interface defaults, and a bounded,
+  private filmstrip thumbnail queue that cannot starve the application.
+
+## Not yet built (later phases)
 - Found Textures: category/album filter, favourite, local categories (search +
   import done). Rights-based hide/flag needs the gyss/photos API to expose a
   rights field (server-side change).
-- Colour-range masks (radial + graduated + brush done); moving a text/image
-  layer by dragging on the canvas.
-- Library depth: ratings, tags, albums, filtering, Trash (all in the Tk
-  `photo_library.py`, not yet ported); slideshow. (Editor filmstrip: done.)
 - 100% loupe polish: render only the visible viewport crop at native res
   (instead of the whole photo) so editing while held at 100% stays fast on
   very large files. Correct-but-slower full-native render ships now.
-- Standardise `snap_log` into the other standalone tools (SUYB, scanner, etc.).
-  (Note: `snap_log` does not exist in `tools/_shared` yet — the editor's
-  `import snap_log` is an optional try/except, so crash-logging is a no-op both
-  from source and in the exe until that module is built. Not a build regression.)
+- Standardise the new shared `snap_log` into the other standalone tools (SUYB,
+  scanner, etc.). SNAP SLAPPER now uses it in source and frozen builds.
 - ~~Packaging the Qt build into the shipped SNAP SLAPPER.exe~~ — **DONE 2026-08-28**
-  via `tools/hub/slapper_qt.spec` (PyInstaller onefile, ~56 MB). Verified: 33/33
+  via `tools/hub/slapper_qt.spec` (PyInstaller onefile, ~56 MB). Verified: 41/41
   tests pass, exe launches headless without a startup crash, and no credential/
   fleet modules ride along (SECAUDIT 051). Build:
   `python -m PyInstaller tools/hub/slapper_qt.spec`.

@@ -6,7 +6,7 @@ import sys
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
 
-from . import theme
+from . import theme, BUILD_VERSION
 from .editor_window import EditorWindow
 from .library_window import LibraryWindow
 
@@ -22,6 +22,7 @@ def main(argv=None):
     app = QApplication.instance() or QApplication(argv)
     app.setApplicationName("SNAP SLAPPER")
     app.setApplicationDisplayName("SNAP SLAPPER Photo Library and Editor")
+    app.setApplicationVersion(BUILD_VERSION)
     app.setStyleSheet(theme.stylesheet())
     if _log is not None:
         _log.info("SNAP SLAPPER Qt UI ready")
