@@ -10,6 +10,21 @@
 
 # SnapSmack Changelog
 
+## 0.7.588 "NAME TAG" — 2026-08-30
+
+- **Your fediverse @handle is now yours to choose — the blog title never becomes it.**
+  The FEDIVERSE HANDLE box no longer previews a made-up `@photoblog@…` name when you
+  leave it empty; it shows the neutral `@…@yourdomain` until you type one. Turning
+  federation ON now requires you to pick a handle first, instead of silently minting
+  one from your Site Name (the reason craptasti.ca ended up answering as
+  `@craptasti_ca` without ever being asked).
+- **Existing federated blogs keep their followers — nothing is stranded.**
+  A blog that federated before handles were mandatory was answering under a name
+  auto-derived from its Site Name. Opening the Fediverse admin now locks that exact
+  name in as your explicit, editable handle, so followers stay put and the name can
+  no longer drift if you rename your blog. Change it deliberately from the handle box
+  (with the follower-strand warning) if you want a different one.
+
 ## 0.7.587 "TOP OF THE PILE" — 2026-08-30
 
 - **New batch posts and Flickr imports now land at the top of the archive.**

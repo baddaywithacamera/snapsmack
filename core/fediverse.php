@@ -58,15 +58,25 @@ function sv_domain(array $settings): string {
 }
 
 /**
- * The actor's preferredUsername. fediverse_handle setting wins; otherwise
- * the site_name sanitised to [a-z0-9_]. Falls back to 'photoblog'.
+ * The actor's preferredUsername. The explicit fediverse_handle setting is the
+ * source of truth: enabling federation now REQUIRES one (see the enable handler
+ * in fediverse-admin-shared.php), so every blog federated from 0.7.588 on has a
+ * handle the owner deliberately chose.
+ *
+ * The site_name derivation below is a LEGACY SAFETY NET only — it keeps blogs
+ * that federated before handles were mandatory answering WebFinger (which has no
+ * DB handle to freeze the value itself) until the owner next opens the Fediverse
+ * admin, which locks the live handle in as explicit. It must never be reached by
+ * a newly-federated blog, and the admin freezes it out for legacy ones. Do not
+ * lean on it as the normal path.
  */
 function sv_handle(array $settings): string {
     $h = trim($settings['fediverse_handle'] ?? '');
-    if ($h === '') {
-        $h = strtolower(preg_replace('/[^a-z0-9_]+/i', '_', trim($settings['site_name'] ?? '')));
-        $h = trim($h, '_');
-    }
+    if ($h !== '') return $h;
+    // Legacy fallback (see docblock): reproduce the exact handle a pre-0.7.588
+    // blog is already answering under, so its followers are never stranded.
+    $h = strtolower(preg_replace('/[^a-z0-9_]+/i', '_', trim($settings['site_name'] ?? '')));
+    $h = trim($h, '_');
     return $h !== '' ? $h : 'photoblog';
 }
 

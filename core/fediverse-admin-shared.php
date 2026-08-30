@@ -89,6 +89,21 @@ try {
     )->fetchColumn();
 } catch (PDOException $e) { /* table just created — zero */ }
 
+// --- FREEZE A LEGACY DERIVED HANDLE INTO AN EXPLICIT ONE ---
+// A blog that turned federation on before handles were mandatory answers under
+// a handle auto-derived from its Site Name (e.g. "craptasti.ca" → craptasti_ca).
+// That name was never chosen and silently drifts if the Site Name is edited —
+// which strands every follower. The instant the owner opens the Fediverse admin,
+// lock the handle followers ALREADY use in as an explicit, editable value, so the
+// auto-derivation is never relied on again. Idempotent: only fires while nothing
+// is saved yet, and writes the exact same string sv_handle() currently returns.
+if (sv_enabled($sv_settings) && trim($sv_settings['fediverse_handle'] ?? '') === '') {
+    $sv_frozen_handle = sv_handle($sv_settings);
+    if ($sv_frozen_handle !== '') {
+        $sv_setting_upsert('fediverse_handle', $sv_frozen_handle);
+    }
+}
+
 // --- SAVE HANDLE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_handle') {
     $raw = strtolower(trim($_POST['sv_handle'] ?? ''));
@@ -128,6 +143,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'enabl
         // Informed consent: federating is joining a community, not spraying images
         // at it. No enable without acknowledging that participation is expected.
         $msg = 'FEDERATION NOT ENABLED — please read and check the participation acknowledgment. The fediverse is a community you take part in, not a place to dump images.';
+    } elseif (trim($sv_settings['fediverse_handle'] ?? '') === '') {
+        // A handle is the address the whole fediverse knows this blog by. It must
+        // be a deliberate choice — never auto-minted from the blog title. Make the
+        // owner pick one in the FEDIVERSE HANDLE box before the actor goes public.
+        $msg = 'FEDERATION NOT ENABLED — choose your fediverse @handle first (the FEDIVERSE HANDLE box below), then enable. It is never auto-named from your blog title.';
     } else {
         $sv_setting_upsert('fediverse_enabled', '1');
         $sv_setting_upsert('fediverse_participation_ack', date('Y-m-d H:i:s'));
