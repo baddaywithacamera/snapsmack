@@ -27,6 +27,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import (
     QImage, QPixmap, QIcon, QAction, QKeySequence, QDrag, QDesktopServices,
+    QPainter,
 )
 from PySide6.QtWidgets import (
     QMainWindow, QListWidget, QListWidgetItem, QFileDialog, QLabel, QSlider,
@@ -34,6 +35,7 @@ from PySide6.QtWidgets import (
     QFileSystemModel, QAbstractItemView, QInputDialog, QMessageBox, QMenu,
     QToolButton, QDockWidget, QVBoxLayout, QPushButton, QCheckBox,
 )
+from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
 from PIL import Image, ImageOps
 
@@ -41,6 +43,7 @@ from . import theme
 from .editor_window import EditorWindow
 from .catalog import Catalog
 from .organizer_ops import import_photos, batch_rename
+from .output_tools import create_contact_sheet, SlideshowDialog
 
 try:
     import snap_log
@@ -459,6 +462,14 @@ class LibraryWindow(QMainWindow):
         self.act_find_duplicates.triggered.connect(self._find_duplicates)
         self.act_export_selection = QAction("Batch Export…", self)
         self.act_export_selection.triggered.connect(self._export_selected)
+        self.act_slideshow = QAction("Slideshow", self)
+        self.act_slideshow.setShortcut(QKeySequence("F5"))
+        self.act_slideshow.triggered.connect(self._start_slideshow)
+        self.act_contact_sheet = QAction("Create Contact Sheet…", self)
+        self.act_contact_sheet.triggered.connect(self._create_contact_sheet)
+        self.act_print = QAction("Print Selected…", self)
+        self.act_print.setShortcut(QKeySequence.Print)
+        self.act_print.triggered.connect(self._print_selected)
 
         organize_menu = QMenu(self)
         for action in (self.act_new_folder, self.act_rename,
@@ -476,11 +487,22 @@ class LibraryWindow(QMainWindow):
         organize_button.setToolTip("Rename, move, copy, delete, or create folders")
         bar.addWidget(organize_button)
 
+        output_menu = QMenu(self)
+        for action in (self.act_slideshow, self.act_contact_sheet, self.act_print):
+            output_menu.addAction(action)
+        output_button = QToolButton()
+        output_button.setText("Present / Print")
+        output_button.setPopupMode(QToolButton.InstantPopup)
+        output_button.setMenu(output_menu)
+        output_button.setToolTip("Slideshow, contact sheet, or print selected photos")
+        bar.addWidget(output_button)
+
         # Standard menus make the same operations discoverable without knowing
         # that a thumbnail or folder can be right-clicked.
         file_menu = self.menuBar().addMenu("File")
         file_menu.addAction(self.act_open)
         file_menu.addAction(self.act_edit)
+        file_menu.addAction(self.act_print)
         file_menu.addAction(self.act_show_folder)
         organize_bar_menu = self.menuBar().addMenu("Organize")
         for action in (self.act_import, self.act_new_folder, self.act_rename,
@@ -491,6 +513,10 @@ class LibraryWindow(QMainWindow):
                        self.act_rotate_right, self.act_find_duplicates,
                        self.act_export_selection):
             organize_bar_menu.addAction(action)
+        output_bar_menu = self.menuBar().addMenu("Present")
+        output_bar_menu.addAction(self.act_slideshow)
+        output_bar_menu.addAction(self.act_contact_sheet)
+        output_bar_menu.addAction(self.act_print)
 
         act_help = QAction("Help", self)
         act_help.setShortcut(QKeySequence.HelpContents)   # F1
@@ -1001,6 +1027,69 @@ class LibraryWindow(QMainWindow):
             return
         self.status.showMessage(
             f"Exported {len(outputs)} photo(s) to {destination}", 7000)
+
+    def _require_selected(self, title):
+        paths = self._selected_photo_paths()
+        if not paths:
+            QMessageBox.information(self, title, "Select one or more photos first.")
+        return paths
+
+    def _start_slideshow(self):
+        paths = self._require_selected("Slideshow")
+        if not paths:
+            return
+        self._slideshow = SlideshowDialog(paths, self)
+        self._slideshow.showMaximized()
+
+    def _create_contact_sheet(self):
+        paths = self._require_selected("Contact Sheet")
+        if not paths:
+            return
+        columns, accepted = QInputDialog.getInt(
+            self, "Contact Sheet", "Photos per row:", 4, 1, 12, 1)
+        if not accepted:
+            return
+        output, _ = QFileDialog.getSaveFileName(
+            self, "Save Contact Sheet", "contact-sheet.jpg", "JPEG image (*.jpg *.jpeg)")
+        if not output:
+            return
+        try:
+            output = create_contact_sheet(paths, output, columns=columns)
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Contact sheet failed", str(exc))
+            return
+        self.status.showMessage(f"Saved contact sheet: {output}", 7000)
+
+    def _print_selected(self):
+        paths = self._require_selected("Print")
+        if not paths:
+            return
+        printer = QPrinter(QPrinter.HighResolution)
+        printer.setDocName("SNAP SLAPPER photographs")
+        dialog = QPrintDialog(printer, self)
+        if dialog.exec() != QPrintDialog.Accepted:
+            return
+        painter = QPainter(printer)
+        if not painter.isActive():
+            QMessageBox.warning(self, "Print failed", "The printer could not be started.")
+            return
+        try:
+            page = printer.pageRect(QPrinter.DevicePixel)
+            for index, path in enumerate(paths):
+                if index:
+                    printer.newPage()
+                image = QImage(path)
+                if image.isNull():
+                    continue
+                target = image.size()
+                target.scale(page.size(), Qt.KeepAspectRatio)
+                x = page.x() + (page.width() - target.width()) // 2
+                y = page.y() + (page.height() - target.height()) // 2
+                painter.drawImage(x, y, image.scaled(
+                    target, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        finally:
+            painter.end()
+        self.status.showMessage(f"Sent {len(paths)} photo(s) to the printer", 7000)
 
     def _choose_transfer(self, copy_files):
         paths = self._selected_photo_paths()
