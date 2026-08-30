@@ -97,9 +97,13 @@ TOPICS = [
      "Clear all."),
     ("Projects, recipes, and export",
      "Save Project writes a .slapper file with all your editing steps (the "
-     "original is referenced, not copied inside). Save Recipe / Apply Recipe "
-     "reuse a set of adjustments across photos. Export writes the finished image "
-     "to a new file with metadata preserved."),
+     "original and required assets are packaged for recovery). Save Recipe / "
+     "Apply Recipe reuse a set of adjustments across photos. JPEG, PNG, and TIFF "
+     "write flattened finished copies. Layered PSD writes a guaranteed visible "
+     "full-resolution composite plus named raster checkpoints for the base and "
+     "every SNAP SLAPPER layer. Custom filters and adjustments are checkpoints, "
+     "not falsely labelled as native Photoshop adjustments. The original remains "
+     "unchanged."),
     ("Keyboard",
      "Standard: Ctrl+O open · Ctrl+S export · Ctrl+Z undo · Ctrl+Y redo · "
      "F1 this help.\n\n"
