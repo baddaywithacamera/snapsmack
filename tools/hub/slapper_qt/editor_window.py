@@ -1232,6 +1232,10 @@ class EditorWindow(QMainWindow):
     # --- Document lifecycle -------------------------------------------------
     def open_path(self, path):
         """Open a specific image file (no dialog). Returns True on success."""
+        if os.path.splitext(path)[1].lower() in photo_manager.RAW_EXTENSIONS:
+            from .raw_handoff import offer_raw_handoff
+            offer_raw_handoff(path, self)
+            return False
         try:
             document = editor_engine.EditorDocument(path)
             document.render((64, 64))   # decode now so a bad file fails cleanly here
