@@ -12,7 +12,7 @@ visible, so a hidden strip costs nothing.
 
 import os
 
-from PySide6.QtCore import Qt, QObject, QRunnable, QThreadPool, Signal, QSize
+from PySide6.QtCore import Qt, QObject, QPoint, QRunnable, QThreadPool, Signal, QSize, QTimer
 from PySide6.QtGui import QImage, QPixmap, QIcon
 from PySide6.QtWidgets import QListWidget, QListWidgetItem
 
@@ -98,6 +98,15 @@ class Filmstrip(QListWidget):
         self._signals.ready.connect(self._on_thumb)
         self.itemClicked.connect(self._activate)
         self.itemActivated.connect(self._activate)
+        # The initial queue is centred on the open photograph.  Keep extending
+        # it as the user browses along the strip; otherwise distant frames stay
+        # as placeholders forever.
+        self._scroll_timer = QTimer(self)
+        self._scroll_timer.setSingleShot(True)
+        self._scroll_timer.setInterval(60)
+        self._scroll_timer.timeout.connect(self._queue_visible)
+        self.horizontalScrollBar().valueChanged.connect(
+            lambda _value: self._scroll_timer.start())
 
     def show_for(self, path):
         """Populate from the folder that holds ``path`` and select that frame.
@@ -121,6 +130,11 @@ class Filmstrip(QListWidget):
         super().showEvent(event)
         if self._current:
             self._queue_near(self._current)
+        self._scroll_timer.start()
+
+    def resizeEvent(self, event):  # noqa: N802 — Qt override
+        super().resizeEvent(event)
+        self._scroll_timer.start()
 
     def _load_folder(self, folder):
         self.clear()
@@ -146,6 +160,34 @@ class Filmstrip(QListWidget):
         start, end = max(0, centre - radius), min(len(paths), centre + radius + 1)
         for path in paths[start:end]:
             if path not in self._queued:
+                self._queued.add(path)
+                self._pool.start(_ThumbTask(path, self._signals))
+
+    def _queue_visible(self, margin=10):
+        """Queue the visible run plus a small look-ahead on either side."""
+        if not self._items:
+            return
+        viewport = self.viewport()
+        first = self.itemAt(QPoint(1, max(1, viewport.height() // 2)))
+        last = self.itemAt(QPoint(max(1, viewport.width() - 2),
+                                  max(1, viewport.height() // 2)))
+        if first is None:
+            bar = self.horizontalScrollBar()
+            progress = (bar.value() / bar.maximum()) if bar.maximum() else 0.0
+            visible_count = max(1, viewport.width() // (ICON + self.spacing() * 2))
+            first_row = round(progress * max(0, self.count() - visible_count))
+        else:
+            first_row = self.row(first)
+        last_row = self.row(last) if last is not None else min(
+            self.count() - 1, first_row + max(1, viewport.width() // (ICON + self.spacing() * 2)))
+        if last_row < first_row:
+            first_row, last_row = last_row, first_row
+        start = max(0, first_row - margin)
+        end = min(self.count(), last_row + margin + 1)
+        for row in range(start, end):
+            item = self.item(row)
+            path = item.data(Qt.UserRole)
+            if path and path not in self._queued:
                 self._queued.add(path)
                 self._pool.start(_ThumbTask(path, self._signals))
 
