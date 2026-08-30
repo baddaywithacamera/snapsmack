@@ -291,23 +291,100 @@ def test_lewks_dialog_previews():
     assert populated == dialog.grid.count()
 
 
+def test_teach_me_uses_real_lewk_steps_and_makes_editable_copy():
+    import built_in_lewks
+    from slapper_qt.teach_me_dialog import TeachMeDialog, actions_for
+    win = _editor(_image("teachme.jpg", (360, 240)))
+    lewk = built_in_lewks.get("golden-hourglass")
+    actions = actions_for(lewk)
+    taught_values = {}
+    for action in actions:
+        taught_values.update(action["values"])
+    assert taught_values == lewk["adjustments"]
+    dialog = TeachMeDialog(win, lewk, 80)
+    assert dialog.steps.count() == len(actions)
+    assert dialog.values.text()
+    assert dialog.values.isHidden()              # lesson first, numbers on request
+    assert "Why:" in dialog.why.text() and "Contrast:" not in dialog.why.text()
+    dialog.show_settings.setChecked(True)
+    assert not dialog.values.isHidden()
+    original_count = len(win.doc.layers)
+    dialog._make_editable()
+    assert len(win.doc.layers) == original_count + 1
+    assert win.doc.layers[-1]["lewk"]["id"] == "golden-hourglass"
+
+
 def test_texture_layer():
+    old_home = os.environ.get("SNAPSMACK_HOME")
+    asset_home = tempfile.mkdtemp(prefix="slapper_assets_", dir=TMP)
+    os.environ["SNAPSMACK_HOME"] = asset_home
     win = _editor(_image("tphoto.jpg", (400, 300)))
     tex = _image("texture.png", (120, 60), (200, 120, 60))
     prov = {"texture_id": 7, "title": "Rust",
             "source_url": "https://foundtextures.ca/uploads/x/rust.jpg",
+            "source_page_url": "https://foundtextures.ca/rust",
+            "highres_download_url": "https://drive.google.com/file/d/rust123/view",
             "source_site": "https://foundtextures.ca",
-            "licence": "unknown", "retrieved_at": "2026-08-27"}
+            "licence": "Free for commercial use", "rights_status": "clear",
+            "retrieved_at": "2026-08-27"}
     layer = win.add_texture_layer(tex, prov, fit="cover", blend="overlay", opacity=0.8)
     assert layer["fit"] == "cover" and layer["blend"] == "overlay"
     assert layer["texture"]["texture_id"] == 7
+    assert layer["asset_ref"]["key"] == "foundtextures:7"
+    assert layer["asset_ref"]["origin"] == "first-party"
     assert win.doc.render((300, 300))
     # provenance + fit survive a .slapper round-trip
     pp = os.path.join(TMP, "tex.slapper")
     win.doc.save_project(pp)
+    project_json = editor_engine._read_project_document(pp)
+    saved_texture = project_json["layers"][-1]["texture"]
+    assert saved_texture["title"] == "Rust"
+    assert saved_texture["source_page_url"] == "https://foundtextures.ca/rust"
+    assert saved_texture["highres_download_url"].endswith("/rust123/view")
+    assert saved_texture["rights_status"] == "clear"
     loaded = editor_engine.EditorDocument.load_project(pp)
     assert loaded.layers[-1]["texture"]["texture_id"] == 7
     assert loaded.layers[-1]["fit"] == "cover"
+    # Recipes/LEWKS retain the recoverable reference, never local paths or bytes.
+    recipe_layer = win.doc.recipe()["layers"][-1]
+    assert recipe_layer["asset_ref"]["source_url"] == "https://foundtextures.ca/rust"
+    assert "path" not in recipe_layer
+    import texture_assets
+    assert texture_assets.resolve(recipe_layer["asset_ref"]) == os.path.abspath(tex)
+    # A missing third-party asset fails loudly with its name and stack position.
+    missing = editor_engine.EditorDocument(win.doc.source_path)
+    bad = missing.add_image_layer(os.path.join(TMP, "gone.png"), "Borrowed paper")
+    bad["asset_ref"] = {"key": "external:nope", "name": "Borrowed paper",
+                        "origin": "third-party", "source_url": "https://example.test/paper"}
+    try:
+        missing.render((100, 100))
+        assert False, "missing texture must not silently render"
+    except FileNotFoundError as error:
+        assert "Borrowed paper" in str(error) and "layer 1" in str(error)
+    if old_home is None:
+        os.environ.pop("SNAPSMACK_HOME", None)
+    else:
+        os.environ["SNAPSMACK_HOME"] = old_home
+
+
+def test_found_textures_rights_metadata_and_filter():
+    import found_textures
+    url = found_textures.search_url(
+        "https://foundtextures.ca", "rust", rights="clear")
+    assert "rights=clear" in url
+    textures, total = found_textures.parse_response({"photos": [{
+        "id": 9, "title": "Rust", "thumb_url": "/thumbs/a_rust.jpg",
+        "licence": "Free for commercial use", "rights_status": "clear",
+        "source_page_url": "https://foundtextures.ca/rust",
+        "highres_download_url": "https://drive.google.com/file/d/abc_123/view",
+    }]}, "https://foundtextures.ca")
+    assert total == 1
+    assert textures[0]["rights_status"] == "clear"
+    prov = found_textures.provenance(textures[0])
+    assert prov["rights_status"] == "clear"
+    assert prov["source_page_url"].endswith("/rust")
+    assert found_textures.highres_fetch_url(
+        textures[0]["highres_download_url"]).endswith("id=abc_123")
 
 
 def test_texture_fit_modes():
