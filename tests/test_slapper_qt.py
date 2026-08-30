@@ -205,6 +205,10 @@ def test_normal_advanced_mode():
     assert not win._sections["LIGHT"].isHidden()
     assert win.rows["exposure"].isHidden() and win.rows["whites"].isHidden()
     assert not win.rows["contrast"].isHidden()
+    assert not win.rows["vibrance"].isHidden()
+    assert not win.rows["vignette"].isHidden()
+    assert win.rows["vignette_feather"].isHidden()
+    assert win.grain_darken_check.isHidden()
     assert win._histogram_wrap.isHidden()
     # advanced-only toolbar hidden, Normal tools kept
     assert win.act_textures.isVisible() is False

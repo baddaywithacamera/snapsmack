@@ -83,9 +83,9 @@ IMAGE_FILTER = ("Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp);;"
 
 # Normal mode (Picasa/Snapseed-simple) shows a curated subset; Advanced shows
 # everything. These name what stays visible in Normal.
-NORMAL_SECTIONS = {"LIGHT", "COLOUR", "BLACK + WHITE", "GEOMETRY"}
+NORMAL_SECTIONS = {"LIGHT", "COLOUR", "EFFECTS", "BLACK + WHITE", "GEOMETRY"}
 NORMAL_ROWS = {"brightness", "contrast", "highlights", "shadows",
-               "temperature", "saturation"}
+               "temperature", "saturation", "vibrance", "vignette"}
 
 
 class EditorWindow(QMainWindow):
@@ -1485,6 +1485,9 @@ class EditorWindow(QMainWindow):
         self._histogram_wrap.setVisible(advanced)
         for widget in self._bw_mixer_widgets:
             widget.setVisible(advanced)
+        # EFFECTS is present in Normal for Vignette, but its grain-specific
+        # option belongs with the Advanced-only Grain control.
+        self.grain_darken_check.setVisible(advanced)
         for key, row in self.rows.items():
             row.setVisible(advanced or key in NORMAL_ROWS)
         self.target_label.setVisible(advanced)
