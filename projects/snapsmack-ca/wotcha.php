@@ -136,6 +136,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>All Posts</h3>
             <ol>
+                <li><span class="idx-date">Aug 30</span><a href="#snap-slapper-editor">SNAP SLAPPER Is Ready for the Box O&rsquo; Tricks</a></li>
                 <li>
                     <span class="idx-date">Aug 26</span>
                     <a href="#slapper-file-format">.SLAPPER: Your Edits Are Not Hostages</a>
@@ -306,6 +307,18 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="snap-slapper-editor">
+                <div class="post-meta"><span class="post-date">August 30, 2026</span><span class="post-tag">Desktop</span></div>
+                <h2><a href="#snap-slapper-editor">SNAP SLAPPER Is Ready for the Box O&rsquo; Tricks</a></h2>
+                <p>There is a point in every experiment where the creature stops being an interesting collection of organs and gets up off the table. SNAP SLAPPER just reached it.</p>
+                <p>It is now good enough to join <a href="tools.php#snap-slapper"><strong>BOX O&rsquo; TRICKS!</strong></a>: a real local photo library and non-destructive editor for photographers who want the work on their own computer and the finished photographs on their own site. It browses ordinary folders, handles ratings, favourites, tags and albums, organizes files, moves through a shoot with a live filmstrip, and edits without replacing the original.</p>
+                <p><strong>Normal mode</strong> is the editor most photographs need: light, colour, saturation, vibrance, black and white, geometry, vignette, crop, red-eye, Auto, LEWKS, and export. <strong>Advanced mode</strong> opens layers, masks, blend modes, histograms, levels, curves, detailed colour, retouching, perspective, filters, textures, recipes, projects, and layered export. The switch is visible and both modes use the same engine.</p>
+                <p>LEWKS preview reusable treatments on your photograph, not on somebody else&rsquo;s suspiciously perfect sample. The native <code>.slapper</code> project is an inspectable ZIP containing human-readable edit instructions and standard assets. PSD and TIFF provide working exits; JPEG and PNG provide finished ones. The original remains where you put it.</p>
+                <p>It has also crossed the threshold that matters more: it is being dogfooded hard. Fuzzy renders, stalled filmstrips, duplicate windows, frozen folder browsing, and controls hidden in the wrong mode are being found and fixed because SNAP SLAPPER is being pushed toward primary-editor duty rather than protected inside a demo.</p>
+                <p>THE HUB installs it and supplies the shared site profiles that will turn Blog Copy into a Picasa-style publishing path for a whole SnapSmack fleet. The image work stays local. No cloud library, no subscription tier, and no originals uploaded for somebody else&rsquo;s machine-learning appetizer.</p>
+                <p><strong>The lab door is open. Bring photographs.</strong></p>
+            </article>
 
             <article class="post" id="slapper-file-format">
                 <div class="post-meta">
