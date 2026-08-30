@@ -53,7 +53,8 @@ except Exception:  # noqa: BLE001
     import logging
     _log = logging.getLogger("snapsmack.snap_slapper")
 
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp", ".bmp", ".gif"}
+IMAGE_EXTENSIONS = ({".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp", ".bmp", ".gif"}
+                    | set(photo_manager.RAW_EXTENSIONS))
 THUMB_SOURCE = 256   # thumbnails are generated at this size, displayed smaller
 
 SORTS = [

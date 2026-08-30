@@ -410,6 +410,21 @@ def test_contact_sheet_and_slideshow_outputs():
     show.close()
 
 
+def test_raw_handoff_uses_safe_process_arguments():
+    from unittest.mock import patch
+    from slapper_qt import raw_handoff
+    from slapper_qt.library_window import IMAGE_EXTENSIONS
+
+    assert editor_engine.photo_manager.RAW_EXTENSIONS <= IMAGE_EXTENSIONS
+    with patch("slapper_qt.raw_handoff.subprocess.Popen") as popen:
+        raw_handoff.launch("C:/Apps/RawTherapee/rawtherapee.exe",
+                           "C:/Photos/a photo.nef")
+    args, kwargs = popen.call_args
+    assert args[0] == [os.path.abspath("C:/Apps/RawTherapee/rawtherapee.exe"),
+                       os.path.abspath("C:/Photos/a photo.nef")]
+    assert kwargs["shell"] is False
+
+
 def test_retouch():
     win = _editor(_image("ret.jpg", (300, 200)))
     win.act_heal.setChecked(True)
