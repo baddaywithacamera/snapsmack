@@ -69,9 +69,9 @@ $_skin_has_masthead = !empty($_sidebar_manifest['features']['masthead_cover'])
 // Determine which accordion section to auto-open based on the current page.
 $_section_map = [
     'good-shit'  => ['smack-admin.php','smack-post-solo.php','smack-post-long.php','smack-manage.php','smack-edit.php','smack-lighttable.php','smack-lt-gram.php','smack-slicer.php','smack-cats.php','smack-albums.php','smack-collections.php','smack-mosaics.php','smack-media.php','smack-gallery.php','smack-comments.php','smack-fediverse.php','smack-blogroll.php','smack-pages.php','smack-shortcodes.php','smack-privacy.php','smack-community-settings.php','smack-community-users.php','smack-tools.php'],
-    'smackverse'  => ['smack-pixelfed.php','smack-dms.php','smack-smackverse.php','smack-sv-followers.php','smack-sv-tools.php','smack-directory.php','smack-photochallenge.php'],
+    'fediverse'  => ['smack-pixelfed.php','smack-dms.php','smack-fediverse-portal.php','smack-sv-followers.php','smack-sv-tools.php','smack-photochallenge.php'],
     'pimp'       => ['smack-globalvibe.php','smack-masthead.php','smack-skin.php','smack-menu.php','smack-social-dock.php','smack-css.php','smack-scripts.php','smack-appearance-archive.php','smack-appearance-solo.php','smack-appearance-static.php'],
-    'boring'     => ['smack-settings.php','smack-users.php','smack-maintenance.php','smack-fingerprints.php','smack-backup.php','smack-disaster.php','smack-break-glass.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php','smack-schema.php','smack-stats.php','smack-api-keys.php','smack-back.php','smack-multisite.php','smack-multisite-comments.php','smack-multisite-posts.php','smack-multisite-backup.php','smack-multisite-stats.php','smack-multisite-crosspost.php','smack-multisite-blogroll.php','smack-multisite-settings.php','smack-push-it.php'],
+    'boring'     => ['smack-settings.php','smack-users.php','smack-maintenance.php','smack-fingerprints.php','smack-backup.php','smack-disaster.php','smack-break-glass.php','smack-ftp.php','smack-cloud.php','smack-verify.php','smack-update.php','smack-schema.php','smack-stats.php','smack-api-keys.php','smack-back.php','smack-multisite.php','smack-directory.php','smack-multisite-comments.php','smack-multisite-posts.php','smack-multisite-backup.php','smack-multisite-stats.php','smack-multisite-crosspost.php','smack-multisite-blogroll.php','smack-multisite-settings.php','smack-push-it.php'],
     'help'       => ['smack-help.php','smack-forum.php'],
 ];
 $_active_section = 'good-shit'; // default
@@ -193,9 +193,9 @@ foreach ($_section_map as $sec => $_sec_pages) {
             <?php // FEDIVERSE CONFIG: every item here is administrator-only, so the
                   // whole section is hidden from editor accounts (they can't open any of
                   // it anyway — the denylist in auth-smack.php 403s them). Internal key
-                  // stays 'smackverse' for JS/state. ?>
+                  // stays 'fediverse' for JS/state. ?>
             <?php if (smack_is_admin()): ?>
-            <div class="nav-section<?php echo ($_active_section === 'smackverse') ? ' open' : ''; ?>" data-section="smackverse">
+            <div class="nav-section<?php echo ($_active_section === 'fediverse') ? ' open' : ''; ?>" data-section="fediverse">
                 <button type="button" class="nav-section-toggle">
                     <span class="nav-section-label">Fediverse Config</span>
                     <span class="nav-section-arrow"></span>
@@ -207,17 +207,14 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li class="<?php echo ($current_page == 'smack-dms.php') ? 'active' : ''; ?>">
                         <a href="smack-dms.php">Messages</a>
                     </li>
-                    <li class="<?php echo ($current_page == 'smack-smackverse.php') ? 'active' : ''; ?>">
-                        <a href="smack-smackverse.php">Portal</a>
+                    <li class="<?php echo ($current_page == 'smack-fediverse-portal.php') ? 'active' : ''; ?>">
+                        <a href="smack-fediverse-portal.php">Portal</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-sv-followers.php') ? 'active' : ''; ?>">
                         <a href="smack-sv-followers.php">Followers</a>
                     </li>
                     <li class="<?php echo ($current_page == 'smack-sv-tools.php') ? 'active' : ''; ?>">
                         <a href="smack-sv-tools.php">Push &amp; Tools</a>
-                    </li>
-                    <li class="<?php echo ($current_page == 'smack-directory.php') ? 'active' : ''; ?>">
-                        <a href="smack-directory.php">Directory</a>
                     </li>
                     <?php if (($settings['photochallenge_enabled'] ?? '0') === '1'
                               || ($settings['distribution_profile'] ?? '') === 'photo-challenge'): ?>
@@ -326,6 +323,9 @@ foreach ($_section_map as $sec => $_sec_pages) {
                         <a href="smack-multisite.php">Multisite Management</a>
                     </li>
                     <?php endif; // pimpmobile ?>
+                    <li class="<?php echo ($current_page == 'smack-directory.php') ? 'active' : ''; ?>">
+                        <a href="smack-directory.php">Directory</a>
+                    </li>
                 </ul>
             </div>
 

@@ -2,7 +2,7 @@
 /**
  * SNAPSMACK — SMACKCAST relay policy (0.7.545D)
  *
- * Thin policy layer over the shared SMACKVERSE signature, fetch and delivery
+ * Thin policy layer over the shared FEDIVERSE signature, fetch and delivery
  * primitives. It is inert unless this is the FEDISTRUCTURE 4.0 SMACKCAST hub.
  *
  * SNAPSMACK_EOF_HEADER

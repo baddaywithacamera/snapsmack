@@ -701,11 +701,11 @@ class SnapSmack {
 
         // --- [fedi_handle] ---
         // The blog's own fediverse handle (@user@domain) rendered as a follow
-        // link. Blank when SMACKVERSE federation is off, so it can live in a
+        // link. Blank when FEDIVERSE federation is off, so it can live in a
         // page or template unconditionally. Reuses the canonical sv_* helpers.
         $content = preg_replace_callback('/\[fedi_handle\]/i', function () {
             if (!function_exists('sv_enabled')) {
-                $lib = __DIR__ . '/smackverse.php';
+                $lib = __DIR__ . '/fediverse.php';
                 if (is_file($lib)) require_once $lib;
             }
             if (!function_exists('sv_enabled') || !sv_enabled($this->config)) return '';

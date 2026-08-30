@@ -63,8 +63,8 @@ real credibility.
 
 1. **The relay handle on the page does not match the live relay.** The page says
    `@relay@photoblogs.fyi`. The relay actually answers as
-   `relay@smackverse.photoblogs.fyi` (verified live 2026-08-15 —
-   `smackverse.photoblogs.fyi/actor` returns that id). Either move the relay to
+   `relay@fediverse.photoblogs.fyi` (verified live 2026-08-15 —
+   `fediverse.photoblogs.fyi/actor` returns that id). Either move the relay to
    the apex or change the copy. This depends on where the hub install lands, so
    it is your call, not a copy edit.
 2. **`@curator@photoblogs.fyi` does not exist.** The page describes it as the

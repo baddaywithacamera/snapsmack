@@ -36,13 +36,13 @@ function snapsmack_gram_authoring_budget(PDO $pdo, int $add): void {
 /**
  * Ensure snap_posts carries the per-post federation + sensitivity columns that
  * snapsmack_gram_create_post() writes (fedi_enabled etc., added 0.7.367/0.7.393).
- * These are normally created by sv_ensure_tables when SMACKVERSE first runs, but a
+ * These are normally created by sv_ensure_tables when FEDIVERSE first runs, but a
  * site that has never run it drifts, and every gram/Pixelfed post then dies with
  * "Unknown column 'fedi_enabled' in 'INSERT INTO'".
  *
  * MUST be called BEFORE the caller opens its transaction: an ALTER implicit-commits
  * in MySQL/MariaDB, so running it inside a live transaction would sever it. Mirrors
- * the snap_posts block of core/smackverse.php sv_ensure_tables().
+ * the snap_posts block of core/fediverse.php sv_ensure_tables().
  */
 function snapsmack_gram_ensure_post_columns(PDO $pdo): void {
     foreach ([

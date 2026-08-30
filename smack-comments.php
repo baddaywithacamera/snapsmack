@@ -86,11 +86,11 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             $pdo->prepare("UPDATE snap_comments SET is_approved = 1 WHERE id = ?")->execute([$id]);
             $msg = "Signal authorized. Broadcasting live.";
 
-            // SMACKVERSE: federate an approved LOCAL comment out to followers as
+            // FEDIVERSE: federate an approved LOCAL comment out to followers as
             // the blog actor ("<Author> wrote: …"). No-op unless federation is on;
             // remote comments are skipped inside sv_federate_comment (never echoed).
-            if (($s_rows['smackverse_enabled'] ?? '0') === '1' && is_file(__DIR__ . '/core/smackverse.php')) {
-                require_once __DIR__ . '/core/smackverse.php';
+            if (($s_rows['fediverse_enabled'] ?? '0') === '1' && is_file(__DIR__ . '/core/fediverse.php')) {
+                require_once __DIR__ . '/core/fediverse.php';
                 try { sv_federate_comment($pdo, (int)$id, $s_rows); } catch (\Throwable $e) { /* non-fatal */ }
             }
 
@@ -110,7 +110,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     }
 }
 
-// ── FEDIVERSE REPLY (SMACKVERSE) ─────────────────────────────────────────────
+// ── FEDIVERSE REPLY (FEDIVERSE) ─────────────────────────────────────────────
 // Reply to an INBOUND fediverse comment AS the blog actor. Inserts a NEW local
 // reply row wired exactly how sv_note_for_comment locates a fediverse parent:
 // ap_in_reply_to = the parent's ap_object_id (→ the Note's inReplyTo, and the
@@ -145,9 +145,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                                (string)$parent['ap_object_id']]);
                 $new_id = (int)$pdo->lastInsertId();
                 if ($new_id > 0
-                    && ($s_rows['smackverse_enabled'] ?? '0') === '1'
-                    && is_file(__DIR__ . '/core/smackverse.php')) {
-                    require_once __DIR__ . '/core/smackverse.php';
+                    && ($s_rows['fediverse_enabled'] ?? '0') === '1'
+                    && is_file(__DIR__ . '/core/fediverse.php')) {
+                    require_once __DIR__ . '/core/fediverse.php';
                     try { sv_federate_comment($pdo, $new_id, $s_rows); }
                     catch (\Throwable $e) { /* federation non-fatal */ }
                 }

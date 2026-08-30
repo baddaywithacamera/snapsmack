@@ -1036,7 +1036,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'Clean URL router'       => 'RewriteRule ^([a-zA-Z0-9_-]+)$ index.php',
                     'snap-in named route'    => 'RewriteRule ^snap-in$',
                     'Fediverse webfinger'    => 'well-known/webfinger',
-                    'Fediverse AP routes'    => 'smackverse.php?appath=',
+                    'Fediverse AP routes'    => 'fediverse.php?appath=',
                     'Security headers'       => 'X-Frame-Options',
                     'Sensitive files'        => 'FilesMatch "(^\\.ht',
                     'Core PHP blocking'      => 'FilesMatch "^(db|auth|constants',

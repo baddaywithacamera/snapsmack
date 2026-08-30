@@ -4,7 +4,7 @@ CRONOMETER — heartbeat_client.py
 Talks to a single fleet site's multisite heartbeat and turns the reply into a
 per-cron-job health verdict. This is the honest-degradation layer: the CURRENT
 heartbeat (core/multisite-api.php, GET multisite/heartbeat) reports site STATE —
-version, counts, backup timestamps, SMACKVERSE totals — but does NOT yet report a
+version, counts, backup timestamps, FEDIVERSE totals — but does NOT yet report a
 per-cron-job last-run/health block for RSS fetch, version check, or fediverse
 delivery. So this client:
 
@@ -12,7 +12,7 @@ delivery. So this client:
     documented in docs/cronometer-spec.md — future builds), and
   * otherwise derives what it honestly can from today's fields (backup health from
     last_backup_at/last_backup_status; fediverse ENABLED/DISABLED from
-    smackverse_enabled) and marks everything else UNKNOWN / "not reported" rather
+    fediverse_enabled) and marks everything else UNKNOWN / "not reported" rather
     than inventing a green light.
 
 Surfacing the silent failure is the whole point, so UNKNOWN is treated as a caution
@@ -76,7 +76,7 @@ class JobSpec:
 
 
 JOB_SPECS = [
-    JobSpec('fediverse',     'Fediverse delivery',  10 * 60,        6 * 3600),   # cron-smackverse: every 10 min
+    JobSpec('fediverse',     'Fediverse delivery',  10 * 60,        6 * 3600),   # cron-fediverse: every 10 min
     JobSpec('rss_fetch',     'RSS blogroll fetch',  60 * 60,        3 * 24 * 3600),  # cron-rss-fetch: ~hourly
     JobSpec('version_check', 'Version / update check', 6 * 3600,    2 * 24 * 3600),  # cron-version-check: every 6h
     JobSpec('backup',        'Backups',             24 * 3600,      7 * 24 * 3600),  # daily; the red-for-weeks case
@@ -310,9 +310,9 @@ def _job_derived(spec: JobSpec, data: dict) -> JobHealth:
                          f'status: {status}', reported=True)
 
     if spec.key == 'fediverse':
-        # Heartbeat reports smackverse_enabled + totals, but NOT the cron's
+        # Heartbeat reports fediverse_enabled + totals, but NOT the cron's
         # last run — so we can honestly say enabled/disabled, not fresh/stale.
-        enabled = str(data.get('smackverse_enabled') or '0') in ('1', 'true', 'True')
+        enabled = str(data.get('fediverse_enabled') or '0') in ('1', 'true', 'True')
         if not enabled:
             return JobHealth(spec.key, spec.label, SEV_NA, None,
                              'federation disabled', reported=True)

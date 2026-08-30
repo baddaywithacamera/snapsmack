@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK — SMACKVERSE public router (ActivityPub, v0.2 FOLLOW + DELIVER)
+ * SNAPSMACK — FEDIVERSE public router (ActivityPub, v0.2 FOLLOW + DELIVER)
  *
  * Public federation endpoints. Canonical routes are PATH-STYLE (0.7.350+),
  * rewritten here by .htaccess as ?appath= — AP object ids must carry no
@@ -25,8 +25,8 @@
  *               follower deactivated. Everything else acknowledged (202).
  *               Unverifiable requests get 401 and change NOTHING.
  *
- * Every route 404s unless snap_settings smackverse_enabled = 1.
- * Spec: _spec/smackverse-activitypub-spec-v0_1.md
+ * Every route 404s unless snap_settings fediverse_enabled = 1.
+ * Spec: _spec/fediverse-activitypub-spec-v0_1.md
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -41,7 +41,7 @@ if (!defined('BASE_URL')) {
 }
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/constants.php';
-require_once __DIR__ . '/core/smackverse.php';
+require_once __DIR__ . '/core/fediverse.php';
 
 function sv_respond(array $data, int $status = 200, string $ctype = 'application/activity+json'): void {
     http_response_code($status);
@@ -321,7 +321,7 @@ switch ($ap) {
                             $sv_backfill_inbox
                         );
                     }
-                    sv_set_setting($pdo, $settings, 'smackverse_cron_last_run', date('Y-m-d H:i:s'));
+                    sv_set_setting($pdo, $settings, 'fediverse_cron_last_run', date('Y-m-d H:i:s'));
                 } catch (\Throwable $e) { /* queued remainder stays retryable */ }
                 try { $pdo->prepare("SELECT RELEASE_LOCK(?)")->execute([$sv_lock]); } catch (\Throwable $e) {}
             }

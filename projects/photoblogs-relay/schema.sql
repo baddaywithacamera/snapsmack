@@ -1,5 +1,5 @@
 -- SNAPSMACK_EOF_HEADER: this file MUST end with the canonical .sql EOF marker.
--- SMACKVERSE Relay — database schema (own DB `smackverse_relay`, own Proxmox CT).
+-- photoblogs.fyi Relay — database schema (own DB `photoblogs_relay`, own Proxmox CT).
 -- No image storage: the relay handles Notes/activities (ids + text) only.
 
 CREATE TABLE IF NOT EXISTS `relay_settings` (

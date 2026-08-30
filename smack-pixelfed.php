@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK — SMACKVERSE : Pixelfed Client
+ * SNAPSMACK — FEDIVERSE : Pixelfed Client
  *
  * A faithful-to-pixelfed.ca client that lives INSIDE the admin, so the blog is
  * run as a fediverse actor without ever leaving the CMS. Geometry mirrors
@@ -21,7 +21,7 @@
  */
 
 require_once 'core/auth-smack.php';
-require_once 'core/smackverse.php';
+require_once 'core/fediverse.php';
 
 $sv_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                    ->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -182,7 +182,7 @@ if (isset($_GET['ajax'])) {
         if (!$sv_on) { echo json_encode(['ok' => true, 'items' => []]); exit; }
         // Discovery: a chosen instance's public timeline. Use the configured
         // home instance, else the host of an account we already follow.
-        $host = trim((string)($sv_settings['smackverse_home_instance'] ?? ''));
+        $host = trim((string)($sv_settings['fediverse_home_instance'] ?? ''));
         if ($host === '') {
             try {
                 $h = (string)$pdo->query("SELECT actor_url FROM snap_ap_following WHERE state='accepted' ORDER BY followed_at DESC LIMIT 1")->fetchColumn();
@@ -282,7 +282,7 @@ if (isset($_GET['ajax'])) {
                 }
                 // nothing authed → fall through to the public path
 
-                $host = trim((string)($sv_settings['smackverse_home_instance'] ?? ''));
+                $host = trim((string)($sv_settings['fediverse_home_instance'] ?? ''));
                 if ($host === '') {
                     try {
                         $h = (string)$pdo->query("SELECT actor_url FROM snap_ap_following WHERE state='accepted' ORDER BY followed_at DESC LIMIT 1")->fetchColumn();
@@ -370,7 +370,7 @@ include 'core/sidebar.php';
     <?php if (!$sv_on): ?>
         <div class="box">
             <p>Fediverse is switched off — nothing federates in or out until you flip it on in
-               <a href="smack-smackverse.php">Federation</a>. The client below still loads, but stays quiet.</p>
+               <a href="smack-fediverse-portal.php">Federation</a>. The client below still loads, but stays quiet.</p>
         </div>
     <?php endif; ?>
 
@@ -378,7 +378,7 @@ include 'core/sidebar.php';
         <div class="box">
             <p>The Fediverse client is <strong>GRAMOFSMACK-only</strong> for now while we prove it out — your
                install mode is <strong><?php echo htmlspecialchars($sv_mode); ?></strong>. Federation itself works
-               in every mode from <a href="smack-smackverse.php">Federation</a>; the interactive client widens to
+               in every mode from <a href="smack-fediverse-portal.php">Federation</a>; the interactive client widens to
                the other install modes soon.</p>
         </div>
     <?php else: ?>
