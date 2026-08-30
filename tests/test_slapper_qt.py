@@ -884,6 +884,19 @@ def test_editable_filter_layers_and_project_roundtrip():
     target.apply_recipe(recipe)
     assert target.layers[0]["type"] == "filter"
 
+    # Light leak exposes its colour/seed controls and moves directly on canvas.
+    win = _editor(path)
+    leak = win.doc.add_filter_layer("light_leak")
+    win.set_target(leak["id"])
+    assert win.view._layer_move_mode
+    old_position = leak["settings"]["position"]
+    win._move_active_layer(0, .1, False)
+    win._move_active_layer(0, 0, True)
+    assert leak["settings"]["position"] == old_position + 10
+    warm = slapper_filters.apply_filter(original, "light_leak", {"warmth": 100})
+    cool = slapper_filters.apply_filter(original, "light_leak", {"warmth": -100})
+    assert ImageChops.difference(warm, cool).getbbox()
+
 
 def test_keyboard_shortcuts_and_help_topics():
     from slapper_qt.help_dialog import TOPICS

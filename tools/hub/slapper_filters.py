@@ -106,8 +106,16 @@ def _light_leak(image, settings):
     edge = settings.get("edge", "left")
     spread = max(.05, float(settings.get("spread", 55)) / 100)
     length = max(.05, float(settings.get("length", 70)) / 100)
-    first = settings.get("primary", [255, 82, 25])
-    second = settings.get("secondary", [255, 210, 60])
+    warmth = max(-1.0, min(1.0, float(settings.get("warmth", 20)) / 100))
+    def warmed(values):
+        return [max(0, min(255, int(values[0] * (1 + warmth * .18)))),
+                values[1],
+                max(0, min(255, int(values[2] * (1 - warmth * .18))))]
+    first = warmed(settings.get("primary", [255, 82, 25]))
+    second = warmed(settings.get("secondary", [255, 210, 60]))
+    rng = random.Random(int(settings.get("seed", 4103)))
+    organic_shift = rng.uniform(-.035, .035)
+    organic_spread = rng.uniform(.92, 1.08)
     overlay = Image.new("RGB", (small_w, small_h), (0, 0, 0))
     pixels = overlay.load()
     for y in range(small_h):
@@ -116,9 +124,10 @@ def _light_leak(image, settings):
             distance = nx if edge == "left" else 1 - nx if edge == "right" \
                 else ny if edge == "top" else 1 - ny
             across = abs((ny if edge in {"left", "right"} else nx) -
-                         float(settings.get("position", 25)) / 100)
+                         (float(settings.get("position", 25)) / 100 + organic_shift))
             strength = max(0.0, 1 - distance / length) * \
-                math.exp(-(across * across) / max(.001, spread * spread / 3))
+                math.exp(-(across * across) /
+                         max(.001, spread * organic_spread * spread / 3))
             mix = min(1.0, distance / max(.01, length))
             pixels[x, y] = tuple(int((first[i] * (1 - mix) + second[i] * mix) * strength)
                                  for i in range(3))

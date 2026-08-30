@@ -1182,18 +1182,31 @@ class EditorWindow(QMainWindow):
 
     def _sync_canvas_layer_mode(self):
         layer = self._active_layer()
-        movable = bool(layer and layer.get("type") in {"image", "text"} and
-                       layer.get("fit", "original") == "original")
+        movable = bool(layer and (
+            (layer.get("type") in {"image", "text"} and
+             layer.get("fit", "original") == "original") or
+            (layer.get("type") == "filter" and
+             layer.get("filter_type") == "light_leak")))
         self.view.set_layer_move_mode(movable)
 
     def _move_active_layer(self, dx, dy, finished):
         layer = self._active_layer()
-        if layer is None or layer.get("type") not in {"image", "text"}:
+        if layer is None:
             return
         if not finished and (dx or dy):
-            transform = layer.setdefault("transform", self.doc.default_transform())
-            transform["x"] = max(-1.0, min(2.0, float(transform.get("x", .5)) + dx))
-            transform["y"] = max(-1.0, min(2.0, float(transform.get("y", .5)) + dy))
+            if layer.get("type") == "filter" and \
+                    layer.get("filter_type") == "light_leak":
+                settings = layer.setdefault("settings", {})
+                edge = settings.get("edge", "left")
+                delta = dy if edge in {"left", "right"} else dx
+                settings["position"] = max(
+                    0.0, min(100.0, float(settings.get("position", 25)) + delta * 100))
+            elif layer.get("type") in {"image", "text"}:
+                transform = layer.setdefault("transform", self.doc.default_transform())
+                transform["x"] = max(-1.0, min(2.0, float(transform.get("x", .5)) + dx))
+                transform["y"] = max(-1.0, min(2.0, float(transform.get("y", .5)) + dy))
+            else:
+                return
             self._layer_drag_changed = True
             self._schedule_render()
         elif finished and self._layer_drag_changed:
