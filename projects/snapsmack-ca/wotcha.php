@@ -137,6 +137,10 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Aug 30</span>
+                    <a href="#snap-slapper-editor">SNAP SLAPPER Is Ready for the Box O&rsquo; Tricks</a>
+                </li>
+                <li>
                     <span class="idx-date">Aug 26</span>
                     <a href="#slapper-file-format">.SLAPPER: Your Edits Are Not Hostages</a>
                 </li>
@@ -306,6 +310,23 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="snap-slapper-editor">
+                <div class="post-meta">
+                    <span class="post-date">August 30, 2026</span>
+                    <span class="post-tag">Desktop</span>
+                </div>
+                <h2><a href="#snap-slapper-editor">SNAP SLAPPER Is Ready for the Box O&rsquo; Tricks</a></h2>
+                <p>There is a point in every experiment where the creature stops being an interesting collection of organs and gets up off the table. SNAP SLAPPER just reached it.</p>
+                <p>It is now good enough to join <a href="tools.php#snap-slapper"><strong>BOX O&rsquo; TRICKS!</strong></a>: a real local photo library and non-destructive editor for photographers who want the work on their own computer and the finished photographs on their own site. It browses ordinary folders, handles ratings, favourites, tags and albums, organizes files, moves through a shoot with a live filmstrip, and edits without replacing the original.</p>
+                <p><strong>Normal mode</strong> is the editor most photographs need: light, colour, saturation, vibrance, black and white, geometry, vignette, crop, red-eye, Auto, LEWKS, and export. It stays deliberately free of layers and masking controls. The point is to make the common edit obvious, not force everybody to qualify for a commercial pilot&rsquo;s licence before lowering the highlights.</p>
+                <p><strong>Advanced mode</strong> opens the workshop. Layers, masks, blend modes, opacity, histogram, levels, curves, detailed colour mixing, retouching, geometry, perspective correction, filters, textures, recipes, projects, and layered export are there when the photograph earns the extra attention. The switch is visible. The two modes use the same engine. Starting simple does not mean starting over when the edit becomes complicated.</p>
+                <p>LEWKS preview reusable treatments on your photograph, not on somebody else&rsquo;s suspiciously perfect model in suspiciously perfect light. The native <code>.slapper</code> project is an inspectable ZIP container holding human-readable edit instructions and standard assets. PSD and TIFF provide working exits; JPEG and PNG provide finished ones. The original remains where you put it.</p>
+                <p>It has also crossed the less glamorous threshold that matters more: it is being dogfooded hard. Fuzzy first renders, stalled filmstrips, duplicate editor windows, frozen folder browsing, controls hidden in the wrong mode, and the little paper cuts that only appear during real work have been found and fixed because SNAP SLAPPER is being pushed toward primary-editor duty instead of protected inside a demo.</p>
+                <p>The next serious piece is Photoshop-style painting on real blank pixel layers: colour, hardness, opacity, flow, erasing, and Overlay or Soft Light workflows for eyes, teeth, local shaping, and the hundred small jobs photographers do without thinking about the tool. Mask brushes already exist. Paint brushes need to be the real thing before we claim them.</p>
+                <p>SNAP SLAPPER remains part of the SnapSmack desktop system. THE HUB installs it and the image processing stays local. No cloud library, no subscription tier, no originals uploaded for somebody else&rsquo;s machine-learning appetizer.</p>
+                <p><strong>The lab door is open. Bring photographs.</strong></p>
+            </article>
 
             <article class="post" id="slapper-file-format">
                 <div class="post-meta">
