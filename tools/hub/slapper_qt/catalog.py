@@ -10,6 +10,9 @@ class Catalog:
     """Compatibility layer over the existing versioned JSON catalogue files."""
 
     def __init__(self, directory=None):
+        if directory is None and os.environ.get("QT_QPA_PLATFORM") == "offscreen" \
+                and not os.environ.get("SNAPSMACK_HOME"):
+            directory = tempfile.mkdtemp(prefix="slapper_catalog_test_")
         if directory is None:
             try:
                 import snap_home
@@ -28,12 +31,17 @@ class Catalog:
         self.metadata_path = os.path.join(directory, "photo_metadata.json")
         self.albums_path = os.path.join(directory, "albums.json")
         self.folders_path = os.path.join(directory, "library_folders.json")
+        self.index_path = os.path.join(directory, "catalog_index.json")
         self.trash_path = os.path.join(directory, "trash_manifest.json")
         self.trash_root = os.path.join(directory, "trash")
         self.metadata = photo_manager.load_versioned(
             self.metadata_path, "photos", {})
         self.albums = photo_manager.load_versioned(
             self.albums_path, "albums", {})
+        self.folders = photo_manager.load_versioned(
+            self.folders_path, "folders", [])
+        self.index = photo_manager.load_versioned(
+            self.index_path, "photos", {})
 
     @staticmethod
     def key(path):
@@ -119,6 +127,36 @@ class Catalog:
 
     def save_albums(self):
         photo_manager.save_versioned(self.albums_path, "albums", self.albums)
+
+    def register_folder(self, folder):
+        folder = os.path.abspath(folder)
+        known = {self.key(path) for path in self.folders}
+        if self.key(folder) not in known:
+            self.folders.append(folder)
+            self.folders.sort(key=str.lower)
+            photo_manager.save_versioned(
+                self.folders_path, "folders", self.folders)
+
+    def update_index(self, paths):
+        for path in paths:
+            key = self.key(path)
+            try:
+                self.index[key] = {
+                    "path": os.path.abspath(path),
+                    "modified": os.path.getmtime(path),
+                    "size": os.path.getsize(path),
+                }
+            except OSError:
+                continue
+        stale = [key for key, row in self.index.items()
+                 if not os.path.isfile(row.get("path", ""))]
+        for key in stale:
+            self.index.pop(key, None)
+        photo_manager.save_versioned(self.index_path, "photos", self.index)
+
+    def all_paths(self):
+        return [row["path"] for row in self.index.values()
+                if isinstance(row, dict) and os.path.isfile(row.get("path", ""))]
 
 
 # ===== SNAPSMACK EOF =====

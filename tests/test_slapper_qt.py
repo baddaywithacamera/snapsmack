@@ -612,6 +612,9 @@ def test_qt_catalog_ratings_tags_favorites_and_albums():
     assert catalog.details(second)["tags"] == "family"
     catalog.add_to_album("Pets", [first, second, first])
     assert catalog.albums["Pets"] == [first, second]
+    catalog.register_folder(directory)
+    catalog.update_index([first, second])
+    assert set(catalog.all_paths()) == {first, second}
     renamed = os.path.join(directory, "renamed.jpg")
     catalog.move_path(first, renamed)
     assert catalog.details(renamed)["rating"] == 5
