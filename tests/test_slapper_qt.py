@@ -624,6 +624,30 @@ def test_qt_catalog_ratings_tags_favorites_and_albums():
     assert lib.catalog_dock.windowTitle() == "PHOTO INFO"
 
 
+def test_safe_import_and_transactional_batch_rename():
+    from slapper_qt.organizer_ops import import_photos, batch_rename
+    source = tempfile.mkdtemp(prefix="slapper_import_src_", dir=TMP)
+    destination = tempfile.mkdtemp(prefix="slapper_import_dst_", dir=TMP)
+    paths = []
+    for number, colour in enumerate(("red", "blue"), 1):
+        path = os.path.join(source, f"camera_{number}.jpg")
+        Image.new("RGB", (70, 50), colour).save(path)
+        paths.append(path)
+    outputs, skipped = import_photos(paths, destination, date_folders=False)
+    assert len(outputs) == 2 and not skipped
+    outputs_again, skipped = import_photos(paths, destination, date_folders=False)
+    assert not outputs_again and len(skipped) == 2
+    changes = batch_rename(outputs, "holiday_{n}")
+    assert [os.path.basename(target) for _source, target in changes] == [
+        "holiday_1.jpg", "holiday_2.jpg"]
+    assert all(os.path.isfile(target) for _source, target in changes)
+    try:
+        batch_rename([target for _source, target in changes], "same")
+        assert False, "duplicate batch targets must be rejected"
+    except FileExistsError:
+        pass
+
+
 def test_vignette_feather_and_grain_darken():
     base = Image.new("RGB", (120, 90), (128, 128, 128))
     # feather changes the vignette edge softness → a different result

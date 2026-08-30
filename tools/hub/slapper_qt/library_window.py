@@ -40,6 +40,7 @@ from PIL import Image, ImageOps
 from . import theme
 from .editor_window import EditorWindow
 from .catalog import Catalog
+from .organizer_ops import import_photos, batch_rename
 
 try:
     import snap_log
@@ -433,6 +434,8 @@ class LibraryWindow(QMainWindow):
         self.act_rename = QAction("Rename…", self)
         self.act_rename.setShortcut(QKeySequence("F2"))
         self.act_rename.triggered.connect(self._rename_selected)
+        self.act_batch_rename = QAction("Batch Rename…", self)
+        self.act_batch_rename.triggered.connect(self._batch_rename_selected)
         self.act_move = QAction("Move to Folder…", self)
         self.act_move.triggered.connect(lambda: self._choose_transfer(False))
         self.act_copy = QAction("Copy to Folder…", self)
@@ -453,7 +456,7 @@ class LibraryWindow(QMainWindow):
 
         organize_menu = QMenu(self)
         for action in (self.act_new_folder, self.act_rename,
-                       self.act_move, self.act_copy, self.act_trash,
+                       self.act_batch_rename, self.act_move, self.act_copy, self.act_trash,
                        self.act_restore_trash, self.act_rotate_left,
                        self.act_rotate_right, self.act_find_duplicates,
                        self.act_show_folder):
@@ -473,6 +476,7 @@ class LibraryWindow(QMainWindow):
         file_menu.addAction(self.act_show_folder)
         organize_bar_menu = self.menuBar().addMenu("Organize")
         for action in (self.act_import, self.act_new_folder, self.act_rename,
+                       self.act_batch_rename,
                        self.act_move, self.act_copy, self.act_trash,
                        self.act_restore_trash, self.act_rotate_left,
                        self.act_rotate_right, self.act_find_duplicates):
@@ -776,6 +780,27 @@ class LibraryWindow(QMainWindow):
             return
         self._rename_path(folder, folder=True)
 
+    def _batch_rename_selected(self):
+        paths = self._selected_photo_paths()
+        if not paths:
+            QMessageBox.information(self, "Batch Rename", "Select photos first.")
+            return
+        pattern, accepted = QInputDialog.getText(
+            self, "Batch Rename",
+            "Filename pattern:\n\n{name} original name  ·  {n} number  ·  {date} capture date",
+            text="{date}_{n}")
+        if not accepted or not pattern.strip():
+            return
+        try:
+            changes = batch_rename(paths, pattern.strip())
+            for source, target in changes:
+                self.catalog.move_path(source, target)
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Batch rename failed", str(exc))
+            return
+        self.status.showMessage(f"Renamed {len(changes)} photo(s)", 6000)
+        self._reload_current()
+
     def _rename_path(self, path, folder=False):
         old_name = os.path.basename(path)
         stem, extension = os.path.splitext(old_name)
@@ -835,13 +860,23 @@ class LibraryWindow(QMainWindow):
         destination = self._choose_destination("Import photos into folder")
         if not destination:
             return
+        organize = QMessageBox.question(
+            self, "Organize Import",
+            "Create YYYY/MM folders using each photo's capture date?",
+            QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+            QMessageBox.Yes)
+        if organize == QMessageBox.Cancel:
+            return
         try:
-            outputs = photo_manager.copy_files(paths, destination)
+            outputs, skipped = import_photos(
+                paths, destination, date_folders=organize == QMessageBox.Yes,
+                skip_duplicates=True)
         except (OSError, ValueError) as exc:
             QMessageBox.warning(self, "Import failed", str(exc))
             return
         self.status.showMessage(
-            f"Imported {len(outputs)} photo(s) into {destination}", 6000)
+            f"Imported {len(outputs)} photo(s); skipped {len(skipped)} duplicate/error(s)",
+            7000)
         if self._folder and os.path.normcase(self._folder) == os.path.normcase(destination):
             self._reload_current()
 
