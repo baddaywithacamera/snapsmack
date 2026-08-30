@@ -188,7 +188,11 @@ def test_auto_enhance():
 
 def test_normal_advanced_mode():
     win = _editor(_image("mode.jpg", (300, 200)))
-    win.apply_mode("normal")
+    # Both modes are explicitly named in the toolbar; no secret unchecked state.
+    assert [win.mode_combo.itemText(i) for i in range(win.mode_combo.count())] == [
+        "Normal", "Advanced"]
+    win.mode_combo.setCurrentIndex(win.mode_combo.findData("normal"))
+    assert win.mode == "normal" and not win.act_advanced.isChecked()
     # advanced-only sections/rows hidden, curated ones shown
     assert win._sections["LEVELS"].isHidden()
     assert win._sections["PRESENCE"].isHidden()
@@ -201,7 +205,8 @@ def test_normal_advanced_mode():
     assert win.act_save_project.isVisible() is False
     assert win.act_lewks.isVisible() is True and win.act_auto.isVisible() is True
     # back to advanced restores everything
-    win.apply_mode("advanced")
+    win.mode_combo.setCurrentIndex(win.mode_combo.findData("advanced"))
+    assert win.mode == "advanced" and win.act_advanced.isChecked()
     assert not win._sections["LEVELS"].isHidden()
     assert not win.rows["exposure"].isHidden()
     assert win.act_textures.isVisible() is True
