@@ -10,6 +10,14 @@
 
 # SnapSmack Changelog
 
+## 0.7.590 "LIVE WIRE" fix — 2026-08-30
+
+- **Fix: PULL CURRENT 500'd the stats page.** The new button's heartbeat pull tried
+  to store a spoke's backup status (`clean`) straight into a column that only allows
+  `ok`/`failed`/`unknown`, crashing the page under strict SQL. The status is now
+  normalised before saving (same mapping the single-spoke ping already used), so
+  PULL CURRENT completes cleanly.
+
 ## 0.7.589 "LIVE WIRE" — 2026-08-30
 
 - **New PULL CURRENT button on Fleet Stats.** The fediverse and fleet numbers on
