@@ -308,9 +308,24 @@ class EditorWindow(QMainWindow):
 
         self.act_advanced = QAction("Advanced", self)
         self.act_advanced.setCheckable(True)
-        self.act_advanced.setToolTip("Advanced mode — layers, masks, levels, textures, and more")
+        self.act_advanced.setToolTip(
+            "Switch between Normal and Advanced editor modes")
         self.act_advanced.toggled.connect(self._on_mode_toggled)
-        bar.addAction(self.act_advanced)
+        # An unchecked "Advanced" button made Normal mode effectively secret.
+        # Present both choices explicitly and keep the action for its shortcut.
+        self.addAction(self.act_advanced)
+        bar.addSeparator()
+        mode_label = QLabel("Editor mode")
+        mode_label.setObjectName("ControlName")
+        bar.addWidget(mode_label)
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItem("Normal", "normal")
+        self.mode_combo.addItem("Advanced", "advanced")
+        self.mode_combo.setFixedWidth(112)
+        self.mode_combo.setToolTip(
+            "Normal shows the essential controls; Advanced shows everything")
+        self.mode_combo.currentIndexChanged.connect(self._on_mode_combo_changed)
+        bar.addWidget(self.mode_combo)
 
         # Toolbar actions hidden in Normal mode (Advanced-only).
         self._advanced_actions = [
@@ -1204,10 +1219,29 @@ class EditorWindow(QMainWindow):
         self.act_advanced.blockSignals(True)
         self.act_advanced.setChecked(self.mode == "advanced")
         self.act_advanced.blockSignals(False)
+        self.mode_combo.blockSignals(True)
+        index = self.mode_combo.findData(self.mode)
+        self.mode_combo.setCurrentIndex(index if index >= 0 else 1)
+        self.mode_combo.blockSignals(False)
         self.apply_mode(self.mode)
 
     def _on_mode_toggled(self, checked):
         self.apply_mode("advanced" if checked else "normal")
+        self.mode_combo.blockSignals(True)
+        self.mode_combo.setCurrentIndex(
+            self.mode_combo.findData(self.mode))
+        self.mode_combo.blockSignals(False)
+        from . import prefs
+        values = prefs.load()
+        values["mode"] = self.mode
+        prefs.save(values)
+
+    def _on_mode_combo_changed(self, _index):
+        mode = self.mode_combo.currentData() or "normal"
+        self.apply_mode(mode)
+        self.act_advanced.blockSignals(True)
+        self.act_advanced.setChecked(mode == "advanced")
+        self.act_advanced.blockSignals(False)
         from . import prefs
         values = prefs.load()
         values["mode"] = self.mode
