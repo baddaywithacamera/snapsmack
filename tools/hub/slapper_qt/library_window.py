@@ -12,22 +12,26 @@ Features:
   - **Search** box that filters the grid by filename as you type.
   - **Click a photo** to see its dimensions and file size in the status bar.
 
-Ratings, tags, albums, and Trash are richer features of the Tk library still
-to be ported in later phases.
+The library also provides practical organizer operations: drag/drop moves,
+copy, rename, new folders, Recycle Bin, and Explorer access.
 """
 
 import os
+import shutil
 import time
 
 from PySide6.QtCore import (
     Qt, QObject, QRunnable, QThreadPool, Signal, QSize, QDir, QTimer,
-    QStandardPaths,
+    QStandardPaths, QMimeData, QUrl, QFile,
 )
-from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QKeySequence
+from PySide6.QtGui import (
+    QImage, QPixmap, QIcon, QAction, QKeySequence, QDrag, QDesktopServices,
+)
 from PySide6.QtWidgets import (
     QMainWindow, QListWidget, QListWidgetItem, QFileDialog, QLabel, QSlider,
     QWidget, QHBoxLayout, QComboBox, QLineEdit, QTreeView, QSplitter,
-    QFileSystemModel,
+    QFileSystemModel, QAbstractItemView, QInputDialog, QMessageBox, QMenu,
+    QToolButton,
 )
 
 from PIL import Image, ImageOps
@@ -50,6 +54,114 @@ SORTS = [
     ("date_new", "Date (newest)"),
     ("date_old", "Date (oldest)"),
 ]
+
+
+def _transfer_photo_files(paths, destination, copy_files=False):
+    """Copy/move photos without overwriting anything. Returns (done, errors)."""
+    destination = os.path.abspath(destination)
+    done, errors = [], []
+    if not os.path.isdir(destination):
+        return done, [f"Folder does not exist: {destination}"]
+    for source in paths:
+        source = os.path.abspath(source)
+        if not os.path.isfile(source):
+            errors.append(f"Not a file: {source}")
+            continue
+        target = os.path.join(destination, os.path.basename(source))
+        if os.path.normcase(source) == os.path.normcase(target):
+            continue
+        if os.path.exists(target):
+            errors.append(f"Already exists: {target}")
+            continue
+        try:
+            if copy_files:
+                shutil.copy2(source, target)
+            else:
+                shutil.move(source, target)
+            done.append(target)
+        except OSError as exc:
+            errors.append(f"{os.path.basename(source)}: {exc}")
+    return done, errors
+
+
+class _PhotoList(QListWidget):
+    """Thumbnail grid that exports selected photos as ordinary file drags."""
+
+    def startDrag(self, supported_actions):  # noqa: N802 — Qt override
+        paths = [item.data(Qt.UserRole) for item in self.selectedItems()]
+        paths = [path for path in paths if path and os.path.isfile(path)]
+        if not paths:
+            return
+        mime = QMimeData()
+        mime.setUrls([QUrl.fromLocalFile(path) for path in paths])
+        drag = QDrag(self)
+        drag.setMimeData(mime)
+        result = drag.exec(Qt.CopyAction | Qt.MoveAction, Qt.MoveAction)
+        if result == Qt.MoveAction:
+            window = self.window()
+            if hasattr(window, "_reload_current"):
+                window._reload_current()
+
+
+class _FolderTree(QTreeView):
+    """Folder tree drop target for photo moves and copies."""
+
+    filesDropped = Signal(object, str, bool)  # paths, destination, copy
+
+    def dragEnterEvent(self, event):  # noqa: N802 — Qt override
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):  # noqa: N802 — Qt override
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):  # noqa: N802 — Qt override
+        index = self.indexAt(event.position().toPoint())
+        model = self.model()
+        destination = model.filePath(index) if index.isValid() else model.rootPath()
+        if not destination or not os.path.isdir(destination):
+            event.ignore()
+            return
+        paths = [url.toLocalFile() for url in event.mimeData().urls()
+                 if url.isLocalFile()]
+        paths = [path for path in paths
+                 if os.path.splitext(path)[1].lower() in IMAGE_EXTENSIONS]
+        if not paths:
+            event.ignore()
+            return
+        copy_files = bool(event.keyboardModifiers() & Qt.ControlModifier) or \
+            event.proposedAction() == Qt.CopyAction
+        self.filesDropped.emit(paths, destination, copy_files)
+        # We perform the operation ourselves. Always report CopyAction to the
+        # drag source so Windows Explorer does not also delete/move the source.
+        event.setDropAction(Qt.CopyAction)
+        event.accept()
+
+
+class _FileSignals(QObject):
+    finished = Signal(object, object, str, bool)  # done, errors, target, copy
+
+
+class _FileTask(QRunnable):
+    """Run potentially slow cross-drive/network file work off the GUI thread."""
+
+    def __init__(self, paths, destination, copy_files, signals):
+        super().__init__()
+        self.paths = list(paths)
+        self.destination = destination
+        self.copy_files = copy_files
+        self.signals = signals
+
+    def run(self):
+        done, errors = _transfer_photo_files(
+            self.paths, self.destination, self.copy_files)
+        self.signals.finished.emit(
+            done, errors, self.destination, self.copy_files)
 
 _EXIF_DATETIME_ORIGINAL = 0x9003
 _EXIF_IFD = 0x8769
@@ -182,11 +294,15 @@ class LibraryWindow(QMainWindow):
         self._signals.ready.connect(self._on_thumb)
         self._scan_signals = _ScanSignals()
         self._scan_signals.ready.connect(self._on_scan_ready)
+        self._file_signals = _FileSignals()
+        self._file_signals.finished.connect(self._on_transfer_finished)
 
         from . import prefs
         settings = prefs.load()
         self._sort = settings.get("library_sort", "name")
         folders_visible = bool(settings.get("library_folders_visible", True))
+        self._folder_font_size = int(settings.get("library_folder_font_size", 11))
+        self._splitter_sizes = settings.get("library_splitter_sizes", [260, 920])
 
         self._build_toolbar()
         self.act_subfolders.blockSignals(True)
@@ -199,7 +315,7 @@ class LibraryWindow(QMainWindow):
         # in and out without disturbing the grid.
         self.tree_model = QFileSystemModel(self)
         self.tree_model.setFilter(QDir.Dirs | QDir.Drives | QDir.NoDotAndDotDot)
-        self.tree = QTreeView()
+        self.tree = _FolderTree()
         self.tree.setModel(self.tree_model)
         # Never root this model at "" on Windows. That asks the shell to probe
         # every mapped/cloud/network drive; one stale share marks the entire
@@ -212,15 +328,29 @@ class LibraryWindow(QMainWindow):
         initial_index = self.tree_model.setRootPath(initial_root)
         self.tree.setRootIndex(initial_index)
         self.tree.setHeaderHidden(True)
+        self.tree.setAcceptDrops(True)
+        self.tree.setDropIndicatorShown(True)
+        self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tree.setToolTip(
+            "Drop photos here to move them. Hold Ctrl while dropping to copy.")
         for column in range(1, self.tree_model.columnCount()):
             self.tree.hideColumn(column)
         self.tree.setMinimumWidth(180)
+        tree_font = self.tree.font()
+        tree_font.setPointSize(max(9, min(20, self._folder_font_size)))
+        self.tree.setFont(tree_font)
         self.tree.clicked.connect(self._tree_clicked)
+        self.tree.filesDropped.connect(self._drop_on_folder)
+        self.tree.customContextMenuRequested.connect(self._folder_context_menu)
 
-        self.list = QListWidget()
+        self.list = _PhotoList()
         self.list.setViewMode(QListWidget.IconMode)
         self.list.setResizeMode(QListWidget.Adjust)
         self.list.setMovement(QListWidget.Static)
+        self.list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.list.setDragEnabled(True)
+        self.list.setDragDropMode(QAbstractItemView.DragOnly)
+        self.list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.list.setSpacing(10)
         self.list.setUniformItemSizes(True)
         self.list.setIconSize(QSize(160, 160))
@@ -233,13 +363,19 @@ class LibraryWindow(QMainWindow):
         self.list.itemClicked.connect(self._show_info)
         self.list.currentItemChanged.connect(
             lambda cur, _prev: self._show_info(cur))
+        self.list.customContextMenuRequested.connect(self._photo_context_menu)
 
         self.split = QSplitter(Qt.Horizontal)
         self.split.addWidget(self.tree)
         self.split.addWidget(self.list)
         self.split.setStretchFactor(0, 0)
         self.split.setStretchFactor(1, 1)
-        self.split.setSizes([240, 940])
+        self.split.setHandleWidth(9)
+        if isinstance(self._splitter_sizes, list) and len(self._splitter_sizes) == 2:
+            self.split.setSizes([int(v) for v in self._splitter_sizes])
+        else:
+            self.split.setSizes([260, 920])
+        self.split.splitterMoved.connect(self._splitter_moved)
         self.setCentralWidget(self.split)
 
         self.tree.setVisible(folders_visible)
@@ -253,9 +389,9 @@ class LibraryWindow(QMainWindow):
         bar = self.addToolBar("Main")
         bar.setMovable(False)
 
-        act_open = QAction("Choose Folder", self)
-        act_open.triggered.connect(self.choose_folder)
-        bar.addAction(act_open)
+        self.act_open = QAction("Choose Folder", self)
+        self.act_open.triggered.connect(self.choose_folder)
+        bar.addAction(self.act_open)
 
         self.act_folders = QAction("Folders", self)
         self.act_folders.setCheckable(True)
@@ -272,9 +408,48 @@ class LibraryWindow(QMainWindow):
 
         bar.addSeparator()
 
-        act_edit = QAction("Edit Selected", self)
-        act_edit.triggered.connect(self._open_selected)
-        bar.addAction(act_edit)
+        self.act_edit = QAction("Edit Selected", self)
+        self.act_edit.triggered.connect(self._open_selected)
+        bar.addAction(self.act_edit)
+
+        self.act_new_folder = QAction("New Folder…", self)
+        self.act_new_folder.setShortcut(QKeySequence("Ctrl+Shift+N"))
+        self.act_new_folder.triggered.connect(self._new_folder)
+        self.act_rename = QAction("Rename…", self)
+        self.act_rename.setShortcut(QKeySequence("F2"))
+        self.act_rename.triggered.connect(self._rename_selected)
+        self.act_move = QAction("Move to Folder…", self)
+        self.act_move.triggered.connect(lambda: self._choose_transfer(False))
+        self.act_copy = QAction("Copy to Folder…", self)
+        self.act_copy.triggered.connect(lambda: self._choose_transfer(True))
+        self.act_trash = QAction("Move to Recycle Bin…", self)
+        self.act_trash.setShortcut(QKeySequence.Delete)
+        self.act_trash.triggered.connect(self._trash_selected)
+        self.act_show_folder = QAction("Show in Folder", self)
+        self.act_show_folder.triggered.connect(self._show_in_folder)
+
+        organize_menu = QMenu(self)
+        for action in (self.act_new_folder, self.act_rename,
+                       self.act_move, self.act_copy, self.act_trash,
+                       self.act_show_folder):
+            organize_menu.addAction(action)
+        organize_button = QToolButton()
+        organize_button.setText("Organize")
+        organize_button.setPopupMode(QToolButton.InstantPopup)
+        organize_button.setMenu(organize_menu)
+        organize_button.setToolTip("Rename, move, copy, delete, or create folders")
+        bar.addWidget(organize_button)
+
+        # Standard menus make the same operations discoverable without knowing
+        # that a thumbnail or folder can be right-clicked.
+        file_menu = self.menuBar().addMenu("File")
+        file_menu.addAction(self.act_open)
+        file_menu.addAction(self.act_edit)
+        file_menu.addAction(self.act_show_folder)
+        organize_bar_menu = self.menuBar().addMenu("Organize")
+        for action in (self.act_new_folder, self.act_rename,
+                       self.act_move, self.act_copy, self.act_trash):
+            organize_bar_menu.addAction(action)
 
         act_help = QAction("Help", self)
         act_help.setShortcut(QKeySequence.HelpContents)   # F1
@@ -324,6 +499,22 @@ class LibraryWindow(QMainWindow):
         size_layout.addWidget(self.size_slider)
         bar.addWidget(size_wrap)
 
+        folder_size_wrap = QWidget()
+        folder_size_layout = QHBoxLayout(folder_size_wrap)
+        folder_size_layout.setContentsMargins(0, 0, 8, 0)
+        folder_size_layout.setSpacing(5)
+        folder_size_label = QLabel("Folder text")
+        folder_size_label.setObjectName("ControlName")
+        folder_size_layout.addWidget(folder_size_label)
+        self.folder_size_slider = QSlider(Qt.Horizontal)
+        self.folder_size_slider.setRange(9, 20)
+        self.folder_size_slider.setValue(self._folder_font_size)
+        self.folder_size_slider.setFixedWidth(80)
+        self.folder_size_slider.setToolTip("Make folder names smaller or larger")
+        self.folder_size_slider.valueChanged.connect(self._folder_font_changed)
+        folder_size_layout.addWidget(self.folder_size_slider)
+        bar.addWidget(folder_size_wrap)
+
     # --- Folder tree --------------------------------------------------------
     def _toggle_folders(self, checked):
         self.tree.setVisible(bool(checked))
@@ -336,6 +527,204 @@ class LibraryWindow(QMainWindow):
         path = self.tree_model.filePath(index)
         if path and os.path.isdir(path):
             self.load_folder(path)
+
+    def _selected_photo_paths(self):
+        return [item.data(Qt.UserRole) for item in self.list.selectedItems()
+                if item.data(Qt.UserRole)]
+
+    def _selected_tree_folder(self):
+        index = self.tree.currentIndex()
+        path = self.tree_model.filePath(index) if index.isValid() else ""
+        return path if path and os.path.isdir(path) else self._folder
+
+    def _splitter_moved(self, _position, _index):
+        from . import prefs
+        values = prefs.load()
+        values["library_splitter_sizes"] = self.split.sizes()
+        prefs.save(values)
+
+    def _folder_font_changed(self, size):
+        font = self.tree.font()
+        font.setPointSize(int(size))
+        self.tree.setFont(font)
+        from . import prefs
+        values = prefs.load()
+        values["library_folder_font_size"] = int(size)
+        prefs.save(values)
+
+    def _photo_context_menu(self, position):
+        item = self.list.itemAt(position)
+        if item is None:
+            return
+        if item is not None and not item.isSelected():
+            self.list.clearSelection()
+            item.setSelected(True)
+        menu = QMenu(self)
+        for action in (self.act_edit, self.act_rename, self.act_move,
+                       self.act_copy, self.act_trash, self.act_show_folder):
+            menu.addAction(action)
+        menu.exec(self.list.mapToGlobal(position))
+
+    def _folder_context_menu(self, position):
+        index = self.tree.indexAt(position)
+        if index.isValid():
+            self.tree.setCurrentIndex(index)
+        menu = QMenu(self)
+        new_action = menu.addAction("New Folder Here…")
+        rename_action = menu.addAction("Rename Folder…")
+        menu.addSeparator()
+        show_action = menu.addAction("Open in File Explorer")
+        chosen = menu.exec(self.tree.mapToGlobal(position))
+        if chosen == new_action:
+            self._new_folder()
+        elif chosen == rename_action:
+            self._rename_folder()
+        elif chosen == show_action:
+            folder = self._selected_tree_folder()
+            if folder:
+                QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
+
+    def _new_folder(self):
+        parent = self._selected_tree_folder()
+        if not parent:
+            QMessageBox.information(self, "New Folder", "Choose a folder first.")
+            return
+        name, accepted = QInputDialog.getText(
+            self, "New Folder", f"Create a folder inside:\n{parent}\n\nFolder name:")
+        name = name.strip()
+        if not accepted or not name:
+            return
+        if name in (".", "..") or os.path.basename(name) != name:
+            QMessageBox.warning(self, "New Folder", "Enter a single folder name.")
+            return
+        target = os.path.join(parent, name)
+        try:
+            os.mkdir(target)
+        except OSError as exc:
+            QMessageBox.warning(self, "Could not create folder", str(exc))
+            return
+        self.status.showMessage(f"Created folder: {target}", 5000)
+
+    def _rename_selected(self):
+        photos = self._selected_photo_paths()
+        if photos:
+            if len(photos) != 1:
+                QMessageBox.information(
+                    self, "Rename", "Select one photo to rename at a time.")
+                return
+            self._rename_path(photos[0], folder=False)
+        else:
+            self._rename_folder()
+
+    def _rename_folder(self):
+        folder = self._selected_tree_folder()
+        root = self.tree_model.rootPath()
+        if not folder or os.path.normcase(folder) == os.path.normcase(root):
+            QMessageBox.information(
+                self, "Rename Folder", "Select a folder below the library root.")
+            return
+        self._rename_path(folder, folder=True)
+
+    def _rename_path(self, path, folder=False):
+        old_name = os.path.basename(path)
+        stem, extension = os.path.splitext(old_name)
+        initial = old_name if folder else stem
+        name, accepted = QInputDialog.getText(
+            self, "Rename Folder" if folder else "Rename Photo",
+            "New name:", text=initial)
+        name = name.strip()
+        if not accepted or not name:
+            return
+        if name in (".", "..") or os.path.basename(name) != name:
+            QMessageBox.warning(self, "Rename", "Enter a single name, not a path.")
+            return
+        if not folder and not os.path.splitext(name)[1]:
+            name += extension
+        target = os.path.join(os.path.dirname(path), name)
+        if os.path.exists(target):
+            QMessageBox.warning(self, "Rename", f"That name already exists:\n{target}")
+            return
+        try:
+            os.rename(path, target)
+        except OSError as exc:
+            QMessageBox.warning(self, "Could not rename", str(exc))
+            return
+        if folder and self._folder:
+            try:
+                inside = os.path.commonpath([self._folder, path]) == path
+            except ValueError:
+                inside = False
+            if inside:
+                self._folder = target + self._folder[len(path):]
+        self._reload_current()
+
+    def _choose_destination(self, title):
+        dialog = QFileDialog(self, title, self._folder or QDir.homePath())
+        dialog.setFileMode(QFileDialog.Directory)
+        dialog.setOption(QFileDialog.ShowDirsOnly, True)
+        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        if dialog.exec():
+            selected = dialog.selectedFiles()
+            return selected[0] if selected else ""
+        return ""
+
+    def _choose_transfer(self, copy_files):
+        paths = self._selected_photo_paths()
+        if not paths:
+            QMessageBox.information(self, "Organize", "Select one or more photos first.")
+            return
+        destination = self._choose_destination(
+            "Copy photos to folder" if copy_files else "Move photos to folder")
+        if destination:
+            self._perform_transfer(paths, destination, copy_files)
+
+    def _drop_on_folder(self, paths, destination, copy_files):
+        self._perform_transfer(paths, destination, copy_files)
+
+    def _perform_transfer(self, paths, destination, copy_files=False):
+        verb = "Copying" if copy_files else "Moving"
+        self.status.showMessage(
+            f"{verb} {len(paths)} photo(s) to {destination}…")
+        self._pool.start(_FileTask(
+            paths, destination, copy_files, self._file_signals))
+
+    def _on_transfer_finished(self, done, errors, destination, copy_files):
+        if errors:
+            detail = "\n".join(errors[:8])
+            if len(errors) > 8:
+                detail += f"\n…and {len(errors) - 8} more."
+            QMessageBox.warning(self, "Some photos were not organized", detail)
+        verb = "Copied" if copy_files else "Moved"
+        if done:
+            self.status.showMessage(
+                f"{verb} {len(done)} photo(s) to {destination}", 6000)
+        self._reload_current()
+
+    def _trash_selected(self):
+        paths = self._selected_photo_paths()
+        if not paths:
+            QMessageBox.information(self, "Recycle Bin", "Select one or more photos first.")
+            return
+        answer = QMessageBox.question(
+            self, "Move to Recycle Bin",
+            f"Move {len(paths)} selected photo(s) to the Windows Recycle Bin?",
+            QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel)
+        if answer != QMessageBox.Yes:
+            return
+        failed = []
+        for path in paths:
+            if not QFile.moveToTrash(path):
+                failed.append(path)
+        if failed:
+            QMessageBox.warning(
+                self, "Could not recycle some photos", "\n".join(failed[:8]))
+        self._reload_current()
+
+    def _show_in_folder(self):
+        paths = self._selected_photo_paths()
+        folder = os.path.dirname(paths[0]) if paths else self._selected_tree_folder()
+        if folder:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
 
     # --- Folder scanning ----------------------------------------------------
     def choose_folder(self):

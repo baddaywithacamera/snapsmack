@@ -28,7 +28,9 @@ from PySide6.QtWidgets import QApplication               # noqa: E402
 from PySide6.QtCore import QDir, QThreadPool             # noqa: E402
 from slapper_qt import theme                             # noqa: E402
 from slapper_qt.editor_window import EditorWindow        # noqa: E402
-from slapper_qt.library_window import LibraryWindow      # noqa: E402
+from slapper_qt.library_window import (                  # noqa: E402
+    LibraryWindow, _transfer_photo_files,
+)
 from slapper_qt.layers_panel import BASE                 # noqa: E402
 from slapper_qt.engine_bridge import render_pixmap, original_pixmap  # noqa: E402
 
@@ -558,6 +560,34 @@ def test_library_sort_search_info_and_folders():
     assert lib.tree.isHidden() is True
     lib.act_folders.setChecked(True)
     assert lib.tree.isHidden() is False
+
+
+def test_library_file_organizer_and_resizable_folders():
+    source = tempfile.mkdtemp(prefix="slapper_organize_src_", dir=TMP)
+    destination = tempfile.mkdtemp(prefix="slapper_organize_dst_", dir=TMP)
+    first = os.path.join(source, "first.jpg")
+    second = os.path.join(source, "second.jpg")
+    Image.new("RGB", (80, 60), (200, 10, 20)).save(first)
+    Image.new("RGB", (80, 60), (20, 200, 10)).save(second)
+
+    copied, errors = _transfer_photo_files([first], destination, copy_files=True)
+    assert len(copied) == 1 and not errors
+    assert os.path.exists(first) and os.path.exists(copied[0])
+    # Existing files are protected; organization never silently overwrites.
+    copied_again, errors = _transfer_photo_files([first], destination, copy_files=True)
+    assert not copied_again and errors and os.path.exists(copied[0])
+
+    moved, errors = _transfer_photo_files([second], destination, copy_files=False)
+    assert len(moved) == 1 and not errors
+    assert not os.path.exists(second) and os.path.exists(moved[0])
+
+    lib = LibraryWindow()
+    assert lib.list.dragEnabled()
+    assert lib.tree.acceptDrops()
+    lib.folder_size_slider.setValue(15)
+    assert lib.tree.font().pointSize() == 15
+    lib.split.setSizes([340, 840])
+    assert lib.split.sizes()[0] >= 300
 
 
 def test_vignette_feather_and_grain_darken():

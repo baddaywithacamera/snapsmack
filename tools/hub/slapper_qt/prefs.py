@@ -19,6 +19,8 @@ DEFAULTS = {
     "library_folders_visible": True,   # show the library's left folder tree
     "library_include_subfolders": False,  # recurse below selected library folder
     "library_sort": "name",        # library grid sort: name / date_new / date_old
+    "library_folder_font_size": 11, # readable folder-tree text
+    "library_splitter_sizes": [260, 920],  # remembered folder/grid widths
 }
 
 
