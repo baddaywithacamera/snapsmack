@@ -30,7 +30,7 @@ for _p in (_src, _shared_dir):
         sys.path.insert(0, _p)
 
 _hidden = collect_submodules('slapper_qt') + [
-    'editor_engine', 'built_in_lewks', 'found_textures', 'photo_manager',
+    'editor_engine', 'built_in_lewks', 'found_textures', 'texture_assets', 'photo_manager',
     'snap_home', 'snap_log', 'snap_profiles',
     'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
     'PySide6.QtPrintSupport',

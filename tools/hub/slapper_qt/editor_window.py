@@ -1403,6 +1403,8 @@ class EditorWindow(QMainWindow):
         """Open a project selected in-app or passed by Windows/the command line."""
         try:
             document = editor_engine.EditorDocument.load_project(path)
+            if not self._resolve_texture_assets(document):
+                return
             document.render((64, 64))   # decode the referenced photo now
         except Exception as error:  # noqa: BLE001
             self._error("Cannot open project", str(error))
@@ -1635,11 +1637,66 @@ class EditorWindow(QMainWindow):
         import built_in_lewks
         recipe = built_in_lewks.recipe(lewk_id, strength)
         added = self.doc.stack_layers(recipe.get("layers", []))
+        if not self._resolve_texture_assets(self.doc):
+            added_ids = {layer.get("id") for layer in added}
+            self.doc.layers = [layer for layer in self.doc.layers
+                               if layer.get("id") not in added_ids]
+            return None
         if added:
             self.set_target(added[-1]["id"])
         self.after_structure_change()
         _log.info("Applied LEWK %s at %s%%", lewk_id, strength)
         return added[-1] if added else None
+
+    def _resolve_texture_assets(self, document):
+        """Resolve references, asking before a first-party network restore."""
+        import texture_assets
+        for position, layer in enumerate(document.layers, 1):
+            ref = layer.get("asset_ref")
+            if layer.get("type") != "image" or not ref:
+                continue
+            local = texture_assets.resolve(ref)
+            if local:
+                layer["path"] = local
+                continue
+            name = ref.get("name") or layer.get("name") or "Texture"
+            if ref.get("origin") != "first-party" or not ref.get("restore_url"):
+                self._error(
+                    "Texture is missing",
+                    f'"{name}" is missing from layer {position}. SNAP SLAPPER cannot '
+                    "restore third-party textures automatically.\n\n"
+                    f'Source: {ref.get("source_url") or "unknown"}')
+                return False
+            answer = QMessageBox.question(
+                self, "Restore missing texture?",
+                f'"{name}" is missing from layer {position}.\n\n'
+                "Download it again from FOUND TEXTURES into the shared asset library?",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if answer != QMessageBox.Yes:
+                self._error("Texture is missing",
+                            f'"{name}" is still missing from layer {position}.')
+                return False
+            try:
+                import found_textures
+                resolved = found_textures.resolve_profile() or ("", "")
+                texture_id = str(ref.get("key", "")).partition(":")[2]
+                texture = {
+                    "id": texture_id, "title": name,
+                    "source_site": resolved[0] or "https://foundtextures.ca",
+                    "source_page_url": ref.get("source_url", ""),
+                    "highres_download_url": ref.get("restore_url", ""),
+                    "full_url": ref.get("restore_url", ""),
+                    "rights_status": ref.get("license_status", "unknown"),
+                }
+                local = found_textures.download(texture, resolved[1])
+                layer["path"] = local
+                layer["asset_ref"] = texture_assets.register(
+                    layer.get("texture") or found_textures.provenance(texture), local)
+            except Exception as error:  # noqa: BLE001
+                self._error("Texture restore failed",
+                            f'Could not restore "{name}" in layer {position}.\n\n{error}')
+                return False
+        return True
 
     def render_preview_image(self, max_size=(160, 160)):
         """A small PIL render of the current document — for look previews."""
@@ -1689,6 +1746,11 @@ class EditorWindow(QMainWindow):
         layer["blend"] = blend
         layer["opacity"] = float(opacity)
         layer["texture"] = dict(provenance)     # preserved in the .slapper project
+        try:
+            import texture_assets
+            layer["asset_ref"] = texture_assets.register(provenance, path)
+        except Exception as error:  # noqa: BLE001
+            _log.warning("Texture asset could not be indexed: %s", error)
         self.doc.record("Add texture")
         self.set_target(layer["id"])
         self.after_structure_change()

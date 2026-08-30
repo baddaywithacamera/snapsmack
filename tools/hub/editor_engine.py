@@ -1227,7 +1227,7 @@ class EditorDocument:
                     ImageDraw.Draw(mask).ellipse((0, 0, patch.width - 1, patch.height - 1), fill=255)
                     mask = mask.filter(ImageFilter.GaussianBlur(max(1, radius / 5)))
                     image.paste(patch, box[:2], mask)
-        for layer in self.layers:
+        for layer_number, layer in enumerate(self.layers, 1):
             if not layer.get("visible", True):
                 continue
             if layer.get("type") == "adjustment":
@@ -1242,9 +1242,24 @@ class EditorDocument:
                     layer.get("settings", {})).convert("RGBA")
             elif layer.get("type") == "image":
                 path = layer.get("path", "")
+                if layer.get("asset_ref"):
+                    try:
+                        import texture_assets
+                        path = texture_assets.resolve(layer["asset_ref"]) or path
+                        if path:
+                            layer["path"] = path
+                    except Exception:  # noqa: BLE001
+                        pass
                 if not os.path.isfile(path):
                     name = layer.get("name") or os.path.basename(path) or "unnamed layer"
-                    raise FileNotFoundError(f'Image layer "{name}" is missing: {path}')
+                    if layer.get("asset_ref"):
+                        ref = layer["asset_ref"]
+                        source = ref.get("source_url") or "source unknown"
+                        raise FileNotFoundError(
+                            f'Texture "{name}" is missing from layer {layer_number}. '
+                            f'Origin: {ref.get("origin", "unknown")}. Source: {source}')
+                    raise FileNotFoundError(
+                        f'Image layer "{name}" is missing from layer {layer_number}: {path}')
                 with Image.open(path) as source_layer:
                     top = ImageOps.exif_transpose(source_layer).convert("RGBA")
                 if max_size:
@@ -1396,20 +1411,29 @@ class EditorDocument:
     def recipe(self):
         geometry = {key: copy.deepcopy(value) for key, value in self.geometry.items()
                     if key != "crop"}
+        layers = []
+        for layer in self.layers:
+            if layer.get("type") in {"adjustment", "filter"}:
+                layers.append(copy.deepcopy(layer))
+            elif layer.get("type") == "image" and layer.get("asset_ref"):
+                clone = copy.deepcopy(layer)
+                clone.pop("path", None)  # recipes/LEWKS carry references, never texture bytes/paths
+                layers.append(clone)
         return {"version": PROJECT_VERSION, "adjustments": copy.deepcopy(self.adjustments),
-                "geometry": geometry,
-                "layers": [copy.deepcopy(layer) for layer in self.layers
-                           if layer.get("type") in {"adjustment", "filter"}]}
+                "geometry": geometry, "layers": layers}
 
     def stack_layers(self, layers):
-        """Add adjustment layers ON TOP without touching the base or existing
+        """Add LEWK layers ON TOP without touching the base or existing
         layers. This is how a LEWK applies — it must not flatten the
         photographer's existing edits. Each layer gets a fresh unique id.
         """
         added = []
         for layer in layers:
-            if not isinstance(layer, dict) or layer.get("type") != "adjustment":
-                raise ValueError("stack_layers only accepts adjustment layers")
+            if (not isinstance(layer, dict) or
+                    layer.get("type") not in {"adjustment", "filter", "image"}):
+                raise ValueError("stack_layers only accepts safe LEWK layers")
+            if layer.get("type") == "image" and not layer.get("asset_ref"):
+                raise ValueError("LEWK texture layers require an asset reference")
             mask = layer.get("mask", "")
             if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
                 raise ValueError("Invalid layer mask")
@@ -1436,8 +1460,11 @@ class EditorDocument:
         if len(layers) > MAX_PROJECT_LAYERS:
             raise ValueError("Invalid SNAP SLAPPER recipe: too many layers")
         for index, layer in enumerate(layers):
-            if not isinstance(layer, dict) or layer.get("type") not in {"adjustment", "filter"}:
+            if not isinstance(layer, dict) or layer.get("type") not in {"adjustment", "filter", "image"}:
                 raise ValueError(f"Invalid SNAP SLAPPER recipe: layer {index + 1} is invalid")
+            if layer.get("type") == "image" and not layer.get("asset_ref"):
+                raise ValueError(
+                    f"Invalid SNAP SLAPPER recipe: texture layer {index + 1} has no asset reference")
             if layer.get("type") == "filter" and (
                     layer.get("filter_type") not in slapper_filters.FILTER_DEFAULTS or
                     layer.get("filter_version", 1) != 1):
