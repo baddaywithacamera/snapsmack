@@ -297,6 +297,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'quick
     exit;
 }
 
+// ── AJAX: REPLACE PHOTO ──────────────────────────────────────────────────────
+// Swaps the file behind an existing gallery image while KEEPING its id — so every
+// post, album, category, tag and comment that points at it stays intact and just
+// shows the new photo. Reuses the real upload pipeline (snap_ingest_image) so the
+// new file gets proper thumbnails + EXIF, then grafts those onto the existing row.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'replace') {
+    header('Content-Type: application/json');
+    require_once __DIR__ . '/core/image-ingest.php';
+
+    $replace_id = (int)($_POST['id'] ?? 0);
+    if ($replace_id <= 0 || empty($_FILES['img_file']) || ($_FILES['img_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        echo json_encode(['ok' => false, 'error' => 'Pick an image to replace it with.']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("SELECT img_file, img_thumb_square, img_thumb_aspect, img_status FROM snap_images WHERE id = ?");
+    $stmt->execute([$replace_id]);
+    $old = $stmt->fetch();
+    if (!$old) {
+        echo json_encode(['ok' => false, 'error' => 'That image no longer exists.']);
+        exit;
+    }
+
+    $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // Run the new file through the real ingest pipeline (temp row + file + thumbs + EXIF).
+    $r = snap_ingest_image($pdo, $settings, $_FILES['img_file'], ['status' => $old['img_status'] ?: 'published']);
+    if (empty($r['ok'])) {
+        echo json_encode(['ok' => false, 'error' => $r['error'] ?? 'Could not process the replacement image.']);
+        exit;
+    }
+    $new_id = (int)$r['id'];
+
+    $ns = $pdo->prepare("SELECT img_file, img_exif, img_orientation, img_auto_orient, img_width, img_height,
+                                img_thumb_square, img_thumb_aspect, img_checksum, img_display_options, img_color_mode
+                         FROM snap_images WHERE id = ?");
+    $ns->execute([$new_id]);
+    $new = $ns->fetch();
+
+    if ($new && $new_id !== $replace_id) {
+        // Purge the OLD photo's files (main + thumbs); they're superseded.
+        foreach ([$old['img_file'], $old['img_thumb_square'], $old['img_thumb_aspect']] as $p) {
+            if ($p && is_file($p)) { @unlink($p); }
+        }
+
+        // Graft the new file/thumbs/EXIF/dimensions onto the existing row.
+        $pdo->prepare("UPDATE snap_images SET
+                img_file = ?, img_exif = ?, img_orientation = ?, img_auto_orient = ?,
+                img_width = ?, img_height = ?, img_thumb_square = ?, img_thumb_aspect = ?,
+                img_checksum = ?, img_display_options = ?, img_color_mode = ?
+            WHERE id = ?")
+            ->execute([
+                $new['img_file'], $new['img_exif'], $new['img_orientation'], $new['img_auto_orient'],
+                $new['img_width'], $new['img_height'], $new['img_thumb_square'], $new['img_thumb_aspect'],
+                $new['img_checksum'], $new['img_display_options'], $new['img_color_mode'],
+                $replace_id,
+            ]);
+
+        // Drop the temp row + any relationships ingest created for it. Its FILES now
+        // belong to the existing row, so we do NOT delete them here.
+        $pdo->prepare("DELETE FROM snap_image_tags WHERE image_id = ?")->execute([$new_id]);
+        $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$new_id]);
+        $pdo->prepare("DELETE FROM snap_image_album_map WHERE image_id = ?")->execute([$new_id]);
+        $pdo->prepare("DELETE FROM snap_images WHERE id = ?")->execute([$new_id]);
+    }
+
+    require_once __DIR__ . '/core/page-cache.php';
+    page_cache_purge_all();
+
+    echo json_encode(['ok' => true, 'id' => $replace_id]);
+    exit;
+}
+
 // ── AJAX: BULK OPERATIONS ────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'bulk') {
     header('Content-Type: application/json');
@@ -543,13 +616,15 @@ include 'core/sidebar.php';
             <div class="qe-meta" id="qe-meta"></div>
             <div class="qe-actions">
                 <button type="button" class="btn-smack" id="qe-save">Save</button>
+                <button type="button" class="btn-smack btn-smack--dim" id="qe-replace">Replace Photo</button>
                 <a id="qe-edit-link" href="#" class="btn-smack btn-smack--dim">Full Edit</a>
+                <input type="file" id="qe-replace-file" accept="image/*" class="file-input-hidden">
             </div>
         </div>
     </div>
 </div>
 
-<script src="assets/js/ss-engine-gallery.js?v=082L"></script>
+<script src="assets/js/ss-engine-gallery.js?v=083L"></script>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
