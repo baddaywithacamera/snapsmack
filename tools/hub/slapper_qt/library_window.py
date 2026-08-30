@@ -448,6 +448,9 @@ class LibraryWindow(QMainWindow):
         self.act_show_folder.triggered.connect(self._show_in_folder)
         self.act_restore_trash = QAction("Restore Last Trashed Photo", self)
         self.act_restore_trash.triggered.connect(self._restore_trash)
+        self.act_undo_files = QAction("Undo Last Move/Rename", self)
+        self.act_undo_files.setShortcut(QKeySequence("Ctrl+Alt+Z"))
+        self.act_undo_files.triggered.connect(self._undo_file_operation)
         self.act_rotate_left = QAction("Create Rotated Copies — Left", self)
         self.act_rotate_left.triggered.connect(lambda: self._rotate_selected(90))
         self.act_rotate_right = QAction("Create Rotated Copies — Right", self)
@@ -461,6 +464,7 @@ class LibraryWindow(QMainWindow):
         for action in (self.act_new_folder, self.act_rename,
                        self.act_batch_rename, self.act_move, self.act_copy, self.act_trash,
                        self.act_restore_trash, self.act_rotate_left,
+                       self.act_undo_files,
                        self.act_rotate_right, self.act_find_duplicates,
                        self.act_export_selection,
                        self.act_show_folder):
@@ -483,6 +487,7 @@ class LibraryWindow(QMainWindow):
                        self.act_batch_rename,
                        self.act_move, self.act_copy, self.act_trash,
                        self.act_restore_trash, self.act_rotate_left,
+                       self.act_undo_files,
                        self.act_rotate_right, self.act_find_duplicates,
                        self.act_export_selection):
             organize_bar_menu.addAction(action)
@@ -851,6 +856,7 @@ class LibraryWindow(QMainWindow):
             changes = batch_rename(paths, pattern.strip())
             for source, target in changes:
                 self.catalog.move_path(source, target)
+            self.catalog.record_operation("rename", changes)
         except (OSError, ValueError) as exc:
             QMessageBox.warning(self, "Batch rename failed", str(exc))
             return
@@ -882,6 +888,7 @@ class LibraryWindow(QMainWindow):
             QMessageBox.warning(self, "Could not rename", str(exc))
             return
         self.catalog.move_path(path, target)
+        self.catalog.record_operation("rename", [(path, target)])
         if folder and self._folder:
             try:
                 inside = os.path.commonpath([self._folder, path]) == path
@@ -1032,6 +1039,14 @@ class LibraryWindow(QMainWindow):
                         self.catalog.copy_path(source, target)
                     else:
                         self.catalog.move_path(source, target)
+            if not copy_files:
+                changes = []
+                for target in done:
+                    source = by_name.get(os.path.normcase(os.path.basename(target)))
+                    if source:
+                        changes.append((source, target))
+                if changes:
+                    self.catalog.record_operation("move", changes)
             self.status.showMessage(
                 f"{verb} {len(done)} photo(s) to {destination}", 6000)
         self._reload_current()
@@ -1066,6 +1081,19 @@ class LibraryWindow(QMainWindow):
             self._reload_current()
         else:
             QMessageBox.information(self, "SNAP SLAPPER Trash", "Trash is empty.")
+
+    def _undo_file_operation(self):
+        try:
+            restored = self.catalog.undo_last_move()
+        except OSError as exc:
+            QMessageBox.warning(self, "Undo failed", str(exc))
+            return
+        if not restored:
+            QMessageBox.information(
+                self, "Undo File Operation", "There is no move or rename to undo.")
+            return
+        self.status.showMessage(f"Undid {len(restored)} file change(s)", 7000)
+        self._reload_current()
 
     def _show_in_folder(self):
         paths = self._selected_photo_paths()

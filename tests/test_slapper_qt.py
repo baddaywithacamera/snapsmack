@@ -616,9 +616,13 @@ def test_qt_catalog_ratings_tags_favorites_and_albums():
     catalog.update_index([first, second])
     assert set(catalog.all_paths()) == {first, second}
     renamed = os.path.join(directory, "renamed.jpg")
+    os.rename(first, renamed)
     catalog.move_path(first, renamed)
     assert catalog.details(renamed)["rating"] == 5
     assert renamed in catalog.albums["Pets"] and first not in catalog.albums["Pets"]
+    catalog.record_operation("rename", [(first, renamed)])
+    undone = catalog.undo_last_move()
+    assert undone and os.path.isfile(first) and not os.path.exists(renamed)
 
     lib = LibraryWindow()
     for action in (lib.act_import, lib.act_restore_trash,
