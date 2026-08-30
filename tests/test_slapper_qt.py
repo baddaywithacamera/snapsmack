@@ -534,7 +534,13 @@ def test_bw_colour_mix():
     path = os.path.join(TMP, "bw.png"); bands.save(path)
     win = _editor(path)
     win.bw_check.setChecked(True)
-    # all bands at 0 must equal the plain neutral grayscale
+    # The checkbox starts with a photographic colour mix, not flat desaturation.
+    assert win.doc.adjustments["bw_orange"] > 0
+    assert win.doc.adjustments["bw_blue"] < 0
+    for key, _degree in editor_engine.BW_BANDS:
+        win.doc.adjustments[key] = 0
+        win.rows[key].set_value(0)
+    # Explicitly neutral bands remain a predictable plain grayscale.
     neutral = win.doc.render()
     grey = ImageOps.grayscale(bands.resize(neutral.size))
     assert ImageChops.difference(neutral, Image.merge("RGB", (grey,) * 3)).getbbox() is None
@@ -694,6 +700,24 @@ def test_filmstrip_lists_folder_and_opens():
     win.filmstrip._activate(win.filmstrip._items[os.path.abspath(second)])
     APP.processEvents()
     assert os.path.abspath(win.doc.source_path) == os.path.abspath(second)
+
+
+def test_filmstrip_queues_thumbnails_when_scrolled():
+    folder = tempfile.mkdtemp(prefix="slapper_strip_scroll_", dir=TMP)
+    paths = []
+    for index in range(60):
+        path = os.path.join(folder, f"{index:03d}.jpg")
+        Image.new("RGB", (40, 30), (index, 80, 120)).save(path)
+        paths.append(os.path.abspath(path))
+    win = _editor(paths[0])
+    strip = win.filmstrip
+    strip.show_for(paths[0])
+    assert paths[-1] not in strip._queued
+    strip.horizontalScrollBar().setValue(strip.horizontalScrollBar().maximum())
+    QTest.qWait(100)
+    APP.processEvents()
+    assert paths[-1] in strip._queued
+    strip._pool.waitForDone(5000)
 
 
 def test_mask_brush_and_type_switch():

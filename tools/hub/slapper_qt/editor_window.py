@@ -1653,6 +1653,20 @@ class EditorWindow(QMainWindow):
         if target is None:
             return
         target["black_white"] = bool(checked)
+        # A useful photographic starting mix, rather than a lifeless straight
+        # desaturation. Warm subject tones lift; blue skies and cool shadows
+        # deepen. The eight controls remain fully editable in Advanced mode.
+        if checked and not any(float(target.get(key, 0.0)) for key, _deg
+                               in editor_engine.BW_BANDS):
+            defaults = {
+                "bw_red": 10, "bw_orange": 22, "bw_yellow": 14,
+                "bw_green": 5, "bw_aqua": -6, "bw_blue": -20,
+                "bw_purple": -10, "bw_magenta": 6,
+            }
+            target.update(defaults)
+            for key, value in defaults.items():
+                if key in self.rows:
+                    self.rows[key].set_value(value)
         self.doc.record("Black and white")
         self._schedule_render()
         self._update_title()
