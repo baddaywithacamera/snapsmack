@@ -33,6 +33,7 @@ from slapper_qt.library_window import (                  # noqa: E402
 )
 from slapper_qt.layers_panel import BASE                 # noqa: E402
 from slapper_qt.engine_bridge import render_pixmap, original_pixmap  # noqa: E402
+from slapper_qt.output_tools import create_contact_sheet, SlideshowDialog  # noqa: E402
 
 TMP = tempfile.mkdtemp(prefix="slapper_qt_test_")
 APP = QApplication.instance() or QApplication([])
@@ -391,6 +392,22 @@ def test_selected_text_layer_moves_directly_on_canvas():
     assert win.doc.render((300, 300))
     win.set_target(BASE)
     assert not win.view._layer_move_mode
+
+
+def test_contact_sheet_and_slideshow_outputs():
+    first = _image("sheet-one.jpg", (400, 260), (180, 30, 30))
+    second = _image("sheet-two.jpg", (260, 400), (30, 90, 190))
+    output = os.path.join(TMP, "contact.jpg")
+    assert create_contact_sheet([first, second], output, columns=2) == output
+    with Image.open(output) as result:
+        assert result.width > result.height and result.mode == "RGB"
+    show = SlideshowDialog([first, second], interval_ms=60000)
+    assert show.index == 0 and show.timer.isActive()
+    show.next_photo()
+    assert show.index == 1
+    show.previous_photo()
+    assert show.index == 0
+    show.close()
 
 
 def test_retouch():
