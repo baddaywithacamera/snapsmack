@@ -337,6 +337,29 @@ def test_layer_masks():
     assert win.mask_section.isHidden()
 
 
+def test_colour_range_mask_selects_hue_and_survives_editor_render():
+    from PIL import ImageOps
+    from slapper_qt import masks
+
+    sample = Image.new("RGB", (100, 40), (255, 0, 0))
+    sample.paste((0, 0, 255), (50, 0, 100, 40))
+    selected = masks.colour_range_mask(sample, 0, 24, 10, 0, 100, 8)
+    assert selected.getpixel((20, 20)) > selected.getpixel((80, 20))
+    inverted = masks.colour_range_mask(sample, 0, 24, 10, 0, 100, 8,
+                                       invert=True)
+    assert ImageOps.invert(selected).tobytes() == inverted.tobytes()
+
+    win = _editor(_image("colour-mask.jpg", (400, 300), (220, 40, 40)))
+    win.layers_panel._add_adjustment()
+    layer = win.layers_panel._selected_layer()
+    win._select_mask_type("colour")
+    win.mask_hue.slider.setValue(0)
+    win.mask_hue_range.slider.setValue(35)
+    win._apply_colour_mask()
+    assert layer.get("mask") and layer.get("mask_kind") == "colour"
+    assert win.doc.render((300, 300))
+
+
 def test_text_layer_editing():
     win = _editor(_image("txt.jpg", (400, 300)))
     win.layers_panel._add_text()
