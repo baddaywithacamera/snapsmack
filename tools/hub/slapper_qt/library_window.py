@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QListWidget, QListWidgetItem, QFileDialog, QLabel, QSlider,
     QWidget, QHBoxLayout, QComboBox, QLineEdit, QTreeView, QSplitter,
     QFileSystemModel, QAbstractItemView, QInputDialog, QMessageBox, QMenu,
-    QToolButton, QDockWidget, QVBoxLayout, QPushButton, QCheckBox,
+    QToolButton, QDockWidget, QVBoxLayout, QPushButton, QCheckBox, QDialog,
 )
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
@@ -434,6 +434,17 @@ class LibraryWindow(QMainWindow):
         self.act_import.triggered.connect(self._import_photos)
         bar.addAction(self.act_import)
 
+        self.act_panomerge = QAction("PANOMERGE…", self)
+        from .panomerge import detect_xpano, platform_supported
+        panomerge_available = platform_supported() and bool(detect_xpano())
+        self.act_panomerge.setEnabled(panomerge_available)
+        self.act_panomerge.setToolTip(
+            "Stitch selected overlapping photographs into a panorama with XPANO"
+            if panomerge_available else
+            "Install XPANO separately, then restart SNAP SLAPPER to enable PANOMERGE")
+        self.act_panomerge.triggered.connect(self._panomerge_selected)
+        bar.addAction(self.act_panomerge)
+
         self.act_new_folder = QAction("New Folder…", self)
         self.act_new_folder.setShortcut(QKeySequence("Ctrl+Shift+N"))
         self.act_new_folder.setToolTip(
@@ -509,6 +520,7 @@ class LibraryWindow(QMainWindow):
         file_menu = self.menuBar().addMenu("File")
         file_menu.addAction(self.act_open)
         file_menu.addAction(self.act_edit)
+        file_menu.addAction(self.act_panomerge)
         file_menu.addAction(self.act_print)
         file_menu.addAction(self.act_show_folder)
         organize_bar_menu = self.menuBar().addMenu("Organize")
@@ -783,7 +795,7 @@ class LibraryWindow(QMainWindow):
             self.list.clearSelection()
             item.setSelected(True)
         menu = QMenu(self)
-        for action in (self.act_edit, self.act_rename, self.act_move,
+        for action in (self.act_edit, self.act_panomerge, self.act_rename, self.act_move,
                        self.act_copy, self.act_trash, self.act_show_folder):
             menu.addAction(action)
         menu.addSeparator()
@@ -1452,10 +1464,27 @@ class LibraryWindow(QMainWindow):
         if items:
             self._open_item(items[0])
 
+    def _panomerge_selected(self):
+        from .panomerge import PanomergeDialog, platform_supported
+        if not platform_supported():
+            QMessageBox.warning(
+                self, "PANOMERGE unavailable",
+                "PANOMERGE is available on Windows and Linux only.")
+            return
+        paths = self._selected_photo_paths()
+        dialog = PanomergeDialog(paths, self)
+        if dialog.exec() == QDialog.Accepted and dialog.result_path:
+            self._open_editor_path(dialog.result_path)
+            if self._folder and os.path.dirname(dialog.result_path) == self._folder:
+                self._reload_current()
+
     def _open_item(self, item):
         path = item.data(Qt.UserRole)
         if not path:
             return
+        self._open_editor_path(path)
+
+    def _open_editor_path(self, path):
         path = os.path.abspath(path)
         path_key = os.path.normcase(path)
         if path_key in self._opening_editor_paths:

@@ -1,0 +1,12 @@
+XPANO - OPTIONAL EXTERNAL PROGRAM
+
+Upstream: https://github.com/krupkat/xpano
+License: GPL-3.0-or-later
+
+XPANO is not included with SNAPSMACK or SNAP SLAPPER. The user installs XPANO
+separately. PANOMERGE starts that separate executable as a separate operating-
+system process and exchanges only command-line arguments, files, standard
+output, and an exit code with it. No XPANO source, binary, library, preset, or
+other asset is linked, bundled, vendored, copied, or ported into SNAPSMACK.
+
+XPANO remains subject to its own upstream licence and copyright notices.
