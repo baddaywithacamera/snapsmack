@@ -258,10 +258,17 @@ if ($_ic_bgmode === 'mayhem') {
 // RACETRACK reuses the shared MAYHEM photo endpoint (BASE_URL?ajax=mayhem,
 // routed globally in index.php) — same generated photos, Frogger drift. No
 // palette/trail resolution needed; the prints carry their own colour.
+
+// Grid drop shadow obeys the site-wide "Drop Shadow on Image" control. None ('0')
+// => no shadow. Previously the tabletop drop shadow was hardcoded on .tg-tile and
+// ignored the control, so setting it to None left a shadow line at the bottom of
+// every print. Same shadow map as landing.php's per-post frames.
+$_ic_shadow_map  = ['0' => 'none', '1' => '3px 3px 8px rgba(0,0,0,.20)', '2' => '6px 6px 18px rgba(0,0,0,.40)', '3' => '12px 12px 32px rgba(0,0,0,.60)'];
+$_ic_tile_shadow = $_ic_shadow_map[(string)($settings['ic_frame_shadow'] ?? '0')] ?? 'none';
 ?>
 
 <!-- INSTANT CAMERA vars: tile aspect (match the print), scrim opacity, sharp corners. -->
-<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--bio-text-glow:<?php echo htmlspecialchars($_ic_bioglow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_ic_panel_bg); ?>;--panel-extend:<?php echo (int)$_ic_panel_extend; ?>px;--ic-nav-bg:<?php echo htmlspecialchars($_ic_nav_bg); ?>;--posts-color:<?php echo htmlspecialchars($_ic_posts_color); ?>;--posts-glow:<?php echo htmlspecialchars($_ic_posts_glow); ?>;--ic-navline-color:<?php echo htmlspecialchars($_ic_navline_color); ?>;--ic-navline-opacity:<?php echo (int)$_ic_navline_op; ?>;--ic-navline-shadow:<?php echo htmlspecialchars($_ic_navline_shadow); ?>;--post-bg:<?php echo htmlspecialchars($_ic_solo_bg); ?>;}</style>
+<style id="ic-vars">:root{--ic-tile-aspect:<?php echo $_ic_aspect; ?>;--ic-tile-shadow:<?php echo htmlspecialchars($_ic_tile_shadow); ?>;--ic-scrim:<?php echo number_format($_ic_scrim, 2); ?>;--tile-radius:0px;--profile-text-glow:<?php echo htmlspecialchars($_ic_glow_css); ?>;--bio-text-glow:<?php echo htmlspecialchars($_ic_bioglow_css); ?>;--nav-text-glow:<?php echo htmlspecialchars($_ic_navglow_css); ?>;--nav-text-glow-strong:<?php echo htmlspecialchars($_ic_navglow_strong); ?>;--panel-bg:<?php echo htmlspecialchars($_ic_panel_bg); ?>;--panel-extend:<?php echo (int)$_ic_panel_extend; ?>px;--ic-nav-bg:<?php echo htmlspecialchars($_ic_nav_bg); ?>;--posts-color:<?php echo htmlspecialchars($_ic_posts_color); ?>;--posts-glow:<?php echo htmlspecialchars($_ic_posts_glow); ?>;--ic-navline-color:<?php echo htmlspecialchars($_ic_navline_color); ?>;--ic-navline-opacity:<?php echo (int)$_ic_navline_op; ?>;--ic-navline-shadow:<?php echo htmlspecialchars($_ic_navline_shadow); ?>;--post-bg:<?php echo htmlspecialchars($_ic_solo_bg); ?>;}</style>
 
 <?php
 // Background carrier(s). Single modes emit exactly one carrier (unchanged).
