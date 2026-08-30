@@ -88,7 +88,12 @@ class Filmstrip(QListWidget):
         self._items = {}          # abs path -> QListWidgetItem
         self._folder = None
         self._current = None
-        self._pool = QThreadPool.globalInstance()
+        # Keep filmstrip work out of the application's global worker pool. A
+        # folder containing thousands of photos must never starve the library,
+        # file operations, or editor previews.
+        self._pool = QThreadPool(self)
+        self._pool.setMaxThreadCount(2)
+        self._queued = set()
         self._signals = _ThumbSignals()
         self._signals.ready.connect(self._on_thumb)
         self.itemClicked.connect(self._activate)
@@ -109,10 +114,12 @@ class Filmstrip(QListWidget):
             self._load_folder(folder)
         self._current = current
         self._select_current()
+        self._queue_near(current)
 
     def _load_folder(self, folder):
         self.clear()
         self._items.clear()
+        self._queued.clear()
         placeholder = self._placeholder()
         for full in self._scan(folder):
             item = QListWidgetItem(placeholder, "")
@@ -120,7 +127,21 @@ class Filmstrip(QListWidget):
             item.setToolTip(os.path.basename(full))
             self.addItem(item)
             self._items[full] = item
-            self._pool.start(_ThumbTask(full, self._signals))
+
+    def _queue_near(self, current, radius=16):
+        """Decode only nearby frames; placeholders make the full shoot navigable."""
+        paths = list(self._items)
+        if not paths:
+            return
+        try:
+            centre = paths.index(current)
+        except ValueError:
+            centre = 0
+        start, end = max(0, centre - radius), min(len(paths), centre + radius + 1)
+        for path in paths[start:end]:
+            if path not in self._queued:
+                self._queued.add(path)
+                self._pool.start(_ThumbTask(path, self._signals))
 
     @staticmethod
     def _scan(folder):
