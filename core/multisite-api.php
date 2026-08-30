@@ -284,10 +284,10 @@ if ($resource === 'search' && $method === 'POST') {
     $limit = is_array($body) ? (int)($body['limit'] ?? 40) : 40;
     if ($term === '') ms_err('term required', 400);
 
-    if (!function_exists('sv_active_search_accounts')) { @require_once __DIR__ . '/smackverse.php'; }
+    if (!function_exists('sv_active_search_accounts')) { @require_once __DIR__ . '/fediverse.php'; }
 
-    // No usable accounts (or SMACKVERSE off) → tell the spoke to fall back to public.
-    if (($settings['smackverse_enabled'] ?? '0') !== '1'
+    // No usable accounts (or FEDIVERSE off) → tell the spoke to fall back to public.
+    if (($settings['fediverse_enabled'] ?? '0') !== '1'
         || !function_exists('sv_active_search_accounts')
         || !sv_active_search_accounts($pdo)) {
         ms_ok(['proxied' => false, 'results' => []]);
@@ -457,8 +457,8 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         }
     }
 
-    // SMACKVERSE federation stats for the fleet rollup (best-effort).
-    $sv_enabled_hb   = ($settings['smackverse_enabled'] ?? '0') === '1' ? 1 : 0;
+    // FEDIVERSE federation stats for the fleet rollup (best-effort).
+    $sv_enabled_hb   = ($settings['fediverse_enabled'] ?? '0') === '1' ? 1 : 0;
     $sv_followers_hb = 0;
     $sv_following_hb = 0; $sv_likes_hb = 0; $sv_boosts_hb = 0; $sv_replies_hb = 0;
     if ($sv_enabled_hb) {
@@ -502,7 +502,7 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         return ['last_run' => $last_run, 'status' => $status];
     };
     $jobs = [
-        'fediverse'     => $job_state($settings['smackverse_cron_last_run']   ?? null, $settings['smackverse_cron_last_status'] ?? null),
+        'fediverse'     => $job_state($settings['fediverse_cron_last_run']   ?? null, $settings['fediverse_cron_last_status'] ?? null),
         'rss_fetch'     => $job_state($settings['rss_last_run']                ?? null, $settings['rss_last_status']              ?? null),
         'version_check' => $job_state($settings['last_update_check']           ?? null, $settings['version_check_last_status']    ?? null),
         'backup'        => $job_state($settings['last_backup_at']              ?? null, $settings['last_backup_status']           ?? null),
@@ -527,13 +527,13 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         'site_mode'          => $settings['site_mode']           ?? 'photoblog',
         'installed_skins'    => $installed_skins,
         'active_skin'        => $settings['active_skin'] ?? '',
-        'smackverse_enabled' => $sv_enabled_hb,
+        'fediverse_enabled' => $sv_enabled_hb,
         'fedboard_sso_enabled' => (($settings['multisite_allow_sso'] ?? '0') === '1') ? 1 : 0,
-        'smackverse_followers' => $sv_followers_hb,
-        'smackverse_following' => $sv_following_hb,
-        'smackverse_likes'     => $sv_likes_hb,
-        'smackverse_boosts'    => $sv_boosts_hb,
-        'smackverse_replies'   => $sv_replies_hb,
+        'fediverse_followers' => $sv_followers_hb,
+        'fediverse_following' => $sv_following_hb,
+        'fediverse_likes'     => $sv_likes_hb,
+        'fediverse_boosts'    => $sv_boosts_hb,
+        'fediverse_replies'   => $sv_replies_hb,
         'jobs'               => $jobs,
         'timestamp'          => date('c'),
     ]);
@@ -661,7 +661,7 @@ if ($resource === 'comments' && $sub_action === 'action' && $method === 'POST') 
         // fail the moderation call.
         if ((int)($cur['is_approved'] ?? 0) !== 1 && ($cur['ap_source'] ?? 'local') !== 'fediverse') {
             try {
-                require_once __DIR__ . '/smackverse.php';
+                require_once __DIR__ . '/fediverse.php';
                 if (function_exists('sv_federate_comment')) sv_federate_comment($pdo, $comment_id, $settings);
             } catch (Throwable $e) { error_log('SMACK YOUR MOUTH approve-federate failed: ' . $e->getMessage()); }
         }
@@ -723,7 +723,7 @@ if ($resource === 'comments' && $sub_action === 'get' && $method === 'GET') {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: POST multisite/comments/reply
-// Post a LOCAL admin reply to a comment, threaded under it and (if SMACKVERSE is
+// Post a LOCAL admin reply to a comment, threaded under it and (if FEDIVERSE is
 // on) federated out. Single-actor rule: the reply is authored by the blog. The
 // parent's fediverse Note id is what makes the reply thread on other servers.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -741,7 +741,7 @@ if ($resource === 'comments' && $sub_action === 'reply' && $method === 'POST') {
     $parent = $ps->fetch(PDO::FETCH_ASSOC);
     if (!$parent) ms_err('Parent comment not found', 404);
 
-    require_once __DIR__ . '/smackverse.php';
+    require_once __DIR__ . '/fediverse.php';
     // Guarantee the AP columns this route writes (ap_source, ap_in_reply_to,
     // post_id, …) exist even on a spoke that has not run this yet. Idempotent.
     if (function_exists('sv_ensure_tables')) { try { sv_ensure_tables($pdo); } catch (Throwable $e) { /* non-fatal */ } }
@@ -759,7 +759,7 @@ if ($resource === 'comments' && $sub_action === 'reply' && $method === 'POST') {
 
     // The reply is authored by the blog (single-actor rule). The operator's
     // chosen display name arrives as 'author'; fall back to the site's identity.
-    $author = trim((string)($_POST['author'] ?? '')) ?: ($settings['smackverse_display_name'] ?? ($settings['site_name'] ?? 'Editor'));
+    $author = trim((string)($_POST['author'] ?? '')) ?: ($settings['fediverse_display_name'] ?? ($settings['site_name'] ?? 'Editor'));
     $ins = $pdo->prepare(
         "INSERT INTO snap_comments
             (img_id, post_id, comment_author, comment_text, comment_date,

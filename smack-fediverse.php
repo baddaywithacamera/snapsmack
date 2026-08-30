@@ -2,7 +2,7 @@
 /**
  * SNAPSMACK - FEDIVERSE Interactions
  *
- * The conversation side of SMACKVERSE — because federation isn't plumbing,
+ * The conversation side of FEDIVERSE — because federation isn't plumbing,
  * it's people. This page is where the blog talks BACK:
  *   - incoming fediverse replies (moderation queue, fediverse-only view)
  *   - live conversations with a REPLY tool — replies federate as the blog
@@ -11,7 +11,7 @@
  *   - fediverse likes (who liked what)
  *   - current followers
  *
- * Settings/health/handle live in smack-smackverse.php (SMACKVERSE Federation).
+ * Settings/health/handle live in smack-fediverse-portal.php (FEDIVERSE Federation).
  * This page is interaction only.
  */
 
@@ -24,7 +24,7 @@
 
 
 require_once 'core/auth-smack.php';
-require_once 'core/smackverse.php';
+require_once 'core/fediverse.php';
 
 $msg = '';
 
@@ -207,7 +207,7 @@ include 'core/sidebar.php';
     <?php if (!$sv_on): ?>
         <div class="box">
             <p>Fediverse is switched off — nothing federates in or out until you flip it on in
-               <a href="smack-smackverse.php">Fediverse Federation</a>. Anything below is history.</p>
+               <a href="smack-fediverse-portal.php">Fediverse Federation</a>. Anything below is history.</p>
         </div>
     <?php endif; ?>
 

@@ -1,9 +1,9 @@
 <?php
 // SNAPSMACK_EOF_HEADER: this file MUST end with // ===== SNAPSMACK EOF =====
 /**
- * SMACKVERSE Relay — ActivityPub primitives (keys, actor doc, HTTP-signature
+ * photoblogs.fyi Relay — ActivityPub primitives (keys, actor doc, HTTP-signature
  * sign + verify, SSRF-guarded fetch, signed POST delivery + queue). Faithful to
- * the SnapSmack core/smackverse.php implementation, stripped to relay needs.
+ * the SnapSmack core/photoblogs.php implementation, stripped to relay needs.
  */
 
 require_once __DIR__ . '/db.php';
@@ -79,7 +79,7 @@ function relay_keys(): array {
         // Stored key won't decrypt/parse (KEK missing, rotated, or corruption).
         // With zero followers this recovers by minting fresh; WITH followers it
         // would strand them, so it is logged loudly as a last resort.
-        error_log('SMACKVERSE relay: stored private key failed to decrypt/parse — minting a fresh keypair.');
+        error_log('photoblogs.fyi relay: stored private key failed to decrypt/parse — minting a fresh keypair.');
     }
     $res = openssl_pkey_new([
         'private_key_bits' => 2048,
@@ -101,7 +101,7 @@ function relay_actor_doc(): array {
         'id'                => relay_actor_url(),
         'type'              => 'Application',
         'preferredUsername' => 'relay',
-        'name'              => 'SMACKVERSE Relay',
+        'name'              => 'photoblogs.fyi Relay',
         'summary'           => 'The SnapSmack network relay. Subscribe to share public posts across all SnapSmack blogs. No images are stored here — media always loads from the origin blog.',
         'inbox'             => relay_inbox_url(),
         'outbox'            => relay_base() . 'outbox',
@@ -176,14 +176,14 @@ function relay_sign_post(string $url, string $body): ?array {
         'Host: ' . $host, 'Date: ' . $date, 'Digest: ' . $digest,
         'Content-Type: ' . $ctype, 'Signature: ' . $hdr,
         'Accept: application/activity+json',
-        'User-Agent: SMACKVERSE-Relay/1.0',
+        'User-Agent: photoblogs.fyi-Relay/1.0',
     ];
 }
 
 /** Signed headers for a GET (authorized-fetch): (request-target) host date. */
 function relay_sign_get(string $url): array {
     list($priv) = relay_keys();
-    $out = ['Accept: application/activity+json, application/ld+json', 'User-Agent: SMACKVERSE-Relay/1.0'];
+    $out = ['Accept: application/activity+json, application/ld+json', 'User-Agent: photoblogs.fyi-Relay/1.0'];
     $pkey = openssl_pkey_get_private($priv);
     if ($pkey === false) return $out;
     $p    = parse_url($url);

@@ -10,6 +10,48 @@
 
 # SnapSmack Changelog
 
+## 0.7.585 "GOOD NEIGHBOUR" — 2026-08-29
+
+- **Media Gallery: you can now Replace a photo.** Open any image's Quick Edit and
+  hit **Replace Photo** to swap in a new file — the image keeps its place, so every
+  post, album, category, tag and comment that used it now shows the new photo with
+  nothing to re-link. New thumbnails and EXIF are generated automatically. (The
+  Media Library already had this; the Gallery was missing it.)
+
+- **Removed the "smackverse" name from the whole platform.** Co-opting the
+  fediverse under a SnapSmack brand name was disrespectful to the wider fediverse
+  community and risked their trust in us. Every instance is gone: the CMS
+  federation code, filenames, admin labels, comments and CLI messages are now
+  **fediverse**; the relay's own identity is now **photoblogs.fyi** (retiring
+  `smackverse.snapsmack.ca`). A one-time migration renames the matching database
+  settings and columns so nothing — federation identity, followers, keys — is lost
+  on upgrade. Historical changelog and dated security-audit filenames are kept as
+  record.
+
+## 0.7.584 "BLANK SLATE" — 2026-08-29
+
+- **The fediverse handle field starts blank and must be filled in.** It used to
+  pre-fill with your domain, which made it easy to save the wrong handle without
+  noticing. Now you choose it deliberately — the form won't save an empty handle.
+
+## 0.7.583 "SQUARED AWAY" — 2026-08-29
+
+- **Directory shows relay & hub membership.** The hub's directory moderation page
+  now has **On Relay** and **On Hub** columns — so a directory *listing* is no
+  longer mistaken for an actual relay *join* — plus roomier rows. It also moved
+  out of the Fediverse menu into admin settings (it was never federation).
+- **"SMACKVERSE" is gone from everything the fediverse sees** — the relay's public
+  name and all user-facing labels are de-branded.
+- Rolls up the latest editor (library browsing) and site-page work.
+
+## 0.7.582 "FLIP THE SWITCH" — 2026-08-29
+
+- **"Enable Relay" no longer crashes.** The SMACKCAST relay toggle in the
+  Fediverse Portal called a step-up check (`reauth_verify`) that wasn't loaded on
+  that path, so the page 500'd the moment you tried to turn the relay on. Fixed —
+  enabling still asks for your password + authenticator code.
+- Silenced a recurring `sort` warning in the photoblogs directory view.
+
 ## 0.7.581 "SLAP HAPPY" — 2026-08-28
 
 - **THE HUB now builds and launches the new Qt SNAP SLAPPER editor.**

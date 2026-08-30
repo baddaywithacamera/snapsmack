@@ -3,7 +3,7 @@
  * SNAPSMACK - PHOTO CHALLENGE public board
  *
  * The live board for the photofri.day / artfri.day profile running on this
- * install's SMACKVERSE actor. Reads core/photochallenge.php's pc_board_ranked()
+ * install's FEDIVERSE actor. Reads core/photochallenge.php's pc_board_ranked()
  * — which reads only the CMS's own snap_ap_timeline — so NO participant image is
  * stored or re-hosted here: every card hotlinks the origin thumbnail and links,
  * rel=canonical, back to the origin post. Tease then eject.
@@ -17,7 +17,7 @@
  * Last non-empty line of this file MUST match the line above.
  */
 require_once __DIR__ . '/core/db.php';
-require_once __DIR__ . '/core/smackverse.php';
+require_once __DIR__ . '/core/fediverse.php';
 require_once __DIR__ . '/core/photochallenge.php';
 
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")

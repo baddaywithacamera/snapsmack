@@ -460,6 +460,45 @@
         });
     }
 
+    // ── REPLACE PHOTO ────────────────────────────────────────────────────
+    // Swaps the file behind the current image, keeping its id (and every post,
+    // album, tag and comment that points at it). Reuses the upload pipeline.
+    var qeReplace     = document.getElementById('qe-replace');
+    var qeReplaceFile = document.getElementById('qe-replace-file');
+    if (qeReplace && qeReplaceFile) {
+        qeReplace.addEventListener('click', function () { qeReplaceFile.click(); });
+        qeReplaceFile.addEventListener('change', function () {
+            if (!qeReplaceFile.files.length) return;
+            var fd = new FormData();
+            fd.append('action', 'replace');
+            fd.append('id', qeId.value);
+            fd.append('img_file', qeReplaceFile.files[0]);
+            qeReplace.disabled = true;
+            qeReplace.textContent = 'Replacing…';
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', 'smack-gallery.php');
+            xhr.onload = function () {
+                qeReplace.disabled = false;
+                qeReplace.textContent = 'Replace Photo';
+                qeReplaceFile.value = '';
+                var ok = false, msg = 'Replace failed.';
+                try { var res = JSON.parse(xhr.responseText); ok = res.ok; if (res.error) msg = res.error; } catch (e) {}
+                if (xhr.status === 200 && ok) {
+                    qePanel.style.display = 'none';
+                    fetchImages(false);
+                } else {
+                    alert(msg);
+                }
+            };
+            xhr.onerror = function () {
+                qeReplace.disabled = false;
+                qeReplace.textContent = 'Replace Photo';
+                alert('Replace failed — network error.');
+            };
+            xhr.send(fd);
+        });
+    }
+
     // ── BULK OPERATIONS ──────────────────────────────────────────────────
     if (bulkBar) {
         bulkBar.addEventListener('click', function (e) {

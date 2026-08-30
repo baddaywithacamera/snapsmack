@@ -3,13 +3,13 @@
  * SNAPSMACK - PHOTO CHALLENGE (admin surface)
  *
  * The control panel for the photofri.day / artfri.day profile that rides on top
- * of this install's single SMACKVERSE actor (core/photochallenge.php). It is a
+ * of this install's single FEDIVERSE actor (core/photochallenge.php). It is a
  * thin admin page: flip the profile on, set the tag/timezone/scoring, watch the
  * roster and the live board, crown a week into the Hall of Fame, and prune dead
- * Hall-of-Fame links. All federation still belongs to SMACKVERSE — this page
+ * Hall-of-Fame links. All federation still belongs to FEDIVERSE — this page
  * never touches a key or an inbox, it only sets policy and reads what landed.
  *
- * Turning the challenge ON only matters once SMACKVERSE itself is enabled: the
+ * Turning the challenge ON only matters once FEDIVERSE itself is enabled: the
  * follow=join / unfollow=leave hooks fire from the federation inbox, so with
  * federation off this is inert. The page says so rather than pretending.
  *
@@ -18,7 +18,7 @@
  * Last non-empty line of this file MUST match the line above.
  */
 require_once 'core/auth-smack.php';      // session + CSRF autovalidate + login gate + $pdo
-require_once 'core/smackverse.php';      // sv_set_setting, sv_enabled, sv_* helpers
+require_once 'core/fediverse.php';      // sv_set_setting, sv_enabled, sv_* helpers
 require_once 'core/photochallenge.php';  // pc_* policy layer
 
 $pc_admin_view = isset($pc_admin_view) && in_array($pc_admin_view, ['dashboard', 'queue', 'queued'], true)
@@ -199,7 +199,7 @@ include 'core/sidebar.php';
         <div class="alert alert-warn">
             &gt; Fediverse federation is <strong>OFF</strong>. The challenge can be configured here, but
             follow-to-join and the board only come alive once you enable federation on the
-            <a href="smack-smackverse.php">FEDIVERSE &rarr; FEDERATION</a> page.
+            <a href="smack-fediverse-portal.php">FEDIVERSE &rarr; FEDERATION</a> page.
         </div>
     <?php endif; ?>
 

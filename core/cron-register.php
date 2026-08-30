@@ -6,9 +6,9 @@
  * user never touches a terminal. Extracted from the RSS-fetcher registration
  * that used to live in smack-admin-reference.php (deleted in 0.7.508 — see
  * UPDATER_DEPRECATED_FILES) into a shared helper so every self-scheduling
- * feature (RSS fetch, SMACKVERSE delivery, …) uses one proven code path.
+ * feature (RSS fetch, FEDIVERSE delivery, …) uses one proven code path.
  *
- * A job is identified by a unique tag comment (e.g. '# snapsmack-smackverse').
+ * A job is identified by a unique tag comment (e.g. '# snapsmack-fediverse').
  * register is idempotent (re-registering updates the line); remove is safe to
  * call when nothing is registered. All operations no-op gracefully when the
  * host has no exec()/crontab (shared hosting) — the caller shows the manual
@@ -76,24 +76,24 @@ function cron_register_job(string $schedule, string $script_abs, string $tag): a
 }
 
 /**
- * Ensure the SMACKVERSE WebFinger rewrite is present in the root .htaccess.
+ * Ensure the FEDIVERSE WebFinger rewrite is present in the root .htaccess.
  * Called on federation-enable so the user never hand-edits Apache config.
  * Idempotent: no-op when already present. Inserts the rule just before the
  * catch-all router line (so it wins). Best-effort — returns a status pair;
  * the full canonical block is still what System Maintenance → REPAIR writes.
  */
 function cron_ensure_webfinger_htaccess(string $htaccess_path): array {
-    // Both SMACKVERSE rewrites, keyed by their presence-check needle.
+    // Both Fediverse rewrites, keyed by their presence-check needle.
     // The /ap/ path routes exist because AP object ids must be
     // query-string-free — Pixelfed HTML-encodes '&' when dereferencing
     // object URLs, so ?ap=note&post=N ids 404 on their side (0.7.350).
     $rules = [
         'well-known/webfinger' =>
-            "# SMACKVERSE (ActivityPub) WebFinger discovery — harmless while disabled.\n"
-            . 'RewriteRule ^\\.well-known/webfinger$ smackverse.php?ap=webfinger [L,QSA]' . "\n",
-        'smackverse.php?appath=' =>
-            "# SMACKVERSE (ActivityPub) path-style object routes — harmless while disabled.\n"
-            . 'RewriteRule ^ap/(.+)$ smackverse.php?appath=$1 [L,QSA]' . "\n",
+            "# FEDIVERSE (ActivityPub) WebFinger discovery — harmless while disabled.\n"
+            . 'RewriteRule ^\\.well-known/webfinger$ fediverse.php?ap=webfinger [L,QSA]' . "\n",
+        'fediverse.php?appath=' =>
+            "# FEDIVERSE (ActivityPub) path-style object routes — harmless while disabled.\n"
+            . 'RewriteRule ^ap/(.+)$ fediverse.php?appath=$1 [L,QSA]' . "\n",
     ];
     if (!is_file($htaccess_path)) {
         return [false, '.htaccess not found — run System Maintenance → REPAIR .htaccess.'];
@@ -106,7 +106,7 @@ function cron_ensure_webfinger_htaccess(string $htaccess_path): array {
         if (strpos($content, $needle) === false) $missing[$needle] = $line;
     }
     if (!$missing) {
-        return [true, 'SMACKVERSE rewrites already present.'];
+        return [true, 'Fediverse rewrites already present.'];
     }
     if (!is_writable($htaccess_path)) {
         return [false, '.htaccess is not writable — run System Maintenance → REPAIR .htaccess, or add the rules by hand.'];
@@ -123,9 +123,9 @@ function cron_ensure_webfinger_htaccess(string $htaccess_path): array {
         $new = rtrim($content) . "\n\n{$block}";
     }
     if ($new === null || @file_put_contents($htaccess_path, $new, LOCK_EX) === false) {
-        return [false, 'Could not write the SMACKVERSE rules — run System Maintenance → REPAIR .htaccess.'];
+        return [false, 'Could not write the FEDIVERSE rules — run System Maintenance → REPAIR .htaccess.'];
     }
-    return [true, 'SMACKVERSE rewrites added to .htaccess.'];
+    return [true, 'Fediverse rewrites added to .htaccess.'];
 }
 
 /** Remove the job carrying $tag. Safe when nothing is registered. */

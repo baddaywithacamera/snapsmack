@@ -885,10 +885,10 @@ if ($resource === 'batch-update' && $method === 'POST') {
     // never break an otherwise-successful save. NOTE: existing followers keep the
     // order they FIRST received — the fediverse pins a post's date at first sight;
     // re-sorting them needs a deliberate re-imprint + re-push, same as the site.
-    if ($sort_touched && ($settings['smackverse_enabled'] ?? '0') === '1') {
+    if ($sort_touched && ($settings['fediverse_enabled'] ?? '0') === '1') {
         try {
             if (!function_exists('sv_sync_fedi_dates')) {
-                @require_once __DIR__ . '/smackverse.php';
+                @require_once __DIR__ . '/fediverse.php';
             }
             if (function_exists('sv_sync_fedi_dates')) {
                 sv_sync_fedi_dates($pdo, $settings);
@@ -1041,9 +1041,9 @@ if ($resource === 'gram-reorder' && $method === 'POST') {
     }
 
     // Keep the fediverse order honest (same imprint the lighttable reorder does).
-    if (($settings['smackverse_enabled'] ?? '0') === '1') {
+    if (($settings['fediverse_enabled'] ?? '0') === '1') {
         try {
-            if (!function_exists('sv_sync_fedi_dates')) { @require_once __DIR__ . '/smackverse.php'; }
+            if (!function_exists('sv_sync_fedi_dates')) { @require_once __DIR__ . '/fediverse.php'; }
             if (function_exists('sv_sync_fedi_dates')) { sv_sync_fedi_dates($pdo, $settings); }
         } catch (Throwable $e) {
             error_log('GYSS gram-reorder: fedi re-stamp failed — ' . $e->getMessage());
@@ -1118,7 +1118,7 @@ if ($resource === 'gram-carousel' && $method === 'POST') {
     }
 
     // Shared merge core (federation-aware, transactional).
-    if (!function_exists('sv_convert_to_carousel')) { @require_once __DIR__ . '/smackverse.php'; }
+    if (!function_exists('sv_convert_to_carousel')) { @require_once __DIR__ . '/fediverse.php'; }
     if (!function_exists('sv_convert_to_carousel')) {
         gy_err('Carousel engine unavailable on this install.', 500);
     }

@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $allow_cmt    = (int)($_POST['allow_comments'] ?? 1);
     $allow_dl     = (int)($_POST['allow_download'] ?? 0);
     $dl_url       = trim($_POST['download_url']    ?? '');
-    // SMACKVERSE (0.7.367): per-post federation toggle + fediverse date-LABEL
+    // FEDIVERSE (0.7.367): per-post federation toggle + fediverse date-LABEL
     // override (blank = use the post date; never changes remote row order).
     $fedi_enabled = ((string)($_POST['fedi_enabled'] ?? '1') === '0') ? 0 : 1;
     $fedi_pub_raw = trim($_POST['fedi_published_at'] ?? '');
@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
 
     // Fediverse post fields (0.7.393) on snap_posts — same rationale as the
-    // crop columns above: normally added by the SMACKVERSE canonical sync, but a
+    // crop columns above: normally added by the FEDIVERSE canonical sync, but a
     // direct-deploy install that skipped the updater never gets them, and the
     // UPDATE below writes them unconditionally (Unknown column 'is_sensitive').
     try {
@@ -593,8 +593,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // AP Update (or a Delete/Tombstone if it just went unpublished) so remote
     // copies reflect the change — caption, tags, media, status. First-time
     // publishes are left to the cron Create path. Enqueue-only.
-    if (is_file(__DIR__ . '/core/smackverse.php')) {
-        require_once __DIR__ . '/core/smackverse.php';
+    if (is_file(__DIR__ . '/core/fediverse.php')) {
+        require_once __DIR__ . '/core/fediverse.php';
         if (function_exists('sv_federate_post_change')) {
             sv_federate_post_change($pdo, $settings, (int)$post_id);
         }

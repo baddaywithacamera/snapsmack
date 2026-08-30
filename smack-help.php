@@ -3738,10 +3738,10 @@ HTML
 ];
 
 // =========================================================================
-//  SMACKVERSE — FEDIVERSE
+//  FEDIVERSE — FEDIVERSE
 // =========================================================================
 
-$help_topics['smackverse-pixelfed'] = [
+$help_topics['fediverse-pixelfed'] = [
     'section'  => 'FEDIVERSE',
     'title'    => 'Pixelfed Client',
     'icon'     => '&#x1F310;',
@@ -3824,7 +3824,7 @@ interacts exactly the way a carousel blog does.</p>
 HTML
 ];
 
-$help_topics['smackverse-rollcall'] = [
+$help_topics['fediverse-rollcall'] = [
     'section'  => 'FEDIVERSE',
     'title'    => 'Roll Call — fediverse.info listing',
     'icon'     => '&#x1F4E3;',

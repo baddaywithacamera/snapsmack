@@ -15,7 +15,7 @@
  * Last non-empty line of this file MUST match the marker above.
  */
 require_once 'core/auth-smack.php';
-require_once 'core/smackverse.php';              // sv_handle / sv_domain
+require_once 'core/fediverse.php';              // sv_handle / sv_domain
 require_once 'core/photoblogs-directory.php';
 
 $self = basename($_SERVER['SCRIPT_NAME'] ?? 'smack-directory.php');
@@ -87,6 +87,28 @@ if ($is_hub) {
              LIMIT 500"
         )->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) { $dir_listings = []; }
+}
+
+// Relay + hub membership, keyed by host, for the On Relay / On Hub columns.
+// A directory listing is a separate thing from JOINING the relay or being a
+// connected hub node — these two lookups say which of those a listed blog is.
+$relay_hosts = [];  // hosts with an active relay subscription (JOIN NETWORK)
+$hub_hosts   = [];  // hosts registered as a node on this hub
+if ($is_hub) {
+    try {
+        foreach ($pdo->query("SELECT actor_url FROM snap_relay_subscribers WHERE state='active'")
+                     ->fetchAll(PDO::FETCH_COLUMN) as $u) {
+            $h = strtolower((string)parse_url((string)$u, PHP_URL_HOST));
+            if ($h !== '') $relay_hosts[$h] = true;
+        }
+    } catch (Throwable $e) { /* relay tables absent = nothing joined */ }
+    try {
+        foreach ($pdo->query("SELECT site_url FROM snap_multisite_nodes")
+                     ->fetchAll(PDO::FETCH_COLUMN) as $u) {
+            $h = strtolower((string)parse_url((string)$u, PHP_URL_HOST));
+            if ($h !== '') $hub_hosts[$h] = true;
+        }
+    } catch (Throwable $e) { /* multisite tables absent */ }
 }
 
 $listed     = pbdir_is_listed($settings);
@@ -177,19 +199,22 @@ include 'core/sidebar.php';
         <?php if (!$dir_listings): ?>
             <p class="dim">No listings yet.</p>
         <?php else: ?>
-            <table class="data-table w-100">
+            <table class="data-table w-100 dir-table">
                 <thead>
-                    <tr><th>Blog</th><th>Handle</th><th>Topics</th><th>State</th><th>Actions</th></tr>
+                    <tr><th>Blog</th><th>Handle</th><th>Topics</th><th>State</th><th>On&nbsp;Relay</th><th>On&nbsp;Hub</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                 <?php foreach ($dir_listings as $L): ?>
-                    <?php $topics_disp = implode(', ', json_decode((string)($L['topics'] ?? '[]'), true) ?: []); ?>
+                    <?php $topics_disp = implode(', ', json_decode((string)($L['topics'] ?? '[]'), true) ?: []);
+                          $lh = strtolower((string)($L['host'] ?? '')); ?>
                     <tr>
                         <td><strong><?php echo htmlspecialchars((string)$L['name']); ?></strong><br>
                             <a href="<?php echo htmlspecialchars((string)$L['site_url']); ?>" target="_blank" rel="noopener nofollow"><?php echo htmlspecialchars((string)$L['host']); ?></a></td>
                         <td><code><?php echo htmlspecialchars((string)$L['handle']); ?></code></td>
                         <td><?php echo htmlspecialchars($topics_disp); ?></td>
                         <td><strong><?php echo htmlspecialchars((string)$L['state']); ?></strong></td>
+                        <td class="dir-flag"><?php echo isset($relay_hosts[$lh]) ? '<span class="dir-yes">&#10003;</span>' : '<span class="dir-no">&mdash;</span>'; ?></td>
+                        <td class="dir-flag"><?php echo isset($hub_hosts[$lh]) ? '<span class="dir-yes">&#10003;</span>' : '<span class="dir-no">&mdash;</span>'; ?></td>
                         <td>
                             <form method="post" action="">
                                 <input type="hidden" name="action" value="directory_moderate">

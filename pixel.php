@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK — SMACKVERSE : Standalone Pixelfed-compatible client  (pixel.php)
+ * SNAPSMACK — FEDIVERSE : Standalone Pixelfed-compatible client  (pixel.php)
  *
  * A STANDALONE page (no admin header/sidebar/footer) that opens from SnapSmack
  * and works like a real Pixelfed instance — follow / like / comment / boost /
@@ -11,7 +11,7 @@
  * UI is ORIGINAL (assets/css/ss-pixel.css + assets/js/ss-pixel.js), matched to
  * the live pixelfed.ca look by observation — no Pixelfed source was copied
  * (theirs is GPL; ours must stay clean). DATA + INTERACTIONS reuse SnapSmack's
- * own engine (core/smackverse.php) via the ?ajax=<panel> read endpoints and the
+ * own engine (core/fediverse.php) via the ?ajax=<panel> read endpoints and the
  * sspf_action POST handlers below — the same contract the admin client used, so
  * nothing about the engine is rebuilt.
  *
@@ -21,7 +21,7 @@
  */
 
 require_once 'core/auth-smack.php';       // owner gate + session + global csrf_check()
-require_once 'core/smackverse.php';
+require_once 'core/fediverse.php';
 require_once 'core/fedboard.php';
 
 $sv_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
@@ -127,7 +127,7 @@ if (isset($_GET['ajax'])) {
         if ($cached) {
             echo json_encode(['ok' => true, 'items' => $cached], JSON_UNESCAPED_SLASHES); exit;
         }
-        $host = trim((string)($sv_settings['smackverse_home_instance'] ?? ''));
+        $host = trim((string)($sv_settings['fediverse_home_instance'] ?? ''));
         if ($host === '') {
             try {
                 $h = (string)$pdo->query("SELECT actor_url FROM snap_ap_following WHERE state='accepted' ORDER BY followed_at DESC LIMIT 1")->fetchColumn();
@@ -170,7 +170,7 @@ if (isset($_GET['ajax'])) {
                 if ((!is_array($authed) || !$authed) && function_exists('sv_hub_search')) { @set_time_limit(30); $authed = sv_hub_search($pdo, $sv_settings, 'hashtag', $tag, 40); }
                 if (is_array($authed) && $authed) { echo json_encode(['ok' => true, 'mode' => 'feed', 'title' => '#' . $tag, 'items' => $authed], JSON_UNESCAPED_SLASHES); exit; }
 
-                $host = trim((string)($sv_settings['smackverse_home_instance'] ?? ''));
+                $host = trim((string)($sv_settings['fediverse_home_instance'] ?? ''));
                 if ($host === '') {
                     try {
                         $h = (string)$pdo->query("SELECT actor_url FROM snap_ap_following WHERE state='accepted' ORDER BY followed_at DESC LIMIT 1")->fetchColumn();

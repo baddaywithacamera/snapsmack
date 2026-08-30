@@ -74,7 +74,7 @@ function ms_build_roster(PDO $pdo, string $exclude_url = ''): array
     $exclude_norm = preg_replace('~^https?://~i', '', rtrim($exclude_url, '/'));
     $rows = $pdo->query(
         "SELECT site_url, site_name, role, status, maintenance_mode,
-                software_version, smackverse_enabled, fedboard_sso_enabled
+                software_version, fediverse_enabled, fedboard_sso_enabled
          FROM snap_multisite_nodes
          ORDER BY site_name ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
@@ -89,7 +89,7 @@ function ms_build_roster(PDO $pdo, string $exclude_url = ''): array
             'status'              => $r['status'],
             'maintenance_mode'    => (int)$r['maintenance_mode'],
             'software_version'    => $r['software_version'],
-            'smackverse_enabled'  => (int)$r['smackverse_enabled'],
+            'fediverse_enabled'  => (int)$r['fediverse_enabled'],
             'fedboard_sso_enabled'=> (int)$r['fedboard_sso_enabled'],
         ];
     }
@@ -117,7 +117,7 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
         $upsert = $pdo->prepare("
             INSERT INTO snap_multisite_nodes
                 (role, site_url, site_name, api_key_local, api_key_remote, status,
-                 maintenance_mode, software_version, smackverse_enabled, fedboard_sso_enabled,
+                 maintenance_mode, software_version, fediverse_enabled, fedboard_sso_enabled,
                  roster_source, last_roster_seen_at, connected_at)
             VALUES (?, ?, ?, '', '', ?, ?, ?, ?, ?, ?, ?, NOW())
             ON DUPLICATE KEY UPDATE
@@ -126,7 +126,7 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
                 status              = VALUES(status),
                 maintenance_mode    = VALUES(maintenance_mode),
                 software_version    = VALUES(software_version),
-                smackverse_enabled  = VALUES(smackverse_enabled),
+                fediverse_enabled  = VALUES(fediverse_enabled),
                 fedboard_sso_enabled= VALUES(fedboard_sso_enabled),
                 roster_source       = VALUES(roster_source),
                 last_roster_seen_at = VALUES(last_roster_seen_at)
@@ -135,7 +135,7 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
         $upsert = $pdo->prepare("
             INSERT INTO snap_multisite_nodes
                 (role, site_url, site_name, api_key_local, api_key_remote, status,
-                 maintenance_mode, software_version, smackverse_enabled, fedboard_sso_enabled, connected_at)
+                 maintenance_mode, software_version, fediverse_enabled, fedboard_sso_enabled, connected_at)
             VALUES (?, ?, ?, '', '', ?, ?, ?, ?, ?, NOW())
             ON DUPLICATE KEY UPDATE
                 role               = VALUES(role),
@@ -143,7 +143,7 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
                 status             = VALUES(status),
                 maintenance_mode   = VALUES(maintenance_mode),
                 software_version   = VALUES(software_version),
-                smackverse_enabled   = VALUES(smackverse_enabled),
+                fediverse_enabled   = VALUES(fediverse_enabled),
                 fedboard_sso_enabled = VALUES(fedboard_sso_enabled)
         ");
     }
@@ -176,7 +176,7 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
                 $p['status'] ?? 'offline',
                 !empty($p['maintenance_mode']) ? 1 : 0,
                 (string)($p['software_version'] ?? ''),
-                !empty($p['smackverse_enabled']) ? 1 : 0,
+                !empty($p['fediverse_enabled']) ? 1 : 0,
                 !empty($p['fedboard_sso_enabled']) ? 1 : 0,
                 $hub_url,
                 $now,
@@ -189,7 +189,7 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
                 $p['status'] ?? 'offline',
                 !empty($p['maintenance_mode']) ? 1 : 0,
                 (string)($p['software_version'] ?? ''),
-                !empty($p['smackverse_enabled']) ? 1 : 0,
+                !empty($p['fediverse_enabled']) ? 1 : 0,
                 !empty($p['fedboard_sso_enabled']) ? 1 : 0,
             ]);
         }

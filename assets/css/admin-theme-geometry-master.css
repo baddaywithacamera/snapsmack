@@ -2089,6 +2089,14 @@ input[type="range"]:active::-webkit-slider-thumb {
 .empty-state-full { grid-column: 1 / -1; padding: 60px 20px; text-align: center; color: var(--text-secondary); }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .data-th { padding: 10px 16px; text-align: left; color: var(--text-muted, #666); font-weight: 600; }
+/* Directory moderation table: roomier rows so the listing scans, a divider
+   between entries, and centred On Relay / On Hub flags. Colours come from the
+   active theme's vars (with safe fallbacks). */
+.dir-table td, .dir-table th { padding: 11px 14px; }
+.dir-table tbody tr + tr { border-top: 1px solid var(--border, #2a2a2a); }
+.dir-table .dir-flag { text-align: center; white-space: nowrap; }
+.dir-table .dir-yes { color: var(--accent, #39ff14); font-weight: 700; }
+.dir-table .dir-no  { color: var(--text-muted, #666); }
 .meter-track    { flex: 1; height: 6px; background: var(--border, #333); border-radius: 4px; overflow: hidden; }
 .meter-track-lg { flex: 1; height: 8px; background: var(--border, #333); border-radius: 4px; overflow: hidden; }
 

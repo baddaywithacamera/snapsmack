@@ -1,5 +1,5 @@
 /*
- * SNAPSMACK — SMACKVERSE Pixelfed Client
+ * SNAPSMACK — FEDIVERSE Pixelfed Client
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  * Last non-empty line of this file MUST match the line above.
