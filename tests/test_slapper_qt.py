@@ -49,6 +49,10 @@ def _image(name, size=(400, 300), colour=(90, 120, 150)):
 def _editor(path):
     win = EditorWindow()
     assert win.open_path(path) is True
+    # Tests invoke recovery explicitly. Leaving every prior test window's timer
+    # running causes unrelated event-loop checks to autosave dozens of projects.
+    win._recovery_timer.stop()
+    win._recovery_dir = None
     return win
 
 
@@ -579,7 +583,9 @@ def test_filmstrip_lists_folder_and_opens():
     win.act_filmstrip.setChecked(True)
     win.filmstrip.show_for(first)
     assert win.filmstrip.count() == 2
-    QThreadPool.globalInstance().waitForDone(5000)
+    # Filmstrip owns a deliberately small private pool so a huge shoot cannot
+    # starve unrelated application work. Do not wait on the global pool here.
+    win.filmstrip._pool.waitForDone(5000)
     for _ in range(20):
         APP.processEvents(); time.sleep(0.01)
     # activating the other frame opens it (clean doc → no discard dialog)
