@@ -22,11 +22,13 @@
         var domain = preview.getAttribute('data-sv-domain') || '';
 
         function sanitise(v) {
-            v = String(v).toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
-            return v !== '' ? v : 'photoblog';
+            return String(v).toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
         }
         function update() {
-            preview.textContent = '@' + sanitise(input.value) + '@' + domain;
+            var h = sanitise(input.value);
+            // Empty field: show the same neutral placeholder the server renders
+            // (@…@domain), never a made-up default like the blog name.
+            preview.textContent = (h !== '' ? '@' + h : '@…') + '@' + domain;
         }
         input.addEventListener('input', update);
         update();
