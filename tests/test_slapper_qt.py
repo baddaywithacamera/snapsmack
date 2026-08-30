@@ -26,6 +26,7 @@ from PIL import Image, ImageChops                        # noqa: E402
 import editor_engine                                     # noqa: E402
 from PySide6.QtWidgets import QApplication               # noqa: E402
 from PySide6.QtCore import QDir, QThreadPool             # noqa: E402
+from PySide6.QtTest import QTest                         # noqa: E402
 from slapper_qt import theme                             # noqa: E402
 from slapper_qt.editor_window import EditorWindow        # noqa: E402
 from slapper_qt.library_window import (                  # noqa: E402
@@ -649,6 +650,24 @@ def test_zoom_actual_shows_native_pixels():
     assert win._zoom_actual is False
 
 
+def test_fit_preview_refreshes_after_window_layout():
+    # A file opened before show() initially sees a tiny provisional viewport.
+    # Once layout settles, Fit must re-render rather than stretch that proxy.
+    path = _image("layout_fit.jpg", size=(2400, 1600))
+    win = EditorWindow()
+    win.resize(480, 320)
+    assert win.open_path(path)
+    first_width = win.view._item.pixmap().width()
+    win.resize(1600, 1000)
+    win.show()
+    QTest.qWait(250)
+    APP.processEvents()
+    refreshed_width = win.view._item.pixmap().width()
+    assert refreshed_width > first_width
+    assert not win._zoom_actual and win.view._fitting
+    win.close()
+
+
 def test_filmstrip_lists_folder_and_opens():
     # the filmstrip shows the current folder and clicking a frame opens it
     folder = tempfile.mkdtemp(prefix="slapper_strip_", dir=TMP)
@@ -661,6 +680,11 @@ def test_filmstrip_lists_folder_and_opens():
     win.act_filmstrip.setChecked(True)
     win.filmstrip.show_for(first)
     assert win.filmstrip.count() == 2
+    assert win.filmstrip.isVisibleTo(win) or win._filmstrip_visible
+    win.filmstrip_handle.click()
+    assert not win._filmstrip_visible and "Show" in win.filmstrip_handle.text()
+    win.filmstrip_handle.click()
+    assert win._filmstrip_visible and "Hide" in win.filmstrip_handle.text()
     # Filmstrip owns a deliberately small private pool so a huge shoot cannot
     # starve unrelated application work. Do not wait on the global pool here.
     win.filmstrip._pool.waitForDone(5000)
