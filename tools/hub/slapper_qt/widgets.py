@@ -9,6 +9,7 @@ from PySide6.QtGui import QPainter, QPixmap, QColor, QPolygonF, QPen, QFont
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem,
+    QGraphicsEllipseItem, QGraphicsPolygonItem, QGraphicsLineItem,
     QWidget, QLabel, QSlider, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy,
 )
 
@@ -27,6 +28,8 @@ class ImageView(QGraphicsView):
     retouch_clicked = Signal(float, float)
     # normalized canvas movement for the selected movable layer
     layer_dragged = Signal(float, float, bool)
+    # corner index, normalized x/y, and whether the drag has finished
+    perspective_corner_dragged = Signal(int, float, float, bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -50,6 +53,13 @@ class ImageView(QGraphicsView):
         self._retouch_mode = False
         self._layer_move_mode = False
         self._layer_drag_point = None
+        self._perspective_mode = False
+        self._perspective_corners = [[0.0, 0.0], [1.0, 0.0],
+                                     [1.0, 1.0], [0.0, 1.0]]
+        self._perspective_drag = None
+        self._perspective_polygon = None
+        self._perspective_handles = []
+        self._perspective_grid = []
         # Before/After split: original on the left of the divider, edited on the
         # right, drag anywhere to move the split.
         self._compare = False
@@ -67,6 +77,69 @@ class ImageView(QGraphicsView):
         elif not (self._crop_mode or self._retouch_mode or self._compare):
             self.setDragMode(QGraphicsView.ScrollHandDrag)
             self.viewport().unsetCursor()
+
+    def set_perspective_mode(self, enabled, corners=None):
+        self._perspective_mode = bool(enabled)
+        if corners and len(corners) == 4:
+            self._perspective_corners = [list(point) for point in corners]
+        self._perspective_drag = None
+        self.setDragMode(QGraphicsView.NoDrag if enabled
+                         else QGraphicsView.ScrollHandDrag)
+        self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+        self._update_perspective_overlay()
+
+    def set_perspective_corners(self, corners):
+        if corners and len(corners) == 4:
+            self._perspective_corners = [list(point) for point in corners]
+            self._update_perspective_overlay()
+
+    def _clear_perspective_overlay(self):
+        if self._perspective_polygon is not None:
+            self._scene.removeItem(self._perspective_polygon)
+            self._perspective_polygon = None
+        for handle in self._perspective_handles:
+            self._scene.removeItem(handle)
+        self._perspective_handles = []
+        for line in self._perspective_grid:
+            self._scene.removeItem(line)
+        self._perspective_grid = []
+
+    def _update_perspective_overlay(self):
+        self._clear_perspective_overlay()
+        if not (self._perspective_mode and self._has_image):
+            return
+        rect = self._scene.sceneRect()
+        points = [QPointF(rect.left() + x * rect.width(),
+                          rect.top() + y * rect.height())
+                  for x, y in self._perspective_corners]
+        pen = QPen(QColor(theme.ACCENT), 0)
+        self._perspective_polygon = QGraphicsPolygonItem(QPolygonF(points))
+        self._perspective_polygon.setPen(pen)
+        self._perspective_polygon.setBrush(QColor(0, 0, 0, 0))
+        self._scene.addItem(self._perspective_polygon)
+        grid_pen = QPen(QColor(255, 255, 255, 150), 0)
+        # Bilinear guide lines are only an editing overlay. The rendered image
+        # itself uses one true projective transform, which preserves lines.
+        for fraction in (1 / 3, 2 / 3):
+            top = points[0] + (points[1] - points[0]) * fraction
+            bottom = points[3] + (points[2] - points[3]) * fraction
+            left = points[0] + (points[3] - points[0]) * fraction
+            right = points[1] + (points[2] - points[1]) * fraction
+            for start, end in ((top, bottom), (left, right)):
+                line = QGraphicsLineItem(start.x(), start.y(), end.x(), end.y())
+                line.setPen(grid_pen)
+                line.setZValue(9)
+                self._scene.addItem(line)
+                self._perspective_grid.append(line)
+        radius = max(5.0, min(rect.width(), rect.height()) / 80.0)
+        for point in points:
+            handle = QGraphicsEllipseItem(point.x() - radius, point.y() - radius,
+                                          radius * 2, radius * 2)
+            handle.setPen(QPen(QColor("#ffffff"), 0))
+            handle.setBrush(QColor(theme.ACCENT))
+            handle.setZValue(10)
+            self._scene.addItem(handle)
+            self._perspective_handles.append(handle)
 
     def set_retouch_mode(self, enabled):
         self._retouch_mode = enabled
@@ -90,6 +163,7 @@ class ImageView(QGraphicsView):
         self._item.setPixmap(pixmap)
         self._scene.setSceneRect(QRectF(pixmap.rect()))
         self._has_image = True
+        self._update_perspective_overlay()
         if first or not keep_view or self._fitting:
             self.fit()
 
@@ -179,6 +253,21 @@ class ImageView(QGraphicsView):
         self._compose_compare(keep_view=True)
 
     def mousePressEvent(self, event):
+        if self._perspective_mode and self._has_image and event.button() == Qt.LeftButton:
+            point = self.mapToScene(event.position().toPoint())
+            rect = self._scene.sceneRect()
+            positions = [QPointF(rect.left() + x * rect.width(),
+                                 rect.top() + y * rect.height())
+                         for x, y in self._perspective_corners]
+            if positions:
+                index = min(range(4), key=lambda i:
+                            (positions[i].x() - point.x()) ** 2 +
+                            (positions[i].y() - point.y()) ** 2)
+                tolerance = max(rect.width(), rect.height()) * 0.08
+                if ((positions[index].x() - point.x()) ** 2 +
+                        (positions[index].y() - point.y()) ** 2) <= tolerance ** 2:
+                    self._perspective_drag = index
+            return
         if self._compare and self._has_image and event.button() == Qt.LeftButton:
             self._set_divider_from(event)
             return
@@ -205,6 +294,18 @@ class ImageView(QGraphicsView):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        if self._perspective_mode and self._perspective_drag is not None and \
+                (event.buttons() & Qt.LeftButton):
+            point = self.mapToScene(event.position().toPoint())
+            rect = self._scene.sceneRect()
+            if rect.width() and rect.height():
+                x = max(-0.5, min(1.5, (point.x() - rect.left()) / rect.width()))
+                y = max(-0.5, min(1.5, (point.y() - rect.top()) / rect.height()))
+                self._perspective_corners[self._perspective_drag] = [x, y]
+                self._update_perspective_overlay()
+                self.perspective_corner_dragged.emit(
+                    self._perspective_drag, x, y, False)
+            return
         if self._compare and (event.buttons() & Qt.LeftButton):
             self._set_divider_from(event)
             return
@@ -225,6 +326,12 @@ class ImageView(QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+        if self._perspective_mode and self._perspective_drag is not None:
+            index = self._perspective_drag
+            self._perspective_drag = None
+            x, y = self._perspective_corners[index]
+            self.perspective_corner_dragged.emit(index, x, y, True)
+            return
         if self._crop_mode and self._crop_origin is not None:
             rect = self._crop_rect_item.rect().intersected(self._scene.sceneRect())
             self._crop_origin = None

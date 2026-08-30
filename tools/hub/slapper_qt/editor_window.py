@@ -395,6 +395,7 @@ class EditorWindow(QMainWindow):
         self.view.cropped.connect(self._apply_crop)
         self.view.retouch_clicked.connect(self._add_retouch)
         self.view.layer_dragged.connect(self._move_active_layer)
+        self.view.perspective_corner_dragged.connect(self._move_perspective_corner)
         self._layer_drag_changed = False
 
         self.filmstrip = Filmstrip(self)
@@ -645,6 +646,34 @@ class EditorWindow(QMainWindow):
         self.rotation_row.committed.connect(lambda _k: self._commit_geometry("Rotate"))
         layout.addWidget(self.rotation_row)
 
+        self.perspective_v_row = SliderRow(
+            "perspective_vertical", "Vertical perspective", -100, 100, 1, 0)
+        self.perspective_h_row = SliderRow(
+            "perspective_horizontal", "Horizontal perspective", -100, 100, 1, 0)
+        for row, label in ((self.perspective_v_row, "Vertical perspective"),
+                           (self.perspective_h_row, "Horizontal perspective")):
+            row.changed.connect(self._on_perspective)
+            row.committed.connect(lambda _key, text=label: self._commit_geometry(text))
+            layout.addWidget(row)
+
+        perspective_buttons = QHBoxLayout()
+        perspective_buttons.setContentsMargins(12, 2, 12, 2)
+        self.free_perspective_btn = QPushButton("Free Corners")
+        self.free_perspective_btn.setCheckable(True)
+        self.free_perspective_btn.setCursor(Qt.PointingHandCursor)
+        self.free_perspective_btn.setToolTip(
+            "Drag any corner. Straight lines stay straight; this is not a bend or liquify tool.")
+        self.free_perspective_btn.toggled.connect(self._toggle_free_perspective)
+        perspective_buttons.addWidget(self.free_perspective_btn)
+        self.perspective_edges = QComboBox()
+        self.perspective_edges.addItem("Auto Crop", "auto_crop")
+        self.perspective_edges.addItem("Transparent Edges", "transparent")
+        self.perspective_edges.setToolTip(
+            "Auto Crop removes empty edges; Transparent preserves the full canvas")
+        self.perspective_edges.currentIndexChanged.connect(self._on_perspective_edges)
+        perspective_buttons.addWidget(self.perspective_edges, 1)
+        layout.addLayout(perspective_buttons)
+
         buttons = QHBoxLayout()
         buttons.setContentsMargins(12, 2, 12, 2)
         buttons.setSpacing(4)
@@ -670,6 +699,52 @@ class EditorWindow(QMainWindow):
         self.doc.geometry["rotation"] = float(value)
         self._schedule_render()
 
+    def _on_perspective(self, key, value):
+        if not self.doc:
+            return
+        self.doc.geometry[key] = float(value)
+        self._schedule_render()
+
+    def _toggle_free_perspective(self, enabled):
+        corners = (self.doc.geometry.get("perspective_corners") if self.doc else None)
+        self.view.set_perspective_mode(enabled, corners)
+        if enabled:
+            self.status.showMessage("Drag a red corner handle; straight lines remain straight")
+
+    def _move_perspective_corner(self, index, x, y, finished):
+        if not self.doc:
+            return
+        corners = [list(point) for point in self.doc.geometry.get(
+            "perspective_corners", [[0, 0], [1, 0], [1, 1], [0, 1]])]
+        # Keep a valid convex quadrilateral while dragging. A corner may fan
+        # beyond the canvas, but it may not cross its two neighbours.
+        limits = {
+            0: (-0.5, corners[1][0] - .01, -0.5, corners[3][1] - .01),
+            1: (corners[0][0] + .01, 1.5, -0.5, corners[2][1] - .01),
+            2: (corners[3][0] + .01, 1.5, corners[1][1] + .01, 1.5),
+            3: (-0.5, corners[2][0] - .01, corners[0][1] + .01, 1.5),
+        }
+        min_x, max_x, min_y, max_y = limits[index]
+        x = max(min_x, min(max_x, float(x)))
+        y = max(min_y, min(max_y, float(y)))
+        corners[index] = [round(float(x), 6), round(float(y), 6)]
+        self.doc.geometry["perspective_corners"] = corners
+        self.view.set_perspective_corners(corners)
+        if finished:
+            self.doc.record("Free perspective")
+            self._update_title()
+        self._schedule_render()
+
+    def _on_perspective_edges(self, index):
+        if not self.doc:
+            return
+        value = self.perspective_edges.itemData(index) or "auto_crop"
+        if self.doc.geometry.get("perspective_edges") != value:
+            self.doc.geometry["perspective_edges"] = value
+            self.doc.record("Perspective edges")
+            self._render_preview()
+            self._update_title()
+
     def _commit_geometry(self, label):
         if self.doc:
             self.doc.record(label)
@@ -689,7 +764,13 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return
         self.doc.geometry.update({"rotation": 0.0, "crop": None,
-                                  "flip_x": False, "flip_y": False})
+                                  "flip_x": False, "flip_y": False,
+                                  "perspective_vertical": 0.0,
+                                  "perspective_horizontal": 0.0,
+                                  "perspective_corners": [[0.0, 0.0], [1.0, 0.0],
+                                                          [1.0, 1.0], [0.0, 1.0]],
+                                  "perspective_edges": "auto_crop"})
+        self.free_perspective_btn.setChecked(False)
         self.doc.record("Reset geometry")
         self._sync_geometry()
         self._render_preview()
@@ -1138,6 +1219,17 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return
         self.rotation_row.set_value(self.doc.geometry.get("rotation", 0.0))
+        self.perspective_v_row.set_value(
+            self.doc.geometry.get("perspective_vertical", 0.0))
+        self.perspective_h_row.set_value(
+            self.doc.geometry.get("perspective_horizontal", 0.0))
+        edge_index = self.perspective_edges.findData(
+            self.doc.geometry.get("perspective_edges", "auto_crop"))
+        self.perspective_edges.blockSignals(True)
+        self.perspective_edges.setCurrentIndex(max(0, edge_index))
+        self.perspective_edges.blockSignals(False)
+        self.view.set_perspective_corners(self.doc.geometry.get(
+            "perspective_corners", [[0, 0], [1, 0], [1, 1], [0, 1]]))
         self.flip_h_btn.setChecked(bool(self.doc.geometry.get("flip_x", False)))
         self.flip_v_btn.setChecked(bool(self.doc.geometry.get("flip_y", False)))
 
@@ -1281,6 +1373,10 @@ class EditorWindow(QMainWindow):
             self, "Open SNAP SLAPPER project", "", PROJECT_FILTER)
         if not path:
             return
+        self.open_project_path(path)
+
+    def open_project_path(self, path):
+        """Open a project selected in-app or passed by Windows/the command line."""
         try:
             document = editor_engine.EditorDocument.load_project(path)
             document.render((64, 64))   # decode the referenced photo now
@@ -1300,6 +1396,7 @@ class EditorWindow(QMainWindow):
         self._update_title()
         self._refresh_filmstrip()
         self.status.showMessage(os.path.basename(path))
+        return True
 
     def save_project(self):
         if not self.doc:
