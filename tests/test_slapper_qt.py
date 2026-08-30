@@ -377,6 +377,22 @@ def test_text_layer_editing():
     assert win.text_section.isHidden()
 
 
+def test_selected_text_layer_moves_directly_on_canvas():
+    win = _editor(_image("move-layer.jpg", (400, 300)))
+    win.layers_panel._add_text()
+    layer = win._text_layer()
+    before = dict(layer["transform"])
+    assert win.view._layer_move_mode
+    win._move_active_layer(.10, -.05, False)
+    win._move_active_layer(0, 0, True)
+    assert layer["transform"]["x"] == before["x"] + .10
+    assert layer["transform"]["y"] == before["y"] - .05
+    assert win.doc.history[-1]["label"] == "Move layer"
+    assert win.doc.render((300, 300))
+    win.set_target(BASE)
+    assert not win.view._layer_move_mode
+
+
 def test_retouch():
     win = _editor(_image("ret.jpg", (300, 200)))
     win.act_heal.setChecked(True)
