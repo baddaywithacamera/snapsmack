@@ -35,6 +35,13 @@ TOPICS = [
      "patch and corrects both Temperature and Tint without changing the original "
      "JPEG. Choose an area with visible detail; blown white and crushed black "
      "cannot provide reliable colour and will be rejected."),
+    ("PANOMERGE",
+     "In the Library, select two or more overlapping photographs in shooting "
+     "order and choose PANOMERGE. Reorder or add photos in the PANOMERGE window, "
+     "choose an output file, then merge. The separately installed XPANO engine "
+     "performs automatic alignment, stitching, and blending without changing "
+     "the originals; the completed panorama opens directly in the editor. "
+     "PANOMERGE supports Windows and Linux only."),
     ("Black & white colour mixer",
      "Turn on Convert to black and white, then use the eight colour sliders "
      "(Red…Magenta) to control how each colour becomes grey — brighten a blue "
