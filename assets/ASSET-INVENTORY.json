@@ -819,12 +819,12 @@
             "purpose": "SnapSmack Gallery Slider Engine A lightweight, dependency-free horizontal gallery slider component."
         },
         {
-            "file": "assets/js/ss-engine-smackverse-admin.js",
+            "file": "assets/js/ss-engine-fediverse-admin.js",
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
             "requires": [],
-            "purpose": "SMACKVERSE admin page engine One job: live-preview the fediverse address as the handle is typed."
+            "purpose": "FEDIVERSE admin page engine One job: live-preview the fediverse address as the handle is typed."
         },
         {
             "file": "assets/js/ss-engine-social-dock.js",
@@ -880,7 +880,7 @@
             "family": "Shared front-end helpers (ss-*)",
             "vendor": false,
             "requires": [],
-            "purpose": "SNAPSMACK \u2014 SMACKVERSE : Standalone Pixelfed-compatible client () ORIGINAL code."
+            "purpose": "SNAPSMACK \u2014 FEDIVERSE : Standalone Pixelfed-compatible client () ORIGINAL code."
         },
         {
             "file": "assets/js/ss-pixelfed-client.js",
@@ -888,7 +888,7 @@
             "family": "Shared front-end helpers (ss-*)",
             "vendor": false,
             "requires": [],
-            "purpose": "SMACKVERSE Pixelfed Client"
+            "purpose": "FEDIVERSE Pixelfed Client"
         },
         {
             "file": "assets/js/wall-engine.js",
@@ -1267,12 +1267,12 @@
         {
             "file": "assets/css/ss-pixel.css",
             "requires": [],
-            "purpose": "SNAPSMACK \u2014 SMACKVERSE : Standalone Pixelfed-compatible client () ORIGINAL code."
+            "purpose": "SNAPSMACK \u2014 FEDIVERSE : Standalone Pixelfed-compatible client () ORIGINAL code."
         },
         {
             "file": "assets/css/ss-pixelfed-client.css",
             "requires": [],
-            "purpose": "SMACKVERSE Pixelfed Client (faithful pixelfed.ca look)"
+            "purpose": "FEDIVERSE Pixelfed Client (faithful pixelfed.ca look)"
         }
     ]
 }

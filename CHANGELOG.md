@@ -10,6 +10,18 @@
 
 # SnapSmack Changelog
 
+## 0.7.585 "GOOD NEIGHBOUR" — 2026-08-29
+
+- **Removed the "smackverse" name from the whole platform.** Co-opting the
+  fediverse under a SnapSmack brand name was disrespectful to the wider fediverse
+  community and risked their trust in us. Every instance is gone: the CMS
+  federation code, filenames, admin labels, comments and CLI messages are now
+  **fediverse**; the relay's own identity is now **photoblogs.fyi** (retiring
+  `smackverse.snapsmack.ca`). A one-time migration renames the matching database
+  settings and columns so nothing — federation identity, followers, keys — is lost
+  on upgrade. Historical changelog and dated security-audit filenames are kept as
+  record.
+
 ## 0.7.584 "BLANK SLATE" — 2026-08-29
 
 - **The fediverse handle field starts blank and must be filled in.** It used to

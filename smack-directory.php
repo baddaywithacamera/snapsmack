@@ -15,7 +15,7 @@
  * Last non-empty line of this file MUST match the marker above.
  */
 require_once 'core/auth-smack.php';
-require_once 'core/smackverse.php';              // sv_handle / sv_domain
+require_once 'core/fediverse.php';              // sv_handle / sv_domain
 require_once 'core/photoblogs-directory.php';
 
 $self = basename($_SERVER['SCRIPT_NAME'] ?? 'smack-directory.php');

@@ -90,7 +90,7 @@ if (!defined('SNAPSMACK_RELEASE_PUBKEY')
 unset($_rpk_file);
 
 // ─── .HTACCESS SELF-HEAL (0.7.380): reconcile the SnapSmack rules block ───────
-// A rule change (e.g. a new SMACKVERSE route) ships in core/htaccess-template,
+// A rule change (e.g. a new FEDIVERSE route) ships in core/htaccess-template,
 // but .htaccess is a protected file, so it used to need a manual HTACCESS REPAIR
 // on every blog. Reconcile it here the moment the new files land — drift-gated
 // (a no-op once current) and preserving any host-added rules above the block.

@@ -88,7 +88,7 @@ The existing single `snap_settings.photochallenge_tag` becomes a compatibility f
 
 ## 5. Prompt scheduling - reuse SnapSmack
 
-A prompt is an ordinary SnapSmack post with a future publication date. SnapSmack already hides future-dated published content until its date arrives, and `sv_sweep_new_posts()` federates scheduled content after the date passes on the next SMACKVERSE cron run.
+A prompt is an ordinary SnapSmack post with a future publication date. SnapSmack already hides future-dated published content until its date arrives, and `sv_sweep_new_posts()` federates scheduled content after the date passes on the next FEDIVERSE cron run.
 
 Do not build a second prompt-post queue.
 
@@ -210,8 +210,8 @@ Use a dedicated challenge-management scope or an explicitly expanded SYBU scope.
 6. An old weekly tag cannot qualify during a later window.
 7. COLD SNAP can create several prompt drafts offline and sync them idempotently.
 8. SHOTS FIRED shows all linked future prompts and moves the prompt publication time without moving the challenge window.
-9. A scheduled prompt becomes public at its date and federates on the next healthy SMACKVERSE sweep.
-10. Manual SMACKVERSE push mode creates an explicit readiness failure because scheduled prompts will not auto-federate.
+9. A scheduled prompt becomes public at its date and federates on the next healthy FEDIVERSE sweep.
+10. Manual FEDIVERSE push mode creates an explicit readiness failure because scheduled prompts will not auto-federate.
 11. Missing cron, missing prompt, duplicate week, and duplicate tag all fail closed with operator-visible warnings.
 12. Entries remain pending and unboosted until moderation policy permits announcement.
 13. Hiding an announced entry sends and tracks Undo(Announce).

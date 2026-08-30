@@ -1299,7 +1299,7 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'active_skin'               => $default_skin,
                 'active_skin_variant'       => $default_variant,
                 'active_theme'              => 'midnight-lime',
-                'smackverse_enabled'        => $installer_is_fedistructure ? '1' : '0',
+                'fediverse_enabled'        => $installer_is_fedistructure ? '1' : '0',
                 'photochallenge_enabled'    => in_array($install_profile, ['photo-challenge', 'daily-photo'], true) ? '1' : '0',
                 'photochallenge_tag'        => $install_profile === 'daily-photo' ? 'aphotoeveryday' : 'photofri',
                 'photochallenge_window_mode'=> $install_profile === 'daily-photo' ? 'daily' : 'weekly',
@@ -1478,10 +1478,10 @@ RewriteRule ^api/v([12])/(.*)$ pixelfed-api.php?route=api/v$1/$2 [L,QSA]
 RewriteRule ^api/v1\.1/(.*)$ pixelfed-api.php?route=api/v1.1/$1 [L,QSA]
 RewriteRule ^api/pixelfed/v1/(.*)$ pixelfed-api.php?route=api/pixelfed/v1/$1 [L,QSA]
 RewriteRule ^oauth/(authorize|token|revoke)$ pixelfed-api.php?route=oauth/$1 [L,QSA]
-RewriteRule ^\.well-known/webfinger$ smackverse.php?ap=webfinger [L,QSA]
-RewriteRule ^\.well-known/nodeinfo$ smackverse.php?ap=nodeinfo [L,QSA]
-RewriteRule ^nodeinfo/2\.0$ smackverse.php?ap=nodeinfo2 [L,QSA]
-RewriteRule ^ap/(.+)$ smackverse.php?appath=$1 [L,QSA]
+RewriteRule ^\.well-known/webfinger$ fediverse.php?ap=webfinger [L,QSA]
+RewriteRule ^\.well-known/nodeinfo$ fediverse.php?ap=nodeinfo [L,QSA]
+RewriteRule ^nodeinfo/2\.0$ fediverse.php?ap=nodeinfo2 [L,QSA]
+RewriteRule ^ap/(.+)$ fediverse.php?appath=$1 [L,QSA]
 
 RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
 

@@ -3,7 +3,7 @@
 /**
  * photoblogs.fyi Relay — ActivityPub primitives (keys, actor doc, HTTP-signature
  * sign + verify, SSRF-guarded fetch, signed POST delivery + queue). Faithful to
- * the SnapSmack core/smackverse.php implementation, stripped to relay needs.
+ * the SnapSmack core/photoblogs.php implementation, stripped to relay needs.
  */
 
 require_once __DIR__ . '/db.php';

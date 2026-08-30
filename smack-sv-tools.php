@@ -1,9 +1,9 @@
 <?php
 /**
- * SNAPSMACK - SMACKVERSE - Push & Tools
+ * SNAPSMACK - FEDIVERSE - Push & Tools
  *
- * One of the three pages split out of the old monolithic SMACKVERSE page
- * (0.7.405). Shares core/smackverse-admin-shared.php for settings, POST
+ * One of the three pages split out of the old monolithic FEDIVERSE page
+ * (0.7.405). Shares core/fediverse-admin-shared.php for settings, POST
  * handlers and render state; this page renders only its own sections.
  *
  * SNAPSMACK_EOF_HEADER
@@ -11,8 +11,8 @@
  * Last non-empty line of this file MUST match the line above.
  */
 require_once 'core/auth-smack.php';
-require_once 'core/smackverse.php';
-require_once 'core/smackverse-admin-shared.php';
+require_once 'core/fediverse.php';
+require_once 'core/fediverse-admin-shared.php';
 
 $page_title = 'Fediverse - Push & Tools';
 include 'core/admin-header.php';
@@ -33,7 +33,7 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
     <!-- PUSH MODE -->
-    <?php $sv_pmode  = (($sv_settings['smackverse_push_mode'] ?? 'auto') === 'manual') ? 'manual' : 'auto';
+    <?php $sv_pmode  = (($sv_settings['fediverse_push_mode'] ?? 'auto') === 'manual') ? 'manual' : 'auto';
           $sv_staged = function_exists('sv_staged_count') ? sv_staged_count($pdo) : 0; ?>
     <div class="box mb-20">
         <h3>PUSH MODE — <?php echo $sv_pmode === 'manual' ? 'MANUAL' : 'AUTO'; ?></h3>
@@ -91,7 +91,7 @@ include 'core/sidebar.php';
             <label class="dim d-block mb-12">
                 Posts to push:
                 <input type="number" name="resync_count" min="1" max="500"
-                       value="<?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 200); ?>"
+                       value="<?php echo (int)($sv_settings['fediverse_backfill_count'] ?? 200); ?>"
                        class="w-90 ml-6">
             </label>
             <label class="dim d-block mb-12">
@@ -123,7 +123,7 @@ include 'core/sidebar.php';
             <label class="dim d-block mb-12">
                 Posts to re-imprint:
                 <input type="number" name="reimprint_count" min="1" max="1000"
-                       value="<?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 200); ?>"
+                       value="<?php echo (int)($sv_settings['fediverse_backfill_count'] ?? 200); ?>"
                        class="w-90 ml-6">
             </label>
             <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>RE-IMPRINT ORDER</button>

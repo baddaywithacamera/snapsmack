@@ -19,14 +19,14 @@
  * Last non-empty line of this file MUST match the line above.
  */
 
-require_once __DIR__ . '/smackverse.php';
+require_once __DIR__ . '/fediverse.php';
 
 $pp_base   = rtrim(defined('BASE_URL') ? BASE_URL : sv_base($settings), '/') . '/';
 $pp_actor  = sv_actor_doc($pdo, $settings);
 $pp_handle = sv_handle($settings);
 $pp_host   = sv_domain($settings);
 $pp_name   = html_entity_decode((string)($pp_actor['name'] ?? ($settings['site_name'] ?? $pp_handle)), ENT_QUOTES | ENT_HTML5);
-$pp_bio    = html_entity_decode(trim(strip_tags((string)($settings['smackverse_bio'] ?? ($settings['site_description'] ?? '')))), ENT_QUOTES | ENT_HTML5);
+$pp_bio    = html_entity_decode(trim(strip_tags((string)($settings['fediverse_bio'] ?? ($settings['site_description'] ?? '')))), ENT_QUOTES | ENT_HTML5);
 $pp_tagline = html_entity_decode(trim((string)($settings['site_tagline'] ?? '')), ENT_QUOTES | ENT_HTML5);
 
 $pp_avatar = '';

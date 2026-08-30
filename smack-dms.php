@@ -16,7 +16,7 @@
  */
 
 require_once 'core/auth-smack.php';
-require_once 'core/smackverse.php';
+require_once 'core/fediverse.php';
 
 $msg = '';
 
@@ -129,7 +129,7 @@ include 'core/sidebar.php';
     <?php if (!$sv_on): ?>
         <div class="box">
             <p>Fediverse is switched off — nothing sends or arrives until you flip it on in
-               <a href="smack-smackverse.php">Fediverse Federation</a>. Anything below is history.</p>
+               <a href="smack-fediverse-portal.php">Fediverse Federation</a>. Anything below is history.</p>
         </div>
     <?php endif; ?>
 

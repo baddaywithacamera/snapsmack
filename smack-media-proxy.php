@@ -8,14 +8,14 @@
  */
 
 require_once __DIR__ . '/core/auth-smack.php';
-require_once __DIR__ . '/core/smackverse.php';
+require_once __DIR__ . '/core/fediverse.php';
 
 $proxy_settings = $pdo->query("SELECT setting_key,setting_val FROM snap_settings")
     ->fetchAll(PDO::FETCH_KEY_PAIR);
 $encoded = trim((string)($_GET['u'] ?? ''));
 $expires = (int)($_GET['e'] ?? 0);
 $provided = strtolower(trim((string)($_GET['s'] ?? '')));
-$private = (string)($proxy_settings['smackverse_private_key'] ?? '');
+$private = (string)($proxy_settings['fediverse_private_key'] ?? '');
 if ($encoded === '' || $expires < time() || $expires > time() + 604800 || $private === '') {
     http_response_code(403); exit;
 }

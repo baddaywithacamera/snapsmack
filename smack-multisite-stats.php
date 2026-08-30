@@ -512,24 +512,24 @@ include 'core/sidebar.php';
                 $active_spokes = count(array_filter($spokes, fn($s) => $s['status'] === 'active'));
 
                 // Fediverse rollup — hub's own live count + each spoke's cached
-                // heartbeat count (snap_multisite_nodes.smackverse_followers).
+                // heartbeat count (snap_multisite_nodes.fediverse_followers).
                 $fleet_fedi_followers = 0; $fleet_fedi_sites = 0;
                 try {
-                    if (($settings['smackverse_enabled'] ?? '0') === '1') {
+                    if (($settings['fediverse_enabled'] ?? '0') === '1') {
                         $fleet_fedi_followers += (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_followers WHERE is_active = 1")->fetchColumn();
                         $fleet_fedi_sites++;
                     }
-                    $_fr = $pdo->query("SELECT COALESCE(SUM(smackverse_followers),0) AS f, COALESCE(SUM(smackverse_enabled),0) AS s FROM snap_multisite_nodes WHERE role = 'spoke'")->fetch(PDO::FETCH_ASSOC);
+                    $_fr = $pdo->query("SELECT COALESCE(SUM(fediverse_followers),0) AS f, COALESCE(SUM(fediverse_enabled),0) AS s FROM snap_multisite_nodes WHERE role = 'spoke'")->fetch(PDO::FETCH_ASSOC);
                     $fleet_fedi_followers += (int)($_fr['f'] ?? 0);
                     $fleet_fedi_sites     += (int)($_fr['s'] ?? 0);
                 } catch (Exception $e) { /* federation cols not present yet */ }
 
-                // SMACKVERSE engagement (hub) — following, inbound likes/boosts/
+                // FEDIVERSE engagement (hub) — following, inbound likes/boosts/
                 // replies (typed in snap_ap_notifications), and views referred by an
                 // instance we federate with or a common fediverse platform pattern.
                 $fedi_following = 0; $fedi_likes = 0; $fedi_boosts = 0; $fedi_replies = 0;
                 try {
-                    if (($settings['smackverse_enabled'] ?? '0') === '1') {
+                    if (($settings['fediverse_enabled'] ?? '0') === '1') {
                         $fedi_following = (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_following WHERE state = 'accepted'")->fetchColumn();
                         $_nt = $pdo->query("SELECT ntype, COUNT(*) c FROM snap_ap_notifications GROUP BY ntype")->fetchAll(PDO::FETCH_KEY_PAIR);
                         $fedi_likes = (int)($_nt['like']  ?? 0);
@@ -543,10 +543,10 @@ include 'core/sidebar.php';
                     // follows and Pixelfed likes still read 0. Unconditional — spokes
                     // federate even when the hub site itself doesn't.
                     $_fe = $pdo->query(
-                        "SELECT COALESCE(SUM(smackverse_following),0) fo,
-                                COALESCE(SUM(smackverse_likes),0)     li,
-                                COALESCE(SUM(smackverse_boosts),0)    bo,
-                                COALESCE(SUM(smackverse_replies),0)   re
+                        "SELECT COALESCE(SUM(fediverse_following),0) fo,
+                                COALESCE(SUM(fediverse_likes),0)     li,
+                                COALESCE(SUM(fediverse_boosts),0)    bo,
+                                COALESCE(SUM(fediverse_replies),0)   re
                          FROM snap_multisite_nodes WHERE role = 'spoke'"
                     )->fetch(PDO::FETCH_ASSOC);
                     $fedi_following += (int)($_fe['fo'] ?? 0);
