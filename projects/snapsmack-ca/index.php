@@ -86,11 +86,16 @@ $page_css = <<<'CSS'
 .coming-features { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin-top: 22px; }
 .coming-item--feature p + p { margin-top: .85em; }
 .coming-item--feature .ps { margin-top: 1em; color: #777; font-style: italic; }
+.roadmap-details { margin-top: 28px; border: 1px solid #444; background: #151515; }
+.roadmap-details summary { padding: 18px 22px; color: var(--white); cursor: pointer; font: 900 .8rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.roadmap-details[open] summary { border-bottom: 1px solid #444; }
+.roadmap-details .coming-grid { padding: 0 22px 22px; }
 #security { background: #2e2e2e; color: var(--white); }
 #security h2 { color: var(--red); }
 #security .site-discovery-kicker { color: #bbb; }
 #security .lede { color: #bbb; max-width: 900px; }
 .security-layers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 34px 42px; margin-top: 42px; }
+#security .roadmap-details .security-layers { margin-top: 0; padding: 30px 28px 34px; }
 .security-layer { padding-top: 22px; border-top: 3px solid var(--red); }
 .security-layer .layer-num { margin-bottom: 10px; color: var(--red); font: 900 .7rem/1 Arial Black, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
 .security-layer h3 { color: var(--white); margin-bottom: 12px; font-size: 1.1rem; }
@@ -127,6 +132,7 @@ $page_css = <<<'CSS'
     .coming-grid { grid-template-columns: 1fr; }
     .coming-features { grid-template-columns: 1fr; }
     .security-layers { grid-template-columns: 1fr; }
+    #security .roadmap-details .security-layers { padding: 22px 18px 26px; }
     .trust-grid { grid-template-columns: 1fr; }
     .whodat-card { display: block; }
     .whodat-portrait { margin: -22px -22px 20px; }
@@ -266,6 +272,8 @@ require_once __DIR__ . '/includes/header.php';
                 <h2>Coming Up the Rear</h2>
                 <p class="lede">What is currently rattling around in the SnapSmack pipeline. No roadmap theatre, no investor promises. It ships when it works.</p>
             </div>
+            <details class="roadmap-details">
+                <summary>Open the roadmap: see what is being built</summary>
             <div class="coming-grid">
                 <article class="coming-item">
                     <span class="tag">Skin</span>
@@ -313,6 +321,7 @@ require_once __DIR__ . '/includes/header.php';
                     <p>A shared front door for finding independent photography sites without making any of those sites depend on it.</p>
                 </article>
             </div>
+            </details>
             <div class="coming-features">
                 <article class="coming-item coming-item--feature">
                     <span class="tag">Photo Manager</span>
@@ -338,6 +347,8 @@ require_once __DIR__ . '/includes/header.php';
                 <h2>Security</h2>
                 <p class="lede">Eight layers. The more work a troll or attacker has to do, the more likely they are to go bother someone else. We work them harder than an Amazon employee on Black Friday.</p>
             </div>
+            <details class="roadmap-details">
+                <summary>See all eight security layers</summary>
             <div class="security-layers">
                 <article class="security-layer">
                     <div class="layer-num">Layer 1 &mdash; Local</div>
@@ -380,6 +391,7 @@ require_once __DIR__ . '/includes/header.php';
                     <p>Cryptographically signed releases, published checksums, signed git tags, reviewed bundled dependencies, and public security audits protect the software supply chain.</p>
                 </article>
             </div>
+            </details>
             <p class="section-link"><a href="features.php">Read the complete security and product overview &rarr;</a></p>
         </div>
     </section>
