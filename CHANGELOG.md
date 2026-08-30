@@ -10,6 +10,14 @@
 
 # SnapSmack Changelog
 
+## 0.7.589 "LIVE WIRE" — 2026-08-30
+
+- **New PULL CURRENT button on Fleet Stats.** The fediverse and fleet numbers on
+  the stats rollup are whatever each blog last reported on its own schedule, so
+  they can lag reality. PULL CURRENT (top nav, next to PUSH IT) fetches a live
+  heartbeat from every active blog on the spot and refreshes the totals — no more
+  waiting for the next beat to see the true numbers.
+
 ## 0.7.588 "NAME TAG" — 2026-08-30
 
 - **Your fediverse @handle is now yours to choose — the blog title never becomes it.**

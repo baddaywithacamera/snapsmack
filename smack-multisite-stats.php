@@ -59,6 +59,24 @@ $period_label = match($period) {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PULL CURRENT — force a live heartbeat from every active spoke so the fleet
+// rollup (and especially the FEDIVERSE tiles) reflects reality *now* instead of
+// waiting for each spoke's next scheduled beat. Reuses the same per-node call
+// the single-spoke "ping" uses. POST-only; redirects back so a refresh doesn't
+// re-fire it.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pull_current'])) {
+    require_once __DIR__ . '/core/mesh-helpers.php';
+    $pull_ok = 0; $pull_miss = 0;
+    foreach ($spokes as $sp) {
+        if (($sp['status'] ?? '') !== 'active') continue;
+        ms_pull_heartbeat($pdo, $sp) ? $pull_ok++ : $pull_miss++;
+    }
+    header('Location: ?days=' . $period . '&pulled=' . $pull_ok . '&missed=' . $pull_miss);
+    exit;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FETCH enriched stats from each active spoke
 // ─────────────────────────────────────────────────────────────────────────────
 $spoke_stats  = [];   // keyed by node_id
@@ -483,6 +501,10 @@ include 'core/sidebar.php';
             <a href="smack-multisite-blogroll.php"  class="btn-clear">BLOGROLL</a>
             <a href="smack-multisite-settings.php"  class="btn-clear">SETTINGS</a>
             <a href="smack-push-it.php"              class="btn-clear">PUSH IT</a>
+            <form method="POST" class="m-0">
+                <button type="submit" name="pull_current" value="1" class="btn-clear"
+                        title="Fetch a live heartbeat from every spoke right now (updates the fediverse counts below)">PULL CURRENT</button>
+            </form>
             <span class="sep">|</span>
             <a href="?days=7"   class="btn-clear <?php echo $period === 7   ? 'active' : ''; ?>">7D</a>
             <a href="?days=30"  class="btn-clear <?php echo $period === 30  ? 'active' : ''; ?>">30D</a>
@@ -492,6 +514,10 @@ include 'core/sidebar.php';
             <a href="?days=0"   class="btn-clear <?php echo $period === 0   ? 'active' : ''; ?>">ALL</a>
         </div>
     </div>
+
+    <?php if (isset($_GET['pulled'])): ?>
+        <div class="alert alert-success">Pulled a live heartbeat from <?php echo (int)$_GET['pulled']; ?> spoke(s)<?php echo (int)($_GET['missed'] ?? 0) ? ' — ' . (int)$_GET['missed'] . ' unreachable' : ''; ?>. The totals below are current as of now.</div>
+    <?php endif; ?>
 
     <?php if (!empty($fetch_errors)): ?>
         <div class="alert alert-error">OFFLINE SPOKES (no stats): <?php echo htmlspecialchars(implode(', ', $fetch_errors)); ?></div>
