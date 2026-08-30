@@ -463,6 +463,34 @@ def test_local_blog_copy_contract_is_safe_and_auditable():
     assert second != target and os.path.isfile(target)
 
 
+def test_layered_psd_export_is_parseable_and_preserves_composite():
+    from PIL import ImageChops
+    from psd_tools import PSDImage
+    from slapper_qt.psd_export import export_layered_psd
+
+    source = _image("psd-source.jpg", (220, 150), (80, 115, 155))
+    source_hash = editor_engine.photo_manager.content_hash(source)
+    doc = editor_engine.EditorDocument(source)
+    adjustment = doc.add_adjustment_layer("Brighter")
+    adjustment["adjustments"]["brightness"] = 25
+    text = doc.add_text_layer("PSD", name="Title", font_size=28)
+    text["transform"]["x"] = .65
+    target = os.path.join(TMP, "layered-output.psd")
+    assert export_layered_psd(doc, target) == target
+    assert editor_engine.photo_manager.content_hash(source) == source_hash
+
+    parsed = PSDImage.open(target)
+    assert parsed.size == (220, 150)
+    assert len(parsed) == len(doc.layers) + 2
+    names = [layer.name for layer in parsed]
+    assert names[0].startswith("00 Base image")
+    assert names[-1].startswith("SNAP SLAPPER Composite")
+    assert sum(1 for layer in parsed if layer.visible) == 1
+    expected = doc.render().convert("RGB")
+    actual = parsed.composite(force=True).convert("RGB")
+    assert ImageChops.difference(expected, actual).getbbox() is None
+
+
 def test_retouch():
     win = _editor(_image("ret.jpg", (300, 200)))
     win.act_heal.setChecked(True)

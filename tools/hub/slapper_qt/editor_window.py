@@ -1827,19 +1827,30 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return
         base = os.path.splitext(os.path.basename(self.doc.source_path))[0]
-        path, _ = QFileDialog.getSaveFileName(
+        path, selected_filter = QFileDialog.getSaveFileName(
             self, "Export copy", f"{base}_edited.jpg",
-            "JPEG (*.jpg);;PNG (*.png)")
+            "JPEG — flattened (*.jpg);;PNG — flattened (*.png);;"
+            "TIFF — flattened (*.tif *.tiff);;Photoshop PSD — layered checkpoints (*.psd)")
         if not path:
             return
+        extension = os.path.splitext(path)[1].lower()
+        if not extension:
+            chosen = ".psd" if "PSD" in selected_filter else \
+                ".tif" if "TIFF" in selected_filter else \
+                ".png" if "PNG" in selected_filter else ".jpg"
+            path += chosen
         from . import prefs
         settings = prefs.load()
         copyright_text = (settings["copyright_text"]
                           if settings["add_copyright_if_missing"] else "")
         try:
-            self.doc.export(path, quality=int(settings["export_quality"]),
-                            copyright_text=copyright_text,
-                            strip_gps=bool(settings["strip_gps"]))
+            if os.path.splitext(path)[1].lower() == ".psd":
+                from .psd_export import export_layered_psd
+                export_layered_psd(self.doc, path)
+            else:
+                self.doc.export(path, quality=int(settings["export_quality"]),
+                                copyright_text=copyright_text,
+                                strip_gps=bool(settings["strip_gps"]))
         except Exception as error:  # noqa: BLE001
             self._error("Export failed", str(error))
             return

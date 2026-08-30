@@ -96,7 +96,7 @@ identity, so every existing look/project renders unchanged.
   a freshly opened photo starts fitted. Editing while held at 100% re-renders
   full-resolution, so it is slower than Fit — flip to Fit for fast tuning.
 
-## Added for build 0.7.561
+## Added for build 0.7.562
 - Persistent catalogue sources, ratings, tags, favourites, albums, filtering,
   recoverable SNAP SLAPPER Trash, duplicate-aware imports, transactional batch
   rename, move/copy history and undo, rotated copies, and selected-photo export.
@@ -110,6 +110,10 @@ identity, so every existing look/project renders unchanged.
   with an auditable `.snapstage.json` manifest; it never uploads or publishes.
 - Real per-run crash logging, readable 12–13px interface defaults, and a bounded,
   private filmstrip thumbnail queue that cannot starve the application.
+- Layered PSD export with a full-resolution visible composite and independently
+  parseable, named raster checkpoints for the base and every SNAP SLAPPER layer.
+  Custom filters are identified honestly as raster checkpoints rather than being
+  misrepresented as native Photoshop adjustment layers.
 
 ## Not yet built (later phases)
 - Found Textures: category/album filter, favourite, local categories (search +
