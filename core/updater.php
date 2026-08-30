@@ -196,6 +196,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-drop-pimpotron.sql',
     'migrate-ap-timeline-membership.sql',
     'migrate-fedistructure-site-mode.sql',
+    'migrate-fediverse-rename.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
@@ -239,6 +240,17 @@ const UPDATER_DEPRECATED_FILES = [
     'smack-admin-reference.php' => '0.7.507', // stale duplicate of the old dashboard, superseded by
                                               // smack-admin.php. Carried its own live cron-registration
                                               // POST handlers against a long-diverged UI.
+    // 0.7.585: "smackverse" removed platform-wide (disrespectful co-opting of the
+    // fediverse). Federation code renamed smackverse* → fediverse*; these old names
+    // must be deleted from installs or SMACKBACK strict flags them as orphans.
+    'smack-smackverse.php'                   => '0.7.585D', // → smack-fediverse-portal.php
+    'smackverse.php'                         => '0.7.585D', // → fediverse.php (AP router)
+    'core/smackverse.php'                    => '0.7.585D', // → core/fediverse.php
+    'core/smackverse-admin-shared.php'       => '0.7.585D', // → core/fediverse-admin-shared.php
+    'core/smackverse-kick.php'               => '0.7.585D', // → core/fediverse-kick.php
+    'core/smackverse-webcron.php'            => '0.7.585D', // → core/fediverse-webcron.php
+    'cron-smackverse.php'                    => '0.7.585D', // → cron-fediverse.php
+    'assets/js/ss-engine-smackverse-admin.js' => '0.7.585D', // → ss-engine-fediverse-admin.js
 ];
 
 /**
@@ -254,6 +266,7 @@ const UPDATER_DEPRECATED_FILES = [
  */
 const UPDATER_DEPRECATED_DIRS = [
     'wip' => '0.7.426',  // dev work-in-progress scratch; never belongs on an install
+    'projects/smackverse-relay' => '0.7.585D',  // renamed → projects/photoblogs-relay (de-smackverse)
 ];
 
 // ─── VERSION CHECK ──────────────────────────────────────────────────────────
