@@ -29,6 +29,12 @@ TOPICS = [
      "double-click a slider to reset just that control; use Reset to clear them "
      "all. A live Luma/RGB histogram sits at the top, and Before/After shows the "
      "untouched original."),
+    ("White balance",
+     "Open COLOUR and click Pick Neutral Colour, then click a grey card or a "
+     "neutral grey/white object in the photograph. SNAP SLAPPER samples a small "
+     "patch and corrects both Temperature and Tint without changing the original "
+     "JPEG. Choose an area with visible detail; blown white and crushed black "
+     "cannot provide reliable colour and will be rejected."),
     ("Black & white colour mixer",
      "Turn on Convert to black and white, then use the eight colour sliders "
      "(Red…Magenta) to control how each colour becomes grey — brighten a blue "
