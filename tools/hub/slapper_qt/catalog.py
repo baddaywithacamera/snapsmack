@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+import time
 
 import photo_manager
 
@@ -32,6 +33,7 @@ class Catalog:
         self.albums_path = os.path.join(directory, "albums.json")
         self.folders_path = os.path.join(directory, "library_folders.json")
         self.index_path = os.path.join(directory, "catalog_index.json")
+        self.history_path = os.path.join(directory, "operation_history.json")
         self.trash_path = os.path.join(directory, "trash_manifest.json")
         self.trash_root = os.path.join(directory, "trash")
         self.metadata = photo_manager.load_versioned(
@@ -42,6 +44,8 @@ class Catalog:
             self.folders_path, "folders", [])
         self.index = photo_manager.load_versioned(
             self.index_path, "photos", {})
+        self.history = photo_manager.load_versioned(
+            self.history_path, "operations", [])
 
     @staticmethod
     def key(path):
@@ -157,6 +161,36 @@ class Catalog:
     def all_paths(self):
         return [row["path"] for row in self.index.values()
                 if isinstance(row, dict) and os.path.isfile(row.get("path", ""))]
+
+    def record_operation(self, kind, changes):
+        self.history.append({
+            "kind": str(kind), "changes": list(changes), "time": int(time.time())})
+        self.history = self.history[-100:]
+        photo_manager.save_versioned(
+            self.history_path, "operations", self.history)
+
+    def undo_last_move(self):
+        while self.history:
+            operation = self.history.pop()
+            if operation.get("kind") not in {"move", "rename"}:
+                continue
+            changes = operation.get("changes", [])
+            reversed_changes = []
+            try:
+                for source, target in reversed(changes):
+                    if not os.path.isfile(target):
+                        raise FileNotFoundError(target)
+                    restored = photo_manager.unique_path(source)
+                    photo_manager.atomic_move(target, restored, prefix=".snap-undo-")
+                    self.move_path(target, restored)
+                    reversed_changes.append((target, restored))
+            finally:
+                photo_manager.save_versioned(
+                    self.history_path, "operations", self.history)
+            return reversed_changes
+        photo_manager.save_versioned(
+            self.history_path, "operations", self.history)
+        return []
 
 
 # ===== SNAPSMACK EOF =====
