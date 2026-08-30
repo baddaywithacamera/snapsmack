@@ -50,10 +50,16 @@ def main(argv=None):
     # start, write a marker, and exit without requiring desktop interaction.
     qa_image = os.environ.get("SNAP_SLAPPER_QA_IMAGE", "")
     qa_marker = os.environ.get("SNAP_SLAPPER_QA_MARKER", "")
+    qa_psd = os.environ.get("SNAP_SLAPPER_QA_PSD", "")
     if qa_image and qa_marker:
         def finish_qa():
             try:
-                if os.path.isfile(qa_image):
+                ready = os.path.isfile(qa_image)
+                if ready and qa_psd and isinstance(window, EditorWindow) and window.doc:
+                    from .psd_export import export_layered_psd
+                    export_layered_psd(window.doc, qa_psd)
+                    ready = os.path.isfile(qa_psd)
+                if ready:
                     with open(qa_marker, "w", encoding="utf-8") as marker:
                         marker.write("ok\n")
             finally:
