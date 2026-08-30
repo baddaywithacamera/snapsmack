@@ -1,9 +1,9 @@
 <?php
 /**
- * SNAPSMACK - SMACKVERSE - Federation
+ * SNAPSMACK - FEDIVERSE - Federation
  *
- * One of the three pages split out of the old monolithic SMACKVERSE page
- * (0.7.405). Shares core/smackverse-admin-shared.php for settings, POST
+ * One of the three pages split out of the old monolithic FEDIVERSE page
+ * (0.7.405). Shares core/fediverse-admin-shared.php for settings, POST
  * handlers and render state; this page renders only its own sections.
  *
  * SNAPSMACK_EOF_HEADER
@@ -11,8 +11,8 @@
  * Last non-empty line of this file MUST match the line above.
  */
 require_once 'core/auth-smack.php';
-require_once 'core/smackverse.php';
-require_once 'core/smackverse-admin-shared.php';
+require_once 'core/fediverse.php';
+require_once 'core/fediverse-admin-shared.php';
 
 $page_title = 'Fediverse - Portal';
 include 'core/admin-header.php';
@@ -38,7 +38,7 @@ include 'core/sidebar.php';
         <?php if ($sv_on): ?>
             <div class="alert alert-success">&#10003; Fediverse is ON. The blog is discoverable and followable at <code><?php echo htmlspecialchars($sv_address); ?></code>.</div>
             <form method="post" action="">
-                <input type="hidden" name="action" value="disable_smackverse">
+                <input type="hidden" name="action" value="disable_fediverse">
                 <button type="submit" class="btn-smack">DISABLE FEDERATION</button>
             </form>
             <p class="dim mt-10">
@@ -54,7 +54,7 @@ include 'core/sidebar.php';
                 nothing already published is pushed out.
             </p>
             <form method="post" action="">
-                <input type="hidden" name="action" value="enable_smackverse">
+                <input type="hidden" name="action" value="enable_fediverse">
                 <div class="reauth-row">
                     <div class="lens-input-wrapper">
                         <label>PASSWORD</label>
@@ -120,19 +120,19 @@ include 'core/sidebar.php';
             <div class="lens-input-wrapper">
                 <label>DISPLAY NAME</label>
                 <input type="text" name="sv_display_name" maxlength="120"
-                       value="<?php echo htmlspecialchars((string)($sv_settings['smackverse_display_name'] ?? '')); ?>"
+                       value="<?php echo htmlspecialchars((string)($sv_settings['fediverse_display_name'] ?? '')); ?>"
                        placeholder="<?php echo htmlspecialchars((string)($sv_settings['site_name'] ?? 'Your blog')); ?>" autocomplete="off">
             </div>
             <div class="lens-input-wrapper">
                 <label>WEBSITE</label>
                 <input type="text" name="sv_website" maxlength="200"
-                       value="<?php echo htmlspecialchars((string)($sv_settings['smackverse_website'] ?? '')); ?>"
+                       value="<?php echo htmlspecialchars((string)($sv_settings['fediverse_website'] ?? '')); ?>"
                        placeholder="<?php echo htmlspecialchars((string)($sv_settings['site_url'] ?? 'https://your.site')); ?>" autocomplete="off">
             </div>
             <div class="lens-input-wrapper">
                 <label>PRONOUNS</label>
                 <input type="text" name="sv_pronouns" maxlength="40"
-                       value="<?php echo htmlspecialchars((string)($sv_settings['smackverse_pronouns'] ?? '')); ?>"
+                       value="<?php echo htmlspecialchars((string)($sv_settings['fediverse_pronouns'] ?? '')); ?>"
                        placeholder="e.g. she/her — leave blank to hide" autocomplete="off">
             </div>
             <button type="submit" class="btn-smack">SAVE PROFILE</button>
@@ -143,8 +143,8 @@ include 'core/sidebar.php';
     <div class="box mb-20">
         <h3>ROLL CALL &mdash; GET LISTED ON FEDIVERSE.INFO</h3>
         <?php
-            $rc_on     = ($sv_settings['smackverse_rollcall'] ?? '0') === '1';
-            $rc_topics = (string)($sv_settings['smackverse_rollcall_topics'] ?? 'photography');
+            $rc_on     = ($sv_settings['fediverse_rollcall'] ?? '0') === '1';
+            $rc_topics = (string)($sv_settings['fediverse_rollcall_topics'] ?? 'photography');
         ?>
         <p class="dim mb-20">
             <a href="https://fediverse.info/people?topics=photography" target="_blank" rel="noopener nofollow">fediverse.info</a>
@@ -190,8 +190,8 @@ include 'core/sidebar.php';
     <div class="box mb-20">
         <h3>FEDIVERSE NETWORK</h3>
         <?php
-            $relay_joined = ($sv_settings['smackverse_relay_joined'] ?? '0') === '1';
-            $relay_host   = parse_url(sv_relay_actor_url($sv_settings), PHP_URL_HOST) ?: 'smackverse.snapsmack.ca';
+            $relay_joined = ($sv_settings['photoblogs_relay_joined'] ?? '0') === '1';
+            $relay_host   = parse_url(sv_relay_actor_url($sv_settings), PHP_URL_HOST) ?: 'photoblogs.fyi';
         ?>
         <p class="dim mb-20">Join the SnapSmack network relay and this blog's LOCAL reader fills with public posts from every participating SnapSmack site — no following each one by hand. HOME remains the people this blog follows directly. No images are stored on the relay (photos load from the origin blog), and you keep federating directly regardless, so the relay is never a single point of failure.</p>
         <?php if (!$sv_on): ?>
@@ -303,6 +303,6 @@ include 'core/sidebar.php';
 
 </div>
 
-<script src="assets/js/ss-engine-smackverse-admin.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+<script src="assets/js/ss-engine-fediverse-admin.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

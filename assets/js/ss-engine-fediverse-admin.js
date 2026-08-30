@@ -1,9 +1,9 @@
 /**
- * SNAPSMACK - SMACKVERSE admin page engine
+ * SNAPSMACK - FEDIVERSE admin page engine
  *
  * One job: live-preview the fediverse address as the handle is typed.
  * Reads the domain from data-sv-domain on the preview element; sanitises
- * the input exactly like core/smackverse.php sv_handle() does (lowercase,
+ * the input exactly like core/fediverse.php sv_handle() does (lowercase,
  * [a-z0-9_] only) so what you see is what WebFinger will answer for.
  * No inline JS anywhere — server data arrives via data-* attributes.
  *

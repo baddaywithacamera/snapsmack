@@ -40,7 +40,7 @@ $sources = [
     'snap-in.php' => ['snap_trusted_client_ip', 'snap_ip_is_bannable'],
     'probe-ban.php' => ['snap_trusted_client_ip', 'snap_ip_is_bannable'],
     'core/flkrfckr-api.php' => ['snap_trusted_client_ip', 'snap_ip_is_bannable'],
-    'core/smackverse.php' => ['snap_trusted_client_ip', 'snap_ip_is_bannable'],
+    'core/fediverse.php' => ['snap_trusted_client_ip', 'snap_ip_is_bannable'],
     'password-reset.php' => ['snap_trusted_client_ip'],
     'core/community-session.php' => ['snap_trusted_client_ip'],
 ];
@@ -50,13 +50,13 @@ foreach ($sources as $file => $needles) {
         ip_test(str_contains($body, $needle), "{$file} does not use {$needle}");
     }
 }
-foreach (['core/flkrfckr-api.php', 'core/smackverse.php'] as $file) {
+foreach (['core/flkrfckr-api.php', 'core/fediverse.php'] as $file) {
     $body = file_get_contents(__DIR__ . '/../' . $file);
     ip_test(!str_contains($body, "!function_exists('snap_ip_is_bannable')"), "{$file} still fails open when the ban guard is missing");
     ip_test(str_contains($body, "require_once __DIR__ . '/client-ip.php'"), "{$file} does not require the security component");
 }
 
-foreach (['snap-in.php', 'probe-ban.php', 'core/flkrfckr-api.php', 'core/smackverse.php'] as $file) {
+foreach (['snap-in.php', 'probe-ban.php', 'core/flkrfckr-api.php', 'core/fediverse.php'] as $file) {
     $body = file_get_contents(__DIR__ . '/../' . $file);
     ip_test(str_contains($body, 'snap_ip_record_ban'), "{$file} bypasses the bounded fixed-lifetime ban writer");
     ip_test(!str_contains($body, 'INTO snap_ip_bans'), "{$file} still writes the ban table directly");

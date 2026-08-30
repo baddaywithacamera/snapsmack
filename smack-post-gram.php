@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
     $allow_dl     = (int)($_POST['allow_download']  ?? 0);
     $dl_url       = trim($_POST['download_url'] ?? '');
     $manual_tags  = trim($_POST['tags'] ?? '');
-    // SMACKVERSE (0.7.367): per-post federation toggle. Default ENABLED (eligible
+    // FEDIVERSE (0.7.367): per-post federation toggle. Default ENABLED (eligible
     // to push); in MANUAL push mode the post still waits for a deliberate push.
     $fedi_enabled = ((string)($_POST['fedi_enabled'] ?? '1') === '0') ? 0 : 1;
 
@@ -427,8 +427,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         // New content is live — flush the page cache so it appears immediately.
         require_once __DIR__ . '/core/page-cache.php';
         page_cache_purge_all();
-        if (($settings['smackverse_enabled'] ?? '0') === '1') {
-            require_once __DIR__ . '/core/smackverse-kick.php';
+        if (($settings['fediverse_enabled'] ?? '0') === '1') {
+            require_once __DIR__ . '/core/fediverse-kick.php';
             sv_kick_delivery();
         }
 

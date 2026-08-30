@@ -64,7 +64,7 @@ try {
     // fediverse/relay sweep after this page is sent — throttled + locked, so the
     // visitor never waits. Registered before page-cache so cache-served hits
     // still keep cron alive. (locked-down-host self-heal)
-    require_once __DIR__ . '/core/smackverse-webcron.php';
+    require_once __DIR__ . '/core/fediverse-webcron.php';
     sv_web_cron_tick($pdo, $settings);
 
     require_once __DIR__ . '/core/maintenance-gate.php';
@@ -128,14 +128,14 @@ try {
     $requested_slug = trim($path_info, '/');
     if (empty($requested_slug)) $requested_slug = $_GET['s'] ?? $_GET['name'] ?? null;
 
-    // --- SMACKVERSE public profile (fediverse actor page at instance/username) ---
+    // --- FEDIVERSE public profile (fediverse actor page at instance/username) ---
     // The address a Pixelfed user expects. Content-negotiate: a fediverse server
     // (activity+json) gets the actor doc; a browser gets the Pixelfed-faithful
     // profile. Only fires for the exact handle with federation ON, so ordinary
     // slugs are never intercepted. Cheap gate first — no library load otherwise.
     if ($requested_slug !== null && $requested_slug !== ''
-        && ($settings['smackverse_enabled'] ?? '0') === '1') {
-        require_once __DIR__ . '/core/smackverse.php';
+        && ($settings['fediverse_enabled'] ?? '0') === '1') {
+        require_once __DIR__ . '/core/fediverse.php';
         if (strcasecmp((string)$requested_slug, sv_handle($settings)) === 0) {
             $pp_accept = $_SERVER['HTTP_ACCEPT'] ?? '';
             if (stripos($pp_accept, 'activity+json') !== false || stripos($pp_accept, 'ld+json') !== false) {

@@ -2,7 +2,7 @@
 // SNAPSMACK_EOF_HEADER: this file MUST end with // ===== SNAPSMACK EOF =====
 /**
  * photoblogs.fyi Relay — delivery queue drain. Run from cron every minute:
- *   * * * * * /usr/bin/php /path/to/smackverse-relay/cron/drain.php >> /var/log/relay-drain.log 2>&1
+ *   * * * * * /usr/bin/php /path/to/photoblogs-relay/cron/drain.php >> /var/log/relay-drain.log 2>&1
  * The inbox also drains inline after each POST; this cron catches stragglers +
  * backoff retries. CLI-only.
  */

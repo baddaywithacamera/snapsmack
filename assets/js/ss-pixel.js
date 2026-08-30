@@ -1,6 +1,6 @@
 // SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 /* ============================================================================
- * SNAPSMACK — SMACKVERSE : Standalone Pixelfed-compatible client  (ss-pixel.js)
+ * SNAPSMACK — FEDIVERSE : Standalone Pixelfed-compatible client  (ss-pixel.js)
  *
  * ORIGINAL code. Drives a from-scratch UI that reproduces the pixelfed.ca web
  * experience (matched by observation, not by copying their GPL source). All

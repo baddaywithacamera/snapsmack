@@ -31,8 +31,8 @@
 ### Shared front-end helpers (ss-*)
 
 - **`ss-ai-spendcap.js`** — AI spending-cap modal
-- **`ss-pixel.js`** — SNAPSMACK — SMACKVERSE : Standalone Pixelfed-compatible client () ORIGINAL code.
-- **`ss-pixelfed-client.js`** — SMACKVERSE Pixelfed Client
+- **`ss-pixel.js`** — SNAPSMACK — FEDIVERSE : Standalone Pixelfed-compatible client () ORIGINAL code.
+- **`ss-pixelfed-client.js`** — FEDIVERSE Pixelfed Client
 
 ### Skin engines (ss-engine-*) — public-facing behaviour a skin can switch on
 
@@ -124,7 +124,7 @@
 - **`ss-engine-sidebar.js`** — Sidebar Accordion Engine Pure accordion behaviour for the admin sidebar navigation.
 - **`ss-engine-slicer.js`** — Panorama Slicer engine Drives smack-slicer.php: mode selector (Triptych / Cover Slices), source drop, orientation toggle, draggable cut bars, live canvas previews (mirroring the GD slicer's centre-...
 - **`ss-engine-slider.js`** — SnapSmack Gallery Slider Engine A lightweight, dependency-free horizontal gallery slider component.
-- **`ss-engine-smackverse-admin.js`** — SMACKVERSE admin page engine One job: live-preview the fediverse address as the handle is typed.
+- **`ss-engine-fediverse-admin.js`** — FEDIVERSE admin page engine One job: live-preview the fediverse address as the handle is typed.
 - **`ss-engine-social-dock.js`** — Social Profile Dock Engine 1.
 - **`ss-engine-sticky-header.js`** — Sticky Header Engine Auto-detects the site header and pins it to the top on scroll.
 - **`ss-engine-tag-infinite.js`** — Hashtag Infinite Scroll (shared engine) Lazily appends the next page of tag results as the reader nears the bottom of a hashtag page.
@@ -187,8 +187,8 @@
 - **`ss-engine-updater.css`** — Update Manager Modal
 - **`ss-engine-wall.css`** — Floating Gallery Engine 3D perspective gallery with zoom, smooth physics, and metadata display.
 - **`ss-gram-pwa-composer.css`** — GRAMOFSMACK phone/tablet composer.
-- **`ss-pixel.css`** — SNAPSMACK — SMACKVERSE : Standalone Pixelfed-compatible client () ORIGINAL code.
-- **`ss-pixelfed-client.css`** — SMACKVERSE Pixelfed Client (faithful pixelfed.ca look)
+- **`ss-pixel.css`** — SNAPSMACK — FEDIVERSE : Standalone Pixelfed-compatible client () ORIGINAL code.
+- **`ss-pixelfed-client.css`** — FEDIVERSE Pixelfed Client (faithful pixelfed.ca look)
 
 <!-- generated; edit the source assets' headers, not this file -->
 

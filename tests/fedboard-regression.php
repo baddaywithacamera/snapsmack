@@ -26,15 +26,15 @@ $mesh = $read('core/mesh-helpers.php');
 $pixel = $read('pixel.php');
 $css = $read('assets/css/ss-pixel.css');
 $js = $read('assets/js/ss-pixel.js');
-$smackverse = $read('core/smackverse.php');
+$fediverse = $read('core/fediverse.php');
 $help = $read('smack-help.php');
 $migration = $read('migrations/migrate-fedboard-sso.sql');
 $updater = $read('core/updater.php');
-$webcron = $read('core/smackverse-webcron.php');
-$cron = $read('cron-smackverse.php');
+$webcron = $read('core/fediverse-webcron.php');
+$cron = $read('cron-fediverse.php');
 
-fb_expect(str_contains($constants, "SNAPSMACK_VERSION_SHORT', '0.7.584'"), 'release must be version 0.7.584');
-fb_expect(str_contains($constants, "SNAPSMACK_VERSION_CODENAME', 'BLANK SLATE'"), 'release codename must be BLANK SLATE');
+fb_expect(str_contains($constants, "SNAPSMACK_VERSION_SHORT', '0.7.585'"), 'release must be version 0.7.585');
+fb_expect(str_contains($constants, "SNAPSMACK_VERSION_CODENAME', 'GOOD NEIGHBOUR'"), 'release codename must be GOOD NEIGHBOUR');
 fb_expect(str_contains($migration, 'token_hash') && !str_contains($migration, '`token` VARCHAR'), 'migration must store only ticket hashes');
 fb_expect(str_contains(strtolower($migration), "enum('admin','fedboard')"), 'tickets must bind an allowlisted destination');
 fb_expect(str_contains($updater, "'migrate-fedboard-sso.sql'"), 'updater must apply the FEDBOARD migration');
@@ -59,10 +59,10 @@ fb_expect(str_contains($roster, 'function fb_refresh_sparse_roster')
     && str_contains($pixel, 'fb_refresh_sparse_roster($pdo, $sv_settings)'),
     'a sparse spoke roster must self-heal from the hub without depending exclusively on cron');
 fb_expect(str_contains($webcron, 'fedboard_roster_pull_attempt')
-    && strpos($webcron, 'fedboard_roster_pull_attempt') < strpos($webcron, "smackverse_enabled'] ?? '0'"),
-    'web-cron must refresh FEDBOARD independently of SMACKVERSE delivery');
+    && strpos($webcron, 'fedboard_roster_pull_attempt') < strpos($webcron, "fediverse_enabled'] ?? '0'"),
+    'web-cron must refresh FEDBOARD independently of FEDIVERSE delivery');
 fb_expect(strpos($cron, 'ms_spoke_pull_roster') < strpos($cron, 'if (!sv_enabled($settings))'),
-    'CLI cron must refresh FEDBOARD before its SMACKVERSE enabled guard');
+    'CLI cron must refresh FEDBOARD before its FEDIVERSE enabled guard');
 fb_expect(str_contains($mesh, 'fedboard_roster_pull_last_success') && str_contains($mesh, 'fedboard_roster_pull_error'),
     'roster pulls must expose their last success and failure reason');
 fb_expect(str_contains($roster, "version_compare(\$version, '0.7.547', '>=')"), 'older fleet members must remain visible but unavailable');
@@ -71,9 +71,9 @@ fb_expect(!str_contains($pixel, 'target="_blank"'), 'FEDBOARD page must keep swi
 fb_expect(str_contains($css, 'prefers-reduced-motion: reduce'), 'cursor must respect reduced-motion preferences');
 fb_expect(str_contains($css, '.sx-nav a{ cursor:pointer; }'), 'FEDIVERSE navigation must show the link pointer on hover');
 fb_expect(str_contains($js, 'fedboard-help-dismissed'), 'first-use FEDBOARD guidance must be dismissible');
-fb_expect(str_contains($smackverse, "foreach (['uri', 'url'] as \$key)"), 'remote account mapping must prefer the ActivityPub actor URI and fall back to the profile URL');
-fb_expect(substr_count($smackverse, "'id'     => \$actor_id") >= 3, 'all remote photo timelines must expose a usable actor id for Like and Comment actions');
-fb_expect(str_contains($smackverse, 'sv_client_plain_text'), 'remote captions must decode HTML entities before client-side escaping');
+fb_expect(str_contains($fediverse, "foreach (['uri', 'url'] as \$key)"), 'remote account mapping must prefer the ActivityPub actor URI and fall back to the profile URL');
+fb_expect(substr_count($fediverse, "'id'     => \$actor_id") >= 3, 'all remote photo timelines must expose a usable actor id for Like and Comment actions');
+fb_expect(str_contains($fediverse, 'sv_client_plain_text'), 'remote captions must decode HTML entities before client-side escaping');
 fb_expect(str_contains($pixel, 'href="?panel=home"') && str_contains($pixel, 'href="?panel=profile"'), 'FEDIVERSE navigation must remain keyboard accessible without JavaScript');
 fb_expect(str_contains($pixel, 'href="privacy-policy.php"') && !str_contains($pixel, '<a href="#">Privacy</a>'), 'FEDIVERSE footer must not contain dead privacy links');
 fb_expect(!str_contains($js, 'sx-book'), 'FEDIVERSE must not show a non-functional bookmark control');

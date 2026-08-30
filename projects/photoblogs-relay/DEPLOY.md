@@ -4,7 +4,7 @@
 
 # photoblogs.fyi Relay — deploy runbook (Proxmox CT)
 
-Copy-paste standup for `smackverse.snapsmack.ca`. The relay code is complete;
+Copy-paste standup for `photoblogs.fyi`. The relay code is complete;
 this is the only remaining step. Give it its **own** CT — do NOT co-locate on the
 1 GiB snapsmack LXC (it OOMs on packaging). Low traffic by design (no images), so
 a small CT is plenty.
@@ -23,7 +23,7 @@ Proxmox. `~15 min` end to end.
 
 **State (2026-07-13):** relay app runs on **CT106 = 192.168.1.16** against a *local*
 MariaDB (db `smack`). **Target:** DB consolidated onto **CT110 = 192.168.1.20** as
-`smackverse_relay`; public identity re-homed to **photoblogs.fyi**; private key
+`photoblogs_relay`; public identity re-homed to **photoblogs.fyi**; private key
 **encrypted at rest**. **Zero subscribers today, so the identity + key changes are
 FREE now** — do the disruptive ones first; the pure-infra DB move can trail.
 
@@ -37,7 +37,7 @@ sign time. **It is inert until a KEK exists in the live `config.php`.** On **CT1
 
 ```bash
 php -r 'echo bin2hex(random_bytes(32)), "\n";'   # generate the KEK ON the box
-nano /srv/smackverse-relay/config.php            # add:  'secret_kek' => '<that value>',
+nano /srv/photoblogs-relay/config.php            # add:  'secret_kek' => '<that value>',
 ```
 
 Save that KEK to Bitwarden next to `db_pass`. With it set, a **fresh** key is born
@@ -51,7 +51,7 @@ later — hence: back it up).
 SAME way it's served today — via the Cloudflare **"snapsmack"** tunnel (add the
 hostname to the tunnel, or A-record — your ingress). New actor id
 `https://photoblogs.fyi/actor`; the fresh **encrypted** keypair mints on the first
-`/actor` hit. Retire the `smackverse.snapsmack.ca` vhost (301 optional). Update the
+`/actor` hit. Retire the `photoblogs.fyi` vhost (301 optional). Update the
 CMS default relay URL.
 
 ### 0c. Verify identity
@@ -64,17 +64,17 @@ curl -s 'https://photoblogs.fyi/.well-known/webfinger?resource=acct:relay@photob
 On **CT110 (192.168.1.20)**: `mysql -e "SHOW DATABASES;"` — `smack` collides with the
 CMS DB, so use the clean name:
 ```bash
-mysql -e "CREATE DATABASE smackverse_relay CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -e "CREATE DATABASE photoblogs_relay CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql -e "CREATE USER 'relay'@'192.168.1.16' IDENTIFIED BY 'PICK_A_STRONG_PASS'; \
-          GRANT ALL ON smackverse_relay.* TO 'relay'@'192.168.1.16'; FLUSH PRIVILEGES;"
-mysql smackverse_relay < smack_2026-07-13.sql      # dump loads into any name
+          GRANT ALL ON photoblogs_relay.* TO 'relay'@'192.168.1.16'; FLUSH PRIVILEGES;"
+mysql photoblogs_relay < smack_2026-07-13.sql      # dump loads into any name
 # confirm MariaDB binds on the LAN (bind-address), not just 127.0.0.1
 ```
-Then repoint CT106 `config.php`: `db_host → 192.168.1.20`, `db_name → smackverse_relay`,
+Then repoint CT106 `config.php`: `db_host → 192.168.1.20`, `db_name → photoblogs_relay`,
 `db_user → relay`, new pass. Drop `mariadb-server` from CT106 (app-only after).
 
 ### 0e. Wire the backup
-Add `smackverse_relay` to `DATABASES=()` in `/usr/local/bin/mariadb_backup.sh`
+Add `photoblogs_relay` to `DATABASES=()` in `/usr/local/bin/mariadb_backup.sh`
 (b2 CLI → OptiplexSQL). Run it once; confirm it lands in B2.
 
 ### 0f. Go live
@@ -95,7 +95,7 @@ Clear the root password from the FileZilla site's Comments box.
 ```bash
 # 107 = next free CTID; pick your storage + bridge. 1GB RAM / 1 core / 8GB disk.
 pct create 107 local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst \
-  --hostname smackverse-relay --cores 1 --memory 1024 --swap 512 \
+  --hostname photoblogs-relay --cores 1 --memory 1024 --swap 512 \
   --rootfs local-lvm:8 --net0 name=eth0,bridge=vmbr0,ip=dhcp \
   --features nesting=1 --unprivileged 1 --onboot 1
 pct start 107
@@ -116,9 +116,9 @@ ls /run/php/
 
 ```bash
 mysql <<'SQL'
-CREATE DATABASE smackverse_relay CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE photoblogs_relay CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'relay'@'127.0.0.1' IDENTIFIED BY 'PICK_A_STRONG_DB_PASSWORD';
-GRANT ALL PRIVILEGES ON smackverse_relay.* TO 'relay'@'127.0.0.1';
+GRANT ALL PRIVILEGES ON photoblogs_relay.* TO 'relay'@'127.0.0.1';
 FLUSH PRIVILEGES;
 SQL
 ```
@@ -128,19 +128,19 @@ SQL
 ```bash
 mkdir -p /srv
 git clone <YOUR_SNAPSMACK_REMOTE> /tmp/ss && \
-  cp -r /tmp/ss/projects/smackverse-relay /srv/smackverse-relay
-#   (or rsync just projects/smackverse-relay/ up — it is self-contained)
+  cp -r /tmp/ss/projects/photoblogs-relay /srv/photoblogs-relay
+#   (or rsync just projects/photoblogs-relay/ up — it is self-contained)
 
-cd /srv/smackverse-relay
+cd /srv/photoblogs-relay
 cp config.sample.php config.php
 # Generate a long admin token:
 php -r 'echo bin2hex(random_bytes(24)), "\n";'
-nano config.php     # set db_pass (from step 3), admin_token (above), domain stays smackverse.snapsmack.ca
+nano config.php     # set db_pass (from step 3), admin_token (above), domain stays photoblogs.fyi
 
 # Optional: pre-load schema (the app self-loads it on first request too)
-mysql smackverse_relay < schema.sql
+mysql photoblogs_relay < schema.sql
 
-chown -R www-data:www-data /srv/smackverse-relay
+chown -R www-data:www-data /srv/photoblogs-relay
 ```
 
 ## 5. nginx + TLS
@@ -149,8 +149,8 @@ chown -R www-data:www-data /srv/smackverse-relay
 cat >/etc/nginx/sites-available/relay <<'NGINX'
 server {
     listen 80;
-    server_name smackverse.snapsmack.ca;
-    root /srv/smackverse-relay/public;
+    server_name photoblogs.fyi;
+    root /srv/photoblogs-relay/public;
     index index.php;
     location / { try_files $uri /index.php$is_args$args; }
     location ~ \.php$ {
@@ -165,29 +165,29 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 ```
 
-DNS first: point `smackverse.snapsmack.ca` A record at this CT's public IP (or
+DNS first: point `photoblogs.fyi` A record at this CT's public IP (or
 your reverse-proxy / port-forward), then:
 
 ```bash
-certbot --nginx -d smackverse.snapsmack.ca --redirect -m you@snapsmack.ca --agree-tos -n
+certbot --nginx -d photoblogs.fyi --redirect -m you@snapsmack.ca --agree-tos -n
 ```
 
 ## 6. Drain cron
 
 ```bash
-( crontab -l 2>/dev/null; echo '* * * * * /usr/bin/php /srv/smackverse-relay/cron/drain.php >> /var/log/relay-drain.log 2>&1' ) | crontab -
+( crontab -l 2>/dev/null; echo '* * * * * /usr/bin/php /srv/photoblogs-relay/cron/drain.php >> /var/log/relay-drain.log 2>&1' ) | crontab -
 ```
 
 ## 7. Verify
 
 ```bash
-curl -s https://smackverse.snapsmack.ca/actor | head -c 400 ; echo      # Application actor + publicKey
-curl -s https://smackverse.snapsmack.ca/nodeinfo/2.0 | head -c 200 ; echo
-curl -s 'https://smackverse.snapsmack.ca/.well-known/webfinger?resource=acct:relay@smackverse.snapsmack.ca'
+curl -s https://photoblogs.fyi/actor | head -c 400 ; echo      # Application actor + publicKey
+curl -s https://photoblogs.fyi/nodeinfo/2.0 | head -c 200 ; echo
+curl -s 'https://photoblogs.fyi/.well-known/webfinger?resource=acct:relay@photoblogs.fyi'
 ```
 
 Open the operator console:
-`https://smackverse.snapsmack.ca/admin.php?token=YOUR_ADMIN_TOKEN`
+`https://photoblogs.fyi/admin.php?token=YOUR_ADMIN_TOKEN`
 
 ## 8. Admit your fleet, then go live
 

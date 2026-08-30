@@ -5,9 +5,9 @@
  * fill in. The relay is a standalone service on its own Proxmox CT.
  */
 return [
-    'domain'      => 'smackverse.snapsmack.ca', // the relay's public host (TLS)
+    'domain'      => 'photoblogs.fyi', // the relay's public host (TLS)
     'db_host'     => '127.0.0.1',
-    'db_name'     => 'smackverse_relay',
+    'db_name'     => 'photoblogs_relay',
     'db_user'     => 'relay',
     'db_pass'     => 'CHANGE_ME',
     'admin_token' => 'CHANGE_ME_TO_A_LONG_RANDOM_STRING', // operator admin page

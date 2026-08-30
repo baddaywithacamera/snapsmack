@@ -1,7 +1,7 @@
 -- SNAPSMACK_EOF_HEADER: this file MUST end with the canonical .sql EOF marker.
 -- PHOTOFRI.DAY — database schema (own DB `photofri_day`, own Proxmox CT).
 -- Whole-fediverse Photo Friday. No image storage: ids + text + a referenced
--- origin preview URL only. Reuses the SMACKVERSE relay's DB shape.
+-- origin preview URL only. Reuses the FEDIVERSE relay's DB shape.
 
 CREATE TABLE IF NOT EXISTS `pfd_settings` (
   `k` varchar(64)  COLLATE utf8mb4_unicode_ci NOT NULL,

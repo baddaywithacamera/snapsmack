@@ -21,7 +21,7 @@ function relay_db(): PDO {
         $c = relay_config();
         $pdo = new PDO(
             'mysql:host=' . ($c['db_host'] ?? '127.0.0.1')
-                . ';dbname=' . ($c['db_name'] ?? 'smackverse_relay') . ';charset=utf8mb4',
+                . ';dbname=' . ($c['db_name'] ?? 'photoblogs_relay') . ';charset=utf8mb4',
             $c['db_user'] ?? 'root',
             $c['db_pass'] ?? '',
             [
@@ -36,7 +36,7 @@ function relay_db(): PDO {
 /** Public base URL, trailing slash. */
 function relay_base(): string {
     $c = relay_config();
-    return 'https://' . ($c['domain'] ?? 'smackverse.snapsmack.ca') . '/';
+    return 'https://' . ($c['domain'] ?? 'photoblogs.fyi') . '/';
 }
 
 function relay_actor_url(): string { return relay_base() . 'actor'; }

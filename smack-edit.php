@@ -28,7 +28,7 @@ $pdo->exec("ALTER TABLE snap_collection_items ADD COLUMN IF NOT EXISTS `item_id`
 $pdo->exec("ALTER TABLE snap_collection_items ADD COLUMN IF NOT EXISTS `sort_order` INT NOT NULL DEFAULT 0");
 
 // Fediverse sensitivity fields (0.7.393) on snap_images. These are normally added
-// by the SMACKVERSE canonical schema sync, but a self-hosted site deployed by
+// by the FEDIVERSE canonical schema sync, but a self-hosted site deployed by
 // direct code copy (bypassing the updater's schema diff) never gets them — yet
 // the UPDATE below writes them unconditionally, which fatals with
 // "Unknown column 'is_sensitive'". Belt-and-suspenders per the new-column checklist.
@@ -215,8 +215,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Federate the edit to followers — Update if this image (or its parent post)
     // was already pushed, Delete/Tombstone if it just went unpublished. New
     // posts are seeded by the cron Create path. Enqueue-only.
-    if (is_file(__DIR__ . '/core/smackverse.php')) {
-        require_once __DIR__ . '/core/smackverse.php';
+    if (is_file(__DIR__ . '/core/fediverse.php')) {
+        require_once __DIR__ . '/core/fediverse.php';
         if (function_exists('sv_federate_image_change')) {
             sv_federate_image_change($pdo, $settings, (int)$id);
         }
