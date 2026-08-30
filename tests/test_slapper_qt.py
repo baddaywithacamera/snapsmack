@@ -797,6 +797,38 @@ def test_smart_sharpen():
     assert win.active_adjustments()["sharpen_mode"] == "gaussian"
 
 
+def test_editable_filter_layers_and_project_roundtrip():
+    from PIL import ImageChops
+    import slapper_filters
+    path = _image("filter_layers.jpg", (180, 120), (90, 125, 165))
+    for kind in slapper_filters.FILTER_DEFAULTS:
+        doc = editor_engine.EditorDocument(path)
+        original = doc.render()
+        layer = doc.add_filter_layer(kind)
+        filtered = doc.render()
+        assert ImageChops.difference(original, filtered).getbbox(), kind
+        # Amount zero is an exact visual identity.
+        layer["settings"]["amount"] = 0
+        assert ImageChops.difference(original, doc.render()).getbbox() is None
+        layer["settings"]["amount"] = 50
+        first = doc.render(); second = doc.render()
+        assert ImageChops.difference(first, second).getbbox() is None, kind
+
+    doc = editor_engine.EditorDocument(path)
+    layer = doc.add_filter_layer("orton")
+    layer["settings"]["radius"] = 23
+    project = os.path.join(TMP, "filters.slapper")
+    doc.save_project(project)
+    loaded = editor_engine.EditorDocument.load_project(project)
+    assert loaded.layers[0]["type"] == "filter"
+    assert loaded.layers[0]["settings"]["radius"] == 23
+    assert ImageChops.difference(doc.render(), loaded.render()).getbbox() is None
+    recipe = doc.recipe()
+    target = editor_engine.EditorDocument(path)
+    target.apply_recipe(recipe)
+    assert target.layers[0]["type"] == "filter"
+
+
 def test_keyboard_shortcuts_and_help_topics():
     from slapper_qt.help_dialog import TOPICS
     win = _editor(_image("keys.jpg", (160, 120)))

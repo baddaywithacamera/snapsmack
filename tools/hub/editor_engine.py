@@ -18,6 +18,7 @@ from PIL import (Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter,
                  ImageFont, ImageMath, ImageOps)
 
 import photo_manager
+import slapper_filters
 
 
 PROJECT_VERSION = 1
@@ -890,6 +891,18 @@ class EditorDocument:
         self.record("Add adjustment layer")
         return self.layers[-1]
 
+    def add_filter_layer(self, kind, name=None):
+        settings = slapper_filters.defaults(kind)
+        self.layers.append({
+            "id": _new_layer_id(), "name": name or slapper_filters.FILTER_NAMES[kind],
+            "type": "filter", "filter_type": kind, "filter_version": 1,
+            "settings": settings, "visible": True, "opacity": 1.0,
+            "blend": "normal", "mask": "", "mask_enabled": True,
+            "styles": {},
+        })
+        self.record(f"Add {self.layers[-1]['name']} filter")
+        return self.layers[-1]
+
     def add_image_layer(self, path, name=None):
         self.layers.append({"id": _new_layer_id(), "name": name or os.path.basename(path),
                             "type": "image", "path": os.path.abspath(path), "visible": True,
@@ -1123,6 +1136,13 @@ class EditorDocument:
             if layer.get("type") == "adjustment":
                 adjusted = apply_adjustments(image.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
                 top = adjusted
+            elif layer.get("type") == "filter":
+                if layer.get("filter_version", 1) != 1:
+                    raise ValueError(
+                        f"Unsupported filter version: {layer.get('filter_version')}")
+                top = slapper_filters.apply_filter(
+                    image.convert("RGB"), layer.get("filter_type", ""),
+                    layer.get("settings", {})).convert("RGBA")
             elif layer.get("type") == "image":
                 path = layer.get("path", "")
                 if not os.path.isfile(path):
@@ -1235,6 +1255,13 @@ class EditorDocument:
                     raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} text is invalid")
                 if not isinstance(layer.get("font_path", ""), str):
                     raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} font is invalid")
+            if layer.get("type") == "filter":
+                if layer.get("filter_type") not in slapper_filters.FILTER_DEFAULTS:
+                    raise ValueError(
+                        f"Invalid SNAP SLAPPER project: layer {index + 1} filter is unsupported")
+                if layer.get("filter_version", 1) != 1:
+                    raise ValueError(
+                        f"Invalid SNAP SLAPPER project: layer {index + 1} filter version is unsupported")
         document = cls(source_path)
         document.adjustments = value.get("adjustments", copy.deepcopy(DEFAULT_ADJUSTMENTS))
         document.geometry = value.get("geometry", document.geometry)
@@ -1262,7 +1289,8 @@ class EditorDocument:
 
     def recipe(self):
         return {"version": PROJECT_VERSION, "adjustments": copy.deepcopy(self.adjustments),
-                "layers": [copy.deepcopy(layer) for layer in self.layers if layer.get("type") == "adjustment"]}
+                "layers": [copy.deepcopy(layer) for layer in self.layers
+                           if layer.get("type") in {"adjustment", "filter"}]}
 
     def stack_layers(self, layers):
         """Add adjustment layers ON TOP without touching the base or existing
@@ -1297,13 +1325,21 @@ class EditorDocument:
         if len(layers) > MAX_PROJECT_LAYERS:
             raise ValueError("Invalid SNAP SLAPPER recipe: too many layers")
         for index, layer in enumerate(layers):
-            if not isinstance(layer, dict) or layer.get("type") != "adjustment":
+            if not isinstance(layer, dict) or layer.get("type") not in {"adjustment", "filter"}:
                 raise ValueError(f"Invalid SNAP SLAPPER recipe: layer {index + 1} is invalid")
+            if layer.get("type") == "filter" and (
+                    layer.get("filter_type") not in slapper_filters.FILTER_DEFAULTS or
+                    layer.get("filter_version", 1) != 1):
+                raise ValueError(
+                    f"Invalid SNAP SLAPPER recipe: layer {index + 1} filter is unsupported")
             mask = layer.get("mask", "")
             if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
                 raise ValueError(f"Invalid SNAP SLAPPER recipe: layer {index + 1} mask is invalid")
         self.adjustments = copy.deepcopy(adjustments)
-        self.layers.extend(copy.deepcopy(layers))
+        clones = copy.deepcopy(layers)
+        for layer in clones:
+            layer["id"] = _new_layer_id()
+        self.layers.extend(clones)
         self.record("Apply recipe")
 
 

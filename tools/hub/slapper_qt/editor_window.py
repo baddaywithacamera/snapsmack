@@ -288,6 +288,10 @@ class EditorWindow(QMainWindow):
         self.act_textures.triggered.connect(self.open_textures)
         bar.addAction(self.act_textures)
 
+        self.act_filters = QAction("Filters…", self)
+        self.act_filters.triggered.connect(self.open_filters)
+        bar.addAction(self.act_filters)
+
         self.act_save_project = QAction("Save Project", self)
         self.act_save_project.triggered.connect(self.save_project)
         bar.addAction(self.act_save_project)
@@ -337,7 +341,8 @@ class EditorWindow(QMainWindow):
                 self.act_crop, self.act_heal, self.act_redeye,
                 self.act_compare, self.act_filmstrip,
                 self.act_recipe_save, self.act_recipe_apply,
-                self.act_lewks, self.act_textures, self.act_save_project,
+                self.act_lewks, self.act_textures, self.act_filters,
+                self.act_save_project,
                 self.act_prefs):
             bar.removeAction(action)
             tools_bar.addAction(action)
@@ -347,6 +352,7 @@ class EditorWindow(QMainWindow):
             self.act_open_project, self.act_heal, self.act_compare,
             self.act_recipe_save, self.act_recipe_apply, self.act_save_project,
             self.act_textures,
+            self.act_filters,
         ]
 
         # Keyboard shortcuts. Modifier combos only (never bare letters) so they
@@ -1337,6 +1343,17 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return None
         return self.doc.render(max_size=max_size)
+
+    def open_filters(self):
+        if not self.doc:
+            self._error("Open a photo first",
+                        "Open a photograph before adding a filter layer.")
+            return
+        from .filters_dialog import FiltersDialog
+        layer = next((candidate for candidate in self.doc.layers
+                      if candidate.get("id") == self.active_target and
+                      candidate.get("type") == "filter"), None)
+        FiltersDialog(self, layer).exec()
 
     def open_textures(self):
         if not self.doc:
