@@ -4,7 +4,7 @@ import os
 import sys
 
 from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from . import theme
 from .editor_window import EditorWindow
@@ -21,9 +21,19 @@ def main(argv=None):
     argv = list(sys.argv if argv is None else argv)
     app = QApplication.instance() or QApplication(argv)
     app.setApplicationName("SNAP SLAPPER")
+    app.setApplicationDisplayName("SNAP SLAPPER Photo Library and Editor")
     app.setStyleSheet(theme.stylesheet())
     if _log is not None:
         _log.info("SNAP SLAPPER Qt UI ready")
+
+        def report_uncaught(exc_type, exc_value, exc_traceback):
+            _log.critical("Unhandled SNAP SLAPPER error", exc_info=(
+                exc_type, exc_value, exc_traceback))
+            QMessageBox.critical(
+                None, "SNAP SLAPPER stopped an error",
+                f"The operation could not continue. Your original photographs were not changed.\n\n"
+                f"{exc_value}\n\nDetails were saved to:\n{_log.log_path}")
+        sys.excepthook = report_uncaught
 
     # A file path on the command line opens straight into the editor;
     # otherwise the library browser is the entry point.
