@@ -114,7 +114,13 @@ class Filmstrip(QListWidget):
             self._load_folder(folder)
         self._current = current
         self._select_current()
-        self._queue_near(current)
+        if self.isVisible():
+            self._queue_near(current)
+
+    def showEvent(self, event):  # noqa: N802 — Qt override
+        super().showEvent(event)
+        if self._current:
+            self._queue_near(self._current)
 
     def _load_folder(self, folder):
         self.clear()
