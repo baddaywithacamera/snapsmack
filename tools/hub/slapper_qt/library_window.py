@@ -289,6 +289,7 @@ class LibraryWindow(QMainWindow):
         self._stamps = {}         # path -> capture timestamp (float)
         self._paths = []          # all photo paths in the current folder
         self._folder = None
+        self._virtual_source = None
         self._scan_generation = 0
         self._scan_token = None
         self._populate_generation = 0
@@ -494,6 +495,15 @@ class LibraryWindow(QMainWindow):
         view_bar.addSeparator()
 
         # Sort control
+        source_label = QLabel("Source")
+        source_label.setObjectName("ControlName")
+        view_bar.addWidget(source_label)
+        self.source_combo = QComboBox()
+        self.source_combo.setMinimumWidth(150)
+        self.source_combo.currentIndexChanged.connect(self._source_changed)
+        view_bar.addWidget(self.source_combo)
+        self._refresh_catalog_sources()
+
         sort_label = QLabel("Sort")
         sort_label.setObjectName("ControlName")
         view_bar.addWidget(sort_label)
@@ -664,6 +674,48 @@ class LibraryWindow(QMainWindow):
                 return
             self.status.showMessage(
                 f"Added {len(paths)} photo(s) to {name.strip()}", 5000)
+            self._refresh_catalog_sources(select_album=name.strip())
+
+    def _refresh_catalog_sources(self, select_album=None):
+        if not hasattr(self, "source_combo"):
+            return
+        current = self.source_combo.currentData()
+        self.source_combo.blockSignals(True)
+        self.source_combo.clear()
+        self.source_combo.addItem("Current Folder", ("folder", ""))
+        self.source_combo.addItem(
+            f"All Catalog Photos ({len(self.catalog.all_paths())})",
+            ("catalog", ""))
+        for name in sorted(self.catalog.albums, key=str.lower):
+            self.source_combo.addItem(
+                f"Album: {name} ({len(self.catalog.albums[name])})",
+                ("album", name))
+        wanted = ("album", select_album) if select_album else current
+        index = self.source_combo.findData(wanted)
+        self.source_combo.setCurrentIndex(index if index >= 0 else 0)
+        self.source_combo.blockSignals(False)
+
+    def _source_changed(self, _index):
+        source = self.source_combo.currentData()
+        if not source or source[0] == "folder":
+            self._virtual_source = None
+            self._reload_current()
+            return
+        kind, name = source
+        paths = self.catalog.all_paths() if kind == "catalog" else \
+            [path for path in self.catalog.albums.get(name, [])
+             if os.path.isfile(path)]
+        self._virtual_source = source
+        self._folder = None
+        self._scan_generation += 1
+        if self._scan_token is not None:
+            self._scan_token.cancelled = True
+        self._paths = paths
+        self._icons.clear()
+        self._stamps.clear()
+        title = "All Catalog Photos" if kind == "catalog" else f"Album — {name}"
+        self.setWindowTitle(f"SNAP SLAPPER — {title}")
+        self._populate()
 
     def _selected_tree_folder(self):
         index = self.tree.currentIndex()
@@ -1034,6 +1086,7 @@ class LibraryWindow(QMainWindow):
             selected = dialog.selectedFiles()
             folder = selected[0] if selected else ""
         if folder:
+            self.catalog.register_folder(folder)
             self.load_folder(folder)
             index = self.tree_model.setRootPath(folder)
             if index.isValid():
@@ -1062,6 +1115,7 @@ class LibraryWindow(QMainWindow):
 
     def load_folder(self, folder):
         folder = os.path.abspath(folder)
+        self._virtual_source = None
         recursive = self.act_subfolders.isChecked()
         self._folder = folder
         self._scan_generation += 1
@@ -1106,6 +1160,8 @@ class LibraryWindow(QMainWindow):
                 recursive != self.act_subfolders.isChecked():
             return  # a newer folder/scope selection superseded this scan
         self._paths = paths
+        self.catalog.update_index(paths)
+        self._refresh_catalog_sources()
         self._populate()
 
     # --- Grid population, sort, filter --------------------------------------
