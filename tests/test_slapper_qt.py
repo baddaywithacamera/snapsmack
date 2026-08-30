@@ -595,6 +595,35 @@ def test_library_file_organizer_and_resizable_folders():
     assert lib.split.sizes()[0] >= 300
 
 
+def test_qt_catalog_ratings_tags_favorites_and_albums():
+    from slapper_qt.catalog import Catalog
+    directory = tempfile.mkdtemp(prefix="slapper_catalog_", dir=TMP)
+    first = os.path.join(directory, "cat.jpg")
+    second = os.path.join(directory, "dog.jpg")
+    Image.new("RGB", (60, 40), "orange").save(first)
+    Image.new("RGB", (60, 40), "brown").save(second)
+    catalog = Catalog(directory)
+    catalog.set_details(
+        [first], favorite=True, rating=5, add_tags="cats, home")
+    assert catalog.details(first) == {
+        "favorite": True, "rating": 5, "tags": "cats, home"}
+    catalog.set_details([first, second], add_tags="family")
+    assert "family" in catalog.details(first)["tags"]
+    assert catalog.details(second)["tags"] == "family"
+    catalog.add_to_album("Pets", [first, second, first])
+    assert catalog.albums["Pets"] == [first, second]
+    renamed = os.path.join(directory, "renamed.jpg")
+    catalog.move_path(first, renamed)
+    assert catalog.details(renamed)["rating"] == 5
+    assert renamed in catalog.albums["Pets"] and first not in catalog.albums["Pets"]
+
+    lib = LibraryWindow()
+    for action in (lib.act_import, lib.act_restore_trash,
+                   lib.act_rotate_left, lib.act_find_duplicates):
+        assert action is not None
+    assert lib.catalog_dock.windowTitle() == "PHOTO INFO"
+
+
 def test_vignette_feather_and_grain_darken():
     base = Image.new("RGB", (120, 90), (128, 128, 128))
     # feather changes the vignette edge softness → a different result
