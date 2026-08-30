@@ -1330,8 +1330,10 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 .tg-tile {
     aspect-ratio: var(--ic-tile-aspect, 1 / 1) !important;
     border-radius: 0 !important;
-    /* Drop shadow so each print clearly lifts off the tabletop. */
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.30);
+    /* Drop shadow so each print lifts off the tabletop — driven by the "Drop
+       Shadow on Image" control (skin-profile.php emits --ic-tile-shadow; None =>
+       none). Fallback keeps the classic shadow only if the var is absent. */
+    box-shadow: var(--ic-tile-shadow, 0 6px 20px rgba(0, 0, 0, 0.30));
     background: transparent;
 }
 /* The print is shown WHOLE — the skin never crops it (spec §5). */
