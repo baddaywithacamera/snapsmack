@@ -707,7 +707,7 @@ class EditorWindow(QMainWindow):
         self.mask_type_group.setExclusive(True)
         self._mask_type_buttons = {}
         for kind, label in (("radial", "Radial"), ("linear", "Graduated"),
-                            ("brush", "Brush")):
+                            ("brush", "Brush"), ("colour", "Colour Range")):
             btn = QPushButton(label)
             btn.setObjectName("MaskTypeBtn")
             btn.setCheckable(True)
@@ -794,6 +794,23 @@ class EditorWindow(QMainWindow):
         bl.addWidget(self.brush_size)
         self.mask_stack.addWidget(brush_page)
 
+        # Colour-range page
+        colour_page = QWidget()
+        cl = QVBoxLayout(colour_page)
+        cl.setContentsMargins(0, 0, 0, 0)
+        cl.setSpacing(4)
+        self.mask_hue = SliderRow("hue", "Hue", 0, 359, 1, 30)
+        self.mask_hue_range = SliderRow("hue_range", "Hue range", 2, 180, 1, 30)
+        self.mask_min_sat = SliderRow("min_sat", "Minimum saturation", 0, 100, 1, 10)
+        self.mask_min_lum = SliderRow("min_lum", "Minimum luminance", 0, 100, 1, 0)
+        self.mask_max_lum = SliderRow("max_lum", "Maximum luminance", 0, 100, 1, 100)
+        self.mask_colour_soft = SliderRow("colour_soft", "Softness", 0, 100, 1, 15)
+        for row in (self.mask_hue, self.mask_hue_range, self.mask_min_sat,
+                    self.mask_min_lum, self.mask_max_lum, self.mask_colour_soft):
+            row.committed.connect(self._reapply_mask)
+            cl.addWidget(row)
+        self.mask_stack.addWidget(colour_page)
+
         layout.addWidget(self.mask_stack)
 
         # --- Shared: invert + clear -----------------------------------------
@@ -815,7 +832,7 @@ class EditorWindow(QMainWindow):
         self.mask_stack.setCurrentIndex(0)
         return wrap
 
-    _MASK_PAGES = {"radial": 0, "linear": 1, "brush": 2}
+    _MASK_PAGES = {"radial": 0, "linear": 1, "brush": 2, "colour": 3}
 
     def _select_mask_type(self, kind):
         self._mask_kind = kind
@@ -880,9 +897,27 @@ class EditorWindow(QMainWindow):
             mask = ImageOps.invert(mask)
         self._store_mask(layer, mask, "brush", "Brush mask")
 
+    def _apply_colour_mask(self):
+        layer = self._mask_layer()
+        if layer is None:
+            return
+        visible = layer.get("visible", True)
+        layer["visible"] = False
+        try:
+            photo = self.doc.render(self._mask_target_size())
+        finally:
+            layer["visible"] = visible
+        mask = masks.colour_range_mask(
+            photo, self.mask_hue.slider.value(),
+            self.mask_hue_range.slider.value(), self.mask_min_sat.slider.value(),
+            self.mask_min_lum.slider.value(), self.mask_max_lum.slider.value(),
+            self.mask_colour_soft.slider.value(), self.mask_invert.isChecked())
+        self._store_mask(layer, mask, "colour", "Colour range mask")
+
     def _store_mask(self, layer, mask, kind, label):
         layer["mask"] = editor_engine._mask_to_text(mask)
         layer["mask_enabled"] = True
+        layer["mask_kind"] = kind
         self.doc.record(label)
         self._render_preview()
         self._update_title()
@@ -895,6 +930,8 @@ class EditorWindow(QMainWindow):
             self._apply_linear_mask()
         elif self._mask_kind == "brush":
             self._store_brush_mask()
+        elif self._mask_kind == "colour":
+            self._apply_colour_mask()
 
     def _clear_mask(self):
         layer = self._mask_layer()
