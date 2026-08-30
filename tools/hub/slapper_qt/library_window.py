@@ -300,6 +300,7 @@ class LibraryWindow(QMainWindow):
         self._scan_token = None
         self._populate_generation = 0
         self._editors = []        # keep editor windows alive
+        self._opening_editor_paths = set()  # suppress re-entrant activation while loading
         self._signals = _ThumbSignals()
         self._signals.ready.connect(self._on_thumb)
         self._scan_signals = _ScanSignals()
@@ -1456,6 +1457,9 @@ class LibraryWindow(QMainWindow):
         if not path:
             return
         path = os.path.abspath(path)
+        path_key = os.path.normcase(path)
+        if path_key in self._opening_editor_paths:
+            return
         # Guard against duplicate activation signals and bring the existing
         # editor forward instead of manufacturing a second identical window.
         for existing in list(self._editors):
@@ -1467,9 +1471,16 @@ class LibraryWindow(QMainWindow):
                     return
             except RuntimeError:
                 self._editors.remove(existing)
-        editor = EditorWindow()
-        editor.open_path(path)
-        editor.show()
-        self._editors.append(editor)
+        self._opening_editor_paths.add(path_key)
+        try:
+            editor = EditorWindow()
+            # Retain the window before opening the document. Image decoding and
+            # layout can process queued UI events; a second activation during
+            # that interval must not manufacture another editor.
+            self._editors.append(editor)
+            editor.open_path(path)
+            editor.show()
+        finally:
+            self._opening_editor_paths.discard(path_key)
 
 # ===== SNAPSMACK EOF =====
