@@ -1,10 +1,10 @@
 <?php
 /**
- * SNAPSMACK — SMACKVERSE library (ActivityPub, v0.2 FOLLOW + DELIVER)
+ * SNAPSMACK — FEDIVERSE library (ActivityPub, v0.2 FOLLOW + DELIVER)
  *
- * Library for the SMACKVERSE federation endpoints (smackverse.php router)
- * and the delivery cron (cron-smackverse.php).
- * Spec: _spec/smackverse-activitypub-spec-v0_1.md (v0.2 section).
+ * Library for the FEDIVERSE federation endpoints (fediverse.php router)
+ * and the delivery cron (cron-fediverse.php).
+ * Spec: _spec/fediverse-activitypub-spec-v0_1.md (v0.2 section).
  *
  * v0.2 scope on top of the v0.1 discovery skeleton:
  *   - HTTP Signature verification (draft-cavage, what Mastodon speaks) on
@@ -16,13 +16,13 @@
  *     permalink = site_url + img_slug), attachments, hashtags from
  *     snap_image_tags. Dereferenceable Note JSON served at ?ap=note&id=N.
  *   - Outbound delivery queue (snap_ap_deliveries) with signed POSTs and
- *     exponential backoff, processed by cron-smackverse.php.
+ *     exponential backoff, processed by cron-fediverse.php.
  *   - Publish sweep (PULL model — no posting-flow edits anywhere): the cron
  *     federates images published since the last-federated marker. First run
  *     initialises the marker to NOW so an existing library (e.g. 10k Flickr
  *     imports) is NEVER blasted to followers.
  *
- * EVERYTHING is gated on the smackverse_enabled setting (absent = OFF).
+ * EVERYTHING is gated on the fediverse_enabled setting (absent = OFF).
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -38,7 +38,7 @@ if (is_file(__DIR__ . '/smackcast-relay.php')) require_once __DIR__ . '/smackcas
 require_once __DIR__ . '/client-ip.php';  // mandatory security boundary — SECAUDIT 035
 
 function sv_enabled(array $settings): bool {
-    return ($settings['smackverse_enabled'] ?? '0') === '1';
+    return ($settings['fediverse_enabled'] ?? '0') === '1';
 }
 
 /**
@@ -58,11 +58,11 @@ function sv_domain(array $settings): string {
 }
 
 /**
- * The actor's preferredUsername. smackverse_handle setting wins; otherwise
+ * The actor's preferredUsername. fediverse_handle setting wins; otherwise
  * the site_name sanitised to [a-z0-9_]. Falls back to 'photoblog'.
  */
 function sv_handle(array $settings): string {
-    $h = trim($settings['smackverse_handle'] ?? '');
+    $h = trim($settings['fediverse_handle'] ?? '');
     if ($h === '') {
         $h = strtolower(preg_replace('/[^a-z0-9_]+/i', '_', trim($settings['site_name'] ?? '')));
         $h = trim($h, '_');
@@ -70,7 +70,7 @@ function sv_handle(array $settings): string {
     return $h !== '' ? $h : 'photoblog';
 }
 
-// AP endpoint/object URLs are PATH-STYLE (/ap/…, rewritten to smackverse.php
+// AP endpoint/object URLs are PATH-STYLE (/ap/…, rewritten to fediverse.php
 // by .htaccess) as of 0.7.350. They must stay query-string-free: Pixelfed
 // HTML-encodes '&' when dereferencing object ids (?a=1&b=2 arrives as
 // ?a=1&amp;b=2 → 404), which silently killed every delivered Note. The old
@@ -89,7 +89,7 @@ function sv_key_id(array $settings): string        { return sv_actor_url($settin
  *  the old dates re-ingest fresh. Gen 1 (default) = no suffix, so nothing changes
  *  until you deliberately re-imprint. Dereference is unaffected: (int)"861~2" === 861. */
 function sv_gen_suffix(array $settings): string {
-    $g = (int)($settings['smackverse_fedi_gen'] ?? 1);
+    $g = (int)($settings['fediverse_fedi_gen'] ?? 1);
     return $g > 1 ? '~' . $g : '';
 }
 
@@ -105,7 +105,7 @@ function sv_set_setting(PDO $pdo, array &$settings, string $key, string $val): v
 
 // ─── Tables (defensive — canonical schema is the real delivery) ─────────────
 
-/** Belt-and-suspenders CREATE IF NOT EXISTS for the two SMACKVERSE tables. */
+/** Belt-and-suspenders CREATE IF NOT EXISTS for the two FEDIVERSE tables. */
 function sv_ensure_tables(PDO $pdo): void {
     $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_followers` (
         `id`               int unsigned  NOT NULL AUTO_INCREMENT,
@@ -259,7 +259,7 @@ function sv_ensure_tables(PDO $pdo): void {
         "ap_object_id varchar(500) DEFAULT NULL",
         "ap_note_id varchar(500) DEFAULT NULL",
         "ap_in_reply_to varchar(500) DEFAULT NULL",
-        // Longform federation (SMACKVERSE longform): a fediverse reply to a
+        // Longform federation (FEDIVERSE longform): a fediverse reply to a
         // longform post has NO image row, so it attaches by post_id instead of
         // img_id. Nullable — existing image-keyed comments leave it NULL.
         "post_id int DEFAULT NULL",
@@ -290,7 +290,7 @@ function sv_ensure_tables(PDO $pdo): void {
 
     // Per-post federation controls (0.7.367): PUSH-mode gate + staged/pushed
     // state + fediverse date-label override. Belt-and-suspenders so they exist
-    // the instant SMACKVERSE runs, before the canonical schema sync lands them.
+    // the instant FEDIVERSE runs, before the canonical schema sync lands them.
     foreach ([
         "fedi_enabled tinyint(1) NOT NULL DEFAULT 1",
         "fedi_pushed_at datetime DEFAULT NULL",
@@ -315,7 +315,7 @@ function sv_ensure_tables(PDO $pdo): void {
     }
 
     // Reader / engagement (0.7.365): the two-way client. Mirrors of the
-    // canonical tables so they exist the instant SMACKVERSE runs, before a
+    // canonical tables so they exist the instant FEDIVERSE runs, before a
     // schema sync. See database/schema/snapsmack_canonical.sql for the notes.
     $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_actors` (
         `id`               int unsigned NOT NULL AUTO_INCREMENT,
@@ -418,7 +418,7 @@ function sv_ensure_tables(PDO $pdo): void {
     try {
         $done = $pdo->query(
             "SELECT setting_val FROM snap_settings
-             WHERE setting_key = 'smackverse_permalink_like_backfill' LIMIT 1"
+             WHERE setting_key = 'fediverse_permalink_like_backfill' LIMIT 1"
         )->fetchColumn();
         if (!$done) {
             $pdo->exec(
@@ -435,7 +435,7 @@ function sv_ensure_tables(PDO $pdo): void {
             );
             $pdo->prepare(
                 "INSERT INTO snap_settings (setting_key, setting_val)
-                 VALUES ('smackverse_permalink_like_backfill', '1')
+                 VALUES ('fediverse_permalink_like_backfill', '1')
                  ON DUPLICATE KEY UPDATE setting_val = '1'"
             )->execute();
         }
@@ -450,7 +450,7 @@ function sv_ensure_tables(PDO $pdo): void {
     try {
         $done = $pdo->query(
             "SELECT setting_val FROM snap_settings
-             WHERE setting_key = 'smackverse_delete_log_purge' LIMIT 1"
+             WHERE setting_key = 'fediverse_delete_log_purge' LIMIT 1"
         )->fetchColumn();
         if (!$done) {
             $pdo->exec(
@@ -459,7 +459,7 @@ function sv_ensure_tables(PDO $pdo): void {
             );
             $pdo->prepare(
                 "INSERT INTO snap_settings (setting_key, setting_val)
-                 VALUES ('smackverse_delete_log_purge', '1')
+                 VALUES ('fediverse_delete_log_purge', '1')
                  ON DUPLICATE KEY UPDATE setting_val = '1'"
             )->execute();
         }
@@ -475,7 +475,7 @@ function sv_ensure_tables(PDO $pdo): void {
  * federation delivery will not).
  */
 function sv_ensure_keys(PDO $pdo, array &$settings): string {
-    $pub = $settings['smackverse_public_key'] ?? '';
+    $pub = $settings['fediverse_public_key'] ?? '';
     if ($pub !== '') return $pub;
     if (!function_exists('openssl_pkey_new')) return '';
 
@@ -490,8 +490,8 @@ function sv_ensure_keys(PDO $pdo, array &$settings): string {
     if ($pub === '') return '';
 
     try {
-        sv_set_setting($pdo, $settings, 'smackverse_public_key', $pub);
-        sv_set_setting($pdo, $settings, 'smackverse_private_key', $priv);
+        sv_set_setting($pdo, $settings, 'fediverse_public_key', $pub);
+        sv_set_setting($pdo, $settings, 'fediverse_private_key', $priv);
     } catch (Exception $e) {
         return ''; // don't serve a key we couldn't persist
     }
@@ -531,7 +531,7 @@ function sv_url_is_public(string $url): bool {
 function sv_media_proxy_url(string $url, ?array $settings = null, int $ttl = 86400): string {
     if ($url === '' || stripos($url, 'https://') !== 0) return $url;
     $cfg = $settings ?? ($GLOBALS['sv_settings'] ?? $GLOBALS['settings'] ?? []);
-    $private = is_array($cfg) ? (string)($cfg['smackverse_private_key'] ?? '') : '';
+    $private = is_array($cfg) ? (string)($cfg['fediverse_private_key'] ?? '') : '';
     if ($private === '') return $url;
     $expires = time() + max(300, min(604800, $ttl));
     $encoded = rtrim(strtr(base64_encode($url), '+/', '-_'), '=');
@@ -582,14 +582,14 @@ function sv_inbox_rate_ok(PDO $pdo, string $ip, array $settings = []): bool {
 
         $pdo->prepare(
             "INSERT INTO snap_rate_limits (ip, action, count, window_start)
-             VALUES (?, 'smackverse_inbox', 1, NOW())
+             VALUES (?, 'fediverse_inbox', 1, NOW())
              ON DUPLICATE KEY UPDATE
                count        = IF(window_start < DATE_SUB(NOW(), INTERVAL 10 MINUTE), 1, count + 1),
                window_start = IF(window_start < DATE_SUB(NOW(), INTERVAL 10 MINUTE), NOW(), window_start)"
         )->execute([$ip]);
         $q = $pdo->prepare(
             "SELECT count FROM snap_rate_limits
-             WHERE ip = ? AND action = 'smackverse_inbox'
+             WHERE ip = ? AND action = 'fediverse_inbox'
                AND window_start >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
         );
         $q->execute([$ip]);
@@ -606,7 +606,7 @@ function sv_inbox_rate_ok(PDO $pdo, string $ip, array $settings = []): bool {
             // SECAUDIT 035: never record a ban against a private/loopback/proxy
             // address — that silences the whole audience, not the flooder.
             if (snap_ip_is_bannable($ip, $pdo)) {
-                snap_ip_record_ban($pdo, $ip, 'auto:smackverse_inbox', 86400);
+                snap_ip_record_ban($pdo, $ip, 'auto:fediverse_inbox', 86400);
             }
             return false;
         }
@@ -627,12 +627,12 @@ function sv_fetch_ap(string $url, ?array $settings = null): ?array {
     // authorized (signed) GET, 429 = we're being rate-limited (cache actors),
     // 404/410 = bogus/dead actor (correctly refused), transport = TLS/DNS/pin.
     if (!function_exists('curl_init')) {
-        error_log('SMACKVERSE fetch: curl_init unavailable — ' . $url);
+        error_log('FEDIVERSE fetch: curl_init unavailable — ' . $url);
         return null;
     }
     $res = sv_resolve_public($url);
     if ($res === null) {
-        error_log('SMACKVERSE fetch: blocked by SSRF guard / unresolvable host — ' . $url);
+        error_log('FEDIVERSE fetch: blocked by SSRF guard / unresolvable host — ' . $url);
         return null;
     }
     // Authorized-fetch: sign the GET when a key is reachable (passed in, or the
@@ -641,7 +641,7 @@ function sv_fetch_ap(string $url, ?array $settings = null): ?array {
     // Falls back to the plain unsigned headers when no key is configured.
     $hdrs = [
         'Accept: application/activity+json, application/ld+json',
-        'User-Agent: SnapSmack-SMACKVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+        'User-Agent: SnapSmack-FEDIVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
     ];
     $sv_settings = $settings ?? ($GLOBALS['settings'] ?? null);
     if (is_array($sv_settings)) {
@@ -664,23 +664,23 @@ function sv_fetch_ap(string $url, ?array $settings = null): ?array {
     $ctype = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
     curl_close($ch);
     if ($body === false || $cerr !== 0) {
-        error_log('SMACKVERSE fetch: transport error curl_errno=' . $cerr
+        error_log('FEDIVERSE fetch: transport error curl_errno=' . $cerr
             . ' (' . ($cmsg !== '' ? $cmsg : 'none') . ') http=' . $code . ' — ' . $url);
         return null;
     }
     if ($code < 200 || $code >= 300) {
-        error_log('SMACKVERSE fetch: HTTP ' . $code
+        error_log('FEDIVERSE fetch: HTTP ' . $code
             . ' ctype=' . ($ctype !== '' ? $ctype : '?')
             . ' bytes=' . strlen((string)$body) . ' — ' . $url);
         return null;
     }
     if (strlen($body) > 524288) {
-        error_log('SMACKVERSE fetch: oversize body ' . strlen($body) . ' bytes — ' . $url);
+        error_log('FEDIVERSE fetch: oversize body ' . strlen($body) . ' bytes — ' . $url);
         return null;
     }
     $doc = json_decode($body, true);
     if (!is_array($doc)) {
-        error_log('SMACKVERSE fetch: non-JSON/non-object body (' . json_last_error_msg()
+        error_log('FEDIVERSE fetch: non-JSON/non-object body (' . json_last_error_msg()
             . ') ctype=' . ($ctype !== '' ? $ctype : '?') . ' bytes=' . strlen((string)$body) . ' — ' . $url);
         return null;
     }
@@ -701,14 +701,14 @@ function sv_fetch_ap(string $url, ?array $settings = null): ?array {
  *  and persisted — NEVER the shared public default salt, which would reduce
  *  "encrypted at rest" to mere obfuscation (audit 032, finding 1). */
 function sv_search_salt(PDO $pdo, array $settings): string {
-    $k = trim((string)($settings['smackverse_search_key'] ?? ''));
+    $k = trim((string)($settings['fediverse_search_key'] ?? ''));
     if ($k !== '') return $k;
     try {
         $new = bin2hex(random_bytes(32));
         // Insert-if-absent; a concurrent request that won keeps its value.
-        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackverse_search_key', ?)
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('fediverse_search_key', ?)
                        ON DUPLICATE KEY UPDATE setting_val = setting_val")->execute([$new]);
-        $stored = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'smackverse_search_key' LIMIT 1")->fetchColumn();
+        $stored = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'fediverse_search_key' LIMIT 1")->fetchColumn();
         return ($stored !== false && $stored !== null && $stored !== '') ? (string)$stored : $new;
     } catch (Exception $e) {
         return $new; // in-memory fallback: still per-install random, not the public default
@@ -866,7 +866,7 @@ function sv_hub_search(PDO $pdo, array $settings, string $kind, string $term, in
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/json',
             'Authorization: Bearer ' . $hub['api_key_remote'],
-            'User-Agent: SnapSmack-SMACKVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+            'User-Agent: SnapSmack-FEDIVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
         ],
     ]);
     $resp = curl_exec($ch);
@@ -875,7 +875,7 @@ function sv_hub_search(PDO $pdo, array $settings, string $kind, string $term, in
     if ($resp === false || $code < 200 || $code >= 300) return null;
     if (strlen($resp) > 2097152) return null;
     $doc = json_decode($resp, true);
-    // proxied=false → hub has no accounts / smackverse off → fall back to public.
+    // proxied=false → hub has no accounts / fediverse off → fall back to public.
     if (!is_array($doc) || empty($doc['ok']) || empty($doc['proxied'])) return null;
     return (isset($doc['results']) && is_array($doc['results'])) ? $doc['results'] : [];
 }
@@ -895,7 +895,7 @@ function sv_authed_get(string $url, string $token): ?array {
         CURLOPT_HTTPHEADER     => [
             'Accept: application/json',
             'Authorization: Bearer ' . $token,
-            'User-Agent: SnapSmack-SMACKVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+            'User-Agent: SnapSmack-FEDIVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
         ],
     ]);
     $body = curl_exec($ch);
@@ -978,8 +978,8 @@ function sv_request_header(string $name): string {
  */
 function sv_verify_signature(string $raw_body): ?array {
     // Diagnostic: logs the exact rejection reason to the PHP error log with a
-    // greppable prefix ("SMACKVERSE sig:"). Cheap; helps chase interop issues.
-    $reject = function (string $why): void { error_log('SMACKVERSE sig: REJECT — ' . $why); };
+    // greppable prefix ("FEDIVERSE sig:"). Cheap; helps chase interop issues.
+    $reject = function (string $why): void { error_log('FEDIVERSE sig: REJECT — ' . $why); };
 
     $sig_header = sv_request_header('signature');
     if ($sig_header === '') { $reject('no Signature header'); return null; }
@@ -1097,16 +1097,16 @@ function sv_verify_signature(string $raw_body): ?array {
     }
     if ($ok !== 1) {
         // verify=0 for every form = signature doesn't match string+key.
-        error_log('SMACKVERSE sig: verify=0'
+        error_log('FEDIVERSE sig: verify=0'
             . ' openssl_err=' . (openssl_error_string() ?: 'none')
             . ' sig_bytes=' . strlen((string)$sig_bytes)
             . ' keyId=' . $sig['keyid']
             . ' fetched_actor=' . ($actor['id'] ?? '?')
             . ' pem_fp=' . substr(hash('sha256', $pem), 0, 16));
         foreach ($rt_candidates as $rt) {
-            error_log('SMACKVERSE sig: tried [' . str_replace("\n", ' ⏎ ', $build($rt)) . ']');
+            error_log('FEDIVERSE sig: tried [' . str_replace("\n", ' ⏎ ', $build($rt)) . ']');
         }
-        error_log('SMACKVERSE sig: raw Signature header = [' . sv_request_header('signature') . ']');
+        error_log('FEDIVERSE sig: raw Signature header = [' . sv_request_header('signature') . ']');
         $reject('openssl_verify failed for all request-target forms. Signed: ' . implode(' ', $signed_names));
         return null;
     }
@@ -1119,7 +1119,7 @@ function sv_verify_signature(string $raw_body): ?array {
  * Returns a curl-ready header array, or null without a key.
  */
 function sv_signed_headers(array $settings, string $url, string $body): ?array {
-    $priv = $settings['smackverse_private_key'] ?? '';
+    $priv = $settings['fediverse_private_key'] ?? '';
     if ($priv === '') return null;
     $pkey = openssl_pkey_get_private($priv);
     if ($pkey === false) return null;
@@ -1149,7 +1149,7 @@ function sv_signed_headers(array $settings, string $url, string $body): ?array {
         'Content-Type: ' . $ctype,
         'Signature: ' . $sig_header,
         'Accept: application/activity+json',
-        'User-Agent: SnapSmack-SMACKVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+        'User-Agent: SnapSmack-FEDIVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
     ];
 }
 
@@ -1161,7 +1161,7 @@ function sv_signed_headers(array $settings, string $url, string $body): ?array {
  * unsigned GET, unchanged behaviour).
  */
 function sv_signed_get_headers(array $settings, string $url): ?array {
-    $priv = $settings['smackverse_private_key'] ?? '';
+    $priv = $settings['fediverse_private_key'] ?? '';
     if ($priv === '') return null;
     $pkey = openssl_pkey_get_private($priv);
     if ($pkey === false) return null;
@@ -1185,7 +1185,7 @@ function sv_signed_get_headers(array $settings, string $url): ?array {
         'Date: ' . $date,
         'Signature: ' . $sig_header,
         'Accept: application/activity+json, application/ld+json',
-        'User-Agent: SnapSmack-SMACKVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+        'User-Agent: SnapSmack-FEDIVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
     ];
 }
 
@@ -1229,7 +1229,7 @@ function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json, ?
  *  1..120, default 10). The breathing room a remote gets to ingest one Note
  *  before the next lands — the cure for out-of-order posts on a burst. */
 function sv_delivery_cadence(array $settings): int {
-    return max(1, min(120, (int)($settings['smackverse_delivery_cadence_secs'] ?? 10)));
+    return max(1, min(120, (int)($settings['fediverse_delivery_cadence_secs'] ?? 10)));
 }
 
 /** Extra seconds added per EXTRA carousel layer (clamped 0..30, default 2). A
@@ -1238,7 +1238,7 @@ function sv_delivery_cadence(array $settings): int {
  *  stack — the cure for cover-lands-but-stack-doesn't. A single image (L=1)
  *  pays nothing extra. */
 function sv_layer_cadence(array $settings): int {
-    return max(0, min(30, (int)($settings['smackverse_layer_cadence_secs'] ?? 2)));
+    return max(0, min(30, (int)($settings['fediverse_layer_cadence_secs'] ?? 2)));
 }
 
 /** Attachment (carousel layer) count carried by a queued activity's Note, so
@@ -1390,7 +1390,7 @@ function sv_resolve_target(string $url, ?PDO $pdo = null): ?array {
         return null;
     }
     // Legacy query-string ids (pre-0.7.350) — anything already federated.
-    if (strpos($url, 'smackverse.php') !== false) {
+    if (strpos($url, 'fediverse.php') !== false) {
         $q = parse_url($url, PHP_URL_QUERY) ?: '';
         parse_str($q, $p);
         if (($p['ap'] ?? '') === 'note') {
@@ -1506,9 +1506,9 @@ function sv_notify(PDO $pdo, string $ntype, string $actor_url, string $handle = 
  * Diagnostic: record one inbound inbox activity + its outcome. Best-effort and
  * never throws (a logging failure must not affect inbox handling). Trims the
  * table to the most recent ~500 rows so it can't grow unbounded. Read it on the
- * SMACKVERSE Interactions page to see why a federated Like/reply did or didn't
+ * FEDIVERSE Interactions page to see why a federated Like/reply did or didn't
  * land — the inbox intentionally swallows errors, so without this the tables
- * just look mysteriously empty. See [[project_smackverse_single_actor]].
+ * just look mysteriously empty. See [[project_fediverse_single_actor]].
  */
 function sv_inbox_log(PDO $pdo, string $verb, string $actor, ?string $object, string $outcome): void {
     try {
@@ -1780,7 +1780,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         // Backfill: seed this new/reactivated follower with our recent catalogue.
         // We record a one-shot job here; a detached CLI worker owns it when
         // available, otherwise the router uses a post-response FPM fallback.
-        $backfill = (int)($settings['smackverse_backfill_count'] ?? 200);
+        $backfill = (int)($settings['fediverse_backfill_count'] ?? 200);
         if ($backfill > 0 && !$was_active) {
             $pdo->prepare(
                 "INSERT INTO snap_ap_backfill_jobs (actor_url, inbox_url) VALUES (?, ?)
@@ -1803,7 +1803,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         sv_notify($pdo, 'follow', $actor_id, $handle, null, sv_actor_url($settings), null);
         // Start the Accept + first-follow catalogue now. The detached CLI owns
         // pacing; this inbox request still returns immediately.
-        require_once __DIR__ . '/smackverse-kick.php';
+        require_once __DIR__ . '/fediverse-kick.php';
         $settings['_sv_delivery_kicked'] = sv_kick_delivery() ? '1' : '0';
         return 202;
     }
@@ -2226,8 +2226,8 @@ function sv_actor_summary(array $settings): string {
  * listing is a switch you flip, never a default we flip.
  */
 function sv_rollcall_tags(array $settings): array {
-    if (($settings['smackverse_rollcall'] ?? '0') !== '1') return [];
-    $raw  = (string)($settings['smackverse_rollcall_topics'] ?? 'photography');
+    if (($settings['fediverse_rollcall'] ?? '0') !== '1') return [];
+    $raw  = (string)($settings['fediverse_rollcall_topics'] ?? 'photography');
     $tags = ['fedi22'];
     foreach (preg_split('/[\s,]+/', $raw, -1, PREG_SPLIT_NO_EMPTY) as $t) {
         $t = preg_replace('/[^A-Za-z0-9_]/', '', ltrim($t, '#'));
@@ -2274,10 +2274,10 @@ function sv_rollcall_submit(array $settings, string $mode): array {
     $err  = curl_error($ch);
     curl_close($ch);
 
-    // Breadcrumb for post-mortem — same SMACKVERSE error_log convention used by
+    // Breadcrumb for post-mortem — same FEDIVERSE error_log convention used by
     // sv fetch/sig above. Captures the exact response so a "didn't take" save can
     // be diagnosed from the PHP error log (curl/SSL error vs HTTP code vs body).
-    error_log('SMACKVERSE rollcall: mode=' . $mode . ' acct=' . $acct
+    error_log('FEDIVERSE rollcall: mode=' . $mode . ' acct=' . $acct
               . ' http=' . $code . ($err !== '' ? ' curlerr=' . $err : '')
               . ' body=' . substr(is_string($body) ? $body : var_export($body, true), 0, 300));
 
@@ -2429,7 +2429,7 @@ function sv_actor_doc(PDO $pdo, array &$settings): array {
         'id'                => $actor,
         'type'              => 'Person',
         'preferredUsername' => sv_handle($settings),
-        'name'              => html_entity_decode((string)((trim((string)($settings['smackverse_display_name'] ?? '')) !== '') ? $settings['smackverse_display_name'] : ($settings['site_name'] ?? 'SnapSmack')), ENT_QUOTES | ENT_HTML5),
+        'name'              => html_entity_decode((string)((trim((string)($settings['fediverse_display_name'] ?? '')) !== '') ? $settings['fediverse_display_name'] : ($settings['site_name'] ?? 'SnapSmack')), ENT_QUOTES | ENT_HTML5),
         'summary'           => sv_actor_summary($settings),
         'url'               => sv_profile_url($settings),
         'inbox'             => sv_inbox_url($settings),
@@ -2460,9 +2460,9 @@ function sv_actor_doc(PDO $pdo, array &$settings): array {
     // link (HTML <a> so it's clickable + rel=me verifiable) and free-text pronouns.
     // The @context above declares schema:PropertyValue/value so these survive
     // JSON-LD normalisation on the remote. Website defaults to site_url; pronouns
-    // only appear once set (smack-smackverse.php field).
+    // only appear once set (smack-fediverse-portal.php field).
     $attach = [];
-    $site = trim((string)($settings['smackverse_website'] ?? $settings['site_url'] ?? ''));
+    $site = trim((string)($settings['fediverse_website'] ?? $settings['site_url'] ?? ''));
     if ($site !== '') {
         if (!preg_match('~^https?://~i', $site)) $site = 'https://' . ltrim($site, '/');
         $host = parse_url($site, PHP_URL_HOST) ?: $site;
@@ -2474,7 +2474,7 @@ function sv_actor_doc(PDO $pdo, array &$settings): array {
                      . htmlspecialchars($host, ENT_QUOTES) . '</a>',
         ];
     }
-    $pronouns = trim((string)($settings['smackverse_pronouns'] ?? ''));
+    $pronouns = trim((string)($settings['fediverse_pronouns'] ?? ''));
     if ($pronouns !== '') {
         $attach[] = [
             'type'  => 'PropertyValue',
@@ -2697,19 +2697,19 @@ function sv_unsend_dm(PDO $pdo, array $settings, int $dm_id): array {
     return [true, 'Message unsent.'];
 }
 
-// ─── SMACKVERSE network relay (0.7.392) — join/leave the fan-out relay ───────
+// ─── FEDIVERSE network relay (0.7.392) — join/leave the fan-out relay ───────
 // The relay lets every SnapSmack blog see the whole network's public posts
 // without following each one. Joining = a relay-follow (Follow with object = the
 // Public collection) to the relay actor. Because we record the relay in
 // snap_ap_following, its fan-out Announces ingest via the normal followed-account
-// path — no new inbound code. See projects/smackverse-relay/.
+// path — no new inbound code. See projects/photoblogs-relay/.
 
 function sv_relay_actor_url(array $settings): string {
-    $u = trim($settings['smackverse_relay_url'] ?? '');
+    $u = trim($settings['photoblogs_relay_url'] ?? '');
     return $u !== '' ? $u : 'https://photoblogs.fyi/actor';
 }
 
-/** Join the SMACKVERSE network relay. Idempotent. @return [bool ok, string msg] */
+/** Join the FEDIVERSE network relay. Idempotent. @return [bool ok, string msg] */
 function sv_relay_join(PDO $pdo, array $settings): array {
     $relay = sv_relay_actor_url($settings);
     if ($relay === sv_actor_url($settings)) return [false, 'That is this blog.'];
@@ -2723,7 +2723,7 @@ function sv_relay_join(PDO $pdo, array $settings): array {
     // the home timeline via sv_is_following() — the trust gate is the follow.
     $pdo->prepare(
         "INSERT INTO snap_ap_following (actor_url, actor_handle, inbox_url, follow_id, state)
-         VALUES (?, 'smackverse-relay', ?, ?, 'pending')
+         VALUES (?, 'photoblogs-relay', ?, ?, 'pending')
          ON DUPLICATE KEY UPDATE inbox_url=VALUES(inbox_url), follow_id=VALUES(follow_id), state='pending', followed_at=NOW()"
     )->execute([$relay, $inbox, $follow_id]);
 
@@ -2738,8 +2738,8 @@ function sv_relay_join(PDO $pdo, array $settings): array {
     sv_queue_delivery($pdo, $inbox, json_encode($follow, JSON_UNESCAPED_SLASHES));
     sv_process_deliveries($pdo, $settings, 10);
 
-    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackverse_relay_joined','1') ON DUPLICATE KEY UPDATE setting_val='1'")->execute();
-    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackverse_relay_url',?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$relay]);
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('photoblogs_relay_joined','1') ON DUPLICATE KEY UPDATE setting_val='1'")->execute();
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('photoblogs_relay_url',?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$relay]);
     return [true, 'Joined the Fediverse network relay (' . (parse_url($relay, PHP_URL_HOST) ?: $relay) . '). Pending its Accept — usually seconds. Posts from across the network will start landing in your reader.'];
 }
 
@@ -2770,7 +2770,7 @@ function sv_relay_leave(PDO $pdo, array $settings): array {
         sv_process_deliveries($pdo, $settings, 10);
     }
     $pdo->prepare("DELETE FROM snap_ap_following WHERE actor_url = ?")->execute([$relay]);
-    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackverse_relay_joined','0') ON DUPLICATE KEY UPDATE setting_val='0'")->execute();
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('photoblogs_relay_joined','0') ON DUPLICATE KEY UPDATE setting_val='0'")->execute();
     return [true, 'Left the Fediverse network relay.'];
 }
 
@@ -3668,7 +3668,7 @@ function sv_fetch_json(string $url, int $timeout = 12): ?array {
         CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_HTTPHEADER     => [
             'Accept: application/json',
-            'User-Agent: SnapSmack-SMACKVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
+            'User-Agent: SnapSmack-FEDIVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
         ],
     ]);
     $body = curl_exec($ch);
@@ -3810,7 +3810,7 @@ function sv_media_type(string $file): string {
  * Pixelfed/Mastodon can't CSS-frame, so the elegant matte/border/shadow is
  * baked into `f_<file>` (client-side at post time; server-baked only inside
  * the bounded backfill window). Convention-based like t_/a_ — no schema.
- * Spec: _spec/smackverse-frame-bake-spec-v0_1.md
+ * Spec: _spec/fediverse-frame-bake-spec-v0_1.md
  */
 function sv_frame_url(array $img, array $settings): ?string {
     $file = $img['img_file'] ?? '';
@@ -4505,10 +4505,10 @@ function sv_actor_profile_fingerprint(PDO $pdo, array &$settings): string {
  */
 function sv_maybe_push_actor_update(PDO $pdo, array &$settings): int {
     $fp   = sv_actor_profile_fingerprint($pdo, $settings);
-    $seen = trim((string)($settings['smackverse_actor_fp'] ?? ''));
+    $seen = trim((string)($settings['fediverse_actor_fp'] ?? ''));
     if ($seen === $fp) return 0;
     $queued = sv_push_actor_update($pdo, $settings);
-    sv_set_setting($pdo, $settings, 'smackverse_actor_fp', $fp);
+    sv_set_setting($pdo, $settings, 'fediverse_actor_fp', $fp);
     return $queued;
 }
 
@@ -4550,7 +4550,7 @@ function sv_maybe_push_actor_update(PDO $pdo, array &$settings): int {
  * @return array [notes_built, activities_queued]
  */
 function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null, string $mode = 'create'): array {
-    if ($limit === null) $limit = (int)($settings['smackverse_backfill_count'] ?? 200);
+    if ($limit === null) $limit = (int)($settings['fediverse_backfill_count'] ?? 200);
     $creates = sv_recent_creates($pdo, $settings, $limit);
     $inboxes = sv_follower_inboxes($pdo);
     if (!$creates || !$inboxes) return [0, 0];
@@ -4603,11 +4603,11 @@ function sv_seed_post(PDO $pdo, array $settings, int $post_id): int {
  *   - unpublished, or fedi turned off → Delete/Tombstone + clear fedi_pushed_at
  *     so a later re-publish sends a fresh Create (not an Update to a dead id).
  * Loads the row directly (NOT sv_post_row, which is published-only, so an
- * unpublish would otherwise never retract). No-op when SMACKVERSE is off, the
+ * unpublish would otherwise never retract). No-op when FEDIVERSE is off, the
  * post was never pushed, or there are no followers. Enqueue-only.
  */
 function sv_federate_post_change(PDO $pdo, array $settings, int $post_id): void {
-    if (($settings['smackverse_enabled'] ?? '0') !== '1') return;
+    if (($settings['fediverse_enabled'] ?? '0') !== '1') return;
     $s = $pdo->prepare("SELECT * FROM snap_posts WHERE id = ? LIMIT 1");
     $s->execute([$post_id]);
     $post = $s->fetch(PDO::FETCH_ASSOC);
@@ -4639,7 +4639,7 @@ function sv_federate_post_change(PDO $pdo, array $settings, int $post_id): void 
  * so this is safe to fire on any edit of a fedi-enabled solo image.
  */
 function sv_federate_image_change(PDO $pdo, array $settings, int $img_id): void {
-    if (($settings['smackverse_enabled'] ?? '0') !== '1') return;
+    if (($settings['fediverse_enabled'] ?? '0') !== '1') return;
     $s = $pdo->prepare("SELECT * FROM snap_images WHERE id = ? LIMIT 1");
     $s->execute([$img_id]);
     $img = $s->fetch(PDO::FETCH_ASSOC);
@@ -5016,7 +5016,7 @@ function sv_ordered_units(PDO $pdo, array $settings, int $limit): array {
     // Never backfill a PARTIAL trigram — a trio is a 3-across banner and 1-2 of
     // 3 looks broken. Drop any trigram whose full trio isn't inside the window,
     // so an all-trigram blog lands on a multiple of 3 (a limit of 10 trims to 9;
-    // set smackverse_backfill_count to 12 to send four trios). Non-trigram posts
+    // set fediverse_backfill_count to 12 to send four trios). Non-trigram posts
     // and standalone images are unaffected.
     $trio_counts = [];
     foreach ($units as $u) {
@@ -5141,7 +5141,7 @@ function sv_backfill_addendum_create(PDO $pdo, array $settings, int $shown, int 
 
 /**
  * Process pending first-follow backfill jobs (recorded by the inbox Follow
- * handler). Builds up to smackverse_backfill_count (default 200) recent Creates
+ * handler). Builds up to fediverse_backfill_count (default 200) recent Creates
  * via sv_recent_creates — reusing the exact grid/trigram delivery order — queues
  * them to each follower's inbox for the paced drain, then (catalogue over 500) a
  * single "more on the site" addendum Note. One-shot: the job row is deleted once
@@ -5155,7 +5155,7 @@ function sv_backfill_addendum_create(PDO $pdo, array $settings, int $shown, int 
  */
 function sv_process_backfill_jobs(PDO $pdo, array $settings, int $max_jobs = 3,
                                   ?string $actor_url = null): array {
-    $cap = (int)($settings['smackverse_backfill_count'] ?? 200);
+    $cap = (int)($settings['fediverse_backfill_count'] ?? 200);
     if ($cap < 1) return [0, 0, null, null];
     try {
         if ($actor_url !== null) {
@@ -5241,7 +5241,7 @@ function sv_unit_comment_ids(PDO $pdo, array $u): array {
  */
 function sv_reseed_all(PDO $pdo, array $settings, ?int $limit = null): array {
     if (!sv_enabled($settings)) return [0, 0, 0];
-    if ($limit === null) $limit = (int)($settings['smackverse_backfill_count'] ?? 200);
+    if ($limit === null) $limit = (int)($settings['fediverse_backfill_count'] ?? 200);
 
     // Keep published metadata aligned with grid order for servers that honour it.
     // Pixelfed profile position is still ingestion-id based, so the reversed,
@@ -5302,8 +5302,8 @@ function sv_reimprint(PDO $pdo, array &$settings, ?int $limit = null): array {
         $retracted += sv_retract_note($pdo, $settings, $nid);
     }
     // Bump the generation → all NEW Note ids carry the new suffix.
-    $newgen = (int)($settings['smackverse_fedi_gen'] ?? 1) + 1;
-    sv_set_setting($pdo, $settings, 'smackverse_fedi_gen', (string)$newgen);
+    $newgen = (int)($settings['fediverse_fedi_gen'] ?? 1) + 1;
+    sv_set_setting($pdo, $settings, 'fediverse_fedi_gen', (string)$newgen);
     // Seed everything fresh under the new ids (sv_reseed_all imprints dates first).
     list($posts, , $deliveries) = sv_reseed_all($pdo, $settings, $limit);
     return [$retracted, $posts, $deliveries];
@@ -5354,7 +5354,7 @@ function sv_sync_fedi_dates(PDO $pdo, array $settings): int {
 }
 
 /** How many published, federation-eligible posts are STAGED — never pushed, or
- *  edited since their last push. Drives the "N staged" hint on the SMACKVERSE
+ *  edited since their last push. Drives the "N staged" hint on the FEDIVERSE
  *  page in MANUAL push mode. */
 function sv_staged_count(PDO $pdo): int {
     try {
@@ -5422,10 +5422,10 @@ function sv_reverse_trigram_group_units(array $units): array {
  * streams, each with its own datetime marker (no item can be skipped by
  * the per-sweep cap — the next cron resumes where this one stopped):
  *   - standalone images (post_id NULL)  → one Note each
- *     marker: smackverse_last_img_federated_at
+ *     marker: fediverse_last_img_federated_at
  *   - grouped posts (single/carousel/panorama) → ONE multi-attachment
  *     Note per post (Pixelfed carousel shape)
- *     marker: smackverse_last_post_federated_at
+ *     marker: fediverse_last_post_federated_at
  * First run initialises both markers to NOW and federates NOTHING — an
  * existing library (e.g. 10k Flickr imports) is never blasted at
  * followers. Scheduled (future-dated) content federates once its date
@@ -5433,34 +5433,34 @@ function sv_reverse_trigram_group_units(array $units): array {
  */
 function sv_sweep_new_posts(PDO $pdo, array &$settings): array {
     $now = date('Y-m-d H:i:s');
-    $img_marker  = trim($settings['smackverse_last_img_federated_at'] ?? '');
-    $post_marker = trim($settings['smackverse_last_post_federated_at'] ?? '');
+    $img_marker  = trim($settings['fediverse_last_img_federated_at'] ?? '');
+    $post_marker = trim($settings['fediverse_last_post_federated_at'] ?? '');
     if ($img_marker === '' || $post_marker === '') {
-        if ($img_marker === '')  sv_set_setting($pdo, $settings, 'smackverse_last_img_federated_at', $now);
-        if ($post_marker === '') sv_set_setting($pdo, $settings, 'smackverse_last_post_federated_at', $now);
-        sv_set_setting($pdo, $settings, 'smackverse_last_img_federated_id', '0');
-        sv_set_setting($pdo, $settings, 'smackverse_last_post_federated_id', '0');
+        if ($img_marker === '')  sv_set_setting($pdo, $settings, 'fediverse_last_img_federated_at', $now);
+        if ($post_marker === '') sv_set_setting($pdo, $settings, 'fediverse_last_post_federated_at', $now);
+        sv_set_setting($pdo, $settings, 'fediverse_last_img_federated_id', '0');
+        sv_set_setting($pdo, $settings, 'fediverse_last_post_federated_id', '0');
         return [0, 0];
     }
     // MANUAL push mode (0.7.367): the sweep NEVER auto-federates. New posts,
     // imports and batch uploads publish to the blog and WAIT — you arrange the
-    // grid lighttable, then push deliberately from the SMACKVERSE page (Seed /
+    // grid lighttable, then push deliberately from the FEDIVERSE page (Seed /
     // full rebuild) in your curated order. We keep the markers current to NOW so
     // flipping back to AUTO doesn't blast the whole staged backlog at followers.
-    if (($settings['smackverse_push_mode'] ?? 'auto') === 'manual') {
-        sv_set_setting($pdo, $settings, 'smackverse_last_img_federated_at',  $now);
-        sv_set_setting($pdo, $settings, 'smackverse_last_post_federated_at', $now);
+    if (($settings['fediverse_push_mode'] ?? 'auto') === 'manual') {
+        sv_set_setting($pdo, $settings, 'fediverse_last_img_federated_at',  $now);
+        sv_set_setting($pdo, $settings, 'fediverse_last_post_federated_at', $now);
         return [0, 0];
     }
     // Markers are (datetime, id) PAIRS: the id tie-break means same-second
     // content is never skipped when a sweep stops mid-second (e.g. batch
     // posts sharing a timestamp, or a deferred trigram trio).
-    $img_marker_id  = (int)($settings['smackverse_last_img_federated_id']  ?? 0);
-    $post_marker_id = (int)($settings['smackverse_last_post_federated_id'] ?? 0);
+    $img_marker_id  = (int)($settings['fediverse_last_img_federated_id']  ?? 0);
+    $post_marker_id = (int)($settings['fediverse_last_post_federated_id'] ?? 0);
 
     $inboxes = sv_follower_inboxes($pdo);
     $relay_inbox = '';
-    if (($settings['smackverse_relay_joined'] ?? '0') === '1') {
+    if (($settings['photoblogs_relay_joined'] ?? '0') === '1') {
         $rs = $pdo->prepare("SELECT inbox_url FROM snap_ap_following WHERE actor_url=? AND state='accepted' LIMIT 1");
         $rs->execute([sv_relay_actor_url($settings)]);
         $relay_inbox = (string)($rs->fetchColumn() ?: '');
@@ -5497,8 +5497,8 @@ function sv_sweep_new_posts(PDO $pdo, array &$settings): array {
     }
     if ($rows) {
         $last = $rows[count($rows) - 1];
-        sv_set_setting($pdo, $settings, 'smackverse_last_img_federated_at', $last['img_date']);
-        sv_set_setting($pdo, $settings, 'smackverse_last_img_federated_id', (string)(int)$last['id']);
+        sv_set_setting($pdo, $settings, 'fediverse_last_img_federated_at', $last['img_date']);
+        sv_set_setting($pdo, $settings, 'fediverse_last_img_federated_id', (string)(int)$last['id']);
     }
 
     // Stream 2: grouped posts — one Note per post, all images attached.
@@ -5539,15 +5539,15 @@ function sv_sweep_new_posts(PDO $pdo, array &$settings): array {
     }
     if ($rows) {
         $last = $rows[count($rows) - 1];   // last KEPT row in ASC order
-        sv_set_setting($pdo, $settings, 'smackverse_last_post_federated_at', $last['created_at']);
-        sv_set_setting($pdo, $settings, 'smackverse_last_post_federated_id', (string)(int)$last['id']);
+        sv_set_setting($pdo, $settings, 'fediverse_last_post_federated_at', $last['created_at']);
+        sv_set_setting($pdo, $settings, 'fediverse_last_post_federated_id', (string)(int)$last['id']);
     }
 
     return [$units, $queued];
 }
 
 /**
- * Run one full delivery + maintenance sweep — the same work cron-smackverse.php
+ * Run one full delivery + maintenance sweep — the same work cron-fediverse.php
  * does on its normal (non-resync) run, but callable from the web so the owner can
  * trigger it from the admin ("Run Fediverse jobs now") on hosts that block cron and
  * exec(). Takes the SAME cross-process advisory lock as the CLI cron, so a web
@@ -5600,8 +5600,8 @@ function sv_run_sweep(PDO $pdo, array &$settings): array
             }
         }
 
-        sv_set_setting($pdo, $settings, 'smackverse_cron_last_run', date('Y-m-d H:i:s'));
-        sv_set_setting($pdo, $settings, 'smackverse_cron_last_status', 'ok');
+        sv_set_setting($pdo, $settings, 'fediverse_cron_last_run', date('Y-m-d H:i:s'));
+        sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'ok');
 
         return [
             'busy'      => false,

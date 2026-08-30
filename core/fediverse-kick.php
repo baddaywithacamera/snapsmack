@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK — non-blocking SMACKVERSE delivery kick
+ * SNAPSMACK — non-blocking FEDIVERSE delivery kick
  *
  * Starts the CLI delivery worker after a delivery-producing web event. The
  * worker owns pacing and retries; the request never sends remote HTTP or
@@ -20,7 +20,7 @@ function sv_kick_delivery(): bool {
     $disabled = array_filter(array_map('trim', explode(',', (string)ini_get('disable_functions'))));
     if (!function_exists('exec') || in_array('exec', $disabled, true)) return false;
 
-    $script = dirname(__DIR__) . '/cron-smackverse.php';
+    $script = dirname(__DIR__) . '/cron-fediverse.php';
     if (!is_file($script)) return false;
 
     $php_candidates = [PHP_BINDIR . '/php', '/usr/bin/php', PHP_BINARY];

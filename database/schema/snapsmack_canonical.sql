@@ -115,13 +115,13 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
   `modified_at`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                         COMMENT 'Auto-updated on any row change. Used by GYSS for conflict detection.',
   `blurhash`            varchar(50)    COLLATE utf8mb4_unicode_ci DEFAULT NULL
-                        COMMENT 'SMACKVERSE (0.7.393): Blurhash placeholder for federated media; filled lazily on first federation.',
+                        COMMENT 'FEDIVERSE (0.7.393): Blurhash placeholder for federated media; filled lazily on first federation.',
   `is_sensitive`        tinyint(1)     NOT NULL DEFAULT 0
-                        COMMENT 'SMACKVERSE (0.7.393): 1 = mark the federated Note sensitive (blurred behind a CW).',
+                        COMMENT 'FEDIVERSE (0.7.393): 1 = mark the federated Note sensitive (blurred behind a CW).',
   `content_warning`     varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
-                        COMMENT 'SMACKVERSE (0.7.393): Note.summary content-warning text shown before a sensitive image.',
+                        COMMENT 'FEDIVERSE (0.7.393): Note.summary content-warning text shown before a sensitive image.',
   `fedi_published_at`   datetime       DEFAULT NULL
-                        COMMENT 'SMACKVERSE (0.7.403): fediverse date LABEL override for a standalone SMACKONEOUT image (Note published ts). NULL = use img_date. Stamped by IMPRINT ORDER FOR FEDIVERSE, at parity with snap_posts.',
+                        COMMENT 'FEDIVERSE (0.7.403): fediverse date LABEL override for a standalone SMACKONEOUT image (Note published ts). NULL = use img_date. Stamped by IMPRINT ORDER FOR FEDIVERSE, at parity with snap_posts.',
   PRIMARY KEY (`id`),
   -- 0.7.469: the feed query is
   --   WHERE img_status='published' AND img_date <= ? ORDER BY sort_order ASC, id DESC
@@ -177,17 +177,17 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
   `user_id`           int unsigned   DEFAULT NULL
                       COMMENT 'FK to snap_users — post author/owner (multi-user attribution). NULL = legacy/unattributed. Web-admin wiring pending.',
   `fedi_enabled`      tinyint(1)     NOT NULL DEFAULT 1
-                      COMMENT 'SMACKVERSE (0.7.367): 1 = eligible to federate; 0 = never push this post to the fediverse.',
+                      COMMENT 'FEDIVERSE (0.7.367): 1 = eligible to federate; 0 = never push this post to the fediverse.',
   `fedi_pushed_at`    datetime       DEFAULT NULL
-                      COMMENT 'SMACKVERSE (0.7.367): last time this post was pushed to the fediverse. NULL = staged, not yet pushed.',
+                      COMMENT 'FEDIVERSE (0.7.367): last time this post was pushed to the fediverse. NULL = staged, not yet pushed.',
   `fedi_published_at` datetime       DEFAULT NULL
-                      COMMENT 'SMACKVERSE (0.7.367): fediverse date LABEL override (the Note published ts). NULL = use created_at. Does NOT change remote order — order is delivery order.',
+                      COMMENT 'FEDIVERSE (0.7.367): fediverse date LABEL override (the Note published ts). NULL = use created_at. Does NOT change remote order — order is delivery order.',
   `is_pinned`         tinyint(1)     NOT NULL DEFAULT 0
-                      COMMENT 'SMACKVERSE (0.7.393): 1 = pinned to the profile featured collection.',
+                      COMMENT 'FEDIVERSE (0.7.393): 1 = pinned to the profile featured collection.',
   `is_sensitive`      tinyint(1)     NOT NULL DEFAULT 0
-                      COMMENT 'SMACKVERSE (0.7.393): 1 = mark the federated Note sensitive (blurred behind a CW).',
+                      COMMENT 'FEDIVERSE (0.7.393): 1 = mark the federated Note sensitive (blurred behind a CW).',
   `content_warning`   varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
-                      COMMENT 'SMACKVERSE (0.7.393): Note.summary content-warning text shown before a sensitive post.',
+                      COMMENT 'FEDIVERSE (0.7.393): Note.summary content-warning text shown before a sensitive post.',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_slug` (`slug`),
   KEY `idx_status` (`status`),
@@ -377,7 +377,7 @@ CREATE TABLE IF NOT EXISTS `snap_comments` (
   `is_spam`        tinyint(1)   NOT NULL DEFAULT '0'
                    COMMENT 'SMACK YOUR MOUTH: non-destructive spam flag; approve clears it.',
   `ap_source`      enum('local','fediverse') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'local'
-                   COMMENT 'SMACKVERSE (0.7.344): local blog comment vs a federated reply.',
+                   COMMENT 'FEDIVERSE (0.7.344): local blog comment vs a federated reply.',
   `ap_actor_url`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
                    COMMENT 'Remote commenter actor id (fediverse comments only).',
   `ap_object_id`   varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL
@@ -793,19 +793,19 @@ CREATE TABLE IF NOT EXISTS `snap_multisite_nodes` (
                         COMMENT 'JSON: affected files from last breach report',
   `installed_skins`     text           COLLATE utf8mb4_unicode_ci DEFAULT NULL
                         COMMENT 'Cached from heartbeat (0.7.343): JSON map {slug: version} of skins installed on this spoke, so the hub only offers skin updates a spoke actually has.',
-  `smackverse_enabled`  tinyint(1)     NOT NULL DEFAULT 0
-                        COMMENT 'Cached from heartbeat (0.7.343): 1 = spoke has SMACKVERSE federation enabled.',
+  `fediverse_enabled`  tinyint(1)     NOT NULL DEFAULT 0
+                        COMMENT 'Cached from heartbeat (0.7.343): 1 = spoke has FEDIVERSE federation enabled.',
   `fedboard_sso_enabled` tinyint(1)    NOT NULL DEFAULT 0
                         COMMENT 'Heartbeat cache: spoke explicitly permits hub SSO/FEDBOARD entry.',
-  `smackverse_followers` int unsigned  NOT NULL DEFAULT 0
+  `fediverse_followers` int unsigned  NOT NULL DEFAULT 0
                         COMMENT 'Cached from heartbeat (0.7.343): spoke fediverse follower count, for the fleet rollup.',
-  `smackverse_following` int unsigned  NOT NULL DEFAULT 0
+  `fediverse_following` int unsigned  NOT NULL DEFAULT 0
                         COMMENT 'Cached from heartbeat (0.7.391): spoke accepted-following count, for the fleet rollup.',
-  `smackverse_likes`    int unsigned   NOT NULL DEFAULT 0
+  `fediverse_likes`    int unsigned   NOT NULL DEFAULT 0
                         COMMENT 'Cached from heartbeat (0.7.391): spoke inbound fediverse like count, for the fleet rollup.',
-  `smackverse_boosts`   int unsigned   NOT NULL DEFAULT 0
+  `fediverse_boosts`   int unsigned   NOT NULL DEFAULT 0
                         COMMENT 'Cached from heartbeat (0.7.391): spoke inbound boost count, for the fleet rollup.',
-  `smackverse_replies`  int unsigned   NOT NULL DEFAULT 0
+  `fediverse_replies`  int unsigned   NOT NULL DEFAULT 0
                         COMMENT 'Cached from heartbeat (0.7.391): spoke inbound reply+mention count, for the fleet rollup.',
   `active_skin`         varchar(64)    COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
                         COMMENT 'Cached from heartbeat: slug of the active skin on this spoke, for the Fleet skin-status board. Empty until the spoke heartbeats a build that reports it.',
@@ -1096,7 +1096,7 @@ CREATE TABLE IF NOT EXISTS `snap_ai_acceptance_audit` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
--- ─── SMACKVERSE (ActivityPub federation, 0.7.341) ────────────────────────────
+-- ─── FEDIVERSE (ActivityPub federation, 0.7.341) ────────────────────────────
 
 -- Remote actors following this blog. actor_url is the canonical remote id;
 -- inbox/shared inbox are captured at Follow time and refreshed when re-fetched.
@@ -1133,7 +1133,7 @@ CREATE TABLE IF NOT EXISTS `snap_ap_following` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Outbound activity delivery queue (Accepts, Creates). Processed by
--- cron-smackverse.php with exponential backoff; rows are deleted on success
+-- cron-fediverse.php with exponential backoff; rows are deleted on success
 -- and parked as status=failed after max attempts.
 CREATE TABLE IF NOT EXISTS `snap_ap_deliveries` (
   `id`            int unsigned  NOT NULL AUTO_INCREMENT,
@@ -1180,7 +1180,7 @@ CREATE TABLE IF NOT EXISTS `snap_ap_likes` (
   KEY `idx_ap_like_target` (`target_type`, `target_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ─── SMACKVERSE reader / engagement (0.7.365) ────────────────────────────────
+-- ─── FEDIVERSE reader / engagement (0.7.365) ────────────────────────────────
 -- The fediverse client is a first-class feature, not a push-only broadcaster:
 -- a blog that only publishes is a spambot. These tables back the READER and the
 -- two-way engagement loop (see, be seen, reply back). GRAMOFSMACK-first; the

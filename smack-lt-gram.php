@@ -100,7 +100,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'reorder') {
     // Existing followers still need a deliberate RE-IMPRINT to re-sort — the
     // fediverse pins a post's date at first ingest — but new followers, the
     // admin outbox crawl, and re-seeds stay honest without a manual imprint.
-    if (!function_exists('sv_sync_fedi_dates')) { @require_once __DIR__ . '/core/smackverse.php'; }
+    if (!function_exists('sv_sync_fedi_dates')) { @require_once __DIR__ . '/core/fediverse.php'; }
     if (function_exists('sv_sync_fedi_dates')) {
         try {
             $sv_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
@@ -306,7 +306,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_trigram') {
 // The post-layer sibling of create_trigram. Selection order = carousel order
 // (first ticked = cover by default; the cover chooser can override). It feeds the
 // selected posts' images to the battle-built shared merge sv_convert_to_carousel()
-// (core/smackverse.php) — which writes the snap_post_images pivot (order + is_cover
+// (core/fediverse.php) — which writes the snap_post_images pivot (order + is_cover
 // + per-image style), repoints snap_images.post_id, deletes the emptied single
 // posts, and (federation on) retracts the old single Notes + seeds the carousel
 // Note. Then it PINS the new carousel where the earliest selected single sat (D3)
@@ -368,7 +368,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_carousel') {
     }
 
     // Shared merge core (federation-aware, transactional).
-    if (!function_exists('sv_convert_to_carousel')) { @require_once __DIR__ . '/core/smackverse.php'; }
+    if (!function_exists('sv_convert_to_carousel')) { @require_once __DIR__ . '/core/fediverse.php'; }
     if (!function_exists('sv_convert_to_carousel')) {
         echo json_encode(['ok' => false, 'err' => 'Carousel engine unavailable on this install.']); exit;
     }
@@ -427,11 +427,11 @@ if (isset($_POST['action']) && $_POST['action'] === 'set_threeacross') {
 // is newest. The fediverse sorts a profile by post date, so this makes a remote
 // profile reproduce THIS exact lighttable order for anyone who ingests it fresh.
 if (isset($_POST['action']) && $_POST['action'] === 'imprint_fedi') {
-    require_once __DIR__ . '/core/smackverse.php';
+    require_once __DIR__ . '/core/fediverse.php';
     if (!isset($settings) || !is_array($settings)) {
         $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
     }
-    $imp_n = (($settings['smackverse_enabled'] ?? '0') === '1') ? sv_sync_fedi_dates($pdo, $settings) : 0;
+    $imp_n = (($settings['fediverse_enabled'] ?? '0') === '1') ? sv_sync_fedi_dates($pdo, $settings) : 0;
     header('Location: smack-lt-gram.php?imprinted=' . (int)$imp_n);
     exit;
 }
@@ -545,7 +545,7 @@ include 'core/sidebar.php';
                 <button class="btn btn--sm" id="ltgMakeCarouselBtn" onclick="ltgMakeCarousel()" title="Combine the selected posts into ONE carousel, in the order you ticked them. The originals are merged in — this can retract them from followers and re-post as a carousel.">⧉ MAKE CAROUSEL</button>
             </span>
             <button class="btn btn--sm" id="ltgBulkPublishBtn" style="display:none;" onclick="ltgBulkPublish()">PUBLISH SELECTED</button>
-            <?php if (($settings['smackverse_enabled'] ?? '0') === '1'): ?>
+            <?php if (($settings['fediverse_enabled'] ?? '0') === '1'): ?>
                 <?php if (isset($_GET['imprinted'])): ?><span style="color:var(--success, #4ade80); font-size:.85rem;">&#10003; Imprinted <?php echo (int)$_GET['imprinted']; ?> posts to fediverse order</span><?php endif; ?>
                 <form method="post" style="display:inline;" onsubmit="return confirm('Imprint this grid order onto your fediverse post dates? The top of the grid becomes newest, so a fresh fediverse follower sees this exact order.\n\n(Followers who already have your posts keep the order they first received — the fediverse pins a post\'s date at first sight.)');">
                     <input type="hidden" name="action" value="imprint_fedi">

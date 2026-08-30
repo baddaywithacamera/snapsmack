@@ -10,7 +10,7 @@
  * ON is step-up gated (password + 2FA) because a public listing reflects on the
  * whole network. Nothing is listed until the hub admin approves it.
  *
- * Submit pattern copied from sv_rollcall_submit() in core/smackverse.php:
+ * Submit pattern copied from sv_rollcall_submit() in core/fediverse.php:
  * one deliberate call per admin save, fail-soft, breadcrumb to the error log.
  *
  * SNAPSMACK_EOF_HEADER
@@ -46,7 +46,7 @@ function pbdir_topics(array $settings): array {
 
 /**
  * The listing payload sent to the hub. Identity comes from site settings; the
- * fediverse handle from the smackverse helpers when federation is on. All fields
+ * fediverse handle from the fediverse helpers when federation is on. All fields
  * are best-effort — a blank avatar/samples just yields a text-only card.
  */
 function pbdir_payload(array $settings): array {

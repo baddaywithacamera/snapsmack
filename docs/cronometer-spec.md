@@ -17,7 +17,7 @@ One dark desktop board. For every site in the fleet it shows, per scheduled job,
 
 | Job | Cron script | Documented cadence |
 |-----|-------------|--------------------|
-| Fediverse delivery | `cron-smackverse.php` | every 10 min |
+| Fediverse delivery | `cron-fediverse.php` | every 10 min |
 | RSS blogroll fetch | `cron-rss-fetch.php` | ~hourly |
 | Version / update check | `cron-version-check.php` | every 6 h |
 | Backups | (backup engine) | daily |
@@ -108,8 +108,8 @@ All in the `ms_ok([...])` response, **`core/multisite-api.php:456`–`481`**:
 | `last_backup_status` (`ok`/`failed`/`unknown`) | 465 | **Backups** verdict |
 | `smackback_status` (`clean`/`breach`/`unknown`) | 469 | **SMACKBACK** verdict |
 | `smackback_breach_at` | 470 | **SMACKBACK** breach time |
-| `smackverse_enabled` | 474 | **Fediverse** enabled vs N/A |
-| `smackverse_followers…replies` | 475–479 | (context; not health) |
+| `fediverse_enabled` | 474 | **Fediverse** enabled vs N/A |
+| `fediverse_followers…replies` | 475–479 | (context; not health) |
 | `timestamp` | 480 | probe freshness |
 
 Backing columns confirmed in `database/schema/snapsmack_canonical.sql`:
@@ -128,7 +128,7 @@ heartbeat response**:
 | Job | Marker written | Where (verified) | In heartbeat? |
 |-----|----------------|------------------|---------------|
 | Version check | `last_update_check` | `cron-version-check.php:122` | **No** |
-| Fediverse delivery | `smackverse_cron_last_run` | `cron-smackverse.php:126` | **No** |
+| Fediverse delivery | `fediverse_cron_last_run` | `cron-fediverse.php:126` | **No** |
 | SMACKBACK full verify | `smackback_last_full_verify` | `cron-version-check.php:153` | **No** (only the pass/fail status is) |
 | RSS fetch | `rss_last_fetched` **per blogroll peer** (`snap_blogroll`), `cron-rss-fetch.php:54`–`58` | — | **No**, and there is **no fleet-level RSS marker at all** |
 
@@ -152,7 +152,7 @@ light up with zero client change. All additions go in the `ms_ok([...])` array a
 Each entry: `last_run` (ISO-8601 / `date('c')`), `status`
 (`ok|failed|stale|clean|breach`), optional `detail`. Sourcing on the server:
 
-- `fediverse.last_run` ← `smackverse_cron_last_run` (already stored).
+- `fediverse.last_run` ← `fediverse_cron_last_run` (already stored).
 - `version_check.last_run` ← `last_update_check` (already stored).
 - `smackback.last_run` ← `smackback_last_full_verify`; `status` ← existing
   `smackback_status`.
@@ -166,12 +166,12 @@ Each entry: `last_run` (ISO-8601 / `date('c')`), `status`
 Optional, for a hub-side board (not required by this desktop tool): mirror the
 per-job last-run into `snap_multisite_nodes` (schema **759–812** has **no** per-cron
 columns today) so the hub caches job health the way it already caches
-`last_backup_*` / `smackverse_*`.
+`last_backup_*` / `fediverse_*`.
 
 **Client contract while MUST-ADD is pending:** absent `jobs`, rows for
 `rss_fetch` / `version_check` show grey **"not reported by this heartbeat"**;
 `fediverse` shows grey **"enabled, but last-run not reported"** (or dim **N/A** when
-`smackverse_enabled = 0`); `backup` and `smackback` render from the existing fields.
+`fediverse_enabled = 0`); `backup` and `smackback` render from the existing fields.
 
 ---
 

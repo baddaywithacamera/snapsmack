@@ -57,7 +57,7 @@ pc_test(pc_window_for_friday('2026-09-02')['friday'] === '2026-09-04',
 pc_test(pc_window_for_friday('not-a-date') === null, 'an unparseable date was not rejected');
 
 $photo = file_get_contents(__DIR__ . '/../core/photochallenge.php');
-$sv = file_get_contents(__DIR__ . '/../core/smackverse.php');
+$sv = file_get_contents(__DIR__ . '/../core/fediverse.php');
 $schema = file_get_contents(__DIR__ . '/../database/schema/snapsmack_canonical.sql');
 $htaccess = file_get_contents(__DIR__ . '/../core/htaccess-template');
 $admin = file_get_contents(__DIR__ . '/../smack-photochallenge.php');
@@ -77,7 +77,7 @@ foreach (['pc_participants', 'pc_hall_of_fame', 'pc_engagement', 'pc_outbound_bo
     pc_test(str_contains($schema, "CREATE TABLE IF NOT EXISTS `{$table}`"), "{$table} is absent from canonical schema");
 }
 foreach (['pc_on_follow', 'pc_on_leave', 'pc_record_like', 'pc_record_boost', 'pc_remove_engagement'] as $hook) {
-    pc_test(str_contains($sv, $hook), "SMACKVERSE is missing {$hook} integration");
+    pc_test(str_contains($sv, $hook), "FEDIVERSE is missing {$hook} integration");
 }
 pc_test(str_contains($photo, 'SELECT id, week_key'), 'Hall of Fame rows omit the admin toggle id');
 pc_test(str_contains($photo, 'tags_json'), 'board does not require structured ActivityPub hashtags');

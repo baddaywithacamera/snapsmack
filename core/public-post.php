@@ -2,13 +2,13 @@
 /**
  * SNAPSMACK — Public fediverse single-post view (Pixelfed-faithful)
  *
- * The human half of a Note. smackverse.php's `note` route content-negotiates:
+ * The human half of a Note. fediverse.php's `note` route content-negotiates:
  * a fediverse server (activity+json) gets the Note JSON; a browser gets THIS —
  * a Pixelfed-shaped post page (big photo / swipeable carousel, author, caption,
  * faves, replies) with a remote-interaction doorway that bounces a visitor to
  * their own instance to like/reply/boost. One server, one user.
  *
- * Included from smackverse.php with $pdo, $settings in scope, and
+ * Included from fediverse.php with $pdo, $settings in scope, and
  * $GLOBALS['pp_post_id'] / $GLOBALS['pp_post_kind'] ('post'|'image') set.
  * Carousel is CSS scroll-snap — no JS (skins/pages carry zero inline script).
  *

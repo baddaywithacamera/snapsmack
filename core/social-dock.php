@@ -194,8 +194,8 @@ foreach ($_dock_platforms as $_platform_key => $_platform) {
 // the install type: image installs (photoblog/carousel) present as Pixelfed; the
 // text install (smacktalk) as Mastodon. Only when federation is on.
 if (($settings['social_dock_own_fedi'] ?? '0') === '1'
-    && ($settings['smackverse_enabled'] ?? '0') === '1') {
-    $_sv_file = __DIR__ . '/smackverse.php';
+    && ($settings['fediverse_enabled'] ?? '0') === '1') {
+    $_sv_file = __DIR__ . '/fediverse.php';
     if (is_file($_sv_file)) {
         require_once $_sv_file;
         if (function_exists('sv_handle') && function_exists('sv_domain') && defined('BASE_URL')) {

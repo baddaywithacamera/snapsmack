@@ -3,7 +3,7 @@
 /**
  * PHOTOFRI.DAY — ActivityPub primitives (keys, actor doc, HTTP-signature
  * sign + verify, SSRF-guarded fetch, signed POST delivery + queue). Faithful to
- * the SnapSmack core/smackverse.php implementation, stripped to @participate signup needs.
+ * the SnapSmack core/fediverse.php implementation, stripped to @participate signup needs.
  */
 
 require_once __DIR__ . '/db.php';
@@ -79,7 +79,7 @@ function pfd_keys(): array {
         // Stored key won't decrypt/parse (KEK missing, rotated, or corruption).
         // With zero followers this recovers by minting fresh; WITH followers it
         // would strand them, so it is logged loudly as a last resort.
-        error_log('SMACKVERSE relay: stored private key failed to decrypt/parse — minting a fresh keypair.');
+        error_log('FEDIVERSE relay: stored private key failed to decrypt/parse — minting a fresh keypair.');
     }
     $res = openssl_pkey_new([
         'private_key_bits' => 2048,

@@ -7,11 +7,11 @@
 
 $root = dirname(__DIR__);
 $relay = file_get_contents($root . '/core/smackcast-relay.php');
-$sv = file_get_contents($root . '/core/smackverse.php');
+$sv = file_get_contents($root . '/core/fediverse.php');
 $schema = file_get_contents($root . '/database/schema/snapsmack_canonical.sql');
 $installer = file_get_contents($root . '/install.php');
-$cron = file_get_contents($root . '/cron-smackverse.php');
-$admin = file_get_contents($root . '/core/smackverse-admin-shared.php');
+$cron = file_get_contents($root . '/cron-fediverse.php');
+$admin = file_get_contents($root . '/core/fediverse-admin-shared.php');
 $fail = 0;
 function sc_test(bool $ok, string $message): void {
     global $fail;
