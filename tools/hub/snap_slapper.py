@@ -10,7 +10,7 @@ import json
 import tempfile
 
 
-BUILD_VERSION = "0.7.22"
+BUILD_VERSION = "0.7.23"
 
 
 def publish_backup_contract(state_path, library_root):
