@@ -117,6 +117,15 @@ class EditorWindow(QMainWindow):
         self._render_timer.setInterval(45)
         self._render_timer.timeout.connect(self._render_preview)
 
+        # Opening from Windows happens before the window receives its final
+        # layout. The first proxy is therefore intentionally cheap; once the
+        # canvas settles, replace it with a viewport-sized render automatically.
+        self._layout_render_timer = QTimer(self)
+        self._layout_render_timer.setSingleShot(True)
+        self._layout_render_timer.setInterval(120)
+        self._layout_render_timer.timeout.connect(self._refresh_fit_resolution)
+        self.view.fit_view_resized.connect(self._queue_fit_resolution_refresh)
+
         # Autosave: write a crash-recovery copy a couple seconds after edits.
         self._recovery_dir = self._resolve_recovery_dir()
         self._recovery_timer = QTimer(self)
@@ -401,12 +410,22 @@ class EditorWindow(QMainWindow):
         self.filmstrip = Filmstrip(self)
         self.filmstrip.open_requested.connect(self._open_from_filmstrip)
         self.filmstrip.setVisible(self._filmstrip_visible)
+        self.filmstrip_handle = QPushButton()
+        self.filmstrip_handle.setObjectName("FilmstripHandle")
+        self.filmstrip_handle.setFixedHeight(24)
+        self.filmstrip_handle.setCursor(Qt.PointingHandCursor)
+        self.filmstrip_handle.setToolTip(
+            "Open or close the folder thumbnail strip (Ctrl+Shift+F)")
+        self.filmstrip_handle.clicked.connect(
+            lambda: self.act_filmstrip.setChecked(not self.act_filmstrip.isChecked()))
+        self._sync_filmstrip_handle()
 
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(self.view, 1)
+        layout.addWidget(self.filmstrip_handle, 0)
         layout.addWidget(self.filmstrip, 0)
         self.setCentralWidget(container)
 
@@ -2007,6 +2026,14 @@ class EditorWindow(QMainWindow):
     def _schedule_render(self):
         self._render_timer.start()
 
+    def _queue_fit_resolution_refresh(self):
+        if self.doc and not self._zoom_actual:
+            self._layout_render_timer.start()
+
+    def _refresh_fit_resolution(self):
+        if self.doc and not self._zoom_actual and self.view.isVisible():
+            self._render_preview(keep_view=False)
+
     def _render_preview(self, keep_view=True):
         if not self.doc:
             return
@@ -2050,12 +2077,20 @@ class EditorWindow(QMainWindow):
     def _toggle_filmstrip(self, checked):
         self._filmstrip_visible = bool(checked)
         self.filmstrip.setVisible(self._filmstrip_visible)
+        self._sync_filmstrip_handle()
         if self._filmstrip_visible and self.doc:
             self.filmstrip.show_for(self.doc.source_path)
         from . import prefs
         values = prefs.load()
         values["filmstrip_visible"] = self._filmstrip_visible
         prefs.save(values)
+
+    def _sync_filmstrip_handle(self):
+        if not hasattr(self, "filmstrip_handle"):
+            return
+        self.filmstrip_handle.setText(
+            "▼  Hide folder thumbnails" if self._filmstrip_visible
+            else "▲  Show folder thumbnails")
 
     def _refresh_filmstrip(self):
         if self._filmstrip_visible and self.doc:

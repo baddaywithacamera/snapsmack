@@ -30,6 +30,9 @@ class ImageView(QGraphicsView):
     layer_dragged = Signal(float, float, bool)
     # corner index, normalized x/y, and whether the drag has finished
     perspective_corner_dragged = Signal(int, float, float, bool)
+    # The editor uses a viewport-sized proxy in Fit mode. When layout changes,
+    # ask it to render a new proxy instead of stretching the old one.
+    fit_view_resized = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -359,6 +362,8 @@ class ImageView(QGraphicsView):
         super().resizeEvent(event)
         if self._fitting:
             self.fit()
+            if self._has_image:
+                self.fit_view_resized.emit()
 
     def viewport_target(self):
         """Preview render cap sized to the viewport (times device pixel ratio,
