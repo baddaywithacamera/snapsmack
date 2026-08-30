@@ -10,6 +10,18 @@
 
 # SnapSmack Changelog
 
+## 0.7.587 "TOP OF THE PILE" — 2026-08-30
+
+- **New batch posts and Flickr imports now land at the top of the archive.**
+  They were being stamped a fixed sort position that buried them under the whole
+  backlog — worst on theschoolofhardnocks after the Flickr import. New images now
+  sort by recency like every other fresh post; no more manual re-ordering.
+- **INSTANT CAMERA: the "Drop Shadow on Image → None" setting now actually works.**
+  The tabletop drop shadow was hardcoded and ignored the control, leaving a shadow
+  line at the bottom of every print on the landing grid. It now obeys the setting
+  (None = no shadow; levels 1–3 as before). Blogs left at None render with no tile
+  shadow — set the control to 1–3 to keep one.
+
 ## 0.7.586 "STRAIGHT LINES" — 2026-08-30
 
 - **SNAP SLAPPER gains real perspective correction.** Vertical and horizontal
