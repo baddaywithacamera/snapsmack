@@ -12,6 +12,12 @@
 
 ## 0.7.585 "GOOD NEIGHBOUR" — 2026-08-29
 
+- **Media Gallery: you can now Replace a photo.** Open any image's Quick Edit and
+  hit **Replace Photo** to swap in a new file — the image keeps its place, so every
+  post, album, category, tag and comment that used it now shows the new photo with
+  nothing to re-link. New thumbnails and EXIF are generated automatically. (The
+  Media Library already had this; the Gallery was missing it.)
+
 - **Removed the "smackverse" name from the whole platform.** Co-opting the
   fediverse under a SnapSmack brand name was disrespectful to the wider fediverse
   community and risked their trust in us. Every instance is gone: the CMS
