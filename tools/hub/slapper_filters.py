@@ -58,6 +58,11 @@ def _orton(image, settings):
         luma = ImageOps.grayscale(image)
         mask = luma.point(lambda value: int(value * protection / 100))
         screen = Image.composite(image, screen, mask)
+    shadow = max(0, min(100, float(settings.get("shadow_protection", 15))))
+    if shadow:
+        luma = ImageOps.grayscale(image)
+        mask = luma.point(lambda value: int((255 - value) * shadow / 100))
+        screen = Image.composite(image, screen, mask)
     return screen
 
 
@@ -83,7 +88,16 @@ def _grain(image, settings):
     softness = float(settings.get("softness", 20)) / 40
     if softness > 0:
         noise = noise.filter(ImageFilter.GaussianBlur(softness))
-    return ImageChops.overlay(image, noise)
+    effect = ImageChops.overlay(image, noise)
+    shadows = float(settings.get("shadows", 80)) / 100
+    midtones = float(settings.get("midtones", 100)) / 100
+    highlights = float(settings.get("highlights", 35)) / 100
+    luma = ImageOps.grayscale(image)
+    mask = luma.point(lambda value: int(255 * (
+        shadows + (midtones - shadows) * (value / 128)
+        if value < 128 else
+        midtones + (highlights - midtones) * ((value - 128) / 127))))
+    return Image.composite(effect, image, mask)
 
 
 def _light_leak(image, settings):
@@ -109,6 +123,16 @@ def _light_leak(image, settings):
             pixels[x, y] = tuple(int((first[i] * (1 - mix) + second[i] * mix) * strength)
                                  for i in range(3))
     overlay = overlay.resize((width, height), Image.Resampling.BICUBIC)
+    softness = max(0, float(settings.get("softness", 70)))
+    if softness:
+        overlay = overlay.filter(ImageFilter.GaussianBlur(softness / 20))
+    rotation = float(settings.get("rotation", 0))
+    if rotation:
+        overlay = overlay.rotate(-rotation, resample=Image.Resampling.BICUBIC)
+    bloom = max(0, float(settings.get("bloom", 20))) / 100
+    if bloom:
+        expanded = overlay.filter(ImageFilter.GaussianBlur(max(2, min(width, height) / 30)))
+        overlay = Image.blend(overlay, expanded, bloom)
     return ImageChops.screen(image, overlay)
 
 
@@ -119,8 +143,26 @@ def _pastel(image, settings):
     result = ImageEnhance.Contrast(result).enhance(contrast)
     result = ImageEnhance.Color(result).enhance(
         max(0, 1 + float(settings.get("saturation", -8)) / 100))
+    vibrance = float(settings.get("vibrance", 12)) / 100
+    if vibrance:
+        result = ImageEnhance.Color(result).enhance(max(0, 1 + vibrance * .6))
     lift = max(0, min(80, int(settings.get("lifted_blacks", 18))))
     result = result.point(lambda value: int(lift + value * (255 - lift) / 255))
+    rolloff = max(0, float(settings.get("highlight_rolloff", 25))) / 100
+    if rolloff:
+        result = result.point(lambda value: int(255 * (1 - math.exp(
+            -(value / 255) * (1.3 + rolloff))) /
+            (1 - math.exp(-(1.3 + rolloff)))))
+    warmth = float(settings.get("warmth", 4)) / 100
+    if warmth:
+        red, green, blue = result.split()
+        red = red.point(lambda value: max(0, min(255, int(value * (1 + warmth * .15)))))
+        blue = blue.point(lambda value: max(0, min(255, int(value * (1 - warmth * .15)))))
+        result = Image.merge("RGB", (red, green, blue))
+    fade = max(0, float(settings.get("fade", 12))) / 100
+    if fade:
+        grey = Image.new("RGB", result.size, (128, 128, 128))
+        result = Image.blend(result, grey, fade * .18)
     tint = Image.new("RGB", result.size, tuple(settings.get("tint", [255, 225, 235])))
     result = Image.blend(result, tint,
                          max(0, min(1, float(settings.get("tint_strength", 8)) / 100)))
