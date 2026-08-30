@@ -19,7 +19,22 @@ $page_css = <<<'CSS'
 .app-copy .platform { font: 700 .72rem/1.2 'Courier New', monospace; color: var(--mid-grey); text-transform: uppercase; letter-spacing: .08em; }
 .app-copy h2 { color: var(--black); margin: 8px 0 18px; }
 .app-copy .status { display: inline-block; padding: 5px 9px; background: var(--black); color: var(--white); font: 700 .68rem/1 Arial, sans-serif; text-transform: uppercase; }
+.tool-feature { padding-bottom: 68px; border-bottom: 8px solid var(--black); }
+.tool-feature + .tool-feature { padding-top: 68px; }
+.tool-feature-head { max-width: 900px; margin-bottom: 42px; }
+.tool-feature-head .platform { color: var(--mid-grey); font: 700 .72rem/1.2 'Courier New', monospace; text-transform: uppercase; letter-spacing: .08em; }
+.tool-feature-head .status { display: inline-block; margin-left: 10px; padding: 5px 9px; background: var(--red); color: var(--white); font: 700 .68rem/1 Arial, sans-serif; text-transform: uppercase; }
+.tool-feature-head h2 { margin: 10px 0 18px; color: var(--black); font-size: clamp(2rem, 4vw, 3.2rem); }
+.tool-story { display: grid; gap: 64px; }
+.tool-chapter { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr); gap: 42px; align-items: center; }
+.tool-chapter:nth-child(even) .tool-shot { order: 2; }
+.tool-shot { margin: 0; border: 1px solid var(--border); background: var(--black); }
+.tool-shot img { display: block; width: 100%; }
+.tool-shot figcaption { padding: 9px 12px; color: #aaa; background: var(--black); font: .68rem/1.35 'Courier New', monospace; }
+.tool-copy h3 { margin-bottom: 14px; color: var(--red); font-size: 1.35rem; }
+.tool-copy p { font-size: .93rem; line-height: 1.65; }
 @media (max-width: 800px) { .app-entry { grid-template-columns: 1fr; gap: 24px; } .app-entry:nth-child(even) .app-shot { order: 0; } }
+@media (max-width: 800px) { .tool-chapter { grid-template-columns: 1fr; gap: 24px; } .tool-chapter:nth-child(even) .tool-shot { order: 0; } }
 CSS;
 
 require_once __DIR__ . '/includes/header.php';
@@ -41,6 +56,42 @@ require_once __DIR__ . '/includes/header.php';
     </div>
     <section>
         <div class="wrap app-list">
+            <article class="tool-feature" id="snap-slapper">
+                <div class="tool-feature-head">
+                    <p class="platform">Windows / Linux <span class="status">Closed beta</span></p>
+                    <h2>SNAP SLAPPER</h2>
+                    <p class="lede">A private photo manager and real non-destructive editor built beside SnapSmack, not rented from somebody else&rsquo;s cloud.</p>
+                    <p>SNAP SLAPPER is the missing space between a folder full of photographs and the finished work on your site. Browse a real archive, rate and tag it, organize files and folders, develop one photograph carefully, move through a shoot quickly, save editable work, and prepare the finished result for the web without surrendering the originals.</p>
+                </div>
+                <div class="tool-story">
+                    <section class="tool-chapter">
+                        <figure class="tool-shot"><img src="img/snapslapper-library.png" alt="SNAP SLAPPER photo library with folders, thumbnails, ratings, tags, and photograph information" width="1920" height="1032"><figcaption>The library: ordinary folders remain ordinary folders.</figcaption></figure>
+                        <div class="tool-copy"><h3>Your archive is not an import hostage.</h3><p>Point it at the folders you already use. Search, sort, include subfolders, resize thumbnails and folder text, create and rename folders, move photographs, batch rename safely, and keep ratings, favourites, tags, and albums beside the work.</p><p>SNAP SLAPPER is a view onto your photography, not a deed transferring ownership to a catalogue. Originals stay where you put them; edits and exports become separate files.</p></div>
+                    </section>
+                    <section class="tool-chapter">
+                        <figure class="tool-shot"><img src="img/snapslapper-editor-norm.png" alt="SNAP SLAPPER Normal editor with simple photographic controls and filmstrip" width="1920" height="1032" loading="lazy"><figcaption>Normal mode: the controls used on most photographs.</figcaption></figure>
+                        <div class="tool-copy"><h3>Normal means focused, not crippled.</h3><p>Brightness, contrast, highlights, shadows, temperature, saturation, vibrance, black and white, geometry, vignette, crop, red-eye, Auto, LEWKS, export, and Blog Copy are visible without an aircraft cockpit of specialist machinery.</p><p>The folder filmstrip follows the open photograph, loads as you scroll, and folds away when the image needs every pixel. Fit is for composition; 100% is a real focus check.</p></div>
+                    </section>
+                    <section class="tool-chapter">
+                        <figure class="tool-shot"><img src="img/snapslapper-editor-adv.png" alt="SNAP SLAPPER Advanced editor with layers, histogram, masks, and detailed controls" width="1920" height="1032" loading="lazy"><figcaption>Advanced mode opens the complete non-destructive bench.</figcaption></figure>
+                        <div class="tool-copy"><h3>When the photograph needs the whole bench.</h3><p>Add adjustment, image, text, and filter layers; change opacity and blend mode; reorder the work; and apply radial, linear, luminosity, colour-range, or painted masks. Levels, curves, colour mixing, split toning, retouching, geometry, perspective, filters, textures, sharpening, and a live histogram stay editable.</p><p>Recipes carry a sequence into batch work. Projects preserve the stack. PSD and TIFF provide working exits; JPEG and PNG provide finished ones.</p></div>
+                    </section>
+                    <section class="tool-chapter">
+                        <figure class="tool-shot"><img src="img/snapslapper-editor-adv-nofilm.png" alt="SNAP SLAPPER Advanced editor with filmstrip hidden" width="1920" height="1032" loading="lazy"><figcaption>Close the filmstrip when one photograph needs the room.</figcaption></figure>
+                        <div class="tool-copy"><h3>The interface gets out of the photograph&rsquo;s way.</h3><p>Normal and Advanced are obvious modes rather than secret preferences. The filmstrip opens for comparisons and closes for concentration. Before/After, undo, redo, reset, crop, healing, keyboard shortcuts, remembered window state, and correctly sized previews support the rhythm of actual editing.</p><p>It is being dogfooded against real folders and real photographs. The freezes, fuzzy proxies, stalled thumbnails, duplicate windows, and controls hidden in the wrong place are being found by using it as a primary editor.</p></div>
+                    </section>
+                    <section class="tool-chapter">
+                        <figure class="tool-shot"><img src="img/snapslapper-editor-lewks.png" alt="SNAP SLAPPER LEWKS browser previewing reusable looks on the open photograph" width="1920" height="1032" loading="lazy"><figcaption>LEWKS preview on your photograph at adjustable strength.</figcaption></figure>
+                        <div class="tool-copy"><h3>Looks you can see, change, save, and leave with.</h3><p>LEWKS are reusable appearance recipes previewed against the photograph that is actually open. Applying one does not flatten the work into a dead end: the underlying controls remain controls, and the result can be changed, stacked, or saved as your own recipe.</p><p>SNAP SLAPPER runs locally, arrives through THE HUB, and works beside your SnapSmack installation. No cloud library, no subscription account, and no originals uploaded for somebody else&rsquo;s machine-learning appetizer. <a href="wotcha.php#snap-slapper-editor"><strong>Read the WOTCHA announcement &rarr;</strong></a></p></div>
+                    </section>
+                </div>
+            </article>
+
+            <article class="tool-feature" id="the-hub">
+                <div class="tool-feature-head"><p class="platform">Windows <span class="status">Shipping</span></p><h2>THE HUB</h2><p class="lede">One front door for the desktop fleet. Set the blogs, credentials, profiles, prompts, and shared services once; every companion tool sees the same system.</p></div>
+                <div class="tool-story"><section class="tool-chapter"><figure class="tool-shot"><img src="img/the-hub.png" alt="THE HUB showing the SnapSmack desktop fleet and shared blog profiles" width="1920" height="1032" loading="lazy"><figcaption>Launch the fleet and manage its shared connections from one place.</figcaption></figure><div class="tool-copy"><h3>One door. Set the fleet up once.</h3><p>THE HUB launches SNAP SLAPPER, Smack Your Batch Up, Get Your Shit Sorted, Cold Snap, Smack Up Your Backup, OH SNAP, Smack Your Mouth, Shots Fired, and Cronometer. More importantly, it gives those applications one shared understanding of your sites instead of making you configure the same blog nine times.</p><p>Discover a multisite fleet, store its blog profiles, test the HUB and Gemini keys, share Google Drive backup settings, and synchronize prompts across the sites that use them. SNAP SLAPPER can consume those same profiles for blog-aware preparation and publishing; SUYB can protect the work; the rest of the tools inherit the connection rather than inventing another credentials drawer.</p><p>THE HUB is deliberately plain. It is infrastructure, not a dashboard trying to become your hobby.</p></div></section></div>
+            </article>
+
             <article class="app-entry">
                 <div class="app-shot"><img src="img/sybu-uploading.png" alt="Smack Your Batch Up publishing a batch of photographs" width="1920" height="1032"></div>
                 <div class="app-copy">
