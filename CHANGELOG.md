@@ -10,6 +10,24 @@
 
 # SnapSmack Changelog
 
+## 0.7.586 "STRAIGHT LINES" — 2026-08-30
+
+- **SNAP SLAPPER gains real perspective correction.** Vertical and horizontal
+  controls handle ordinary keystone correction, while Free Corners provides four
+  draggable handles and a live 3×3 grid for straight-line-preserving projective
+  correction. Auto Crop removes empty wedges; Transparent Edges preserves the
+  full canvas. Perspective is non-destructive, survives `.slapper` save/open and
+  undo, and can be saved in a Recipe for batch application.
+- **Layered PSD export is real and independently validated.** Photoshop output
+  carries a visible full-resolution composite plus named raster checkpoints for
+  the base and each SNAP SLAPPER layer. JPEG, PNG and TIFF remain available, and
+  the original photograph is never overwritten.
+- **The photo organizer is practical and responsive.** It can create and resize
+  folders, rename, batch-rename, drag/move/copy photographs, and avoids probing
+  slow or unavailable mapped drives on the interface thread.
+- **Normal and Advanced editor modes are visible choices**, and `.slapper` files
+  now open directly from Windows as well as from inside the editor.
+
 ## 0.7.585 "GOOD NEIGHBOUR" — 2026-08-29
 
 - **Media Gallery: you can now Replace a photo.** Open any image's Quick Edit and
