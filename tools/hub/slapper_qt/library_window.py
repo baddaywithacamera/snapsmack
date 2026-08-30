@@ -369,8 +369,9 @@ class LibraryWindow(QMainWindow):
         grid_font = self.list.font()   # filenames under each thumb were too small
         grid_font.setPointSize(max(grid_font.pointSize() + 2, 11))
         self.list.setFont(grid_font)
+        # itemActivated already represents double-click/Enter on desktop Qt.
+        # Connecting itemDoubleClicked as well opens the same photo twice.
         self.list.itemActivated.connect(self._open_item)
-        self.list.itemDoubleClicked.connect(self._open_item)
         self.list.itemClicked.connect(self._show_info)
         self.list.currentItemChanged.connect(
             lambda cur, _prev: self._show_info(cur))
@@ -1454,6 +1455,18 @@ class LibraryWindow(QMainWindow):
         path = item.data(Qt.UserRole)
         if not path:
             return
+        path = os.path.abspath(path)
+        # Guard against duplicate activation signals and bring the existing
+        # editor forward instead of manufacturing a second identical window.
+        for existing in list(self._editors):
+            try:
+                source = existing.doc.source_path if existing.doc else None
+                if source and os.path.abspath(source) == path and existing.isVisible():
+                    existing.raise_()
+                    existing.activateWindow()
+                    return
+            except RuntimeError:
+                self._editors.remove(existing)
         editor = EditorWindow()
         editor.open_path(path)
         editor.show()
