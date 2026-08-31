@@ -7,6 +7,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFormLayout,
     QSlider, QCheckBox, QComboBox, QDialogButtonBox, QColorDialog,
+    QScrollArea, QWidget, QGroupBox, QGridLayout, QFrame,
 )
 
 import slapper_filters
@@ -23,6 +24,35 @@ RANGES = {
     "warmth": (-100, 100), "bloom": (0, 100), "lifted_blacks": (0, 100),
     "highlight_rolloff": (0, 100), "contrast_reduction": (0, 100),
     "vibrance": (-100, 100), "fade": (0, 100), "tint_strength": (0, 100),
+    "angle": (-180, 180), "strength": (1, 100),
+    "center_x": (0, 100), "center_y": (0, 100),
+}
+
+FILTER_GROUPS = (
+    ("BLUR", (
+        ("gaussian_blur", "Even, natural softening. Control the radius and mask it where needed."),
+        ("motion_blur", "Drag detail in a straight direction using length and angle."),
+        ("radial_blur", "Spin around a point or zoom outward from a movable centre."),
+    )),
+    ("LIGHT + ATMOSPHERE", (
+        ("orton", "Luminous soft focus with highlight and shadow protection."),
+        ("light_leak", "A movable, coloured edge leak with bloom and softness."),
+    )),
+    ("FILM + FINISH", (
+        ("film_grain", "Controlled monochrome or colour grain across tonal ranges."),
+        ("pastel", "Soft colour, lifted blacks, rolled highlights, and gentle tint."),
+    )),
+)
+
+LABELS = {
+    "amount": "Amount", "radius": "Radius", "length": "Length",
+    "angle": "Angle", "strength": "Strength", "mode": "Style",
+    "center_x": "Centre — left/right", "center_y": "Centre — up/down",
+    "highlight_protection": "Protect highlights", "shadow_protection": "Protect shadows",
+    "lifted_blacks": "Lift blacks", "highlight_rolloff": "Soften highlights",
+    "contrast_reduction": "Reduce contrast", "color_variation": "Colour variation",
+    "tint_strength": "Tint amount", "primary": "Primary colour",
+    "secondary": "Secondary colour", "monochrome": "Monochrome grain",
 }
 
 
@@ -32,21 +62,52 @@ class FiltersDialog(QDialog):
         self.host = host
         self.layer = layer
         self.setWindowTitle("FILTERS" if layer is None else layer.get("name", "Filter"))
-        self.resize(520, 560)
+        self.resize(620, 680)
         outer = QVBoxLayout(self)
         if layer is None:
-            outer.addWidget(QLabel(
-                "Add an editable filter layer. The original photograph is never changed."))
-            for kind, name in slapper_filters.FILTER_NAMES.items():
-                button = QPushButton(name)
-                button.clicked.connect(lambda _checked=False, value=kind: self._add(value))
-                outer.addWidget(button)
-            outer.addStretch(1)
+            title = QLabel("ADD A FILTER LAYER")
+            title.setObjectName("SectionTitle")
+            outer.addWidget(title)
+            intro = QLabel(
+                "Choose an effect. Every filter stays editable, supports masks, "
+                "and leaves the original photograph untouched.")
+            intro.setWordWrap(True)
+            outer.addWidget(intro)
+            scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFrameShape(QFrame.NoFrame)
+            content = QWidget(); content_layout = QVBoxLayout(content)
+            for group_name, filters in FILTER_GROUPS:
+                group = QGroupBox(group_name)
+                grid = QGridLayout(group)
+                for row, (kind, description) in enumerate(filters):
+                    button = QPushButton(slapper_filters.FILTER_NAMES[kind])
+                    button.setMinimumHeight(38)
+                    button.setCursor(Qt.PointingHandCursor)
+                    button.clicked.connect(lambda _checked=False, value=kind: self._add(value))
+                    detail = QLabel(description); detail.setWordWrap(True)
+                    detail.setStyleSheet("color:#aaa;")
+                    grid.addWidget(button, row, 0)
+                    grid.addWidget(detail, row, 1)
+                    grid.setColumnStretch(1, 1)
+                content_layout.addWidget(group)
+            content_layout.addStretch(1)
+            scroll.setWidget(content)
+            outer.addWidget(scroll, 1)
+            close = QDialogButtonBox(QDialogButtonBox.Close)
+            close.rejected.connect(self.reject)
+            outer.addWidget(close)
             return
         kind = layer.get("filter_type")
+        title = QLabel(slapper_filters.FILTER_NAMES.get(kind, kind).upper())
+        title.setObjectName("SectionTitle")
+        outer.addWidget(title)
         outer.addWidget(QLabel(
-            f"{slapper_filters.FILTER_NAMES.get(kind, kind)} — editable filter layer"))
+            "Changes appear live. Use the layer panel afterward for opacity, "
+            "blend mode, masks, order, or visibility."))
+        scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFrameShape(QFrame.NoFrame)
+        content = QWidget()
         form = QFormLayout()
+        form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        content.setLayout(form)
         settings = layer.setdefault("settings", slapper_filters.defaults(kind))
         for key, value in list(settings.items()):
             if key == "monochrome":
@@ -57,10 +118,21 @@ class FiltersDialog(QDialog):
                 control = QComboBox(); control.addItems(["left", "right", "top", "bottom"])
                 control.setCurrentText(str(value))
                 control.currentTextChanged.connect(lambda text, k=key: self._set(k, text))
+            elif key == "mode":
+                control = QComboBox(); control.addItems(["spin", "zoom"])
+                control.setCurrentText(str(value))
+                control.currentTextChanged.connect(lambda text, k=key: self._set(k, text))
             elif key in RANGES and isinstance(value, (int, float)):
-                control = QSlider(Qt.Horizontal)
-                control.setRange(*RANGES[key]); control.setValue(int(value))
-                control.valueChanged.connect(lambda number, k=key: self._set(k, number))
+                control = QWidget(); control_row = QHBoxLayout(control)
+                control_row.setContentsMargins(0, 0, 0, 0)
+                slider = QSlider(Qt.Horizontal)
+                slider.setRange(*RANGES[key]); slider.setValue(int(value))
+                readout = QLabel(str(int(value))); readout.setMinimumWidth(42)
+                readout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                slider.valueChanged.connect(
+                    lambda number, k=key, label=readout:
+                    (label.setText(str(number)), self._set(k, number)))
+                control_row.addWidget(slider, 1); control_row.addWidget(readout)
             elif key in {"primary", "secondary", "tint"} and isinstance(value, list):
                 control = QPushButton("Choose…")
                 self._show_colour(control, value)
@@ -71,8 +143,9 @@ class FiltersDialog(QDialog):
                 control.clicked.connect(lambda _checked=False, k=key: self._randomize(k))
             else:
                 continue
-            form.addRow(key.replace("_", " ").title(), control)
-        outer.addLayout(form)
+            form.addRow(LABELS.get(key, key.replace("_", " ").title()), control)
+        scroll.setWidget(content)
+        outer.addWidget(scroll, 1)
         buttons = QDialogButtonBox(QDialogButtonBox.Close)
         buttons.rejected.connect(self.accept)
         outer.addWidget(buttons)

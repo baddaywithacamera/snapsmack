@@ -24,7 +24,7 @@ sys.path.insert(0, HUB)
 
 from PIL import Image, ImageChops                        # noqa: E402
 import editor_engine                                     # noqa: E402
-from PySide6.QtWidgets import QApplication               # noqa: E402
+from PySide6.QtWidgets import QApplication, QPushButton  # noqa: E402
 from PySide6.QtCore import QDir, QThreadPool             # noqa: E402
 from PySide6.QtTest import QTest                         # noqa: E402
 from slapper_qt import theme                             # noqa: E402
@@ -220,6 +220,34 @@ def test_normal_advanced_mode():
     assert not win._sections["LEVELS"].isHidden()
     assert not win.rows["exposure"].isHidden()
     assert win.act_textures.isVisible() is True
+
+
+def test_context_sensitive_toolbars():
+    win = _editor(_image("context-bars.jpg", (300, 200)))
+
+    assert [action.text() for action in win._context_selectors.values()] == [
+        "EDIT", "RETOUCH", "LOOKS", "OUTPUT", "VIEW"]
+
+    def visible_tools():
+        return [action.text() for action in win.context_toolbar.actions()
+                if not action.isSeparator()]
+
+    assert visible_tools() == ["Crop", "Auto", "Reset All", "Before/After"]
+    win._context_selectors["retouch"].trigger()
+    assert visible_tools() == ["Heal", "Red-Eye"]
+    win._context_selectors["looks"].trigger()
+    assert visible_tools() == [
+        "LEWKS…", "Filters…", "Textures…", "Save Recipe", "Apply Recipe"]
+    win._context_selectors["output"].trigger()
+    assert visible_tools() == ["Save Project", "Export…", "Blog Copy…"]
+    win._context_selectors["view"].trigger()
+    assert visible_tools() == [
+        "Fit", "100%", "Filmstrip", "Preferences", "Help"]
+
+    # Normal mode keeps the chosen workspace but removes Advanced-only tools.
+    win._context_selectors["looks"].trigger()
+    win.mode_combo.setCurrentIndex(win.mode_combo.findData("normal"))
+    assert visible_tools() == ["LEWKS…"]
 
 
 def test_autosave_recovery():
@@ -1127,7 +1155,9 @@ def test_editable_filter_layers_and_project_roundtrip():
         original = doc.render()
         layer = doc.add_filter_layer(kind)
         filtered = doc.render()
-        assert ImageChops.difference(original, filtered).getbbox(), kind
+        if kind not in {"gaussian_blur", "motion_blur", "radial_blur"}:
+            # A perfectly flat test image correctly remains flat when blurred.
+            assert ImageChops.difference(original, filtered).getbbox(), kind
         # Amount zero is an exact visual identity.
         layer["settings"]["amount"] = 0
         assert ImageChops.difference(original, doc.render()).getbbox() is None
@@ -1167,6 +1197,59 @@ def test_editable_filter_layers_and_project_roundtrip():
     outputs = editor_engine.batch_apply([path], recipe, batch_dir)
     assert len(outputs) == 1 and os.path.isfile(outputs[0])
     assert editor_engine.photo_manager.content_hash(path) == source_hash
+
+
+def test_blur_filter_layers():
+    from PIL import ImageChops, ImageDraw
+    import slapper_filters
+    image = Image.new("RGB", (180, 120), (18, 22, 28))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((24, 25, 72, 94), fill=(245, 220, 40))
+    draw.line((90, 8, 160, 108), fill=(30, 220, 245), width=5)
+    gaussian = slapper_filters.apply_filter(
+        image, "gaussian_blur", {"amount": 100, "radius": 10})
+    motion = slapper_filters.apply_filter(
+        image, "motion_blur", {"amount": 100, "length": 30, "angle": 35})
+    spin = slapper_filters.apply_filter(
+        image, "radial_blur", {"amount": 100, "strength": 24, "mode": "spin"})
+    zoom = slapper_filters.apply_filter(
+        image, "radial_blur", {"amount": 100, "strength": 24, "mode": "zoom"})
+    for result in (gaussian, motion, spin, zoom):
+        assert ImageChops.difference(image, result).getbbox()
+        assert result.size == image.size
+    assert ImageChops.difference(spin, zoom).getbbox()
+    # Amount zero is a non-destructive identity for every blur.
+    for kind in ("gaussian_blur", "motion_blur", "radial_blur"):
+        off = slapper_filters.apply_filter(image, kind, {"amount": 0})
+        assert ImageChops.difference(image, off).getbbox() is None
+    from slapper_qt.filters_dialog import RANGES
+    assert all(kind in slapper_filters.FILTER_NAMES for kind in
+               ("gaussian_blur", "motion_blur", "radial_blur"))
+    assert "angle" in RANGES and "center_x" in RANGES and "center_y" in RANGES
+    from slapper_qt.filters_dialog import FiltersDialog
+    win = _editor(_image("filter-cleanup.jpg", (220, 160)))
+    gallery = FiltersDialog(win)
+    buttons = [button.text() for button in gallery.findChildren(QPushButton)]
+    for label in ("Gaussian Blur", "Motion Blur", "Radial Blur"):
+        assert label in buttons
+
+
+def test_svg_watermark_layer_renders_at_output_size():
+    from PIL import ImageChops
+    base = _image("svg-base.png", (320, 200), (20, 30, 40))
+    svg = os.path.join(TMP, "watermark.svg")
+    with open(svg, "w", encoding="utf-8") as handle:
+        handle.write('''<svg xmlns="http://www.w3.org/2000/svg" width="240" height="80" viewBox="0 0 240 80">
+        <rect width="240" height="80" fill="none"/><text x="12" y="55" font-size="42"
+        font-family="sans-serif" fill="white" fill-opacity="0.75">SNAPSMACK</text></svg>''')
+    doc = editor_engine.EditorDocument(base)
+    original = doc.render()
+    layer = doc.add_image_layer(svg, "Vector watermark")
+    layer["fit"] = "contain"
+    rendered = doc.render()
+    assert rendered.size == original.size
+    assert ImageChops.difference(original.convert("RGB"), rendered.convert("RGB")).getbbox()
+    assert editor_engine._open_layer_image(svg, (640, 240)).size == (640, 240)
 
 
 def test_keyboard_shortcuts_and_help_topics():
