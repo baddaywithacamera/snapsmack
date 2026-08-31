@@ -15,6 +15,13 @@
   `projects/snapsmack-ca/`) is updated from 2.1 to 2.2, and the README and the
   snapsmack.ca license blurb now reference 2.2. THE THOMAS CLAUSE and the AI
   co-authorship provenance chain are unchanged.
+- **Fix: Relay Status stops showing false errors on the relay host itself.** On a
+  blog that IS the network relay (`distribution_profile = smackcast`), the page was
+  asking spoke questions — "is this blog pointed at a relay / joined to one?" — which
+  a relay can never answer yes to, so it showed "NO RELAY IS CONFIGURED" and "not
+  joined" in red even though the relay was healthy. The page now detects the relay
+  host and shows the correct state: "This blog IS the SnapSmack network relay. Other
+  blogs join it — it does not join itself." Spoke blogs are unaffected.
 
 ## 0.7.593 "LIVE WIRE" — 2026-08-31
 - **Fix: blogs can now actually join the network relay.** When a blog had no relay
