@@ -749,6 +749,7 @@ def test_library_scan_and_open():
             os.path.join(folder, f"p{i}.jpg"))
     Image.new("RGB", (100, 100), (10, 10, 10)).save(os.path.join(sub, "deep.png"))
     lib = LibraryWindow()
+    assert lib._restore_maximized is True
     lib.act_subfolders.setChecked(False)
     lib.load_folder(folder)
     assert _wait_for(lambda: lib.list.count() == 3)
