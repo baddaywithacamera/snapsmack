@@ -1,0 +1,13 @@
+RAWTHERAPEE - OPTIONAL EXTERNAL PROGRAM
+
+Upstream: https://rawtherapee.com/
+Source: https://github.com/Beep6581/RawTherapee
+License: GPL-3.0-or-later
+
+RAWTHERAPEE is not included with SNAPSMACK or SNAP SLAPPER. The user installs
+it separately. SNAP SLAPPER may open an untouched photograph in that separate
+executable as a separate operating-system process. No RAWTHERAPEE source,
+binary, library, profile, preset, or other asset is linked, bundled, vendored,
+copied, or ported into SNAPSMACK.
+
+RAWTHERAPEE remains subject to its own upstream licence and copyright notices.

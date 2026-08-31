@@ -23,11 +23,17 @@ FILTER_DEFAULTS = {
                "highlight_rolloff": 25, "contrast_reduction": 22,
                "saturation": -8, "vibrance": 12, "warmth": 4,
                "fade": 12, "tint": [255, 225, 235], "tint_strength": 8},
+    "gaussian_blur": {"amount": 100, "radius": 8},
+    "motion_blur": {"amount": 100, "length": 24, "angle": 0},
+    "radial_blur": {"amount": 100, "strength": 18, "mode": "spin",
+                    "center_x": 50, "center_y": 50},
 }
 
 FILTER_NAMES = {
     "orton": "Orton Effect", "film_grain": "Film Grain",
     "light_leak": "Light Leak", "pastel": "Pastel Effect",
+    "gaussian_blur": "Gaussian Blur", "motion_blur": "Motion Blur",
+    "radial_blur": "Radial Blur",
 }
 
 
@@ -178,6 +184,52 @@ def _pastel(image, settings):
     return result
 
 
+def _average_images(images):
+    result = images[0].convert("RGB")
+    for index, candidate in enumerate(images[1:], 2):
+        result = Image.blend(result, candidate.convert("RGB"), 1.0 / index)
+    return result
+
+
+def _motion_blur(image, settings):
+    """Straight motion blur at an arbitrary angle, with deterministic samples."""
+    length = max(1.0, min(200.0, float(settings.get("length", 24))))
+    angle = math.radians(float(settings.get("angle", 0)))
+    samples = max(3, min(31, int(length / 3) * 2 + 1))
+    frames = []
+    for index in range(samples):
+        distance = (index / (samples - 1) - .5) * length
+        dx, dy = distance * math.cos(angle), distance * math.sin(angle)
+        frames.append(image.transform(
+            image.size, Image.Transform.AFFINE, (1, 0, -dx, 0, 1, -dy),
+            resample=Image.Resampling.BICUBIC, fillcolor=None))
+    return _average_images(frames)
+
+
+def _radial_blur(image, settings):
+    """Photoshop-style radial blur: Spin or Zoom around a movable centre."""
+    strength = max(0.1, min(100.0, float(settings.get("strength", 18))))
+    mode = settings.get("mode", "spin")
+    cx = image.width * max(0, min(100, float(settings.get("center_x", 50)))) / 100
+    cy = image.height * max(0, min(100, float(settings.get("center_y", 50)))) / 100
+    samples = max(5, min(25, int(strength / 5) * 2 + 5))
+    frames = []
+    for index in range(samples):
+        offset = index / (samples - 1) - .5
+        if mode == "zoom":
+            scale = max(.5, 1 + offset * strength / 125)
+            inverse = 1 / scale
+            frames.append(image.transform(
+                image.size, Image.Transform.AFFINE,
+                (inverse, 0, cx - cx * inverse, 0, inverse, cy - cy * inverse),
+                resample=Image.Resampling.BICUBIC, fillcolor=None))
+        else:
+            frames.append(image.rotate(
+                offset * strength, resample=Image.Resampling.BICUBIC,
+                center=(cx, cy), fillcolor=None))
+    return _average_images(frames)
+
+
 def apply_filter(image, kind, settings=None):
     settings = {**defaults(kind), **(settings or {})}
     original = image.convert("RGB")
@@ -189,6 +241,13 @@ def apply_filter(image, kind, settings=None):
         effect = _light_leak(original, settings)
     elif kind == "pastel":
         effect = _pastel(original, settings)
+    elif kind == "gaussian_blur":
+        effect = original.filter(ImageFilter.GaussianBlur(
+            max(.1, float(settings.get("radius", 8)))))
+    elif kind == "motion_blur":
+        effect = _motion_blur(original, settings)
+    elif kind == "radial_blur":
+        effect = _radial_blur(original, settings)
     else:
         raise ValueError(f"Unsupported filter type: {kind}")
     return _blend(original, effect, settings.get("amount", 100))

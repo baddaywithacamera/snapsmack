@@ -1,13 +1,14 @@
 @echo off
 setlocal
+cd /d "%~dp0"
 set "BUILD_PYTHON=%~dp0..\..\.python-build\python.exe"
 if not exist "%BUILD_PYTHON%" set "BUILD_PYTHON=python"
-REM ─────────────────────────────────────────────────────────────────────────
-REM  THE HUB + standalone SNAP SLAPPER — build script
+REM -------------------------------------------------------------------------
+REM  THE HUB + standalone SNAP SLAPPER - build script
 REM  Requires: Python 3.10+, pip install -r requirements.txt
 REM  Outputs:  C:\snapsmack\hub\hub.exe
 REM            C:\snapsmack\snap_slapper\SNAP SLAPPER.exe
-REM ─────────────────────────────────────────────────────────────────────────
+REM -------------------------------------------------------------------------
 
 if not exist hub.spec (
     echo ERROR: hub.spec not found.
@@ -95,7 +96,7 @@ if exist "C:\snapsmack\hub\hub.exe" if exist "C:\snapsmack\snap_slapper\SNAP SLA
     powershell -NoProfile -ExecutionPolicy Bypass -Command "$w=New-Object -ComObject WScript.Shell; $s=$w.CreateShortcut([Environment]::GetFolderPath('StartMenu')+'\Programs\THE HUB.lnk'); $s.TargetPath='C:\snapsmack\hub\hub.exe'; $s.WorkingDirectory='C:\snapsmack\hub'; $s.Save()"
     echo Start Menu shortcuts updated.
 ) else (
-    echo Build FAILED — check output above.
+    echo Build FAILED - check output above.
     pause
     exit /b 1
 )

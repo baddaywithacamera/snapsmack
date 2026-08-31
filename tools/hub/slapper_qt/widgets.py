@@ -26,10 +26,15 @@ class ImageView(QGraphicsView):
     cropped = Signal(float, float, float, float)
     # emitted when the canvas is clicked in retouch mode, as normalized (x, y)
     retouch_clicked = Signal(float, float)
+    # emitted when the canvas is clicked with the neutral-colour eyedropper
+    neutral_clicked = Signal(float, float)
     # normalized canvas movement for the selected movable layer
     layer_dragged = Signal(float, float, bool)
     # corner index, normalized x/y, and whether the drag has finished
     perspective_corner_dragged = Signal(int, float, float, bool)
+    # The editor uses a viewport-sized proxy in Fit mode. When layout changes,
+    # ask it to render a new proxy instead of stretching the old one.
+    fit_view_resized = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -50,7 +55,15 @@ class ImageView(QGraphicsView):
         self._crop_mode = False
         self._crop_rect_item = None
         self._crop_origin = None
+        self._crop_drag = None
+        self._crop_drag_start = None
+        self._crop_start_rect = None
+        self._crop_aspect = None
+        self._crop_shades = []
+        self._crop_grid = []
+        self._crop_handles = []
         self._retouch_mode = False
+        self._neutral_mode = False
         self._layer_move_mode = False
         self._layer_drag_point = None
         self._perspective_mode = False
@@ -147,14 +160,141 @@ class ImageView(QGraphicsView):
                          else QGraphicsView.ScrollHandDrag)
         self.setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
 
-    def set_crop_mode(self, enabled):
+    def set_neutral_mode(self, enabled):
+        """Turn the white-balance eyedropper on without changing the photo."""
+        self._neutral_mode = bool(enabled)
+        self.setDragMode(QGraphicsView.NoDrag if enabled
+                         else QGraphicsView.ScrollHandDrag)
+        self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+
+    def set_crop_mode(self, enabled, normalized_rect=None):
         self._crop_mode = enabled
         self.setDragMode(QGraphicsView.NoDrag if enabled
                          else QGraphicsView.ScrollHandDrag)
-        self.setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
-        if not enabled and self._crop_rect_item is not None:
-            self._scene.removeItem(self._crop_rect_item)
-            self._crop_rect_item = None
+        self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+        self._crop_origin = None
+        self._crop_drag = None
+        if not enabled:
+            self._clear_crop_overlay()
+            return
+        scene = self._scene.sceneRect()
+        if not (scene.width() and scene.height()):
+            return
+        if normalized_rect and len(normalized_rect) == 4:
+            left, top, right, bottom = normalized_rect
+            rect = QRectF(scene.left() + left * scene.width(),
+                          scene.top() + top * scene.height(),
+                          (right - left) * scene.width(),
+                          (bottom - top) * scene.height())
+        else:
+            rect = scene.adjusted(scene.width() * .08, scene.height() * .08,
+                                  -scene.width() * .08, -scene.height() * .08)
+        self._set_crop_rect(rect)
+
+    def set_crop_aspect(self, ratio):
+        self._crop_aspect = float(ratio) if ratio else None
+        if not (self._crop_mode and self._crop_rect_item and self._crop_aspect):
+            return
+        rect = self._crop_rect_item.rect()
+        centre = rect.center()
+        width = rect.width()
+        height = width / self._crop_aspect
+        if height > self._scene.sceneRect().height():
+            height = min(rect.height(), self._scene.sceneRect().height())
+            width = height * self._crop_aspect
+        self._set_crop_rect(QRectF(centre.x() - width / 2,
+                                   centre.y() - height / 2, width, height))
+
+    def crop_rect_normalized(self):
+        if not self._crop_rect_item:
+            return None
+        rect = self._crop_rect_item.rect().intersected(self._scene.sceneRect())
+        scene = self._scene.sceneRect()
+        if rect.width() < 4 or rect.height() < 4 or not scene.width() or not scene.height():
+            return None
+        return ((rect.left() - scene.left()) / scene.width(),
+                (rect.top() - scene.top()) / scene.height(),
+                (rect.right() - scene.left()) / scene.width(),
+                (rect.bottom() - scene.top()) / scene.height())
+
+    def _clear_crop_overlay(self):
+        for item in ([self._crop_rect_item] if self._crop_rect_item else []) + \
+                self._crop_shades + self._crop_grid + self._crop_handles:
+            self._scene.removeItem(item)
+        self._crop_rect_item = None
+        self._crop_shades = []
+        self._crop_grid = []
+        self._crop_handles = []
+
+    def _set_crop_rect(self, rect):
+        scene = self._scene.sceneRect()
+        rect = rect.normalized().intersected(scene)
+        if self._crop_rect_item is None:
+            self._crop_rect_item = QGraphicsRectItem()
+            self._crop_rect_item.setPen(QPen(QColor("#ffffff"), 0))
+            self._crop_rect_item.setBrush(QColor(0, 0, 0, 0))
+            self._crop_rect_item.setZValue(20)
+            self._scene.addItem(self._crop_rect_item)
+        self._crop_rect_item.setRect(rect)
+        self._update_crop_overlay()
+
+    def _update_crop_overlay(self):
+        for item in self._crop_shades + self._crop_grid + self._crop_handles:
+            self._scene.removeItem(item)
+        self._crop_shades, self._crop_grid, self._crop_handles = [], [], []
+        if not self._crop_rect_item:
+            return
+        scene, rect = self._scene.sceneRect(), self._crop_rect_item.rect()
+        shade_rects = (
+            QRectF(scene.left(), scene.top(), scene.width(), rect.top() - scene.top()),
+            QRectF(scene.left(), rect.bottom(), scene.width(), scene.bottom() - rect.bottom()),
+            QRectF(scene.left(), rect.top(), rect.left() - scene.left(), rect.height()),
+            QRectF(rect.right(), rect.top(), scene.right() - rect.right(), rect.height()))
+        for bounds in shade_rects:
+            item = QGraphicsRectItem(bounds)
+            item.setPen(QPen(Qt.NoPen)); item.setBrush(QColor(0, 0, 0, 145)); item.setZValue(18)
+            self._scene.addItem(item); self._crop_shades.append(item)
+        grid_pen = QPen(QColor(255, 255, 255, 150), 0)
+        for fraction in (1 / 3, 2 / 3):
+            for x1, y1, x2, y2 in (
+                    (rect.left() + rect.width() * fraction, rect.top(),
+                     rect.left() + rect.width() * fraction, rect.bottom()),
+                    (rect.left(), rect.top() + rect.height() * fraction,
+                     rect.right(), rect.top() + rect.height() * fraction)):
+                line = QGraphicsLineItem(x1, y1, x2, y2)
+                line.setPen(grid_pen); line.setZValue(21)
+                self._scene.addItem(line); self._crop_grid.append(line)
+        radius = max(4.0, min(scene.width(), scene.height()) / 120.0)
+        for point in self._crop_handle_points(rect).values():
+            handle = QGraphicsRectItem(point.x() - radius, point.y() - radius,
+                                       radius * 2, radius * 2)
+            handle.setPen(QPen(QColor("#ffffff"), 0)); handle.setBrush(QColor(theme.ACCENT))
+            handle.setZValue(22); self._scene.addItem(handle); self._crop_handles.append(handle)
+
+    @staticmethod
+    def _crop_handle_points(rect):
+        return {
+            "nw": rect.topLeft(), "n": QPointF(rect.center().x(), rect.top()),
+            "ne": rect.topRight(), "e": QPointF(rect.right(), rect.center().y()),
+            "se": rect.bottomRight(), "s": QPointF(rect.center().x(), rect.bottom()),
+            "sw": rect.bottomLeft(), "w": QPointF(rect.left(), rect.center().y())}
+
+    def _crop_hit(self, point):
+        if not self._crop_rect_item:
+            return "new"
+        tolerance = 10.0 / max(.01, abs(self.transform().m11()))
+        for name, handle in self._crop_handle_points(self._crop_rect_item.rect()).items():
+            if abs(point.x() - handle.x()) <= tolerance and abs(point.y() - handle.y()) <= tolerance:
+                return name
+        return "move" if self._crop_rect_item.rect().contains(point) else "new"
+
+    def _set_crop_cursor(self, hit):
+        cursors = {"nw": Qt.SizeFDiagCursor, "se": Qt.SizeFDiagCursor,
+                   "ne": Qt.SizeBDiagCursor, "sw": Qt.SizeBDiagCursor,
+                   "n": Qt.SizeVerCursor, "s": Qt.SizeVerCursor,
+                   "e": Qt.SizeHorCursor, "w": Qt.SizeHorCursor,
+                   "move": Qt.SizeAllCursor, "new": Qt.CrossCursor}
+        self.viewport().setCursor(cursors.get(hit, Qt.CrossCursor))
 
     def set_pixmap(self, pixmap: QPixmap, keep_view: bool = True):
         """Show a pixmap. When ``keep_view`` the current zoom/pan is preserved
@@ -271,6 +411,14 @@ class ImageView(QGraphicsView):
         if self._compare and self._has_image and event.button() == Qt.LeftButton:
             self._set_divider_from(event)
             return
+        if self._neutral_mode and self._has_image and event.button() == Qt.LeftButton:
+            point = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            if scene.contains(point) and scene.width() and scene.height():
+                self.neutral_clicked.emit(
+                    (point.x() - scene.left()) / scene.width(),
+                    (point.y() - scene.top()) / scene.height())
+            return
         if self._retouch_mode and self._has_image and event.button() == Qt.LeftButton:
             point = self.mapToScene(event.position().toPoint())
             scene = self._scene.sceneRect()
@@ -279,14 +427,13 @@ class ImageView(QGraphicsView):
                                           point.y() / scene.height())
             return
         if self._crop_mode and self._has_image and event.button() == Qt.LeftButton:
-            self._crop_origin = self.mapToScene(event.position().toPoint())
-            if self._crop_rect_item is None:
-                pen = QPen(QColor(theme.ACCENT), 0)
-                self._crop_rect_item = QGraphicsRectItem()
-                self._crop_rect_item.setPen(pen)
-                self._crop_rect_item.setBrush(QColor(57, 255, 20, 40))
-                self._scene.addItem(self._crop_rect_item)
-            self._crop_rect_item.setRect(QRectF(self._crop_origin, self._crop_origin))
+            point = self.mapToScene(event.position().toPoint())
+            self._crop_drag = self._crop_hit(point)
+            self._crop_drag_start = point
+            self._crop_start_rect = (QRectF(self._crop_rect_item.rect())
+                                     if self._crop_rect_item else QRectF(point, point))
+            if self._crop_drag == "new":
+                self._set_crop_rect(QRectF(point, point))
             return
         if self._layer_move_mode and self._has_image and event.button() == Qt.LeftButton:
             self._layer_drag_point = self.mapToScene(event.position().toPoint())
@@ -309,9 +456,39 @@ class ImageView(QGraphicsView):
         if self._compare and (event.buttons() & Qt.LeftButton):
             self._set_divider_from(event)
             return
-        if self._crop_mode and self._crop_origin is not None:
+        if self._crop_mode:
             current = self.mapToScene(event.position().toPoint())
-            self._crop_rect_item.setRect(QRectF(self._crop_origin, current).normalized())
+            if self._crop_drag is None:
+                self._set_crop_cursor(self._crop_hit(current))
+                return
+            if not (event.buttons() & Qt.LeftButton):
+                return
+            scene = self._scene.sceneRect()
+            start = self._crop_start_rect
+            if self._crop_drag == "new":
+                rect = QRectF(self._crop_drag_start, current).normalized()
+            elif self._crop_drag == "move":
+                delta = current - self._crop_drag_start
+                rect = start.translated(delta)
+                if rect.left() < scene.left(): rect.moveLeft(scene.left())
+                if rect.right() > scene.right(): rect.moveRight(scene.right())
+                if rect.top() < scene.top(): rect.moveTop(scene.top())
+                if rect.bottom() > scene.bottom(): rect.moveBottom(scene.bottom())
+            else:
+                rect = QRectF(start)
+                hit = self._crop_drag
+                if "w" in hit: rect.setLeft(current.x())
+                if "e" in hit: rect.setRight(current.x())
+                if "n" in hit: rect.setTop(current.y())
+                if "s" in hit: rect.setBottom(current.y())
+                rect = rect.normalized()
+            if self._crop_aspect and self._crop_drag != "move" and rect.width() > 0:
+                height = rect.width() / self._crop_aspect
+                if self._crop_drag and "n" in self._crop_drag:
+                    rect.setTop(rect.bottom() - height)
+                else:
+                    rect.setBottom(rect.top() + height)
+            self._set_crop_rect(rect)
             return
         if self._layer_move_mode and self._layer_drag_point is not None and \
                 (event.buttons() & Qt.LeftButton):
@@ -332,15 +509,12 @@ class ImageView(QGraphicsView):
             x, y = self._perspective_corners[index]
             self.perspective_corner_dragged.emit(index, x, y, True)
             return
-        if self._crop_mode and self._crop_origin is not None:
-            rect = self._crop_rect_item.rect().intersected(self._scene.sceneRect())
-            self._crop_origin = None
-            scene = self._scene.sceneRect()
-            if rect.width() > 4 and rect.height() > 4 and scene.width() and scene.height():
-                self.cropped.emit(rect.left() / scene.width(),
-                                  rect.top() / scene.height(),
-                                  rect.right() / scene.width(),
-                                  rect.bottom() / scene.height())
+        if self._crop_mode and self._crop_drag is not None:
+            self._crop_drag = None
+            self._crop_drag_start = None
+            self._crop_start_rect = None
+            point = self.mapToScene(event.position().toPoint())
+            self._set_crop_cursor(self._crop_hit(point))
             return
         if self._layer_move_mode and self._layer_drag_point is not None:
             self._layer_drag_point = None
@@ -359,6 +533,8 @@ class ImageView(QGraphicsView):
         super().resizeEvent(event)
         if self._fitting:
             self.fit()
+            if self._has_image:
+                self.fit_view_resized.emit()
 
     def viewport_target(self):
         """Preview render cap sized to the viewport (times device pixel ratio,

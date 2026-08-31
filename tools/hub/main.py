@@ -81,7 +81,7 @@ def _shared_root():
 # as defence in depth even though nothing globs now.
 _R = _shared_root()
 ROSTER = [
-    ("SNAP SLAPPER",        "photo manager",        [os.path.join(_R, "snap_slapper", "SNAP SLAPPER.exe")]),
+    ("SNAP SLAPPER",        "photo manager and editor", [os.path.join(_R, "snap_slapper", "SNAP SLAPPER.exe")]),
     ("SMACK YOUR BATCH UP", "batch poster",         [os.path.join(_R, "sybu", "sybu.exe")]),
     ("GET YOUR SHIT SORTED", "offline sorter",      [os.path.join(_R, "gyss", "GET YOUR SHIT SORTED.exe")]),
     ("COLD SNAP",           "offline poster",       [os.path.join(_R, "coldsnap", "coldsnap.exe")]),
@@ -131,7 +131,7 @@ class Hub(tk.Tk):
         self.title(f"THE HUB — SnapSmack   (build {BUILD_VERSION})")
         self.configure(bg=BG)
         self.geometry("980x720")
-        self.minsize(860, 640)
+        self.minsize(700, 480)
 
         self._creds_vars = {}
         self._build_header()
@@ -139,8 +139,24 @@ class Hub(tk.Tk):
             tk.Label(self, text=f"Shared modules unavailable: {_SHARED_ERR}",
                      bg=BG, fg="#ff5555", font=("Segoe UI", 11)).pack(pady=40)
             return
-        body = tk.Frame(self, bg=BG)
-        body.pack(fill="both", expand=True, padx=18, pady=(0, 14))
+        # The dashboard is taller than a small/restored window.  Keep every
+        # card reachable instead of clipping the lower controls off-screen.
+        scroll_shell = tk.Frame(self, bg=BG)
+        scroll_shell.pack(fill="both", expand=True)
+        self._body_canvas = tk.Canvas(
+            scroll_shell, bg=BG, highlightthickness=0, bd=0)
+        body_scroll = tk.Scrollbar(
+            scroll_shell, orient="vertical", command=self._body_canvas.yview)
+        self._body_canvas.configure(yscrollcommand=body_scroll.set)
+        body_scroll.pack(side="right", fill="y")
+        self._body_canvas.pack(side="left", fill="both", expand=True)
+
+        body = tk.Frame(self._body_canvas, bg=BG)
+        self._body_window = self._body_canvas.create_window(
+            (18, 0), window=body, anchor="nw")
+        body.bind("<Configure>", self._update_body_scroll_region)
+        self._body_canvas.bind("<Configure>", self._resize_scroll_body)
+        self.bind_all("<MouseWheel>", self._scroll_body, add="+")
         self._gyss_keys = {}          # site_url -> minted gyss key (cached per run)
         self._build_launcher(body)
         self._build_setup(body)
@@ -149,6 +165,34 @@ class Hub(tk.Tk):
         self._load_creds()
         self._refresh_profiles()
         self._refresh_prompt_sites()
+        # A dashboard benefits from the available desktop.  Defer this until
+        # Tk has created the native window so Windows honours the request.
+        self.after_idle(self._open_maximized)
+
+    def _open_maximized(self):
+        try:
+            self.state("zoomed")
+        except tk.TclError:                 # non-Windows Tk fallback
+            try:
+                self.attributes("-zoomed", True)
+            except tk.TclError:
+                pass
+
+    def _update_body_scroll_region(self, _event=None):
+        bounds = self._body_canvas.bbox("all")
+        if bounds:
+            # Preserve the 18px left/right breathing room from the old body.
+            self._body_canvas.configure(
+                scrollregion=(0, 0, bounds[2] + 18, bounds[3] + 14))
+
+    def _resize_scroll_body(self, event):
+        self._body_canvas.itemconfigure(
+            self._body_window, width=max(1, event.width - 36))
+
+    def _scroll_body(self, event):
+        if event.delta:
+            self._body_canvas.yview_scroll(
+                -1 if event.delta > 0 else 1, "units")
 
     # ── header ──────────────────────────────────────────────────────────────
     def _build_header(self):
@@ -330,6 +374,10 @@ class Hub(tk.Tk):
         self._field(card, "HUB SITE URL",   "hub_url")
         self._field(card, "HUB API KEY",    "hub_key", show="•", test=self._test_hub)
         self._field(card, "GEMINI API KEY", "gemini_api_key", show="•", test=self._test_gemini)
+        self._field(card, "KIMI API KEY", "kimi_api_key", show="•", reveal=True)
+        self._field(card, "DEEPSEEK API KEY", "deepseek_api_key", show="•", reveal=True)
+        self._field(card, "CLAUDE API KEY", "claude_api_key", show="•", reveal=True)
+        self._field(card, "OPENAI API KEY", "openai_api_key", show="•", reveal=True)
         self._field(card, "GOOGLE DRIVE CREDENTIALS (json)", "google_credentials", browse=True, test=self._test_drive)
         self._field(card, "BACKUP FOLDER ID", "drive_folder_id", show="•", reveal=True)
         bar = tk.Frame(card, bg=CARD)
