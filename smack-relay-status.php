@@ -31,6 +31,9 @@ $relay_actor   = function_exists('sv_relay_actor_url') ? sv_relay_actor_url($set
 $relay_host    = $relay_actor !== '' ? (parse_url($relay_actor, PHP_URL_HOST) ?: '') : '';
 $joined_flag   = (string)($settings['photoblogs_relay_joined'] ?? '') === '1';
 $fedi_on       = (string)($settings['fediverse_enabled'] ?? '') === '1';
+/* This blog may BE the network relay (SMACKCAST hub). A relay does not point at,
+   reach, or join another relay — the spoke questions below don't apply to it. */
+$is_relay_host = ($settings['distribution_profile'] ?? '') === 'smackcast';
 
 /* live reachability probe of the relay actor (this is the check that would
    have caught tonight's "the server can't reach the relay" silently-failed join) */
@@ -92,7 +95,9 @@ if ($relay_actor !== '') {
 }
 
 /* plain-English verdict */
-if (!$fedi_on) {
+if ($is_relay_host) {
+    $verdict = ['ok', 'This blog IS the SnapSmack network relay. Other blogs join it — it does not join itself, so there is nothing to configure here.'];
+} elseif (!$fedi_on) {
     $verdict = ['warn', 'Federation is OFF on this blog. Turn it on in the Portal first — the relay needs a live actor to talk to.'];
 } elseif ($relay_url_set === '') {
     $verdict = ['warn', 'No relay is configured. This blog is not pointed at a relay yet.'];
@@ -143,7 +148,9 @@ if (!$fedi_on) {
                 <tr>
                     <th>Joined</th>
                     <td>
-                        <?php if ($join_ok): ?>
+                        <?php if ($is_relay_host): ?>
+                            &#10003; this blog is the relay &mdash; it does not join itself
+                        <?php elseif ($join_ok): ?>
                             &#10003; active<?php echo !empty($follow_row['followed_at']) ? ' since ' . htmlspecialchars($follow_row['followed_at']) : ''; ?>
                         <?php elseif ($join_state !== ''): ?>
                             &#9888; <?php echo htmlspecialchars($join_state); ?> (not yet confirmed by the relay)
@@ -162,7 +169,9 @@ if (!$fedi_on) {
     <div class="box mb-20">
         <h3>OUTBOUND TO RELAY</h3>
         <p class="dim mb-10">The last activities this blog tried to send to the relay (the join Follow, then posts). Repeated failures here mean the join or fan-out is stuck.</p>
-        <?php if (empty($out_rows)): ?>
+        <?php if ($is_relay_host): ?>
+            <p class="dim">This blog is the relay itself, so it sends no join Follow. Member blogs' joins and posts arrive on the relay's own inbox, not through this outbound queue.</p>
+        <?php elseif (empty($out_rows)): ?>
             <p class="dim">Nothing has been queued to the relay. If you clicked JOIN and see nothing here, the join never fired &mdash; the blog could not reach the relay to send the Follow.</p>
         <?php else: ?>
             <table class="data-table">
