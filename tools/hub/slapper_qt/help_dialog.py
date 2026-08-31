@@ -114,6 +114,22 @@ TOPICS = [
      "the stored high-resolution link. It never silently restores an asset, and "
      "it cannot automatically restore a missing third-party texture. The site "
      "connection uses the key stored in THE HUB."),
+    ("Blur tools",
+     "FILTERS includes three editable, non-destructive blur layers. Gaussian "
+     "Blur gives an even softening with adjustable Radius. Motion Blur uses "
+     "Length and Angle to drag detail in a straight direction. Radial Blur can "
+     "Spin around a movable centre or Zoom outward from it; Strength controls "
+     "the movement. Amount blends any blur back toward the original. Because "
+     "these are filter layers, you can change them later, lower opacity, change "
+     "blend mode, mask the effect to part of the photograph, save it in a "
+     ".slapper project or recipe, and use it in batch processing."),
+    ("Watermarks and transparency",
+     "Add Image Layer accepts transparent PNG files and SVG watermarks. PNG alpha "
+     "is preserved. SVG remains a referenced vector file and is rendered sharply "
+     "at the photograph's preview or export size, so a small logo does not become "
+     "a permanently blurry bitmap. Use the image layer's transform, opacity, blend "
+     "mode, and mask controls to place it. PNG, TIFF, and PSD can preserve transparent "
+     "output; JPEG is always flattened because JPEG has no transparency."),
     ("Crop, geometry, and retouch",
      "Crop shows the full frame — drag a rectangle to crop; toggle Crop off "
      "without drawing to cancel. GEOMETRY rotates/straightens and flips. Its "

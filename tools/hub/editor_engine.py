@@ -129,6 +129,36 @@ def _new_layer_id():
     _layer_id_counter += 1
     return f"{time.time_ns()}-{_layer_id_counter}"
 
+
+def _open_layer_image(path, target_size=None):
+    """Open a raster layer or render an SVG sharply at the requested size."""
+    if os.path.splitext(path)[1].lower() != ".svg":
+        with Image.open(path) as source:
+            return ImageOps.exif_transpose(source).convert("RGBA")
+    try:
+        from PySide6.QtCore import QSize
+        from PySide6.QtGui import QImage, QPainter
+        from PySide6.QtSvg import QSvgRenderer
+    except ImportError as error:
+        raise ValueError(
+            "SVG watermarks require the SVG renderer included with SNAP SLAPPER") from error
+    renderer = QSvgRenderer(path)
+    if not renderer.isValid():
+        raise ValueError(f"SVG watermark is invalid: {path}")
+    natural = renderer.defaultSize()
+    if target_size:
+        width, height = max(1, int(target_size[0])), max(1, int(target_size[1]))
+    elif natural.isValid() and not natural.isEmpty():
+        width, height = natural.width(), natural.height()
+    else:
+        width, height = 1024, 1024
+    canvas = QImage(QSize(width, height), QImage.Format_RGBA8888)
+    canvas.fill(0)
+    painter = QPainter(canvas)
+    renderer.render(painter)
+    painter.end()
+    return Image.frombytes("RGBA", (width, height), bytes(canvas.bits()), "raw", "RGBA")
+
 # Hue centres (degrees) for the black & white colour mix, in wheel order.
 BW_BANDS = [("bw_red", 0.0), ("bw_orange", 30.0), ("bw_yellow", 60.0),
             ("bw_green", 120.0), ("bw_aqua", 180.0), ("bw_blue", 240.0),
@@ -1260,15 +1290,17 @@ class EditorDocument:
                             f'Origin: {ref.get("origin", "unknown")}. Source: {source}')
                     raise FileNotFoundError(
                         f'Image layer "{name}" is missing from layer {layer_number}: {path}')
-                with Image.open(path) as source_layer:
-                    top = ImageOps.exif_transpose(source_layer).convert("RGBA")
+                fit = layer.get("fit", "original")
+                svg_target = image.size if (
+                    os.path.splitext(path)[1].lower() == ".svg" and
+                    fit in ("cover", "contain", "stretch")) else None
+                top = _open_layer_image(path, svg_target)
                 if max_size:
                     top.thumbnail(image.size, Image.Resampling.LANCZOS)
                 alpha = top.getchannel("A")
                 top = apply_adjustments(
                     top.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
                 top.putalpha(alpha)
-                fit = layer.get("fit", "original")
                 if fit in ("cover", "contain", "stretch", "tile"):
                     top = self._fit_layer_image(top, image.size, fit)
             elif layer.get("type") == "text":

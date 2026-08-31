@@ -244,7 +244,7 @@ class LayersPanel(QWidget):
             return
         path, _ = QFileDialog.getOpenFileName(
             self, "Add image layer", "",
-            "Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp)")
+            "Images and SVG watermarks (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp *.svg)")
         if not path:
             return
         layer = self.doc.add_image_layer(path)
