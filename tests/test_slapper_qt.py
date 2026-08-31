@@ -24,8 +24,9 @@ sys.path.insert(0, HUB)
 
 from PIL import Image, ImageChops                        # noqa: E402
 import editor_engine                                     # noqa: E402
-from PySide6.QtWidgets import QApplication               # noqa: E402
+from PySide6.QtWidgets import QApplication, QPushButton  # noqa: E402
 from PySide6.QtCore import QDir, QThreadPool             # noqa: E402
+from PySide6.QtTest import QTest                         # noqa: E402
 from slapper_qt import theme                             # noqa: E402
 from slapper_qt.editor_window import EditorWindow        # noqa: E402
 from slapper_qt.library_window import (                  # noqa: E402
@@ -204,6 +205,10 @@ def test_normal_advanced_mode():
     assert not win._sections["LIGHT"].isHidden()
     assert win.rows["exposure"].isHidden() and win.rows["whites"].isHidden()
     assert not win.rows["contrast"].isHidden()
+    assert not win.rows["vibrance"].isHidden()
+    assert not win.rows["vignette"].isHidden()
+    assert win.rows["vignette_feather"].isHidden()
+    assert win.grain_darken_check.isHidden()
     assert win._histogram_wrap.isHidden()
     # advanced-only toolbar hidden, Normal tools kept
     assert win.act_textures.isVisible() is False
@@ -215,6 +220,34 @@ def test_normal_advanced_mode():
     assert not win._sections["LEVELS"].isHidden()
     assert not win.rows["exposure"].isHidden()
     assert win.act_textures.isVisible() is True
+
+
+def test_context_sensitive_toolbars():
+    win = _editor(_image("context-bars.jpg", (300, 200)))
+
+    assert [action.text() for action in win._context_selectors.values()] == [
+        "EDIT", "RETOUCH", "LOOKS", "OUTPUT", "VIEW"]
+
+    def visible_tools():
+        return [action.text() for action in win.context_toolbar.actions()
+                if not action.isSeparator()]
+
+    assert visible_tools() == ["Crop", "Auto", "Reset All", "Before/After"]
+    win._context_selectors["retouch"].trigger()
+    assert visible_tools() == ["Heal", "Red-Eye"]
+    win._context_selectors["looks"].trigger()
+    assert visible_tools() == [
+        "LEWKS…", "LEWK AGAIN…", "Filters…", "Textures…", "Save Recipe", "Apply Recipe"]
+    win._context_selectors["output"].trigger()
+    assert visible_tools() == ["Save Project", "Export…", "Blog Copy…"]
+    win._context_selectors["view"].trigger()
+    assert visible_tools() == [
+        "Fit", "100%", "Filmstrip", "Preferences", "Help"]
+
+    # Normal mode keeps the chosen workspace but removes Advanced-only tools.
+    win._context_selectors["looks"].trigger()
+    win.mode_combo.setCurrentIndex(win.mode_combo.findData("normal"))
+    assert visible_tools() == ["LEWKS…", "LEWK AGAIN…"]
 
 
 def test_autosave_recovery():
@@ -286,23 +319,100 @@ def test_lewks_dialog_previews():
     assert populated == dialog.grid.count()
 
 
+def test_teach_me_uses_real_lewk_steps_and_makes_editable_copy():
+    import built_in_lewks
+    from slapper_qt.teach_me_dialog import TeachMeDialog, actions_for
+    win = _editor(_image("teachme.jpg", (360, 240)))
+    lewk = built_in_lewks.get("golden-hourglass")
+    actions = actions_for(lewk)
+    taught_values = {}
+    for action in actions:
+        taught_values.update(action["values"])
+    assert taught_values == lewk["adjustments"]
+    dialog = TeachMeDialog(win, lewk, 80)
+    assert dialog.steps.count() == len(actions)
+    assert dialog.values.text()
+    assert dialog.values.isHidden()              # lesson first, numbers on request
+    assert "Why:" in dialog.why.text() and "Contrast:" not in dialog.why.text()
+    dialog.show_settings.setChecked(True)
+    assert not dialog.values.isHidden()
+    original_count = len(win.doc.layers)
+    dialog._make_editable()
+    assert len(win.doc.layers) == original_count + 1
+    assert win.doc.layers[-1]["lewk"]["id"] == "golden-hourglass"
+
+
 def test_texture_layer():
+    old_home = os.environ.get("SNAPSMACK_HOME")
+    asset_home = tempfile.mkdtemp(prefix="slapper_assets_", dir=TMP)
+    os.environ["SNAPSMACK_HOME"] = asset_home
     win = _editor(_image("tphoto.jpg", (400, 300)))
     tex = _image("texture.png", (120, 60), (200, 120, 60))
     prov = {"texture_id": 7, "title": "Rust",
             "source_url": "https://foundtextures.ca/uploads/x/rust.jpg",
+            "source_page_url": "https://foundtextures.ca/rust",
+            "highres_download_url": "https://drive.google.com/file/d/rust123/view",
             "source_site": "https://foundtextures.ca",
-            "licence": "unknown", "retrieved_at": "2026-08-27"}
+            "licence": "Free for commercial use", "rights_status": "clear",
+            "retrieved_at": "2026-08-27"}
     layer = win.add_texture_layer(tex, prov, fit="cover", blend="overlay", opacity=0.8)
     assert layer["fit"] == "cover" and layer["blend"] == "overlay"
     assert layer["texture"]["texture_id"] == 7
+    assert layer["asset_ref"]["key"] == "foundtextures:7"
+    assert layer["asset_ref"]["origin"] == "first-party"
     assert win.doc.render((300, 300))
     # provenance + fit survive a .slapper round-trip
     pp = os.path.join(TMP, "tex.slapper")
     win.doc.save_project(pp)
+    project_json = editor_engine._read_project_document(pp)
+    saved_texture = project_json["layers"][-1]["texture"]
+    assert saved_texture["title"] == "Rust"
+    assert saved_texture["source_page_url"] == "https://foundtextures.ca/rust"
+    assert saved_texture["highres_download_url"].endswith("/rust123/view")
+    assert saved_texture["rights_status"] == "clear"
     loaded = editor_engine.EditorDocument.load_project(pp)
     assert loaded.layers[-1]["texture"]["texture_id"] == 7
     assert loaded.layers[-1]["fit"] == "cover"
+    # Recipes/LEWKS retain the recoverable reference, never local paths or bytes.
+    recipe_layer = win.doc.recipe()["layers"][-1]
+    assert recipe_layer["asset_ref"]["source_url"] == "https://foundtextures.ca/rust"
+    assert "path" not in recipe_layer
+    import texture_assets
+    assert texture_assets.resolve(recipe_layer["asset_ref"]) == os.path.abspath(tex)
+    # A missing third-party asset fails loudly with its name and stack position.
+    missing = editor_engine.EditorDocument(win.doc.source_path)
+    bad = missing.add_image_layer(os.path.join(TMP, "gone.png"), "Borrowed paper")
+    bad["asset_ref"] = {"key": "external:nope", "name": "Borrowed paper",
+                        "origin": "third-party", "source_url": "https://example.test/paper"}
+    try:
+        missing.render((100, 100))
+        assert False, "missing texture must not silently render"
+    except FileNotFoundError as error:
+        assert "Borrowed paper" in str(error) and "layer 1" in str(error)
+    if old_home is None:
+        os.environ.pop("SNAPSMACK_HOME", None)
+    else:
+        os.environ["SNAPSMACK_HOME"] = old_home
+
+
+def test_found_textures_rights_metadata_and_filter():
+    import found_textures
+    url = found_textures.search_url(
+        "https://foundtextures.ca", "rust", rights="clear")
+    assert "rights=clear" in url
+    textures, total = found_textures.parse_response({"photos": [{
+        "id": 9, "title": "Rust", "thumb_url": "/thumbs/a_rust.jpg",
+        "licence": "Free for commercial use", "rights_status": "clear",
+        "source_page_url": "https://foundtextures.ca/rust",
+        "highres_download_url": "https://drive.google.com/file/d/abc_123/view",
+    }]}, "https://foundtextures.ca")
+    assert total == 1
+    assert textures[0]["rights_status"] == "clear"
+    prov = found_textures.provenance(textures[0])
+    assert prov["rights_status"] == "clear"
+    assert prov["source_page_url"].endswith("/rust")
+    assert found_textures.highres_fetch_url(
+        textures[0]["highres_download_url"]).endswith("id=abc_123")
 
 
 def test_texture_fit_modes():
@@ -523,6 +633,26 @@ def test_crop():
     assert win.doc.geometry["crop"] == [0.25, 0.25, 0.75, 0.75]
 
 
+def test_interactive_crop_overlay_and_explicit_apply():
+    win = _editor(_image("crop-overlay.jpg", (400, 300)))
+    win._context_selectors["edit"].trigger()
+    win.act_crop.setChecked(True)
+    assert win.doc.geometry["crop"] is None
+    assert win.view._crop_rect_item is not None
+    assert len(win.view._crop_handles) == 8
+    assert len(win.view._crop_grid) == 4
+    assert len(win.view._crop_shades) == 4
+    assert win._crop_controls_action in win.context_toolbar.actions()
+
+    win.crop_aspect.setCurrentIndex(win.crop_aspect.findData(1.0))
+    rect = win.view._crop_rect_item.rect()
+    assert abs(rect.width() - rect.height()) < 1
+    win._commit_crop()
+    assert win.doc.geometry["crop"] is not None
+    assert not win.act_crop.isChecked()
+    assert win.view._crop_rect_item is None
+
+
 def test_bw_colour_mix():
     from PIL import ImageOps, ImageChops
     bands = Image.new("RGB", (300, 60))
@@ -533,7 +663,13 @@ def test_bw_colour_mix():
     path = os.path.join(TMP, "bw.png"); bands.save(path)
     win = _editor(path)
     win.bw_check.setChecked(True)
-    # all bands at 0 must equal the plain neutral grayscale
+    # The checkbox starts with a photographic colour mix, not flat desaturation.
+    assert win.doc.adjustments["bw_orange"] > 0
+    assert win.doc.adjustments["bw_blue"] < 0
+    for key, _degree in editor_engine.BW_BANDS:
+        win.doc.adjustments[key] = 0
+        win.rows[key].set_value(0)
+    # Explicitly neutral bands remain a predictable plain grayscale.
     neutral = win.doc.render()
     grey = ImageOps.grayscale(bands.resize(neutral.size))
     assert ImageChops.difference(neutral, Image.merge("RGB", (grey,) * 3)).getbbox() is None
@@ -613,6 +749,7 @@ def test_library_scan_and_open():
             os.path.join(folder, f"p{i}.jpg"))
     Image.new("RGB", (100, 100), (10, 10, 10)).save(os.path.join(sub, "deep.png"))
     lib = LibraryWindow()
+    assert lib._restore_maximized is True
     lib.act_subfolders.setChecked(False)
     lib.load_folder(folder)
     assert _wait_for(lambda: lib.list.count() == 3)
@@ -625,6 +762,9 @@ def test_library_scan_and_open():
         APP.processEvents(); time.sleep(0.01)
     lib._open_item(lib.list.item(0))
     assert lib._editors and lib._editors[0].doc is not None
+    opened = len(lib._editors)
+    lib._open_item(lib.list.item(0))
+    assert len(lib._editors) == opened, "the same activation must not open a duplicate editor"
 
 
 def test_zoom_actual_shows_native_pixels():
@@ -649,6 +789,24 @@ def test_zoom_actual_shows_native_pixels():
     assert win._zoom_actual is False
 
 
+def test_fit_preview_refreshes_after_window_layout():
+    # A file opened before show() initially sees a tiny provisional viewport.
+    # Once layout settles, Fit must re-render rather than stretch that proxy.
+    path = _image("layout_fit.jpg", size=(2400, 1600))
+    win = EditorWindow()
+    win.resize(480, 320)
+    assert win.open_path(path)
+    first_width = win.view._item.pixmap().width()
+    win.resize(1600, 1000)
+    win.show()
+    QTest.qWait(250)
+    APP.processEvents()
+    refreshed_width = win.view._item.pixmap().width()
+    assert refreshed_width > first_width
+    assert not win._zoom_actual and win.view._fitting
+    win.close()
+
+
 def test_filmstrip_lists_folder_and_opens():
     # the filmstrip shows the current folder and clicking a frame opens it
     folder = tempfile.mkdtemp(prefix="slapper_strip_", dir=TMP)
@@ -661,6 +819,11 @@ def test_filmstrip_lists_folder_and_opens():
     win.act_filmstrip.setChecked(True)
     win.filmstrip.show_for(first)
     assert win.filmstrip.count() == 2
+    assert win.filmstrip.isVisibleTo(win) or win._filmstrip_visible
+    win.filmstrip_handle.click()
+    assert not win._filmstrip_visible and "Show" in win.filmstrip_handle.text()
+    win.filmstrip_handle.click()
+    assert win._filmstrip_visible and "Hide" in win.filmstrip_handle.text()
     # Filmstrip owns a deliberately small private pool so a huge shoot cannot
     # starve unrelated application work. Do not wait on the global pool here.
     win.filmstrip._pool.waitForDone(5000)
@@ -670,6 +833,24 @@ def test_filmstrip_lists_folder_and_opens():
     win.filmstrip._activate(win.filmstrip._items[os.path.abspath(second)])
     APP.processEvents()
     assert os.path.abspath(win.doc.source_path) == os.path.abspath(second)
+
+
+def test_filmstrip_queues_thumbnails_when_scrolled():
+    folder = tempfile.mkdtemp(prefix="slapper_strip_scroll_", dir=TMP)
+    paths = []
+    for index in range(60):
+        path = os.path.join(folder, f"{index:03d}.jpg")
+        Image.new("RGB", (40, 30), (index, 80, 120)).save(path)
+        paths.append(os.path.abspath(path))
+    win = _editor(paths[0])
+    strip = win.filmstrip
+    strip.show_for(paths[0])
+    assert paths[-1] not in strip._queued
+    strip.horizontalScrollBar().setValue(strip.horizontalScrollBar().maximum())
+    QTest.qWait(100)
+    APP.processEvents()
+    assert paths[-1] in strip._queued
+    strip._pool.waitForDone(5000)
 
 
 def test_mask_brush_and_type_switch():
@@ -995,7 +1176,9 @@ def test_editable_filter_layers_and_project_roundtrip():
         original = doc.render()
         layer = doc.add_filter_layer(kind)
         filtered = doc.render()
-        assert ImageChops.difference(original, filtered).getbbox(), kind
+        if kind not in {"gaussian_blur", "motion_blur", "radial_blur"}:
+            # A perfectly flat test image correctly remains flat when blurred.
+            assert ImageChops.difference(original, filtered).getbbox(), kind
         # Amount zero is an exact visual identity.
         layer["settings"]["amount"] = 0
         assert ImageChops.difference(original, doc.render()).getbbox() is None
@@ -1037,6 +1220,59 @@ def test_editable_filter_layers_and_project_roundtrip():
     assert editor_engine.photo_manager.content_hash(path) == source_hash
 
 
+def test_blur_filter_layers():
+    from PIL import ImageChops, ImageDraw
+    import slapper_filters
+    image = Image.new("RGB", (180, 120), (18, 22, 28))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((24, 25, 72, 94), fill=(245, 220, 40))
+    draw.line((90, 8, 160, 108), fill=(30, 220, 245), width=5)
+    gaussian = slapper_filters.apply_filter(
+        image, "gaussian_blur", {"amount": 100, "radius": 10})
+    motion = slapper_filters.apply_filter(
+        image, "motion_blur", {"amount": 100, "length": 30, "angle": 35})
+    spin = slapper_filters.apply_filter(
+        image, "radial_blur", {"amount": 100, "strength": 24, "mode": "spin"})
+    zoom = slapper_filters.apply_filter(
+        image, "radial_blur", {"amount": 100, "strength": 24, "mode": "zoom"})
+    for result in (gaussian, motion, spin, zoom):
+        assert ImageChops.difference(image, result).getbbox()
+        assert result.size == image.size
+    assert ImageChops.difference(spin, zoom).getbbox()
+    # Amount zero is a non-destructive identity for every blur.
+    for kind in ("gaussian_blur", "motion_blur", "radial_blur"):
+        off = slapper_filters.apply_filter(image, kind, {"amount": 0})
+        assert ImageChops.difference(image, off).getbbox() is None
+    from slapper_qt.filters_dialog import RANGES
+    assert all(kind in slapper_filters.FILTER_NAMES for kind in
+               ("gaussian_blur", "motion_blur", "radial_blur"))
+    assert "angle" in RANGES and "center_x" in RANGES and "center_y" in RANGES
+    from slapper_qt.filters_dialog import FiltersDialog
+    win = _editor(_image("filter-cleanup.jpg", (220, 160)))
+    gallery = FiltersDialog(win)
+    buttons = [button.text() for button in gallery.findChildren(QPushButton)]
+    for label in ("Gaussian Blur", "Motion Blur", "Radial Blur"):
+        assert label in buttons
+
+
+def test_svg_watermark_layer_renders_at_output_size():
+    from PIL import ImageChops
+    base = _image("svg-base.png", (320, 200), (20, 30, 40))
+    svg = os.path.join(TMP, "watermark.svg")
+    with open(svg, "w", encoding="utf-8") as handle:
+        handle.write('''<svg xmlns="http://www.w3.org/2000/svg" width="240" height="80" viewBox="0 0 240 80">
+        <rect width="240" height="80" fill="none"/><text x="12" y="55" font-size="42"
+        font-family="sans-serif" fill="white" fill-opacity="0.75">SNAPSMACK</text></svg>''')
+    doc = editor_engine.EditorDocument(base)
+    original = doc.render()
+    layer = doc.add_image_layer(svg, "Vector watermark")
+    layer["fit"] = "contain"
+    rendered = doc.render()
+    assert rendered.size == original.size
+    assert ImageChops.difference(original.convert("RGB"), rendered.convert("RGB")).getbbox()
+    assert editor_engine._open_layer_image(svg, (640, 240)).size == (640, 240)
+
+
 def test_keyboard_shortcuts_and_help_topics():
     from slapper_qt.help_dialog import TOPICS
     win = _editor(_image("keys.jpg", (160, 120)))
@@ -1058,6 +1294,56 @@ def test_keyboard_shortcuts_and_help_topics():
                  "Tone curve, split tone, colour mix, and glow"):
         assert want in titles, want
     assert "glass-box" in dict(TOPICS)["LEWKS"].lower()
+
+
+def test_panomerge_command_and_library_action():
+    from slapper_qt.panomerge import XpanoEngine, build_command
+    one = _image("pano-01.jpg", (160, 120), (90, 110, 140))
+    two = _image("pano-02.jpg", (160, 120), (100, 120, 150))
+    output = os.path.join(TMP, "merged panorama.tif")
+    fake = os.path.join(TMP, "Xpano.exe")
+    with open(fake, "wb") as handle:
+        handle.write(b"fake")
+    engine = XpanoEngine("XPANO", (fake,))
+    command = build_command(engine, [one, two], output)
+    assert command == [fake, os.path.abspath(one), os.path.abspath(two),
+                       f"--output={os.path.abspath(output)}"]
+    try:
+        build_command(engine, [one], output)
+        assert False, "one photograph must not be accepted"
+    except ValueError:
+        pass
+    library = LibraryWindow()
+    assert library.act_panomerge.text() == "PANOMERGE…"
+    assert "XPANO" in library.act_panomerge.toolTip()
+
+
+def test_lewk_again_is_integrated_and_rejects_unsafe_recipe_content():
+    import json
+    import lewk_again
+    win = _editor(_image("lewk-again.jpg", (160, 120)))
+    assert win.act_lewk_again.text() == "LEWK AGAIN…"
+    assert win.act_lewk_again in win._toolbar_contexts["looks"]
+    safe = lewk_again.validate_response(json.dumps({
+        "name": "WINTER DOCUMENTARY",
+        "description": "Cool and restrained.",
+        "adjustments": {"temperature": -12, "vibrance": -8, "shadows": 18},
+        "filters": [{"type": "film_grain", "settings": {"amount": 12}}],
+        "explanation": ["Cools colour without flattening skin."],
+    }), "TEST", "test-model", "cool winter")
+    assert len(safe["layers"]) == 2
+    assert safe["layers"][0]["adjustments"]["temperature"] == -12
+    win.apply_generated_lewk(safe)
+    assert win.doc.layers[-1]["filter_type"] == "film_grain"
+    for payload in (
+        {"adjustments": {"run_script": "oops"}},
+        {"adjustments": {}, "filters": [{"type": "shell", "settings": {}}]},
+    ):
+        try:
+            lewk_again.validate_response(json.dumps(payload))
+            assert False, "unsafe LEWK content must be rejected"
+        except ValueError:
+            pass
 
 
 def main():

@@ -137,6 +137,14 @@ require_once __DIR__ . '/includes/header.php';
             <h3>All Posts</h3>
             <ol>
                 <li>
+                    <span class="idx-date">Aug 30</span>
+                    <a href="#lewk-again">LEWK AGAIN Shows Its Work</a>
+                </li>
+                <li>
+                    <span class="idx-date">Aug 30</span>
+                    <a href="#snap-slapper-editor">SNAP SLAPPER Is Ready for the Box O&rsquo; Tricks</a>
+                </li>
+                <li>
                     <span class="idx-date">Aug 26</span>
                     <a href="#slapper-file-format">.SLAPPER: Your Edits Are Not Hostages</a>
                 </li>
@@ -307,6 +315,38 @@ require_once __DIR__ . '/includes/header.php';
     <section class="posts">
         <div class="wrap">
 
+            <article class="post" id="lewk-again">
+                <div class="post-meta">
+                    <span class="post-date">August 30, 2026</span>
+                    <span class="post-tag">Desktop</span>
+                </div>
+                <h2><a href="#lewk-again">LEWK AGAIN Shows Its Work</a></h2>
+                <p>Most AI photo tools want the photograph first and the explanation never. <strong>LEWK AGAIN</strong> takes the opposite route. Describe the treatment you want in ordinary language&mdash;muted winter documentary colour, protected skin tones, lifted shadows, restrained grain&mdash;and it builds an editable SNAP SLAPPER LEWK from controls the editor already understands.</p>
+                <p>The first version is deliberately text-only. The provider receives the written request and, when you refine the result, the already validated recipe. <strong>The photograph is not uploaded.</strong> SNAP SLAPPER renders the preview locally, shows the explanation locally, and keeps the actual image processing on the photographer&rsquo;s computer.</p>
+                <p>It works with <strong>GEMINI, KIMI, DEEPSEEK, CLAUDE, and OPENAI</strong>, plus an optional OpenAI-compatible model running locally for people with patient computers and principled objections to sending prompts elsewhere. Provider and model remain visible choices rather than a mystery dependency welded behind the interface. The shared keys live in THE HUB&rsquo;s protected local credential store.</p>
+                <p>The machine does not get to smuggle arbitrary cleverness into an editing project. Its reply is forced through a narrow allowlist of known adjustments and filters. Unsupported controls, scripts, paths, URLs, executable content, malformed curves, and mystery filter settings are rejected before they reach the photograph. <strong>SHOW THE GUTS</strong> displays the complete accepted recipe so the photographer can inspect what was proposed instead of being handed a magic button and a marketing adjective.</p>
+                <p>Preview it. Ask for a revision. Apply it as ordinary non-destructive layers. Save it into the local LEWKS library and it appears beside the built-in looks the next time the browser opens. The result belongs to the photographer, remains editable, and can be learned from instead of merely consumed.</p>
+                <p>This lands alongside the less glamorous work that makes an editor usable every day: a context-sensitive toolbar, a crop frame with proper handles and guides, editable Gaussian, motion, and radial blur layers, texture provenance and recovery information, and TEACH ME explanations that expose how a LEWK produces its result.</p>
+                <p><strong>AI can suggest the look. The photographer still gets the controls.</strong></p>
+            </article>
+
+            <article class="post" id="snap-slapper-editor">
+                <div class="post-meta">
+                    <span class="post-date">August 30, 2026</span>
+                    <span class="post-tag">Desktop</span>
+                </div>
+                <h2><a href="#snap-slapper-editor">SNAP SLAPPER Is Ready for the Box O&rsquo; Tricks</a></h2>
+                <p>There is a point in every experiment where the creature stops being an interesting collection of organs and gets up off the table. SNAP SLAPPER just reached it.</p>
+                <p>It is now good enough to join <a href="tools.php#snap-slapper"><strong>BOX O&rsquo; TRICKS!</strong></a>: a real local photo library and non-destructive editor for photographers who want the work on their own computer and the finished photographs on their own site. It browses ordinary folders, handles ratings, favourites, tags and albums, organizes files, moves through a shoot with a live filmstrip, and edits without replacing the original.</p>
+                <p><strong>Normal mode</strong> is the editor most photographs need: light, colour, saturation, vibrance, black and white, geometry, vignette, crop, red-eye, Auto, LEWKS, and export. It stays deliberately free of layers and masking controls. The point is to make the common edit obvious, not force everybody to qualify for a commercial pilot&rsquo;s licence before lowering the highlights.</p>
+                <p><strong>Advanced mode</strong> opens the workshop. Layers, masks, blend modes, opacity, histogram, levels, curves, detailed colour mixing, retouching, geometry, perspective correction, filters, textures, recipes, projects, and layered export are there when the photograph earns the extra attention. The switch is visible. The two modes use the same engine. Starting simple does not mean starting over when the edit becomes complicated.</p>
+                <p>LEWKS preview reusable treatments on your photograph, not on somebody else&rsquo;s suspiciously perfect model in suspiciously perfect light. The native <code>.slapper</code> project is an inspectable ZIP container holding human-readable edit instructions and standard assets. PSD and TIFF provide working exits; JPEG and PNG provide finished ones. The original remains where you put it.</p>
+                <p>It has also crossed the less glamorous threshold that matters more: it is being dogfooded hard. Fuzzy first renders, stalled filmstrips, duplicate editor windows, frozen folder browsing, controls hidden in the wrong mode, and the little paper cuts that only appear during real work have been found and fixed because SNAP SLAPPER is being pushed toward primary-editor duty instead of protected inside a demo.</p>
+                <p>The next serious piece is Photoshop-style painting on real blank pixel layers: colour, hardness, opacity, flow, erasing, and Overlay or Soft Light workflows for eyes, teeth, local shaping, and the hundred small jobs photographers do without thinking about the tool. Mask brushes already exist. Paint brushes need to be the real thing before we claim them.</p>
+                <p>SNAP SLAPPER remains part of the SnapSmack desktop system. THE HUB installs it and the image processing stays local. No cloud library, no subscription tier, no originals uploaded for somebody else&rsquo;s machine-learning appetizer.</p>
+                <p><strong>The lab door is open. Bring photographs.</strong></p>
+            </article>
+
             <article class="post" id="slapper-file-format">
                 <div class="post-meta">
                     <span class="post-date">August 26, 2026</span>
@@ -336,7 +376,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>The framework is built. SNAP SLAPPER is alive: a fast, private desktop photo library for browsing, rating, tagging, organizing, editing, and exporting your photographs without feeding the whole bloody collection to somebody else&rsquo;s cloud.</p>
                 <p>Now we&rsquo;re armouring it for the closed beta&mdash;hardening the library, sharpening the workflow, and making sure it can survive photographers doing unspeakable things to years of accumulated work.</p>
                 <p>And the mutation isn&rsquo;t finished.</p>
-                <p><strong>LEWK AGAIN</strong> is stirring inside it: AI-assisted action stacking that turns the look in your head into a reusable LEWK without buying another influencer&rsquo;s overpriced bag of presets. We&rsquo;ll show you what crawls out of the lab soon.</p>
+                <p><strong>LEWK AGAIN</strong> was stirring inside it. It has since escaped too: <a href="#lewk-again">see what crawled out of the lab</a>.</p>
             </article>
 
             <article class="post" id="pixelix-live">
@@ -408,12 +448,12 @@ require_once __DIR__ . '/includes/header.php';
                     <span class="post-tag">Beta</span>
                 </div>
                 <h2><a href="#closed-beta">First Twenty Through the Door</a></h2>
-                <p>Here it is: SnapSmack's first closed beta opens <strong>September 4, 2026</strong>, and applications are open right now. We're letting in <strong>twenty photographers</strong> for the first wave &mdash; no more, not yet.</p>
+                <p>Here it is: SnapSmack's first closed beta opens <strong>November 4, 2026</strong>, and applications are open right now. We're letting in <strong>twenty photographers</strong> for the first wave &mdash; no more, not yet.</p>
                 <p>Why twenty, and why closed? Because we'd rather break this thing quietly, in front of twenty people who'll tell us the truth, than loudly in front of everyone. A small first crew means we can harden SnapSmack against real archives &mdash; real volume, real mess, real edge cases &mdash; before we throw the doors open. You're not a tester filling out a form. You're the reason the software gets good.</p>
                 <p>So it's built for people with a real back-catalogue. You'll want <strong>at least 500 images</strong> ready to post &mdash; this isn't a toy for three snaps and a coffee cup, it's the tool for the archive you've been dragging from platform to platform for a decade, watching each one enshittify around your work.</p>
                 <p>And if you're one of the people getting out &mdash; pulling a whole collection off Flickr before it's paywalled into a coma, or off Instagram before the algorithm decides your photographs aren't &ldquo;engaging&rdquo; enough to show the people who <em>asked</em> to see them &mdash; then you are exactly who we're building this wave for. Migrating a real archive off a dying platform is the story we most want to tell, and the workflow we most want to get bulletproof. Bring the whole mess. We want it.</p>
                 <p>No ads. No feed deciding your fate. No posting your art between commercials for hemorrhoid cream. Just your photographs, on your own site, in the order <em>you</em> choose, seen by the people who came to see <em>you</em>. Own your archive. Own your audience. Roll your own.</p>
-                <p>Applications are open now &mdash; drop your email on the <a href="index.php#beta">homepage</a> and we'll reach out to the first twenty. The doors open September 4. Bring your whole archive.</p>
+                <p>Applications are open now &mdash; drop your email on the <a href="index.php#beta">homepage</a> and we'll reach out to the first twenty. The doors open November 4. Bring your whole archive.</p>
             </article>
 
             <article class="post" id="jive-turkey">

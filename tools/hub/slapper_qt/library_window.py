@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QListWidget, QListWidgetItem, QFileDialog, QLabel, QSlider,
     QWidget, QHBoxLayout, QComboBox, QLineEdit, QTreeView, QSplitter,
     QFileSystemModel, QAbstractItemView, QInputDialog, QMessageBox, QMenu,
-    QToolButton, QDockWidget, QVBoxLayout, QPushButton, QCheckBox,
+    QToolButton, QDockWidget, QVBoxLayout, QPushButton, QCheckBox, QDialog,
 )
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
@@ -300,6 +300,7 @@ class LibraryWindow(QMainWindow):
         self._scan_token = None
         self._populate_generation = 0
         self._editors = []        # keep editor windows alive
+        self._opening_editor_paths = set()  # suppress re-entrant activation while loading
         self._signals = _ThumbSignals()
         self._signals.ready.connect(self._on_thumb)
         self._scan_signals = _ScanSignals()
@@ -310,6 +311,8 @@ class LibraryWindow(QMainWindow):
 
         from . import prefs
         settings = prefs.load()
+        self._restore_maximized = bool(settings.get("library_maximized", True))
+        self._window_state_restored = False
         self._sort = settings.get("library_sort", "name")
         folders_visible = bool(settings.get("library_folders_visible", True))
         self._folder_font_size = int(settings.get("library_folder_font_size", 11))
@@ -369,8 +372,9 @@ class LibraryWindow(QMainWindow):
         grid_font = self.list.font()   # filenames under each thumb were too small
         grid_font.setPointSize(max(grid_font.pointSize() + 2, 11))
         self.list.setFont(grid_font)
+        # itemActivated already represents double-click/Enter on desktop Qt.
+        # Connecting itemDoubleClicked as well opens the same photo twice.
         self.list.itemActivated.connect(self._open_item)
-        self.list.itemDoubleClicked.connect(self._open_item)
         self.list.itemClicked.connect(self._show_info)
         self.list.currentItemChanged.connect(
             lambda cur, _prev: self._show_info(cur))
@@ -431,6 +435,17 @@ class LibraryWindow(QMainWindow):
         self.act_import = QAction("Import Photos…", self)
         self.act_import.triggered.connect(self._import_photos)
         bar.addAction(self.act_import)
+
+        self.act_panomerge = QAction("PANOMERGE…", self)
+        from .panomerge import detect_xpano, platform_supported
+        panomerge_available = platform_supported() and bool(detect_xpano())
+        self.act_panomerge.setEnabled(panomerge_available)
+        self.act_panomerge.setToolTip(
+            "Stitch selected overlapping photographs into a panorama with XPANO"
+            if panomerge_available else
+            "Install XPANO separately, then restart SNAP SLAPPER to enable PANOMERGE")
+        self.act_panomerge.triggered.connect(self._panomerge_selected)
+        bar.addAction(self.act_panomerge)
 
         self.act_new_folder = QAction("New Folder…", self)
         self.act_new_folder.setShortcut(QKeySequence("Ctrl+Shift+N"))
@@ -507,6 +522,7 @@ class LibraryWindow(QMainWindow):
         file_menu = self.menuBar().addMenu("File")
         file_menu.addAction(self.act_open)
         file_menu.addAction(self.act_edit)
+        file_menu.addAction(self.act_panomerge)
         file_menu.addAction(self.act_print)
         file_menu.addAction(self.act_show_folder)
         organize_bar_menu = self.menuBar().addMenu("Organize")
@@ -781,7 +797,7 @@ class LibraryWindow(QMainWindow):
             self.list.clearSelection()
             item.setSelected(True)
         menu = QMenu(self)
-        for action in (self.act_edit, self.act_rename, self.act_move,
+        for action in (self.act_edit, self.act_panomerge, self.act_rename, self.act_move,
                        self.act_copy, self.act_trash, self.act_show_folder):
             menu.addAction(action)
         menu.addSeparator()
@@ -1450,13 +1466,70 @@ class LibraryWindow(QMainWindow):
         if items:
             self._open_item(items[0])
 
+    def _panomerge_selected(self):
+        from .panomerge import PanomergeDialog, platform_supported
+        if not platform_supported():
+            QMessageBox.warning(
+                self, "PANOMERGE unavailable",
+                "PANOMERGE is available on Windows and Linux only.")
+            return
+        paths = self._selected_photo_paths()
+        dialog = PanomergeDialog(paths, self)
+        if dialog.exec() == QDialog.Accepted and dialog.result_path:
+            self._open_editor_path(dialog.result_path)
+            if self._folder and os.path.dirname(dialog.result_path) == self._folder:
+                self._reload_current()
+
     def _open_item(self, item):
         path = item.data(Qt.UserRole)
         if not path:
             return
-        editor = EditorWindow()
-        editor.open_path(path)
-        editor.show()
-        self._editors.append(editor)
+        self._open_editor_path(path)
+
+    def _open_editor_path(self, path):
+        path = os.path.abspath(path)
+        path_key = os.path.normcase(path)
+        if path_key in self._opening_editor_paths:
+            return
+        # Guard against duplicate activation signals and bring the existing
+        # editor forward instead of manufacturing a second identical window.
+        for existing in list(self._editors):
+            try:
+                source = existing.doc.source_path if existing.doc else None
+                if source and os.path.abspath(source) == path and existing.isVisible():
+                    existing.raise_()
+                    existing.activateWindow()
+                    return
+            except RuntimeError:
+                self._editors.remove(existing)
+        self._opening_editor_paths.add(path_key)
+        try:
+            editor = EditorWindow()
+            # Retain the window before opening the document. Image decoding and
+            # layout can process queued UI events; a second activation during
+            # that interval must not manufacture another editor.
+            self._editors.append(editor)
+            editor.open_path(path)
+            editor.show()
+        finally:
+            self._opening_editor_paths.discard(path_key)
+
+    def showEvent(self, event):  # noqa: N802 — Qt override
+        """Restore the useful library state after its native window exists."""
+        super().showEvent(event)
+        if not self._window_state_restored:
+            self._window_state_restored = True
+            if self._restore_maximized:
+                QTimer.singleShot(0, self.showMaximized)
+
+    def closeEvent(self, event):  # noqa: N802 — Qt override
+        # Closing from the taskbar while minimized is not a request to reopen
+        # small. Only remember a visible, intentional normal/maximized state.
+        if not self.isMinimized():
+            from . import prefs
+            values = prefs.load()
+            values["library_maximized"] = self.isMaximized()
+            prefs.save(values)
+        super().closeEvent(event)
 
 # ===== SNAPSMACK EOF =====
