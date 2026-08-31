@@ -122,6 +122,21 @@ def stylesheet() -> str:
         border: 1px solid {ACCENT};
     }}
 
+    /* Colour pickers keep the application chrome; only the small chip changes. */
+    QPushButton#SwatchBtn {{
+        background: {CANVAS};
+        color: {ACCENT};
+        border: 1px solid {ACCENT};
+        border-radius: 4px;
+        padding: 5px 8px;
+        text-align: left;
+    }}
+    QPushButton#SwatchBtn:hover {{
+        background: {ACCENT};
+        color: {CANVAS};
+        border: 1px solid {ACCENT};
+    }}
+
     /* --- Layers panel --------------------------------------------------- */
     QPushButton#LayerAddBtn {{
         background: {FIELD};
