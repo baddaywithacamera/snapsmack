@@ -1,7 +1,7 @@
 ================================================================================
 
                         SMACK PUBLIC LICENSE (SPL)
-                               Version 2.1
+                               Version 2.2
 
           Copyright (c) 2026 Sean McCormick (sean@baddaywithacamera.ca)
 
@@ -21,10 +21,13 @@ This license exists to keep that honest. No one who receives this software,
 forks it, or builds on it gets to hide where it came from, erase the people
 and partners who made it, or close it off from the people it was made for.
 
-This license is not compatible with the GNU General Public License (GPL) or
-its variants, by deliberate choice. The GPL was written for a different era
-and a different set of concerns. This license is written for this software,
-this collaboration, and this moment.
+This license is deliberately not GPL-compatible as a code license, by choice
+and not by accident: SPL-licensed code will not be relicensed under the GPL,
+and GPL-licensed code will not be absorbed into the Software. The GPL was
+written for a different era and a different set of concerns. What that
+incompatibility does and does not mean in practice -- including the Software's
+use of Lesser-GPL components and its use of separate GPL-licensed programs
+that the user installs -- is set out in Section 7.
 
 
 --------------------------------------------------------------------------------
@@ -238,27 +241,46 @@ lost again.
 
 
 --------------------------------------------------------------------------------
-7. THIRD-PARTY COMPONENTS
+7. THIRD-PARTY COMPONENTS AND EXTERNAL PROGRAMS
 --------------------------------------------------------------------------------
 
-This software utilizes third-party components subject to their own respective
-licenses. Users must respect the terms for fjGallery (MIT), DotMatrix, Tiny5,
-Blackcasper, and FlottFlott (SIL OFL). Detailed information for these assets
-is located in the /licenses directory of the installation.
+This Software includes third-party components subject to their own respective
+licenses. Users and Forks must respect the terms for fjGallery (MIT); the
+DotMatrix, Tiny5, Blackcasper, and FlottFlott fonts (SIL OFL); and the Qt
+framework, used through the PySide6 bindings (GNU Lesser General Public
+License, version 3). Detailed license texts and notices for these components
+are provided in the /licenses directory of the installation.
 
-Optional external programs including RawTherapee, darktable, and XPANO remain
-separately installed, separately licensed programs. SNAPSMACK does not bundle,
-link, vendor, copy, or incorporate their binaries or source. When requested by
-the user, SNAP SLAPPER invokes them only as distinct operating-system processes
-and exchanges command-line arguments and files across that process boundary.
-Their notices and upstream links are located in the /licenses directory.
+Where a component is provided under the GNU Lesser General Public License
+(LGPL), the Software and any Fork honour that license's terms, including the
+recipient's right to replace the component with a modified version and to
+carry out the reverse engineering needed to debug such modifications. The
+corresponding notices, and any relink provision required to satisfy the LGPL,
+are included in the /licenses directory.
 
-This license is not compatible with the GNU General Public License (GPL) or
-its variants. Code licensed under the GPL may not be incorporated into this
-Software or any Fork without explicit written permission from the copyright
-holder. This incompatibility is deliberate. The GPL imposes conditions that
-conflict with the specific requirements of this license, and GPL compatibility
-was considered and declined.
+For the avoidance of doubt, the GPL incompatibility described below does NOT
+extend to the LGPL. LGPL-licensed components may be used by, linked with, and
+distributed alongside the Software and any Fork, provided their own terms are
+honoured. LGPL components are not treated as GPL "variants" for the purposes
+of this Section.
+
+Code licensed under the GNU General Public License (GPL) may not be
+incorporated into the source of this Software or any Fork -- copied in, linked
+in, or otherwise made part of a combined work -- without explicit written
+permission from the copyright holder. This incompatibility is deliberate. The
+GPL imposes conditions that conflict with the specific requirements of this
+license, and GPL compatibility was considered and declined.
+
+Invoking a separate, independently-licensed program that the user has
+installed on their own system -- by running its command-line interface and
+exchanging files with it as a distinct operating-system process -- is not
+incorporation, and is expressly permitted, including where that program is
+licensed under the GPL. Such a program is not part of the Software, is not a
+Fork, is not distributed with the Software, and its license does not extend to
+the Software. RawTherapee (GPLv3), used as an optional external raw processor
+invoked through its command-line interface, is permitted on this basis. The
+Software and any Fork must not bundle, redistribute, embed, or link the code
+of any such program.
 
 
 --------------------------------------------------------------------------------

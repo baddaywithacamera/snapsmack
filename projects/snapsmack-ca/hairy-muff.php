@@ -88,7 +88,7 @@ include __DIR__ . '/includes/header.php';
             </div>
 
             <h2>The Smack Public License (SPL)</h2>
-            <p>SnapSmack is released under the <a href="licenses/SNAPSMACK-LICENSE.txt">Smack Public License 2.1</a> — a copyleft license that means:</p>
+            <p>SnapSmack is released under the <a href="licenses/SNAPSMACK-LICENSE.txt">Smack Public License 2.2</a> — a copyleft license that means:</p>
             <ul>
                 <li>SnapSmack is free to use, modify, and redistribute.</li>
                 <li>If you build something on top of SnapSmack and distribute it, your version must also be free and open-source under the same terms. You cannot take this codebase, change the logo, and sell it as a subscription SaaS. That path is closed.</li>
