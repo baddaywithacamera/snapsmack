@@ -14,7 +14,7 @@ from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QCheckBox,
     QFileDialog, QMessageBox, QLabel, QButtonGroup, QPushButton, QLineEdit,
-    QColorDialog, QComboBox, QStackedWidget, QInputDialog,
+    QColorDialog, QComboBox, QStackedWidget, QInputDialog, QWidgetAction,
 )
 from PySide6.QtGui import QColor
 
@@ -413,6 +413,32 @@ class EditorWindow(QMainWindow):
             "view": (self.act_fit, self.act_full, self.act_filmstrip,
                      self.act_prefs, self.act_help),
         }
+        crop_controls = QWidget()
+        crop_layout = QHBoxLayout(crop_controls)
+        crop_layout.setContentsMargins(8, 0, 0, 0)
+        crop_layout.setSpacing(5)
+        crop_label = QLabel("Aspect")
+        crop_label.setObjectName("ControlName")
+        crop_layout.addWidget(crop_label)
+        self.crop_aspect = QComboBox()
+        for label, ratio in (("Free", None), ("Original", "original"),
+                             ("1 : 1", 1.0), ("4 : 3", 4 / 3),
+                             ("3 : 2", 3 / 2), ("16 : 9", 16 / 9)):
+            self.crop_aspect.addItem(label, ratio)
+        self.crop_aspect.setToolTip("Lock the crop frame to a common aspect ratio")
+        self.crop_aspect.currentIndexChanged.connect(self._on_crop_aspect)
+        crop_layout.addWidget(self.crop_aspect)
+        self.crop_apply_btn = QPushButton("APPLY CROP")
+        self.crop_apply_btn.setObjectName("LayerAddBtn")
+        self.crop_apply_btn.setCursor(Qt.PointingHandCursor)
+        self.crop_apply_btn.clicked.connect(self._commit_crop)
+        crop_layout.addWidget(self.crop_apply_btn)
+        self.crop_cancel_btn = QPushButton("CANCEL")
+        self.crop_cancel_btn.setCursor(Qt.PointingHandCursor)
+        self.crop_cancel_btn.clicked.connect(self._cancel_crop)
+        crop_layout.addWidget(self.crop_cancel_btn)
+        self._crop_controls_action = QWidgetAction(self)
+        self._crop_controls_action.setDefaultWidget(crop_controls)
 
         # Toolbar actions hidden in Normal mode (Advanced-only).
         self._advanced_actions = [
@@ -464,6 +490,9 @@ class EditorWindow(QMainWindow):
             if action in self._advanced_action_set and not advanced:
                 continue
             self.context_toolbar.addAction(action)
+        if key == "edit" and self.act_crop.isChecked():
+            self.context_toolbar.addSeparator()
+            self.context_toolbar.addAction(self._crop_controls_action)
 
     def _error(self, title, message):
         """Show an error dialog AND write it (with traceback if any) to the log."""
@@ -1290,13 +1319,35 @@ class EditorWindow(QMainWindow):
             self._saved_crop = self.doc.geometry.get("crop")
             self.doc.geometry["crop"] = None      # show the full frame to crop on
             self._render_preview(keep_view=False)
-            self.view.set_crop_mode(True)
-            self.status.showMessage("Drag a rectangle to crop. Toggle Crop off to cancel.")
+            self.view.set_crop_mode(True, self._saved_crop)
+            self._on_crop_aspect(self.crop_aspect.currentIndex())
+            self.status.showMessage(
+                "Crop — drag handles to resize, drag inside to move, then Apply Crop.")
         else:
             self.view.set_crop_mode(False)
             if self.doc.geometry.get("crop") is None and self._saved_crop is not None:
                 self.doc.geometry["crop"] = self._saved_crop   # cancelled — restore
             self._render_preview(keep_view=False)
+        self._show_toolbar_context("edit")
+
+    def _on_crop_aspect(self, index):
+        if not hasattr(self, "view"):
+            return
+        value = self.crop_aspect.itemData(index)
+        if value == "original":
+            pixmap = self.view._item.pixmap()
+            value = (pixmap.width() / pixmap.height()
+                     if pixmap and pixmap.height() else None)
+        self.view.set_crop_aspect(value)
+
+    def _commit_crop(self):
+        rect = self.view.crop_rect_normalized()
+        if rect:
+            self._apply_crop(*rect)
+
+    def _cancel_crop(self):
+        if self.act_crop.isChecked():
+            self.act_crop.setChecked(False)
 
     def _apply_crop(self, left, top, right, bottom):
         if not self.doc:
@@ -2418,6 +2469,16 @@ class EditorWindow(QMainWindow):
                 QMessageBox.Discard | QMessageBox.Cancel)
             return answer == QMessageBox.Discard
         return True
+
+    def keyPressEvent(self, event):  # noqa: N802 — Qt override
+        if self.act_crop.isChecked():
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                self._commit_crop()
+                return
+            if event.key() == Qt.Key_Escape:
+                self._cancel_crop()
+                return
+        super().keyPressEvent(event)
 
     def closeEvent(self, event):
         if self._confirm_discard():
