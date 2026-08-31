@@ -311,6 +311,8 @@ class LibraryWindow(QMainWindow):
 
         from . import prefs
         settings = prefs.load()
+        self._restore_maximized = bool(settings.get("library_maximized", True))
+        self._window_state_restored = False
         self._sort = settings.get("library_sort", "name")
         folders_visible = bool(settings.get("library_folders_visible", True))
         self._folder_font_size = int(settings.get("library_folder_font_size", 11))
@@ -1511,5 +1513,23 @@ class LibraryWindow(QMainWindow):
             editor.show()
         finally:
             self._opening_editor_paths.discard(path_key)
+
+    def showEvent(self, event):  # noqa: N802 — Qt override
+        """Restore the useful library state after its native window exists."""
+        super().showEvent(event)
+        if not self._window_state_restored:
+            self._window_state_restored = True
+            if self._restore_maximized:
+                QTimer.singleShot(0, self.showMaximized)
+
+    def closeEvent(self, event):  # noqa: N802 — Qt override
+        # Closing from the taskbar while minimized is not a request to reopen
+        # small. Only remember a visible, intentional normal/maximized state.
+        if not self.isMinimized():
+            from . import prefs
+            values = prefs.load()
+            values["library_maximized"] = self.isMaximized()
+            prefs.save(values)
+        super().closeEvent(event)
 
 # ===== SNAPSMACK EOF =====
