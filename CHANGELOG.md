@@ -9,6 +9,17 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.591 "LIVE WIRE" — 2026-08-31
+- **New: Relay Status page (Fediverse → Relay Status).** A read-only, one-glance
+  panel that tells you whether this blog is actually on the SnapSmack network relay,
+  instead of trusting the optimistic JOIN button. It shows four things: whether the
+  relay is reachable from this server (the exact check that catches a blog that can
+  silently not reach the relay, so a join or post never actually leaves), whether
+  the join is really confirmed by the relay (not just locally flagged), the last
+  activities this blog tried to send to the relay (a stuck join Follow or post shows
+  up here with its error), and how many posts have arrived back from the network.
+  Every value is this blog's own data or a live probe of the relay actor — no
+  cross-database access to the relay's store.
 
 ## 0.7.590 "LIVE WIRE" fix — 2026-08-30
 
