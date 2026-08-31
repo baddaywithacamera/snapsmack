@@ -26,6 +26,12 @@ except Exception:  # noqa: BLE001
     _log = logging.getLogger("snapsmack.snap_slapper")
 
 FIT_MODES = ["cover", "contain", "stretch", "tile", "original"]
+RIGHTS_FILTERS = [
+    ("Clear rights", "clear"),
+    ("All rights statuses", "all"),
+    ("Unclear rights", "unclear"),
+    ("Unknown rights", "unknown"),
+]
 
 
 class _ThumbSignals(QObject):
@@ -78,6 +84,14 @@ class TexturesDialog(QDialog):
         go.setObjectName("LayerAddBtn")
         go.clicked.connect(self.run_search)
         search_row.addWidget(go)
+        self.rights = QComboBox()
+        for label, value in RIGHTS_FILTERS:
+            self.rights.addItem(label, value)
+        self.rights.setToolTip(
+            "Clear rights is the safe default. Unclear and unknown textures "
+            "require confirmation before import.")
+        self.rights.currentIndexChanged.connect(self.run_search)
+        search_row.addWidget(self.rights)
         layout.addLayout(search_row)
 
         self.grid = QListWidget()
@@ -93,7 +107,12 @@ class TexturesDialog(QDialog):
         controls.setSpacing(8)
         controls.addWidget(self._label("Fit"))
         self.fit = QComboBox()
-        self.fit.addItems([m.title() for m in FIT_MODES])
+        self.fit.addItems(["Cover (auto-fit to image)", "Contain", "Stretch",
+                           "Tile", "Original size"])
+        self.fit.setCurrentIndex(FIT_MODES.index("cover"))
+        self.fit.setToolTip(
+            "Cover automatically resizes the texture to fill the photograph, "
+            "keeps its proportions, centres it, and crops only the overflow.")
         controls.addWidget(self.fit)
         controls.addWidget(self._label("Blend"))
         self.blend = QComboBox()
@@ -123,7 +142,8 @@ class TexturesDialog(QDialog):
         self.status.setText("Searching…")
         try:
             textures, total = found_textures.search(
-                self.site_url, self.api_key, query=self.search.text().strip())
+                self.site_url, self.api_key, query=self.search.text().strip(),
+                rights=self.rights.currentData())
         except Exception as error:  # noqa: BLE001
             _log.exception("Found Textures search failed")
             QMessageBox.critical(self, "Search failed", str(error))
@@ -134,7 +154,13 @@ class TexturesDialog(QDialog):
             thumb = texture.get("thumb_url")
             if not thumb:
                 continue
-            item = QListWidgetItem(texture.get("title", "Texture"))
+            status = texture.get("rights_status") or "unknown"
+            badge = {"clear": "CLEAR RIGHTS", "unclear": "UNCLEAR RIGHTS"}.get(
+                status, "RIGHTS UNKNOWN")
+            item = QListWidgetItem(
+                f"{texture.get('title', 'Texture')}\n[{badge}]")
+            item.setToolTip(
+                f"Rights: {badge}\nLicence: {texture.get('licence') or 'unknown'}")
             item.setData(Qt.UserRole, thumb)
             self.grid.addItem(item)
             self._items[thumb] = item
@@ -154,6 +180,17 @@ class TexturesDialog(QDialog):
         texture = self._textures.get(items[0].data(Qt.UserRole))
         if not texture:
             return
+        rights = texture.get("rights_status") or "unknown"
+        if rights != "clear":
+            label = "UNCLEAR RIGHTS" if rights == "unclear" else "RIGHTS UNKNOWN"
+            answer = QMessageBox.warning(
+                self, "Confirm texture rights",
+                f"This texture is marked {label}.\n\n"
+                "Only use it if you have confirmed that your intended use is permitted.\n\n"
+                "Add it as a layer anyway?",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if answer != QMessageBox.Yes:
+                return
         try:
             path = found_textures.download(texture, self.api_key)
         except Exception as error:  # noqa: BLE001

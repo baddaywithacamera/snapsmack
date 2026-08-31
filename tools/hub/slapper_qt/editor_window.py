@@ -10,15 +10,15 @@ import os
 import sys
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QCheckBox,
     QFileDialog, QMessageBox, QLabel, QButtonGroup, QPushButton, QLineEdit,
-    QColorDialog, QComboBox, QStackedWidget, QInputDialog,
+    QColorDialog, QComboBox, QStackedWidget, QInputDialog, QWidgetAction,
 )
 from PySide6.QtGui import QColor
 
-from PIL import ImageOps
+from PIL import ImageOps, ImageStat
 
 from . import masks
 
@@ -61,14 +61,14 @@ GROUPS = [
         ("vibrance", "Vibrance", -100, 100, 1, 0),
     ]),
     ("PRESENCE", [
-        ("clarity", "Clarity", -100, 100, 1, 0),
-        ("texture", "Texture", -100, 100, 1, 0),
-        ("dehaze", "Dehaze", -100, 100, 1, 0),
         ("sharpen", "Sharpen", -100, 100, 1, 0),
     ]),
     ("EFFECTS", [
         ("vignette", "Vignette", -100, 100, 1, 0),
         ("vignette_feather", "Vignette Feather", 0, 100, 1, 50),
+        ("texture", "Texture", -100, 100, 1, 0),
+        ("clarity", "Clarity", -100, 100, 1, 0),
+        ("dehaze", "Dehaze", -100, 100, 1, 0),
         ("grain", "Grain", -100, 100, 1, 0),
     ]),
     ("LEVELS", [
@@ -83,9 +83,9 @@ IMAGE_FILTER = ("Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp);;"
 
 # Normal mode (Picasa/Snapseed-simple) shows a curated subset; Advanced shows
 # everything. These name what stays visible in Normal.
-NORMAL_SECTIONS = {"LIGHT", "COLOUR", "BLACK + WHITE", "GEOMETRY"}
+NORMAL_SECTIONS = {"LIGHT", "COLOUR", "EFFECTS", "BLACK + WHITE", "GEOMETRY"}
 NORMAL_ROWS = {"brightness", "contrast", "highlights", "shadows",
-               "temperature", "saturation"}
+               "temperature", "tint", "saturation", "vibrance", "vignette"}
 
 
 class EditorWindow(QMainWindow):
@@ -102,7 +102,10 @@ class EditorWindow(QMainWindow):
         # check shows real detail, not an upscaled preview).
         self._zoom_actual = False
         from . import prefs as _prefs
-        self._filmstrip_visible = bool(_prefs.load().get("filmstrip_visible", True))
+        stored_prefs = _prefs.load()
+        self._filmstrip_visible = bool(stored_prefs.get("filmstrip_visible", True))
+        self._restore_maximized = bool(stored_prefs.get("editor_maximized", False))
+        self._window_state_restored = False
 
         self._build_toolbar()
         self._build_canvas()
@@ -116,6 +119,15 @@ class EditorWindow(QMainWindow):
         self._render_timer.setSingleShot(True)
         self._render_timer.setInterval(45)
         self._render_timer.timeout.connect(self._render_preview)
+
+        # Opening from Windows happens before the window receives its final
+        # layout. The first proxy is therefore intentionally cheap; once the
+        # canvas settles, replace it with a viewport-sized render automatically.
+        self._layout_render_timer = QTimer(self)
+        self._layout_render_timer.setSingleShot(True)
+        self._layout_render_timer.setInterval(120)
+        self._layout_render_timer.timeout.connect(self._refresh_fit_resolution)
+        self.view.fit_view_resized.connect(self._queue_fit_resolution_refresh)
 
         # Autosave: write a crash-recovery copy a couple seconds after edits.
         self._recovery_dir = self._resolve_recovery_dir()
@@ -197,6 +209,7 @@ class EditorWindow(QMainWindow):
     # --- Construction -------------------------------------------------------
     def _build_toolbar(self):
         bar = self.addToolBar("Main")
+        self.main_toolbar = bar
         bar.setMovable(False)
 
         self.act_open = QAction("Open", self)
@@ -220,7 +233,7 @@ class EditorWindow(QMainWindow):
         self.act_redo.triggered.connect(self.redo)
         bar.addAction(self.act_redo)
 
-        self.act_reset = QAction("Reset", self)
+        self.act_reset = QAction("Reset All", self)
         self.act_reset.triggered.connect(self.reset_all)
         bar.addAction(self.act_reset)
 
@@ -284,6 +297,12 @@ class EditorWindow(QMainWindow):
         self.act_lewks.triggered.connect(self.open_lewks)
         bar.addAction(self.act_lewks)
 
+        self.act_lewk_again = QAction("LEWK AGAIN…", self)
+        self.act_lewk_again.setToolTip(
+            "Describe a look; the AI returns an inspectable recipe. Your photo stays local.")
+        self.act_lewk_again.triggered.connect(self.open_lewk_again)
+        bar.addAction(self.act_lewk_again)
+
         self.act_textures = QAction("Textures…", self)
         self.act_textures.triggered.connect(self.open_textures)
         bar.addAction(self.act_textures)
@@ -337,21 +356,95 @@ class EditorWindow(QMainWindow):
         self.mode_combo.currentIndexChanged.connect(self._on_mode_combo_changed)
         bar.insertWidget(self.act_undo, self.mode_combo)
 
-        # Keep essentials and the mode switch on the first row. Editing tools
-        # get a dedicated second row instead of vanishing behind Qt's tiny
-        # overflow chevron on ordinary laptop-sized windows.
-        self.addToolBarBreak(Qt.TopToolBarArea)
-        tools_bar = self.addToolBar("Editing Tools")
-        tools_bar.setMovable(False)
+        # The first row chooses a workspace.  The second row is genuinely
+        # contextual: it expands only the selected workspace instead of
+        # presenting the whole editor at once.
+        self._context_selectors = {}
+        context_group = QActionGroup(self)
+        context_group.setExclusive(True)
+        for key, label, tip in (
+                ("edit", "EDIT", "Crop, automatic correction and comparison"),
+                ("retouch", "RETOUCH", "Healing and red-eye correction"),
+                ("looks", "LOOKS", "LEWKS, filters, textures and recipes"),
+                ("output", "OUTPUT", "Projects, exports and blog copies"),
+                ("view", "VIEW", "Zoom, filmstrip, preferences and help")):
+            action = QAction(label, self)
+            action.setCheckable(True)
+            action.setToolTip(tip)
+            action.triggered.connect(
+                lambda _checked=False, selected=key:
+                self._show_toolbar_context(selected))
+            context_group.addAction(action)
+            self._context_selectors[key] = action
+
+        # Remove all task actions from the global row before rebuilding it in
+        # its deliberately small, predictable order.
         for action in (
+                self.act_reset, self.act_auto, self.act_fit, self.act_full,
                 self.act_crop, self.act_heal, self.act_redeye,
                 self.act_compare, self.act_filmstrip,
                 self.act_recipe_save, self.act_recipe_apply,
-                self.act_lewks, self.act_textures, self.act_filters,
-                self.act_save_project,
-                self.act_prefs):
+                self.act_lewks, self.act_lewk_again, self.act_textures, self.act_filters,
+                self.act_save_project, self.act_export, self.act_blog_copy,
+                self.act_prefs, self.act_help):
             bar.removeAction(action)
-            tools_bar.addAction(action)
+            # Preserve shortcuts while an action belongs to a context that is
+            # not currently displayed.
+            self.addAction(action)
+
+        # Discard separators left behind by the former everything-at-once
+        # layout, then use one clean break before the workspace choices.
+        for action in tuple(bar.actions()):
+            if action.isSeparator():
+                bar.removeAction(action)
+        bar.addSeparator()
+        # The mode controls were inserted before Undo above. Put the workspace
+        # selectors after Undo/Redo, where the eye naturally looks for tools.
+        for action in self._context_selectors.values():
+            bar.addAction(action)
+
+        self.addToolBarBreak(Qt.TopToolBarArea)
+        tools_bar = self.addToolBar("Editing Tools")
+        self.context_toolbar = tools_bar
+        tools_bar.setMovable(False)
+
+        self._toolbar_contexts = {
+            "edit": (self.act_crop, self.act_auto, self.act_reset,
+                     self.act_compare),
+            "retouch": (self.act_heal, self.act_redeye),
+            "looks": (self.act_lewks, self.act_lewk_again, self.act_filters, self.act_textures,
+                      self.act_recipe_save, self.act_recipe_apply),
+            "output": (self.act_save_project, self.act_export,
+                       self.act_blog_copy),
+            "view": (self.act_fit, self.act_full, self.act_filmstrip,
+                     self.act_prefs, self.act_help),
+        }
+        crop_controls = QWidget()
+        crop_layout = QHBoxLayout(crop_controls)
+        crop_layout.setContentsMargins(8, 0, 0, 0)
+        crop_layout.setSpacing(5)
+        crop_label = QLabel("Aspect")
+        crop_label.setObjectName("ControlName")
+        crop_layout.addWidget(crop_label)
+        self.crop_aspect = QComboBox()
+        for label, ratio in (("Free", None), ("Original", "original"),
+                             ("1 : 1", 1.0), ("4 : 3", 4 / 3),
+                             ("3 : 2", 3 / 2), ("16 : 9", 16 / 9)):
+            self.crop_aspect.addItem(label, ratio)
+        self.crop_aspect.setToolTip("Lock the crop frame to a common aspect ratio")
+        self.crop_aspect.currentIndexChanged.connect(self._on_crop_aspect)
+        crop_layout.addWidget(self.crop_aspect)
+        self.crop_apply_btn = QPushButton("APPLY CROP")
+        self.crop_apply_btn.setObjectName("LayerAddBtn")
+        self.crop_apply_btn.setCursor(Qt.PointingHandCursor)
+        self.crop_apply_btn.clicked.connect(self._commit_crop)
+        crop_layout.addWidget(self.crop_apply_btn)
+        self.crop_cancel_btn = QPushButton("CANCEL")
+        self.crop_cancel_btn.setCursor(Qt.PointingHandCursor)
+        self.crop_cancel_btn.clicked.connect(self._cancel_crop)
+        crop_layout.addWidget(self.crop_cancel_btn)
+        self._crop_controls_action = QWidgetAction(self)
+        self._crop_controls_action.setDefaultWidget(crop_controls)
 
         # Toolbar actions hidden in Normal mode (Advanced-only).
         self._advanced_actions = [
@@ -360,6 +453,10 @@ class EditorWindow(QMainWindow):
             self.act_textures,
             self.act_filters,
         ]
+        self._advanced_action_set = set(self._advanced_actions)
+        self._toolbar_context = "edit"
+        self._context_selectors["edit"].setChecked(True)
+        self._show_toolbar_context("edit")
 
         # Keyboard shortcuts. Modifier combos only (never bare letters) so they
         # can't fire while someone is typing in a text layer or a dialog. Open,
@@ -385,6 +482,24 @@ class EditorWindow(QMainWindow):
             pretty = QKeySequence(seq).toString(QKeySequence.NativeText)
             action.setToolTip(f"{base}  ({pretty})")
 
+    def _show_toolbar_context(self, key):
+        """Expand one top-row workspace into the contextual second row."""
+        if key not in self._toolbar_contexts:
+            return
+        self._toolbar_context = key
+        selector = self._context_selectors[key]
+        if not selector.isChecked():
+            selector.setChecked(True)
+        self.context_toolbar.clear()
+        advanced = getattr(self, "mode", "advanced") == "advanced"
+        for action in self._toolbar_contexts[key]:
+            if action in self._advanced_action_set and not advanced:
+                continue
+            self.context_toolbar.addAction(action)
+        if key == "edit" and self.act_crop.isChecked():
+            self.context_toolbar.addSeparator()
+            self.context_toolbar.addAction(self._crop_controls_action)
+
     def _error(self, title, message):
         """Show an error dialog AND write it (with traceback if any) to the log."""
         _log.error("%s — %s", title, message, exc_info=sys.exc_info()[0] is not None)
@@ -394,6 +509,7 @@ class EditorWindow(QMainWindow):
         self.view = ImageView(self)
         self.view.cropped.connect(self._apply_crop)
         self.view.retouch_clicked.connect(self._add_retouch)
+        self.view.neutral_clicked.connect(self._apply_neutral_sample)
         self.view.layer_dragged.connect(self._move_active_layer)
         self.view.perspective_corner_dragged.connect(self._move_perspective_corner)
         self._layer_drag_changed = False
@@ -401,12 +517,22 @@ class EditorWindow(QMainWindow):
         self.filmstrip = Filmstrip(self)
         self.filmstrip.open_requested.connect(self._open_from_filmstrip)
         self.filmstrip.setVisible(self._filmstrip_visible)
+        self.filmstrip_handle = QPushButton()
+        self.filmstrip_handle.setObjectName("FilmstripHandle")
+        self.filmstrip_handle.setFixedHeight(24)
+        self.filmstrip_handle.setCursor(Qt.PointingHandCursor)
+        self.filmstrip_handle.setToolTip(
+            "Open or close the folder thumbnail strip (Ctrl+Shift+F)")
+        self.filmstrip_handle.clicked.connect(
+            lambda: self.act_filmstrip.setChecked(not self.act_filmstrip.isChecked()))
+        self._sync_filmstrip_handle()
 
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(self.view, 1)
+        layout.addWidget(self.filmstrip_handle, 0)
         layout.addWidget(self.filmstrip, 0)
         self.setCentralWidget(container)
 
@@ -471,6 +597,7 @@ class EditorWindow(QMainWindow):
 
         # Split-tone controls live in the COLOUR section
         if "COLOUR" in self._sections:
+            self._sections["COLOUR"].add(self._build_neutral_picker())
             self._sections["COLOUR"].add(self._build_split_tone())
 
         # Smart-sharpen detail controls sit under the PRESENCE Sharpen slider
@@ -1198,13 +1325,35 @@ class EditorWindow(QMainWindow):
             self._saved_crop = self.doc.geometry.get("crop")
             self.doc.geometry["crop"] = None      # show the full frame to crop on
             self._render_preview(keep_view=False)
-            self.view.set_crop_mode(True)
-            self.status.showMessage("Drag a rectangle to crop. Toggle Crop off to cancel.")
+            self.view.set_crop_mode(True, self._saved_crop)
+            self._on_crop_aspect(self.crop_aspect.currentIndex())
+            self.status.showMessage(
+                "Crop — drag handles to resize, drag inside to move, then Apply Crop.")
         else:
             self.view.set_crop_mode(False)
             if self.doc.geometry.get("crop") is None and self._saved_crop is not None:
                 self.doc.geometry["crop"] = self._saved_crop   # cancelled — restore
             self._render_preview(keep_view=False)
+        self._show_toolbar_context("edit")
+
+    def _on_crop_aspect(self, index):
+        if not hasattr(self, "view"):
+            return
+        value = self.crop_aspect.itemData(index)
+        if value == "original":
+            pixmap = self.view._item.pixmap()
+            value = (pixmap.width() / pixmap.height()
+                     if pixmap and pixmap.height() else None)
+        self.view.set_crop_aspect(value)
+
+    def _commit_crop(self):
+        rect = self.view.crop_rect_normalized()
+        if rect:
+            self._apply_crop(*rect)
+
+    def _cancel_crop(self):
+        if self.act_crop.isChecked():
+            self.act_crop.setChecked(False)
 
     def _apply_crop(self, left, top, right, bottom):
         if not self.doc:
@@ -1379,6 +1528,8 @@ class EditorWindow(QMainWindow):
         """Open a project selected in-app or passed by Windows/the command line."""
         try:
             document = editor_engine.EditorDocument.load_project(path)
+            if not self._resolve_texture_assets(document):
+                return
             document.render((64, 64))   # decode the referenced photo now
         except Exception as error:  # noqa: BLE001
             self._error("Cannot open project", str(error))
@@ -1466,11 +1617,15 @@ class EditorWindow(QMainWindow):
         self._histogram_wrap.setVisible(advanced)
         for widget in self._bw_mixer_widgets:
             widget.setVisible(advanced)
+        # EFFECTS is present in Normal for Vignette, but its grain-specific
+        # option belongs with the Advanced-only Grain control.
+        self.grain_darken_check.setVisible(advanced)
         for key, row in self.rows.items():
             row.setVisible(advanced or key in NORMAL_ROWS)
         self.target_label.setVisible(advanced)
         for action in self._advanced_actions:
             action.setVisible(advanced)
+        self._show_toolbar_context(self._toolbar_context)
         if not advanced:
             # Normal edits the base photo; no layer panels.
             self.active_target = BASE
@@ -1503,6 +1658,91 @@ class EditorWindow(QMainWindow):
         self._update_title()
         self.status.showMessage("Auto-enhanced — tweak any slider to taste")
 
+    def _build_neutral_picker(self):
+        """Ordinary JPEG white balance: sample a neutral patch on the photo."""
+        wrap = QWidget()
+        row = QHBoxLayout(wrap)
+        row.setContentsMargins(12, 7, 12, 7)
+        row.setSpacing(8)
+        self.neutral_picker = QPushButton("Pick Neutral Colour…")
+        self.neutral_picker.setCheckable(True)
+        self.neutral_picker.setCursor(Qt.PointingHandCursor)
+        self.neutral_picker.setToolTip(
+            "Click, then click a grey card or neutral grey/white area in the photo. "
+            "Avoid blown highlights and crushed blacks.")
+        self.neutral_picker.toggled.connect(self._toggle_neutral_picker)
+        row.addWidget(self.neutral_picker, 1)
+        return wrap
+
+    def _toggle_neutral_picker(self, checked):
+        if checked and not self.doc:
+            self.neutral_picker.blockSignals(True)
+            self.neutral_picker.setChecked(False)
+            self.neutral_picker.blockSignals(False)
+            self._error("Open a photo first",
+                        "Open a photograph before choosing a neutral colour.")
+            return
+        self.view.set_neutral_mode(checked)
+        if checked:
+            self.status.showMessage(
+                "Neutral Picker — click a grey card or neutral grey/white area")
+        else:
+            self.status.showMessage("Neutral Picker off")
+
+    def _apply_neutral_sample(self, x, y):
+        """Balance temperature/tint from the median of a small rendered patch."""
+        if not self.doc:
+            return
+        try:
+            image = self.doc.render((1600, 1600)).convert("RGB")
+            px = max(0, min(image.width - 1, round(x * (image.width - 1))))
+            py = max(0, min(image.height - 1, round(y * (image.height - 1))))
+            radius = max(3, round(min(image.size) * 0.006))
+            patch = image.crop((max(0, px - radius), max(0, py - radius),
+                                min(image.width, px + radius + 1),
+                                min(image.height, py + radius + 1)))
+            red, green, blue = ImageStat.Stat(patch).median
+        except Exception as error:  # noqa: BLE001
+            self._error("Neutral sample failed", str(error))
+            return
+
+        darkest, brightest = min(red, green, blue), max(red, green, blue)
+        if brightest < 18:
+            self.status.showMessage(
+                "That sample is crushed black — choose a lighter neutral area", 7000)
+            return
+        if darkest > 247 or brightest >= 254:
+            self.status.showMessage(
+                "That sample is blown white — choose a neutral area with visible detail",
+                7000)
+            return
+
+        target = self.active_adjustments()
+        if target is None:
+            return
+        old_temperature = float(target.get("temperature", 0.0))
+        old_tint = float(target.get("tint", 0.0))
+        temperature = max(-100, min(100,
+            old_temperature + (blue - red) * 0.5))
+        tint = max(-100, min(100,
+            old_tint + (((red + blue) / 2.0) - green) * 0.4))
+        target["temperature"] = round(temperature)
+        target["tint"] = round(tint)
+        self.rows["temperature"].set_value(target["temperature"])
+        self.rows["tint"].set_value(target["tint"])
+        self.doc.record("Neutral white balance")
+        self._render_preview()
+        self._update_title()
+
+        self.neutral_picker.blockSignals(True)
+        self.neutral_picker.setChecked(False)
+        self.neutral_picker.blockSignals(False)
+        self.view.set_neutral_mode(False)
+        self.status.showMessage(
+            f"Neutral balance set from RGB {red:.0f}, {green:.0f}, {blue:.0f} — "
+            f"Temperature {target['temperature']:+.0f}, Tint {target['tint']:+.0f}",
+            9000)
+
     def open_lewks(self):
         if not self.doc:
             self._error("Open a photo first",
@@ -1515,6 +1755,39 @@ class EditorWindow(QMainWindow):
             return
         LewksDialog(self).show()
 
+    def open_lewk_again(self):
+        if not self.doc:
+            self._error("Open a photo first",
+                        "Open a photograph before building a LEWK.")
+            return
+        from .lewk_again_dialog import LewkAgainDialog
+        LewkAgainDialog(self).show()
+
+    def apply_generated_lewk(self, recipe):
+        """Stack a previously validated LEWK AGAIN recipe non-destructively."""
+        if not self.doc or not isinstance(recipe, dict):
+            return None
+        # Revalidate serialized data at the application boundary. This prevents
+        # a modified saved response from smuggling unsupported layer content in.
+        import lewk_again
+        safe = lewk_again.validate_response(
+            __import__("json").dumps({
+                "name": recipe.get("name"),
+                "description": recipe.get("description"),
+                "explanation": recipe.get("explanation", []),
+                "adjustments": next((layer.get("adjustments", {}) for layer in recipe.get("layers", [])
+                                     if layer.get("type") == "adjustment"), {}),
+                "filters": [{"type": layer.get("filter_type"), "name": layer.get("name"),
+                             "settings": layer.get("settings", {})}
+                            for layer in recipe.get("layers", []) if layer.get("type") == "filter"],
+            }), recipe.get("provider", ""), recipe.get("model", ""),
+            recipe.get("prompt", ""))
+        added = self.doc.stack_layers(safe["layers"])
+        if added:
+            self.set_target(added[-1]["id"])
+        self.after_structure_change()
+        return added[-1] if added else None
+
     def apply_lewk(self, lewk_id, strength=100):
         """Apply a built-in LEWK as a non-destructive adjustment layer on top,
         without flattening the photographer's existing edits."""
@@ -1523,11 +1796,66 @@ class EditorWindow(QMainWindow):
         import built_in_lewks
         recipe = built_in_lewks.recipe(lewk_id, strength)
         added = self.doc.stack_layers(recipe.get("layers", []))
+        if not self._resolve_texture_assets(self.doc):
+            added_ids = {layer.get("id") for layer in added}
+            self.doc.layers = [layer for layer in self.doc.layers
+                               if layer.get("id") not in added_ids]
+            return None
         if added:
             self.set_target(added[-1]["id"])
         self.after_structure_change()
         _log.info("Applied LEWK %s at %s%%", lewk_id, strength)
         return added[-1] if added else None
+
+    def _resolve_texture_assets(self, document):
+        """Resolve references, asking before a first-party network restore."""
+        import texture_assets
+        for position, layer in enumerate(document.layers, 1):
+            ref = layer.get("asset_ref")
+            if layer.get("type") != "image" or not ref:
+                continue
+            local = texture_assets.resolve(ref)
+            if local:
+                layer["path"] = local
+                continue
+            name = ref.get("name") or layer.get("name") or "Texture"
+            if ref.get("origin") != "first-party" or not ref.get("restore_url"):
+                self._error(
+                    "Texture is missing",
+                    f'"{name}" is missing from layer {position}. SNAP SLAPPER cannot '
+                    "restore third-party textures automatically.\n\n"
+                    f'Source: {ref.get("source_url") or "unknown"}')
+                return False
+            answer = QMessageBox.question(
+                self, "Restore missing texture?",
+                f'"{name}" is missing from layer {position}.\n\n'
+                "Download it again from FOUND TEXTURES into the shared asset library?",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if answer != QMessageBox.Yes:
+                self._error("Texture is missing",
+                            f'"{name}" is still missing from layer {position}.')
+                return False
+            try:
+                import found_textures
+                resolved = found_textures.resolve_profile() or ("", "")
+                texture_id = str(ref.get("key", "")).partition(":")[2]
+                texture = {
+                    "id": texture_id, "title": name,
+                    "source_site": resolved[0] or "https://foundtextures.ca",
+                    "source_page_url": ref.get("source_url", ""),
+                    "highres_download_url": ref.get("restore_url", ""),
+                    "full_url": ref.get("restore_url", ""),
+                    "rights_status": ref.get("license_status", "unknown"),
+                }
+                local = found_textures.download(texture, resolved[1])
+                layer["path"] = local
+                layer["asset_ref"] = texture_assets.register(
+                    layer.get("texture") or found_textures.provenance(texture), local)
+            except Exception as error:  # noqa: BLE001
+                self._error("Texture restore failed",
+                            f'Could not restore "{name}" in layer {position}.\n\n{error}')
+                return False
+        return True
 
     def render_preview_image(self, max_size=(160, 160)):
         """A small PIL render of the current document — for look previews."""
@@ -1577,6 +1905,11 @@ class EditorWindow(QMainWindow):
         layer["blend"] = blend
         layer["opacity"] = float(opacity)
         layer["texture"] = dict(provenance)     # preserved in the .slapper project
+        try:
+            import texture_assets
+            layer["asset_ref"] = texture_assets.register(provenance, path)
+        except Exception as error:  # noqa: BLE001
+            _log.warning("Texture asset could not be indexed: %s", error)
         self.doc.record("Add texture")
         self.set_target(layer["id"])
         self.after_structure_change()
@@ -1634,6 +1967,20 @@ class EditorWindow(QMainWindow):
         if target is None:
             return
         target["black_white"] = bool(checked)
+        # A useful photographic starting mix, rather than a lifeless straight
+        # desaturation. Warm subject tones lift; blue skies and cool shadows
+        # deepen. The eight controls remain fully editable in Advanced mode.
+        if checked and not any(float(target.get(key, 0.0)) for key, _deg
+                               in editor_engine.BW_BANDS):
+            defaults = {
+                "bw_red": 10, "bw_orange": 22, "bw_yellow": 14,
+                "bw_green": 5, "bw_aqua": -6, "bw_blue": -20,
+                "bw_purple": -10, "bw_magenta": 6,
+            }
+            target.update(defaults)
+            for key, value in defaults.items():
+                if key in self.rows:
+                    self.rows[key].set_value(value)
         self.doc.record("Black and white")
         self._schedule_render()
         self._update_title()
@@ -2007,6 +2354,14 @@ class EditorWindow(QMainWindow):
     def _schedule_render(self):
         self._render_timer.start()
 
+    def _queue_fit_resolution_refresh(self):
+        if self.doc and not self._zoom_actual:
+            self._layout_render_timer.start()
+
+    def _refresh_fit_resolution(self):
+        if self.doc and not self._zoom_actual and self.view.isVisible():
+            self._render_preview(keep_view=False)
+
     def _render_preview(self, keep_view=True):
         if not self.doc:
             return
@@ -2050,12 +2405,20 @@ class EditorWindow(QMainWindow):
     def _toggle_filmstrip(self, checked):
         self._filmstrip_visible = bool(checked)
         self.filmstrip.setVisible(self._filmstrip_visible)
+        self._sync_filmstrip_handle()
         if self._filmstrip_visible and self.doc:
             self.filmstrip.show_for(self.doc.source_path)
         from . import prefs
         values = prefs.load()
         values["filmstrip_visible"] = self._filmstrip_visible
         prefs.save(values)
+
+    def _sync_filmstrip_handle(self):
+        if not hasattr(self, "filmstrip_handle"):
+            return
+        self.filmstrip_handle.setText(
+            "▼  Hide folder thumbnails" if self._filmstrip_visible
+            else "▲  Show folder thumbnails")
 
     def _refresh_filmstrip(self):
         if self._filmstrip_visible and self.doc:
@@ -2111,6 +2474,7 @@ class EditorWindow(QMainWindow):
         self.act_save_project.setEnabled(has)
         self.act_textures.setEnabled(has)
         self.act_lewks.setEnabled(has)
+        self.act_lewk_again.setEnabled(has)
         self.act_auto.setEnabled(has)
 
     def _update_title(self):
@@ -2123,6 +2487,20 @@ class EditorWindow(QMainWindow):
         self._refresh_actions()
 
     # --- Close guard --------------------------------------------------------
+    def showEvent(self, event):  # noqa: N802 — Qt override
+        """Restore maximized state once, after Qt has created the native window."""
+        super().showEvent(event)
+        if not self._window_state_restored:
+            self._window_state_restored = True
+            if self._restore_maximized:
+                QTimer.singleShot(0, self.showMaximized)
+
+    def _save_window_state(self):
+        from . import prefs as _prefs
+        values = _prefs.load()
+        values["editor_maximized"] = self.isMaximized()
+        _prefs.save(values)
+
     def _confirm_discard(self):
         if self.doc and self.doc.is_dirty():
             answer = QMessageBox.question(
@@ -2132,8 +2510,19 @@ class EditorWindow(QMainWindow):
             return answer == QMessageBox.Discard
         return True
 
+    def keyPressEvent(self, event):  # noqa: N802 — Qt override
+        if self.act_crop.isChecked():
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                self._commit_crop()
+                return
+            if event.key() == Qt.Key_Escape:
+                self._cancel_crop()
+                return
+        super().keyPressEvent(event)
+
     def closeEvent(self, event):
         if self._confirm_discard():
+            self._save_window_state()
             self._clear_recovery()   # deliberate close — discard the recovery copy
             event.accept()
         else:

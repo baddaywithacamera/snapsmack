@@ -20,6 +20,16 @@
   up here with its error), and how many posts have arrived back from the network.
   Every value is this blog's own data or a live probe of the relay actor — no
   cross-database access to the relay's store.
+- **Fix: your real fediverse @handle can no longer be overwritten by the blog name.**
+  On a blog where the smackverse→fediverse rename hadn't run, the handle you chose was
+  stranded under the old name, and opening the Fediverse admin would quietly lock in a
+  handle derived from your Site Name instead (e.g. answering as `@photofri_day` when you
+  had chosen `@participate`). The handle lookup now prefers your stranded real handle
+  over the site-name fallback, so it is served — and frozen — correctly even before the
+  rename migration runs. No follower is stranded; blogs already answering correctly are
+  unaffected.
+- Also carries the latest SNAP SLAPPER / THE HUB desktop-tool and snapsmack.ca site
+  work (versioned independently of the CMS).
 
 ## 0.7.590 "LIVE WIRE" fix — 2026-08-30
 
