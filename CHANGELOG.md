@@ -9,6 +9,15 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.593 "LIVE WIRE" — 2026-08-31
+- **Fix: blogs can now actually join the network relay.** When a blog had no relay
+  address set (the normal state), it fell back to a built-in default that pointed at
+  `photoblogs.fyi/actor` — the photoblogs.fyi blog's own homepage, which has no inbox.
+  So the JOIN button, and every Relay Status check, hit a dead page: "responded but not
+  an ActivityPub actor (no inbox)", and the join Follow never left. The default now
+  points at the real relay actor, `relay.photoblogs.fyi/actor`, so joining works out of
+  the box for every blog that hasn't set a custom relay URL.
+
 ## 0.7.592 "LIVE WIRE" — 2026-08-31
 - **New: Relay Status page (Fediverse → Relay Status).** A read-only, one-glance
   panel that tells you whether this blog is actually on the SnapSmack network relay,
