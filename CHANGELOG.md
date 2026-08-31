@@ -9,6 +9,17 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.595 "LIVE WIRE" — 2026-08-31
+- **Fix: fleet heartbeat's cron-health block reports only real crons.** The
+  `multisite/heartbeat` `jobs` block listed **Backups** and **SMACKBACK** as if they
+  were scheduled jobs, so the CRONOMETER fleet board showed false red/grey rows for
+  every site. Backups are run by the SUYB desktop tool (there is no backup cron) and
+  SMACKBACK rides the version-check cron. The block now carries only the crons every
+  site actually runs — **fediverse delivery, RSS fetch, version/update check** — each
+  from its real `snap_settings` last-run stamp. Backup freshness stays available via
+  `last_backup_at`/`last_backup_status` for a separate, non-cron indicator. Paired
+  CRONOMETER desktop change: `_spec/SPEC-cronometer-real-crons-only.md`.
+
 ## 0.7.594 "LIVE WIRE" — 2026-08-31
 - **License: SNAPSMACK now ships under the SMACK PUBLIC LICENSE (SPL) 2.2.** The
   bundled license text (`licenses/SNAPSMACK-LICENSE.txt`, and the copy under
