@@ -934,7 +934,11 @@ $help_topics['configuration'] = [
 <ul>
     <li><strong>Site Name</strong> — appears in the browser title bar, RSS feed, and
     wherever the skin displays a site title.</li>
-    <li><strong>Description</strong> — a short tagline, used in meta tags and RSS.</li>
+    <li><strong>Description</strong> — your one site blurb (bio), reused in several
+    places at once, so you only write it here: your blog's own profile / landing page,
+    your <strong>fediverse &amp; Pixelfed account bio</strong> (Fediverse &rarr; Portal
+    reuses it — it is not re-entered there), the RSS feed description, the search-engine
+    meta description fallback (see SEO Settings), and your photoblogs directory listing.</li>
     <li><strong>Logo</strong> — upload an SVG, PNG, or JPG. Used in the navigation bar
     if the active skin supports it.</li>
     <li><strong>Favicon</strong> — the small icon that appears in browser tabs.</li>
