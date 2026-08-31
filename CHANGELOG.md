@@ -9,7 +9,7 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.591 "LIVE WIRE" — 2026-08-31
+## 0.7.592 "LIVE WIRE" — 2026-08-31
 - **New: Relay Status page (Fediverse → Relay Status).** A read-only, one-glance
   panel that tells you whether this blog is actually on the SnapSmack network relay,
   instead of trusting the optimistic JOIN button. It shows four things: whether the
