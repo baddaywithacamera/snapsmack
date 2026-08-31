@@ -11,6 +11,20 @@ red / amber / grey / green — so a silently-dead cron is caught before it bites
 Versioning matches the family convention: fresh start at 0.1.0, `bump_version.py`
 adds +1 patch each build. Never bump the minor/major by hand.
 
+## Unreleased — 2026-08-31
+
+### Changed
+- Monitor only the scheduled crons every SnapSmack site actually runs — **fediverse
+  delivery, RSS blogroll fetch, version/update check**. Removed **Backups** and
+  **SMACKBACK** from the job catalogue: backups are the SUYB desktop tool (there is
+  no backup cron) and SMACKBACK rides `cron-version-check.php`, so both produced
+  false red/grey rows. Backup freshness is still in the heartbeat (`last_backup_at`)
+  if a separate, clearly non-cron indicator is wanted later.
+- Server pairing: `multisite/heartbeat` now ships the matching
+  `{fediverse, rss_fetch, version_check}` jobs block (SnapSmack 0.7.595D), so those
+  three light up green/amber/red from real last-run data instead of grey "never".
+- Run `bump_version.py` on rebuild to stamp the build number.
+
 ## 0.1.0 — 2026-08-14
 
 ### Added

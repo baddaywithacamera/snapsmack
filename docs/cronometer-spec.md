@@ -15,13 +15,20 @@ cron before it bites** — the "backups went red weeks ago and nobody noticed" c
 One dark desktop board. For every site in the fleet it shows, per scheduled job,
 **last-run + ok/stale/failed**, as a red / amber / grey / green light:
 
+Only the scheduled crons EVERY site actually runs are monitored:
+
 | Job | Cron script | Documented cadence |
 |-----|-------------|--------------------|
 | Fediverse delivery | `cron-fediverse.php` | every 10 min |
 | RSS blogroll fetch | `cron-rss-fetch.php` | ~hourly |
 | Version / update check | `cron-version-check.php` | every 6 h |
-| Backups | (backup engine) | daily |
-| SMACKBACK integrity | rides `cron-version-check.php` | daily-ish |
+
+**Deliberately NOT monitored** (they are not per-site crons, and showing them
+produced false red/grey rows): **Backups** — done by the SUYB desktop tool, not a
+cron; **SMACKBACK** — rides `cron-version-check.php`, not its own job; **directory
+feeds** (`cron-directory-feeds.php`) — runs on the photoblogs.fyi host only, not on
+spokes. Backup freshness is still in the heartbeat (`last_backup_at`) if a separate,
+clearly non-cron indicator is ever wanted.
 
 - **Fleet source:** the ONE shared per-site profile store,
   `tools/_shared/snap_profiles` (files under
