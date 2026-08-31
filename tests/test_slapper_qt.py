@@ -209,6 +209,9 @@ def test_normal_advanced_mode():
     assert not win.rows["vignette"].isHidden()
     assert not win.rows["clarity"].isHidden()
     assert not win.rows["dehaze"].isHidden()
+    assert not win.rows["texture"].isHidden()
+    assert not win.split_shadow_btn.icon().isNull()
+    assert win.split_shadow_btn.styleSheet() == ""
     assert win.rows["vignette_feather"].isHidden()
     assert win.grain_darken_check.isHidden()
     assert win._histogram_wrap.isHidden()
