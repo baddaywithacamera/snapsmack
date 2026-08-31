@@ -85,7 +85,8 @@ IMAGE_FILTER = ("Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp);;"
 # everything. These name what stays visible in Normal.
 NORMAL_SECTIONS = {"LIGHT", "COLOUR", "EFFECTS", "BLACK + WHITE", "GEOMETRY"}
 NORMAL_ROWS = {"brightness", "contrast", "highlights", "shadows",
-               "temperature", "tint", "saturation", "vibrance", "vignette"}
+               "temperature", "tint", "saturation", "vibrance",
+               "vignette", "clarity", "dehaze"}
 
 
 class EditorWindow(QMainWindow):
@@ -1617,8 +1618,8 @@ class EditorWindow(QMainWindow):
         self._histogram_wrap.setVisible(advanced)
         for widget in self._bw_mixer_widgets:
             widget.setVisible(advanced)
-        # EFFECTS is present in Normal for Vignette, but its grain-specific
-        # option belongs with the Advanced-only Grain control.
+        # EFFECTS is present in Normal for Vignette, Clarity, and Dehaze, but
+        # its grain-specific option belongs with the Advanced-only Grain control.
         self.grain_darken_check.setVisible(advanced)
         for key, row in self.rows.items():
             row.setVisible(advanced or key in NORMAL_ROWS)

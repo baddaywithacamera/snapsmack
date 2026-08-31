@@ -207,6 +207,8 @@ def test_normal_advanced_mode():
     assert not win.rows["contrast"].isHidden()
     assert not win.rows["vibrance"].isHidden()
     assert not win.rows["vignette"].isHidden()
+    assert not win.rows["clarity"].isHidden()
+    assert not win.rows["dehaze"].isHidden()
     assert win.rows["vignette_feather"].isHidden()
     assert win.grain_darken_check.isHidden()
     assert win._histogram_wrap.isHidden()
@@ -331,6 +333,14 @@ def test_teach_me_uses_real_lewk_steps_and_makes_editable_copy():
     assert taught_values == lewk["adjustments"]
     dialog = TeachMeDialog(win, lewk, 80)
     assert dialog.steps.count() == len(actions)
+    # Selecting a lesson walks the preview cumulatively through the real stack.
+    dialog.steps.setCurrentRow(0)
+    assert dialog._enabled_values() == actions[0]["values"]
+    assert dialog._enabled_values(before_selected=True) == {}
+    first_render = dialog._render().tobytes()
+    dialog.steps.setCurrentRow(dialog.steps.count() - 1)
+    assert dialog._enabled_values() == taught_values
+    assert dialog._render().tobytes() != first_render
     assert dialog.values.text()
     assert dialog.values.isHidden()              # lesson first, numbers on request
     assert "Why:" in dialog.why.text() and "Contrast:" not in dialog.why.text()

@@ -246,6 +246,11 @@ class TeachMeDialog(QDialog):
         selected = self._selected_index()
         values = {}
         for row, action in enumerate(self.actions):
+            # TEACH ME is a walk through the stack, not merely a list of
+            # descriptions.  The selected lesson renders the cumulative result
+            # through that step; later lessons must not appear until selected.
+            if selected is not None and row > selected:
+                break
             if self.steps.item(row).checkState() != Qt.Checked:
                 continue
             if before_selected and selected is not None and row == selected:
