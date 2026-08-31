@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.594 "LIVE WIRE" — 2026-08-31
+- **License: SNAPSMACK now ships under the SMACK PUBLIC LICENSE (SPL) 2.2.** The
+  bundled license text (`licenses/SNAPSMACK-LICENSE.txt`, and the copy under
+  `projects/snapsmack-ca/`) is updated from 2.1 to 2.2, and the README and the
+  snapsmack.ca license blurb now reference 2.2. THE THOMAS CLAUSE and the AI
+  co-authorship provenance chain are unchanged.
+
 ## 0.7.593 "LIVE WIRE" — 2026-08-31
 - **Fix: blogs can now actually join the network relay.** When a blog had no relay
   address set (the normal state), it fell back to a built-in default that pointed at
