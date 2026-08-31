@@ -144,7 +144,7 @@ require_once __DIR__ . '/includes/header.php';
 
 <a href="#beta" class="beta-banner">
     <span class="beta-banner-flag">CLOSED BETA</span>
-    <span class="beta-banner-text"><strong>Applications are open.</strong> First wave opens September 4 for twenty photographers with real archives.</span>
+    <span class="beta-banner-text"><strong>Applications are open.</strong> First wave opens November 4 for twenty photographers with real archives.</span>
     <span class="beta-banner-cta">Apply &rarr;</span>
 </a>
 
@@ -415,7 +415,7 @@ require_once __DIR__ . '/includes/header.php';
     <section id="beta">
         <div class="wrap">
             <h2>Apply for the Closed Beta</h2>
-            <p class="lede">The first wave opens <strong>September 4, 2026</strong> for twenty photographers. It is built for real back-catalogues, so you will want at least 500 images ready to post. Flickr and Instagram refugees are particularly welcome.</p>
+            <p class="lede">The first wave opens <strong>November 4, 2026</strong> for twenty photographers. It is built for real back-catalogues, so you will want at least 500 images ready to post. Flickr and Instagram refugees are particularly welcome.</p>
             <div class="ml-embedded" data-form="Z4oY86"></div>
         </div>
     </section>
