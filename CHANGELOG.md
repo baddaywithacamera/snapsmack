@@ -9,6 +9,14 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.596 "LIVE WIRE" — 2026-08-31
+- **Clarify: Fediverse Portal profile box now says where the avatar and bio come
+  from.** The PROFILE section sets only the fediverse-specific fields (display-name
+  override, website, pronouns); the avatar is reused from Pimp Your Ride → Smooth
+  Your Skin and the bio from the site description in Settings. The box now says so,
+  so it no longer looks like the avatar/bio are duplicated or missing. Copy-only, no
+  data or field changes.
+
 ## 0.7.595 "LIVE WIRE" — 2026-08-31
 - **Fix: fleet heartbeat's cron-health block reports only real crons.** The
   `multisite/heartbeat` `jobs` block listed **Backups** and **SMACKBACK** as if they
