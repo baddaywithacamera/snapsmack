@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.597 "LIVE WIRE" — 2026-08-31
+- **Help: Site Description entry now lists everywhere the bio is used.** The
+  Configuration help said only "a short tagline, used in meta tags and RSS." It now
+  spells out that the Description is your one reused blurb — on-site profile/landing,
+  fediverse & Pixelfed account bio, RSS description, SEO meta fallback, and the
+  photoblogs directory listing — so it is clear it is written once, not duplicated.
+
 ## 0.7.596 "LIVE WIRE" — 2026-08-31
 - **Clarify: Fediverse Portal profile box now says where the avatar and bio come
   from.** The PROFILE section sets only the fediverse-specific fields (display-name
