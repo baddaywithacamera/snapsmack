@@ -89,6 +89,13 @@ identity, so every existing look/project renders unchanged.
   pedagogical order, explains direction and strength in ordinary photographer
   language, hides exact values behind SHOW SETTINGS, supports
   per-step toggles and hold-for-before comparison, and creates an editable copy.
+- **Blur layers** — editable Gaussian (radius), Motion (length/angle), and
+  Radial (Spin/Zoom, strength, movable centre) filters. Amount, opacity, blend,
+  masks, projects, recipes, and batch processing all use the existing filter
+  layer contract.
+- **SVG watermark layers** — SVG files remain external vector references and
+  render through Qt SVG at the current preview/export dimensions; transparent
+  PNG layers continue to preserve alpha.
 - **Offline Help** (F1) — searchable, 12 Qt-specific topics.
 - **Autosave / crash recovery** — recovery copy under
   `C:\snapsmack\snap_slapper\recovery`; restore-on-reopen prompt.

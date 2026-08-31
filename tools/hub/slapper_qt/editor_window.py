@@ -10,7 +10,7 @@ import os
 import sys
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QCheckBox,
     QFileDialog, QMessageBox, QLabel, QButtonGroup, QPushButton, QLineEdit,
@@ -209,6 +209,7 @@ class EditorWindow(QMainWindow):
     # --- Construction -------------------------------------------------------
     def _build_toolbar(self):
         bar = self.addToolBar("Main")
+        self.main_toolbar = bar
         bar.setMovable(False)
 
         self.act_open = QAction("Open", self)
@@ -232,7 +233,7 @@ class EditorWindow(QMainWindow):
         self.act_redo.triggered.connect(self.redo)
         bar.addAction(self.act_redo)
 
-        self.act_reset = QAction("Reset", self)
+        self.act_reset = QAction("Reset All", self)
         self.act_reset.triggered.connect(self.reset_all)
         bar.addAction(self.act_reset)
 
@@ -349,21 +350,69 @@ class EditorWindow(QMainWindow):
         self.mode_combo.currentIndexChanged.connect(self._on_mode_combo_changed)
         bar.insertWidget(self.act_undo, self.mode_combo)
 
-        # Keep essentials and the mode switch on the first row. Editing tools
-        # get a dedicated second row instead of vanishing behind Qt's tiny
-        # overflow chevron on ordinary laptop-sized windows.
-        self.addToolBarBreak(Qt.TopToolBarArea)
-        tools_bar = self.addToolBar("Editing Tools")
-        tools_bar.setMovable(False)
+        # The first row chooses a workspace.  The second row is genuinely
+        # contextual: it expands only the selected workspace instead of
+        # presenting the whole editor at once.
+        self._context_selectors = {}
+        context_group = QActionGroup(self)
+        context_group.setExclusive(True)
+        for key, label, tip in (
+                ("edit", "EDIT", "Crop, automatic correction and comparison"),
+                ("retouch", "RETOUCH", "Healing and red-eye correction"),
+                ("looks", "LOOKS", "LEWKS, filters, textures and recipes"),
+                ("output", "OUTPUT", "Projects, exports and blog copies"),
+                ("view", "VIEW", "Zoom, filmstrip, preferences and help")):
+            action = QAction(label, self)
+            action.setCheckable(True)
+            action.setToolTip(tip)
+            action.triggered.connect(
+                lambda _checked=False, selected=key:
+                self._show_toolbar_context(selected))
+            context_group.addAction(action)
+            self._context_selectors[key] = action
+
+        # Remove all task actions from the global row before rebuilding it in
+        # its deliberately small, predictable order.
         for action in (
+                self.act_reset, self.act_auto, self.act_fit, self.act_full,
                 self.act_crop, self.act_heal, self.act_redeye,
                 self.act_compare, self.act_filmstrip,
                 self.act_recipe_save, self.act_recipe_apply,
                 self.act_lewks, self.act_textures, self.act_filters,
-                self.act_save_project,
-                self.act_prefs):
+                self.act_save_project, self.act_export, self.act_blog_copy,
+                self.act_prefs, self.act_help):
             bar.removeAction(action)
-            tools_bar.addAction(action)
+            # Preserve shortcuts while an action belongs to a context that is
+            # not currently displayed.
+            self.addAction(action)
+
+        # Discard separators left behind by the former everything-at-once
+        # layout, then use one clean break before the workspace choices.
+        for action in tuple(bar.actions()):
+            if action.isSeparator():
+                bar.removeAction(action)
+        bar.addSeparator()
+        # The mode controls were inserted before Undo above. Put the workspace
+        # selectors after Undo/Redo, where the eye naturally looks for tools.
+        for action in self._context_selectors.values():
+            bar.addAction(action)
+
+        self.addToolBarBreak(Qt.TopToolBarArea)
+        tools_bar = self.addToolBar("Editing Tools")
+        self.context_toolbar = tools_bar
+        tools_bar.setMovable(False)
+
+        self._toolbar_contexts = {
+            "edit": (self.act_crop, self.act_auto, self.act_reset,
+                     self.act_compare),
+            "retouch": (self.act_heal, self.act_redeye),
+            "looks": (self.act_lewks, self.act_filters, self.act_textures,
+                      self.act_recipe_save, self.act_recipe_apply),
+            "output": (self.act_save_project, self.act_export,
+                       self.act_blog_copy),
+            "view": (self.act_fit, self.act_full, self.act_filmstrip,
+                     self.act_prefs, self.act_help),
+        }
 
         # Toolbar actions hidden in Normal mode (Advanced-only).
         self._advanced_actions = [
@@ -372,6 +421,10 @@ class EditorWindow(QMainWindow):
             self.act_textures,
             self.act_filters,
         ]
+        self._advanced_action_set = set(self._advanced_actions)
+        self._toolbar_context = "edit"
+        self._context_selectors["edit"].setChecked(True)
+        self._show_toolbar_context("edit")
 
         # Keyboard shortcuts. Modifier combos only (never bare letters) so they
         # can't fire while someone is typing in a text layer or a dialog. Open,
@@ -396,6 +449,21 @@ class EditorWindow(QMainWindow):
             base = action.toolTip() or action.text()
             pretty = QKeySequence(seq).toString(QKeySequence.NativeText)
             action.setToolTip(f"{base}  ({pretty})")
+
+    def _show_toolbar_context(self, key):
+        """Expand one top-row workspace into the contextual second row."""
+        if key not in self._toolbar_contexts:
+            return
+        self._toolbar_context = key
+        selector = self._context_selectors[key]
+        if not selector.isChecked():
+            selector.setChecked(True)
+        self.context_toolbar.clear()
+        advanced = getattr(self, "mode", "advanced") == "advanced"
+        for action in self._toolbar_contexts[key]:
+            if action in self._advanced_action_set and not advanced:
+                continue
+            self.context_toolbar.addAction(action)
 
     def _error(self, title, message):
         """Show an error dialog AND write it (with traceback if any) to the log."""
@@ -1500,6 +1568,7 @@ class EditorWindow(QMainWindow):
         self.target_label.setVisible(advanced)
         for action in self._advanced_actions:
             action.setVisible(advanced)
+        self._show_toolbar_context(self._toolbar_context)
         if not advanced:
             # Normal edits the base photo; no layer panels.
             self.active_target = BASE
