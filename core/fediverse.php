@@ -73,6 +73,14 @@ function sv_domain(array $settings): string {
 function sv_handle(array $settings): string {
     $h = trim($settings['fediverse_handle'] ?? '');
     if ($h !== '') return $h;
+    // Stranded pre-rename handle: on a blog where the smackverse_*->fediverse_*
+    // rename migration has not run, the owner's real, deliberately-chosen handle
+    // still sits under the OLD key. Prefer it over the site-name derivation below,
+    // so we never answer as (or freeze) a name the owner never picked. This also
+    // means the admin freeze (fediverse-admin-shared.php) locks in the REAL handle,
+    // not the fallback — the exact bug that made blogs answer as their site name.
+    $legacy = trim((string)($settings['smackverse_handle'] ?? ''));
+    if ($legacy !== '') return $legacy;
     // Legacy fallback (see docblock): reproduce the exact handle a pre-0.7.588
     // blog is already answering under, so its followers are never stranded.
     $h = strtolower(preg_replace('/[^a-z0-9_]+/i', '_', trim($settings['site_name'] ?? '')));
