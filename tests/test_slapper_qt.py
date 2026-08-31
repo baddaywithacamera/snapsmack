@@ -237,7 +237,7 @@ def test_context_sensitive_toolbars():
     assert visible_tools() == ["Heal", "Red-Eye"]
     win._context_selectors["looks"].trigger()
     assert visible_tools() == [
-        "LEWKS…", "Filters…", "Textures…", "Save Recipe", "Apply Recipe"]
+        "LEWKS…", "LEWK AGAIN…", "Filters…", "Textures…", "Save Recipe", "Apply Recipe"]
     win._context_selectors["output"].trigger()
     assert visible_tools() == ["Save Project", "Export…", "Blog Copy…"]
     win._context_selectors["view"].trigger()
@@ -247,7 +247,7 @@ def test_context_sensitive_toolbars():
     # Normal mode keeps the chosen workspace but removes Advanced-only tools.
     win._context_selectors["looks"].trigger()
     win.mode_combo.setCurrentIndex(win.mode_combo.findData("normal"))
-    assert visible_tools() == ["LEWKS…"]
+    assert visible_tools() == ["LEWKS…", "LEWK AGAIN…"]
 
 
 def test_autosave_recovery():
@@ -1315,6 +1315,34 @@ def test_panomerge_command_and_library_action():
     library = LibraryWindow()
     assert library.act_panomerge.text() == "PANOMERGE…"
     assert "XPANO" in library.act_panomerge.toolTip()
+
+
+def test_lewk_again_is_integrated_and_rejects_unsafe_recipe_content():
+    import json
+    import lewk_again
+    win = _editor(_image("lewk-again.jpg", (160, 120)))
+    assert win.act_lewk_again.text() == "LEWK AGAIN…"
+    assert win.act_lewk_again in win._toolbar_contexts["looks"]
+    safe = lewk_again.validate_response(json.dumps({
+        "name": "WINTER DOCUMENTARY",
+        "description": "Cool and restrained.",
+        "adjustments": {"temperature": -12, "vibrance": -8, "shadows": 18},
+        "filters": [{"type": "film_grain", "settings": {"amount": 12}}],
+        "explanation": ["Cools colour without flattening skin."],
+    }), "TEST", "test-model", "cool winter")
+    assert len(safe["layers"]) == 2
+    assert safe["layers"][0]["adjustments"]["temperature"] == -12
+    win.apply_generated_lewk(safe)
+    assert win.doc.layers[-1]["filter_type"] == "film_grain"
+    for payload in (
+        {"adjustments": {"run_script": "oops"}},
+        {"adjustments": {}, "filters": [{"type": "shell", "settings": {}}]},
+    ):
+        try:
+            lewk_again.validate_response(json.dumps(payload))
+            assert False, "unsafe LEWK content must be rejected"
+        except ValueError:
+            pass
 
 
 def main():

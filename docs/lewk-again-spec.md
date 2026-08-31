@@ -6,7 +6,7 @@
 
 # LEWK AGAIN
 
-**Status:** TO DO / concept  
+**Status:** FIRST USEFUL VERSION IMPLEMENTED
 **Former working name:** ACTION LAB  
 **Type:** SnapSmack-exclusive AI tool  
 **Core promise:** Describe the photographic look or correction you want. LEWK AGAIN
@@ -54,8 +54,8 @@ behavior, fork-renaming requirement, and support boundary are defined in
 - Show every adjustment before installation.
 - Save the finished LEWK into SnapSmack's configured local LEWKS folder.
 - Preserve the generated recipe as an editable LEWK AGAIN project.
-- Never upload photographs unless the user explicitly chooses a cloud model and approves
-  the upload.
+- The first version is text-only. It never uploads photographs; providers receive only
+  the photographer's written request and, during refinement, the validated recipe.
 
 ## Output contract
 
@@ -76,7 +76,8 @@ behavior, fork-renaming requirement, and support boundary are defined in
 
 ## Open decisions
 
-- Local model, cloud model, or user-selectable hybrid.
+- Local or cloud is user-selectable: Gemini, Kimi, DeepSeek, Claude, OpenAI, or a local
+  OpenAI-compatible endpoint.
 - Whether recipes support masks and subject-aware adjustments in the first release.
 - Exact Lightroom-compatible preset version and metadata fields to target first.
 

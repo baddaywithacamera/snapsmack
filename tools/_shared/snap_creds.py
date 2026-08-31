@@ -142,7 +142,10 @@ def delete(key: str) -> None:
 # The "configure once" set: secrets that are genuinely the same across tools.
 # SYBU and COLD SNAP already use these exact dict keys, so the overlay is a
 # straight key match.
-SHARED_KEYS = ("gemini_api_key", "google_credentials", "drive_folder_id")
+SHARED_KEYS = (
+    "gemini_api_key", "kimi_api_key", "deepseek_api_key", "claude_api_key",
+    "openai_api_key", "google_credentials", "drive_folder_id",
+)
 
 
 def apply_shared(cfg: dict, keys=SHARED_KEYS) -> dict:
