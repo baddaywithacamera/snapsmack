@@ -633,6 +633,26 @@ def test_crop():
     assert win.doc.geometry["crop"] == [0.25, 0.25, 0.75, 0.75]
 
 
+def test_interactive_crop_overlay_and_explicit_apply():
+    win = _editor(_image("crop-overlay.jpg", (400, 300)))
+    win._context_selectors["edit"].trigger()
+    win.act_crop.setChecked(True)
+    assert win.doc.geometry["crop"] is None
+    assert win.view._crop_rect_item is not None
+    assert len(win.view._crop_handles) == 8
+    assert len(win.view._crop_grid) == 4
+    assert len(win.view._crop_shades) == 4
+    assert win._crop_controls_action in win.context_toolbar.actions()
+
+    win.crop_aspect.setCurrentIndex(win.crop_aspect.findData(1.0))
+    rect = win.view._crop_rect_item.rect()
+    assert abs(rect.width() - rect.height()) < 1
+    win._commit_crop()
+    assert win.doc.geometry["crop"] is not None
+    assert not win.act_crop.isChecked()
+    assert win.view._crop_rect_item is None
+
+
 def test_bw_colour_mix():
     from PIL import ImageOps, ImageChops
     bands = Image.new("RGB", (300, 60))
