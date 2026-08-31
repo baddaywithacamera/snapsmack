@@ -4,11 +4,8 @@
 # Builds the Qt rebuild (slapper_qt/) into a single windowed SNAP SLAPPER.exe.
 # The image engine (editor_engine.py, pure PIL) is reused unchanged.
 #
-# SECAUDIT 051 posture: only the modules the standalone editor actually imports
-# ride along. Verified imports from tools/hub: editor_engine, built_in_lewks,
-# found_textures, photo_manager; from tools/_shared: snap_home, snap_log,
-# snap_profiles. Credential, enrichment, and fleet-discovery modules are not
-# imported, so PyInstaller does not bundle them.
+# Only modules the standalone editor imports ride along. LEWK AGAIN reads AI
+# credentials from the shared local vault; it never receives HUB/CMS secrets.
 import os
 import sys
 from PyInstaller.utils.hooks import collect_submodules
@@ -31,7 +28,7 @@ for _p in (_src, _shared_dir):
 
 _hidden = collect_submodules('slapper_qt') + [
     'editor_engine', 'built_in_lewks', 'found_textures', 'texture_assets', 'photo_manager',
-    'snap_home', 'snap_log', 'snap_profiles',
+    'lewk_again', 'snap_home', 'snap_log', 'snap_profiles', 'snap_creds', 'snap_vault',
     'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
     'PySide6.QtPrintSupport',
     'PySide6.QtSvg',

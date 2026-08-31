@@ -297,6 +297,12 @@ class EditorWindow(QMainWindow):
         self.act_lewks.triggered.connect(self.open_lewks)
         bar.addAction(self.act_lewks)
 
+        self.act_lewk_again = QAction("LEWK AGAIN…", self)
+        self.act_lewk_again.setToolTip(
+            "Describe a look; the AI returns an inspectable recipe. Your photo stays local.")
+        self.act_lewk_again.triggered.connect(self.open_lewk_again)
+        bar.addAction(self.act_lewk_again)
+
         self.act_textures = QAction("Textures…", self)
         self.act_textures.triggered.connect(self.open_textures)
         bar.addAction(self.act_textures)
@@ -378,7 +384,7 @@ class EditorWindow(QMainWindow):
                 self.act_crop, self.act_heal, self.act_redeye,
                 self.act_compare, self.act_filmstrip,
                 self.act_recipe_save, self.act_recipe_apply,
-                self.act_lewks, self.act_textures, self.act_filters,
+                self.act_lewks, self.act_lewk_again, self.act_textures, self.act_filters,
                 self.act_save_project, self.act_export, self.act_blog_copy,
                 self.act_prefs, self.act_help):
             bar.removeAction(action)
@@ -406,7 +412,7 @@ class EditorWindow(QMainWindow):
             "edit": (self.act_crop, self.act_auto, self.act_reset,
                      self.act_compare),
             "retouch": (self.act_heal, self.act_redeye),
-            "looks": (self.act_lewks, self.act_filters, self.act_textures,
+            "looks": (self.act_lewks, self.act_lewk_again, self.act_filters, self.act_textures,
                       self.act_recipe_save, self.act_recipe_apply),
             "output": (self.act_save_project, self.act_export,
                        self.act_blog_copy),
@@ -1749,6 +1755,39 @@ class EditorWindow(QMainWindow):
             return
         LewksDialog(self).show()
 
+    def open_lewk_again(self):
+        if not self.doc:
+            self._error("Open a photo first",
+                        "Open a photograph before building a LEWK.")
+            return
+        from .lewk_again_dialog import LewkAgainDialog
+        LewkAgainDialog(self).show()
+
+    def apply_generated_lewk(self, recipe):
+        """Stack a previously validated LEWK AGAIN recipe non-destructively."""
+        if not self.doc or not isinstance(recipe, dict):
+            return None
+        # Revalidate serialized data at the application boundary. This prevents
+        # a modified saved response from smuggling unsupported layer content in.
+        import lewk_again
+        safe = lewk_again.validate_response(
+            __import__("json").dumps({
+                "name": recipe.get("name"),
+                "description": recipe.get("description"),
+                "explanation": recipe.get("explanation", []),
+                "adjustments": next((layer.get("adjustments", {}) for layer in recipe.get("layers", [])
+                                     if layer.get("type") == "adjustment"), {}),
+                "filters": [{"type": layer.get("filter_type"), "name": layer.get("name"),
+                             "settings": layer.get("settings", {})}
+                            for layer in recipe.get("layers", []) if layer.get("type") == "filter"],
+            }), recipe.get("provider", ""), recipe.get("model", ""),
+            recipe.get("prompt", ""))
+        added = self.doc.stack_layers(safe["layers"])
+        if added:
+            self.set_target(added[-1]["id"])
+        self.after_structure_change()
+        return added[-1] if added else None
+
     def apply_lewk(self, lewk_id, strength=100):
         """Apply a built-in LEWK as a non-destructive adjustment layer on top,
         without flattening the photographer's existing edits."""
@@ -2435,6 +2474,7 @@ class EditorWindow(QMainWindow):
         self.act_save_project.setEnabled(has)
         self.act_textures.setEnabled(has)
         self.act_lewks.setEnabled(has)
+        self.act_lewk_again.setEnabled(has)
         self.act_auto.setEnabled(has)
 
     def _update_title(self):
