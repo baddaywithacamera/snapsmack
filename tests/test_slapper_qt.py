@@ -1100,11 +1100,16 @@ def test_qt_catalog_ratings_tags_favorites_and_albums():
     catalog.register_folder(directory)
     catalog.update_index([first, second])
     assert set(catalog.all_paths()) == {first, second}
+    state = editor_engine.EditorDocument(first).snapshot()
+    state["adjustments"]["contrast"] = 23
+    catalog.save_edit_state(first, state)
+    assert catalog.load_edit_state(first)["adjustments"]["contrast"] == 23
     renamed = os.path.join(directory, "renamed.jpg")
     os.rename(first, renamed)
     catalog.move_path(first, renamed)
     assert catalog.details(renamed)["rating"] == 5
     assert renamed in catalog.albums["Pets"] and first not in catalog.albums["Pets"]
+    assert catalog.load_edit_state(renamed)["adjustments"]["contrast"] == 23
     catalog.record_operation("rename", [(first, renamed)])
     undone = catalog.undo_last_move()
     assert undone and os.path.isfile(first) and not os.path.exists(renamed)
@@ -1114,6 +1119,29 @@ def test_qt_catalog_ratings_tags_favorites_and_albums():
                    lib.act_rotate_left, lib.act_find_duplicates):
         assert action is not None
     assert lib.catalog_dock.windowTitle() == "PHOTO INFO"
+
+
+def test_editor_automatically_restores_catalogued_edits():
+    from slapper_qt.catalog import Catalog
+    directory = tempfile.mkdtemp(prefix="slapper_edit_catalog_", dir=TMP)
+    path = _image("catalogued-edit.jpg", (240, 160))
+    catalog = Catalog(directory)
+
+    first = _editor(path)
+    first.catalog = catalog
+    first.doc.adjustments["exposure"] = 1.25
+    first.doc.geometry["rotation"] = 2.4
+    first.doc.record("Catalogue persistence test")
+    first._write_catalog_state()
+    assert not first.doc.is_dirty()
+    assert not any(name.endswith(".slapper") for name in os.listdir(directory))
+
+    reopened = _editor(path)
+    reopened.catalog = catalog
+    assert reopened.open_path(path)
+    assert reopened.doc.adjustments["exposure"] == 1.25
+    assert reopened.doc.geometry["rotation"] == 2.4
+    assert not reopened.doc.is_dirty()
 
 
 def test_safe_import_and_transactional_batch_rename():
