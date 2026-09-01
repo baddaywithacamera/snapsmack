@@ -52,7 +52,7 @@ ACTION_GROUPS = (
      "Adds a photographic colour wash while optionally protecting the original brightness."),
     ("glow", "Place the glow", ("glow_amount", "glow_colour", "glow_x", "glow_y", "glow_size"),
      "Adds a positioned bloom of light. Its location and size matter as much as its colour."),
-    ("finish", "Finish the frame", ("vignette", "vignette_feather", "grain", "grain_darken"),
+    ("finish", "Finish the frame", ("vignette", "vignette_size", "vignette_feather", "grain", "grain_darken"),
      "Uses edge falloff and grain to guide the eye and give the final image a physical character."),
 )
 
