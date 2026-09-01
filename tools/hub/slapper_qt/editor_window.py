@@ -9,8 +9,8 @@ metadata-preserving export. No image math lives here — only the engine's.
 import os
 import sys
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAction, QActionGroup, QKeySequence
+from PySide6.QtCore import Qt, QTimer, QSize
+from PySide6.QtGui import QAction, QActionGroup, QKeySequence, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QCheckBox,
     QFileDialog, QMessageBox, QLabel, QButtonGroup, QPushButton, QLineEdit,
@@ -64,12 +64,12 @@ GROUPS = [
         ("sharpen", "Sharpen", -100, 100, 1, 0),
     ]),
     ("EFFECTS", [
-        ("vignette", "Vignette", -100, 100, 1, 0),
-        ("vignette_feather", "Vignette Feather", 0, 100, 1, 50),
-        ("texture", "Texture", -100, 100, 1, 0),
         ("clarity", "Clarity", -100, 100, 1, 0),
         ("dehaze", "Dehaze", -100, 100, 1, 0),
         ("grain", "Grain", -100, 100, 1, 0),
+        ("texture", "Texture", -100, 100, 1, 0),
+        ("vignette", "Vignette", -100, 100, 1, 0),
+        ("vignette_feather", "Vignette Feather", 0, 100, 1, 50),
     ]),
     ("LEVELS", [
         ("level_black", "Black", 0, 254, 1, 0),
@@ -85,7 +85,8 @@ IMAGE_FILTER = ("Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp);;"
 # everything. These name what stays visible in Normal.
 NORMAL_SECTIONS = {"LIGHT", "COLOUR", "EFFECTS", "BLACK + WHITE", "GEOMETRY"}
 NORMAL_ROWS = {"brightness", "contrast", "highlights", "shadows",
-               "temperature", "tint", "saturation", "vibrance", "vignette"}
+               "temperature", "tint", "saturation", "vibrance",
+               "clarity", "dehaze", "texture", "vignette"}
 
 
 class EditorWindow(QMainWindow):
@@ -1510,16 +1511,20 @@ class EditorWindow(QMainWindow):
     def open_image(self):
         if not self._confirm_discard():
             return
+        from . import prefs
+        initial = prefs.load().get("library_folder", "")
         path, _ = QFileDialog.getOpenFileName(
-            self, "Open photograph", "", IMAGE_FILTER)
+            self, "Open photograph", initial, IMAGE_FILTER)
         if path:
             self.open_path(path)
 
     def open_project(self):
         if not self._confirm_discard():
             return
+        from . import prefs
+        initial = prefs.load().get("projects_folder", "")
         path, _ = QFileDialog.getOpenFileName(
-            self, "Open SNAP SLAPPER project", "", PROJECT_FILTER)
+            self, "Open SNAP SLAPPER project", initial, PROJECT_FILTER)
         if not path:
             return
         self.open_project_path(path)
@@ -1553,8 +1558,12 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return
         base = os.path.splitext(os.path.basename(self.doc.source_path))[0]
+        from . import prefs
+        project_dir = prefs.load().get("projects_folder", "")
+        suggested = (os.path.join(project_dir, f"{base}.slapper")
+                     if project_dir else f"{base}.slapper")
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save project", f"{base}.slapper", PROJECT_FILTER)
+            self, "Save project", suggested, PROJECT_FILTER)
         if not path:
             return
         try:
@@ -1617,8 +1626,8 @@ class EditorWindow(QMainWindow):
         self._histogram_wrap.setVisible(advanced)
         for widget in self._bw_mixer_widgets:
             widget.setVisible(advanced)
-        # EFFECTS is present in Normal for Vignette, but its grain-specific
-        # option belongs with the Advanced-only Grain control.
+        # Normal keeps the everyday Effects controls; the grain-specific option
+        # belongs with the Advanced-only Grain control.
         self.grain_darken_check.setVisible(advanced)
         for key, row in self.rows.items():
             row.setVisible(advanced or key in NORMAL_ROWS)
@@ -2054,13 +2063,17 @@ class EditorWindow(QMainWindow):
                         ("split_highlight", self.split_hi_btn),
                         ("glow_colour", self.glow_btn)):
             rgb = target.get(key, editor_engine.DEFAULT_ADJUSTMENTS[key])
-            r, g, b = [int(c) for c in rgb][:3]
-            ink = "#000000" if (r * 0.299 + g * 0.587 + b * 0.114) > 140 else "#ffffff"
-            # dynamic swatch colour (the user's chosen tone) — a live value, not
-            # a static style: setStyleSheet is the Qt way to show a picked colour
-            btn.setStyleSheet(
-                f"QPushButton#SwatchBtn {{ background: rgb({r},{g},{b}); color: {ink};"
-                f" border: 1px solid #333; border-radius: 4px; padding: 6px; }}")
+            self._set_swatch_icon(btn, rgb)
+
+    @staticmethod
+    def _set_swatch_icon(button, rgb):
+        """Keep colour visible without turning the whole control into a pastel slab."""
+        r, g, b = [int(c) for c in rgb][:3]
+        chip = QPixmap(18, 18)
+        chip.fill(QColor(r, g, b))
+        button.setIcon(QIcon(chip))
+        button.setIconSize(QSize(18, 18))
+        button.setStyleSheet("")
 
     def _build_sharpen_detail(self):
         wrap = QWidget()
@@ -2189,13 +2202,7 @@ class EditorWindow(QMainWindow):
         target = self.active_adjustments() or {}
         rgb = target.get("photo_filter_color",
                          editor_engine.DEFAULT_ADJUSTMENTS["photo_filter_color"])
-        r, g, b = [int(c) for c in rgb][:3]
-        ink = "#000000" if (r * 0.299 + g * 0.587 + b * 0.114) > 140 else "#ffffff"
-        # dynamic swatch colour (the user's chosen filter) — a live value, not a
-        # static style: setStyleSheet is the Qt way to show a picked colour.
-        self.photo_filter_btn.setStyleSheet(
-            f"QPushButton#SwatchBtn {{ background: rgb({r},{g},{b}); color: {ink};"
-            f" border: 1px solid #333; border-radius: 4px; padding: 6px; }}")
+        self._set_swatch_icon(self.photo_filter_btn, rgb)
 
     def _sync_photo_filter_combo(self, adjustments):
         rgb = [int(c) for c in adjustments.get(
@@ -2271,8 +2278,13 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return
         base = os.path.splitext(os.path.basename(self.doc.source_path))[0]
+        from . import prefs
+        settings = prefs.load()
+        export_dir = settings.get("exports_folder", "")
+        suggested = (os.path.join(export_dir, f"{base}_edited.jpg")
+                     if export_dir else f"{base}_edited.jpg")
         path, selected_filter = QFileDialog.getSaveFileName(
-            self, "Export copy", f"{base}_edited.jpg",
+            self, "Export copy", suggested,
             "JPEG — flattened (*.jpg);;PNG — flattened (*.png);;"
             "TIFF — flattened (*.tif *.tiff);;Photoshop PSD — layered checkpoints (*.psd)")
         if not path:
@@ -2283,8 +2295,6 @@ class EditorWindow(QMainWindow):
                 ".tif" if "TIFF" in selected_filter else \
                 ".png" if "PNG" in selected_filter else ".jpg"
             path += chosen
-        from . import prefs
-        settings = prefs.load()
         copyright_text = (settings["copyright_text"]
                           if settings["add_copyright_if_missing"] else "")
         try:

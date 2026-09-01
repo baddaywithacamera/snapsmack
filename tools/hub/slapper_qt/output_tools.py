@@ -114,4 +114,3 @@ class SlideshowDialog(QDialog):
             self.close()
         else:
             super().keyPressEvent(event)
-
