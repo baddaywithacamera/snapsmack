@@ -11,6 +11,22 @@ red / amber / grey / green — so a silently-dead cron is caught before it bites
 Versioning follows the SnapSmack desktop-family `0.7.x` convention;
 `bump_version.py` adds one patch for subsequent builds.
 
+## 0.7.5 — 2026-08-31
+
+### Changed
+- Monitor only the scheduled crons every SnapSmack site actually runs — **fediverse
+  delivery, RSS blogroll fetch, version/update check**. Removed **Backups** and
+  **SMACKBACK** from the job catalogue: backups are the SUYB desktop tool (no backup
+  cron exists) and SMACKBACK rides `cron-version-check.php`, so both produced false
+  red/grey rows. Backup freshness is still in the heartbeat (`last_backup_at`) if a
+  separate, non-cron indicator is wanted later.
+- Removed the backup/smackback honest-degradation fallbacks; fixed the fediverse
+  fallback to read `fediverse_enabled` (was the stale `smackverse_enabled`).
+- Pairs with SnapSmack 0.7.595D, whose `multisite/heartbeat` ships the matching
+  `{fediverse, rss_fetch, version_check}` jobs block.
+
+---
+
 ## 0.7.4 — 2026-08-31
 
 ### Changed
