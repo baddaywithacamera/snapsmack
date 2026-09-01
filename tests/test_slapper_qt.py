@@ -27,10 +27,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(HUB), "_shared"))
 from PIL import Image, ImageChops                        # noqa: E402
 import editor_engine                                     # noqa: E402
 from PySide6.QtWidgets import QApplication, QPushButton  # noqa: E402
-from PySide6.QtCore import QDir, QThreadPool             # noqa: E402
+from PySide6.QtCore import QDir, QThreadPool, QRectF     # noqa: E402
 from PySide6.QtTest import QTest                         # noqa: E402
 from slapper_qt import theme                             # noqa: E402
-from slapper_qt.editor_window import EditorWindow        # noqa: E402
+from slapper_qt.editor_window import EditorWindow, _default_export_name  # noqa: E402
 from slapper_qt.library_window import (                  # noqa: E402
     LibraryWindow, _transfer_photo_files,
 )
@@ -662,6 +662,25 @@ def test_interactive_crop_overlay_and_explicit_apply():
     win.crop_aspect.setCurrentIndex(win.crop_aspect.findData(1.0))
     rect = win.view._crop_rect_item.rect()
     assert abs(rect.width() - rect.height()) < 1
+    win.crop_aspect.setCurrentIndex(win.crop_aspect.findData(3 / 2))
+    landscape = win.view._crop_rect_item.rect()
+    assert abs(landscape.width() / landscape.height() - 1.5) < .01
+    win._swap_crop_orientation()
+    portrait = win.view._crop_rect_item.rect()
+    assert abs(portrait.width() / portrait.height() - (2 / 3)) < .01
+    # Fine crosshair paths replace the old filled lime squares.
+    assert all(type(handle).__name__ == "QGraphicsPathItem"
+               for handle in win.view._crop_handles)
+    # Crop edges magnetise to the photograph boundary within eight screen px.
+    scene = win.view._scene.sceneRect()
+    near = QRectF(scene.left() + win.view._crop_snap_distance() / 2,
+                  scene.top() + 30, 100, 100)
+    snapped = win.view._snap_crop_rect(near, "move")
+    assert abs(snapped.left() - scene.left()) < .01
+    # A corner rotation is committed through geometry without exiting crop.
+    win._rotate_from_crop(2.5)
+    assert win.doc.geometry["rotation"] == 2.5
+    assert win.view._crop_rect_item is not None
     win._commit_crop()
     assert win.doc.geometry["crop"] is not None
     assert not win.act_crop.isChecked()
@@ -704,6 +723,14 @@ def test_geometry():
     assert win.doc.geometry["flip_x"] and win.flip_h_btn.isChecked()
     win._reset_geometry()
     assert win.doc.geometry["rotation"] == 0.0 and not win.doc.geometry["flip_x"]
+    assert win.perspective_v_row.resolution == .1
+    assert win.perspective_h_row.slider.objectName() == "PrecisionSlider"
+    win._on_perspective("perspective_vertical", 1.7)
+    assert win.doc.geometry["perspective_vertical"] == 1.7
+    win._commit_perspective("Vertical perspective")
+    win.perspective_h_row.value_label.setText("-2.4")
+    win.perspective_h_row._commit_typed_value()
+    assert abs(win.doc.geometry["perspective_horizontal"] - (-2.4)) < .001
 
 
 def test_perspective_geometry_and_project_round_trip():
@@ -726,11 +753,42 @@ def test_perspective_geometry_and_project_round_trip():
 
     project = os.path.join(TMP, "perspective.slapper")
     doc.save_project(project)
+    with __import__("zipfile").ZipFile(project) as archive:
+        names = set(archive.namelist())
+        required = {
+            "mimetype", "manifest.json", "project.json", "README.txt",
+            "metadata/original-exif.json", "metadata/provenance.json",
+            "metadata/dependencies.json", "metadata/checksums.json",
+            "schemas/project-schema.json", "previews/composite.tif",
+            "previews/thumbnail.jpg",
+        }
+        assert required <= names
+        manifest = __import__("json").loads(archive.read("manifest.json"))
+        assert manifest["format_version"] == 2
+        assert manifest["layer_order"]
+        original_entry = manifest["original"]["archive_path"]
+        assert original_entry == "original/original.jpg"
+        with open(path, "rb") as source:
+            assert archive.read(original_entry) == source.read()
+        assert manifest["original"]["sha256"] == source_hash
+        assert archive.read("README.txt").startswith(
+            b"This .slapper file is a standard ZIP/ZIP64 archive.")
+        for layer_id in manifest["layer_order"]:
+            assert f"layers/{layer_id}/layer.json" in names
+        editor_engine._validate_project_archive(project)
     loaded = editor_engine.EditorDocument.load_project(project)
     assert loaded.geometry["perspective_vertical"] == 45.0
     assert loaded.geometry["perspective_horizontal"] == -25.0
     assert loaded.geometry["perspective_corners"] == doc.geometry["perspective_corners"]
     assert ImageChops.difference(doc.render(), loaded.render()).getbbox() is None
+    portable_project = os.path.join(TMP, "portable.slapper")
+    portable_source = _image("portable-source.tif", (90, 60))
+    portable = editor_engine.EditorDocument(portable_source)
+    portable.save_project(portable_project)
+    original_hash = editor_engine.photo_manager.content_hash(portable_source)
+    os.remove(portable_source)
+    reopened = editor_engine.EditorDocument.load_project(portable_project)
+    assert editor_engine.photo_manager.content_hash(reopened.source_path) == original_hash
     recipe_target = editor_engine.EditorDocument(path)
     recipe_target.apply_recipe(doc.recipe())
     assert recipe_target.geometry["perspective_vertical"] == 45.0
@@ -739,6 +797,10 @@ def test_perspective_geometry_and_project_round_trip():
 
     opened = EditorWindow()
     assert opened.open_project_path(project)
+    opened.doc.project_path = os.path.join(
+        TMP, "LDS Chapel at Dusk, Maplewood Drive, Strathmore, AB, 2026-08-28.slapper")
+    assert _default_export_name(opened.doc) == (
+        "LDS Chapel at Dusk, Maplewood Drive, Strathmore, AB, 2026-08-28.jpg")
     assert opened.doc.geometry["perspective_vertical"] == 45.0
 
     win = _editor(path)
@@ -1084,6 +1146,12 @@ def test_vignette_feather_and_grain_darken():
     soft = editor_engine.apply_adjustments(base, {"vignette": -60, "vignette_feather": 95})
     hard = editor_engine.apply_adjustments(base, {"vignette": -60, "vignette_feather": 3})
     assert list(soft.getdata()) != list(hard.getdata())
+    compact = editor_engine.apply_adjustments(
+        base, {"vignette": -60, "vignette_size": 0, "vignette_feather": 20})
+    broad = editor_engine.apply_adjustments(
+        base, {"vignette": -60, "vignette_size": 100, "vignette_feather": 20})
+    # A broader clear centre leaves an off-centre sample brighter.
+    assert sum(broad.getpixel((25, 45))) > sum(compact.getpixel((25, 45)))
     # darken-only grain never brightens the photo (soft-light grain can)
     darkened = editor_engine.apply_adjustments(base, {"grain": 80, "grain_darken": True})
     mean = sum(sum(p) for p in darkened.getdata()) / (120 * 90 * 3)

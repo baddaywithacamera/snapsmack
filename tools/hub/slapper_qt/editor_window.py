@@ -69,6 +69,7 @@ GROUPS = [
         ("grain", "Grain", -100, 100, 1, 0),
         ("texture", "Texture", -100, 100, 1, 0),
         ("vignette", "Vignette", -100, 100, 1, 0),
+        ("vignette_size", "Vignette Size", 0, 100, 1, 50),
         ("vignette_feather", "Vignette Feather", 0, 100, 1, 50),
     ]),
     ("LEVELS", [
@@ -80,6 +81,15 @@ GROUPS = [
 
 IMAGE_FILTER = ("Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp);;"
                 "All files (*.*)")
+
+
+def _default_export_name(document):
+    """Use the saved project title as the export title when one exists."""
+    project_path = str(document.project_path or "")
+    if project_path.lower().endswith(".slapper"):
+        return os.path.splitext(os.path.basename(project_path))[0] + ".jpg"
+    source = os.path.splitext(os.path.basename(document.source_path))[0]
+    return source + "_edited.jpg"
 
 # Normal mode (Picasa/Snapseed-simple) shows a curated subset; Advanced shows
 # everything. These name what stays visible in Normal.
@@ -111,6 +121,7 @@ class EditorWindow(QMainWindow):
         self._build_toolbar()
         self._build_canvas()
         self._build_rail()
+        self.view.crop_rotation_changed.connect(self._rotate_from_crop)
 
         self.status = self.statusBar()
         self.status.showMessage("Open a photograph to begin.")
@@ -118,8 +129,17 @@ class EditorWindow(QMainWindow):
         # Debounce live renders so a slider drag doesn't render on every pixel.
         self._render_timer = QTimer(self)
         self._render_timer.setSingleShot(True)
-        self._render_timer.setInterval(45)
-        self._render_timer.timeout.connect(self._render_preview)
+        self._render_timer.setInterval(75)
+        self._render_timer.timeout.connect(self._render_drag_preview)
+
+        # Perspective warps are substantially dearer than tonal adjustments.
+        # During a drag use a deliberately smaller proxy, then replace it with
+        # the normal crisp Fit render on release.
+        self._perspective_render_timer = QTimer(self)
+        self._perspective_render_timer.setSingleShot(True)
+        self._perspective_render_timer.setInterval(70)
+        self._perspective_render_timer.timeout.connect(
+            self._render_perspective_preview)
 
         # Opening from Windows happens before the window receives its final
         # layout. The first proxy is therefore intentionally cheap; once the
@@ -435,6 +455,13 @@ class EditorWindow(QMainWindow):
         self.crop_aspect.setToolTip("Lock the crop frame to a common aspect ratio")
         self.crop_aspect.currentIndexChanged.connect(self._on_crop_aspect)
         crop_layout.addWidget(self.crop_aspect)
+        self.crop_orientation_btn = QPushButton("↕ PORTRAIT")
+        self.crop_orientation_btn.setObjectName("LayerOrderBtn")
+        self.crop_orientation_btn.setCursor(Qt.PointingHandCursor)
+        self.crop_orientation_btn.setToolTip(
+            "Swap crop orientation (for example 3:2 ↔ 2:3)")
+        self.crop_orientation_btn.clicked.connect(self._swap_crop_orientation)
+        crop_layout.addWidget(self.crop_orientation_btn)
         self.crop_apply_btn = QPushButton("APPLY CROP")
         self.crop_apply_btn.setObjectName("LayerAddBtn")
         self.crop_apply_btn.setCursor(Qt.PointingHandCursor)
@@ -446,6 +473,7 @@ class EditorWindow(QMainWindow):
         crop_layout.addWidget(self.crop_cancel_btn)
         self._crop_controls_action = QWidgetAction(self)
         self._crop_controls_action.setDefaultWidget(crop_controls)
+        self._crop_aspect_inverted = False
 
         # Toolbar actions hidden in Normal mode (Advanced-only).
         self._advanced_actions = [
@@ -775,13 +803,15 @@ class EditorWindow(QMainWindow):
         layout.addWidget(self.rotation_row)
 
         self.perspective_v_row = SliderRow(
-            "perspective_vertical", "Vertical perspective", -100, 100, 1, 0)
+            "perspective_vertical", "Vertical", -100, 100, .1, 0)
         self.perspective_h_row = SliderRow(
-            "perspective_horizontal", "Horizontal perspective", -100, 100, 1, 0)
+            "perspective_horizontal", "Horizontal", -100, 100, .1, 0)
         for row, label in ((self.perspective_v_row, "Vertical perspective"),
                            (self.perspective_h_row, "Horizontal perspective")):
+            row.slider.setObjectName("PrecisionSlider")
             row.changed.connect(self._on_perspective)
-            row.committed.connect(lambda _key, text=label: self._commit_geometry(text))
+            row.committed.connect(
+                lambda _key, text=label: self._commit_perspective(text))
             layout.addWidget(row)
 
         perspective_buttons = QHBoxLayout()
@@ -831,7 +861,25 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return
         self.doc.geometry[key] = float(value)
-        self._schedule_render()
+        self._perspective_render_timer.start()
+
+    def _render_perspective_preview(self):
+        if not self.doc:
+            return
+        target = self.view.viewport_target()
+        scale = min(1.0, 900.0 / max(target[0], 1),
+                    700.0 / max(target[1], 1))
+        proxy = (max(320, int(target[0] * scale)),
+                 max(320, int(target[1] * scale)))
+        self.view.set_pixmap(render_pixmap(self.doc, max_size=proxy), keep_view=True)
+
+    def _commit_perspective(self, label):
+        if not self.doc:
+            return
+        self._perspective_render_timer.stop()
+        self.doc.record(label)
+        self._render_preview(keep_view=False)
+        self._update_title()
 
     def _toggle_free_perspective(self, enabled):
         corners = (self.doc.geometry.get("perspective_corners") if self.doc else None)
@@ -1345,7 +1393,40 @@ class EditorWindow(QMainWindow):
             pixmap = self.view._item.pixmap()
             value = (pixmap.width() / pixmap.height()
                      if pixmap and pixmap.height() else None)
+        if value and self._crop_aspect_inverted:
+            value = 1.0 / float(value)
         self.view.set_crop_aspect(value)
+        self._sync_crop_orientation_button(value)
+
+    def _swap_crop_orientation(self):
+        value = self.crop_aspect.itemData(self.crop_aspect.currentIndex())
+        if value is None:
+            return
+        self._crop_aspect_inverted = not self._crop_aspect_inverted
+        self._on_crop_aspect(self.crop_aspect.currentIndex())
+
+    def _sync_crop_orientation_button(self, ratio):
+        enabled = ratio is not None
+        self.crop_orientation_btn.setEnabled(enabled)
+        if enabled:
+            self.crop_orientation_btn.setText(
+                "↕ PORTRAIT" if float(ratio) >= 1.0 else "↔ LANDSCAPE")
+        else:
+            self.crop_orientation_btn.setText("SWAP")
+
+    def _rotate_from_crop(self, delta):
+        """Commit a corner-drag straighten while preserving the crop frame."""
+        if not self.doc:
+            return
+        crop = self.view.crop_rect_normalized()
+        self.doc.geometry["rotation"] = round(
+            float(self.doc.geometry.get("rotation", 0.0)) + float(delta), 3)
+        self.doc.record("Rotate crop")
+        self.rotation_row.set_value(self.doc.geometry["rotation"])
+        self._render_preview(keep_view=False)
+        self.view.set_crop_mode(True, crop)
+        self._on_crop_aspect(self.crop_aspect.currentIndex())
+        self._update_title()
 
     def _commit_crop(self):
         rect = self.view.crop_rect_normalized()
@@ -1968,7 +2049,9 @@ class EditorWindow(QMainWindow):
     def _on_commit(self, key):
         if not self.doc:
             return
+        self._render_timer.stop()
         self.doc.record(f"Adjust {key.replace('_', ' ')}")
+        self._render_preview(keep_view=False)
         self._update_title()
 
     def _on_bw(self, checked):
@@ -2277,12 +2360,12 @@ class EditorWindow(QMainWindow):
     def export_image(self):
         if not self.doc:
             return
-        base = os.path.splitext(os.path.basename(self.doc.source_path))[0]
+        default_name = _default_export_name(self.doc)
         from . import prefs
         settings = prefs.load()
         export_dir = settings.get("exports_folder", "")
-        suggested = (os.path.join(export_dir, f"{base}_edited.jpg")
-                     if export_dir else f"{base}_edited.jpg")
+        suggested = (os.path.join(export_dir, default_name)
+                     if export_dir else default_name)
         path, selected_filter = QFileDialog.getSaveFileName(
             self, "Export copy", suggested,
             "JPEG — flattened (*.jpg);;PNG — flattened (*.png);;"
@@ -2363,6 +2446,17 @@ class EditorWindow(QMainWindow):
     # --- Rendering ----------------------------------------------------------
     def _schedule_render(self):
         self._render_timer.start()
+
+    def _render_drag_preview(self):
+        """Fast proxy used by all continuously dragged controls."""
+        if not self.doc:
+            return
+        target = self.view.viewport_target()
+        scale = min(1.0, 960.0 / max(target[0], 1),
+                    720.0 / max(target[1], 1))
+        proxy = (max(320, int(target[0] * scale)),
+                 max(320, int(target[1] * scale)))
+        self.view.set_pixmap(render_pixmap(self.doc, max_size=proxy), keep_view=True)
 
     def _queue_fit_resolution_refresh(self):
         if self.doc and not self._zoom_actual:
