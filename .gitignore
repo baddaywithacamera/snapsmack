@@ -228,3 +228,7 @@ SNAPSMACK-By-The-Numbers-August-2026.docx
 # a skin before it ships (the standing rule: never ship layout on reasoning
 # alone). Disposable output, never source.
 _harness/
+
+# COLD SNAP runtime export-derivative cache (size-capped/sharpened upload copies).
+# Regenerated on demand next to the module/exe; never source.
+tools/coldsnap/export_cache/
