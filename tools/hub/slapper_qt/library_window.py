@@ -367,7 +367,7 @@ class LibraryWindow(QMainWindow):
         self.list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.list.setSpacing(10)
         self.list.setUniformItemSizes(True)
-        self.list.setIconSize(QSize(160, 160))
+        self._set_thumbnail_size(160)
         self.list.setWordWrap(True)
         grid_font = self.list.font()   # filenames under each thumb were too small
         grid_font.setPointSize(max(grid_font.pointSize() + 2, 11))
@@ -400,6 +400,13 @@ class LibraryWindow(QMainWindow):
 
         self.status = self.statusBar()
         self.status.showMessage("Choose a folder to browse your photographs.")
+        remembered = str(settings.get("library_folder", "") or "")
+        starting_folder = remembered if os.path.isdir(remembered) else initial_root
+        if starting_folder and os.path.isdir(starting_folder):
+            self.load_folder(starting_folder)
+            index = self.tree_model.setRootPath(starting_folder)
+            if index.isValid():
+                self.tree.setRootIndex(index)
 
     # --- Toolbar ------------------------------------------------------------
     def _build_toolbar(self):
@@ -603,8 +610,7 @@ class LibraryWindow(QMainWindow):
         self.size_slider.setRange(96, 240)
         self.size_slider.setValue(160)
         self.size_slider.setFixedWidth(140)
-        self.size_slider.valueChanged.connect(
-            lambda v: self.list.setIconSize(QSize(v, v)))
+        self.size_slider.valueChanged.connect(self._set_thumbnail_size)
         size_layout.addWidget(self.size_slider)
         view_bar.addWidget(size_wrap)
 
@@ -623,6 +629,12 @@ class LibraryWindow(QMainWindow):
         self.folder_size_slider.valueChanged.connect(self._folder_font_changed)
         folder_size_layout.addWidget(self.folder_size_slider)
         view_bar.addWidget(folder_size_wrap)
+
+    def _set_thumbnail_size(self, size):
+        """Reserve a real caption row even when the image is portrait/square."""
+        size = int(size)
+        self.list.setIconSize(QSize(size, size))
+        self.list.setGridSize(QSize(size + 28, size + 76))
 
     def _build_catalog_dock(self):
         dock = QDockWidget("PHOTO INFO", self)
@@ -1279,6 +1291,11 @@ class LibraryWindow(QMainWindow):
 
     def load_folder(self, folder):
         folder = os.path.abspath(folder)
+        from . import prefs
+        values = prefs.load()
+        if values.get("library_folder") != folder:
+            values["library_folder"] = folder
+            prefs.save(values)
         self._virtual_source = None
         recursive = self.act_subfolders.isChecked()
         self._folder = folder

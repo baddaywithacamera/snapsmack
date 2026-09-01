@@ -9,6 +9,164 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.596 "LIVE WIRE" — 2026-08-31
+- **SNAP SLAPPER continuity restoration.** Restores the verified later-Qt
+  behaviour without replacing unrelated 0.7.595D work: editor and library
+  window-state continuity, duplicate-editor prevention, a full-resolution
+  initial Fit render, filename space beneath every thumbnail, remembered
+  library/project/export folders, and the complete Normal-mode effects set.
+- **Fix: colour controls use the midnight-lime chrome again.** Colour-picker
+  buttons are black with lime outlines and text; only their small swatch chip
+  displays the chosen colour, so the pastel full-width rectangles stay gone.
+- **Fix: the standalone SNAP SLAPPER package is the Qt application.** The build
+  recipe now packages the PySide6 editor and its later feature modules instead
+  of the obsolete pre-Qt entry point. The packaged release gate opens a real
+  image, exports a layered PSD, verifies completion, and exits cleanly.
+- **Continuity safeguard:** records the recovered behaviour, source checkpoint,
+  tests, installed-build hash, and rollback path under `_continuity/` so a
+  future targeted change cannot silently discard established features.
+
+## 0.7.595 "LIVE WIRE" — 2026-08-31
+- **Fix: solo posts no longer fail with a blank "MISSION FAILURE" on sites whose DB
+  is missing the per-image crop columns.** On a site whose schema never synced,
+  `snap_post_images` lacked `img_crop_mode` / `img_focus_x` / `img_focus_y` / `img_zoom`,
+  so the solo-post INSERT fatally errored ("Unknown column 'img_crop_mode'") and the
+  AJAX returned an empty 500 — the blank failure alert. The solo composer now adds those
+  columns defensively before inserting (same belt-and-suspenders the gram composer already
+  had). Immediate unblock without deploying: run Boring Ass Stuff → Database Schema sync.
+- **Fix: 4K photo uploads no longer rejected — PHP limits set via `.user.ini`.** On
+  php-fpm / Cloudflare-tunnel hosts, the `php_value upload_max_filesize 64M` line in
+  `.htaccess` is silently ignored, so the host's low default (~2–8M) rejected a 4K photo
+  (~4MB). The updater now self-heals a root `.user.ini` (honored by php-fpm/CGI) with
+  `upload_max_filesize`/`post_max_size` = 64M, `memory_limit` = 128M — so deploying this
+  fixes every site automatically, no per-site or host-panel changes. Fresh installs write
+  it too. (If the doc root isn't writable, set those limits in your host's PHP settings.)
+- **New: fleet cron driver (`multisite/run-crons`).** A full-key endpoint that runs a
+  site's due crons on demand by invoking the same web-cron tick that fires on page loads.
+  It lets CRONOMETER (which already polls all 24 sites) keep the whole fleet's jobs
+  running even on sites with no visitor traffic and no system crontab — so just having
+  CRONOMETER open drives the fleet. Idempotent and self-throttled: a hit that isn't due
+  does nothing. Pairs with CRONOMETER 0.7.6.
+- **Fix: RSS blogroll fetch now runs without a system cron — like fediverse already
+  does.** On hosts with no crontab (managed / tunnel hosting), the RSS cron had no way to
+  fire, so it showed "never" on every site. It now rides the existing web-cron
+  (`core/fediverse-webcron.php`, called on page loads): when the hourly RSS run is due it
+  runs after the response is flushed, so no visitor waits and no setup is needed — the same
+  self-healing path fediverse delivery uses. A DB lock stops two page loads running it at
+  once. `cron-rss-fetch.php` gained a guarded web-cron entry (still refuses plain public
+  requests) and stays silent (no stray output) when run this way.
+- **New: Cron & Jobs admin page — schedule and run your crons from the CMS.** Boring Ass
+  Stuff → Cron & Jobs. Until now each cron's register control lived on a different page
+  (fediverse on the Fediverse admin, RSS on Admin, version-check on Updates), so it was
+  easy to leave RSS or fediverse unregistered and never notice. This page unifies all
+  three real crons (fediverse delivery, RSS blogroll fetch, version/update check) in one
+  place: for each it shows the last run and whether it's registered, and gives **RUN NOW**,
+  **REGISTER** (install it in the server crontab — the fix for a job that never runs), and
+  **UNREGISTER**. Includes a **WEB CRON** fallback note for hosts without crontab access.
+  Uses the existing `core/cron-register.php` helpers.
+- **Fix: fleet heartbeat's cron-health block reports only real crons.** The
+  `multisite/heartbeat` `jobs` block listed **Backups** and **SMACKBACK** as if they were
+  scheduled jobs, so the CRONOMETER fleet board showed false red/grey rows for every site.
+  Backups are run by the SUYB desktop tool (there is no backup cron) and SMACKBACK rides
+  the version-check cron. The block now carries only the crons every site runs — **fediverse
+  delivery, RSS fetch, version/update check** — each from its real `snap_settings` last-run
+  stamp. Backup freshness stays available via `last_backup_at`/`last_backup_status`.
+- **Clarify: Fediverse Portal profile box says where the avatar and bio come from.** The
+  PROFILE section sets only the fediverse-specific fields (display-name override, website,
+  pronouns); the avatar is reused from Pimp Your Ride → Smooth Your Skin and the bio from
+  the site description in Settings. The box now says so, so it no longer looks like the
+  avatar/bio are duplicated or missing. Copy-only.
+- **Help: Site Description entry now lists everywhere the bio is used** — on-site
+  profile/landing, fediverse & Pixelfed account bio, RSS description, SEO meta fallback,
+  and the photoblogs directory listing — so it's clear it's written once, not duplicated.
+
+## 0.7.594 "LIVE WIRE" — 2026-08-31
+- **License: SNAPSMACK now ships under the SMACK PUBLIC LICENSE (SPL) 2.2.** The
+  bundled license text (`licenses/SNAPSMACK-LICENSE.txt`, and the copy under
+  `projects/snapsmack-ca/`) is updated from 2.1 to 2.2, and the README and the
+  snapsmack.ca license blurb now reference 2.2. THE THOMAS CLAUSE and the AI
+  co-authorship provenance chain are unchanged.
+- **Fix: Relay Status stops showing false errors on the relay host itself.** On a
+  blog that IS the network relay (`distribution_profile = smackcast`), the page was
+  asking spoke questions — "is this blog pointed at a relay / joined to one?" — which
+  a relay can never answer yes to, so it showed "NO RELAY IS CONFIGURED" and "not
+  joined" in red even though the relay was healthy. The page now detects the relay
+  host and shows the correct state: "This blog IS the SnapSmack network relay. Other
+  blogs join it — it does not join itself." Spoke blogs are unaffected.
+
+## 0.7.593 "LIVE WIRE" — 2026-08-31
+- **Fix: blogs can now actually join the network relay.** When a blog had no relay
+  address set (the normal state), it fell back to a built-in default that pointed at
+  `photoblogs.fyi/actor` — the photoblogs.fyi blog's own homepage, which has no inbox.
+  So the JOIN button, and every Relay Status check, hit a dead page: "responded but not
+  an ActivityPub actor (no inbox)", and the join Follow never left. The default now
+  points at the real relay actor, `relay.photoblogs.fyi/actor`, so joining works out of
+  the box for every blog that hasn't set a custom relay URL.
+
+## 0.7.592 "LIVE WIRE" — 2026-08-31
+- **New: Relay Status page (Fediverse → Relay Status).** A read-only, one-glance
+  panel that tells you whether this blog is actually on the SnapSmack network relay,
+  instead of trusting the optimistic JOIN button. It shows four things: whether the
+  relay is reachable from this server (the exact check that catches a blog that can
+  silently not reach the relay, so a join or post never actually leaves), whether
+  the join is really confirmed by the relay (not just locally flagged), the last
+  activities this blog tried to send to the relay (a stuck join Follow or post shows
+  up here with its error), and how many posts have arrived back from the network.
+  Every value is this blog's own data or a live probe of the relay actor — no
+  cross-database access to the relay's store.
+- **Fix: your real fediverse @handle can no longer be overwritten by the blog name.**
+  On a blog where the smackverse→fediverse rename hadn't run, the handle you chose was
+  stranded under the old name, and opening the Fediverse admin would quietly lock in a
+  handle derived from your Site Name instead (e.g. answering as `@photofri_day` when you
+  had chosen `@participate`). The handle lookup now prefers your stranded real handle
+  over the site-name fallback, so it is served — and frozen — correctly even before the
+  rename migration runs. No follower is stranded; blogs already answering correctly are
+  unaffected.
+- Also carries the latest SNAP SLAPPER / THE HUB desktop-tool and snapsmack.ca site
+  work (versioned independently of the CMS).
+
+## 0.7.590 "LIVE WIRE" fix — 2026-08-30
+
+- **Fix: PULL CURRENT 500'd the stats page.** The new button's heartbeat pull tried
+  to store a spoke's backup status (`clean`) straight into a column that only allows
+  `ok`/`failed`/`unknown`, crashing the page under strict SQL. The status is now
+  normalised before saving (same mapping the single-spoke ping already used), so
+  PULL CURRENT completes cleanly.
+
+## 0.7.589 "LIVE WIRE" — 2026-08-30
+
+- **New PULL CURRENT button on Fleet Stats.** The fediverse and fleet numbers on
+  the stats rollup are whatever each blog last reported on its own schedule, so
+  they can lag reality. PULL CURRENT (top nav, next to PUSH IT) fetches a live
+  heartbeat from every active blog on the spot and refreshes the totals — no more
+  waiting for the next beat to see the true numbers.
+
+## 0.7.588 "NAME TAG" — 2026-08-30
+
+- **Your fediverse @handle is now yours to choose — the blog title never becomes it.**
+  The FEDIVERSE HANDLE box no longer previews a made-up `@photoblog@…` name when you
+  leave it empty; it shows the neutral `@…@yourdomain` until you type one. Turning
+  federation ON now requires you to pick a handle first, instead of silently minting
+  one from your Site Name (the reason craptasti.ca ended up answering as
+  `@craptasti_ca` without ever being asked).
+- **Existing federated blogs keep their followers — nothing is stranded.**
+  A blog that federated before handles were mandatory was answering under a name
+  auto-derived from its Site Name. Opening the Fediverse admin now locks that exact
+  name in as your explicit, editable handle, so followers stay put and the name can
+  no longer drift if you rename your blog. Change it deliberately from the handle box
+  (with the follower-strand warning) if you want a different one.
+
+## 0.7.587 "TOP OF THE PILE" — 2026-08-30
+
+- **New batch posts and Flickr imports now land at the top of the archive.**
+  They were being stamped a fixed sort position that buried them under the whole
+  backlog — worst on theschoolofhardnocks after the Flickr import. New images now
+  sort by recency like every other fresh post; no more manual re-ordering.
+- **INSTANT CAMERA: the "Drop Shadow on Image → None" setting now actually works.**
+  The tabletop drop shadow was hardcoded and ignored the control, leaving a shadow
+  line at the bottom of every print on the landing grid. It now obeys the setting
+  (None = no shadow; levels 1–3 as before). Blogs left at None render with no tile
+  shadow — set the control to 1–3 to keep one.
 
 ## 0.7.586 "STRAIGHT LINES" — 2026-08-30
 

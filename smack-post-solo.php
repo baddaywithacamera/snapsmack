@@ -655,6 +655,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         )->execute([$post_slug, $desc, $status, $custom_date,
                     (int)$allow_comments, (int)$allow_download, $download_url]);
         $new_post_id = (int)$pdo->lastInsertId();
+
+        // Defensive: ensure the per-image crop/focus/zoom columns exist before we
+        // INSERT them. Canonical carries them and the schema sync adds them on
+        // update, but a site whose DB never synced is missing them and the INSERT
+        // below fatals with "Unknown column 'img_crop_mode'" — the blank
+        // "MISSION FAILURE" on solo posts. Same belt-and-suspenders the gram
+        // composer already does. Pure structural add, no-op once present.
+        try {
+            $pdo->exec("ALTER TABLE snap_post_images
+                        ADD COLUMN IF NOT EXISTS img_crop_mode
+                        ENUM('fit','fill') NOT NULL DEFAULT 'fit' AFTER img_shadow");
+        } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
+        try {
+            $pdo->exec("ALTER TABLE snap_post_images
+                        ADD COLUMN IF NOT EXISTS img_focus_x TINYINT UNSIGNED NOT NULL DEFAULT 50,
+                        ADD COLUMN IF NOT EXISTS img_focus_y TINYINT UNSIGNED NOT NULL DEFAULT 50,
+                        ADD COLUMN IF NOT EXISTS img_zoom    SMALLINT UNSIGNED NOT NULL DEFAULT 100");
+        } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
+
         $pdo->prepare(
             "INSERT INTO snap_post_images
                 (post_id, image_id, sort_position, is_cover,
