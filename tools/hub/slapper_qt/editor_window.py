@@ -2168,36 +2168,45 @@ class EditorWindow(QMainWindow):
         hint.setWordWrap(True)
         col.addWidget(hint)
 
-        self.split_shadow_btn = QPushButton("Shadow colour")
-        self.split_shadow_btn.setObjectName("SwatchBtn")
-        self.split_shadow_btn.setCursor(Qt.PointingHandCursor)
-        self.split_shadow_btn.clicked.connect(
-            lambda: self._pick_split_colour("split_shadow"))
-        col.addWidget(self.split_shadow_btn)
+        def colour_row(label_text, key):
+            row = QWidget()
+            layout = QHBoxLayout(row)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(8)
+            label = QLabel(label_text)
+            label.setObjectName("ControlName")
+            button = QPushButton()
+            button.setObjectName("ToneSwatch")
+            button.setFixedSize(32, 24)
+            button.setCursor(Qt.PointingHandCursor)
+            button.setToolTip(f"Choose {label_text.lower()}")
+            button.setAccessibleName(f"Choose {label_text.lower()}")
+            button.clicked.connect(lambda _checked=False, k=key:
+                                   self._pick_split_colour(k))
+            layout.addWidget(label)
+            layout.addStretch(1)
+            layout.addWidget(button)
+            col.addWidget(row)
+            return label, button
+
+        self.split_shadow_label, self.split_shadow_btn = colour_row(
+            "Shadow colour", "split_shadow")
         shadow_amt = SliderRow("split_shadow_amount", "Shadows", 0, 100, 1, 0)
         shadow_amt.changed.connect(self._on_adjust)
         shadow_amt.committed.connect(self._on_commit)
         self.rows["split_shadow_amount"] = shadow_amt
         col.addWidget(shadow_amt)
 
-        self.split_mid_btn = QPushButton("Midtone colour")
-        self.split_mid_btn.setObjectName("SwatchBtn")
-        self.split_mid_btn.setCursor(Qt.PointingHandCursor)
-        self.split_mid_btn.clicked.connect(
-            lambda: self._pick_split_colour("split_midtone"))
-        col.addWidget(self.split_mid_btn)
+        self.split_mid_label, self.split_mid_btn = colour_row(
+            "Midtone colour", "split_midtone")
         mid_amt = SliderRow("split_midtone_amount", "Midtones", 0, 100, 1, 0)
         mid_amt.changed.connect(self._on_adjust)
         mid_amt.committed.connect(self._on_commit)
         self.rows["split_midtone_amount"] = mid_amt
         col.addWidget(mid_amt)
 
-        self.split_hi_btn = QPushButton("Highlight colour")
-        self.split_hi_btn.setObjectName("SwatchBtn")
-        self.split_hi_btn.setCursor(Qt.PointingHandCursor)
-        self.split_hi_btn.clicked.connect(
-            lambda: self._pick_split_colour("split_highlight"))
-        col.addWidget(self.split_hi_btn)
+        self.split_hi_label, self.split_hi_btn = colour_row(
+            "Highlight colour", "split_highlight")
         hi_amt = SliderRow("split_highlight_amount", "Highlights", 0, 100, 1, 0)
         hi_amt.changed.connect(self._on_adjust)
         hi_amt.committed.connect(self._on_commit)

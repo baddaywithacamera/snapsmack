@@ -945,11 +945,16 @@ def test_window_state_colour_chrome_and_library_captions():
         feather = win.rows["vignette_feather"].name_label
         assert feather.width() >= feather.sizeHint().width()
         assert win._restore_maximized is True
-        assert win.split_shadow_btn.objectName() == "SwatchBtn"
-        assert win.split_mid_btn.objectName() == "SwatchBtn"
-        assert win.split_hi_btn.objectName() == "SwatchBtn"
+        assert win.split_shadow_btn.objectName() == "ToneSwatch"
+        assert win.split_mid_btn.objectName() == "ToneSwatch"
+        assert win.split_hi_btn.objectName() == "ToneSwatch"
+        assert win.split_shadow_btn.width() == 32
+        assert win.split_mid_btn.width() == 32
+        assert win.split_hi_btn.width() == 32
+        assert win.split_mid_label.text() == "Midtone colour"
         css = theme.stylesheet()
         assert "QPushButton#SwatchBtn" in css
+        assert "QPushButton#ToneSwatch" in css
         assert f"background: {theme.CANVAS}" in css
         assert f"color: {theme.ACCENT}" in css
         assert f"border: 1px solid {theme.ACCENT}" in css
