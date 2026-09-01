@@ -20,10 +20,10 @@ if not exist snap_slapper.spec (
     exit /b 1
 )
 
-"%BUILD_PYTHON%" -c "import tkinter as tk; root=tk.Tk(); root.withdraw(); root.destroy()"
+"%BUILD_PYTHON%" -c "from PySide6.QtWidgets import QApplication; app=QApplication([]); app.quit()"
 if errorlevel 1 (
-    echo ERROR: This Python installation does not contain a working Tk runtime.
-    echo SNAP SLAPPER cannot be packaged into a usable desktop application here.
+    echo ERROR: This Python installation does not contain a working Qt runtime.
+    echo SNAP SLAPPER Qt cannot be packaged into a usable desktop application here.
     echo Run: powershell -NoProfile -ExecutionPolicy Bypass -File bootstrap-build-runtime.ps1
     pause
     exit /b 1
