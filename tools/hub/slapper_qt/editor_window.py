@@ -616,7 +616,10 @@ class EditorWindow(QMainWindow):
         self._bw_mixer_widgets = []  # the 8 colour sliders + hint (advanced only)
         rail = QWidget()
         rail.setObjectName("Rail")
-        rail.setFixedWidth(288)
+        # The spaced control-name style makes labels such as "Vignette
+        # Feather" nearly 200 px wide. Keep a useful slider beside the full
+        # label instead of clipping names in a cramped inspector.
+        rail.setFixedWidth(400)
         layout = QVBoxLayout(rail)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)

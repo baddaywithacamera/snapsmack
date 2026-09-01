@@ -942,6 +942,8 @@ def test_window_state_colour_chrome_and_library_captions():
     prefs.save = lambda values: stored.update(values) or dict(values)
     try:
         win = EditorWindow()
+        feather = win.rows["vignette_feather"].name_label
+        assert feather.width() >= feather.sizeHint().width()
         assert win._restore_maximized is True
         assert win.split_shadow_btn.objectName() == "SwatchBtn"
         assert win.split_mid_btn.objectName() == "SwatchBtn"
