@@ -10,6 +10,18 @@
 
 # SnapSmack Changelog
 ## 0.7.598D "LIVE WIRE" — 2026-09-01
+- **Manage Archive: find and remove duplicate posts.** When the same photo has
+  been posted more than once (a re-import), Manage Archive now shows a banner
+  counting the extra copies with a **Review Duplicates** button. The review
+  screen groups each set of copies, ticks the extra ones for removal, and marks
+  the most complete copy (most categories/albums, or one with a caption) **KEEP**
+  so nothing carrying metadata is lost by accident. Removal needs your password
+  and 2FA, and a safety net always leaves at least one copy of every set — a
+  photo can never be wiped out entirely, even if every box is ticked.
+- Why this is separate from **Purge Orphaned Posts:** that tool clears empty
+  `snap_posts` shells (dead carousel/panorama records) which are invisible in the
+  grid. Duplicate solo photos live in `snap_images` and are fully visible, so the
+  orphan purge never touched them — this is the tool for those.
 - **SNAP SLAPPER roundup:** consolidates the restored Qt editor, portable
   projects, catalogue autosave, editable layer styles, complete per-colour
   Hue/Saturation/Luminance controls, and the latest library and editor fixes

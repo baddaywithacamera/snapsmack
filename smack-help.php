@@ -176,6 +176,20 @@ The separate <strong>ORIENTATION</strong> dropdown filters by Landscape, Portrai
     <li><strong>View</strong> — opens the live public page for this transmission.</li>
 </ul>
 
+<h4>Duplicate Posts</h4>
+<p>If the same photo has been posted more than once (usually a re-import), a banner
+appears at the top of Manage Archive counting the extra copies, with a
+<strong>Review Duplicates</strong> button. The review screen groups each set of copies
+together. The most complete copy — the one with the most categories/albums, or one that
+has a caption — is marked <strong>KEEP</strong> and left alone; the extras are ticked for
+removal. Adjust the ticks, then confirm with your password and 2FA. A safety net always
+leaves at least one copy of every set, so a photo can never be removed entirely even if
+every box is ticked.</p>
+<p>This is different from <strong>Purge Orphaned Posts</strong>. That tool clears empty
+post records left behind by old carousel/panorama deletes — records with no images, which
+never show in the grid. Duplicate solo photos are full, visible posts, so the orphan purge
+does not touch them; use Review Duplicates for those.</p>
+
 <h4>Pagination</h4>
 <p>Results display 15 per page. Navigate between pages using the controls at the bottom.</p>
 HTML

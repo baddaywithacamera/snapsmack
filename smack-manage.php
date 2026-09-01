@@ -85,6 +85,57 @@ function snap_manage_delete_by_image(PDO $pdo, int $image_id): void {
     }
 }
 
+/**
+ * Find sets of DUPLICATE solo images (photoblog units — post_id IS NULL).
+ * A set is grouped by the strongest available identity, in priority order:
+ *   1. img_checksum    — SHA-256 of the file; byte-identical = certain duplicate.
+ *   2. img_source_file — the original upload filename; same source re-imported.
+ *   3. img_title + img_date — the same titled capture posted more than once.
+ * An image with none of those (no checksum, no source, no title) can't be safely
+ * matched and is NEVER treated as a duplicate. Returns only sets of 2+, each with
+ * a suggested "keeper" (the most complete copy — most categories/albums, then a
+ * caption, then the oldest), so nothing carrying metadata is lost by default.
+ *
+ * @return array<int,array{key:string,keeper_id:int,items:array}>
+ */
+function snap_manage_duplicate_groups(PDO $pdo): array {
+    $rows = $pdo->query(
+        "SELECT i.id, i.img_title, i.img_slug, i.img_date, i.img_file,
+                i.img_width, i.img_height, i.img_description,
+                CASE
+                  WHEN i.img_checksum    IS NOT NULL AND i.img_checksum    <> '' THEN CONCAT('c:', i.img_checksum)
+                  WHEN i.img_source_file IS NOT NULL AND i.img_source_file <> '' THEN CONCAT('s:', i.img_source_file)
+                  WHEN i.img_title <> '' THEN CONCAT('t:', i.img_title, '|', i.img_date)
+                  ELSE CONCAT('id:', i.id)
+                END AS dup_key,
+                (SELECT COUNT(*) FROM snap_image_cat_map   m WHERE m.image_id = i.id) AS cat_n,
+                (SELECT COUNT(*) FROM snap_image_album_map a WHERE a.image_id = i.id) AS alb_n
+         FROM snap_images i
+         WHERE i.post_id IS NULL
+         ORDER BY dup_key, i.id ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    $by_key = [];
+    foreach ($rows as $r) {
+        if (strncmp((string)$r['dup_key'], 'id:', 3) === 0) continue;  // ungroupable — never a dup
+        $by_key[$r['dup_key']][] = $r;
+    }
+
+    $groups = [];
+    foreach ($by_key as $k => $items) {
+        if (count($items) < 2) continue;
+        $keeper = $items[0];
+        $best   = -1;
+        foreach ($items as $it) {
+            $score = ((int)$it['cat_n'] + (int)$it['alb_n']) * 2
+                   + (trim((string)$it['img_description']) !== '' ? 1 : 0);
+            if ($score > $best) { $best = $score; $keeper = $it; }
+        }
+        $groups[] = ['key' => (string)$k, 'keeper_id' => (int)$keeper['id'], 'items' => $items];
+    }
+    return $groups;
+}
+
 // --- BATCH DELETE HANDLER ---
 // Routes each selected tile through the post-aware cascade so nothing is orphaned.
 if (isset($_POST['action']) && $_POST['action'] === 'batch_delete') {
@@ -133,6 +184,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['purge_orphans'])) {
         $pdo->prepare("DELETE FROM snap_posts WHERE id = ?")->execute([$pid]);
     }
     header('Location: smack-manage.php?msg=orphans_purged&count=' . count($orphans));
+    exit;
+}
+
+// --- REMOVE DUPLICATE POSTS (DESTRUCTIVE — password + 2FA) ---
+// Deletes the ticked copies of duplicate solo posts. A safety net recomputes the
+// sets server-side and NEVER lets the LAST surviving copy of a set be deleted, so
+// a duplicated photo is thinned to one — it can never be wiped out entirely, even
+// if every box in a set was ticked.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['remove_dupes'])) {
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) {
+        header('Location: smack-manage.php?find_dupes=1&purge_err=' . urlencode($ra['error']));
+        exit;
+    }
+    $requested = array_flip(array_filter(array_map('intval', $_POST['dup_remove'] ?? [])));
+    $groups    = snap_manage_duplicate_groups($pdo);
+    $to_delete = [];
+    $protected = 0;
+    foreach ($groups as $g) {
+        $ids = array_map(static fn($it) => (int)$it['id'], $g['items']);
+        $rm  = array_values(array_filter($ids, static fn($id) => isset($requested[$id])));
+        if (!$rm) continue;
+        // Never delete every copy in a set — always leave one survivor (the keeper
+        // if it was ticked, otherwise the first ticked copy).
+        if (count($rm) >= count($ids)) {
+            $survivor = in_array($g['keeper_id'], $rm, true) ? $g['keeper_id'] : $rm[0];
+            $rm = array_values(array_filter($rm, static fn($id) => $id !== $survivor));
+            $protected++;
+        }
+        foreach ($rm as $id) $to_delete[$id] = true;
+    }
+    foreach (array_keys($to_delete) as $id) {
+        snap_manage_delete_by_image($pdo, (int)$id);
+    }
+    $q = 'msg=dupes_removed&count=' . count($to_delete);
+    if ($protected) $q .= '&protected=' . $protected;
+    header('Location: smack-manage.php?' . $q);
     exit;
 }
 
@@ -434,6 +522,12 @@ if (!empty($_GET['msg'])) {
     } elseif ($_GET['msg'] === 'orphans_purged') {
         $n = (int)($_GET['count'] ?? 0);
         $success_msg = "$n orphaned post" . ($n !== 1 ? 's' : '') . " purged — the database is clean.";
+    } elseif ($_GET['msg'] === 'dupes_removed') {
+        $n = (int)($_GET['count'] ?? 0);
+        $success_msg = "$n duplicate post" . ($n !== 1 ? 's' : '') . " removed.";
+        if (!empty($_GET['protected'])) {
+            $success_msg .= ' ' . (int)$_GET['protected'] . ' set(s) kept one copy, so nothing was fully deleted.';
+        }
     }
 }
 if (!empty($_GET['purge_err'])) {
@@ -449,6 +543,27 @@ $orphan_count = (int)$pdo->query(
      WHERE pi.id IS NULL
        AND p.post_type <> 'longform'"
 )->fetchColumn();
+
+// Duplicate solo posts — the same photo posted more than once (re-imports). The
+// cheap count drives a banner on the normal page; the full grouped review only
+// runs when the owner opens it (?find_dupes=1). The CASE mirrors
+// snap_manage_duplicate_groups() exactly so the banner and the review agree.
+$dupe_extra_count = (int)$pdo->query(
+    "SELECT COALESCE(SUM(cnt - 1), 0) FROM (
+        SELECT COUNT(*) AS cnt
+        FROM snap_images
+        WHERE post_id IS NULL
+        GROUP BY CASE
+          WHEN img_checksum    IS NOT NULL AND img_checksum    <> '' THEN CONCAT('c:', img_checksum)
+          WHEN img_source_file IS NOT NULL AND img_source_file <> '' THEN CONCAT('s:', img_source_file)
+          WHEN img_title <> '' THEN CONCAT('t:', img_title, '|', img_date)
+          ELSE CONCAT('id:', id)
+        END
+        HAVING COUNT(*) > 1
+     ) d"
+)->fetchColumn();
+$show_dupes  = isset($_GET['find_dupes']);
+$dupe_groups = $show_dupes ? snap_manage_duplicate_groups($pdo) : [];
 
 $page_title = "Manage Archive";
 include 'core/admin-header.php';
@@ -490,6 +605,84 @@ include 'core/sidebar.php';
                    autocomplete="one-time-code" maxlength="10" required style="width:110px;">
             <button type="submit" class="btn-smack btn-danger">Purge Orphaned Posts</button>
         </form>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($dupe_extra_count > 0 && !$show_dupes): ?>
+    <div class="box dup-banner">
+        <span>⚠ <?php echo $dupe_extra_count; ?> duplicate post<?php echo $dupe_extra_count !== 1 ? 's' : ''; ?> detected — the same photo posted more than once.</span>
+        <a href="?find_dupes=1" class="btn-smack">Review Duplicates</a>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($show_dupes): ?>
+    <div class="box dup-review">
+        <h3 class="dup-review__title">REVIEW DUPLICATES</h3>
+        <?php if (!$dupe_groups): ?>
+            <p class="dim">No duplicate posts found. <a href="smack-manage.php">Back to the archive.</a></p>
+        <?php else: ?>
+        <p class="dim dup-review__intro">
+            Each set below is the same photo posted more than once. The copy marked
+            KEEP has the most categories / albums (or a caption) and is left alone;
+            the others are ticked for removal. Adjust the ticks, then confirm with
+            your password and 2FA. At least one copy of every set is always kept, so
+            a photo can never be wiped out entirely.
+        </p>
+        <form method="POST" id="dup-form"
+              onsubmit="return confirm('Remove the ticked duplicate copies? This cannot be undone.');">
+            <?php if (function_exists('csrf_field')) csrf_field(); ?>
+            <input type="hidden" name="remove_dupes" value="1">
+            <?php foreach ($dupe_groups as $gi => $g): ?>
+            <div class="dup-group">
+                <div class="dup-group__head">Set <?php echo $gi + 1; ?> — <?php echo count($g['items']); ?> copies</div>
+                <?php foreach ($g['items'] as $it):
+                    $is_keeper = ((int)$it['id'] === $g['keeper_id']);
+                    $_af  = (string)$it['img_file'];
+                    $_api = pathinfo($_af);
+                    $_tp  = $_api['dirname'] . '/thumbs/t_' . $_api['basename'];
+                    $_src = ($_af !== '' && file_exists($_tp)) ? '/' . ltrim($_tp, '/') : '/' . ltrim($_af, '/');
+                ?>
+                <div class="recent-item dup-item<?php echo $is_keeper ? ' dup-item--keep' : ''; ?>">
+                    <label class="batch-check-wrap">
+                        <?php if ($is_keeper): ?>
+                            <span class="dup-keep-badge" title="Kept — the most complete copy">KEEP</span>
+                        <?php else: ?>
+                            <input type="checkbox" name="dup_remove[]" value="<?php echo (int)$it['id']; ?>" class="batch-cb" checked>
+                        <?php endif; ?>
+                    </label>
+                    <div class="item-details">
+                        <?php if ($_af !== ''): ?>
+                        <img src="<?php echo htmlspecialchars($_src); ?>" class="archive-thumb" alt="">
+                        <?php endif; ?>
+                        <div class="item-text">
+                            <strong><?php echo htmlspecialchars($it['img_title'] ?: '(untitled)'); ?></strong>
+                            <code class="slug-display">/<?php echo htmlspecialchars($it['img_slug'] ?? ''); ?></code>
+                            <div class="item-meta">
+                                <?php echo date("M j, Y - H:i", strtotime((string)$it['img_date'])); ?>
+                                <span class="meta-reg">[ CATS: <?php echo (int)$it['cat_n']; ?> ]</span>
+                                <span class="meta-mission">[ ALBUMS: <?php echo (int)$it['alb_n']; ?> ]</span>
+                                <?php if (trim((string)$it['img_description']) !== ''): ?>
+                                <span class="meta-collection">[ HAS CAPTION ]</span>
+                                <?php endif; ?>
+                                <a href="smack-edit.php?id=<?php echo (int)$it['id']; ?>" class="action-edit" target="_blank" rel="noopener">EDIT</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endforeach; ?>
+
+            <div class="dup-reauth">
+                <input type="password" name="reauth_password" placeholder="Password"
+                       autocomplete="current-password" required>
+                <input type="text" name="reauth_totp" placeholder="2FA code" inputmode="numeric"
+                       autocomplete="one-time-code" maxlength="10" required>
+                <button type="submit" class="btn-smack btn-danger">Remove Ticked Duplicates</button>
+                <a href="smack-manage.php" class="btn-reset">Cancel</a>
+            </div>
+        </form>
+        <?php endif; ?>
     </div>
     <?php endif; ?>
 
