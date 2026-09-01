@@ -634,6 +634,7 @@ class EditorWindow(QMainWindow):
         layout.setSpacing(0)
 
         scroll = QScrollArea()
+        self.rail_scroll = scroll
         scroll.setWidgetResizable(True)
         inner = QWidget()
         inner_layout = QVBoxLayout(inner)
@@ -1579,6 +1580,21 @@ class EditorWindow(QMainWindow):
         self._sync_controls_from_doc()
         self._update_text_panel()
         self._sync_canvas_layer_mode()
+
+    def open_active_layer_mask(self):
+        """Expose the familiar selected-layer mask workflow directly."""
+        if self._active_layer() is None:
+            return
+        self.mask_section.header.setChecked(True)
+        self._select_mask_type("brush")
+        self.rail_scroll.ensureWidgetVisible(self.mask_section)
+
+    def open_adjustment_section(self, title):
+        section = self._sections.get(title)
+        if section is None:
+            return
+        section.header.setChecked(True)
+        self.rail_scroll.ensureWidgetVisible(section)
 
     def _active_layer(self):
         if not self.doc or self.active_target == BASE:
