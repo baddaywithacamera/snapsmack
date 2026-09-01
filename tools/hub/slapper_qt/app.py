@@ -1,7 +1,9 @@
-"""Application bootstrap for the Qt editor shell."""
+"""Application bootstrap for the Qt SNAP SLAPPER."""
 
+import os
 import sys
 
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
 from . import theme
@@ -25,13 +27,32 @@ def main(argv=None):
 
     # A file path on the command line opens straight into the editor;
     # otherwise the library browser is the entry point.
-    target = next((c for c in argv[1:] if c and not c.startswith("-")), None)
+    qa_image = os.environ.get("SNAP_SLAPPER_QA_IMAGE", "")
+    qa_marker = os.environ.get("SNAP_SLAPPER_QA_MARKER", "")
+    target = qa_image or next(
+        (c for c in argv[1:] if c and not c.startswith("-")), None)
     if target:
         window = EditorWindow()
         window.open_path(target)
     else:
         window = LibraryWindow()
     window.show()
+
+    # Frozen-build gate: open and render a real photograph before installation.
+    # A package that cannot do both never writes the marker and is not promoted.
+    if qa_image and qa_marker:
+        def verify_packaged_editor():
+            try:
+                if not isinstance(window, EditorWindow) or not window.doc:
+                    return
+                rendered = window.doc.render((80, 60))
+                if rendered.width <= 0 or rendered.height <= 0:
+                    return
+                with open(qa_marker, "w", encoding="utf-8") as handle:
+                    handle.write("PASS")
+            finally:
+                app.quit()
+        QTimer.singleShot(900, verify_packaged_editor)
 
     return app.exec()
 

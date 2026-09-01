@@ -169,9 +169,14 @@ class LibraryWindow(QMainWindow):
 
         self.tree.setVisible(folders_visible)
         self.act_folders.setChecked(folders_visible)
+        self.act_subfolders.setChecked(
+            bool(settings.get("library_include_subfolders", False)))
 
         self.status = self.statusBar()
         self.status.showMessage("Choose a folder to browse your photographs.")
+        remembered = str(settings.get("library_folder", "") or "")
+        if remembered and os.path.isdir(remembered):
+            self.load_folder(remembered)
 
     # --- Toolbar ------------------------------------------------------------
     def _build_toolbar(self):
@@ -203,6 +208,10 @@ class LibraryWindow(QMainWindow):
         act_help.setShortcut(QKeySequence.HelpContents)   # F1
         act_help.triggered.connect(self._open_help)
         bar.addAction(act_help)
+
+        act_prefs = QAction("Preferences", self)
+        act_prefs.triggered.connect(self._open_preferences)
+        bar.addAction(act_prefs)
 
         bar.addSeparator()
 
@@ -262,8 +271,13 @@ class LibraryWindow(QMainWindow):
 
     # --- Folder scanning ----------------------------------------------------
     def choose_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Choose photo folder")
+        folder = QFileDialog.getExistingDirectory(
+            self, "Choose photo folder", self._folder or "")
         if folder:
+            from . import prefs
+            values = prefs.load()
+            values["library_folder"] = folder
+            prefs.save(values)
             self.load_folder(folder)
             index = self.tree_model.index(folder)
             if index.isValid():
@@ -272,8 +286,23 @@ class LibraryWindow(QMainWindow):
                 self.tree.expand(index)
 
     def _reload_current(self, _checked=None):
+        from . import prefs
+        values = prefs.load()
+        values["library_include_subfolders"] = self.act_subfolders.isChecked()
+        prefs.save(values)
         if self._folder:
             self.load_folder(self._folder)
+
+    def _open_preferences(self):
+        from .prefs_dialog import PreferencesDialog
+        from . import prefs
+        if PreferencesDialog(self).exec():
+            values = prefs.load()
+            self.act_subfolders.setChecked(
+                bool(values.get("library_include_subfolders", False)))
+            folder = str(values.get("library_folder", "") or "")
+            if folder and os.path.isdir(folder) and folder != self._folder:
+                self.load_folder(folder)
 
     def load_folder(self, folder):
         self._folder = folder
