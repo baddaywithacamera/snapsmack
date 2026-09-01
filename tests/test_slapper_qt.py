@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(HUB), "_shared"))
 from PIL import Image, ImageChops                        # noqa: E402
 import editor_engine                                     # noqa: E402
 from PySide6.QtWidgets import QApplication, QPushButton  # noqa: E402
-from PySide6.QtCore import QDir, QThreadPool, QRectF     # noqa: E402
+from PySide6.QtCore import QDir, QThreadPool, QRectF, QPointF  # noqa: E402
 from PySide6.QtTest import QTest                         # noqa: E402
 from slapper_qt import theme                             # noqa: E402
 from slapper_qt.editor_window import EditorWindow, _default_export_name  # noqa: E402
@@ -696,6 +696,25 @@ def test_interactive_crop_overlay_and_explicit_apply():
     win.crop_aspect.setCurrentIndex(win.crop_aspect.findData(3 / 2))
     landscape = win.view._crop_rect_item.rect()
     assert abs(landscape.width() / landscape.height() - 1.5) < .01
+    # Every resize handle must preserve the ratio, including pulls that hit a
+    # photograph boundary. Edge handles were previously able to make 3:2 tall.
+    win.view._crop_aspect = 1.5
+    scene = win.view._scene.sceneRect()
+    start = QRectF(100, 80, 180, 120)
+    probes = {
+        "n": QPointF(190, scene.top()),
+        "s": QPointF(190, scene.bottom()),
+        "e": QPointF(scene.right(), 140),
+        "w": QPointF(scene.left(), 140),
+        "nw": scene.topLeft(),
+        "ne": scene.topRight(),
+        "se": scene.bottomRight(),
+        "sw": scene.bottomLeft(),
+    }
+    for handle, point in probes.items():
+        strict = win.view._aspect_crop_rect(point, handle, start)
+        assert abs(strict.width() / strict.height() - 1.5) < .0001, handle
+        assert scene.contains(strict), handle
     win._swap_crop_orientation()
     portrait = win.view._crop_rect_item.rect()
     assert abs(portrait.width() / portrait.height() - (2 / 3)) < .01
@@ -703,7 +722,6 @@ def test_interactive_crop_overlay_and_explicit_apply():
     assert all(type(handle).__name__ == "QGraphicsPathItem"
                for handle in win.view._crop_handles)
     # Crop edges magnetise to the photograph boundary within eight screen px.
-    scene = win.view._scene.sceneRect()
     near = QRectF(scene.left() + win.view._crop_snap_distance() / 2,
                   scene.top() + 30, 100, 100)
     snapped = win.view._snap_crop_rect(near, "move")
