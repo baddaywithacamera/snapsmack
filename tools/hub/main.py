@@ -22,7 +22,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
-BUILD_VERSION = "0.7.21"
+BUILD_VERSION = "0.7.22"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -152,6 +152,27 @@ def _find_exe(paths):
 
 
 def _launch(path):
+    # SNAP HQ is itself a single-instance gateway: if the exact executable is
+    # already running, activate its existing window instead of spawning again.
+    # Individual apps still enforce their own guard for Start/desktop launches.
+    if os.name == "nt":
+        env = os.environ.copy()
+        env["SNAP_LAUNCH_EXE"] = os.path.abspath(path)
+        script = (
+            "$target=[IO.Path]::GetFullPath($env:SNAP_LAUNCH_EXE); "
+            "$p=Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and "
+            "([IO.Path]::GetFullPath($_.ExecutablePath) -ieq $target) } | Select-Object -First 1; "
+            "if($p){$w=New-Object -ComObject WScript.Shell; [void]$w.AppActivate([int]$p.ProcessId); exit 0}; exit 3"
+        )
+        try:
+            active = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+                env=env, capture_output=True, text=True, timeout=8,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            if active.returncode == 0:
+                return True, ""
+        except Exception:
+            pass
     try:
         subprocess.Popen([path], cwd=os.path.dirname(path))
         return True, ""
