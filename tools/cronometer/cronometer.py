@@ -21,7 +21,7 @@ UI thread; results are marshalled back with Tk's `after`.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.4"
+BUILD_VERSION = "0.7.5"
 
 # ---------------------------------------------------------------------------
 # Shared-path bootstrap + debug log. Must happen before any _shared import so
