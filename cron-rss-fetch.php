@@ -16,20 +16,25 @@
 
 
 // --- ACCESS CONTROL ---
-// Restrict execution to Command Line Interface only
-if (php_sapi_name() !== 'cli') {
+// Runs from the CLI cron, OR from the web-cron (core/fediverse-webcron.php) which
+// defines SNAPSMACK_INTERNAL_CRON before requiring this file on hosts with no
+// system crontab. Never runnable from a plain public request.
+if (php_sapi_name() !== 'cli' && !defined('SNAPSMACK_INTERNAL_CRON')) {
     http_response_code(403);
     exit('CLI only.');
 }
 
 // --- BOOTSTRAP ENVIRONMENT ---
-define('SNAPSMACK_CRON', true);
+if (!defined('SNAPSMACK_CRON')) define('SNAPSMACK_CRON', true);
 $base = dirname(__FILE__);
 require_once $base . '/core/db.php';
 
-// Standardized logging helper with timestamps
+// Standardized logging helper with timestamps. Silent off the CLI so a web-cron
+// run (inside a shutdown handler) never emits stray output.
 $log = function(string $msg) {
-    echo '[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL;
+    if (php_sapi_name() === 'cli') {
+        echo '[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL;
+    }
 };
 
 $log('RSS fetch started.');
@@ -76,7 +81,8 @@ if (empty($peers)) {
     // CRONOMETER: still a healthy run — there was simply nothing to fetch.
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('rss_last_run', ?) ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([date('Y-m-d H:i:s')]);
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('rss_last_status', 'ok') ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute();
-    exit(0);
+    return; // not exit(): under the web-cron this is a required include, and exit
+            // would kill the whole request (and skip other shutdown work).
 }
 
 $log('Found ' . count($peers) . ' peers with RSS feeds.');
