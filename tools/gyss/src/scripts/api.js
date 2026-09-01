@@ -9,6 +9,26 @@
 
 import { invoke } from '@tauri-apps/api/core';
 
+// Older deployed GYSS endpoints accidentally returned /uploads/img_uploads/...
+// even though img_uploads already lives at the site root. Repair that response
+// locally so mixed-version fleets still display their photographs.
+function repairMediaUrl(value) {
+    return typeof value === 'string'
+        ? value.replace(/\/uploads\/img_uploads\//g, '/img_uploads/')
+        : value;
+}
+
+function repairMediaUrls(value) {
+    if (Array.isArray(value)) return value.map(repairMediaUrls);
+    if (!value || typeof value !== 'object') return value;
+    for (const [key, child] of Object.entries(value)) {
+        value[key] = /(?:^|_)(?:thumb_?url|image_?url|src)$/i.test(key)
+            ? repairMediaUrl(child)
+            : repairMediaUrls(child);
+    }
+    return value;
+}
+
 export class SnapSmackGYSSAPI {
     constructor(siteUrl, apiKey) {
         this.baseUrl = siteUrl.replace(/\/$/, '');
@@ -39,7 +59,7 @@ export class SnapSmackGYSSAPI {
         if (!data.ok) {
             throw new Error(data.error || 'API request failed');
         }
-        return data;
+        return repairMediaUrls(data);
     }
 
     /** GET gyss/ping — connection test */
