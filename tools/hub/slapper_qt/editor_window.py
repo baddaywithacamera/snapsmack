@@ -29,6 +29,7 @@ from .engine_bridge import render_pixmap, original_pixmap
 from .widgets import ImageView, SliderRow, Accordion, Histogram
 from .layers_panel import LayersPanel, BASE
 from .filmstrip import Filmstrip
+from .catalog import Catalog
 from .mask_brush import MaskBrushCanvas
 from .curve_editor import CurveEditor
 
@@ -103,6 +104,7 @@ class EditorWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.doc = None
+        self.catalog = Catalog()
         self.rows = {}
         self.active_target = "base"   # "base" or a layer id
         self.setWindowTitle("SNAP SLAPPER")
@@ -157,6 +159,14 @@ class EditorWindow(QMainWindow):
         self._recovery_timer.setInterval(2500)
         self._recovery_timer.timeout.connect(self._write_recovery)
 
+        # Picasa-style catalogue persistence: edits belong to the photograph
+        # automatically. A portable .slapper remains an explicit backup/share
+        # operation, not the prerequisite for seeing edits next time.
+        self._catalog_timer = QTimer(self)
+        self._catalog_timer.setSingleShot(True)
+        self._catalog_timer.setInterval(900)
+        self._catalog_timer.timeout.connect(self._write_catalog_state)
+
         self._refresh_actions()
         self._init_mode()
 
@@ -176,8 +186,20 @@ class EditorWindow(QMainWindow):
 
     def _on_doc_change(self, _doc):
         self._refresh_actions()
+        self._catalog_timer.start()
         if self._recovery_dir:
             self._recovery_timer.start()
+
+    def _write_catalog_state(self):
+        if not self.doc:
+            return
+        try:
+            self.catalog.save_edit_state(self.doc.source_path, self.doc.snapshot())
+            self.doc.mark_saved()
+            self._refresh_actions()
+            self.status.showMessage("Edits saved to catalogue", 1800)
+        except Exception:  # noqa: BLE001
+            _log.exception("catalogue edit-state save failed")
 
     def _recovery_path(self):
         if not self._recovery_dir or not self.doc:
@@ -189,7 +211,9 @@ class EditorWindow(QMainWindow):
         if not path or not self.doc or not self.doc.is_dirty():
             return
         try:
-            self.doc.save_recovery(path)
+            value = self.doc.project_value(recovery=True)
+            value["version"] = editor_engine.LEGACY_PROJECT_VERSION
+            photo_manager.atomic_json(path, value)
             _log.info("autosaved recovery: %s", path)
         except Exception:  # noqa: BLE001
             _log.exception("autosave (recovery) failed")
@@ -1571,6 +1595,13 @@ class EditorWindow(QMainWindow):
         except Exception as error:  # noqa: BLE001 — surface any decode failure plainly
             self._error("Cannot open", f"Could not open this image:\n{error}")
             return False
+        catalog_state = self.catalog.load_edit_state(path)
+        if catalog_state is not None:
+            document.restore(catalog_state)
+            document.history = []
+            document.history_index = -1
+            document.record("Open catalogue edits")
+            document.mark_saved()
         recovered = self._maybe_recover(path)   # offer to restore unsaved edits
         if recovered is not None:
             document = recovered
@@ -1652,6 +1683,7 @@ class EditorWindow(QMainWindow):
         except Exception as error:  # noqa: BLE001
             self._error("Save failed", str(error))
             return
+        self._write_catalog_state()
         self._clear_recovery()   # project saved — recovery no longer needed
         self._update_title()
         self.status.showMessage(f"Saved {os.path.basename(path)}")
@@ -2606,6 +2638,9 @@ class EditorWindow(QMainWindow):
         _prefs.save(values)
 
     def _confirm_discard(self):
+        if self.doc and self.doc.is_dirty():
+            self._catalog_timer.stop()
+            self._write_catalog_state()
         if self.doc and self.doc.is_dirty():
             answer = QMessageBox.question(
                 self, "Unsaved edits",
