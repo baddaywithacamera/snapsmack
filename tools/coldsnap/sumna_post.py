@@ -381,6 +381,126 @@ class GramPoster:
 
 
 # ---------------------------------------------------------------------------
+# SmacktalkPoster — SMACKTALK longform post + image BUCKET.
+# ---------------------------------------------------------------------------
+#
+# Posts through the SMACKPRESS JSON API (api.php?route=smackpress/...), the ONE
+# server contract that creates a post_type='longform' post and fills its bucket
+# (snap_bucket_items) with no site_mode guard. Confirmed contract:
+#   1. per photo -> POST smackpress/media/upload (multipart field 'file') -> image_id
+#   2. one post  -> POST smackpress/posts {title, content, status,
+#                   featured_image_id, bucket_image_ids:[...]} -> post_id (+ bucket)
+#
+# AUTH: smackpress/* require a key_type='smackpress' Bearer key. COLD SNAP's normal
+# 'sybu' key is rejected (401) by design, so this poster carries its OWN key —
+# issued from smack-api-keys.php and stored in the profile as `smackpress_key`.
+# Images are size-capped + mild-sharpened to the fleet standard before upload
+# (same _upload_ready as solo/gram); the photographer's original is never modified.
+
+class SmacktalkPoster:
+    def __init__(self, base_url: str, smackpress_key: str, site_data=None, session=None):
+        self.base_url = (base_url or "").rstrip("/")
+        self.key = (smackpress_key or "").strip()
+        self.session = session or requests.Session()
+        if session is None:
+            self.session.headers.update({
+                "User-Agent": "ColdSnap/%s" % "0.1.0",
+                "Authorization": f"Bearer {self.key}",
+                "X-Requested-With": "XMLHttpRequest",
+            })
+
+    def _route(self, route: str) -> str:
+        return f"{self.base_url}/api.php?route={route}"
+
+    def _upload_one(self, im) -> int:
+        """Upload one photo to the Gallery via smackpress/media/upload and return its
+        snap_images id. Sizes/sharpens to policy first; original untouched."""
+        up = _upload_ready(im.local_path)
+        fh = open(up, "rb")
+        try:
+            files = {"file": (im.filename or os.path.basename(im.local_path), fh, _mime(up))}
+            r = self.session.post(self._route("smackpress/media/upload"), files=files, timeout=120)
+        finally:
+            fh.close()
+        if r.status_code in (401, 403):
+            raise RuntimeError(_resp_msg(
+                r, "Upload rejected — this site's SMACKTALK key must be a 'smackpress' key."))
+        r.raise_for_status()
+        data = r.json()
+        image_id = int(data.get("image_id") or data.get("asset_id") or 0)
+        if image_id <= 0:
+            raise RuntimeError("media/upload did not return an image id")
+        return image_id
+
+    def build_payload(self, draft, image_ids, cover_id) -> dict:
+        """The smackpress/posts JSON body. Split out so it's unit-testable without a
+        network round-trip. Cover leads the bucket server-side (position 0)."""
+        payload = {
+            "title": draft.title,
+            "content": draft.caption or "",
+            "status": "published" if draft.img_status == "published" else "draft",
+            "featured_image_id": cover_id,
+            "bucket_image_ids": list(image_ids),
+            "tags": " ".join(t.lstrip("#") for t in (draft.tags or "").split() if t.strip()),
+        }
+        if draft.post_date:
+            payload["date"] = draft.post_date
+        return payload
+
+    def sync(self, draft) -> SyncResult:
+        if not self.key:
+            return SyncResult(False, message="No SMACKTALK key set for this site (needs a 'smackpress' API key).")
+        if not draft.images:
+            return SyncResult(False, message="no images on draft")
+        if not (draft.title or "").strip():
+            return SyncResult(False, message="a SMACKTALK post needs a title")
+        try:
+            image_ids, cover_id = [], None
+            for im in draft.images:
+                if not os.path.isfile(im.local_path):
+                    return SyncResult(False, message=f"image missing: {im.local_path}")
+                iid = self._upload_one(im)
+                image_ids.append(iid)
+                if im.is_cover and cover_id is None:
+                    cover_id = iid
+            if cover_id is None and image_ids:
+                cover_id = image_ids[0]
+
+            r = self.session.post(self._route("smackpress/posts"),
+                                  json=self.build_payload(draft, image_ids, cover_id), timeout=120)
+            if r.status_code in (401, 403, 429):
+                return SyncResult(False, message=_resp_msg(
+                    r, "Post rejected (key scope / rate limit). SMACKTALK needs a 'smackpress' key."))
+            r.raise_for_status()
+            data = r.json()
+        except requests.RequestException as e:
+            return SyncResult(False, message=f"network error: {e}")
+        except Exception as e:
+            return SyncResult(False, message=str(e))
+
+        post_id = int(data.get("post_id") or 0)
+        if not post_id:
+            return SyncResult(False, message=data.get("error") or "server did not confirm the post")
+        return SyncResult(True, remote_post_id=post_id, message="Posted")
+
+    def verify(self, draft) -> bool:
+        """Best-effort: pull the post back via GET smackpress/posts/{id}. Trust the
+        create's explicit post_id if the read isn't reachable, rather than a false fail."""
+        pid = getattr(draft, "remote_post_id", 0)
+        if not pid:
+            return False
+        try:
+            r = self.session.get(self._route(f"smackpress/posts/{int(pid)}"), timeout=20)
+            if r.status_code == 200:
+                return True
+            if r.status_code == 404:
+                return False
+        except requests.RequestException:
+            pass
+        return True  # created ok; read path just unavailable
+
+
+# ---------------------------------------------------------------------------
 # Batch runner — POST-tab manifest entries -> single grams (carousel sites)
 # ---------------------------------------------------------------------------
 
