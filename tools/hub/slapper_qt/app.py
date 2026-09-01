@@ -4,6 +4,7 @@ import os
 import sys
 
 from PySide6.QtCore import QTimer
+from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication
 
 from . import theme
@@ -22,6 +23,18 @@ def main(argv=None):
     app = QApplication.instance() or QApplication(argv)
     app.setApplicationName("SNAP SLAPPER")
     app.setStyleSheet(theme.stylesheet())
+    # One library owns one thumbnail queue. Accidentally opening a second copy
+    # used to double disk/CPU pressure and could make both windows unresponsive.
+    instance_name = "SnapSmack.SnapSlapper.Qt"
+    probe = QLocalSocket()
+    probe.connectToServer(instance_name)
+    if probe.waitForConnected(180):
+        probe.disconnectFromServer()
+        return 0
+    QLocalServer.removeServer(instance_name)
+    instance_server = QLocalServer(app)
+    if not instance_server.listen(instance_name):
+        return 0
     if _log is not None:
         _log.info("SNAP SLAPPER Qt UI ready")
 
