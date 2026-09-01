@@ -278,6 +278,57 @@ if ($sub === 'media/upload' && $method === 'POST') {
     ]);
 }
 
+/**
+ * Populate a migrated SMACKTALK/longform post's IMAGE BUCKET (snap_bucket_items),
+ * so images pulled out of a WordPress post belong to the post the same way a
+ * natively-authored SMACKTALK post's photos do — mode-guard counts bucket photos
+ * as editorial work, and the bucket is the per-post image set.
+ *
+ * Image set, in priority order:
+ *   1. an explicit body list (`bucket_image_ids` or `image_ids`), if the caller sends one;
+ *   2. otherwise every [img:NNN] referenced in the stored content.
+ * The featured cover leads the bucket (position 0). IDs are snap_images ids.
+ *
+ * Guard: an empty set with NO explicit list is a no-op — a plain text edit must
+ * never silently wipe a post's photos. An explicit empty list DOES clear it (intent).
+ */
+/**
+ * Pure image-id collection for the bucket (no DB) — unit-testable.
+ * Returns [$ids, $had_explicit_list]. $ids is deduped, first-seen order, positive,
+ * with the featured cover leading. $had_explicit_list distinguishes "caller sent an
+ * (even empty) list" from "we parsed the content".
+ */
+function smackpress_bucket_ids(array $body, string $content_html, ?int $featured): array {
+    $explicit = null;
+    foreach (['bucket_image_ids', 'image_ids'] as $k) {
+        if (array_key_exists($k, $body) && is_array($body[$k])) { $explicit = $body[$k]; break; }
+    }
+
+    $ids = [];
+    if ($explicit !== null) {
+        foreach ($explicit as $id) $ids[] = (int)$id;
+    } elseif (preg_match_all('/\[img:\s*g?\s*(\d+)/i', $content_html, $mm)) {
+        // Matches both [img:gID] (SMACKPRESS's gallery form) and plain [img:ID];
+        // the captured digits are the snap_images id in either case (see parser.php).
+        foreach ($mm[1] as $id) $ids[] = (int)$id;
+    }
+    if ($featured) array_unshift($ids, (int)$featured);   // cover leads the bucket
+
+    $seen = []; $clean = [];
+    foreach ($ids as $id) { $id = (int)$id; if ($id > 0 && empty($seen[$id])) { $seen[$id] = true; $clean[] = $id; } }
+    return [$clean, $explicit !== null];
+}
+
+function smackpress_save_bucket(PDO $pdo, int $post_id, array $body, string $content_html, ?int $featured): void {
+    if ($post_id <= 0) return;
+    require_once __DIR__ . '/bucket.php';
+    list($clean, $had_explicit) = smackpress_bucket_ids($body, $content_html, $featured);
+    // No images AND no explicit list -> leave the existing bucket untouched (a plain
+    // text edit must not wipe a post's photos). An explicit empty list DOES clear it.
+    if (!$clean && !$had_explicit) return;
+    snap_bucket_save($pdo, $post_id, $clean);
+}
+
 // =====================================================================
 // ROUTE: POST smackpress/posts — create or update longform post
 // =====================================================================
@@ -332,6 +383,7 @@ if ($sub === 'posts' && $method === 'POST') {
         foreach ($selected_cats   as $cid) $pdo->prepare("INSERT IGNORE INTO snap_post_cat_map (post_id,cat_id) VALUES(?,?)")->execute([$post_id,$cid]);
         foreach ($selected_albums as $aid) $pdo->prepare("INSERT IGNORE INTO snap_post_album_map (post_id,album_id) VALUES(?,?)")->execute([$post_id,$aid]);
         snap_sync_tags($pdo, $post_id, $title . ' ' . $manual_tags);
+        smackpress_save_bucket($pdo, $post_id, $body, $content_html, $featured_image);
 
         $post_url = $base_url . 'post/' . $slug;
         smackpress_ok(['post_id' => $post_id, 'slug' => $slug, 'url' => $post_url]);
@@ -356,6 +408,7 @@ if ($sub === 'posts' && $method === 'POST') {
         foreach ($selected_cats   as $cid) $pdo->prepare("INSERT IGNORE INTO snap_post_cat_map (post_id,cat_id) VALUES(?,?)")->execute([$new_id,$cid]);
         foreach ($selected_albums as $aid) $pdo->prepare("INSERT IGNORE INTO snap_post_album_map (post_id,album_id) VALUES(?,?)")->execute([$new_id,$aid]);
         snap_sync_tags($pdo, $new_id, $title . ' ' . $manual_tags);
+        smackpress_save_bucket($pdo, $new_id, $body, $content_html, $featured_image);
 
         $post_url = $base_url . 'post/' . $slug;
         smackpress_ok(['post_id' => $new_id, 'slug' => $slug, 'url' => $post_url]);
