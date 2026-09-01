@@ -284,6 +284,8 @@ class ImmutableOriginalTests(unittest.TestCase):
         build_path = os.path.join(HUB_ROOT, "build.bat")
         with open(build_path, "r", encoding="utf-8") as handle:
             build = handle.read()
+        self.assertIn("--clean snap_slapper.spec", build)
+        self.assertNotIn("slapper_qt.spec", build)
         smoke_position = build.index('start "" /wait "dist\\snap_slapper\\SNAP SLAPPER.exe"')
         promote_position = build.index('SNAP SLAPPER.exe.new')
         self.assertLess(smoke_position, promote_position)
