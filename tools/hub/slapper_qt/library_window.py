@@ -18,8 +18,9 @@ to be ported in later phases.
 
 import os
 import time
+import hashlib
 
-from PySide6.QtCore import Qt, QObject, QRunnable, QThreadPool, Signal, QSize, QDir
+from PySide6.QtCore import Qt, QObject, QRunnable, QThreadPool, Signal, QSize, QDir, QTimer
 from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QListWidget, QListWidgetItem, QFileDialog, QLabel, QSlider,
@@ -88,17 +89,49 @@ class _ThumbSignals(QObject):
 class _ThumbTask(QRunnable):
     """Load one thumbnail (and its capture time) off the GUI thread."""
 
-    def __init__(self, path, signals):
+    def __init__(self, path, signals, cache_dir):
         super().__init__()
         self.path = path
         self.signals = signals
+        self.cache_dir = cache_dir
+
+    def _cache_paths(self):
+        try:
+            stat = os.stat(self.path)
+            identity = f"{os.path.abspath(self.path)}|{stat.st_mtime_ns}|{stat.st_size}|{THUMB_SOURCE}"
+            key = hashlib.sha1(identity.encode("utf-8")).hexdigest()
+            return (os.path.join(self.cache_dir, key + ".jpg"),
+                    os.path.join(self.cache_dir, key + ".stamp"))
+        except OSError:
+            return "", ""
 
     def run(self):
         try:
+            cache_path, stamp_path = self._cache_paths()
+            if cache_path and os.path.isfile(cache_path):
+                qimage = QImage(cache_path)
+                if not qimage.isNull():
+                    try:
+                        with open(stamp_path, encoding="ascii") as handle:
+                            stamp = float(handle.read())
+                    except Exception:
+                        stamp = os.path.getmtime(self.path)
+                    self.signals.ready.emit(self.path, qimage, stamp)
+                    return
             with Image.open(self.path) as source:
                 stamp = _capture_timestamp(source, self.path)
                 image = ImageOps.exif_transpose(source).convert("RGBA")
             image.thumbnail((THUMB_SOURCE, THUMB_SOURCE), Image.Resampling.LANCZOS)
+            if cache_path:
+                try:
+                    os.makedirs(self.cache_dir, exist_ok=True)
+                    tmp = cache_path + ".tmp"
+                    image.convert("RGB").save(tmp, "JPEG", quality=82)
+                    os.replace(tmp, cache_path)
+                    with open(stamp_path, "w", encoding="ascii") as handle:
+                        handle.write(str(stamp))
+                except Exception:
+                    pass
             data = image.tobytes("raw", "RGBA")
             qimage = QImage(data, image.width, image.height,
                             image.width * 4, QImage.Format_RGBA8888).copy()
@@ -112,7 +145,17 @@ class LibraryWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("SNAP SLAPPER — Library")
         self.resize(1180, 780)
-        self._pool = QThreadPool.globalInstance()
+        # A dedicated, deliberately small pool keeps hundreds of TIFF/JPEG
+        # decodes from starving Qt's event loop and making Windows report a hang.
+        self._pool = QThreadPool(self)
+        self._pool.setMaxThreadCount(3)
+        try:
+            import snap_home
+            self._thumb_cache = os.path.join(
+                os.path.dirname(snap_home.config_path("snap_slapper", "slapper_qt.json")),
+                "thumbnail_cache_qt")
+        except Exception:
+            self._thumb_cache = os.path.join(os.path.expanduser("~"), ".snapsmack-thumbs")
         self._items = {}          # path -> QListWidgetItem
         self._icons = {}          # path -> QIcon (cached so re-sort never re-decodes)
         self._stamps = {}         # path -> capture timestamp (float)
@@ -177,6 +220,8 @@ class LibraryWindow(QMainWindow):
         remembered = str(settings.get("library_folder", "") or "")
         if remembered and os.path.isdir(remembered):
             self.load_folder(remembered)
+            QTimer.singleShot(0, lambda: self._reveal_folder(remembered))
+            QTimer.singleShot(500, lambda: self._reveal_folder(remembered))
 
     # --- Toolbar ------------------------------------------------------------
     def _build_toolbar(self):
@@ -269,6 +314,20 @@ class LibraryWindow(QMainWindow):
         if path and os.path.isdir(path):
             self.load_folder(path)
 
+    def _reveal_folder(self, folder):
+        index = self.tree_model.index(folder)
+        if not index.isValid():
+            return
+        parent = index.parent()
+        parents = []
+        while parent.isValid():
+            parents.append(parent)
+            parent = parent.parent()
+        for ancestor in reversed(parents):
+            self.tree.expand(ancestor)
+        self.tree.setCurrentIndex(index)
+        self.tree.scrollTo(index, QTreeView.PositionAtCenter)
+
     # --- Folder scanning ----------------------------------------------------
     def choose_folder(self):
         folder = QFileDialog.getExistingDirectory(
@@ -312,7 +371,7 @@ class LibraryWindow(QMainWindow):
         self.setWindowTitle(f"SNAP SLAPPER — {os.path.basename(folder) or folder}")
         self._populate()
         for path in self._paths:
-            self._pool.start(_ThumbTask(path, self._signals))
+            self._pool.start(_ThumbTask(path, self._signals, self._thumb_cache))
         self.status.showMessage(f"{len(self._paths)} photo(s) in {folder}")
 
     def _scan(self, folder, recursive):
