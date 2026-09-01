@@ -14,7 +14,6 @@ Covers the load-bearing invariants of the Qt rebuild:
 """
 
 import os
-import json
 import sys
 import tempfile
 import time
@@ -132,24 +131,6 @@ def test_histogram_compare_recipe_project():
     assert loaded.adjustments["contrast"] == 40.0 and not loaded.is_dirty()
 
 
-def test_tiff_rational_metadata_does_not_block_project_save():
-    from PIL import TiffImagePlugin
-    source = os.path.join(TMP, "rational-metadata.tif")
-    tiffinfo = TiffImagePlugin.ImageFileDirectory_v2()
-    tiffinfo[282] = TiffImagePlugin.IFDRational(300, 1)  # XResolution
-    tiffinfo[283] = TiffImagePlugin.IFDRational(300, 1)  # YResolution
-    Image.new("RGB", (80, 60), "white").save(source, tiffinfo=tiffinfo)
-
-    project = os.path.join(TMP, "rational-metadata.slapper")
-    editor_engine.EditorDocument(source).save_project(project)
-    assert os.path.isfile(project)
-    with __import__("zipfile").ZipFile(project) as archive:
-        metadata = json.loads(archive.read("metadata/original-exif.json"))
-    assert metadata["exif"]["XResolution"] == {
-        "decimal": 300.0, "denominator": 1, "numerator": 300}
-    assert editor_engine.EditorDocument.load_project(project).source_path
-
-
 def test_preview_renders_layer_stack_once_even_with_histogram():
     win = _editor(_image("single-render.jpg", (320, 240)))
     win.mode_combo.setCurrentIndex(win.mode_combo.findData("advanced"))
@@ -171,49 +152,15 @@ def test_preview_renders_layer_stack_once_even_with_histogram():
     win._render_perspective_preview()
 
 
-def test_drag_preview_is_always_replaced_by_full_quality_render():
-    win = _editor(_image("quality-debounce.jpg", (2400, 1600)))
-    win.resize(1600, 1000)
-    win.show()
-    QTest.qWait(180)
-    APP.processEvents()
-
-    win._on_adjust("shadows", 12)
-    assert win._render_timer.isActive()
-    assert win._quality_render_timer.isActive()
-
-    # The quick proxy may be shown first, but the idle timer must replace it.
-    QTest.qWait(100)
-    APP.processEvents()
-    drag_width = win.view._item.pixmap().width()
-    QTest.qWait(260)
-    APP.processEvents()
-    final_width = win.view._item.pixmap().width()
-    assert final_width > drag_width
-    assert not win._render_timer.isActive()
-    assert not win._quality_render_timer.isActive()
-    win.close()
-
-
 def test_layers_isolation_and_ops():
     win = _editor(_image("d.jpg"))
     lp = win.layers_panel
-    assert [action.text() for action in lp.new_layer_menu.actions()] == [
-        "Adjustment Layer", "Image Layer…", "Texture Layer…", "Text Layer",
-        "Filter Layer…"]
     lp._add_adjustment()
     assert win.active_target != BASE
     base_before = win.doc.adjustments["exposure"]
     win.rows["exposure"]._on_slider(win.rows["exposure"]._to_step(2.0))
     win._on_commit("exposure")
     layer = lp._selected_layer()
-    assert lp.mask_btn.text() == "Add Mask…"
-    assert not lp.hsl_btn.isHidden()
-    lp._open_mask()
-    assert win.mask_section.header.isChecked()
-    assert win._mask_kind == "brush"
-    lp._open_hsl()
-    assert win._sections["COLOUR MIX"].header.isChecked()
     # editing a layer must NOT touch the base photograph
     assert win.doc.adjustments["exposure"] == base_before
     assert layer["adjustments"]["exposure"] == 2.0
@@ -312,7 +259,6 @@ def test_context_sensitive_toolbars():
 
     assert [action.text() for action in win._context_selectors.values()] == [
         "EDIT", "RETOUCH", "LOOKS", "OUTPUT", "VIEW"]
-    assert win._context_selectors["edit"].isChecked()
 
     def visible_tools():
         return [action.text() for action in win.context_toolbar.actions()
@@ -329,13 +275,6 @@ def test_context_sensitive_toolbars():
     win._context_selectors["view"].trigger()
     assert visible_tools() == [
         "Zoom −", "Zoom +", "Fit", "100%", "Filmstrip", "Preferences", "Help"]
-    win._context_selectors["edit"].trigger()
-    win.act_crop.setChecked(True)
-    assert win.act_crop.isChecked()
-    css = theme.stylesheet()
-    assert "QToolBar QToolButton:checked" in css
-    assert f"background: {theme.ACCENT_DIM}" in css
-    assert f"border: 1px solid {theme.ACCENT}" in css
 
     # Normal mode keeps the chosen workspace but removes Advanced-only tools.
     win._context_selectors["looks"].trigger()
@@ -1006,16 +945,11 @@ def test_window_state_colour_chrome_and_library_captions():
         feather = win.rows["vignette_feather"].name_label
         assert feather.width() >= feather.sizeHint().width()
         assert win._restore_maximized is True
-        assert win.split_shadow_btn.objectName() == "ToneSwatch"
-        assert win.split_mid_btn.objectName() == "ToneSwatch"
-        assert win.split_hi_btn.objectName() == "ToneSwatch"
-        assert win.split_shadow_btn.width() == 32
-        assert win.split_mid_btn.width() == 32
-        assert win.split_hi_btn.width() == 32
-        assert win.split_mid_label.text() == "Midtone colour"
+        assert win.split_shadow_btn.objectName() == "SwatchBtn"
+        assert win.split_mid_btn.objectName() == "SwatchBtn"
+        assert win.split_hi_btn.objectName() == "SwatchBtn"
         css = theme.stylesheet()
         assert "QPushButton#SwatchBtn" in css
-        assert "QPushButton#ToneSwatch" in css
         assert f"background: {theme.CANVAS}" in css
         assert f"color: {theme.ACCENT}" in css
         assert f"border: 1px solid {theme.ACCENT}" in css

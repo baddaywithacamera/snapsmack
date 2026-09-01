@@ -136,13 +136,6 @@ class EditorWindow(QMainWindow):
         self._render_timer.setSingleShot(True)
         self._render_timer.setInterval(75)
         self._render_timer.timeout.connect(self._render_drag_preview)
-        # Slider movement first gets a small, fast proxy.  A second debounce
-        # always replaces it with the viewport-resolution render once editing
-        # pauses, including groove clicks and controls without a release event.
-        self._quality_render_timer = QTimer(self)
-        self._quality_render_timer.setSingleShot(True)
-        self._quality_render_timer.setInterval(260)
-        self._quality_render_timer.timeout.connect(self._render_preview)
 
         # Perspective warps are substantially dearer than tonal adjustments.
         # During a drag use a deliberately smaller proxy, then replace it with
@@ -202,16 +195,14 @@ class EditorWindow(QMainWindow):
 
     def _write_catalog_state(self):
         if not self.doc:
-            return False
+            return
         try:
             self.catalog.save_edit_state(self.doc.source_path, self.doc.snapshot())
             self.doc.mark_saved()
             self._refresh_actions()
             self.status.showMessage("Edits saved to catalogue", 1800)
-            return True
         except Exception:  # noqa: BLE001
             _log.exception("catalogue edit-state save failed")
-            return False
 
     def _recovery_path(self):
         if not self._recovery_dir or not self.doc:
@@ -634,7 +625,6 @@ class EditorWindow(QMainWindow):
         layout.setSpacing(0)
 
         scroll = QScrollArea()
-        self.rail_scroll = scroll
         scroll.setWidgetResizable(True)
         inner = QWidget()
         inner_layout = QVBoxLayout(inner)
@@ -1581,21 +1571,6 @@ class EditorWindow(QMainWindow):
         self._update_text_panel()
         self._sync_canvas_layer_mode()
 
-    def open_active_layer_mask(self):
-        """Expose the familiar selected-layer mask workflow directly."""
-        if self._active_layer() is None:
-            return
-        self.mask_section.header.setChecked(True)
-        self._select_mask_type("brush")
-        self.rail_scroll.ensureWidgetVisible(self.mask_section)
-
-    def open_adjustment_section(self, title):
-        section = self._sections.get(title)
-        if section is None:
-            return
-        section.header.setChecked(True)
-        self.rail_scroll.ensureWidgetVisible(section)
-
     def _active_layer(self):
         if not self.doc or self.active_target == BASE:
             return None
@@ -2156,7 +2131,6 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return
         self._render_timer.stop()
-        self._quality_render_timer.stop()
         self.doc.record(f"Adjust {key.replace('_', ' ')}")
         self._render_preview(keep_view=False)
         self._update_title()
@@ -2194,45 +2168,36 @@ class EditorWindow(QMainWindow):
         hint.setWordWrap(True)
         col.addWidget(hint)
 
-        def colour_row(label_text, key):
-            row = QWidget()
-            layout = QHBoxLayout(row)
-            layout.setContentsMargins(0, 0, 0, 0)
-            layout.setSpacing(8)
-            label = QLabel(label_text)
-            label.setObjectName("ControlName")
-            button = QPushButton()
-            button.setObjectName("ToneSwatch")
-            button.setFixedSize(32, 24)
-            button.setCursor(Qt.PointingHandCursor)
-            button.setToolTip(f"Choose {label_text.lower()}")
-            button.setAccessibleName(f"Choose {label_text.lower()}")
-            button.clicked.connect(lambda _checked=False, k=key:
-                                   self._pick_split_colour(k))
-            layout.addWidget(label)
-            layout.addStretch(1)
-            layout.addWidget(button)
-            col.addWidget(row)
-            return label, button
-
-        self.split_shadow_label, self.split_shadow_btn = colour_row(
-            "Shadow colour", "split_shadow")
+        self.split_shadow_btn = QPushButton("Shadow colour")
+        self.split_shadow_btn.setObjectName("SwatchBtn")
+        self.split_shadow_btn.setCursor(Qt.PointingHandCursor)
+        self.split_shadow_btn.clicked.connect(
+            lambda: self._pick_split_colour("split_shadow"))
+        col.addWidget(self.split_shadow_btn)
         shadow_amt = SliderRow("split_shadow_amount", "Shadows", 0, 100, 1, 0)
         shadow_amt.changed.connect(self._on_adjust)
         shadow_amt.committed.connect(self._on_commit)
         self.rows["split_shadow_amount"] = shadow_amt
         col.addWidget(shadow_amt)
 
-        self.split_mid_label, self.split_mid_btn = colour_row(
-            "Midtone colour", "split_midtone")
+        self.split_mid_btn = QPushButton("Midtone colour")
+        self.split_mid_btn.setObjectName("SwatchBtn")
+        self.split_mid_btn.setCursor(Qt.PointingHandCursor)
+        self.split_mid_btn.clicked.connect(
+            lambda: self._pick_split_colour("split_midtone"))
+        col.addWidget(self.split_mid_btn)
         mid_amt = SliderRow("split_midtone_amount", "Midtones", 0, 100, 1, 0)
         mid_amt.changed.connect(self._on_adjust)
         mid_amt.committed.connect(self._on_commit)
         self.rows["split_midtone_amount"] = mid_amt
         col.addWidget(mid_amt)
 
-        self.split_hi_label, self.split_hi_btn = colour_row(
-            "Highlight colour", "split_highlight")
+        self.split_hi_btn = QPushButton("Highlight colour")
+        self.split_hi_btn.setObjectName("SwatchBtn")
+        self.split_hi_btn.setCursor(Qt.PointingHandCursor)
+        self.split_hi_btn.clicked.connect(
+            lambda: self._pick_split_colour("split_highlight"))
+        col.addWidget(self.split_hi_btn)
         hi_amt = SliderRow("split_highlight_amount", "Highlights", 0, 100, 1, 0)
         hi_amt.changed.connect(self._on_adjust)
         hi_amt.committed.connect(self._on_commit)
@@ -2507,9 +2472,7 @@ class EditorWindow(QMainWindow):
         except Exception as error:  # noqa: BLE001
             self._error("Export failed", str(error))
             return
-        # Exporting a rendered copy is not the same as saving the editable
-        # project. Keep the document dirty so closing forces its current edit
-        # instructions into the catalogue instead of silently dropping them.
+        self.doc.mark_saved()
         self._update_title()
         self.status.showMessage(f"Exported {os.path.basename(path)}")
 
@@ -2564,7 +2527,6 @@ class EditorWindow(QMainWindow):
     # --- Rendering ----------------------------------------------------------
     def _schedule_render(self):
         self._render_timer.start()
-        self._quality_render_timer.start()
 
     def _render_drag_preview(self):
         """Fast proxy used by all continuously dragged controls."""
@@ -2588,10 +2550,6 @@ class EditorWindow(QMainWindow):
     def _render_preview(self, keep_view=True):
         if not self.doc:
             return
-        # An explicit/full render must be the last image shown.  In particular,
-        # do not let an older drag-preview timer soften it again afterwards.
-        self._render_timer.stop()
-        self._quality_render_timer.stop()
         # At 100% we render the photograph at its native resolution so the
         # canvas shows true pixels (a real focus check); when Fit, we render a
         # fast proxy capped to the window so slider drags stay smooth.
@@ -2760,11 +2718,7 @@ class EditorWindow(QMainWindow):
     def closeEvent(self, event):
         if self._confirm_discard():
             self._save_window_state()
-            # Only discard the emergency copy after the editable catalogue
-            # state has safely reached disk. A failed project/catalogue save
-            # must never turn a normal close into data loss.
-            if not self.doc or not self.doc.is_dirty():
-                self._clear_recovery()
+            self._clear_recovery()   # deliberate close — discard the recovery copy
             event.accept()
         else:
             event.ignore()
