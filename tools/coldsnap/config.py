@@ -263,11 +263,20 @@ def load() -> dict:
     except Exception:
         api_key = ''
 
+    # Separate key for SMACKTALK posting: smackpress/* endpoints require a
+    # key_type='smackpress' Bearer, which the normal 'sybu' api_key can't satisfy.
+    smackpress_key_raw = cfg.get('auth', 'smackpress_key', fallback='')
+    try:
+        smackpress_key = base64.b64decode(smackpress_key_raw.encode()).decode() if smackpress_key_raw else ''
+    except Exception:
+        smackpress_key = ''
+
     _data = {
         'url':                cfg.get('site', 'url', fallback='https://foundtextures.ca'),
         'username':           cfg.get('auth', 'username', fallback=''),
         'password':           password,
         'api_key':            api_key,
+        'smackpress_key':     smackpress_key,
         'remember':           cfg.getboolean('auth', 'remember', fallback=False),
         'default_category':   cfg.get('defaults', 'category', fallback=''),
         'default_album':      cfg.get('defaults', 'album', fallback=''),
@@ -327,11 +336,13 @@ def save(data: dict) -> None:
     # API key is the primary credential now (Bearer auth). Persist it regardless
     # of "remember" — it's a generated, reusable token the CMS shows only once.
     api_key_enc = base64.b64encode(data['api_key'].encode()).decode() if data.get('api_key') else ''
+    smackpress_key_enc = base64.b64encode(data['smackpress_key'].encode()).decode() if data.get('smackpress_key') else ''
     cfg['auth'] = {
         'username': data.get('username', '') if data.get('remember') else '',
         'password': password_enc,
         'remember': str(data.get('remember', False)),
         'api_key':  api_key_enc,
+        'smackpress_key': smackpress_key_enc,
     }
 
     cfg['defaults'] = {
