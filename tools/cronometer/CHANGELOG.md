@@ -8,8 +8,36 @@ board that shows, per SnapSmack site, whether the scheduled jobs (RSS fetch,
 version check, fediverse delivery, backups, SMACKBACK integrity) are running —
 red / amber / grey / green — so a silently-dead cron is caught before it bites.
 
-Versioning matches the family convention: fresh start at 0.1.0, `bump_version.py`
-adds +1 patch each build. Never bump the minor/major by hand.
+Versioning follows the SnapSmack desktop-family `0.7.x` convention;
+`bump_version.py` adds one patch for subsequent builds.
+
+## 0.7.4 — 2026-08-31
+
+### Changed
+- Replaces the vertically sprawling always-expanded cards with a compact fleet
+  overview and expandable per-site job details.
+- Adds fleet-wide totals for failed, stale, unknown, healthy, and offline sites.
+- Reduces secondary-button prominence so failures and job state lead the screen.
+
+---
+
+## 0.7.3 — 2026-08-31
+
+### Fixed
+- Uses each profile's fleet-management credential for the authenticated heartbeat
+  instead of the restricted publishing key. This fixes the fleet-wide HTTP 401
+  failure identified and live-verified in Claude's handoff specification.
+- Adds COPY STATUS diagnostics and improves board readability.
+- Repairs the Windows build script so packaging fails honestly and reliably.
+
+---
+
+## 0.1.1 — 2026-08-31
+
+### Changed
+- Superseded by the corrected 0.7.1 family-versioned build.
+
+---
 
 ## 0.1.0 — 2026-08-14
 

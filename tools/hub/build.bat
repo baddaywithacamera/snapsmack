@@ -3,9 +3,9 @@ setlocal
 set "BUILD_PYTHON=%~dp0..\..\.python-build\python.exe"
 if not exist "%BUILD_PYTHON%" set "BUILD_PYTHON=python"
 REM ─────────────────────────────────────────────────────────────────────────
-REM  THE HUB + standalone SNAP SLAPPER — build script
+REM  SNAP HQ + standalone SNAP SLAPPER — build script
 REM  Requires: Python 3.10+, pip install -r requirements.txt
-REM  Outputs:  C:\snapsmack\hub\hub.exe
+REM  Outputs:  C:\snapsmack\hub\SNAP HQ.exe
 REM            C:\snapsmack\snap_slapper\SNAP SLAPPER.exe
 REM ─────────────────────────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ echo Installing dependencies...
 "%BUILD_PYTHON%" -m pip install -r requirements.txt
 
 echo.
-echo Building THE HUB...
+echo Building SNAP HQ...
 if not exist C:\snapsmack\hub mkdir C:\snapsmack\hub
 "%BUILD_PYTHON%" -m PyInstaller --clean hub.spec --distpath "C:\snapsmack\hub"
 
@@ -86,11 +86,14 @@ if errorlevel 1 (
 )
 
 echo.
-if exist "C:\snapsmack\hub\hub.exe" if exist "C:\snapsmack\snap_slapper\SNAP SLAPPER.exe" (
-    echo Build successful: C:\snapsmack\hub\hub.exe
+if exist "C:\snapsmack\hub\SNAP HQ.exe" if exist "C:\snapsmack\snap_slapper\SNAP SLAPPER.exe" (
+    echo Build successful: C:\snapsmack\hub\SNAP HQ.exe
     echo Build successful: C:\snapsmack\snap_slapper\SNAP SLAPPER.exe
+    if not exist "C:\snapsmack\hub\icons" mkdir "C:\snapsmack\hub\icons"
+    copy /y "icons\*.ico" "C:\snapsmack\hub\icons\" >nul
+    copy /y "icons\*.png" "C:\snapsmack\hub\icons\" >nul
     powershell -NoProfile -ExecutionPolicy Bypass -Command "$w=New-Object -ComObject WScript.Shell; $s=$w.CreateShortcut([Environment]::GetFolderPath('StartMenu')+'\Programs\SNAP SLAPPER.lnk'); $s.TargetPath='C:\snapsmack\snap_slapper\SNAP SLAPPER.exe'; $s.WorkingDirectory='C:\snapsmack\snap_slapper'; $s.Save()"
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "$w=New-Object -ComObject WScript.Shell; $s=$w.CreateShortcut([Environment]::GetFolderPath('StartMenu')+'\Programs\THE HUB.lnk'); $s.TargetPath='C:\snapsmack\hub\hub.exe'; $s.WorkingDirectory='C:\snapsmack\hub'; $s.Save()"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$w=New-Object -ComObject WScript.Shell; $s=$w.CreateShortcut([Environment]::GetFolderPath('StartMenu')+'\Programs\SNAP HQ.lnk'); $s.TargetPath='C:\snapsmack\hub\SNAP HQ.exe'; $s.WorkingDirectory='C:\snapsmack\hub'; $s.IconLocation='C:\snapsmack\hub\icons\snap-hq.ico,0'; $s.Save()"
     echo Start Menu shortcuts updated.
 ) else (
     echo Build FAILED — check output above.

@@ -1,5 +1,5 @@
 """
-THE HUB — SnapSmack unified desktop front end & launcher.
+SNAP HQ — SnapSmack unified desktop front end & launcher.
 
 One door: launch every offline tool from here, and set the fleet up ONCE. Enter the
 hub login and hit Discover Fleet — it fills the SHARED stores (snap_creds + snap_profiles)
@@ -20,8 +20,9 @@ import subprocess
 import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from PIL import Image, ImageTk
 
-BUILD_VERSION = "0.7.14"
+BUILD_VERSION = "0.7.19"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -62,7 +63,7 @@ ACCENT  = "#39ff14"
 FIELD   = "#1c1c1c"
 BORDER  = "#2a2a2a"
 
-# ── the tools THE HUB fronts, and where they install ─────────────────────
+# ── the tools SNAP HQ fronts, and where they install ─────────────────────
 # The SnapSmack shared root. This is ALSO the GYSS file-jail root (SECAUDIT 039): a
 # compromised GYSS webview is permitted to write ANYWHERE under it. So it must never
 # be a source of WILDCARD-matched launch targets — see _find_exe and SECAUDIT 044.
@@ -91,6 +92,39 @@ ROSTER = [
     ("SHOTS FIRED",         "schedule board",       [os.path.join(_R, "shots-fired", "shots-fired.exe")]),
     ("CRONOMETER",          "fleet cron health",    [os.path.join(_R, "cronometer", "cronometer.exe")]),
 ]
+
+TOOL_ICON_FILES = {
+    "SNAP HQ": "snap-hq.ico",
+    "SNAP SLAPPER": "snap-slapper-simple.ico",
+    "SMACK YOUR BATCH UP": "sybu-simple.ico",
+    "GET YOUR SHIT SORTED": "gyss-simple.ico",
+    "COLD SNAP": "coldsnap-simple.ico",
+    "SMACK UP YOUR BACKUP": "suyb-simple.ico",
+    "OH SNAP": "ohsnap-simple.ico",
+    "SMACK YOUR MOUTH": "smackmouth-simple.ico",
+    "SHOTS FIRED": "shotsfired-simple.ico",
+    "CRONOMETER": "cronometer-simple.ico",
+}
+
+TOOL_IMAGE_FILES = {
+    name: filename.replace(".ico", ".png") for name, filename in TOOL_ICON_FILES.items()
+}
+
+
+def _tool_icon(name, exe):
+    """Permanent icon installed beside SNAP HQ; executable icon is fallback."""
+    filename = TOOL_ICON_FILES.get(name, "")
+    icon = os.path.join(_shared_root(), "hub", "icons", filename) if filename else ""
+    return icon if icon and os.path.isfile(icon) else exe
+
+
+def _tool_image(name):
+    filename = TOOL_IMAGE_FILES.get(name, "")
+    path = os.path.join(_shared_root(), "hub", "icons", filename) if filename else ""
+    if path and os.path.isfile(path):
+        return path
+    bundled = os.path.join(getattr(sys, "_MEIPASS", ""), "icons", filename) if filename else ""
+    return bundled if bundled and os.path.isfile(bundled) else ""
 
 
 def _find_exe(paths):
@@ -125,13 +159,68 @@ def _launch(path):
         return False, str(e)
 
 
+def _shortcut_path(name, destination):
+    """Create a real Windows .lnk using the executable's own embedded icon."""
+    if destination == "desktop":
+        folder = os.path.join(os.environ.get("USERPROFILE", ""), "Desktop")
+    else:
+        folder = os.path.join(os.environ.get("APPDATA", ""),
+                              "Microsoft", "Windows", "Start Menu", "Programs", "SnapSmack")
+    return os.path.join(folder, f"{name}.lnk")
+
+
+def _create_shortcut(name, exe, destination):
+    """Create a shortcut without interpolating paths into PowerShell source."""
+    shortcut = _shortcut_path(name, destination)
+    env = os.environ.copy()
+    env["SNAP_SHORTCUT_EXE"] = os.path.abspath(exe)
+    env["SNAP_SHORTCUT_LNK"] = shortcut
+    env["SNAP_SHORTCUT_ICON"] = _tool_icon(name, exe)
+    script = (
+        "$ErrorActionPreference='Stop'; "
+        "$target=$env:SNAP_SHORTCUT_EXE; $link=$env:SNAP_SHORTCUT_LNK; $icon=$env:SNAP_SHORTCUT_ICON; "
+        "New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($link)) | Out-Null; "
+        "$w=New-Object -ComObject WScript.Shell; $s=$w.CreateShortcut($link); "
+        "$s.TargetPath=$target; $s.WorkingDirectory=[IO.Path]::GetDirectoryName($target); "
+        "$s.IconLocation=\"$icon,0\"; $s.Save()"
+    )
+    done = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+                          env=env, capture_output=True, text=True,
+                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    if done.returncode:
+        return None, (done.stderr or done.stdout or "Windows could not create the shortcut").strip()
+    return shortcut, ""
+
+
+def _try_pin_to_taskbar(shortcut):
+    """Ask Windows for its Pin verb. Windows 11 may require user confirmation."""
+    env = os.environ.copy()
+    env["SNAP_SHORTCUT_LNK"] = shortcut
+    script = (
+        "$p=$env:SNAP_SHORTCUT_LNK; $sh=New-Object -ComObject Shell.Application; "
+        "$f=$sh.Namespace([IO.Path]::GetDirectoryName($p)); "
+        "$i=$f.ParseName([IO.Path]::GetFileName($p)); "
+        "$v=$i.Verbs() | Where-Object { ($_.Name -replace '&','') -match '^Pin to taskbar$' } | Select-Object -First 1; "
+        "if($v){$v.DoIt(); exit 0}else{exit 3}"
+    )
+    done = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+                          env=env, capture_output=True, text=True,
+                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    return done.returncode == 0
+
+
 class Hub(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title(f"THE HUB — SnapSmack   (build {BUILD_VERSION})")
+        self.title(f"SNAP HQ — local desktop headquarters   (build {BUILD_VERSION})")
         self.configure(bg=BG)
         self.geometry("980x720")
         self.minsize(860, 640)
+
+        self._ui_images = {}
+        hq_image = self._load_ui_icon("SNAP HQ", 48)
+        if hq_image:
+            self.iconphoto(True, hq_image)
 
         self._creds_vars = {}
         self._build_header()
@@ -154,10 +243,36 @@ class Hub(tk.Tk):
     def _build_header(self):
         h = tk.Frame(self, bg=BG)
         h.pack(fill="x", padx=18, pady=(16, 12))
-        tk.Label(h, text="THE HUB", bg=BG, fg=ACCENT,
+        hq_image = self._load_ui_icon("SNAP HQ", 42)
+        tk.Label(h, text="SNAP HQ", image=hq_image, compound="left", padx=6,
+                 bg=BG, fg=ACCENT,
                  font=("Segoe UI Black", 22, "bold")).pack(side="left")
-        tk.Label(h, text="  one door · set the fleet up once",
+        tk.Label(h, text="  local desktop headquarters",
                  bg=BG, fg=DIM, font=("Segoe UI", 11)).pack(side="left", pady=(10, 0))
+        if getattr(sys, "frozen", False):
+            for label, where in (("DESKTOP", "desktop"), ("TASKBAR", "taskbar")):
+                b = tk.Button(h, text=label, bg=FIELD, fg=DIM, relief="flat", bd=0,
+                              activebackground=ACCENT, activeforeground=BG,
+                              font=("Segoe UI", 7, "bold"), cursor="hand2",
+                              command=lambda w=where: self._on_shortcut(sys.executable, "SNAP HQ", w))
+                b.pack(side="right", padx=(6, 0), pady=(8, 0))
+                self._hoverize(b)
+
+    def _load_ui_icon(self, name, size=42):
+        key = (name, size)
+        if key in self._ui_images:
+            return self._ui_images[key]
+        path = _tool_image(name)
+        if not path:
+            return None
+        try:
+            image = Image.open(path).convert("RGBA")
+            image.thumbnail((size, size), Image.Resampling.LANCZOS)
+            photo = ImageTk.PhotoImage(image)
+            self._ui_images[key] = photo
+            return photo
+        except Exception:
+            return None
 
     def _card(self, parent, title):
         outer = tk.Frame(parent, bg=BORDER)
@@ -194,22 +309,62 @@ class Hub(tk.Tk):
             cell.grid(row=i // 3, column=i % 3, sticky="nsew", padx=6, pady=6)
             grid.grid_columnconfigure(i % 3, weight=1)
             state = "normal" if exe else "disabled"
-            btn = tk.Button(cell, text=name, state=state,
+            tool_image = self._load_ui_icon(name, 42)
+            btn = tk.Button(cell, text=name, image=tool_image, compound="left",
+                            anchor="w", padx=18, state=state,
                             bg=FIELD if exe else "#181818",
                             fg=INK if exe else DIM, activebackground=ACCENT,
                             activeforeground=BG, relief="flat", bd=0,
-                            font=("Segoe UI", 10, "bold"), height=2,
+                            font=("Segoe UI", 10, "bold"), height=52,
                             cursor="hand2" if exe else "arrow",
                             command=(lambda p=exe, n=name: self._on_launch(p, n)))
             btn.pack(fill="x")
+            # Keep every icon and label on one shared left edge located toward
+            # the centre of its card. Unlike centred icon/text pairs, labels of
+            # different lengths no longer wander horizontally.
+            cell.bind("<Configure>",
+                      lambda event, button=btn: button.configure(
+                          padx=max(18, event.width // 3)))
             self._hoverize(btn)
-            tk.Label(cell, text=(sub if exe else "not installed"),
-                     bg=CARD, fg=DIM, font=("Segoe UI", 8)).pack(anchor="w", pady=(2, 0))
+            foot = tk.Frame(cell, bg=CARD)
+            foot.pack(fill="x", pady=(2, 0))
+            tk.Label(foot, text=(sub if exe else "not installed"),
+                     bg=CARD, fg=DIM, font=("Segoe UI", 8)).pack(side="left", anchor="w")
+            if exe:
+                for label, where in (("DESKTOP", "desktop"), ("TASKBAR", "taskbar")):
+                    sb = tk.Button(foot, text=label, bg=CARD, fg=DIM, relief="flat", bd=0,
+                                   activebackground=ACCENT, activeforeground=BG,
+                                   font=("Segoe UI", 7, "bold"), cursor="hand2",
+                                   command=lambda p=exe, n=name, w=where: self._on_shortcut(p, n, w))
+                    sb.pack(side="right", padx=(5, 0))
+                    self._hoverize(sb)
 
     def _on_launch(self, path, name):
         ok, err = _launch(path)
         if not ok:
             messagebox.showerror("Launch failed", f"{name}\n\n{err}", parent=self)
+
+    def _on_shortcut(self, path, name, destination):
+        shortcut, err = _create_shortcut(name, path,
+                                         "desktop" if destination == "desktop" else "start")
+        if err:
+            messagebox.showerror("Shortcut failed", f"{name}\n\n{err}", parent=self)
+            return
+        if destination == "desktop":
+            messagebox.showinfo("Shortcut added", f"{name} is now on your desktop.", parent=self)
+            return
+        if _try_pin_to_taskbar(shortcut):
+            messagebox.showinfo("Added to taskbar", f"{name} was added to the taskbar.", parent=self)
+            return
+        # Current Windows builds deliberately hide the programmatic Pin verb.
+        # Launch the requested app so its real icon is already on the taskbar;
+        # pinning that running icon is the shortest supported Windows workflow.
+        _launch(path)
+        messagebox.showinfo(
+            "One Windows click remains",
+            f"{name} is open and installed in your Start menu.\n\n"
+            "Right-click its icon on the taskbar and choose Pin to taskbar.",
+            parent=self)
 
     # ── shared setup ─────────────────────────────────────────────────────────
     def _field(self, parent, label, key, show=None, browse=False, test=None, reveal=False):
@@ -298,6 +453,33 @@ class Hub(tk.Tk):
         except Exception as e:
             self._set_status(status, False, str(e)[:70])
 
+    def _test_ai_provider(self, status, provider, key_name):
+        key = self._creds_vars[key_name].get().strip()
+        if not key:
+            self._set_status(status, False, "enter a key first"); return
+        self._testing(status)
+        try:
+            import requests
+            if provider == "claude":
+                r = requests.get("https://api.anthropic.com/v1/models", headers={
+                    "x-api-key": key, "anthropic-version": "2023-06-01"}, timeout=15)
+            elif provider == "openai":
+                r = requests.get("https://api.openai.com/v1/models",
+                                 headers={"Authorization": f"Bearer {key}"}, timeout=15)
+            elif provider == "deepseek":
+                r = requests.get("https://api.deepseek.com/v1/models",
+                                 headers={"Authorization": f"Bearer {key}"}, timeout=15)
+            elif provider == "kimi":
+                r = requests.get("https://api.moonshot.cn/v1/models",
+                                 headers={"Authorization": f"Bearer {key}"}, timeout=15)
+            else:
+                self._set_status(status, False, "unknown provider"); return
+            self._set_status(status, r.status_code == 200,
+                             "key valid" if r.status_code == 200
+                             else f"rejected (HTTP {r.status_code})")
+        except Exception as e:
+            self._set_status(status, False, str(e)[:70])
+
     def _test_drive(self, status):
         import json, os
         path = self._creds_vars["google_credentials"].get().strip()
@@ -329,7 +511,15 @@ class Hub(tk.Tk):
         card = self._card(parent, "HUB SETUP  ·  set once, every tool has it")
         self._field(card, "HUB SITE URL",   "hub_url")
         self._field(card, "HUB API KEY",    "hub_key", show="•", test=self._test_hub)
+        self._field(card, "CLAUDE API KEY", "claude_api_key", show="•",
+                    test=lambda s: self._test_ai_provider(s, "claude", "claude_api_key"))
         self._field(card, "GEMINI API KEY", "gemini_api_key", show="•", test=self._test_gemini)
+        self._field(card, "OPENAI API KEY", "openai_api_key", show="•",
+                    test=lambda s: self._test_ai_provider(s, "openai", "openai_api_key"))
+        self._field(card, "DEEPSEEK API KEY", "deepseek_api_key", show="•",
+                    test=lambda s: self._test_ai_provider(s, "deepseek", "deepseek_api_key"))
+        self._field(card, "KIMI API KEY", "kimi_api_key", show="•",
+                    test=lambda s: self._test_ai_provider(s, "kimi", "kimi_api_key"))
         self._field(card, "GOOGLE DRIVE CREDENTIALS (json)", "google_credentials", browse=True, test=self._test_drive)
         self._field(card, "BACKUP FOLDER ID", "drive_folder_id", show="•", reveal=True)
         bar = tk.Frame(card, bg=CARD)

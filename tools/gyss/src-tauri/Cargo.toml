@@ -1,9 +1,9 @@
 [package]
 name = "get-your-shit-sorted"
-version = "0.1.5"
+version = "0.7.7"
 edition = "2021"
 description = "GET YOUR SHIT SORTED — SnapSmack desktop photo sorting tool"
-license = "GPL-3.0"
+license = "LicenseRef-SPL-2.2"
 
 [lib]
 name = "gyss_lib"

@@ -10,9 +10,9 @@
 // thumbs + db/catalog.sqlite) and config_files/gyss/ holds GYSS's own profiles
 // and sessions. See tools/_shared/snap_home.py for the authoritative layout.
 //
-// HTTP calls to the SnapSmack gyss-api.php handler are made directly from JS
-// via fetch(). The API emits CORS headers for tauri:// origins so no Rust
-// proxy is needed.
+// Authenticated calls to gyss-api.php use one narrowly scoped native command.
+// Browser fetch is not reliable here because WebView2 applies CORS before the
+// request reaches SnapSmack.
 
 use std::path::{Path, PathBuf};
 use tauri::Manager;
@@ -55,6 +55,8 @@ pub fn run() {
             delete_file,
             catalog_sync,
             catalog_read,
+            api_request,
+            provision_gyss_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running GET YOUR SHIT SORTED");
@@ -108,6 +110,129 @@ fn resolve_in_root(path: &str) -> Result<PathBuf, String> {
 #[tauri::command]
 fn shared_home() -> String {
     shared_root().to_string_lossy().to_string()
+}
+
+/// Perform only authenticated GET/POST calls to SnapSmack's GYSS API route.
+/// This is intentionally not a generic HTTP proxy: HTTPS is mandatory except
+/// for loopback development, redirects are refused so credentials cannot cross
+/// hosts, the path/route are fixed, and replies are size-capped.
+#[tauri::command]
+async fn api_request(
+    method: String,
+    url: String,
+    api_key: String,
+    body: Option<String>,
+) -> Result<serde_json::Value, String> {
+    const MAX_BYTES: usize = 16 * 1024 * 1024;
+    let parsed = reqwest::Url::parse(&url).map_err(|_| "Invalid site URL".to_string())?;
+    let host = parsed.host_str().unwrap_or_default();
+    let loopback = host.eq_ignore_ascii_case("localhost")
+        || host == "127.0.0.1"
+        || host == "::1";
+    if parsed.scheme() != "https" && !(parsed.scheme() == "http" && loopback) {
+        return Err("Refused: GYSS credentials require HTTPS".into());
+    }
+    if parsed.username() != "" || parsed.password().is_some() || parsed.fragment().is_some() {
+        return Err("Refused: malformed site URL".into());
+    }
+    if parsed.path() != "/api.php" {
+        return Err("Refused: only the SnapSmack API endpoint is allowed".into());
+    }
+    let route_ok = parsed
+        .query_pairs()
+        .any(|(key, value)| key == "route" && value.starts_with("gyss/"));
+    if !route_ok {
+        return Err("Refused: only GYSS API routes are allowed".into());
+    }
+    if api_key.trim().is_empty() {
+        return Err("No GYSS API key supplied".into());
+    }
+
+    let verb = method.to_ascii_uppercase();
+    if verb != "GET" && verb != "POST" {
+        return Err("Refused: only GET and POST are allowed".into());
+    }
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(45))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let mut request = if verb == "GET" { client.get(parsed) } else { client.post(parsed) };
+    request = request
+        .bearer_auth(api_key.trim())
+        .header(reqwest::header::ACCEPT, "application/json")
+        .header(reqwest::header::CONTENT_TYPE, "application/json");
+    if let Some(payload) = body {
+        request = request.body(payload);
+    }
+    let response = request.send().await.map_err(|e| e.to_string())?;
+    let status = response.status();
+    if status.is_redirection() {
+        return Err(format!("Refused server redirect (HTTP {status})"));
+    }
+    if let Some(length) = response.content_length() {
+        if length as usize > MAX_BYTES {
+            return Err("Refused: API response is too large".into());
+        }
+    }
+    let bytes = response.bytes().await.map_err(|e| e.to_string())?;
+    if bytes.len() > MAX_BYTES {
+        return Err("Refused: API response is too large".into());
+    }
+    serde_json::from_slice(&bytes)
+        .map_err(|_| format!("Server returned non-JSON response (HTTP {status})"))
+}
+
+/// Mint a least-privilege GYSS key using the full hub-to-spoke credential that
+/// fleet discovery already stores locally. The URL and request body are fixed so
+/// this cannot become a general authenticated HTTP proxy.
+#[tauri::command]
+async fn provision_gyss_key(site_url: String, api_key_local: String) -> Result<String, String> {
+    const MAX_BYTES: usize = 64 * 1024;
+    let mut parsed = reqwest::Url::parse(site_url.trim()).map_err(|_| "Invalid site URL".to_string())?;
+    let host = parsed.host_str().unwrap_or_default();
+    let loopback = host.eq_ignore_ascii_case("localhost") || host == "127.0.0.1" || host == "::1";
+    if parsed.scheme() != "https" && !(parsed.scheme() == "http" && loopback) {
+        return Err("Refused: key provisioning requires HTTPS".into());
+    }
+    if parsed.username() != "" || parsed.password().is_some() || parsed.fragment().is_some() {
+        return Err("Refused: malformed site URL".into());
+    }
+    if api_key_local.trim().is_empty() {
+        return Err("No fleet provisioning key is available for this site".into());
+    }
+    parsed.set_path("/api.php");
+    parsed.set_query(Some("route=multisite/provision-key"));
+    parsed.set_fragment(None);
+
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(45))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let response = client.post(parsed)
+        .bearer_auth(api_key_local.trim())
+        .header(reqwest::header::ACCEPT, "application/json")
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .body(r#"{"key_type":"gyss"}"#)
+        .send().await.map_err(|e| e.to_string())?;
+    let status = response.status();
+    if status.is_redirection() {
+        return Err(format!("Refused server redirect (HTTP {status})"));
+    }
+    if let Some(length) = response.content_length() {
+        if length as usize > MAX_BYTES { return Err("Refused: provisioning response is too large".into()); }
+    }
+    let bytes = response.bytes().await.map_err(|e| e.to_string())?;
+    if bytes.len() > MAX_BYTES { return Err("Refused: provisioning response is too large".into()); }
+    let data: serde_json::Value = serde_json::from_slice(&bytes)
+        .map_err(|_| format!("Server returned non-JSON response (HTTP {status})"))?;
+    if !data.get("ok").and_then(|v| v.as_bool()).unwrap_or(false) {
+        return Err(data.get("error").and_then(|v| v.as_str())
+            .unwrap_or("The site refused GYSS key provisioning").to_string());
+    }
+    data.get("api_key").and_then(|v| v.as_str()).filter(|v| !v.is_empty())
+        .map(str::to_string).ok_or_else(|| "The site did not return the new GYSS key".to_string())
 }
 
 /// Read a UTF-8 file from disk. Used for profile and session JSON.
