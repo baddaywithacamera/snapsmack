@@ -9,44 +9,31 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.598 "LIVE WIRE" — 2026-08-31
+## 0.7.595 "LIVE WIRE" — 2026-08-31
 - **New: Cron & Jobs admin page — schedule and run your crons from the CMS.** Boring Ass
   Stuff → Cron & Jobs. Until now each cron's register control lived on a different page
   (fediverse on the Fediverse admin, RSS on Admin, version-check on Updates), so it was
-  easy to leave RSS or fediverse unregistered and never notice — which is exactly why
-  CRONOMETER showed RSS "never" on every site. This page unifies all three real crons
-  (fediverse delivery, RSS blogroll fetch, version/update check) in one place: for each
-  it shows the last run and whether it's registered, and gives **RUN NOW** (run it this
-  second), **REGISTER** (install it in the server crontab — the fix for a job that never
-  runs), and **UNREGISTER**. Includes a **WEB CRON** fallback note for hosts without
-  crontab access. Uses the existing `core/cron-register.php` helpers; controls only this
-  site's crons (fleet-wide health stays in the desktop CRONOMETER board).
-
-## 0.7.597 "LIVE WIRE" — 2026-08-31
-- **Help: Site Description entry now lists everywhere the bio is used.** The
-  Configuration help said only "a short tagline, used in meta tags and RSS." It now
-  spells out that the Description is your one reused blurb — on-site profile/landing,
-  fediverse & Pixelfed account bio, RSS description, SEO meta fallback, and the
-  photoblogs directory listing — so it is clear it is written once, not duplicated.
-
-## 0.7.596 "LIVE WIRE" — 2026-08-31
-- **Clarify: Fediverse Portal profile box now says where the avatar and bio come
-  from.** The PROFILE section sets only the fediverse-specific fields (display-name
-  override, website, pronouns); the avatar is reused from Pimp Your Ride → Smooth
-  Your Skin and the bio from the site description in Settings. The box now says so,
-  so it no longer looks like the avatar/bio are duplicated or missing. Copy-only, no
-  data or field changes.
-
-## 0.7.595 "LIVE WIRE" — 2026-08-31
+  easy to leave RSS or fediverse unregistered and never notice. This page unifies all
+  three real crons (fediverse delivery, RSS blogroll fetch, version/update check) in one
+  place: for each it shows the last run and whether it's registered, and gives **RUN NOW**,
+  **REGISTER** (install it in the server crontab — the fix for a job that never runs), and
+  **UNREGISTER**. Includes a **WEB CRON** fallback note for hosts without crontab access.
+  Uses the existing `core/cron-register.php` helpers.
 - **Fix: fleet heartbeat's cron-health block reports only real crons.** The
-  `multisite/heartbeat` `jobs` block listed **Backups** and **SMACKBACK** as if they
-  were scheduled jobs, so the CRONOMETER fleet board showed false red/grey rows for
-  every site. Backups are run by the SUYB desktop tool (there is no backup cron) and
-  SMACKBACK rides the version-check cron. The block now carries only the crons every
-  site actually runs — **fediverse delivery, RSS fetch, version/update check** — each
-  from its real `snap_settings` last-run stamp. Backup freshness stays available via
-  `last_backup_at`/`last_backup_status` for a separate, non-cron indicator. Paired
-  CRONOMETER desktop change: `_spec/SPEC-cronometer-real-crons-only.md`.
+  `multisite/heartbeat` `jobs` block listed **Backups** and **SMACKBACK** as if they were
+  scheduled jobs, so the CRONOMETER fleet board showed false red/grey rows for every site.
+  Backups are run by the SUYB desktop tool (there is no backup cron) and SMACKBACK rides
+  the version-check cron. The block now carries only the crons every site runs — **fediverse
+  delivery, RSS fetch, version/update check** — each from its real `snap_settings` last-run
+  stamp. Backup freshness stays available via `last_backup_at`/`last_backup_status`.
+- **Clarify: Fediverse Portal profile box says where the avatar and bio come from.** The
+  PROFILE section sets only the fediverse-specific fields (display-name override, website,
+  pronouns); the avatar is reused from Pimp Your Ride → Smooth Your Skin and the bio from
+  the site description in Settings. The box now says so, so it no longer looks like the
+  avatar/bio are duplicated or missing. Copy-only.
+- **Help: Site Description entry now lists everywhere the bio is used** — on-site
+  profile/landing, fediverse & Pixelfed account bio, RSS description, SEO meta fallback,
+  and the photoblogs directory listing — so it's clear it's written once, not duplicated.
 
 ## 0.7.594 "LIVE WIRE" — 2026-08-31
 - **License: SNAPSMACK now ships under the SMACK PUBLIC LICENSE (SPL) 2.2.** The
