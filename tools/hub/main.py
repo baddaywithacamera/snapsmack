@@ -22,7 +22,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
-BUILD_VERSION = "0.7.19"
+BUILD_VERSION = "0.7.20"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -310,22 +310,34 @@ class Hub(tk.Tk):
             grid.grid_columnconfigure(i % 3, weight=1)
             state = "normal" if exe else "disabled"
             tool_image = self._load_ui_icon(name, 42)
-            btn = tk.Button(cell, text=name, image=tool_image, compound="left",
-                            anchor="w", padx=18, state=state,
+            btn = tk.Button(cell, text="", state=state,
                             bg=FIELD if exe else "#181818",
                             fg=INK if exe else DIM, activebackground=ACCENT,
                             activeforeground=BG, relief="flat", bd=0,
-                            font=("Segoe UI", 10, "bold"), height=52,
+                            font=("Segoe UI", 10, "bold"), height=3,
                             cursor="hand2" if exe else "arrow",
                             command=(lambda p=exe, n=name: self._on_launch(p, n)))
             btn.pack(fill="x")
-            # Keep every icon and label on one shared left edge located toward
-            # the centre of its card. Unlike centred icon/text pairs, labels of
-            # different lengths no longer wander horizontally.
-            cell.bind("<Configure>",
-                      lambda event, button=btn: button.configure(
-                          padx=max(18, event.width // 3)))
-            self._hoverize(btn)
+            # Place content toward the card centre without adding geometry-
+            # affecting padding. Dynamic button padding feeds back into Tk's
+            # requested width and can make one grid column expand indefinitely.
+            content = tk.Label(btn, text=name, image=tool_image, compound="left",
+                               bg=btn.cget("bg"), fg=INK if exe else DIM,
+                               font=("Segoe UI", 10, "bold"), cursor=btn.cget("cursor"))
+            content.place(relx=0.33, rely=0.5, anchor="w")
+            content.bind("<Button-1>", lambda _event, button=btn: button.invoke())
+            content.bind("<Enter>", lambda _event, button=btn, label=content:
+                         (button.configure(bg=ACCENT), label.configure(bg=ACCENT, fg=BG))
+                         if str(button.cget("state")) != "disabled" else None)
+            content.bind("<Leave>", lambda _event, button=btn, label=content:
+                         (button.configure(bg=FIELD), label.configure(bg=FIELD, fg=INK))
+                         if str(button.cget("state")) != "disabled" else None)
+            btn.bind("<Enter>", lambda _event, button=btn, label=content:
+                     (button.configure(bg=ACCENT), label.configure(bg=ACCENT, fg=BG))
+                     if str(button.cget("state")) != "disabled" else None)
+            btn.bind("<Leave>", lambda _event, button=btn, label=content:
+                     (button.configure(bg=FIELD), label.configure(bg=FIELD, fg=INK))
+                     if str(button.cget("state")) != "disabled" else None)
             foot = tk.Frame(cell, bg=CARD)
             foot.pack(fill="x", pady=(2, 0))
             tk.Label(foot, text=(sub if exe else "not installed"),
