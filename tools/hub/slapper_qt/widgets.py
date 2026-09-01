@@ -388,6 +388,13 @@ class ImageView(QGraphicsView):
         self._fitting = False
         self.resetTransform()
 
+    def zoom_by(self, factor):
+        """Zoom around the current view centre, matching mouse-wheel zoom."""
+        if not self._has_image:
+            return
+        self._fitting = False
+        self.scale(float(factor), float(factor))
+
     # --- Before/After split -------------------------------------------------
     def set_compare(self, original, edited, keep_view=True):
         """Enter Before/After: original left of the divider, edited on the
@@ -620,9 +627,8 @@ class ImageView(QGraphicsView):
     def wheelEvent(self, event):
         if not self._has_image or self._crop_mode:
             return
-        self._fitting = False
         factor = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
-        self.scale(factor, factor)
+        self.zoom_by(factor)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
