@@ -302,6 +302,19 @@ class EditorWindow(QMainWindow):
         self.act_full.triggered.connect(self.zoom_actual)
         bar.addAction(self.act_full)
 
+        self.act_zoom_out = QAction("Zoom −", self)
+        self.act_zoom_out.setToolTip("Zoom out  (Ctrl+-)")
+        self.act_zoom_out.setShortcuts([QKeySequence.ZoomOut])
+        self.act_zoom_out.triggered.connect(self.zoom_out)
+        bar.addAction(self.act_zoom_out)
+
+        self.act_zoom_in = QAction("Zoom +", self)
+        self.act_zoom_in.setToolTip("Zoom in  (Ctrl++)")
+        self.act_zoom_in.setShortcuts([
+            QKeySequence.ZoomIn, QKeySequence("Ctrl+=")])
+        self.act_zoom_in.triggered.connect(self.zoom_in)
+        bar.addAction(self.act_zoom_in)
+
         self.act_crop = QAction("Crop", self)
         self.act_crop.setCheckable(True)
         self.act_crop.toggled.connect(self._toggle_crop)
@@ -429,6 +442,7 @@ class EditorWindow(QMainWindow):
         # its deliberately small, predictable order.
         for action in (
                 self.act_reset, self.act_auto, self.act_fit, self.act_full,
+                self.act_zoom_out, self.act_zoom_in,
                 self.act_crop, self.act_heal, self.act_redeye,
                 self.act_compare, self.act_filmstrip,
                 self.act_recipe_save, self.act_recipe_apply,
@@ -464,7 +478,8 @@ class EditorWindow(QMainWindow):
                       self.act_recipe_save, self.act_recipe_apply),
             "output": (self.act_save_project, self.act_export,
                        self.act_blog_copy),
-            "view": (self.act_fit, self.act_full, self.act_filmstrip,
+            "view": (self.act_zoom_out, self.act_zoom_in,
+                     self.act_fit, self.act_full, self.act_filmstrip,
                      self.act_prefs, self.act_help),
         }
         crop_controls = QWidget()
@@ -2553,6 +2568,12 @@ class EditorWindow(QMainWindow):
             self._render_preview(keep_view=False)
         else:
             self.view.fit()
+
+    def zoom_in(self):
+        self.view.zoom_by(1.15)
+
+    def zoom_out(self):
+        self.view.zoom_by(1 / 1.15)
 
     def zoom_actual(self):
         """Show actual pixels — re-render at native resolution, then 1:1."""

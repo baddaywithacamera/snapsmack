@@ -274,7 +274,7 @@ def test_context_sensitive_toolbars():
     assert visible_tools() == ["Save Project", "Export…", "Blog Copy…"]
     win._context_selectors["view"].trigger()
     assert visible_tools() == [
-        "Fit", "100%", "Filmstrip", "Preferences", "Help"]
+        "Zoom −", "Zoom +", "Fit", "100%", "Filmstrip", "Preferences", "Help"]
 
     # Normal mode keeps the chosen workspace but removes Advanced-only tools.
     win._context_selectors["looks"].trigger()
@@ -1524,7 +1524,14 @@ def test_keyboard_shortcuts_and_help_topics():
     assert len(seqs) == len(set(seqs)), "duplicate shortcuts: " + str(seqs)
     assert win.act_fit.shortcut().toString().lower().endswith("0")
     assert win.act_full.shortcut().toString().lower().endswith("1")
+    assert any("+" in seq.toString() for seq in win.act_zoom_in.shortcuts())
+    assert any("-" in seq.toString() for seq in win.act_zoom_out.shortcuts())
     assert win.act_lewks.shortcut().toString().lower().endswith("k")
+    fitted = win.view.transform().m11()
+    win.act_zoom_in.trigger()
+    assert win.view.transform().m11() > fitted and not win.view._fitting
+    win.act_fit.trigger()
+    assert win.view._fitting
     # tooltips now advertise the shortcut
     assert "Ctrl" in win.act_lewks.toolTip()
     # help gained the new topics
