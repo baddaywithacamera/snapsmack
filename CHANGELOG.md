@@ -10,6 +10,12 @@
 
 # SnapSmack Changelog
 ## 0.7.595 "LIVE WIRE" — 2026-08-31
+- **New: fleet cron driver (`multisite/run-crons`).** A full-key endpoint that runs a
+  site's due crons on demand by invoking the same web-cron tick that fires on page loads.
+  It lets CRONOMETER (which already polls all 24 sites) keep the whole fleet's jobs
+  running even on sites with no visitor traffic and no system crontab — so just having
+  CRONOMETER open drives the fleet. Idempotent and self-throttled: a hit that isn't due
+  does nothing. Pairs with CRONOMETER 0.7.6.
 - **Fix: RSS blogroll fetch now runs without a system cron — like fediverse already
   does.** On hosts with no crontab (managed / tunnel hosting), the RSS cron had no way to
   fire, so it showed "never" on every site. It now rides the existing web-cron
