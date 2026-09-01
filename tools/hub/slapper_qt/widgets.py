@@ -208,11 +208,81 @@ class ImageView(QGraphicsView):
         centre = rect.center()
         width = rect.width()
         height = width / self._crop_aspect
-        if height > self._scene.sceneRect().height():
-            height = min(rect.height(), self._scene.sceneRect().height())
-            width = height * self._crop_aspect
+        scene = self._scene.sceneRect()
+        max_width = max(0.0, 2 * min(centre.x() - scene.left(),
+                                     scene.right() - centre.x()))
+        max_height = max(0.0, 2 * min(centre.y() - scene.top(),
+                                      scene.bottom() - centre.y()))
+        scale = min(1.0, max_width / width if width else 1.0,
+                    max_height / height if height else 1.0)
+        width *= scale
+        height *= scale
         self._set_crop_rect(QRectF(centre.x() - width / 2,
                                    centre.y() - height / 2, width, height))
+
+    def _aspect_crop_rect(self, current, hit, start):
+        """Return an in-bounds crop rect that strictly preserves the ratio."""
+        ratio = self._crop_aspect
+        scene = self._scene.sceneRect()
+        if not ratio:
+            return QRectF(start)
+
+        if hit in ("n", "s"):
+            anchor_y = start.bottom() if hit == "n" else start.top()
+            height = abs(current.y() - anchor_y)
+            width = height * ratio
+            centre_x = start.center().x()
+            max_width = 2 * min(centre_x - scene.left(),
+                                scene.right() - centre_x)
+            max_height = (anchor_y - scene.top() if hit == "n" else
+                          scene.bottom() - anchor_y)
+            scale = min(1.0, max_width / width if width else 1.0,
+                        max_height / height if height else 1.0)
+            width, height = width * scale, height * scale
+            top = anchor_y - height if hit == "n" else anchor_y
+            return QRectF(centre_x - width / 2, top, width, height)
+
+        if hit in ("e", "w"):
+            anchor_x = start.left() if hit == "e" else start.right()
+            width = abs(current.x() - anchor_x)
+            height = width / ratio
+            centre_y = start.center().y()
+            max_width = (scene.right() - anchor_x if hit == "e" else
+                         anchor_x - scene.left())
+            max_height = 2 * min(centre_y - scene.top(),
+                                 scene.bottom() - centre_y)
+            scale = min(1.0, max_width / width if width else 1.0,
+                        max_height / height if height else 1.0)
+            width, height = width * scale, height * scale
+            left = anchor_x if hit == "e" else anchor_x - width
+            return QRectF(left, centre_y - height / 2, width, height)
+
+        # Corners and a newly drawn crop anchor at the opposite/start point.
+        if hit == "new":
+            anchor = self._crop_drag_start
+            east = current.x() >= anchor.x()
+            south = current.y() >= anchor.y()
+        else:
+            east = "e" in hit
+            south = "s" in hit
+            anchor = QPointF(start.left() if east else start.right(),
+                             start.top() if south else start.bottom())
+        raw_width = abs(current.x() - anchor.x())
+        raw_height = abs(current.y() - anchor.y())
+        if raw_width / ratio >= raw_height:
+            width, height = raw_width, raw_width / ratio
+        else:
+            height, width = raw_height, raw_height * ratio
+        max_width = (scene.right() - anchor.x() if east else
+                     anchor.x() - scene.left())
+        max_height = (scene.bottom() - anchor.y() if south else
+                      anchor.y() - scene.top())
+        scale = min(1.0, max_width / width if width else 1.0,
+                    max_height / height if height else 1.0)
+        width, height = width * scale, height * scale
+        left = anchor.x() if east else anchor.x() - width
+        top = anchor.y() if south else anchor.y() - height
+        return QRectF(left, top, width, height)
 
     def crop_rect_normalized(self):
         if not self._crop_rect_item:
@@ -566,13 +636,11 @@ class ImageView(QGraphicsView):
                 if "n" in hit: rect.setTop(current.y())
                 if "s" in hit: rect.setBottom(current.y())
                 rect = rect.normalized()
-            if self._crop_aspect and self._crop_drag != "move" and rect.width() > 0:
-                height = rect.width() / self._crop_aspect
-                if self._crop_drag and "n" in self._crop_drag:
-                    rect.setTop(rect.bottom() - height)
-                else:
-                    rect.setBottom(rect.top() + height)
-            rect = self._snap_crop_rect(rect, self._crop_drag)
+            if self._crop_aspect and self._crop_drag != "move":
+                rect = self._aspect_crop_rect(
+                    current, self._crop_drag, self._crop_start_rect)
+            else:
+                rect = self._snap_crop_rect(rect, self._crop_drag)
             self._set_crop_rect(rect)
             return
         if self._layer_move_mode and self._layer_drag_point is not None and \
