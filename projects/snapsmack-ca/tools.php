@@ -6,7 +6,7 @@
  *     // ===== SNAPSMACK EOF =====
  */
 $page_title       = 'BOX O\' TRICKS! - SnapSmack Companion Apps';
-$page_description = 'Free SnapSmack desktop applications for batch publishing, backup, Instagram migration, and Flickr migration.';
+$page_description = 'Free SnapSmack desktop applications for photo editing, local tool management, batch publishing, backup, and social archive migration.';
 $page_og_url      = 'https://snapsmack.ca/tools.php';
 $nav_active       = 'goods-tools';
 
@@ -128,10 +128,19 @@ require_once __DIR__ . '/includes/header.php';
                             <h3>Looks you can see, change, save, and leave with.</h3>
                             <p>LEWKS are reusable appearance recipes, previewed against the photograph that is actually open rather than a vendor&rsquo;s perfectly lit sample. Black-and-white treatments, corrective starting points, film and print character, landscape colour, portrait handling, and deliberately strange experiments can all be auditioned at adjustable strength.</p>
                             <p>Applying one does not flatten the photograph into a dead end. The underlying controls remain controls. Change the contrast, pull back a colour channel, alter the curve, stack another idea, or save the result as your own recipe. A useful preset should accelerate a decision, not conceal how the decision was made.</p>
-                            <p>SNAP SLAPPER runs locally, arrives through THE HUB, and works beside a SnapSmack installation rather than inventing another subscription account or cloud library. The desktop application does the heavy image work on your computer. Your site, your archive, your edits, and your exit remain yours.</p>
+                            <p>SNAP SLAPPER runs locally, arrives through SNAP HQ, and works beside a SnapSmack installation rather than inventing another subscription account or cloud library. The desktop application does the heavy image work on your computer. Your site, your archive, your edits, and your exit remain yours.</p>
                             <p><a href="wotcha.php#snap-slapper-editor"><strong>Read the WOTCHA announcement &rarr;</strong></a></p>
                         </div>
                     </section>
+                </div>
+            </article>
+
+            <article class="app-entry" id="snap-hq">
+                <div class="app-shot"><img src="img/snap-hq.png" alt="SNAP HQ local desktop headquarters showing the SnapSmack companion application launcher and shared setup" width="1920" height="1032" loading="lazy"></div>
+                <div class="app-copy">
+                    <p class="platform">Windows</p><span class="status">Closed beta</span>
+                    <h2>SNAP HQ</h2>
+                    <p>Your local headquarters for the SnapSmack desktop suite. Launch the tools from one place, discover the sites in your fleet, and keep shared connection profiles, protected credentials, libraries, and prompts available to the applications that need them.</p>
                 </div>
             </article>
 
