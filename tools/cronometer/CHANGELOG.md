@@ -11,6 +11,17 @@ red / amber / grey / green — so a silently-dead cron is caught before it bites
 Versioning follows the SnapSmack desktop-family `0.7.x` convention;
 `bump_version.py` adds one patch for subsequent builds.
 
+## 0.7.6 — 2026-08-31
+
+### Added
+- **Fleet cron driver.** On every poll, CRONOMETER now also nudges each site's due
+  crons to run via the new `multisite/run-crons` endpoint — so the fleet's jobs run
+  even on sites with no visitor traffic and no system crontab. Best-effort and
+  idempotent (the server self-throttles), and it never affects the health verdict.
+  Pairs with SnapSmack 0.7.595D. Just having CRONOMETER open keeps the fleet ticking.
+
+---
+
 ## 0.7.5 — 2026-08-31
 
 ### Changed

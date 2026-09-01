@@ -430,6 +430,32 @@ if ($resource === 'provision-key' && $method === 'POST') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: multisite/run-crons
+// Fleet cron driver. CRONOMETER (or any full-key caller) hits this so a site's
+// due jobs run even with zero visitor traffic and no system crontab. It just
+// invokes the same web-cron tick that fires on public page loads — RSS fetch and
+// fediverse delivery run after the response flushes (register_shutdown_function),
+// so the caller gets an immediate ok and never waits. Idempotent + self-throttled:
+// the tick's own due-checks and DB locks mean a hit that isn't due does nothing.
+// Requires FULL api_key_local auth (this sits below the Bearer gate above).
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'run-crons') {
+    $ran = [];
+    if (is_file(__DIR__ . '/fediverse-webcron.php')) {
+        require_once __DIR__ . '/fediverse-webcron.php';
+        if (function_exists('sv_web_cron_tick')) {
+            try { sv_web_cron_tick($pdo, $settings); $ran[] = 'web-cron tick scheduled'; }
+            catch (Throwable $e) { error_log('run-crons tick failed: ' . $e->getMessage()); }
+        }
+    }
+    ms_ok([
+        'triggered'    => $ran,
+        'rss_last_run' => $settings['rss_last_run'] ?? null,
+        'fediverse_cron_last_run' => $settings['fediverse_cron_last_run'] ?? null,
+    ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: GET multisite/heartbeat
 // Returns site vitals: version, counts, backup state.
 // ─────────────────────────────────────────────────────────────────────────────

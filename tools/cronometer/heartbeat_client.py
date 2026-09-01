@@ -209,13 +209,17 @@ def _insecure_reason(base_url: str) -> str:
                 'clear.')
 
 
-def _heartbeat_url(site_url: str) -> str:
-    """Build {site}/api.php?route=multisite/heartbeat, preserving scheme+host and
-    dropping any path/query the profile carried."""
+def _api_url(site_url: str, route: str) -> str:
+    """Build {site}/api.php?route=<route>, preserving scheme+host and dropping any
+    path/query the profile carried."""
     parts = urlsplit(site_url if '://' in site_url else 'https://' + site_url)
     scheme = parts.scheme or 'https'
     netloc = parts.netloc or parts.path   # bare-host inputs land in .path
-    return urlunsplit((scheme, netloc, '/api.php', 'route=multisite/heartbeat', ''))
+    return urlunsplit((scheme, netloc, '/api.php', 'route=' + route, ''))
+
+
+def _heartbeat_url(site_url: str) -> str:
+    return _api_url(site_url, 'multisite/heartbeat')
 
 
 # ── The one public call ─────────────────────────────────────────────────────
@@ -271,6 +275,19 @@ def probe(site: dict, timeout: int = 12) -> SiteHealth:
         return sh
 
     sh.online  = True
+
+    # Fleet cron driver: nudge this site's due crons to run even when it gets no
+    # visitor traffic. Best-effort and idempotent — the server tick self-throttles,
+    # so a hit that isn't due does nothing. Never affects the health verdict.
+    try:
+        requests.get(
+            _api_url(url, 'multisite/run-crons'),
+            headers={'Authorization': f'Bearer {key}', 'Accept': 'application/json'},
+            timeout=8,
+        )
+    except Exception:
+        pass
+
     sh.version = str(data.get('version') or '')
     sh.jobs    = _jobs_from_heartbeat(data)
     return sh
