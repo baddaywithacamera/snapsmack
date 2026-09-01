@@ -22,7 +22,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
-BUILD_VERSION = "0.7.20"
+BUILD_VERSION = "0.7.21"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -303,41 +303,23 @@ class Hub(tk.Tk):
         card = self._card(parent, "LAUNCH")
         grid = tk.Frame(card, bg=CARD)
         grid.pack(fill="x", padx=12, pady=(0, 12))
+        cells = []
         for i, (name, sub, paths) in enumerate(ROSTER):
             exe = _find_exe(paths)
             cell = tk.Frame(grid, bg=CARD)
-            cell.grid(row=i // 3, column=i % 3, sticky="nsew", padx=6, pady=6)
-            grid.grid_columnconfigure(i % 3, weight=1)
+            cells.append(cell)
             state = "normal" if exe else "disabled"
             tool_image = self._load_ui_icon(name, 42)
-            btn = tk.Button(cell, text="", state=state,
+            btn = tk.Button(cell, text=name, image=tool_image, compound="left",
+                            anchor="w", padx=48, state=state,
                             bg=FIELD if exe else "#181818",
                             fg=INK if exe else DIM, activebackground=ACCENT,
                             activeforeground=BG, relief="flat", bd=0,
-                            font=("Segoe UI", 10, "bold"), height=3,
+                            font=("Segoe UI", 10, "bold"), height=52,
                             cursor="hand2" if exe else "arrow",
                             command=(lambda p=exe, n=name: self._on_launch(p, n)))
             btn.pack(fill="x")
-            # Place content toward the card centre without adding geometry-
-            # affecting padding. Dynamic button padding feeds back into Tk's
-            # requested width and can make one grid column expand indefinitely.
-            content = tk.Label(btn, text=name, image=tool_image, compound="left",
-                               bg=btn.cget("bg"), fg=INK if exe else DIM,
-                               font=("Segoe UI", 10, "bold"), cursor=btn.cget("cursor"))
-            content.place(relx=0.33, rely=0.5, anchor="w")
-            content.bind("<Button-1>", lambda _event, button=btn: button.invoke())
-            content.bind("<Enter>", lambda _event, button=btn, label=content:
-                         (button.configure(bg=ACCENT), label.configure(bg=ACCENT, fg=BG))
-                         if str(button.cget("state")) != "disabled" else None)
-            content.bind("<Leave>", lambda _event, button=btn, label=content:
-                         (button.configure(bg=FIELD), label.configure(bg=FIELD, fg=INK))
-                         if str(button.cget("state")) != "disabled" else None)
-            btn.bind("<Enter>", lambda _event, button=btn, label=content:
-                     (button.configure(bg=ACCENT), label.configure(bg=ACCENT, fg=BG))
-                     if str(button.cget("state")) != "disabled" else None)
-            btn.bind("<Leave>", lambda _event, button=btn, label=content:
-                     (button.configure(bg=FIELD), label.configure(bg=FIELD, fg=INK))
-                     if str(button.cget("state")) != "disabled" else None)
+            self._hoverize(btn)
             foot = tk.Frame(cell, bg=CARD)
             foot.pack(fill="x", pady=(2, 0))
             tk.Label(foot, text=(sub if exe else "not installed"),
@@ -350,6 +332,23 @@ class Hub(tk.Tk):
                                    command=lambda p=exe, n=name, w=where: self._on_shortcut(p, n, w))
                     sb.pack(side="right", padx=(5, 0))
                     self._hoverize(sb)
+
+        layout = {"columns": 0}
+        def _reflow(event=None):
+            width = event.width if event is not None else grid.winfo_width()
+            columns = 3 if width >= 1320 else 2
+            if layout["columns"] == columns:
+                return
+            layout["columns"] = columns
+            for column in range(3):
+                grid.grid_columnconfigure(column, weight=1 if column < columns else 0)
+            for index, cell in enumerate(cells):
+                cell.grid_forget()
+                cell.grid(row=index // columns, column=index % columns,
+                          sticky="nsew", padx=6, pady=6)
+
+        grid.bind("<Configure>", _reflow)
+        _reflow()
 
     def _on_launch(self, path, name):
         ok, err = _launch(path)
