@@ -16,8 +16,10 @@ import zipfile
 
 from PIL import (Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter,
                  ImageFont, ImageMath, ImageOps)
+import numpy as np
 
 import photo_manager
+import slapper_filters
 
 
 PROJECT_VERSION = 1
@@ -126,6 +128,36 @@ def _new_layer_id():
     global _layer_id_counter
     _layer_id_counter += 1
     return f"{time.time_ns()}-{_layer_id_counter}"
+
+
+def _open_layer_image(path, target_size=None):
+    """Open a raster layer or render an SVG sharply at the requested size."""
+    if os.path.splitext(path)[1].lower() != ".svg":
+        with Image.open(path) as source:
+            return ImageOps.exif_transpose(source).convert("RGBA")
+    try:
+        from PySide6.QtCore import QSize
+        from PySide6.QtGui import QImage, QPainter
+        from PySide6.QtSvg import QSvgRenderer
+    except ImportError as error:
+        raise ValueError(
+            "SVG watermarks require the SVG renderer included with SNAP SLAPPER") from error
+    renderer = QSvgRenderer(path)
+    if not renderer.isValid():
+        raise ValueError(f"SVG watermark is invalid: {path}")
+    natural = renderer.defaultSize()
+    if target_size:
+        width, height = max(1, int(target_size[0])), max(1, int(target_size[1]))
+    elif natural.isValid() and not natural.isEmpty():
+        width, height = natural.width(), natural.height()
+    else:
+        width, height = 1024, 1024
+    canvas = QImage(QSize(width, height), QImage.Format_RGBA8888)
+    canvas.fill(0)
+    painter = QPainter(canvas)
+    renderer.render(painter)
+    painter.end()
+    return Image.frombytes("RGBA", (width, height), bytes(canvas.bits()), "raw", "RGBA")
 
 # Hue centres (degrees) for the black & white colour mix, in wheel order.
 BW_BANDS = [("bw_red", 0.0), ("bw_orange", 30.0), ("bw_yellow", 60.0),
@@ -819,12 +851,104 @@ def apply_layer_styles(image, styles):
     return result
 
 
+def _perspective_destination(geometry, width, height):
+    """Return the destination quadrilateral in pixels, ordered TL/TR/BR/BL."""
+    corners = geometry.get("perspective_corners") or (
+        [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]])
+    if not isinstance(corners, list) or len(corners) != 4:
+        corners = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]
+    points = []
+    for index, fallback in enumerate(((0, 0), (1, 0), (1, 1), (0, 1))):
+        value = corners[index]
+        if not isinstance(value, (list, tuple)) or len(value) != 2:
+            value = fallback
+        points.append([max(-0.5, min(1.5, float(value[0]))),
+                       max(-0.5, min(1.5, float(value[1])))])
+
+    # Sliders are deliberately restrained: their full range moves an edge by
+    # one quarter of the frame. They combine with, rather than overwrite, the
+    # four freely positioned corners.
+    vertical = max(-100.0, min(100.0, float(
+        geometry.get("perspective_vertical", 0.0)))) * 0.0025
+    horizontal = max(-100.0, min(100.0, float(
+        geometry.get("perspective_horizontal", 0.0)))) * 0.0025
+    if vertical >= 0:
+        points[0][0] += vertical; points[1][0] -= vertical
+    else:
+        points[3][0] -= vertical; points[2][0] += vertical
+    if horizontal >= 0:
+        points[0][1] += horizontal; points[3][1] -= horizontal
+    else:
+        points[1][1] -= horizontal; points[2][1] += horizontal
+    return [(x * (width - 1), y * (height - 1)) for x, y in points]
+
+
+def _perspective_coefficients(destination, width, height):
+    """Solve Pillow's output-to-input projective mapping coefficients."""
+    crosses = []
+    for index in range(4):
+        a = destination[index]
+        b = destination[(index + 1) % 4]
+        c = destination[(index + 2) % 4]
+        crosses.append((b[0] - a[0]) * (c[1] - b[1]) -
+                       (b[1] - a[1]) * (c[0] - b[0]))
+    if not (all(value > 1e-6 for value in crosses) or
+            all(value < -1e-6 for value in crosses)):
+        raise ValueError("Perspective corners cannot cross or collapse")
+    source = [(0.0, 0.0), (width - 1.0, 0.0),
+              (width - 1.0, height - 1.0), (0.0, height - 1.0)]
+    matrix = []
+    values = []
+    for (x, y), (u, v) in zip(destination, source):
+        matrix.extend(([x, y, 1, 0, 0, 0, -u * x, -u * y],
+                       [0, 0, 0, x, y, 1, -v * x, -v * y]))
+        values.extend((u, v))
+    try:
+        return tuple(np.linalg.solve(np.asarray(matrix, dtype=float),
+                                     np.asarray(values, dtype=float)))
+    except np.linalg.LinAlgError as error:
+        raise ValueError("Perspective corners cannot cross or collapse") from error
+
+
+def apply_perspective(image, geometry):
+    """Apply a straight-line-preserving projective transform to ``image``."""
+    neutral = (not float(geometry.get("perspective_vertical", 0.0)) and
+               not float(geometry.get("perspective_horizontal", 0.0)) and
+               geometry.get("perspective_corners", [[0, 0], [1, 0], [1, 1], [0, 1]]) ==
+               [[0, 0], [1, 0], [1, 1], [0, 1]])
+    if neutral:
+        return image
+    rgba = image.convert("RGBA")
+    destination = _perspective_destination(geometry, rgba.width, rgba.height)
+    coefficients = _perspective_coefficients(destination, rgba.width, rgba.height)
+    transformed = rgba.transform(
+        rgba.size, Image.Transform.PERSPECTIVE, coefficients,
+        Image.Resampling.BICUBIC, fillcolor=(0, 0, 0, 0))
+    if geometry.get("perspective_edges", "auto_crop") == "auto_crop":
+        # Largest conservative axis-aligned rectangle implied by the four
+        # straight edges. Unlike an alpha bounding box, this removes the empty
+        # triangular wedges left by a keystone correction.
+        left = math.ceil(max(destination[0][0], destination[3][0], 0))
+        right = math.floor(min(destination[1][0], destination[2][0], rgba.width - 1))
+        top = math.ceil(max(destination[0][1], destination[1][1], 0))
+        bottom = math.floor(min(destination[2][1], destination[3][1], rgba.height - 1))
+        if right - left >= 2 and bottom - top >= 2:
+            transformed = transformed.crop((left, top, right + 1, bottom + 1))
+    return transformed
+
+
 class EditorDocument:
     _font_reference_cache = {}
     def __init__(self, source_path):
         self.source_path = os.path.abspath(source_path)
         self.adjustments = copy.deepcopy(DEFAULT_ADJUSTMENTS)
-        self.geometry = {"rotation": 0.0, "crop": None, "flip_x": False, "flip_y": False}
+        self.geometry = {
+            "rotation": 0.0, "crop": None, "flip_x": False, "flip_y": False,
+            "perspective_vertical": 0.0, "perspective_horizontal": 0.0,
+            "perspective_corners": [[0.0, 0.0], [1.0, 0.0],
+                                    [1.0, 1.0], [0.0, 1.0]],
+            "perspective_edges": "auto_crop",
+        }
         self.layers = []
         self.retouched = []
         self.history = []
@@ -888,6 +1012,18 @@ class EditorDocument:
                             "mask_linked": True, "mask_transform": self.default_transform(),
                             "styles": {}})
         self.record("Add adjustment layer")
+        return self.layers[-1]
+
+    def add_filter_layer(self, kind, name=None):
+        settings = slapper_filters.defaults(kind)
+        self.layers.append({
+            "id": _new_layer_id(), "name": name or slapper_filters.FILTER_NAMES[kind],
+            "type": "filter", "filter_type": kind, "filter_version": 1,
+            "settings": settings, "visible": True, "opacity": 1.0,
+            "blend": "normal", "mask": "", "mask_enabled": True,
+            "styles": {},
+        })
+        self.record(f"Add {self.layers[-1]['name']} filter")
         return self.layers[-1]
 
     def add_image_layer(self, path, name=None):
@@ -1082,6 +1218,7 @@ class EditorDocument:
     def render(self, max_size=None):
         with Image.open(self.source_path) as source:
             image = ImageOps.exif_transpose(source).convert("RGB")
+        image = apply_perspective(image, self.geometry)
         rotation = float(self.geometry.get("rotation", 0))
         if rotation:
             image = image.rotate(rotation, expand=True, resample=Image.Resampling.BICUBIC)
@@ -1096,6 +1233,9 @@ class EditorDocument:
                                 int(right * image.width), int(bottom * image.height)))
         if max_size:
             image.thumbnail(max_size, Image.Resampling.LANCZOS)
+        geometry_alpha = (image.getchannel("A") if image.mode == "RGBA" and
+                          self.geometry.get("perspective_edges") == "transparent"
+                          else None)
         image = apply_adjustments(image, self.adjustments).convert("RGBA")
         if self.retouched:
             for spot in self.retouched:
@@ -1117,26 +1257,50 @@ class EditorDocument:
                     ImageDraw.Draw(mask).ellipse((0, 0, patch.width - 1, patch.height - 1), fill=255)
                     mask = mask.filter(ImageFilter.GaussianBlur(max(1, radius / 5)))
                     image.paste(patch, box[:2], mask)
-        for layer in self.layers:
+        for layer_number, layer in enumerate(self.layers, 1):
             if not layer.get("visible", True):
                 continue
             if layer.get("type") == "adjustment":
                 adjusted = apply_adjustments(image.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
                 top = adjusted
+            elif layer.get("type") == "filter":
+                if layer.get("filter_version", 1) != 1:
+                    raise ValueError(
+                        f"Unsupported filter version: {layer.get('filter_version')}")
+                top = slapper_filters.apply_filter(
+                    image.convert("RGB"), layer.get("filter_type", ""),
+                    layer.get("settings", {})).convert("RGBA")
             elif layer.get("type") == "image":
                 path = layer.get("path", "")
+                if layer.get("asset_ref"):
+                    try:
+                        import texture_assets
+                        path = texture_assets.resolve(layer["asset_ref"]) or path
+                        if path:
+                            layer["path"] = path
+                    except Exception:  # noqa: BLE001
+                        pass
                 if not os.path.isfile(path):
                     name = layer.get("name") or os.path.basename(path) or "unnamed layer"
-                    raise FileNotFoundError(f'Image layer "{name}" is missing: {path}')
-                with Image.open(path) as source_layer:
-                    top = ImageOps.exif_transpose(source_layer).convert("RGBA")
+                    if layer.get("asset_ref"):
+                        ref = layer["asset_ref"]
+                        source = ref.get("source_url") or "source unknown"
+                        raise FileNotFoundError(
+                            f'Texture "{name}" is missing from layer {layer_number}. '
+                            f'Origin: {ref.get("origin", "unknown")}. Source: {source}')
+                    raise FileNotFoundError(
+                        f'Image layer "{name}" is missing from layer {layer_number}: {path}')
+                fit = layer.get("fit", "original")
+                svg_target = image.size if (
+                    os.path.splitext(path)[1].lower() == ".svg" and
+                    fit in ("cover", "contain", "stretch")) else None
+                top = _open_layer_image(path, svg_target)
                 if max_size:
                     top.thumbnail(image.size, Image.Resampling.LANCZOS)
                 alpha = top.getchannel("A")
                 top = apply_adjustments(
                     top.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
                 top.putalpha(alpha)
-                fit = layer.get("fit", "original")
                 if fit in ("cover", "contain", "stretch", "tile"):
                     top = self._fit_layer_image(top, image.size, fit)
             elif layer.get("type") == "text":
@@ -1165,10 +1329,15 @@ class EditorDocument:
                 top.putalpha(ImageChops.multiply(top.getchannel("A"), mask))
             top = apply_layer_styles(top, layer.get("styles", {}))
             image = blend_images(image, top, layer.get("blend", "normal"), float(layer.get("opacity", 1.0)))
+        if geometry_alpha is not None:
+            if geometry_alpha.size != image.size:
+                geometry_alpha = geometry_alpha.resize(image.size, Image.Resampling.LANCZOS)
+            image.putalpha(geometry_alpha)
+            return image
         return image.convert("RGB")
 
     def histogram(self, max_size=(512, 512)):
-        image = self.render(max_size)
+        image = self.render(max_size).convert("RGB")
         red, green, blue = image.split()
         return {"red": red.histogram(), "green": green.histogram(), "blue": blue.histogram(),
                 "luminance": ImageOps.grayscale(image).histogram()}
@@ -1235,6 +1404,13 @@ class EditorDocument:
                     raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} text is invalid")
                 if not isinstance(layer.get("font_path", ""), str):
                     raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} font is invalid")
+            if layer.get("type") == "filter":
+                if layer.get("filter_type") not in slapper_filters.FILTER_DEFAULTS:
+                    raise ValueError(
+                        f"Invalid SNAP SLAPPER project: layer {index + 1} filter is unsupported")
+                if layer.get("filter_version", 1) != 1:
+                    raise ValueError(
+                        f"Invalid SNAP SLAPPER project: layer {index + 1} filter version is unsupported")
         document = cls(source_path)
         document.adjustments = value.get("adjustments", copy.deepcopy(DEFAULT_ADJUSTMENTS))
         document.geometry = value.get("geometry", document.geometry)
@@ -1256,23 +1432,40 @@ class EditorDocument:
     def export(self, path, quality=95, copyright_text="", strip_gps=False):
         output = self.render()
         extension = os.path.splitext(path)[1].lower()
+        if extension in {".jpg", ".jpeg", ".webp"} and output.mode == "RGBA":
+            background = Image.new("RGB", output.size, "black")
+            background.paste(output, mask=output.getchannel("A"))
+            output = background
         options = {"quality": quality, "optimize": True} if extension in {".jpg", ".jpeg", ".webp"} else {}
         photo_manager.save_with_metadata(output, path, self.source_path,
                                          copyright_text, strip_gps=strip_gps, **options)
 
     def recipe(self):
+        geometry = {key: copy.deepcopy(value) for key, value in self.geometry.items()
+                    if key != "crop"}
+        layers = []
+        for layer in self.layers:
+            if layer.get("type") in {"adjustment", "filter"}:
+                layers.append(copy.deepcopy(layer))
+            elif layer.get("type") == "image" and layer.get("asset_ref"):
+                clone = copy.deepcopy(layer)
+                clone.pop("path", None)  # recipes/LEWKS carry references, never texture bytes/paths
+                layers.append(clone)
         return {"version": PROJECT_VERSION, "adjustments": copy.deepcopy(self.adjustments),
-                "layers": [copy.deepcopy(layer) for layer in self.layers if layer.get("type") == "adjustment"]}
+                "geometry": geometry, "layers": layers}
 
     def stack_layers(self, layers):
-        """Add adjustment layers ON TOP without touching the base or existing
+        """Add LEWK layers ON TOP without touching the base or existing
         layers. This is how a LEWK applies — it must not flatten the
         photographer's existing edits. Each layer gets a fresh unique id.
         """
         added = []
         for layer in layers:
-            if not isinstance(layer, dict) or layer.get("type") != "adjustment":
-                raise ValueError("stack_layers only accepts adjustment layers")
+            if (not isinstance(layer, dict) or
+                    layer.get("type") not in {"adjustment", "filter", "image"}):
+                raise ValueError("stack_layers only accepts safe LEWK layers")
+            if layer.get("type") == "image" and not layer.get("asset_ref"):
+                raise ValueError("LEWK texture layers require an asset reference")
             mask = layer.get("mask", "")
             if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
                 raise ValueError("Invalid layer mask")
@@ -1291,19 +1484,37 @@ class EditorDocument:
         if recipe.get("version") != PROJECT_VERSION:
             raise ValueError("Unsupported recipe version")
         adjustments = recipe.get("adjustments", DEFAULT_ADJUSTMENTS)
+        geometry = recipe.get("geometry", {})
         layers = recipe.get("layers", [])
-        if not isinstance(adjustments, dict) or not isinstance(layers, list):
+        if (not isinstance(adjustments, dict) or not isinstance(geometry, dict) or
+                not isinstance(layers, list)):
             raise ValueError("Invalid SNAP SLAPPER recipe contents")
         if len(layers) > MAX_PROJECT_LAYERS:
             raise ValueError("Invalid SNAP SLAPPER recipe: too many layers")
         for index, layer in enumerate(layers):
-            if not isinstance(layer, dict) or layer.get("type") != "adjustment":
+            if not isinstance(layer, dict) or layer.get("type") not in {"adjustment", "filter", "image"}:
                 raise ValueError(f"Invalid SNAP SLAPPER recipe: layer {index + 1} is invalid")
+            if layer.get("type") == "image" and not layer.get("asset_ref"):
+                raise ValueError(
+                    f"Invalid SNAP SLAPPER recipe: texture layer {index + 1} has no asset reference")
+            if layer.get("type") == "filter" and (
+                    layer.get("filter_type") not in slapper_filters.FILTER_DEFAULTS or
+                    layer.get("filter_version", 1) != 1):
+                raise ValueError(
+                    f"Invalid SNAP SLAPPER recipe: layer {index + 1} filter is unsupported")
             mask = layer.get("mask", "")
             if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
                 raise ValueError(f"Invalid SNAP SLAPPER recipe: layer {index + 1} mask is invalid")
         self.adjustments = copy.deepcopy(adjustments)
-        self.layers.extend(copy.deepcopy(layers))
+        for key in ("rotation", "flip_x", "flip_y", "perspective_vertical",
+                    "perspective_horizontal", "perspective_corners",
+                    "perspective_edges"):
+            if key in geometry:
+                self.geometry[key] = copy.deepcopy(geometry[key])
+        clones = copy.deepcopy(layers)
+        for layer in clones:
+            layer["id"] = _new_layer_id()
+        self.layers.extend(clones)
         self.record("Apply recipe")
 
 

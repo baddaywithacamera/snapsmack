@@ -29,6 +29,19 @@ TOPICS = [
      "double-click a slider to reset just that control; use Reset to clear them "
      "all. A live Luma/RGB histogram sits at the top, and Before/After shows the "
      "untouched original."),
+    ("White balance",
+     "Open COLOUR and click Pick Neutral Colour, then click a grey card or a "
+     "neutral grey/white object in the photograph. SNAP SLAPPER samples a small "
+     "patch and corrects both Temperature and Tint without changing the original "
+     "JPEG. Choose an area with visible detail; blown white and crushed black "
+     "cannot provide reliable colour and will be rejected."),
+    ("PANOMERGE",
+     "In the Library, select two or more overlapping photographs in shooting "
+     "order and choose PANOMERGE. Reorder or add photos in the PANOMERGE window, "
+     "choose an output file, then merge. The separately installed XPANO engine "
+     "performs automatic alignment, stitching, and blending without changing "
+     "the originals; the completed panorama opens directly in the editor. "
+     "PANOMERGE supports Windows and Linux only."),
     ("Black & white colour mixer",
      "Turn on Convert to black and white, then use the eight colour sliders "
      "(Red…Magenta) to control how each colour becomes grey — brighten a blue "
@@ -82,24 +95,61 @@ TOPICS = [
      "Film + Print, Black + White, Portrait, and Experimental. Every LEWK is a "
      "glass-box recipe built from the same controls you use by hand — tone curves, "
      "colour mix, split tone, photo filter, glow, grain — not a baked colour "
-     "table, so you can open one up and tune it. All names are original to SNAP "
+     "table. Select a LEWK and choose TEACH ME to see its real instructions in "
+     "order, read the result in ordinary photographer language, use SHOW SETTINGS "
+     "only when you want the exact values, switch individual lessons on and "
+     "off, hold BEFORE THIS STEP for a direct comparison, and MAKE EDITABLE COPY "
+     "to experiment with the actual controls. All names are original to SNAP "
      "SLAPPER."),
     ("Found Textures",
      "The Textures button searches foundtextures.ca and adds a texture as a "
      "layer. Choose how it fits (cover, contain, stretch, tile, original) and a "
-     "blend mode (Overlay suits most textures). Imported layers remember the "
-     "texture's id, source, and date. The site connection uses the key stored in "
-     "The Hub."),
+     "blend mode (Overlay suits most textures). The browser defaults to CLEAR "
+     "RIGHTS textures. UNCLEAR RIGHTS and RIGHTS UNKNOWN remain available but "
+     "are visibly marked and require confirmation before import. Imported "
+     "layers remember the texture's id, source, rights status, licence, and "
+     "date. Texture files live once in the shared asset library; LEWKS and "
+     ".slapper projects store recoverable references, not duplicate image bytes. "
+     "If a FOUND TEXTURES asset is missing, SNAP SLAPPER asks before downloading "
+     "the stored high-resolution link. It never silently restores an asset, and "
+     "it cannot automatically restore a missing third-party texture. The site "
+     "connection uses the key stored in THE HUB."),
+    ("Blur tools",
+     "FILTERS includes three editable, non-destructive blur layers. Gaussian "
+     "Blur gives an even softening with adjustable Radius. Motion Blur uses "
+     "Length and Angle to drag detail in a straight direction. Radial Blur can "
+     "Spin around a movable centre or Zoom outward from it; Strength controls "
+     "the movement. Amount blends any blur back toward the original. Because "
+     "these are filter layers, you can change them later, lower opacity, change "
+     "blend mode, mask the effect to part of the photograph, save it in a "
+     ".slapper project or recipe, and use it in batch processing."),
+    ("Watermarks and transparency",
+     "Add Image Layer accepts transparent PNG files and SVG watermarks. PNG alpha "
+     "is preserved. SVG remains a referenced vector file and is rendered sharply "
+     "at the photograph's preview or export size, so a small logo does not become "
+     "a permanently blurry bitmap. Use the image layer's transform, opacity, blend "
+     "mode, and mask controls to place it. PNG, TIFF, and PSD can preserve transparent "
+     "output; JPEG is always flattened because JPEG has no transparency."),
     ("Crop, geometry, and retouch",
      "Crop shows the full frame — drag a rectangle to crop; toggle Crop off "
-     "without drawing to cancel. GEOMETRY rotates/straightens and flips. RETOUCH "
+     "without drawing to cancel. GEOMETRY rotates/straightens and flips. Its "
+     "Vertical and Horizontal perspective sliders correct converging lines. "
+     "Free Corners displays a 3×3 grid: drag any red corner to fan or narrow "
+     "the image while straight lines remain straight. Auto Crop removes empty "
+     "edges; Transparent Edges preserves the full canvas for PNG, TIFF, or PSD. "
+     "Perspective is saved in projects and recipes. RETOUCH "
      "has Heal and Red-Eye: turn one on and click blemishes; adjust Spot size or "
      "Clear all."),
     ("Projects, recipes, and export",
-     "Save Project writes a .slapper file with all your editing steps (the "
-     "original is referenced, not copied inside). Save Recipe / Apply Recipe "
-     "reuse a set of adjustments across photos. Export writes the finished image "
-     "to a new file with metadata preserved."),
+     "Save Project writes a .slapper file with all your editing steps. External "
+     "textures are recorded by name, source, rights status, and restore link; "
+     "their image bytes remain in the shared asset library. Save Recipe / "
+     "Apply Recipe reuse a set of adjustments across photos. JPEG, PNG, and TIFF "
+     "write flattened finished copies. Layered PSD writes a guaranteed visible "
+     "full-resolution composite plus named raster checkpoints for the base and "
+     "every SNAP SLAPPER layer. Custom filters and adjustments are checkpoints, "
+     "not falsely labelled as native Photoshop adjustments. The original remains "
+     "unchanged."),
     ("Keyboard",
      "Standard: Ctrl+O open · Ctrl+S export · Ctrl+Z undo · Ctrl+Y redo · "
      "F1 this help.\n\n"

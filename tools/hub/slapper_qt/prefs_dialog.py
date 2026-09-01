@@ -56,7 +56,6 @@ class PreferencesDialog(QDialog):
         folders_title = QLabel("FILES AND FOLDERS")
         folders_title.setObjectName("ControlName")
         root.addWidget(folders_title)
-
         folders = QFormLayout()
         folders.setSpacing(10)
         self.library_folder = self._folder_row(
@@ -65,7 +64,8 @@ class PreferencesDialog(QDialog):
             folders, "Projects folder", self._values.get("projects_folder", ""))
         self.exports_folder = self._folder_row(
             folders, "Exports folder", self._values.get("exports_folder", ""))
-        self.include_subfolders = QCheckBox("Include subfolders when browsing the library")
+        self.include_subfolders = QCheckBox(
+            "Include subfolders when browsing the library")
         self.include_subfolders.setChecked(
             bool(self._values.get("library_include_subfolders", False)))
         folders.addRow("", self.include_subfolders)
@@ -107,8 +107,6 @@ class PreferencesDialog(QDialog):
             edit.setText(folder)
 
     def _save(self):
-        # Merge into the loaded preferences: saving file locations must never
-        # reset mode, folder-tree visibility, sort order, or future settings.
         self._values.update({
             "export_quality": self.quality.value(),
             "copyright_text": self.copyright.text().strip(),

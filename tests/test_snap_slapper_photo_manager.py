@@ -253,15 +253,17 @@ class ImmutableOriginalTests(unittest.TestCase):
                     self.assertEqual(self.xmp, exported.info.get("xmp"))
         self.assertEqual(self.original_hash, file_hash(self.source))
 
-    def test_slapper_package_excludes_credential_and_network_modules(self):
+    def test_slapper_package_is_qt_and_uses_shared_ai_vault(self):
         spec_path = os.path.join(HUB_ROOT, "snap_slapper.spec")
         with open(spec_path, "r", encoding="utf-8") as handle:
             spec = handle.read()
 
-        self.assertIn("('snap_home.py', 'snap_paths.py')", spec)
-        for forbidden in ("snap_creds.py", "snap_vault.py", "snap_discovery.py",
-                          "snap_profiles.py", "snap_enrich.py"):
-            self.assertNotIn(forbidden, spec)
+        self.assertIn("run_slapper_qt.py", spec)
+        self.assertIn("collect_submodules('slapper_qt')", spec)
+        self.assertIn("'lewk_again'", spec)
+        self.assertIn("'snap_creds'", spec)
+        self.assertIn("'snap_vault'", spec)
+        self.assertIn("'tkinter'", spec)
 
         build_path = os.path.join(HUB_ROOT, "build.bat")
         with open(build_path, "r", encoding="utf-8") as handle:

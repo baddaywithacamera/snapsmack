@@ -70,7 +70,12 @@ identity, so every existing look/project renders unchanged.
 - **Retouch** — spot heal + red-eye click tool, adjustable size, clear all.
 - **Found Textures layer** — search foundtextures.ca, thumbnail grid, add a
   texture as a layer with fit (cover/contain/stretch/tile/original) + blend;
-  provenance (id/source/site/licence/date) preserved in the `.slapper`.
+  rights filter defaults to CLEAR RIGHTS, every result is visibly badged, and
+  unclear/unknown imports require confirmation; provenance
+  (id/source/site/rights/licence/date/high-resolution restore URL) is preserved
+  in the `.slapper`. Files are indexed once under the existing shared library;
+  LEWKS and recipes carry references only. Missing first-party assets offer a
+  user-confirmed restore; missing third-party assets fail loudly by name/layer.
   (`found_textures.py` client + `textures_dialog.py`; live fetch verified by
   the user, not in-sandbox.)
 - `.slapper` project save/open; recipe save/apply; metadata-preserving export.
@@ -80,6 +85,17 @@ identity, so every existing look/project renders unchanged.
 - **LEWKS gallery** — 14 built-in looks previewed live on the current photo at
   an adjustable strength; applies as a non-destructive layer (engine
   `stack_layers`, never flattens base).
+- **TEACH ME** — inspects the real stored instructions of any built-in LEWK in
+  pedagogical order, explains direction and strength in ordinary photographer
+  language, hides exact values behind SHOW SETTINGS, supports
+  per-step toggles and hold-for-before comparison, and creates an editable copy.
+- **Blur layers** — editable Gaussian (radius), Motion (length/angle), and
+  Radial (Spin/Zoom, strength, movable centre) filters. Amount, opacity, blend,
+  masks, projects, recipes, and batch processing all use the existing filter
+  layer contract.
+- **SVG watermark layers** — SVG files remain external vector references and
+  render through Qt SVG at the current preview/export dimensions; transparent
+  PNG layers continue to preserve alpha.
 - **Offline Help** (F1) — searchable, 12 Qt-specific topics.
 - **Autosave / crash recovery** — recovery copy under
   `C:\snapsmack\snap_slapper\recovery`; restore-on-reopen prompt.
@@ -96,20 +112,45 @@ identity, so every existing look/project renders unchanged.
   a freshly opened photo starts fitted. Editing while held at 100% re-renders
   full-resolution, so it is slower than Fit — flip to Fit for fast tuning.
 
-## Not yet built (next phases)
-- Filters: the four-filter foundation from `docs/snap-slapper-filter-spec.md`
-  (engine has no filter functions yet — needs engine work).
-- Found Textures: category/album filter, favourite, local categories (search +
-  import done). Rights-based hide/flag needs the gyss/photos API to expose a
-  rights field (server-side change).
-- Colour-range masks (radial + graduated + brush done); moving a text/image
-  layer by dragging on the canvas.
-- Library depth: ratings, tags, albums, filtering, Trash (all in the Tk
-  `photo_library.py`, not yet ported); slideshow. (Editor filmstrip: done.)
+## Added for build 0.7.562
+- Persistent catalogue sources, ratings, tags, favourites, albums, filtering,
+  recoverable SNAP SLAPPER Trash, duplicate-aware imports, transactional batch
+  rename, move/copy history and undo, rotated copies, and selected-photo export.
+- Editable Orton, Film Grain, Light Leak, and Pastel filter layers with masks,
+  recipes, deterministic seeds, colour controls, direct Light Leak placement,
+  project persistence, and selected-photo batch application.
+- Colour-range masks and direct canvas movement for text/image layers.
+- Slideshow, JPEG contact sheets, printing, and visible Present/Print commands.
+- Safe RAW handoff to RawTherapee, darktable, or a chosen external application.
+- Hub-profile `Blog Copy` preparation: local-only, collision-safe staging copies
+  with an auditable `.snapstage.json` manifest; it never uploads or publishes.
+- Real per-run crash logging, readable 12–13px interface defaults, and a bounded,
+  private filmstrip thumbnail queue that cannot starve the application.
+- Layered PSD export with a full-resolution visible composite and independently
+  parseable, named raster checkpoints for the base and every SNAP SLAPPER layer.
+  Custom filters are identified honestly as raster checkpoints rather than being
+  misrepresented as native Photoshop adjustment layers.
+
+## Added for build 0.7.563
+- Non-destructive straight-line-preserving perspective correction: vertical and
+  horizontal sliders plus four freely draggable corner handles and a live 3×3
+  alignment grid.
+- Safe Auto Crop and Transparent Edges modes. Perspective survives undo,
+  `.slapper` save/open, recipes, batch application, previews, and full-resolution
+  export; source photographs remain unchanged.
+
+## Not yet built (later phases)
+- Found Textures: category/album filter, favourite, and local categories
+  (search, import, and rights filtering are done).
 - 100% loupe polish: render only the visible viewport crop at native res
   (instead of the whole photo) so editing while held at 100% stays fast on
   very large files. Correct-but-slower full-native render ships now.
-- Standardise `snap_log` into the other standalone tools (SUYB, scanner, etc.).
-- Packaging the Qt build into the shipped SNAP SLAPPER.exe.
+- Standardise the new shared `snap_log` into the other standalone tools (SUYB,
+  scanner, etc.). SNAP SLAPPER now uses it in source and frozen builds.
+- ~~Packaging the Qt build into the shipped SNAP SLAPPER.exe~~ — **DONE 2026-08-28**
+  via `tools/hub/slapper_qt.spec` (PyInstaller onefile, ~56 MB). Verified: 41/41
+  tests pass, exe launches headless without a startup crash, and no credential/
+  fleet modules ride along (SECAUDIT 051). Build:
+  `python -m PyInstaller tools/hub/slapper_qt.spec`.
 
 <!-- ===== SNAPSMACK EOF ===== -->

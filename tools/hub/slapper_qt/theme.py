@@ -35,6 +35,7 @@ def stylesheet() -> str:
     return f"""
     * {{
         font-family: "{FONT}", "Inter", sans-serif;
+        font-size: 13px;
         color: {BODY};
         outline: none;
     }}
@@ -90,7 +91,7 @@ def stylesheet() -> str:
         padding: 9px 12px;
         border: none;
         border-top: 1px solid {BORDER};
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
         letter-spacing: 1px;
     }}
@@ -108,7 +109,7 @@ def stylesheet() -> str:
         border: 1px solid {BORDER};
         border-radius: 4px;
         padding: 1px 8px;
-        font-size: 9px;
+        font-size: 12px;
         font-weight: 700;
         letter-spacing: 1px;
     }}
@@ -121,6 +122,21 @@ def stylesheet() -> str:
         border: 1px solid {ACCENT};
     }}
 
+    /* Colour pickers keep the application chrome; only the small chip changes. */
+    QPushButton#SwatchBtn {{
+        background: {CANVAS};
+        color: {ACCENT};
+        border: 1px solid {ACCENT};
+        border-radius: 4px;
+        padding: 5px 8px;
+        text-align: left;
+    }}
+    QPushButton#SwatchBtn:hover {{
+        background: {ACCENT};
+        color: {CANVAS};
+        border: 1px solid {ACCENT};
+    }}
+
     /* --- Layers panel --------------------------------------------------- */
     QPushButton#LayerAddBtn {{
         background: {FIELD};
@@ -128,7 +144,7 @@ def stylesheet() -> str:
         border: 1px solid {BORDER};
         border-radius: 5px;
         padding: 5px 6px;
-        font-size: 11px;
+        font-size: 12px;
     }}
     QPushButton#LayerAddBtn:hover {{
         border: 1px solid {ACCENT};
@@ -168,7 +184,7 @@ def stylesheet() -> str:
         border: 1px solid {BORDER};
         border-radius: 4px;
         padding: 3px;
-        font-size: 11px;
+        font-size: 12px;
     }}
     QPushButton#LayerOrderBtn:hover {{ border: 1px solid {ACCENT}; color: {ACCENT}; }}
     QPushButton#LayerDeleteBtn {{
@@ -177,12 +193,12 @@ def stylesheet() -> str:
         border: 1px solid {BORDER};
         border-radius: 4px;
         padding: 4px 10px;
-        font-size: 11px;
+        font-size: 12px;
     }}
     QPushButton#LayerDeleteBtn:hover {{ border: 1px solid {DANGER}; }}
     QLabel#TargetLabel {{
         color: {DIM};
-        font-size: 10px;
+        font-size: 12px;
         font-style: italic;
         padding: 3px 12px 6px 12px;
     }}
@@ -204,7 +220,7 @@ def stylesheet() -> str:
         border: 1px solid {BORDER};
         border-radius: 4px;
         padding: 3px 8px;
-        font-size: 11px;
+        font-size: 12px;
     }}
     QComboBox:hover {{ border: 1px solid {ACCENT}; }}
     QComboBox QAbstractItemView {{
@@ -219,11 +235,11 @@ def stylesheet() -> str:
     /* --- Control rows --------------------------------------------------- */
     QLabel#ControlName {{
         color: {DIM};
-        font-size: 11px;
+        font-size: 12px;
     }}
     QLabel#ControlValue {{
         color: {INK};
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
     }}
 
@@ -252,7 +268,7 @@ def stylesheet() -> str:
     /* --- Checkboxes (green when checked, admin style) ------------------- */
     QCheckBox {{
         color: {BODY};
-        font-size: 11px;
+        font-size: 12px;
         spacing: 8px;
         padding: 6px 12px;
     }}
@@ -290,7 +306,7 @@ def stylesheet() -> str:
         background: {CANVAS};
         border: none;
         color: {DIM};
-        font-size: 10px;
+        font-size: 12px;
         padding: 6px;
     }}
     QListWidget::item {{
@@ -319,7 +335,7 @@ def stylesheet() -> str:
         background: {BG};
         color: {DIM};
         border-top: 1px solid {BORDER};
-        font-size: 11px;
+        font-size: 12px;
     }}
 
     QToolTip {{
@@ -336,7 +352,7 @@ def stylesheet() -> str:
         border: 1px solid {BORDER};
         border-radius: 4px;
         padding: 5px 4px;
-        font-size: 11px;
+        font-size: 12px;
     }}
     QPushButton#MaskTypeBtn:hover {{ border: 1px solid {ACCENT}; }}
     QPushButton#MaskTypeBtn:checked {{
