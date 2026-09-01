@@ -1,30 +1,46 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Standalone SNAP SLAPPER Qt photo manager/editor build recipe.
+# Standalone SNAP SLAPPER (Qt / PySide6) build recipe.
 import os
+import sys
+from PyInstaller.utils.hooks import collect_submodules
 
 _src = SPECPATH
 _shared_dir = os.path.normpath(os.path.join(_src, '..', '_shared'))
-# Qt reuses the established processing engine and LEWK catalogue.
-_app_files = [os.path.join(_src, name) for name in
-              ('editor_engine.py', 'built_in_lewks.py', 'found_textures.py')]
-_shared_names = ('snap_home.py', 'snap_paths.py')
-_shared_files = [os.path.join(_shared_dir, name) for name in _shared_names]
-_shared_mods = [os.path.splitext(name)[0] for name in _shared_names]
+_license_dir = os.path.normpath(os.path.join(_src, '..', '..', 'licenses'))
+_external_notices = [
+    os.path.join(_license_dir, name) for name in (
+        'xpano-external-tool-notice.txt',
+        'rawtherapee-external-tool-notice.txt',
+        'darktable-external-tool-notice.txt',
+    )
+]
+
+for _path in (_src, _shared_dir):
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
+
+_hidden = collect_submodules('slapper_qt') + [
+    'editor_engine', 'built_in_lewks', 'found_textures', 'texture_assets',
+    'photo_manager', 'slapper_filters', 'lewk_again',
+    'snap_home', 'snap_log', 'snap_profiles', 'snap_creds', 'snap_vault',
+    'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
+    'PySide6.QtPrintSupport', 'PySide6.QtSvg',
+    'PIL', 'PIL.Image', 'psd_tools',
+]
 
 a = Analysis(
-    ['run_slapper_qt.py'],
+    [os.path.join(_src, 'run_slapper_qt.py')],
     pathex=[_src, _shared_dir],
     binaries=[],
-    datas=[(path, '.') for path in _app_files + _shared_files],
-    hiddenimports=['slapper_qt', 'editor_engine', 'built_in_lewks', 'found_textures',
-                   'PIL', 'PIL.Image', 'PIL.ImageCms', 'PIL.ImageFilter'] + _shared_mods,
+    datas=[(path, 'licenses') for path in _external_notices],
+    hiddenimports=_hidden,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=['torch', 'torchvision', 'tensorflow', 'keras', 'scipy', 'sklearn',
-              'skimage', 'matplotlib', 'transformers', 'pandas', 'numpy', 'cv2',
-              'google', 'googleapiclient', 'bs4', 'imagehash', 'IPython', 'notebook',
-              'streamlit', 'gradio'],
+              'skimage', 'matplotlib', 'transformers', 'pandas', 'cv2',
+              'google', 'googleapiclient', 'bs4', 'imagehash', 'IPython',
+              'notebook', 'streamlit', 'gradio', 'tkinter'],
     noarchive=False,
 )
 

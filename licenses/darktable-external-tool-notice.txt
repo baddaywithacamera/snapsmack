@@ -1,0 +1,13 @@
+DARKTABLE - OPTIONAL EXTERNAL PROGRAM
+
+Upstream: https://www.darktable.org/
+Source: https://github.com/darktable-org/darktable
+License: GPL-3.0-or-later
+
+DARKTABLE is not included with SNAPSMACK or SNAP SLAPPER. The user installs it
+separately. SNAP SLAPPER may open an untouched photograph in that separate
+executable as a separate operating-system process. No DARKTABLE source, binary,
+library, profile, preset, or other asset is linked, bundled, vendored, copied,
+or ported into SNAPSMACK.
+
+DARKTABLE remains subject to its own upstream licence and copyright notices.

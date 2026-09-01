@@ -1,0 +1,196 @@
+"""Persistent SNAP SLAPPER catalogue shared with the earlier desktop library."""
+
+import os
+import tempfile
+import time
+
+import photo_manager
+
+
+class Catalog:
+    """Compatibility layer over the existing versioned JSON catalogue files."""
+
+    def __init__(self, directory=None):
+        if directory is None and os.environ.get("QT_QPA_PLATFORM") == "offscreen" \
+                and not os.environ.get("SNAPSMACK_HOME"):
+            directory = tempfile.mkdtemp(prefix="slapper_catalog_test_")
+        if directory is None:
+            try:
+                import snap_home
+                directory = snap_home.config_dir("snap-slapper")
+            except Exception:  # noqa: BLE001
+                root = (os.environ.get("SNAPSMACK_HOME") or r"C:\snapsmack")
+                directory = os.path.join(
+                    root, "config_files", "snap-slapper")
+        try:
+            os.makedirs(directory, exist_ok=True)
+        except OSError:
+            if os.environ.get("QT_QPA_PLATFORM") != "offscreen":
+                raise
+            directory = tempfile.mkdtemp(prefix="slapper_catalog_test_")
+        self.directory = directory
+        self.metadata_path = os.path.join(directory, "photo_metadata.json")
+        self.albums_path = os.path.join(directory, "albums.json")
+        self.folders_path = os.path.join(directory, "library_folders.json")
+        self.index_path = os.path.join(directory, "catalog_index.json")
+        self.history_path = os.path.join(directory, "operation_history.json")
+        self.trash_path = os.path.join(directory, "trash_manifest.json")
+        self.trash_root = os.path.join(directory, "trash")
+        self.metadata = photo_manager.load_versioned(
+            self.metadata_path, "photos", {})
+        self.albums = photo_manager.load_versioned(
+            self.albums_path, "albums", {})
+        self.folders = photo_manager.load_versioned(
+            self.folders_path, "folders", [])
+        self.index = photo_manager.load_versioned(
+            self.index_path, "photos", {})
+        self.history = photo_manager.load_versioned(
+            self.history_path, "operations", [])
+
+    @staticmethod
+    def key(path):
+        return os.path.normcase(os.path.abspath(path))
+
+    def details(self, path):
+        value = self.metadata.get(self.key(path), {})
+        if not isinstance(value, dict):
+            value = {}
+        try:
+            rating = max(0, min(5, int(value.get("rating", 0))))
+        except (TypeError, ValueError):
+            rating = 0
+        tags = value.get("tags", "")
+        if isinstance(tags, list):
+            tags = ", ".join(str(tag) for tag in tags)
+        return {
+            "favorite": bool(value.get("favorite", False)),
+            "rating": rating,
+            "tags": str(tags or ""),
+        }
+
+    def set_details(self, paths, favorite=None, rating=None, add_tags=None,
+                    replace_tags=None):
+        for path in paths:
+            key = self.key(path)
+            value = self.details(path)
+            if favorite is not None:
+                value["favorite"] = bool(favorite)
+            if rating is not None:
+                value["rating"] = max(0, min(5, int(rating)))
+            if replace_tags is not None:
+                value["tags"] = str(replace_tags).strip()
+            if add_tags:
+                existing = [tag.strip() for tag in value["tags"].split(",")
+                            if tag.strip()]
+                additions = [tag.strip() for tag in str(add_tags).split(",")
+                             if tag.strip()]
+                seen = set()
+                value["tags"] = ", ".join(
+                    tag for tag in existing + additions
+                    if not (tag.lower() in seen or seen.add(tag.lower())))
+            if value["favorite"] or value["rating"] or value["tags"]:
+                self.metadata[key] = value
+            else:
+                self.metadata.pop(key, None)
+        photo_manager.save_versioned(self.metadata_path, "photos", self.metadata)
+
+    def move_path(self, source, target):
+        old, new = self.key(source), self.key(target)
+        if old in self.metadata:
+            self.metadata[new] = self.metadata.pop(old)
+            photo_manager.save_versioned(
+                self.metadata_path, "photos", self.metadata)
+        changed = False
+        for name, paths in self.albums.items():
+            replacement = [target if self.key(path) == old else path for path in paths]
+            if replacement != paths:
+                self.albums[name] = replacement
+                changed = True
+        if changed:
+            self.save_albums()
+
+    def copy_path(self, source, target):
+        value = self.details(source)
+        self.set_details(
+            [target], favorite=value["favorite"], rating=value["rating"],
+            replace_tags=value["tags"])
+
+    def add_to_album(self, name, paths):
+        clean = str(name).strip()
+        if not clean:
+            raise ValueError("Album name is empty")
+        current = list(self.albums.get(clean, []))
+        known = {self.key(path) for path in current}
+        for path in paths:
+            key = self.key(path)
+            if key not in known:
+                current.append(path)
+                known.add(key)
+        self.albums[clean] = current
+        self.save_albums()
+
+    def save_albums(self):
+        photo_manager.save_versioned(self.albums_path, "albums", self.albums)
+
+    def register_folder(self, folder):
+        folder = os.path.abspath(folder)
+        known = {self.key(path) for path in self.folders}
+        if self.key(folder) not in known:
+            self.folders.append(folder)
+            self.folders.sort(key=str.lower)
+            photo_manager.save_versioned(
+                self.folders_path, "folders", self.folders)
+
+    def update_index(self, paths):
+        for path in paths:
+            key = self.key(path)
+            try:
+                self.index[key] = {
+                    "path": os.path.abspath(path),
+                    "modified": os.path.getmtime(path),
+                    "size": os.path.getsize(path),
+                }
+            except OSError:
+                continue
+        stale = [key for key, row in self.index.items()
+                 if not os.path.isfile(row.get("path", ""))]
+        for key in stale:
+            self.index.pop(key, None)
+        photo_manager.save_versioned(self.index_path, "photos", self.index)
+
+    def all_paths(self):
+        return [row["path"] for row in self.index.values()
+                if isinstance(row, dict) and os.path.isfile(row.get("path", ""))]
+
+    def record_operation(self, kind, changes):
+        self.history.append({
+            "kind": str(kind), "changes": list(changes), "time": int(time.time())})
+        self.history = self.history[-100:]
+        photo_manager.save_versioned(
+            self.history_path, "operations", self.history)
+
+    def undo_last_move(self):
+        while self.history:
+            operation = self.history.pop()
+            if operation.get("kind") not in {"move", "rename"}:
+                continue
+            changes = operation.get("changes", [])
+            reversed_changes = []
+            try:
+                for source, target in reversed(changes):
+                    if not os.path.isfile(target):
+                        raise FileNotFoundError(target)
+                    restored = photo_manager.unique_path(source)
+                    photo_manager.atomic_move(target, restored, prefix=".snap-undo-")
+                    self.move_path(target, restored)
+                    reversed_changes.append((target, restored))
+            finally:
+                photo_manager.save_versioned(
+                    self.history_path, "operations", self.history)
+            return reversed_changes
+        photo_manager.save_versioned(
+            self.history_path, "operations", self.history)
+        return []
+
+
+# ===== SNAPSMACK EOF =====
