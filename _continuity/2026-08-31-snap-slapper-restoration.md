@@ -58,6 +58,7 @@ Before installing a build:
 
 ## Verified restoration build
 
+- Restored source checkpoint: `1c1635af`.
 - Qt suite: 56 tests passed.
 - Original-preservation/photo-manager suite: 28 tests passed.
 - Packaged QA: editor opened a real image, wrote its completion marker, exported
