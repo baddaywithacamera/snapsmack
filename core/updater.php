@@ -99,6 +99,15 @@ unset($_rpk_file);
 try { updater_reconcile_htaccess(); }
 catch (\Throwable $e) { error_log('SnapSmack Updater: .htaccess self-heal skipped — ' . $e->getMessage()); }
 
+// ─── .USER.INI SELF-HEAL: PHP upload limits on php-fpm / tunnel hosts ─────────
+// .htaccess `php_value upload_max_filesize` is silently IGNORED on php-fpm/CGI
+// (the common setup behind a Cloudflare Tunnel / reverse proxy), so a 4K photo
+// (~4MB) can exceed the host's default ~2–8M limit and the upload is rejected
+// even though htaccess-template asks for 64M. A .user.ini IS honored by php-fpm/
+// CGI, so write one at the doc root here — additive, drift-gated, never fatal.
+try { updater_reconcile_user_ini(); }
+catch (\Throwable $e) { error_log('SnapSmack Updater: .user.ini self-heal skipped — ' . $e->getMessage()); }
+
 // ─── SECURITY SELF-HEAL (0.7.324): retire web-host cloud push ────────────────
 // SnapSmack no longer pushes backups to Google Drive / OneDrive from the web
 // host. A broad `drive.file` OAuth scope plus a server-stored refresh token on a
@@ -1522,6 +1531,51 @@ function updater_reconcile_htaccess(): array {
         return ['changed' => false, 'note' => 'write failed'];
     }
     error_log('SnapSmack Updater: .htaccess SnapSmack rules self-healed from template.');
+    return ['changed' => true, 'note' => 'regenerated'];
+}
+
+/**
+ * Self-heal a root .user.ini carrying SnapSmack's PHP limits. php-fpm / CGI honor
+ * .user.ini even where .htaccess `php_value` is ignored, so this is what actually
+ * raises upload_max_filesize / post_max_size on managed / tunnel hosting — the fix
+ * for 4K photos (~4MB) being rejected. Drift-gated by a marker line; only ever
+ * appends/refreshes the SnapSmack block, preserving any host-added directives.
+ * Best-effort: a write failure is logged, never fatal. Returns [changed, note].
+ */
+function updater_reconcile_user_ini(): array {
+    $marker    = '; SNAPSMACK-PHP-LIMITS';
+    $ini_path  = dirname(__DIR__) . '/.user.ini';
+    $block     = $marker . "\n"
+               . "; 64MB uploads for high-res / 4K photography; 128MB memory for image work.\n"
+               . "; .user.ini is honored by php-fpm/CGI where .htaccess php_value is ignored.\n"
+               . "upload_max_filesize = 64M\n"
+               . "post_max_size = 64M\n"
+               . "memory_limit = 128M\n"
+               . "max_execution_time = 120\n";
+
+    $existing = is_file($ini_path) ? (string)@file_get_contents($ini_path) : '';
+
+    // Already carrying the current block verbatim → nothing to do.
+    if ($existing !== '' && strpos($existing, $block) !== false) {
+        return ['changed' => false, 'note' => 'already current'];
+    }
+
+    // Strip any prior SnapSmack block (marker → its trailing blank line), keep
+    // host-added directives above it, then append the fresh block.
+    $host = $existing;
+    if (strpos($host, $marker) !== false) {
+        $host = preg_replace('/' . preg_quote($marker, '/') . '.*$/s', '', $host);
+        $host = rtrim($host);
+    }
+    $desired = ($host !== '' ? rtrim($host) . "\n\n" : '') . $block;
+
+    $ok = @file_put_contents($ini_path, $desired, LOCK_EX);
+    if ($ok === false) {
+        error_log('SnapSmack Updater: .user.ini self-heal could not write ' . $ini_path
+                . ' — set upload_max_filesize/post_max_size to 64M in your host PHP settings.');
+        return ['changed' => false, 'note' => 'write failed'];
+    }
+    error_log('SnapSmack Updater: .user.ini PHP limits self-healed.');
     return ['changed' => true, 'note' => 'regenerated'];
 }
 
