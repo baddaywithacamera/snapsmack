@@ -1149,8 +1149,10 @@ class EditorWindow(QMainWindow):
     def open_project(self):
         if not self._confirm_discard():
             return
+        from . import prefs
+        initial = prefs.load().get("projects_folder", "")
         path, _ = QFileDialog.getOpenFileName(
-            self, "Open SNAP SLAPPER project", "", PROJECT_FILTER)
+            self, "Open SNAP SLAPPER project", initial, PROJECT_FILTER)
         if not path:
             return
         try:
@@ -1176,8 +1178,11 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return
         base = os.path.splitext(os.path.basename(self.doc.source_path))[0]
+        from . import prefs
+        project_dir = prefs.load().get("projects_folder", "")
+        suggested = os.path.join(project_dir, f"{base}.slapper") if project_dir else f"{base}.slapper"
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save project", f"{base}.slapper", PROJECT_FILTER)
+            self, "Save project", suggested, PROJECT_FILTER)
         if not path:
             return
         try:
@@ -1666,13 +1671,15 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return
         base = os.path.splitext(os.path.basename(self.doc.source_path))[0]
+        from . import prefs
+        settings = prefs.load()
+        export_dir = settings.get("exports_folder", "")
+        suggested = os.path.join(export_dir, f"{base}_edited.jpg") if export_dir else f"{base}_edited.jpg"
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export copy", f"{base}_edited.jpg",
+            self, "Export copy", suggested,
             "JPEG (*.jpg);;PNG (*.png)")
         if not path:
             return
-        from . import prefs
-        settings = prefs.load()
         copyright_text = (settings["copyright_text"]
                           if settings["add_copyright_if_missing"] else "")
         try:

@@ -18,6 +18,10 @@ DEFAULTS = {
     "filmstrip_visible": True,     # show the folder filmstrip under the canvas
     "library_folders_visible": True,   # show the library's left folder tree
     "library_sort": "name",        # library grid sort: name / date_new / date_old
+    "library_folder": "",          # remembered photo-library root
+    "projects_folder": "",         # initial location for .slapper projects
+    "exports_folder": "",          # initial location for rendered copies
+    "library_include_subfolders": False,
 }
 
 
