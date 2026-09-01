@@ -424,9 +424,10 @@ class LibraryWindow(QMainWindow):
         starting_folder = remembered if os.path.isdir(remembered) else initial_root
         if starting_folder and os.path.isdir(starting_folder):
             self.load_folder(starting_folder)
-            index = self.tree_model.setRootPath(starting_folder)
-            if index.isValid():
-                self.tree.setRootIndex(index)
+            # Root at the parent so the active folder itself remains visible.
+            # Rooting at the active folder only shows its children and leaves
+            # this pane apparently blank whenever that folder has no subfolders.
+            self._show_folder_in_tree(starting_folder)
 
     # --- Toolbar ------------------------------------------------------------
     def _build_toolbar(self):
