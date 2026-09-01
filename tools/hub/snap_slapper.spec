@@ -7,8 +7,7 @@ _shared_dir = os.path.normpath(os.path.join(_src, '..', '_shared'))
 # Qt reuses the established processing engine and LEWK catalogue.
 _app_files = [os.path.join(_src, name) for name in
               ('editor_engine.py', 'built_in_lewks.py', 'found_textures.py')]
-_shared_names = ('snap_home.py', 'snap_paths.py', 'snap_log.py', 'snap_errors.py',
-                 'snap_profiles.py', 'snap_creds.py', 'snap_vault.py')
+_shared_names = ('snap_home.py', 'snap_paths.py')
 _shared_files = [os.path.join(_shared_dir, name) for name in _shared_names]
 _shared_mods = [os.path.splitext(name)[0] for name in _shared_names]
 
