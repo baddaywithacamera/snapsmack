@@ -12,7 +12,7 @@ import os
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
-    QComboBox, QFileDialog, QSlider,
+    QComboBox, QFileDialog, QSlider, QMenu,
 )
 
 from . import theme
@@ -44,18 +44,22 @@ class LayersPanel(QWidget):
         outer.setContentsMargins(12, 8, 12, 10)
         outer.setSpacing(8)
 
-        # Add-layer buttons
+        # One conventional layer menu. Texture is a real layer type here, not
+        # a feature someone has to discover in an unrelated workspace.
         add_row = QHBoxLayout()
         add_row.setSpacing(4)
-        for text, handler in (("+ Adjust", self._add_adjustment),
-                              ("+ Image", self._add_image),
-                              ("+ Text", self._add_text),
-                              ("+ Filter", self._add_filter)):
-            btn = QPushButton(text)
-            btn.setObjectName("LayerAddBtn")
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.clicked.connect(handler)
-            add_row.addWidget(btn)
+        self.new_layer_btn = QPushButton("+ New Layer")
+        self.new_layer_btn.setObjectName("LayerAddBtn")
+        self.new_layer_btn.setCursor(Qt.PointingHandCursor)
+        self.new_layer_menu = QMenu(self.new_layer_btn)
+        for text, handler in (("Adjustment Layer", self._add_adjustment),
+                              ("Image Layer…", self._add_image),
+                              ("Texture Layer…", self._add_texture),
+                              ("Text Layer", self._add_text),
+                              ("Filter Layer…", self._add_filter)):
+            self.new_layer_menu.addAction(text, handler)
+        self.new_layer_btn.setMenu(self.new_layer_menu)
+        add_row.addWidget(self.new_layer_btn, 1)
         outer.addLayout(add_row)
 
         # The list of layers (rebuilt on change)
@@ -68,6 +72,20 @@ class LayersPanel(QWidget):
         detail_layout = QVBoxLayout(self.detail)
         detail_layout.setContentsMargins(0, 4, 0, 0)
         detail_layout.setSpacing(6)
+
+        edit_row = QHBoxLayout()
+        edit_row.setSpacing(4)
+        self.mask_btn = QPushButton("Add / Edit Mask…")
+        self.mask_btn.setObjectName("LayerAddBtn")
+        self.mask_btn.setCursor(Qt.PointingHandCursor)
+        self.mask_btn.clicked.connect(self._open_mask)
+        edit_row.addWidget(self.mask_btn, 1)
+        self.hsl_btn = QPushButton("HSL / Colour Mix…")
+        self.hsl_btn.setObjectName("LayerAddBtn")
+        self.hsl_btn.setCursor(Qt.PointingHandCursor)
+        self.hsl_btn.clicked.connect(self._open_hsl)
+        edit_row.addWidget(self.hsl_btn, 1)
+        detail_layout.addLayout(edit_row)
 
         op_row = QHBoxLayout()
         op_row.setSpacing(8)
@@ -213,6 +231,8 @@ class LayersPanel(QWidget):
         self.detail.setVisible(layer is not None)
         if not layer:
             return
+        self.mask_btn.setText("Edit Mask…" if layer.get("mask") else "Add Mask…")
+        self.hsl_btn.setVisible(layer.get("type") == "adjustment")
         self.opacity.blockSignals(True)
         self.opacity.setValue(int(round(float(layer.get("opacity", 1.0)) * 100)))
         self.opacity.blockSignals(False)
@@ -259,6 +279,10 @@ class LayersPanel(QWidget):
         self.host.set_target(layer["id"])
         self.host.after_structure_change()
 
+    def _add_texture(self):
+        if self.doc:
+            self.host.open_textures()
+
     def _add_text(self):
         if not self.doc:
             return
@@ -269,6 +293,15 @@ class LayersPanel(QWidget):
     def _add_filter(self):
         if self.doc:
             self.host.open_filters()
+
+    def _open_mask(self):
+        if self._selected_layer() is not None:
+            self.host.open_active_layer_mask()
+
+    def _open_hsl(self):
+        layer = self._selected_layer()
+        if layer is not None and layer.get("type") == "adjustment":
+            self.host.open_adjustment_section("COLOUR MIX")
 
     def _delete(self):
         index = self._selected_index()

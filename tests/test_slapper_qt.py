@@ -198,12 +198,22 @@ def test_drag_preview_is_always_replaced_by_full_quality_render():
 def test_layers_isolation_and_ops():
     win = _editor(_image("d.jpg"))
     lp = win.layers_panel
+    assert [action.text() for action in lp.new_layer_menu.actions()] == [
+        "Adjustment Layer", "Image Layer…", "Texture Layer…", "Text Layer",
+        "Filter Layer…"]
     lp._add_adjustment()
     assert win.active_target != BASE
     base_before = win.doc.adjustments["exposure"]
     win.rows["exposure"]._on_slider(win.rows["exposure"]._to_step(2.0))
     win._on_commit("exposure")
     layer = lp._selected_layer()
+    assert lp.mask_btn.text() == "Add Mask…"
+    assert not lp.hsl_btn.isHidden()
+    lp._open_mask()
+    assert win.mask_section.header.isChecked()
+    assert win._mask_kind == "brush"
+    lp._open_hsl()
+    assert win._sections["COLOUR MIX"].header.isChecked()
     # editing a layer must NOT touch the base photograph
     assert win.doc.adjustments["exposure"] == base_before
     assert layer["adjustments"]["exposure"] == 2.0
