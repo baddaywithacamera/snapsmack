@@ -107,5 +107,16 @@ Before installing a build:
   with SHA-256 `AD182E81FCCBA8F7FAC3866F5B8E63A4EE032F4E6A9AAD62ADD4833B8E655394`.
 - This was installed for local user testing only; it was not tagged or published as a
   completed portable-format release.
+- Picasa-style catalogue persistence installed 2026-09-01. Every committed editor
+  change is atomically saved as lightweight private catalogue state after 900 ms and
+  flushed on navigation/close; reopening the original restores adjustments, geometry,
+  layers, masks, and retouch state automatically. Portable `.slapper` remains the
+  explicit self-contained backup/share format. Crash recovery is lightweight again and
+  is no longer a repeated full-resolution portable archive write.
+- Verification: 57 Qt tests, 28 immutable-original tests, packaged real-image QA.
+  Installed EXE SHA-256:
+  `84373240D66A9D356DF723909BFAA47D5CE7F1E02F20B4D0B368F8E5E2797184`.
+- Rollback EXE: `C:\snapsmack\snap_slapper\SNAP SLAPPER.before-catalog-autosave.exe`
+  with SHA-256 `1E8011D9070FAC4662D14084C2C88801F9E3E729E424E68B8DFBE27C59C5E8F3`.
 
 <!-- ===== SNAPSMACK EOF ===== -->
