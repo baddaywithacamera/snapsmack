@@ -152,6 +152,30 @@ def test_preview_renders_layer_stack_once_even_with_histogram():
     win._render_perspective_preview()
 
 
+def test_drag_preview_is_always_replaced_by_full_quality_render():
+    win = _editor(_image("quality-debounce.jpg", (2400, 1600)))
+    win.resize(1600, 1000)
+    win.show()
+    QTest.qWait(180)
+    APP.processEvents()
+
+    win._on_adjust("shadows", 12)
+    assert win._render_timer.isActive()
+    assert win._quality_render_timer.isActive()
+
+    # The quick proxy may be shown first, but the idle timer must replace it.
+    QTest.qWait(100)
+    APP.processEvents()
+    drag_width = win.view._item.pixmap().width()
+    QTest.qWait(260)
+    APP.processEvents()
+    final_width = win.view._item.pixmap().width()
+    assert final_width > drag_width
+    assert not win._render_timer.isActive()
+    assert not win._quality_render_timer.isActive()
+    win.close()
+
+
 def test_layers_isolation_and_ops():
     win = _editor(_image("d.jpg"))
     lp = win.layers_panel

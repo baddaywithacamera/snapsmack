@@ -136,6 +136,13 @@ class EditorWindow(QMainWindow):
         self._render_timer.setSingleShot(True)
         self._render_timer.setInterval(75)
         self._render_timer.timeout.connect(self._render_drag_preview)
+        # Slider movement first gets a small, fast proxy.  A second debounce
+        # always replaces it with the viewport-resolution render once editing
+        # pauses, including groove clicks and controls without a release event.
+        self._quality_render_timer = QTimer(self)
+        self._quality_render_timer.setSingleShot(True)
+        self._quality_render_timer.setInterval(260)
+        self._quality_render_timer.timeout.connect(self._render_preview)
 
         # Perspective warps are substantially dearer than tonal adjustments.
         # During a drag use a deliberately smaller proxy, then replace it with
@@ -2131,6 +2138,7 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return
         self._render_timer.stop()
+        self._quality_render_timer.stop()
         self.doc.record(f"Adjust {key.replace('_', ' ')}")
         self._render_preview(keep_view=False)
         self._update_title()
@@ -2536,6 +2544,7 @@ class EditorWindow(QMainWindow):
     # --- Rendering ----------------------------------------------------------
     def _schedule_render(self):
         self._render_timer.start()
+        self._quality_render_timer.start()
 
     def _render_drag_preview(self):
         """Fast proxy used by all continuously dragged controls."""
@@ -2559,6 +2568,10 @@ class EditorWindow(QMainWindow):
     def _render_preview(self, keep_view=True):
         if not self.doc:
             return
+        # An explicit/full render must be the last image shown.  In particular,
+        # do not let an older drag-preview timer soften it again afterwards.
+        self._render_timer.stop()
+        self._quality_render_timer.stop()
         # At 100% we render the photograph at its native resolution so the
         # canvas shows true pixels (a real focus check); when Fit, we render a
         # fast proxy capped to the window so slider drags stay smooth.
