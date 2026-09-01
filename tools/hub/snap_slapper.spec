@@ -1,42 +1,46 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Standalone SNAP SLAPPER photo manager build recipe.
+# Standalone SNAP SLAPPER (Qt / PySide6) build recipe.
 import os
-import tkinter as tk
-
-try:
-    _tk_probe = tk.Tk()
-    _tk_probe.withdraw()
-    _tk_probe.destroy()
-except Exception as exc:
-    raise SystemExit('SNAP SLAPPER build blocked: Python has no usable Tk runtime: ' + str(exc))
+import sys
+from PyInstaller.utils.hooks import collect_submodules
 
 _src = SPECPATH
 _shared_dir = os.path.normpath(os.path.join(_src, '..', '_shared'))
-# Bundle the editor modules SNAP SLAPPER genuinely imports. Keep shared fleet
-# modules separately allowlisted below so credentials/network code cannot ride.
-_app_files = [os.path.join(_src, name) for name in
-              ('snap_slapper.py', 'photo_library.py', 'photo_manager.py',
-               'editor_engine.py', 'editor_ui.py', 'help_ui.py')]
-_app_files.append(os.path.join(_src, 'built_in_lewks.py'))
-# SECAUDIT 051: bundle ONLY the shared modules the standalone editor imports.
-_shared_names = ('snap_home.py', 'snap_paths.py')
-_shared_files = [os.path.join(_shared_dir, name) for name in _shared_names]
-_shared_mods = [os.path.splitext(name)[0] for name in _shared_names]
+_license_dir = os.path.normpath(os.path.join(_src, '..', '..', 'licenses'))
+_external_notices = [
+    os.path.join(_license_dir, name) for name in (
+        'xpano-external-tool-notice.txt',
+        'rawtherapee-external-tool-notice.txt',
+        'darktable-external-tool-notice.txt',
+    )
+]
+
+for _path in (_src, _shared_dir):
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
+
+_hidden = collect_submodules('slapper_qt') + [
+    'editor_engine', 'built_in_lewks', 'found_textures', 'texture_assets',
+    'photo_manager', 'slapper_filters', 'lewk_again',
+    'snap_home', 'snap_log', 'snap_profiles', 'snap_creds', 'snap_vault',
+    'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
+    'PySide6.QtPrintSupport', 'PySide6.QtSvg',
+    'PIL', 'PIL.Image', 'psd_tools',
+]
 
 a = Analysis(
-    ['snap_slapper.py'],
+    [os.path.join(_src, 'run_slapper_qt.py')],
     pathex=[_src, _shared_dir],
     binaries=[],
-    datas=[(path, '.') for path in _app_files + _shared_files],
-    hiddenimports=['photo_library', 'photo_manager', 'editor_engine', 'editor_ui', 'help_ui', 'built_in_lewks',
-                   'PIL', 'PIL.Image', 'PIL.ImageTk'] + _shared_mods,
+    datas=[(path, 'licenses') for path in _external_notices],
+    hiddenimports=_hidden,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=['torch', 'torchvision', 'tensorflow', 'keras', 'scipy', 'sklearn',
-              'skimage', 'matplotlib', 'transformers', 'pandas', 'numpy', 'cv2',
-              'google', 'googleapiclient', 'bs4', 'imagehash', 'IPython', 'notebook',
-              'streamlit', 'gradio'],
+              'skimage', 'matplotlib', 'transformers', 'pandas', 'cv2',
+              'google', 'googleapiclient', 'bs4', 'imagehash', 'IPython',
+              'notebook', 'streamlit', 'gradio', 'tkinter'],
     noarchive=False,
 )
 
@@ -45,4 +49,4 @@ exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name='SNAP SLAPPER',
           debug=False, bootloader_ignore_signals=False, strip=False, upx=False,
           runtime_tmpdir=None, console=False, disable_windowed_traceback=False,
           argv_emulation=False, target_arch=None, codesign_identity=None,
-          entitlements_file=None)
+          entitlements_file=None, icon='icons/snap-slapper.ico')

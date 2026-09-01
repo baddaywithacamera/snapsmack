@@ -37,8 +37,14 @@ def main(argv=None):
         sys.excepthook = report_uncaught
 
     # A file path on the command line opens straight into the editor;
-    # otherwise the library browser is the entry point.
-    target = next((c for c in argv[1:] if c and not c.startswith("-")), None)
+    # otherwise the library browser is the entry point. The frozen-build gate
+    # supplies its real test photo through the environment and must exercise
+    # this same editor path, including layered PSD export.
+    qa_image = os.environ.get("SNAP_SLAPPER_QA_IMAGE", "")
+    qa_marker = os.environ.get("SNAP_SLAPPER_QA_MARKER", "")
+    qa_psd = os.environ.get("SNAP_SLAPPER_QA_PSD", "")
+    target = qa_image or next(
+        (c for c in argv[1:] if c and not c.startswith("-")), None)
     if target:
         window = EditorWindow()
         if os.path.splitext(target)[1].lower() == ".slapper":
@@ -51,9 +57,6 @@ def main(argv=None):
 
     # Packaged-build smoke test: open a real image, prove the Qt event loop can
     # start, write a marker, and exit without requiring desktop interaction.
-    qa_image = os.environ.get("SNAP_SLAPPER_QA_IMAGE", "")
-    qa_marker = os.environ.get("SNAP_SLAPPER_QA_MARKER", "")
-    qa_psd = os.environ.get("SNAP_SLAPPER_QA_PSD", "")
     if qa_image and qa_marker:
         def finish_qa():
             try:

@@ -17,10 +17,12 @@ import tempfile
 import time
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ["SNAPSMACK_HOME"] = tempfile.mkdtemp(prefix="slapper_qt_home_")
 
 HUB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                    "tools", "hub")
 sys.path.insert(0, HUB)
+sys.path.insert(0, os.path.join(os.path.dirname(HUB), "_shared"))
 
 from PIL import Image, ImageChops                        # noqa: E402
 import editor_engine                                     # noqa: E402
@@ -207,6 +209,11 @@ def test_normal_advanced_mode():
     assert not win.rows["contrast"].isHidden()
     assert not win.rows["vibrance"].isHidden()
     assert not win.rows["vignette"].isHidden()
+    assert not win.rows["clarity"].isHidden()
+    assert not win.rows["dehaze"].isHidden()
+    assert not win.rows["texture"].isHidden()
+    assert not win.split_shadow_btn.icon().isNull()
+    assert win.split_shadow_btn.styleSheet() == ""
     assert win.rows["vignette_feather"].isHidden()
     assert win.grain_darken_check.isHidden()
     assert win._histogram_wrap.isHidden()
@@ -331,6 +338,14 @@ def test_teach_me_uses_real_lewk_steps_and_makes_editable_copy():
     assert taught_values == lewk["adjustments"]
     dialog = TeachMeDialog(win, lewk, 80)
     assert dialog.steps.count() == len(actions)
+    # Selecting a lesson walks the preview cumulatively through the real stack.
+    dialog.steps.setCurrentRow(0)
+    assert dialog._enabled_values() == actions[0]["values"]
+    assert dialog._enabled_values(before_selected=True) == {}
+    first_render = dialog._render().tobytes()
+    dialog.steps.setCurrentRow(dialog.steps.count() - 1)
+    assert dialog._enabled_values() == taught_values
+    assert dialog._render().tobytes() != first_render
     assert dialog.values.text()
     assert dialog.values.isHidden()              # lesson first, numbers on request
     assert "Why:" in dialog.why.text() and "Contrast:" not in dialog.why.text()
@@ -805,6 +820,44 @@ def test_fit_preview_refreshes_after_window_layout():
     assert refreshed_width > first_width
     assert not win._zoom_actual and win.view._fitting
     win.close()
+
+
+def test_window_state_colour_chrome_and_library_captions():
+    from slapper_qt import prefs
+    original_load, original_save = prefs.load, prefs.save
+    stored = dict(prefs.DEFAULTS)
+    stored.update({"editor_maximized": True, "library_maximized": True})
+    prefs.load = lambda: dict(stored)
+    prefs.save = lambda values: stored.update(values) or dict(values)
+    try:
+        win = EditorWindow()
+        assert win._restore_maximized is True
+        assert win.split_shadow_btn.objectName() == "SwatchBtn"
+        assert win.split_mid_btn.objectName() == "SwatchBtn"
+        assert win.split_hi_btn.objectName() == "SwatchBtn"
+        css = theme.stylesheet()
+        assert "QPushButton#SwatchBtn" in css
+        assert f"background: {theme.CANVAS}" in css
+        assert f"color: {theme.ACCENT}" in css
+        assert f"border: 1px solid {theme.ACCENT}" in css
+
+        lib = LibraryWindow()
+        icon = lib.list.iconSize()
+        cell = lib.list.gridSize()
+        assert cell.height() >= icon.height() + 60
+        assert cell.width() > icon.width()
+        lib._set_thumbnail_size(220)
+        assert lib.list.gridSize().height() >= 280
+        lib.close()
+        win.close()
+    finally:
+        prefs.load, prefs.save = original_load, original_save
+
+
+def test_directory_preferences_survive_save_defaults():
+    from slapper_qt import prefs
+    for key in ("library_folder", "projects_folder", "exports_folder"):
+        assert key in prefs.DEFAULTS
 
 
 def test_filmstrip_lists_folder_and_opens():
