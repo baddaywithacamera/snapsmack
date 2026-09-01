@@ -153,15 +153,36 @@ $pdo->prepare("UPDATE snap_ohsnap_keys SET last_used_at = NOW() WHERE id = ?")
  * Build an absolute thumb URL for an image file path.
  * Uses aspect thumbnail (a_ prefix). Falls back to full image if thumb missing.
  */
-function gy_thumb_url(string $img_file): string {
-    if (!$img_file) return '';
-    $thumb_rel = ltrim(dirname($img_file) . '/thumbs/a_' . basename($img_file), '/');
-    $thumb_abs = dirname(__DIR__) . '/uploads/' . $thumb_rel;
-    if (file_exists($thumb_abs)) {
-        return BASE_URL . 'uploads/' . $thumb_rel;
+function gy_media_url(string $path): string {
+    $rel = ltrim(str_replace('\\', '/', trim($path)), '/');
+    if ($rel === '') return '';
+    if (preg_match('#^https?://#i', $rel)) return $rel;
+
+    // Canonical rows already include their media root (`img_uploads/...` or a
+    // legacy `uploads/...`). Never prepend a second root to a stored path.
+    if (str_starts_with($rel, 'img_uploads/') || str_starts_with($rel, 'uploads/')) {
+        return rtrim(BASE_URL, '/') . '/' . $rel;
     }
-    // Fall back to full image
-    return BASE_URL . 'uploads/' . ltrim($img_file, '/');
+
+    // Very old rows stored only YYYY/MM/file.jpg. Prefer the current root when
+    // it exists, then retain the legacy uploads fallback.
+    $site_root = dirname(__DIR__);
+    if (is_file($site_root . '/img_uploads/' . $rel)) {
+        return rtrim(BASE_URL, '/') . '/img_uploads/' . $rel;
+    }
+    return rtrim(BASE_URL, '/') . '/uploads/' . $rel;
+}
+
+function gy_thumb_url(string $img_file, string $stored_thumb = ''): string {
+    if ($stored_thumb !== '') return gy_media_url($stored_thumb);
+    if ($img_file === '') return '';
+
+    $rel = ltrim(str_replace('\\', '/', $img_file), '/');
+    $thumb_rel = dirname($rel) . '/thumbs/a_' . basename($rel);
+    if (is_file(dirname(__DIR__) . '/' . $thumb_rel)) {
+        return gy_media_url($thumb_rel);
+    }
+    return gy_media_url($rel);
 }
 
 
@@ -945,7 +966,12 @@ if ($resource === 'gram-posts' && $method === 'GET') {
                     (SELECT i1.img_file FROM snap_post_images pi1 JOIN snap_images i1 ON i1.id = pi1.image_id
                       WHERE pi1.post_id = p.id AND pi1.is_cover = 1 LIMIT 1),
                     (SELECT i2.img_file FROM snap_images i2 WHERE i2.post_id = p.id ORDER BY i2.id LIMIT 1)
-                ) AS cover_file
+                ) AS cover_file,
+                COALESCE(
+                    (SELECT i1.img_thumb_aspect FROM snap_post_images pi1 JOIN snap_images i1 ON i1.id = pi1.image_id
+                      WHERE pi1.post_id = p.id AND pi1.is_cover = 1 LIMIT 1),
+                    (SELECT i2.img_thumb_aspect FROM snap_images i2 WHERE i2.post_id = p.id ORDER BY i2.id LIMIT 1)
+                ) AS cover_thumb
             FROM snap_posts p
             WHERE p.trigram_id IS NULL
               AND p.post_type IN ('single','carousel','panorama')
@@ -972,7 +998,7 @@ if ($resource === 'gram-posts' && $method === 'GET') {
             // A post is combinable only if it's an ungrouped published single.
             'combinable'  => ($count <= 1 && $row['post_type'] === 'single' && $row['status'] === 'published'),
             'created_at'  => $row['created_at'],
-            'thumb_url'   => gy_thumb_url((string)$row['cover_file']),
+            'thumb_url'   => gy_thumb_url((string)$row['cover_file'], (string)$row['cover_thumb']),
         ];
     }
 
