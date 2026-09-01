@@ -26,7 +26,7 @@
   tests, installed-build hash, and rollback path under `_continuity/` so a
   future targeted change cannot silently discard established features.
 
-## 0.7.595 "LIVE WIRE" — 2026-08-31
+## 0.7.597 "LIVE WIRE" — 2026-09-01
 - **Fix: solo posts no longer fail with a blank "MISSION FAILURE" on sites whose DB
   is missing the per-image crop columns.** On a site whose schema never synced,
   `snap_post_images` lacked `img_crop_mode` / `img_focus_x` / `img_focus_y` / `img_zoom`,
@@ -34,6 +34,8 @@
   AJAX returned an empty 500 — the blank failure alert. The solo composer now adds those
   columns defensively before inserting (same belt-and-suspenders the gram composer already
   had). Immediate unblock without deploying: run Boring Ass Stuff → Database Schema sync.
+
+## 0.7.595 "LIVE WIRE" — 2026-08-31
 - **Fix: 4K photo uploads no longer rejected — PHP limits set via `.user.ini`.** On
   php-fpm / Cloudflare-tunnel hosts, the `php_value upload_max_filesize 64M` line in
   `.htaccess` is silently ignored, so the host's low default (~2–8M) rejected a 4K photo
