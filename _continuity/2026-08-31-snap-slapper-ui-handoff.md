@@ -69,6 +69,11 @@ Current truth:
 - Commit `250a0531` corrected CRONOMETER to prefer each profile's full management
   key in `extras.api_key_local`, falling back to the legacy top-level key.
 - Corrected executable is installed at `C:\snapsmack\cronometer\cronometer.exe`.
+- **Open regression:** CRONOMETER still has no wired application/executable icon.
+  Its PyInstaller spec does not name an icon and the tool has no icon asset folder.
+  This was previously recorded only as a to-do; it has not been fixed or visually
+  verified. Follow the desktop preservation rule in
+  `_continuity/2026-09-01-desktop-suite-invariants.md`.
 - Live verification recovered 22/24 sites. FOUND TEXTURES and IN STEREO WHERE
   AVAILABLE still rejected their individually stored keys. DISCOVER FLEET should
   refresh them; if 401 remains, those two CMS hub/spoke relationships need reconnecting.
