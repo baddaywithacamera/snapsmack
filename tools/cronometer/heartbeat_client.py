@@ -2,18 +2,18 @@
 CRONOMETER — heartbeat_client.py
 
 Talks to a single fleet site's multisite heartbeat and turns the reply into a
-per-cron-job health verdict. This is the honest-degradation layer: the CURRENT
-heartbeat (core/multisite-api.php, GET multisite/heartbeat) reports site STATE —
-version, counts, backup timestamps, SMACKVERSE totals — but does NOT yet report a
-per-cron-job last-run/health block for RSS fetch, version check, or fediverse
-delivery. So this client:
+per-cron-job health verdict, for the three scheduled crons EVERY SnapSmack site
+runs: fediverse delivery, RSS blogroll fetch, and version/update check. (Backups
+are not a cron — the SUYB desktop tool does those; SMACKBACK rides version-check;
+directory-feeds runs only on the photoblogs.fyi host — so none are per-site cron
+jobs and none are monitored here.) This is the honest-degradation layer:
 
-  * reads an OPTIONAL richer `jobs` block if the site ships one (the MUST-ADD shape
-    documented in docs/cronometer-spec.md — future builds), and
-  * otherwise derives what it honestly can from today's fields (backup health from
-    last_backup_at/last_backup_status; fediverse ENABLED/DISABLED from
-    smackverse_enabled) and marks everything else UNKNOWN / "not reported" rather
-    than inventing a green light.
+  * it reads the `jobs` block the heartbeat ships (core/multisite-api.php, GET
+    multisite/heartbeat — keyed {fediverse, rss_fetch, version_check}, each
+    {last_run, status}; shape in docs/cronometer-spec.md), and
+  * for a site too old to ship that block, derives what it honestly can from
+    today's fields (fediverse ENABLED/DISABLED from fediverse_enabled) and marks
+    everything else UNKNOWN / "not reported" rather than inventing a green light.
 
 Surfacing the silent failure is the whole point, so UNKNOWN is treated as a caution
 the operator must see — never quietly folded into "all good".
@@ -75,12 +75,16 @@ class JobSpec:
     red_after_sec: int         # age past which "stale" becomes "failed"
 
 
+# ONLY the scheduled crons that EVERY SnapSmack site actually runs. Backups are
+# not a cron (SUYB, a desktop tool, does those), SMACKBACK just rides the
+# version-check cron, and cron-directory-feeds runs on the photoblogs.fyi host
+# only — so none are per-site cron jobs and were removed to stop the false
+# red/grey rows. (Backup freshness is still in the heartbeat as last_backup_at
+# if a separate, clearly non-cron indicator is wanted later.)
 JOB_SPECS = [
-    JobSpec('fediverse',     'Fediverse delivery',  10 * 60,        6 * 3600),   # cron-smackverse: every 10 min
+    JobSpec('fediverse',     'Fediverse delivery',  10 * 60,        6 * 3600),   # cron-fediverse: every 10 min
     JobSpec('rss_fetch',     'RSS blogroll fetch',  60 * 60,        3 * 24 * 3600),  # cron-rss-fetch: ~hourly
     JobSpec('version_check', 'Version / update check', 6 * 3600,    2 * 24 * 3600),  # cron-version-check: every 6h
-    JobSpec('backup',        'Backups',             24 * 3600,      7 * 24 * 3600),  # daily; the red-for-weeks case
-    JobSpec('smackback',     'SMACKBACK integrity', 24 * 3600,      7 * 24 * 3600),  # rides the version-check cron
 ]
 _JOB_BY_KEY = {j.key: j for j in JOB_SPECS}
 
@@ -298,40 +302,15 @@ def _job_from_rich(spec: JobSpec, rich: dict) -> JobHealth:
 def _job_derived(spec: JobSpec, data: dict) -> JobHealth:
     """Best honest verdict from TODAY's heartbeat, per job. Where the data simply
     isn't there, return UNKNOWN/'not reported' — never a fabricated green."""
-    if spec.key == 'backup':
-        # EXISTS today: last_backup_at + last_backup_status.
-        last = _parse_ts(data.get('last_backup_at'))
-        status = str(data.get('last_backup_status') or 'unknown')
-        if last is None and status == 'unknown':
-            return JobHealth(spec.key, spec.label, SEV_UNKNOWN, None,
-                             'no backup recorded', reported=False)
-        sev = _severity_for(spec, last, status)
-        return JobHealth(spec.key, spec.label, sev, last,
-                         f'status: {status}', reported=True)
-
     if spec.key == 'fediverse':
-        # Heartbeat reports smackverse_enabled + totals, but NOT the cron's
-        # last run — so we can honestly say enabled/disabled, not fresh/stale.
-        enabled = str(data.get('smackverse_enabled') or '0') in ('1', 'true', 'True')
+        # Heartbeat reports fediverse_enabled + totals, but NOT the cron's last
+        # run — so we can honestly say enabled/disabled, not fresh/stale.
+        enabled = str(data.get('fediverse_enabled') or data.get('smackverse_enabled') or '0') in ('1', 'true', 'True')
         if not enabled:
             return JobHealth(spec.key, spec.label, SEV_NA, None,
                              'federation disabled', reported=True)
         return JobHealth(spec.key, spec.label, SEV_UNKNOWN, None,
                          'enabled, but last-run not reported', reported=False)
-
-    if spec.key == 'smackback':
-        # Partial: smackback_status (clean/breach/unknown) exists, but not the
-        # last full-verify timestamp.
-        status = str(data.get('smackback_status') or 'unknown').lower()
-        if status == 'breach':
-            when = _parse_ts(data.get('smackback_breach_at'))
-            return JobHealth(spec.key, spec.label, SEV_FAILED, when,
-                             'BREACH detected', reported=True)
-        if status in ('clean', 'ok'):
-            return JobHealth(spec.key, spec.label, SEV_OK, None,
-                             'clean (verify time not reported)', reported=True)
-        return JobHealth(spec.key, spec.label, SEV_UNKNOWN, None,
-                         'not reported', reported=False)
 
     # rss_fetch and version_check: no field in today's heartbeat.
     return JobHealth(spec.key, spec.label, SEV_UNKNOWN, None,
