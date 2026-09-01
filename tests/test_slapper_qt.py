@@ -13,6 +13,7 @@ Covers the load-bearing invariants of the Qt rebuild:
   - library scan + threaded thumbnails + open-in-editor
 """
 
+import json
 import os
 import sys
 import tempfile
