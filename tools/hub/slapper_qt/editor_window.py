@@ -18,14 +18,14 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QColor
 
-from PIL import ImageOps, ImageStat
+from PIL import Image, ImageOps, ImageStat
 
 from . import masks
 
 import editor_engine
 import photo_manager
 from . import theme
-from .engine_bridge import render_pixmap, original_pixmap
+from .engine_bridge import pil_to_qpixmap, original_pixmap
 from .widgets import ImageView, SliderRow, Accordion, Histogram
 from .layers_panel import LayersPanel, BASE
 from .filmstrip import Filmstrip
@@ -105,6 +105,7 @@ class EditorWindow(QMainWindow):
         super().__init__()
         self.doc = None
         self.catalog = Catalog()
+        self._preview_image = None
         self.rows = {}
         self.active_target = "base"   # "base" or a layer id
         self.setWindowTitle("SNAP SLAPPER")
@@ -708,11 +709,21 @@ class EditorWindow(QMainWindow):
         inner_layout.addWidget(bw_section)
         self._sections["BLACK + WHITE"] = bw_section
 
-        # Colour mix — per-hue saturation + luminance (HSL in colour)
+        # Colour mix — per-colour hue + saturation + luminance (full HSL)
         hsl_section = Accordion("COLOUR MIX", expanded=False)
         _bands = (("red", "Red"), ("orange", "Orange"), ("yellow", "Yellow"),
                   ("green", "Green"), ("aqua", "Aqua"), ("blue", "Blue"),
                   ("purple", "Purple"), ("magenta", "Magenta"))
+        hue_hint = QLabel("Hue — shift each colour around the colour wheel")
+        hue_hint.setObjectName("TargetLabel")
+        hsl_section.add(hue_hint)
+        for band, label in _bands:
+            key = f"col_hue_{band}"
+            srow = SliderRow(key, label, -100, 100, 1, 0)
+            srow.changed.connect(self._on_adjust)
+            srow.committed.connect(self._on_commit)
+            self.rows[key] = srow
+            hsl_section.add(srow)
         sat_hint = QLabel("Saturation — how vivid each colour is")
         sat_hint.setObjectName("TargetLabel")
         hsl_section.add(sat_hint)
@@ -1494,8 +1505,21 @@ class EditorWindow(QMainWindow):
         self._refresh_histogram()
 
     def _refresh_histogram(self):
-        if self.doc:
-            self.histogram.set_data(self.doc.histogram(), self._hist_mode)
+        if not self.doc or self._histogram_wrap.isHidden():
+            return
+        image = self._preview_image
+        if image is None:
+            image = self.doc.render((512, 512))
+        elif image.width > 512 or image.height > 512:
+            image = image.copy()
+            image.thumbnail((512, 512), Image.Resampling.LANCZOS)
+        rgb = image.convert("RGB")
+        red, green, blue = rgb.split()
+        self.histogram.set_data({
+            "red": red.histogram(), "green": green.histogram(),
+            "blue": blue.histogram(),
+            "luminance": ImageOps.grayscale(rgb).histogram(),
+        }, self._hist_mode)
 
     # --- Edit target (base vs a layer) --------------------------------------
     def active_adjustments(self):
@@ -1755,6 +1779,11 @@ class EditorWindow(QMainWindow):
             self.mask_section.setVisible(False)
             self._sync_controls_from_doc()
             self._sync_canvas_layer_mode()
+        elif self.doc:
+            # Normal mode deliberately skips histogram work. When the user
+            # opens Advanced mode, populate it from the cached preview without
+            # rendering the layer stack again.
+            self._refresh_histogram()
         self.status.showMessage(
             "Advanced mode" if advanced else "Normal mode — simple editing")
 
@@ -2505,13 +2534,14 @@ class EditorWindow(QMainWindow):
         # canvas shows true pixels (a real focus check); when Fit, we render a
         # fast proxy capped to the window so slider drags stay smooth.
         max_size = None if self._zoom_actual else self.view.viewport_target()
+        edited_image = self.doc.render(max_size=max_size)
+        self._preview_image = edited_image
+        edited = pil_to_qpixmap(edited_image)
         if self.act_compare.isChecked():
-            edited = render_pixmap(self.doc, max_size=max_size)
             original = original_pixmap(self.doc.source_path, max_size=max_size)
             self.view.set_compare(original, edited, keep_view=keep_view)
         else:
-            pixmap = render_pixmap(self.doc, max_size=max_size)
-            self.view.set_pixmap(pixmap, keep_view=keep_view)
+            self.view.set_pixmap(edited, keep_view=keep_view)
         self._refresh_histogram()
 
     def zoom_fit(self):
