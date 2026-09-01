@@ -430,6 +430,32 @@ if ($resource === 'provision-key' && $method === 'POST') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: multisite/run-crons
+// Fleet cron driver. CRONOMETER (or any full-key caller) hits this so a site's
+// due jobs run even with zero visitor traffic and no system crontab. It just
+// invokes the same web-cron tick that fires on public page loads — RSS fetch and
+// fediverse delivery run after the response flushes (register_shutdown_function),
+// so the caller gets an immediate ok and never waits. Idempotent + self-throttled:
+// the tick's own due-checks and DB locks mean a hit that isn't due does nothing.
+// Requires FULL api_key_local auth (this sits below the Bearer gate above).
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'run-crons') {
+    $ran = [];
+    if (is_file(__DIR__ . '/fediverse-webcron.php')) {
+        require_once __DIR__ . '/fediverse-webcron.php';
+        if (function_exists('sv_web_cron_tick')) {
+            try { sv_web_cron_tick($pdo, $settings); $ran[] = 'web-cron tick scheduled'; }
+            catch (Throwable $e) { error_log('run-crons tick failed: ' . $e->getMessage()); }
+        }
+    }
+    ms_ok([
+        'triggered'    => $ran,
+        'rss_last_run' => $settings['rss_last_run'] ?? null,
+        'fediverse_cron_last_run' => $settings['fediverse_cron_last_run'] ?? null,
+    ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: GET multisite/heartbeat
 // Returns site vitals: version, counts, backup state.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -491,11 +517,16 @@ if ($resource === 'heartbeat' && $method === 'GET') {
 
     // CRONOMETER: per-job health for the fleet cron/job board. The client
     // (tools/cronometer) reads this optional 'jobs' block keyed by job name,
-    // each { last_run, status }. Keys MUST match the client's JOB_SPECS —
-    // fediverse, rss_fetch, version_check, backup, smackback — or the row stays
-    // grey. Every value is a plain snap_settings row written by the matching
-    // cron; a missing last_run leaves that job 'unknown' (age-based on the
-    // client), never a false green.
+    // each { last_run, status }. Keys MUST match the client's JOB_SPECS.
+    // ONLY the scheduled crons that EVERY site actually runs belong here —
+    // fediverse, rss_fetch, version_check. Backups are NOT a cron (SUYB, a
+    // desktop tool, does those), SMACKBACK just rides version-check, and
+    // directory-feeds runs on the photoblogs.fyi host only — so none of those
+    // are per-site cron jobs and listing them here produced false red/grey rows.
+    // Backup freshness is still available above via last_backup_at/last_backup_status
+    // for anyone who wants a separate (non-cron) indicator. Every value is a plain
+    // snap_settings row written by the matching cron; a missing last_run leaves
+    // that job 'unknown' (age-based on the client), never a false green.
     $job_state = static function ($last_run, $status) {
         $last_run = ($last_run ?? '') !== '' ? (string)$last_run : null;
         $status   = ($status   ?? '') !== '' ? (string)$status   : ($last_run !== null ? 'ok' : 'unknown');
@@ -505,8 +536,6 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         'fediverse'     => $job_state($settings['fediverse_cron_last_run']   ?? null, $settings['fediverse_cron_last_status'] ?? null),
         'rss_fetch'     => $job_state($settings['rss_last_run']                ?? null, $settings['rss_last_status']              ?? null),
         'version_check' => $job_state($settings['last_update_check']           ?? null, $settings['version_check_last_status']    ?? null),
-        'backup'        => $job_state($settings['last_backup_at']              ?? null, $settings['last_backup_status']           ?? null),
-        'smackback'     => $job_state($settings['smackback_last_full_verify']  ?? null, $settings['smackback_status']             ?? null),
     ];
 
     ms_ok([

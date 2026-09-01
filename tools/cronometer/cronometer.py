@@ -21,14 +21,16 @@ UI thread; results are marshalled back with Tk's `after`.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.1.0"
+BUILD_VERSION = "0.7.6"
 
 # ---------------------------------------------------------------------------
 # Shared-path bootstrap + debug log. Must happen before any _shared import so
 # library warnings are captured too. Copied from COLD SNAP's convention.
 # ---------------------------------------------------------------------------
 import os
+import platform
 import sys
+from datetime import datetime
 
 
 def _add_shared_to_path() -> None:
@@ -87,22 +89,22 @@ import heartbeat_client as hb
 
 
 # ── Palette (mirrors the SnapSmack admin dark theme; see sumna_ui.py) ────────
-BG_DEEP  = "#141414"
-BG_CARD  = "#1C1C1C"
-BG_MID   = "#050505"
-BG_HOVER = "#252525"
+BG_DEEP  = "#111311"
+BG_CARD  = "#1A1D1A"
+BG_MID   = "#080A08"
+BG_HOVER = "#292D29"
 ACCENT   = "#39FF14"
 FG_MAIN  = "#EEEEEE"
-FG_DIM   = "#777777"
+FG_DIM   = "#A2A8A2"
 FG_OK    = "#4EC994"
 FG_ERR   = "#FF3E3E"
 FG_WARN  = "#D4872A"
 FG_GREY  = "#8A8A8A"
 
-FONT_UI    = ("Segoe UI", 9)
-FONT_BOLD  = ("Segoe UI", 9, "bold")
-FONT_SMALL = ("Segoe UI", 8)
-FONT_TITLE = ("Segoe UI", 13, "bold")
+FONT_UI    = ("Segoe UI", 10)
+FONT_BOLD  = ("Segoe UI Semibold", 10)
+FONT_SMALL = ("Segoe UI", 9)
+FONT_TITLE = ("Segoe UI Semibold", 16)
 
 # Severity -> (dot colour, short word). One place maps the client's verdicts to
 # the board's visual language.
@@ -137,6 +139,7 @@ class App(tk.Tk):
                                             cfg_module.DEFAULT_POLL_TIMEOUT))
         self._fleet: List[dict] = []
         self._site_cards = {}          # url -> dict of widgets to update in place
+        self._health_by_url = {}       # latest complete probe result for reports
         self._busy = False
         self._pool = ThreadPoolExecutor(max_workers=6)
 
@@ -162,36 +165,54 @@ class App(tk.Tk):
     # UI scaffold
     # ------------------------------------------------------------------
     def _build_ui(self):
-        # ── Top bar ───────────────────────────────────────────────────
-        bar = tk.Frame(self, bg=BG_MID)
-        bar.pack(fill="x", side="top")
-        tk.Label(bar, text="CRONOMETER", bg=BG_MID, fg=ACCENT,
-                 font=FONT_TITLE, padx=14, pady=10).pack(side="left")
-        tk.Label(bar, text="fleet cron / job-health", bg=BG_MID, fg=FG_DIM,
-                 font=FONT_SMALL).pack(side="left", pady=(14, 0))
+        header = tk.Frame(self, bg=BG_MID)
+        header.pack(fill="x", side="top")
+        tk.Label(header, text="CRONOMETER", bg=BG_MID, fg=ACCENT,
+                 font=FONT_TITLE).pack(anchor="w", padx=18, pady=(13, 0))
+        tk.Label(header, text="Scheduled-job health across your SnapSmack sites",
+                 bg=BG_MID, fg=FG_DIM, font=FONT_SMALL).pack(
+                     anchor="w", padx=18, pady=(1, 12))
 
-        self._refresh_btn = self._make_button(bar, "REFRESH ALL", self.refresh_all,
-                                              kind="primary")
-        self._refresh_btn.pack(side="right", padx=(6, 12), pady=8)
-        self._make_button(bar, "RELOAD FLEET", self._reload_fleet).pack(
-            side="right", padx=6, pady=8)
-
-        self._status = tk.Label(bar, text="", bg=BG_MID, fg=FG_DIM,
-                                font=FONT_SMALL)
-        self._status.pack(side="right", padx=8)
+        actions = tk.Frame(self, bg=BG_DEEP)
+        actions.pack(fill="x", side="top", padx=14, pady=(10, 6))
+        self._refresh_btn = self._make_button(
+            actions, "REFRESH ALL SITES", self.refresh_all, kind="primary")
+        self._refresh_btn.pack(side="left", padx=(0, 8))
+        self._make_button(actions, "COPY STATUS", self._copy_status,
+                          kind="primary").pack(side="left", padx=(0, 8))
+        self._make_button(actions, "RELOAD SITE LIST", self._reload_fleet).pack(side="left")
 
         # ── Legend ────────────────────────────────────────────────────
         legend = tk.Frame(self, bg=BG_DEEP)
-        legend.pack(fill="x", side="top")
+        legend.pack(fill="x", side="top", padx=6)
         for sev in (hb.SEV_OK, hb.SEV_STALE, hb.SEV_UNKNOWN,
                     hb.SEV_FAILED, hb.SEV_OFFLINE, hb.SEV_NA):
             colour, word = _sev_style(sev)
             cell = tk.Frame(legend, bg=BG_DEEP)
-            cell.pack(side="left", padx=(12, 0), pady=4)
+            cell.pack(side="left", padx=(10, 0), pady=(2, 8))
             tk.Label(cell, text="\u25CF", bg=BG_DEEP, fg=colour,
                      font=FONT_UI).pack(side="left")
             tk.Label(cell, text=word, bg=BG_DEEP, fg=FG_DIM,
                      font=FONT_SMALL).pack(side="left", padx=(4, 0))
+
+        summary = tk.Frame(self, bg=BG_CARD, highlightbackground="#303530",
+                           highlightthickness=1)
+        summary.pack(fill="x", padx=14, pady=(2, 7))
+        self._fleet_summary = {}
+        for key, label, colour in (("sites", "SITES", FG_MAIN),
+                                   (hb.SEV_FAILED, "FAILED", FG_ERR),
+                                   (hb.SEV_STALE, "STALE", FG_WARN),
+                                   (hb.SEV_UNKNOWN, "UNKNOWN", FG_GREY),
+                                   (hb.SEV_OK, "OK", FG_OK),
+                                   (hb.SEV_OFFLINE, "OFFLINE", FG_ERR)):
+            cell = tk.Frame(summary, bg=BG_CARD)
+            cell.pack(side="left", padx=(14, 8), pady=8)
+            value = tk.Label(cell, text="0", bg=BG_CARD, fg=colour,
+                             font=("Segoe UI Semibold", 15))
+            value.pack(side="left")
+            tk.Label(cell, text=label, bg=BG_CARD, fg=FG_DIM,
+                     font=FONT_SMALL).pack(side="left", padx=(5, 0), pady=(4, 0))
+            self._fleet_summary[key] = value
 
         # ── Scrollable board ──────────────────────────────────────────
         outer = tk.Frame(self, bg=BG_DEEP)
@@ -216,12 +237,21 @@ class App(tk.Tk):
                               lambda e: self._canvas.yview_scroll(
                                   int(-1 * (e.delta / 120)), "units"))
 
+        status_bar = tk.Frame(self, bg=BG_MID)
+        status_bar.pack(fill="x", side="bottom")
+        tk.Label(status_bar, text="STATUS", bg=BG_MID, fg=ACCENT,
+                 font=FONT_BOLD).pack(side="left", padx=(14, 8), pady=7)
+        self._status = tk.Label(status_bar, text="Ready", bg=BG_MID, fg=FG_MAIN,
+                                font=FONT_SMALL, anchor="w")
+        self._status.pack(side="left", fill="x", expand=True, pady=7)
+
     def _make_button(self, parent, text, cmd, *, kind="normal"):
         fg = {"primary": BG_DEEP, "normal": FG_MAIN}.get(kind, FG_MAIN)
         bg = {"primary": ACCENT, "normal": BG_HOVER}.get(kind, BG_HOVER)
         return tk.Button(parent, text=text, command=cmd, bg=bg, fg=fg,
-                         activebackground=bg, activeforeground=fg, relief="flat",
-                         font=FONT_BOLD, padx=12, pady=5, cursor="hand2", bd=0)
+                         activebackground=ACCENT if kind == "normal" else "#62FF45",
+                         activeforeground=BG_DEEP, relief="flat",
+                         font=FONT_BOLD, padx=15, pady=7, cursor="hand2", bd=0)
 
     # ------------------------------------------------------------------
     # Fleet loading + board build
@@ -256,33 +286,46 @@ class App(tk.Tk):
     def _build_site_card(self, site: dict) -> dict:
         wrap = tk.Frame(self._board, bg=BG_CARD, highlightbackground="#2A2A2A",
                         highlightthickness=1)
-        wrap.pack(fill="x", padx=10, pady=6)
+        wrap.pack(fill="x", padx=14, pady=7)
 
         head = tk.Frame(wrap, bg=BG_CARD)
-        head.pack(fill="x", padx=10, pady=(8, 2))
+        head.pack(fill="x", padx=12, pady=8)
 
         dot = tk.Label(head, text="\u25CF", bg=BG_CARD, fg=FG_DIM,
                        font=("Segoe UI", 14))
         dot.pack(side="left")
-        tk.Label(head, text=site['name'], bg=BG_CARD, fg=FG_MAIN,
-                 font=FONT_BOLD).pack(side="left", padx=(6, 0))
+        name = tk.Label(head, text=site['name'], bg=BG_CARD, fg=FG_MAIN,
+                        font=FONT_BOLD, width=24, anchor="w")
+        name.pack(side="left", padx=(6, 0))
         ver = tk.Label(head, text="", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
         ver.pack(side="left", padx=(8, 0))
 
-        recheck = self._make_button(
-            head, "RE-CHECK", lambda s=site: self.recheck_site(s))
+        recheck = self._make_button(head, "CHECK", lambda s=site: self.recheck_site(s))
+        recheck.configure(padx=9, pady=3, font=FONT_SMALL)
         recheck.pack(side="right")
+        details_btn = self._make_button(head, "DETAILS", lambda: None)
+        details_btn.configure(padx=9, pady=3, font=FONT_SMALL)
+        details_btn.pack(side="right", padx=(0, 6))
         summary = tk.Label(head, text="not checked yet", bg=BG_CARD, fg=FG_DIM,
                            font=FONT_SMALL)
-        summary.pack(side="right", padx=(0, 10))
+        summary.pack(side="right", padx=(0, 12))
 
         url_lbl = tk.Label(wrap, text=site['url'], bg=BG_CARD, fg=FG_DIM,
                            font=FONT_SMALL)
-        url_lbl.pack(anchor="w", padx=10)
+        url_lbl.pack(anchor="w", padx=46, pady=(0, 7))
 
         # Per-job rows — pre-built so a re-check updates in place (no flicker).
         jobs_frame = tk.Frame(wrap, bg=BG_CARD)
-        jobs_frame.pack(fill="x", padx=10, pady=(6, 10))
+        # Details are deliberately collapsed: the fleet overview is the primary
+        # screen, not 120 always-visible job rows.
+        headings = tk.Frame(jobs_frame, bg=BG_CARD)
+        headings.pack(fill="x", pady=(0, 4))
+        tk.Label(headings, text="", bg=BG_CARD, width=2).pack(side="left")
+        for text, width in (("JOB", 22), ("STATE", 9), ("LAST RUN", 12)):
+            tk.Label(headings, text=text, bg=BG_CARD, fg=FG_DIM,
+                     font=FONT_SMALL, width=width, anchor="w").pack(side="left")
+        tk.Label(headings, text="DETAIL", bg=BG_CARD, fg=FG_DIM,
+                 font=FONT_SMALL, anchor="w").pack(side="left", padx=(6, 0))
         job_rows = {}
         for spec in hb.JOB_SPECS:
             row = tk.Frame(jobs_frame, bg=BG_CARD)
@@ -299,13 +342,23 @@ class App(tk.Tk):
                             font=FONT_SMALL, width=12, anchor="w")
             jage.pack(side="left")
             jdetail = tk.Label(row, text="", bg=BG_CARD, fg=FG_DIM,
-                               font=FONT_SMALL, anchor="w")
-            jdetail.pack(side="left", padx=(6, 0))
+                               font=FONT_SMALL, anchor="w", justify="left",
+                               wraplength=430)
+            jdetail.pack(side="left", fill="x", expand=True, padx=(6, 0))
             job_rows[spec.key] = (jdot, jstate, jage, jdetail)
+
+        def toggle_details():
+            if jobs_frame.winfo_manager():
+                jobs_frame.pack_forget()
+                details_btn.configure(text="DETAILS")
+            else:
+                jobs_frame.pack(fill="x", padx=14, pady=(5, 13))
+                details_btn.configure(text="HIDE")
+        details_btn.configure(command=toggle_details)
 
         return {
             'dot': dot, 'ver': ver, 'summary': summary,
-            'recheck': recheck, 'job_rows': job_rows,
+            'recheck': recheck, 'job_rows': job_rows, 'severity': hb.SEV_UNKNOWN,
         }
 
     # ------------------------------------------------------------------
@@ -353,7 +406,9 @@ class App(tk.Tk):
         card = self._site_cards.get(site['url'])
         if not card:
             return
+        self._health_by_url[site['url']] = health
         overall = health.overall()
+        card['severity'] = overall
         colour, _word = _sev_style(overall)
         card['dot'].configure(fg=colour)
         card['ver'].configure(
@@ -369,6 +424,7 @@ class App(tk.Tk):
                 jstate.configure(text="—", fg=FG_DIM)
                 jage.configure(text="")
                 jdetail.configure(text="(site unreachable)")
+            self._update_fleet_summary()
             return
 
         # Online — paint each job row.
@@ -399,6 +455,7 @@ class App(tk.Tk):
             bits.append(f"{n_unk} not reported")
         summary = ", ".join(bits) if bits else "all jobs healthy"
         card['summary'].configure(text=summary, fg=summ_colour)
+        self._update_fleet_summary()
 
         if single:
             self._set_status(f"{site['name']}: {summ_word.lower()}")
@@ -420,6 +477,19 @@ class App(tk.Tk):
         _c, word = _sev_style(worst)
         return f"worst: {word}"
 
+    def _update_fleet_summary(self):
+        if not hasattr(self, '_fleet_summary'):
+            return
+        counts = {key: 0 for key in (hb.SEV_FAILED, hb.SEV_STALE,
+                                     hb.SEV_UNKNOWN, hb.SEV_OK, hb.SEV_OFFLINE)}
+        for card in self._site_cards.values():
+            severity = card.get('severity', hb.SEV_UNKNOWN)
+            counts[severity] = counts.get(severity, 0) + 1
+        self._fleet_summary['sites'].configure(text=str(len(self._site_cards)))
+        for key, label in self._fleet_summary.items():
+            if key != 'sites':
+                label.configure(text=str(counts.get(key, 0)))
+
     # ------------------------------------------------------------------
     def _set_busy(self, busy: bool):
         self._busy = busy
@@ -433,6 +503,52 @@ class App(tk.Tk):
             self._status.configure(text=text)
         except tk.TclError:
             pass
+
+    def _diagnostic_report(self) -> str:
+        """Return a paste-ready, credential-free snapshot of the visible board."""
+        lines = [
+            "CRONOMETER DIAGNOSTIC REPORT",
+            f"Generated: {datetime.now().astimezone().isoformat(timespec='seconds')}",
+            f"Build: {BUILD_VERSION}",
+            f"Platform: {platform.system()} {platform.release()} ({platform.machine()})",
+            f"Fleet sites: {len(self._fleet)}",
+            "Credentials and API keys: not included",
+        ]
+        if self._busy:
+            lines.append("Warning: a refresh was still running when this was copied")
+
+        for site in self._fleet:
+            lines.extend(("", f"SITE: {site.get('name') or 'Unnamed site'}",
+                          f"URL: {site.get('url') or '(missing)'}"))
+            health = self._health_by_url.get(site.get('url'))
+            if health is None:
+                lines.append("Overall: NOT CHECKED")
+                continue
+            _colour, overall = _sev_style(health.overall())
+            lines.append(f"Overall: {overall}")
+            if health.version:
+                lines.append(f"SnapSmack version: {health.version}")
+            if not health.online:
+                lines.append(f"Error: {health.error or 'site unreachable'}")
+                continue
+            for job in health.jobs:
+                _job_colour, word = _sev_style(job.severity)
+                age = job.age_text() or "no age"
+                detail = job.detail or "no detail"
+                lines.append(f"- {job.label}: {word}; {age}; {detail}")
+
+        return "\n".join(lines) + "\n"
+
+    def _copy_status(self):
+        try:
+            report = self._diagnostic_report()
+            self.clipboard_clear()
+            self.clipboard_append(report)
+            self.update_idletasks()  # keep clipboard ownership after the callback
+            self._set_status("status copied — paste it into Codex or Claude")
+        except Exception as exc:
+            messagebox.showerror("COPY STATUS",
+                                 f"Could not copy the diagnostic report.\n\n{exc}")
 
     def _on_close(self):
         try:

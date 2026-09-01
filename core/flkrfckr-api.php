@@ -503,9 +503,11 @@ if ($sub === 'images' && $method === 'POST') {
         $pdo->exec("ALTER TABLE snap_images ADD COLUMN user_id INT UNSIGNED DEFAULT NULL AFTER post_id");
     }
 
-    // Get next sort_order (avoid self-referencing subquery in INSERT VALUES)
-    $sort_row = $pdo->query("SELECT COALESCE(MAX(sort_order),0)+1 AS next_sort FROM snap_images")->fetch(PDO::FETCH_ASSOC);
-    $sort_order = (int)($sort_row['next_sort'] ?? 1);
+    // sort_order=0: imported images join the recency group like any fresh post,
+    // instead of being stamped MAX+1. Positive sort_order is reserved for MANUAL
+    // curation only (see the model note in core/gram-client-authoring.php);
+    // auto-stamping the whole import into the pinned band pushed new posts below it.
+    $sort_order = 0;
 
     // Insert image record.
     // NOTE: snap_images has no created_at column (canonical uses modified_at,

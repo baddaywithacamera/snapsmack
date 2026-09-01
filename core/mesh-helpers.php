@@ -308,4 +308,96 @@ function ms_spoke_pull_roster(PDO $pdo, array $settings): array
     $stamp(true);
     return $r;
 }
+
+// snap_multisite_nodes.last_backup_status is enum('ok','failed','unknown'), but a
+// spoke reports SMACKBACK words like 'clean'/'partial' — which TRUNCATE and (under
+// strict SQL mode) fatal the whole UPDATE. Map, don't trust. Guarded so it can also
+// live in smack-multisite.php without a redeclare, whichever loads first.
+if (!function_exists('ms_norm_backup_status')) {
+    function ms_norm_backup_status($s): string {
+        $s = strtolower(trim((string)$s));
+        if ($s === 'failed') return 'failed';
+        if ($s === 'ok' || $s === 'clean' || $s === 'partial') return 'ok';
+        return 'unknown';
+    }
+}
+
+/**
+ * Hub -> spoke, single node: fetch this spoke's live heartbeat and write its
+ * vitals (including the fediverse rollup counters) back into snap_multisite_nodes.
+ * Same call + column set as the "ping" action in smack-multisite.php, factored
+ * out so a fleet-wide "pull current" (the stats page button) can loop it without
+ * duplicating the update. Returns true on a clean 200 heartbeat, false otherwise
+ * (and marks the node offline on an unreachable/error response).
+ *
+ * $node must carry at least id, site_url and api_key_local.
+ */
+function ms_pull_heartbeat(PDO $pdo, array $node): bool
+{
+    $url = rtrim((string)($node['site_url'] ?? ''), '/');
+    if ($url === '') return false;
+    // SSRF guard, when the caller's helper is loaded (stats/multisite pages both define it).
+    if (function_exists('snap_is_private_url') && snap_is_private_url($url)) return false;
+
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $url . '/api.php?route=multisite/heartbeat',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . ($node['api_key_local'] ?? ''),
+            'Accept: application/json',
+        ],
+    ]);
+    $hb_raw  = curl_exec($ch);
+    $hb_code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    $hb = ($hb_raw && $hb_code === 200) ? json_decode((string)$hb_raw, true) : null;
+    if (!is_array($hb) || empty($hb['ok'])) {
+        $pdo->prepare("UPDATE snap_multisite_nodes SET status = 'offline' WHERE id = ?")
+            ->execute([(int)$node['id']]);
+        return false;
+    }
+
+    $backup_status = ms_norm_backup_status($hb['last_backup_status'] ?? 'unknown');
+
+    $pdo->prepare("
+        UPDATE snap_multisite_nodes SET
+            software_version   = ?, post_count       = ?, image_count      = ?,
+            pending_comments   = ?, last_backup_at   = ?, last_backup_size = ?,
+            last_backup_dest   = ?, last_backup_status = ?, disk_usage_bytes = ?,
+            site_tagline       = ?, update_track     = ?, installed_skins  = ?,
+            active_skin        = ?, fediverse_enabled = ?, fedboard_sso_enabled = ?,
+            fediverse_followers = ?, fediverse_following = ?, fediverse_likes = ?,
+            fediverse_boosts   = ?, fediverse_replies = ?,
+            last_seen_at = NOW(), status = 'active'
+        WHERE id = ?
+    ")->execute([
+        preg_replace('/^[^0-9]+/', '', $hb['version'] ?? '') ?: null,
+        $hb['post_count']       ?? 0,
+        $hb['image_count']      ?? 0,
+        $hb['pending_comments'] ?? 0,
+        $hb['last_backup_at']   ?? null,
+        $hb['last_backup_size'] ?? null,
+        $hb['last_backup_dest'] ?? null,
+        $backup_status,
+        $hb['disk_usage_bytes'] ?? null,
+        $hb['site_tagline']     ?? null,
+        $hb['update_track']     ?? 'stable',
+        isset($hb['installed_skins']) && is_array($hb['installed_skins'])
+            ? json_encode($hb['installed_skins']) : null,
+        (string)($hb['active_skin'] ?? ''),
+        (int)($hb['fediverse_enabled'] ?? 0),
+        (int)($hb['fedboard_sso_enabled'] ?? 0),
+        (int)($hb['fediverse_followers'] ?? 0),
+        (int)($hb['fediverse_following'] ?? 0),
+        (int)($hb['fediverse_likes'] ?? 0),
+        (int)($hb['fediverse_boosts'] ?? 0),
+        (int)($hb['fediverse_replies'] ?? 0),
+        (int)$node['id'],
+    ]);
+    return true;
+}
 // ===== SNAPSMACK EOF =====

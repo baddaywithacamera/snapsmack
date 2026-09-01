@@ -131,7 +131,7 @@ class ImmutableOriginalTests(unittest.TestCase):
     def test_project_loader_rejects_missing_original_cleanly(self):
         project = os.path.join(self.temporary.name, "missing.slapper")
         photo_manager.atomic_json(project, {
-            "version": editor_engine.PROJECT_VERSION,
+            "version": editor_engine.LEGACY_PROJECT_VERSION,
             "source_path": os.path.join(self.temporary.name, "gone.jpg"),
         })
 
@@ -141,7 +141,7 @@ class ImmutableOriginalTests(unittest.TestCase):
     def test_project_loader_rejects_malformed_layer_collection(self):
         project = os.path.join(self.temporary.name, "malformed.slapper")
         photo_manager.atomic_json(project, {
-            "version": editor_engine.PROJECT_VERSION,
+            "version": editor_engine.LEGACY_PROJECT_VERSION,
             "source_path": self.source,
             "layers": ["not-a-layer"],
         })
@@ -163,17 +163,28 @@ class ImmutableOriginalTests(unittest.TestCase):
 
         self.assertTrue(zipfile.is_zipfile(project))
         with zipfile.ZipFile(project, "r") as archive:
-            self.assertEqual({"README.txt", "project.json"}, set(archive.namelist()))
+            names = set(archive.namelist())
+            self.assertTrue({
+                "mimetype", "manifest.json", "README.txt", "project.json",
+                "original/original.jpg", "previews/composite.tif",
+                "previews/thumbnail.jpg", "metadata/original-exif.json",
+                "metadata/provenance.json", "metadata/dependencies.json",
+                "metadata/checksums.json", "schemas/project-schema.json",
+            }.issubset(names))
             value = json.loads(archive.read("project.json").decode("utf-8"))
             self.assertEqual(17, value["adjustments"]["contrast"])
-            self.assertIn("Rename this file", archive.read("README.txt").decode("utf-8"))
+            manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
+            self.assertEqual(editor_engine.PROJECT_VERSION, manifest["format_version"])
+            self.assertIn("standard ZIP/ZIP64", archive.read("README.txt").decode("utf-8"))
+            with open(self.source, "rb") as original:
+                self.assertEqual(original.read(), archive.read("original/original.jpg"))
         restored = editor_engine.EditorDocument.load_project(project)
         self.assertEqual(17, restored.adjustments["contrast"])
 
     def test_legacy_bare_json_slapper_still_opens(self):
         project = os.path.join(self.temporary.name, "legacy.slapper")
         photo_manager.atomic_json(project, {
-            "version": editor_engine.PROJECT_VERSION,
+            "version": editor_engine.LEGACY_PROJECT_VERSION,
             "source_path": self.source,
             "adjustments": {"exposure": .75},
             "geometry": {}, "layers": [], "retouched": [], "history": [],
@@ -253,20 +264,21 @@ class ImmutableOriginalTests(unittest.TestCase):
                     self.assertEqual(self.xmp, exported.info.get("xmp"))
         self.assertEqual(self.original_hash, file_hash(self.source))
 
-    def test_slapper_package_excludes_credential_and_network_modules(self):
-        spec_path = os.path.join(HUB_ROOT, "slapper_qt.spec")
+    def test_slapper_package_is_qt_and_uses_shared_ai_vault(self):
+        spec_path = os.path.join(HUB_ROOT, "snap_slapper.spec")
         with open(spec_path, "r", encoding="utf-8") as handle:
             spec = handle.read()
 
-        self.assertIn("'snap_home', 'snap_log', 'snap_profiles'", spec)
-        for forbidden in ("snap_creds", "snap_vault", "snap_discovery", "snap_enrich"):
-            self.assertNotIn(forbidden, spec)
+        self.assertIn("run_slapper_qt.py", spec)
+        self.assertIn("collect_submodules('slapper_qt')", spec)
+        self.assertIn("'lewk_again'", spec)
+        self.assertIn("'snap_creds'", spec)
+        self.assertIn("'snap_vault'", spec)
+        self.assertIn("'tkinter'", spec)
 
         build_path = os.path.join(HUB_ROOT, "build.bat")
         with open(build_path, "r", encoding="utf-8") as handle:
             build = handle.read()
-        self.assertIn("slapper_qt.spec", build)
-        self.assertNotIn("--clean snap_slapper.spec", build)
         smoke_position = build.index('start "" /wait "dist\\snap_slapper\\SNAP SLAPPER.exe"')
         promote_position = build.index('SNAP SLAPPER.exe.new')
         self.assertLess(smoke_position, promote_position)
