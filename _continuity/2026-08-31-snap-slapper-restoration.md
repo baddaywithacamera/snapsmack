@@ -100,5 +100,12 @@ Before installing a build:
 - This is not release-ready under the portable-format release gate. SLAP BACK still
   needs its specified GUI and layered PSD, OpenRaster, and layered-TIFF recovery/export
   paths plus public fixtures before the specification may be marked implemented.
+- Local user-test build installed 2026-09-01 after 56 Qt tests, 28 immutable-original
+  tests, and packaged real-image QA passed. Installed EXE SHA-256:
+  `1E8011D9070FAC4662D14084C2C88801F9E3E729E424E68B8DFBE27C59C5E8F3`.
+- Rollback EXE: `C:\snapsmack\snap_slapper\SNAP SLAPPER.before-portable-project-update.exe`
+  with SHA-256 `AD182E81FCCBA8F7FAC3866F5B8E63A4EE032F4E6A9AAD62ADD4833B8E655394`.
+- This was installed for local user testing only; it was not tagged or published as a
+  completed portable-format release.
 
 <!-- ===== SNAPSMACK EOF ===== -->
