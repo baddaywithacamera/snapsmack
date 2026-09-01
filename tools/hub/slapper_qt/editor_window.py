@@ -202,14 +202,16 @@ class EditorWindow(QMainWindow):
 
     def _write_catalog_state(self):
         if not self.doc:
-            return
+            return False
         try:
             self.catalog.save_edit_state(self.doc.source_path, self.doc.snapshot())
             self.doc.mark_saved()
             self._refresh_actions()
             self.status.showMessage("Edits saved to catalogue", 1800)
+            return True
         except Exception:  # noqa: BLE001
             _log.exception("catalogue edit-state save failed")
+            return False
 
     def _recovery_path(self):
         if not self._recovery_dir or not self.doc:
@@ -2489,7 +2491,9 @@ class EditorWindow(QMainWindow):
         except Exception as error:  # noqa: BLE001
             self._error("Export failed", str(error))
             return
-        self.doc.mark_saved()
+        # Exporting a rendered copy is not the same as saving the editable
+        # project. Keep the document dirty so closing forces its current edit
+        # instructions into the catalogue instead of silently dropping them.
         self._update_title()
         self.status.showMessage(f"Exported {os.path.basename(path)}")
 
@@ -2740,7 +2744,11 @@ class EditorWindow(QMainWindow):
     def closeEvent(self, event):
         if self._confirm_discard():
             self._save_window_state()
-            self._clear_recovery()   # deliberate close — discard the recovery copy
+            # Only discard the emergency copy after the editable catalogue
+            # state has safely reached disk. A failed project/catalogue save
+            # must never turn a normal close into data loss.
+            if not self.doc or not self.doc.is_dirty():
+                self._clear_recovery()
             event.accept()
         else:
             event.ignore()
