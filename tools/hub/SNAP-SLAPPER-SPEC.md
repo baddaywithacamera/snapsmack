@@ -93,6 +93,42 @@ Consequently:
 - A narrow technical export/import description may mention the recipe format
   for backward compatibility, but the primary product term remains LEWK.
 
+## 2A. Professional layer-panel contract
+
+The editor uses established professional-editor terminology and interaction for
+its primitives: **Layer, Adjustment Layer, Mask, Blend Mode, Opacity, and
+Clip/Clipping**. SnapSmack's branded language belongs to platform features and
+LEWKS, not to standard layer operations.
+
+The canonical non-destructive workflow must be one obvious contiguous path on
+the selected layer:
+
+1. Add an Adjustment Layer.
+2. Open its granular HSL / Colour Mix controls.
+3. Add or edit that same layer's mask to exclude areas from the adjustment.
+
+The rail must state that its values belong to the selected adjustment layer,
+not imply they are global. TEACH ME and exact numeric values remain available.
+
+The New Layer menu exposes Adjustment, Image, Texture, Text, and Filter layers.
+A texture is a visible layer with opacity, blend mode, ordering, and a mask; it
+must not be discoverable only through LOOKS.
+
+Every non-base layer can have a real spatial mask. The mask workflow supports
+painting/revealing, inversion, feathered radial and graduated masks, and colour
+range selection. The selected layer exposes Add/Edit Mask directly.
+
+Adjustment-layer scope follows the visible stack: it affects the composite
+beneath it. A future Clip control may limit it to one underlying layer, but the
+scope must be shown rather than left for the photographer to guess. Until
+clipping ships, the interface must not imply that it exists.
+
+This panel rework is presentation only. Portable `.slapper` format version 2,
+its layer array, and per-layer `layer.json` records are an on-disk contract.
+No database or format mutation lands without Sean, Cowork, and Codex sign-off,
+a deliberate version decision, and compatibility verification against a v2
+project saved before the rework.
+
 ## 3. LEWKS browser
 
 The LEWKS browser provides:

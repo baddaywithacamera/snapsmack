@@ -98,7 +98,7 @@ Before installing a build:
   extracted the original, and reproduced its exact SHA-256 hash.
 - Qt suite after these changes: 56 tests passed.
 - This is not release-ready under the portable-format release gate. SLAP BACK still
-  needs its specified GUI and layered PSD, OpenRaster, and layered-TIFF recovery/export
+  needs its specified GUI and layered PSD and OpenRaster recovery/export
   paths plus public fixtures before the specification may be marked implemented.
 - Local user-test build installed 2026-09-01 after 56 Qt tests, 28 immutable-original
   tests, and packaged real-image QA passed. Installed EXE SHA-256:

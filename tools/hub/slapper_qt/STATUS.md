@@ -140,6 +140,14 @@ identity, so every existing look/project renders unchanged.
   export; source photographs remain unchanged.
 
 ## Not yet built (later phases)
+- **Open layered interchange:** implement OpenRaster (`.ora`) export. Layered
+  TIFF has been deliberately removed from the roadmap; TIFF remains a dependable
+  flattened archival/export format, while PSD remains the Adobe/Affinity path.
+- **Layer-panel follow-through:** show adjustment-layer stack scope explicitly;
+  add standard clipping when its behaviour and v2 compatibility are approved;
+  preserve TEACH ME and exact numeric values. The current panel rework is UI-only
+  and must not mutate `.slapper` format version 2 without Sean + Cowork + Codex
+  sign-off and a pre-rework v2 compatibility fixture.
 - Found Textures: category/album filter, favourite, and local categories
   (search, import, and rights filtering are done).
 - 100% loupe polish: render only the visible viewport crop at native res
