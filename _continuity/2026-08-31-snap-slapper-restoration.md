@@ -70,4 +70,15 @@ Before installing a build:
 - Rollback SHA-256:
   `6038587290086B3AC4DB564620B6C12C6441A46F3A47CE4F367D739C370178CA`.
 
+## 0.7.596D integration
+
+- Integrated on top of GitHub `dev` release `0.7.595D` without touching
+  Claude's separate dirty worktree.
+- Release source checkpoint: `1f43fad3`.
+- Integrated Qt suite: 56 tests passed.
+- Integrated original-preservation/photo-manager suite: 28 tests passed.
+- Packaged QA opened a real image, exported a layered PSD, and exited cleanly.
+- 0.7.596D packaged EXE SHA-256:
+  `C3DDCD07F873BC41D2A5F4C4F243F3AB4CF34666BD88E458BB74BFE19F753F55`.
+
 <!-- ===== SNAPSMACK EOF ===== -->
