@@ -9,6 +9,23 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.596 "LIVE WIRE" — 2026-08-31
+- **SNAP SLAPPER continuity restoration.** Restores the verified later-Qt
+  behaviour without replacing unrelated 0.7.595D work: editor and library
+  window-state continuity, duplicate-editor prevention, a full-resolution
+  initial Fit render, filename space beneath every thumbnail, remembered
+  library/project/export folders, and the complete Normal-mode effects set.
+- **Fix: colour controls use the midnight-lime chrome again.** Colour-picker
+  buttons are black with lime outlines and text; only their small swatch chip
+  displays the chosen colour, so the pastel full-width rectangles stay gone.
+- **Fix: the standalone SNAP SLAPPER package is the Qt application.** The build
+  recipe now packages the PySide6 editor and its later feature modules instead
+  of the obsolete pre-Qt entry point. The packaged release gate opens a real
+  image, exports a layered PSD, verifies completion, and exits cleanly.
+- **Continuity safeguard:** records the recovered behaviour, source checkpoint,
+  tests, installed-build hash, and rollback path under `_continuity/` so a
+  future targeted change cannot silently discard established features.
+
 ## 0.7.595 "LIVE WIRE" — 2026-08-31
 - **Fix: 4K photo uploads no longer rejected — PHP limits set via `.user.ini`.** On
   php-fpm / Cloudflare-tunnel hosts, the `php_value upload_max_filesize 64M` line in
