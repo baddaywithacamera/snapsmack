@@ -69,8 +69,11 @@ DEFAULT_ADJUSTMENTS = {
     "curve_red": [[0, 0], [255, 255]],
     "curve_green": [[0, 0], [255, 255]],
     "curve_blue": [[0, 0], [255, 255]],
-    # Colour HSL mix — per-hue saturation and luminance (like the B&W mixer,
-    # but in colour). All zero == unchanged.
+    # Colour HSL mix — per-colour hue, saturation and luminance (like the B&W
+    # mixer, but in colour). All zero == unchanged.
+    "col_hue_red": 0.0, "col_hue_orange": 0.0, "col_hue_yellow": 0.0,
+    "col_hue_green": 0.0, "col_hue_aqua": 0.0, "col_hue_blue": 0.0,
+    "col_hue_purple": 0.0, "col_hue_magenta": 0.0,
     "col_sat_red": 0.0, "col_sat_orange": 0.0, "col_sat_yellow": 0.0,
     "col_sat_green": 0.0, "col_sat_aqua": 0.0, "col_sat_blue": 0.0,
     "col_sat_purple": 0.0, "col_sat_magenta": 0.0,
@@ -749,24 +752,57 @@ def _band_multiplier_lut(settings, prefix, scale):
     return lut
 
 
+def _band_hue_lut(settings):
+    """Map each source hue to a shifted hue using the eight colour controls.
+
+    A full slider move shifts that part of the wheel by 30 degrees. Neighbouring
+    bands blend smoothly, avoiding hard seams between named colours.
+    """
+    centres = [(deg, float(settings.get(f"col_hue_{name}", 0.0)))
+               for name, deg in _HUE_BAND_DEG]
+    lut = []
+    for index in range(256):
+        hue = index * 360.0 / 255.0
+        below = max(((deg - 360.0 if deg > hue else deg, value)
+                     for deg, value in centres), key=lambda item: item[0])
+        above = min(((deg + 360.0 if deg < hue else deg, value)
+                     for deg, value in centres), key=lambda item: item[0])
+        span = above[0] - below[0]
+        weight = 0.0 if span == 0 else (hue - below[0]) / span
+        slider = below[1] * (1 - weight) + above[1] * weight
+        if slider == 0:
+            lut.append(index)
+        else:
+            shifted = (hue + (slider / 100.0) * 30.0) % 360.0
+            lut.append(int(round(shifted * 255.0 / 360.0)) % 256)
+    return lut
+
+
 def _colour_mix(image, settings):
-    """Per-hue saturation and luminance (HSL), like the B&W mixer but in colour.
-    A pixel's hue picks its multiplier; all bands at 0 leaves the image alone."""
+    """Per-colour hue, saturation and luminance controls.
+
+    A pixel's original hue selects smoothly blended settings from the eight
+    colour bands; all bands at zero leave the image alone.
+    """
+    hue_on = any(float(settings.get(f"col_hue_{n}", 0)) for n, _ in _HUE_BAND_DEG)
     sat_on = any(float(settings.get(f"col_sat_{n}", 0)) for n, _ in _HUE_BAND_DEG)
     lum_on = any(float(settings.get(f"col_lum_{n}", 0)) for n, _ in _HUE_BAND_DEG)
-    if not sat_on and not lum_on:
+    if not hue_on and not sat_on and not lum_on:
         return image
     hue, sat, val = image.convert("HSV").split()
+    source_hue = hue
     if sat_on:
         mult = hue.point(_band_multiplier_lut(settings, "col_sat", 0.9))
         sat = _image_math_eval(
             "convert(min(max(float(s) * (float(m) / 128.0), 0.0), 255.0), 'L')",
             s=sat, m=mult)
     if lum_on:
-        mult = hue.point(_band_multiplier_lut(settings, "col_lum", 0.5))
+        mult = source_hue.point(_band_multiplier_lut(settings, "col_lum", 0.5))
         val = _image_math_eval(
             "convert(min(max(float(v) * (float(m) / 128.0), 0.0), 255.0), 'L')",
             v=val, m=mult)
+    if hue_on:
+        hue = source_hue.point(_band_hue_lut(settings))
     return Image.merge("HSV", (hue, sat, val)).convert("RGB")
 
 

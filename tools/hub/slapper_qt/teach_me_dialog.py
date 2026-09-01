@@ -34,9 +34,9 @@ ACTION_GROUPS = (
     ("channel-curves", "Colour with channel curves", ("curve_red", "curve_green", "curve_blue"),
      "Moves the red, green, and blue channels independently to create colour casts and cross-processing."),
     ("colour-mix", "Mix individual colours", tuple(
-        f"col_{kind}_{colour}" for kind in ("sat", "lum")
+        f"col_{kind}_{colour}" for kind in ("hue", "sat", "lum")
         for colour in ("red", "orange", "yellow", "green", "aqua", "blue", "purple", "magenta")),
-     "Targets particular hues instead of pushing every colour in the photograph together."),
+     "Shifts, strengthens, or lightens particular colours instead of pushing every colour together."),
     ("black-white", "Build the monochrome response", ("black_white",) + tuple(
         f"bw_{colour}" for colour in
         ("red", "orange", "yellow", "green", "aqua", "blue", "purple", "magenta")),
@@ -142,7 +142,10 @@ def explain_action(action):
     if any(key.startswith("curve_") for key in values):
         phrases.append("It bends individual colour channels to create the colour character.")
     if any(key.startswith("col_") for key in values):
-        phrases.append("It changes selected colours without pushing every colour together.")
+        if any(key.startswith("col_hue_") for key in values):
+            phrases.append("It shifts selected colours around the colour wheel without tinting the whole frame.")
+        else:
+            phrases.append("It changes selected colours without pushing every colour together.")
     if any(key.startswith("split_") for key in values):
         phrases.append("It places colour into a chosen tonal range instead of tinting the whole frame.")
     if "photo_filter_color" in values:
