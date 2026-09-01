@@ -10,6 +10,13 @@
 
 # SnapSmack Changelog
 ## 0.7.595 "LIVE WIRE" — 2026-08-31
+- **Fix: 4K photo uploads no longer rejected — PHP limits set via `.user.ini`.** On
+  php-fpm / Cloudflare-tunnel hosts, the `php_value upload_max_filesize 64M` line in
+  `.htaccess` is silently ignored, so the host's low default (~2–8M) rejected a 4K photo
+  (~4MB). The updater now self-heals a root `.user.ini` (honored by php-fpm/CGI) with
+  `upload_max_filesize`/`post_max_size` = 64M, `memory_limit` = 128M — so deploying this
+  fixes every site automatically, no per-site or host-panel changes. Fresh installs write
+  it too. (If the doc root isn't writable, set those limits in your host's PHP settings.)
 - **New: fleet cron driver (`multisite/run-crons`).** A full-key endpoint that runs a
   site's due crons on demand by invoking the same web-cron tick that fires on page loads.
   It lets CRONOMETER (which already polls all 24 sites) keep the whole fleet's jobs
