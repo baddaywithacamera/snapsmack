@@ -78,9 +78,9 @@ class JobSpec:
 # ONLY the scheduled crons that EVERY SnapSmack site actually runs. Backups are
 # not a cron (SUYB, a desktop tool, does those), SMACKBACK just rides the
 # version-check cron, and cron-directory-feeds runs on the photoblogs.fyi host
-# only — so none of them are per-site cron jobs and were removed to stop the
-# false red/grey rows. (Backup freshness is still in the heartbeat as
-# last_backup_at if a separate, clearly non-cron indicator is wanted later.)
+# only — so none are per-site cron jobs and were removed to stop the false
+# red/grey rows. (Backup freshness is still in the heartbeat as last_backup_at
+# if a separate, clearly non-cron indicator is wanted later.)
 JOB_SPECS = [
     JobSpec('fediverse',     'Fediverse delivery',  10 * 60,        6 * 3600),   # cron-fediverse: every 10 min
     JobSpec('rss_fetch',     'RSS blogroll fetch',  60 * 60,        3 * 24 * 3600),  # cron-rss-fetch: ~hourly
@@ -303,9 +303,9 @@ def _job_derived(spec: JobSpec, data: dict) -> JobHealth:
     """Best honest verdict from TODAY's heartbeat, per job. Where the data simply
     isn't there, return UNKNOWN/'not reported' — never a fabricated green."""
     if spec.key == 'fediverse':
-        # Heartbeat reports fediverse_enabled + totals, but NOT the cron's
-        # last run — so we can honestly say enabled/disabled, not fresh/stale.
-        enabled = str(data.get('fediverse_enabled') or '0') in ('1', 'true', 'True')
+        # Heartbeat reports fediverse_enabled + totals, but NOT the cron's last
+        # run — so we can honestly say enabled/disabled, not fresh/stale.
+        enabled = str(data.get('fediverse_enabled') or data.get('smackverse_enabled') or '0') in ('1', 'true', 'True')
         if not enabled:
             return JobHealth(spec.key, spec.label, SEV_NA, None,
                              'federation disabled', reported=True)

@@ -8,22 +8,52 @@ board that shows, per SnapSmack site, whether the scheduled jobs (RSS fetch,
 version check, fediverse delivery, backups, SMACKBACK integrity) are running —
 red / amber / grey / green — so a silently-dead cron is caught before it bites.
 
-Versioning matches the family convention: fresh start at 0.1.0, `bump_version.py`
-adds +1 patch each build. Never bump the minor/major by hand.
+Versioning follows the SnapSmack desktop-family `0.7.x` convention;
+`bump_version.py` adds one patch for subsequent builds.
 
-## Unreleased — 2026-08-31
+## 0.7.5 — 2026-08-31
 
 ### Changed
 - Monitor only the scheduled crons every SnapSmack site actually runs — **fediverse
   delivery, RSS blogroll fetch, version/update check**. Removed **Backups** and
-  **SMACKBACK** from the job catalogue: backups are the SUYB desktop tool (there is
-  no backup cron) and SMACKBACK rides `cron-version-check.php`, so both produced
-  false red/grey rows. Backup freshness is still in the heartbeat (`last_backup_at`)
-  if a separate, clearly non-cron indicator is wanted later.
-- Server pairing: `multisite/heartbeat` now ships the matching
-  `{fediverse, rss_fetch, version_check}` jobs block (SnapSmack 0.7.595D), so those
-  three light up green/amber/red from real last-run data instead of grey "never".
-- Run `bump_version.py` on rebuild to stamp the build number.
+  **SMACKBACK** from the job catalogue: backups are the SUYB desktop tool (no backup
+  cron exists) and SMACKBACK rides `cron-version-check.php`, so both produced false
+  red/grey rows. Backup freshness is still in the heartbeat (`last_backup_at`) if a
+  separate, non-cron indicator is wanted later.
+- Removed the backup/smackback honest-degradation fallbacks; fixed the fediverse
+  fallback to read `fediverse_enabled` (was the stale `smackverse_enabled`).
+- Pairs with SnapSmack 0.7.595D, whose `multisite/heartbeat` ships the matching
+  `{fediverse, rss_fetch, version_check}` jobs block.
+
+---
+
+## 0.7.4 — 2026-08-31
+
+### Changed
+- Replaces the vertically sprawling always-expanded cards with a compact fleet
+  overview and expandable per-site job details.
+- Adds fleet-wide totals for failed, stale, unknown, healthy, and offline sites.
+- Reduces secondary-button prominence so failures and job state lead the screen.
+
+---
+
+## 0.7.3 — 2026-08-31
+
+### Fixed
+- Uses each profile's fleet-management credential for the authenticated heartbeat
+  instead of the restricted publishing key. This fixes the fleet-wide HTTP 401
+  failure identified and live-verified in Claude's handoff specification.
+- Adds COPY STATUS diagnostics and improves board readability.
+- Repairs the Windows build script so packaging fails honestly and reliably.
+
+---
+
+## 0.1.1 — 2026-08-31
+
+### Changed
+- Superseded by the corrected 0.7.1 family-versioned build.
+
+---
 
 ## 0.1.0 — 2026-08-14
 
