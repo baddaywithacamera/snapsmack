@@ -2,10 +2,12 @@
 // GET YOUR SHIT SORTED — SnapSmack API client
 // Adapted from tools/oh-snap/src/scripts/api.js
 // Adds GYSS-specific methods: ping, photos, meta, batchUpdate.
-// HTTP calls go directly from the webview to the blog — no Rust proxy.
-// gyss-api.php emits CORS headers for tauri:// origins.
+// Authenticated HTTP calls go through the narrowly scoped native command. This
+// avoids WebView CORS failures without exposing a general-purpose network proxy.
 
 // ===== SNAPSMACK EOF =====  (header reference only — JS marker at bottom)
+
+import { invoke } from '@tauri-apps/api/core';
 
 export class SnapSmackGYSSAPI {
     constructor(siteUrl, apiKey) {
@@ -21,33 +23,21 @@ export class SnapSmackGYSSAPI {
             url += '&' + qs.toString();
         }
 
-        const opts = {
-            method,
-            headers: {
-                'Authorization': `Bearer ${this.apiKey}`,
-                'Content-Type':  'application/json',
-            },
-        };
-        if (body !== null) {
-            opts.body = JSON.stringify(body);
-        }
-
-        let res;
-        try {
-            res = await fetch(url, opts);
-        } catch (err) {
-            throw new Error(`Network error: ${err.message}`);
-        }
-
         let data;
         try {
-            data = await res.json();
-        } catch {
-            throw new Error(`Server returned non-JSON response (HTTP ${res.status})`);
+            data = await invoke('api_request', {
+                method,
+                url,
+                apiKey: this.apiKey,
+                body: body === null ? null : JSON.stringify(body),
+            });
+        } catch (err) {
+            const detail = typeof err === 'string' ? err : (err?.message || String(err));
+            throw new Error(`Network error: ${detail}`);
         }
 
         if (!data.ok) {
-            throw new Error(data.error || `API error (HTTP ${res.status})`);
+            throw new Error(data.error || 'API request failed');
         }
         return data;
     }

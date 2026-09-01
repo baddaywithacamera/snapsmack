@@ -113,10 +113,18 @@ def load_fleet() -> list:
             url = (prof.get('site_url') or '').strip()
             if not url:
                 continue
+            extras = prof.get('extras') if isinstance(prof.get('extras'), dict) else {}
+            # Heartbeat is a fleet-management endpoint. The top-level api_key is
+            # deliberately a restricted posting/SYBU key and is rejected here.
+            # Discovery preserves the hub-to-site FULL key in extras specifically
+            # for management tools such as CRONOMETER. Keep the legacy fallback
+            # for profiles created before that field existed.
+            heartbeat_key = (extras.get('api_key_local') or
+                             prof.get('api_key') or '').strip()
             out.append({
                 'name':    prof.get('name') or url,
                 'url':     url,
-                'api_key': prof.get('api_key') or '',
+                'api_key': heartbeat_key,
             })
     except Exception:
         return []
