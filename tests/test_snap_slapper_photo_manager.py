@@ -264,7 +264,7 @@ class ImmutableOriginalTests(unittest.TestCase):
                     self.assertEqual(self.xmp, exported.info.get("xmp"))
         self.assertEqual(self.original_hash, file_hash(self.source))
 
-    def test_slapper_package_is_qt_and_uses_shared_ai_vault(self):
+    def test_slapper_package_is_qt_and_limits_network_modules(self):
         spec_path = os.path.join(HUB_ROOT, "snap_slapper.spec")
         with open(spec_path, "r", encoding="utf-8") as handle:
             spec = handle.read()
@@ -275,6 +275,11 @@ class ImmutableOriginalTests(unittest.TestCase):
         self.assertIn("'snap_creds'", spec)
         self.assertIn("'snap_vault'", spec)
         self.assertIn("'tkinter'", spec)
+        # LEWK AGAIN deliberately reads provider API keys from the shared local
+        # vault. Discovery/enrichment modules still do not belong in the photo
+        # editor package and would broaden its network surface unnecessarily.
+        for forbidden in ("snap_discovery", "snap_enrich"):
+            self.assertNotIn(forbidden, spec)
 
         build_path = os.path.join(HUB_ROOT, "build.bat")
         with open(build_path, "r", encoding="utf-8") as handle:

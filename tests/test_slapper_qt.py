@@ -110,6 +110,7 @@ def test_adjust_undo_reset():
 
 def test_histogram_compare_recipe_project():
     win = _editor(_image("c.jpg"))
+    win.mode_combo.setCurrentIndex(win.mode_combo.findData("advanced"))
     win._refresh_histogram()
     assert len(win.histogram._data["luminance"]) == 256
     assert not original_pixmap(win.doc.source_path, (200, 200)).isNull()
@@ -126,6 +127,23 @@ def test_histogram_compare_recipe_project():
     win.doc.save_project(pp)
     loaded = editor_engine.EditorDocument.load_project(pp)
     assert loaded.adjustments["contrast"] == 40.0 and not loaded.is_dirty()
+
+
+def test_preview_renders_layer_stack_once_even_with_histogram():
+    win = _editor(_image("single-render.jpg", (320, 240)))
+    win.mode_combo.setCurrentIndex(win.mode_combo.findData("advanced"))
+    calls = 0
+    real_render = win.doc.render
+
+    def counted_render(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return real_render(*args, **kwargs)
+
+    win.doc.render = counted_render
+    win._render_preview()
+    assert calls == 1
+    assert win.histogram._data and len(win.histogram._data["luminance"]) == 256
 
 
 def test_layers_isolation_and_ops():
@@ -356,6 +374,12 @@ def test_teach_me_uses_real_lewk_steps_and_makes_editable_copy():
     dialog._make_editable()
     assert len(win.doc.layers) == original_count + 1
     assert win.doc.layers[-1]["lewk"]["id"] == "golden-hourglass"
+
+    hue_lesson = actions_for({"adjustments": {"col_hue_blue": 25}})
+    assert hue_lesson[0]["id"] == "colour-mix"
+    assert "colour wheel" in __import__(
+        "slapper_qt.teach_me_dialog", fromlist=["explain_action"]
+    ).explain_action(hue_lesson[0]).lower()
 
 
 def test_texture_layer():
@@ -1021,6 +1045,12 @@ def test_library_sort_search_info_and_folders():
     # The tree must never enumerate the Windows drive root. Disconnected mapped
     # drives and cloud providers can block the shell and freeze the whole app.
     assert lib.tree_model.rootPath() not in ("", QDir.rootPath())
+    lib._show_folder_in_tree(folder)
+    assert os.path.normcase(os.path.abspath(lib.tree_model.rootPath())) == \
+        os.path.normcase(os.path.abspath(os.path.dirname(folder)))
+    assert os.path.normcase(os.path.abspath(
+        lib.tree_model.filePath(lib.tree.currentIndex()))) == \
+        os.path.normcase(os.path.abspath(folder))
     lib.load_folder(folder)
     assert _wait_for(lambda: lib.list.count() == 3)
     QThreadPool.globalInstance().waitForDone(5000)
@@ -1051,6 +1081,15 @@ def test_library_sort_search_info_and_folders():
     assert lib.tree.isHidden() is True
     lib.act_folders.setChecked(True)
     assert lib.tree.isHidden() is False
+
+    # A large folder queues only the visible thumbnail window and look-ahead;
+    # off-screen files must not flood the worker pool.
+    lib._paths = [os.path.join(folder, f"future-{i:04}.jpg") for i in range(600)]
+    lib._icons.clear()
+    lib._thumb_queued.clear()
+    lib._populate()
+    assert _wait_for(lambda: lib.list.count() == 600)
+    assert 0 < len(lib._thumb_queued) < 600
 
 
 def test_library_file_organizer_and_resizable_folders():
@@ -1249,6 +1288,7 @@ def test_colour_engine_additions():
     base = Image.new("RGB", (60, 48), (120, 150, 90))
     ref = list(editor_engine.apply_adjustments(base, {}).getdata())
     for adj in ({"curve_blue": [[0, 40], [255, 255]]},      # per-channel curve
+                {"col_hue_green": 100},                     # HSL hue
                 {"col_sat_green": -100},                     # HSL saturation
                 {"col_lum_red": 80},                         # HSL luminance
                 {"split_midtone": [255, 0, 0], "split_midtone_amount": 80},
@@ -1256,9 +1296,15 @@ def test_colour_engine_additions():
         assert list(editor_engine.apply_adjustments(base, adj).getdata()) != ref
     # every new control is wired into the rail
     win = _editor(_image("colour.jpg", (200, 150)))
-    for key in ("col_sat_red", "col_lum_blue", "glow_amount", "glow_x",
+    for key in ("col_hue_green", "col_sat_red", "col_lum_blue", "glow_amount", "glow_x",
                 "split_midtone_amount"):
         assert key in win.rows, key
+    # Hue mix is a normal adjustment: it remains editable on a generic layer
+    # and survives project/recipe serialization through the adjustment dict.
+    win.layers_panel._add_adjustment()
+    win.rows["col_hue_green"]._on_slider(75)
+    win._on_commit("col_hue_green")
+    assert win.active_adjustments()["col_hue_green"] == 75
     # the curve editor stores a per-channel curve onto the target
     win._on_curve_changed("curve_red", [[0, 0], [128, 180], [255, 255]])
     assert win.active_adjustments()["curve_red"] == [[0, 0], [128, 180], [255, 255]]

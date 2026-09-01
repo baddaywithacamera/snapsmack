@@ -221,6 +221,13 @@ class _ThumbTask(QRunnable):
         try:
             with Image.open(self.path) as source:
                 stamp = _capture_timestamp(source, self.path)
+                # JPEG can decode directly near thumbnail size. Without this,
+                # browsing a large shoot expands every full-resolution frame
+                # in memory before shrinking it to a 176-pixel icon.
+                try:
+                    source.draft("RGB", (THUMB_SOURCE, THUMB_SOURCE))
+                except Exception:  # noqa: BLE001 — only a decoder speed hint
+                    pass
                 image = ImageOps.exif_transpose(source).convert("RGBA")
             image.thumbnail((THUMB_SOURCE, THUMB_SOURCE), Image.Resampling.LANCZOS)
             data = image.tobytes("raw", "RGBA")
@@ -287,13 +294,20 @@ class LibraryWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(f"SNAP SLAPPER — Library (build {BUILD_VERSION})")
         self.resize(1180, 780)
-        self._pool = QThreadPool.globalInstance()
+        # Keep bulk thumbnail decoding bounded and separate from file moves.
+        # A large folder must not flood the global pool or make an organize
+        # operation wait behind thousands of off-screen photographs.
+        self._thumb_pool = QThreadPool(self)
+        self._thumb_pool.setMaxThreadCount(3)
+        self._file_pool = QThreadPool(self)
+        self._file_pool.setMaxThreadCount(1)
         self._scan_pool = QThreadPool(self)
         self._scan_pool.setMaxThreadCount(1)
         self._items = {}          # path -> QListWidgetItem
         self._icons = {}          # path -> QIcon (cached so re-sort never re-decodes)
         self._stamps = {}         # path -> capture timestamp (float)
         self._paths = []          # all photo paths in the current folder
+        self._thumb_queued = set()
         self._folder = None
         self._virtual_source = None
         self._scan_generation = 0
@@ -368,6 +382,12 @@ class LibraryWindow(QMainWindow):
         self.list.setSpacing(10)
         self.list.setUniformItemSizes(True)
         self._set_thumbnail_size(160)
+        self._thumb_scroll_timer = QTimer(self)
+        self._thumb_scroll_timer.setSingleShot(True)
+        self._thumb_scroll_timer.setInterval(60)
+        self._thumb_scroll_timer.timeout.connect(self._queue_visible_thumbnails)
+        self.list.verticalScrollBar().valueChanged.connect(
+            lambda _value: self._thumb_scroll_timer.start())
         self.list.setWordWrap(True)
         grid_font = self.list.font()   # filenames under each thumb were too small
         grid_font.setPointSize(max(grid_font.pointSize() + 2, 11))
@@ -684,6 +704,18 @@ class LibraryWindow(QMainWindow):
         path = self.tree_model.filePath(index)
         if path and os.path.isdir(path):
             self.load_folder(path)
+
+    def _show_folder_in_tree(self, folder):
+        """Keep the active folder visible without enumerating every drive."""
+        folder = os.path.abspath(folder)
+        parent = os.path.dirname(folder) or folder
+        root_index = self.tree_model.setRootPath(parent)
+        self.tree.setRootIndex(root_index)
+        folder_index = self.tree_model.index(folder)
+        if folder_index.isValid():
+            self.tree.setCurrentIndex(folder_index)
+            self.tree.scrollTo(folder_index)
+            self.tree.expand(folder_index)
 
     def _selected_photo_paths(self):
         return [item.data(Qt.UserRole) for item in self.list.selectedItems()
@@ -1167,7 +1199,7 @@ class LibraryWindow(QMainWindow):
         verb = "Copying" if copy_files else "Moving"
         self.status.showMessage(
             f"{verb} {len(paths)} photo(s) to {destination}…")
-        self._pool.start(_FileTask(
+        self._file_pool.start(_FileTask(
             paths, destination, copy_files, self._file_signals))
 
     def _on_transfer_finished(self, done, errors, destination, copy_files, sources):
@@ -1264,9 +1296,7 @@ class LibraryWindow(QMainWindow):
         if folder:
             self.catalog.register_folder(folder)
             self.load_folder(folder)
-            index = self.tree_model.setRootPath(folder)
-            if index.isValid():
-                self.tree.setRootIndex(index)
+            self._show_folder_in_tree(folder)
 
     def _subfolders_toggled(self, checked):
         from . import prefs
@@ -1306,6 +1336,7 @@ class LibraryWindow(QMainWindow):
         self._scan_token = _ScanToken()
         self._populate_generation += 1  # cancel a pending incremental populate
         self._paths = []
+        self._thumb_queued.clear()
         self._icons.clear()
         self._stamps.clear()
         self.list.clear()
@@ -1387,16 +1418,36 @@ class LibraryWindow(QMainWindow):
                 item.setToolTip(path)
                 self.list.addItem(item)
                 self._items[path] = item
-                if path not in self._icons:
-                    self._pool.start(_ThumbTask(path, self._signals))
             if end < len(paths):
                 self.status.showMessage(
                     f"Showing {end} of {len(paths)} photos…")
                 QTimer.singleShot(0, lambda: add_batch(end))
             else:
                 self._apply_filter(self.search.text())
+            self._queue_visible_thumbnails()
 
         add_batch()
+
+    def _queue_visible_thumbnails(self, margin=48):
+        """Decode the visible grid plus look-ahead, not the entire catalogue."""
+        count = self.list.count()
+        if not count:
+            return
+        viewport = self.list.viewport()
+        cell = max(1, self.list.iconSize().width() + self.list.spacing() * 2)
+        columns = max(1, viewport.width() // cell)
+        rows = max(1, viewport.height() // cell + 2)
+        visible_count = min(count, columns * rows)
+        bar = self.list.verticalScrollBar()
+        progress = (bar.value() / bar.maximum()) if bar.maximum() else 0.0
+        first = round(progress * max(0, count - visible_count))
+        start = max(0, first - margin)
+        end = min(count, first + visible_count + margin)
+        for row in range(start, end):
+            path = self.list.item(row).data(Qt.UserRole)
+            if path and path not in self._icons and path not in self._thumb_queued:
+                self._thumb_queued.add(path)
+                self._thumb_pool.start(_ThumbTask(path, self._signals))
 
     def _sort_changed(self, _index):
         self._sort = self.sort_combo.currentData()
