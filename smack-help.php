@@ -1972,6 +1972,42 @@ card invalidates the exposed one even if nobody has used it.</p>
 HTML
 ];
 
+$help_topics['cron'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Cron &amp; Jobs',
+    'icon'     => '&#x23F1;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Cron &amp; Jobs</h3>
+<p>One place to see and fix the scheduled jobs your site runs &mdash; from the CMS, no
+cPanel or SSH. Three jobs run on every SnapSmack site:</p>
+<ul>
+    <li><strong>Fediverse delivery</strong> &mdash; sends your posts out and pulls followed
+    accounts in. Runs every 10 minutes.</li>
+    <li><strong>RSS blogroll fetch</strong> &mdash; refreshes your blogroll from the feeds it
+    follows. Runs hourly.</li>
+    <li><strong>Version / update check</strong> &mdash; checks SMACK CENTRAL for a newer build
+    and skin updates. Runs every 6 hours.</li>
+</ul>
+<p>For each job you see its <strong>last run</strong> and whether it is <strong>registered</strong>
+(scheduled). Three buttons:</p>
+<ul>
+    <li><strong>RUN NOW</strong> &mdash; runs the job this second. Use it to fix something now,
+    or to prove a job works.</li>
+    <li><strong>REGISTER</strong> &mdash; installs the job in the server's crontab so it runs on
+    schedule. <em>This is the fix for a job that says "never" and "not registered."</em></li>
+    <li><strong>UNREGISTER</strong> &mdash; removes it from the crontab.</li>
+</ul>
+<p>If a job shows <strong>never</strong> and <strong>not registered</strong>, it has simply never
+been scheduled on this host &mdash; click REGISTER and it will start running. If your host can't
+schedule cron at all (some shared hosting), use the <strong>WEB CRON</strong> option at the bottom
+of the page: point an external uptime pinger at the web-cron URL every few minutes and the due
+jobs run on each hit.</p>
+<p>This page controls only this site's crons. To watch cron health across your whole fleet at a
+glance, use the desktop <strong>CRONOMETER</strong> tool.</p>
+HTML
+];
+
 $help_topics['maintenance'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'Maintenance',

@@ -9,6 +9,19 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.598 "LIVE WIRE" — 2026-08-31
+- **New: Cron & Jobs admin page — schedule and run your crons from the CMS.** Boring Ass
+  Stuff → Cron & Jobs. Until now each cron's register control lived on a different page
+  (fediverse on the Fediverse admin, RSS on Admin, version-check on Updates), so it was
+  easy to leave RSS or fediverse unregistered and never notice — which is exactly why
+  CRONOMETER showed RSS "never" on every site. This page unifies all three real crons
+  (fediverse delivery, RSS blogroll fetch, version/update check) in one place: for each
+  it shows the last run and whether it's registered, and gives **RUN NOW** (run it this
+  second), **REGISTER** (install it in the server crontab — the fix for a job that never
+  runs), and **UNREGISTER**. Includes a **WEB CRON** fallback note for hosts without
+  crontab access. Uses the existing `core/cron-register.php` helpers; controls only this
+  site's crons (fleet-wide health stays in the desktop CRONOMETER board).
+
 ## 0.7.597 "LIVE WIRE" — 2026-08-31
 - **Help: Site Description entry now lists everywhere the bio is used.** The
   Configuration help said only "a short tagline, used in meta tags and RSS." It now
