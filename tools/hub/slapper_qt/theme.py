@@ -67,6 +67,11 @@ def stylesheet() -> str:
         background: {FIELD};
         color: {ACCENT};
     }}
+    QToolBar QToolButton:checked {{
+        background: {ACCENT_DIM};
+        color: {ACCENT};
+        border: 1px solid {ACCENT};
+    }}
     QToolBar QToolButton:disabled {{
         color: {FAINT};
         background: transparent;
