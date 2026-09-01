@@ -114,7 +114,7 @@ include 'core/sidebar.php';
     <!-- PROFILE (federated display name / website / pronouns) -->
     <div class="box mb-20">
         <h3>PROFILE</h3>
-        <p class="skin-desc-text">How your blog presents as a fediverse account — the display name, website link and pronouns Pixelfed and Mastodon show on your profile. Separate from the @handle above; leave DISPLAY NAME blank to use your Site Name, PRONOUNS blank to hide them.</p>
+        <p class="skin-desc-text">How your blog presents as a fediverse account — the display name, website link and pronouns Pixelfed and Mastodon show on your profile. Separate from the @handle above; leave DISPLAY NAME blank to use your Site Name, PRONOUNS blank to hide them. Your <strong>avatar</strong> comes from Pimp Your Ride &rarr; Smooth Your Skin and your <strong>bio</strong> from your site description in Settings — this box only sets the fediverse-specific fields, it doesn't duplicate them.</p>
         <form method="post" action="">
             <input type="hidden" name="action" value="save_profile">
             <div class="lens-input-wrapper">

@@ -1527,6 +1527,20 @@ HTACCESS;
             // Append to existing or create new
             @file_put_contents($htaccess_path, $existing . $snapsmack_rules, LOCK_EX);
         }
+
+        // .user.ini — PHP limits honored by php-fpm/CGI where .htaccess php_value
+        // is ignored (managed / Cloudflare-tunnel hosts). Ensures 4K photo uploads
+        // (~4MB) aren't rejected by a low host default. The updater self-heals this
+        // on existing sites; this covers a fresh install.
+        $user_ini_path = __DIR__ . '/.user.ini';
+        if (!is_file($user_ini_path)) {
+            @file_put_contents($user_ini_path,
+                "; SNAPSMACK-PHP-LIMITS\n"
+              . "upload_max_filesize = 64M\n"
+              . "post_max_size = 64M\n"
+              . "memory_limit = 128M\n"
+              . "max_execution_time = 120\n", LOCK_EX);
+        }
     }
 
     // --- FETCH MODE-APPROPRIATE SKINS FROM SNAPSMACK.CA ---

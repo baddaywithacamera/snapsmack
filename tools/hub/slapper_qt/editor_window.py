@@ -29,6 +29,7 @@ from .engine_bridge import render_pixmap, original_pixmap
 from .widgets import ImageView, SliderRow, Accordion, Histogram
 from .layers_panel import LayersPanel, BASE
 from .filmstrip import Filmstrip
+from .catalog import Catalog
 from .mask_brush import MaskBrushCanvas
 from .curve_editor import CurveEditor
 
@@ -69,6 +70,7 @@ GROUPS = [
         ("grain", "Grain", -100, 100, 1, 0),
         ("texture", "Texture", -100, 100, 1, 0),
         ("vignette", "Vignette", -100, 100, 1, 0),
+        ("vignette_size", "Vignette Size", 0, 100, 1, 50),
         ("vignette_feather", "Vignette Feather", 0, 100, 1, 50),
     ]),
     ("LEVELS", [
@@ -80,6 +82,15 @@ GROUPS = [
 
 IMAGE_FILTER = ("Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp);;"
                 "All files (*.*)")
+
+
+def _default_export_name(document):
+    """Use the saved project title as the export title when one exists."""
+    project_path = str(document.project_path or "")
+    if project_path.lower().endswith(".slapper"):
+        return os.path.splitext(os.path.basename(project_path))[0] + ".jpg"
+    source = os.path.splitext(os.path.basename(document.source_path))[0]
+    return source + "_edited.jpg"
 
 # Normal mode (Picasa/Snapseed-simple) shows a curated subset; Advanced shows
 # everything. These name what stays visible in Normal.
@@ -93,6 +104,7 @@ class EditorWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.doc = None
+        self.catalog = Catalog()
         self.rows = {}
         self.active_target = "base"   # "base" or a layer id
         self.setWindowTitle("SNAP SLAPPER")
@@ -111,6 +123,7 @@ class EditorWindow(QMainWindow):
         self._build_toolbar()
         self._build_canvas()
         self._build_rail()
+        self.view.crop_rotation_changed.connect(self._rotate_from_crop)
 
         self.status = self.statusBar()
         self.status.showMessage("Open a photograph to begin.")
@@ -118,8 +131,17 @@ class EditorWindow(QMainWindow):
         # Debounce live renders so a slider drag doesn't render on every pixel.
         self._render_timer = QTimer(self)
         self._render_timer.setSingleShot(True)
-        self._render_timer.setInterval(45)
-        self._render_timer.timeout.connect(self._render_preview)
+        self._render_timer.setInterval(75)
+        self._render_timer.timeout.connect(self._render_drag_preview)
+
+        # Perspective warps are substantially dearer than tonal adjustments.
+        # During a drag use a deliberately smaller proxy, then replace it with
+        # the normal crisp Fit render on release.
+        self._perspective_render_timer = QTimer(self)
+        self._perspective_render_timer.setSingleShot(True)
+        self._perspective_render_timer.setInterval(70)
+        self._perspective_render_timer.timeout.connect(
+            self._render_perspective_preview)
 
         # Opening from Windows happens before the window receives its final
         # layout. The first proxy is therefore intentionally cheap; once the
@@ -136,6 +158,14 @@ class EditorWindow(QMainWindow):
         self._recovery_timer.setSingleShot(True)
         self._recovery_timer.setInterval(2500)
         self._recovery_timer.timeout.connect(self._write_recovery)
+
+        # Picasa-style catalogue persistence: edits belong to the photograph
+        # automatically. A portable .slapper remains an explicit backup/share
+        # operation, not the prerequisite for seeing edits next time.
+        self._catalog_timer = QTimer(self)
+        self._catalog_timer.setSingleShot(True)
+        self._catalog_timer.setInterval(900)
+        self._catalog_timer.timeout.connect(self._write_catalog_state)
 
         self._refresh_actions()
         self._init_mode()
@@ -156,8 +186,20 @@ class EditorWindow(QMainWindow):
 
     def _on_doc_change(self, _doc):
         self._refresh_actions()
+        self._catalog_timer.start()
         if self._recovery_dir:
             self._recovery_timer.start()
+
+    def _write_catalog_state(self):
+        if not self.doc:
+            return
+        try:
+            self.catalog.save_edit_state(self.doc.source_path, self.doc.snapshot())
+            self.doc.mark_saved()
+            self._refresh_actions()
+            self.status.showMessage("Edits saved to catalogue", 1800)
+        except Exception:  # noqa: BLE001
+            _log.exception("catalogue edit-state save failed")
 
     def _recovery_path(self):
         if not self._recovery_dir or not self.doc:
@@ -169,7 +211,9 @@ class EditorWindow(QMainWindow):
         if not path or not self.doc or not self.doc.is_dirty():
             return
         try:
-            self.doc.save_recovery(path)
+            value = self.doc.project_value(recovery=True)
+            value["version"] = editor_engine.LEGACY_PROJECT_VERSION
+            photo_manager.atomic_json(path, value)
             _log.info("autosaved recovery: %s", path)
         except Exception:  # noqa: BLE001
             _log.exception("autosave (recovery) failed")
@@ -435,6 +479,13 @@ class EditorWindow(QMainWindow):
         self.crop_aspect.setToolTip("Lock the crop frame to a common aspect ratio")
         self.crop_aspect.currentIndexChanged.connect(self._on_crop_aspect)
         crop_layout.addWidget(self.crop_aspect)
+        self.crop_orientation_btn = QPushButton("↕ PORTRAIT")
+        self.crop_orientation_btn.setObjectName("LayerOrderBtn")
+        self.crop_orientation_btn.setCursor(Qt.PointingHandCursor)
+        self.crop_orientation_btn.setToolTip(
+            "Swap crop orientation (for example 3:2 ↔ 2:3)")
+        self.crop_orientation_btn.clicked.connect(self._swap_crop_orientation)
+        crop_layout.addWidget(self.crop_orientation_btn)
         self.crop_apply_btn = QPushButton("APPLY CROP")
         self.crop_apply_btn.setObjectName("LayerAddBtn")
         self.crop_apply_btn.setCursor(Qt.PointingHandCursor)
@@ -446,6 +497,7 @@ class EditorWindow(QMainWindow):
         crop_layout.addWidget(self.crop_cancel_btn)
         self._crop_controls_action = QWidgetAction(self)
         self._crop_controls_action.setDefaultWidget(crop_controls)
+        self._crop_aspect_inverted = False
 
         # Toolbar actions hidden in Normal mode (Advanced-only).
         self._advanced_actions = [
@@ -775,13 +827,15 @@ class EditorWindow(QMainWindow):
         layout.addWidget(self.rotation_row)
 
         self.perspective_v_row = SliderRow(
-            "perspective_vertical", "Vertical perspective", -100, 100, 1, 0)
+            "perspective_vertical", "Vertical", -100, 100, .1, 0)
         self.perspective_h_row = SliderRow(
-            "perspective_horizontal", "Horizontal perspective", -100, 100, 1, 0)
+            "perspective_horizontal", "Horizontal", -100, 100, .1, 0)
         for row, label in ((self.perspective_v_row, "Vertical perspective"),
                            (self.perspective_h_row, "Horizontal perspective")):
+            row.slider.setObjectName("PrecisionSlider")
             row.changed.connect(self._on_perspective)
-            row.committed.connect(lambda _key, text=label: self._commit_geometry(text))
+            row.committed.connect(
+                lambda _key, text=label: self._commit_perspective(text))
             layout.addWidget(row)
 
         perspective_buttons = QHBoxLayout()
@@ -831,7 +885,25 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return
         self.doc.geometry[key] = float(value)
-        self._schedule_render()
+        self._perspective_render_timer.start()
+
+    def _render_perspective_preview(self):
+        if not self.doc:
+            return
+        target = self.view.viewport_target()
+        scale = min(1.0, 900.0 / max(target[0], 1),
+                    700.0 / max(target[1], 1))
+        proxy = (max(320, int(target[0] * scale)),
+                 max(320, int(target[1] * scale)))
+        self.view.set_pixmap(render_pixmap(self.doc, max_size=proxy), keep_view=True)
+
+    def _commit_perspective(self, label):
+        if not self.doc:
+            return
+        self._perspective_render_timer.stop()
+        self.doc.record(label)
+        self._render_preview(keep_view=False)
+        self._update_title()
 
     def _toggle_free_perspective(self, enabled):
         corners = (self.doc.geometry.get("perspective_corners") if self.doc else None)
@@ -1345,7 +1417,40 @@ class EditorWindow(QMainWindow):
             pixmap = self.view._item.pixmap()
             value = (pixmap.width() / pixmap.height()
                      if pixmap and pixmap.height() else None)
+        if value and self._crop_aspect_inverted:
+            value = 1.0 / float(value)
         self.view.set_crop_aspect(value)
+        self._sync_crop_orientation_button(value)
+
+    def _swap_crop_orientation(self):
+        value = self.crop_aspect.itemData(self.crop_aspect.currentIndex())
+        if value is None:
+            return
+        self._crop_aspect_inverted = not self._crop_aspect_inverted
+        self._on_crop_aspect(self.crop_aspect.currentIndex())
+
+    def _sync_crop_orientation_button(self, ratio):
+        enabled = ratio is not None
+        self.crop_orientation_btn.setEnabled(enabled)
+        if enabled:
+            self.crop_orientation_btn.setText(
+                "↕ PORTRAIT" if float(ratio) >= 1.0 else "↔ LANDSCAPE")
+        else:
+            self.crop_orientation_btn.setText("SWAP")
+
+    def _rotate_from_crop(self, delta):
+        """Commit a corner-drag straighten while preserving the crop frame."""
+        if not self.doc:
+            return
+        crop = self.view.crop_rect_normalized()
+        self.doc.geometry["rotation"] = round(
+            float(self.doc.geometry.get("rotation", 0.0)) + float(delta), 3)
+        self.doc.record("Rotate crop")
+        self.rotation_row.set_value(self.doc.geometry["rotation"])
+        self._render_preview(keep_view=False)
+        self.view.set_crop_mode(True, crop)
+        self._on_crop_aspect(self.crop_aspect.currentIndex())
+        self._update_title()
 
     def _commit_crop(self):
         rect = self.view.crop_rect_normalized()
@@ -1490,6 +1595,13 @@ class EditorWindow(QMainWindow):
         except Exception as error:  # noqa: BLE001 — surface any decode failure plainly
             self._error("Cannot open", f"Could not open this image:\n{error}")
             return False
+        catalog_state = self.catalog.load_edit_state(path)
+        if catalog_state is not None:
+            document.restore(catalog_state)
+            document.history = []
+            document.history_index = -1
+            document.record("Open catalogue edits")
+            document.mark_saved()
         recovered = self._maybe_recover(path)   # offer to restore unsaved edits
         if recovered is not None:
             document = recovered
@@ -1511,16 +1623,20 @@ class EditorWindow(QMainWindow):
     def open_image(self):
         if not self._confirm_discard():
             return
+        from . import prefs
+        initial = prefs.load().get("library_folder", "")
         path, _ = QFileDialog.getOpenFileName(
-            self, "Open photograph", "", IMAGE_FILTER)
+            self, "Open photograph", initial, IMAGE_FILTER)
         if path:
             self.open_path(path)
 
     def open_project(self):
         if not self._confirm_discard():
             return
+        from . import prefs
+        initial = prefs.load().get("projects_folder", "")
         path, _ = QFileDialog.getOpenFileName(
-            self, "Open SNAP SLAPPER project", "", PROJECT_FILTER)
+            self, "Open SNAP SLAPPER project", initial, PROJECT_FILTER)
         if not path:
             return
         self.open_project_path(path)
@@ -1554,8 +1670,12 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             return
         base = os.path.splitext(os.path.basename(self.doc.source_path))[0]
+        from . import prefs
+        project_dir = prefs.load().get("projects_folder", "")
+        suggested = (os.path.join(project_dir, f"{base}.slapper")
+                     if project_dir else f"{base}.slapper")
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save project", f"{base}.slapper", PROJECT_FILTER)
+            self, "Save project", suggested, PROJECT_FILTER)
         if not path:
             return
         try:
@@ -1563,6 +1683,7 @@ class EditorWindow(QMainWindow):
         except Exception as error:  # noqa: BLE001
             self._error("Save failed", str(error))
             return
+        self._write_catalog_state()
         self._clear_recovery()   # project saved — recovery no longer needed
         self._update_title()
         self.status.showMessage(f"Saved {os.path.basename(path)}")
@@ -1960,7 +2081,9 @@ class EditorWindow(QMainWindow):
     def _on_commit(self, key):
         if not self.doc:
             return
+        self._render_timer.stop()
         self.doc.record(f"Adjust {key.replace('_', ' ')}")
+        self._render_preview(keep_view=False)
         self._update_title()
 
     def _on_bw(self, checked):
@@ -2269,9 +2392,14 @@ class EditorWindow(QMainWindow):
     def export_image(self):
         if not self.doc:
             return
-        base = os.path.splitext(os.path.basename(self.doc.source_path))[0]
+        default_name = _default_export_name(self.doc)
+        from . import prefs
+        settings = prefs.load()
+        export_dir = settings.get("exports_folder", "")
+        suggested = (os.path.join(export_dir, default_name)
+                     if export_dir else default_name)
         path, selected_filter = QFileDialog.getSaveFileName(
-            self, "Export copy", f"{base}_edited.jpg",
+            self, "Export copy", suggested,
             "JPEG — flattened (*.jpg);;PNG — flattened (*.png);;"
             "TIFF — flattened (*.tif *.tiff);;Photoshop PSD — layered checkpoints (*.psd)")
         if not path:
@@ -2282,8 +2410,6 @@ class EditorWindow(QMainWindow):
                 ".tif" if "TIFF" in selected_filter else \
                 ".png" if "PNG" in selected_filter else ".jpg"
             path += chosen
-        from . import prefs
-        settings = prefs.load()
         copyright_text = (settings["copyright_text"]
                           if settings["add_copyright_if_missing"] else "")
         try:
@@ -2352,6 +2478,17 @@ class EditorWindow(QMainWindow):
     # --- Rendering ----------------------------------------------------------
     def _schedule_render(self):
         self._render_timer.start()
+
+    def _render_drag_preview(self):
+        """Fast proxy used by all continuously dragged controls."""
+        if not self.doc:
+            return
+        target = self.view.viewport_target()
+        scale = min(1.0, 960.0 / max(target[0], 1),
+                    720.0 / max(target[1], 1))
+        proxy = (max(320, int(target[0] * scale)),
+                 max(320, int(target[1] * scale)))
+        self.view.set_pixmap(render_pixmap(self.doc, max_size=proxy), keep_view=True)
 
     def _queue_fit_resolution_refresh(self):
         if self.doc and not self._zoom_actual:
@@ -2501,6 +2638,9 @@ class EditorWindow(QMainWindow):
         _prefs.save(values)
 
     def _confirm_discard(self):
+        if self.doc and self.doc.is_dirty():
+            self._catalog_timer.stop()
+            self._write_catalog_state()
         if self.doc and self.doc.is_dirty():
             answer = QMessageBox.question(
                 self, "Unsaved edits",

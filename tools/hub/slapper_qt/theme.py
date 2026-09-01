@@ -280,6 +280,31 @@ def stylesheet() -> str:
     QSlider::handle:horizontal:hover {{
         background: {ACCENT_HI};
     }}
+    /* Geometry needs a precision point, not a fat adjustment knob. */
+    QSlider#PrecisionSlider::groove:horizontal {{
+        height: 2px;
+        background: {FIELD_HI};
+    }}
+    QSlider#PrecisionSlider::handle:horizontal {{
+        background: {ACCENT};
+        width: 9px;
+        height: 9px;
+        margin: -4px 0;
+        border-radius: 5px;
+        border: 1px solid {CANVAS};
+    }}
+    QLineEdit#ControlValue {{
+        background: {CANVAS};
+        color: {BODY};
+        border: 1px solid transparent;
+        border-radius: 3px;
+        padding: 1px 3px;
+    }}
+    QLineEdit#ControlValue:hover,
+    QLineEdit#ControlValue:focus {{
+        color: {ACCENT};
+        border: 1px solid {ACCENT_DIM};
+    }}
 
     /* --- Checkboxes (green when checked, admin style) ------------------- */
     QCheckBox {{
