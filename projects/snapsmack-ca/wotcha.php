@@ -115,6 +115,28 @@ article.post:last-child { border-bottom: none; }
 .post h2 a:hover { color: var(--red); }
 .post p { margin-bottom: 1.4em; max-width: 72ch; }
 .post p:last-child { margin-bottom: 0; }
+.post h3 {
+    margin: 1.8em 0 .55em;
+    max-width: 72ch;
+    font-size: 1rem;
+    line-height: 1.25;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.post .feature-list {
+    max-width: 72ch;
+    margin: 0 0 1.5em;
+    padding-left: 1.25em;
+}
+.post .feature-list li { margin: 0 0 .55em; }
+.post .feature-list strong { color: var(--red); }
+.post .status-note {
+    max-width: 72ch;
+    margin: 1.6em 0;
+    padding: 1em 1.15em;
+    border-left: 4px solid var(--red);
+    background: #f1f1f1;
+}
 
 @media (max-width: 700px) {
     .post-index ol { columns: 1; }
@@ -337,13 +359,47 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <h2><a href="#snap-slapper-editor">SNAP SLAPPER Is Ready for the Box O&rsquo; Tricks</a></h2>
                 <p>There is a point in every experiment where the creature stops being an interesting collection of organs and gets up off the table. SNAP SLAPPER just reached it.</p>
-                <p>It is now good enough to join <a href="tools.php#snap-slapper"><strong>BOX O&rsquo; TRICKS!</strong></a>: a real local photo library and non-destructive editor for photographers who want the work on their own computer and the finished photographs on their own site. It browses ordinary folders, handles ratings, favourites, tags and albums, organizes files, moves through a shoot with a live filmstrip, and edits without replacing the original.</p>
-                <p><strong>Normal mode</strong> is the editor most photographs need: light, colour, saturation, vibrance, black and white, geometry, vignette, crop, red-eye, Auto, LEWKS, and export. It stays deliberately free of layers and masking controls. The point is to make the common edit obvious, not force everybody to qualify for a commercial pilot&rsquo;s licence before lowering the highlights.</p>
-                <p><strong>Advanced mode</strong> opens the workshop. Layers, masks, blend modes, opacity, histogram, levels, curves, detailed colour mixing, retouching, geometry, perspective correction, filters, textures, recipes, projects, and layered export are there when the photograph earns the extra attention. The switch is visible. The two modes use the same engine. Starting simple does not mean starting over when the edit becomes complicated.</p>
-                <p>LEWKS preview reusable treatments on your photograph, not on somebody else&rsquo;s suspiciously perfect model in suspiciously perfect light. The native <code>.slapper</code> project is an inspectable ZIP container holding human-readable edit instructions and standard assets. PSD and TIFF provide working exits; JPEG and PNG provide finished ones. The original remains where you put it.</p>
-                <p>It has also crossed the less glamorous threshold that matters more: it is being dogfooded hard. Fuzzy first renders, stalled filmstrips, duplicate editor windows, frozen folder browsing, controls hidden in the wrong mode, and the little paper cuts that only appear during real work have been found and fixed because SNAP SLAPPER is being pushed toward primary-editor duty instead of protected inside a demo.</p>
-                <p>The next serious piece is Photoshop-style painting on real blank pixel layers: colour, hardness, opacity, flow, erasing, and Overlay or Soft Light workflows for eyes, teeth, local shaping, and the hundred small jobs photographers do without thinking about the tool. Mask brushes already exist. Paint brushes need to be the real thing before we claim them.</p>
-                <p>SNAP SLAPPER remains part of the SnapSmack desktop system. THE HUB installs it and the image processing stays local. No cloud library, no subscription tier, no originals uploaded for somebody else&rsquo;s machine-learning appetizer.</p>
+                <p>It is now good enough to join <a href="tools.php#snap-slapper"><strong>BOX O&rsquo; TRICKS!</strong></a>: a local photo manager and non-destructive editor for photographers who want their archive and image processing on their own computer.</p>
+
+                <h3>The photo manager</h3>
+                <ul class="feature-list">
+                    <li><strong>Real folders:</strong> browse photographs where they already live, optionally including subfolders.</li>
+                    <li><strong>Find and sort:</strong> search filenames, sort by name or capture date, filter the view, and resize thumbnails and folder text.</li>
+                    <li><strong>Organize:</strong> ratings, favourites, tags, albums, folder creation and renaming, safe batch renaming, and moving photographs.</li>
+                    <li><strong>Keep control:</strong> duplicate-aware imports, recoverable trash, move and copy history, and undo.</li>
+                </ul>
+
+                <h3>The everyday editor</h3>
+                <ul class="feature-list">
+                    <li><strong>Normal mode:</strong> light, colour, saturation, vibrance, black and white, geometry, vignette, crop, red-eye, Auto, LEWKS, and export without layers or mask machinery crowding the screen.</li>
+                    <li><strong>Filmstrip:</strong> move through the current folder without returning to the library, then fold the strip away when the photograph needs the room.</li>
+                    <li><strong>Real viewing:</strong> Fit for working and a true 100% view for checking actual pixels.</li>
+                    <li><strong>Non-destructive work:</strong> the original stays untouched; exports become new files.</li>
+                </ul>
+
+                <h3>The advanced workshop</h3>
+                <ul class="feature-list">
+                    <li><strong>Layers and masks:</strong> adjustment, image, text and filter layers with opacity, blend modes, reordering, radial and graduated masks, colour and luminosity ranges, and painted masks.</li>
+                    <li><strong>Tone and colour:</strong> live Luma/RGB histogram, levels, master and per-channel curves, HSL colour mixing, black-and-white colour mixing, split toning, glow, grain, sharpening, clarity, texture and dehaze.</li>
+                    <li><strong>Geometry and repair:</strong> interactive crop, straighten, vertical and horizontal perspective, draggable free corners, spot healing and red-eye correction.</li>
+                    <li><strong>Effects:</strong> editable Gaussian, motion and radial blur, plus Orton, film grain, light leak, pastel and vignette controls.</li>
+                    <li><strong>Assets:</strong> transparent image layers, SVG watermarks, and FOUND TEXTURES search with visible rights status and recoverable source information.</li>
+                </ul>
+
+                <h3>Work you can reuse and keep</h3>
+                <ul class="feature-list">
+                    <li><strong>LEWKS:</strong> preview reusable treatments on the photograph actually being edited, adjust their strength, and keep the resulting controls editable.</li>
+                    <li><strong>TEACH ME:</strong> inspect how a built-in LEWK works step by step instead of accepting a mystery preset.</li>
+                    <li><strong>Recipes and batch work:</strong> save repeatable operations and apply them to more than one photograph.</li>
+                    <li><strong>Open projects:</strong> a <code>.slapper</code> file is an inspectable ZIP containing human-readable instructions and standard assets.</li>
+                    <li><strong>Practical exits:</strong> layered PSD plus finished JPEG, PNG and TIFF exports.</li>
+                </ul>
+
+                <div class="status-note"><strong>What BLOG COPY does today:</strong> it prepares a local, collision-safe copy for the selected SnapSmack profile and records what it staged. It does not yet upload or publish the photograph. The planned fleet publishing workflow will be announced only after it exists and survives real use.</div>
+
+                <p>SNAP SLAPPER is being dogfooded hard instead of protected inside a demo. Fuzzy first renders, stalled filmstrips, duplicate editor windows, frozen folder browsing, and controls hidden in the wrong mode are the sort of paper cuts that only appear during real work&mdash;and real work is how they are being found.</p>
+                <p>The next major editing piece is proper painting on blank pixel layers: colour, hardness, opacity, flow, erasing, and Overlay or Soft Light workflows. Painted masks already exist. Pixel painting does not, so this announcement does not pretend otherwise.</p>
+                <p>Installation and shared desktop settings come from the SnapSmack desktop launcher. The image processing stays local. No cloud library, no subscription tier, and no originals uploaded for somebody else&rsquo;s machine-learning appetizer.</p>
                 <p><strong>The lab door is open. Bring photographs.</strong></p>
             </article>
 
