@@ -19,6 +19,7 @@ to be ported in later phases.
 import os
 import time
 import hashlib
+import ctypes
 
 from PySide6.QtCore import Qt, QObject, QRunnable, QThreadPool, Signal, QSize, QDir, QTimer
 from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QKeySequence
@@ -80,6 +81,26 @@ def _human_size(num_bytes):
             return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
         value /= 1024
     return f"{value:.1f} GB"
+
+
+def _is_online_only(path):
+    """True for a Windows cloud placeholder whose contents are not local.
+
+    Reading file attributes does not hydrate OneDrive Files On-Demand. Opening
+    the file with Pillow does, so automatic thumbnail work must stop here.
+    """
+    if os.name != "nt":
+        return False
+    try:
+        attrs = ctypes.windll.kernel32.GetFileAttributesW(str(path))
+        if attrs == 0xFFFFFFFF:
+            return False
+        offline = 0x00001000
+        recall_on_open = 0x00040000
+        recall_on_data_access = 0x00400000
+        return bool(attrs & (offline | recall_on_open | recall_on_data_access))
+    except Exception:
+        return False
 
 
 class _ThumbSignals(QObject):
@@ -160,6 +181,7 @@ class LibraryWindow(QMainWindow):
         self._icons = {}          # path -> QIcon (cached so re-sort never re-decodes)
         self._stamps = {}         # path -> capture timestamp (float)
         self._paths = []          # all photo paths in the current folder
+        self._online_only = set() # cloud placeholders: never auto-download
         self._folder = None
         self._editors = []        # keep editor windows alive
         self._signals = _ThumbSignals()
@@ -315,16 +337,15 @@ class LibraryWindow(QMainWindow):
             self.load_folder(path)
 
     def _reveal_folder(self, folder):
+        # Keep the tree narrowly rooted beside the selected folder. Expanding
+        # every ancestor made QFileSystemModel enumerate the whole user profile
+        # (and OneDrive) and could block the UI for minutes.
+        parent_folder = os.path.dirname(os.path.abspath(folder))
+        root_index = self.tree_model.setRootPath(parent_folder)
+        self.tree.setRootIndex(root_index)
         index = self.tree_model.index(folder)
         if not index.isValid():
             return
-        parent = index.parent()
-        parents = []
-        while parent.isValid():
-            parents.append(parent)
-            parent = parent.parent()
-        for ancestor in reversed(parents):
-            self.tree.expand(ancestor)
         self.tree.setCurrentIndex(index)
         self.tree.scrollTo(index, QTreeView.PositionAtCenter)
 
@@ -368,11 +389,15 @@ class LibraryWindow(QMainWindow):
         self._paths = self._scan(folder, self.act_subfolders.isChecked())
         self._icons.clear()
         self._stamps.clear()
+        self._online_only = {path for path in self._paths if _is_online_only(path)}
         self.setWindowTitle(f"SNAP SLAPPER — {os.path.basename(folder) or folder}")
         self._populate()
         for path in self._paths:
-            self._pool.start(_ThumbTask(path, self._signals, self._thumb_cache))
-        self.status.showMessage(f"{len(self._paths)} photo(s) in {folder}")
+            if path not in self._online_only:
+                self._pool.start(_ThumbTask(path, self._signals, self._thumb_cache))
+        cloud_note = (f" · {len(self._online_only)} online-only left undownloaded"
+                      if self._online_only else "")
+        self.status.showMessage(f"{len(self._paths)} photo(s) in {folder}{cloud_note}")
 
     def _scan(self, folder, recursive):
         found = []
@@ -413,9 +438,13 @@ class LibraryWindow(QMainWindow):
         placeholder = self._placeholder_icon()
         for path in self._sorted_paths():
             icon = self._icons.get(path, placeholder)
-            item = QListWidgetItem(icon, os.path.basename(path))
+            label = os.path.basename(path)
+            if path in self._online_only:
+                label = "☁  " + label
+            item = QListWidgetItem(icon, label)
             item.setData(Qt.UserRole, path)
-            item.setToolTip(path)
+            item.setToolTip(path + ("\nOnline-only — not downloaded automatically"
+                                    if path in self._online_only else ""))
             self.list.addItem(item)
             self._items[path] = item
         self._apply_filter(self.search.text())
