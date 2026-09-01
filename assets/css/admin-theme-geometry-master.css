@@ -7515,4 +7515,48 @@ input[type="range"]:active::-webkit-slider-thumb {
     opacity: 0.6;
     margin-top: 4px;
 }
+
+/* ── DUPLICATE FINDER (smack-manage) ─────────────────────────────────────
+   Layout only; colours reference theme tokens so light/dark stay correct. */
+.dup-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    border: 1px solid var(--danger, #e45735);
+}
+.dup-review__title { margin-top: 0; }
+.dup-review__intro { max-width: 680px; margin-bottom: 14px; }
+.dup-group {
+    border: 1px solid var(--border, #333);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 14px;
+}
+.dup-group__head {
+    font-weight: 600;
+    opacity: 0.75;
+    margin-bottom: 6px;
+}
+.dup-item--keep { border-left: 3px solid var(--accent, #a0ff90); }
+.dup-keep-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--accent, #a0ff90);
+    border: 1px solid var(--accent, #a0ff90);
+}
+.dup-reauth {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+.dup-reauth input[type="password"] { width: 220px; }
+.dup-reauth input[type="text"] { width: 120px; }
 /* ===== SNAPSMACK EOF ===== */

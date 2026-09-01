@@ -67,11 +67,6 @@ def stylesheet() -> str:
         background: {FIELD};
         color: {ACCENT};
     }}
-    QToolBar QToolButton:checked {{
-        background: {ACCENT_DIM};
-        color: {ACCENT};
-        border: 1px solid {ACCENT};
-    }}
     QToolBar QToolButton:disabled {{
         color: {FAINT};
         background: transparent;
@@ -139,16 +134,6 @@ def stylesheet() -> str:
     QPushButton#SwatchBtn:hover {{
         background: {ACCENT};
         color: {CANVAS};
-        border: 1px solid {ACCENT};
-    }}
-    QPushButton#ToneSwatch {{
-        background: {FIELD};
-        border: 1px solid {BORDER};
-        border-radius: 3px;
-        padding: 2px;
-    }}
-    QPushButton#ToneSwatch:hover {{
-        background: {FIELD};
         border: 1px solid {ACCENT};
     }}
 
