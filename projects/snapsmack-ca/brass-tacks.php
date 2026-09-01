@@ -55,7 +55,8 @@ $page_css = <<<'CSS'
 .faq-index ol li a:hover { color: var(--red); text-decoration: none; }
 @media (max-width: 700px) { .faq-index ol { columns: 1; } }
 
-.faq-section { padding: 64px 0; border-bottom: 1px solid var(--border); }
+.faq-section { padding: 64px 0; border-bottom: 0; }
+.faq-index + .faq-section { border-top: 0; }
 .faq-section > .wrap > h2.section-title {
     font-family: Arial Black, Arial, sans-serif;
     font-size: clamp(1.7rem, 3vw, 2.3rem);
