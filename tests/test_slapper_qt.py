@@ -14,6 +14,7 @@ Covers the load-bearing invariants of the Qt rebuild:
 """
 
 import os
+import json
 import sys
 import tempfile
 import time
@@ -129,6 +130,24 @@ def test_histogram_compare_recipe_project():
     win.doc.save_project(pp)
     loaded = editor_engine.EditorDocument.load_project(pp)
     assert loaded.adjustments["contrast"] == 40.0 and not loaded.is_dirty()
+
+
+def test_tiff_rational_metadata_does_not_block_project_save():
+    from PIL import TiffImagePlugin
+    source = os.path.join(TMP, "rational-metadata.tif")
+    tiffinfo = TiffImagePlugin.ImageFileDirectory_v2()
+    tiffinfo[282] = TiffImagePlugin.IFDRational(300, 1)  # XResolution
+    tiffinfo[283] = TiffImagePlugin.IFDRational(300, 1)  # YResolution
+    Image.new("RGB", (80, 60), "white").save(source, tiffinfo=tiffinfo)
+
+    project = os.path.join(TMP, "rational-metadata.slapper")
+    editor_engine.EditorDocument(source).save_project(project)
+    assert os.path.isfile(project)
+    with __import__("zipfile").ZipFile(project) as archive:
+        metadata = json.loads(archive.read("metadata/original-exif.json"))
+    assert metadata["exif"]["XResolution"] == {
+        "decimal": 300.0, "denominator": 1, "numerator": 300}
+    assert editor_engine.EditorDocument.load_project(project).source_path
 
 
 def test_preview_renders_layer_stack_once_even_with_histogram():
