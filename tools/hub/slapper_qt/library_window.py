@@ -26,7 +26,7 @@ from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QKeySequence
 from PySide6.QtWidgets import (
     QMainWindow, QListWidget, QListWidgetItem, QFileDialog, QLabel, QSlider,
     QWidget, QHBoxLayout, QComboBox, QLineEdit, QTreeView, QSplitter,
-    QFileSystemModel,
+    QFileSystemModel, QMenu, QMessageBox,
 )
 
 from PIL import Image, ImageOps
@@ -90,6 +90,32 @@ def _is_online_only(path):
     the file with Pillow does, so automatic thumbnail work must stop here.
     """
     if os.name != "nt":
+        return False
+
+
+def _move_to_recycle_bin(path):
+    """Move one file through the Windows shell; never permanently delete it."""
+    if os.name != "nt":
+        return False
+    try:
+        from ctypes import wintypes
+
+        class SHFILEOPSTRUCTW(ctypes.Structure):
+            _fields_ = [
+                ("hwnd", wintypes.HWND), ("wFunc", wintypes.UINT),
+                ("pFrom", wintypes.LPCWSTR), ("pTo", wintypes.LPCWSTR),
+                ("fFlags", wintypes.WORD), ("fAnyOperationsAborted", wintypes.BOOL),
+                ("hNameMappings", wintypes.LPVOID),
+                ("lpszProgressTitle", wintypes.LPCWSTR),
+            ]
+
+        operation = SHFILEOPSTRUCTW()
+        operation.wFunc = 3                    # FO_DELETE
+        operation.pFrom = os.path.abspath(path) + "\0\0"
+        operation.fFlags = 0x0040 | 0x0010 | 0x0400  # ALLOWUNDO, NOCONFIRMATION, NOERRORUI
+        result = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(operation))
+        return result == 0 and not operation.fAnyOperationsAborted and not os.path.exists(path)
+    except Exception:
         return False
     try:
         attrs = ctypes.windll.kernel32.GetFileAttributesW(str(path))
@@ -223,6 +249,15 @@ class LibraryWindow(QMainWindow):
         self.list.itemClicked.connect(self._show_info)
         self.list.currentItemChanged.connect(
             lambda cur, _prev: self._show_info(cur))
+        self.list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.list.customContextMenuRequested.connect(self._show_photo_menu)
+
+        delete_action = QAction("Move to Recycle Bin", self)
+        delete_action.setShortcut(QKeySequence.Delete)
+        delete_action.setShortcutContext(Qt.WidgetWithChildrenShortcut)
+        delete_action.triggered.connect(self._delete_selected)
+        self.list.addAction(delete_action)
+        self._delete_action = delete_action
 
         self.split = QSplitter(Qt.Horizontal)
         self.split.addWidget(self.tree)
@@ -337,15 +372,21 @@ class LibraryWindow(QMainWindow):
             self.load_folder(path)
 
     def _reveal_folder(self, folder):
-        # Keep the tree narrowly rooted beside the selected folder. Expanding
-        # every ancestor made QFileSystemModel enumerate the whole user profile
-        # (and OneDrive) and could block the UI for minutes.
-        parent_folder = os.path.dirname(os.path.abspath(folder))
-        root_index = self.tree_model.setRootPath(parent_folder)
-        self.tree.setRootIndex(root_index)
+        # Preserve the normal drive -> Users -> OneDrive -> Pictures hierarchy.
+        # Only the remembered path is expanded; thumbnail loading separately
+        # refuses online-only cloud placeholders.
+        self.tree_model.setRootPath("")
+        self.tree.setRootIndex(self.tree_model.index(""))
         index = self.tree_model.index(folder)
         if not index.isValid():
             return
+        parent = index.parent()
+        parents = []
+        while parent.isValid():
+            parents.append(parent)
+            parent = parent.parent()
+        for ancestor in reversed(parents):
+            self.tree.expand(ancestor)
         self.tree.setCurrentIndex(index)
         self.tree.scrollTo(index, QTreeView.PositionAtCenter)
 
@@ -508,6 +549,57 @@ class LibraryWindow(QMainWindow):
         except Exception:  # noqa: BLE001
             dimensions = ""
         self.status.showMessage(f"{name}  •  {dimensions}{size}")
+
+    def _show_photo_menu(self, position):
+        item = self.list.itemAt(position)
+        if item is None:
+            return
+        if not item.isSelected():
+            self.list.setCurrentItem(item)
+        menu = QMenu(self)
+        menu.addAction("Edit", self._open_selected)
+        menu.addSeparator()
+        menu.addAction(self._delete_action)
+        menu.exec(self.list.viewport().mapToGlobal(position))
+
+    def _delete_selected(self):
+        items = self.list.selectedItems()
+        if not items:
+            return
+        paths = [item.data(Qt.UserRole) for item in items if item.data(Qt.UserRole)]
+        if not paths:
+            return
+        subject = os.path.basename(paths[0]) if len(paths) == 1 else f"{len(paths)} selected photos"
+        answer = QMessageBox.question(
+            self, "Move to Recycle Bin?",
+            f"Move {subject} to the Windows Recycle Bin?\n\nThe original file will not be permanently deleted.",
+            QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel)
+        if answer != QMessageBox.Yes:
+            return
+        failed = []
+        removed = []
+        for path in paths:
+            try:
+                ok = _move_to_recycle_bin(path)
+            except Exception:
+                ok = False
+            if ok:
+                removed.append(path)
+            else:
+                failed.append(path)
+        if removed:
+            removed_set = set(removed)
+            self._paths = [path for path in self._paths if path not in removed_set]
+            self._online_only.difference_update(removed_set)
+            for path in removed:
+                self._icons.pop(path, None)
+                self._stamps.pop(path, None)
+            self._populate()
+            self.status.showMessage(f"Moved {len(removed)} photo(s) to the Recycle Bin")
+        if failed:
+            QMessageBox.warning(self, "Could not move file",
+                "Windows could not move the following to the Recycle Bin:\n\n" +
+                "\n".join(os.path.basename(path) for path in failed))
 
     # --- Opening ------------------------------------------------------------
     def _open_help(self):
