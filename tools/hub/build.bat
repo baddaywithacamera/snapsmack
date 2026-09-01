@@ -15,8 +15,8 @@ if not exist hub.spec (
     pause
     exit /b 1
 )
-if not exist slapper_qt.spec (
-    echo ERROR: slapper_qt.spec not found.
+if not exist snap_slapper.spec (
+    echo ERROR: snap_slapper.spec not found.
     pause
     exit /b 1
 )
@@ -44,7 +44,7 @@ if not exist C:\snapsmack\hub mkdir C:\snapsmack\hub
 echo.
 echo Building standalone SNAP SLAPPER...
 if not exist "dist\snap_slapper" mkdir "dist\snap_slapper"
-"%BUILD_PYTHON%" -m PyInstaller --noconfirm --clean slapper_qt.spec --distpath "dist\snap_slapper"
+"%BUILD_PYTHON%" -m PyInstaller --noconfirm --clean snap_slapper.spec --distpath "dist\snap_slapper"
 if errorlevel 1 (
     echo ERROR: SNAP SLAPPER packaging failed.
     pause
