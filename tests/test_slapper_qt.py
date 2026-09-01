@@ -1,5 +1,7 @@
 """Headless regression test for the SNAP SLAPPER Qt editor shell.
 
+SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
+
 Runs offscreen (no display needed):  python tests/test_slapper_qt.py
 
 Covers the load-bearing invariants of the Qt rebuild:
@@ -144,6 +146,10 @@ def test_preview_renders_layer_stack_once_even_with_histogram():
     win._render_preview()
     assert calls == 1
     assert win.histogram._data and len(win.histogram._data["luminance"]) == 256
+    # The consolidated editor has separate lower-resolution drag paths. Invoke
+    # them directly so missing merge-time imports cannot hide in Qt timer logs.
+    win._render_drag_preview()
+    win._render_perspective_preview()
 
 
 def test_layers_isolation_and_ops():
