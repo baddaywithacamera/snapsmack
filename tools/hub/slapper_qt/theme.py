@@ -196,6 +196,22 @@ def stylesheet() -> str:
         font-size: 12px;
     }}
     QPushButton#LayerDeleteBtn:hover {{ border: 1px solid {DANGER}; }}
+    QPushButton#TeachSettingsToggle {{
+        background: {FIELD};
+        color: {BODY};
+        border: 1px solid {BORDER};
+        border-radius: 4px;
+        padding: 4px 8px;
+    }}
+    QPushButton#TeachSettingsToggle:hover {{
+        border: 1px solid {DANGER};
+        color: {DANGER};
+    }}
+    QPushButton#TeachSettingsToggle:checked {{
+        background: {DANGER};
+        border: 1px solid {DANGER};
+        color: {CANVAS};
+    }}
     QLabel#TargetLabel {{
         color: {DIM};
         font-size: 12px;

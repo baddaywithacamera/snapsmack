@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from . import theme
+from .layer_styles_dialog import LayerStylesDialog
 
 BLEND_MODES = [
     "normal", "multiply", "screen", "overlay", "soft_light", "hard_light",
@@ -98,6 +99,13 @@ class LayersPanel(QWidget):
         self.blend.currentIndexChanged.connect(self._on_blend)
         blend_row.addWidget(self.blend, 1)
         detail_layout.addLayout(blend_row)
+
+        self.styles_btn = QPushButton("LAYER STYLES…")
+        self.styles_btn.setObjectName("LayerAddBtn")
+        self.styles_btn.setCursor(Qt.PointingHandCursor)
+        self.styles_btn.setToolTip("Add editable shadow, stroke, glow, or colour effects")
+        self.styles_btn.clicked.connect(self._open_styles)
+        detail_layout.addWidget(self.styles_btn)
 
         order_row = QHBoxLayout()
         order_row.setSpacing(4)
@@ -270,6 +278,11 @@ class LayersPanel(QWidget):
         self.doc.record("Delete layer")
         self.host.set_target(BASE)
         self.host.after_structure_change()
+
+    def _open_styles(self):
+        layer = self._selected_layer()
+        if layer is not None:
+            LayerStylesDialog(self.host, layer, self).exec()
 
     def _move_up(self):
         index = self._selected_index()

@@ -33,6 +33,7 @@ from slapper_qt.library_window import (                  # noqa: E402
     LibraryWindow, _transfer_photo_files,
 )
 from slapper_qt.layers_panel import BASE                 # noqa: E402
+from slapper_qt.layer_styles_dialog import LayerStylesDialog  # noqa: E402
 from slapper_qt.engine_bridge import render_pixmap, original_pixmap  # noqa: E402
 from slapper_qt.output_tools import create_contact_sheet, SlideshowDialog  # noqa: E402
 
@@ -1284,6 +1285,43 @@ def test_svg_watermark_layer_renders_at_output_size():
     assert rendered.size == original.size
     assert ImageChops.difference(original.convert("RGB"), rendered.convert("RGB")).getbbox()
     assert editor_engine._open_layer_image(svg, (640, 240)).size == (640, 240)
+
+
+def test_qt_layer_styles_apply_and_cancel():
+    win = _editor(_image("layer-styles.jpg", (180, 140)))
+    win.layers_panel._add_text()
+    layer = win.layers_panel._selected_layer()
+    assert layer is not None
+    assert win.layers_panel.styles_btn.text() == "LAYER STYLES…"
+
+    history_before = len(win.doc.history)
+    dialog = LayerStylesDialog(win, layer, win.layers_panel)
+    dialog.shadow.setChecked(True)
+    dialog.shadow_blur.setValue(14)
+    dialog.shadow_offset.setValue(9)
+    dialog.stroke.setValue(4)
+    dialog.glow.setValue(11)
+    dialog.overlay.setChecked(True)
+    dialog.overlay_opacity.setValue(42)
+    dialog.accept()
+    styles = layer["styles"]
+    assert styles["shadow"] is True
+    assert styles["shadow_blur"] == 14
+    assert styles["shadow_offset"] == 9
+    assert styles["stroke"] == 4
+    assert styles["glow"] == 11
+    assert styles["color_overlay"] is True
+    assert styles["overlay_opacity"] == .42
+    assert len(win.doc.history) == history_before + 1
+    assert win.doc.history[-1]["label"] == "Layer styles"
+
+    committed = dict(styles)
+    cancelled = LayerStylesDialog(win, layer, win.layers_panel)
+    cancelled.stroke.setValue(17)
+    cancelled.shadow.setChecked(False)
+    cancelled.reject()
+    assert layer["styles"] == committed
+    assert len(win.doc.history) == history_before + 1
 
 
 def test_keyboard_shortcuts_and_help_topics():
