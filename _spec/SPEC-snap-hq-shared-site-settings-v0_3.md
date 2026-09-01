@@ -2,8 +2,8 @@
 
 **File:** `SPEC-snap-hq-shared-site-settings-v0_3.md`
 **Date:** 2026-08-31
-**Status:** v0.3 review draft — Claude applying Sean's decisions to Codex's v0.2. Not cleared to build.
-**Supersedes after three-way sign-off:**
+**Status:** v0.3 — CLEARED FOR IMPLEMENTATION (Sean + Cowork + Codex, 2026-08-31).
+**Supersedes:**
 - `SPEC-snap-hq-shared-site-settings-v0_2.md` (Codex)
 - `SPEC-snap-hq-site-config-ssot-v0_1.md` (Claude)
 - `SPEC-shared-upload-dir-and-prompt-across-tools.md` (Claude)
@@ -13,7 +13,8 @@
 2. **Conflict machinery cut.** No baseline-tracking apparatus, no two-sided conflict panel. Portable settings are read-only in SNAP HQ when offline, which removes the conflict class entirely. See Synchronization.
 3. **EXIF is a hard two-lever guarantee.** SNAP SLAPPER modifies exactly two EXIF fields — copyright (editable) and GPS (strippable) — and nothing else, ever. Upload export defaults GPS-strip ON; archive keeps GPS.
 
-One item from Codex's v0.2 remains **unconfirmed by Sean** — see Decision 4 (portrait/landscape sizing asymmetry). It is flagged, not accepted.
+Decision 4 (portrait/landscape sizing) is now **ACCEPTED** — Sean confirmed 3840 × 2160,
+desktop/4K-framed, phones out of scope. All decisions in this draft are settled; see Decisions.
 
 ---
 
@@ -100,8 +101,22 @@ This boundary is load-bearing and deliberate. It is not to be "improved" into bl
 ### Local mirror
 Portable settings are cached under `C:\snapsmack\shared_library\profiles\<site>.json` — a mirror for offline **reading**, not a second authority. Machine-local settings live in a clearly separate machine-local section/file and must never be mistaken for portable data during backup, sync, or restore. No API keys or secrets in profile `extras` JSON.
 
+**Required migration:** existing installations currently may contain scoped keys such as
+`api_key_local` or tool-specific keys in profile `extras`. Implementation must migrate those
+values into the shared credential vault, verify the vault write, and only then remove the
+legacy profile value. Never delete-first; an interrupted migration must leave a usable key in
+at least one location. New writes must never put secrets back into profile JSON.
+
 ### Refresh triggers
 SNAP HQ refreshes portable settings: (1) at startup; (2) on site selection; (3) on **SYNC NOW**. Every consuming tool refreshes through the shared sync layer, not its own network client.
+
+### Hub-to-spoke propagation and partial failure
+The online hub stores the canonical per-blog value and propagates it to the corresponding
+spoke where the CMS processing path needs a local copy. A successful save at the hub does
+**not** imply that every spoke received it. The write response and SNAP HQ UI must report, per
+site: applied, pending/unreachable, or rejected. Failed spokes retain their previous value and
+remain visibly out of sync until a later successful retry; no fleet-wide success banner is
+allowed when any targeted spoke failed.
 
 ### Offline behaviour — and why there is no conflict machinery
 Portable settings are **owned by the online hub and edited there** (or through SNAP HQ writing through to the hub while online, reporting success/failure). **When the hub is unreachable, portable settings are shown read-only in SNAP HQ.** You cannot originate an offline edit to a portable field.
@@ -187,12 +202,16 @@ Functional desktop name is **SNAP HQ**. Active titles, descriptions, shortcuts, 
 7. EXIF preserved except the two levers (copyright editable, GPS strippable); GPS-strip default ON for upload, kept for archive.
 8. Compatibility paths during rename instead of destructive directory migration.
 
-### Still open — needs Sean's explicit call
-**Decision 4 (sizing asymmetry, carried from v0.2, unconfirmed).** Separate caps mean a portrait's long edge (2160) is capped **lower** than a landscape's long edge (3840), so portraits export with fewer pixels and may read soft on high-DPR or portrait-oriented displays. Coherent if the intent is "fill a 4K frame in the constrained dimension," but it's a real tradeoff and Sean (the NYIP grad) hasn't confirmed it. Options: keep 3840/2160 as-is; raise portrait cap; or return to a single long-edge cap. **Not accepted until Sean says so.**
+### Decision 4 — ACCEPTED (Sean, 2026-08-31): keep 3840 × 2160
+Separate caps: landscape width 3840, portrait height 2160 — the exact 4K display frame.
+Sean confirmed: **SnapSmack is desktop / 4K-display software**, not mobile. The "portraits may
+look soft on high-DPR phones" concern is explicitly out of scope — phones are not a target
+viewing surface. No single-long-edge, no portrait bump. Portrait at 2160 = a 4K screen's height,
+which is the frame being designed for. Settled.
 
 ---
 
-## Implementation sequence (after sign-off)
+## Implementation sequence
 1. Combined profile schema + validation + clean machine-local separation. (No baseline/revision fields — conflict machinery is out.)
 2. Online multisite API read/write contract for portable fields, incl. write-through with success/failure reporting.
 3. One shared desktop sync client used by SNAP HQ and all consumers, with read-only-when-offline behaviour.
@@ -222,5 +241,15 @@ Functional desktop name is **SNAP HQ**. Active titles, descriptions, shortcuts, 
 
 ---
 
-## Three-way sign-off
-Not cleared until Sean + Cowork + Codex align. **Codex specifically should confirm** that cutting the conflict machinery (replaced by read-only-when-offline) is safe against its v0.2 reasoning, and owns any DB-mutating PHP plus the atomic-write / confirmation-gated-move correctness review.
+## Three-way sign-off — COMPLETE
+
+- **Sean:** decisions accepted, including 3840 × 2160 desktop/4K framing.
+- **Cowork / Claude:** v0.3 consolidation prepared from Sean's decisions and both prior drafts.
+- **Codex:** approved 2026-08-31. Cutting conflict machinery is safe because portable
+  settings cannot be edited or queued while offline; the hub is the only writer and the local
+  cache is read-only evidence. Codex owns review of DB-mutating PHP, secret migration,
+  hub-to-spoke partial-failure reporting, atomic export writes, and confirmation-gated moves.
+
+This specification is cleared for implementation. Any change that permits offline portable
+edits, stores secrets in profile JSON, nests `done/` beneath `upload/`, or weakens the EXIF
+two-lever guarantee requires a new reviewed specification revision.
