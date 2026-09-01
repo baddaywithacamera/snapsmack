@@ -28,7 +28,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import (
     QImage, QPixmap, QIcon, QAction, QKeySequence, QDrag, QDesktopServices,
-    QPainter,
+    QPainter, QBrush, QColor,
 )
 from PySide6.QtWidgets import (
     QMainWindow, QListWidget, QListWidgetItem, QFileDialog, QLabel, QSlider,
@@ -1415,6 +1415,11 @@ class LibraryWindow(QMainWindow):
                 if badges:
                     label = f"{badges}\n{label}"
                 item = QListWidgetItem(icon, label)
+                # Do not leave caption colour to the platform icon delegate.
+                # On Windows it can choose an effectively black foreground for
+                # some non-landscape icons, making their filenames disappear
+                # until the item is selected.
+                item.setForeground(QBrush(QColor(theme.DIM)))
                 item.setData(Qt.UserRole, path)
                 item.setToolTip(path)
                 self.list.addItem(item)
@@ -1494,7 +1499,19 @@ class LibraryWindow(QMainWindow):
         return QIcon(pixmap)
 
     def _on_thumb(self, path, qimage, stamp):
-        icon = QIcon(QPixmap.fromImage(qimage))
+        # Keep the icon canvas square even though the photograph is not.  The
+        # Windows Qt icon-view delegate can drop the text rect when a square
+        # placeholder is replaced by a portrait/square source pixmap.  A
+        # transparent square canvas gives every orientation the same stable
+        # decoration geometry and preserves the filename row underneath.
+        canvas = QPixmap(THUMB_SOURCE, THUMB_SOURCE)
+        canvas.fill(Qt.transparent)
+        painter = QPainter(canvas)
+        x = (THUMB_SOURCE - qimage.width()) // 2
+        y = (THUMB_SOURCE - qimage.height()) // 2
+        painter.drawImage(x, y, qimage)
+        painter.end()
+        icon = QIcon(canvas)
         self._icons[path] = icon
         self._stamps[path] = stamp
         item = self._items.get(path)
