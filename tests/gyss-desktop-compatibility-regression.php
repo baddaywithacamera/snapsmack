@@ -12,6 +12,9 @@ foreach ([
     [$main, 'state.meta = { categories: [], albums: [] }', 'optional metadata fallback'],
     [$server, "SELECT c.id, c.cat_name AS name, 0 AS `count`", 'category metadata fallback'],
     [$server, "SELECT a.id, a.album_name AS name, 0 AS `count`", 'album metadata fallback'],
+    [$server, "gy_has_column(\$pdo, 'snap_images', 'modified_at')", 'legacy image timestamp detection'],
+    [$server, "'i.img_date AS modified_at'", 'legacy image timestamp fallback'],
+    [$server, "'NULL AS modified_at'", 'legacy save conflict fallback'],
 ] as [$source, $needle, $label]) {
     if ($source === false || strpos($source, $needle) === false) {
         fwrite(STDERR, "GYSS compatibility safeguard missing: {$label}\n");
