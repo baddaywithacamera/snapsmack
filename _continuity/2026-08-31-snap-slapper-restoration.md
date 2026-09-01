@@ -81,4 +81,24 @@ Before installing a build:
 - 0.7.596D packaged EXE SHA-256:
   `C3DDCD07F873BC41D2A5F4C4F243F3AB4CF34666BD88E458BB74BFE19F753F55`.
 
+## Portable project work after 0.7.596D
+
+- The approved `docs/slapper-portable-format-recovery-spec.md` is the governing
+  authority. Do not reinstate the rejected `source.json` plus root `preview.jpg`
+  archive layout.
+- Portable project schema is version 2. Legacy version-1 project documents remain
+  readable and are never silently rewritten in place.
+- A version-2 archive embeds the byte-identical original, full-resolution TIFF
+  composite, JPEG thumbnail, manifest, project document, stable UUID layer records,
+  readable EXIF/provenance/dependency metadata, JSON schema, and SHA-256 checksums.
+- Saving writes a sibling temporary ZIP64 archive, closes it, independently validates
+  required entries, paths, JSON, layer identity/order, checksums, and original hash,
+  and only then atomically replaces the destination.
+- Independent `tools/slap-back/slap_back.py` QA verified a newly saved package,
+  extracted the original, and reproduced its exact SHA-256 hash.
+- Qt suite after these changes: 56 tests passed.
+- This is not release-ready under the portable-format release gate. SLAP BACK still
+  needs its specified GUI and layered PSD, OpenRaster, and layered-TIFF recovery/export
+  paths plus public fixtures before the specification may be marked implemented.
+
 <!-- ===== SNAPSMACK EOF ===== -->
