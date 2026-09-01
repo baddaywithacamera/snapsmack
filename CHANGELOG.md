@@ -10,6 +10,14 @@
 
 # SnapSmack Changelog
 ## 0.7.595 "LIVE WIRE" — 2026-08-31
+- **Fix: RSS blogroll fetch now runs without a system cron — like fediverse already
+  does.** On hosts with no crontab (managed / tunnel hosting), the RSS cron had no way to
+  fire, so it showed "never" on every site. It now rides the existing web-cron
+  (`core/fediverse-webcron.php`, called on page loads): when the hourly RSS run is due it
+  runs after the response is flushed, so no visitor waits and no setup is needed — the same
+  self-healing path fediverse delivery uses. A DB lock stops two page loads running it at
+  once. `cron-rss-fetch.php` gained a guarded web-cron entry (still refuses plain public
+  requests) and stays silent (no stray output) when run this way.
 - **New: Cron & Jobs admin page — schedule and run your crons from the CMS.** Boring Ass
   Stuff → Cron & Jobs. Until now each cron's register control lived on a different page
   (fediverse on the Fediverse admin, RSS on Admin, version-check on Updates), so it was

@@ -51,6 +51,35 @@ if (!function_exists('sv_web_cron_tick')) {
             }
         }
 
+        // RSS blogroll fetch — independent of FEDIVERSE. This is the cron that
+        // shows "never" on hosts with no system crontab, because it had no
+        // web-cron path until now. Throttle to the hourly CLI cadence using the
+        // same rss_last_run stamp the CLI cron / Cron & Jobs RUN NOW write. A
+        // blank/"never" value parses to 0 and is due immediately.
+        $rss_last = strtotime((string)($settings['rss_last_run'] ?? '')) ?: 0;
+        if (!$rss_last || (time() - $rss_last) >= 3600) {
+            register_shutdown_function(static function () use ($pdo) {
+                if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request();
+                @ignore_user_abort(true);
+                @set_time_limit(120);
+                // One runner at a time across concurrent page loads.
+                try {
+                    $got = $pdo->query("SELECT GET_LOCK('snapsmack_rss_webcron', 0)")->fetchColumn();
+                    if ((int)$got !== 1) return;
+                } catch (Throwable $e) { return; }
+                try {
+                    if (!defined('SNAPSMACK_INTERNAL_CRON')) define('SNAPSMACK_INTERNAL_CRON', true);
+                    ob_start();
+                    require dirname(__DIR__) . '/cron-rss-fetch.php';
+                    ob_end_clean();
+                } catch (Throwable $e) {
+                    while (ob_get_level() > 0) { @ob_end_clean(); }
+                    error_log('RSS web-cron failed: ' . $e->getMessage());
+                }
+                try { $pdo->query("SELECT RELEASE_LOCK('snapsmack_rss_webcron')"); } catch (Throwable $e) {}
+            });
+        }
+
         if (($settings['fediverse_enabled'] ?? '0') !== '1') return;
 
         // Due? Reuse the exact stamp the CLI cron / RUN NOW button write. A blank
