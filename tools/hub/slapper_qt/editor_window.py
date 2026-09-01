@@ -1,5 +1,7 @@
 """The Qt editor window — Phase 1.
 
+SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
+
 Opens a photograph, shows it on a dark canvas, and drives the existing
 ``EditorDocument`` engine through a light/colour/presence/effects/levels rail.
 Live preview, undo/redo, an unsaved indicator with a close guard, and a
@@ -25,7 +27,7 @@ from . import masks
 import editor_engine
 import photo_manager
 from . import theme
-from .engine_bridge import pil_to_qpixmap, original_pixmap
+from .engine_bridge import pil_to_qpixmap, original_pixmap, render_pixmap
 from .widgets import ImageView, SliderRow, Accordion, Histogram
 from .layers_panel import LayersPanel, BASE
 from .filmstrip import Filmstrip

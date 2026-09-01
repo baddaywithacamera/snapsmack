@@ -9,6 +9,38 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.598D "LIVE WIRE" — 2026-09-01
+- **SNAP SLAPPER roundup:** consolidates the restored Qt editor, portable
+  projects, catalogue autosave, editable layer styles, complete per-colour
+  Hue/Saturation/Luminance controls, and the latest library and editor fixes
+  onto `dev` as one release source.
+- **Fix: the folder panel shows the selected folder.** Choosing a folder no
+  longer makes that folder an invisible tree root and leaves an empty sidebar
+  when it has no children. The tree remains bounded to a safe local parent so
+  it does not return to probing every mapped or stale drive.
+- **Performance: less duplicate and off-screen work.** The editor reuses its
+  rendered preview for the live histogram instead of rendering the full layer
+  stack twice. Normal mode skips hidden histogram work. The library uses
+  reduced-size JPEG decoding, queues only visible and nearby thumbnails, and
+  keeps file moves/copies out of the thumbnail worker queue.
+- **Colour Mix is full HSL.** Eight editable Hue controls join the existing
+  per-colour Saturation and Luminance controls. They work on the base image and
+  generic adjustment layers, survive projects and recipes, and are explained
+  by TEACH ME.
+- **Site copy is accurate about the desktop workflow.** The SNAP SLAPPER post
+  is reorganized into scannable photo-manager, everyday-editor, advanced, and
+  reusable-work sections. BLOG COPY is described as collision-safe local
+  staging with a manifest; it does not claim upload or publishing.
+
+## 0.7.597 "LIVE WIRE" — 2026-09-01
+- **Fix: solo posts no longer fail with a blank "MISSION FAILURE" on sites whose DB
+  is missing the per-image crop columns.** On a site whose schema never synced,
+  `snap_post_images` lacked `img_crop_mode` / `img_focus_x` / `img_focus_y` / `img_zoom`,
+  so the solo-post INSERT fatally errored ("Unknown column 'img_crop_mode'") and the
+  AJAX returned an empty 500 — the blank failure alert. The solo composer now adds those
+  columns defensively before inserting (same belt-and-suspenders the gram composer already
+  had). Immediate unblock without deploying: run Boring Ass Stuff → Database Schema sync.
+
 ## 0.7.596 "LIVE WIRE" — 2026-08-31
 - **SNAP SLAPPER continuity restoration.** Restores the verified later-Qt
   behaviour without replacing unrelated 0.7.595D work: editor and library
@@ -25,15 +57,6 @@
 - **Continuity safeguard:** records the recovered behaviour, source checkpoint,
   tests, installed-build hash, and rollback path under `_continuity/` so a
   future targeted change cannot silently discard established features.
-
-## 0.7.597 "LIVE WIRE" — 2026-09-01
-- **Fix: solo posts no longer fail with a blank "MISSION FAILURE" on sites whose DB
-  is missing the per-image crop columns.** On a site whose schema never synced,
-  `snap_post_images` lacked `img_crop_mode` / `img_focus_x` / `img_focus_y` / `img_zoom`,
-  so the solo-post INSERT fatally errored ("Unknown column 'img_crop_mode'") and the
-  AJAX returned an empty 500 — the blank failure alert. The solo composer now adds those
-  columns defensively before inserting (same belt-and-suspenders the gram composer already
-  had). Immediate unblock without deploying: run Boring Ass Stuff → Database Schema sync.
 
 ## 0.7.595 "LIVE WIRE" — 2026-08-31
 - **Fix: 4K photo uploads no longer rejected — PHP limits set via `.user.ini`.** On
