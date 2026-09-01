@@ -17,6 +17,8 @@ from PIL import Image
 
 import editor_engine
 import built_in_lewks
+import lewk_again
+import slapper_filters
 from . import theme
 from .engine_bridge import pil_to_qpixmap
 
@@ -37,7 +39,7 @@ class LewksDialog(QDialog):
         self.setWindowTitle("LEWKS")
         self.resize(720, 620)
         self.setStyleSheet(theme.stylesheet())
-        self._lewks = built_in_lewks.all_lewks()
+        self._lewks = built_in_lewks.all_lewks() + lewk_again.saved_lewks()
         self._base = None                      # small base render of the photo
 
         layout = QVBoxLayout(self)
@@ -73,6 +75,9 @@ class LewksDialog(QDialog):
         self.caption = QLabel("Pick a look — the previews are on your photo.")
         self.caption.setObjectName("TargetLabel")
         actions.addWidget(self.caption, 1)
+        teach_btn = QPushButton("TEACH ME")
+        teach_btn.clicked.connect(self.teach_selected)
+        actions.addWidget(teach_btn)
         apply_btn = QPushButton("Apply LEWK")
         apply_btn.setObjectName("LayerAddBtn")
         apply_btn.clicked.connect(self.apply_selected)
@@ -102,6 +107,15 @@ class LewksDialog(QDialog):
         values = dict(editor_engine.DEFAULT_ADJUSTMENTS)
         values.update(lewk.get("adjustments", {}))
         adjusted = editor_engine.apply_adjustments(base, values).convert("RGB")
+        if lewk.get("custom_recipe"):
+            adjusted = base
+            for layer in lewk.get("layers", []):
+                if layer.get("type") == "adjustment":
+                    adjusted = editor_engine.apply_adjustments(
+                        adjusted, layer["adjustments"]).convert("RGB")
+                elif layer.get("type") == "filter":
+                    adjusted = slapper_filters.apply_filter(
+                        adjusted, layer["filter_type"], layer["settings"]).convert("RGB")
         amount = max(0.0, min(1.0, strength / 100.0))
         return Image.blend(base, adjusted, amount)
 
@@ -125,7 +139,22 @@ class LewksDialog(QDialog):
         if not items:
             return
         lewk_id = items[0].data(Qt.UserRole)
-        self.host.apply_lewk(lewk_id, self.strength.value())
+        lewk = next((entry for entry in self._lewks if entry["id"] == lewk_id), None)
+        if lewk and lewk.get("custom_recipe"):
+            self.host.apply_generated_lewk(lewk)
+        else:
+            self.host.apply_lewk(lewk_id, self.strength.value())
         self.accept()
+
+    def teach_selected(self):
+        items = self.grid.selectedItems()
+        if not items:
+            return
+        lewk_id = items[0].data(Qt.UserRole)
+        lewk = next((entry for entry in self._lewks if entry["id"] == lewk_id), None)
+        if lewk is None:
+            return
+        from .teach_me_dialog import TeachMeDialog
+        TeachMeDialog(self.host, lewk, self.strength.value(), self).exec()
 
 # ===== SNAPSMACK EOF =====

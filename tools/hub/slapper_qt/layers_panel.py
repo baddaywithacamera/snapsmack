@@ -48,7 +48,8 @@ class LayersPanel(QWidget):
         add_row.setSpacing(4)
         for text, handler in (("+ Adjust", self._add_adjustment),
                               ("+ Image", self._add_image),
-                              ("+ Text", self._add_text)):
+                              ("+ Text", self._add_text),
+                              ("+ Filter", self._add_filter)):
             btn = QPushButton(text)
             btn.setObjectName("LayerAddBtn")
             btn.setCursor(Qt.PointingHandCursor)
@@ -164,7 +165,8 @@ class LayersPanel(QWidget):
         self._sync_detail()
 
     def _label_for(self, layer):
-        icon = {"adjustment": "◐", "image": "▣", "text": "T"}.get(layer.get("type"), "•")
+        icon = {"adjustment": "◐", "image": "▣", "text": "T",
+                "filter": "FX"}.get(layer.get("type"), "•")
         return f"{icon}  {layer.get('name', 'Layer')}"
 
     def _make_row(self, target, label, visible, active):
@@ -242,7 +244,7 @@ class LayersPanel(QWidget):
             return
         path, _ = QFileDialog.getOpenFileName(
             self, "Add image layer", "",
-            "Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp)")
+            "Images and SVG watermarks (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp *.svg)")
         if not path:
             return
         layer = self.doc.add_image_layer(path)
@@ -255,6 +257,10 @@ class LayersPanel(QWidget):
         layer = self.doc.add_text_layer()
         self.host.set_target(layer["id"])
         self.host.after_structure_change()
+
+    def _add_filter(self):
+        if self.doc:
+            self.host.open_filters()
 
     def _delete(self):
         index = self._selected_index()

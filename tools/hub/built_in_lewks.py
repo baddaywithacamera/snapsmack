@@ -268,8 +268,20 @@ def recipe(lewk_id, strength=100):
              "type": "adjustment", "visible": True, "opacity": amount,
              "blend": "normal", "adjustments": values, "mask": "", "styles": {},
              "lewk": copy.deepcopy(provenance)}
+    layers = [layer]
+    for texture in copy.deepcopy(lewk.get("textures", [])):
+        ref = texture.get("asset_ref") or texture
+        layers.append({
+            "id": str(time.time_ns()), "name": texture.get("name") or ref.get("name") or "Texture",
+            "type": "image", "visible": True,
+            "opacity": max(0.0, min(1.0, float(texture.get("opacity", 1.0)) * amount)),
+            "blend": texture.get("blend", "overlay"), "fit": texture.get("fit", "cover"),
+            "path": "", "asset_ref": ref, "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS),
+            "mask": "", "mask_enabled": True, "mask_linked": True,
+            "transform": {}, "styles": {}, "lewk": copy.deepcopy(provenance),
+        })
     return {"version": PROJECT_VERSION,
             "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS),
-            "layers": [layer], "lewk": provenance}
+            "layers": layers, "lewk": provenance}
 
 # ===== SNAPSMACK EOF =====

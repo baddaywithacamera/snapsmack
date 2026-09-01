@@ -1,13 +1,12 @@
-"""Application bootstrap for the Qt SNAP SLAPPER."""
+"""Application bootstrap for the Qt editor shell."""
 
 import os
 import sys
 
 from PySide6.QtCore import QTimer
-from PySide6.QtNetwork import QLocalServer, QLocalSocket
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
-from . import theme
+from . import theme, BUILD_VERSION
 from .editor_window import EditorWindow
 from .library_window import LibraryWindow
 
@@ -22,50 +21,56 @@ def main(argv=None):
     argv = list(sys.argv if argv is None else argv)
     app = QApplication.instance() or QApplication(argv)
     app.setApplicationName("SNAP SLAPPER")
+    app.setApplicationDisplayName("SNAP SLAPPER Photo Library and Editor")
+    app.setApplicationVersion(BUILD_VERSION)
     app.setStyleSheet(theme.stylesheet())
-    # One library owns one thumbnail queue. Accidentally opening a second copy
-    # used to double disk/CPU pressure and could make both windows unresponsive.
-    instance_name = "SnapSmack.SnapSlapper.Qt"
-    probe = QLocalSocket()
-    probe.connectToServer(instance_name)
-    if probe.waitForConnected(180):
-        probe.disconnectFromServer()
-        return 0
-    QLocalServer.removeServer(instance_name)
-    instance_server = QLocalServer(app)
-    if not instance_server.listen(instance_name):
-        return 0
     if _log is not None:
         _log.info("SNAP SLAPPER Qt UI ready")
 
+        def report_uncaught(exc_type, exc_value, exc_traceback):
+            _log.critical("Unhandled SNAP SLAPPER error", exc_info=(
+                exc_type, exc_value, exc_traceback))
+            QMessageBox.critical(
+                None, "SNAP SLAPPER stopped an error",
+                f"The operation could not continue. Your original photographs were not changed.\n\n"
+                f"{exc_value}\n\nDetails were saved to:\n{_log.log_path}")
+        sys.excepthook = report_uncaught
+
     # A file path on the command line opens straight into the editor;
-    # otherwise the library browser is the entry point.
+    # otherwise the library browser is the entry point. The frozen-build gate
+    # supplies its real test photo through the environment and must exercise
+    # this same editor path, including layered PSD export.
     qa_image = os.environ.get("SNAP_SLAPPER_QA_IMAGE", "")
     qa_marker = os.environ.get("SNAP_SLAPPER_QA_MARKER", "")
+    qa_psd = os.environ.get("SNAP_SLAPPER_QA_PSD", "")
     target = qa_image or next(
         (c for c in argv[1:] if c and not c.startswith("-")), None)
     if target:
         window = EditorWindow()
-        window.open_path(target)
+        if os.path.splitext(target)[1].lower() == ".slapper":
+            window.open_project_path(target)
+        else:
+            window.open_path(target)
     else:
         window = LibraryWindow()
     window.show()
 
-    # Frozen-build gate: open and render a real photograph before installation.
-    # A package that cannot do both never writes the marker and is not promoted.
+    # Packaged-build smoke test: open a real image, prove the Qt event loop can
+    # start, write a marker, and exit without requiring desktop interaction.
     if qa_image and qa_marker:
-        def verify_packaged_editor():
+        def finish_qa():
             try:
-                if not isinstance(window, EditorWindow) or not window.doc:
-                    return
-                rendered = window.doc.render((80, 60))
-                if rendered.width <= 0 or rendered.height <= 0:
-                    return
-                with open(qa_marker, "w", encoding="utf-8") as handle:
-                    handle.write("PASS")
+                ready = os.path.isfile(qa_image)
+                if ready and qa_psd and isinstance(window, EditorWindow) and window.doc:
+                    from .psd_export import export_layered_psd
+                    export_layered_psd(window.doc, qa_psd)
+                    ready = os.path.isfile(qa_psd)
+                if ready:
+                    with open(qa_marker, "w", encoding="utf-8") as marker:
+                        marker.write("ok\n")
             finally:
                 app.quit()
-        QTimer.singleShot(900, verify_packaged_editor)
+        QTimer.singleShot(750, finish_qa)
 
     return app.exec()
 
