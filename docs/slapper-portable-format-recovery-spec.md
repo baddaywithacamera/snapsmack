@@ -185,8 +185,6 @@ Required operations:
 - Export a flattened JPEG, PNG, or TIFF
 - Export layered PSD where supported
 - Export OpenRaster `.ora`
-- Export layered/multipage TIFF with a clear warning that layered-TIFF interoperability
-  is application-specific and less dependable than PSD or OpenRaster
 - Produce a plain-text and JSON recovery report
 - Recover every independently readable entry possible from a partially damaged archive
 - Choose collision-safe output names and never overwrite without explicit confirmation
@@ -204,7 +202,7 @@ implementation and documented in bundled offline help.
   and unrecoverable elements.
 - A flattened export uses the full-resolution packaged composite when the reference
   compositor cannot reproduce a newer operation.
-- PSD, TIFF, and OpenRaster limitations are reported plainly rather than hidden behind a
+- PSD, flattened-TIFF, and OpenRaster limitations are reported plainly rather than hidden behind a
   successful-looking export message.
 
 ## 11. Public documentation and durability

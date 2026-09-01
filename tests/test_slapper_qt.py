@@ -867,6 +867,56 @@ def test_perspective_geometry_and_project_round_trip():
     assert win.doc.geometry["perspective_corners"][0] == [0.0, 0.0]
 
 
+def test_portable_project_does_not_expose_local_machine_paths():
+    source = _image("private-source.jpg", (96, 64))
+    overlay = _image("private-overlay.png", (32, 24))
+    doc = editor_engine.EditorDocument(source)
+    doc.add_image_layer(overlay)
+    text_layer = doc.add_text_layer()
+    text_layer["font_path"] = r"C:\Users\private-name\Fonts\PersonalFont.ttf"
+    project = os.path.join(TMP, "privacy-safe.slapper")
+    doc.save_project(project)
+
+    with __import__("zipfile").ZipFile(project) as archive:
+        manifest = json.loads(archive.read("manifest.json"))
+        project_value = json.loads(archive.read("project.json"))
+        assert project_value["source_path"] == manifest["original"]["archive_path"]
+        assert project_value["layers"][0]["path"].startswith("layers/")
+        assert project_value["layers"][1]["font_path"] == "PersonalFont.ttf"
+        textual = b"\n".join(
+            archive.read(name) for name in archive.namelist()
+            if name.endswith((".json", ".txt")) or name == "README.txt")
+        assert os.path.dirname(source).encode("utf-8") not in textual
+        assert b"private-name" not in textual
+    reopened = editor_engine.EditorDocument.load_project(project)
+    assert reopened.source_path and os.path.isfile(reopened.source_path)
+    assert os.path.isfile(reopened.layers[0]["path"])
+    assert ImageChops.difference(doc.render(), reopened.render()).getbbox() is None
+
+    # A pre-rework v2 project with absolute paths remains readable. Recreate
+    # that older writer shape and update its declared checksum, then reopen it.
+    old_v2 = os.path.join(TMP, "pre-rework-v2.slapper")
+    with __import__("zipfile").ZipFile(project) as archive:
+        entries = {name: archive.read(name) for name in archive.namelist()
+                   if not name.endswith("/")}
+    old_value = json.loads(entries["project.json"])
+    old_value["source_path"] = source
+    old_value["layers"][0]["path"] = overlay
+    entries["project.json"] = json.dumps(
+        old_value, indent=2, sort_keys=True, allow_nan=False).encode("utf-8")
+    checksums = json.loads(entries["metadata/checksums.json"])
+    checksums["sha256"]["project.json"] = editor_engine._sha256_bytes(
+        entries["project.json"])
+    entries["metadata/checksums.json"] = json.dumps(
+        checksums, indent=2, sort_keys=True, allow_nan=False).encode("utf-8")
+    with __import__("zipfile").ZipFile(old_v2, "w") as archive:
+        for name, payload in entries.items():
+            archive.writestr(name, payload)
+    older = editor_engine.EditorDocument.load_project(old_v2)
+    assert older.source_path == os.path.abspath(source)
+    assert older.layers[0]["path"] == overlay
+
+
 def test_library_scan_and_open():
     folder = tempfile.mkdtemp(prefix="slaplib_", dir=TMP)
     sub = os.path.join(folder, "sub"); os.makedirs(sub)

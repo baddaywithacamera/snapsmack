@@ -10,6 +10,7 @@ import io
 import json
 import math
 import os
+import re
 import time
 import tempfile
 import textwrap
@@ -281,6 +282,38 @@ def _validate_project_archive(path):
     return manifest
 
 
+_MACHINE_PATH = re.compile(
+    r"^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/]|/(?:home|Users)/)")
+
+
+def _portable_path_value(value):
+    """Remove machine-specific paths while retaining useful filenames."""
+    if isinstance(value, dict):
+        return {str(key): _portable_path_value(item) for key, item in value.items()
+                if str(key) != "project_path"}
+    if isinstance(value, list):
+        return [_portable_path_value(item) for item in value]
+    if isinstance(value, tuple):
+        return [_portable_path_value(item) for item in value]
+    if isinstance(value, str) and _MACHINE_PATH.search(value):
+        return os.path.basename(value.rstrip("\\/"))
+    return value
+
+
+def _machine_path_leaks(value, location="root"):
+    """Return readable locations of private local paths in portable JSON."""
+    leaks = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            leaks.extend(_machine_path_leaks(item, f"{location}.{key}"))
+    elif isinstance(value, (list, tuple)):
+        for index, item in enumerate(value):
+            leaks.extend(_machine_path_leaks(item, f"{location}[{index}]"))
+    elif isinstance(value, str) and _MACHINE_PATH.search(value):
+        leaks.append(location)
+    return leaks
+
+
 def _write_project_archive(path, value, source_path=None, composite=None):
     """Write, independently validate, then atomically publish portable format v2."""
     target = os.path.abspath(path)
@@ -329,7 +362,8 @@ def _write_project_archive(path, value, source_path=None, composite=None):
             "visible": bool(layer.get("visible", True)),
             "opacity": float(layer.get("opacity", 1.0)),
             "blend_mode": layer.get("blend", "normal"), "operation_version": 1,
-            "settings": layer, "description": f"SNAP SLAPPER {layer.get('type', 'unknown')} layer",
+            "settings": copy.deepcopy(layer),
+            "description": f"SNAP SLAPPER {layer.get('type', 'unknown')} layer",
             "recreatability": "native" if layer.get("type") in {"image", "text"} else "visually_rasterized",
             "fallback": PROJECT_COMPOSITE_NAME if layer.get("type") not in {"image", "text"} else None,
             "dependencies": [],
@@ -359,12 +393,12 @@ def _write_project_archive(path, value, source_path=None, composite=None):
     thumb_bytes = io.BytesIO(); thumb.convert("RGB").save(thumb_bytes, "JPEG", quality=88)
     composite_bytes = io.BytesIO()
     composite.save(composite_bytes, "TIFF", compression="tiff_deflate")
+    exif_document = _portable_path_value(_safe_exif_document(source_path))
     documents = {
         PROJECT_MANIFEST_NAME: _json_bytes(manifest),
-        PROJECT_DOCUMENT_NAME: _json_bytes(value),
         PROJECT_README_NAME: readme.encode("utf-8"),
         PROJECT_SCHEMA_NAME: _json_bytes(schema),
-        "metadata/original-exif.json": _json_bytes(_safe_exif_document(source_path)),
+        "metadata/original-exif.json": _json_bytes(exif_document),
         "metadata/provenance.json": _json_bytes({
             "original_filename": original_filename, "original_sha256": source_hash,
             "original_was_modified": False, "project_writer": "SNAP SLAPPER",
@@ -387,7 +421,30 @@ def _write_project_archive(path, value, source_path=None, composite=None):
             mask_name = f"layers/{layer_id}/mask.png"
             documents[mask_name] = mask_bytes
             layer_document["mask"] = mask_name
+        portable_settings = _portable_path_value(settings)
+        if layer_document["type"] == "image" and layer_document.get("pixels"):
+            portable_settings["path"] = layer_document["pixels"]
+        layer_document["settings"] = portable_settings
         documents[f"layers/{layer_id}/layer.json"] = _json_bytes(layer_document)
+
+    portable_value = _portable_path_value(copy.deepcopy(value))
+    portable_value["source_path"] = original_entry
+    portable_value.pop("project_path", None)
+    portable_value["layers"] = [copy.deepcopy(layer_documents[layer_id]["settings"])
+                                for layer_id in layer_ids[1:]]
+    privacy_documents = {
+        PROJECT_MANIFEST_NAME: manifest,
+        PROJECT_DOCUMENT_NAME: portable_value,
+        "metadata/original-exif.json": exif_document,
+    }
+    for layer_id, layer_document in layer_documents.items():
+        privacy_documents[f"layers/{layer_id}/layer.json"] = layer_document
+    leaks = [leak for name, document in privacy_documents.items()
+             for leak in _machine_path_leaks(document, name)]
+    if leaks:
+        raise ValueError("Portable project privacy check found a local machine path: " +
+                         ", ".join(leaks[:5]))
+    documents[PROJECT_DOCUMENT_NAME] = _json_bytes(portable_value)
     checksums = {name: _sha256_bytes(data) for name, data in documents.items()}
     checksums[original_entry] = source_hash
     documents[PROJECT_CHECKSUMS_NAME] = _json_bytes({"algorithm": "SHA-256", "sha256": checksums})
@@ -485,6 +542,57 @@ def _embedded_source(path):
             except OSError:
                 pass
             raise
+
+
+def _restore_embedded_layer_assets(project_path, layers):
+    """Resolve portable internal image-layer references to verified cache files."""
+    if not zipfile.is_zipfile(project_path):
+        return
+    try:
+        import snap_home
+        cache_root = os.path.join(snap_home.home(), "snap_slapper", "project_layers")
+    except Exception:  # noqa: BLE001
+        cache_root = os.path.join(tempfile.gettempdir(), "snap_slapper_project_layers")
+    project_key = hashlib.sha256(os.path.abspath(project_path).encode("utf-8")).hexdigest()
+    directory = os.path.join(cache_root, project_key)
+    os.makedirs(directory, exist_ok=True)
+    with zipfile.ZipFile(project_path, "r") as archive:
+        for index, layer in enumerate(layers):
+            if not isinstance(layer, dict) or layer.get("type") != "image":
+                continue
+            reference = str(layer.get("path", "")).replace("\\", "/")
+            if not (reference.startswith("layers/") and reference.endswith("/pixels.png")):
+                continue  # pre-privacy v2 files retain their old local path behaviour
+            if reference.startswith("/") or ".." in reference.split("/"):
+                raise ValueError("Invalid SNAP SLAPPER project: unsafe layer asset path")
+            try:
+                info = archive.getinfo(reference)
+            except KeyError as exc:
+                raise ValueError("Invalid SNAP SLAPPER project: embedded layer pixels are missing") from exc
+            if info.file_size > MAX_PROJECT_ARCHIVE_BYTES:
+                raise ValueError("SNAP SLAPPER embedded layer is too large")
+            layer_id = str(layer.get("id", index)).replace("-", "")[:40] or str(index)
+            target = os.path.join(directory, layer_id + ".png")
+            payload = archive.read(info)
+            descriptor, temporary = tempfile.mkstemp(
+                prefix=".snap-layer-", suffix=".tmp", dir=directory)
+            try:
+                with os.fdopen(descriptor, "wb") as handle:
+                    handle.write(payload)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                os.replace(temporary, target)
+            except Exception:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+                try:
+                    os.remove(temporary)
+                except OSError:
+                    pass
+                raise
+            layer["path"] = target
 
 
 def _curve_lut(points):
@@ -1745,6 +1853,8 @@ class EditorDocument:
                 if layer.get("filter_version", 1) != 1:
                     raise ValueError(
                         f"Invalid SNAP SLAPPER project: layer {index + 1} filter version is unsupported")
+        if version == PROJECT_VERSION and zipfile.is_zipfile(path):
+            _restore_embedded_layer_assets(path, layers)
         document = cls(source_path)
         document.original_filename = str(value.get("original_filename") or
                                          os.path.basename(value.get("source_path", source_path)))
