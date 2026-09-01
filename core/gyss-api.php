@@ -85,6 +85,23 @@ function gy_respond(array $data, int $status = 200): void {
 function gy_ok(array $data = []): void  { gy_respond(array_merge(['ok' => true], $data)); }
 function gy_err(string $msg, int $code = 400): void { gy_respond(['ok' => false, 'error' => $msg], $code); }
 
+/** Read compatibility: fleet sites can lag a schema migration during rollout. */
+function gy_has_column(PDO $pdo, string $table, string $column): bool {
+    static $cache = [];
+    $key = $table . '.' . $column;
+    if (array_key_exists($key, $cache)) return $cache[$key];
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS '
+            . 'WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
+        );
+        $stmt->execute([$table, $column]);
+        return $cache[$key] = ((int)$stmt->fetchColumn() > 0);
+    } catch (Throwable $e) {
+        return $cache[$key] = false;
+    }
+}
+
 // --- ROUTE PARSING ---
 $parts    = explode('/', trim($GLOBALS['route'] ?? ($_GET['route'] ?? ''), '/'));
 $resource = $parts[1] ?? '';
@@ -311,6 +328,8 @@ if ($resource === 'photos' && $method === 'GET') {
     $where_sql = implode(' AND ', $where);
 
     // Count total matching (for pagination info)
+    $modified_select = gy_has_column($pdo, 'snap_images', 'modified_at')
+        ? 'i.modified_at' : 'i.img_date AS modified_at';
     try {
         $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_images i WHERE $where_sql");
         $count_stmt->execute($params);
@@ -333,7 +352,7 @@ if ($resource === 'photos' && $method === 'GET') {
                 i.sort_order,
                 i.img_file,
                 i.img_date        AS posted_date,
-                i.modified_at,
+                $modified_select,
                 (SELECT c2.id       FROM snap_image_cat_map cm2 JOIN snap_categories c2 ON c2.id = cm2.cat_id WHERE cm2.image_id = i.id LIMIT 1) AS category_id,
                 (SELECT c2.cat_name FROM snap_image_cat_map cm2 JOIN snap_categories c2 ON c2.id = cm2.cat_id WHERE cm2.image_id = i.id LIMIT 1) AS category_name,
                 (SELECT a2.id         FROM snap_image_album_map am2 JOIN snap_albums a2 ON a2.id = am2.album_id WHERE am2.image_id = i.id LIMIT 1) AS album_id,
@@ -478,7 +497,8 @@ if ($resource === 'library' && $method === 'GET') {
         // --- IMAGES (full, or changed-since) ---
         $img_where  = ["i.img_status = 'published'"];
         $img_params = [];
-        if ($since_sql !== null) {
+        $has_modified = gy_has_column($pdo, 'snap_images', 'modified_at');
+        if ($since_sql !== null && $has_modified) {
             $img_where[]  = 'i.modified_at >= ?';
             $img_params[] = $since_sql;
         }
@@ -486,17 +506,17 @@ if ($resource === 'library' && $method === 'GET') {
         // Read-only path: never mutate schema on a GET. Only SELECT the colour tag
         // if the column exists yet — the write paths create it on first post; an
         // install that updated core but hasn't posted since simply reports ''.
-        $has_color = (bool)$pdo->query(
-            "SELECT COUNT(*) FROM information_schema.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_images'
-               AND COLUMN_NAME = 'img_color_mode'"
-        )->fetchColumn();
+        $has_color = gy_has_column($pdo, 'snap_images', 'img_color_mode');
         $color_select = $has_color ? "i.img_color_mode AS color_mode" : "'' AS color_mode";
+        $alt_select = gy_has_column($pdo, 'snap_images', 'img_alt') ? 'i.img_alt AS alt' : "'' AS alt";
+        $width_select = gy_has_column($pdo, 'snap_images', 'img_width') ? 'i.img_width' : 'NULL AS img_width';
+        $height_select = gy_has_column($pdo, 'snap_images', 'img_height') ? 'i.img_height' : 'NULL AS img_height';
+        $modified_select = $has_modified ? 'i.modified_at' : 'i.img_date AS modified_at';
         $img_stmt = $pdo->prepare("
             SELECT i.id, i.img_title AS title, i.img_description AS description,
-                   i.img_alt AS alt, $color_select, i.sort_order, i.img_file,
-                   i.img_date AS posted_date, i.modified_at,
-                   i.img_width, i.img_height
+                   $alt_select, $color_select, i.sort_order, i.img_file,
+                   i.img_date AS posted_date, $modified_select,
+                   $width_select, $height_select
             FROM snap_images i
             WHERE $img_where_sql
             ORDER BY i.sort_order ASC, i.id DESC
@@ -804,6 +824,8 @@ if ($resource === 'batch-update' && $method === 'POST') {
     $conflicts = [];
     $sort_touched = false;   // did any successful update carry a new sort_order?
 
+    $has_modified = gy_has_column($pdo, 'snap_images', 'modified_at');
+    $modified_select = $has_modified ? 'i2.modified_at' : 'NULL AS modified_at';
     foreach ($updates as $upd) {
         $id = isset($upd['id']) ? (int)$upd['id'] : 0;
         if ($id <= 0) {
@@ -815,7 +837,7 @@ if ($resource === 'batch-update' && $method === 'POST') {
         try {
             $row_stmt = $pdo->prepare("
                 SELECT i2.id, i2.img_title AS title, i2.img_description AS description,
-                       i2.sort_order, i2.modified_at,
+                       i2.sort_order, $modified_select,
                        (SELECT cm3.cat_id FROM snap_image_cat_map cm3 WHERE cm3.image_id = i2.id LIMIT 1) AS category_id
                 FROM snap_images i2 WHERE i2.id = ? LIMIT 1
             ");
@@ -835,7 +857,7 @@ if ($resource === 'batch-update' && $method === 'POST') {
         $force    = !empty($upd['force']);
         $expected = $upd['expected_modified_at'] ?? null;
 
-        if (!$force && $expected !== null) {
+        if ($has_modified && !$force && $expected !== null) {
             // Normalise both to comparable strings (strip microseconds if any)
             $exp_ts  = strtotime($expected);
             $live_ts = strtotime($current['modified_at']);
