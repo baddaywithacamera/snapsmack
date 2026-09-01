@@ -204,6 +204,30 @@ def _sha256_bytes(value):
     return hashlib.sha256(value).hexdigest()
 
 
+def _metadata_json_value(raw):
+    """Return a lossless-enough JSON representation of Pillow metadata values."""
+    if isinstance(raw, bytes):
+        return {"encoding": "hex", "value": raw.hex()}
+    if isinstance(raw, (str, int, float, bool)) or raw is None:
+        return raw
+    if isinstance(raw, dict):
+        return {str(key): _metadata_json_value(value)
+                for key, value in raw.items()}
+    if isinstance(raw, (list, tuple)):
+        return [_metadata_json_value(value) for value in raw]
+    # TIFF rational values are number-like but deliberately are not Python
+    # floats, so json.dumps rejects them. Preserve the exact fraction as well
+    # as a convenient decimal value instead of discarding or flattening it.
+    if hasattr(raw, "numerator") and hasattr(raw, "denominator"):
+        numerator = int(raw.numerator)
+        denominator = int(raw.denominator)
+        result = {"numerator": numerator, "denominator": denominator}
+        if denominator:
+            result["decimal"] = numerator / denominator
+        return result
+    return str(raw)
+
+
 def _safe_exif_document(source_path):
     result = {"source_filename": os.path.basename(source_path), "exif": {}}
     try:
@@ -211,7 +235,7 @@ def _safe_exif_document(source_path):
             result["format"] = image.format
             result["mode"] = image.mode
             result["dimensions"] = list(image.size)
-            result["dpi"] = list(image.info.get("dpi", ()))
+            result["dpi"] = _metadata_json_value(image.info.get("dpi", ()))
             icc = image.info.get("icc_profile", b"") or b""
             result["icc_profile"] = {
                 "embedded": bool(icc), "bytes": len(icc),
@@ -219,13 +243,7 @@ def _safe_exif_document(source_path):
             }
             for key, raw in image.getexif().items():
                 name = str(ExifTags.TAGS.get(key, key))
-                if isinstance(raw, bytes):
-                    value = {"encoding": "hex", "value": raw.hex()}
-                elif isinstance(raw, (str, int, float, bool)) or raw is None:
-                    value = raw
-                else:
-                    value = str(raw)
-                result["exif"][name] = value
+                result["exif"][name] = _metadata_json_value(raw)
     except Exception as error:  # RAW/unknown originals remain recoverable byte-for-byte.
         result["read_error"] = str(error)
     return result
