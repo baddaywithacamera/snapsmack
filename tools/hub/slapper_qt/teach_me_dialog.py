@@ -212,6 +212,7 @@ class TeachMeDialog(QDialog):
         self.values.hide()
         lesson_layout.addWidget(self.values)
         self.show_settings = QPushButton("SHOW SETTINGS")
+        self.show_settings.setObjectName("TeachSettingsToggle")
         self.show_settings.setCheckable(True)
         self.show_settings.toggled.connect(self._toggle_settings)
         lesson_layout.addWidget(self.show_settings, 0, Qt.AlignLeft)
