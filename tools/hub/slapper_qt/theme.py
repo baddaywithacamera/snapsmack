@@ -136,6 +136,16 @@ def stylesheet() -> str:
         color: {CANVAS};
         border: 1px solid {ACCENT};
     }}
+    QPushButton#ToneSwatch {{
+        background: {FIELD};
+        border: 1px solid {BORDER};
+        border-radius: 3px;
+        padding: 2px;
+    }}
+    QPushButton#ToneSwatch:hover {{
+        background: {FIELD};
+        border: 1px solid {ACCENT};
+    }}
 
     /* --- Layers panel --------------------------------------------------- */
     QPushButton#LayerAddBtn {{
