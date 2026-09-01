@@ -805,10 +805,12 @@ class SliderRow(QWidget):
         row.setContentsMargins(12, 3, 12, 3)
         row.setSpacing(8)
 
-        name = QLabel(label)
-        name.setObjectName("ControlName")
-        name.setFixedWidth(74)
-        row.addWidget(name)
+        self.name_label = QLabel(label)
+        self.name_label.setObjectName("ControlName")
+        # Long controls such as "Vignette Feather" must remain readable at
+        # the fixed inspector-rail width instead of being silently clipped.
+        self.name_label.setFixedWidth(192)
+        row.addWidget(self.name_label)
 
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setMinimum(self._to_step(self.start))
