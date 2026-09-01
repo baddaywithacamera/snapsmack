@@ -36,6 +36,28 @@ from sumna_offline import (
     KIND_SOLO, KIND_GRAM_CAROUSEL, KIND_GRAM_SINGLE, KIND_GRAM_TRIGRAM,
     MODE_SOLO, MODE_GRAM, MODE_SMACKTALK, MODE_UNKNOWN,
 )
+import sumna_resize
+
+
+# Export sizing policy. The fleet standard Sean set is a 3840 long-edge cap plus a
+# mild sharpen on downsize (SPEC-image-sizing-4k-coldsnap-gyss.md §10). COLD SNAP
+# sizes to this BEFORE upload so what you post is what gets stored and the sharpen
+# lands on the final pixels; the photographer's original on disk is never touched.
+# Per-site overrides slot in here once the shared portable-settings mirror lands on
+# dev (snap_settings_sync / snap_site_settings — currently Codex's uncommitted
+# reconcile work); until then every site gets the fleet standard, the correct default.
+EXPORT_MAX_LONG_EDGE = 3840
+EXPORT_JPEG_QUALITY  = 85
+EXPORT_SHARPEN       = True
+
+
+def _upload_ready(local_path: str) -> str:
+    """Path to the size-capped, mild-sharpened derivative for upload, or the
+    original path when it's already within policy. Never modifies the original;
+    falls back to the original on any resize error so a post is never blocked."""
+    return sumna_resize.export_path(
+        local_path, EXPORT_MAX_LONG_EDGE,
+        jpeg_quality=EXPORT_JPEG_QUALITY, sharpen=EXPORT_SHARPEN)
 
 
 def _mime(path: str) -> str:
@@ -156,7 +178,8 @@ class SoloPoster:
         if album_id is not None:
             form["album_ids[]"] = str(album_id)
 
-        files = {"img_file": (form["source_file"], open(im.local_path, "rb"), _mime(im.local_path))}
+        _up = _upload_ready(im.local_path)  # size-cap + mild sharpen; original untouched
+        files = {"img_file": (form["source_file"], open(_up, "rb"), _mime(_up))}
         # Forward client thumbs so the server can skip its GD pass once wired.
         _opened = [files["img_file"][1]]
         if im.thumb_square and os.path.isfile(im.thumb_square):
@@ -208,8 +231,9 @@ class GramPoster:
         Returns {path, thumb_square, thumb_aspect, width, height}."""
         opened = []
         try:
-            fh = open(im.local_path, "rb"); opened.append(fh)
-            files = {"image": (os.path.basename(im.local_path), fh, _mime(im.local_path))}
+            _up = _upload_ready(im.local_path)  # size-cap + mild sharpen; original untouched
+            fh = open(_up, "rb"); opened.append(fh)
+            files = {"image": (os.path.basename(im.local_path), fh, _mime(_up))}
             if im.thumb_square and os.path.isfile(im.thumb_square):
                 t = open(im.thumb_square, "rb"); opened.append(t)
                 files["thumb_square"] = (os.path.basename(im.thumb_square), t, "image/jpeg")
