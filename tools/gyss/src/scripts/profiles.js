@@ -60,12 +60,14 @@ function b64DecodeUtf8(b64) {
 
 /** On-disk canonical -> in-memory profile (plaintext api_key). */
 function fromDisk(data, path) {
+    const extras = (data.extras && typeof data.extras === 'object') ? data.extras : {};
     return {
         name:           data.name || '',
         site_url:       data.site_url || '',
-        api_key:        b64DecodeUtf8(data.api_key_enc || ''),
+        // GYSS must not mistake another tool's shared-profile key for its own.
+        api_key:        String(extras.api_key_gyss || '') || b64DecodeUtf8(data.api_key_enc || ''),
         last_connected: data.last_connected ?? null,
-        extras:         (data.extras && typeof data.extras === 'object') ? data.extras : {},
+        extras,
         _path:          path,
     };
 }
@@ -105,6 +107,23 @@ export async function listProfiles() {
 /** Load a single profile by path. Returns profile with raw api_key + extras. */
 export async function loadProfile(path) {
     const data = await readProfile(path);
+    const extras = (data.extras && typeof data.extras === 'object') ? data.extras : {};
+    // Fleet discovery retains the full hub→spoke key locally. Use it once to
+    // mint a restricted GYSS-only key, then persist that scoped key separately.
+    if (!String(extras.api_key_gyss || '').trim() && String(extras.api_key_local || '').trim()) {
+        try {
+            extras.api_key_gyss = await invoke('provision_gyss_key', {
+                siteUrl: String(data.site_url || ''),
+                apiKeyLocal: String(extras.api_key_local),
+            });
+            data.extras = extras;
+            await invoke('write_file', { path, content: JSON.stringify(data, null, 2) });
+        } catch (err) {
+            // The fleet hub cannot provision itself through its spoke-only route.
+            // Keep loading so a manually created GYSS key remains usable.
+            console.warn('Automatic GYSS key provisioning failed:', err);
+        }
+    }
     return fromDisk(data, path);
 }
 
@@ -117,16 +136,20 @@ export async function saveProfile(profile) {
     const path = await join(dir, `${siteKey(site)}.json`);
 
     // Merge over any existing on-disk profile so we never drop another tool's extras.
+    let existing = null;
+    try { existing = await readProfile(path); } catch { /* new profile */ }
     let extras = (profile.extras && typeof profile.extras === 'object') ? profile.extras : null;
     if (!extras) {
-        try { extras = (await readProfile(path)).extras || {}; } catch { extras = {}; }
+        extras = existing?.extras || {};
     }
+    extras.api_key_gyss = String(profile.api_key || '');
 
     const toWrite = {
         schema:         SCHEMA,
         name:           profile.name || site,
         site_url:       site,
-        api_key_enc:    b64EncodeUtf8(profile.api_key || ''),
+        // Preserve the shared profile's primary key; GYSS owns its scoped entry.
+        api_key_enc:    existing?.api_key_enc || b64EncodeUtf8(profile.api_key || ''),
         last_connected: profile.last_connected ?? null,
         extras:         (extras && typeof extras === 'object') ? extras : {},
     };
