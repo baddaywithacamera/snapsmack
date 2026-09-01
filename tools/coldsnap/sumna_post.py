@@ -27,6 +27,7 @@ Server-side items this build flags (see addendum):
 
 
 import os
+import sys
 from typing import List, Optional, Tuple
 
 import requests
@@ -38,26 +39,72 @@ from sumna_offline import (
 )
 import sumna_resize
 
+# Canonical per-site settings contract. Bundled flat next to this module on the
+# frozen exe, one dir up under _shared/ in the dev tree (same shim sumna_resize uses).
+try:
+    import snap_site_settings
+except ImportError:  # pragma: no cover - dev-tree import shim
+    _shared = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '_shared')
+    if _shared not in sys.path:
+        sys.path.insert(0, _shared)
+    import snap_site_settings
+
 
 # Export sizing policy. The fleet standard Sean set is a 3840 long-edge cap plus a
-# mild sharpen on downsize (SPEC-image-sizing-4k-coldsnap-gyss.md §10). COLD SNAP
+# mild sharpen on downsize (SPEC-image-sizing-4k-coldsnap-gyss.md §9/§10). COLD SNAP
 # sizes to this BEFORE upload so what you post is what gets stored and the sharpen
 # lands on the final pixels; the photographer's original on disk is never touched.
-# Per-site overrides slot in here once the shared portable-settings mirror lands on
-# dev (snap_settings_sync / snap_site_settings — currently Codex's uncommitted
-# reconcile work); until then every site gets the fleet standard, the correct default.
-EXPORT_MAX_LONG_EDGE = 3840
-EXPORT_JPEG_QUALITY  = 85
-EXPORT_SHARPEN       = True
+#
+# The number is no longer hard-coded here: it comes from the canonical per-site
+# settings contract (snap_site_settings.max_long_edge). A poster resolves its
+# destination's policy once via _export_policy() and every image it sends uses it.
+# When a site has no portable settings mirrored yet, validate_portable() returns the
+# fleet default (3840 / q85 / sharpen-on-downsize) — so behaviour is unchanged until
+# the hub actually pushes a per-site override, then it flows through with no code
+# change. This is the seam the shared portable mirror was always meant to fill.
+EXPORT_MAX_LONG_EDGE = snap_site_settings.DEFAULT_MAX_LONG_EDGE  # fleet default (3840)
 
 
-def _upload_ready(local_path: str) -> str:
+def _export_policy(portable=None) -> dict:
+    """Resolve the (max_long_edge, jpeg_quality, sharpen) COLD SNAP should export
+    at for one destination, from the canonical settings contract.
+
+    `portable` is the destination site's portable settings dict (or None for the
+    fleet default). RESIZE OFF (image_resize_enabled=False) disables sizing by
+    setting the long edge to 0, which export_path() treats as "upload original".
+    export_sharpen "off" disables the mild sharpen; every other value keeps it
+    (mild-v1, applied only on a real downsize by snap_sizing)."""
+    p = snap_site_settings.validate_portable(portable or {})
+    long_edge = p["max_long_edge"] if p["image_resize_enabled"] else 0
+    return {
+        "max_long_edge": long_edge,
+        "jpeg_quality": p["jpeg_quality"],
+        "sharpen": p["export_sharpen"] != "off",
+    }
+
+
+def _portable_from_site_data(site_data) -> dict:
+    """Best-effort extraction of a portable settings dict from COLD SNAP's per-site
+    data, tolerant of shape. Returns only keys the contract knows (so an unrelated
+    field never trips validate_portable's unknown-key guard); {} means fleet default."""
+    try:
+        if not isinstance(site_data, dict):
+            return {}
+        src = site_data.get("portable") if isinstance(site_data.get("portable"), dict) else site_data
+        known = set(snap_site_settings.PORTABLE_DEFAULTS)
+        return {k: src[k] for k in known if k in src}
+    except Exception:
+        return {}
+
+
+def _upload_ready(local_path: str, policy: dict = None) -> str:
     """Path to the size-capped, mild-sharpened derivative for upload, or the
     original path when it's already within policy. Never modifies the original;
     falls back to the original on any resize error so a post is never blocked."""
+    policy = policy or _export_policy()
     return sumna_resize.export_path(
-        local_path, EXPORT_MAX_LONG_EDGE,
-        jpeg_quality=EXPORT_JPEG_QUALITY, sharpen=EXPORT_SHARPEN)
+        local_path, policy["max_long_edge"],
+        jpeg_quality=policy["jpeg_quality"], sharpen=policy["sharpen"])
 
 
 def _mime(path: str) -> str:
@@ -140,6 +187,9 @@ class SoloPoster:
         self.conn = conn
         self.site_data = site_data  # optional poster.SiteData for cat/album id lookup
         self.copyright_text = copyright_text
+        # Resolve the destination's export sizing policy once (fleet default until
+        # the site's portable settings are mirrored — see _export_policy).
+        self.policy = _export_policy(_portable_from_site_data(site_data))
 
     def _resolve_ids(self, draft: Draft) -> Tuple[Optional[int], Optional[int]]:
         cat_id = album_id = None
@@ -178,7 +228,7 @@ class SoloPoster:
         if album_id is not None:
             form["album_ids[]"] = str(album_id)
 
-        _up = _upload_ready(im.local_path)  # size-cap + mild sharpen; original untouched
+        _up = _upload_ready(im.local_path, self.policy)  # size-cap + mild sharpen; original untouched
         files = {"img_file": (form["source_file"], open(_up, "rb"), _mime(_up))}
         # Forward client thumbs so the server can skip its GD pass once wired.
         _opened = [files["img_file"][1]]
@@ -222,8 +272,10 @@ class SoloPoster:
 # ---------------------------------------------------------------------------
 
 class GramPoster:
-    def __init__(self, conn: SumnaConnection):
+    def __init__(self, conn: SumnaConnection, site_data=None):
         self.conn = conn
+        # Same destination-aware sizing policy as solo posts.
+        self.policy = _export_policy(_portable_from_site_data(site_data))
 
     def _upload_image(self, im) -> dict:
         """POST one JPEG + its client thumbs to threeacross/gram/upload. Client
@@ -231,7 +283,7 @@ class GramPoster:
         Returns {path, thumb_square, thumb_aspect, width, height}."""
         opened = []
         try:
-            _up = _upload_ready(im.local_path)  # size-cap + mild sharpen; original untouched
+            _up = _upload_ready(im.local_path, self.policy)  # size-cap + mild sharpen; original untouched
             fh = open(_up, "rb"); opened.append(fh)
             files = {"image": (os.path.basename(im.local_path), fh, _mime(_up))}
             if im.thumb_square and os.path.isfile(im.thumb_square):
