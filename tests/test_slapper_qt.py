@@ -302,6 +302,7 @@ def test_context_sensitive_toolbars():
 
     assert [action.text() for action in win._context_selectors.values()] == [
         "EDIT", "RETOUCH", "LOOKS", "OUTPUT", "VIEW"]
+    assert win._context_selectors["edit"].isChecked()
 
     def visible_tools():
         return [action.text() for action in win.context_toolbar.actions()
@@ -318,6 +319,13 @@ def test_context_sensitive_toolbars():
     win._context_selectors["view"].trigger()
     assert visible_tools() == [
         "Zoom −", "Zoom +", "Fit", "100%", "Filmstrip", "Preferences", "Help"]
+    win._context_selectors["edit"].trigger()
+    win.act_crop.setChecked(True)
+    assert win.act_crop.isChecked()
+    css = theme.stylesheet()
+    assert "QToolBar QToolButton:checked" in css
+    assert f"background: {theme.ACCENT_DIM}" in css
+    assert f"border: 1px solid {theme.ACCENT}" in css
 
     # Normal mode keeps the chosen workspace but removes Advanced-only tools.
     win._context_selectors["looks"].trigger()
