@@ -93,15 +93,28 @@ export async function listProfiles() {
         if (!/\.json$/i.test(p)) continue;
         try {
             const data = await readProfile(p);
+            const extras = (data.extras && typeof data.extras === 'object') ? data.extras : {};
+            if (extras.gyss_site_mode === 'smacktalk') continue;
             profiles.push({
                 _path:          p,
                 name:           data.name || '',
                 site_url:       data.site_url || '',
                 last_connected: data.last_connected ?? null,
+                site_mode:      extras.gyss_site_mode || '',
             });
         } catch { /* skip malformed / non-profile json */ }
     }
     return profiles.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+}
+
+/** Cache the site's mode without disturbing keys or settings owned by other tools. */
+export async function cacheProfileSiteMode(path, mode) {
+    try {
+        const data = await readProfile(path);
+        data.extras = (data.extras && typeof data.extras === 'object') ? data.extras : {};
+        data.extras.gyss_site_mode = String(mode || '');
+        await invoke('write_file', { path, content: JSON.stringify(data, null, 2) });
+    } catch { /* classification is best-effort */ }
 }
 
 /** Load a single profile by path. Returns profile with raw api_key + extras. */

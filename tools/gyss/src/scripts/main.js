@@ -4,7 +4,7 @@
 
 import { SnapSmackGYSSAPI } from './api.js';
 import {
-    listProfiles, loadProfile, saveProfile, deleteProfile, touchProfile
+    listProfiles, loadProfile, saveProfile, deleteProfile, touchProfile, cacheProfileSiteMode
 } from './profiles.js';
 import {
     createSession, dirtyCount, markDirty, clearDirty,
@@ -39,6 +39,7 @@ let state = {
     gramSelected:   new Set(),    // selected post ids in the GRID tab
     sharedCreds:    {},           // shared secret store (gemini_api_key, drive_folder_id, google_credentials)
 };
+const profileModeChecks = new Set();
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -97,6 +98,31 @@ document.addEventListener('click', e => {
 async function refreshProfiles() {
     state.profiles = await listProfiles();
     renderProfileList();
+    classifyUnknownProfiles(state.profiles.filter(p => !p.site_mode));
+}
+
+// Shared profiles are used by every desktop tool, including SMACKTALK. Identify
+// unknown entries once in the background, cache their mode, then remove longform
+// sites from GYSS without making the user click through each one.
+async function classifyUnknownProfiles(profiles) {
+    const pending = profiles.filter(p => !profileModeChecks.has(p._path));
+    for (const summary of pending) profileModeChecks.add(summary._path);
+    const workers = Array.from({ length: Math.min(4, pending.length) }, async () => {
+        while (pending.length) {
+            const summary = pending.shift();
+            try {
+                const profile = await loadProfile(summary._path);
+                if (!profile.api_key) continue;
+                const reply = await new SnapSmackGYSSAPI(profile.site_url, profile.api_key).ping();
+                await cacheProfileSiteMode(summary._path, reply.site_mode || 'photoblog');
+            } catch { /* offline/old sites stay visible and can be retried manually */ }
+        }
+    });
+    await Promise.all(workers);
+    if (workers.length) {
+        state.profiles = await listProfiles();
+        renderProfileList();
+    }
 }
 
 function renderProfileList() {
@@ -203,6 +229,7 @@ async function activateProfile(profile) {
         const r = await state.api.ping();
         await touchProfile(profile._path, new Date().toISOString());
         state.siteMode = r.site_mode || 'photoblog';
+        await cacheProfileSiteMode(profile._path, state.siteMode);
         applyModeTabs();
 
         if (state.siteMode === 'carousel') {
@@ -213,7 +240,14 @@ async function activateProfile(profile) {
         } else if (state.siteMode === 'photoblog') {
             // SMACKONEOUT: the original photo sorter.
             setStatus('connect-status', `Connected: ${r.site_name} (v${r.version}) — SMACKONEOUT`, 'ok');
-            state.meta = await state.api.meta();
+            try {
+                state.meta = await state.api.meta();
+            } catch (metaErr) {
+                // Old sites can sort photographs even when their optional
+                // category/album membership schema cannot provide counts yet.
+                state.meta = { categories: [], albums: [] };
+                toast(`Connected, but category/album metadata is unavailable: ${metaErr.message}`, 'error');
+            }
             populateFilterDropdowns();
             await refreshSessions();
             await refreshLibraryStatus();
@@ -229,6 +263,8 @@ async function activateProfile(profile) {
                 `Connected to ${r.site_name}, but GYSS doesn't support ${modeName} sites. ` +
                 `Longform images live inside essays and aren't sortable — use SmackPress to manage longform.`,
                 'error');
+            state.profiles = await listProfiles();
+            renderProfileList();
             showTab('connect');
         }
     } catch (err) {

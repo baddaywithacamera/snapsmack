@@ -1271,7 +1271,7 @@ dependencies = [
 
 [[package]]
 name = "get-your-shit-sorted"
-version = "0.7.8"
+version = "0.7.9"
 dependencies = [
  "reqwest 0.12.28",
  "rusqlite",

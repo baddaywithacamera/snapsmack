@@ -376,6 +376,8 @@ if ($resource === 'photos' && $method === 'GET') {
 // Returns categories and albums for filter/edit dropdowns.
 // =============================================================================
 if ($resource === 'meta' && $method === 'GET') {
+    $cats = [];
+    $albums = [];
     try {
         $cats = $pdo->query("
             SELECT c.id, c.cat_name AS name, COUNT(cm.image_id) AS `count`
@@ -385,6 +387,19 @@ if ($resource === 'meta' && $method === 'GET') {
             ORDER BY c.cat_name ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
 
+    } catch (Exception $e) {
+        // Some older installations have categories but pre-date (or have a
+        // differently shaped) membership table. Metadata must still connect;
+        // counts can safely be unknown until that site's schema is upgraded.
+        try {
+            $cats = $pdo->query("
+                SELECT c.id, c.cat_name AS name, 0 AS `count`
+                FROM snap_categories c ORDER BY c.cat_name ASC
+            ")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $ignored) { $cats = []; }
+    }
+
+    try {
         $albums = $pdo->query("
             SELECT a.id, a.album_name AS name, COUNT(am.image_id) AS `count`
             FROM snap_albums a
@@ -393,7 +408,12 @@ if ($resource === 'meta' && $method === 'GET') {
             ORDER BY a.album_name ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
-        gy_err('Database error fetching meta', 500);
+        try {
+            $albums = $pdo->query("
+                SELECT a.id, a.album_name AS name, 0 AS `count`
+                FROM snap_albums a ORDER BY a.album_name ASC
+            ")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $ignored) { $albums = []; }
     }
 
     // Cast count to int
