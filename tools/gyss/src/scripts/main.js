@@ -236,6 +236,50 @@ async function activateProfile(profile) {
     }
 }
 
+// Normalize a site URL for comparison — the SnapSmackGYSSAPI client stores its
+// target as baseUrl with one trailing slash stripped; we strip all + lowercase so
+// two URLs that mean the same site compare equal regardless of casing/trailing /.
+function normalizeSiteUrl(url) {
+    return String(url || '').trim().replace(/\/+$/, '').toLowerCase();
+}
+
+// True only when there is a live API client AND it targets `siteUrl`. This is the
+// guard that stops a resumed session pushing its edits to whatever site happened
+// to be connected (or, with no client, silently no-op'ing) — a wrong-site write.
+function apiTargetsSite(siteUrl) {
+    return !!state.api && normalizeSiteUrl(state.api.baseUrl) === normalizeSiteUrl(siteUrl);
+}
+
+// Resume restores a session's photos, but a session also belongs to ONE site.
+// Re-activate that site's saved profile so PUSH targets the right blog. Without
+// this, PUSH ran against whatever profile was last connected (or nothing) — either
+// silently no-op'ing (no client) or writing the resumed edits to the WRONG site,
+// while the confirm dialog still named the session's own URL. Returns:
+//   'ok'        — connected to the session's site (already, or freshly)
+//   'not-found' — no saved profile matches the session's site (push stays blocked)
+//   'error'     — a matching profile exists but couldn't be loaded
+async function restoreSessionProfile(session) {
+    if (apiTargetsSite(session.site_url)) return 'ok';   // already on the right site
+
+    const want  = normalizeSiteUrl(session.site_url);
+    const match = state.profiles.find(p => normalizeSiteUrl(p.site_url) === want)
+               || state.profiles.find(p => p.name === session.profile_name);
+    if (!match) return 'not-found';
+
+    try {
+        const profile = await loadProfile(match._path);
+        state.activeProfile = profile;
+        state.api           = new SnapSmackGYSSAPI(profile.site_url, profile.api_key);
+        renderProfileList();
+        // Best-effort meta so the edit panel's category dropdown resolves names.
+        // Never block resume on it — a cached/offline session must still open.
+        try { state.meta = await state.api.meta(); } catch { /* offline — session still opens */ }
+        return 'ok';
+    } catch {
+        return 'error';
+    }
+}
+
 // Show only the tabs that apply to the connected site's mode. CONNECT always
 // shows. FILTER/SORT are photoblog-only; GRID is carousel-only (data-mode). REPAIR
 // (image-metadata enrichment) applies to both photo modes but NOT to SMACKTALK
@@ -306,7 +350,20 @@ function bindFilterTab() {
             const s = await loadSession(resume.dataset.path);
             state.session     = s;
             state.sessionPath = resume.dataset.path;
+            // Re-bind to the session's OWN site before showing anything editable, so
+            // a later PUSH can't target a different blog than the one on the label.
+            const restored = await restoreSessionProfile(s);
             renderSortGrid();
+            if (restored === 'not-found') {
+                setStatus('sort-status',
+                    `Resumed, but no saved profile matches ${s.site_url}. Add/connect that site on ` +
+                    `CONNECT before pushing — PUSH stays blocked until the connection matches this session.`,
+                    'warn');
+            } else if (restored === 'error') {
+                setStatus('sort-status',
+                    `Resumed, but reconnecting to ${s.site_url} failed. Connect that site on CONNECT ` +
+                    `before pushing.`, 'warn');
+            }
             if (s.unresolved_conflicts?.length > 0) {
                 openConflictModal(s.unresolved_conflicts);
             }
@@ -460,7 +517,9 @@ function renderSortGrid() {
     `).join('');
 
     updateSortTopBar();
-    initDragAndDrop();
+    // Drag listeners are attached ONCE in bindSortTab (delegated on the persistent
+    // #sort-grid), NOT here — re-attaching every render stacked a fresh set of five
+    // listeners each reorder, so long sessions fired the drop handler repeatedly.
 }
 
 function updateSortTopBar() {
@@ -468,8 +527,12 @@ function updateSortTopBar() {
     const dc = dirtyCount(state.session);
     const pushBtn = document.getElementById('btn-push');
     if (pushBtn) {
-        pushBtn.disabled     = dc === 0;
+        const targeted       = apiTargetsSite(state.session.site_url);
+        pushBtn.disabled     = dc === 0 || !targeted;
         pushBtn.textContent  = dc > 0 ? `PUSH CHANGES (${dc})` : 'PUSH CHANGES';
+        pushBtn.title        = !targeted
+            ? `Not connected to ${state.session.site_url}. Connect that site on CONNECT to push.`
+            : '';
     }
     const profileLabel = document.getElementById('sort-profile-label');
     if (profileLabel) {
@@ -574,6 +637,11 @@ function reorderPhotos(movedIds, targetIdx) {
 
 // Click card → open/close edit panel; shift/ctrl click → multi-select
 function bindSortTab() {
+    // Attach drag-reorder listeners ONCE on the persistent #sort-grid (delegated),
+    // matching the GRID tab. renderSortGrid() only swaps innerHTML, so these survive
+    // every re-render and must never be re-bound per render.
+    initDragAndDrop();
+
     document.getElementById('sort-grid')?.addEventListener('click', e => {
         const card = e.target.closest('.photo-card');
         if (!card) return;
@@ -600,7 +668,17 @@ function bindSortTab() {
 
     // PUSH CHANGES
     document.getElementById('btn-push')?.addEventListener('click', async () => {
-        if (!state.session || !state.api) return;
+        if (!state.session) return;
+        // Hard guard: only ever push to the site this session belongs to. A resumed
+        // session could otherwise push its edits to whatever site is connected. Fail
+        // loud (not the old silent return) so it's clear why nothing was sent.
+        if (!apiTargetsSite(state.session.site_url)) {
+            setStatus('sort-status',
+                `Can't push — not connected to ${state.session.site_url}. Connect that site on ` +
+                `CONNECT, then push. (Refusing to send this session's edits to a different site.)`,
+                'error');
+            return;
+        }
         const dirty = state.session.photos.filter(p => p.dirty);
         if (dirty.length === 0) return;
         if (!confirm(`Push ${dirty.length} changes to ${state.session.site_url}?`)) return;
@@ -842,8 +920,14 @@ async function resolveConflict(photoId, action) {
     const p        = state.session.photos.find(ph => ph.id === photoId);
 
     if (action === 'keep-mine') {
-        // Re-push with force:true
-        if (!state.api || !p) return;
+        // Re-push with force:true — same wrong-site guard as PUSH. force:true skips
+        // the server's conflict check, so a mis-targeted client here would overwrite
+        // another blog's record outright; refuse unless we're on the session's site.
+        if (!p) return;
+        if (!apiTargetsSite(state.session.site_url)) {
+            toast(`Can't push — not connected to ${state.session.site_url}. Connect that site first.`, 'error');
+            return;
+        }
         try {
             const updates = [{
                 id:         photoId,
