@@ -81,7 +81,7 @@ def _checks():
     # 1. Happy path: all 3 uploaded, post created, success + post_id.
     fake = FakeSession()
     poster = P.SmacktalkPoster("https://smacktalk.example", "deadbeef", session=fake)
-    res = poster.sync(draft)
+    res = poster.sync_smacktalk(draft)
     assert res.ok, res.message
     assert res.remote_post_id == 777, res.remote_post_id
     assert fake.uploads == 3, fake.uploads
@@ -103,7 +103,7 @@ def _checks():
 
     # 4. Guard: no key -> friendly failure, no uploads attempted.
     f2 = FakeSession()
-    res = P.SmacktalkPoster("https://x", "", session=f2).sync(draft)
+    res = P.SmacktalkPoster("https://x", "", session=f2).sync_smacktalk(draft)
     assert not res.ok and "key" in res.message.lower(), res.message
     assert f2.uploads == 0, f2.uploads
     n += 1
@@ -111,7 +111,7 @@ def _checks():
     # 5. Guard: no title -> failure.
     notitle = Draft(draft_id="d2", kind=KIND_SMACKTALK, mode=MODE_SMACKTALK, title="  ")
     notitle.images = [DraftImage(local_path=p1, filename="a.jpg")]
-    res = P.SmacktalkPoster("https://x", "k", session=FakeSession()).sync(notitle)
+    res = P.SmacktalkPoster("https://x", "k", session=FakeSession()).sync_smacktalk(notitle)
     assert not res.ok and "title" in res.message.lower(), res.message
     n += 1
 
