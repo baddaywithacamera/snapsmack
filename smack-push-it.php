@@ -42,7 +42,7 @@ $spokes = $pdo->query("
 
 $push_group_keys = [
     'timezone'  => ['timezone', 'date_format',          'hub_controls_timezone'],
-    'imagesize' => ['max_width_landscape', 'max_height_portrait', 'hub_controls_imagesize'],
+    'imagesize' => ['image_max_resolution', 'max_width_landscape', 'max_height_portrait', 'max_long_edge', 'image_resize_enabled', 'hub_controls_imagesize'],
     'akismet'   => ['akismet_key',                       'hub_controls_akismet'],
     // BILLABLE: provider + API keys + cost-acceptance (arms paid enrichment on the
     // spoke). Kept deliberately separate from the free crawler policy below so a
@@ -70,6 +70,28 @@ $push_group_keys = [
         'hub_controls_socialdock',
     ],
 ];
+
+// ─── FLEET IMAGE-SIZE PRESET ─────────────────────────────────────────────────
+/**
+ * Map a fleet image-size preset to the exact settings values it writes on the hub
+ * (and then pushes to the fleet). Pure + testable so a key-name drift can't silently
+ * drop a field from the push. Empty/unknown preset -> [] (no change).
+ *
+ * 4K = 3840, Full HD = 1920, applied to the LONG EDGE in either orientation
+ * (symmetric box, Sean 2026-09-01). Writes the ingest preset, the legacy pair, the
+ * canonical long-edge the desktop tools read, and forces resize-on. Downscale-only.
+ */
+function pushit_size_preset_vals(string $preset): array {
+    if (!in_array($preset, ['4k', 'fullhd'], true)) return [];
+    $edge = $preset === '4k' ? 3840 : 1920;
+    return [
+        'image_max_resolution' => $preset,        // matches image-ingest.php's preset (4k/fullhd)
+        'max_width_landscape'  => (string)$edge,
+        'max_height_portrait'  => (string)$edge,  // symmetric long-edge box
+        'max_long_edge'        => (string)$edge,  // canonical field the desktop tools read
+        'image_resize_enabled' => '1',            // ensure downscaling is on
+    ];
+}
 
 // ─── cURL PUSH HELPER ────────────────────────────────────────────────────────
 function pushit_push(string $site_url, string $api_key, array $pairs): array {
@@ -138,6 +160,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['csrf']) && hash_equa
         $ctrl_val = isset($_POST['hub_controls'][$group]) ? '1' : '0';
         $upsert->execute([$ctrl_key, $ctrl_val]);
         $settings[$ctrl_key] = $ctrl_val; // update in-memory
+    }
+
+    // Fleet image-size preset: when the operator picks 4K / Full HD, set the hub's
+    // OWN size values from the preset BEFORE the imagesize push carries them to the
+    // fleet (same "save hub first, then push" shape as SMACKBACK). FORWARD-ONLY —
+    // this caps future uploads; it never touches a single stored image, and it never
+    // enlarges (only downscales oversized uploads). 3840 is symmetric (Sean, 2026-09-01).
+    $size_vals = pushit_size_preset_vals($_POST['image_size_preset'] ?? '');
+    if ($size_vals && (isset($_POST['push_imagesize']) || isset($_POST['push_all']))) {
+        foreach ($size_vals as $k => $v) { $upsert->execute([$k, $v]); $settings[$k] = $v; }
     }
 
     // Individual group push
@@ -293,12 +325,14 @@ include 'core/sidebar.php';
             <h3>MAXIMUM IMAGE SIZE</h3>
             <div class="dash-grid mb-16">
                 <div class="lens-input-wrapper">
-                    <label>MAX WIDTH (LANDSCAPE)</label>
-                    <div class="read-only-display"><?php echo htmlspecialchars($settings['max_width_landscape'] ?? '2500'); ?> px</div>
-                </div>
-                <div class="lens-input-wrapper">
-                    <label>MAX HEIGHT (PORTRAIT)</label>
-                    <div class="read-only-display"><?php echo htmlspecialchars($settings['max_height_portrait'] ?? '1850'); ?> px</div>
+                    <label>SET FLEET TO</label>
+                    <?php $cur_edge = htmlspecialchars($settings['max_long_edge'] ?? $settings['max_width_landscape'] ?? '2500'); ?>
+                    <select name="image_size_preset">
+                        <option value="">KEEP CURRENT (<?php echo $cur_edge; ?> PX LONG EDGE)</option>
+                        <option value="4k">4K — 3840 PX LONG EDGE</option>
+                        <option value="fullhd">FULL HD — 1920 PX LONG EDGE</option>
+                    </select>
+                    <span class="dim text-0-82">Applies to FUTURE uploads only — existing images are never changed. Oversized photos are downscaled to fit; smaller ones are never enlarged.</span>
                 </div>
                 <div class="lens-input-wrapper">
                     <label>HUB CONTROLS THIS SETTING</label>
@@ -310,6 +344,7 @@ include 'core/sidebar.php';
                     <span class="dim text-0-82">When on, spokes cannot change their maximum image dimensions — the whole fleet resizes uploads to the same caps.</span>
                 </div>
             </div>
+            <button type="submit" name="push_imagesize" class="btn-smack">PUSH IMAGE SIZE TO FLEET</button>
             <?php $render_result('imagesize'); ?>
         </div>
 
