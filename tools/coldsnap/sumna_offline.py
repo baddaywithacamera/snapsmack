@@ -59,7 +59,7 @@ except ImportError:  # pragma: no cover - import shim for dev tree
 # ---------------------------------------------------------------------------
 
 SCHEMA_VERSION = 1          # draft-JSON structure version
-BUILD_VERSION  = "0.1.0"    # COLD SNAP suite build
+from _version import BUILD_VERSION  # single source of truth (shared with coldsnap.py)
 EXPORT_MANIFEST_VERSION = 1  # thumb-drive export folder format
 
 # Draft kinds — each maps to a concrete SnapSmack post shape.
@@ -67,8 +67,14 @@ KIND_SOLO          = "solo"            # SMACKONEOUT single-image post
 KIND_GRAM_SINGLE   = "gram_single"     # GRAMOFSMACK single image
 KIND_GRAM_CAROUSEL = "gram_carousel"   # GRAMOFSMACK multi-image carousel (<=10)
 KIND_GRAM_TRIGRAM  = "gram_trigram"    # GRAMOFSMACK trigram slice/chunk
+KIND_SMACKTALK     = "smacktalk"       # SMACKTALK longform post + image BUCKET
 
 GRAM_KINDS = (KIND_GRAM_SINGLE, KIND_GRAM_CAROUSEL, KIND_GRAM_TRIGRAM)
+
+# Max photos in a SMACKTALK post's image bucket. Generous vs. a gram carousel —
+# a longform article can carry a whole photo essay. Soft, matches the server
+# (bucket.php dedups/orders; no hard server cap) but keeps a sane UI/upload bound.
+SMACKTALK_BUCKET_MAX = 50
 
 # Sync-status machine for a draft.
 ST_DRAFT   = "draft"     # being composed
@@ -81,7 +87,7 @@ ST_QUEUED  = "queued"    # trigram chunk waiting on its siblings (mirrors trigra
 # Site modes (snap_settings.site_mode values) and the suite mode that serves them.
 MODE_SOLO       = "photoblog"    # BATCH SLAPPED
 MODE_GRAM       = "carousel"     # BATCH, PLEASE
-MODE_SMACKTALK  = "smacktalk"    # SMACK YOUR BATCH UP (deferred)
+MODE_SMACKTALK  = "smacktalk"    # SMACKTALK — longform post + image bucket
 MODE_UNKNOWN    = "unknown"      # couldn't verify — show greyed, don't hide
 
 CAROUSEL_MAX_IMAGES = 10
@@ -218,10 +224,15 @@ class Draft:
     def validate(self) -> List[str]:
         """Return a list of human-readable problems; empty == ok to sync."""
         problems: List[str] = []
-        if self.kind not in (KIND_SOLO,) + GRAM_KINDS:
+        if self.kind not in (KIND_SOLO, KIND_SMACKTALK) + GRAM_KINDS:
             problems.append(f"unknown draft kind '{self.kind}'")
         if not self.images:
             problems.append("no images attached")
+        if self.kind == KIND_SMACKTALK:
+            if not (self.title or "").strip():
+                problems.append("a SMACKTALK post needs a title")
+            if len(self.images) > SMACKTALK_BUCKET_MAX:
+                problems.append(f"bucket has {len(self.images)} images (max {SMACKTALK_BUCKET_MAX})")
         for i, im in enumerate(self.images):
             if not im.local_path or not os.path.isfile(im.local_path):
                 problems.append(f"image {i + 1} missing on disk: {im.local_path}")
@@ -239,7 +250,8 @@ class Draft:
                 problems.append("a trigram chunk needs at least the sliced cover image")
             elif sum(1 for im in self.images if im.is_cover) != 1:
                 problems.append("a trigram chunk must have exactly one cover (the slice)")
-        if len(self.images) > CAROUSEL_MAX_IMAGES:
+        if self.kind != KIND_SMACKTALK and len(self.images) > CAROUSEL_MAX_IMAGES:
+            # SMACKTALK buckets have their own (larger) cap, checked above.
             problems.append(f"{len(self.images)} images exceeds the max of {CAROUSEL_MAX_IMAGES}")
         if self.kind == KIND_SOLO and self.img_status == "published" \
                 and self.allow_download and not self.download_url:

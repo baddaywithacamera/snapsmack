@@ -19,7 +19,7 @@ import re
 import sys
 
 HERE      = pathlib.Path(__file__).resolve().parent
-MAIN      = HERE / "coldsnap.py"
+MAIN      = HERE / "_version.py"   # single source of truth (was coldsnap.py)
 CHANGELOG = HERE / "CHANGELOG.md"
 
 
@@ -34,7 +34,7 @@ def read_version() -> "tuple[str, str]":
     text = MAIN.read_text(encoding="utf-8")
     m = re.search(r'BUILD_VERSION\s*=\s*"([^"]+)"', text)
     if not m:
-        _fail("BUILD_VERSION not found in coldsnap.py.")
+        _fail("BUILD_VERSION not found in _version.py.")
     return m.group(1), text
 
 

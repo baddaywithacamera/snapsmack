@@ -19,8 +19,8 @@ if /I "%~1"=="norev" (
     )
 )
 
-REM ── Read BUILD_VERSION from coldsnap.py ───────────────────────────────────
-for /f "tokens=3 delims= " %%V in ('findstr /C:"BUILD_VERSION = " coldsnap.py') do set RAW_VER=%%V
+REM ── Read BUILD_VERSION from _version.py (single source of truth) ──────────
+for /f "tokens=3 delims= " %%V in ('findstr /C:"BUILD_VERSION = " _version.py') do set RAW_VER=%%V
 set BUILD_VER=%RAW_VER:"=%
 set EXE_NAME=coldsnap.exe
 echo Build version: %BUILD_VER%
