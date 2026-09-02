@@ -2,6 +2,11 @@
 
 This module never performs network I/O. It creates a collision-safe derivative
 and an auditable sidecar manifest in a Hub profile's workstation staging folder.
+
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
 """
 
 from datetime import datetime, timezone
@@ -15,14 +20,24 @@ import photo_manager
 
 CONTRACT_VERSION = 1
 
+# Blog-Copy fallback long edge when a Hub profile specifies no explicit dimensions.
+# Was 2048 — half the fleet 4K standard — which silently shrank a copy whenever the
+# profile omitted a size. Aligned to the canonical fleet default so a dimensionless
+# profile matches everything else (SPEC image-sizing-4k §9a/§9g). Keep in sync with
+# snap_site_settings.DEFAULT_MAX_LONG_EDGE. Explicit profile dimensions still win —
+# ordinary SLAPPER export is unaffected; this only changes the missing-dims fallback.
+BLOG_COPY_FALLBACK_LONG_EDGE = 3840
+
 
 def profile_policy(profile):
     extras = dict(profile.get("extras") or {})
     capabilities = dict(extras.get("capabilities") or {})
     staging = (extras.get("local_uploads_dir") or
                extras.get("slapper_staging_dir") or "").strip()
-    width = int(capabilities.get("max_image_width") or extras.get("max_image_width") or 2048)
-    height = int(capabilities.get("max_image_height") or extras.get("max_image_height") or 2048)
+    width = int(capabilities.get("max_image_width") or extras.get("max_image_width")
+                or BLOG_COPY_FALLBACK_LONG_EDGE)
+    height = int(capabilities.get("max_image_height") or extras.get("max_image_height")
+                 or BLOG_COPY_FALLBACK_LONG_EDGE)
     quality = int(capabilities.get("preferred_quality") or extras.get("preferred_quality") or 90)
     extension = str(capabilities.get("preferred_extension") or
                     extras.get("preferred_extension") or ".jpg").lower()
