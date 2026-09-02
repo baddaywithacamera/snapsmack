@@ -11,6 +11,20 @@ red / amber / grey / green — so a silently-dead cron is caught before it bites
 Versioning follows the SnapSmack desktop-family `0.7.x` convention;
 `bump_version.py` adds one patch for subsequent builds.
 
+## Unreleased
+
+### Fixed
+- **Health verdict now reflects the cron run it just triggered.** Each poll runs a
+  site's due crons (`multisite/run-crons`), but the job status was read from the
+  heartbeat fetched *before* that run — so a job CRONOMETER had just kicked off
+  still showed as stale/overdue the instant you checked, a false verdict. The probe
+  now re-fetches the heartbeat once after a successful `run-crons` and reports from
+  that. Best-effort: if the run or the re-fetch fails, the original heartbeat stands
+  so a row is never lost. Regression test: `tests/test_cronometer_heartbeat.py`.
+  (Version to be assigned on the next build.)
+
+---
+
 ## 0.7.6 — 2026-08-31
 
 ### Added
