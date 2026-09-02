@@ -49,6 +49,21 @@ except ImportError:  # pragma: no cover - dev-tree import shim
         sys.path.insert(0, _shared)
     import snap_site_settings
 
+# SECAUDIT 054 F1 — the transport guard the other five tools already call
+# (SYBU / flkr-fckr / SUYB / CRONOMETER / discovery) and COLD SNAP silently
+# skipped. Same _shared shim so it resolves flat on the frozen exe too.
+try:
+    import snap_stepup
+except ImportError:  # pragma: no cover - dev-tree import shim
+    _shared = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '_shared')
+    if _shared not in sys.path:
+        sys.path.insert(0, _shared)
+    import snap_stepup
+
+
+class InsecureTransportError(RuntimeError):
+    """Refused to attach the posting key to an insecure (non-https) connection."""
+
 
 # Export sizing policy. The fleet standard Sean set is a 3840 long-edge cap plus a
 # mild sharpen on downsize (SPEC-image-sizing-4k-coldsnap-gyss.md §9/§10). COLD SNAP
@@ -134,6 +149,14 @@ def _resp_msg(r, default: str) -> str:
 class SumnaConnection:
     def __init__(self, base_url: str, api_key: str = "", api_path: str = "/api.php"):
         self.base_url = base_url.rstrip("/")
+        # SECAUDIT 054 F1 — REFUSE before the Bearer key is ever attached to a
+        # session or sent. Every SumnaConnection (post, probe, mode-check) goes
+        # through here, so this is the acting boundary for "the key leaves the
+        # machine": a hard refusal, matching SUYB's login guard. Loopback is
+        # allowed by insecure_transport_reason itself (dev/test on localhost).
+        reason = snap_stepup.insecure_transport_reason(self.base_url)
+        if reason:
+            raise InsecureTransportError(reason)
         self.api_path = api_path
         self.api_key = api_key
         self.session = requests.Session()

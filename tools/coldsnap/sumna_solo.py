@@ -22,7 +22,7 @@ from typing import Optional
 
 import sumna_ui as ui
 import sumna_offline as O
-from sumna_post import SumnaConnection, SoloPoster
+from sumna_post import SumnaConnection, SoloPoster, InsecureTransportError
 
 
 class SoloMode(tk.Frame):
@@ -406,7 +406,11 @@ class SoloMode(tk.Frame):
             messagebox.showwarning("Not connected",
                                    "Set the site URL + API key on the POST tab first.")
             return None
-        return SumnaConnection(url, key)
+        try:
+            return SumnaConnection(url, key)
+        except InsecureTransportError as e:
+            messagebox.showwarning("Insecure connection", str(e))
+            return None
 
     def _sync(self):
         if not self.session:
