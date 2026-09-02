@@ -73,6 +73,49 @@ def _path_for_site(site_url: str) -> str:
     return os.path.join(profiles_dir(), site_key(site_url) + ".json")
 
 
+def _profile_is_untampered(path: str, data: dict) -> str:
+    """SECAUDIT 054 F1 — tamper check on a shared profile.
+
+    save() names every profile <site_key(site_url)>.json, so a profile's in-file
+    site_url MUST reduce to the filename it is stored under. If it does not, the
+    file was altered — site_url flipped to an attacker's host while the real
+    api_key rides along — and any tool that then builds a Bearer session from it
+    would hand that site's key to the attacker. Return '' when the profile is
+    self-consistent, else a one-line reason it is refused. Enforced HERE, at the
+    shared loader, so every reader inherits it instead of one remembered call site.
+    """
+    site = (data.get("site_url") or "").strip()
+    if not site:
+        return "profile has no site_url"
+    stem = os.path.basename(path)
+    if stem.endswith(".json"):
+        stem = stem[:-5]
+    try:
+        actual = site_key(site)
+    except Exception as e:
+        return f"unusable site_url {site!r}: {e}"
+    if actual != stem:
+        return (f"profile host {actual!r} != filename host {stem!r} "
+                f"— tampered profile refused (re-save it to confirm the site)")
+    return ""
+
+
+def _read_verified(path: str):
+    """_read() + the F1 tamper check. Returns the raw on-disk dict, or None if the
+    file is missing/unreadable OR fails the tamper check (loud on stderr, never a
+    silent drop)."""
+    data = _read(path)
+    if not data:
+        return None
+    reason = _profile_is_untampered(path, data)
+    if reason:
+        import sys
+        print("[snap_profiles] REFUSED %s: %s" % (os.path.basename(path), reason),
+              file=sys.stderr)
+        return None
+    return data
+
+
 def _to_disk(profile: dict) -> dict:
     """Canonical in-memory (plaintext api_key) -> on-disk (api_key_enc)."""
     p = dict(profile)
@@ -140,7 +183,7 @@ def list_profiles() -> list:
     """Every stored profile as a canonical dict (plaintext api_key), sorted by name."""
     out = []
     for path in _iter_files():
-        data = _read(path)
+        data = _read_verified(path)
         if data:
             out.append(_from_disk(data))
     out.sort(key=lambda p: (p.get("name") or "").lower())
@@ -148,13 +191,13 @@ def list_profiles() -> list:
 
 
 def load_by_site(site_url: str):
-    data = _read(_path_for_site(site_url))
+    data = _read_verified(_path_for_site(site_url))
     return _from_disk(data) if data else None
 
 
 def load_by_name(name: str):
     for path in _iter_files():
-        data = _read(path)
+        data = _read_verified(path)
         if data and data.get("name") == name:
             return _from_disk(data)
     return None

@@ -159,6 +159,13 @@ def _provision_spoke_key(site_url, api_key_local, key_type="sybu", key_value="",
     older build without the route / the call failed."""
     if not (site_url and api_key_local):
         return ""
+    # SECAUDIT 054 F2 — REFUSE before the hub's provisioning-capable key goes to a
+    # node URL over an unsafe transport. A compromised/MITM'd hub can inject a node;
+    # the hub key must never be POSTed in the clear. (Host-allowlist constraint to
+    # the hub's registrable domain is a federation-trust policy call — three-way,
+    # Sean-present — and is tracked separately; this closes the transport lane.)
+    if insecure_transport_reason(site_url):
+        return ""
     body = {"key_type": key_type}
     if key_value:
         body["key_value"] = key_value.strip().lower()
@@ -189,6 +196,9 @@ def _provision_hub_backup_key(site_url, hub_api_key, key_value, timeout=20):
     this narrow same-site SUYB-key installation action.
     """
     if not (site_url and hub_api_key and key_value):
+        return ""
+    # SECAUDIT 054 F2 — same transport refusal before the hub credential goes out.
+    if insecure_transport_reason(site_url):
         return ""
     try:
         r = requests.post(
