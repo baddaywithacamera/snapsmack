@@ -91,6 +91,10 @@ class SmacktalkMode(tk.Frame):
         ebody = ui.box(right, "COMPOSE")
         ui.field(ebody, "Title", self._title)
         self._body = ui.textarea(ebody, "Body (the write-up)", height=5)
+        mrow = tk.Frame(ebody, bg=ui.BG_CARD); mrow.pack(fill="x")
+        ui.button(mrow, "Insert MOSAIC gallery", self._insert_mosaic).pack(side="left")
+        tk.Label(mrow, text="drops a [mosaic] — the bucket photos become a tiled gallery right here in the post",
+                 bg=ui.BG_CARD, fg=ui.FG_DIM, font=ui.FONT_SMALL).pack(side="left", padx=8)
         ui.field(ebody, "Tags (space-separated #hashtags)", self._tags)
 
         srow = tk.Frame(ebody, bg=ui.BG_CARD); srow.pack(fill="x", pady=(6, 0))
@@ -227,6 +231,16 @@ class SmacktalkMode(tk.Frame):
             self._refresh_drafts()
 
     # -- bucket -------------------------------------------------------------
+    def _insert_mosaic(self):
+        """Drop a [mosaic] token at the cursor. On post, COLD SNAP turns this essay's
+        bucket photos into a real justified [mosaic:ID] gallery right at this spot —
+        no id to look up, it's created from the images you already added."""
+        try:
+            self._body.insert("insert", "[mosaic]")
+            self._body.focus_set()
+        except Exception:
+            pass
+
     def _add_photos(self):
         paths = filedialog.askopenfilenames(
             title="Add photos to the bucket",
