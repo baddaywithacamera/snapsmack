@@ -46,10 +46,13 @@ except Exception as _e:                      # pragma: no cover
     _SHARED_ERR = str(_e)
 
 # Start the run log + crash capture as early as possible so anything that goes
-# wrong during startup (SNAP SLAPPER editor, LEWK AGAIN, library) is recorded.
+# wrong during HQ startup is recorded. Filed under HQ's own namespace — it used to
+# log as "snap_slapper", which buried HQ's interface/startup failures inside SNAP
+# SLAPPER's run logs and made them hard to attribute. Tools HQ launches keep their
+# own logs.
 try:
     import snap_log
-    snap_log.setup("snap_slapper")
+    snap_log.setup("snap_hq")
 except Exception:                            # pragma: no cover
     pass
 
@@ -415,9 +418,25 @@ class Hub(tk.Tk):
         return n
 
     def _on_save_creds(self):
+        """Persist the form EXACTLY as shown. Typed values are saved; a field the
+        user CLEARED removes that secret from the vault (the form is loaded from the
+        vault, so an empty field means 'make this empty'). Unlike the non-destructive
+        _save_typed_creds() that DISCOVER uses, the explicit Save can clear.
+
+        Safety: only clear a key that currently reads back as a non-empty secret, so a
+        locked/unreadable vault entry the user never actually saw is never deleted."""
         try:
-            n = self._save_typed_creds()
-            self._setup_status.configure(text=f"✓ {n} credential(s) saved to shared vault", fg=ACCENT)
+            saved = cleared = 0
+            for key, var in self._creds_vars.items():
+                val = var.get().strip()
+                if val:
+                    snap_creds.set(key, val); saved += 1
+                elif snap_creds.get(key, "").strip():
+                    snap_creds.delete(key); cleared += 1
+            msg = f"✓ {saved} credential(s) saved"
+            if cleared:
+                msg += f", {cleared} cleared"
+            self._setup_status.configure(text=f"{msg} · shared vault", fg=ACCENT)
         except Exception as e:
             self._setup_status.configure(text=f"save failed: {e}", fg="#ff5555")
 
