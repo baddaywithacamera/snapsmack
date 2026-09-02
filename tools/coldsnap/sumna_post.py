@@ -547,25 +547,29 @@ class SmacktalkPoster:
         mid, shortcode = self.create_mosaic(image_ids, title=(draft.title or "Mosaic"), gap=gap)
         return self._MOSAIC_TOKEN.sub(lambda _m: shortcode, content), [mid]
 
-    def _record_to_library(self, draft, post_id, content, server_data) -> None:
-        """Producer contract: on post-success, mirror what we posted into the shared
-        offline library so other tools compose against it. Best-effort — never let a
-        library hiccup turn a live post into a reported failure."""
+    def _record_to_library(self, draft, post_id, content, server_data, image_ids) -> None:
+        """Producer contract: on post-success, record WHAT WAS POSTED into the shared
+        offline library — the post text plus which Gallery images it used (the server's
+        snap_images ids). It copies NO photo files: the originals (often RAW, never
+        uploaded) stay on the photographer's disk untouched; the web-size upload and
+        thumbs already exist from the post itself. Keeping originals would be a backup
+        feature and must be explicit + opt-in, never a silent side effect.
+        Best-effort — a library hiccup never turns a live post into a reported failure."""
         if snap_library is None:
             return
         try:
             site = self.base_url
+            imgs = draft.images or []
             assets = []
-            for im in draft.images:
-                try:
-                    if not os.path.isfile(im.local_path):
-                        continue
-                    a = snap_library.store_media(site, im.local_path,
-                                                 orig_name=(getattr(im, "filename", "") or ""))
-                    a["alt"] = getattr(im, "alt", "") or ""
-                    assets.append(a)
-                except Exception:
+            for idx, im in enumerate(imgs):
+                iid = image_ids[idx] if idx < len(image_ids) else None
+                if not iid:
                     continue
+                assets.append({
+                    "asset_id":  "img:%d" % int(iid),   # the server's snap_images id
+                    "orig_name": getattr(im, "filename", "") or "",
+                    "alt":       getattr(im, "alt", "") or "",
+                })
             snap_library.record_post(site, {
                 "post_id":     post_id,
                 "site_mode":   "smacktalk",
@@ -621,8 +625,9 @@ class SmacktalkPoster:
         post_id = int(data.get("post_id") or 0)
         if not post_id:
             return SyncResult(False, message=data.get("error") or "server did not confirm the post")
-        # Producer: mirror the finished post + its originals into the shared library.
-        self._record_to_library(draft, post_id, content, data)
+        # Producer: record the finished post + which Gallery images it used (ids only,
+        # no photo files copied — originals stay on disk).
+        self._record_to_library(draft, post_id, content, data, image_ids)
         return SyncResult(True, remote_post_id=post_id, message="Posted")
 
     def verify(self, draft) -> bool:
