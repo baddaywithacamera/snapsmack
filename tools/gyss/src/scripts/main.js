@@ -516,7 +516,7 @@ function renderSortGrid() {
     const photos = [...state.session.photos].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
     grid.innerHTML = photos.map((p, idx) => `
         <div class="photo-card ${p.dirty ? 'dirty' : ''} ${state.selectedIds.has(p.id) ? 'selected' : ''}"
-             data-id="${p.id}" data-idx="${idx}" draggable="true">
+             data-id="${escHtml(p.id)}" data-idx="${idx}" draggable="true">
             <div class="drag-handle" title="Drag to reorder">⠿</div>
             ${p.dirty ? '<div class="dirty-dot" title="Unsaved changes"></div>' : ''}
             <img src="${escHtml(p.thumb_url)}" alt="${escHtml(p.title)}" loading="lazy">
@@ -1192,7 +1192,7 @@ function renderGridGrid() {
 
     grid.innerHTML = posts.map((p, idx) => `
         <div class="photo-card ${state.gramSelected.has(p.id) ? 'selected' : ''} ${p.combinable ? '' : 'not-combinable'}"
-             data-id="${p.id}" data-idx="${idx}" draggable="true"
+             data-id="${escHtml(p.id)}" data-idx="${idx}" draggable="true"
              title="${p.combinable ? 'Published single — selectable to combine' : escHtml(p.post_type) + (p.status !== 'published' ? ' · ' + escHtml(p.status) : '')}">
             <div class="drag-handle" title="Drag to reorder">⠿</div>
             ${p.image_count > 1 ? `<div class="gram-badge" title="${escHtml(p.image_count)} photos">⧉${escHtml(p.image_count)}</div>` : ''}
