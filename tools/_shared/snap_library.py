@@ -45,6 +45,7 @@ import sqlite3
 import time
 
 import snap_home
+from snap_paths import contained_local_path
 
 
 _SCHEMA = """
@@ -249,15 +250,22 @@ def store_media(site, source, *, orig_name="", ext="") -> dict:
         if not ext:
             ext = os.path.splitext(src_path)[1]
     ext = (ext or os.path.splitext(orig_name)[1] or "").lower()
-    fname = asset_id + ext
-    dest = os.path.join(snap_home.site_media_dir(site), fname)
+    # Restrict the extension to known image types — an unknown/hostile ext (e.g. a
+    # caller-supplied "/../../evil.exe", an NTFS ":stream", or ".php"/".lnk") is
+    # dropped so the store only ever holds recognisable media. asset_id is safe hex.
+    if ext not in _EXT_MIME:
+        ext = ""
+    # Contain the final filename too (defence in depth — every other path in the
+    # suite is jailed; the media filename must be no exception).
+    rel_name = asset_id + ext
+    dest = contained_local_path(snap_home.site_media_dir(site), rel_name)
     if not os.path.isfile(dest):
         if data is not None:
             with open(dest, "wb") as f:
                 f.write(data)
         else:
             shutil.copyfile(src_path, dest)
-    return {"asset_id": asset_id, "media_path": fname,
+    return {"asset_id": asset_id, "media_path": rel_name,
             "orig_name": orig_name, "mime": _EXT_MIME.get(ext, "")}
 
 
