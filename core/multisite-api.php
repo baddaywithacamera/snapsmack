@@ -1898,6 +1898,10 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
     $allowed_keys = [
         'timezone', 'date_format',
         'max_width_landscape', 'max_height_portrait',
+        // Fleet image-size (4K) push: the preset the ingest reads, the canonical
+        // long-edge the desktop tools read, and the resize-on flag. Forward-only —
+        // these cap FUTURE uploads; no stored image is touched. (SPEC image-sizing-4k)
+        'image_max_resolution', 'max_long_edge', 'image_resize_enabled',
         'akismet_key',
         'ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_key_deepseek', 'ai_key_kimi', 'ai_gemini_model', 'ai_openai_model', 'ai_deepseek_model', 'ai_kimi_model', 'ai_training_policy', 'ai_cost_accepted',
         'smackback_enabled', 'smackback_mode',
