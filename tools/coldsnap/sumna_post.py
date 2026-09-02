@@ -502,7 +502,7 @@ class SmacktalkPoster:
             payload["date"] = draft.post_date
         return payload
 
-    def sync(self, draft) -> SyncResult:
+    def sync_smacktalk(self, draft) -> SyncResult:
         if not self.key:
             return SyncResult(False, message="No SMACKTALK key set for this site (needs a 'smackpress' API key).")
         if not draft.images:
