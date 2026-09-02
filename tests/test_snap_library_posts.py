@@ -48,6 +48,28 @@ def test_store_media_dedupes_by_sha256_and_writes_file():
     os.unlink(tf.name)
 
 
+def test_store_media_neutralizes_hostile_ext():
+    L = _fresh_home()
+    import snap_home
+    media_root = os.path.abspath(snap_home.site_media_dir(SITE))
+
+    # explicit traversal ext must NOT escape the media dir
+    a = L.store_media(SITE, b"payload-1", ext="/../../../evil.exe")
+    dest = os.path.abspath(os.path.join(media_root, a["media_path"]))
+    assert os.path.commonpath([media_root, dest]) == media_root, dest
+    assert os.path.isfile(dest)
+    # unknown/dangerous extension is dropped, not stored as .exe
+    assert not a["media_path"].endswith(".exe")
+
+    # a .php orig_name (bytes branch) is likewise dropped to no extension
+    b = L.store_media(SITE, b"payload-2", orig_name="shell.php")
+    assert not b["media_path"].endswith(".php")
+
+    # a legitimate image ext is kept
+    c = L.store_media(SITE, b"payload-3", ext=".png")
+    assert c["media_path"].endswith(".png") and c["mime"] == "image/png"
+
+
 def test_record_post_and_offline_read():
     L = _fresh_home()
     a = L.store_media(SITE, b"IMGDATA-1", ext=".png", orig_name="hero.png")
@@ -107,6 +129,7 @@ def test_content_tables_do_not_disturb_vocabulary_catalog():
 
 if __name__ == "__main__":
     test_store_media_dedupes_by_sha256_and_writes_file()
+    test_store_media_neutralizes_hostile_ext()
     test_record_post_and_offline_read()
     test_record_post_is_idempotent()
     test_missing_post_id_raises()

@@ -261,6 +261,10 @@ function apiTargetsSite(siteUrl) {
 async function restoreSessionProfile(session) {
     if (apiTargetsSite(session.site_url)) return 'ok';   // already on the right site
 
+    // session.site_url / profile_name come from a local session file (trusted local
+    // input). We match by site_url first, then fall back to the profile NAME — but a
+    // name can be shared by two different sites, so we re-check the loaded profile's
+    // site below and refuse to claim 'ok' for a mismatched site.
     const want  = normalizeSiteUrl(session.site_url);
     const match = state.profiles.find(p => normalizeSiteUrl(p.site_url) === want)
                || state.profiles.find(p => p.name === session.profile_name);
@@ -268,6 +272,10 @@ async function restoreSessionProfile(session) {
 
     try {
         const profile = await loadProfile(match._path);
+        // The name-fallback may have matched a DIFFERENT site sharing the name; only
+        // activate + report 'ok' if it really is this session's site. (The PUSH guard
+        // would block a wrong-site write anyway, but the status must not lie.)
+        if (normalizeSiteUrl(profile.site_url) !== want) return 'not-found';
         state.activeProfile = profile;
         state.api           = new SnapSmackGYSSAPI(profile.site_url, profile.api_key);
         renderProfileList();
