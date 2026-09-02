@@ -1022,6 +1022,8 @@ class SyncEngine:
         try:
             if draft.kind == KIND_SOLO:
                 res = self.poster.sync_solo(draft)
+            elif draft.kind == KIND_SMACKTALK:
+                res = self.poster.sync_smacktalk(draft)
             else:
                 res = self.poster.sync_gram(draft)
         except Exception as e:
