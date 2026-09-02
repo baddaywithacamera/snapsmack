@@ -245,11 +245,11 @@ def probe(site: dict, timeout: int = 12) -> SiteHealth:
         sh.error = reason
         return sh
 
+    hdrs = {'Authorization': f'Bearer {key}', 'Accept': 'application/json'}
     try:
         resp = requests.get(
             _heartbeat_url(url),
-            headers={'Authorization': f'Bearer {key}',
-                     'Accept': 'application/json'},
+            headers=hdrs,
             timeout=timeout,
         )
     except requests.exceptions.Timeout:
@@ -278,15 +278,31 @@ def probe(site: dict, timeout: int = 12) -> SiteHealth:
 
     # Fleet cron driver: nudge this site's due crons to run even when it gets no
     # visitor traffic. Best-effort and idempotent — the server tick self-throttles,
-    # so a hit that isn't due does nothing. Never affects the health verdict.
+    # so a hit that isn't due does nothing.
+    ran_crons = False
     try:
-        requests.get(
+        rc = requests.get(
             _api_url(url, 'multisite/run-crons'),
-            headers={'Authorization': f'Bearer {key}', 'Accept': 'application/json'},
+            headers=hdrs,
             timeout=8,
         )
+        ran_crons = rc.status_code < 400
     except Exception:
         pass
+
+    # The heartbeat fetched above predates that cron run, so a job we just triggered
+    # would still read as stale/overdue — a false verdict shown the instant we acted.
+    # Re-fetch once so the displayed status reflects the run we just performed. Purely
+    # best-effort: on any hiccup keep the original heartbeat rather than lose the row.
+    if ran_crons:
+        try:
+            resp2 = requests.get(_heartbeat_url(url), headers=hdrs, timeout=timeout)
+            if resp2.status_code < 400:
+                data2 = resp2.json()
+                if isinstance(data2, dict) and data2.get('ok', True):
+                    data = data2
+        except Exception:
+            pass
 
     sh.version = str(data.get('version') or '')
     sh.jobs    = _jobs_from_heartbeat(data)
