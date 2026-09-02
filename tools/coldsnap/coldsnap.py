@@ -63,11 +63,12 @@ import config as cfg_module
 import profile_manager
 import sumna_ui as ui
 
-# Offline posting suite (COLD ONE + COLD STACK; longform COLD TAKE deferred). Guarded so a missing
+# Offline posting suite (COLD ONE + COLD STACK + COLD TAKE). Guarded so a missing
 # optional dep can never stop COLD SNAP's shell from launching.
 try:
     from sumna_solo import build_solo_mode
     from sumna_gram import build_gram_mode
+    from sumna_smacktalk import build_smacktalk_mode
     _SUMNA_AVAILABLE = True
     _SUMNA_IMPORT_ERROR = ""
 except Exception as _sumna_err:  # pragma: no cover - import shim
@@ -142,6 +143,7 @@ class App(tk.Tk):
 
         self._url_var     = tk.StringVar(value=self._config.get('url', ''))
         self._api_key_var = tk.StringVar(value=self._config.get('api_key', ''))
+        self._smackpress_key_var = tk.StringVar(value=self._config.get('smackpress_key', ''))
         self._profile_var = tk.StringVar()
 
         self._active_tab = None
@@ -188,6 +190,10 @@ class App(tk.Tk):
 
         ui.field(body, "SITE URL", self._url_var)
         ui.field(body, "API KEY", self._api_key_var, show="•")
+        # SMACKTALK (longform) posting needs a separate 'smackpress' key — the normal
+        # API key is rejected by the smackpress/* endpoints by design. Only needed for
+        # the COLD TAKE tab; leave blank if this site isn't a SMACKTALK site.
+        ui.field(body, "SMACKTALK KEY (longform — optional)", self._smackpress_key_var, show="•")
 
         btn_row = tk.Frame(body, bg=ui.BG_CARD)
         btn_row.pack(fill="x", pady=(8, 0))
@@ -203,7 +209,7 @@ class App(tk.Tk):
         tabs.pack(fill="x", side="top")
         self._tab_btns = {}
         self._tab_indicators = {}
-        for name, label in (("slapped", "COLD ONE"), ("gram", "COLD STACK")):
+        for name, label in (("slapped", "COLD ONE"), ("gram", "COLD STACK"), ("smacktalk", "COLD TAKE")):
             cell = tk.Frame(tabs, bg=ui.BG_MID)
             cell.pack(side="left")
             btn = tk.Label(cell, text=label, bg=ui.BG_MID, fg=ui.FG_DIM,
@@ -216,8 +222,9 @@ class App(tk.Tk):
             self._tab_indicators[name] = ind
 
         # ── Mode frames ───────────────────────────────────────────────
-        self._slapped_frame = tk.Frame(self, bg=ui.BG_DEEP)
-        self._gram_frame    = tk.Frame(self, bg=ui.BG_DEEP)
+        self._slapped_frame   = tk.Frame(self, bg=ui.BG_DEEP)
+        self._gram_frame      = tk.Frame(self, bg=ui.BG_DEEP)
+        self._smacktalk_frame = tk.Frame(self, bg=ui.BG_DEEP)
         self._build_modes()
 
     def _show_help(self):
@@ -278,15 +285,19 @@ class App(tk.Tk):
               "SnapSmack site when you have a connection. Compose now — on a plane, a couch, "
               "or a dead zone — and sync later.")
 
-        _section("THE TWO TABS")
+        _section("THE THREE TABS")
         _item("COLD ONE",   "One photo per post — for SOLO (SmackOneOut) photoblog sites.")
         _item("COLD STACK", "A stack of photos as one carousel — for GRAM (GramOfSmack) sites.")
+        _item("COLD TAKE",  "A longform SMACKTALK post — a title, a write-up, and a bucket of photos.")
         _para("Connect to a site that matches the tab you're posting from.")
 
         _section("CONNECTING")
         _para("Pick a saved profile, or type your Site URL and API Key (generate the key in "
               "SnapSmack Admin → Settings → API Access) and click SAVE / APPLY. You "
               "do NOT need to be connected to compose — only to sync.")
+        _para("COLD TAKE (SMACKTALK) needs a SEPARATE key — the SMACKTALK KEY field. Generate a "
+              "'smackpress'-type key in SnapSmack Admin → API Access. The normal API key can't "
+              "post longform; only fill this in for SMACKTALK sites.")
 
         _section("THE WORKFLOW")
         _item("1. Compose", "Add your photo(s), caption and options in COLD ONE or COLD STACK. No network needed.")
@@ -309,7 +320,7 @@ class App(tk.Tk):
         """Mount COLD ONE + COLD STACK. A panel error shows a label
         rather than taking down the whole tool."""
         if not _SUMNA_AVAILABLE:
-            for fr in (self._slapped_frame, self._gram_frame):
+            for fr in (self._slapped_frame, self._gram_frame, self._smacktalk_frame):
                 tk.Label(fr,
                          text=f"Offline suite failed to import:\n{_SUMNA_IMPORT_ERROR}",
                          bg=ui.BG_DEEP, fg=ui.FG_ERR, font=ui.FONT_UI,
@@ -318,8 +329,9 @@ class App(tk.Tk):
         try:
             build_solo_mode(self._slapped_frame, self).pack(fill="both", expand=True)
             build_gram_mode(self._gram_frame, self).pack(fill="both", expand=True)
+            build_smacktalk_mode(self._smacktalk_frame, self).pack(fill="both", expand=True)
         except Exception as e:
-            for fr in (self._slapped_frame, self._gram_frame):
+            for fr in (self._slapped_frame, self._gram_frame, self._smacktalk_frame):
                 for w in fr.winfo_children():
                     w.destroy()
                 tk.Label(fr, text=f"COLD SNAP panel failed to load:\n{e}",
@@ -339,10 +351,13 @@ class App(tk.Tk):
             self._tab_indicators[name].configure(bg=ui.ACCENT if active else ui.BG_MID)
         self._slapped_frame.pack_forget()
         self._gram_frame.pack_forget()
+        self._smacktalk_frame.pack_forget()
         if tab == 'slapped':
             self._slapped_frame.pack(fill="both", expand=True)
         elif tab == 'gram':
             self._gram_frame.pack(fill="both", expand=True)
+        elif tab == 'smacktalk':
+            self._smacktalk_frame.pack(fill="both", expand=True)
         self._active_tab = tab
 
     # ------------------------------------------------------------------
@@ -363,6 +378,8 @@ class App(tk.Tk):
         # overwrite the key field if the profile actually supplies one.
         if prof.get('api_key'):
             self._api_key_var.set(prof.get('api_key', ''))
+        if prof.get('smackpress_key'):
+            self._smackpress_key_var.set(prof.get('smackpress_key', ''))
         self._conn_status.configure(text=f"Loaded '{name}' — review + SAVE / APPLY.",
                                     fg=ui.FG_WARN)
 
@@ -375,6 +392,7 @@ class App(tk.Tk):
             return
         self._config['url'] = url
         self._config['api_key'] = key
+        self._config['smackpress_key'] = self._smackpress_key_var.get().strip()
         try:
             cfg_module.save(self._config)
         except Exception as e:
