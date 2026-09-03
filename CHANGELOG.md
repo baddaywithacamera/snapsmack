@@ -9,6 +9,18 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.604D "TODAY MEANS TODAY" — 2026-09-03
+- **Fleet stats / PULL CURRENT now include today, instead of reading a day behind.**
+  This fix was written on 2026-09-02 but got stranded on a side branch and never
+  reached the live line — bringing it in now. Every fleet-stats number came from the
+  daily rollup, which only processes completed days (yesterday), so today's views —
+  which live in the raw stats table — were never surfaced. PULL CURRENT only
+  refreshed heartbeat vitals, never the view totals, so it could never make the
+  number current. Now a page load (and PULL CURRENT's redirect) prepends today's live
+  partial from the raw stats into the fleet total, on both the hub's own section
+  (live immediately) and the spoke stats endpoint each spoke returns (takes effect as
+  spokes redeploy). Read-only and try-guarded, so a partial query can't 500 the
+  endpoint or break the page.
 ## 0.7.603D "GLASS BOX" — 2026-09-03
 - **New: FEDIVERSE → DELIVERY LOG, so you can SEE why a post isn't going out
   before you push it again.** A read-only diagnostics page. The top panel shows the

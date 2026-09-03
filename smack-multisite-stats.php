@@ -244,6 +244,26 @@ try {
     }
 } catch (PDOException $e) { /* table may not exist on older installs */ }
 
+// TODAY's live partial — snap_stats_daily only holds COMPLETED days (the rollup
+// runs on yesterday), so without this the hub's own numbers, and the fleet total
+// they feed, always read a day behind. Append today's in-progress counts from raw
+// snap_stats ($hub_data is ASC, so today goes last).
+try {
+    $today = date('Y-m-d');
+    $has_today = false;
+    foreach ($hub_data as $r) { if (($r['stat_date'] ?? '') === $today) { $has_today = true; break; } }
+    if (!$has_today) {
+        $tv = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=0")->fetchColumn();
+        $tu = (int)$pdo->query("SELECT COUNT(DISTINCT ip_hash) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=0")->fetchColumn();
+        $tb = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=1")->fetchColumn();
+        if ($tv || $tu || $tb) {
+            $hub_data[] = ['stat_date' => $today, 'total_views' => $tv,
+                           'unique_visitors' => $tu, 'bot_views' => $tb,
+                           'top_referrer' => null, 'partial' => true];
+        }
+    }
+} catch (\Throwable $e) { /* best-effort; the daily rows still render */ }
+
 $hub_total_views  = array_sum(array_column($hub_data, 'total_views'));
 $hub_total_unique = array_sum(array_column($hub_data, 'unique_visitors'));
 $hub_bot_total    = array_sum(array_column($hub_data, 'bot_views'));
