@@ -39,8 +39,7 @@
         "smack-footer",
         "smack-image-fade-load",
         "smack-lightbox",
-        "smack-justified-lib",
-        "smack-justified",
+        "smack-rows",
         "smack-community",
         "smack-keyboard",
         "smack-calendar",
@@ -787,7 +786,7 @@
             "type": "select",
             "label": "Thumb Border Selector",
             "default": "border_thin",
-            "selector": ".fsog-archive-item .fsog-thumb, .justified-item",
+            "selector": ".fsog-archive-item .fsog-thumb, #justified-grid .ss-masonry-item",
             "property": "custom-framing",
             "options": {
                 "border_thin": {
