@@ -9,6 +9,16 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.608D "NOBODY REPOSTS" — 2026-09-03
+- **New: RECOVER MISSED ENTRIES — pull back challenge entries dropped during an
+  inbound outage, without asking anyone to re-post.** After the signature-fetch bug
+  (fixed in 607D) rejected inbound posts, entries never got admitted or boosted. Most
+  heal on their own as the senders' servers retry into the fixed door — but for any
+  that already stopped retrying, the new button on Contest & Feed crawls each active
+  participant's outbox, pulls their recent posts, and runs the exact same admit +
+  boost path an inbound post would. Honors the current tag, window and testing
+  whitelist; idempotent (never double-counts), so it is safe to re-run. Turns "ask
+  the whole community to re-post" into one click.
 ## 0.7.607D "SECOND KNOCK" — 2026-09-03
 - **Fixes the wall of "signature verify failed" rejections in the Interactions
   log.** Root cause (found via 606D's on-screen reason): it was never a crypto
