@@ -267,7 +267,9 @@ switch ($ap) {
             // signature verification is visible instead of vanishing silently —
             // prime suspect when a federated like never lands. Best-effort; no-ops
             // if table absent.
-            if (function_exists('sv_inbox_log')) sv_inbox_log($pdo, $log_verb, $log_actor, $log_obj, 'REJECTED: signature verify failed');
+            $sig_why = function_exists('sv_last_sig_reject') ? sv_last_sig_reject() : '';
+            if (function_exists('sv_inbox_log')) sv_inbox_log($pdo, $log_verb, $log_actor, $log_obj,
+                'REJECTED: ' . ($sig_why !== '' ? $sig_why : 'signature verify failed'));
             http_response_code(401); exit;
         }
         if (!sv_inbox_replay_first_seen($pdo, $raw)) {

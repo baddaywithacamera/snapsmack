@@ -9,6 +9,15 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.606D "SHOW YOUR WORK" — 2026-09-03
+- **The Interactions inbox log now names the EXACT reason a signature was
+  rejected**, instead of a generic "signature verify failed." The verifier already
+  computed the specific cause (digest mismatch, could not fetch the signer's key,
+  Date outside the window, keyId/actor origin mismatch, missing signed headers,
+  openssl verify failed) but only wrote it to the server error log. Now it also
+  surfaces it on the Interactions page, so a wall of rejected likes/boosts/replies
+  can be diagnosed from the admin without shell access. Diagnostic only — the
+  verification logic itself is unchanged.
 ## 0.7.605D "TALLY HO" — 2026-09-03
 - **Boosts (reblogs) are now counted per post, the same way likes are.** Likes had a
   per-post counter; boosts only landed as one-off notifications, so there was no

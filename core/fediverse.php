@@ -1031,10 +1031,25 @@ function sv_request_header(string $name): string {
  * success, null on any failure. The caller must additionally confirm the
  * actor id matches the activity's actor field.
  */
+/** The reason the last sv_verify_signature() call rejected (or '' on success /
+ *  no attempt). Lets the inbox endpoint show the SPECIFIC cause on the
+ *  Interactions log — "digest mismatch" vs "could not fetch signer" vs "Date
+ *  outside window" is the whole diagnosis — instead of a generic failure line. */
+function sv_last_sig_reject(?string $set = null): string {
+    static $reason = '';
+    if ($set !== null) $reason = $set;
+    return $reason;
+}
+
 function sv_verify_signature(string $raw_body): ?array {
     // Diagnostic: logs the exact rejection reason to the PHP error log with a
-    // greppable prefix ("FEDIVERSE sig:"). Cheap; helps chase interop issues.
-    $reject = function (string $why): void { error_log('FEDIVERSE sig: REJECT — ' . $why); };
+    // greppable prefix ("FEDIVERSE sig:") AND stashes it via sv_last_sig_reject()
+    // so the on-screen inbox log can name the specific check that failed.
+    sv_last_sig_reject('');   // reset for this attempt
+    $reject = function (string $why): void {
+        error_log('FEDIVERSE sig: REJECT — ' . $why);
+        sv_last_sig_reject($why);
+    };
 
     $sig_header = sv_request_header('signature');
     if ($sig_header === '') { $reject('no Signature header'); return null; }
