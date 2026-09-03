@@ -32,7 +32,8 @@ PROJECT_DOCUMENT_NAME = "project.json"
 PROJECT_README_NAME = "README.txt"
 DEFAULT_ADJUSTMENTS = {
     "exposure": 0.0, "brightness": 0.0, "contrast": 0.0,
-    "highlights": 0.0, "shadows": 0.0, "whites": 0.0, "blacks": 0.0,
+    "highlights": 0.0, "midtones": 0.0, "shadows": 0.0,
+    "whites": 0.0, "blacks": 0.0,
     "temperature": 0.0, "tint": 0.0, "saturation": 0.0, "vibrance": 0.0,
     "clarity": 0.0, "texture": 0.0, "dehaze": 0.0, "sharpen": 0.0,
     # Smart-sharpen controls. amount == the sharpen slider above. Lens mode
@@ -169,6 +170,14 @@ def _clamp(value, low=0, high=255):
     return max(low, min(high, value))
 
 
+def _smoothstep(edge0, edge1, value):
+    """Smooth 0..1 transition used to isolate tonal adjustment bands."""
+    if edge1 <= edge0:
+        return 1.0 if value >= edge1 else 0.0
+    amount = max(0.0, min(1.0, (value - edge0) / (edge1 - edge0)))
+    return amount * amount * (3.0 - 2.0 * amount)
+
+
 def _mask_to_text(mask):
     if mask is None:
         return ""
@@ -254,6 +263,7 @@ def _tonal_lut(adjustments):
     brightness = float(adjustments.get("brightness", 0)) * 1.28
     contrast = float(adjustments.get("contrast", 0)) / 100.0
     shadows = float(adjustments.get("shadows", 0)) / 100.0
+    midtones = float(adjustments.get("midtones", 0)) / 100.0
     highlights = float(adjustments.get("highlights", 0)) / 100.0
     whites = float(adjustments.get("whites", 0)) / 100.0
     blacks = float(adjustments.get("blacks", 0)) / 100.0
@@ -264,8 +274,16 @@ def _tonal_lut(adjustments):
     for source in range(256):
         value = source * exposure + brightness
         normalized = _clamp(value) / 255.0
-        value += shadows * 70.0 * (1.0 - normalized) ** 2
-        value += highlights * 70.0 * normalized ** 2
+        # Three deliberately separated tonal bands.  Highlights and shadows
+        # have shoulders instead of leaking across the whole photograph;
+        # midtones form a smooth bell centred on middle grey.  The 55-level
+        # ceiling keeps even ±100 mappings monotonic and avoids tonal reversal.
+        shadow_weight = 1.0 - _smoothstep(.15, .55, normalized)
+        highlight_weight = _smoothstep(.55, .90, normalized)
+        midtone_weight = 1.0 - _smoothstep(0.0, .32, abs(normalized - .5))
+        value += shadows * 55.0 * shadow_weight
+        value += midtones * 55.0 * midtone_weight
+        value += highlights * 55.0 * highlight_weight
         value += whites * 45.0 * max(0.0, (normalized - .65) / .35)
         value += blacks * 45.0 * max(0.0, (.35 - normalized) / .35)
         value = (value - 127.5) * (1.0 + contrast) + 127.5
@@ -319,48 +337,58 @@ def _bw_mono(output, settings):
         g=base, m=hue, s=saturation)
 
 
-def auto_adjustments(image, percentile=0.005):
-    """Compute a gentle one-click 'auto enhance' as *editable* adjustment values.
+def _histogram_percentile(histogram, fraction):
+    total = sum(histogram) or 1
+    threshold = total * fraction
+    running = 0
+    for value, count in enumerate(histogram):
+        running += count
+        if running >= threshold:
+            return value
+    return 255
 
-    Sets black/white levels from the tonal range (auto-levels) and a mild
-    grey-world white-balance nudge, plus a small contrast/vibrance lift. It
-    returns adjustment keys so the result stays non-destructive and the user can
-    fine-tune afterwards.
+
+def auto_exposure_adjustments(image):
+    """Choose exposure while reserving highlight headroom.
+
+    Middle grey is gently brought toward 112, but the 99.5th percentile is
+    never pushed above 245. Existing clipped pixels do not force the whole
+    photograph darker because no exposure operation can reconstruct them.
+    """
+    lum = ImageOps.grayscale(image.convert("RGB"))
+    histogram = lum.histogram()
+    middle = max(1, _histogram_percentile(histogram, .50))
+    high = max(1, _histogram_percentile(histogram, .995))
+    desired = math.log2(112.0 / middle)
+    headroom = 0.0 if high >= 252 else math.log2(245.0 / high)
+    stops = max(-1.5, min(1.5, desired, headroom))
+    # Match the editor's 0.05 EV control steps so document and UI stay exact.
+    return {"exposure": round(round(stops / .05) * .05, 2)}
+
+
+def auto_adjustments(image, percentile=0.005):
+    """Compute a conservative, editable one-click enhancement.
+
+    Unlike the old percentile levels stretch, this leaves the white point at
+    255 and does not stack a global contrast boost on top. Bright photographs
+    receive a selective highlight shoulder instead of clipped skies.
     """
     from PIL import ImageStat
     rgb = image.convert("RGB")
-    result = {}
-
-    # Auto-levels: stretch to the 0.5% / 99.5% tonal points.
+    result = auto_exposure_adjustments(rgb)
     lum = ImageOps.grayscale(rgb)
     histogram = lum.histogram()
-    total = sum(histogram) or 1
-    cutoff = total * percentile
-    low, running = 0, 0
-    for value in range(256):
-        running += histogram[value]
-        if running >= cutoff:
-            low = value
-            break
-    running = 0
-    high = 255
-    for value in range(255, -1, -1):
-        running += histogram[value]
-        if running >= cutoff:
-            high = value
-            break
-    if high - low >= 8:                       # only if there is range to recover
-        result["level_black"] = float(max(0, min(80, low)))
-        result["level_white"] = float(min(255, max(175, high)))
+    high = _histogram_percentile(histogram, 1.0 - percentile)
+    if high > 235:
+        result["highlights"] = float(-min(35, round((high - 235) * 1.5)))
 
     # Grey-world white balance: nudge temperature/tint toward neutral.
     mean_r, mean_g, mean_b = ImageStat.Stat(rgb).mean
     result["temperature"] = float(max(-40, min(40, round((mean_b - mean_r) * 0.5))))
     result["tint"] = float(max(-30, min(30, round(((mean_r + mean_b) / 2 - mean_g) * 0.4))))
 
-    # A little life.
-    result["contrast"] = 8.0
-    result["vibrance"] = 10.0
+    # A small saturation lift is safe; global contrast is deliberately absent.
+    result["vibrance"] = 6.0
     return result
 
 
@@ -937,6 +965,67 @@ def apply_perspective(image, geometry):
     return transformed
 
 
+def _lens_source_point(x, y, width, height, geometry, auto_zoom=1.0):
+    """Map an output point back into the source for radial lens correction."""
+    half_w = max(1.0, (width - 1) / 2.0)
+    half_h = max(1.0, (height - 1) / 2.0)
+    centre_x = half_w + float(geometry.get("lens_center_x", 0.0)) / 100.0 * half_w
+    centre_y = half_h + float(geometry.get("lens_center_y", 0.0)) / 100.0 * half_h
+    nx = (x - centre_x) / half_w
+    ny = (y - centre_y) / half_h
+    r2 = (nx * nx + ny * ny) / 2.0
+    radial = float(geometry.get("lens_distortion", 0.0)) / 100.0
+    spherical = float(geometry.get("lens_spherical", 0.0)) / 100.0
+    factor = 1.0 + radial * .42 * r2 + spherical * .28 * r2 * r2
+    manual_zoom = max(1.0, float(geometry.get("lens_scale", 100.0)) / 100.0)
+    factor /= max(1.0, manual_zoom, auto_zoom)
+    return centre_x + nx * factor * half_w, centre_y + ny * factor * half_h
+
+
+def apply_lens_distortion(image, geometry):
+    """Apply barrel/pincushion and spherical correction using a fine mesh."""
+    radial = float(geometry.get("lens_distortion", 0.0))
+    spherical = float(geometry.get("lens_spherical", 0.0))
+    centre_x = float(geometry.get("lens_center_x", 0.0))
+    centre_y = float(geometry.get("lens_center_y", 0.0))
+    scale = float(geometry.get("lens_scale", 100.0))
+    if not any((radial, spherical, centre_x, centre_y, scale - 100.0)):
+        return image
+    rgba = image.convert("RGBA")
+    width, height = rgba.size
+    edge_mode = geometry.get("lens_edges", "auto_fill")
+    auto_zoom = 1.0
+    if edge_mode == "auto_fill":
+        # Sample the boundary and zoom just enough that no transparent wedge
+        # survives. Manual Scale can add further framing if desired.
+        boundary = []
+        for step in range(65):
+            t = step / 64.0
+            boundary.extend(((t * (width - 1), 0), (t * (width - 1), height - 1),
+                             (0, t * (height - 1)), (width - 1, t * (height - 1))))
+        mapped = [_lens_source_point(x, y, width, height, geometry) for x, y in boundary]
+        cx = (width - 1) / 2.0; cy = (height - 1) / 2.0
+        auto_zoom = max(1.0, max(abs(x - cx) / max(cx, 1) for x, _ in mapped),
+                        max(abs(y - cy) / max(cy, 1) for _, y in mapped))
+
+    divisions = 32
+    xs = [round(i * width / divisions) for i in range(divisions + 1)]
+    ys = [round(i * height / divisions) for i in range(divisions + 1)]
+    mesh = []
+    for row in range(divisions):
+        for column in range(divisions):
+            left, right = xs[column], xs[column + 1]
+            top, bottom = ys[row], ys[row + 1]
+            # Pillow mesh quad order: upper-left, lower-left, lower-right, upper-right.
+            points = [(left, top), (left, bottom), (right, bottom), (right, top)]
+            quad = tuple(value for point in points for value in
+                         _lens_source_point(*point, width, height, geometry,
+                                            auto_zoom=auto_zoom))
+            mesh.append(((left, top, right, bottom), quad))
+    return rgba.transform(rgba.size, Image.Transform.MESH, mesh,
+                          Image.Resampling.BICUBIC, fillcolor=(0, 0, 0, 0))
+
+
 class EditorDocument:
     _font_reference_cache = {}
     def __init__(self, source_path):
@@ -948,6 +1037,9 @@ class EditorDocument:
             "perspective_corners": [[0.0, 0.0], [1.0, 0.0],
                                     [1.0, 1.0], [0.0, 1.0]],
             "perspective_edges": "auto_crop",
+            "lens_distortion": 0.0, "lens_spherical": 0.0,
+            "lens_center_x": 0.0, "lens_center_y": 0.0,
+            "lens_scale": 100.0, "lens_edges": "auto_fill",
         }
         self.layers = []
         self.retouched = []
@@ -1218,6 +1310,7 @@ class EditorDocument:
     def render(self, max_size=None):
         with Image.open(self.source_path) as source:
             image = ImageOps.exif_transpose(source).convert("RGB")
+        image = apply_lens_distortion(image, self.geometry)
         image = apply_perspective(image, self.geometry)
         rotation = float(self.geometry.get("rotation", 0))
         if rotation:
@@ -1233,9 +1326,11 @@ class EditorDocument:
                                 int(right * image.width), int(bottom * image.height)))
         if max_size:
             image.thumbnail(max_size, Image.Resampling.LANCZOS)
+        preserve_geometry_alpha = (
+            self.geometry.get("perspective_edges") == "transparent" or
+            self.geometry.get("lens_edges") == "transparent")
         geometry_alpha = (image.getchannel("A") if image.mode == "RGBA" and
-                          self.geometry.get("perspective_edges") == "transparent"
-                          else None)
+                          preserve_geometry_alpha else None)
         image = apply_adjustments(image, self.adjustments).convert("RGBA")
         if self.retouched:
             for spot in self.retouched:
@@ -1508,7 +1603,8 @@ class EditorDocument:
         self.adjustments = copy.deepcopy(adjustments)
         for key in ("rotation", "flip_x", "flip_y", "perspective_vertical",
                     "perspective_horizontal", "perspective_corners",
-                    "perspective_edges"):
+                    "perspective_edges", "lens_distortion", "lens_spherical",
+                    "lens_center_x", "lens_center_y", "lens_scale", "lens_edges"):
             if key in geometry:
                 self.geometry[key] = copy.deepcopy(geometry[key])
         clones = copy.deepcopy(layers)

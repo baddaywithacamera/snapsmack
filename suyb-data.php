@@ -37,6 +37,53 @@ require_once 'core/api-auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
+function snap_portable_defaults(): array {
+    return [
+        'prompt' => '', 'max_width_landscape' => 3840,
+        'max_height_portrait' => 2160, 'jpeg_quality' => 85,
+        'image_resize_enabled' => true, 'export_sharpen' => 'auto',
+    ];
+}
+
+function snap_validate_portable($raw): array {
+    if (!is_array($raw)) throw new InvalidArgumentException('settings must be an object');
+    $out = snap_portable_defaults();
+    foreach ($raw as $key => $value) {
+        if (!array_key_exists($key, $out)) throw new InvalidArgumentException('Unknown setting: ' . $key);
+        $out[$key] = $value;
+    }
+    $out['prompt'] = (string)$out['prompt'];
+    foreach ([['max_width_landscape',320,16384], ['max_height_portrait',320,16384], ['jpeg_quality',50,100]] as $rule) {
+        [$key,$min,$max] = $rule;
+        if (!is_numeric($out[$key]) || (int)$out[$key] < $min || (int)$out[$key] > $max)
+            throw new InvalidArgumentException("$key must be between $min and $max");
+        $out[$key] = (int)$out[$key];
+    }
+    $out['image_resize_enabled'] = filter_var($out['image_resize_enabled'], FILTER_VALIDATE_BOOLEAN);
+    $out['export_sharpen'] = strtolower((string)$out['export_sharpen']);
+    if (!in_array($out['export_sharpen'], ['auto','off','low','medium'], true))
+        throw new InvalidArgumentException('export_sharpen must be auto, off, low, or medium');
+    return $out;
+}
+
+function snap_ensure_portable_table(PDO $pdo): void {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS snap_site_portable_settings (
+        site_url VARCHAR(500) PRIMARY KEY, settings_json LONGTEXT NOT NULL,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
+function snap_load_portable_rows(PDO $pdo): array {
+    snap_ensure_portable_table($pdo);
+    $out = [];
+    foreach ($pdo->query("SELECT site_url, settings_json, updated_at FROM snap_site_portable_settings") as $row) {
+        try { $settings = snap_validate_portable(json_decode($row['settings_json'], true)); }
+        catch (Throwable $e) { $settings = snap_portable_defaults(); }
+        $out[rtrim((string)$row['site_url'], '/')] = ['settings' => $settings, 'updated_at' => $row['updated_at']];
+    }
+    return $out;
+}
+
 // The hub is not one of its own multisite nodes, so it cannot use the
 // spoke-only multisite/provision-key route. Allow the already-authenticated hub
 // discovery credential to install the fleet's shared, read-only SUYB key on
@@ -46,6 +93,45 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $body = json_decode(file_get_contents('php://input') ?: '', true);
     $action = is_array($body) ? strtolower(trim((string)($body['action'] ?? ''))) : '';
     $key_value = is_array($body) ? strtolower(trim((string)($body['key_value'] ?? ''))) : '';
+    if ($action === 'save-site-settings') {
+        if (defined('SNAP_API_AUTH') && (!defined('SNAP_API_KEY_TYPE') || SNAP_API_KEY_TYPE !== 'hub')) {
+            http_response_code(403); echo json_encode(['ok'=>false,'error'=>'Hub credential required']); exit;
+        }
+        try {
+            $site = rtrim(trim((string)($body['site_url'] ?? '')), '/');
+            if (!filter_var($site, FILTER_VALIDATE_URL)) throw new InvalidArgumentException('Valid site_url required');
+            $portable = snap_validate_portable($body['settings'] ?? null);
+            snap_ensure_portable_table($pdo);
+            $pdo->prepare("INSERT INTO snap_site_portable_settings (site_url,settings_json)
+                VALUES (?,?) ON DUPLICATE KEY UPDATE settings_json=VALUES(settings_json), updated_at=NOW()")
+                ->execute([$site, json_encode($portable, JSON_UNESCAPED_SLASHES)]);
+
+            $local_site = rtrim((string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_url'")->fetchColumn() ?: ''), '/');
+            $result = ['site_url' => $site, 'status' => 'applied', 'message' => 'Saved at hub'];
+            if ($site === $local_site) {
+                $up = $pdo->prepare("INSERT INTO snap_settings (setting_key,setting_val) VALUES (?,?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)");
+                foreach ($portable as $key => $value) $up->execute([$key, is_bool($value) ? ($value ? '1' : '0') : (string)$value]);
+            } else {
+                $st = $pdo->prepare("SELECT api_key_local FROM snap_multisite_nodes WHERE RTRIM(site_url,'/')=? AND role='spoke' AND status='active' LIMIT 1");
+                $st->execute([$site]); $node_key = (string)($st->fetchColumn() ?: '');
+                if (!$node_key) {
+                    $result = ['site_url'=>$site, 'status'=>'rejected', 'message'=>'Site is not an active spoke'];
+                } else {
+                    $ch = curl_init($site . '/api.php?route=multisite/settings/push');
+                    curl_setopt_array($ch, [CURLOPT_POST=>true, CURLOPT_RETURNTRANSFER=>true, CURLOPT_TIMEOUT=>20,
+                        CURLOPT_HTTPHEADER=>['Authorization: Bearer ' . $node_key],
+                        CURLOPT_POSTFIELDS=>http_build_query(['settings'=>json_encode($portable)])]);
+                    $reply = curl_exec($ch); $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); $err = curl_error($ch); curl_close($ch);
+                    if ($code < 200 || $code >= 300) $result = ['site_url'=>$site, 'status'=>'pending', 'message'=>$err ?: "Spoke returned HTTP $code"];
+                }
+            }
+            echo json_encode(['ok'=>true, 'settings'=>$portable, 'results'=>[$result]]); exit;
+        } catch (InvalidArgumentException $e) {
+            http_response_code(422); echo json_encode(['ok'=>false,'error'=>$e->getMessage()]); exit;
+        } catch (Throwable $e) {
+            http_response_code(500); echo json_encode(['ok'=>false,'error'=>'Could not save site settings']); exit;
+        }
+    }
     if ($action !== 'provision-backup-key') {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'Unknown action.']);
@@ -88,6 +174,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 // ── Load settings ────────────────────────────────────────────────────────────
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                 ->fetchAll(PDO::FETCH_KEY_PAIR);
+$portable_sites = snap_load_portable_rows($pdo);
 
 // ── Cloud configuration ──────────────────────────────────────────────────────
 // Only expose whether cloud is configured and which provider — never send
@@ -167,6 +254,7 @@ echo json_encode([
     'site_name'     => $site_name,
     'cloud_config'  => $cloud_config,
     'backup_status' => $backup_status,
+    'portable_sites'=> $portable_sites,
     'multisite'     => [
         'is_hub'   => count($nodes) > 0,
         'nodes'    => $nodes,

@@ -21,7 +21,7 @@ UI thread; results are marshalled back with Tk's `after`.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.5"
+BUILD_VERSION = "0.7.8"
 
 # ---------------------------------------------------------------------------
 # Shared-path bootstrap + debug log. Must happen before any _shared import so
@@ -115,7 +115,14 @@ SEV_STYLE = {
     hb.SEV_FAILED:  (FG_ERR,  "FAILED"),
     hb.SEV_NA:      (FG_DIM,  "N/A"),
     hb.SEV_OFFLINE: (FG_ERR,  "OFFLINE"),
+    hb.SEV_PARKED:  (FG_DIM,  "PARKED"),
 }
+
+# Client-side pseudo-verdict for a site the operator has muted (ignored). It is
+# not a heartbeat state; it rolls up like PARKED (excluded from the fleet alarm
+# counts) so a deliberately-ignored site never colours the board.
+SEV_MUTED = 'muted'
+SEV_STYLE[SEV_MUTED] = (FG_DIM, "MUTED")
 
 
 def _sev_style(sev: str):
@@ -137,6 +144,10 @@ class App(tk.Tk):
         self._prefs = cfg_module.load()
         self._timeout = int(self._prefs.get('poll_timeout',
                                             cfg_module.DEFAULT_POLL_TIMEOUT))
+        # Sites the operator has chosen to ignore (parked/not-yet-live blogs).
+        self._muted = set(self._prefs.get('muted_sites', []) or [])
+        # Whether PARKED (maintenance) + MUTED cards are collapsed off the board.
+        self._hide_parked = bool(self._prefs.get('hide_parked', False))
         self._fleet: List[dict] = []
         self._site_cards = {}          # url -> dict of widgets to update in place
         self._health_by_url = {}       # latest complete probe result for reports
@@ -181,12 +192,14 @@ class App(tk.Tk):
         self._make_button(actions, "COPY STATUS", self._copy_status,
                           kind="primary").pack(side="left", padx=(0, 8))
         self._make_button(actions, "RELOAD SITE LIST", self._reload_fleet).pack(side="left")
+        self._hide_btn = self._make_button(actions, "HIDE PARKED", self._toggle_hide_parked)
+        self._hide_btn.pack(side="left", padx=(8, 0))
 
         # ── Legend ────────────────────────────────────────────────────
         legend = tk.Frame(self, bg=BG_DEEP)
         legend.pack(fill="x", side="top", padx=6)
         for sev in (hb.SEV_OK, hb.SEV_STALE, hb.SEV_UNKNOWN,
-                    hb.SEV_FAILED, hb.SEV_OFFLINE, hb.SEV_NA):
+                    hb.SEV_FAILED, hb.SEV_OFFLINE, hb.SEV_NA, hb.SEV_PARKED):
             colour, word = _sev_style(sev)
             cell = tk.Frame(legend, bg=BG_DEEP)
             cell.pack(side="left", padx=(10, 0), pady=(2, 8))
@@ -204,7 +217,8 @@ class App(tk.Tk):
                                    (hb.SEV_STALE, "STALE", FG_WARN),
                                    (hb.SEV_UNKNOWN, "UNKNOWN", FG_GREY),
                                    (hb.SEV_OK, "OK", FG_OK),
-                                   (hb.SEV_OFFLINE, "OFFLINE", FG_ERR)):
+                                   (hb.SEV_OFFLINE, "OFFLINE", FG_ERR),
+                                   (hb.SEV_PARKED, "PARKED", FG_DIM)):
             cell = tk.Frame(summary, bg=BG_CARD)
             cell.pack(side="left", padx=(14, 8), pady=8)
             value = tk.Label(cell, text="0", bg=BG_CARD, fg=colour,
@@ -299,10 +313,17 @@ class App(tk.Tk):
         name.pack(side="left", padx=(6, 0))
         ver = tk.Label(head, text="", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
         ver.pack(side="left", padx=(8, 0))
+        mode = tk.Label(head, text="", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
+        mode.pack(side="left", padx=(8, 0))
 
         recheck = self._make_button(head, "CHECK", lambda s=site: self.recheck_site(s))
         recheck.configure(padx=9, pady=3, font=FONT_SMALL)
         recheck.pack(side="right")
+        muted_now = site['url'] in self._muted
+        mute = self._make_button(head, "UNMUTE" if muted_now else "MUTE",
+                                 lambda s=site: self._toggle_mute(s))
+        mute.configure(padx=9, pady=3, font=FONT_SMALL)
+        mute.pack(side="right", padx=(0, 6))
         details_btn = self._make_button(head, "DETAILS", lambda: None)
         details_btn.configure(padx=9, pady=3, font=FONT_SMALL)
         details_btn.pack(side="right", padx=(0, 6))
@@ -357,8 +378,9 @@ class App(tk.Tk):
         details_btn.configure(command=toggle_details)
 
         return {
-            'dot': dot, 'ver': ver, 'summary': summary,
-            'recheck': recheck, 'job_rows': job_rows, 'severity': hb.SEV_UNKNOWN,
+            'dot': dot, 'ver': ver, 'mode': mode, 'summary': summary,
+            'recheck': recheck, 'mute': mute, 'wrap': wrap, 'site': site,
+            'job_rows': job_rows, 'severity': hb.SEV_UNKNOWN,
         }
 
     # ------------------------------------------------------------------
@@ -385,6 +407,33 @@ class App(tk.Tk):
             fut.add_done_callback(
                 lambda f, s=site: (self._deliver(s, f), _done(f)))
 
+    def _toggle_mute(self, site: dict):
+        """Mute/unmute a site. A muted site stays on the board but is ignored by
+        the fleet alarm counts and headline. Persisted immediately so the choice
+        survives a restart."""
+        url = site['url']
+        if url in self._muted:
+            self._muted.discard(url)
+        else:
+            self._muted.add(url)
+        self._prefs['muted_sites'] = sorted(self._muted)
+        try:
+            cfg_module.save(self._prefs)
+        except Exception:
+            pass
+        health = self._health_by_url.get(url)
+        if health is not None:
+            self._render_site(site, health, single=False)
+        else:
+            card = self._site_cards.get(url)
+            if card:
+                muted = url in self._muted
+                card['mute'].configure(text="UNMUTE" if muted else "MUTE")
+                card['severity'] = SEV_MUTED if muted else hb.SEV_UNKNOWN
+                card['summary'].configure(
+                    text="muted — ignored" if muted else "not checked yet", fg=FG_DIM)
+                self._update_fleet_summary()
+
     def recheck_site(self, site: dict):
         card = self._site_cards.get(site['url'])
         if card:
@@ -407,14 +456,43 @@ class App(tk.Tk):
         if not card:
             return
         self._health_by_url[site['url']] = health
-        overall = health.overall()
+        is_muted = site['url'] in self._muted
+        overall = SEV_MUTED if is_muted else health.overall()
         card['severity'] = overall
         colour, _word = _sev_style(overall)
         card['dot'].configure(fg=colour)
         card['ver'].configure(
             text=(f"v{health.version}" if health.version else ""))
+        if card.get('mode'):
+            card['mode'].configure(
+                text=(health.site_mode.upper() if health.site_mode else ""))
+        if card.get('mute'):
+            card['mute'].configure(text="UNMUTE" if is_muted else "MUTE")
         if card.get('recheck'):
             card['recheck'].configure(state="normal")
+
+        # A muted site (operator chose to ignore it) or a site in maintenance
+        # mode is shown but NEVER counted as an alarm — it can't colour the fleet.
+        if is_muted:
+            card['summary'].configure(text="muted — ignored", fg=FG_DIM)
+            for spec in hb.JOB_SPECS:
+                jdot, jstate, jage, jdetail = card['job_rows'][spec.key]
+                jdot.configure(fg=FG_DIM); jstate.configure(text="—", fg=FG_DIM)
+                jage.configure(text=""); jdetail.configure(text="(muted)")
+            self._update_fleet_summary()
+            if single:
+                self._set_status(f"{site['name']}: muted")
+            return
+        if health.online and health.maintenance:
+            card['summary'].configure(text="maintenance mode — parked", fg=FG_DIM)
+            for spec in hb.JOB_SPECS:
+                jdot, jstate, jage, jdetail = card['job_rows'][spec.key]
+                jdot.configure(fg=FG_DIM); jstate.configure(text="—", fg=FG_DIM)
+                jage.configure(text=""); jdetail.configure(text="(site parked)")
+            self._update_fleet_summary()
+            if single:
+                self._set_status(f"{site['name']}: parked")
+            return
 
         if not health.online:
             card['summary'].configure(text=health.error or "offline", fg=FG_ERR)
@@ -462,17 +540,60 @@ class App(tk.Tk):
 
     def _sweep_finished(self, total: int):
         self._set_busy(False)
+        # Now that every verdict is in, collapse parked/muted cards if hiding is on.
+        self._apply_visibility()
         # Every card's dot is already painted by _render_site; roll them up to one
         # headline so the operator sees the fleet's worst state at a glance.
         self._set_status(f"checked {total} site(s) — {self._fleet_headline()}")
 
+    # ------------------------------------------------------------------
+    def _hidden_count(self) -> int:
+        return sum(1 for c in self._site_cards.values()
+                   if c.get('severity') in (hb.SEV_PARKED, SEV_MUTED))
+
+    def _update_hide_btn(self):
+        if not hasattr(self, '_hide_btn'):
+            return
+        n = self._hidden_count()
+        self._hide_btn.configure(
+            text=(f"SHOW PARKED ({n})" if self._hide_parked else f"HIDE PARKED ({n})"))
+
+    def _apply_visibility(self):
+        """Show or collapse parked + muted cards, re-packing the visible ones in
+        fleet order so hiding/showing never scrambles the board."""
+        for site in self._fleet:
+            card = self._site_cards.get(site['url'])
+            if not card:
+                continue
+            wrap = card.get('wrap')
+            if wrap is None:
+                continue
+            hide = self._hide_parked and card.get('severity') in (hb.SEV_PARKED, SEV_MUTED)
+            try:
+                wrap.pack_forget()
+                if not hide:
+                    wrap.pack(fill="x", padx=14, pady=7)
+            except tk.TclError:
+                pass
+        self._update_hide_btn()
+
+    def _toggle_hide_parked(self):
+        self._hide_parked = not self._hide_parked
+        self._prefs['hide_parked'] = self._hide_parked
+        try:
+            cfg_module.save(self._prefs)
+        except Exception:
+            pass
+        self._apply_visibility()
+
     def _fleet_headline(self) -> str:
-        # Derive a headline from the current dot colours we set on each card.
-        sev_by_colour = {v[0]: k for k, v in SEV_STYLE.items()}
+        # Worst verdict across the ACTIVE fleet — muted and parked sites are
+        # deliberately ignored, so they never set the headline.
         worst = hb.SEV_NA
         for card in self._site_cards.values():
-            colour = card['dot'].cget('fg')
-            sev = sev_by_colour.get(colour, hb.SEV_UNKNOWN)
+            sev = card.get('severity', hb.SEV_UNKNOWN)
+            if sev in (SEV_MUTED, hb.SEV_PARKED):
+                continue
             worst = hb.worst([worst, sev])
         _c, word = _sev_style(worst)
         return f"worst: {word}"
@@ -481,14 +602,24 @@ class App(tk.Tk):
         if not hasattr(self, '_fleet_summary'):
             return
         counts = {key: 0 for key in (hb.SEV_FAILED, hb.SEV_STALE,
-                                     hb.SEV_UNKNOWN, hb.SEV_OK, hb.SEV_OFFLINE)}
+                                     hb.SEV_UNKNOWN, hb.SEV_OK, hb.SEV_OFFLINE,
+                                     hb.SEV_PARKED)}
         for card in self._site_cards.values():
             severity = card.get('severity', hb.SEV_UNKNOWN)
+            if severity == SEV_MUTED:
+                severity = hb.SEV_PARKED   # muted sites roll up under PARKED (ignored)
             counts[severity] = counts.get(severity, 0) + 1
         self._fleet_summary['sites'].configure(text=str(len(self._site_cards)))
         for key, label in self._fleet_summary.items():
             if key != 'sites':
                 label.configure(text=str(counts.get(key, 0)))
+        # Re-apply hide/show for parked+muted cards once a card's verdict is known.
+        # Skipped mid-sweep (self._busy) to avoid re-packing on every render; the
+        # sweep's completion applies it once.
+        if not self._busy:
+            self._apply_visibility()
+        else:
+            self._update_hide_btn()
 
     # ------------------------------------------------------------------
     def _set_busy(self, busy: bool):
@@ -520,6 +651,9 @@ class App(tk.Tk):
         for site in self._fleet:
             lines.extend(("", f"SITE: {site.get('name') or 'Unnamed site'}",
                           f"URL: {site.get('url') or '(missing)'}"))
+            if site.get('url') in self._muted:
+                lines.append("Overall: MUTED (ignored by operator)")
+                continue
             health = self._health_by_url.get(site.get('url'))
             if health is None:
                 lines.append("Overall: NOT CHECKED")
@@ -528,6 +662,10 @@ class App(tk.Tk):
             lines.append(f"Overall: {overall}")
             if health.version:
                 lines.append(f"SnapSmack version: {health.version}")
+            if health.site_mode:
+                lines.append(f"Mode: {health.site_mode}")
+            if health.online and health.maintenance:
+                lines.append("Maintenance mode: ON (parked)")
             if not health.online:
                 lines.append(f"Error: {health.error or 'site unreachable'}")
                 continue

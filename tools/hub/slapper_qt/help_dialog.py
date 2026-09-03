@@ -83,9 +83,13 @@ TOPICS = [
      "layers have their own content/size/colour panel."),
     ("Masks",
      "With a layer selected, open MASK to limit that layer to part of the photo: "
-     "a Radial mask (centre, size, softness) or a Graduated mask (direction, "
-     "line, softness), with Invert and Clear. This is how you make a local "
-     "adjustment — darken only a sky, brighten only a face."),
+     "a Radial mask, a linear Gradient, a paint Brush, or Colour Range. Colour "
+     "Range has an eyedropper: click it, then click the photograph to seed the "
+     "range before refining hue, saturation, luminance and softness. The shared "
+     "brush palette includes Soft/Medium/Hard presets, size, hardness, opacity "
+     "and flow. Bucket: Hide all fills the mask black; Reveal all fills it white. "
+     "The layer row shows MASK, and Use layer mask lets you compare the layer "
+     "with its mask temporarily disabled. White reveals the layer; black hides it."),
     ("LEWKS",
      "The LEWKS button (Ctrl+K) opens a gallery of built-in looks, each previewed "
      "on your own photograph at an adjustable Strength. Applying a LEWK adds it as "
@@ -134,7 +138,8 @@ TOPICS = [
      "Crop shows the full frame — drag a rectangle to crop; toggle Crop off "
      "without drawing to cancel. GEOMETRY rotates/straightens and flips. Its "
      "Vertical and Horizontal perspective sliders correct converging lines. "
-     "Free Corners displays a 3×3 grid: drag any red corner to fan or narrow "
+     "Free Corners displays a fine 20×20 architectural grid: drag any green "
+     "corner to fan or narrow "
      "the image while straight lines remain straight. Auto Crop removes empty "
      "edges; Transparent Edges preserves the full canvas for PNG, TIFF, or PSD. "
      "Perspective is saved in projects and recipes. RETOUCH "
@@ -147,20 +152,25 @@ TOPICS = [
      "Apply Recipe reuse a set of adjustments across photos. JPEG, PNG, and TIFF "
      "write flattened finished copies. Layered PSD writes a guaranteed visible "
      "full-resolution composite plus named raster checkpoints for the base and "
-     "every SNAP SLAPPER layer. Custom filters and adjustments are checkpoints, "
+     "every SNAP SLAPPER layer. OpenRaster (.ora) provides the same portable "
+     "visible composite and named recovery checkpoints for Krita/GIMP-class tools. "
+     "Custom filters and adjustments are checkpoints, "
      "not falsely labelled as native Photoshop adjustments. The original remains "
      "unchanged."),
     ("Keyboard",
      "Standard: Ctrl+O open · Ctrl+S export · Ctrl+Z undo · Ctrl+Y redo · "
      "F1 this help.\n\n"
      "Tools & view: Ctrl+U auto-enhance · Ctrl+0 fit to window · Ctrl+1 100% "
-     "(actual pixels) · Ctrl+\\ before/after · Ctrl+Shift+C crop · "
+     "(actual pixels) · Ctrl++ zoom in · Ctrl+- zoom out · "
+     "Ctrl+\\ before/after · Ctrl+Shift+C crop · "
      "Ctrl+Shift+H heal · Ctrl+Shift+E red-eye · Ctrl+Shift+F filmstrip · "
      "Ctrl+Shift+R reset all.\n\n"
      "Panels & modes: Ctrl+K LEWKS · Ctrl+T textures · Ctrl+Shift+S save "
      "project · Ctrl+Shift+A switch Normal / Advanced.\n\n"
-     "Every shortcut uses a modifier key, so none of them fire while you're "
-     "typing in a text layer. The title bar shows a ● when there are unsaved "
+     "Masks (when a layer is selected): M open mask · I invert · G gradient · "
+     "B brush · E hide/erase · K bucket · [ / ] brush size · Shift+[ / Shift+] "
+     "brush hardness. Bare mask keys are ignored while typing in a text field.\n\n"
+     "The title bar shows a ● when there are unsaved "
      "edits, and each toolbar button's tooltip shows its shortcut."),
     ("If something goes wrong",
      "SNAP SLAPPER writes a log of each run to C:\\snapsmack\\logs\\ "

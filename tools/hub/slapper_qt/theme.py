@@ -122,22 +122,37 @@ def stylesheet() -> str:
         border: 1px solid {ACCENT};
     }}
 
-    /* Colour pickers keep the application chrome; only the small chip changes. */
+    /* Full-width colour actions (glow/filter) stay quiet. */
     QPushButton#SwatchBtn {{
-        background: {CANVAS};
-        color: {ACCENT};
-        border: 1px solid {ACCENT};
-        border-radius: 4px;
+        background: transparent;
+        color: {BODY};
+        border: none;
         padding: 5px 8px;
         text-align: left;
     }}
     QPushButton#SwatchBtn:hover {{
-        background: {ACCENT};
-        color: {CANVAS};
-        border: 1px solid {ACCENT};
+        background: {FIELD_HI};
+        color: {INK};
+    }}
+    /* Split tone uses a compact colour well beside a plain-language label. */
+    QPushButton#ColourWell {{
+        background: {CANVAS};
+        border: 1px solid {BORDER};
+        border-radius: 4px;
+        padding: 2px;
+    }}
+    QPushButton#ColourWell:hover {{
+        border: 1px solid {BODY};
     }}
 
     /* --- Layers panel --------------------------------------------------- */
+    QLabel#LayerSectionLabel {{
+        color: {DIM};
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        padding-top: 3px;
+    }}
     QPushButton#LayerAddBtn {{
         background: {FIELD};
         color: {BODY};

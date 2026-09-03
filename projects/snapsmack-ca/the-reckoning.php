@@ -62,15 +62,15 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2>The codebase</h2>
             <div class="reckoning-copy">
-                <p>These figures come from the Git-tracked repository on August 25, 2026. CLOC 2.10 classified source, comments, and blank lines separately. Dependencies, generated files, and untracked work are excluded.</p>
+                <p>These figures come from the Git-tracked repository on August 31, 2026. CLOC 2.10 classified source, comments, and blank lines separately. Dependencies, generated files, and untracked work are excluded.</p>
             </div>
             <div class="number-grid">
-                <div class="number-card"><strong>1,853</strong><span>Tracked files</span></div>
-                <div class="number-card"><strong>199,342</strong><span>PHP, JavaScript, and CSS source lines</span></div>
-                <div class="number-card"><strong>252,344</strong><span>Expanded source including Python, SQL, Rust, and scripts</span></div>
-                <div class="number-card"><strong>179</strong><span>Python files for desktop applications and tooling</span></div>
+                <div class="number-card"><strong>1,916</strong><span>Tracked files</span></div>
+                <div class="number-card"><strong>192,598</strong><span>PHP, JavaScript, and CSS source lines</span></div>
+                <div class="number-card"><strong>253,489</strong><span>Expanded source including Python, SQL, Rust, and scripts</span></div>
+                <div class="number-card"><strong>208</strong><span>Python files for desktop applications and tooling</span></div>
                 <div class="number-card"><strong>30</strong><span>Skin directories</span></div>
-                <div class="number-card"><strong>51</strong><span>Published numbered security audits</span></div>
+                <div class="number-card"><strong>52</strong><span>Published numbered security audits</span></div>
             </div>
         </div>
     </section>
@@ -118,7 +118,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>The useful conclusion is not that one person replaced a team in every sense. AI changed which parts of software production required scarce specialist labour. Human responsibility for goals, judgment, verification, and consequences remained.</p>
                 <p><strong>Or, put less politely: Sean accidentally founded a small software company without the inconvenience of employees, funding, or adult supervision.</strong></p>
             </div>
-            <p class="method-note"><strong>Counting note:</strong> The headline source figures exclude 53,710 comment lines and 47,297 blank lines. The broader CLOC-classified total, including documentation and configuration, is 307,753 lines. Counts measure repository scale, not quality or effort.</p>
+            <p class="method-note"><strong>Counting note:</strong> The headline source figures exclude 53,923 comment lines and 46,368 blank lines. The broader CLOC-classified total, including documentation and configuration, is 303,396 lines. Counts measure repository scale, not quality or effort.</p>
         </div>
     </section>
 </main>

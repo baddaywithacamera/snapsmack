@@ -41,28 +41,31 @@ way in. Nothing here is a secret store — the shared credential VAULT
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
-import base64
 import json
 import os
 
 # snap_home is a sibling in tools/_shared; tools put _shared on sys.path before
 # importing this, exactly as they do for snap_home / shared creds.
 from snap_home import profiles_dir, site_key
+import snap_creds
+import snap_site_settings
 
 
-SCHEMA = 1
+SCHEMA = 2
 
 # Keys that live at the top level of a canonical profile. Anything else a caller
 # hands us is preserved under "extras" so tool-specific fields travel with the
 # profile without polluting the shared core.
-_CORE_KEYS = {"name", "site_url", "api_key", "last_connected", "extras"}
+_CORE_KEYS = {"name", "site_url", "api_key", "last_connected", "extras",
+              "portable", "portable_sync"}
+_SECRET_EXTRA_KEYS = {
+    "api_key", "api_key_local", "api_key_remote", "api_key_backup",
+    "api_key_gyss", "api_key_sybu", "heartbeat_key", "backup_key",
+}
 
 
-def _obfuscate(plain: str) -> str:
-    return base64.b64encode((plain or "").encode("utf-8")).decode("ascii")
-
-
-def _deobfuscate(blob: str) -> str:
+def _legacy_deobfuscate(blob: str) -> str:
+    import base64
     try:
         return base64.b64decode((blob or "").encode("ascii")).decode("utf-8")
     except Exception:
@@ -71,6 +74,16 @@ def _deobfuscate(blob: str) -> str:
 
 def _path_for_site(site_url: str) -> str:
     return os.path.join(profiles_dir(), site_key(site_url) + ".json")
+
+
+def _atomic_write(path: str, data: dict) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2, ensure_ascii=False)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp, path)
 
 
 def _to_disk(profile: dict) -> dict:
@@ -86,27 +99,65 @@ def _to_disk(profile: dict) -> dict:
         "schema":         SCHEMA,
         "name":           p.get("name") or (site_key(site) if site else ""),
         "site_url":       site,
-        "api_key_enc":    _obfuscate(p.get("api_key", "")),
         "last_connected": p.get("last_connected"),
         "extras":         extras,
+        "portable":       snap_site_settings.validate_portable(p.get("portable") or {}),
+        "portable_sync":  dict(p.get("portable_sync") or {}),
     }
 
 
 def _from_disk(data: dict) -> dict:
-    """On-disk -> canonical in-memory (plaintext api_key)."""
+    """On-disk -> canonical in-memory, hydrating secrets from the vault."""
+    site = data.get("site_url", "")
     return {
         "name":           data.get("name", ""),
         "site_url":       data.get("site_url", ""),
-        "api_key":        _deobfuscate(data.get("api_key_enc", "")),
+        "api_key":        snap_creds.get_site(site, "api_key") if site else "",
         "last_connected": data.get("last_connected"),
         "extras":         dict(data.get("extras") or {}),
+        "portable":       snap_site_settings.validate_portable(data.get("portable") or {}),
+        "portable_sync":  dict(data.get("portable_sync") or {}),
     }
+
+
+def _migrate_secrets(path: str, data: dict) -> dict:
+    """Copy legacy profile secrets to the vault, verify, then scrub atomically."""
+    site = (data.get("site_url") or "").strip()
+    if not site:
+        return data
+    candidates = {}
+    legacy_primary = _legacy_deobfuscate(data.get("api_key_enc", ""))
+    if legacy_primary:
+        candidates["api_key"] = legacy_primary
+    extras = dict(data.get("extras") or {})
+    for key in _SECRET_EXTRA_KEYS:
+        value = extras.get(key)
+        if isinstance(value, str) and value:
+            candidates[key] = value
+    if not candidates and data.get("schema") == SCHEMA:
+        return data
+    for field, value in candidates.items():
+        snap_creds.set_site(site, field, value)
+        if snap_creds.get_site(site, field) != value:
+            return data
+    cleaned = dict(data)
+    cleaned.pop("api_key_enc", None)
+    cleaned["schema"] = SCHEMA
+    cleaned_extras = dict(extras)
+    for field in candidates:
+        cleaned_extras.pop(field, None)
+    cleaned["extras"] = cleaned_extras
+    cleaned["portable"] = snap_site_settings.validate_portable(cleaned.get("portable") or {})
+    cleaned["portable_sync"] = dict(cleaned.get("portable_sync") or {})
+    _atomic_write(path, cleaned)
+    return cleaned
 
 
 def _read(path):
     try:
         with open(path, encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        return _migrate_secrets(path, data) if isinstance(data, dict) else None
     except Exception:
         return None
 
@@ -128,11 +179,19 @@ def save(profile: dict) -> str:
     if not site:
         raise ValueError("snap_profiles.save: profile has no site_url")
     os.makedirs(profiles_dir(), exist_ok=True)
+    if profile.get("api_key"):
+        snap_creds.set_site(site, "api_key", profile["api_key"])
+    extras = dict(profile.get("extras") or {})
+    for field in _SECRET_EXTRA_KEYS:
+        value = extras.pop(field, None)
+        if isinstance(value, str) and value:
+            snap_creds.set_site(site, field, value)
+            if snap_creds.get_site(site, field) != value:
+                raise RuntimeError("could not verify site credential vault write")
+    profile = dict(profile)
+    profile["extras"] = extras
     path = _path_for_site(site)
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(_to_disk(profile), f, indent=2)
-    os.replace(tmp, path)   # atomic: never leave a half-written profile
+    _atomic_write(path, _to_disk(profile))
     return path
 
 

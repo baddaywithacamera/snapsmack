@@ -11,6 +11,48 @@ red / amber / grey / green — so a silently-dead cron is caught before it bites
 Versioning follows the SnapSmack desktop-family `0.7.x` convention;
 `bump_version.py` adds one patch for subsequent builds.
 
+## 0.7.8 — 2026-09-01
+
+### Added
+- **Maintenance-mode sites are parked, not alarmed.** The heartbeat already
+  reports `maintenance_mode`; CRONOMETER now reads it and shows those sites as a
+  dim **PARKED** dot instead of red/grey. A parked site is excluded from the
+  FAILED/STALE/etc. counts and never sets the fleet headline — a deliberately
+  idle blog no longer looks broken.
+- **Mute any site (manual ignore).** Each card has a **MUTE / UNMUTE** button for
+  blogs you want ignored (not-yet-live, known-parked, a hub you monitor
+  elsewhere). Muted sites stay visible but drop out of the alarm counts and
+  headline, and roll up under PARKED. The choice is saved to config and survives
+  a restart.
+- **Hide parked/muted sites.** A **HIDE PARKED (n)** button in the toolbar
+  collapses every PARKED + MUTED card off the board (the count stays in the top
+  summary), so the fleet view shows only the sites that can actually need
+  attention. Toggles back with **SHOW PARKED (n)**; the choice is saved.
+- **Site mode shown per card** (photoblog / carousel / smacktalk) and in the
+  COPY STATUS report, so the one SMACKTALK blog is obvious at a glance.
+
+### Fixed
+- **Fediverse delivery no longer shows red on blogs with no followers.** With
+  federation ON but zero followers, the delivery cron has nothing to send, so its
+  last-run age says nothing about health — it now reports a calm N/A ("nothing to
+  deliver") instead of FAILED/STALE/UNKNOWN. A blog *with* followers is still
+  judged on freshness, so a genuinely broken delivery on an active, followed blog
+  still shows red. This clears most of the false-red wall on a quiet fleet.
+
+## 0.7.7 — 2026-08-31
+
+### Fixed
+- **API keys read again after the schema-2 profile migration.** The profile store moved
+  keys out of the JSON files into the shared credential vault (schema 2); this build
+  bundles the schema-2 `snap_profiles` / `snap_creds` that hydrate the key via
+  `snap_creds.get_site()`, so all sites authenticate again (the 0.7.6 build shipped the
+  stale schema-1 reader and showed "no API key saved" everywhere).
+
+### Added
+- **Fleet cron driver.** On every poll CRONOMETER also nudges each site's due crons via
+  `multisite/run-crons`, so the fleet's jobs run even with no visitor traffic. Best-effort
+  and idempotent. (Carried over from the 0.7.6 attempt, now on a build that authenticates.)
+
 ## 0.7.5 — 2026-08-31
 
 ### Changed
