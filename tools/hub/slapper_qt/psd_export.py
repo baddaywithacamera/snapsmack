@@ -39,18 +39,18 @@ def export_layered_psd(document, path):
     psd = PSDImage.new(mode="RGB", size=composite.size, depth=8)
 
     base = psd.create_pixel_layer(
-        _checkpoint(document, 0), name="00 Base image — SNAP SLAPPER edits")
+        _checkpoint(document, 0), name="00 Base image - SNAP SLAPPER edits")
     base.visible = False
     for index, layer in enumerate(document.layers, 1):
         name = str(layer.get("name") or f"Layer {index}")
         kind = str(layer.get("type") or "layer").replace("_", " ")
         checkpoint = psd.create_pixel_layer(
             _checkpoint(document, index),
-            name=f"{index:02d} {name} — {kind} raster checkpoint")
+            name=f"{index:02d} {name} - {kind} raster checkpoint")
         checkpoint.visible = False
 
     psd.create_pixel_layer(
-        composite, name="SNAP SLAPPER Composite — export appearance")
+        composite, name="SNAP SLAPPER Composite - export appearance")
 
     directory = os.path.dirname(os.path.abspath(path)) or "."
     os.makedirs(directory, exist_ok=True)

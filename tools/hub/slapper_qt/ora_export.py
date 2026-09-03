@@ -52,10 +52,10 @@ def export_openraster(document, path):
     layer_files = []
     # ORA stack order is top first. The visible composite guarantees appearance.
     layer_files.append(("data/000-composite.png", composite,
-                        "SNAP SLAPPER Composite — export appearance", "visible"))
-    checkpoints = [(0, "00 Base image — SNAP SLAPPER edits")]
+                        "SNAP SLAPPER Composite - export appearance", "visible"))
+    checkpoints = [(0, "00 Base image - SNAP SLAPPER edits")]
     checkpoints.extend((index,
-                        f"{index:02d} {layer.get('name') or f'Layer {index}'} — "
+                        f"{index:02d} {layer.get('name') or f'Layer {index}'} - "
                         f"{str(layer.get('type') or 'layer').replace('_', ' ')} raster checkpoint")
                        for index, layer in enumerate(document.layers, 1))
     for sequence, (count, name) in enumerate(reversed(checkpoints), 1):
