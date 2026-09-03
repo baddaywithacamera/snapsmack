@@ -9,6 +9,19 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.603D "GLASS BOX" — 2026-09-03
+- **New: FEDIVERSE → DELIVERY LOG, so you can SEE why a post isn't going out
+  before you push it again.** A read-only diagnostics page. The top panel shows the
+  outbound queue — every send that is still waiting or failing, with the target
+  follower, which post it carries, the activity (Create/Update/Delete), the attempt
+  count, and **the exact error the remote returned** on the last try. (Successful
+  sends are removed the instant they land, so an empty queue is the healthy state.)
+  The second panel lists recent posts with whether/when each was pushed to followers,
+  flagging any published, federation-on post that shows **not pushed** — the
+  "published on the blog but never federated" case. It never sends, retries or
+  deletes anything; you act from Cron & Jobs (RUN NOW) or Push & Tools (PUSH /
+  RE-IMPRINT). Reachable from the Fediverse Config menu. No database or delivery-path
+  changes — it reads state that already exists.
 ## 0.7.602D "SPECIAL DELIVERY" — 2026-09-03
 - **Scheduled Photo-Friday prompt cards now actually go out to your followers.** A
   scheduled card was filed as a hidden draft when you queued it, then flipped to
