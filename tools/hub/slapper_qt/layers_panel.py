@@ -10,9 +10,10 @@ that layer's own adjustments.
 import os
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
-    QComboBox, QFileDialog, QSlider, QGridLayout, QInputDialog,
+    QComboBox, QFileDialog, QSlider, QGridLayout, QInputDialog, QColorDialog,
 )
 
 import editor_engine
@@ -41,6 +42,9 @@ class LayersPanel(QWidget):
     def __init__(self, host, parent=None):
         super().__init__(parent)
         self.host = host
+        self._mask_thumbnails = {}
+        self._row_buttons = {}
+        self._copied_mask = None
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(12, 8, 12, 10)
@@ -55,6 +59,7 @@ class LayersPanel(QWidget):
         add_grid.setSpacing(4)
         for index, (text, tip, handler) in enumerate((
                 ("Adjustment", "Edit light and colour without changing the base photo", self._add_adjustment),
+                ("Blank", "Add a transparent layer to fill, blend and mask", self._add_paint),
                 ("Image", "Place another image over the photo", self._add_image),
                 ("Text", "Add editable text", self._add_text),
                 ("Creative filter", "Add a filter as a separate layer", self._add_filter))):
@@ -112,24 +117,42 @@ class LayersPanel(QWidget):
         blend_row.addWidget(self.blend, 1)
         detail_layout.addLayout(blend_row)
 
-        mask_row = QHBoxLayout()
+        self.fill_colour_btn = QPushButton("Fill blank layer…")
+        self.fill_colour_btn.setObjectName("LayerAddBtn")
+        self.fill_colour_btn.clicked.connect(self._choose_fill_colour)
+        detail_layout.addWidget(self.fill_colour_btn)
+
+        mask_row = QGridLayout()
+        mask_row.setSpacing(4)
         self.mask_enabled = QCheckBox("Use layer mask")
         self.mask_enabled.setToolTip("Temporarily enable or disable this layer's mask")
         self.mask_enabled.toggled.connect(self._toggle_mask_enabled)
-        mask_row.addWidget(self.mask_enabled)
+        mask_row.addWidget(self.mask_enabled, 0, 0)
         self.mask_linked = QCheckBox("Linked")
         self.mask_linked.setToolTip("Move/transform this mask with its layer")
         self.mask_linked.toggled.connect(self._toggle_mask_linked)
-        mask_row.addWidget(self.mask_linked)
+        mask_row.addWidget(self.mask_linked, 0, 1)
         self.edit_mask_btn = QPushButton("Edit mask")
         self.edit_mask_btn.setObjectName("LayerOrderBtn")
         self.edit_mask_btn.clicked.connect(self._edit_mask)
-        mask_row.addWidget(self.edit_mask_btn)
+        mask_row.addWidget(self.edit_mask_btn, 1, 0)
         self.rename_btn = QPushButton("Rename layer")
         self.rename_btn.setObjectName("LayerOrderBtn")
         self.rename_btn.clicked.connect(self._rename)
-        mask_row.addWidget(self.rename_btn)
+        mask_row.addWidget(self.rename_btn, 1, 1)
         detail_layout.addLayout(mask_row)
+
+        mask_copy_row = QHBoxLayout()
+        mask_copy_row.setSpacing(4)
+        self.copy_mask_btn = QPushButton("Copy mask")
+        self.copy_mask_btn.setObjectName("LayerOrderBtn")
+        self.copy_mask_btn.clicked.connect(self._copy_mask)
+        mask_copy_row.addWidget(self.copy_mask_btn)
+        self.paste_mask_btn = QPushButton("Paste mask")
+        self.paste_mask_btn.setObjectName("LayerOrderBtn")
+        self.paste_mask_btn.clicked.connect(self._paste_mask)
+        mask_copy_row.addWidget(self.paste_mask_btn)
+        detail_layout.addLayout(mask_copy_row)
 
         order_row = QHBoxLayout()
         order_row.setSpacing(4)
@@ -175,6 +198,8 @@ class LayersPanel(QWidget):
 
     # --- Build the list -----------------------------------------------------
     def rebuild(self):
+        self._mask_thumbnails = {}
+        self._row_buttons = {}
         while self.list_container.count():
             item = self.list_container.takeAt(0)
             widget = item.widget()
@@ -198,7 +223,7 @@ class LayersPanel(QWidget):
         self._sync_detail()
 
     def _label_for(self, layer):
-        kind = {"adjustment": "Adjustment", "image": "Image", "text": "Text",
+        kind = {"adjustment": "Adjustment", "paint": "Blank", "image": "Image", "text": "Text",
                 "filter": "Filter"}.get(layer.get("type"), "Layer")
         name = layer.get("name", "Layer")
         return name if name.lower() == kind.lower() else f"{name}  ·  {kind}"
@@ -232,6 +257,7 @@ class LayersPanel(QWidget):
             name.setToolTip("Click to edit this layer")
         name.clicked.connect(lambda _c, t=target: self._select(t))
         layout.addWidget(name, 1)
+        self._row_buttons[target] = name
         if target != BASE:
             layer = next((item for item in self.doc.layers
                           if item.get("id") == target), None)
@@ -245,6 +271,7 @@ class LayersPanel(QWidget):
                     "Layer mask thumbnail — white reveals, black hides" if
                     layer.get("mask_enabled", True) else "Layer mask is disabled")
                 layout.addWidget(thumbnail)
+                self._mask_thumbnails[target] = thumbnail
                 badge = QLabel("MASK" if layer.get("mask_enabled", True) else "OFF")
                 badge.setObjectName("LayerSectionLabel")
                 layout.addWidget(badge)
@@ -257,6 +284,15 @@ class LayersPanel(QWidget):
                     summary.setToolTip("Number of non-default adjustments on this layer")
                     layout.addWidget(summary)
         return row
+
+    def update_mask_thumbnail(self, layer):
+        """Refresh the selected row's mask preview without rebuilding the panel."""
+        thumbnail = self._mask_thumbnails.get(layer.get("id"))
+        if thumbnail is None or not layer.get("mask"):
+            return
+        mask = editor_engine._mask_from_text(layer["mask"])
+        mask.thumbnail((28, 28))
+        thumbnail.setPixmap(pil_to_qpixmap(mask.convert("RGB")))
 
     def _sync_detail(self):
         layer = self._selected_layer()
@@ -282,6 +318,14 @@ class LayersPanel(QWidget):
         self.mask_linked.setEnabled(has_mask and layer.get("type") in {"image", "text"})
         self.mask_linked.blockSignals(False)
         self.edit_mask_btn.setEnabled(True)
+        self.fill_colour_btn.setVisible(layer.get("type") == "paint")
+        if layer.get("type") == "paint":
+            fill = list(layer.get("fill", [0, 0, 0, 0]))
+            colour = QColor(*((fill + [0, 0, 0])[:3]))
+            self.fill_colour_btn.setStyleSheet(
+                f"background:{colour.name()};color:{'#000' if colour.lightness() > 140 else '#fff'}")
+        self.copy_mask_btn.setEnabled(has_mask)
+        self.paste_mask_btn.setEnabled(self._copied_mask is not None)
 
     # --- Actions ------------------------------------------------------------
     def _select(self, target):
@@ -318,6 +362,48 @@ class LayersPanel(QWidget):
         layer = self.doc.add_image_layer(path)
         self.host.set_target(layer["id"])
         self.host.after_structure_change()
+
+    def _add_paint(self):
+        if not self.doc:
+            return
+        layer = self.doc.add_paint_layer()
+        self.host.set_target(layer["id"])
+        self.host.after_structure_change()
+
+    def _choose_fill_colour(self):
+        layer = self._selected_layer()
+        if layer is None or layer.get("type") != "paint":
+            return
+        current = list(layer.get("fill", [0, 0, 0, 0]))
+        colour = QColorDialog.getColor(QColor(*((current + [0, 0, 0])[:3])), self,
+                                       "Fill blank layer")
+        if not colour.isValid():
+            return
+        layer["fill"] = [colour.red(), colour.green(), colour.blue(), 255]
+        self.doc.record("Fill blank layer")
+        self.host.after_structure_change()
+
+    def _copy_mask(self):
+        layer = self._selected_layer()
+        if layer is None or not layer.get("mask"):
+            return
+        self._copied_mask = {
+            "mask": str(layer["mask"]),
+            "mask_kind": str(layer.get("mask_kind", "copied")),
+        }
+        self.paste_mask_btn.setEnabled(True)
+        self.host.status.showMessage("Layer mask copied.")
+
+    def _paste_mask(self):
+        layer = self._selected_layer()
+        if layer is None or self._copied_mask is None:
+            return
+        layer["mask"] = self._copied_mask["mask"]
+        layer["mask_kind"] = self._copied_mask["mask_kind"]
+        layer["mask_enabled"] = True
+        self.doc.record("Paste layer mask")
+        self.host.after_structure_change()
+        self.host.status.showMessage("Copied mask pasted as an independent mask.")
 
     def _add_text(self):
         if not self.doc:

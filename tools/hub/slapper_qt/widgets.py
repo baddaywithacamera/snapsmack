@@ -4,8 +4,9 @@ These are application-owned widgets (the spec's ``slapper_ui`` idea) so every
 screen shares one look and one behaviour instead of styling controls ad hoc.
 """
 
-from PySide6.QtCore import Qt, Signal, QRectF
-from PySide6.QtGui import QPainter, QPixmap, QImage, QColor, QPolygonF, QPen, QFont
+from PySide6.QtCore import Qt, Signal, QRectF, QTimer
+from PySide6.QtGui import (QPainter, QPixmap, QImage, QColor, QPolygonF, QPen,
+                           QFont, QTransform)
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem,
@@ -39,6 +40,7 @@ class ImageView(QGraphicsView):
     perspective_corner_dragged = Signal(int, float, float, bool)
     # normalized x/y and stroke-finished state for full-canvas mask painting
     mask_painted = Signal(float, float, bool)
+    gradient_drawn = Signal(float, float, float, float)
     # The editor uses a viewport-sized proxy in Fit mode. When layout changes,
     # ask it to render a new proxy instead of stretching the old one.
     fit_view_resized = Signal()
@@ -58,6 +60,7 @@ class ImageView(QGraphicsView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self._has_image = False
+        self._logical_image_rect = None
         self._fitting = True
         self._crop_mode = False
         self._crop_rect_item = None
@@ -72,6 +75,9 @@ class ImageView(QGraphicsView):
         self._retouch_mode = False
         self._neutral_mode = False
         self._colour_range_mode = False
+        self._gradient_mode = False
+        self._gradient_start = None
+        self._gradient_line = None
         self._mask_paint_mode = False
         self._mask_painting = False
         self._mask_overlay = QGraphicsPixmapItem()
@@ -195,6 +201,17 @@ class ImageView(QGraphicsView):
                          else QGraphicsView.ScrollHandDrag)
         self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
 
+    def set_gradient_mode(self, enabled):
+        """Let a graduated mask be drawn directly across the photograph."""
+        self._gradient_mode = bool(enabled)
+        self._gradient_start = None
+        if self._gradient_line is not None:
+            self._scene.removeItem(self._gradient_line)
+            self._gradient_line = None
+        self.setDragMode(QGraphicsView.NoDrag if enabled
+                         else QGraphicsView.ScrollHandDrag)
+        self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+
     def set_mask_paint_mode(self, enabled):
         self._mask_paint_mode = bool(enabled)
         self._mask_painting = False
@@ -240,8 +257,10 @@ class ImageView(QGraphicsView):
                           (right - left) * scene.width(),
                           (bottom - top) * scene.height())
         else:
-            rect = scene.adjusted(scene.width() * .08, scene.height() * .08,
-                                  -scene.width() * .08, -scene.height() * .08)
+            # A new crop begins at the actual photograph boundary. Free crop
+            # must not retain the old arbitrary 8% inset; locked ratios will
+            # subsequently constrain the largest fitting rectangle.
+            rect = QRectF(scene)
         self._set_crop_rect(rect)
 
     def set_crop_aspect(self, ratio):
@@ -380,12 +399,22 @@ class ImageView(QGraphicsView):
                    "move": Qt.SizeAllCursor, "new": Qt.CrossCursor}
         self.viewport().setCursor(cursors.get(hit, Qt.CrossCursor))
 
-    def set_pixmap(self, pixmap: QPixmap, keep_view: bool = True):
+    def set_pixmap(self, pixmap: QPixmap, keep_view: bool = True,
+                   stable_geometry: bool = False):
         """Show a pixmap. When ``keep_view`` the current zoom/pan is preserved
         (used for live slider updates); otherwise the view fits the image."""
         first = not self._has_image
         self._item.setPixmap(pixmap)
-        self._scene.setSceneRect(QRectF(pixmap.rect()))
+        self._item.setTransform(QTransform())
+        if stable_geometry and self._logical_image_rect is not None and \
+                pixmap.width() and pixmap.height():
+            logical = self._logical_image_rect
+            self._item.setTransform(QTransform.fromScale(
+                logical.width() / pixmap.width(), logical.height() / pixmap.height()))
+            self._scene.setSceneRect(logical)
+        else:
+            self._logical_image_rect = QRectF(pixmap.rect())
+            self._scene.setSceneRect(self._logical_image_rect)
         self._has_image = True
         self._update_perspective_overlay()
         if first or not keep_view or self._fitting:
@@ -405,14 +434,14 @@ class ImageView(QGraphicsView):
         self.resetTransform()
 
     # --- Before/After split -------------------------------------------------
-    def set_compare(self, original, edited, keep_view=True):
+    def set_compare(self, original, edited, keep_view=True, stable_geometry=False):
         """Enter Before/After: original left of the divider, edited on the
         right. Drag anywhere across the canvas to move the split."""
         self._compare = True
         self._orig_pixmap = original
         self._edit_pixmap = edited
         self.viewport().setCursor(Qt.SplitHCursor)
-        self._compose_compare(keep_view=keep_view)
+        self._compose_compare(keep_view=keep_view, stable_geometry=stable_geometry)
 
     def reset_divider(self):
         self._divider = 0.5
@@ -423,7 +452,7 @@ class ImageView(QGraphicsView):
         self._edit_pixmap = None
         self.viewport().unsetCursor()
 
-    def _compose_compare(self, keep_view=True):
+    def _compose_compare(self, keep_view=True, stable_geometry=False):
         if not (self._orig_pixmap and self._edit_pixmap):
             return
         edited = self._edit_pixmap
@@ -446,7 +475,8 @@ class ImageView(QGraphicsView):
         painter.drawLine(split, 0, split, height)
         self._draw_compare_labels(painter, width, height, split)
         painter.end()
-        self.set_pixmap(canvas, keep_view=keep_view)
+        self.set_pixmap(canvas, keep_view=keep_view,
+                        stable_geometry=stable_geometry)
 
     def _draw_compare_labels(self, painter, width, height, split):
         font = QFont()
@@ -477,6 +507,16 @@ class ImageView(QGraphicsView):
         self._compose_compare(keep_view=True)
 
     def mousePressEvent(self, event):
+        if self._gradient_mode and self._has_image and event.button() == Qt.LeftButton:
+            point = self.mapToScene(event.position().toPoint())
+            if self._scene.sceneRect().contains(point):
+                self._gradient_start = point
+                self._gradient_line = QGraphicsLineItem(point.x(), point.y(),
+                                                        point.x(), point.y())
+                self._gradient_line.setPen(QPen(QColor(theme.ACCENT), 2))
+                self._gradient_line.setZValue(30)
+                self._scene.addItem(self._gradient_line)
+            return
         if self._perspective_mode and self._has_image and event.button() == Qt.LeftButton:
             point = self.mapToScene(event.position().toPoint())
             rect = self._scene.sceneRect()
@@ -542,6 +582,12 @@ class ImageView(QGraphicsView):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        if self._gradient_mode and self._gradient_start is not None and \
+                (event.buttons() & Qt.LeftButton):
+            point = self.mapToScene(event.position().toPoint())
+            self._gradient_line.setLine(self._gradient_start.x(), self._gradient_start.y(),
+                                        point.x(), point.y())
+            return
         if self._mask_paint_mode and self._mask_painting and \
                 (event.buttons() & Qt.LeftButton):
             point = self.mapToScene(event.position().toPoint())
@@ -613,6 +659,21 @@ class ImageView(QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+        if self._gradient_mode and self._gradient_start is not None:
+            end = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            start = self._gradient_start
+            self._gradient_start = None
+            if self._gradient_line is not None:
+                self._scene.removeItem(self._gradient_line)
+                self._gradient_line = None
+            if scene.width() and scene.height():
+                self.gradient_drawn.emit(
+                    (start.x() - scene.left()) / scene.width(),
+                    (start.y() - scene.top()) / scene.height(),
+                    (end.x() - scene.left()) / scene.width(),
+                    (end.y() - scene.top()) / scene.height())
+            return
         if self._mask_paint_mode and self._mask_painting:
             self._mask_painting = False
             point = self.mapToScene(event.position().toPoint())
@@ -642,10 +703,10 @@ class ImageView(QGraphicsView):
         super().mouseReleaseEvent(event)
 
     def wheelEvent(self, event):
-        if not self._has_image or self._crop_mode:
-            return
-        factor = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
-        self.zoom_by(factor)
+        # Windows trackpads often encode a pinch as Ctrl+wheel.  Ignore every
+        # wheel gesture over the canvas so an accidental touch cannot resize
+        # or shift the photograph.  Toolbar/buttons and Ctrl+/- still zoom.
+        event.accept()
 
     def zoom_by(self, factor):
         """Zoom one predictable step, bounded against accidental runaway."""
@@ -750,6 +811,13 @@ class Histogram(QWidget):
             painter.drawPolygon(polygon)
 
 
+class _ScrollSafeSlider(QSlider):
+    """A slider that never steals mouse-wheel/trackpad scrolling."""
+
+    def wheelEvent(self, event):  # noqa: N802 — Qt override
+        event.ignore()  # propagate to the containing scroll area
+
+
 class SliderRow(QWidget):
     """One labelled adjustment: name, slider, live value, double-click reset.
 
@@ -780,12 +848,13 @@ class SliderRow(QWidget):
         name.setFixedWidth(74)
         row.addWidget(name)
 
-        self.slider = QSlider(Qt.Horizontal)
+        self.slider = _ScrollSafeSlider(Qt.Horizontal)
         self.slider.setMinimum(self._to_step(self.start))
         self.slider.setMaximum(self._to_step(self.end))
         self.slider.setValue(self._to_step(self.default))
         self.slider.valueChanged.connect(self._on_slider)
-        self.slider.sliderReleased.connect(lambda: self.committed.emit(self.key))
+        self.slider.sliderPressed.connect(self._cancel_deferred_commit)
+        self.slider.sliderReleased.connect(self._commit_drag)
         row.addWidget(self.slider, 1)
 
         self.value_label = QLabel(self._format(self.default))
@@ -795,6 +864,10 @@ class SliderRow(QWidget):
         row.addWidget(self.value_label)
 
         self._suppress = False
+        self._commit_timer = QTimer(self)
+        self._commit_timer.setSingleShot(True)
+        self._commit_timer.setInterval(300)
+        self._commit_timer.timeout.connect(lambda: self.committed.emit(self.key))
 
     def _to_step(self, value):
         return int(round(value / self.resolution))
@@ -810,6 +883,17 @@ class SliderRow(QWidget):
         self.value_label.setText(self._format(value))
         if not self._suppress:
             self.changed.emit(self.key, value)
+            # Keyboard and groove-click changes have no sliderReleased signal.
+            # Group key-repeat into one action, then create its own undo point.
+            if not self.slider.isSliderDown():
+                self._commit_timer.start()
+
+    def _cancel_deferred_commit(self):
+        self._commit_timer.stop()
+
+    def _commit_drag(self):
+        self._commit_timer.stop()
+        self.committed.emit(self.key)
 
     def set_value(self, value):
         """Set the slider without emitting a live change (used by undo/redo and
@@ -820,6 +904,7 @@ class SliderRow(QWidget):
         self._suppress = False
 
     def mouseDoubleClickEvent(self, event):
+        self._commit_timer.stop()
         self.set_value(self.default)
         self.changed.emit(self.key, self.default)
         self.committed.emit(self.key)
