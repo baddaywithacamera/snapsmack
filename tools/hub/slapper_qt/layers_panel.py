@@ -62,7 +62,8 @@ class LayersPanel(QWidget):
                 ("Blank", "Add a transparent layer to fill, blend and mask", self._add_paint),
                 ("Image", "Place another image over the photo", self._add_image),
                 ("Text", "Add editable text", self._add_text),
-                ("Creative filter", "Add a filter as a separate layer", self._add_filter))):
+                ("Creative filter", "Add a filter as a separate layer", self._add_filter),
+                ("Texture", "Search FoundTextures.ca and add a texture layer", self._add_texture))):
             btn = QPushButton(text)
             btn.setObjectName("LayerAddBtn")
             btn.setToolTip(tip)
@@ -415,6 +416,10 @@ class LayersPanel(QWidget):
     def _add_filter(self):
         if self.doc:
             self.host.open_filters()
+
+    def _add_texture(self):
+        if self.doc:
+            self.host.open_textures()
 
     def _delete(self):
         index = self._selected_index()
