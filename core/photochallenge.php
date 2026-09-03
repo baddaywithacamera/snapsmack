@@ -466,7 +466,17 @@ function pc_notice_closed_window(PDO $pdo, array $settings, array $row, array $w
 }
 
 /** Allocate one immutable weekly slot under the participant-row lock. */
+/** Why the last pc_admit_object() call rejected (or '' if it admitted). Lets
+ *  pc_maybe_boost_entry surface the exact reason on the Interactions log so a
+ *  post that "should have boosted" but didn't is diagnosable at a glance. */
+function pc_last_admit_reason(?string $set = null): string {
+    static $r = '';
+    if ($set !== null) $r = $set;
+    return $r;
+}
+
 function pc_admit_object(PDO $pdo, array $settings, string $object_id): ?array {
+    pc_last_admit_reason('');   // reset for this attempt (stays '' on success)
     $win = pc_window($settings);
     $tag = pc_tag($settings);
     $q = $pdo->prepare(
@@ -476,21 +486,46 @@ function pc_admit_object(PDO $pdo, array $settings, string $object_id): ?array {
     );
     $q->execute([$object_id]);
     $row = $q->fetch(PDO::FETCH_ASSOC);
-    if (!$row || ($row['participant_state'] ?? '') !== 'active' || (int)$row['is_boost'] !== 0
-        || pc_is_blocked($pdo,(string)($row['actor_url'] ?? ''))
-        || !empty($row['in_reply_to']) || (int)($row['sensitive'] ?? 0) !== 0) return null;
-    if (!pc_test_allowed($settings, (string)($row['actor_url'] ?? ''), (string)($row['participant_handle'] ?? ''))) return null;
-    $published = (string)($row['published'] ?? '');
-    $tags = json_decode((string)($row['tags_json'] ?? '[]'), true) ?: [];
-    if (!in_array($tag, $tags, true)) return null;
-    $media = json_decode((string)($row['media_json'] ?? '[]'), true) ?: [];
-    $videos = json_decode((string)($row['media_video_json'] ?? '[]'), true) ?: [];
-    if (count($media) !== 1 || $videos || !is_string($media[0]) || trim($media[0]) === '') return null;
-    if (!$win['open']) {
-        pc_notice_closed_window($pdo,$settings,$row,$win);
+    if (!$row) {
+        // Split "never reached the blog" (delivery/fetch never landed it in the
+        // timeline) from "arrived but the author isn't a participant" — the whole
+        // difference between a post that never got here and one that did.
+        $t = $pdo->prepare("SELECT 1 FROM snap_ap_timeline WHERE object_id=? LIMIT 1");
+        $t->execute([$object_id]);
+        pc_last_admit_reason($t->fetchColumn()
+            ? 'author is not an active challenge participant'
+            : 'post never reached the blog (not delivered / not ingested)');
         return null;
     }
-    if ($published < $win['start'] || $published >= $win['end']) return null;
+    if (($row['participant_state'] ?? '') !== 'active') { pc_last_admit_reason('participant is not active'); return null; }
+    if ((int)$row['is_boost'] !== 0)                    { pc_last_admit_reason('a boost/reblog, not an original post'); return null; }
+    if (pc_is_blocked($pdo,(string)($row['actor_url'] ?? ''))) { pc_last_admit_reason('author is blocked'); return null; }
+    if (!empty($row['in_reply_to']))                    { pc_last_admit_reason('a reply, not a standalone post'); return null; }
+    if ((int)($row['sensitive'] ?? 0) !== 0)            { pc_last_admit_reason('marked sensitive / content-warning'); return null; }
+    if (!pc_test_allowed($settings, (string)($row['actor_url'] ?? ''), (string)($row['participant_handle'] ?? ''))) {
+        pc_last_admit_reason('author not on the testing whitelist'); return null;
+    }
+    $published = (string)($row['published'] ?? '');
+    $tags = json_decode((string)($row['tags_json'] ?? '[]'), true) ?: [];
+    if (!in_array($tag, $tags, true)) {
+        pc_last_admit_reason('not tagged #' . $tag . ' (post tags: ' . (implode(', ', array_map('strval', $tags)) ?: 'none') . ')');
+        return null;
+    }
+    $media = json_decode((string)($row['media_json'] ?? '[]'), true) ?: [];
+    $videos = json_decode((string)($row['media_video_json'] ?? '[]'), true) ?: [];
+    if (count($media) !== 1 || $videos || !is_string($media[0]) || trim($media[0]) === '') {
+        pc_last_admit_reason('needs exactly one image and no video (has ' . count($media) . ' image(s), ' . count((array)$videos) . ' video(s))');
+        return null;
+    }
+    if (!$win['open']) {
+        pc_notice_closed_window($pdo,$settings,$row,$win);
+        pc_last_admit_reason('the qualifying window is closed');
+        return null;
+    }
+    if ($published < $win['start'] || $published >= $win['end']) {
+        pc_last_admit_reason('published outside the window (posted ' . $published . ' UTC; window ' . $win['start'] . ' → ' . $win['end'] . ')');
+        return null;
+    }
     $actor = (string)$row['actor_url'];
     $hc = ((int)($row['participant_hc'] ?? 0) === 1 || in_array('horsconcours', $tags, true)) ? 1 : 0;
 
@@ -951,10 +986,20 @@ function pc_maybe_boost_entry(PDO $pdo, array $settings, string $object_id): boo
         || !function_exists('sv_boost_remote')) return false;
 
     pc_ensure_tables($pdo);
+    // Diagnostic: record the admission outcome on the Interactions inbox log, so a
+    // post that "should have boosted" shows EXACTLY why it did or didn't — arrived?
+    // tagged? in window? whitelisted? Skips the high-volume "not a participant"
+    // case so it doesn't flood the log with every followed account's ordinary posts.
+    $diag = function (string $outcome) use ($pdo, $object_id) {
+        if (!function_exists('sv_inbox_log')) return;
+        if (strpos($outcome, 'not an active challenge participant') !== false) return;
+        try { sv_inbox_log($pdo, 'PHOTOFRI', '', $object_id, $outcome); } catch (Throwable $e) {}
+    };
     try {
         $admission = pc_admit_object($pdo, $settings, $object_id);
-        if (!$admission || ($admission['status'] ?? '') !== 'active'
-            || in_array(($admission['boost_state'] ?? ''), ['sent','test'], true)) return false;
+        if (!$admission) { $diag('not boosted — ' . pc_last_admit_reason()); return false; }
+        if (($admission['status'] ?? '') !== 'active') { $diag('not boosted — admission is ' . (string)($admission['status'] ?? 'inactive')); return false; }
+        if (in_array(($admission['boost_state'] ?? ''), ['sent','test'], true)) return false; // already boosted — no re-log
 
         // TESTING WHITELIST: sv_boost_remote delivers this boost ONLY to whitelisted
         // test accounts (never Public, never the real follower crowd). We still record
@@ -968,10 +1013,12 @@ function pc_maybe_boost_entry(PDO $pdo, array $settings, string $object_id): boo
             $pdo->prepare(
                 "UPDATE pc_admissions SET boost_state=?,boost_activity_id=? WHERE object_id=?"
             )->execute([$is_test ? 'test' : 'sent', (string)$boost_id, $object_id]);
+            $diag($is_test ? 'ADMITTED & boosted (test — to whitelist only)' : 'ADMITTED & boosted to followers');
             return true;
         }
         $pdo->prepare("UPDATE pc_admissions SET boost_state='failed' WHERE object_id=?")
             ->execute([$object_id]);
+        $diag('admitted, but the boost delivery failed');
         return false;
     } catch (Throwable $e) {
         return false;
