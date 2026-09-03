@@ -10,8 +10,8 @@
 
 These are the bodies of the four static pages, converted to paste straight into
 **Pages** in the PHOTOFRI.DAY CMS admin. They are the same copy as
-`projects/photofri-day/*.html`, with the design lifted out into the CRIMSON ONYX
-skin (`skins/crimson-onyx/style.css`) so the words can be edited without touching
+`projects/photofri-day/*.html`, with the design lifted out into the ONYX skin
+(`skins/onyx/style.css`, Crimson palette) so the words can be edited without touching
 CSS, and the CSS can be tuned without touching the words.
 
 They are **not** shipped inside the skin package. A skin is a look; these are
@@ -31,8 +31,8 @@ For each file, in **Pages → Add New**:
 Paste the file contents into the body. Then:
 
 1. **Settings → Homepage mode → Static page**, and choose **PHOTOFRI.DAY**.
-2. **Appearance → Customize** with CRIMSON ONYX active; upload
-   `skins/crimson-onyx/img/logo-pf-white.png` as the header logo, and
+2. **Appearance → Customize** with ONYX and the Crimson palette active; upload
+   `skins/onyx/img/logo-pf-white.png` as the header logo, and
    `img/logo-pf-black.png` as the **Profile Avatar** (that one becomes the
    Fediverse actor icon other servers show).
 

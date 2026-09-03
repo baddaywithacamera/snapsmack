@@ -109,7 +109,8 @@ def load_fleet() -> List[SiteEntry]:
         extras = p.get("extras") or {}
         # Prefer the hub->spoke key (moderation scope), then the profile key,
         # then the shared hub key.
-        api_key = (str(extras.get("api_key_local") or "").strip()
+        api_key = ((snap_creds.get_site(site_url, "api_key_local").strip()
+                    if snap_creds is not None else "")
                    or str(p.get("api_key") or "").strip()
                    or hub_key)
         try:

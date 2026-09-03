@@ -5,15 +5,18 @@ screen shares one look and one behaviour instead of styling controls ad hoc.
 """
 
 from PySide6.QtCore import Qt, Signal, QRectF
-from PySide6.QtGui import QPainter, QPixmap, QColor, QPolygonF, QPen, QFont
+from PySide6.QtGui import QPainter, QPixmap, QImage, QColor, QPolygonF, QPen, QFont
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem,
     QGraphicsEllipseItem, QGraphicsPolygonItem, QGraphicsLineItem,
     QWidget, QLabel, QSlider, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy,
 )
+from PIL import Image
 
 from . import theme
+
+PERSPECTIVE_GRID_DIVISIONS = 20
 
 
 class ImageView(QGraphicsView):
@@ -28,10 +31,14 @@ class ImageView(QGraphicsView):
     retouch_clicked = Signal(float, float)
     # emitted when the canvas is clicked with the neutral-colour eyedropper
     neutral_clicked = Signal(float, float)
+    # emitted when a colour-range mask eyedropper samples the canvas
+    colour_range_clicked = Signal(float, float)
     # normalized canvas movement for the selected movable layer
     layer_dragged = Signal(float, float, bool)
     # corner index, normalized x/y, and whether the drag has finished
     perspective_corner_dragged = Signal(int, float, float, bool)
+    # normalized x/y and stroke-finished state for full-canvas mask painting
+    mask_painted = Signal(float, float, bool)
     # The editor uses a viewport-sized proxy in Fit mode. When layout changes,
     # ask it to render a new proxy instead of stretching the old one.
     fit_view_resized = Signal()
@@ -64,6 +71,13 @@ class ImageView(QGraphicsView):
         self._crop_handles = []
         self._retouch_mode = False
         self._neutral_mode = False
+        self._colour_range_mode = False
+        self._mask_paint_mode = False
+        self._mask_painting = False
+        self._mask_overlay = QGraphicsPixmapItem()
+        self._mask_overlay.setZValue(7)
+        self._mask_overlay.setVisible(False)
+        self._scene.addItem(self._mask_overlay)
         self._layer_move_mode = False
         self._layer_drag_point = None
         self._perspective_mode = False
@@ -130,10 +144,17 @@ class ImageView(QGraphicsView):
         self._perspective_polygon.setPen(pen)
         self._perspective_polygon.setBrush(QColor(0, 0, 0, 0))
         self._scene.addItem(self._perspective_polygon)
-        grid_pen = QPen(QColor(255, 255, 255, 150), 0)
-        # Bilinear guide lines are only an editing overlay. The rendered image
+        # A fine 20×20 architectural grid gives enough nearby references for
+        # rooflines, walls, windows and posts. Quarters remain a little brighter
+        # so the dense guide does not become an undifferentiated mesh.
+        # These bilinear guides are only an editing overlay; the rendered image
         # itself uses one true projective transform, which preserves lines.
-        for fraction in (1 / 3, 2 / 3):
+        for division in range(1, PERSPECTIVE_GRID_DIVISIONS):
+            fraction = division / PERSPECTIVE_GRID_DIVISIONS
+            # Every fifth line is stronger, producing clear quarters without
+            # losing the dense one-twentieth alignment guides.
+            major = division % 5 == 0
+            grid_pen = QPen(QColor(255, 255, 255, 165 if major else 82), 0)
             top = points[0] + (points[1] - points[0]) * fraction
             bottom = points[3] + (points[2] - points[3]) * fraction
             left = points[0] + (points[3] - points[0]) * fraction
@@ -167,6 +188,38 @@ class ImageView(QGraphicsView):
                          else QGraphicsView.ScrollHandDrag)
         self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
 
+    def set_colour_range_mode(self, enabled):
+        """Turn the layer-mask colour eyedropper on."""
+        self._colour_range_mode = bool(enabled)
+        self.setDragMode(QGraphicsView.NoDrag if enabled
+                         else QGraphicsView.ScrollHandDrag)
+        self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+
+    def set_mask_paint_mode(self, enabled):
+        self._mask_paint_mode = bool(enabled)
+        self._mask_painting = False
+        self.setDragMode(QGraphicsView.NoDrag if enabled
+                         else QGraphicsView.ScrollHandDrag)
+        self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+        if not enabled:
+            self._mask_overlay.setVisible(False)
+
+    def set_mask_overlay(self, mask):
+        """Show black mask areas as a red overlay over the main photograph."""
+        if mask is None or self._item.pixmap().isNull():
+            self._mask_overlay.setVisible(False)
+            return
+        width, height = self._item.pixmap().width(), self._item.pixmap().height()
+        display = mask.convert("L").resize((width, height), Image.Resampling.BILINEAR)
+        alpha = display.point(lambda value: round((255 - value) * .48))
+        overlay = Image.new("RGBA", display.size, (225, 35, 35, 0))
+        overlay.putalpha(alpha)
+        data = overlay.tobytes("raw", "RGBA")
+        qimage = QImage(data, width, height, width * 4,
+                        QImage.Format_RGBA8888).copy()
+        self._mask_overlay.setPixmap(QPixmap.fromImage(qimage))
+        self._mask_overlay.setVisible(self._mask_paint_mode)
+
     def set_crop_mode(self, enabled, normalized_rect=None):
         self._crop_mode = enabled
         self.setDragMode(QGraphicsView.NoDrag if enabled
@@ -195,12 +248,15 @@ class ImageView(QGraphicsView):
         self._crop_aspect = float(ratio) if ratio else None
         if not (self._crop_mode and self._crop_rect_item and self._crop_aspect):
             return
-        rect = self._crop_rect_item.rect()
-        centre = rect.center()
-        width = rect.width()
+        scene = self._scene.sceneRect()
+        centre = scene.center()
+        # Selecting an aspect is an explicit framing request: start with the
+        # largest crop of that shape, constrained by whichever image dimension
+        # it reaches first. The user can then trim or reposition from there.
+        width = scene.width()
         height = width / self._crop_aspect
-        if height > self._scene.sceneRect().height():
-            height = min(rect.height(), self._scene.sceneRect().height())
+        if height > scene.height():
+            height = scene.height()
             width = height * self._crop_aspect
         self._set_crop_rect(QRectF(centre.x() - width / 2,
                                    centre.y() - height / 2, width, height))
@@ -216,6 +272,34 @@ class ImageView(QGraphicsView):
                 (rect.top() - scene.top()) / scene.height(),
                 (rect.right() - scene.left()) / scene.width(),
                 (rect.bottom() - scene.top()) / scene.height())
+
+    def nudge_crop(self, dx, dy):
+        """Move the crop frame by canvas pixels without leaving the image."""
+        if not (self._crop_mode and self._crop_rect_item):
+            return False
+        scene = self._scene.sceneRect()
+        rect = QRectF(self._crop_rect_item.rect())
+        left = min(max(rect.left() + dx, scene.left()), scene.right() - rect.width())
+        top = min(max(rect.top() + dy, scene.top()), scene.bottom() - rect.height())
+        moved = QRectF(left, top, rect.width(), rect.height())
+        if moved == rect:
+            return False
+        self._set_crop_rect(moved)
+        return True
+
+    def keyPressEvent(self, event):
+        if self._crop_mode and self._crop_rect_item:
+            directions = {
+                Qt.Key_Left: (-1, 0), Qt.Key_Right: (1, 0),
+                Qt.Key_Up: (0, -1), Qt.Key_Down: (0, 1),
+            }
+            direction = directions.get(event.key())
+            if direction:
+                step = 10 if event.modifiers() & Qt.ShiftModifier else 1
+                self.nudge_crop(direction[0] * step, direction[1] * step)
+                event.accept()
+                return
+        super().keyPressEvent(event)
 
     def _clear_crop_overlay(self):
         for item in ([self._crop_rect_item] if self._crop_rect_item else []) + \
@@ -419,6 +503,23 @@ class ImageView(QGraphicsView):
                     (point.x() - scene.left()) / scene.width(),
                     (point.y() - scene.top()) / scene.height())
             return
+        if self._colour_range_mode and self._has_image and event.button() == Qt.LeftButton:
+            point = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            if scene.contains(point) and scene.width() and scene.height():
+                self.colour_range_clicked.emit(
+                    (point.x() - scene.left()) / scene.width(),
+                    (point.y() - scene.top()) / scene.height())
+            return
+        if self._mask_paint_mode and self._has_image and event.button() == Qt.LeftButton:
+            point = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            if scene.contains(point) and scene.width() and scene.height():
+                self._mask_painting = True
+                self.mask_painted.emit(
+                    (point.x() - scene.left()) / scene.width(),
+                    (point.y() - scene.top()) / scene.height(), False)
+            return
         if self._retouch_mode and self._has_image and event.button() == Qt.LeftButton:
             point = self.mapToScene(event.position().toPoint())
             scene = self._scene.sceneRect()
@@ -441,6 +542,15 @@ class ImageView(QGraphicsView):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        if self._mask_paint_mode and self._mask_painting and \
+                (event.buttons() & Qt.LeftButton):
+            point = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            if scene.width() and scene.height():
+                self.mask_painted.emit(
+                    max(0.0, min(1.0, (point.x() - scene.left()) / scene.width())),
+                    max(0.0, min(1.0, (point.y() - scene.top()) / scene.height())), False)
+            return
         if self._perspective_mode and self._perspective_drag is not None and \
                 (event.buttons() & Qt.LeftButton):
             point = self.mapToScene(event.position().toPoint())
@@ -503,6 +613,15 @@ class ImageView(QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+        if self._mask_paint_mode and self._mask_painting:
+            self._mask_painting = False
+            point = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            if scene.width() and scene.height():
+                self.mask_painted.emit(
+                    max(0.0, min(1.0, (point.x() - scene.left()) / scene.width())),
+                    max(0.0, min(1.0, (point.y() - scene.top()) / scene.height())), True)
+            return
         if self._perspective_mode and self._perspective_drag is not None:
             index = self._perspective_drag
             self._perspective_drag = None
@@ -525,9 +644,20 @@ class ImageView(QGraphicsView):
     def wheelEvent(self, event):
         if not self._has_image or self._crop_mode:
             return
-        self._fitting = False
         factor = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
-        self.scale(factor, factor)
+        self.zoom_by(factor)
+
+    def zoom_by(self, factor):
+        """Zoom one predictable step, bounded against accidental runaway."""
+        if not self._has_image or self._crop_mode:
+            return
+        current = abs(self.transform().m11()) or 1.0
+        target = max(.02, min(32.0, current * float(factor)))
+        applied = target / current
+        if abs(applied - 1.0) < .0001:
+            return
+        self._fitting = False
+        self.scale(applied, applied)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -536,12 +666,21 @@ class ImageView(QGraphicsView):
             if self._has_image:
                 self.fit_view_resized.emit()
 
-    def viewport_target(self):
+    def viewport_target(self, interactive=False):
         """Preview render cap sized to the viewport (times device pixel ratio,
-        so a HiDPI display still gets crisp pixels)."""
+        so a HiDPI display still gets crisp pixels).
+
+        Slider drags use a lighter proxy and resolve to the normal crisp target
+        on release.  This keeps the UI continuous instead of asking the main
+        thread to composite several megapixels every few dozen milliseconds.
+        """
         ratio = self.devicePixelRatioF() or 1.0
         width = max(320, int(self.viewport().width() * ratio))
         height = max(320, int(self.viewport().height() * ratio))
+        if interactive:
+            scale = min(1.0, 1100.0 / max(width, height))
+            return (max(320, int(width * scale)),
+                    max(320, int(height * scale)))
         # A little headroom so a zoom-in past fit still looks sharp.
         return (min(4096, int(width * 1.5)), min(4096, int(height * 1.5)))
 

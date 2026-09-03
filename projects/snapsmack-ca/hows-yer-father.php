@@ -15,24 +15,38 @@ $page_social_description = 'Greymatter, Pixelpost, skin manifests, internal supp
 $nav_active       = 'hows-yer-father';
 
 $page_css = <<<'CSS'
-.lineage-intro { max-width: 820px; }
-.family-section:nth-of-type(even) { background: var(--light-grey); }
+.page-header { color: var(--white); background: var(--black); border-bottom: 8px solid var(--red); }
+.page-header h1 { color: var(--white); }
+.page-header .site-discovery-kicker { color: var(--red); }
+.lineage-intro { max-width: 820px; color: #d8d4cc; }
+.family-section { position: relative; overflow: hidden; border-top: 0; }
+.family-section::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 8px; background: var(--red); }
+.family-origin, .family-security { background: #eee9df; }
+.family-boundaries { background: var(--white); }
+.family-history { color: var(--white); background: var(--red); }
+.family-architecture, .family-claim { color: #e8e3da; background: var(--black); }
 .family-copy { max-width: 850px; }
 .family-copy > p { max-width: 74ch; margin-bottom: 1.35em; }
 .family-copy > p:last-child { margin-bottom: 0; }
 .family-kicker { color: var(--red); font: 900 .74rem/1.2 Arial Black, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
-.family-callout { margin: 30px 0 0; padding: 24px 28px; color: var(--white); background: var(--black); border-left: 6px solid var(--red); }
+.family-history .family-kicker, .family-history h2, .family-history a { color: var(--white); }
+.family-history a { text-decoration-color: rgba(255,255,255,.55); }
+.family-architecture .family-kicker, .family-claim .family-kicker { color: #ff3b30; }
+.family-architecture h2, .family-claim h2 { color: var(--white); }
+.family-callout { margin: 30px 0 0; padding: 24px 28px; color: var(--white); background: var(--black); border-left: 6px solid var(--red); box-shadow: 12px 12px 0 rgba(215,0,0,.22); }
 .family-callout strong { color: var(--white); }
-.inheritance-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin-top: 32px; background: var(--border); border: 1px solid var(--border); }
-.inheritance-card { padding: 28px; background: var(--white); }
+.inheritance-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; margin-top: 32px; background: #3a3a3a; border: 2px solid #3a3a3a; }
+.inheritance-card { padding: 28px; color: #ddd7ce; background: #191919; }
 .inheritance-card h3 { margin-bottom: 10px; color: var(--red); font-size: 1rem; }
 .inheritance-card p { margin: 0; font-size: .9rem; line-height: 1.6; }
-.claim-box { padding: 32px; border: 3px solid var(--black); background: var(--white); }
-.claim-box h2 { color: var(--red); }
+.claim-box { padding: clamp(28px, 5vw, 54px); border: 3px solid var(--red); background: #171717; box-shadow: 14px 14px 0 var(--red); }
+.claim-box h2 { color: var(--white); }
 .page-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
 .page-actions a { display: inline-block; padding: 12px 18px; border: 2px solid var(--black); color: var(--black); font: 900 .76rem/1 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .page-actions a:hover { color: var(--white); background: var(--black); text-decoration: none; }
-@media (max-width: 700px) { .inheritance-grid { grid-template-columns: 1fr; } }
+.family-claim .page-actions a { color: var(--white); border-color: var(--white); }
+.family-claim .page-actions a:hover { color: var(--black); background: var(--white); }
+@media (max-width: 700px) { .inheritance-grid { grid-template-columns: 1fr; } .family-section::before { width: 5px; } .claim-box { box-shadow: 8px 8px 0 var(--red); } }
 CSS;
 
 require_once __DIR__ . '/includes/header.php';
@@ -47,7 +61,7 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <section class="family-section">
+    <section class="family-section family-origin">
         <div class="wrap family-copy">
             <p class="family-kicker">A Fine Pedigree</p>
             <h2>The family jewels were never venture capital.</h2>
@@ -58,7 +72,7 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <section class="family-section">
+    <section class="family-section family-boundaries">
         <div class="wrap family-copy">
             <p class="family-kicker">Bad Habits We Didn&rsquo;t Inherit</p>
             <h2>No plugin pile. No public support honeypot.</h2>
@@ -68,7 +82,7 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <section class="family-section">
+    <section class="family-section family-history">
         <div class="wrap family-copy">
             <p class="family-kicker">Behind the Bike Sheds</p>
             <h2>The lesson nobody puts in the launch announcement.</h2>
@@ -78,7 +92,7 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <section class="family-section">
+    <section class="family-section family-architecture">
         <div class="wrap family-copy">
             <p class="family-kicker">The Bits Under the Bonnet</p>
             <h2>One engine, declared capabilities, fewer nasty surprises.</h2>
@@ -91,7 +105,7 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <section class="family-section">
+    <section class="family-section family-security">
         <div class="wrap family-copy">
             <p class="family-kicker">Belt and Braces</p>
             <h2>Security works better when the layers know each other.</h2>
@@ -104,7 +118,7 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <section class="family-section">
+    <section class="family-section family-claim">
         <div class="wrap">
             <div class="claim-box">
                 <p class="family-kicker">No Claiming Someone Else&rsquo;s Bastard</p>

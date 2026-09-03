@@ -41,6 +41,8 @@ try:
     import snap_prompts
     import snap_prompt_sync
     import snap_home
+    import snap_site_settings
+    import snap_settings_sync
     _SHARED_OK = True
 except Exception as _e:                      # pragma: no cover
     _SHARED_OK = False
@@ -235,7 +237,7 @@ class Hub(tk.Tk):
         super().__init__()
         self.title(f"SNAP HQ — local desktop headquarters   (build {BUILD_VERSION})")
         self.configure(bg=BG)
-        self.geometry("980x720")
+        self.geometry("1180x900")
         self.minsize(860, 640)
 
         self._ui_images = {}
@@ -627,14 +629,46 @@ class Hub(tk.Tk):
 
     # ── shared profiles list ─────────────────────────────────────────────────
     def _build_profiles(self, parent):
-        card = self._card(parent, "SHARED PROFILES  ·  every tool sees these")
+        card = self._card(parent, "SITE SETTINGS  ·  one profile, every tool")
         wrap = tk.Frame(card, bg=CARD)
         wrap.pack(fill="both", expand=True, padx=14, pady=(0, 12))
         self._prof_list = tk.Listbox(wrap, bg=FIELD, fg=INK, relief="flat",
-                                     font=("Consolas", 10), height=7,
+                                     font=("Consolas", 10), height=10, width=34,
                                      selectbackground=ACCENT, selectforeground=BG,
                                      highlightthickness=0, bd=0)
-        self._prof_list.pack(fill="both", expand=True)
+        self._prof_list.pack(side="left", fill="y")
+        self._prof_list.bind("<<ListboxSelect>>", self._on_profile_selected)
+        editor = tk.Frame(wrap, bg=CARD)
+        editor.pack(side="left", fill="both", expand=True, padx=(16, 0))
+        self._site_vars = {key: tk.StringVar() for key in
+            ("prompt", "max_width_landscape", "max_height_portrait", "jpeg_quality",
+             "image_resize_enabled", "export_sharpen", "handoff_dir")}
+        fields = [
+            ("PROMPT", "prompt"), ("LANDSCAPE MAX WIDTH", "max_width_landscape"),
+            ("PORTRAIT MAX HEIGHT", "max_height_portrait"), ("JPEG QUALITY", "jpeg_quality"),
+            ("RESIZE (on/off)", "image_resize_enabled"), ("SHARPEN", "export_sharpen"),
+            ("LOCAL HANDOFF PARENT", "handoff_dir"),
+        ]
+        for row, (label, key) in enumerate(fields):
+            tk.Label(editor, text=label, bg=CARD, fg=DIM,
+                     font=("Segoe UI", 8)).grid(row=row, column=0, sticky="w", pady=3)
+            entry = tk.Entry(editor, textvariable=self._site_vars[key], bg=FIELD, fg=INK,
+                             insertbackground=INK, relief="flat", font=("Consolas", 9))
+            entry.grid(row=row, column=1, sticky="ew", padx=(10, 4), pady=3, ipady=4)
+            if key == "handoff_dir":
+                tk.Button(editor, text="…", command=self._browse_handoff, bg=FIELD, fg=INK,
+                          relief="flat").grid(row=row, column=2, sticky="ew", pady=3)
+        editor.grid_columnconfigure(1, weight=1)
+        bar = tk.Frame(editor, bg=CARD)
+        bar.grid(row=len(fields), column=0, columnspan=3, sticky="ew", pady=(8, 0))
+        tk.Button(bar, text="SAVE", command=self._save_site_settings, bg=ACCENT, fg=BG,
+                  relief="flat", font=("Segoe UI", 9, "bold")).pack(side="left", ipadx=10, ipady=4)
+        tk.Button(bar, text="SYNC NOW", command=self._sync_site_settings, bg=FIELD, fg=INK,
+                  relief="flat").pack(side="left", padx=8, ipadx=8, ipady=4)
+        self._site_status = tk.Label(bar, text="Select a site", bg=CARD, fg=DIM,
+                                     font=("Segoe UI", 9))
+        self._site_status.pack(side="left", padx=8)
+        self._profile_rows = []
 
     def _refresh_profiles(self):
         self._prof_list.delete(0, "end")
@@ -650,6 +684,65 @@ class Hub(tk.Tk):
             name = p.get("name", "")
             url = p.get("site_url", "")
             self._prof_list.insert("end", f"  {name:<28}  {url}")
+        self._profile_rows = profs
+        if profs:
+            self._prof_list.selection_set(0)
+            self._on_profile_selected()
+
+    def _selected_profile(self):
+        choice = self._prof_list.curselection()
+        return self._profile_rows[choice[0]] if choice and choice[0] < len(self._profile_rows) else None
+
+    def _on_profile_selected(self, _event=None):
+        profile = self._selected_profile()
+        if not profile:
+            return
+        portable = snap_site_settings.validate_portable(profile.get("portable") or {})
+        local = snap_site_settings.load_local(profile["site_url"])
+        for key, value in portable.items():
+            self._site_vars[key].set("on" if value is True else "off" if value is False else str(value))
+        self._site_vars["handoff_dir"].set(local["handoff_dir"])
+        synced = (profile.get("portable_sync") or {}).get("synced_at")
+        self._site_status.configure(text=("OFFLINE COPY — synced " + synced if synced else "NOT YET SYNCED"), fg=DIM)
+
+    def _browse_handoff(self):
+        path = filedialog.askdirectory(parent=self, title="Choose handoff parent folder")
+        if path:
+            self._site_vars["handoff_dir"].set(path)
+
+    def _portable_form(self):
+        return snap_site_settings.validate_portable({
+            "prompt": self._site_vars["prompt"].get(),
+            "max_width_landscape": self._site_vars["max_width_landscape"].get(),
+            "max_height_portrait": self._site_vars["max_height_portrait"].get(),
+            "jpeg_quality": self._site_vars["jpeg_quality"].get(),
+            "image_resize_enabled": self._site_vars["image_resize_enabled"].get().lower() in ("on","1","true","yes"),
+            "export_sharpen": self._site_vars["export_sharpen"].get(),
+        })
+
+    def _save_site_settings(self):
+        profile = self._selected_profile()
+        if not profile:
+            return
+        try:
+            snap_site_settings.save_local(profile["site_url"], {"handoff_dir": self._site_vars["handoff_dir"].get()})
+            snap_site_settings.handoff_paths(profile["site_url"], create=True)
+            result = snap_settings_sync.save(profile["site_url"], self._portable_form())
+            states = ", ".join(r.get("status", "unknown") for r in result.get("results", []))
+            self._site_status.configure(text="SAVED — " + states, fg=ACCENT)
+            self._refresh_profiles()
+        except Exception as exc:
+            self._site_status.configure(text="OFFLINE — local folder saved; portable fields not changed", fg="#ff5555")
+            messagebox.showerror("Settings not synced", str(exc), parent=self)
+
+    def _sync_site_settings(self):
+        try:
+            result = snap_settings_sync.refresh_all()
+            self._refresh_profiles()
+            self._site_status.configure(text="SYNCED " + result["synced_at"], fg=ACCENT)
+        except Exception as exc:
+            self._site_status.configure(text="OFFLINE — using last synchronized copy", fg="#ff5555")
+            messagebox.showerror("Sync failed", str(exc), parent=self)
 
     # ── prompt sync ──────────────────────────────────────────────────────────
     # One WHOLE-POST AI prompt per blog (the single-call prompt that fills
@@ -754,11 +847,11 @@ class Hub(tk.Tk):
     def _gyss_key_for(self, profile):
         """A gyss-type Bearer key for this site. gyss/prompt requires key_type
         'gyss'; the stored api_key is the sybu posting key, so mint a gyss key
-        from the full hub->spoke key (extras.api_key_local), cached per run."""
+        from the full hub->spoke key in the shared vault, cached per run."""
         site = (profile.get("site_url") or "").rstrip("/")
         if self._gyss_keys.get(site):
             return self._gyss_keys[site]
-        akl = ((profile.get("extras") or {}).get("api_key_local") or "").strip()
+        akl = snap_creds.get_site(site, "api_key_local").strip()
         key = ""
         if akl:
             try:

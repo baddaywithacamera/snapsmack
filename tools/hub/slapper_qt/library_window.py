@@ -404,9 +404,6 @@ class LibraryWindow(QMainWindow):
         starting_folder = remembered if os.path.isdir(remembered) else initial_root
         if starting_folder and os.path.isdir(starting_folder):
             self.load_folder(starting_folder)
-            index = self.tree_model.setRootPath(starting_folder)
-            if index.isValid():
-                self.tree.setRootIndex(index)
 
     # --- Toolbar ------------------------------------------------------------
     def _build_toolbar(self):
@@ -419,6 +416,12 @@ class LibraryWindow(QMainWindow):
         self.act_open = QAction("Choose Folder", self)
         self.act_open.triggered.connect(self.choose_folder)
         bar.addAction(self.act_open)
+
+        self.act_folder_up = QAction("Up One Folder", self)
+        self.act_folder_up.setShortcut(QKeySequence("Alt+Up"))
+        self.act_folder_up.setToolTip("Open the parent folder (Alt+Up)")
+        self.act_folder_up.triggered.connect(self._go_up_folder)
+        bar.addAction(self.act_folder_up)
 
         self.act_folders = QAction("Folders", self)
         self.act_folders.setCheckable(True)
@@ -1264,9 +1267,38 @@ class LibraryWindow(QMainWindow):
         if folder:
             self.catalog.register_folder(folder)
             self.load_folder(folder)
-            index = self.tree_model.setRootPath(folder)
-            if index.isValid():
-                self.tree.setRootIndex(index)
+
+    def _show_folder_in_tree(self, folder):
+        """Show the selected folder as a row, together with its siblings.
+
+        A QTreeView displays the *children* of its root index.  Rooting it at
+        the selected photo folder therefore makes the pane look empty whenever
+        that folder has no subdirectories.  Root at the parent instead and
+        select the current folder so the navigation pane always contains a
+        visible, useful location.
+        """
+        folder = os.path.abspath(folder)
+        parent = os.path.dirname(folder)
+        if not parent or os.path.normcase(parent) == os.path.normcase(folder):
+            parent = folder
+        root_index = self.tree_model.setRootPath(parent)
+        if root_index.isValid():
+            self.tree.setRootIndex(root_index)
+        folder_index = self.tree_model.index(folder)
+        if folder_index.isValid():
+            self.tree.setCurrentIndex(folder_index)
+            self.tree.scrollTo(folder_index)
+
+    def _go_up_folder(self):
+        """Leave the current tree root instead of trapping navigation below it."""
+        current = os.path.abspath(self._folder or self._selected_tree_folder() or "")
+        if not current:
+            return
+        parent = os.path.dirname(current)
+        if not parent or os.path.normcase(parent) == os.path.normcase(current):
+            return
+        self.catalog.register_folder(parent)
+        self.load_folder(parent)
 
     def _subfolders_toggled(self, checked):
         from . import prefs
@@ -1299,6 +1331,7 @@ class LibraryWindow(QMainWindow):
         self._virtual_source = None
         recursive = self.act_subfolders.isChecked()
         self._folder = folder
+        self._show_folder_in_tree(folder)
         self._scan_generation += 1
         generation = self._scan_generation
         if self._scan_token is not None:

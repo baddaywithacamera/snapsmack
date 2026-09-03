@@ -133,7 +133,7 @@ identity, so every existing look/project renders unchanged.
 
 ## Added for build 0.7.563
 - Non-destructive straight-line-preserving perspective correction: vertical and
-  horizontal sliders plus four freely draggable corner handles and a live 3×3
+  horizontal sliders plus four freely draggable corner handles and a live 20×20
   alignment grid.
 - Safe Auto Crop and Transparent Edges modes. Perspective survives undo,
   `.slapper` save/open, recipes, batch application, previews, and full-resolution

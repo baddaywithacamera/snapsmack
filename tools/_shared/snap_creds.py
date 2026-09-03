@@ -45,6 +45,7 @@ Usage:
 import base64
 import json
 import os
+import re
 
 import snap_vault
 import snap_home
@@ -140,6 +141,29 @@ def delete(key: str) -> None:
     if key in data:
         del data[key]
         _write(data)
+
+
+def site_secret_name(site_url: str, field: str) -> str:
+    """Stable vault key for one site's credential (never written to profiles)."""
+    clean_field = re.sub(r"[^a-z0-9_]+", "_", str(field or "").lower()).strip("_")
+    if not clean_field:
+        raise ValueError("site credential field is required")
+    return "site:%s:%s" % (snap_home.site_key(site_url), clean_field)
+
+
+def get_site(site_url: str, field: str, default: str = "") -> str:
+    init()
+    return get(site_secret_name(site_url, field), default)
+
+
+def set_site(site_url: str, field: str, value: str) -> None:
+    init()
+    set(site_secret_name(site_url, field), value)
+
+
+def delete_site(site_url: str, field: str) -> None:
+    init()
+    delete(site_secret_name(site_url, field))
 
 
 # ── Config integration ───────────────────────────────────────────────────────

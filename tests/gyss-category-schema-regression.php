@@ -42,4 +42,3 @@ foreach ($required as $needle) {
 }
 
 echo "GYSS category schema regression: PASS\n";
-

@@ -56,6 +56,7 @@ function pbdir_ensure_table(PDO $pdo): void {
             feed_failures INT UNSIGNED NOT NULL DEFAULT 0,
             feed_etag VARCHAR(255) NOT NULL DEFAULT '',
             feed_last_modified VARCHAR(255) NOT NULL DEFAULT '',
+            post_count INT UNSIGNED NULL,
             samples      TEXT NULL,
             state        ENUM('pending','active','hidden','removed') NOT NULL DEFAULT 'pending',
             submitted_at DATETIME NULL,
@@ -72,6 +73,7 @@ function pbdir_ensure_table(PDO $pdo): void {
         "ADD COLUMN IF NOT EXISTS feed_failures INT UNSIGNED NOT NULL DEFAULT 0 AFTER feed_status",
         "ADD COLUMN IF NOT EXISTS feed_etag VARCHAR(255) NOT NULL DEFAULT '' AFTER feed_failures",
         "ADD COLUMN IF NOT EXISTS feed_last_modified VARCHAR(255) NOT NULL DEFAULT '' AFTER feed_etag",
+        "ADD COLUMN IF NOT EXISTS post_count INT UNSIGNED NULL AFTER feed_last_modified",
     ] as $alter) {
         $pdo->exec("ALTER TABLE snap_directory_listings {$alter}");
     }
