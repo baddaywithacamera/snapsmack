@@ -5,46 +5,79 @@ SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
 
 import base64
 import copy
-import hashlib
 import io
 import json
 import math
 import os
-import re
 import time
 import tempfile
 import textwrap
-import uuid
+import threading
 import zipfile
+from collections import OrderedDict
 
 from PIL import (Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter,
-                 ImageFont, ImageMath, ImageOps, ExifTags)
+                 ImageFont, ImageMath, ImageOps)
 import numpy as np
 
 import photo_manager
 import slapper_filters
 
 
-PROJECT_VERSION = 2
-LEGACY_PROJECT_VERSION = 1
-RECIPE_VERSION = 1
+# Fit/live previews repeatedly render the same source. Decoding a large TIFF
+# for every slider tick costs far more than the tonal adjustment, so retain a
+# few downsampled, orientation-correct source frames. Cached images are never
+# handed out directly because Pillow operations are not uniformly immutable.
+_PREVIEW_SOURCE_CACHE = OrderedDict()
+_PREVIEW_SOURCE_CACHE_LOCK = threading.RLock()
+_PREVIEW_SOURCE_CACHE_LIMIT = 4
+
+
+def _open_source_image(path, max_size=None):
+    """Decode *path*, using a reusable reduced source for preview renders."""
+    if not max_size:
+        with Image.open(path) as source:
+            return ImageOps.exif_transpose(source).convert("RGB")
+
+    requested = (max(1, int(max_size[0])), max(1, int(max_size[1])))
+    try:
+        stamp = os.stat(path).st_mtime_ns
+    except OSError:
+        stamp = 0
+    cache_key = (os.path.normcase(os.path.abspath(path)), stamp)
+    with _PREVIEW_SOURCE_CACHE_LOCK:
+        cached = _PREVIEW_SOURCE_CACHE.get(cache_key)
+        if cached is not None:
+            cached_bound, cached_image = cached
+            if (cached_bound[0] >= requested[0] and
+                    cached_bound[1] >= requested[1]):
+                _PREVIEW_SOURCE_CACHE.move_to_end(cache_key)
+                image = cached_image.copy()
+                image.thumbnail(requested, Image.Resampling.LANCZOS)
+                return image
+
+        with Image.open(path) as source:
+            image = ImageOps.exif_transpose(source).convert("RGB")
+        image.thumbnail(requested, Image.Resampling.LANCZOS)
+        _PREVIEW_SOURCE_CACHE[cache_key] = (requested, image.copy())
+        _PREVIEW_SOURCE_CACHE.move_to_end(cache_key)
+        while len(_PREVIEW_SOURCE_CACHE) > _PREVIEW_SOURCE_CACHE_LIMIT:
+            _PREVIEW_SOURCE_CACHE.popitem(last=False)
+        return image
+
+
+PROJECT_VERSION = 1
 MAX_PROJECT_BYTES = 512 * 1024 * 1024
-MAX_PROJECT_ARCHIVE_BYTES = 8 * 1024 * 1024 * 1024
 MAX_PROJECT_LAYERS = 500
 MAX_RETOUCH_POINTS = 100000
 MAX_ENCODED_MASK_BYTES = 128 * 1024 * 1024
 MAX_TEXT_LAYER_CHARS = 1_000_000
 PROJECT_DOCUMENT_NAME = "project.json"
 PROJECT_README_NAME = "README.txt"
-PROJECT_MANIFEST_NAME = "manifest.json"
-PROJECT_MIMETYPE = "application/vnd.snapsmack.slapper+zip"
-PROJECT_SCHEMA_NAME = "schemas/project-schema.json"
-PROJECT_CHECKSUMS_NAME = "metadata/checksums.json"
-PROJECT_THUMBNAIL_NAME = "previews/thumbnail.jpg"
-PROJECT_COMPOSITE_NAME = "previews/composite.tif"
 DEFAULT_ADJUSTMENTS = {
     "exposure": 0.0, "brightness": 0.0, "contrast": 0.0,
-    "highlights": 0.0, "shadows": 0.0, "whites": 0.0, "blacks": 0.0,
+    "highlights": 0.0, "midtones": 0.0, "shadows": 0.0,
+    "whites": 0.0, "blacks": 0.0,
     "temperature": 0.0, "tint": 0.0, "saturation": 0.0, "vibrance": 0.0,
     "clarity": 0.0, "texture": 0.0, "dehaze": 0.0, "sharpen": 0.0,
     # Smart-sharpen controls. amount == the sharpen slider above. Lens mode
@@ -53,11 +86,10 @@ DEFAULT_ADJUSTMENTS = {
     "sharpen_radius": 1.2, "sharpen_reduce_noise": 0.0, "sharpen_mode": "lens",
     "level_black": 0.0, "level_gamma": 1.0, "level_white": 255.0,
     "black_white": False, "vignette": 0.0, "grain": 0.0,
-    # Vignette clear-centre size and edge softness (50 == the classic look),
-    # plus a darken-only grain
+    # Vignette edge softness (50 == the classic look) and a darken-only grain
     # mode (False == the original soft-light grain). Defaults preserve every
     # existing LEWK and project unchanged.
-    "vignette_size": 50.0, "vignette_feather": 50.0, "grain_darken": False,
+    "vignette_size": 70.0, "vignette_feather": 50.0, "grain_darken": False,
     # Split toning — colour the shadows and highlights independently (the
     # teal-and-orange / warm-cool look most film emulations rely on). Both
     # amounts default to 0, so this is off until dialled up.
@@ -70,11 +102,8 @@ DEFAULT_ADJUSTMENTS = {
     "curve_red": [[0, 0], [255, 255]],
     "curve_green": [[0, 0], [255, 255]],
     "curve_blue": [[0, 0], [255, 255]],
-    # Colour HSL mix — per-colour hue, saturation and luminance (like the B&W
-    # mixer, but in colour). All zero == unchanged.
-    "col_hue_red": 0.0, "col_hue_orange": 0.0, "col_hue_yellow": 0.0,
-    "col_hue_green": 0.0, "col_hue_aqua": 0.0, "col_hue_blue": 0.0,
-    "col_hue_purple": 0.0, "col_hue_magenta": 0.0,
+    # Colour HSL mix — per-hue saturation and luminance (like the B&W mixer,
+    # but in colour). All zero == unchanged.
     "col_sat_red": 0.0, "col_sat_orange": 0.0, "col_sat_yellow": 0.0,
     "col_sat_green": 0.0, "col_sat_aqua": 0.0, "col_sat_blue": 0.0,
     "col_sat_purple": 0.0, "col_sat_magenta": 0.0,
@@ -141,7 +170,9 @@ _layer_id_counter = 0
 
 
 def _new_layer_id():
-    return str(uuid.uuid4())
+    global _layer_id_counter
+    _layer_id_counter += 1
+    return f"{time.time_ns()}-{_layer_id_counter}"
 
 
 def _open_layer_image(path, target_size=None):
@@ -183,6 +214,14 @@ def _clamp(value, low=0, high=255):
     return max(low, min(high, value))
 
 
+def _smoothstep(edge0, edge1, value):
+    """Smooth 0..1 transition used to isolate tonal adjustment bands."""
+    if edge1 <= edge0:
+        return 1.0 if value >= edge1 else 0.0
+    amount = max(0.0, min(1.0, (value - edge0) / (edge1 - edge0)))
+    return amount * amount * (3.0 - 2.0 * amount)
+
+
 def _mask_to_text(mask):
     if mask is None:
         return ""
@@ -197,269 +236,25 @@ def _mask_from_text(value):
     return Image.open(io.BytesIO(base64.b64decode(value))).convert("L")
 
 
-def _json_bytes(value):
-    return json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode("utf-8")
-
-
-def _sha256_bytes(value):
-    return hashlib.sha256(value).hexdigest()
-
-
-def _safe_exif_document(source_path):
-    result = {"source_filename": os.path.basename(source_path), "exif": {}}
-    try:
-        with Image.open(source_path) as image:
-            result["format"] = image.format
-            result["mode"] = image.mode
-            result["dimensions"] = list(image.size)
-            result["dpi"] = list(image.info.get("dpi", ()))
-            icc = image.info.get("icc_profile", b"") or b""
-            result["icc_profile"] = {
-                "embedded": bool(icc), "bytes": len(icc),
-                "sha256": _sha256_bytes(icc) if icc else None,
-            }
-            for key, raw in image.getexif().items():
-                name = str(ExifTags.TAGS.get(key, key))
-                if isinstance(raw, bytes):
-                    value = {"encoding": "hex", "value": raw.hex()}
-                elif isinstance(raw, (str, int, float, bool)) or raw is None:
-                    value = raw
-                else:
-                    value = str(raw)
-                result["exif"][name] = value
-    except Exception as error:  # RAW/unknown originals remain recoverable byte-for-byte.
-        result["read_error"] = str(error)
-    return result
-
-
-def _validate_project_archive(path):
-    """Independently verify the portable archive before it replaces good data."""
-    required = {
-        "mimetype", PROJECT_MANIFEST_NAME, PROJECT_DOCUMENT_NAME, PROJECT_README_NAME,
-        PROJECT_SCHEMA_NAME, PROJECT_CHECKSUMS_NAME, PROJECT_THUMBNAIL_NAME,
-        PROJECT_COMPOSITE_NAME, "metadata/original-exif.json",
-        "metadata/provenance.json", "metadata/dependencies.json",
-    }
-    with zipfile.ZipFile(path, "r") as archive:
-        infos = archive.infolist()
-        names = [item.filename for item in infos]
-        if len(names) != len(set(names)):
-            raise ValueError("Invalid SNAP SLAPPER project: duplicate ZIP entries")
-        for info in infos:
-            name = info.filename.replace("\\", "/")
-            if (name.startswith("/") or name.startswith("../") or "/../" in name or
-                    info.file_size > MAX_PROJECT_ARCHIVE_BYTES):
-                raise ValueError("Invalid SNAP SLAPPER project: unsafe ZIP entry")
-        missing = required.difference(names)
-        if missing:
-            raise ValueError("Invalid SNAP SLAPPER project: missing " + ", ".join(sorted(missing)))
-        if archive.read("mimetype").decode("ascii") != PROJECT_MIMETYPE:
-            raise ValueError("Invalid SNAP SLAPPER project mimetype")
-        manifest = json.loads(archive.read(PROJECT_MANIFEST_NAME))
-        if manifest.get("format_version") != PROJECT_VERSION:
-            raise ValueError("Unsupported SNAP SLAPPER portable format")
-        original = manifest.get("original", {})
-        original_path = original.get("archive_path", "")
-        if original_path not in names or not original_path.startswith("original/original."):
-            raise ValueError("Invalid SNAP SLAPPER project: embedded original is missing")
-        if _sha256_bytes(archive.read(original_path)) != original.get("sha256"):
-            raise ValueError("SNAP SLAPPER embedded original failed its SHA-256 check")
-        checksums = json.loads(archive.read(PROJECT_CHECKSUMS_NAME)).get("sha256", {})
-        for name, expected in checksums.items():
-            if name not in names or _sha256_bytes(archive.read(name)) != expected:
-                raise ValueError(f"SNAP SLAPPER checksum failed: {name}")
-        layer_order = manifest.get("layer_order", [])
-        if len(layer_order) != len(set(layer_order)):
-            raise ValueError("Invalid SNAP SLAPPER project: duplicate layer IDs")
-        for layer_id in layer_order:
-            uuid.UUID(layer_id)
-            layer_name = f"layers/{layer_id}/layer.json"
-            if layer_name not in names:
-                raise ValueError(f"Invalid SNAP SLAPPER project: missing {layer_name}")
-            layer = json.loads(archive.read(layer_name))
-            if layer.get("id") != layer_id:
-                raise ValueError("Invalid SNAP SLAPPER project: layer identity mismatch")
-    return manifest
-
-
-_MACHINE_PATH = re.compile(
-    r"^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/]|/(?:home|Users)/)")
-
-
-def _portable_path_value(value):
-    """Remove machine-specific paths while retaining useful filenames."""
-    if isinstance(value, dict):
-        return {str(key): _portable_path_value(item) for key, item in value.items()
-                if str(key) != "project_path"}
-    if isinstance(value, list):
-        return [_portable_path_value(item) for item in value]
-    if isinstance(value, tuple):
-        return [_portable_path_value(item) for item in value]
-    if isinstance(value, str) and _MACHINE_PATH.search(value):
-        return os.path.basename(value.rstrip("\\/"))
-    return value
-
-
-def _machine_path_leaks(value, location="root"):
-    """Return readable locations of private local paths in portable JSON."""
-    leaks = []
-    if isinstance(value, dict):
-        for key, item in value.items():
-            leaks.extend(_machine_path_leaks(item, f"{location}.{key}"))
-    elif isinstance(value, (list, tuple)):
-        for index, item in enumerate(value):
-            leaks.extend(_machine_path_leaks(item, f"{location}[{index}]"))
-    elif isinstance(value, str) and _MACHINE_PATH.search(value):
-        leaks.append(location)
-    return leaks
-
-
-def _write_project_archive(path, value, source_path=None, composite=None):
-    """Write, independently validate, then atomically publish portable format v2."""
+def _write_project_archive(path, value):
+    """Atomically publish an ordinary ZIP container with a .slapper extension."""
     target = os.path.abspath(path)
     directory = os.path.dirname(target)
     os.makedirs(directory, exist_ok=True)
     descriptor, temporary = tempfile.mkstemp(prefix=".snap-project-", suffix=".tmp",
                                              dir=directory)
     os.close(descriptor)
-    if not source_path or not os.path.isfile(source_path):
-        raise FileNotFoundError("A portable .slapper project requires its original photograph")
-    if composite is None:
-        raise ValueError("A portable .slapper project requires a full-resolution composite")
-    source_hash = photo_manager.content_hash(source_path)
-    extension = os.path.splitext(source_path)[1].lower() or ".bin"
-    original_entry = "original/original" + extension
-    layer_ids = []
-    layer_documents = {}
-    used_ids = set()
-    base_id = str(uuid.uuid5(uuid.NAMESPACE_URL, "snapslapper-base:" + source_hash))
-    layer_ids.append(base_id)
-    used_ids.add(base_id)
-    layer_documents[base_id] = {
-        "id": base_id, "source_layer_id": "base", "stack_position": 0,
-        "type": "base-adjustment", "name": "Base image", "visible": True,
-        "opacity": 1.0, "blend_mode": "normal", "operation_version": 1,
-        "settings": {"adjustments": value.get("adjustments", {}),
-                     "geometry": value.get("geometry", {}),
-                     "retouched": value.get("retouched", [])},
-        "description": "The untouched original with SNAP SLAPPER's base adjustments and geometry.",
-        "recreatability": "visually_rasterized", "fallback": PROJECT_COMPOSITE_NAME,
-        "dependencies": [],
-    }
-    for position, layer in enumerate(value.get("layers", [])):
-        source_id = str(layer.get("id", position))
-        try:
-            layer_id = str(uuid.UUID(source_id))
-        except ValueError:
-            layer_id = str(uuid.uuid5(uuid.NAMESPACE_URL, "snapslapper-layer:" + source_id))
-        while layer_id in used_ids:
-            layer_id = str(uuid.uuid4())
-        used_ids.add(layer_id)
-        layer_ids.append(layer_id)
-        layer_documents[layer_id] = {
-            "id": layer_id, "source_layer_id": source_id, "stack_position": position + 1,
-            "type": layer.get("type", "unknown"), "name": layer.get("name", "Layer"),
-            "visible": bool(layer.get("visible", True)),
-            "opacity": float(layer.get("opacity", 1.0)),
-            "blend_mode": layer.get("blend", "normal"), "operation_version": 1,
-            "settings": copy.deepcopy(layer),
-            "description": f"SNAP SLAPPER {layer.get('type', 'unknown')} layer",
-            "recreatability": "native" if layer.get("type") in {"image", "text"} else "visually_rasterized",
-            "fallback": PROJECT_COMPOSITE_NAME if layer.get("type") not in {"image", "text"} else None,
-            "dependencies": [],
-        }
-    original_filename = str(value.get("original_filename") or os.path.basename(source_path))
-    manifest = {
-        "format": "SNAP SLAPPER portable project", "format_version": PROJECT_VERSION,
-        "project_document": PROJECT_DOCUMENT_NAME,
-        "original": {"archive_path": original_entry,
-                     "original_filename": original_filename,
-                     "extension": extension, "byte_length": os.path.getsize(source_path),
-                     "sha256": source_hash},
-        "layer_order": layer_ids, "full_resolution_composite": PROJECT_COMPOSITE_NAME,
-        "thumbnail": PROJECT_THUMBNAIL_NAME,
-    }
-    readme = ("This .slapper file is a standard ZIP/ZIP64 archive.\n\n"
-              "No SNAP SLAPPER installation, account, network connection, or password is required.\n"
-              f"The untouched original is {original_entry}.\n"
-              f"The full-resolution flattened recovery image is {PROJECT_COMPOSITE_NAME}.\n"
-              "manifest.json explains the package; metadata/checksums.json verifies its files.\n"
-              "Rename the extension to .zip or open it with any ordinary ZIP utility.\n")
-    schema = {"$schema": "https://json-schema.org/draft/2020-12/schema",
-              "title": "SNAP SLAPPER portable project", "type": "object",
-              "required": ["version", "source_path", "adjustments", "geometry", "layers"],
-              "properties": {"version": {"const": PROJECT_VERSION}}}
-    thumb = composite.copy(); thumb.thumbnail((512, 512), Image.Resampling.LANCZOS)
-    thumb_bytes = io.BytesIO(); thumb.convert("RGB").save(thumb_bytes, "JPEG", quality=88)
-    composite_bytes = io.BytesIO()
-    composite.save(composite_bytes, "TIFF", compression="tiff_deflate")
-    exif_document = _portable_path_value(_safe_exif_document(source_path))
-    documents = {
-        PROJECT_MANIFEST_NAME: _json_bytes(manifest),
-        PROJECT_README_NAME: readme.encode("utf-8"),
-        PROJECT_SCHEMA_NAME: _json_bytes(schema),
-        "metadata/original-exif.json": _json_bytes(exif_document),
-        "metadata/provenance.json": _json_bytes({
-            "original_filename": original_filename, "original_sha256": source_hash,
-            "original_was_modified": False, "project_writer": "SNAP SLAPPER",
-            "format_version": PROJECT_VERSION}),
-        "metadata/dependencies.json": _json_bytes({"embedded": [], "external": []}),
-        PROJECT_THUMBNAIL_NAME: thumb_bytes.getvalue(),
-        PROJECT_COMPOSITE_NAME: composite_bytes.getvalue(),
-    }
-    for layer_id, layer_document in layer_documents.items():
-        settings = layer_document.get("settings", {})
-        if layer_document["type"] == "image" and os.path.isfile(str(settings.get("path", ""))):
-            with _open_layer_image(settings["path"]) as layer_image:
-                payload = io.BytesIO(); layer_image.save(payload, "PNG")
-            pixels_name = f"layers/{layer_id}/pixels.png"
-            documents[pixels_name] = payload.getvalue()
-            layer_document["pixels"] = pixels_name
-        mask_text = settings.get("mask", "") if isinstance(settings, dict) else ""
-        if mask_text:
-            mask_bytes = base64.b64decode(mask_text)
-            mask_name = f"layers/{layer_id}/mask.png"
-            documents[mask_name] = mask_bytes
-            layer_document["mask"] = mask_name
-        portable_settings = _portable_path_value(settings)
-        if layer_document["type"] == "image" and layer_document.get("pixels"):
-            portable_settings["path"] = layer_document["pixels"]
-        layer_document["settings"] = portable_settings
-        documents[f"layers/{layer_id}/layer.json"] = _json_bytes(layer_document)
-
-    portable_value = _portable_path_value(copy.deepcopy(value))
-    portable_value["source_path"] = original_entry
-    portable_value.pop("project_path", None)
-    portable_value["layers"] = [copy.deepcopy(layer_documents[layer_id]["settings"])
-                                for layer_id in layer_ids[1:]]
-    privacy_documents = {
-        PROJECT_MANIFEST_NAME: manifest,
-        PROJECT_DOCUMENT_NAME: portable_value,
-        "metadata/original-exif.json": exif_document,
-    }
-    for layer_id, layer_document in layer_documents.items():
-        privacy_documents[f"layers/{layer_id}/layer.json"] = layer_document
-    leaks = [leak for name, document in privacy_documents.items()
-             for leak in _machine_path_leaks(document, name)]
-    if leaks:
-        raise ValueError("Portable project privacy check found a local machine path: " +
-                         ", ".join(leaks[:5]))
-    documents[PROJECT_DOCUMENT_NAME] = _json_bytes(portable_value)
-    checksums = {name: _sha256_bytes(data) for name, data in documents.items()}
-    checksums[original_entry] = source_hash
-    documents[PROJECT_CHECKSUMS_NAME] = _json_bytes({"algorithm": "SHA-256", "sha256": checksums})
+    document = json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode("utf-8")
+    readme = ("SNAP SLAPPER project archive\n\n"
+              "Rename this file from .slapper to .zip to inspect it with any ZIP tool.\n"
+              "project.json contains the versioned, human-readable editing document.\n"
+              "The original photograph is referenced, not imprisoned inside this archive.\n")
     try:
         with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED,
                              allowZip64=True) as archive:
-            archive.writestr("mimetype", PROJECT_MIMETYPE, compress_type=zipfile.ZIP_STORED)
-            for folder in ("resources/textures/", "resources/brushes/", "resources/luts/",
-                           "resources/profiles/"):
-                archive.writestr(folder, b"")
-            for name, data in documents.items():
-                archive.writestr(name, data)
-            archive.write(source_path, original_entry, compress_type=zipfile.ZIP_STORED)
+            archive.writestr(PROJECT_DOCUMENT_NAME, document)
+            archive.writestr(PROJECT_README_NAME, readme)
         photo_manager.fsync_file(temporary)
-        _validate_project_archive(temporary)
         os.replace(temporary, target)
     except Exception:
         try:
@@ -489,112 +284,6 @@ def _read_project_document(path):
         return json.load(handle, parse_constant=photo_manager.reject_json_constant)
 
 
-def _embedded_source(path):
-    """Return a verified local copy of a project's embedded untouched source."""
-    if not zipfile.is_zipfile(path):
-        return None
-    with zipfile.ZipFile(path, "r") as archive:
-        try:
-            portable = json.loads(archive.read(PROJECT_MANIFEST_NAME).decode("utf-8"))
-            manifest = portable["original"]
-        except (KeyError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
-            return None
-        archive_name = str(manifest.get("archive_path", ""))
-        expected_hash = str(manifest.get("sha256", "")).lower()
-        if not archive_name.startswith("original/") or ".." in archive_name.split("/"):
-            raise ValueError("Invalid SNAP SLAPPER project: unsafe embedded source path")
-        if len(expected_hash) != 64:
-            raise ValueError("Invalid SNAP SLAPPER project: embedded source hash is missing")
-        try:
-            info = archive.getinfo(archive_name)
-        except KeyError as exc:
-            raise ValueError("Invalid SNAP SLAPPER project: embedded original is missing") from exc
-        if info.file_size > MAX_PROJECT_ARCHIVE_BYTES:
-            raise ValueError("SNAP SLAPPER embedded original is too large")
-        try:
-            import snap_home
-            cache_dir = os.path.join(snap_home.home(), "snap_slapper", "project_sources")
-        except Exception:  # noqa: BLE001
-            cache_dir = os.path.join(tempfile.gettempdir(), "snap_slapper_project_sources")
-        os.makedirs(cache_dir, exist_ok=True)
-        extension = str(manifest.get("extension", "")).lower()
-        target = os.path.join(cache_dir, expected_hash + extension)
-        if os.path.isfile(target) and photo_manager.content_hash(target) == expected_hash:
-            return target
-        descriptor, temporary = tempfile.mkstemp(prefix=".embedded-", suffix=extension,
-                                                 dir=cache_dir)
-        try:
-            with os.fdopen(descriptor, "wb") as output, archive.open(info, "r") as source:
-                while True:
-                    chunk = source.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    output.write(chunk)
-                output.flush()
-                os.fsync(output.fileno())
-            if photo_manager.content_hash(temporary) != expected_hash:
-                raise ValueError("SNAP SLAPPER embedded original failed its SHA-256 check")
-            os.replace(temporary, target)
-            return target
-        except Exception:
-            try:
-                os.remove(temporary)
-            except OSError:
-                pass
-            raise
-
-
-def _restore_embedded_layer_assets(project_path, layers):
-    """Resolve portable internal image-layer references to verified cache files."""
-    if not zipfile.is_zipfile(project_path):
-        return
-    try:
-        import snap_home
-        cache_root = os.path.join(snap_home.home(), "snap_slapper", "project_layers")
-    except Exception:  # noqa: BLE001
-        cache_root = os.path.join(tempfile.gettempdir(), "snap_slapper_project_layers")
-    project_key = hashlib.sha256(os.path.abspath(project_path).encode("utf-8")).hexdigest()
-    directory = os.path.join(cache_root, project_key)
-    os.makedirs(directory, exist_ok=True)
-    with zipfile.ZipFile(project_path, "r") as archive:
-        for index, layer in enumerate(layers):
-            if not isinstance(layer, dict) or layer.get("type") != "image":
-                continue
-            reference = str(layer.get("path", "")).replace("\\", "/")
-            if not (reference.startswith("layers/") and reference.endswith("/pixels.png")):
-                continue  # pre-privacy v2 files retain their old local path behaviour
-            if reference.startswith("/") or ".." in reference.split("/"):
-                raise ValueError("Invalid SNAP SLAPPER project: unsafe layer asset path")
-            try:
-                info = archive.getinfo(reference)
-            except KeyError as exc:
-                raise ValueError("Invalid SNAP SLAPPER project: embedded layer pixels are missing") from exc
-            if info.file_size > MAX_PROJECT_ARCHIVE_BYTES:
-                raise ValueError("SNAP SLAPPER embedded layer is too large")
-            layer_id = str(layer.get("id", index)).replace("-", "")[:40] or str(index)
-            target = os.path.join(directory, layer_id + ".png")
-            payload = archive.read(info)
-            descriptor, temporary = tempfile.mkstemp(
-                prefix=".snap-layer-", suffix=".tmp", dir=directory)
-            try:
-                with os.fdopen(descriptor, "wb") as handle:
-                    handle.write(payload)
-                    handle.flush()
-                    os.fsync(handle.fileno())
-                os.replace(temporary, target)
-            except Exception:
-                try:
-                    os.close(descriptor)
-                except OSError:
-                    pass
-                try:
-                    os.remove(temporary)
-                except OSError:
-                    pass
-                raise
-            layer["path"] = target
-
-
 def _curve_lut(points):
     points = sorted((int(_clamp(x)), int(_clamp(y))) for x, y in points)
     if not points or points[0][0] != 0:
@@ -618,6 +307,7 @@ def _tonal_lut(adjustments):
     brightness = float(adjustments.get("brightness", 0)) * 1.28
     contrast = float(adjustments.get("contrast", 0)) / 100.0
     shadows = float(adjustments.get("shadows", 0)) / 100.0
+    midtones = float(adjustments.get("midtones", 0)) / 100.0
     highlights = float(adjustments.get("highlights", 0)) / 100.0
     whites = float(adjustments.get("whites", 0)) / 100.0
     blacks = float(adjustments.get("blacks", 0)) / 100.0
@@ -628,8 +318,16 @@ def _tonal_lut(adjustments):
     for source in range(256):
         value = source * exposure + brightness
         normalized = _clamp(value) / 255.0
-        value += shadows * 70.0 * (1.0 - normalized) ** 2
-        value += highlights * 70.0 * normalized ** 2
+        # Three deliberately separated tonal bands.  Highlights and shadows
+        # have shoulders instead of leaking across the whole photograph;
+        # midtones form a smooth bell centred on middle grey.  The 55-level
+        # ceiling keeps even ±100 mappings monotonic and avoids tonal reversal.
+        shadow_weight = 1.0 - _smoothstep(.15, .55, normalized)
+        highlight_weight = _smoothstep(.55, .90, normalized)
+        midtone_weight = 1.0 - _smoothstep(0.0, .32, abs(normalized - .5))
+        value += shadows * 55.0 * shadow_weight
+        value += midtones * 55.0 * midtone_weight
+        value += highlights * 55.0 * highlight_weight
         value += whites * 45.0 * max(0.0, (normalized - .65) / .35)
         value += blacks * 45.0 * max(0.0, (.35 - normalized) / .35)
         value = (value - 127.5) * (1.0 + contrast) + 127.5
@@ -683,48 +381,58 @@ def _bw_mono(output, settings):
         g=base, m=hue, s=saturation)
 
 
-def auto_adjustments(image, percentile=0.005):
-    """Compute a gentle one-click 'auto enhance' as *editable* adjustment values.
+def _histogram_percentile(histogram, fraction):
+    total = sum(histogram) or 1
+    threshold = total * fraction
+    running = 0
+    for value, count in enumerate(histogram):
+        running += count
+        if running >= threshold:
+            return value
+    return 255
 
-    Sets black/white levels from the tonal range (auto-levels) and a mild
-    grey-world white-balance nudge, plus a small contrast/vibrance lift. It
-    returns adjustment keys so the result stays non-destructive and the user can
-    fine-tune afterwards.
+
+def auto_exposure_adjustments(image):
+    """Choose exposure while reserving highlight headroom.
+
+    Middle grey is gently brought toward 112, but the 99.5th percentile is
+    never pushed above 245. Existing clipped pixels do not force the whole
+    photograph darker because no exposure operation can reconstruct them.
+    """
+    lum = ImageOps.grayscale(image.convert("RGB"))
+    histogram = lum.histogram()
+    middle = max(1, _histogram_percentile(histogram, .50))
+    high = max(1, _histogram_percentile(histogram, .995))
+    desired = math.log2(112.0 / middle)
+    headroom = 0.0 if high >= 252 else math.log2(245.0 / high)
+    stops = max(-1.5, min(1.5, desired, headroom))
+    # Match the editor's 0.05 EV control steps so document and UI stay exact.
+    return {"exposure": round(round(stops / .05) * .05, 2)}
+
+
+def auto_adjustments(image, percentile=0.005):
+    """Compute a conservative, editable one-click enhancement.
+
+    Unlike the old percentile levels stretch, this leaves the white point at
+    255 and does not stack a global contrast boost on top. Bright photographs
+    receive a selective highlight shoulder instead of clipped skies.
     """
     from PIL import ImageStat
     rgb = image.convert("RGB")
-    result = {}
-
-    # Auto-levels: stretch to the 0.5% / 99.5% tonal points.
+    result = auto_exposure_adjustments(rgb)
     lum = ImageOps.grayscale(rgb)
     histogram = lum.histogram()
-    total = sum(histogram) or 1
-    cutoff = total * percentile
-    low, running = 0, 0
-    for value in range(256):
-        running += histogram[value]
-        if running >= cutoff:
-            low = value
-            break
-    running = 0
-    high = 255
-    for value in range(255, -1, -1):
-        running += histogram[value]
-        if running >= cutoff:
-            high = value
-            break
-    if high - low >= 8:                       # only if there is range to recover
-        result["level_black"] = float(max(0, min(80, low)))
-        result["level_white"] = float(min(255, max(175, high)))
+    high = _histogram_percentile(histogram, 1.0 - percentile)
+    if high > 235:
+        result["highlights"] = float(-min(35, round((high - 235) * 1.5)))
 
     # Grey-world white balance: nudge temperature/tint toward neutral.
     mean_r, mean_g, mean_b = ImageStat.Stat(rgb).mean
     result["temperature"] = float(max(-40, min(40, round((mean_b - mean_r) * 0.5))))
     result["tint"] = float(max(-30, min(30, round(((mean_r + mean_b) / 2 - mean_g) * 0.4))))
 
-    # A little life.
-    result["contrast"] = 8.0
-    result["vibrance"] = 10.0
+    # A small saturation lift is safe; global contrast is deliberately absent.
+    result["vibrance"] = 6.0
     return result
 
 
@@ -800,23 +508,25 @@ def apply_adjustments(image, adjustments):
     vignette = float(settings["vignette"])
     if vignette:
         width, height = output.size
-        mask = Image.new("L", (width, height), 0)
-        draw = ImageDraw.Draw(mask)
-        # Size expands/contracts the untouched bright centre independently of
-        # feather. 50 preserves the established .08 inset; 100 pushes the oval
-        # beyond the frame for a very broad clear area.
-        size = max(0.0, min(100.0, float(settings.get("vignette_size", 50))))
-        inset_fraction = .22 - size * .0028
-        inset_x, inset_y = int(width * inset_fraction), int(height * inset_fraction)
-        draw.ellipse((inset_x, inset_y, width - inset_x, height - inset_y), fill=255)
-        # Feather: 50 reproduces the classic .16 blur; 0 = hard edge, 100 = very soft.
+        # Elliptical normalized radius: the effect is mathematically zero
+        # through the protected centre, then follows one continuous smoothstep
+        # to full edge strength. This avoids the clipped Gaussian halo and the
+        # unintended whole-frame dimming of the former oversized blur.
+        yy, xx = np.ogrid[:height, :width]
+        radius = np.sqrt(((xx - (width - 1) / 2) / max(1, width / 2)) ** 2 +
+                         ((yy - (height - 1) / 2) / max(1, height / 2)) ** 2)
+        size = max(0.0, min(100.0, float(settings.get("vignette_size", 70)))) / 100.0
         feather = float(settings.get("vignette_feather", 50)) / 100.0
-        blur = max(1.0, max(width, height) * feather * .32)
-        mask = mask.filter(ImageFilter.GaussianBlur(radius=blur))
+        midpoint = .55 + size * .40
+        transition = .04 + feather * .42
+        start = max(.08, midpoint - transition / 2)
+        end = min(1.05, midpoint + transition / 2)
+        weight = np.clip((radius - start) / max(.001, end - start), 0.0, 1.0)
+        weight = weight * weight * (3.0 - 2.0 * weight)
         strength = abs(vignette) / 100.0
         edge = Image.new("RGB", output.size, (0, 0, 0) if vignette < 0 else (255, 255, 255))
-        blend_mask = mask.point(lambda value: int(255 - (255 - value) * strength))
-        output = Image.composite(output, edge, blend_mask)
+        effect_mask = Image.fromarray(np.uint8(np.rint(weight * strength * 255)), "L")
+        output = Image.composite(edge, output, effect_mask)
 
     grain = float(settings["grain"])
     if grain > 0:
@@ -860,57 +570,24 @@ def _band_multiplier_lut(settings, prefix, scale):
     return lut
 
 
-def _band_hue_lut(settings):
-    """Map each source hue to a shifted hue using the eight colour controls.
-
-    A full slider move shifts that part of the wheel by 30 degrees. Neighbouring
-    bands blend smoothly, avoiding hard seams between named colours.
-    """
-    centres = [(deg, float(settings.get(f"col_hue_{name}", 0.0)))
-               for name, deg in _HUE_BAND_DEG]
-    lut = []
-    for index in range(256):
-        hue = index * 360.0 / 255.0
-        below = max(((deg - 360.0 if deg > hue else deg, value)
-                     for deg, value in centres), key=lambda item: item[0])
-        above = min(((deg + 360.0 if deg < hue else deg, value)
-                     for deg, value in centres), key=lambda item: item[0])
-        span = above[0] - below[0]
-        weight = 0.0 if span == 0 else (hue - below[0]) / span
-        slider = below[1] * (1 - weight) + above[1] * weight
-        if slider == 0:
-            lut.append(index)
-        else:
-            shifted = (hue + (slider / 100.0) * 30.0) % 360.0
-            lut.append(int(round(shifted * 255.0 / 360.0)) % 256)
-    return lut
-
-
 def _colour_mix(image, settings):
-    """Per-colour hue, saturation and luminance controls.
-
-    A pixel's original hue selects smoothly blended settings from the eight
-    colour bands; all bands at zero leave the image alone.
-    """
-    hue_on = any(float(settings.get(f"col_hue_{n}", 0)) for n, _ in _HUE_BAND_DEG)
+    """Per-hue saturation and luminance (HSL), like the B&W mixer but in colour.
+    A pixel's hue picks its multiplier; all bands at 0 leaves the image alone."""
     sat_on = any(float(settings.get(f"col_sat_{n}", 0)) for n, _ in _HUE_BAND_DEG)
     lum_on = any(float(settings.get(f"col_lum_{n}", 0)) for n, _ in _HUE_BAND_DEG)
-    if not hue_on and not sat_on and not lum_on:
+    if not sat_on and not lum_on:
         return image
     hue, sat, val = image.convert("HSV").split()
-    source_hue = hue
     if sat_on:
         mult = hue.point(_band_multiplier_lut(settings, "col_sat", 0.9))
         sat = _image_math_eval(
             "convert(min(max(float(s) * (float(m) / 128.0), 0.0), 255.0), 'L')",
             s=sat, m=mult)
     if lum_on:
-        mult = source_hue.point(_band_multiplier_lut(settings, "col_lum", 0.5))
+        mult = hue.point(_band_multiplier_lut(settings, "col_lum", 0.5))
         val = _image_math_eval(
             "convert(min(max(float(v) * (float(m) / 128.0), 0.0), 255.0), 'L')",
             v=val, m=mult)
-    if hue_on:
-        hue = source_hue.point(_band_hue_lut(settings))
     return Image.merge("HSV", (hue, sat, val)).convert("RGB")
 
 
@@ -1339,11 +1016,115 @@ def apply_perspective(image, geometry):
     return transformed
 
 
+def _lens_source_point(x, y, width, height, geometry, auto_zoom=1.0):
+    """Map an output point back into the source for radial lens correction."""
+    half_w = max(1.0, (width - 1) / 2.0)
+    half_h = max(1.0, (height - 1) / 2.0)
+    centre_x = half_w + float(geometry.get("lens_center_x", 0.0)) / 100.0 * half_w
+    centre_y = half_h + float(geometry.get("lens_center_y", 0.0)) / 100.0 * half_h
+    nx = (x - centre_x) / half_w
+    ny = (y - centre_y) / half_h
+    r2 = (nx * nx + ny * ny) / 2.0
+    radial = float(geometry.get("lens_distortion", 0.0)) / 100.0
+    spherical = float(geometry.get("lens_spherical", 0.0)) / 100.0
+    factor = 1.0 + radial * .42 * r2 + spherical * .28 * r2 * r2
+    manual_zoom = max(1.0, float(geometry.get("lens_scale", 100.0)) / 100.0)
+    factor /= max(1.0, manual_zoom, auto_zoom)
+    return centre_x + nx * factor * half_w, centre_y + ny * factor * half_h
+
+
+def apply_lens_distortion(image, geometry):
+    """Apply barrel/pincushion and spherical correction using a fine mesh."""
+    radial = float(geometry.get("lens_distortion", 0.0))
+    spherical = float(geometry.get("lens_spherical", 0.0))
+    centre_x = float(geometry.get("lens_center_x", 0.0))
+    centre_y = float(geometry.get("lens_center_y", 0.0))
+    scale = float(geometry.get("lens_scale", 100.0))
+    if not any((radial, spherical, centre_x, centre_y, scale - 100.0)):
+        return image
+    rgba = image.convert("RGBA")
+    width, height = rgba.size
+    edge_mode = geometry.get("lens_edges", "auto_crop")
+    auto_zoom = 1.0
+    if edge_mode == "auto_fill":
+        # Sample the boundary and zoom just enough that no transparent wedge
+        # survives. Manual Scale can add further framing if desired.
+        boundary = []
+        for step in range(65):
+            t = step / 64.0
+            boundary.extend(((t * (width - 1), 0), (t * (width - 1), height - 1),
+                             (0, t * (height - 1)), (width - 1, t * (height - 1))))
+        mapped = [_lens_source_point(x, y, width, height, geometry) for x, y in boundary]
+        cx = (width - 1) / 2.0; cy = (height - 1) / 2.0
+        auto_zoom = max(1.0, max(abs(x - cx) / max(cx, 1) for x, _ in mapped),
+                        max(abs(y - cy) / max(cy, 1) for _, y in mapped))
+
+    divisions = 32
+    xs = [round(i * width / divisions) for i in range(divisions + 1)]
+    ys = [round(i * height / divisions) for i in range(divisions + 1)]
+    mesh = []
+    for row in range(divisions):
+        for column in range(divisions):
+            left, right = xs[column], xs[column + 1]
+            top, bottom = ys[row], ys[row + 1]
+            # Pillow mesh quad order: upper-left, lower-left, lower-right, upper-right.
+            points = [(left, top), (left, bottom), (right, bottom), (right, top)]
+            quad = tuple(value for point in points for value in
+                         _lens_source_point(*point, width, height, geometry,
+                                            auto_zoom=auto_zoom))
+            mesh.append(((left, top, right, bottom), quad))
+    transformed = rgba.transform(rgba.size, Image.Transform.MESH, mesh,
+                                 Image.Resampling.BICUBIC,
+                                 fillcolor=(0, 0, 0, 0))
+    if edge_mode == "auto_crop":
+        rectangle = _largest_opaque_rectangle(transformed.getchannel("A"))
+        if rectangle and rectangle[2] > rectangle[0] and rectangle[3] > rectangle[1]:
+            transformed = transformed.crop(rectangle)
+    return transformed
+
+
+def _largest_opaque_rectangle(alpha, sample_size=320):
+    """Find a conservative largest rectangular area without warped-edge gaps."""
+    width, height = alpha.size
+    scale = min(1.0, sample_size / max(width, height))
+    small_w = max(1, round(width * scale))
+    small_h = max(1, round(height * scale))
+    small = alpha.resize((small_w, small_h), Image.Resampling.BILINEAR)
+    pixels = small.load()
+    heights = [0] * small_w
+    best_area = 0
+    best = None
+    for y in range(small_h):
+        for x in range(small_w):
+            heights[x] = heights[x] + 1 if pixels[x, y] >= 250 else 0
+        stack = []
+        for x in range(small_w + 1):
+            current = heights[x] if x < small_w else 0
+            start = x
+            while stack and stack[-1][1] > current:
+                left, bar_height = stack.pop()
+                area = bar_height * (x - left)
+                if area > best_area:
+                    best_area = area
+                    best = (left, y - bar_height + 1, x, y + 1)
+                start = left
+            if not stack or stack[-1][1] < current:
+                stack.append((start, current))
+    if not best or best_area < 4:
+        return None
+    left, top, right, bottom = best
+    # Round inward so no unsampled translucent boundary is retained.
+    margin = 2
+    return (min(width - 1, math.ceil((left + margin) * width / small_w)),
+            min(height - 1, math.ceil((top + margin) * height / small_h)),
+            max(1, math.floor((right - margin) * width / small_w)),
+            max(1, math.floor((bottom - margin) * height / small_h)))
+
+
 class EditorDocument:
     _font_reference_cache = {}
     def __init__(self, source_path):
         self.source_path = os.path.abspath(source_path)
-        self.original_filename = os.path.basename(self.source_path)
         self.adjustments = copy.deepcopy(DEFAULT_ADJUSTMENTS)
         self.geometry = {
             "rotation": 0.0, "crop": None, "flip_x": False, "flip_y": False,
@@ -1351,6 +1132,9 @@ class EditorDocument:
             "perspective_corners": [[0.0, 0.0], [1.0, 0.0],
                                     [1.0, 1.0], [0.0, 1.0]],
             "perspective_edges": "auto_crop",
+            "lens_distortion": 0.0, "lens_spherical": 0.0,
+            "lens_center_x": 0.0, "lens_center_y": 0.0,
+            "lens_scale": 100.0, "lens_edges": "auto_crop",
         }
         self.layers = []
         self.retouched = []
@@ -1358,12 +1142,6 @@ class EditorDocument:
         self.history_index = -1
         self.project_path = None
         self.on_change = None
-        # Decoding a large TIFF on every slider tick made the UI appear frozen.
-        # Cache only bounded, EXIF-oriented preview pyramids — never a decoded
-        # 100+ megapixel source. Full-resolution exports remain uncached.
-        self._source_preview_cache = {}
-        self._geometry_image_cache = None
-        self._geometry_image_cache_key = None
         self.record("Open image")
         self.saved_snapshot = self.snapshot()
 
@@ -1444,6 +1222,18 @@ class EditorDocument:
                             "mask_transform": self.default_transform(), "styles": {},
                             "transform": self.default_transform()})
         self.record("Add image layer")
+        return self.layers[-1]
+
+    def add_paint_layer(self, name="Blank layer"):
+        """Add a transparent canvas layer that can be filled and masked."""
+        self.layers.append({
+            "id": _new_layer_id(), "name": name, "type": "paint",
+            "fill": [0, 0, 0, 0], "visible": True, "opacity": 1.0,
+            "blend": "normal", "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS),
+            "mask": "", "mask_enabled": True, "mask_linked": True,
+            "mask_transform": self.default_transform(), "styles": {},
+        })
+        self.record("Add blank layer")
         return self.layers[-1]
 
     @staticmethod
@@ -1625,46 +1415,31 @@ class EditorDocument:
         return output
 
     def render(self, max_size=None):
-        source_stamp = (os.path.getmtime(self.source_path), os.path.getsize(self.source_path))
-        geometry_key = (json.dumps(self.geometry, sort_keys=True),
-                        tuple(max_size) if max_size else None, source_stamp)
-        if self._geometry_image_cache_key == geometry_key and \
-                self._geometry_image_cache is not None:
-            image = self._geometry_image_cache.copy()
-        else:
-            if max_size:
-                source_key = (tuple(max_size), source_stamp)
-                cached_source = self._source_preview_cache.get(source_key)
-                if cached_source is None:
-                    with Image.open(self.source_path) as source:
-                        image = ImageOps.exif_transpose(source).convert("RGB")
-                    image.thumbnail(max_size, Image.Resampling.LANCZOS)
-                    self._source_preview_cache = {source_key: image.copy()}
-                else:
-                    image = cached_source.copy()
-            else:
-                with Image.open(self.source_path) as source:
-                    image = ImageOps.exif_transpose(source).convert("RGB")
-            image = apply_perspective(image, self.geometry)
-            rotation = float(self.geometry.get("rotation", 0))
-            if rotation:
-                image = image.rotate(rotation, expand=True, resample=Image.Resampling.BICUBIC)
-            if self.geometry.get("flip_x"):
-                image = ImageOps.mirror(image)
-            if self.geometry.get("flip_y"):
-                image = ImageOps.flip(image)
-            crop = self.geometry.get("crop")
-            if crop:
-                left, top, right, bottom = crop
-                image = image.crop((int(left * image.width), int(top * image.height),
-                                    int(right * image.width), int(bottom * image.height)))
-            if max_size:
-                image.thumbnail(max_size, Image.Resampling.LANCZOS)
-            self._geometry_image_cache_key = geometry_key
-            self._geometry_image_cache = image.copy()
+        # Preview work starts at preview resolution. Previously the source TIFF
+        # and all geometry were processed at full resolution, then discarded by
+        # thumbnail() at the end of the render.
+        image = _open_source_image(self.source_path, max_size)
+        image = apply_lens_distortion(image, self.geometry)
+        image = apply_perspective(image, self.geometry)
+        rotation = float(self.geometry.get("rotation", 0))
+        if rotation:
+            image = image.rotate(rotation, expand=True, resample=Image.Resampling.BICUBIC)
+        if self.geometry.get("flip_x"):
+            image = ImageOps.mirror(image)
+        if self.geometry.get("flip_y"):
+            image = ImageOps.flip(image)
+        crop = self.geometry.get("crop")
+        if crop:
+            left, top, right, bottom = crop
+            image = image.crop((int(left * image.width), int(top * image.height),
+                                int(right * image.width), int(bottom * image.height)))
+        if max_size:
+            image.thumbnail(max_size, Image.Resampling.LANCZOS)
+        preserve_geometry_alpha = (
+            self.geometry.get("perspective_edges") == "transparent" or
+            self.geometry.get("lens_edges") == "transparent")
         geometry_alpha = (image.getchannel("A") if image.mode == "RGBA" and
-                          self.geometry.get("perspective_edges") == "transparent"
-                          else None)
+                          preserve_geometry_alpha else None)
         image = apply_adjustments(image, self.adjustments).convert("RGBA")
         if self.retouched:
             for spot in self.retouched:
@@ -1732,6 +1507,14 @@ class EditorDocument:
                 top.putalpha(alpha)
                 if fit in ("cover", "contain", "stretch", "tile"):
                     top = self._fit_layer_image(top, image.size, fit)
+            elif layer.get("type") == "paint":
+                fill = list(layer.get("fill", [0, 0, 0, 0]))
+                fill = (fill + [0, 0, 0, 0])[:4]
+                top = Image.new("RGBA", image.size, tuple(int(value) for value in fill))
+                alpha = top.getchannel("A")
+                top = apply_adjustments(
+                    top.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
+                top.putalpha(alpha)
             elif layer.get("type") == "text":
                 top = self._text_layer_image(layer)
                 alpha = top.getchannel("A")
@@ -1773,7 +1556,6 @@ class EditorDocument:
 
     def project_value(self, recovery=False):
         value = {"version": PROJECT_VERSION, "source_path": self.source_path,
-                 "original_filename": self.original_filename,
                  "adjustments": self.adjustments, "geometry": self.geometry,
                  "layers": self.layers, "retouched": self.retouched}
         if recovery:
@@ -1785,41 +1567,29 @@ class EditorDocument:
         if photo_manager.same_file(path, self.source_path):
             raise ValueError("SNAP SLAPPER will not overwrite the original photograph with a project.")
         value = self.project_value()
-        _write_project_archive(path, value, source_path=self.source_path,
-                               composite=self.render())
+        _write_project_archive(path, value)
         self.project_path = path
         self.mark_saved()
 
     def save_recovery(self, path):
         if photo_manager.same_file(path, self.source_path):
             raise ValueError("Recovery path resolves to the original photograph.")
-        _write_project_archive(path, self.project_value(recovery=True),
-                               source_path=self.source_path, composite=self.render())
+        _write_project_archive(path, self.project_value(recovery=True))
 
     @classmethod
     def load_project(cls, path):
-        if os.path.getsize(path) > MAX_PROJECT_ARCHIVE_BYTES:
+        if os.path.getsize(path) > MAX_PROJECT_BYTES:
             raise ValueError("SNAP SLAPPER project is too large to open safely")
         value = _read_project_document(path)
         if not isinstance(value, dict):
             raise ValueError("Invalid SNAP SLAPPER project: the root must be an object")
-        version = value.get("version")
-        if version not in {LEGACY_PROJECT_VERSION, PROJECT_VERSION}:
+        if value.get("version") != PROJECT_VERSION:
             raise ValueError("Unsupported SNAP SLAPPER project version")
         source_path = value.get("source_path")
         if not isinstance(source_path, str) or not source_path.strip():
             raise ValueError("Invalid SNAP SLAPPER project: source_path is missing")
-        if version == PROJECT_VERSION and zipfile.is_zipfile(path):
-            _validate_project_archive(path)
-        embedded = _embedded_source(path)
-        if embedded:
-            expected = os.path.splitext(os.path.basename(embedded))[0]
-            if (not os.path.isfile(source_path) or
-                    photo_manager.content_hash(source_path).lower() != expected.lower()):
-                source_path = embedded
         if not os.path.isfile(source_path):
-            raise FileNotFoundError(
-                f"The project's original photograph is missing and no embedded original exists: {source_path}")
+            raise FileNotFoundError(f"The project's original photograph is missing: {source_path}")
         if os.path.splitext(source_path)[1].lower() in photo_manager.RAW_EXTENSIONS:
             raise ValueError("This project references a RAW photograph. Open the original with "
                              "RawTherapee or darktable.")
@@ -1853,11 +1623,7 @@ class EditorDocument:
                 if layer.get("filter_version", 1) != 1:
                     raise ValueError(
                         f"Invalid SNAP SLAPPER project: layer {index + 1} filter version is unsupported")
-        if version == PROJECT_VERSION and zipfile.is_zipfile(path):
-            _restore_embedded_layer_assets(path, layers)
         document = cls(source_path)
-        document.original_filename = str(value.get("original_filename") or
-                                         os.path.basename(value.get("source_path", source_path)))
         document.adjustments = value.get("adjustments", copy.deepcopy(DEFAULT_ADJUSTMENTS))
         document.geometry = value.get("geometry", document.geometry)
         document.layers = layers
@@ -1897,7 +1663,7 @@ class EditorDocument:
                 clone = copy.deepcopy(layer)
                 clone.pop("path", None)  # recipes/LEWKS carry references, never texture bytes/paths
                 layers.append(clone)
-        return {"version": RECIPE_VERSION, "adjustments": copy.deepcopy(self.adjustments),
+        return {"version": PROJECT_VERSION, "adjustments": copy.deepcopy(self.adjustments),
                 "geometry": geometry, "layers": layers}
 
     def stack_layers(self, layers):
@@ -1927,7 +1693,7 @@ class EditorDocument:
     def apply_recipe(self, recipe):
         if not isinstance(recipe, dict):
             raise ValueError("Invalid SNAP SLAPPER recipe: the root must be an object")
-        if recipe.get("version") != RECIPE_VERSION:
+        if recipe.get("version") != PROJECT_VERSION:
             raise ValueError("Unsupported recipe version")
         adjustments = recipe.get("adjustments", DEFAULT_ADJUSTMENTS)
         geometry = recipe.get("geometry", {})
@@ -1954,7 +1720,8 @@ class EditorDocument:
         self.adjustments = copy.deepcopy(adjustments)
         for key in ("rotation", "flip_x", "flip_y", "perspective_vertical",
                     "perspective_horizontal", "perspective_corners",
-                    "perspective_edges"):
+                    "perspective_edges", "lens_distortion", "lens_spherical",
+                    "lens_center_x", "lens_center_y", "lens_scale", "lens_edges"):
             if key in geometry:
                 self.geometry[key] = copy.deepcopy(geometry[key])
         clones = copy.deepcopy(layers)

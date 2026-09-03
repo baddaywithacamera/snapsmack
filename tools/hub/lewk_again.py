@@ -162,7 +162,7 @@ def _safe_adjustments(values):
             low, high = (-3.0, 3.0) if key == "exposure" else (-100.0, 100.0)
             if key in {"level_black", "level_white"}: low, high = 0.0, 255.0
             if key == "level_gamma": low, high = 0.1, 3.0
-            if key in {"vignette_feather", "glow_x", "glow_y", "glow_size"}: low, high = 0.0, 100.0
+            if key in {"vignette_size", "vignette_feather", "glow_x", "glow_y", "glow_size"}: low, high = 0.0, 100.0
             safe[key] = _bounded_number(value, default, low, high)
         elif isinstance(default, list):
             if not isinstance(value, list) or len(value) > 32:

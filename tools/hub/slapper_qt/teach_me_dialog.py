@@ -20,7 +20,7 @@ from .engine_bridge import pil_to_qpixmap
 
 ACTION_GROUPS = (
     ("light", "Shape the light", ("exposure", "brightness", "contrast", "highlights",
-                                  "shadows", "whites", "blacks"),
+                                  "midtones", "shadows", "whites", "blacks"),
      "Sets the overall brightness range and decides which parts of the frame receive emphasis."),
     ("white-balance", "Set the colour balance", ("temperature", "tint"),
      "Warms, cools, or neutralises the photograph before the stylistic colour work."),
@@ -34,9 +34,9 @@ ACTION_GROUPS = (
     ("channel-curves", "Colour with channel curves", ("curve_red", "curve_green", "curve_blue"),
      "Moves the red, green, and blue channels independently to create colour casts and cross-processing."),
     ("colour-mix", "Mix individual colours", tuple(
-        f"col_{kind}_{colour}" for kind in ("hue", "sat", "lum")
+        f"col_{kind}_{colour}" for kind in ("sat", "lum")
         for colour in ("red", "orange", "yellow", "green", "aqua", "blue", "purple", "magenta")),
-     "Shifts, strengthens, or lightens particular colours instead of pushing every colour together."),
+     "Targets particular hues instead of pushing every colour in the photograph together."),
     ("black-white", "Build the monochrome response", ("black_white",) + tuple(
         f"bw_{colour}" for colour in
         ("red", "orange", "yellow", "green", "aqua", "blue", "purple", "magenta")),
@@ -118,6 +118,7 @@ def explain_action(action):
         "brightness": ("opens up the overall brightness", "pulls the overall brightness down", 100),
         "contrast": ("separates light and dark tones", "softens the difference between light and dark", 100),
         "highlights": ("brightens the brightest areas", "holds back the brightest areas", 100),
+        "midtones": ("brightens the middle tones", "darkens the middle tones", 100),
         "shadows": ("lifts detail from the shadows", "deepens the shadows", 100),
         "whites": ("raises the white point", "restrains the white point", 100),
         "blacks": ("lifts the deepest blacks", "crushes the deepest blacks", 100),
@@ -142,10 +143,7 @@ def explain_action(action):
     if any(key.startswith("curve_") for key in values):
         phrases.append("It bends individual colour channels to create the colour character.")
     if any(key.startswith("col_") for key in values):
-        if any(key.startswith("col_hue_") for key in values):
-            phrases.append("It shifts selected colours around the colour wheel without tinting the whole frame.")
-        else:
-            phrases.append("It changes selected colours without pushing every colour together.")
+        phrases.append("It changes selected colours without pushing every colour together.")
     if any(key.startswith("split_") for key in values):
         phrases.append("It places colour into a chosen tonal range instead of tinting the whole frame.")
     if "photo_filter_color" in values:
@@ -215,7 +213,6 @@ class TeachMeDialog(QDialog):
         self.values.hide()
         lesson_layout.addWidget(self.values)
         self.show_settings = QPushButton("SHOW SETTINGS")
-        self.show_settings.setObjectName("TeachSettingsToggle")
         self.show_settings.setCheckable(True)
         self.show_settings.toggled.connect(self._toggle_settings)
         lesson_layout.addWidget(self.show_settings, 0, Qt.AlignLeft)

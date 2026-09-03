@@ -122,22 +122,37 @@ def stylesheet() -> str:
         border: 1px solid {ACCENT};
     }}
 
-    /* Colour pickers keep the application chrome; only the small chip changes. */
+    /* Full-width colour actions (glow/filter) stay quiet. */
     QPushButton#SwatchBtn {{
-        background: {CANVAS};
-        color: {ACCENT};
-        border: 1px solid {ACCENT};
-        border-radius: 4px;
+        background: transparent;
+        color: {BODY};
+        border: none;
         padding: 5px 8px;
         text-align: left;
     }}
     QPushButton#SwatchBtn:hover {{
-        background: {ACCENT};
-        color: {CANVAS};
-        border: 1px solid {ACCENT};
+        background: {FIELD_HI};
+        color: {INK};
+    }}
+    /* Split tone uses a compact colour well beside a plain-language label. */
+    QPushButton#ColourWell {{
+        background: {CANVAS};
+        border: 1px solid {BORDER};
+        border-radius: 4px;
+        padding: 2px;
+    }}
+    QPushButton#ColourWell:hover {{
+        border: 1px solid {BODY};
     }}
 
     /* --- Layers panel --------------------------------------------------- */
+    QLabel#LayerSectionLabel {{
+        color: {DIM};
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        padding-top: 3px;
+    }}
     QPushButton#LayerAddBtn {{
         background: {FIELD};
         color: {BODY};
@@ -196,22 +211,6 @@ def stylesheet() -> str:
         font-size: 12px;
     }}
     QPushButton#LayerDeleteBtn:hover {{ border: 1px solid {DANGER}; }}
-    QPushButton#TeachSettingsToggle {{
-        background: {FIELD};
-        color: {BODY};
-        border: 1px solid {BORDER};
-        border-radius: 4px;
-        padding: 4px 8px;
-    }}
-    QPushButton#TeachSettingsToggle:hover {{
-        border: 1px solid {DANGER};
-        color: {DANGER};
-    }}
-    QPushButton#TeachSettingsToggle:checked {{
-        background: {DANGER};
-        border: 1px solid {DANGER};
-        color: {CANVAS};
-    }}
     QLabel#TargetLabel {{
         color: {DIM};
         font-size: 12px;
@@ -279,31 +278,6 @@ def stylesheet() -> str:
     }}
     QSlider::handle:horizontal:hover {{
         background: {ACCENT_HI};
-    }}
-    /* Geometry needs a precision point, not a fat adjustment knob. */
-    QSlider#PrecisionSlider::groove:horizontal {{
-        height: 2px;
-        background: {FIELD_HI};
-    }}
-    QSlider#PrecisionSlider::handle:horizontal {{
-        background: {ACCENT};
-        width: 9px;
-        height: 9px;
-        margin: -4px 0;
-        border-radius: 5px;
-        border: 1px solid {CANVAS};
-    }}
-    QLineEdit#ControlValue {{
-        background: {CANVAS};
-        color: {BODY};
-        border: 1px solid transparent;
-        border-radius: 3px;
-        padding: 1px 3px;
-    }}
-    QLineEdit#ControlValue:hover,
-    QLineEdit#ControlValue:focus {{
-        color: {ACCENT};
-        border: 1px solid {ACCENT_DIM};
     }}
 
     /* --- Checkboxes (green when checked, admin style) ------------------- */
