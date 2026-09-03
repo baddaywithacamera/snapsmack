@@ -53,6 +53,9 @@ class MaskBrushCanvas(QWidget):
         self._overlay = None      # cached red tint of the hidden areas
         self._paint_white = False  # False = hide (black), True = reveal (white)
         self._radius = 22
+        self._hardness = 70
+        self._opacity = 100
+        self._flow = 100
         self._last = None
         self._hover = None
         self.setMinimumSize(QSize(120, 90))
@@ -88,6 +91,24 @@ class MaskBrushCanvas(QWidget):
         self._radius = max(3, int(radius))
         self.update()
 
+    def set_hardness(self, value):
+        self._hardness = max(0, min(100, int(value)))
+
+    def set_opacity(self, value):
+        self._opacity = max(1, min(100, int(value)))
+
+    def set_flow(self, value):
+        self._flow = max(1, min(100, int(value)))
+
+    def fill(self, white):
+        """Paint-bucket the whole mask with Reveal (white) or Hide (black)."""
+        if self._mask is None:
+            return
+        self._mask.fill(255 if white else 0)
+        self._rebuild_overlay()
+        self.update()
+        self.mask_changed.emit()
+
     def has_mask(self):
         return self._mask is not None
 
@@ -107,17 +128,18 @@ class MaskBrushCanvas(QWidget):
         value = 255 if self._paint_white else 0
         # A soft round brush: solid core fading at the rim.
         gradient = QRadialGradient(point, self._radius)
-        core = QColor(value, value, value, 255)
+        alpha = round(255 * (self._opacity / 100.0) * (self._flow / 100.0))
+        core = QColor(value, value, value, alpha)
         edge = QColor(value, value, value, 0)
         gradient.setColorAt(0.0, core)
-        gradient.setColorAt(0.7, core)
+        gradient.setColorAt(max(0.0, min(.98, self._hardness / 100.0)), core)
         gradient.setColorAt(1.0, edge)
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(gradient))
         painter.drawEllipse(point, self._radius, self._radius)
         if self._last is not None:
             # join fast strokes so there are no gaps between samples
-            pen = QPen(QColor(value, value, value, 255))
+            pen = QPen(QColor(value, value, value, alpha))
             pen.setWidth(self._radius * 2)
             pen.setCapStyle(Qt.RoundCap)
             painter.setPen(pen)

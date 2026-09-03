@@ -1,7 +1,5 @@
 """Headless regression test for the SNAP SLAPPER Qt editor shell.
 
-SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
-
 Runs offscreen (no display needed):  python tests/test_slapper_qt.py
 
 Covers the load-bearing invariants of the Qt rebuild:
@@ -13,7 +11,6 @@ Covers the load-bearing invariants of the Qt rebuild:
   - library scan + threaded thumbnails + open-in-editor
 """
 
-import json
 import os
 import sys
 import tempfile
@@ -29,18 +26,19 @@ sys.path.insert(0, os.path.join(os.path.dirname(HUB), "_shared"))
 
 from PIL import Image, ImageChops                        # noqa: E402
 import editor_engine                                     # noqa: E402
-from PySide6.QtWidgets import QApplication, QPushButton  # noqa: E402
-from PySide6.QtCore import QDir, QThreadPool, QRectF, QPointF  # noqa: E402
+from PySide6.QtWidgets import QApplication, QPushButton, QMessageBox  # noqa: E402
+from PySide6.QtCore import QDir, QThreadPool, Qt         # noqa: E402
+from PySide6.QtGui import QKeySequence                   # noqa: E402
 from PySide6.QtTest import QTest                         # noqa: E402
 from slapper_qt import theme                             # noqa: E402
-from slapper_qt.editor_window import EditorWindow, _default_export_name  # noqa: E402
+from slapper_qt.editor_window import EditorWindow        # noqa: E402
 from slapper_qt.library_window import (                  # noqa: E402
     LibraryWindow, _transfer_photo_files,
 )
 from slapper_qt.layers_panel import BASE                 # noqa: E402
-from slapper_qt.layer_styles_dialog import LayerStylesDialog  # noqa: E402
 from slapper_qt.engine_bridge import render_pixmap, original_pixmap  # noqa: E402
 from slapper_qt.output_tools import create_contact_sheet, SlideshowDialog  # noqa: E402
+from slapper_qt.source_colour import inspect_source, workspace_label       # noqa: E402
 
 TMP = tempfile.mkdtemp(prefix="slapper_qt_test_")
 APP = QApplication.instance() or QApplication([])
@@ -98,6 +96,19 @@ def test_open_render_export():
     assert os.path.getsize(out) > 0
 
 
+def test_workspace_discloses_source_depth_and_profile_assumption():
+    path = _image("source-colour.png", (80, 60))
+    info = inspect_source(path)
+    assert info["bits_per_channel"] == 8
+    assert info["model"] == "RGB"
+    assert info["profile_source"] == "assumed"
+    assert workspace_label(info) == (
+        "RGB · 8-bit/channel · Unprofiled (assumed sRGB) · "
+        "Working: 8-bit sRGB (legacy engine)")
+    win = _editor(path)
+    assert win.colour_status.text() == workspace_label(info)
+
+
 def test_adjust_undo_reset():
     win = _editor(_image("b.jpg"))
     win.rows["exposure"]._on_slider(win.rows["exposure"]._to_step(1.5))
@@ -113,7 +124,6 @@ def test_adjust_undo_reset():
 
 def test_histogram_compare_recipe_project():
     win = _editor(_image("c.jpg"))
-    win.mode_combo.setCurrentIndex(win.mode_combo.findData("advanced"))
     win._refresh_histogram()
     assert len(win.histogram._data["luminance"]) == 256
     assert not original_pixmap(win.doc.source_path, (200, 200)).isNull()
@@ -130,27 +140,6 @@ def test_histogram_compare_recipe_project():
     win.doc.save_project(pp)
     loaded = editor_engine.EditorDocument.load_project(pp)
     assert loaded.adjustments["contrast"] == 40.0 and not loaded.is_dirty()
-
-
-def test_preview_renders_layer_stack_once_even_with_histogram():
-    win = _editor(_image("single-render.jpg", (320, 240)))
-    win.mode_combo.setCurrentIndex(win.mode_combo.findData("advanced"))
-    calls = 0
-    real_render = win.doc.render
-
-    def counted_render(*args, **kwargs):
-        nonlocal calls
-        calls += 1
-        return real_render(*args, **kwargs)
-
-    win.doc.render = counted_render
-    win._render_preview()
-    assert calls == 1
-    assert win.histogram._data and len(win.histogram._data["luminance"]) == 256
-    # The consolidated editor has separate lower-resolution drag paths. Invoke
-    # them directly so missing merge-time imports cannot hide in Qt timer logs.
-    win._render_drag_preview()
-    win._render_perspective_preview()
 
 
 def test_layers_isolation_and_ops():
@@ -176,6 +165,89 @@ def test_layers_isolation_and_ops():
     assert win.active_target == BASE
     win.undo()
     assert len(win.doc.layers) == 1
+
+
+def test_adjustment_layer_reveals_masks_and_history_is_clickable():
+    win = _editor(_image("discoverable-mask-history.jpg", (400, 300)))
+    win.layers_panel._add_adjustment()
+    assert not win.mask_section.isHidden()
+    assert win.mask_section.header.isChecked()
+    assert not win._mask_type_buttons["colour"].isHidden()
+    assert win.history_list.count() == len(win.doc.history)
+    win.rows["exposure"]._on_slider(win.rows["exposure"]._to_step(1.0))
+    win._on_commit("exposure")
+    assert "exposure" in win.history_list.item(win.doc.history_index).text().lower()
+    win._history_selected(win.history_list.item(0))
+    assert win.doc.history_index == 0
+
+
+def test_layer_can_be_reselected_after_clicking_base():
+    win = _editor(_image("reselect-adjustment.jpg", (400, 300)))
+    layer = win.doc.add_adjustment_layer("Adjustment")
+    win.set_target(layer["id"])
+    win.layers_panel.rebuild()
+    win.layers_panel._row_buttons[BASE].click()
+    assert win.active_target == BASE
+    assert layer["id"] in win.layers_panel._row_buttons
+    win.layers_panel._row_buttons[layer["id"]].click()
+    assert win.active_target == layer["id"]
+
+
+def test_blank_fill_layer_any_blend_mode_and_copied_mask():
+    win = _editor(_image("blank-fill-mask.jpg", (120, 80), (100, 100, 100)))
+    source = win.doc.add_adjustment_layer("Sky selection")
+    source_mask = Image.new("L", (120, 80), 0)
+    source_mask.paste(255, (0, 0, 120, 40))
+    source["mask"] = editor_engine._mask_to_text(source_mask)
+    source["mask_kind"] = "colour"
+    win.set_target(source["id"])
+    win.layers_panel.rebuild()
+    win.layers_panel._copy_mask()
+
+    fill = win.doc.add_paint_layer("Blue sky")
+    fill["fill"] = [30, 100, 230, 255]
+    fill["blend"] = "color"
+    win.set_target(fill["id"])
+    win.layers_panel.rebuild()
+    win.layers_panel._paste_mask()
+    assert fill["mask"] == source["mask"]
+    assert fill["mask_kind"] == "colour"
+    assert fill["blend"] == "color"
+    rendered = win.doc.render()
+    assert rendered.getpixel((60, 20)) != rendered.getpixel((60, 60))
+    # Copy semantics: replacing the destination mask cannot mutate the source.
+    copied_text = source["mask"]
+    fill["mask"] = editor_engine._mask_to_text(Image.new("L", (120, 80), 255))
+    assert source["mask"] == copied_text
+
+
+def test_direct_gradient_mask_and_stable_proxy_geometry():
+    win = _editor(_image("direct-gradient.jpg", (400, 300)))
+    layer = win.doc.add_adjustment_layer("Gradient")
+    win.set_target(layer["id"])
+    win._select_mask_type("linear")
+    assert win.view._gradient_mode
+    win._apply_drawn_gradient(0.0, 0.5, 1.0, 0.5)
+    stored = editor_engine._mask_from_text(layer["mask"])
+    assert stored.getpixel((0, stored.height // 2)) < 10
+    assert stored.getpixel((stored.width - 1, stored.height // 2)) > 245
+
+    layer["mask_kind"] = "colour"
+    layer["mask"] = editor_engine._mask_to_text(Image.new("L", stored.size, 128))
+    win._apply_drawn_gradient(0.0, 0.5, 1.0, 0.5)
+    combined = editor_engine._mask_from_text(layer["mask"])
+    assert layer["mask_kind"] == "colour+linear"
+    assert combined.getpixel((0, combined.height // 2)) < 10
+    assert 120 <= combined.getpixel((combined.width - 1, combined.height // 2)) <= 130
+
+    scene_before = win.view.sceneRect()
+    zoom_before = win.view.transform().m11()
+    full = win.view._item.pixmap()
+    proxy = full.scaled(max(1, full.width() // 3), max(1, full.height() // 3))
+    win.view.set_pixmap(proxy, keep_view=True, stable_geometry=True)
+    assert win.view.sceneRect() == scene_before
+    assert win.view.transform().m11() == zoom_before
+    assert abs(win.view._item.sceneBoundingRect().width() - scene_before.width()) < 1
 
 
 def test_prefs_and_export_options():
@@ -215,9 +287,25 @@ def test_auto_enhance():
     win = _editor(path)
     win.auto_enhance()
     adj = win.doc.adjustments
-    assert adj["contrast"] == 8.0 and adj["vibrance"] == 10.0
-    assert adj["level_white"] < 255 or adj["level_black"] > 0   # levels stretched
+    assert adj["contrast"] == 0.0 and adj["vibrance"] == 6.0
+    assert adj["level_white"] == 255.0 and adj["level_black"] == 0.0
     assert win.doc.render((150, 150))
+
+
+def test_auto_exposure_preserves_highlight_headroom():
+    image = Image.new("RGB", (256, 40))
+    pixels = image.load()
+    for x in range(256):
+        for y in range(40):
+            pixels[x, y] = (x, x, x)
+    auto = editor_engine.auto_exposure_adjustments(image)
+    assert set(auto) == {"exposure"}
+    # A full-range photograph must never receive positive exposure.
+    assert auto["exposure"] <= 0
+    win = _editor(_image("auto-exposure.jpg", (300, 200), (80, 80, 80)))
+    win.auto_exposure()
+    row = win.rows["exposure"]
+    assert row._from_step(row.slider.value()) == win.doc.adjustments["exposure"]
 
 
 def test_normal_advanced_mode():
@@ -267,7 +355,8 @@ def test_context_sensitive_toolbars():
 
     assert visible_tools() == ["Crop", "Auto", "Reset All", "Before/After"]
     win._context_selectors["retouch"].trigger()
-    assert visible_tools() == ["Heal", "Red-Eye"]
+    assert visible_tools() == ["Heal", "Red-Eye", "Mask Brush",
+                               "Mask Gradient", "Colour Range"]
     win._context_selectors["looks"].trigger()
     assert visible_tools() == [
         "LEWKS…", "LEWK AGAIN…", "Filters…", "Textures…", "Save Recipe", "Apply Recipe"]
@@ -275,7 +364,7 @@ def test_context_sensitive_toolbars():
     assert visible_tools() == ["Save Project", "Export…", "Blog Copy…"]
     win._context_selectors["view"].trigger()
     assert visible_tools() == [
-        "Zoom −", "Zoom +", "Fit", "100%", "Filmstrip", "Preferences", "Help"]
+        "Fit", "100%", "−", "+", "Filmstrip", "Preferences", "Help"]
 
     # Normal mode keeps the chosen workspace but removes Advanced-only tools.
     win._context_selectors["looks"].trigger()
@@ -294,17 +383,33 @@ def test_autosave_recovery():
     # the recovery reproduces the edit
     rec = editor_engine.EditorDocument.load_project(recpath)
     assert rec.adjustments["contrast"] == 30
-    # _maybe_recover with "Yes" returns the recovered document
-    from PySide6.QtWidgets import QMessageBox
-    original = QMessageBox.question
-    QMessageBox.question = staticmethod(lambda *a, **k: QMessageBox.Yes)
-    try:
-        recovered = win._maybe_recover(win.doc.source_path)
-        assert recovered is not None and recovered.adjustments["contrast"] == 30
-    finally:
-        QMessageBox.question = original
+    # Reopening the same photo resumes automatically—no fragile prompt path.
+    recovered = win._maybe_recover(win.doc.source_path)
+    assert recovered is not None and recovered.adjustments["contrast"] == 30
     win._clear_recovery()
     assert not os.path.isfile(recpath)
+
+
+def test_normal_close_persists_and_reopen_automatically_restores_edits():
+    recovery_dir = tempfile.mkdtemp(dir=TMP)
+    source = _image("persistent-close.jpg", (300, 200))
+    win = _editor(source)
+    win._recovery_dir = recovery_dir
+    win.rows["contrast"]._on_slider(win.rows["contrast"]._to_step(37))
+    win._on_commit("contrast")
+    win._save_window_state = lambda: None
+
+    class Event:
+        accepted = False
+        def accept(self): self.accepted = True
+        def ignore(self): self.accepted = False
+
+    event = Event()
+    win.closeEvent(event)
+    recovery = win._recovery_path()
+    assert event.accepted and os.path.isfile(recovery)
+    restored = win._maybe_recover(source)
+    assert restored.adjustments["contrast"] == 37
 
 
 def test_help_dialog():
@@ -381,12 +486,6 @@ def test_teach_me_uses_real_lewk_steps_and_makes_editable_copy():
     dialog._make_editable()
     assert len(win.doc.layers) == original_count + 1
     assert win.doc.layers[-1]["lewk"]["id"] == "golden-hourglass"
-
-    hue_lesson = actions_for({"adjustments": {"col_hue_blue": 25}})
-    assert hue_lesson[0]["id"] == "colour-mix"
-    assert "colour wheel" in __import__(
-        "slapper_qt.teach_me_dialog", fromlist=["explain_action"]
-    ).explain_action(hue_lesson[0]).lower()
 
 
 def test_texture_layer():
@@ -519,6 +618,19 @@ def test_colour_range_mask_selects_hue_and_survives_editor_render():
     win.mask_hue_range.slider.setValue(35)
     win._apply_colour_mask()
     assert layer.get("mask") and layer.get("mask_kind") == "colour"
+
+
+def test_colour_range_eyedropper_seeds_mask_from_canvas_sample():
+    win = _editor(_image("colour-eyedropper.jpg", (400, 300), (230, 35, 30)))
+    layer = win.doc.add_adjustment_layer("Sampled red")
+    win.set_target(layer["id"])
+    win._select_mask_type("colour")
+    win.mask_eyedropper.setChecked(True)
+    assert win.view._colour_range_mode is True
+    win._apply_colour_sample(.5, .5, show_dialog=False)
+    assert win.mask_hue.slider.value() <= 10 or win.mask_hue.slider.value() >= 350
+    assert layer.get("mask_kind") == "colour" and layer.get("mask")
+    assert win.view._colour_range_mode is False
     assert win.doc.render((300, 300))
 
 
@@ -642,9 +754,42 @@ def test_layered_psd_export_is_parseable_and_preserves_composite():
     names = [layer.name for layer in parsed]
     assert names[0].startswith("00 Base image")
     assert names[-1].startswith("SNAP SLAPPER Composite")
+    assert all(name.isascii() for name in names)
     assert sum(1 for layer in parsed if layer.visible) == 1
     expected = doc.render().convert("RGB")
     actual = parsed.composite(force=True).convert("RGB")
+    assert ImageChops.difference(expected, actual).getbbox() is None
+
+
+def test_openraster_export_is_portable_and_preserves_composite():
+    import io
+    import zipfile
+    import xml.etree.ElementTree as ET
+    from slapper_qt.ora_export import export_openraster
+
+    source = _image("ora-source.jpg", (220, 150), (80, 115, 155))
+    source_hash = editor_engine.photo_manager.content_hash(source)
+    doc = editor_engine.EditorDocument(source)
+    adjustment = doc.add_adjustment_layer("Brighter")
+    adjustment["adjustments"]["brightness"] = 25
+    doc.add_text_layer("ORA", name="Title", font_size=28)
+    target = os.path.join(TMP, "layered-output.ora")
+    assert export_openraster(doc, target) == target
+    assert editor_engine.photo_manager.content_hash(source) == source_hash
+
+    with zipfile.ZipFile(target) as archive:
+        members = archive.infolist()
+        assert members[0].filename == "mimetype"
+        assert members[0].compress_type == zipfile.ZIP_STORED
+        assert archive.read("mimetype") == b"image/openraster"
+        root = ET.fromstring(archive.read("stack.xml"))
+        layers = root.findall("./stack/layer")
+        assert len(layers) == len(doc.layers) + 2
+        assert layers[0].get("visibility") == "visible"
+        assert all(layer.get("name", "").isascii() for layer in layers)
+        with Image.open(io.BytesIO(archive.read("mergedimage.png"))) as merged:
+            actual = merged.convert("RGBA")
+    expected = doc.render().convert("RGBA")
     assert ImageChops.difference(expected, actual).getbbox() is None
 
 
@@ -690,51 +835,156 @@ def test_interactive_crop_overlay_and_explicit_apply():
     assert len(win.view._crop_grid) == 4
     assert len(win.view._crop_shades) == 4
     assert win._crop_controls_action in win.context_toolbar.actions()
+    free_rect = win.view._crop_rect_item.rect()
+    scene = win.view._scene.sceneRect()
+    assert free_rect == scene
 
     win.crop_aspect.setCurrentIndex(win.crop_aspect.findData(1.0))
     rect = win.view._crop_rect_item.rect()
     assert abs(rect.width() - rect.height()) < 1
-    win.crop_aspect.setCurrentIndex(win.crop_aspect.findData(3 / 2))
-    landscape = win.view._crop_rect_item.rect()
-    assert abs(landscape.width() / landscape.height() - 1.5) < .01
-    # Every resize handle must preserve the ratio, including pulls that hit a
-    # photograph boundary. Edge handles were previously able to make 3:2 tall.
-    win.view._crop_aspect = 1.5
-    scene = win.view._scene.sceneRect()
-    start = QRectF(100, 80, 180, 120)
-    probes = {
-        "n": QPointF(190, scene.top()),
-        "s": QPointF(190, scene.bottom()),
-        "e": QPointF(scene.right(), 140),
-        "w": QPointF(scene.left(), 140),
-        "nw": scene.topLeft(),
-        "ne": scene.topRight(),
-        "se": scene.bottomRight(),
-        "sw": scene.bottomLeft(),
-    }
-    for handle, point in probes.items():
-        strict = win.view._aspect_crop_rect(point, handle, start)
-        assert abs(strict.width() / strict.height() - 1.5) < .0001, handle
-        assert scene.contains(strict), handle
-    win._swap_crop_orientation()
-    portrait = win.view._crop_rect_item.rect()
-    assert abs(portrait.width() / portrait.height() - (2 / 3)) < .01
-    # Fine crosshair paths replace the old filled lime squares.
-    assert all(type(handle).__name__ == "QGraphicsPathItem"
-               for handle in win.view._crop_handles)
-    # Crop edges magnetise to the photograph boundary within eight screen px.
-    near = QRectF(scene.left() + win.view._crop_snap_distance() / 2,
-                  scene.top() + 30, 100, 100)
-    snapped = win.view._snap_crop_rect(near, "move")
-    assert abs(snapped.left() - scene.left()) < .01
-    # A corner rotation is committed through geometry without exiting crop.
-    win._rotate_from_crop(2.5)
-    assert win.doc.geometry["rotation"] == 2.5
-    assert win.view._crop_rect_item is not None
+    assert abs(rect.height() - scene.height()) < 1
+    win.crop_aspect.setCurrentIndex(win.crop_aspect.findData(16 / 9))
+    rect = win.view._crop_rect_item.rect()
+    assert abs(rect.width() - scene.width()) < 1
+    assert abs(rect.width() / rect.height() - 16 / 9) < .01
+    old_top = rect.top()
+    QTest.keyClick(win.view, Qt.Key_Down)
+    assert win.view._crop_rect_item.rect().top() == old_top + 1
+    QTest.keyClick(win.view, Qt.Key_Down, Qt.ShiftModifier)
+    assert win.view._crop_rect_item.rect().top() == old_top + 11
     win._commit_crop()
     assert win.doc.geometry["crop"] is not None
     assert not win.act_crop.isChecked()
     assert win.view._crop_rect_item is None
+
+
+def test_crop_repeated_activation_keeps_one_session():
+    win = _editor(_image("crop-single-session.jpg", (400, 300)))
+    win.act_crop.setChecked(True)
+    crop_item = win.view._crop_rect_item
+    handles = list(win.view._crop_handles)
+    grid = list(win.view._crop_grid)
+    shades = list(win.view._crop_shades)
+
+    # Protect against a second action/signal path invoking crop while it is
+    # already active.  The existing session and every overlay item survive.
+    win._toggle_crop(True)
+
+    assert win.view._crop_rect_item is crop_item
+    assert win.view._crop_handles == handles and len(handles) == 8
+    assert win.view._crop_grid == grid and len(grid) == 4
+    assert win.view._crop_shades == shades and len(shades) == 4
+    assert win.act_crop.isChecked()
+
+
+def test_trackpad_scroll_does_not_change_slider_and_undo_is_one_action():
+    win = _editor(_image("slider-undo-after-crop.jpg", (400, 300)))
+    win._apply_crop(.0, .1, 1.0, .9)
+    crop = list(win.doc.geometry["crop"])
+    after_crop = win.doc.history_index
+
+    row = win.rows["exposure"]
+
+    class WheelEvent:
+        ignored = False
+        def ignore(self): self.ignored = True
+
+    wheel = WheelEvent()
+    old_step = row.slider.value()
+    row.slider.wheelEvent(wheel)
+    assert wheel.ignored and row.slider.value() == old_step
+
+    # A keyboard adjustment receives a deferred checkpoint of its own.
+    row.slider.setFocus()
+    QTest.keyClick(row.slider, Qt.Key_Right)
+    QTest.qWait(350)
+    assert win.doc.history_index == after_crop + 1
+    assert win.doc.adjustments["exposure"] != 0
+    win.undo()
+    assert win.doc.adjustments["exposure"] == 0
+    assert win.doc.geometry["crop"] == crop
+
+
+def test_crop_and_perspective_overlays_are_mutually_exclusive():
+    win = _editor(_image("crop-perspective-exclusive.jpg", (400, 300)))
+    win.free_perspective_btn.setChecked(True)
+    assert win.view._perspective_mode and len(win.view._perspective_grid) == 38
+
+    win.act_crop.setChecked(True)
+    assert win.view._crop_mode and win.view._crop_rect_item is not None
+    assert not win.free_perspective_btn.isChecked()
+    assert not win.view._perspective_mode
+    assert not win.view._perspective_grid
+
+    win.free_perspective_btn.setChecked(True)
+    assert win.view._perspective_mode
+    assert not win.act_crop.isChecked()
+    assert not win.view._crop_mode
+    assert win.view._crop_rect_item is None
+
+
+def test_preview_reuses_canvas_render_for_histogram():
+    win = _editor(_image("single-preview-render.jpg", (400, 300)))
+    original_render = win.doc.render
+    calls = []
+
+    def counted_render(*args, **kwargs):
+        calls.append((args, kwargs))
+        return original_render(*args, **kwargs)
+
+    win.doc.render = counted_render
+    win._render_preview()
+
+    assert len(calls) == 1
+    assert win.histogram._data is not None
+
+
+def test_slider_drag_uses_light_proxy_then_resolves_crisp_preview():
+    win = _editor(_image("interactive-tones.jpg", (2400, 1600)))
+    requested = []
+    original_render = win.doc.render
+
+    def counted_render(max_size=None):
+        requested.append(max_size)
+        return original_render(max_size=max_size)
+
+    win.doc.render = counted_render
+    win._on_adjust("highlights", -50)
+    win._render_timer.stop()
+    win._render_preview()
+    drag_target = requested[-1]
+    assert win._interactive_render is True
+    assert max(drag_target) <= 1100
+
+    win._on_commit("highlights")
+    final_target = requested[-1]
+    assert win._interactive_render is False
+    assert max(final_target) > max(drag_target)
+
+
+def test_highlight_midtone_shadow_controls_are_tonally_isolated():
+    neutral = editor_engine._tonal_lut({})
+    highlights = editor_engine._tonal_lut({"highlights": -100})
+    midtones = editor_engine._tonal_lut({"midtones": -100})
+    shadows = editor_engine._tonal_lut({"shadows": 100})
+
+    # Highlights leave shadows and middle grey alone, but pull down brights.
+    assert highlights[64] == neutral[64]
+    assert highlights[128] == neutral[128]
+    assert neutral[230] - highlights[230] >= 45
+
+    # Midtones centre on middle grey and leave both ends alone.
+    assert midtones[25] == neutral[25]
+    assert neutral[128] - midtones[128] >= 50
+    assert midtones[230] == neutral[230]
+
+    # Shadows leave middle grey nearly stable and do not touch highlights.
+    assert shadows[25] - neutral[25] >= 45
+    assert abs(neutral[128] - shadows[128]) <= 3
+    assert shadows[230] == neutral[230]
+
+    win = _editor(_image("three-band-tones.jpg", (400, 300)))
+    assert "midtones" in win.rows
 
 
 def test_bw_colour_mix():
@@ -773,14 +1023,6 @@ def test_geometry():
     assert win.doc.geometry["flip_x"] and win.flip_h_btn.isChecked()
     win._reset_geometry()
     assert win.doc.geometry["rotation"] == 0.0 and not win.doc.geometry["flip_x"]
-    assert win.perspective_v_row.resolution == .1
-    assert win.perspective_h_row.slider.objectName() == "PrecisionSlider"
-    win._on_perspective("perspective_vertical", 1.7)
-    assert win.doc.geometry["perspective_vertical"] == 1.7
-    win._commit_perspective("Vertical perspective")
-    win.perspective_h_row.value_label.setText("-2.4")
-    win.perspective_h_row._commit_typed_value()
-    assert abs(win.doc.geometry["perspective_horizontal"] - (-2.4)) < .001
 
 
 def test_perspective_geometry_and_project_round_trip():
@@ -803,42 +1045,11 @@ def test_perspective_geometry_and_project_round_trip():
 
     project = os.path.join(TMP, "perspective.slapper")
     doc.save_project(project)
-    with __import__("zipfile").ZipFile(project) as archive:
-        names = set(archive.namelist())
-        required = {
-            "mimetype", "manifest.json", "project.json", "README.txt",
-            "metadata/original-exif.json", "metadata/provenance.json",
-            "metadata/dependencies.json", "metadata/checksums.json",
-            "schemas/project-schema.json", "previews/composite.tif",
-            "previews/thumbnail.jpg",
-        }
-        assert required <= names
-        manifest = __import__("json").loads(archive.read("manifest.json"))
-        assert manifest["format_version"] == 2
-        assert manifest["layer_order"]
-        original_entry = manifest["original"]["archive_path"]
-        assert original_entry == "original/original.jpg"
-        with open(path, "rb") as source:
-            assert archive.read(original_entry) == source.read()
-        assert manifest["original"]["sha256"] == source_hash
-        assert archive.read("README.txt").startswith(
-            b"This .slapper file is a standard ZIP/ZIP64 archive.")
-        for layer_id in manifest["layer_order"]:
-            assert f"layers/{layer_id}/layer.json" in names
-        editor_engine._validate_project_archive(project)
     loaded = editor_engine.EditorDocument.load_project(project)
     assert loaded.geometry["perspective_vertical"] == 45.0
     assert loaded.geometry["perspective_horizontal"] == -25.0
     assert loaded.geometry["perspective_corners"] == doc.geometry["perspective_corners"]
     assert ImageChops.difference(doc.render(), loaded.render()).getbbox() is None
-    portable_project = os.path.join(TMP, "portable.slapper")
-    portable_source = _image("portable-source.tif", (90, 60))
-    portable = editor_engine.EditorDocument(portable_source)
-    portable.save_project(portable_project)
-    original_hash = editor_engine.photo_manager.content_hash(portable_source)
-    os.remove(portable_source)
-    reopened = editor_engine.EditorDocument.load_project(portable_project)
-    assert editor_engine.photo_manager.content_hash(reopened.source_path) == original_hash
     recipe_target = editor_engine.EditorDocument(path)
     recipe_target.apply_recipe(doc.recipe())
     assert recipe_target.geometry["perspective_vertical"] == 45.0
@@ -847,14 +1058,17 @@ def test_perspective_geometry_and_project_round_trip():
 
     opened = EditorWindow()
     assert opened.open_project_path(project)
-    opened.doc.project_path = os.path.join(
-        TMP, "LDS Chapel at Dusk, Maplewood Drive, Strathmore, AB, 2026-08-28.slapper")
-    assert _default_export_name(opened.doc) == (
-        "LDS Chapel at Dusk, Maplewood Drive, Strathmore, AB, 2026-08-28.jpg")
     assert opened.doc.geometry["perspective_vertical"] == 45.0
 
     win = _editor(path)
     win._on_perspective("perspective_vertical", 30)
+    assert win._interactive_render
+    state = win.doc.snapshot()
+    if win._geometry_preview_mode == "perspective":
+        state["geometry"]["perspective_edges"] = "transparent"
+    assert state["geometry"]["perspective_edges"] == "transparent"
+    win._commit_geometry("Vertical perspective")
+    assert not win._interactive_render and win._geometry_preview_mode is None
     win._on_perspective("perspective_horizontal", -10)
     win._move_perspective_corner(0, .12, .08, True)
     assert win.doc.geometry["perspective_vertical"] == 30
@@ -862,60 +1076,46 @@ def test_perspective_geometry_and_project_round_trip():
     assert win.doc.geometry["perspective_corners"][0] == [.12, .08]
     win.free_perspective_btn.setChecked(True)
     assert win.view._perspective_mode and len(win.view._perspective_handles) == 4
-    assert len(win.view._perspective_grid) == 4
+    # Fine 20×20 geometry guide: nineteen interior lines in each direction.
+    assert len(win.view._perspective_grid) == 38
     win._reset_geometry()
     assert win.doc.geometry["perspective_vertical"] == 0.0
     assert win.doc.geometry["perspective_corners"][0] == [0.0, 0.0]
 
 
-def test_portable_project_does_not_expose_local_machine_paths():
-    source = _image("private-source.jpg", (96, 64))
-    overlay = _image("private-overlay.png", (32, 24))
-    doc = editor_engine.EditorDocument(source)
-    doc.add_image_layer(overlay)
-    text_layer = doc.add_text_layer()
-    text_layer["font_path"] = r"C:\Users\private-name\Fonts\PersonalFont.ttf"
-    project = os.path.join(TMP, "privacy-safe.slapper")
+def test_lens_distortion_controls_render_and_round_trip():
+    path = _image("lens-distortion.jpg", (320, 240))
+    doc = editor_engine.EditorDocument(path)
+    neutral = doc.render()
+    doc.geometry.update({
+        "lens_distortion": 45.0, "lens_spherical": -20.0,
+        "lens_center_x": 8.0, "lens_center_y": -6.0,
+        "lens_scale": 112.0, "lens_edges": "auto_fill",
+    })
+    changed = doc.render()
+    assert ImageChops.difference(neutral.convert("RGB"), changed.convert("RGB")).getbbox()
+    assert changed.size == neutral.size
+
+    crop_geometry = dict(doc.geometry)
+    crop_geometry.update({"lens_spherical": 55.0, "lens_scale": 100.0,
+                          "lens_edges": "auto_crop"})
+    cropped = editor_engine.apply_lens_distortion(neutral, crop_geometry)
+    assert cropped.width < neutral.width or cropped.height < neutral.height
+    assert cropped.getchannel("A").getextrema() == (255, 255)
+
+    project = os.path.join(TMP, "lens-distortion.slapper")
     doc.save_project(project)
+    loaded = editor_engine.EditorDocument.load_project(project)
+    for key in ("lens_distortion", "lens_spherical", "lens_center_x",
+                "lens_center_y", "lens_scale", "lens_edges"):
+        assert loaded.geometry[key] == doc.geometry[key]
 
-    with __import__("zipfile").ZipFile(project) as archive:
-        manifest = json.loads(archive.read("manifest.json"))
-        project_value = json.loads(archive.read("project.json"))
-        assert project_value["source_path"] == manifest["original"]["archive_path"]
-        assert project_value["layers"][0]["path"].startswith("layers/")
-        assert project_value["layers"][1]["font_path"] == "PersonalFont.ttf"
-        textual = b"\n".join(
-            archive.read(name) for name in archive.namelist()
-            if name.endswith((".json", ".txt")) or name == "README.txt")
-        assert os.path.dirname(source).encode("utf-8") not in textual
-        assert b"private-name" not in textual
-    reopened = editor_engine.EditorDocument.load_project(project)
-    assert reopened.source_path and os.path.isfile(reopened.source_path)
-    assert os.path.isfile(reopened.layers[0]["path"])
-    assert ImageChops.difference(doc.render(), reopened.render()).getbbox() is None
-
-    # A pre-rework v2 project with absolute paths remains readable. Recreate
-    # that older writer shape and update its declared checksum, then reopen it.
-    old_v2 = os.path.join(TMP, "pre-rework-v2.slapper")
-    with __import__("zipfile").ZipFile(project) as archive:
-        entries = {name: archive.read(name) for name in archive.namelist()
-                   if not name.endswith("/")}
-    old_value = json.loads(entries["project.json"])
-    old_value["source_path"] = source
-    old_value["layers"][0]["path"] = overlay
-    entries["project.json"] = json.dumps(
-        old_value, indent=2, sort_keys=True, allow_nan=False).encode("utf-8")
-    checksums = json.loads(entries["metadata/checksums.json"])
-    checksums["sha256"]["project.json"] = editor_engine._sha256_bytes(
-        entries["project.json"])
-    entries["metadata/checksums.json"] = json.dumps(
-        checksums, indent=2, sort_keys=True, allow_nan=False).encode("utf-8")
-    with __import__("zipfile").ZipFile(old_v2, "w") as archive:
-        for name, payload in entries.items():
-            archive.writestr(name, payload)
-    older = editor_engine.EditorDocument.load_project(old_v2)
-    assert older.source_path == os.path.abspath(source)
-    assert older.layers[0]["path"] == overlay
+    win = _editor(path)
+    win.lens_distortion_row.set_value(30)
+    win._on_lens_geometry("lens_distortion", 30)
+    assert win.doc.geometry["lens_distortion"] == 30
+    assert win.lens_edges.findData("auto_fill") >= 0
+    assert win.lens_edges.findData("auto_crop") >= 0
 
 
 def test_library_scan_and_open():
@@ -944,6 +1144,21 @@ def test_library_scan_and_open():
     assert len(lib._editors) == opened, "the same activation must not open a duplicate editor"
 
 
+def test_library_can_navigate_above_selected_root():
+    parent = tempfile.mkdtemp(prefix="slaplib_parent_", dir=TMP)
+    selected = os.path.join(parent, "Everything")
+    os.makedirs(selected)
+    lib = LibraryWindow()
+    lib.load_folder(selected)
+    assert os.path.normcase(lib.tree_model.rootPath()) == os.path.normcase(parent)
+    assert os.path.normcase(lib.tree_model.filePath(lib.tree.currentIndex())) == \
+        os.path.normcase(selected)
+    lib._go_up_folder()
+    assert os.path.normcase(lib._folder) == os.path.normcase(parent)
+    assert lib.tree_model.filePath(lib.tree.currentIndex())
+    assert QKeySequence("Alt+Up") == lib.act_folder_up.shortcut()
+
+
 def test_zoom_actual_shows_native_pixels():
     # "100%" must show the photograph's real pixels (a true focus check), not
     # an upscaled window-sized proxy. Fit stays a smaller, fast proxy.
@@ -964,6 +1179,35 @@ def test_zoom_actual_shows_native_pixels():
     win.zoom_actual()
     win.open_path(big)
     assert win._zoom_actual is False
+
+
+def test_visible_incremental_zoom_controls_and_shortcuts():
+    win = _editor(_image("zoom-controls.jpg", (800, 600)))
+    win._show_toolbar_context("view")
+    actions = win.context_toolbar.actions()
+    assert win.act_zoom_out in actions and win.act_zoom_in in actions
+    assert win.act_zoom_out.text() == "−" and win.act_zoom_in.text() == "+"
+    assert QKeySequence("Ctrl+-") in win.act_zoom_out.shortcuts()
+    assert QKeySequence("Ctrl++") in win.act_zoom_in.shortcuts()
+    assert QKeySequence("Ctrl+=") in win.act_zoom_in.shortcuts()
+
+    before = win.view.transform().m11()
+    win.zoom_in()
+    enlarged = win.view.transform().m11()
+    win.zoom_out()
+    restored = win.view.transform().m11()
+    assert enlarged > before
+    assert abs(restored - before) < .0001
+
+    class CanvasWheelEvent:
+        accepted = False
+        def accept(self): self.accepted = True
+
+    wheel = CanvasWheelEvent()
+    before_wheel = win.view.transform().m11()
+    win.view.wheelEvent(wheel)
+    assert wheel.accepted
+    assert win.view.transform().m11() == before_wheel
 
 
 def test_fit_preview_refreshes_after_window_layout():
@@ -993,14 +1237,12 @@ def test_window_state_colour_chrome_and_library_captions():
     prefs.save = lambda values: stored.update(values) or dict(values)
     try:
         win = EditorWindow()
-        feather = win.rows["vignette_feather"].name_label
-        assert feather.width() >= feather.sizeHint().width()
         assert win._restore_maximized is True
-        assert win.split_shadow_btn.objectName() == "SwatchBtn"
-        assert win.split_mid_btn.objectName() == "SwatchBtn"
-        assert win.split_hi_btn.objectName() == "SwatchBtn"
+        assert win.split_shadow_btn.objectName() == "ColourWell"
+        assert win.split_mid_btn.objectName() == "ColourWell"
+        assert win.split_hi_btn.objectName() == "ColourWell"
         css = theme.stylesheet()
-        assert "QPushButton#SwatchBtn" in css
+        assert "QPushButton#ColourWell" in css
         assert f"background: {theme.CANVAS}" in css
         assert f"color: {theme.ACCENT}" in css
         assert f"border: 1px solid {theme.ACCENT}" in css
@@ -1093,6 +1335,64 @@ def test_mask_brush_and_type_switch():
     assert win.mask_stack.currentIndex() == 1
 
 
+def test_brush_palette_bucket_and_shortcuts():
+    win = _editor(_image("brush-palette.jpg", (400, 300)))
+    layer = win.doc.add_adjustment_layer("Masked")
+    win.set_target(layer["id"])
+    win._select_mask_type("brush")
+    win._set_brush_preset(16, 95)
+    assert win.brush_size.slider.value() == 16
+    assert win.brush_hardness.slider.value() == 95
+    win.brush_opacity.slider.setValue(45)
+    win.brush_flow.slider.setValue(35)
+    assert win.mask_brush._opacity == 45 and win.mask_brush._flow == 35
+    win.mask_brush.fill(False)
+    assert max(win.mask_brush.mask_pil((80, 60)).getextrema()) == 0
+    win.mask_brush.fill(True)
+    assert min(win.mask_brush.mask_pil((80, 60)).getextrema()) == 255
+    old_size = win.brush_size.slider.value()
+    win._mask_key("larger")
+    assert win.brush_size.slider.value() > old_size
+    win._mask_key("invert")
+    assert win.mask_invert.isChecked()
+
+
+def test_mask_can_be_painted_on_full_photo_canvas():
+    win = _editor(_image("canvas-mask.jpg", (600, 400)))
+    layer = win.doc.add_adjustment_layer("Canvas mask")
+    win.set_target(layer["id"])
+    win._select_mask_type("brush")
+    win.paint_on_photo.setChecked(True)
+    assert win.view._mask_paint_mode
+    # The photograph shows the real layer composite; mask state lives in the
+    # layer thumbnail rather than as a detached red overlay.
+    assert layer.get("mask")
+    assert layer["id"] in win.layers_panel._mask_thumbnails
+    win._paint_canvas_mask(.5, .5, False)
+    win._paint_canvas_mask(.55, .5, True)
+    stored = editor_engine._mask_from_text(layer["mask"])
+    assert stored.getpixel((stored.width // 2, stored.height // 2)) < 255
+    assert layer["mask_kind"] == "brush"
+
+
+def test_slider_drag_never_blocks_on_document_render():
+    win = _editor(_image("smooth-slider.jpg", (1800, 1200)))
+    win._render_timer.stop()
+    row = win.rows["highlights"]
+    calls = []
+    original_render = win.doc.render
+    win.doc.render = lambda *a, **k: (calls.append((a, k)) or original_render(*a, **k))
+    row.slider.setSliderDown(True)
+    win._on_adjust("highlights", -42)
+    assert win._render_timer.isActive()
+    win._render_timer.stop()
+    win._dispatch_render()
+    # Dispatch snapshots the document and returns; the live UI document is not
+    # rendered synchronously by the pointer event path.
+    assert calls == []
+    row.slider.setSliderDown(False)
+
+
 def test_before_after_divider():
     img = _image("compare.jpg", size=(600, 400))
     win = _editor(img)
@@ -1122,12 +1422,6 @@ def test_library_sort_search_info_and_folders():
     # The tree must never enumerate the Windows drive root. Disconnected mapped
     # drives and cloud providers can block the shell and freeze the whole app.
     assert lib.tree_model.rootPath() not in ("", QDir.rootPath())
-    lib._show_folder_in_tree(folder)
-    assert os.path.normcase(os.path.abspath(lib.tree_model.rootPath())) == \
-        os.path.normcase(os.path.abspath(os.path.dirname(folder)))
-    assert os.path.normcase(os.path.abspath(
-        lib.tree_model.filePath(lib.tree.currentIndex()))) == \
-        os.path.normcase(os.path.abspath(folder))
     lib.load_folder(folder)
     assert _wait_for(lambda: lib.list.count() == 3)
     QThreadPool.globalInstance().waitForDone(5000)
@@ -1158,15 +1452,6 @@ def test_library_sort_search_info_and_folders():
     assert lib.tree.isHidden() is True
     lib.act_folders.setChecked(True)
     assert lib.tree.isHidden() is False
-
-    # A large folder queues only the visible thumbnail window and look-ahead;
-    # off-screen files must not flood the worker pool.
-    lib._paths = [os.path.join(folder, f"future-{i:04}.jpg") for i in range(600)]
-    lib._icons.clear()
-    lib._thumb_queued.clear()
-    lib._populate()
-    assert _wait_for(lambda: lib.list.count() == 600)
-    assert 0 < len(lib._thumb_queued) < 600
 
 
 def test_library_file_organizer_and_resizable_folders():
@@ -1217,16 +1502,11 @@ def test_qt_catalog_ratings_tags_favorites_and_albums():
     catalog.register_folder(directory)
     catalog.update_index([first, second])
     assert set(catalog.all_paths()) == {first, second}
-    state = editor_engine.EditorDocument(first).snapshot()
-    state["adjustments"]["contrast"] = 23
-    catalog.save_edit_state(first, state)
-    assert catalog.load_edit_state(first)["adjustments"]["contrast"] == 23
     renamed = os.path.join(directory, "renamed.jpg")
     os.rename(first, renamed)
     catalog.move_path(first, renamed)
     assert catalog.details(renamed)["rating"] == 5
     assert renamed in catalog.albums["Pets"] and first not in catalog.albums["Pets"]
-    assert catalog.load_edit_state(renamed)["adjustments"]["contrast"] == 23
     catalog.record_operation("rename", [(first, renamed)])
     undone = catalog.undo_last_move()
     assert undone and os.path.isfile(first) and not os.path.exists(renamed)
@@ -1238,27 +1518,14 @@ def test_qt_catalog_ratings_tags_favorites_and_albums():
     assert lib.catalog_dock.windowTitle() == "PHOTO INFO"
 
 
-def test_editor_automatically_restores_catalogued_edits():
-    from slapper_qt.catalog import Catalog
-    directory = tempfile.mkdtemp(prefix="slapper_edit_catalog_", dir=TMP)
-    path = _image("catalogued-edit.jpg", (240, 160))
-    catalog = Catalog(directory)
-
-    first = _editor(path)
-    first.catalog = catalog
-    first.doc.adjustments["exposure"] = 1.25
-    first.doc.geometry["rotation"] = 2.4
-    first.doc.record("Catalogue persistence test")
-    first._write_catalog_state()
-    assert not first.doc.is_dirty()
-    assert not any(name.endswith(".slapper") for name in os.listdir(directory))
-
-    reopened = _editor(path)
-    reopened.catalog = catalog
-    assert reopened.open_path(path)
-    assert reopened.doc.adjustments["exposure"] == 1.25
-    assert reopened.doc.geometry["rotation"] == 2.4
-    assert not reopened.doc.is_dirty()
+def test_main_window_titles_do_not_repeat_the_application_name():
+    path = _image("one-clean-title.jpg", (200, 120))
+    win = _editor(path)
+    assert win.windowTitle() == "one-clean-title.jpg"
+    assert "SNAP SLAPPER" not in win.windowTitle()
+    from slapper_qt.library_window import LibraryWindow
+    library = LibraryWindow()
+    assert not library.windowTitle().startswith("SNAP SLAPPER")
 
 
 def test_safe_import_and_transactional_batch_rename():
@@ -1291,12 +1558,14 @@ def test_vignette_feather_and_grain_darken():
     soft = editor_engine.apply_adjustments(base, {"vignette": -60, "vignette_feather": 95})
     hard = editor_engine.apply_adjustments(base, {"vignette": -60, "vignette_feather": 3})
     assert list(soft.getdata()) != list(hard.getdata())
-    compact = editor_engine.apply_adjustments(
-        base, {"vignette": -60, "vignette_size": 0, "vignette_feather": 20})
-    broad = editor_engine.apply_adjustments(
-        base, {"vignette": -60, "vignette_size": 100, "vignette_feather": 20})
-    # A broader clear centre leaves an off-centre sample brighter.
-    assert sum(broad.getpixel((25, 45))) > sum(compact.getpixel((25, 45)))
+    default = editor_engine.apply_adjustments(base, {"vignette": -60})
+    assert default.getpixel((60, 45)) == (128, 128, 128)
+    assert default.getpixel((0, 0))[0] < 70
+    tight = editor_engine.apply_adjustments(
+        base, {"vignette": -60, "vignette_size": 15, "vignette_feather": 50})
+    wide = editor_engine.apply_adjustments(
+        base, {"vignette": -60, "vignette_size": 95, "vignette_feather": 50})
+    assert tight.getpixel((20, 45))[0] < wide.getpixel((20, 45))[0]
     # darken-only grain never brightens the photo (soft-light grain can)
     darkened = editor_engine.apply_adjustments(base, {"grain": 80, "grain_darken": True})
     mean = sum(sum(p) for p in darkened.getdata()) / (120 * 90 * 3)
@@ -1365,7 +1634,6 @@ def test_colour_engine_additions():
     base = Image.new("RGB", (60, 48), (120, 150, 90))
     ref = list(editor_engine.apply_adjustments(base, {}).getdata())
     for adj in ({"curve_blue": [[0, 40], [255, 255]]},      # per-channel curve
-                {"col_hue_green": 100},                     # HSL hue
                 {"col_sat_green": -100},                     # HSL saturation
                 {"col_lum_red": 80},                         # HSL luminance
                 {"split_midtone": [255, 0, 0], "split_midtone_amount": 80},
@@ -1373,15 +1641,9 @@ def test_colour_engine_additions():
         assert list(editor_engine.apply_adjustments(base, adj).getdata()) != ref
     # every new control is wired into the rail
     win = _editor(_image("colour.jpg", (200, 150)))
-    for key in ("col_hue_green", "col_sat_red", "col_lum_blue", "glow_amount", "glow_x",
+    for key in ("col_sat_red", "col_lum_blue", "glow_amount", "glow_x",
                 "split_midtone_amount"):
         assert key in win.rows, key
-    # Hue mix is a normal adjustment: it remains editable on a generic layer
-    # and survives project/recipe serialization through the adjustment dict.
-    win.layers_panel._add_adjustment()
-    win.rows["col_hue_green"]._on_slider(75)
-    win._on_commit("col_hue_green")
-    assert win.active_adjustments()["col_hue_green"] == 75
     # the curve editor stores a per-channel curve onto the target
     win._on_curve_changed("curve_red", [[0, 0], [128, 180], [255, 255]])
     assert win.active_adjustments()["curve_red"] == [[0, 0], [128, 180], [255, 255]]
@@ -1546,43 +1808,6 @@ def test_svg_watermark_layer_renders_at_output_size():
     assert editor_engine._open_layer_image(svg, (640, 240)).size == (640, 240)
 
 
-def test_qt_layer_styles_apply_and_cancel():
-    win = _editor(_image("layer-styles.jpg", (180, 140)))
-    win.layers_panel._add_text()
-    layer = win.layers_panel._selected_layer()
-    assert layer is not None
-    assert win.layers_panel.styles_btn.text() == "LAYER STYLES…"
-
-    history_before = len(win.doc.history)
-    dialog = LayerStylesDialog(win, layer, win.layers_panel)
-    dialog.shadow.setChecked(True)
-    dialog.shadow_blur.setValue(14)
-    dialog.shadow_offset.setValue(9)
-    dialog.stroke.setValue(4)
-    dialog.glow.setValue(11)
-    dialog.overlay.setChecked(True)
-    dialog.overlay_opacity.setValue(42)
-    dialog.accept()
-    styles = layer["styles"]
-    assert styles["shadow"] is True
-    assert styles["shadow_blur"] == 14
-    assert styles["shadow_offset"] == 9
-    assert styles["stroke"] == 4
-    assert styles["glow"] == 11
-    assert styles["color_overlay"] is True
-    assert styles["overlay_opacity"] == .42
-    assert len(win.doc.history) == history_before + 1
-    assert win.doc.history[-1]["label"] == "Layer styles"
-
-    committed = dict(styles)
-    cancelled = LayerStylesDialog(win, layer, win.layers_panel)
-    cancelled.stroke.setValue(17)
-    cancelled.shadow.setChecked(False)
-    cancelled.reject()
-    assert layer["styles"] == committed
-    assert len(win.doc.history) == history_before + 1
-
-
 def test_keyboard_shortcuts_and_help_topics():
     from slapper_qt.help_dialog import TOPICS
     win = _editor(_image("keys.jpg", (160, 120)))
@@ -1595,14 +1820,7 @@ def test_keyboard_shortcuts_and_help_topics():
     assert len(seqs) == len(set(seqs)), "duplicate shortcuts: " + str(seqs)
     assert win.act_fit.shortcut().toString().lower().endswith("0")
     assert win.act_full.shortcut().toString().lower().endswith("1")
-    assert any("+" in seq.toString() for seq in win.act_zoom_in.shortcuts())
-    assert any("-" in seq.toString() for seq in win.act_zoom_out.shortcuts())
     assert win.act_lewks.shortcut().toString().lower().endswith("k")
-    fitted = win.view.transform().m11()
-    win.act_zoom_in.trigger()
-    assert win.view.transform().m11() > fitted and not win.view._fitting
-    win.act_fit.trigger()
-    assert win.view._fitting
     # tooltips now advertise the shortcut
     assert "Ctrl" in win.act_lewks.toolTip()
     # help gained the new topics

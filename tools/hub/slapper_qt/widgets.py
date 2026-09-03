@@ -4,21 +4,20 @@ These are application-owned widgets (the spec's ``slapper_ui`` idea) so every
 screen shares one look and one behaviour instead of styling controls ad hoc.
 """
 
-from PySide6.QtCore import Qt, Signal, QRectF
-from PySide6.QtGui import (
-    QPainter, QPixmap, QColor, QPolygonF, QPen, QFont, QPainterPath, QCursor,
-    QDoubleValidator,
-)
+from PySide6.QtCore import Qt, Signal, QRectF, QTimer
+from PySide6.QtGui import (QPainter, QPixmap, QImage, QColor, QPolygonF, QPen,
+                           QFont, QTransform)
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem,
     QGraphicsEllipseItem, QGraphicsPolygonItem, QGraphicsLineItem,
-    QGraphicsPathItem,
     QWidget, QLabel, QSlider, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy,
-    QLineEdit,
 )
+from PIL import Image
 
 from . import theme
+
+PERSPECTIVE_GRID_DIVISIONS = 20
 
 
 class ImageView(QGraphicsView):
@@ -33,16 +32,18 @@ class ImageView(QGraphicsView):
     retouch_clicked = Signal(float, float)
     # emitted when the canvas is clicked with the neutral-colour eyedropper
     neutral_clicked = Signal(float, float)
+    # emitted when a colour-range mask eyedropper samples the canvas
+    colour_range_clicked = Signal(float, float)
     # normalized canvas movement for the selected movable layer
     layer_dragged = Signal(float, float, bool)
     # corner index, normalized x/y, and whether the drag has finished
     perspective_corner_dragged = Signal(int, float, float, bool)
+    # normalized x/y and stroke-finished state for full-canvas mask painting
+    mask_painted = Signal(float, float, bool)
+    gradient_drawn = Signal(float, float, float, float)
     # The editor uses a viewport-sized proxy in Fit mode. When layout changes,
     # ask it to render a new proxy instead of stretching the old one.
     fit_view_resized = Signal()
-    # Degrees dragged outside a crop corner. The editor commits this to the
-    # document on release so crop and straighten remain one fluid tool.
-    crop_rotation_changed = Signal(float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -59,6 +60,7 @@ class ImageView(QGraphicsView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self._has_image = False
+        self._logical_image_rect = None
         self._fitting = True
         self._crop_mode = False
         self._crop_rect_item = None
@@ -67,12 +69,21 @@ class ImageView(QGraphicsView):
         self._crop_drag_start = None
         self._crop_start_rect = None
         self._crop_aspect = None
-        self._crop_rotation_start_angle = None
         self._crop_shades = []
         self._crop_grid = []
         self._crop_handles = []
         self._retouch_mode = False
         self._neutral_mode = False
+        self._colour_range_mode = False
+        self._gradient_mode = False
+        self._gradient_start = None
+        self._gradient_line = None
+        self._mask_paint_mode = False
+        self._mask_painting = False
+        self._mask_overlay = QGraphicsPixmapItem()
+        self._mask_overlay.setZValue(7)
+        self._mask_overlay.setVisible(False)
+        self._scene.addItem(self._mask_overlay)
         self._layer_move_mode = False
         self._layer_drag_point = None
         self._perspective_mode = False
@@ -139,10 +150,17 @@ class ImageView(QGraphicsView):
         self._perspective_polygon.setPen(pen)
         self._perspective_polygon.setBrush(QColor(0, 0, 0, 0))
         self._scene.addItem(self._perspective_polygon)
-        grid_pen = QPen(QColor(255, 255, 255, 150), 0)
-        # Bilinear guide lines are only an editing overlay. The rendered image
+        # A fine 20×20 architectural grid gives enough nearby references for
+        # rooflines, walls, windows and posts. Quarters remain a little brighter
+        # so the dense guide does not become an undifferentiated mesh.
+        # These bilinear guides are only an editing overlay; the rendered image
         # itself uses one true projective transform, which preserves lines.
-        for fraction in (1 / 3, 2 / 3):
+        for division in range(1, PERSPECTIVE_GRID_DIVISIONS):
+            fraction = division / PERSPECTIVE_GRID_DIVISIONS
+            # Every fifth line is stronger, producing clear quarters without
+            # losing the dense one-twentieth alignment guides.
+            major = division % 5 == 0
+            grid_pen = QPen(QColor(255, 255, 255, 165 if major else 82), 0)
             top = points[0] + (points[1] - points[0]) * fraction
             bottom = points[3] + (points[2] - points[3]) * fraction
             left = points[0] + (points[3] - points[0]) * fraction
@@ -176,6 +194,49 @@ class ImageView(QGraphicsView):
                          else QGraphicsView.ScrollHandDrag)
         self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
 
+    def set_colour_range_mode(self, enabled):
+        """Turn the layer-mask colour eyedropper on."""
+        self._colour_range_mode = bool(enabled)
+        self.setDragMode(QGraphicsView.NoDrag if enabled
+                         else QGraphicsView.ScrollHandDrag)
+        self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+
+    def set_gradient_mode(self, enabled):
+        """Let a graduated mask be drawn directly across the photograph."""
+        self._gradient_mode = bool(enabled)
+        self._gradient_start = None
+        if self._gradient_line is not None:
+            self._scene.removeItem(self._gradient_line)
+            self._gradient_line = None
+        self.setDragMode(QGraphicsView.NoDrag if enabled
+                         else QGraphicsView.ScrollHandDrag)
+        self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+
+    def set_mask_paint_mode(self, enabled):
+        self._mask_paint_mode = bool(enabled)
+        self._mask_painting = False
+        self.setDragMode(QGraphicsView.NoDrag if enabled
+                         else QGraphicsView.ScrollHandDrag)
+        self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+        if not enabled:
+            self._mask_overlay.setVisible(False)
+
+    def set_mask_overlay(self, mask):
+        """Show black mask areas as a red overlay over the main photograph."""
+        if mask is None or self._item.pixmap().isNull():
+            self._mask_overlay.setVisible(False)
+            return
+        width, height = self._item.pixmap().width(), self._item.pixmap().height()
+        display = mask.convert("L").resize((width, height), Image.Resampling.BILINEAR)
+        alpha = display.point(lambda value: round((255 - value) * .48))
+        overlay = Image.new("RGBA", display.size, (225, 35, 35, 0))
+        overlay.putalpha(alpha)
+        data = overlay.tobytes("raw", "RGBA")
+        qimage = QImage(data, width, height, width * 4,
+                        QImage.Format_RGBA8888).copy()
+        self._mask_overlay.setPixmap(QPixmap.fromImage(qimage))
+        self._mask_overlay.setVisible(self._mask_paint_mode)
+
     def set_crop_mode(self, enabled, normalized_rect=None):
         self._crop_mode = enabled
         self.setDragMode(QGraphicsView.NoDrag if enabled
@@ -196,93 +257,28 @@ class ImageView(QGraphicsView):
                           (right - left) * scene.width(),
                           (bottom - top) * scene.height())
         else:
-            rect = scene.adjusted(scene.width() * .08, scene.height() * .08,
-                                  -scene.width() * .08, -scene.height() * .08)
+            # A new crop begins at the actual photograph boundary. Free crop
+            # must not retain the old arbitrary 8% inset; locked ratios will
+            # subsequently constrain the largest fitting rectangle.
+            rect = QRectF(scene)
         self._set_crop_rect(rect)
 
     def set_crop_aspect(self, ratio):
         self._crop_aspect = float(ratio) if ratio else None
         if not (self._crop_mode and self._crop_rect_item and self._crop_aspect):
             return
-        rect = self._crop_rect_item.rect()
-        centre = rect.center()
-        width = rect.width()
-        height = width / self._crop_aspect
         scene = self._scene.sceneRect()
-        max_width = max(0.0, 2 * min(centre.x() - scene.left(),
-                                     scene.right() - centre.x()))
-        max_height = max(0.0, 2 * min(centre.y() - scene.top(),
-                                      scene.bottom() - centre.y()))
-        scale = min(1.0, max_width / width if width else 1.0,
-                    max_height / height if height else 1.0)
-        width *= scale
-        height *= scale
+        centre = scene.center()
+        # Selecting an aspect is an explicit framing request: start with the
+        # largest crop of that shape, constrained by whichever image dimension
+        # it reaches first. The user can then trim or reposition from there.
+        width = scene.width()
+        height = width / self._crop_aspect
+        if height > scene.height():
+            height = scene.height()
+            width = height * self._crop_aspect
         self._set_crop_rect(QRectF(centre.x() - width / 2,
                                    centre.y() - height / 2, width, height))
-
-    def _aspect_crop_rect(self, current, hit, start):
-        """Return an in-bounds crop rect that strictly preserves the ratio."""
-        ratio = self._crop_aspect
-        scene = self._scene.sceneRect()
-        if not ratio:
-            return QRectF(start)
-
-        if hit in ("n", "s"):
-            anchor_y = start.bottom() if hit == "n" else start.top()
-            height = abs(current.y() - anchor_y)
-            width = height * ratio
-            centre_x = start.center().x()
-            max_width = 2 * min(centre_x - scene.left(),
-                                scene.right() - centre_x)
-            max_height = (anchor_y - scene.top() if hit == "n" else
-                          scene.bottom() - anchor_y)
-            scale = min(1.0, max_width / width if width else 1.0,
-                        max_height / height if height else 1.0)
-            width, height = width * scale, height * scale
-            top = anchor_y - height if hit == "n" else anchor_y
-            return QRectF(centre_x - width / 2, top, width, height)
-
-        if hit in ("e", "w"):
-            anchor_x = start.left() if hit == "e" else start.right()
-            width = abs(current.x() - anchor_x)
-            height = width / ratio
-            centre_y = start.center().y()
-            max_width = (scene.right() - anchor_x if hit == "e" else
-                         anchor_x - scene.left())
-            max_height = 2 * min(centre_y - scene.top(),
-                                 scene.bottom() - centre_y)
-            scale = min(1.0, max_width / width if width else 1.0,
-                        max_height / height if height else 1.0)
-            width, height = width * scale, height * scale
-            left = anchor_x if hit == "e" else anchor_x - width
-            return QRectF(left, centre_y - height / 2, width, height)
-
-        # Corners and a newly drawn crop anchor at the opposite/start point.
-        if hit == "new":
-            anchor = self._crop_drag_start
-            east = current.x() >= anchor.x()
-            south = current.y() >= anchor.y()
-        else:
-            east = "e" in hit
-            south = "s" in hit
-            anchor = QPointF(start.left() if east else start.right(),
-                             start.top() if south else start.bottom())
-        raw_width = abs(current.x() - anchor.x())
-        raw_height = abs(current.y() - anchor.y())
-        if raw_width / ratio >= raw_height:
-            width, height = raw_width, raw_width / ratio
-        else:
-            height, width = raw_height, raw_height * ratio
-        max_width = (scene.right() - anchor.x() if east else
-                     anchor.x() - scene.left())
-        max_height = (scene.bottom() - anchor.y() if south else
-                      anchor.y() - scene.top())
-        scale = min(1.0, max_width / width if width else 1.0,
-                    max_height / height if height else 1.0)
-        width, height = width * scale, height * scale
-        left = anchor.x() if east else anchor.x() - width
-        top = anchor.y() if south else anchor.y() - height
-        return QRectF(left, top, width, height)
 
     def crop_rect_normalized(self):
         if not self._crop_rect_item:
@@ -295,6 +291,34 @@ class ImageView(QGraphicsView):
                 (rect.top() - scene.top()) / scene.height(),
                 (rect.right() - scene.left()) / scene.width(),
                 (rect.bottom() - scene.top()) / scene.height())
+
+    def nudge_crop(self, dx, dy):
+        """Move the crop frame by canvas pixels without leaving the image."""
+        if not (self._crop_mode and self._crop_rect_item):
+            return False
+        scene = self._scene.sceneRect()
+        rect = QRectF(self._crop_rect_item.rect())
+        left = min(max(rect.left() + dx, scene.left()), scene.right() - rect.width())
+        top = min(max(rect.top() + dy, scene.top()), scene.bottom() - rect.height())
+        moved = QRectF(left, top, rect.width(), rect.height())
+        if moved == rect:
+            return False
+        self._set_crop_rect(moved)
+        return True
+
+    def keyPressEvent(self, event):
+        if self._crop_mode and self._crop_rect_item:
+            directions = {
+                Qt.Key_Left: (-1, 0), Qt.Key_Right: (1, 0),
+                Qt.Key_Up: (0, -1), Qt.Key_Down: (0, 1),
+            }
+            direction = directions.get(event.key())
+            if direction:
+                step = 10 if event.modifiers() & Qt.ShiftModifier else 1
+                self.nudge_crop(direction[0] * step, direction[1] * step)
+                event.accept()
+                return
+        super().keyPressEvent(event)
 
     def _clear_crop_overlay(self):
         for item in ([self._crop_rect_item] if self._crop_rect_item else []) + \
@@ -343,17 +367,11 @@ class ImageView(QGraphicsView):
                 line = QGraphicsLineItem(x1, y1, x2, y2)
                 line.setPen(grid_pen); line.setZValue(21)
                 self._scene.addItem(line); self._crop_grid.append(line)
-        # Fine crosshairs remain the same visual size at every zoom. The old
-        # filled squares obscured the exact crop edge on high-resolution files.
-        arm = 6.0 / max(.01, abs(self.transform().m11()))
-        handle_pen = QPen(QColor(theme.ACCENT), 0)
+        radius = max(4.0, min(scene.width(), scene.height()) / 120.0)
         for point in self._crop_handle_points(rect).values():
-            path = QPainterPath(QPointF(point.x() - arm, point.y()))
-            path.lineTo(point.x() + arm, point.y())
-            path.moveTo(point.x(), point.y() - arm)
-            path.lineTo(point.x(), point.y() + arm)
-            handle = QGraphicsPathItem(path)
-            handle.setPen(handle_pen)
+            handle = QGraphicsRectItem(point.x() - radius, point.y() - radius,
+                                       radius * 2, radius * 2)
+            handle.setPen(QPen(QColor("#ffffff"), 0)); handle.setBrush(QColor(theme.ACCENT))
             handle.setZValue(22); self._scene.addItem(handle); self._crop_handles.append(handle)
 
     @staticmethod
@@ -371,14 +389,6 @@ class ImageView(QGraphicsView):
         for name, handle in self._crop_handle_points(self._crop_rect_item.rect()).items():
             if abs(point.x() - handle.x()) <= tolerance and abs(point.y() - handle.y()) <= tolerance:
                 return name
-        # Just outside any corner is the straighten/rotate hot zone. Keeping it
-        # outside avoids stealing the corner's resize gesture.
-        outer = tolerance * 2.6
-        for name in ("nw", "ne", "se", "sw"):
-            handle = self._crop_handle_points(self._crop_rect_item.rect())[name]
-            dx, dy = point.x() - handle.x(), point.y() - handle.y()
-            if tolerance < (dx * dx + dy * dy) ** .5 <= outer:
-                return "rotate_" + name
         return "move" if self._crop_rect_item.rect().contains(point) else "new"
 
     def _set_crop_cursor(self, hit):
@@ -387,59 +397,24 @@ class ImageView(QGraphicsView):
                    "n": Qt.SizeVerCursor, "s": Qt.SizeVerCursor,
                    "e": Qt.SizeHorCursor, "w": Qt.SizeHorCursor,
                    "move": Qt.SizeAllCursor, "new": Qt.CrossCursor}
-        if str(hit).startswith("rotate_"):
-            self.viewport().setCursor(self._rotate_cursor())
-        else:
-            self.viewport().setCursor(cursors.get(hit, Qt.CrossCursor))
+        self.viewport().setCursor(cursors.get(hit, Qt.CrossCursor))
 
-    @staticmethod
-    def _rotate_cursor():
-        """Small midnight-lime curved-arrow cursor for crop straightening."""
-        pixmap = QPixmap(24, 24)
-        pixmap.fill(Qt.transparent)
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(QPen(QColor(theme.ACCENT), 2))
-        painter.drawArc(4, 4, 15, 15, 35 * 16, 255 * 16)
-        painter.drawLine(17, 3, 20, 8)
-        painter.drawLine(17, 3, 13, 6)
-        painter.end()
-        return QCursor(pixmap, 12, 12)
-
-    def _crop_snap_distance(self):
-        """Eight screen pixels expressed in scene coordinates."""
-        return 8.0 / max(.01, abs(self.transform().m11()))
-
-    def _snap_crop_rect(self, rect, hit):
-        """Magnetise moved/resized crop edges to the photograph boundary."""
-        scene = self._scene.sceneRect()
-        snap = self._crop_snap_distance()
-        if hit == "move":
-            if abs(rect.left() - scene.left()) <= snap:
-                rect.moveLeft(scene.left())
-            elif abs(rect.right() - scene.right()) <= snap:
-                rect.moveRight(scene.right())
-            if abs(rect.top() - scene.top()) <= snap:
-                rect.moveTop(scene.top())
-            elif abs(rect.bottom() - scene.bottom()) <= snap:
-                rect.moveBottom(scene.bottom())
-        else:
-            if "w" in hit and abs(rect.left() - scene.left()) <= snap:
-                rect.setLeft(scene.left())
-            if "e" in hit and abs(rect.right() - scene.right()) <= snap:
-                rect.setRight(scene.right())
-            if "n" in hit and abs(rect.top() - scene.top()) <= snap:
-                rect.setTop(scene.top())
-            if "s" in hit and abs(rect.bottom() - scene.bottom()) <= snap:
-                rect.setBottom(scene.bottom())
-        return rect
-
-    def set_pixmap(self, pixmap: QPixmap, keep_view: bool = True):
+    def set_pixmap(self, pixmap: QPixmap, keep_view: bool = True,
+                   stable_geometry: bool = False):
         """Show a pixmap. When ``keep_view`` the current zoom/pan is preserved
         (used for live slider updates); otherwise the view fits the image."""
         first = not self._has_image
         self._item.setPixmap(pixmap)
-        self._scene.setSceneRect(QRectF(pixmap.rect()))
+        self._item.setTransform(QTransform())
+        if stable_geometry and self._logical_image_rect is not None and \
+                pixmap.width() and pixmap.height():
+            logical = self._logical_image_rect
+            self._item.setTransform(QTransform.fromScale(
+                logical.width() / pixmap.width(), logical.height() / pixmap.height()))
+            self._scene.setSceneRect(logical)
+        else:
+            self._logical_image_rect = QRectF(pixmap.rect())
+            self._scene.setSceneRect(self._logical_image_rect)
         self._has_image = True
         self._update_perspective_overlay()
         if first or not keep_view or self._fitting:
@@ -458,22 +433,15 @@ class ImageView(QGraphicsView):
         self._fitting = False
         self.resetTransform()
 
-    def zoom_by(self, factor):
-        """Zoom around the current view centre, matching mouse-wheel zoom."""
-        if not self._has_image:
-            return
-        self._fitting = False
-        self.scale(float(factor), float(factor))
-
     # --- Before/After split -------------------------------------------------
-    def set_compare(self, original, edited, keep_view=True):
+    def set_compare(self, original, edited, keep_view=True, stable_geometry=False):
         """Enter Before/After: original left of the divider, edited on the
         right. Drag anywhere across the canvas to move the split."""
         self._compare = True
         self._orig_pixmap = original
         self._edit_pixmap = edited
         self.viewport().setCursor(Qt.SplitHCursor)
-        self._compose_compare(keep_view=keep_view)
+        self._compose_compare(keep_view=keep_view, stable_geometry=stable_geometry)
 
     def reset_divider(self):
         self._divider = 0.5
@@ -484,7 +452,7 @@ class ImageView(QGraphicsView):
         self._edit_pixmap = None
         self.viewport().unsetCursor()
 
-    def _compose_compare(self, keep_view=True):
+    def _compose_compare(self, keep_view=True, stable_geometry=False):
         if not (self._orig_pixmap and self._edit_pixmap):
             return
         edited = self._edit_pixmap
@@ -507,7 +475,8 @@ class ImageView(QGraphicsView):
         painter.drawLine(split, 0, split, height)
         self._draw_compare_labels(painter, width, height, split)
         painter.end()
-        self.set_pixmap(canvas, keep_view=keep_view)
+        self.set_pixmap(canvas, keep_view=keep_view,
+                        stable_geometry=stable_geometry)
 
     def _draw_compare_labels(self, painter, width, height, split):
         font = QFont()
@@ -538,6 +507,16 @@ class ImageView(QGraphicsView):
         self._compose_compare(keep_view=True)
 
     def mousePressEvent(self, event):
+        if self._gradient_mode and self._has_image and event.button() == Qt.LeftButton:
+            point = self.mapToScene(event.position().toPoint())
+            if self._scene.sceneRect().contains(point):
+                self._gradient_start = point
+                self._gradient_line = QGraphicsLineItem(point.x(), point.y(),
+                                                        point.x(), point.y())
+                self._gradient_line.setPen(QPen(QColor(theme.ACCENT), 2))
+                self._gradient_line.setZValue(30)
+                self._scene.addItem(self._gradient_line)
+            return
         if self._perspective_mode and self._has_image and event.button() == Qt.LeftButton:
             point = self.mapToScene(event.position().toPoint())
             rect = self._scene.sceneRect()
@@ -564,6 +543,23 @@ class ImageView(QGraphicsView):
                     (point.x() - scene.left()) / scene.width(),
                     (point.y() - scene.top()) / scene.height())
             return
+        if self._colour_range_mode and self._has_image and event.button() == Qt.LeftButton:
+            point = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            if scene.contains(point) and scene.width() and scene.height():
+                self.colour_range_clicked.emit(
+                    (point.x() - scene.left()) / scene.width(),
+                    (point.y() - scene.top()) / scene.height())
+            return
+        if self._mask_paint_mode and self._has_image and event.button() == Qt.LeftButton:
+            point = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            if scene.contains(point) and scene.width() and scene.height():
+                self._mask_painting = True
+                self.mask_painted.emit(
+                    (point.x() - scene.left()) / scene.width(),
+                    (point.y() - scene.top()) / scene.height(), False)
+            return
         if self._retouch_mode and self._has_image and event.button() == Qt.LeftButton:
             point = self.mapToScene(event.position().toPoint())
             scene = self._scene.sceneRect()
@@ -577,12 +573,6 @@ class ImageView(QGraphicsView):
             self._crop_drag_start = point
             self._crop_start_rect = (QRectF(self._crop_rect_item.rect())
                                      if self._crop_rect_item else QRectF(point, point))
-            if str(self._crop_drag).startswith("rotate_"):
-                centre = self._crop_start_rect.center()
-                import math
-                self._crop_rotation_start_angle = math.degrees(
-                    math.atan2(point.y() - centre.y(), point.x() - centre.x()))
-                return
             if self._crop_drag == "new":
                 self._set_crop_rect(QRectF(point, point))
             return
@@ -592,6 +582,21 @@ class ImageView(QGraphicsView):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        if self._gradient_mode and self._gradient_start is not None and \
+                (event.buttons() & Qt.LeftButton):
+            point = self.mapToScene(event.position().toPoint())
+            self._gradient_line.setLine(self._gradient_start.x(), self._gradient_start.y(),
+                                        point.x(), point.y())
+            return
+        if self._mask_paint_mode and self._mask_painting and \
+                (event.buttons() & Qt.LeftButton):
+            point = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            if scene.width() and scene.height():
+                self.mask_painted.emit(
+                    max(0.0, min(1.0, (point.x() - scene.left()) / scene.width())),
+                    max(0.0, min(1.0, (point.y() - scene.top()) / scene.height())), False)
+            return
         if self._perspective_mode and self._perspective_drag is not None and \
                 (event.buttons() & Qt.LeftButton):
             point = self.mapToScene(event.position().toPoint())
@@ -614,9 +619,6 @@ class ImageView(QGraphicsView):
                 return
             if not (event.buttons() & Qt.LeftButton):
                 return
-            if str(self._crop_drag).startswith("rotate_"):
-                self._set_crop_cursor(self._crop_drag)
-                return
             scene = self._scene.sceneRect()
             start = self._crop_start_rect
             if self._crop_drag == "new":
@@ -636,11 +638,12 @@ class ImageView(QGraphicsView):
                 if "n" in hit: rect.setTop(current.y())
                 if "s" in hit: rect.setBottom(current.y())
                 rect = rect.normalized()
-            if self._crop_aspect and self._crop_drag != "move":
-                rect = self._aspect_crop_rect(
-                    current, self._crop_drag, self._crop_start_rect)
-            else:
-                rect = self._snap_crop_rect(rect, self._crop_drag)
+            if self._crop_aspect and self._crop_drag != "move" and rect.width() > 0:
+                height = rect.width() / self._crop_aspect
+                if self._crop_drag and "n" in self._crop_drag:
+                    rect.setTop(rect.bottom() - height)
+                else:
+                    rect.setBottom(rect.top() + height)
             self._set_crop_rect(rect)
             return
         if self._layer_move_mode and self._layer_drag_point is not None and \
@@ -656,6 +659,30 @@ class ImageView(QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+        if self._gradient_mode and self._gradient_start is not None:
+            end = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            start = self._gradient_start
+            self._gradient_start = None
+            if self._gradient_line is not None:
+                self._scene.removeItem(self._gradient_line)
+                self._gradient_line = None
+            if scene.width() and scene.height():
+                self.gradient_drawn.emit(
+                    (start.x() - scene.left()) / scene.width(),
+                    (start.y() - scene.top()) / scene.height(),
+                    (end.x() - scene.left()) / scene.width(),
+                    (end.y() - scene.top()) / scene.height())
+            return
+        if self._mask_paint_mode and self._mask_painting:
+            self._mask_painting = False
+            point = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            if scene.width() and scene.height():
+                self.mask_painted.emit(
+                    max(0.0, min(1.0, (point.x() - scene.left()) / scene.width())),
+                    max(0.0, min(1.0, (point.y() - scene.top()) / scene.height())), True)
+            return
         if self._perspective_mode and self._perspective_drag is not None:
             index = self._perspective_drag
             self._perspective_drag = None
@@ -663,26 +690,9 @@ class ImageView(QGraphicsView):
             self.perspective_corner_dragged.emit(index, x, y, True)
             return
         if self._crop_mode and self._crop_drag is not None:
-            rotating = str(self._crop_drag).startswith("rotate_")
-            if rotating and self._crop_rotation_start_angle is not None:
-                import math
-                point = self.mapToScene(event.position().toPoint())
-                centre = self._crop_start_rect.center()
-                angle = math.degrees(math.atan2(
-                    point.y() - centre.y(), point.x() - centre.x()))
-                delta = angle - self._crop_rotation_start_angle
-                while delta > 180: delta -= 360
-                while delta < -180: delta += 360
-                # Straightening wants precision; deliberate quarter-turns snap.
-                nearest = round(delta / 90.0) * 90.0
-                if abs(delta - nearest) <= 3.0:
-                    delta = nearest
-                if abs(delta) >= .05:
-                    self.crop_rotation_changed.emit(float(delta))
             self._crop_drag = None
             self._crop_drag_start = None
             self._crop_start_rect = None
-            self._crop_rotation_start_angle = None
             point = self.mapToScene(event.position().toPoint())
             self._set_crop_cursor(self._crop_hit(point))
             return
@@ -693,10 +703,22 @@ class ImageView(QGraphicsView):
         super().mouseReleaseEvent(event)
 
     def wheelEvent(self, event):
+        # Windows trackpads often encode a pinch as Ctrl+wheel.  Ignore every
+        # wheel gesture over the canvas so an accidental touch cannot resize
+        # or shift the photograph.  Toolbar/buttons and Ctrl+/- still zoom.
+        event.accept()
+
+    def zoom_by(self, factor):
+        """Zoom one predictable step, bounded against accidental runaway."""
         if not self._has_image or self._crop_mode:
             return
-        factor = 1.15 if event.angleDelta().y() > 0 else 1 / 1.15
-        self.zoom_by(factor)
+        current = abs(self.transform().m11()) or 1.0
+        target = max(.02, min(32.0, current * float(factor)))
+        applied = target / current
+        if abs(applied - 1.0) < .0001:
+            return
+        self._fitting = False
+        self.scale(applied, applied)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -705,12 +727,21 @@ class ImageView(QGraphicsView):
             if self._has_image:
                 self.fit_view_resized.emit()
 
-    def viewport_target(self):
+    def viewport_target(self, interactive=False):
         """Preview render cap sized to the viewport (times device pixel ratio,
-        so a HiDPI display still gets crisp pixels)."""
+        so a HiDPI display still gets crisp pixels).
+
+        Slider drags use a lighter proxy and resolve to the normal crisp target
+        on release.  This keeps the UI continuous instead of asking the main
+        thread to composite several megapixels every few dozen milliseconds.
+        """
         ratio = self.devicePixelRatioF() or 1.0
         width = max(320, int(self.viewport().width() * ratio))
         height = max(320, int(self.viewport().height() * ratio))
+        if interactive:
+            scale = min(1.0, 1100.0 / max(width, height))
+            return (max(320, int(width * scale)),
+                    max(320, int(height * scale)))
         # A little headroom so a zoom-in past fit still looks sharp.
         return (min(4096, int(width * 1.5)), min(4096, int(height * 1.5)))
 
@@ -780,6 +811,13 @@ class Histogram(QWidget):
             painter.drawPolygon(polygon)
 
 
+class _ScrollSafeSlider(QSlider):
+    """A slider that never steals mouse-wheel/trackpad scrolling."""
+
+    def wheelEvent(self, event):  # noqa: N802 — Qt override
+        event.ignore()  # propagate to the containing scroll area
+
+
 class SliderRow(QWidget):
     """One labelled adjustment: name, slider, live value, double-click reset.
 
@@ -805,33 +843,31 @@ class SliderRow(QWidget):
         row.setContentsMargins(12, 3, 12, 3)
         row.setSpacing(8)
 
-        self.name_label = QLabel(label)
-        self.name_label.setObjectName("ControlName")
-        # Long controls such as "Vignette Feather" must remain readable at
-        # the fixed inspector-rail width instead of being silently clipped.
-        self.name_label.setFixedWidth(192)
-        row.addWidget(self.name_label)
+        name = QLabel(label)
+        name.setObjectName("ControlName")
+        name.setFixedWidth(74)
+        row.addWidget(name)
 
-        self.slider = QSlider(Qt.Horizontal)
+        self.slider = _ScrollSafeSlider(Qt.Horizontal)
         self.slider.setMinimum(self._to_step(self.start))
         self.slider.setMaximum(self._to_step(self.end))
         self.slider.setValue(self._to_step(self.default))
         self.slider.valueChanged.connect(self._on_slider)
-        self.slider.sliderReleased.connect(lambda: self.committed.emit(self.key))
+        self.slider.sliderPressed.connect(self._cancel_deferred_commit)
+        self.slider.sliderReleased.connect(self._commit_drag)
         row.addWidget(self.slider, 1)
 
-        self.value_label = QLineEdit(self._format(self.default))
+        self.value_label = QLabel(self._format(self.default))
         self.value_label.setObjectName("ControlValue")
-        self.value_label.setFixedWidth(48)
+        self.value_label.setFixedWidth(40)
         self.value_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        validator = QDoubleValidator(self.start, self.end, self._decimals)
-        validator.setNotation(QDoubleValidator.StandardNotation)
-        self.value_label.setValidator(validator)
-        self.value_label.setToolTip("Type an exact value and press Enter")
-        self.value_label.editingFinished.connect(self._commit_typed_value)
         row.addWidget(self.value_label)
 
         self._suppress = False
+        self._commit_timer = QTimer(self)
+        self._commit_timer.setSingleShot(True)
+        self._commit_timer.setInterval(300)
+        self._commit_timer.timeout.connect(lambda: self.committed.emit(self.key))
 
     def _to_step(self, value):
         return int(round(value / self.resolution))
@@ -847,6 +883,17 @@ class SliderRow(QWidget):
         self.value_label.setText(self._format(value))
         if not self._suppress:
             self.changed.emit(self.key, value)
+            # Keyboard and groove-click changes have no sliderReleased signal.
+            # Group key-repeat into one action, then create its own undo point.
+            if not self.slider.isSliderDown():
+                self._commit_timer.start()
+
+    def _cancel_deferred_commit(self):
+        self._commit_timer.stop()
+
+    def _commit_drag(self):
+        self._commit_timer.stop()
+        self.committed.emit(self.key)
 
     def set_value(self, value):
         """Set the slider without emitting a live change (used by undo/redo and
@@ -856,20 +903,8 @@ class SliderRow(QWidget):
         self.value_label.setText(self._format(float(value)))
         self._suppress = False
 
-    def _commit_typed_value(self):
-        text = self.value_label.text().strip()
-        try:
-            value = float(text)
-        except ValueError:
-            value = self._from_step(self.slider.value())
-        value = max(self.start, min(self.end, value))
-        # Normalise to the control's advertised precision before emitting.
-        value = self._from_step(self._to_step(value))
-        self.set_value(value)
-        self.changed.emit(self.key, value)
-        self.committed.emit(self.key)
-
     def mouseDoubleClickEvent(self, event):
+        self._commit_timer.stop()
         self.set_value(self.default)
         self.changed.emit(self.key, self.default)
         self.committed.emit(self.key)

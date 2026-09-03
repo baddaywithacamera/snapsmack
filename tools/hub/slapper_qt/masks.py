@@ -45,6 +45,28 @@ def linear_mask(size, direction, position, softness, invert=False):
     return ImageOps.invert(mask) if invert else mask
 
 
+def drawn_linear_mask(size, start_x, start_y, end_x, end_y, invert=False):
+    """A directional gradient defined by a drag across normalized image space."""
+    width, height = size
+    sx, sy = start_x * width, start_y * height
+    ex, ey = end_x * width, end_y * height
+    dx, dy = ex - sx, ey - sy
+    length_squared = dx * dx + dy * dy
+    if length_squared < 1:
+        return Image.new("L", size, 255 if not invert else 0)
+    # PIL's affine transform samples a narrow padded ramp.  Projection before
+    # the drag is black, after it is white, and the dragged span is graduated.
+    ramp = Image.new("L", (1, 3072), 0)
+    ramp.paste(Image.linear_gradient("L").resize((1, 1024)), (0, 1024))
+    ramp.paste(255, (0, 2048, 1, 3072))
+    a = 1024 * dx / length_squared
+    b = 1024 * dy / length_squared
+    c = 1024 - a * sx - b * sy
+    mask = ramp.transform(size, Image.Transform.AFFINE,
+                          (0, 0, 0, a, b, c), Image.Resampling.BILINEAR)
+    return ImageOps.invert(mask) if invert else mask
+
+
 def colour_range_mask(image, hue, hue_range, minimum_saturation=0,
                       minimum_luminance=0, maximum_luminance=100,
                       softness=10, invert=False):

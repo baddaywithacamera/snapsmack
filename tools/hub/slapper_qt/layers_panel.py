@@ -10,13 +10,16 @@ that layer's own adjustments.
 import os
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
-    QComboBox, QFileDialog, QSlider,
+    QComboBox, QFileDialog, QSlider, QGridLayout, QInputDialog, QColorDialog,
 )
 
+import editor_engine
+from .engine_bridge import pil_to_qpixmap
+
 from . import theme
-from .layer_styles_dialog import LayerStylesDialog
 
 BLEND_MODES = [
     "normal", "multiply", "screen", "overlay", "soft_light", "hard_light",
@@ -39,24 +42,38 @@ class LayersPanel(QWidget):
     def __init__(self, host, parent=None):
         super().__init__(parent)
         self.host = host
+        self._mask_thumbnails = {}
+        self._row_buttons = {}
+        self._copied_mask = None
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(12, 8, 12, 10)
         outer.setSpacing(8)
 
-        # Add-layer buttons
-        add_row = QHBoxLayout()
-        add_row.setSpacing(4)
-        for text, handler in (("+ Adjust", self._add_adjustment),
-                              ("+ Image", self._add_image),
-                              ("+ Text", self._add_text),
-                              ("+ Filter", self._add_filter)):
+        add_label = QLabel("ADD A LAYER")
+        add_label.setObjectName("LayerSectionLabel")
+        outer.addWidget(add_label)
+
+        # Two calm rows are easier to scan than four abbreviated buttons.
+        add_grid = QGridLayout()
+        add_grid.setSpacing(4)
+        for index, (text, tip, handler) in enumerate((
+                ("Adjustment", "Edit light and colour without changing the base photo", self._add_adjustment),
+                ("Blank", "Add a transparent layer to fill, blend and mask", self._add_paint),
+                ("Image", "Place another image over the photo", self._add_image),
+                ("Text", "Add editable text", self._add_text),
+                ("Creative filter", "Add a filter as a separate layer", self._add_filter))):
             btn = QPushButton(text)
             btn.setObjectName("LayerAddBtn")
+            btn.setToolTip(tip)
             btn.setCursor(Qt.PointingHandCursor)
             btn.clicked.connect(handler)
-            add_row.addWidget(btn)
-        outer.addLayout(add_row)
+            add_grid.addWidget(btn, index // 2, index % 2)
+        outer.addLayout(add_grid)
+
+        stack_label = QLabel("LAYER STACK  ·  TOP LAYER FIRST")
+        stack_label.setObjectName("LayerSectionLabel")
+        outer.addWidget(stack_label)
 
         # The list of layers (rebuilt on change)
         self.list_container = QVBoxLayout()
@@ -100,24 +117,55 @@ class LayersPanel(QWidget):
         blend_row.addWidget(self.blend, 1)
         detail_layout.addLayout(blend_row)
 
-        self.styles_btn = QPushButton("LAYER STYLES…")
-        self.styles_btn.setObjectName("LayerAddBtn")
-        self.styles_btn.setCursor(Qt.PointingHandCursor)
-        self.styles_btn.setToolTip("Add editable shadow, stroke, glow, or colour effects")
-        self.styles_btn.clicked.connect(self._open_styles)
-        detail_layout.addWidget(self.styles_btn)
+        self.fill_colour_btn = QPushButton("Fill blank layer…")
+        self.fill_colour_btn.setObjectName("LayerAddBtn")
+        self.fill_colour_btn.clicked.connect(self._choose_fill_colour)
+        detail_layout.addWidget(self.fill_colour_btn)
+
+        mask_row = QGridLayout()
+        mask_row.setSpacing(4)
+        self.mask_enabled = QCheckBox("Use layer mask")
+        self.mask_enabled.setToolTip("Temporarily enable or disable this layer's mask")
+        self.mask_enabled.toggled.connect(self._toggle_mask_enabled)
+        mask_row.addWidget(self.mask_enabled, 0, 0)
+        self.mask_linked = QCheckBox("Linked")
+        self.mask_linked.setToolTip("Move/transform this mask with its layer")
+        self.mask_linked.toggled.connect(self._toggle_mask_linked)
+        mask_row.addWidget(self.mask_linked, 0, 1)
+        self.edit_mask_btn = QPushButton("Edit mask")
+        self.edit_mask_btn.setObjectName("LayerOrderBtn")
+        self.edit_mask_btn.clicked.connect(self._edit_mask)
+        mask_row.addWidget(self.edit_mask_btn, 1, 0)
+        self.rename_btn = QPushButton("Rename layer")
+        self.rename_btn.setObjectName("LayerOrderBtn")
+        self.rename_btn.clicked.connect(self._rename)
+        mask_row.addWidget(self.rename_btn, 1, 1)
+        detail_layout.addLayout(mask_row)
+
+        mask_copy_row = QHBoxLayout()
+        mask_copy_row.setSpacing(4)
+        self.copy_mask_btn = QPushButton("Copy mask")
+        self.copy_mask_btn.setObjectName("LayerOrderBtn")
+        self.copy_mask_btn.clicked.connect(self._copy_mask)
+        mask_copy_row.addWidget(self.copy_mask_btn)
+        self.paste_mask_btn = QPushButton("Paste mask")
+        self.paste_mask_btn.setObjectName("LayerOrderBtn")
+        self.paste_mask_btn.clicked.connect(self._paste_mask)
+        mask_copy_row.addWidget(self.paste_mask_btn)
+        detail_layout.addLayout(mask_copy_row)
 
         order_row = QHBoxLayout()
         order_row.setSpacing(4)
-        for text, handler in (("▲", self._move_up), ("▼", self._move_down)):
+        for text, tip, handler in (("Move up", "Move toward the top of the stack", self._move_up),
+                                   ("Move down", "Move toward the base photo", self._move_down)):
             btn = QPushButton(text)
             btn.setObjectName("LayerOrderBtn")
-            btn.setFixedWidth(34)
+            btn.setToolTip(tip)
             btn.setCursor(Qt.PointingHandCursor)
             btn.clicked.connect(handler)
             order_row.addWidget(btn)
         order_row.addStretch(1)
-        self.delete_btn = QPushButton("Delete Layer")
+        self.delete_btn = QPushButton("Remove")
         self.delete_btn.setObjectName("LayerDeleteBtn")
         self.delete_btn.setCursor(Qt.PointingHandCursor)
         self.delete_btn.clicked.connect(self._delete)
@@ -150,15 +198,13 @@ class LayersPanel(QWidget):
 
     # --- Build the list -----------------------------------------------------
     def rebuild(self):
+        self._mask_thumbnails = {}
+        self._row_buttons = {}
         while self.list_container.count():
             item = self.list_container.takeAt(0)
             widget = item.widget()
             if widget:
                 widget.deleteLater()
-
-        # Base image row (always present, always visible)
-        self.list_container.addWidget(
-            self._make_row(BASE, "Base image", None, self.host.active_target == BASE))
 
         # Layers shown top-of-stack first
         if self.doc:
@@ -170,12 +216,17 @@ class LayersPanel(QWidget):
                                    layer.get("visible", True),
                                    self.host.active_target == lid))
 
+        # The base belongs at the bottom of the visual stack.
+        self.list_container.addWidget(
+            self._make_row(BASE, "Base photo", None, self.host.active_target == BASE))
+
         self._sync_detail()
 
     def _label_for(self, layer):
-        icon = {"adjustment": "◐", "image": "▣", "text": "T",
-                "filter": "FX"}.get(layer.get("type"), "•")
-        return f"{icon}  {layer.get('name', 'Layer')}"
+        kind = {"adjustment": "Adjustment", "paint": "Blank", "image": "Image", "text": "Text",
+                "filter": "Filter"}.get(layer.get("type"), "Layer")
+        name = layer.get("name", "Layer")
+        return name if name.lower() == kind.lower() else f"{name}  ·  {kind}"
 
     def _make_row(self, target, label, visible, active):
         row = QWidget()
@@ -185,7 +236,7 @@ class LayersPanel(QWidget):
         layout.setSpacing(6)
 
         if visible is not None:
-            check = QCheckBox()
+            check = QCheckBox("Show")
             check.setChecked(bool(visible))
             check.setToolTip("Visible")
             check.toggled.connect(lambda state, t=target: self._toggle_visible(t, state))
@@ -206,7 +257,42 @@ class LayersPanel(QWidget):
             name.setToolTip("Click to edit this layer")
         name.clicked.connect(lambda _c, t=target: self._select(t))
         layout.addWidget(name, 1)
+        self._row_buttons[target] = name
+        if target != BASE:
+            layer = next((item for item in self.doc.layers
+                          if item.get("id") == target), None)
+            if layer and layer.get("mask"):
+                mask = editor_engine._mask_from_text(layer["mask"])
+                mask.thumbnail((28, 28))
+                thumbnail = QLabel()
+                thumbnail.setFixedSize(30, 30)
+                thumbnail.setPixmap(pil_to_qpixmap(mask.convert("RGB")))
+                thumbnail.setToolTip(
+                    "Layer mask thumbnail — white reveals, black hides" if
+                    layer.get("mask_enabled", True) else "Layer mask is disabled")
+                layout.addWidget(thumbnail)
+                self._mask_thumbnails[target] = thumbnail
+                badge = QLabel("MASK" if layer.get("mask_enabled", True) else "OFF")
+                badge.setObjectName("LayerSectionLabel")
+                layout.addWidget(badge)
+            if layer and layer.get("type") == "adjustment":
+                changed = sum(1 for key, value in layer.get("adjustments", {}).items()
+                              if value != editor_engine.DEFAULT_ADJUSTMENTS.get(key))
+                if changed:
+                    summary = QLabel(f"{changed} edits")
+                    summary.setObjectName("LayerSectionLabel")
+                    summary.setToolTip("Number of non-default adjustments on this layer")
+                    layout.addWidget(summary)
         return row
+
+    def update_mask_thumbnail(self, layer):
+        """Refresh the selected row's mask preview without rebuilding the panel."""
+        thumbnail = self._mask_thumbnails.get(layer.get("id"))
+        if thumbnail is None or not layer.get("mask"):
+            return
+        mask = editor_engine._mask_from_text(layer["mask"])
+        mask.thumbnail((28, 28))
+        thumbnail.setPixmap(pil_to_qpixmap(mask.convert("RGB")))
 
     def _sync_detail(self):
         layer = self._selected_layer()
@@ -222,6 +308,24 @@ class LayersPanel(QWidget):
             self.blend.blockSignals(True)
             self.blend.setCurrentIndex(BLEND_MODES.index(mode))
             self.blend.blockSignals(False)
+        has_mask = bool(layer.get("mask"))
+        self.mask_enabled.blockSignals(True)
+        self.mask_enabled.setChecked(bool(layer.get("mask_enabled", True)))
+        self.mask_enabled.setEnabled(has_mask)
+        self.mask_enabled.blockSignals(False)
+        self.mask_linked.blockSignals(True)
+        self.mask_linked.setChecked(bool(layer.get("mask_linked", True)))
+        self.mask_linked.setEnabled(has_mask and layer.get("type") in {"image", "text"})
+        self.mask_linked.blockSignals(False)
+        self.edit_mask_btn.setEnabled(True)
+        self.fill_colour_btn.setVisible(layer.get("type") == "paint")
+        if layer.get("type") == "paint":
+            fill = list(layer.get("fill", [0, 0, 0, 0]))
+            colour = QColor(*((fill + [0, 0, 0])[:3]))
+            self.fill_colour_btn.setStyleSheet(
+                f"background:{colour.name()};color:{'#000' if colour.lightness() > 140 else '#fff'}")
+        self.copy_mask_btn.setEnabled(has_mask)
+        self.paste_mask_btn.setEnabled(self._copied_mask is not None)
 
     # --- Actions ------------------------------------------------------------
     def _select(self, target):
@@ -259,6 +363,48 @@ class LayersPanel(QWidget):
         self.host.set_target(layer["id"])
         self.host.after_structure_change()
 
+    def _add_paint(self):
+        if not self.doc:
+            return
+        layer = self.doc.add_paint_layer()
+        self.host.set_target(layer["id"])
+        self.host.after_structure_change()
+
+    def _choose_fill_colour(self):
+        layer = self._selected_layer()
+        if layer is None or layer.get("type") != "paint":
+            return
+        current = list(layer.get("fill", [0, 0, 0, 0]))
+        colour = QColorDialog.getColor(QColor(*((current + [0, 0, 0])[:3])), self,
+                                       "Fill blank layer")
+        if not colour.isValid():
+            return
+        layer["fill"] = [colour.red(), colour.green(), colour.blue(), 255]
+        self.doc.record("Fill blank layer")
+        self.host.after_structure_change()
+
+    def _copy_mask(self):
+        layer = self._selected_layer()
+        if layer is None or not layer.get("mask"):
+            return
+        self._copied_mask = {
+            "mask": str(layer["mask"]),
+            "mask_kind": str(layer.get("mask_kind", "copied")),
+        }
+        self.paste_mask_btn.setEnabled(True)
+        self.host.status.showMessage("Layer mask copied.")
+
+    def _paste_mask(self):
+        layer = self._selected_layer()
+        if layer is None or self._copied_mask is None:
+            return
+        layer["mask"] = self._copied_mask["mask"]
+        layer["mask_kind"] = self._copied_mask["mask_kind"]
+        layer["mask_enabled"] = True
+        self.doc.record("Paste layer mask")
+        self.host.after_structure_change()
+        self.host.status.showMessage("Copied mask pasted as an independent mask.")
+
     def _add_text(self):
         if not self.doc:
             return
@@ -278,11 +424,6 @@ class LayersPanel(QWidget):
         self.doc.record("Delete layer")
         self.host.set_target(BASE)
         self.host.after_structure_change()
-
-    def _open_styles(self):
-        layer = self._selected_layer()
-        if layer is not None:
-            LayerStylesDialog(self.host, layer, self).exec()
 
     def _move_up(self):
         index = self._selected_index()
@@ -321,5 +462,42 @@ class LayersPanel(QWidget):
             self.doc.record("Layer blend mode")
             self.host.request_render()
             self.host.update_title()
+
+    def _toggle_mask_enabled(self, enabled):
+        layer = self._selected_layer()
+        if layer is None or not layer.get("mask"):
+            return
+        layer["mask_enabled"] = bool(enabled)
+        self.doc.record("Toggle layer mask")
+        self.host.request_render()
+        self.rebuild()
+
+    def _toggle_mask_linked(self, linked):
+        layer = self._selected_layer()
+        if layer is None or not layer.get("mask"):
+            return
+        layer["mask_linked"] = bool(linked)
+        self.doc.record("Link layer mask" if linked else "Unlink layer mask")
+        self.host.request_render()
+
+    def _edit_mask(self):
+        if self._selected_layer() is None:
+            return
+        self.host.mask_section.header.setChecked(True)
+        self.host.mask_section.setVisible(True)
+
+    def _rename(self):
+        layer = self._selected_layer()
+        if layer is None:
+            return
+        name, accepted = QInputDialog.getText(
+            self, "Rename layer", "Layer name:", text=str(layer.get("name") or "Layer"))
+        if not accepted or not name.strip():
+            return
+        layer["name"] = name.strip()
+        self.doc.record("Rename layer")
+        self.rebuild()
+        self.host.target_label.setText(f"Editing: {layer['name']}")
+        self.host.update_title()
 
 # ===== SNAPSMACK EOF =====
