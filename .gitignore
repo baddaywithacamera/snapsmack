@@ -215,6 +215,7 @@ _to_delete/
 .codex-tmp/
 .codex-docs/
 .codex-worktrees/
+/.tmp/
 tempwork/
 tmp/
 .python-build/
