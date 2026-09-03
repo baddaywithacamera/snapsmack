@@ -52,33 +52,39 @@ function _smackPromptScheduleInit() {
         hashEl.textContent = '#' + prefix + (tail || '…');   // … while empty
     }
 
-    // Window opens Thursday 10:00 UTC — i.e. the chosen Friday's 00:00 UTC minus
-    // 14 hours. Format as "YYYY-MM-DD HH:MM UTC" to match the server's hint text.
+    // PROMPT is primary. The boosting window opens EXACTLY one week after the
+    // prompt publishes; the hidden contest Friday is the Friday of that boost week
+    // (that is what the server actually stores). Picking the prompt date fills the
+    // boost field automatically — the operator never sets two dates by hand.
     function pad(n) { return n < 10 ? '0' + n : '' + n; }
-    function updateWindowStart() {
-        if (!windowEl || !windowEl.value) return;
-        var parts = windowEl.value.slice(0, 10).split('-');
-        if (parts.length !== 3) return;
-        var selectedAt = Date.UTC(+parts[0], +parts[1] - 1, +parts[2], 0, 0, 0);
-        var selected = new Date(selectedAt);
-        var day = selected.getUTCDay();
-        var distance = day <= 5 ? 5 - day : 5 - day;
-        var fri = selectedAt + distance * 24 * 3600 * 1000;
-        var friday = new Date(fri);
-        var fridayValue = friday.getUTCFullYear() + '-' + pad(friday.getUTCMonth() + 1)
-            + '-' + pad(friday.getUTCDate());
-        fridayEl.value = fridayValue;
-        fridayEl.setCustomValidity('');
-        var open = new Date(fri - 14 * 3600 * 1000);
-        var date = open.getUTCFullYear() + '-' + pad(open.getUTCMonth() + 1) + '-' + pad(open.getUTCDate());
-        var time = pad(open.getUTCHours()) + ':' + pad(open.getUTCMinutes());
-        windowEl.value = date + 'T' + time;
-        if (dropEl) dropEl.value = date + 'T' + time;
-        if (hintEl) hintEl.textContent = date + ' ' + time + ':00 UTC';
+    function fmtLocal(d) {
+        return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate())
+            + 'T' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
+    }
+    function syncFromPrompt() {
+        if (!dropEl || !dropEl.value) return;
+        var v = dropEl.value;                       // "YYYY-MM-DDTHH:MM"
+        var d = v.slice(0, 10).split('-');
+        var t = (v.slice(11) || '10:00').split(':');
+        if (d.length !== 3) return;
+        var promptAt = Date.UTC(+d[0], +d[1] - 1, +d[2], (+t[0] || 0), (+t[1] || 0), 0);
+        var boost = new Date(promptAt + 7 * 24 * 3600 * 1000);   // exactly one week later
+        if (windowEl) windowEl.value = fmtLocal(boost);
+        if (fridayEl) {
+            var wd = boost.getUTCDay();
+            var toFri = (5 - wd + 7) % 7;           // the Friday on/after the boost date
+            var fri = new Date(boost.getTime() + toFri * 24 * 3600 * 1000);
+            fridayEl.value = fri.getUTCFullYear() + '-' + pad(fri.getUTCMonth() + 1) + '-' + pad(fri.getUTCDate());
+            fridayEl.setCustomValidity('');
+        }
     }
 
     if (promptEl) { promptEl.addEventListener('input', updateHash); updateHash(); }
-    if (windowEl && fridayEl) { windowEl.addEventListener('change', updateWindowStart); updateWindowStart(); }
+    if (dropEl) {
+        dropEl.addEventListener('change', syncFromPrompt);
+        dropEl.addEventListener('input', syncFromPrompt);
+        syncFromPrompt();                            // fill the boost field on load
+    }
     if (imageEl && imageNameEl) {
         imageEl.addEventListener('change', function () {
             imageNameEl.textContent = imageEl.files && imageEl.files[0]

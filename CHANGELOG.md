@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.601D "PROMPT FIRST" — 2026-09-02
+- **Photo Challenge queue: prompt date first, boosting window fills itself.** On
+  the Queue/Schedule a Prompt form the two dates were in the wrong order and ran
+  backwards. Now the **PROMPT POST** date is field 1 and the only one you set; the
+  **BOOSTING WINDOW** is field 2 and is filled in automatically to **exactly one
+  week later** (read-only so it can't drift out of sync). The contest Friday is
+  derived and stored automatically. Regression updated to guard the corrected order.
 ## 0.7.600D "DEADBOLT" — 2026-09-02
 - **The shared credential vault now actually encrypts your keys.** The vault
   existed but never engaged — every stored secret (AI keys, Drive/Google

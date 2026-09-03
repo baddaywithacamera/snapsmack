@@ -195,18 +195,19 @@ pc_test(str_contains($admin, 'smack-photochallenge-queue.php?edit=')
 pc_test(str_contains($admin, 'enctype="multipart/form-data"'),
     'the prompt form cannot upload a card image');
 pc_test(str_contains($admin, 'id="pc_drop_at" value="<?php echo $esc($def_drop_value); ?>"')
-    && str_contains($prompt_js, "dropEl.value = date + 'T' + time"),
-    'DROPS AT must display and track the selected Friday window opening');
-pc_test(str_contains($admin, '1. BOOSTING WINDOW STARTS AT')
+    && str_contains($prompt_js, 'boost = new Date(promptAt + 7 * 24 * 3600 * 1000)')
+    && str_contains($prompt_js, 'windowEl.value = fmtLocal(boost)'),
+    'PROMPT POST is primary: setting its date fills the boosting window exactly one week later');
+pc_test(str_contains($admin, '1. PROMPT POST')
+    && str_contains($admin, '2. BOOSTING WINDOW STARTS AT')
     && str_contains($admin, 'id="pc_window_start"')
     && str_contains($admin, 'name="pc_friday" id="pc_friday"')
-    && str_contains($admin, '2. PROMPT POST')
     && str_contains($admin, 'CHOOSE WHEN THE CARD PUBLISHES')
-    && str_contains($admin, 'does <strong>not</strong> change the boosting window')
+    && str_contains($admin, 'exactly one week later')
     && str_contains($photo, 'The target challenge date must be a Friday.')
-    && str_contains($prompt_js, "windowEl.value = date + 'T' + time")
+    && str_contains($prompt_js, 'toFri')
     && str_contains($admin, 'contest Friday is stored automatically'),
-    'challenge date and prompt publication timestamp must be distinct and Friday-only');
+    'PROMPT is first, BOOSTING WINDOW second; the contest Friday is derived and Friday-only');
 pc_test(str_contains($admin, 'class="pc-file-picker__button"')
     && str_contains($admin, 'class="pc-file-picker__name"')
     && str_contains($admin, 'class="file-input-hidden"')
