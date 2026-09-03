@@ -890,6 +890,31 @@ if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
     }
     $stats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // TODAY is never in snap_stats_daily — the rollup only processes COMPLETED
+    // days (see snapsmack_rollup_daily, defaults to yesterday). Without this, the
+    // fleet stats / "pull current" always read exactly a day behind. Prepend
+    // today's LIVE partial from raw snap_stats so the numbers are current-through-now.
+    try {
+        $today = date('Y-m-d');
+        $has_today = false;
+        foreach ($stats as $r) { if (($r['stat_date'] ?? '') === $today) { $has_today = true; break; } }
+        if (!$has_today) {
+            $tv = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=0")->fetchColumn();
+            $tu = (int)$pdo->query("SELECT COUNT(DISTINCT ip_hash) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=0")->fetchColumn();
+            $tb = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at)=CURDATE() AND is_bot=1")->fetchColumn();
+            if ($tv || $tu || $tb) {
+                array_unshift($stats, [
+                    'stat_date'       => $today,
+                    'total_views'     => $tv,
+                    'unique_visitors' => $tu,
+                    'bot_views'       => $tb,
+                    'top_referrer'    => null,
+                    'partial'         => true,   // today is in-progress, not a finished rollup
+                ]);
+            }
+        }
+    } catch (\Throwable $e) { /* stats are best-effort; never 500 the endpoint over a partial */ }
+
     $payload = ['stats' => $stats, 'period_days' => $days];
 
     // ── ENRICHED MODE ────────────────────────────────────────────────────────
