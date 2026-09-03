@@ -48,9 +48,11 @@ $pk_tagline = html_entity_decode(trim((string)($settings['site_tagline'] ?? ''))
 $pk_av     = sv_avatar($settings);
 $pk_avatar = is_array($pk_av) ? (string)($pk_av['url'] ?? '') : '';
 
-// Faves (federated) + approved replies.
+// Faves + boosts (federated) + approved replies.
 $pk_faves = 0;
 try { $pk_faves = sv_fedi_like_count($pdo, $pk_ltype, $pk_ltarget); } catch (Throwable $e) {}
+$pk_boosts = 0;
+try { $pk_boosts = sv_fedi_boost_count($pdo, $pk_ltype, $pk_ltarget); } catch (Throwable $e) {}
 $pk_replies = [];
 try {
     $ids = array_map(function ($im) { return (int)$im['id']; }, $pk_images);
@@ -141,6 +143,7 @@ header('Content-Type: text/html; charset=utf-8');
 
     <div class="pk-actions">
       <span class="pk-faves">♥ <?php echo number_format((int)$pk_faves); ?></span>
+      <span class="pk-faves">🔁 <?php echo number_format((int)$pk_boosts); ?></span>
       <?php if (count($pk_images) > 1): ?><span class="pk-au-sub"><?php echo count($pk_images); ?> photos — swipe</span><?php endif; ?>
     </div>
 
