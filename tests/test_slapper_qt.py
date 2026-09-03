@@ -26,8 +26,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(HUB), "_shared"))
 
 from PIL import Image, ImageChops                        # noqa: E402
 import editor_engine                                     # noqa: E402
-from PySide6.QtWidgets import QApplication, QPushButton  # noqa: E402
-from PySide6.QtCore import QDir, QThreadPool             # noqa: E402
+from PySide6.QtWidgets import QApplication, QPushButton, QMessageBox  # noqa: E402
+from PySide6.QtCore import QDir, QThreadPool, Qt         # noqa: E402
+from PySide6.QtGui import QKeySequence                   # noqa: E402
 from PySide6.QtTest import QTest                         # noqa: E402
 from slapper_qt import theme                             # noqa: E402
 from slapper_qt.editor_window import EditorWindow        # noqa: E402
@@ -37,6 +38,7 @@ from slapper_qt.library_window import (                  # noqa: E402
 from slapper_qt.layers_panel import BASE                 # noqa: E402
 from slapper_qt.engine_bridge import render_pixmap, original_pixmap  # noqa: E402
 from slapper_qt.output_tools import create_contact_sheet, SlideshowDialog  # noqa: E402
+from slapper_qt.source_colour import inspect_source, workspace_label       # noqa: E402
 
 TMP = tempfile.mkdtemp(prefix="slapper_qt_test_")
 APP = QApplication.instance() or QApplication([])
@@ -92,6 +94,19 @@ def test_open_render_export():
     out = os.path.join(TMP, "a_out.jpg")
     win.doc.export(out)
     assert os.path.getsize(out) > 0
+
+
+def test_workspace_discloses_source_depth_and_profile_assumption():
+    path = _image("source-colour.png", (80, 60))
+    info = inspect_source(path)
+    assert info["bits_per_channel"] == 8
+    assert info["model"] == "RGB"
+    assert info["profile_source"] == "assumed"
+    assert workspace_label(info) == (
+        "RGB · 8-bit/channel · Unprofiled (assumed sRGB) · "
+        "Working: 8-bit sRGB (legacy engine)")
+    win = _editor(path)
+    assert win.colour_status.text() == workspace_label(info)
 
 
 def test_adjust_undo_reset():
@@ -189,9 +204,25 @@ def test_auto_enhance():
     win = _editor(path)
     win.auto_enhance()
     adj = win.doc.adjustments
-    assert adj["contrast"] == 8.0 and adj["vibrance"] == 10.0
-    assert adj["level_white"] < 255 or adj["level_black"] > 0   # levels stretched
+    assert adj["contrast"] == 0.0 and adj["vibrance"] == 6.0
+    assert adj["level_white"] == 255.0 and adj["level_black"] == 0.0
     assert win.doc.render((150, 150))
+
+
+def test_auto_exposure_preserves_highlight_headroom():
+    image = Image.new("RGB", (256, 40))
+    pixels = image.load()
+    for x in range(256):
+        for y in range(40):
+            pixels[x, y] = (x, x, x)
+    auto = editor_engine.auto_exposure_adjustments(image)
+    assert set(auto) == {"exposure"}
+    # A full-range photograph must never receive positive exposure.
+    assert auto["exposure"] <= 0
+    win = _editor(_image("auto-exposure.jpg", (300, 200), (80, 80, 80)))
+    win.auto_exposure()
+    row = win.rows["exposure"]
+    assert row._from_step(row.slider.value()) == win.doc.adjustments["exposure"]
 
 
 def test_normal_advanced_mode():
@@ -249,7 +280,7 @@ def test_context_sensitive_toolbars():
     assert visible_tools() == ["Save Project", "Export…", "Blog Copy…"]
     win._context_selectors["view"].trigger()
     assert visible_tools() == [
-        "Fit", "100%", "Filmstrip", "Preferences", "Help"]
+        "Fit", "100%", "−", "+", "Filmstrip", "Preferences", "Help"]
 
     # Normal mode keeps the chosen workspace but removes Advanced-only tools.
     win._context_selectors["looks"].trigger()
@@ -279,6 +310,42 @@ def test_autosave_recovery():
         QMessageBox.question = original
     win._clear_recovery()
     assert not os.path.isfile(recpath)
+
+
+def test_normal_close_keeps_autosaved_edits_unless_explicitly_discarded():
+    recovery_dir = tempfile.mkdtemp(dir=TMP)
+    source = _image("persistent-close.jpg", (300, 200))
+    win = _editor(source)
+    win._recovery_dir = recovery_dir
+    win.rows["contrast"]._on_slider(win.rows["contrast"]._to_step(37))
+    win._on_commit("contrast")
+    win._save_window_state = lambda: None
+
+    class Event:
+        accepted = False
+        def accept(self): self.accepted = True
+        def ignore(self): self.accepted = False
+
+    original = QMessageBox.question
+    QMessageBox.question = staticmethod(lambda *a, **k: QMessageBox.Save)
+    try:
+        event = Event()
+        win.closeEvent(event)
+        recovery = win._recovery_path()
+        assert event.accepted and os.path.isfile(recovery)
+        restored = editor_engine.EditorDocument.load_project(recovery)
+        assert restored.adjustments["contrast"] == 37
+    finally:
+        QMessageBox.question = original
+
+    # Destruction now requires the explicit Discard choice.
+    QMessageBox.question = staticmethod(lambda *a, **k: QMessageBox.Discard)
+    try:
+        event = Event()
+        win.closeEvent(event)
+        assert event.accepted and not os.path.exists(recovery)
+    finally:
+        QMessageBox.question = original
 
 
 def test_help_dialog():
@@ -487,6 +554,19 @@ def test_colour_range_mask_selects_hue_and_survives_editor_render():
     win.mask_hue_range.slider.setValue(35)
     win._apply_colour_mask()
     assert layer.get("mask") and layer.get("mask_kind") == "colour"
+
+
+def test_colour_range_eyedropper_seeds_mask_from_canvas_sample():
+    win = _editor(_image("colour-eyedropper.jpg", (400, 300), (230, 35, 30)))
+    layer = win.doc.add_adjustment_layer("Sampled red")
+    win.set_target(layer["id"])
+    win._select_mask_type("colour")
+    win.mask_eyedropper.setChecked(True)
+    assert win.view._colour_range_mode is True
+    win._apply_colour_sample(.5, .5)
+    assert win.mask_hue.slider.value() <= 10 or win.mask_hue.slider.value() >= 350
+    assert layer.get("mask_kind") == "colour" and layer.get("mask")
+    assert win.view._colour_range_mode is False
     assert win.doc.render((300, 300))
 
 
@@ -616,6 +696,37 @@ def test_layered_psd_export_is_parseable_and_preserves_composite():
     assert ImageChops.difference(expected, actual).getbbox() is None
 
 
+def test_openraster_export_is_portable_and_preserves_composite():
+    import io
+    import zipfile
+    import xml.etree.ElementTree as ET
+    from slapper_qt.ora_export import export_openraster
+
+    source = _image("ora-source.jpg", (220, 150), (80, 115, 155))
+    source_hash = editor_engine.photo_manager.content_hash(source)
+    doc = editor_engine.EditorDocument(source)
+    adjustment = doc.add_adjustment_layer("Brighter")
+    adjustment["adjustments"]["brightness"] = 25
+    doc.add_text_layer("ORA", name="Title", font_size=28)
+    target = os.path.join(TMP, "layered-output.ora")
+    assert export_openraster(doc, target) == target
+    assert editor_engine.photo_manager.content_hash(source) == source_hash
+
+    with zipfile.ZipFile(target) as archive:
+        members = archive.infolist()
+        assert members[0].filename == "mimetype"
+        assert members[0].compress_type == zipfile.ZIP_STORED
+        assert archive.read("mimetype") == b"image/openraster"
+        root = ET.fromstring(archive.read("stack.xml"))
+        layers = root.findall("./stack/layer")
+        assert len(layers) == len(doc.layers) + 2
+        assert layers[0].get("visibility") == "visible"
+        with Image.open(io.BytesIO(archive.read("mergedimage.png"))) as merged:
+            actual = merged.convert("RGBA")
+    expected = doc.render().convert("RGBA")
+    assert ImageChops.difference(expected, actual).getbbox() is None
+
+
 def test_retouch():
     win = _editor(_image("ret.jpg", (300, 200)))
     win.act_heal.setChecked(True)
@@ -662,10 +773,122 @@ def test_interactive_crop_overlay_and_explicit_apply():
     win.crop_aspect.setCurrentIndex(win.crop_aspect.findData(1.0))
     rect = win.view._crop_rect_item.rect()
     assert abs(rect.width() - rect.height()) < 1
+    scene = win.view._scene.sceneRect()
+    assert abs(rect.height() - scene.height()) < 1
+    win.crop_aspect.setCurrentIndex(win.crop_aspect.findData(16 / 9))
+    rect = win.view._crop_rect_item.rect()
+    assert abs(rect.width() - scene.width()) < 1
+    assert abs(rect.width() / rect.height() - 16 / 9) < .01
+    old_top = rect.top()
+    QTest.keyClick(win.view, Qt.Key_Down)
+    assert win.view._crop_rect_item.rect().top() == old_top + 1
+    QTest.keyClick(win.view, Qt.Key_Down, Qt.ShiftModifier)
+    assert win.view._crop_rect_item.rect().top() == old_top + 11
     win._commit_crop()
     assert win.doc.geometry["crop"] is not None
     assert not win.act_crop.isChecked()
     assert win.view._crop_rect_item is None
+
+
+def test_crop_repeated_activation_keeps_one_session():
+    win = _editor(_image("crop-single-session.jpg", (400, 300)))
+    win.act_crop.setChecked(True)
+    crop_item = win.view._crop_rect_item
+    handles = list(win.view._crop_handles)
+    grid = list(win.view._crop_grid)
+    shades = list(win.view._crop_shades)
+
+    # Protect against a second action/signal path invoking crop while it is
+    # already active.  The existing session and every overlay item survive.
+    win._toggle_crop(True)
+
+    assert win.view._crop_rect_item is crop_item
+    assert win.view._crop_handles == handles and len(handles) == 8
+    assert win.view._crop_grid == grid and len(grid) == 4
+    assert win.view._crop_shades == shades and len(shades) == 4
+    assert win.act_crop.isChecked()
+
+
+def test_crop_and_perspective_overlays_are_mutually_exclusive():
+    win = _editor(_image("crop-perspective-exclusive.jpg", (400, 300)))
+    win.free_perspective_btn.setChecked(True)
+    assert win.view._perspective_mode and len(win.view._perspective_grid) == 38
+
+    win.act_crop.setChecked(True)
+    assert win.view._crop_mode and win.view._crop_rect_item is not None
+    assert not win.free_perspective_btn.isChecked()
+    assert not win.view._perspective_mode
+    assert not win.view._perspective_grid
+
+    win.free_perspective_btn.setChecked(True)
+    assert win.view._perspective_mode
+    assert not win.act_crop.isChecked()
+    assert not win.view._crop_mode
+    assert win.view._crop_rect_item is None
+
+
+def test_preview_reuses_canvas_render_for_histogram():
+    win = _editor(_image("single-preview-render.jpg", (400, 300)))
+    original_render = win.doc.render
+    calls = []
+
+    def counted_render(*args, **kwargs):
+        calls.append((args, kwargs))
+        return original_render(*args, **kwargs)
+
+    win.doc.render = counted_render
+    win._render_preview()
+
+    assert len(calls) == 1
+    assert win.histogram._data is not None
+
+
+def test_slider_drag_uses_light_proxy_then_resolves_crisp_preview():
+    win = _editor(_image("interactive-tones.jpg", (2400, 1600)))
+    requested = []
+    original_render = win.doc.render
+
+    def counted_render(max_size=None):
+        requested.append(max_size)
+        return original_render(max_size=max_size)
+
+    win.doc.render = counted_render
+    win._on_adjust("highlights", -50)
+    win._render_timer.stop()
+    win._render_preview()
+    drag_target = requested[-1]
+    assert win._interactive_render is True
+    assert max(drag_target) <= 1100
+
+    win._on_commit("highlights")
+    final_target = requested[-1]
+    assert win._interactive_render is False
+    assert max(final_target) > max(drag_target)
+
+
+def test_highlight_midtone_shadow_controls_are_tonally_isolated():
+    neutral = editor_engine._tonal_lut({})
+    highlights = editor_engine._tonal_lut({"highlights": -100})
+    midtones = editor_engine._tonal_lut({"midtones": -100})
+    shadows = editor_engine._tonal_lut({"shadows": 100})
+
+    # Highlights leave shadows and middle grey alone, but pull down brights.
+    assert highlights[64] == neutral[64]
+    assert highlights[128] == neutral[128]
+    assert neutral[230] - highlights[230] >= 45
+
+    # Midtones centre on middle grey and leave both ends alone.
+    assert midtones[25] == neutral[25]
+    assert neutral[128] - midtones[128] >= 50
+    assert midtones[230] == neutral[230]
+
+    # Shadows leave middle grey nearly stable and do not touch highlights.
+    assert shadows[25] - neutral[25] >= 45
+    assert abs(neutral[128] - shadows[128]) <= 3
+    assert shadows[230] == neutral[230]
+
+    win = _editor(_image("three-band-tones.jpg", (400, 300)))
+    assert "midtones" in win.rows
 
 
 def test_bw_colour_mix():
@@ -750,10 +973,38 @@ def test_perspective_geometry_and_project_round_trip():
     assert win.doc.geometry["perspective_corners"][0] == [.12, .08]
     win.free_perspective_btn.setChecked(True)
     assert win.view._perspective_mode and len(win.view._perspective_handles) == 4
-    assert len(win.view._perspective_grid) == 4
+    # Fine 20×20 geometry guide: nineteen interior lines in each direction.
+    assert len(win.view._perspective_grid) == 38
     win._reset_geometry()
     assert win.doc.geometry["perspective_vertical"] == 0.0
     assert win.doc.geometry["perspective_corners"][0] == [0.0, 0.0]
+
+
+def test_lens_distortion_controls_render_and_round_trip():
+    path = _image("lens-distortion.jpg", (320, 240))
+    doc = editor_engine.EditorDocument(path)
+    neutral = doc.render()
+    doc.geometry.update({
+        "lens_distortion": 45.0, "lens_spherical": -20.0,
+        "lens_center_x": 8.0, "lens_center_y": -6.0,
+        "lens_scale": 112.0, "lens_edges": "auto_fill",
+    })
+    changed = doc.render()
+    assert ImageChops.difference(neutral.convert("RGB"), changed.convert("RGB")).getbbox()
+    assert changed.size == neutral.size
+
+    project = os.path.join(TMP, "lens-distortion.slapper")
+    doc.save_project(project)
+    loaded = editor_engine.EditorDocument.load_project(project)
+    for key in ("lens_distortion", "lens_spherical", "lens_center_x",
+                "lens_center_y", "lens_scale", "lens_edges"):
+        assert loaded.geometry[key] == doc.geometry[key]
+
+    win = _editor(path)
+    win.lens_distortion_row.set_value(30)
+    win._on_lens_geometry("lens_distortion", 30)
+    assert win.doc.geometry["lens_distortion"] == 30
+    assert win.lens_edges.findData("auto_fill") >= 0
 
 
 def test_library_scan_and_open():
@@ -782,6 +1033,21 @@ def test_library_scan_and_open():
     assert len(lib._editors) == opened, "the same activation must not open a duplicate editor"
 
 
+def test_library_can_navigate_above_selected_root():
+    parent = tempfile.mkdtemp(prefix="slaplib_parent_", dir=TMP)
+    selected = os.path.join(parent, "Everything")
+    os.makedirs(selected)
+    lib = LibraryWindow()
+    lib.load_folder(selected)
+    assert os.path.normcase(lib.tree_model.rootPath()) == os.path.normcase(parent)
+    assert os.path.normcase(lib.tree_model.filePath(lib.tree.currentIndex())) == \
+        os.path.normcase(selected)
+    lib._go_up_folder()
+    assert os.path.normcase(lib._folder) == os.path.normcase(parent)
+    assert lib.tree_model.filePath(lib.tree.currentIndex())
+    assert QKeySequence("Alt+Up") == lib.act_folder_up.shortcut()
+
+
 def test_zoom_actual_shows_native_pixels():
     # "100%" must show the photograph's real pixels (a true focus check), not
     # an upscaled window-sized proxy. Fit stays a smaller, fast proxy.
@@ -802,6 +1068,25 @@ def test_zoom_actual_shows_native_pixels():
     win.zoom_actual()
     win.open_path(big)
     assert win._zoom_actual is False
+
+
+def test_visible_incremental_zoom_controls_and_shortcuts():
+    win = _editor(_image("zoom-controls.jpg", (800, 600)))
+    win._show_toolbar_context("view")
+    actions = win.context_toolbar.actions()
+    assert win.act_zoom_out in actions and win.act_zoom_in in actions
+    assert win.act_zoom_out.text() == "−" and win.act_zoom_in.text() == "+"
+    assert QKeySequence("Ctrl+-") in win.act_zoom_out.shortcuts()
+    assert QKeySequence("Ctrl++") in win.act_zoom_in.shortcuts()
+    assert QKeySequence("Ctrl+=") in win.act_zoom_in.shortcuts()
+
+    before = win.view.transform().m11()
+    win.zoom_in()
+    enlarged = win.view.transform().m11()
+    win.zoom_out()
+    restored = win.view.transform().m11()
+    assert enlarged > before
+    assert abs(restored - before) < .0001
 
 
 def test_fit_preview_refreshes_after_window_layout():
@@ -832,11 +1117,11 @@ def test_window_state_colour_chrome_and_library_captions():
     try:
         win = EditorWindow()
         assert win._restore_maximized is True
-        assert win.split_shadow_btn.objectName() == "SwatchBtn"
-        assert win.split_mid_btn.objectName() == "SwatchBtn"
-        assert win.split_hi_btn.objectName() == "SwatchBtn"
+        assert win.split_shadow_btn.objectName() == "ColourWell"
+        assert win.split_mid_btn.objectName() == "ColourWell"
+        assert win.split_hi_btn.objectName() == "ColourWell"
         css = theme.stylesheet()
-        assert "QPushButton#SwatchBtn" in css
+        assert "QPushButton#ColourWell" in css
         assert f"background: {theme.CANVAS}" in css
         assert f"color: {theme.ACCENT}" in css
         assert f"border: 1px solid {theme.ACCENT}" in css
@@ -927,6 +1212,61 @@ def test_mask_brush_and_type_switch():
     assert win.mask_stack.currentIndex() == 0
     win._select_mask_type("linear")
     assert win.mask_stack.currentIndex() == 1
+
+
+def test_brush_palette_bucket_and_shortcuts():
+    win = _editor(_image("brush-palette.jpg", (400, 300)))
+    layer = win.doc.add_adjustment_layer("Masked")
+    win.set_target(layer["id"])
+    win._select_mask_type("brush")
+    win._set_brush_preset(16, 95)
+    assert win.brush_size.slider.value() == 16
+    assert win.brush_hardness.slider.value() == 95
+    win.brush_opacity.slider.setValue(45)
+    win.brush_flow.slider.setValue(35)
+    assert win.mask_brush._opacity == 45 and win.mask_brush._flow == 35
+    win.mask_brush.fill(False)
+    assert max(win.mask_brush.mask_pil((80, 60)).getextrema()) == 0
+    win.mask_brush.fill(True)
+    assert min(win.mask_brush.mask_pil((80, 60)).getextrema()) == 255
+    old_size = win.brush_size.slider.value()
+    win._mask_key("larger")
+    assert win.brush_size.slider.value() > old_size
+    win._mask_key("invert")
+    assert win.mask_invert.isChecked()
+
+
+def test_mask_can_be_painted_on_full_photo_canvas():
+    win = _editor(_image("canvas-mask.jpg", (600, 400)))
+    layer = win.doc.add_adjustment_layer("Canvas mask")
+    win.set_target(layer["id"])
+    win._select_mask_type("brush")
+    win.paint_on_photo.setChecked(True)
+    assert win.view._mask_paint_mode
+    assert not win.view._mask_overlay.pixmap().isNull()
+    win._paint_canvas_mask(.5, .5, False)
+    win._paint_canvas_mask(.55, .5, True)
+    stored = editor_engine._mask_from_text(layer["mask"])
+    assert stored.getpixel((stored.width // 2, stored.height // 2)) < 255
+    assert layer["mask_kind"] == "brush"
+
+
+def test_slider_drag_never_blocks_on_document_render():
+    win = _editor(_image("smooth-slider.jpg", (1800, 1200)))
+    win._render_timer.stop()
+    row = win.rows["highlights"]
+    calls = []
+    original_render = win.doc.render
+    win.doc.render = lambda *a, **k: (calls.append((a, k)) or original_render(*a, **k))
+    row.slider.setSliderDown(True)
+    win._on_adjust("highlights", -42)
+    assert win._render_timer.isActive()
+    win._render_timer.stop()
+    win._dispatch_render()
+    # Dispatch snapshots the document and returns; the live UI document is not
+    # rendered synchronously by the pointer event path.
+    assert calls == []
+    row.slider.setSliderDown(False)
 
 
 def test_before_after_divider():

@@ -142,7 +142,7 @@ if (is_array($_allowed_types) && $_allowed_types) {
             // rejected below, never authenticated. (Legacy NULL expires_at = no
             // expiry; mandatory ≤4-week keys since 0.7.263.)
             $_kst = $pdo->prepare(
-                "SELECT id, expires_at FROM snap_ohsnap_keys
+                "SELECT id, key_type, expires_at FROM snap_ohsnap_keys
                  WHERE key_hash = ? AND is_active = 1 AND key_type IN ($_place)
                  LIMIT 1"
             );
@@ -183,6 +183,7 @@ if (is_array($_allowed_types) && $_allowed_types) {
                 ->execute([(int)$_krow['id']]);
             define('SNAP_API_AUTH', true);
             define('SNAP_API_KEY_ID', (int)$_krow['id']);
+            define('SNAP_API_KEY_TYPE', (string)($_krow['key_type'] ?? ''));
             snap_api_enforce_mode($pdo);
             unset($_allowed_types, $_auth_hdr, $_bm, $_bhash, $_place, $_kst, $_krow);
             return;

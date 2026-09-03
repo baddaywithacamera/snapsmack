@@ -20,7 +20,7 @@ from .engine_bridge import pil_to_qpixmap
 
 ACTION_GROUPS = (
     ("light", "Shape the light", ("exposure", "brightness", "contrast", "highlights",
-                                  "shadows", "whites", "blacks"),
+                                  "midtones", "shadows", "whites", "blacks"),
      "Sets the overall brightness range and decides which parts of the frame receive emphasis."),
     ("white-balance", "Set the colour balance", ("temperature", "tint"),
      "Warms, cools, or neutralises the photograph before the stylistic colour work."),
@@ -118,6 +118,7 @@ def explain_action(action):
         "brightness": ("opens up the overall brightness", "pulls the overall brightness down", 100),
         "contrast": ("separates light and dark tones", "softens the difference between light and dark", 100),
         "highlights": ("brightens the brightest areas", "holds back the brightest areas", 100),
+        "midtones": ("brightens the middle tones", "darkens the middle tones", 100),
         "shadows": ("lifts detail from the shadows", "deepens the shadows", 100),
         "whites": ("raises the white point", "restrains the white point", 100),
         "blacks": ("lifts the deepest blacks", "crushes the deepest blacks", 100),

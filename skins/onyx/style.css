@@ -672,6 +672,14 @@ body.homepage-static .pfd-lede {
     color: var(--pfd-red);
 }
 
+.pfd-cd-date {
+    display: block;
+    margin: 2px 0 5px;
+    font: 700 8px/1 monospace;
+    letter-spacing: .14em;
+    opacity: .52;
+}
+
 /* --- numbered steps (HOW IT WORKS) --------------------------------------- */
 .pfd-steps {
     list-style: none;

@@ -8,29 +8,32 @@ metadata-preserving export. No image math lives here — only the engine's.
 
 import os
 import sys
+import colorsys
 
-from PySide6.QtCore import Qt, QTimer, QSize
+from PySide6.QtCore import Qt, QTimer, QSize, QObject, Signal, QRunnable, QThreadPool
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QCheckBox,
     QFileDialog, QMessageBox, QLabel, QButtonGroup, QPushButton, QLineEdit,
     QColorDialog, QComboBox, QStackedWidget, QInputDialog, QWidgetAction,
+    QApplication,
 )
 from PySide6.QtGui import QColor
 
-from PIL import ImageOps, ImageStat
+from PIL import Image, ImageDraw, ImageFilter, ImageOps, ImageStat
 
 from . import masks
 
 import editor_engine
 import photo_manager
 from . import theme
-from .engine_bridge import render_pixmap, original_pixmap
+from .engine_bridge import pil_to_qpixmap, original_pixmap
 from .widgets import ImageView, SliderRow, Accordion, Histogram
 from .layers_panel import LayersPanel, BASE
 from .filmstrip import Filmstrip
 from .mask_brush import MaskBrushCanvas
 from .curve_editor import CurveEditor
+from .source_colour import inspect_source, workspace_label
 
 try:
     import snap_log
@@ -42,6 +45,32 @@ except Exception:  # noqa: BLE001
 PROJECT_FILTER = "SNAP SLAPPER project (*.slapper)"
 RECIPE_FILTER = "SNAP SLAPPER recipe (*.slaprecipe *.json)"
 
+
+class _PreviewSignals(QObject):
+    ready = Signal(int, object)
+    failed = Signal(int, str)
+
+
+class _PreviewJob(QRunnable):
+    """Render an immutable document snapshot away from Qt's UI thread."""
+
+    def __init__(self, token, source_path, state, max_size):
+        super().__init__()
+        self.token = token
+        self.source_path = source_path
+        self.state = state
+        self.max_size = max_size
+        self.signals = _PreviewSignals()
+
+    def run(self):
+        try:
+            document = editor_engine.EditorDocument(self.source_path)
+            document.restore(self.state)
+            rendered = document.render(max_size=self.max_size)
+            self.signals.ready.emit(self.token, rendered)
+        except Exception as error:  # noqa: BLE001
+            self.signals.failed.emit(self.token, str(error))
+
 # The control groups and ranges mirror the Tk editor exactly so the feel is
 # identical and every key matches DEFAULT_ADJUSTMENTS in the engine.
 GROUPS = [
@@ -50,6 +79,7 @@ GROUPS = [
         ("brightness", "Brightness", -100, 100, 1, 0),
         ("contrast", "Contrast", -100, 100, 1, 0),
         ("highlights", "Highlights", -100, 100, 1, 0),
+        ("midtones", "Midtones", -100, 100, 1, 0),
         ("shadows", "Shadows", -100, 100, 1, 0),
         ("whites", "Whites", -100, 100, 1, 0),
         ("blacks", "Blacks", -100, 100, 1, 0),
@@ -84,7 +114,7 @@ IMAGE_FILTER = ("Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp);;"
 # Normal mode (Picasa/Snapseed-simple) shows a curated subset; Advanced shows
 # everything. These name what stays visible in Normal.
 NORMAL_SECTIONS = {"LIGHT", "COLOUR", "EFFECTS", "BLACK + WHITE", "GEOMETRY"}
-NORMAL_ROWS = {"brightness", "contrast", "highlights", "shadows",
+NORMAL_ROWS = {"brightness", "contrast", "highlights", "midtones", "shadows",
                "temperature", "tint", "saturation", "vibrance",
                "clarity", "dehaze", "texture", "vignette"}
 
@@ -102,6 +132,10 @@ class EditorWindow(QMainWindow):
         # actual pixels (render at the photo's native resolution so a focus
         # check shows real detail, not an upscaled preview).
         self._zoom_actual = False
+        self._interactive_render = False
+        self._preview_generation = 0
+        self._preview_jobs = set()
+        self._preview_pool = QThreadPool.globalInstance()
         from . import prefs as _prefs
         stored_prefs = _prefs.load()
         self._filmstrip_visible = bool(stored_prefs.get("filmstrip_visible", True))
@@ -114,12 +148,17 @@ class EditorWindow(QMainWindow):
 
         self.status = self.statusBar()
         self.status.showMessage("Open a photograph to begin.")
+        self.colour_status = QLabel("No image · depth/profile unknown")
+        self.colour_status.setObjectName("ColourStatus")
+        self.colour_status.setToolTip(
+            "Source colour depth/profile and the renderer actually in use")
+        self.status.addPermanentWidget(self.colour_status, 1)
 
         # Debounce live renders so a slider drag doesn't render on every pixel.
         self._render_timer = QTimer(self)
         self._render_timer.setSingleShot(True)
         self._render_timer.setInterval(45)
-        self._render_timer.timeout.connect(self._render_preview)
+        self._render_timer.timeout.connect(self._dispatch_render)
 
         # Opening from Windows happens before the window receives its final
         # layout. The first proxy is therefore intentionally cheap; once the
@@ -143,9 +182,11 @@ class EditorWindow(QMainWindow):
     # --- Autosave / crash recovery ------------------------------------------
     @staticmethod
     def _resolve_recovery_dir():
+        """One canonical shared edit store, with a writable legacy fallback."""
         try:
             import snap_home
-            directory = os.path.join(snap_home.home(), "snap_slapper", "recovery")
+            directory = os.path.join(
+                snap_home.shared_library(), "snap_slapper", "edits")
         except Exception:  # noqa: BLE001
             directory = os.path.join(os.path.expanduser("~"), "SnapSmack", "recovery")
         try:
@@ -153,6 +194,25 @@ class EditorWindow(QMainWindow):
         except OSError:
             return None
         return directory
+
+    def _recovery_dirs(self):
+        """Canonical plus both historical stores, newest matching file wins."""
+        directories = [self._recovery_dir] if self._recovery_dir else []
+        try:
+            import snap_home
+            directories.extend((
+                os.path.join(snap_home.home(), "snap_slapper", "recovery"),
+                os.path.join(os.path.expanduser("~"), "SnapSmack", "recovery"),
+            ))
+        except Exception:  # noqa: BLE001
+            directories.append(
+                os.path.join(os.path.expanduser("~"), "SnapSmack", "recovery"))
+        return list(dict.fromkeys(os.path.abspath(item) for item in directories if item))
+
+    def _recovery_paths(self, source_path=None):
+        source = source_path or (self.doc.source_path if self.doc else "")
+        return [photo_manager.recovery_path(directory, source)
+                for directory in self._recovery_dirs() if source]
 
     def _on_doc_change(self, _doc):
         self._refresh_actions()
@@ -175,8 +235,9 @@ class EditorWindow(QMainWindow):
             _log.exception("autosave (recovery) failed")
 
     def _clear_recovery(self):
-        path = self._recovery_path()
-        if path and os.path.isfile(path):
+        for path in self._recovery_paths():
+            if not os.path.isfile(path):
+                continue
             try:
                 os.remove(path)
             except OSError:
@@ -187,9 +248,11 @@ class EditorWindow(QMainWindow):
         Returns a recovered EditorDocument, or None to open normally."""
         if not self._recovery_dir:
             return None
-        rec = photo_manager.recovery_path(self._recovery_dir, source_path)
-        if not (rec and os.path.isfile(rec) and os.path.getsize(rec) > 0):
+        candidates = [path for path in self._recovery_paths(source_path)
+                      if os.path.isfile(path) and os.path.getsize(path) > 0]
+        if not candidates:
             return None
+        rec = max(candidates, key=os.path.getmtime)
         answer = QMessageBox.question(
             self, "Recover unsaved edits?",
             "SNAP SLAPPER has unsaved edits for this photo from a previous "
@@ -254,6 +317,16 @@ class EditorWindow(QMainWindow):
         self.act_full.setToolTip("Actual pixels — check focus at the photo's true resolution")
         self.act_full.triggered.connect(self.zoom_actual)
         bar.addAction(self.act_full)
+
+        self.act_zoom_out = QAction("−", self)
+        self.act_zoom_out.setToolTip("Zoom out (Ctrl+-)")
+        self.act_zoom_out.triggered.connect(self.zoom_out)
+        bar.addAction(self.act_zoom_out)
+
+        self.act_zoom_in = QAction("+", self)
+        self.act_zoom_in.setToolTip("Zoom in (Ctrl++)")
+        self.act_zoom_in.triggered.connect(self.zoom_in)
+        bar.addAction(self.act_zoom_in)
 
         self.act_crop = QAction("Crop", self)
         self.act_crop.setCheckable(True)
@@ -382,6 +455,7 @@ class EditorWindow(QMainWindow):
         # its deliberately small, predictable order.
         for action in (
                 self.act_reset, self.act_auto, self.act_fit, self.act_full,
+                self.act_zoom_out, self.act_zoom_in,
                 self.act_crop, self.act_heal, self.act_redeye,
                 self.act_compare, self.act_filmstrip,
                 self.act_recipe_save, self.act_recipe_apply,
@@ -417,7 +491,8 @@ class EditorWindow(QMainWindow):
                       self.act_recipe_save, self.act_recipe_apply),
             "output": (self.act_save_project, self.act_export,
                        self.act_blog_copy),
-            "view": (self.act_fit, self.act_full, self.act_filmstrip,
+            "view": (self.act_fit, self.act_full, self.act_zoom_out,
+                     self.act_zoom_in, self.act_filmstrip,
                      self.act_prefs, self.act_help),
         }
         crop_controls = QWidget()
@@ -466,6 +541,8 @@ class EditorWindow(QMainWindow):
             (self.act_auto,         "Ctrl+U"),        # auto-enhance
             (self.act_fit,          "Ctrl+0"),        # fit to window
             (self.act_full,         "Ctrl+1"),        # 100% / actual pixels
+            (self.act_zoom_out,     "Ctrl+-"),        # zoom one step out
+            (self.act_zoom_in,      "Ctrl++"),        # zoom one step in
             (self.act_reset,        "Ctrl+Shift+R"),  # reset all
             (self.act_crop,         "Ctrl+Shift+C"),  # crop tool
             (self.act_heal,         "Ctrl+Shift+H"),  # heal tool
@@ -482,6 +559,60 @@ class EditorWindow(QMainWindow):
             base = action.toolTip() or action.text()
             pretty = QKeySequence(seq).toString(QKeySequence.NativeText)
             action.setToolTip(f"{base}  ({pretty})")
+        # Ctrl+= is the no-Shift spelling of Ctrl++ on many keyboards.
+        self.act_zoom_in.setShortcuts(
+            [QKeySequence("Ctrl++"), QKeySequence("Ctrl+=")])
+        self._install_mask_shortcuts()
+
+    def _install_mask_shortcuts(self):
+        """Install Photoshop-like local-mask keys with a typing guard."""
+        bindings = {
+            "M": lambda: self._mask_key("edit"),
+            "I": lambda: self._mask_key("invert"),
+            "G": lambda: self._mask_key("linear"),
+            "K": lambda: self._mask_key("bucket"),
+            "B": lambda: self._mask_key("brush"),
+            "E": lambda: self._mask_key("erase"),
+            "[": lambda: self._mask_key("smaller"),
+            "]": lambda: self._mask_key("larger"),
+            "Shift+[": lambda: self._mask_key("softer"),
+            "Shift+]": lambda: self._mask_key("harder"),
+        }
+        self.mask_shortcut_actions = {}
+        for sequence, callback in bindings.items():
+            action = QAction(f"Mask {sequence}", self)
+            action.setShortcut(QKeySequence(sequence))
+            action.setShortcutContext(Qt.WindowShortcut)
+            action.triggered.connect(callback)
+            self.addAction(action)
+            self.mask_shortcut_actions[sequence] = action
+
+    def _mask_key(self, command):
+        # Bare creative-tool keys must never steal characters from text fields.
+        if isinstance(QApplication.focusWidget(), QLineEdit):
+            return
+        if self._mask_layer() is None:
+            return
+        if command == "edit":
+            self.mask_section.header.setChecked(True)
+        elif command == "invert":
+            self.mask_invert.toggle()
+        elif command in {"linear", "brush"}:
+            self._mask_type_buttons[command].click()
+            self.mask_section.header.setChecked(True)
+        elif command == "bucket":
+            self._mask_type_buttons["brush"].click()
+            self.mask_brush.fill(self.mask_brush._paint_white)
+        elif command == "erase":
+            self._mask_type_buttons["brush"].click()
+            self.btn_hide.click()
+        elif command in {"smaller", "larger"}:
+            delta = -3 if command == "smaller" else 3
+            self.brush_size.slider.setValue(self.brush_size.slider.value() + delta)
+        elif command in {"softer", "harder"}:
+            delta = -10 if command == "softer" else 10
+            self.brush_hardness.slider.setValue(
+                self.brush_hardness.slider.value() + delta)
 
     def _show_toolbar_context(self, key):
         """Expand one top-row workspace into the contextual second row."""
@@ -511,6 +642,8 @@ class EditorWindow(QMainWindow):
         self.view.cropped.connect(self._apply_crop)
         self.view.retouch_clicked.connect(self._add_retouch)
         self.view.neutral_clicked.connect(self._apply_neutral_sample)
+        self.view.colour_range_clicked.connect(self._apply_colour_sample)
+        self.view.mask_painted.connect(self._paint_canvas_mask)
         self.view.layer_dragged.connect(self._move_active_layer)
         self.view.perspective_corner_dragged.connect(self._move_perspective_corner)
         self._layer_drag_changed = False
@@ -587,6 +720,11 @@ class EditorWindow(QMainWindow):
             if title == "LIGHT":
                 self._histogram_wrap = self._build_histogram()
                 section.add(self._histogram_wrap)
+                self.auto_exposure_button = QPushButton("Auto Exposure")
+                self.auto_exposure_button.setToolTip(
+                    "Set exposure only, while preserving highlight headroom")
+                self.auto_exposure_button.clicked.connect(self.auto_exposure)
+                section.add(self.auto_exposure_button)
             for key, label, start, end, resolution, default in controls:
                 srow = SliderRow(key, label, start, end, resolution, default)
                 srow.changed.connect(self._on_adjust)
@@ -802,6 +940,31 @@ class EditorWindow(QMainWindow):
         perspective_buttons.addWidget(self.perspective_edges, 1)
         layout.addLayout(perspective_buttons)
 
+        self.lens_distortion_row = SliderRow(
+            "lens_distortion", "Barrel / pincushion", -100, 100, 0.5, 0)
+        self.lens_spherical_row = SliderRow(
+            "lens_spherical", "Spherical / fisheye", -100, 100, 0.5, 0)
+        self.lens_center_x_row = SliderRow(
+            "lens_center_x", "Distortion centre X", -50, 50, 0.5, 0)
+        self.lens_center_y_row = SliderRow(
+            "lens_center_y", "Distortion centre Y", -50, 50, 0.5, 0)
+        self.lens_scale_row = SliderRow(
+            "lens_scale", "Edge scale", 100, 160, 1, 100)
+        self._lens_rows = (self.lens_distortion_row, self.lens_spherical_row,
+                           self.lens_center_x_row, self.lens_center_y_row,
+                           self.lens_scale_row)
+        for row in self._lens_rows:
+            row.changed.connect(self._on_lens_geometry)
+            row.committed.connect(lambda _key: self._commit_geometry("Lens distortion"))
+            layout.addWidget(row)
+        self.lens_edges = QComboBox()
+        self.lens_edges.addItem("Auto Fill Edges", "auto_fill")
+        self.lens_edges.addItem("Transparent Edges", "transparent")
+        self.lens_edges.setToolTip(
+            "Auto Fill zooms only enough to remove empty curved edges")
+        self.lens_edges.currentIndexChanged.connect(self._on_lens_edges)
+        layout.addWidget(self.lens_edges)
+
         buttons = QHBoxLayout()
         buttons.setContentsMargins(12, 2, 12, 2)
         buttons.setSpacing(4)
@@ -833,7 +996,27 @@ class EditorWindow(QMainWindow):
         self.doc.geometry[key] = float(value)
         self._schedule_render()
 
+    def _on_lens_geometry(self, key, value):
+        if not self.doc:
+            return
+        self.doc.geometry[key] = float(value)
+        self._schedule_render()
+
+    def _on_lens_edges(self, index):
+        if not self.doc:
+            return
+        value = self.lens_edges.itemData(index) or "auto_fill"
+        if self.doc.geometry.get("lens_edges", "auto_fill") != value:
+            self.doc.geometry["lens_edges"] = value
+            self.doc.record("Lens edge handling")
+            self._render_preview()
+            self._update_title()
+
     def _toggle_free_perspective(self, enabled):
+        if enabled and self.act_crop.isChecked():
+            # Crop and perspective both own a full-canvas frame/grid. They are
+            # modal tools and must never be painted or receive input together.
+            self.act_crop.setChecked(False)
         corners = (self.doc.geometry.get("perspective_corners") if self.doc else None)
         self.view.set_perspective_mode(enabled, corners)
         if enabled:
@@ -897,7 +1080,10 @@ class EditorWindow(QMainWindow):
                                   "perspective_horizontal": 0.0,
                                   "perspective_corners": [[0.0, 0.0], [1.0, 0.0],
                                                           [1.0, 1.0], [0.0, 1.0]],
-                                  "perspective_edges": "auto_crop"})
+                                  "perspective_edges": "auto_crop",
+                                  "lens_distortion": 0.0, "lens_spherical": 0.0,
+                                  "lens_center_x": 0.0, "lens_center_y": 0.0,
+                                  "lens_scale": 100.0, "lens_edges": "auto_fill"})
         self.free_perspective_btn.setChecked(False)
         self.doc.record("Reset geometry")
         self._sync_geometry()
@@ -923,7 +1109,7 @@ class EditorWindow(QMainWindow):
         self.mask_type_group = QButtonGroup(self)
         self.mask_type_group.setExclusive(True)
         self._mask_type_buttons = {}
-        for kind, label in (("radial", "Radial"), ("linear", "Graduated"),
+        for kind, label in (("radial", "Radial"), ("linear", "Gradient"),
                             ("brush", "Brush"), ("colour", "Colour Range")):
             btn = QPushButton(label)
             btn.setObjectName("MaskTypeBtn")
@@ -986,6 +1172,13 @@ class EditorWindow(QMainWindow):
         paint_hint.setObjectName("TargetLabel")
         paint_hint.setWordWrap(True)
         bl.addWidget(paint_hint)
+        self.paint_on_photo = QPushButton("Paint mask on full photo")
+        self.paint_on_photo.setObjectName("LayerAddBtn")
+        self.paint_on_photo.setCheckable(True)
+        self.paint_on_photo.setToolTip(
+            "Paint this layer mask directly on the large photograph")
+        self.paint_on_photo.toggled.connect(self._toggle_canvas_mask_paint)
+        bl.addWidget(self.paint_on_photo)
         self.mask_brush = MaskBrushCanvas()
         self.mask_brush.mask_changed.connect(self._store_brush_mask)
         bl.addWidget(self.mask_brush, 0, Qt.AlignHCenter)
@@ -1005,10 +1198,43 @@ class EditorWindow(QMainWindow):
             paint_row.addWidget(btn)
         self.btn_hide.setChecked(True)
         bl.addLayout(paint_row)
+
+        preset_row = QHBoxLayout()
+        for label, size, hardness in (("Soft", 28, 20), ("Medium", 22, 60),
+                                      ("Hard", 16, 95)):
+            button = QPushButton(label)
+            button.setObjectName("LayerOrderBtn")
+            button.clicked.connect(
+                lambda _c, s=size, h=hardness: self._set_brush_preset(s, h))
+            preset_row.addWidget(button)
+        bl.addLayout(preset_row)
+
         self.brush_size = SliderRow("brush", "Brush size", 3, 60, 1, 22)
         self.brush_size.changed.connect(
             lambda _k, v: self.mask_brush.set_radius(int(v)))
         bl.addWidget(self.brush_size)
+        self.brush_hardness = SliderRow("brush_hardness", "Hardness", 0, 100, 1, 70)
+        self.brush_hardness.changed.connect(
+            lambda _k, v: self.mask_brush.set_hardness(int(v)))
+        bl.addWidget(self.brush_hardness)
+        self.brush_opacity = SliderRow("brush_opacity", "Opacity", 1, 100, 1, 100)
+        self.brush_opacity.changed.connect(
+            lambda _k, v: self.mask_brush.set_opacity(int(v)))
+        bl.addWidget(self.brush_opacity)
+        self.brush_flow = SliderRow("brush_flow", "Flow", 1, 100, 1, 100)
+        self.brush_flow.changed.connect(
+            lambda _k, v: self.mask_brush.set_flow(int(v)))
+        bl.addWidget(self.brush_flow)
+
+        bucket_row = QHBoxLayout()
+        fill_hide = QPushButton("Bucket: Hide all")
+        fill_reveal = QPushButton("Bucket: Reveal all")
+        for button, white in ((fill_hide, False), (fill_reveal, True)):
+            button.setObjectName("LayerOrderBtn")
+            button.setToolTip("Fill the entire current mask")
+            button.clicked.connect(lambda _c, w=white: self.mask_brush.fill(w))
+            bucket_row.addWidget(button)
+        bl.addLayout(bucket_row)
         self.mask_stack.addWidget(brush_page)
 
         # Colour-range page
@@ -1016,6 +1242,13 @@ class EditorWindow(QMainWindow):
         cl = QVBoxLayout(colour_page)
         cl.setContentsMargins(0, 0, 0, 0)
         cl.setSpacing(4)
+        self.mask_eyedropper = QPushButton("Eyedropper — pick colour on photo")
+        self.mask_eyedropper.setObjectName("LayerAddBtn")
+        self.mask_eyedropper.setCheckable(True)
+        self.mask_eyedropper.setToolTip(
+            "Click, then click the photograph to seed this colour-range mask")
+        self.mask_eyedropper.toggled.connect(self._toggle_colour_picker)
+        cl.addWidget(self.mask_eyedropper)
         self.mask_hue = SliderRow("hue", "Hue", 0, 359, 1, 30)
         self.mask_hue_range = SliderRow("hue_range", "Hue range", 2, 180, 1, 30)
         self.mask_min_sat = SliderRow("min_sat", "Minimum saturation", 0, 100, 1, 10)
@@ -1051,7 +1284,17 @@ class EditorWindow(QMainWindow):
 
     _MASK_PAGES = {"radial": 0, "linear": 1, "brush": 2, "colour": 3}
 
+    def _set_brush_preset(self, size, hardness):
+        self.brush_size.set_value(size)
+        self.brush_hardness.set_value(hardness)
+        self.mask_brush.set_radius(size)
+        self.mask_brush.set_hardness(hardness)
+
     def _select_mask_type(self, kind):
+        if hasattr(self, "mask_eyedropper") and kind != "colour":
+            self.mask_eyedropper.setChecked(False)
+        if hasattr(self, "paint_on_photo") and kind != "brush":
+            self.paint_on_photo.setChecked(False)
         self._mask_kind = kind
         self.mask_stack.setCurrentIndex(self._MASK_PAGES[kind])
         if kind == "brush":
@@ -1103,6 +1346,55 @@ class EditorWindow(QMainWindow):
             existing = editor_engine._mask_from_text(layer.get("mask", ""))
         self.mask_brush.load(photo, existing)
 
+    def _toggle_canvas_mask_paint(self, checked):
+        layer = self._mask_layer()
+        if checked and layer is None:
+            self.paint_on_photo.setChecked(False)
+            return
+        if checked:
+            size = self._mask_target_size()
+            self._canvas_mask = (editor_engine._mask_from_text(layer.get("mask", ""))
+                                 if layer.get("mask") else Image.new("L", size, 255))
+            if self._canvas_mask.size != size:
+                self._canvas_mask = self._canvas_mask.resize(size, Image.Resampling.LANCZOS)
+            self._canvas_mask_last = None
+            self.view.set_mask_paint_mode(True)
+            self.view.set_mask_overlay(self._canvas_mask)
+            self.status.showMessage(
+                "Painting layer mask on photo — Hide paints black; Reveal paints white.")
+        else:
+            self.view.set_mask_paint_mode(False)
+            self._canvas_mask_last = None
+
+    def _paint_canvas_mask(self, x, y, finished):
+        if getattr(self, "_canvas_mask", None) is None or self._mask_layer() is None:
+            return
+        width, height = self._canvas_mask.size
+        point = (round(float(x) * (width - 1)), round(float(y) * (height - 1)))
+        radius = max(2, round(self.brush_size.slider.value() / 172 * min(width, height)))
+        alpha_value = round(255 * self.brush_opacity.slider.value() / 100 *
+                            self.brush_flow.slider.value() / 100)
+        dab = Image.new("L", (width, height), 0)
+        draw = ImageDraw.Draw(dab)
+        previous = getattr(self, "_canvas_mask_last", None) or point
+        draw.line((previous, point), fill=alpha_value, width=radius * 2)
+        draw.ellipse((point[0] - radius, point[1] - radius,
+                      point[0] + radius, point[1] + radius), fill=alpha_value)
+        softness = 1.0 - self.brush_hardness.slider.value() / 100.0
+        if softness:
+            dab = dab.filter(ImageFilter.GaussianBlur(max(.5, radius * softness * .55)))
+        value = 255 if self.mask_brush._paint_white else 0
+        self._canvas_mask.paste(value, mask=dab)
+        self._canvas_mask_last = None if finished else point
+        self.view.set_mask_overlay(self._canvas_mask)
+        if finished:
+            layer = self._mask_layer()
+            mask = ImageOps.invert(self._canvas_mask) if self.mask_invert.isChecked() \
+                else self._canvas_mask
+            self._store_mask(layer, mask, "brush", "Paint mask on photo")
+            # _store_mask rerenders the photo; restore the editing overlay.
+            self.view.set_mask_overlay(self._canvas_mask)
+
     def _store_brush_mask(self):
         layer = self._mask_layer()
         if layer is None:
@@ -1130,6 +1422,44 @@ class EditorWindow(QMainWindow):
             self.mask_min_lum.slider.value(), self.mask_max_lum.slider.value(),
             self.mask_colour_soft.slider.value(), self.mask_invert.isChecked())
         self._store_mask(layer, mask, "colour", "Colour range mask")
+
+    def _toggle_colour_picker(self, checked):
+        if checked and self._mask_layer() is None:
+            self.mask_eyedropper.setChecked(False)
+            return
+        self.view.set_neutral_mode(False)
+        self.view.set_colour_range_mode(checked)
+        self.status.showMessage(
+            "Click a colour in the photograph to seed the range mask."
+            if checked else "Colour-range eyedropper off.")
+
+    def _apply_colour_sample(self, x, y):
+        """Seed hue/saturation/luminance controls from the clicked photograph."""
+        layer = self._mask_layer()
+        if layer is None:
+            return
+        visible = layer.get("visible", True)
+        layer["visible"] = False
+        try:
+            photo = self.doc.render((1200, 1200)).convert("RGB")
+        finally:
+            layer["visible"] = visible
+        px = min(photo.width - 1, max(0, round(float(x) * (photo.width - 1))))
+        py = min(photo.height - 1, max(0, round(float(y) * (photo.height - 1))))
+        red, green, blue = photo.getpixel((px, py))
+        hue, saturation, value = colorsys.rgb_to_hsv(
+            red / 255.0, green / 255.0, blue / 255.0)
+        self.mask_hue.set_value(round(hue * 359))
+        # A sampled colour seeds useful protections but remains editable.
+        self.mask_min_sat.set_value(max(0, round(saturation * 100) - 20))
+        centre_lum = round(value * 100)
+        self.mask_min_lum.set_value(max(0, centre_lum - 30))
+        self.mask_max_lum.set_value(min(100, centre_lum + 30))
+        self.mask_eyedropper.setChecked(False)
+        self._apply_colour_mask()
+        self.status.showMessage(
+            f"Sampled colour range at H {round(hue * 359)}°, "
+            f"S {round(saturation * 100)}%, L {centre_lum}%.")
 
     def _store_mask(self, layer, mask, kind, label):
         layer["mask"] = editor_engine._mask_to_text(mask)
@@ -1319,9 +1649,23 @@ class EditorWindow(QMainWindow):
             self.act_crop.setChecked(False)
             return
         if checked:
+            # Crop is a single editing session.  Toolbar/menu re-entry (or a
+            # duplicated signal in a packaged build) must never construct a
+            # second overlay on top of the active one.
+            if self.view._crop_mode:
+                self.status.showMessage(
+                    "Crop is already open — use Apply Crop or Cancel.")
+                self._show_toolbar_context("edit")
+                return
             for act in (self.act_heal, self.act_redeye):
                 if act.isChecked():
                     act.setChecked(False)
+            if self.free_perspective_btn.isChecked():
+                self.free_perspective_btn.setChecked(False)
+            else:
+                # Also clear an orphaned overlay from an older or interrupted
+                # tool state even if its button has already lost check state.
+                self.view.set_perspective_mode(False)
             self.view.set_retouch_mode(False)
             self._saved_crop = self.doc.geometry.get("crop")
             self.doc.geometry["crop"] = None      # show the full frame to crop on
@@ -1346,6 +1690,10 @@ class EditorWindow(QMainWindow):
             value = (pixmap.width() / pixmap.height()
                      if pixmap and pixmap.height() else None)
         self.view.set_crop_aspect(value)
+        # The aspect selector otherwise keeps keyboard focus and consumes arrow
+        # keys. Return focus to the canvas for immediate crop-frame nudging.
+        if self.view._crop_mode:
+            self.view.setFocus(Qt.OtherFocusReason)
 
     def _commit_crop(self):
         rect = self.view.crop_rect_normalized()
@@ -1380,6 +1728,13 @@ class EditorWindow(QMainWindow):
         self.perspective_edges.blockSignals(False)
         self.view.set_perspective_corners(self.doc.geometry.get(
             "perspective_corners", [[0, 0], [1, 0], [1, 1], [0, 1]]))
+        for row in self._lens_rows:
+            row.set_value(self.doc.geometry.get(row.key, 100.0 if row.key == "lens_scale" else 0.0))
+        lens_edge_index = self.lens_edges.findData(
+            self.doc.geometry.get("lens_edges", "auto_fill"))
+        self.lens_edges.blockSignals(True)
+        self.lens_edges.setCurrentIndex(max(0, lens_edge_index))
+        self.lens_edges.blockSignals(False)
         self.flip_h_btn.setChecked(bool(self.doc.geometry.get("flip_x", False)))
         self.flip_v_btn.setChecked(bool(self.doc.geometry.get("flip_y", False)))
 
@@ -1388,9 +1743,25 @@ class EditorWindow(QMainWindow):
         self.histogram.set_mode(mode)
         self._refresh_histogram()
 
-    def _refresh_histogram(self):
-        if self.doc:
-            self.histogram.set_data(self.doc.histogram(), self._hist_mode)
+    def _refresh_histogram(self, rendered=None):
+        if not self.doc:
+            return
+        if rendered is None:
+            data = self.doc.histogram()
+        else:
+            # Reuse the canvas render.  Rendering the document again just for
+            # the live histogram doubled every slider update, including every
+            # layer, mask and filter in the stack.
+            sample = rendered.convert("RGB")
+            sample.thumbnail((512, 512))
+            red, green, blue = sample.split()
+            data = {
+                "red": red.histogram(),
+                "green": green.histogram(),
+                "blue": blue.histogram(),
+                "luminance": ImageOps.grayscale(sample).histogram(),
+            }
+        self.histogram.set_data(data, self._hist_mode)
 
     # --- Edit target (base vs a layer) --------------------------------------
     def active_adjustments(self):
@@ -1485,6 +1856,7 @@ class EditorWindow(QMainWindow):
             offer_raw_handoff(path, self)
             return False
         try:
+            source_colour = inspect_source(path)
             document = editor_engine.EditorDocument(path)
             document.render((64, 64))   # decode now so a bad file fails cleanly here
         except Exception as error:  # noqa: BLE001 — surface any decode failure plainly
@@ -1494,6 +1866,12 @@ class EditorWindow(QMainWindow):
         if recovered is not None:
             document = recovered
         self.doc = document
+        self.source_colour = source_colour
+        self.colour_status.setText(workspace_label(source_colour))
+        if not source_colour.get("icc_profile"):
+            self.colour_status.setToolTip(
+                "This source has no embedded ICC profile. It is being interpreted as sRGB. "
+                "Current processing: 8-bit sRGB legacy engine.")
         self.doc.on_change = self._on_doc_change
         self.active_target = BASE
         self._zoom_actual = False   # a freshly opened photo starts fitted
@@ -1535,11 +1913,22 @@ class EditorWindow(QMainWindow):
             document = editor_engine.EditorDocument.load_project(path)
             if not self._resolve_texture_assets(document):
                 return
+            source_colour = inspect_source(document.source_path)
             document.render((64, 64))   # decode the referenced photo now
         except Exception as error:  # noqa: BLE001
             self._error("Cannot open project", str(error))
             return
         self.doc = document
+        self.source_colour = source_colour
+        self.colour_status.setText(workspace_label(source_colour))
+        if source_colour.get("icc_profile"):
+            self.colour_status.setToolTip(
+                "Embedded ICC detected and preserved for export, but this legacy engine "
+                "does not yet perform profile conversion. Current processing: 8-bit sRGB.")
+        else:
+            self.colour_status.setToolTip(
+                "This source has no embedded ICC profile. It is being interpreted as sRGB. "
+                "Current processing: 8-bit sRGB legacy engine.")
         self.doc.on_change = self._on_doc_change
         self.active_target = BASE
         self._zoom_actual = False   # a freshly opened project starts fitted
@@ -1666,6 +2055,29 @@ class EditorWindow(QMainWindow):
         self._render_preview()
         self._update_title()
         self.status.showMessage("Auto-enhanced — tweak any slider to taste")
+
+    def auto_exposure(self):
+        """Apply only a highlight-safe exposure estimate to the active target."""
+        if not self.doc:
+            return
+        try:
+            with Image.open(self.doc.source_path) as source:
+                small = ImageOps.exif_transpose(source).convert("RGB")
+            small.thumbnail((400, 400))
+            auto = editor_engine.auto_exposure_adjustments(small)
+        except Exception as error:  # noqa: BLE001
+            self._error("Auto exposure failed", str(error))
+            return
+        target = self.active_adjustments()
+        if target is None:
+            return
+        target.update(auto)
+        self.doc.record("Auto exposure")
+        self._sync_controls_from_doc()
+        self._render_preview()
+        self._update_title()
+        self.status.showMessage(
+            f"Auto exposure: {auto['exposure']:+.2f} EV — highlights protected")
 
     def _build_neutral_picker(self):
         """Ordinary JPEG white balance: sample a neutral patch on the photo."""
@@ -1963,12 +2375,21 @@ class EditorWindow(QMainWindow):
         if target is None:
             return
         target[key] = value
+        self._interactive_render = True
+        # The debounce dispatches an immutable proxy snapshot to a worker.
+        # Slider/pointer events therefore never wait for Pillow compositing.
         self._schedule_render()
 
     def _on_commit(self, key):
         if not self.doc:
             return
         self.doc.record(f"Adjust {key.replace('_', ' ')}")
+        # Finish a drag at the normal viewport quality.  Stop a pending cheap
+        # render first so it cannot replace the crisp result a moment later.
+        self._render_timer.stop()
+        self._preview_generation += 1  # invalidate every late proxy frame
+        self._interactive_render = False
+        self._render_preview()
         self._update_title()
 
     def _on_bw(self, checked):
@@ -2004,36 +2425,54 @@ class EditorWindow(QMainWindow):
         hint.setWordWrap(True)
         col.addWidget(hint)
 
-        self.split_shadow_btn = QPushButton("Shadow colour")
-        self.split_shadow_btn.setObjectName("SwatchBtn")
+        self.split_shadow_btn = QPushButton()
+        self.split_shadow_btn.setObjectName("ColourWell")
+        self.split_shadow_btn.setFixedSize(28, 24)
+        self.split_shadow_btn.setToolTip("Choose shadow colour")
         self.split_shadow_btn.setCursor(Qt.PointingHandCursor)
         self.split_shadow_btn.clicked.connect(
             lambda: self._pick_split_colour("split_shadow"))
-        col.addWidget(self.split_shadow_btn)
+        shadow_row = QHBoxLayout()
+        shadow_row.addWidget(QLabel("Shadow colour"))
+        shadow_row.addStretch(1)
+        shadow_row.addWidget(self.split_shadow_btn)
+        col.addLayout(shadow_row)
         shadow_amt = SliderRow("split_shadow_amount", "Shadows", 0, 100, 1, 0)
         shadow_amt.changed.connect(self._on_adjust)
         shadow_amt.committed.connect(self._on_commit)
         self.rows["split_shadow_amount"] = shadow_amt
         col.addWidget(shadow_amt)
 
-        self.split_mid_btn = QPushButton("Midtone colour")
-        self.split_mid_btn.setObjectName("SwatchBtn")
+        self.split_mid_btn = QPushButton()
+        self.split_mid_btn.setObjectName("ColourWell")
+        self.split_mid_btn.setFixedSize(28, 24)
+        self.split_mid_btn.setToolTip("Choose midtone colour")
         self.split_mid_btn.setCursor(Qt.PointingHandCursor)
         self.split_mid_btn.clicked.connect(
             lambda: self._pick_split_colour("split_midtone"))
-        col.addWidget(self.split_mid_btn)
+        mid_row = QHBoxLayout()
+        mid_row.addWidget(QLabel("Midtone colour"))
+        mid_row.addStretch(1)
+        mid_row.addWidget(self.split_mid_btn)
+        col.addLayout(mid_row)
         mid_amt = SliderRow("split_midtone_amount", "Midtones", 0, 100, 1, 0)
         mid_amt.changed.connect(self._on_adjust)
         mid_amt.committed.connect(self._on_commit)
         self.rows["split_midtone_amount"] = mid_amt
         col.addWidget(mid_amt)
 
-        self.split_hi_btn = QPushButton("Highlight colour")
-        self.split_hi_btn.setObjectName("SwatchBtn")
+        self.split_hi_btn = QPushButton()
+        self.split_hi_btn.setObjectName("ColourWell")
+        self.split_hi_btn.setFixedSize(28, 24)
+        self.split_hi_btn.setToolTip("Choose highlight colour")
         self.split_hi_btn.setCursor(Qt.PointingHandCursor)
         self.split_hi_btn.clicked.connect(
             lambda: self._pick_split_colour("split_highlight"))
-        col.addWidget(self.split_hi_btn)
+        hi_row = QHBoxLayout()
+        hi_row.addWidget(QLabel("Highlight colour"))
+        hi_row.addStretch(1)
+        hi_row.addWidget(self.split_hi_btn)
+        col.addLayout(hi_row)
         hi_amt = SliderRow("split_highlight_amount", "Highlights", 0, 100, 1, 0)
         hi_amt.changed.connect(self._on_adjust)
         hi_amt.committed.connect(self._on_commit)
@@ -2286,19 +2725,25 @@ class EditorWindow(QMainWindow):
         path, selected_filter = QFileDialog.getSaveFileName(
             self, "Export copy", suggested,
             "JPEG — flattened (*.jpg);;PNG — flattened (*.png);;"
-            "TIFF — flattened (*.tif *.tiff);;Photoshop PSD — layered checkpoints (*.psd)")
+            "TIFF — flattened (*.tif *.tiff);;"
+            "OpenRaster — layered recovery (*.ora);;"
+            "Photoshop PSD — layered checkpoints (*.psd)")
         if not path:
             return
         extension = os.path.splitext(path)[1].lower()
         if not extension:
-            chosen = ".psd" if "PSD" in selected_filter else \
+            chosen = ".ora" if "OpenRaster" in selected_filter else \
+                ".psd" if "PSD" in selected_filter else \
                 ".tif" if "TIFF" in selected_filter else \
                 ".png" if "PNG" in selected_filter else ".jpg"
             path += chosen
         copyright_text = (settings["copyright_text"]
                           if settings["add_copyright_if_missing"] else "")
         try:
-            if os.path.splitext(path)[1].lower() == ".psd":
+            if os.path.splitext(path)[1].lower() == ".ora":
+                from .ora_export import export_openraster
+                export_openraster(self.doc, path)
+            elif os.path.splitext(path)[1].lower() == ".psd":
                 from .psd_export import export_layered_psd
                 export_layered_psd(self.doc, path)
             else:
@@ -2364,6 +2809,37 @@ class EditorWindow(QMainWindow):
     def _schedule_render(self):
         self._render_timer.start()
 
+    def _dispatch_render(self):
+        if not self.doc:
+            return
+        if not self._interactive_render:
+            self._render_preview()
+            return
+        self._preview_generation += 1
+        token = self._preview_generation
+        job = _PreviewJob(token, self.doc.source_path, self.doc.snapshot(),
+                          self.view.viewport_target(interactive=True))
+        self._preview_jobs.add(job)
+        job.signals.ready.connect(
+            lambda generation, image, current=job:
+            self._accept_proxy(generation, image, current))
+        job.signals.failed.connect(
+            lambda generation, message, current=job:
+            self._reject_proxy(generation, message, current))
+        self._preview_pool.start(job)
+
+    def _accept_proxy(self, generation, rendered, job):
+        self._preview_jobs.discard(job)
+        if generation != self._preview_generation or not self._interactive_render:
+            return
+        self._show_rendered(rendered, keep_view=True,
+                            max_size=self.view.viewport_target(interactive=True))
+
+    def _reject_proxy(self, generation, message, job):
+        self._preview_jobs.discard(job)
+        if generation == self._preview_generation:
+            _log.warning("interactive preview failed: %s", message)
+
     def _queue_fit_resolution_refresh(self):
         if self.doc and not self._zoom_actual:
             self._layout_render_timer.start()
@@ -2378,15 +2854,25 @@ class EditorWindow(QMainWindow):
         # At 100% we render the photograph at its native resolution so the
         # canvas shows true pixels (a real focus check); when Fit, we render a
         # fast proxy capped to the window so slider drags stay smooth.
-        max_size = None if self._zoom_actual else self.view.viewport_target()
+        if self._interactive_render:
+            # Even at 100%, dragging stays responsive; release immediately
+            # restores the true native-pixel render.
+            max_size = self.view.viewport_target(interactive=True)
+        else:
+            max_size = None if self._zoom_actual else self.view.viewport_target()
+        rendered = self.doc.render(max_size=max_size)
+        self._show_rendered(rendered, keep_view=keep_view, max_size=max_size)
+
+    def _show_rendered(self, rendered, keep_view=True, max_size=None):
+        edited = pil_to_qpixmap(rendered)
         if self.act_compare.isChecked():
-            edited = render_pixmap(self.doc, max_size=max_size)
             original = original_pixmap(self.doc.source_path, max_size=max_size)
             self.view.set_compare(original, edited, keep_view=keep_view)
         else:
-            pixmap = render_pixmap(self.doc, max_size=max_size)
-            self.view.set_pixmap(pixmap, keep_view=keep_view)
-        self._refresh_histogram()
+            self.view.set_pixmap(edited, keep_view=keep_view)
+        if getattr(self, "paint_on_photo", None) and self.paint_on_photo.isChecked():
+            self.view.set_mask_overlay(getattr(self, "_canvas_mask", None))
+        self._refresh_histogram(rendered)
 
     def zoom_fit(self):
         """Fit the whole photograph to the window (fast preview resolution)."""
@@ -2402,6 +2888,12 @@ class EditorWindow(QMainWindow):
         if self.doc:
             self._render_preview(keep_view=True)
         self.view.actual_size()
+
+    def zoom_in(self):
+        self.view.zoom_by(1.15)
+
+    def zoom_out(self):
+        self.view.zoom_by(1 / 1.15)
 
     def _toggle_compare(self, checked):
         if checked:
@@ -2513,11 +3005,23 @@ class EditorWindow(QMainWindow):
 
     def _confirm_discard(self):
         if self.doc and self.doc.is_dirty():
+            # Flush immediately: the normal 2.5-second timer may not have fired
+            # if the user adjusts a control and closes the window straight away.
+            self._recovery_timer.stop()
+            self._write_recovery()
             answer = QMessageBox.question(
-                self, "Unsaved edits",
-                "This photo has unsaved edits. Discard them?",
-                QMessageBox.Discard | QMessageBox.Cancel)
-            return answer == QMessageBox.Discard
+                self, "Keep your edits?",
+                "Your edits have been autosaved in SNAP SLAPPER's shared work "
+                "folder. Keep them so this photograph resumes where you left off?\n\n"
+                "Choose Discard only to permanently remove this autosaved work.",
+                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                QMessageBox.Save)
+            if answer == QMessageBox.Save:
+                return True
+            if answer == QMessageBox.Discard:
+                self._clear_recovery()
+                return True
+            return False
         return True
 
     def keyPressEvent(self, event):  # noqa: N802 — Qt override
@@ -2533,7 +3037,6 @@ class EditorWindow(QMainWindow):
     def closeEvent(self, event):
         if self._confirm_discard():
             self._save_window_state()
-            self._clear_recovery()   # deliberate close — discard the recovery copy
             event.accept()
         else:
             event.ignore()

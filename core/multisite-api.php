@@ -1868,7 +1868,8 @@ if ($resource === 'settings' && $sub_action === 'push' && $method === 'POST') {
     // Explicit allowlist — keep this narrow.
     $allowed_keys = [
         'timezone', 'date_format',
-        'max_width_landscape', 'max_height_portrait',
+        'prompt', 'max_width_landscape', 'max_height_portrait',
+        'jpeg_quality', 'image_resize_enabled', 'export_sharpen',
         'akismet_key',
         'ai_provider', 'ai_key_claude', 'ai_key_gemini', 'ai_key_openai', 'ai_key_deepseek', 'ai_key_kimi', 'ai_gemini_model', 'ai_openai_model', 'ai_deepseek_model', 'ai_kimi_model', 'ai_training_policy', 'ai_cost_accepted',
         'smackback_enabled', 'smackback_mode',
