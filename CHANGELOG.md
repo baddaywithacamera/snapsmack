@@ -9,6 +9,16 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.609D "SHOW THE VERDICT" — 2026-09-03
+- **The Interactions log now shows why a challenge entry did or didn't boost.**
+  When a participant's post is processed, it records a `PHOTOFRI` line with the
+  verdict: **ADMITTED & boosted**, or the exact reason it was skipped — "post never
+  reached the blog (not delivered / not ingested)", "not tagged #… (post tags: …)",
+  "author not on the testing whitelist", "needs exactly one image and no video",
+  "published outside the window (posted … ; window … → …)", "marked sensitive",
+  "a reply, not a standalone post", and so on. No more silent 0 — you can see at a
+  glance whether an entry arrived and what happened to it. (Ordinary posts from
+  non-participants are skipped so the log isn't flooded.)
 ## 0.7.608D "NOBODY REPOSTS" — 2026-09-03
 - **New: RECOVER MISSED ENTRIES — pull back challenge entries dropped during an
   inbound outage, without asking anyone to re-post.** After the signature-fetch bug
