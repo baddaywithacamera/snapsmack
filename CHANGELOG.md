@@ -9,6 +9,17 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.601D "HOMEGROWN" — 2026-09-02
+- **Archive masonry: sharper tiles, no more "sparkle."** The Masonry (justified)
+  archive view was loading the full-size photo and letting the browser crush it
+  into a small tile — which made downscaled images shimmer/sparkle. It now loads
+  the aspect thumbnail, so tiles are clean. Nothing to regenerate; every site
+  improves immediately (an optional thumbnail refresh makes them crisper still).
+- **Archive masonry now runs on our own code.** Replaced the third-party
+  fjGallery library with SnapSmack's own justified-row engine (the same one the
+  SCROLL skin uses), so the whole gallery is all-SnapSmack — no outside library.
+  50 Shades of Noah Grey is switched over; the layout is unchanged, just cleaner
+  and ours.
 ## 0.7.600D "DEADBOLT" — 2026-09-02
 - **The shared credential vault now actually encrypts your keys.** The vault
   existed but never engaged — every stored secret (AI keys, Drive/Google
