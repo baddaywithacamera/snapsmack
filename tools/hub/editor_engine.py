@@ -12,7 +12,9 @@ import os
 import time
 import tempfile
 import textwrap
+import threading
 import zipfile
+from collections import OrderedDict
 
 from PIL import (Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter,
                  ImageFont, ImageMath, ImageOps)
@@ -20,6 +22,48 @@ import numpy as np
 
 import photo_manager
 import slapper_filters
+
+
+# Fit/live previews repeatedly render the same source. Decoding a large TIFF
+# for every slider tick costs far more than the tonal adjustment, so retain a
+# few downsampled, orientation-correct source frames. Cached images are never
+# handed out directly because Pillow operations are not uniformly immutable.
+_PREVIEW_SOURCE_CACHE = OrderedDict()
+_PREVIEW_SOURCE_CACHE_LOCK = threading.RLock()
+_PREVIEW_SOURCE_CACHE_LIMIT = 4
+
+
+def _open_source_image(path, max_size=None):
+    """Decode *path*, using a reusable reduced source for preview renders."""
+    if not max_size:
+        with Image.open(path) as source:
+            return ImageOps.exif_transpose(source).convert("RGB")
+
+    requested = (max(1, int(max_size[0])), max(1, int(max_size[1])))
+    try:
+        stamp = os.stat(path).st_mtime_ns
+    except OSError:
+        stamp = 0
+    cache_key = (os.path.normcase(os.path.abspath(path)), stamp)
+    with _PREVIEW_SOURCE_CACHE_LOCK:
+        cached = _PREVIEW_SOURCE_CACHE.get(cache_key)
+        if cached is not None:
+            cached_bound, cached_image = cached
+            if (cached_bound[0] >= requested[0] and
+                    cached_bound[1] >= requested[1]):
+                _PREVIEW_SOURCE_CACHE.move_to_end(cache_key)
+                image = cached_image.copy()
+                image.thumbnail(requested, Image.Resampling.LANCZOS)
+                return image
+
+        with Image.open(path) as source:
+            image = ImageOps.exif_transpose(source).convert("RGB")
+        image.thumbnail(requested, Image.Resampling.LANCZOS)
+        _PREVIEW_SOURCE_CACHE[cache_key] = (requested, image.copy())
+        _PREVIEW_SOURCE_CACHE.move_to_end(cache_key)
+        while len(_PREVIEW_SOURCE_CACHE) > _PREVIEW_SOURCE_CACHE_LIMIT:
+            _PREVIEW_SOURCE_CACHE.popitem(last=False)
+        return image
 
 
 PROJECT_VERSION = 1
@@ -45,7 +89,7 @@ DEFAULT_ADJUSTMENTS = {
     # Vignette edge softness (50 == the classic look) and a darken-only grain
     # mode (False == the original soft-light grain). Defaults preserve every
     # existing LEWK and project unchanged.
-    "vignette_feather": 50.0, "grain_darken": False,
+    "vignette_size": 70.0, "vignette_feather": 50.0, "grain_darken": False,
     # Split toning — colour the shadows and highlights independently (the
     # teal-and-orange / warm-cool look most film emulations rely on). Both
     # amounts default to 0, so this is off until dialled up.
@@ -464,18 +508,25 @@ def apply_adjustments(image, adjustments):
     vignette = float(settings["vignette"])
     if vignette:
         width, height = output.size
-        mask = Image.new("L", (width, height), 0)
-        draw = ImageDraw.Draw(mask)
-        inset_x, inset_y = int(width * .08), int(height * .08)
-        draw.ellipse((inset_x, inset_y, width - inset_x, height - inset_y), fill=255)
-        # Feather: 50 reproduces the classic .16 blur; 0 = hard edge, 100 = very soft.
+        # Elliptical normalized radius: the effect is mathematically zero
+        # through the protected centre, then follows one continuous smoothstep
+        # to full edge strength. This avoids the clipped Gaussian halo and the
+        # unintended whole-frame dimming of the former oversized blur.
+        yy, xx = np.ogrid[:height, :width]
+        radius = np.sqrt(((xx - (width - 1) / 2) / max(1, width / 2)) ** 2 +
+                         ((yy - (height - 1) / 2) / max(1, height / 2)) ** 2)
+        size = max(0.0, min(100.0, float(settings.get("vignette_size", 70)))) / 100.0
         feather = float(settings.get("vignette_feather", 50)) / 100.0
-        blur = max(1.0, max(width, height) * feather * .32)
-        mask = mask.filter(ImageFilter.GaussianBlur(radius=blur))
+        midpoint = .55 + size * .40
+        transition = .04 + feather * .42
+        start = max(.08, midpoint - transition / 2)
+        end = min(1.05, midpoint + transition / 2)
+        weight = np.clip((radius - start) / max(.001, end - start), 0.0, 1.0)
+        weight = weight * weight * (3.0 - 2.0 * weight)
         strength = abs(vignette) / 100.0
         edge = Image.new("RGB", output.size, (0, 0, 0) if vignette < 0 else (255, 255, 255))
-        blend_mask = mask.point(lambda value: int(255 - (255 - value) * strength))
-        output = Image.composite(output, edge, blend_mask)
+        effect_mask = Image.fromarray(np.uint8(np.rint(weight * strength * 255)), "L")
+        output = Image.composite(edge, output, effect_mask)
 
     grain = float(settings["grain"])
     if grain > 0:
@@ -993,7 +1044,7 @@ def apply_lens_distortion(image, geometry):
         return image
     rgba = image.convert("RGBA")
     width, height = rgba.size
-    edge_mode = geometry.get("lens_edges", "auto_fill")
+    edge_mode = geometry.get("lens_edges", "auto_crop")
     auto_zoom = 1.0
     if edge_mode == "auto_fill":
         # Sample the boundary and zoom just enough that no transparent wedge
@@ -1022,8 +1073,52 @@ def apply_lens_distortion(image, geometry):
                          _lens_source_point(*point, width, height, geometry,
                                             auto_zoom=auto_zoom))
             mesh.append(((left, top, right, bottom), quad))
-    return rgba.transform(rgba.size, Image.Transform.MESH, mesh,
-                          Image.Resampling.BICUBIC, fillcolor=(0, 0, 0, 0))
+    transformed = rgba.transform(rgba.size, Image.Transform.MESH, mesh,
+                                 Image.Resampling.BICUBIC,
+                                 fillcolor=(0, 0, 0, 0))
+    if edge_mode == "auto_crop":
+        rectangle = _largest_opaque_rectangle(transformed.getchannel("A"))
+        if rectangle and rectangle[2] > rectangle[0] and rectangle[3] > rectangle[1]:
+            transformed = transformed.crop(rectangle)
+    return transformed
+
+
+def _largest_opaque_rectangle(alpha, sample_size=320):
+    """Find a conservative largest rectangular area without warped-edge gaps."""
+    width, height = alpha.size
+    scale = min(1.0, sample_size / max(width, height))
+    small_w = max(1, round(width * scale))
+    small_h = max(1, round(height * scale))
+    small = alpha.resize((small_w, small_h), Image.Resampling.BILINEAR)
+    pixels = small.load()
+    heights = [0] * small_w
+    best_area = 0
+    best = None
+    for y in range(small_h):
+        for x in range(small_w):
+            heights[x] = heights[x] + 1 if pixels[x, y] >= 250 else 0
+        stack = []
+        for x in range(small_w + 1):
+            current = heights[x] if x < small_w else 0
+            start = x
+            while stack and stack[-1][1] > current:
+                left, bar_height = stack.pop()
+                area = bar_height * (x - left)
+                if area > best_area:
+                    best_area = area
+                    best = (left, y - bar_height + 1, x, y + 1)
+                start = left
+            if not stack or stack[-1][1] < current:
+                stack.append((start, current))
+    if not best or best_area < 4:
+        return None
+    left, top, right, bottom = best
+    # Round inward so no unsampled translucent boundary is retained.
+    margin = 2
+    return (min(width - 1, math.ceil((left + margin) * width / small_w)),
+            min(height - 1, math.ceil((top + margin) * height / small_h)),
+            max(1, math.floor((right - margin) * width / small_w)),
+            max(1, math.floor((bottom - margin) * height / small_h)))
 
 
 class EditorDocument:
@@ -1039,7 +1134,7 @@ class EditorDocument:
             "perspective_edges": "auto_crop",
             "lens_distortion": 0.0, "lens_spherical": 0.0,
             "lens_center_x": 0.0, "lens_center_y": 0.0,
-            "lens_scale": 100.0, "lens_edges": "auto_fill",
+            "lens_scale": 100.0, "lens_edges": "auto_crop",
         }
         self.layers = []
         self.retouched = []
@@ -1127,6 +1222,18 @@ class EditorDocument:
                             "mask_transform": self.default_transform(), "styles": {},
                             "transform": self.default_transform()})
         self.record("Add image layer")
+        return self.layers[-1]
+
+    def add_paint_layer(self, name="Blank layer"):
+        """Add a transparent canvas layer that can be filled and masked."""
+        self.layers.append({
+            "id": _new_layer_id(), "name": name, "type": "paint",
+            "fill": [0, 0, 0, 0], "visible": True, "opacity": 1.0,
+            "blend": "normal", "adjustments": copy.deepcopy(DEFAULT_ADJUSTMENTS),
+            "mask": "", "mask_enabled": True, "mask_linked": True,
+            "mask_transform": self.default_transform(), "styles": {},
+        })
+        self.record("Add blank layer")
         return self.layers[-1]
 
     @staticmethod
@@ -1308,8 +1415,10 @@ class EditorDocument:
         return output
 
     def render(self, max_size=None):
-        with Image.open(self.source_path) as source:
-            image = ImageOps.exif_transpose(source).convert("RGB")
+        # Preview work starts at preview resolution. Previously the source TIFF
+        # and all geometry were processed at full resolution, then discarded by
+        # thumbnail() at the end of the render.
+        image = _open_source_image(self.source_path, max_size)
         image = apply_lens_distortion(image, self.geometry)
         image = apply_perspective(image, self.geometry)
         rotation = float(self.geometry.get("rotation", 0))
@@ -1398,6 +1507,14 @@ class EditorDocument:
                 top.putalpha(alpha)
                 if fit in ("cover", "contain", "stretch", "tile"):
                     top = self._fit_layer_image(top, image.size, fit)
+            elif layer.get("type") == "paint":
+                fill = list(layer.get("fill", [0, 0, 0, 0]))
+                fill = (fill + [0, 0, 0, 0])[:4]
+                top = Image.new("RGBA", image.size, tuple(int(value) for value in fill))
+                alpha = top.getchannel("A")
+                top = apply_adjustments(
+                    top.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
+                top.putalpha(alpha)
             elif layer.get("type") == "text":
                 top = self._text_layer_image(layer)
                 alpha = top.getchannel("A")

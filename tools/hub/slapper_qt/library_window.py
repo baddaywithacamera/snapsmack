@@ -285,7 +285,7 @@ class _ScanTask(QRunnable):
 class LibraryWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(f"SNAP SLAPPER — Library (build {BUILD_VERSION})")
+        self.setWindowTitle(f"Library (build {BUILD_VERSION})")
         self.resize(1180, 780)
         self._pool = QThreadPool.globalInstance()
         self._scan_pool = QThreadPool(self)
@@ -781,7 +781,7 @@ class LibraryWindow(QMainWindow):
         self._icons.clear()
         self._stamps.clear()
         title = "All Catalog Photos" if kind == "catalog" else f"Album — {name}"
-        self.setWindowTitle(f"SNAP SLAPPER — {title} (build {BUILD_VERSION})")
+        self.setWindowTitle(f"{title} (build {BUILD_VERSION})")
         self._populate()
 
     def _selected_tree_folder(self):
@@ -1344,8 +1344,7 @@ class LibraryWindow(QMainWindow):
         self.list.clear()
         self._items.clear()
         self.setWindowTitle(
-            f"SNAP SLAPPER — {os.path.basename(folder) or folder} "
-            f"(build {BUILD_VERSION})")
+            f"{os.path.basename(folder) or folder} (build {BUILD_VERSION})")
         scope = "folder and subfolders" if recursive else "folder only"
         self.status.showMessage(f"Scanning {scope}…  {folder}")
         self._scan_pool.start(_ScanTask(

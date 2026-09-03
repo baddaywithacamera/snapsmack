@@ -21,7 +21,10 @@ def main(argv=None):
     argv = list(sys.argv if argv is None else argv)
     app = QApplication.instance() or QApplication(argv)
     app.setApplicationName("SNAP SLAPPER")
-    app.setApplicationDisplayName("SNAP SLAPPER Photo Library and Editor")
+    # Windows appends the application display name to individual window titles.
+    # Keep it to the product name so title bars do not repeat the name or carry
+    # a marketing description.
+    app.setApplicationDisplayName("SNAP SLAPPER")
     app.setApplicationVersion(BUILD_VERSION)
     app.setStyleSheet(theme.stylesheet())
     if _log is not None:
