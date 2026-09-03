@@ -193,6 +193,18 @@ def test_layer_can_be_reselected_after_clicking_base():
     assert win.active_target == layer["id"]
 
 
+def test_layers_panel_exposes_found_textures_button():
+    win = _editor(_image("texture-layer-button.jpg"))
+    buttons = {button.text(): button for button in
+               win.layers_panel.findChildren(QPushButton)}
+    assert "Texture" in buttons
+
+    opened = []
+    win.open_textures = lambda: opened.append(True)
+    buttons["Texture"].click()
+    assert opened == [True]
+
+
 def test_blank_fill_layer_any_blend_mode_and_copied_mask():
     win = _editor(_image("blank-fill-mask.jpg", (120, 80), (100, 100, 100)))
     source = win.doc.add_adjustment_layer("Sky selection")
