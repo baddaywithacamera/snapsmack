@@ -31,43 +31,10 @@ if ($archive_default === 'masonry') $archive_default = 'justified';
 $ratio_min = 2 / 3;
 $ratio_max = 3 / 2;
 
-// Pre-build justified rows
-$target_row_h = (int)($settings['justified_row_height'] ?? 280);
-$gap          = 4;
-$ref_w        = (int)($settings['main_canvas_width'] ?? 1280);
-
-$rows = [];
-$current_row = [];
-$current_row_width = 0;
-foreach ($images as $img) {
-    $iw = (int)($img['img_width'] ?? 400);
-    $ih = (int)($img['img_height'] ?? 400);
-    if ($ih <= 0) $ih = 400;
-    if ($iw <= 0) $iw = 400;
-    $img['_aspect'] = $iw / $ih;
-    $scaled_w = round($img['_aspect'] * $target_row_h);
-    $current_row[] = $img;
-    $current_row_width += $scaled_w + $gap;
-    if ($current_row_width - $gap >= $ref_w) {
-        $rows[] = ['images' => $current_row, 'full' => true];
-        $current_row = [];
-        $current_row_width = 0;
-    }
-}
-if (!empty($current_row)) {
-    $rows[] = ['images' => $current_row, 'full' => false];
-}
-
-$last_full_ar_sum = 0;
-for ($i = count($rows) - 1; $i >= 0; $i--) {
-    if ($rows[$i]['full']) {
-        foreach ($rows[$i]['images'] as $_img) {
-            $last_full_ar_sum += $_img['_aspect'];
-        }
-        break;
-    }
-}
-if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
+// Justified rows are laid out CLIENT-SIDE by our own ss-engine-rows.js from each
+// tile's data-w/data-h — no server-side row pre-build, and NO third-party library
+// (this replaces the MIT-licensed fjGallery so the whole gallery stays SnapSmack).
+$gap = 4;
 ?>
 
 <?php
@@ -119,26 +86,31 @@ $_fsog_initial_thumbs = ($_fsog_cur === 'thumbs');
     <?php endif; ?>
 </div>
 
-<!-- Justified grid — Flickr-style row fill with full aspect ratios -->
-<div id="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px; --last-row-ar-sum: <?php echo round($last_full_ar_sum, 4); ?>; <?php echo $_fsog_initial_thumbs ? 'display:none;' : ''; ?>">
+<!-- Justified rows — laid out by OUR ss-engine-rows.js (no third-party lib). Tiles
+     load the aspect THUMBNAIL (a_), not the full image, which is what kills the
+     downscale "sparkle" the old full-image grid produced. Shape comes from
+     data-w/data-h so lazy-load never has to read naturalWidth. -->
+<div id="justified-grid" class="ss-scroll-wall" style="--ss-gap: <?php echo $gap; ?>px; <?php echo $_fsog_initial_thumbs ? 'display:none;' : ''; ?>">
     <?php if (!empty($images)): ?>
-        <?php foreach ($rows as $row_data):
-            $row = $row_data['images'];
-            $row_class = 'justified-row' . (!$row_data['full'] ? ' justified-row-last' : '');
+        <?php foreach ($images as $img):
+            $link = BASE_URL . htmlspecialchars($img['img_slug']);
+            if (!empty($img['img_thumb_aspect'])) {
+                $thumb_url = BASE_URL . ltrim($img['img_thumb_aspect'], '/');
+            } else {
+                $full_img_path = ltrim($img['img_file'] ?? '', '/');
+                $filename = basename($full_img_path);
+                $folder   = str_replace($filename, '', $full_img_path);
+                $thumb_url = BASE_URL . $folder . 'thumbs/a_' . $filename;
+            }
+            $iw = (int)($img['img_width'] ?? 0); $ih = (int)($img['img_height'] ?? 0);
+            if ($iw <= 0 || $ih <= 0) { $iw = 3; $ih = 2; }
+            $title = $img['img_title'] ?? '';
+            $alt   = ($img['img_alt'] ?? '') !== '' ? $img['img_alt'] : $title;
         ?>
-            <div class="<?php echo $row_class; ?>">
-                <?php foreach ($row as $img):
-                    $link      = BASE_URL . htmlspecialchars($img['img_slug']);
-                    $img_url   = BASE_URL . ltrim($img['img_file'] ?? '', '/');
-                    $flex_grow = round($img['_aspect'] * 100);
-                ?>
-                    <a href="<?php echo $link; ?>" class="justified-item"
-                       title="<?php echo htmlspecialchars($img['img_title'] ?? ''); ?>"
-                       style="flex-grow: <?php echo $flex_grow; ?>; flex-basis: 0; aspect-ratio: <?php echo round($img['_aspect'], 4); ?>;">
-                        <img src="<?php echo $img_url; ?>" alt="<?php echo htmlspecialchars(($img['img_alt'] ?? '') !== '' ? $img['img_alt'] : ($img['img_title'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" loading="lazy">
-                    </a>
-                <?php endforeach; ?>
-            </div>
+            <a href="<?php echo $link; ?>" class="ss-masonry-item" title="<?php echo htmlspecialchars($title); ?>">
+                <img src="<?php echo $thumb_url; ?>" data-w="<?php echo $iw; ?>" data-h="<?php echo $ih; ?>"
+                     alt="<?php echo htmlspecialchars($alt, ENT_QUOTES, 'UTF-8'); ?>" loading="lazy">
+            </a>
         <?php endforeach; ?>
     <?php else: ?>
         <div class="empty-sector-msg">

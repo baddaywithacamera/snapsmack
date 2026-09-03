@@ -867,6 +867,7 @@ return [
         'smack-rows' => [
             'label'        => 'Justified-row photo wall (native aspect, landscapes largest — mirror of smack-columns)',
             'path'         => 'assets/js/ss-engine-rows.js',
+            'css'          => 'assets/css/ss-engine-scroll-wall.css',
             'has_settings' => false,
         ],
         'smack-aurora-bg' => [
