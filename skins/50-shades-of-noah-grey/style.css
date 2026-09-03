@@ -607,7 +607,9 @@ body {
     .fsog-archive-title { opacity: 1; }
 }
 
-/* --- GRID B: Justified (flex rows, public-facing.css handles the layout engine) --- */
+/* --- GRID B: Justified rows — laid out by OUR ss-engine-rows.js (no third-party
+   lib). Structural layout comes from assets/css/ss-engine-scroll-wall.css; this
+   block only sets the container width and the hover behaviour. --- */
 
 #justified-grid {
     max-width: 95%;
@@ -617,11 +619,11 @@ body {
     flex: 1 0 auto;
 }
 
-#justified-grid .justified-item img {
+#justified-grid .ss-masonry-item img {
     transition: opacity 0.3s ease;
 }
 
-#justified-grid .justified-item:hover img {
+#justified-grid .ss-masonry-item:hover img {
     opacity: 0.75;
 }
 
