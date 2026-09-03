@@ -9,6 +9,27 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.600D "DEADBOLT" — 2026-09-02
+- **The shared credential vault now actually encrypts your keys.** The vault
+  existed but never engaged — every stored secret (AI keys, Drive/Google
+  credentials, backup keys) was silently written as recoverable base64, even with a
+  vault set up. It now restores its key from the OS keychain on every tool launch,
+  so secrets are genuinely encrypted at rest. Turn the vault on once with "remember
+  on this machine" to activate it; nothing changes for you day to day.
+- **Stolen-key protection on the shared connection profiles.** If a profile file is
+  tampered with — its site address swapped to an attacker while your real posting
+  key rides along — every tool now loudly refuses it instead of sending your key to
+  the wrong place. Verified against all live profiles; no legitimate profile is
+  affected.
+- **The hub key no longer goes out over an insecure link.** Fleet discovery refuses
+  to send the hub's provisioning key to a site over plain http.
+- **COLD SNAP won't post over an insecure link** — it refuses to attach the posting
+  key to a non-https connection (loopback still fine for local testing).
+- **Bad-image protection groundwork (`snap_imgsafe`).** A shared safe front door for
+  decoding untrusted image bytes — pixel ceiling, no truncated loads, format
+  allowlist — ready for the image tools to route through.
+- Note: sealing the site posting keys held inside the profile files is the next
+  step (it needs GYSS taught to read the vault) and is tracked separately.
 ## 0.7.598D "LIVE WIRE" — 2026-09-01
 - **Manage Archive: find and remove duplicate posts.** When the same photo has
   been posted more than once (a re-import), Manage Archive now shows a banner
