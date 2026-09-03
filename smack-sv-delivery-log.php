@@ -21,6 +21,7 @@
  * Last non-empty line of this file MUST match the line above.
  */
 require_once 'core/auth-smack.php';
+require_once 'core/fediverse.php';   // sv_fedi_like_count / sv_fedi_boost_count (per-post engagement)
 
 /* ---- data load (all read-only) -------------------------------------------- */
 try {
@@ -270,6 +271,8 @@ include 'core/sidebar.php';
                     <th>Federation</th>
                     <th>Pushed</th>
                     <th>Published</th>
+                    <th>Likes</th>
+                    <th>Boosts</th>
                     <th>Stuck jobs</th>
                 </tr>
             </thead>
@@ -281,6 +284,10 @@ include 'core/sidebar.php';
                     $pushed  = trim((string)($p['fedi_pushed_at'] ?? '')) !== '';
                     $stuck   = (int)($stuck_by_post[(int)$p['id']] ?? 0);
                     $flag_missed = ($pub && $fon && !$pushed);
+                    // These rows are all grouped posts, so the federation target is
+                    // ('post', id) — a clean, unambiguous mapping for the tallies.
+                    $likes  = function_exists('sv_fedi_like_count')  ? sv_fedi_like_count($pdo, 'post', (int)$p['id'])  : 0;
+                    $boosts = function_exists('sv_fedi_boost_count') ? sv_fedi_boost_count($pdo, 'post', (int)$p['id']) : 0;
                 ?>
                 <tr>
                     <td><?php echo htmlspecialchars($pt); ?> <span class="dim">#<?php echo (int)$p['id']; ?></span></td>
@@ -296,6 +303,8 @@ include 'core/sidebar.php';
                         <?php endif; ?>
                     </td>
                     <td><?php echo htmlspecialchars(dlog_age((string)$p['created_at'])); ?></td>
+                    <td><?php echo $likes  > 0 ? '&#9829; ' . number_format($likes)  : '<span class="dim">0</span>'; ?></td>
+                    <td><?php echo $boosts > 0 ? '&#128257; ' . number_format($boosts) : '<span class="dim">0</span>'; ?></td>
                     <td><?php echo $stuck > 0 ? (int)$stuck . ' retrying' : '<span class="dim">&mdash;</span>'; ?></td>
                 </tr>
                 <?php endforeach; ?>

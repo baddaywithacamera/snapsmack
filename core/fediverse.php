@@ -210,6 +210,43 @@ function sv_ensure_tables(PDO $pdo): void {
         UNIQUE KEY `uq_ap_like` (`target_type`, `target_id`, `actor_url`(180)),
         KEY `idx_ap_like_target` (`target_type`, `target_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // Boost (reblog) tally (0.7.605D): the mirror of snap_ap_likes for Announce,
+    // so boosts get a per-post count the same way likes do. Inbound Announce fills
+    // it (Undo Announce empties it); sv_fedi_boost_count() and the stats pages read
+    // it. Kept separate from the notification row so the tally survives even if the
+    // notification is cleared, exactly as likes are independent of their notice.
+    $boosts_is_new = false;
+    try {
+        $boosts_is_new = !(bool)$pdo->query("SELECT 1 FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_ap_boosts' LIMIT 1")->fetchColumn();
+    } catch (Throwable $e) { $boosts_is_new = false; }
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_boosts` (
+        `id`          int unsigned NOT NULL AUTO_INCREMENT,
+        `target_type` enum('image','post') COLLATE utf8mb4_unicode_ci NOT NULL,
+        `target_id`   int unsigned NOT NULL,
+        `actor_url`   varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        `created_at`  datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_ap_boost` (`target_type`, `target_id`, `actor_url`(180)),
+        KEY `idx_ap_boost_target` (`target_type`, `target_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // One-time backfill on first creation: boosts recorded before this build live
+    // only as 'boost' notifications (keyed by the boosted note URL). Resolve each
+    // to its post/image and seed the tally so existing boosts are not lost to a
+    // zero count. Best-effort and idempotent (INSERT IGNORE); a resolve miss just
+    // skips that row. Runs once, only when the table was absent a moment ago.
+    if ($boosts_is_new && function_exists('sv_resolve_target')) {
+        try {
+            $seed = $pdo->prepare("INSERT IGNORE INTO snap_ap_boosts (target_type, target_id, actor_url) VALUES (?, ?, ?)");
+            foreach ($pdo->query("SELECT DISTINCT actor_url, object_id FROM snap_ap_notifications WHERE ntype = 'boost'")
+                         ->fetchAll(PDO::FETCH_ASSOC) as $b) {
+                $bt = sv_resolve_target((string)($b['object_id'] ?? ''), $pdo);
+                if ($bt && ($bt['type'] === 'image' || $bt['type'] === 'post')) {
+                    $seed->execute([$bt['type'], (int)$bt['id'], (string)$b['actor_url']]);
+                }
+            }
+        } catch (Throwable $e) { /* backfill is best-effort; new boosts still count */ }
+    }
     // Piggyback search accounts (0.7.373): a read-only OAuth token on a trusted
     // instance, so the blog can proxy that instance's AUTHENTICATED
     // /api/v2/search (account + full-text discovery the public endpoints can't
@@ -1888,6 +1925,15 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                     "DELETE FROM snap_ap_notifications
                      WHERE ntype = 'boost' AND actor_url = ? AND object_id = ?"
                 )->execute([$actor_id, $boosted]);
+                // Drop the per-post boost tally too, mirroring Undo Like, so the
+                // count decrements in step with the notification. Guarded.
+                try {
+                    $bt = sv_resolve_target($boosted, $pdo);
+                    if ($bt && $bt['type'] !== 'comment') {
+                        $pdo->prepare("DELETE FROM snap_ap_boosts WHERE target_type = ? AND target_id = ? AND actor_url = ?")
+                            ->execute([$bt['type'], (int)$bt['id'], $actor_id]);
+                    }
+                } catch (Exception $e) { /* table may lag on a fresh install */ }
                 if (function_exists('pc_remove_engagement')) {
                     try { pc_remove_engagement($pdo, $settings, $boosted, $actor_id, 'boost'); } catch (Throwable $e) {}
                 }
@@ -2130,11 +2176,20 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 return 202;
             }
             $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
-            // Boost of OUR post → notification.
+            // Boost of OUR post → notification + counted tally.
             $t = sv_resolve_target($obj_id, $pdo);
             if ($t && $t['type'] !== 'comment') {
                 sv_cache_actor($pdo, $actor_doc);
                 sv_notify($pdo, 'boost', $actor_id, $handle, $obj_id, $obj_id, null);
+                // Record a per-post boost tally, mirroring the Like path, so
+                // sv_fedi_boost_count() and the stats pages can show boost totals
+                // the same way likes are shown. INSERT IGNORE dedupes a repeated
+                // Announce from the same actor. Guarded: the tally must never
+                // break inbox processing.
+                try {
+                    $pdo->prepare("INSERT IGNORE INTO snap_ap_boosts (target_type, target_id, actor_url) VALUES (?, ?, ?)")
+                        ->execute([$t['type'], (int)$t['id'], $actor_id]);
+                } catch (Exception $e) { /* table may lag on a fresh install */ }
             }
             // Boost BY someone we follow → surface the boosted post in home.
             if (sv_is_following($pdo, $actor_id) && stripos($obj_id, 'https://') === 0) {
@@ -4398,6 +4453,16 @@ function sv_combined_like_count(PDO $pdo, string $target_type, int $target_id, i
 function sv_fedi_like_count(PDO $pdo, string $target_type, int $target_id): int {
     try {
         $s = $pdo->prepare("SELECT COUNT(*) FROM snap_ap_likes WHERE target_type = ? AND target_id = ?");
+        $s->execute([$target_type, $target_id]);
+        return (int)$s->fetchColumn();
+    } catch (Exception $e) { return 0; }
+}
+
+/** Boosts (reblogs) on one image/post — the mirror of sv_fedi_like_count over
+ *  snap_ap_boosts. Returns 0 on any error (missing table on a lagged install). */
+function sv_fedi_boost_count(PDO $pdo, string $target_type, int $target_id): int {
+    try {
+        $s = $pdo->prepare("SELECT COUNT(*) FROM snap_ap_boosts WHERE target_type = ? AND target_id = ?");
         $s->execute([$target_type, $target_id]);
         return (int)$s->fetchColumn();
     } catch (Exception $e) { return 0; }

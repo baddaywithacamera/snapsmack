@@ -9,6 +9,18 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.605D "TALLY HO" — 2026-09-03
+- **Boosts (reblogs) are now counted per post, the same way likes are.** Likes had a
+  per-post counter; boosts only landed as one-off notifications, so there was no
+  "this post got N boosts" number anywhere. Added a boost tally that mirrors the
+  like tally exactly: a new `snap_ap_boosts` table filled when a reblog arrives
+  (and emptied on un-reblog), plus `sv_fedi_boost_count()`. Existing boosts are
+  backfilled once from past notifications so the count isn't wrongly zero. All of it
+  is guarded so it can never break inbox processing.
+- **Where you see it:** each federated post page now shows a boost count beside the
+  faves (♥ N · 🔁 N), and the FEDIVERSE → DELIVERY LOG "recent posts" table gains
+  **Likes** and **Boosts** columns so you can see engagement per post at a glance.
+  (Fleet-wide boost totals already show on the Fleet Stats page.)
 ## 0.7.604D "TODAY MEANS TODAY" — 2026-09-03
 - **Fleet stats / PULL CURRENT now include today, instead of reading a day behind.**
   This fix was written on 2026-09-02 but got stranded on a side branch and never
