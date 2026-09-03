@@ -17,6 +17,7 @@ DEFAULTS = {
     "mode": "advanced",            # "normal" (Picasa-simple) or "advanced"
     "filmstrip_visible": True,     # show the folder filmstrip under the canvas
     "editor_maximized": False,     # reopen editor windows in their last maximized state
+    "histogram_locked": True,      # keep histogram visible above the scrolling rail
     "library_maximized": True,     # library starts large; remember intentional restore
     "library_folders_visible": True,   # show the library's left folder tree
     "library_include_subfolders": False,  # recurse below selected library folder

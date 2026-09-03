@@ -1,7 +1,6 @@
 """Persistent SNAP SLAPPER catalogue shared with the earlier desktop library."""
 
 import os
-import hashlib
 import tempfile
 import time
 
@@ -37,7 +36,6 @@ class Catalog:
         self.history_path = os.path.join(directory, "operation_history.json")
         self.trash_path = os.path.join(directory, "trash_manifest.json")
         self.trash_root = os.path.join(directory, "trash")
-        self.edit_states_dir = os.path.join(directory, "edit_states")
         self.metadata = photo_manager.load_versioned(
             self.metadata_path, "photos", {})
         self.albums = photo_manager.load_versioned(
@@ -48,50 +46,6 @@ class Catalog:
             self.index_path, "photos", {})
         self.history = photo_manager.load_versioned(
             self.history_path, "operations", [])
-
-    def edit_state_path(self, path):
-        """Private catalogue state; deliberately not a portable .slapper file."""
-        identity = self.key(path).encode("utf-8")
-        return os.path.join(
-            self.edit_states_dir, hashlib.sha256(identity).hexdigest() + ".json")
-
-    def save_edit_state(self, path, state):
-        if not isinstance(state, dict):
-            raise ValueError("Catalogue edit state must be an object")
-        source = os.path.abspath(path)
-        photo_manager.atomic_json(self.edit_state_path(source), {
-            "version": 1,
-            "source": {"path": source, "size": os.path.getsize(source),
-                       "modified_ns": os.stat(source).st_mtime_ns},
-            "state": state,
-        })
-
-    def load_edit_state(self, path):
-        source = os.path.abspath(path)
-        value = photo_manager.load_json(self.edit_state_path(source), {})
-        if not isinstance(value, dict) or value.get("version") != 1:
-            return None
-        fingerprint = value.get("source", {})
-        state = value.get("state")
-        if not isinstance(fingerprint, dict) or not isinstance(state, dict):
-            return None
-        try:
-            if (int(fingerprint.get("size", -1)) != os.path.getsize(source) or
-                    int(fingerprint.get("modified_ns", -1)) != os.stat(source).st_mtime_ns):
-                return None
-        except (OSError, TypeError, ValueError):
-            return None
-        expected = {"adjustments": dict, "geometry": dict,
-                    "layers": list, "retouched": list}
-        if any(not isinstance(state.get(key), kind) for key, kind in expected.items()):
-            return None
-        return state
-
-    def remove_edit_state(self, path):
-        try:
-            os.remove(self.edit_state_path(path))
-        except FileNotFoundError:
-            pass
 
     @staticmethod
     def key(path):
@@ -142,9 +96,6 @@ class Catalog:
 
     def move_path(self, source, target):
         old, new = self.key(source), self.key(target)
-        old_state_path = self.edit_state_path(source)
-        saved = photo_manager.load_json(old_state_path, {})
-        state = saved.get("state") if isinstance(saved, dict) else None
         if old in self.metadata:
             self.metadata[new] = self.metadata.pop(old)
             photo_manager.save_versioned(
@@ -157,9 +108,6 @@ class Catalog:
                 changed = True
         if changed:
             self.save_albums()
-        if isinstance(state, dict) and os.path.isfile(target):
-            self.save_edit_state(target, state)
-            self.remove_edit_state(source)
 
     def copy_path(self, source, target):
         value = self.details(source)
