@@ -41,6 +41,7 @@ Usage:
 import base64
 import json
 import os
+import re
 
 import snap_vault
 import snap_home
@@ -56,10 +57,23 @@ def _store_path() -> str:
 
 
 def init() -> None:
-    """Bind the shared vault to the shared auth dir. Idempotent; safe every launch.
-    Unlike a per-tool vault, this deliberately uses ONE scope so every tool opens
-    the SAME vault — that is the whole point of a shared store."""
-    snap_vault.init(_SHARED_APP, meta_dir=snap_home.auth_dir())
+    """Bind the shared vault to the shared auth dir, and restore the key from the
+    OS keychain when one was cached. Idempotent; safe every launch and every call.
+
+    SECAUDIT 054 — binding alone leaves the vault LOCKED (snap_vault.init clears the
+    held key), and nothing here used to re-open it, so every seal silently fell back
+    to recoverable base64: the at-rest hole. Now, if the operator enabled the vault
+    with "remember on this machine", the key is restored from the keychain here — so
+    secrets are actually ENCRYPTED at rest, transparently, with no per-call
+    passphrase. The bind is skipped when already bound to this scope so the restored
+    key is not clobbered (one keychain read per process, not per credential)."""
+    if getattr(snap_vault, "_app", None) != _SHARED_APP:
+        snap_vault.init(_SHARED_APP, meta_dir=snap_home.auth_dir())
+    if snap_vault.is_enabled() and not snap_vault.is_unlocked():
+        try:
+            snap_vault.unlock_with_machine_key()
+        except Exception:
+            pass
 
 
 # ── Sealing (vault if available, else base64) ────────────────────────────────
@@ -136,6 +150,41 @@ def delete(key: str) -> None:
     if key in data:
         del data[key]
         _write(data)
+
+
+# ── Per-site secrets (the at-rest home for site API keys — SECAUDIT 054) ──────
+# A site's posting key must NOT live base64-encoded in its profile file. It lives
+# here, sealed by the vault, addressed by a stable per-site name. snap_profiles
+# (schema 2) hydrates api_key from here instead of carrying api_key_enc on disk.
+def site_secret_name(site_url: str, field: str) -> str:
+    """Stable vault key for one site's credential (never written to profiles)."""
+    clean_field = re.sub(r"[^a-z0-9_]+", "_", str(field or "").lower()).strip("_")
+    if not clean_field:
+        raise ValueError("site credential field is required")
+    return "site:%s:%s" % (snap_home.site_key(site_url), clean_field)
+
+
+def sealing_active() -> bool:
+    """True when secrets are actually ENCRYPTED at rest (the vault is unlocked),
+    False when they would fall back to recoverable base64. Callers use this to
+    report honest at-rest status — not to gate storage (storage always works)."""
+    init()
+    return snap_vault.is_unlocked()
+
+
+def get_site(site_url: str, field: str, default: str = "") -> str:
+    init()
+    return get(site_secret_name(site_url, field), default)
+
+
+def set_site(site_url: str, field: str, value: str) -> None:
+    init()
+    set(site_secret_name(site_url, field), value)
+
+
+def delete_site(site_url: str, field: str) -> None:
+    init()
+    delete(site_secret_name(site_url, field))
 
 
 # ── Config integration ───────────────────────────────────────────────────────
