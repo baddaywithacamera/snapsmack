@@ -40,13 +40,32 @@ $page_css = <<<'CSS'
 .xkcd-proof-image { width: 100%; background: var(--white); }
 .xkcd-proof figcaption { margin-top: 10px; color: var(--mid-grey); font: .7rem/1.4 'Courier New', monospace; }
 .section-heading { max-width: 760px; margin-bottom: 38px; }
+.capability-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+.capability-card { padding: 28px; background: var(--white); }
+.capability-card h3 { margin-bottom: 10px; color: var(--red); font-size: 1rem; }
+.capability-card p { margin: 0; font-size: .9rem; line-height: 1.55; }
+#modes { border-top: 8px solid var(--black); }
+#working { background: #e8e1d6; border-top: 8px solid var(--red); }
+#working .capability-grid { gap: 3px; background: var(--black); border: 3px solid var(--black); }
+#working .capability-card { background: var(--white); }
+#ecosystem { background: var(--black); color: #ddd; }
+#ecosystem, #featured-skins, #coming, #security { border-top: 8px solid var(--red); }
+#ecosystem h2, #ecosystem h3 { color: var(--white); }
+#ecosystem .lede { color: #bbb; }
+#ecosystem .capability-grid { background: #383838; border-color: #383838; }
+#ecosystem .capability-card { background: #171717; }
+#ecosystem .capability-card h3 { color: var(--red); }
+#ecosystem .capability-card p { color: #bbb; }
+.ecosystem-line { max-width: 900px; margin: 34px 0 0; padding: 22px 26px; border-left: 5px solid var(--red); background: #242424; color: var(--white); font: 900 clamp(1.05rem, 2vw, 1.35rem)/1.4 Arial Black, Arial, sans-serif; }
+.ecosystem-sauce { max-width: 860px; margin: -12px 0 34px; color: var(--white); font: 900 clamp(1.05rem, 2vw, 1.35rem)/1.4 Arial Black, Arial, sans-serif; }
+.ecosystem-sauce span { color: var(--red); }
 .mode-grid, .trust-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
 .mode-card, .trust-card { padding: 30px; background: var(--white); }
 .mode-num { color: var(--red); font: 900 .72rem/1 Arial, sans-serif; }
 .mode-card h3 { margin: 10px 0 12px; font-size: 1.18rem; }
 .mode-tagline { margin: -5px 0 14px; color: var(--red); font: 900 .76rem/1.25 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .mode-card p, .trust-card p { font-size: .93rem; }
-#federate { background: #f4f1eb; }
+#federate { background: #f4f1eb; border-top: 8px solid var(--black); }
 .fed-eyebrow { margin-bottom: 12px; color: var(--red); font: 900 .74rem/1.2 Arial Black, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
 .fed-head { max-width: 850px; color: var(--black); font-size: clamp(2rem, 4vw, 3.2rem); }
 .fed-lede { max-width: 780px; color: var(--black); font-size: 1.2rem; }
@@ -102,7 +121,8 @@ $page_css = <<<'CSS'
 .security-layer p { margin: 0; color: #bbb; font-size: .9rem; line-height: 1.6; }
 .trust-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .trust-card h3 { color: var(--red); }
-#beta { background: var(--red); color: var(--white); }
+#trust, #respect, #whodat { border-top: 8px solid var(--black); }
+#beta { background: var(--red); color: var(--white); border-top: 8px solid var(--black); }
 #beta h2, #beta .lede { color: var(--white); }
 #beta .wrap { max-width: 820px; }
 .ml-embedded { margin-top: 26px; }
@@ -116,6 +136,10 @@ $page_css = <<<'CSS'
 .whodat-name { margin: 0; color: var(--black); font: 900 1rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .whodat-title { margin: 5px 0 15px; color: var(--red); font: 700 .72rem/1.35 'Courier New', monospace; text-transform: uppercase; }
 .whodat-bio { font-size: .83rem; line-height: 1.55; }
+.supporting-details { border: 1px solid var(--border); background: var(--white); }
+.supporting-details summary { padding: 18px 22px; cursor: pointer; color: var(--black); font: 900 .8rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.supporting-details[open] summary { border-bottom: 1px solid var(--border); }
+.supporting-details-body { padding: 22px; }
 @media (max-width: 850px) {
     .featured-app { grid-template-columns: 1fr; }
     .trust-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -127,7 +151,7 @@ $page_css = <<<'CSS'
 @media (max-width: 700px) {
     .beta-banner { grid-template-columns: 1fr auto; }
     .beta-banner-text { display: none; }
-    .mode-grid, .featured-skin-grid { grid-template-columns: 1fr; }
+    .mode-grid, .capability-grid, .featured-skin-grid { grid-template-columns: 1fr; }
     .fed-shots, .fed-split { grid-template-columns: 1fr; }
     .coming-grid { grid-template-columns: 1fr; }
     .coming-features { grid-template-columns: 1fr; }
@@ -151,28 +175,16 @@ require_once __DIR__ . '/includes/header.php';
 <main>
     <section id="hero">
         <div class="hero-inner">
-            <p class="hero-kicker">SnapSmack lets you smack your snaps online for others to enjoy.</p>
+            <p class="hero-kicker">Your photography website, archive, social presence, and desktop workflow.</p>
             <h1 class="hero-headline">Retro Photo Blogging.<br><span>Modern Technology.</span></h1>
-            <p class="hero-sub">SnapSmack is free, self-hosted photography publishing for people who want to own their photographs, website, audience, domain, and archive. The joy of the old web. Without the old software.</p>
-            <p class="hero-principles"><strong>Publish the original on your own site.</strong> Share it elsewhere through <a href="brass-tacks.php#q-posse">POSSE</a> and <a href="brass-tacks.php#q-fediverse-what">ActivityPub</a>. Keep the archive at home, where an algorithm, acquisition, or policy change cannot quietly take it away.</p>
+            <p class="hero-sub">SnapSmack is free, self-hosted photography publishing for people who want to own their photographs, website, audience, domain, and archive. The joy of the old web, backed by modern Windows and Linux tools that move the heavy work off your hosting account and onto your own computer.</p>
+            <p class="hero-principles"><strong>Publish the original on your own domain.</strong> Organize it, edit it, post it, back it up, move it, and share it elsewhere without handing your archive or future to somebody else's platform.</p>
             <div class="hero-actions">
-                <a href="features.php" class="btn btn-secondary">See What It Does</a>
+                <a href="#working" class="btn btn-secondary">See What Works Now</a>
                 <a href="#beta" class="btn btn-primary">Apply for the Closed Beta</a>
             </div>
         </div>
     </section>
-
-    <aside class="xkcd-proof" aria-labelledby="xkcd-proof-title">
-        <div class="xkcd-proof-inner">
-            <p class="xkcd-proof-kicker" id="xkcd-proof-title">This has been the problem since 2012.</p>
-            <figure>
-                <a href="https://xkcd.com/1150/" target="_blank" rel="noopener">
-                    <img class="xkcd-proof-image" src="img/xkcd-instagram.png" width="1480" height="494" loading="lazy" alt="XKCD comic comparing storing your work on a free social platform to leaving your belongings in someone else's garage.">
-                </a>
-                <figcaption>&ldquo;<a href="https://xkcd.com/1150/" target="_blank" rel="noopener">Instagram</a>&rdquo; by Randall Munroe / XKCD, used unmodified under <a href="https://creativecommons.org/licenses/by-nc/2.5/" target="_blank" rel="license noopener">CC BY-NC 2.5</a>.</figcaption>
-            </figure>
-        </div>
-    </aside>
 
     <section id="modes">
         <div class="wrap">
@@ -203,6 +215,58 @@ require_once __DIR__ . '/includes/header.php';
             </div>
         </div>
     </section>
+
+    <section id="working">
+        <div class="wrap">
+            <div class="section-heading">
+                <p class="site-discovery-kicker">Shipping, not promised</p>
+                <h2>What it does right now</h2>
+                <p class="lede">This is already working on real SnapSmack sites. The roadmap can wait until you know what the actual product does.</p>
+            </div>
+            <div class="capability-grid">
+                <article class="capability-card"><h3>Publish photographs properly</h3><p>Single-image posts, grids, carousels, panoramas, longform photo essays, drafts, scheduling, captions, ALT text, EXIF, tags, categories, albums, collections, pages, RSS, and downloadable originals.</p></article>
+                <article class="capability-card"><h3>Run a real archive</h3><p>Browse and reuse media, organize in bulk, arrange feeds and galleries, preserve original dates and metadata, and keep the files and database under your control.</p></article>
+                <article class="capability-card"><h3>Leave Instagram and Flickr</h3><p>Bring exported archives home with photographs, captions, hashtags, carousels, grid order, titles, descriptions, tags, and original dates preserved.</p></article>
+                <article class="capability-card"><h3>Own the social connection</h3><p>RSS, IndieWeb, POSSE, and two-way ActivityPub let people follow, like, boost, and reply from Mastodon, Pixelfed, and the wider Fediverse while the original stays home.</p></article>
+                <article class="capability-card"><h3>Manage the whole operation</h3><p>Guided installation, signed updates, built-in help, multisite administration, fleet statistics, moderation, cross-posting, backups, integrity monitoring, lockdown, and recovery.</p></article>
+                <article class="capability-card"><h3>Work beyond the browser</h3><p>Free Windows and Linux tools handle batch publishing, metadata, library organization, migration, backup, auditing, recovery, and portable exports without turning your archive into cloud bait.</p></article>
+            </div>
+            <p class="section-link"><a href="features.php">Read the complete working feature list &rarr;</a></p>
+        </div>
+    </section>
+
+    <section id="ecosystem">
+        <div class="wrap">
+            <div class="section-heading">
+                <p class="site-discovery-kicker">More than a CMS</p>
+                <h2>The website is home. The desktop tools do the heavy lifting.</h2>
+                <p class="lede">Most full-featured CMSes ask the web server to do nearly everything. On ordinary shared hosting, that server is often the weakest and most expensive part of the system. SnapSmack's free Windows and Linux tools prepare, organize, process, migrate, back up, and publish from your own computer so the site itself can stay lean.</p>
+                <p class="ecosystem-sauce"><span>Put less politely:</span> WordPress is Jabba the Hutt trying to ride a landspeeder built for Princess Leia.</p>
+            </div>
+            <div class="capability-grid">
+                <article class="capability-card"><h3>Import and escape</h3><p>Recover Instagram and Flickr exports and move surviving work away from platforms or websites you no longer trust.</p></article>
+                <article class="capability-card"><h3>Organize and edit</h3><p>Work with the local photography library, metadata, ordering, albums, collections, carousels, and non-destructive edits.</p></article>
+                <article class="capability-card"><h3>Prepare and publish</h3><p>Process photographs, enrich metadata, assemble the post, and do resource-heavy preparation locally before the finished work reaches the web server.</p></article>
+                <article class="capability-card"><h3>Back up and recover</h3><p>Create complete recovery archives, move them offsite, audit coverage, detect damage, and recover when a site or account goes sideways.</p></article>
+                <article class="capability-card"><h3>Manage multiple sites</h3><p>Discover a fleet once, share protected local profiles, monitor it, update it, and handle work across several photography sites.</p></article>
+                <article class="capability-card"><h3>Export and leave</h3><p>Take understandable copies of the photographs and portable data with you. Ownership includes the right to stop using SnapSmack.</p></article>
+            </div>
+            <p class="ecosystem-line">A full-featured photography CMS on a cheaper hosting plan: less server load, no subscription, no premium tier, and no advertising network.</p>
+            <p class="section-link"><a href="tools.php">Meet the desktop tool ecosystem &rarr;</a></p>
+        </div>
+    </section>
+
+    <aside class="xkcd-proof" aria-labelledby="xkcd-proof-title">
+        <div class="xkcd-proof-inner">
+            <p class="xkcd-proof-kicker" id="xkcd-proof-title">This has been the problem since 2012.</p>
+            <figure>
+                <a href="https://xkcd.com/1150/" target="_blank" rel="noopener">
+                    <img class="xkcd-proof-image" src="img/xkcd-instagram.png" width="1480" height="494" loading="lazy" alt="XKCD comic comparing storing your work on a free social platform to leaving your belongings in someone else's garage.">
+                </a>
+                <figcaption>&ldquo;<a href="https://xkcd.com/1150/" target="_blank" rel="noopener">Instagram</a>&rdquo; by Randall Munroe / XKCD, used unmodified under <a href="https://creativecommons.org/licenses/by-nc/2.5/" target="_blank" rel="license noopener">CC BY-NC 2.5</a>.</figcaption>
+            </figure>
+        </div>
+    </aside>
 
     <section id="federate">
         <div class="wrap">
@@ -250,18 +314,6 @@ require_once __DIR__ . '/includes/header.php';
                 </a>
             </div>
             <p class="section-link"><a href="skins.php">See all production skins &rarr;</a></p>
-        </div>
-    </section>
-
-    <section id="featured-tool">
-        <div class="wrap featured-app">
-            <div class="featured-app-shot"><img src="img/sybu-uploading.png" alt="Smack Your Batch Up publishing a batch of photographs" width="1920" height="1032" loading="lazy"></div>
-            <div class="featured-app-copy">
-                <p class="platform">Featured companion app / Windows + Linux</p>
-                <h2>Smack Your Batch Up</h2>
-                <p>Load a shoot, arrange it, prepare its metadata, and publish the whole batch without spending the afternoon opening browser forms. Optional AI enrichment works through the queue while you watch.</p>
-                <p class="section-link"><a href="tools.php">Meet all companion apps &rarr;</a></p>
-            </div>
         </div>
     </section>
 
@@ -437,7 +489,7 @@ require_once __DIR__ . '/includes/header.php';
                     <div>
                         <p class="whodat-name">Sean McCormick</p>
                         <p class="whodat-title">Just a guy with a camera.</p>
-                        <p class="whodat-bio">Photographer who got tired of watching his archive evaporate into the memory hole of dying platforms. Built SnapSmack because the alternative was continuing to post between ads for hemorrhoid cream. Has opinions about light. Runs several <a href="https://linktr.ee/mccormickphotography" target="_blank">photo sites</a> using software he envisioned to avoid having opinions about Squarespace. Based in Canada, which is polite for "somewhere cold with good coffee."</p>
+                        <p class="whodat-bio">Photographer, creator, product designer, chief tester, and final decision-maker who got tired of watching his archive evaporate into the memory hole of dying platforms. Conceived and directed SnapSmack because the alternative was continuing to post between ads for hemorrhoid cream. Not a programmer beyond a few minor CSS contributions; the implementation is AI-authored under his direction. Has opinions about light. Runs several <a href="https://linktr.ee/mccormickphotography" target="_blank">photo sites</a> using software he envisioned to avoid having opinions about Squarespace. Based in Canada, which is polite for "somewhere cold with good coffee."</p>
                     </div>
                 </article>
                 <article class="whodat-card">
