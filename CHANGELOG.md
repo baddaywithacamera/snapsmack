@@ -9,6 +9,18 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.602D "SPECIAL DELIVERY" — 2026-09-03
+- **Scheduled Photo-Friday prompt cards now actually go out to your followers.** A
+  scheduled card was filed as a hidden draft when you queued it, then flipped to
+  published on drop day — but it kept the old date it was filed under. The
+  automatic fediverse push finds new posts by "published since last check," judged
+  on that date, so a card stamped with an old date slipped past the check and sat
+  "staged, never pushed" forever: the card showed on the site but never reached
+  your 32 followers or Pixelfed. Now the drop stamps the card with the moment it
+  actually publishes, exactly like every normal post, so the very next delivery
+  pass sends it. (Manual push mode still stages it for your deliberate PUSH, by
+  design.) If you have a card stuck from before this fix, one PUSH POSTS TO
+  FOLLOWERS (Seed) sends it; from now on it is automatic.
 ## 0.7.601D "PROMPT FIRST" — 2026-09-02
 - **Photo Challenge queue: prompt date first, boosting window fills itself.** On
   the Queue/Schedule a Prompt form the two dates were in the wrong order and ran
