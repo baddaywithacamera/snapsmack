@@ -9,6 +9,17 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.607D "SECOND KNOCK" — 2026-09-03
+- **Fixes the wall of "signature verify failed" rejections in the Interactions
+  log.** Root cause (found via 606D's on-screen reason): it was never a crypto
+  problem — the blog signs its outbound actor-fetch GETs (authorized fetch), and
+  when that signed GET failed, the whole verification failed with "could not fetch
+  signer actor," so every inbound like/boost/reply from that server was dropped.
+  Now a failed signed fetch **retries unsigned** — the ActivityPub default that
+  most instances serve — so the actor (and its key) is fetched and the activity
+  verifies. Instances that genuinely require a valid signed GET still can't be
+  fetched, but the log now names the exact reason (transport error / HTTP 401 /
+  SSRF block) instead of a generic failure, so any remaining case is diagnosable.
 ## 0.7.606D "SHOW YOUR WORK" — 2026-09-03
 - **The Interactions inbox log now names the EXACT reason a signature was
   rejected**, instead of a generic "signature verify failed." The verifier already

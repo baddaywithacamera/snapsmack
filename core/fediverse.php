@@ -675,7 +675,17 @@ function sv_inbox_rate_ok(PDO $pdo, string $ip, array $settings = []): bool {
  * GET a remote ActivityPub document (actor, mostly). No redirects, 8s
  * timeout, 512KB cap. Returns decoded array or null.
  */
+/** The reason the last sv_fetch_ap() call returned null (transport error, HTTP
+ *  status, SSRF block, non-JSON). Surfaced by callers (e.g. the inbox log's
+ *  "could not fetch signer actor") so a fetch wall is diagnosable on-screen. */
+function sv_last_fetch_error(?string $set = null): string {
+    static $reason = '';
+    if ($set !== null) $reason = $set;
+    return $reason;
+}
+
 function sv_fetch_ap(string $url, ?array $settings = null): ?array {
+    sv_last_fetch_error('');   // reset for this attempt
     // Every failure path logs a DISTINCT reason (HTTP code, curl errno,
     // resolver block, oversize, non-JSON) so the caller's blanket "could not
     // fetch signer actor" reject can be diagnosed: 401 = the remote wants an
@@ -698,45 +708,63 @@ function sv_fetch_ap(string $url, ?array $settings = null): ?array {
         'Accept: application/activity+json, application/ld+json',
         'User-Agent: SnapSmack-FEDIVERSE/' . (defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0'),
     ];
+    $base_hdrs   = $hdrs;   // unsigned form, kept for the authorized-fetch fallback
+    $signed_used = false;
     $sv_settings = $settings ?? ($GLOBALS['settings'] ?? null);
     if (is_array($sv_settings)) {
         $signed = sv_signed_get_headers($sv_settings, $url);
-        if ($signed !== null) $hdrs = $signed;
+        if ($signed !== null) { $hdrs = $signed; $signed_used = true; }
     }
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => false,
-        CURLOPT_RESOLVE        => $res['pin'], // pin the vetted IP — DNS-rebinding guard
-        CURLOPT_TIMEOUT        => 8,
-        CURLOPT_CONNECTTIMEOUT => 5,
-        CURLOPT_HTTPHEADER     => $hdrs,
-    ]);
-    $body  = curl_exec($ch);
-    $code  = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    $cerr  = curl_errno($ch);
-    $cmsg  = curl_error($ch);
-    $ctype = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-    curl_close($ch);
-    if ($body === false || $cerr !== 0) {
-        error_log('FEDIVERSE fetch: transport error curl_errno=' . $cerr
-            . ' (' . ($cmsg !== '' ? $cmsg : 'none') . ') http=' . $code . ' — ' . $url);
-        return null;
+
+    // One GET attempt with the given headers → [doc|null, reason].
+    $attempt = function (array $req_hdrs) use ($url, $res): array {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_RESOLVE        => $res['pin'], // pin the vetted IP — DNS-rebinding guard
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_HTTPHEADER     => $req_hdrs,
+        ]);
+        $body  = curl_exec($ch);
+        $code  = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $cerr  = curl_errno($ch);
+        $cmsg  = curl_error($ch);
+        $ctype = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        curl_close($ch);
+        if ($body === false || $cerr !== 0) {
+            return [null, 'transport error curl_errno=' . $cerr . ' (' . ($cmsg !== '' ? $cmsg : 'none') . ') http=' . $code];
+        }
+        if ($code < 200 || $code >= 300) {
+            return [null, 'HTTP ' . $code . ' ctype=' . ($ctype !== '' ? $ctype : '?') . ' bytes=' . strlen((string)$body)];
+        }
+        if (strlen($body) > 524288) {
+            return [null, 'oversize body ' . strlen($body) . ' bytes'];
+        }
+        $doc = json_decode($body, true);
+        if (!is_array($doc)) {
+            return [null, 'non-JSON/non-object body (' . json_last_error_msg() . ') ctype=' . ($ctype !== '' ? $ctype : '?')];
+        }
+        return [$doc, ''];
+    };
+
+    list($doc, $why) = $attempt($hdrs);
+    // AUTHORIZED-FETCH FALLBACK: a signed GET that fails — the remote has
+    // authorized-fetch OFF and rejects a Signature it won't verify, or any
+    // non-2xx / transport hiccup on the signed path — retries UNSIGNED, the
+    // ActivityPub default. Most instances serve actors to a plain GET, so this
+    // recovers the fetch (and thus inbound signature verification, which depends
+    // on fetching the signer's key) for them. Only secure-mode instances that
+    // REQUIRE a valid signed GET stay unfetchable, and the stashed reason says so.
+    if ($doc === null && $signed_used) {
+        list($doc2, $why2) = $attempt($base_hdrs);
+        if (is_array($doc2)) { $doc = $doc2; $why = ''; }
+        else { $why = 'signed:[' . $why . '] unsigned:[' . $why2 . ']'; }
     }
-    if ($code < 200 || $code >= 300) {
-        error_log('FEDIVERSE fetch: HTTP ' . $code
-            . ' ctype=' . ($ctype !== '' ? $ctype : '?')
-            . ' bytes=' . strlen((string)$body) . ' — ' . $url);
-        return null;
-    }
-    if (strlen($body) > 524288) {
-        error_log('FEDIVERSE fetch: oversize body ' . strlen($body) . ' bytes — ' . $url);
-        return null;
-    }
-    $doc = json_decode($body, true);
-    if (!is_array($doc)) {
-        error_log('FEDIVERSE fetch: non-JSON/non-object body (' . json_last_error_msg()
-            . ') ctype=' . ($ctype !== '' ? $ctype : '?') . ' bytes=' . strlen((string)$body) . ' — ' . $url);
+    if ($doc === null) {
+        sv_last_fetch_error($why);
+        error_log('FEDIVERSE fetch: ' . $why . ' — ' . $url);
         return null;
     }
     return $doc;
@@ -1125,7 +1153,11 @@ function sv_verify_signature(string $raw_body): ?array {
     // Fetch the key owner's actor document (keyId minus fragment).
     $actor_url = preg_replace('/#.*$/', '', $sig['keyid']);
     $actor = sv_fetch_ap($actor_url);
-    if (!$actor) { $reject('could not fetch signer actor: ' . $actor_url); return null; }
+    if (!$actor) {
+        $fe = function_exists('sv_last_fetch_error') ? sv_last_fetch_error() : '';
+        $reject('could not fetch signer actor: ' . $actor_url . ($fe !== '' ? ' — ' . $fe : ''));
+        return null;
+    }
     $pem = $actor['publicKey']['publicKeyPem'] ?? '';
     if ($pem === '') { $reject('signer actor has no publicKeyPem'); return null; }
     // The key must belong to the actor document that serves it.
