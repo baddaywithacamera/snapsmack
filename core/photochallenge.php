@@ -849,8 +849,17 @@ function pc_activate_due_prompts(PDO $pdo, array &$settings): int {
     foreach ($due as $p) {
         $post_id = (int)$p['post_id'];
         $img_id  = (int)$p['image_id'];
-        if ($post_id > 0) $pdo->prepare("UPDATE snap_posts SET status='published' WHERE id=?")->execute([$post_id]);
-        if ($img_id  > 0) $pdo->prepare("UPDATE snap_images SET img_status='published' WHERE id=?")->execute([$img_id]);
+        // Re-stamp created_at to the drop moment (NOW), not the queue-time drop_at
+        // already sitting on the row. The AUTO fediverse sweep (sv_sweep_new_posts,
+        // Stream 2) federates grouped posts by created_at > fediverse_last_post_federated_at.
+        // A card filed as a draft days ago carries an old created_at that can sit at
+        // or behind that moving marker by the time it publishes, so the sweep skips
+        // it forever and it stalls as "staged, never pushed" (the missed-drop bug).
+        // Publishing NOW = created_at NOW, exactly like every other post, so the very
+        // next sweep in this same cron tick picks it up. updated_at NOW keeps the
+        // "staged" hint (sv_staged_count) accurate until fedi_pushed_at lands.
+        if ($post_id > 0) $pdo->prepare("UPDATE snap_posts SET status='published', created_at=NOW(), updated_at=NOW() WHERE id=?")->execute([$post_id]);
+        if ($img_id  > 0) $pdo->prepare("UPDATE snap_images SET img_status='published', img_date=NOW() WHERE id=?")->execute([$img_id]);
         sv_set_setting($pdo, $settings, 'photochallenge_tag', (string)$p['tag']);  // this week's qualifying tag goes live
         $pdo->prepare("UPDATE pc_prompts SET status='live', dropped_at=NOW() WHERE id=?")->execute([(int)$p['id']]);
         $dropped++;
