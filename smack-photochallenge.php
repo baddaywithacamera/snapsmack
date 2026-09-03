@@ -327,18 +327,19 @@ include 'core/sidebar.php';
             <fieldset class="pc-date-plan">
                 <legend>DATES &mdash; THESE CONTROL DIFFERENT THINGS</legend>
                 <div class="pc-date-plan__item">
-                    <label for="pc_window_start"><strong>1. BOOSTING WINDOW STARTS AT</strong> &mdash; DATE AND TIME (UTC)</label>
-                    <input type="datetime-local" id="pc_window_start" value="<?php echo $esc($window_start_value); ?>" required>
-                    <input type="hidden" name="pc_friday" id="pc_friday" value="<?php echo $esc($next_friday); ?>">
-                    <p class="dim" id="pc_friday_hint">Tagged participant posts may be boosted from this displayed
-                        <strong>Thursday at 10:00 UTC</strong> until <strong>Saturday at 12:00 UTC</strong>. Picking another
-                        date visibly snaps this field to the matching challenge opening; the contest Friday is stored automatically.</p>
+                    <label for="pc_drop_at"><strong>1. PROMPT POST</strong> &mdash; CHOOSE WHEN THE CARD PUBLISHES (UTC)</label>
+                    <input type="datetime-local" name="pc_drop_at" id="pc_drop_at" value="<?php echo $esc($def_drop_value); ?>">
+                    <p class="dim">Set this date. The prompt card publishes then, and the boosting window below is filled in
+                        automatically to <strong>exactly one week later</strong>. Times are UTC. Default:
+                        <span id="pc_drop_hint"><?php echo $esc($def_drop_hint); ?></span>.</p>
                 </div>
                 <div class="pc-date-plan__item">
-                    <label for="pc_drop_at"><strong>2. PROMPT POST</strong> &mdash; CHOOSE WHEN THE CARD PUBLISHES</label>
-                    <input type="datetime-local" name="pc_drop_at" id="pc_drop_at" value="<?php echo $esc($def_drop_value); ?>">
-                    <p class="dim">This schedules only the prompt card. It does <strong>not</strong> change the boosting window.
-                        Times are UTC. Default: <span id="pc_drop_hint"><?php echo $esc($def_drop_hint); ?></span>.</p>
+                    <label for="pc_window_start"><strong>2. BOOSTING WINDOW STARTS AT</strong> &mdash; ONE WEEK AFTER THE PROMPT (UTC)</label>
+                    <input type="datetime-local" id="pc_window_start" value="<?php echo $esc($window_start_value); ?>" readonly required>
+                    <input type="hidden" name="pc_friday" id="pc_friday" value="<?php echo $esc($next_friday); ?>">
+                    <p class="dim" id="pc_friday_hint">Filled in automatically &mdash; exactly one week after the prompt above.
+                        Tagged participant posts may be boosted from this <strong>Thursday 10:00 UTC</strong> until
+                        <strong>Saturday 12:00 UTC</strong>; the contest Friday is stored automatically.</p>
                 </div>
             </fieldset>
 
