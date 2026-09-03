@@ -642,7 +642,7 @@ include 'core/sidebar.php';
                 </div>
                 <div class="lens-input-wrapper">
                     <label>CLIENT-IP DIAGNOSTIC</label>
-                    <div class="read-only-display">
+                    <div class="read-only-display client-ip-diagnostic">
                         Peer: <?php echo htmlspecialchars($ip_diag['observed_peer']); ?><br>
                         Selected client: <?php echo htmlspecialchars($ip_diag['selected_client']); ?><br>
                         Source: <?php echo htmlspecialchars($ip_diag['source']); ?><br>
