@@ -121,6 +121,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
             pc_block($pdo,$settings,'domain',(string)($_POST['domain'] ?? ''),(string)($_POST['reason'] ?? ''));
             $msg = 'Domain blocked and matching participants withdrawn.';
         }
+    } elseif ($action === 'rescan_participants') {
+        // Recover entries missed during an inbound outage — pull each participant's
+        // recent posts and run the live admit+boost path. No one has to re-post.
+        $r = pc_rescan_participants($pdo, $settings);
+        $msg = "Rescan done: crawled {$r['actors']} participant(s), examined {$r['posts']} recent post(s), "
+             . "recovered {$r['recovered']} qualifying entr(y/ies)"
+             . ($r['errors'] > 0 ? " ({$r['errors']} unreachable — will heal as their servers retry)" : '')
+             . '. Re-run any time; it never double-counts.';
     }
 
     // Re-read settings so the render below reflects the write.
@@ -444,6 +452,23 @@ include 'core/sidebar.php';
             <a href="<?php echo $esc($board_url); ?>" target="_blank" rel="noopener">the board</a> &middot;
             <a href="<?php echo $esc($hof_url); ?>" target="_blank" rel="noopener">the Hall of Fame</a>.
         </p>
+    </div>
+
+    <!-- RECOVER MISSED ENTRIES -->
+    <div class="box mb-20">
+        <h3>RECOVER MISSED ENTRIES</h3>
+        <p class="dim mb-20">
+            Pulls each active participant's recent posts straight from their profile and re-runs the normal
+            admit &amp; boost on any that qualify &mdash; so entries dropped while inbound delivery was failing
+            (e.g. a signature outage) are recovered <strong>without asking anyone to re-post</strong>. Honors the
+            current tag, window and testing whitelist. Safe to run repeatedly; it never double-counts. Most
+            entries also heal on their own as the senders' servers retry, so this is the belt-and-suspenders.
+        </p>
+        <form method="post" action="">
+            <?php csrf_field(); ?>
+            <input type="hidden" name="action" value="rescan_participants">
+            <button type="submit" class="btn-smack">RECOVER MISSED ENTRIES</button>
+        </form>
     </div>
 
     <!-- CROWN THE WEEK -->

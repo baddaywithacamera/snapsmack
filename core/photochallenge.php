@@ -978,6 +978,95 @@ function pc_maybe_boost_entry(PDO $pdo, array $settings, string $object_id): boo
     }
 }
 
+/**
+ * Walk a remote actor's outbox and return up to $max raw Note objects (the
+ * Create's object, or a bare Note), so they can be ingested. Mirrors
+ * sv_crawl_outbox but keeps the RAW AP object (that helper returns a
+ * render-ready shape, which sv_ingest_timeline can't take). Announces/boosts
+ * are skipped. Bounded by a page guard so a hostile/huge outbox can't run us
+ * forever. Uses sv_fetch_ap, so it benefits from the unsigned-fetch fallback.
+ */
+function pc_outbox_notes(string $outbox_url, array $settings, int $max = 25): array {
+    $notes = [];
+    $outbox_url = trim($outbox_url);
+    if ($outbox_url === '' || !function_exists('sv_fetch_ap')) return $notes;
+    $shell = sv_fetch_ap($outbox_url, $settings);
+    if (!is_array($shell)) return $notes;
+    $first = $shell['first'] ?? '';
+    $page_url = is_array($first) ? (string)($first['id'] ?? '') : (string)$first;
+    $page = $page_url !== '' ? sv_fetch_ap($page_url, $settings) : $shell;
+    $guard = 0; $max_pages = max(3, (int)ceil($max / 15) + 2);
+    while (is_array($page) && count($notes) < $max && $guard < $max_pages) {
+        $guard++;
+        $items = $page['orderedItems'] ?? ($page['items'] ?? []);
+        if (is_array($items)) {
+            foreach ($items as $act) {
+                if (count($notes) >= $max) break;
+                if (!is_array($act)) continue;
+                $type = (string)($act['type'] ?? '');
+                if ($type !== 'Create' && $type !== 'Note') continue;   // originals only, no boosts
+                $obj = ($type === 'Note') ? $act : ($act['object'] ?? null);
+                if (is_string($obj)) $obj = sv_fetch_ap($obj, $settings);
+                if (!is_array($obj)) continue;
+                $ot = (string)($obj['type'] ?? '');
+                if (($ot !== 'Note' && $ot !== 'Image') || ($obj['id'] ?? '') === '') continue;
+                $notes[] = $obj;
+            }
+        }
+        $next = $page['next'] ?? '';
+        $next_url = is_array($next) ? (string)($next['id'] ?? '') : (string)$next;
+        if ($next_url === '' || $next_url === $page_url) break;
+        $page_url = $next_url;
+        $page = sv_fetch_ap($next_url, $settings);
+    }
+    return $notes;
+}
+
+/**
+ * Recover missed entries WITHOUT anyone re-posting. For each active participant,
+ * pull their recent posts straight from their outbox and run the SAME
+ * ingest + admit + boost path an inbound Create would — so entries dropped while
+ * inbound delivery was failing (e.g. the signature-fetch outage) are pulled back
+ * in and boosted, instead of asking the community to redo their photos.
+ *
+ * Idempotent: sv_ingest_timeline and pc_admit_object both dedupe, so a re-run
+ * never double-admits or double-boosts. Bounded per actor. Honors the current
+ * tag, window and testing whitelist exactly like the live path.
+ *
+ * @return array{actors:int,posts:int,recovered:int,errors:int}
+ */
+function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25): array {
+    $out = ['actors' => 0, 'posts' => 0, 'recovered' => 0, 'errors' => 0];
+    if (!pc_enabled($settings)) return $out;
+    pc_ensure_tables($pdo);
+    $per_actor = max(1, min(60, $per_actor));
+    try {
+        $rows = $pdo->query("SELECT actor_url FROM pc_participants WHERE state='active'")->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Throwable $e) { return $out; }
+    foreach ($rows as $actor_url) {
+        $actor_url = (string)$actor_url;
+        if ($actor_url === '') continue;
+        $actor = function_exists('sv_fetch_ap') ? sv_fetch_ap($actor_url, $settings) : null;
+        if (!is_array($actor)) { $out['errors']++; continue; }
+        $ob = $actor['outbox'] ?? '';
+        $outbox = is_array($ob) ? (string)($ob['id'] ?? '') : (string)$ob;
+        if ($outbox === '') continue;
+        $out['actors']++;
+        foreach (pc_outbox_notes($outbox, $settings, $per_actor) as $note) {
+            $oid = (string)($note['id'] ?? '');
+            if ($oid === '') continue;
+            $out['posts']++;
+            try {
+                sv_ingest_timeline($pdo, $note, $actor_url, '');
+                if (function_exists('pc_maybe_boost_entry') && pc_maybe_boost_entry($pdo, $settings, $oid)) {
+                    $out['recovered']++;
+                }
+            } catch (Throwable $e) { $out['errors']++; }
+        }
+    }
+    return $out;
+}
+
 /** Render the board as a self-contained teaser-card fragment (canonical -> origin). */
 function pc_board_html(PDO $pdo, array $settings): string {
     $win  = pc_window($settings);
