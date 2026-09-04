@@ -106,9 +106,12 @@ pc_test(str_contains($photo, 'pc_rescan_participants($pdo,$settings,12,true,$tag
     && str_contains($admin, 'every active participant&rsquo;s own outbox'),
     'recovery does not merge hashtag, participant outbox, and Pixelfed public-status discovery');
 pc_test(str_contains($admin, 'EXTEND UNTIL &mdash; close automatically')
+    && str_contains($admin, "value=\"extend_window_24\"")
+    && str_contains($admin, "modify('+24 hours')")
+    && str_contains($admin, 'EXTEND 24 HOURS')
     && str_contains($admin, 'LATEST RECOVERY RECEIPT')
     && str_contains($schema, '`run_token` varchar(32)'),
-    'automatic extension deadline or per-post recovery receipt is absent');
+    'one-click extension, automatic extension deadline, or per-post recovery receipt is absent');
 foreach (['pc_on_follow', 'pc_on_leave', 'pc_record_like', 'pc_record_boost', 'pc_remove_engagement'] as $hook) {
     pc_test(str_contains($sv, $hook), "FEDIVERSE is missing {$hook} integration");
 }
