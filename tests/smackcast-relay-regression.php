@@ -26,6 +26,13 @@ sc_test(str_contains($relay, "\$settings['smackcast_relay_enabled'] ?? '0') === 
 sc_test(str_contains($schema, 'snap_ap_timeline_membership'), 'normalized feed membership schema exists');
 sc_test(str_contains($schema, 'PRIMARY KEY (`timeline_id`, `feed`)'), 'one object can have HOME and LOCAL exactly once');
 sc_test(str_contains($sv, "sc_relay_add_membership(\$pdo, \$object_id, \$feed"), 'timeline ingestion records membership independent of source enum');
+sc_test(str_contains($relay, "TABLE_NAME='snap_ap_timeline_membership'")
+    && str_contains($relay, 'if (!$has_membership_table) return;'),
+    'ordinary sites never write the hub-only timeline membership table');
+sc_test(str_contains($sv, 'SMACKCAST optional membership skipped:'),
+    'optional relay membership failure cannot reject an accepted inbox post');
+sc_test(str_contains($sv, "\$dedupe_key = 'delivery:' . hash('sha256'"),
+    'ordinary delivery queue rows are destination/activity idempotent');
 sc_test(str_contains($sv, "sc_relay_receive_announce(\$pdo, \$settings, \$actor_id, \$obj_id)"), 'relay Announce has a distinct receiver path');
 sc_test(str_contains($relay, 'snap_relay_ingest_jobs'), 'origin fetch failure is durable receiver work');
 sc_test(str_contains($relay, "\$shelve ? 'shelved' : 'queued'"), 'bounded retry has an observable shelved terminal state');

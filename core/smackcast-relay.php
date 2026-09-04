@@ -197,6 +197,21 @@ function sc_relay_remove_membership(PDO $pdo, string $object_id, string $feed = 
 }
 
 function sc_relay_add_membership(PDO $pdo, string $object_id, string $feed, string $via): void {
+    // This policy file ships to ordinary blogs too; relay membership storage
+    // does not.  Cache the schema check for this request and stay inert when
+    // the hub-only table is absent.
+    static $has_membership_table = null;
+    if ($has_membership_table === null) {
+        try {
+            $has_membership_table = (bool)$pdo->query(
+                "SELECT 1 FROM information_schema.TABLES
+                  WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_ap_timeline_membership' LIMIT 1"
+            )->fetchColumn();
+        } catch (Throwable $e) {
+            $has_membership_table = false;
+        }
+    }
+    if (!$has_membership_table) return;
     $s = $pdo->prepare("SELECT id FROM snap_ap_timeline WHERE object_id=? LIMIT 1");
     $s->execute([$object_id]);
     $timeline_id = (int)$s->fetchColumn();
