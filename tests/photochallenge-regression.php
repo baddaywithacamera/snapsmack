@@ -91,6 +91,11 @@ pc_test(str_contains($schema, 'CREATE TABLE IF NOT EXISTS `pc_entry_failures`')
     && str_contains($photo, 'function pc_latest_recovery_results')
     && !str_contains($admin, 'value="notify_failed_entries"'),
     'missed-entry recovery, durable failure logging, or resubmit notification is absent');
+pc_test(str_contains($photo, 'pc_rescan_participants($pdo,$settings,12,true,$tag)')
+    && str_contains($photo, 'array_merge($rows, $participant_scan[\'rows\'])')
+    && str_contains($photo, "'participant_unreadable'")
+    && str_contains($admin, 'every active participant&rsquo;s own outbox'),
+    'recovery relies on incomplete instance hashtag timelines instead of participant outboxes');
 pc_test(str_contains($admin, 'EXTEND UNTIL &mdash; close automatically')
     && str_contains($admin, 'LATEST RECOVERY RECEIPT')
     && str_contains($schema, '`run_token` varchar(32)'),
