@@ -9,6 +9,17 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.624D "WHO BOOSTED WHO" — 2026-09-04
+- **Pixelix Followers and Following now work.** Those tabs read the site's real
+  active-follower and accepted-following records, including cached names and
+  avatars, instead of falling through to the unsupported-operation error. The
+  profile counts now come from those same records.
+- **Boosted posts identify both people.** Reader cards show the original
+  author's truthful handle and a clickable “Boosted by” identity. Either name
+  opens the existing profile view and Follow control. Legacy rows whose handle
+  was stored blank recover it from the actor cache or canonical actor URL, and
+  new inbound boosts cache the original author before ingest.
+
 ## 0.7.623D "OPEN SIGN" — 2026-09-04
 - **HOTFIX: `/board` was returning a blank error (HTTP 500) on 0.7.622D.** When
   the board began rendering through the CMS, its page file called two helper
