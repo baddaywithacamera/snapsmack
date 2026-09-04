@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.625D "ONE MORE DAY" — 2026-09-04
+- **PhotoFri has a literal EXTEND 24 HOURS button.** It keeps the current round,
+  participants, entries, and week key intact, moves the current closing time
+  forward exactly one day, and immediately displays the new UTC deadline.
+  Repeated clicks add another 24 hours; the normal weekly schedule is unchanged.
+
 ## 0.7.624D "WHO BOOSTED WHO" — 2026-09-04
 - **Pixelix Followers and Following now work.** Those tabs read the site's real
   active-follower and accepted-following records, including cached names and
