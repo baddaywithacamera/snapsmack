@@ -1084,6 +1084,170 @@ function sv_parse_signature_header(string $header): array {
     return $out;
 }
 
+// ─── RFC-9421 HTTP Message Signatures (0.7.618D "NEW DIALECT") ────────────────
+// Modern Mastodon (4.4+/4.7+) signs inbox POSTs with RFC-9421 instead of the
+// old draft-cavage scheme, e.g.
+//   Signature-Input: sig1=("@method" "@target-uri" "content-digest");created=..;keyid=".."
+//   Signature:       sig1=:<base64>:
+//   Content-Digest:  sha-256=:<base64>:
+// Our cavage-only verifier 401'd every one of them — the door was shut on
+// mainline Mastodon. These helpers add the 9421 path (RSA/rsa-v1_5-sha256, the
+// live case; Ed25519 deferred until a real sender is observed, per Codex §4).
+
+/** Parse a Signature-Input value into label, covered components, and params.
+ *  `params_raw` is the exact value after "<label>=" — it IS the @signature-params
+ *  line, so it must be preserved byte-for-byte (order + spacing included). */
+function sv_9421_parse_input(string $header): ?array {
+    $header = trim($header);
+    if (!preg_match('/^([A-Za-z0-9_-]+)=\(/', $header, $lm)) return null;
+    $label      = $lm[1];
+    $params_raw = ltrim(substr($header, strlen($label) + 1)); // "(...)...;keyid=.."
+    if (!preg_match('/^\((.*?)\)(.*)$/s', $params_raw, $m)) return null;
+    $covered = [];
+    foreach (preg_split('/\s+/', trim($m[1])) as $c) {
+        $c = trim($c);
+        if ($c !== '') $covered[] = trim($c, '"');
+    }
+    $params = [];
+    if (preg_match_all('/;\s*([A-Za-z0-9_-]+)=("([^"]*)"|[^;]+)/', $m[2], $pm, PREG_SET_ORDER)) {
+        foreach ($pm as $p) {
+            $params[strtolower($p[1])] = ($p[2] !== '' && $p[2][0] === '"') ? $p[3] : trim($p[2]);
+        }
+    }
+    return ['label' => $label, 'covered' => $covered, 'params_raw' => $params_raw, 'params' => $params];
+}
+
+/** Extract the raw signature bytes for `$label` from a Signature header
+ *  (`sig1=:<base64>:`). Returns '' if not present. */
+function sv_9421_parse_signature(string $header, string $label): string {
+    if (preg_match('/(?:^|,)\s*' . preg_quote($label, '/') . '=:([^:]*):/', trim($header), $m)) {
+        $raw = base64_decode($m[1], true);
+        return $raw === false ? '' : $raw;
+    }
+    return '';
+}
+
+/** Build the RFC-9421 signature base for the covered components, given the
+ *  scheme+authority to reconstruct derived (@) components. Returns null if a
+ *  covered *header* component is absent from the request. */
+function sv_9421_build_base(array $covered, string $sig_params_value, string $scheme, string $authority): ?string {
+    $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'POST');
+    $uri    = $_SERVER['REQUEST_URI'] ?? '/';
+    $path   = parse_url($uri, PHP_URL_PATH) ?: $uri;
+    $query  = parse_url($uri, PHP_URL_QUERY);
+    $lines  = [];
+    foreach ($covered as $c) {
+        $name = strtolower($c);
+        switch ($name) {
+            case '@method':         $v = $method; break;
+            case '@target-uri':     $v = $scheme . '://' . $authority . $uri; break;
+            case '@authority':      $v = strtolower($authority); break;
+            case '@scheme':         $v = $scheme; break;
+            case '@path':           $v = $path; break;
+            case '@query':          $v = '?' . ($query ?? ''); break;
+            case '@request-target': $v = strtolower($method) . ' ' . $uri; break;
+            default:
+                $hv = sv_request_header($name);
+                if ($hv === '') return null;     // a signed header we don't have → can't verify
+                $v = trim($hv);
+                break;
+        }
+        $lines[] = '"' . $name . '": ' . $v;
+    }
+    $lines[] = '"@signature-params": ' . $sig_params_value;
+    return implode("\n", $lines);
+}
+
+/** Pure RFC-9421 verification (NO network): given the raw body and the signer's
+ *  publicKeyPem, verify Content-Digest binds the body, created/expires are in
+ *  window, the required components are signed, and the signature matches the
+ *  base. $reject logs the specific failure. Returns true on success. */
+function sv_9421_verify_core(string $raw_body, string $pem, callable $reject): bool {
+    if (!function_exists('openssl_verify')) { $reject('RFC-9421: openssl unavailable'); return false; }
+    $inp   = sv_request_header('signature-input');
+    $sig_h = sv_request_header('signature');
+    if ($inp === '' || $sig_h === '') { $reject('RFC-9421: missing Signature-Input/Signature'); return false; }
+    $parsed = sv_9421_parse_input($inp);
+    if (!$parsed) { $reject('RFC-9421: unparseable Signature-Input'); return false; }
+    $covered = array_map('strtolower', $parsed['covered']);
+
+    // The body and the request line MUST be signed, or an attacker could swap
+    // either without breaking the signature.
+    if (!in_array('content-digest', $covered, true)) { $reject('RFC-9421: content-digest not signed'); return false; }
+    if (!in_array('@method', $covered, true) || !in_array('@target-uri', $covered, true)) {
+        $reject('RFC-9421: @method/@target-uri not signed'); return false;
+    }
+    // Content-Digest must match the body (sha-256=:base64:).
+    $cd = sv_request_header('content-digest');
+    if ($cd === '' || !preg_match('/sha-256=:([^:]+):/i', $cd, $dm)) { $reject('RFC-9421: no sha-256 Content-Digest'); return false; }
+    if (!hash_equals(base64_encode(hash('sha256', $raw_body, true)), trim($dm[1]))) {
+        $reject('RFC-9421: Content-Digest != body'); return false;
+    }
+    // Freshness (replay guard) — created within ±1h, expires not passed.
+    $now = time();
+    $created = isset($parsed['params']['created']) ? (int)$parsed['params']['created'] : 0;
+    if ($created <= 0) { $reject('RFC-9421: no created param'); return false; }
+    if (abs($now - $created) > 3600) { $reject('RFC-9421: created outside ±1h'); return false; }
+    if (isset($parsed['params']['expires']) && (int)$parsed['params']['expires'] < $now) { $reject('RFC-9421: signature expired'); return false; }
+
+    $sig_bytes = sv_9421_parse_signature($sig_h, $parsed['label']);
+    if ($sig_bytes === '') { $reject('RFC-9421: no signature bytes for ' . $parsed['label']); return false; }
+    $pub = openssl_pkey_get_public($pem);
+    if ($pub === false) { $reject('RFC-9421: bad publicKeyPem'); return false; }
+
+    // Reconstruct @target-uri/@authority the way the SENDER saw it. Behind a
+    // proxy/CDN the public host+scheme differ from the origin's $_SERVER, so try
+    // the plausible forms and accept the first that verifies — each is still
+    // fully bound to key + body (Content-Digest) + freshness.
+    $auth_cands   = array_values(array_unique(array_filter([
+        (string)($_SERVER['HTTP_HOST'] ?? ''),
+        sv_request_header('x-forwarded-host'),
+    ])));
+    if (!$auth_cands) $auth_cands = [''];
+    foreach ($auth_cands as $auth) {
+        foreach (['https', 'http'] as $sch) {
+            $base = sv_9421_build_base($parsed['covered'], $parsed['params_raw'], $sch, $auth);
+            if ($base === null) continue;
+            if (openssl_verify($base, $sig_bytes, $pub, OPENSSL_ALGO_SHA256) === 1) return true;
+        }
+    }
+    $reject('RFC-9421: verify=0 (signature/base/key mismatch)');
+    return false;
+}
+
+/** Full RFC-9421 inbox verification: parse keyId, fetch the signer actor, apply
+ *  the SAME actor↔key origin binding as the cavage path (SECAUDIT 047), then
+ *  verify. Returns the actor doc on success, null (logged) on failure. */
+function sv_verify_signature_9421(string $raw_body): ?array {
+    $reject = function (string $why): void {
+        error_log('FEDIVERSE sig: REJECT — ' . $why);
+        sv_last_sig_reject($why);
+    };
+    $inp = sv_9421_parse_input(sv_request_header('signature-input'));
+    if (!$inp || empty($inp['params']['keyid'])) { $reject('RFC-9421: no keyid' . sv_sig_shape()); return null; }
+    $keyid     = (string)$inp['params']['keyid'];
+    $actor_url = preg_replace('/#.*$/', '', $keyid);
+    $actor     = sv_fetch_ap($actor_url);
+    if (!$actor) {
+        $fe = function_exists('sv_last_fetch_error') ? sv_last_fetch_error() : '';
+        $reject('RFC-9421: could not fetch signer actor: ' . $actor_url . ($fe !== '' ? ' — ' . $fe : ''));
+        return null;
+    }
+    $pem = $actor['publicKey']['publicKeyPem'] ?? '';
+    if ($pem === '') { $reject('RFC-9421: signer actor has no publicKeyPem'); return null; }
+    // SECAUDIT 047 — bind key origin to actor id origin (same as cavage path).
+    $actor_id   = (string)($actor['id'] ?? '');
+    $key_id     = (string)($actor['publicKey']['id'] ?? '');
+    $key_host   = strtolower((string)parse_url($actor_url, PHP_URL_HOST));
+    $actor_host = strtolower((string)parse_url($actor_id, PHP_URL_HOST));
+    if ($actor_id === '' || $key_host === '' || $actor_host === '' || $key_host !== $actor_host) {
+        $reject('RFC-9421: keyId origin != actor id origin'); return null;
+    }
+    if ($key_id !== '' && $key_id !== $keyid) { $reject('RFC-9421: actor publicKey.id != keyId'); return null; }
+
+    return sv_9421_verify_core($raw_body, $pem, $reject) ? $actor : null;
+}
+
 /** Request header value by lowercase name, from $_SERVER. */
 function sv_request_header(string $name): string {
     $key = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
@@ -1119,6 +1283,14 @@ function sv_verify_signature(string $raw_body): ?array {
         error_log('FEDIVERSE sig: REJECT — ' . $why);
         sv_last_sig_reject($why);
     };
+
+    // RFC-9421 senders (modern Mastodon) carry a Signature-Input header and a
+    // structured `sig1=:...:` Signature — a different scheme from draft-cavage.
+    // Route them to the 9421 verifier (0.7.618D). Everything below stays the
+    // cavage path, untouched, for the many instances still on the old scheme.
+    if (sv_request_header('signature-input') !== '') {
+        return sv_verify_signature_9421($raw_body);
+    }
 
     $sig_header = sv_request_header('signature');
     if ($sig_header === '') { $reject('no Signature header' . sv_sig_shape()); return null; }

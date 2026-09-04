@@ -9,6 +9,24 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.618D "NEW DIALECT" — 2026-09-04
+- **The inbox door now speaks modern Mastodon's signature format (RFC-9421).**
+  Mainline Mastodon 4.4+/4.7+ signs inbox POSTs with RFC-9421 HTTP Message
+  Signatures (`Signature-Input` + `sig1=:…:` + `Content-Digest`) instead of the
+  old draft-cavage scheme — and our cavage-only verifier 401'd every one of
+  them, so those instances' follows, likes, replies and **challenge entries
+  bounced at the door**. A request carrying a `Signature-Input` header is now
+  routed to a dedicated RFC-9421 verifier; the cavage path is untouched for the
+  many instances still on the old scheme. RSA (rsa-v1_5-sha256) — the live case;
+  Ed25519 deferred until a real sender is observed.
+- The verifier binds the body (Content-Digest must be signed), the request line
+  (`@method` + `@target-uri`), and freshness (`created` within ±1h), and applies
+  the same actor↔key origin binding as the cavage path (SECAUDIT 047). Proxy/CDN
+  tolerant (reconstructs the public scheme+host).
+- New `tests/rfc9421-signature-regression.php` proves it with a real RSA key: a
+  valid request verifies; body-tamper, digest-swap, forged-signature, wrong-key,
+  stale-timestamp, unsigned-body and path-replay are all rejected. (Skips where
+  openssl is absent so the plain gate is unaffected.)
 ## 0.7.617D "BOARD IN A BOX" — 2026-09-04
 - **New `[board]` shortcode: drop the live Photo-Challenge board into any static
   page.** It renders the same ranked entries as `/board` (reuses
