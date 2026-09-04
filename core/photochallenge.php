@@ -1091,8 +1091,10 @@ function pc_outbox_notes(string $outbox_url, array $settings, int $max = 25): ar
  *
  * @return array{actors:int,posts:int,recovered:int,errors:int}
  */
-function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25): array {
-    $out = ['actors' => 0, 'posts' => 0, 'recovered' => 0, 'errors' => 0];
+function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25,
+                                bool $collect_only = false, string $tag = ''): array {
+    $out = ['actors' => 0, 'posts' => 0, 'recovered' => 0, 'errors' => 0,
+            'rows' => [], 'unreadable' => []];
     if (!pc_enabled($settings)) return $out;
     pc_ensure_tables($pdo);
     $per_actor = max(1, min(60, $per_actor));
@@ -1103,15 +1105,33 @@ function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25)
         $actor_url = (string)$actor_url;
         if ($actor_url === '') continue;
         $actor = function_exists('sv_fetch_ap') ? sv_fetch_ap($actor_url, $settings) : null;
-        if (!is_array($actor)) { $out['errors']++; continue; }
+        if (!is_array($actor)) {
+            $out['errors']++;
+            $out['unreadable'][] = ['actor_url'=>$actor_url,'reason'=>'actor document could not be read'];
+            continue;
+        }
         $ob = $actor['outbox'] ?? '';
         $outbox = is_array($ob) ? (string)($ob['id'] ?? '') : (string)$ob;
-        if ($outbox === '') continue;
+        if ($outbox === '') {
+            $out['errors']++;
+            $out['unreadable'][] = ['actor_url'=>$actor_url,'reason'=>'actor advertises no outbox'];
+            continue;
+        }
         $out['actors']++;
         foreach (pc_outbox_notes($outbox, $settings, $per_actor) as $note) {
             $oid = (string)($note['id'] ?? '');
             if ($oid === '') continue;
             $out['posts']++;
+            if ($collect_only) {
+                if ($tag !== '' && !pc_note_has_tag($note,$tag)) continue;
+                $url = $note['url'] ?? $oid;
+                if (is_array($url)) $url = (string)($url['href'] ?? ($url['id'] ?? $oid));
+                $out['rows'][] = [
+                    'id'=>$oid,'url'=>(string)$url,'published'=>(string)($note['published'] ?? ''),
+                    'author'=>['id'=>$actor_url,'handle'=>''],'__object'=>$note,
+                ];
+                continue;
+            }
             try {
                 sv_ingest_timeline($pdo, $note, $actor_url, '');
                 if (function_exists('pc_maybe_boost_entry') && pc_maybe_boost_entry($pdo, $settings, $oid)) {
@@ -1160,6 +1180,7 @@ function pc_note_has_tag(array $note, string $tag): bool {
  * it is not authoritative for posts made on other Pixelfed/Mastodon instances.
  * Keeping the raw Note avoids fetching the same post a second time.
  */
+/** Experimental alternate collector retained for review; not used by recovery. */
 function pc_participant_recovery_rows(PDO $pdo, array $settings, string $tag, int $per_actor = 12): array {
     $rows = []; $actors = 0; $errors = 0;
     try {
@@ -1200,7 +1221,9 @@ function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40): 
     $rows = function_exists('sv_authed_hashtag_timeline') ? sv_authed_hashtag_timeline($pdo,$settings,$tag,$limit) : null;
     if (!is_array($rows)) $rows = [];
     if (!$rows && function_exists('sv_hashtag_timeline')) $rows = sv_hashtag_timeline('mastodon.social',$tag,$limit);
-    $participant_scan = pc_participant_recovery_rows($pdo,$settings,$tag,12);
+    // Wire the established participant-rescan/outbox reader in collection mode.
+    // It returns raw Notes; admission below remains the one policy path.
+    $participant_scan = pc_rescan_participants($pdo,$settings,12,true,$tag);
     $merged = [];
     foreach (array_merge($rows, $participant_scan['rows']) as $row) {
         if (!is_array($row)) continue;
@@ -1210,6 +1233,13 @@ function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40): 
     $rows = array_values($merged);
     $out = ['found'=>count($rows),'recovered'=>0,'already'=>0,'failed'=>0,'outside'=>0,
         'actors'=>(int)$participant_scan['actors'],'scan_errors'=>(int)$participant_scan['errors'],'run_token'=>$run_token];
+    foreach ($participant_scan['unreadable'] as $miss) {
+        $actor_url=(string)($miss['actor_url'] ?? '');
+        pc_log_entry_failure($pdo,[
+            'id'=>'scan:' . hash('sha256',$actor_url),'url'=>$actor_url,'published'=>'',
+            'author'=>['id'=>$actor_url,'handle'=>$actor_url],
+        ],'participant_unreadable',(string)($miss['reason'] ?? 'participant could not be read'),'open',$run_token);
+    }
     foreach ($rows as $row) {
         if (!is_array($row)) continue;
         $published = !empty($row['published']) ? date('Y-m-d H:i:s',strtotime((string)$row['published'])) : '';

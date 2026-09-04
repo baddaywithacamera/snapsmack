@@ -114,7 +114,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
 
     } elseif ($action === 'recover_entries') {
         $r=pc_recover_tagged_entries($pdo,$settings,40);
-        $msg="Recovery checked {$r['found']} tagged post(s): {$r['recovered']} recovered, {$r['already']} already present, {$r['failed']} logged for review, {$r['outside']} outside this window.";
+        $msg="Recovery checked {$r['found']} tagged post(s) across {$r['actors']} participant outbox(es): {$r['recovered']} admitted and queued, {$r['already']} already present, {$r['failed']} logged for review, {$r['outside']} outside this window."
+            . ($r['scan_errors'] ? " {$r['scan_errors']} participant account(s) could not be read and are shown as a scan warning." : '');
 
     } elseif ($action === 'hof_toggle') {
         pc_hof_set_active($pdo, (int)($_POST['hof_id'] ?? 0), (string)($_POST['to'] ?? '') === '1');
@@ -484,7 +485,7 @@ include 'core/sidebar.php';
 
     <div class="box mb-20">
         <h3>RECOVER MISSED ENTRIES</h3>
-        <p class="dim">Checks the live hashtag through your configured search accounts, imports qualifying posts, and boosts them. Anything it cannot process is retained in the failed-entry log.</p>
+        <p class="dim">Checks both the live hashtag and every active participant&rsquo;s own outbox, imports qualifying posts, and queues their boosts. Anything it cannot process is retained in the failed-entry log. &ldquo;Queued&rdquo; does not claim that every remote server has displayed it yet.</p>
         <form method="post" action="" style="display:inline-block;">
             <?php csrf_field(); ?><input type="hidden" name="action" value="recover_entries">
             <button type="submit" class="btn-smack">FIND AND RECOVER</button>

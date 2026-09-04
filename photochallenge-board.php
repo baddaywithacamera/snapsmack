@@ -35,12 +35,6 @@ if (!pc_enabled($settings) || !pc_feed_enabled($settings)) {
     exit;
 }
 
-// Embed mode (0.7.617D): ?embed=1 renders ONLY the entries — no own top-nav,
-// no big PHOTO FRIDAY masthead, no footer/Hall-of-Fame — so a SnapSmack static
-// page can iframe it and the board wears the SITE's normal nav + footer instead
-// of this page's standalone chrome.
-$embed = isset($_GET['embed']) && (string)$_GET['embed'] === '1';
-
 $win  = pc_window($settings);
 $tag  = pc_tag($settings);
 $rows = pc_board_ranked($pdo, $settings, $win, 120);
@@ -56,7 +50,7 @@ $feed_layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonr
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo $esc($title); ?></title>
 <meta name="description" content="This week's Photo Friday board — entries tagged #<?php echo $esc($tag); ?>, every photo pointing home to its maker.">
-<meta name="robots" content="<?php echo $embed ? 'noindex, follow' : 'index, follow'; ?>">
+<meta name="robots" content="index, follow">
 <style>
   :root { --red:#D40000; --link:#F50A0A; --black:#111111; --ink:#f4f4f4; --muted:#9a9a9a; }
   * { box-sizing:border-box; margin:0; padding:0; }
@@ -91,7 +85,6 @@ $feed_layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonr
   .topnav-links a[aria-current="page"] { border-bottom:2px solid var(--red); }
 
   .head { position:relative; z-index:1; text-align:center; padding:44px 24px 26px; }
-  .head--embed { padding:22px 24px 14px; }   /* 0.7.617D embed: no masthead above it */
   .kicker {
     font-family:'Courier New',monospace; letter-spacing:0.42em; text-transform:uppercase;
     font-size:0.72rem; color:var(--red); padding-left:0.42em; margin-bottom:14px;
@@ -151,7 +144,6 @@ $feed_layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonr
 </head>
 <body>
 
-  <?php if (!$embed): ?>
   <nav class="topnav" aria-label="Primary">
     <a class="topnav-brand" href="<?php echo $esc($site); ?>/">PHOTO<span class="dot">·</span>CHALLENGE</a>
     <div class="topnav-links">
@@ -159,13 +151,10 @@ $feed_layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonr
       <a href="<?php echo $esc($hof_url); ?>">Hall of Fame</a>
     </div>
   </nav>
-  <?php endif; ?>
 
-  <header class="head<?php echo $embed ? ' head--embed' : ''; ?>">
-    <?php if (!$embed): ?>
+  <header class="head">
     <p class="kicker">The Federated Photo Challenge</p>
     <h1>PHOTO FRIDAY</h1>
-    <?php endif; ?>
     <div><span class="state <?php echo strtolower($state); ?>"><?php echo $state; ?> &middot; <?php echo $esc($win['label']); ?></span></div>
     <p class="subhead">Post a photo tagged <code>#<?php echo $esc($tag); ?></code> and follow to join &mdash; every card points home to its maker.</p>
   </header>
@@ -204,7 +193,6 @@ $feed_layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonr
     <?php endif; ?>
   </main>
 
-  <?php if (!$embed): ?>
   <footer>
     <p>
       No photo stored here &mdash; every image loads from, and links back to, its origin.
@@ -212,7 +200,6 @@ $feed_layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonr
       &middot; Part of the <a href="https://snapsmack.ca/">SNAPSMACK</a> network
     </p>
   </footer>
-  <?php endif; ?>
 
 </body>
 </html>
