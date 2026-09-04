@@ -408,6 +408,107 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'relay
     exit;
 }
 
+// ── SMACKCAST FLEET JOIN (hub-only) ─────────────────────────────────────────
+// Review every connected multisite spoke's federation state, then join the
+// ready ones to this hub's relay in one step-up-gated action. Review is
+// read-only; the join re-verifies each spoke server-side at join time and
+// never joins a blog with a blank or legacy-domain handle (the spoke's own
+// relay-join endpoint refuses those too — belt and braces).
+
+function sc_fleet_spokes(PDO $pdo): array {
+    try {
+        return $pdo->query(
+            "SELECT id, site_url, site_name, api_key_local FROM snap_multisite_nodes
+             WHERE role = 'spoke' AND status = 'active' AND api_key_local <> ''
+             ORDER BY site_name"
+        )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) { return []; }
+}
+
+/** Same transport as ms_spoke_call (smack-multisite-comments.php), except a
+ *  non-200 JSON body comes back too so the spoke's refusal REASON survives —
+ *  null only when the spoke didn't answer at all. */
+function sc_fleet_call(string $site_url, string $api_key, string $route, string $method = 'GET', array $post_data = []): ?array {
+    $url = rtrim($site_url, '/') . '/api.php?route=' . $route;
+    $ch = curl_init();
+    $opts = [
+        CURLOPT_URL            => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 6,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . $api_key,
+            'Accept: application/json',
+        ],
+    ];
+    if ($method === 'POST') {
+        $opts[CURLOPT_POST]       = true;
+        $opts[CURLOPT_POSTFIELDS] = http_build_query($post_data);
+    }
+    curl_setopt_array($ch, $opts);
+    $raw = curl_exec($ch);
+    curl_close($ch);
+    if (!$raw) return null;
+    $decoded = json_decode($raw, true);
+    return is_array($decoded) ? $decoded : null;
+}
+
+/** One spoke's review row: its status payload + the plain-English problems. */
+function sc_fleet_status_row(array $node): array {
+    $status = sc_fleet_call((string)$node['site_url'], (string)$node['api_key_local'], 'multisite/fediverse/status');
+    $row = ['node' => $node, 'status' => $status, 'problems' => []];
+    if (!is_array($status) || empty($status['ok'])) {
+        $row['status']     = null;
+        $row['problems'][] = 'No answer from the blog (down, or a build without the status endpoint)';
+        return $row;
+    }
+    $row['problems'] = sv_fleet_join_problems($status);
+    return $row;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $sc_is_hub_install
+    && ($_POST['action'] ?? '') === 'fleet_join') {
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) {
+        header('Location: ' . $sv_self . '?fleet_review=1&msg=' . urlencode('Fleet join refused — ' . $ra['error']));
+        exit;
+    }
+    $fj_picked  = array_map('intval', (array)($_POST['spoke_ids'] ?? []));
+    $fj_relay   = sv_actor_url($sv_settings);   // this hub IS the relay: spokes join ITS actor
+    $fj_results = [];
+    foreach (sc_fleet_spokes($pdo) as $fj_node) {
+        if (!in_array((int)$fj_node['id'], $fj_picked, true)) continue;
+        $fj_row  = sc_fleet_status_row($fj_node);   // fail-closed: re-verify at join time
+        $fj_name = (string)($fj_node['site_name'] ?: $fj_node['site_url']);
+        if ($fj_row['problems']) {
+            $fj_results[] = ['site' => $fj_name, 'ok' => false, 'msg' => implode('; ', $fj_row['problems'])];
+            continue;
+        }
+        // Pre-admit the spoke's domain so its Follow lands 'active' and the
+        // Accept fires immediately — these are already mutually-authenticated
+        // multisite spokes, and the operator just selected them behind
+        // password+TOTP. Without this every join would sit pending.
+        $fj_host = strtolower((string)(parse_url((string)$fj_node['site_url'], PHP_URL_HOST) ?: ''));
+        if ($fj_host !== '') {
+            try {
+                $pdo->prepare("INSERT IGNORE INTO snap_relay_allowlist (domain, note) VALUES (?, 'fleet join')")
+                    ->execute([$fj_host]);
+            } catch (Throwable $e) { /* allowlist absent: admission stays pending */ }
+        }
+        $fj_r = sc_fleet_call((string)$fj_node['site_url'], (string)$fj_node['api_key_local'],
+                              'multisite/fediverse/relay-join', 'POST', ['relay_url' => $fj_relay]);
+        if (is_array($fj_r) && !empty($fj_r['ok'])) {
+            $fj_results[] = ['site' => $fj_name, 'ok' => true, 'msg' => (string)($fj_r['message'] ?? 'Joined.')];
+        } else {
+            $fj_results[] = ['site' => $fj_name, 'ok' => false,
+                             'msg' => (string)($fj_r['error'] ?? 'No answer — join NOT confirmed')];
+        }
+    }
+    $_SESSION['sc_fleet_results'] = $fj_results;
+    header('Location: ' . $sv_self . '?fleet_review=1&msg=' . urlencode('Fleet join finished — results below.'));
+    exit;
+}
+
 // --- STATE FOR RENDER ---
 $sv_on       = sv_enabled($sv_settings);
 $sv_handle   = sv_handle($sv_settings);
@@ -432,6 +533,17 @@ if ($sc_is_hub_install) {
             ->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) { $sc_subscribers = []; }
 }
+
+// FLEET JOIN state for the portal: the review sweep (read-only, one status call
+// per spoke) runs on ?fleet_review=1; join results ride the session across the
+// post-join redirect and are shown once.
+$sc_fleet_spoke_count = $sc_is_hub_install ? count(sc_fleet_spokes($pdo)) : 0;
+$sc_fleet_review      = null;
+if ($sc_is_hub_install && isset($_GET['fleet_review'])) {
+    $sc_fleet_review = array_map('sc_fleet_status_row', sc_fleet_spokes($pdo));
+}
+$sc_fleet_results = $_SESSION['sc_fleet_results'] ?? [];
+unset($_SESSION['sc_fleet_results']);
 
 // Delivery cron health — registration state + last-run freshness.
 require_once 'core/cron-register.php';
