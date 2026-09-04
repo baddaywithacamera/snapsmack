@@ -1146,16 +1146,22 @@ function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25,
     pc_ensure_tables($pdo);
     $per_actor = max(1, min(60, $per_actor));
     try {
-        $rows = $pdo->query("SELECT actor_url FROM pc_participants WHERE state='active'")->fetchAll(PDO::FETCH_COLUMN);
+        $rows = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active'")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) { return $out; }
-    foreach ($rows as $actor_url) {
-        $actor_url = (string)$actor_url;
+    foreach ($rows as $participant) {
+        $actor_url = (string)($participant['actor_url'] ?? '');
+        $actor_handle = trim((string)($participant['handle'] ?? ''));
         if ($actor_url === '') continue;
         $actor = function_exists('sv_fetch_ap') ? sv_fetch_ap($actor_url, $settings) : null;
         if (!is_array($actor)) {
             $out['errors']++;
             $out['unreadable'][] = ['actor_url'=>$actor_url,'reason'=>'actor document could not be read'];
             continue;
+        }
+        if ($actor_handle === '') {
+            $username = trim((string)($actor['preferredUsername'] ?? ''));
+            $host = (string)(parse_url($actor_url, PHP_URL_HOST) ?: '');
+            if ($username !== '' && $host !== '') $actor_handle = $username . '@' . $host;
         }
         $ob = $actor['outbox'] ?? '';
         $outbox = is_array($ob) ? (string)($ob['id'] ?? '') : (string)$ob;
@@ -1181,7 +1187,7 @@ function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25,
                 $out['rows'][] = [
                     'id'=>$oid,'url'=>(string)$url,
                     'published'=>(string)($note['published'] ?? ($status['published'] ?? '')),
-                    'author'=>['id'=>$actor_url,'handle'=>''],'__object'=>$note,
+                    'author'=>['id'=>$actor_url,'handle'=>$actor_handle],'__object'=>$note,
                 ];
                 continue;
             }
@@ -1193,7 +1199,11 @@ function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25,
                     }
                 }
                 if (!is_array($note) || empty($note['id'])) { $out['errors']++; continue; }
-                sv_ingest_timeline($pdo, $note, $actor_url, '');
+                sv_ingest_timeline($pdo, $note, $actor_url, $actor_handle);
+                if ($actor_handle !== '') {
+                    $pdo->prepare("UPDATE snap_ap_timeline SET actor_handle=? WHERE object_id=? AND actor_handle=''")
+                        ->execute([substr($actor_handle,0,190),$oid]);
+                }
                 if (function_exists('pc_maybe_boost_entry') && pc_maybe_boost_entry($pdo, $settings, $oid)) {
                     $out['recovered']++;
                 }
@@ -1324,7 +1334,16 @@ function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40): 
         $actor = is_array($object['attributedTo'] ?? null) ? (string)($object['attributedTo']['id'] ?? '') : (string)($object['attributedTo'] ?? '');
         if ($actor === '') { pc_log_entry_failure($pdo,$row,'missing_actor','','open',$run_token); $out['failed']++; continue; }
         $row['author']['id'] = $actor;
-        sv_ingest_timeline($pdo,$object,$actor,(string)($row['author']['handle'] ?? ''),false,null,'home','photochallenge-tag-recovery');
+        $actor_handle = trim((string)($row['author']['handle'] ?? ''));
+        sv_ingest_timeline($pdo,$object,$actor,$actor_handle,false,null,'home','photochallenge-tag-recovery');
+        // Ingest de-duplicates on object id and intentionally leaves authorship
+        // untouched. Recovery may be repairing an older row created with the
+        // former blank-handle bug, so fill only an empty label and never replace
+        // a known author.
+        if ($actor_handle !== '') {
+            $pdo->prepare("UPDATE snap_ap_timeline SET actor_handle=? WHERE object_id=? AND actor_handle=''")
+                ->execute([substr($actor_handle,0,190),(string)$object['id']]);
+        }
         $q=$pdo->prepare("SELECT boost_state FROM pc_admissions WHERE object_id=? LIMIT 1"); $q->execute([(string)$object['id']]); $prior=$q->fetchColumn();
         $boosted=pc_maybe_boost_entry($pdo,$settings,(string)$object['id']);
         $q->execute([(string)$object['id']]); $state=$q->fetchColumn();
