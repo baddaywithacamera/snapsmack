@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.621D "NAME NAMES" — 2026-09-04
+- PhotoFri board cards with a legacy blank author label now derive the truthful
+  `user@server` handle from their stored canonical actor URL. Existing recovered
+  cards are repaired immediately on render; no recovery rerun or boost occurs.
 ## 0.7.620D "SIGN YOUR WORK" — 2026-09-04
 - Recovered PhotoFri cards retain the participant's `user@server` handle.
   A repeat recovery safely fills labels left blank by 619D without replacing
