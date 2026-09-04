@@ -70,10 +70,13 @@ function px_actor(PDO $pdo): array {
     $name=px_setting($pdo,'fediverse_display_name',px_setting($pdo,'site_name','GRAMOFSMACK'));
     $avatar=px_setting($pdo,'fediverse_avatar',''); if ($avatar && !preg_match('#^https?://#',$avatar)) $avatar=$base.ltrim($avatar,'/');
     $mode=px_mode($pdo);$countSql=$mode==='photoblog'?"SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date<=NOW()":($mode==='smacktalk'?"SELECT COUNT(*) FROM snap_posts WHERE status='published' AND created_at<=NOW() AND post_type='longform'":"SELECT COUNT(*) FROM snap_posts WHERE status='published' AND created_at<=NOW() AND post_type IN ('single','carousel','panorama')");
+    $followers=0;$following=0;
+    try{$followers=(int)$pdo->query("SELECT COUNT(*) FROM snap_ap_followers WHERE is_active=1")->fetchColumn();}catch(Throwable $e){}
+    try{$following=(int)$pdo->query("SELECT COUNT(*) FROM snap_ap_following WHERE state='accepted'")->fetchColumn();}catch(Throwable $e){}
     return ['id'=>'1','username'=>$user,'acct'=>$user,'display_name'=>$name,'locked'=>false,'bot'=>false,
       'discoverable'=>true,'group'=>false,'created_at'=>'2020-01-01T00:00:00.000Z','note'=>px_setting($pdo,'site_description',''),
       'url'=>$base.'ap/actor','avatar'=>$avatar,'avatar_static'=>$avatar,'header'=>'','header_static'=>'',
-      'followers_count'=>0,'following_count'=>0,'statuses_count'=>(int)$pdo->query($countSql)->fetchColumn(),
+      'followers_count'=>$followers,'following_count'=>$following,'statuses_count'=>(int)$pdo->query($countSql)->fetchColumn(),
       'last_status_at'=>null,'emojis'=>[],'fields'=>[]];
 }
 function px_media(PDO $pdo, int $id): ?array {
@@ -112,12 +115,22 @@ function px_timeline(PDO $pdo): array {
     $sql.=' ORDER BY id DESC LIMIT '.(int)$limit;$q=$pdo->prepare($sql);$q->execute($params);
     $out=[];foreach($q->fetchAll(PDO::FETCH_COLUMN) as$id){$s=px_status($pdo,(int)$id);if($s)$out[]=$s;}return $out;
 }
-function px_remote_account(string $actorUrl, string $handle): array {
-    $handle=ltrim(trim($handle),'@');$parts=explode('@',$handle,2);$username=$parts[0]?:'unknown';$acct=count($parts)>1?$handle:$username.'@'.(parse_url($actorUrl,PHP_URL_HOST)?:'remote');
-    return ['id'=>'remote-'.substr(hash('sha256',$actorUrl),0,24),'username'=>$username,'acct'=>$acct,'display_name'=>$username,
-      'locked'=>false,'bot'=>false,'discoverable'=>true,'group'=>false,'created_at'=>'2020-01-01T00:00:00.000Z','note'=>'','url'=>$actorUrl,
-      'avatar'=>'','avatar_static'=>'','header'=>'','header_static'=>'','followers_count'=>0,'following_count'=>0,'statuses_count'=>0,
+function px_remote_account(string $actorUrl, string $handle, array $cached = []): array {
+    $handle=ltrim(trim($handle!==''?$handle:(string)($cached['handle']??'')),'@');$host=(string)(parse_url($actorUrl,PHP_URL_HOST)?:'remote');
+    if($handle===''){$path=trim((string)(parse_url($actorUrl,PHP_URL_PATH)?:''),'/');$bits=$path===''?[]:explode('/',$path);$handle=rawurldecode((string)(end($bits)?:'unknown')).'@'.$host;}
+    $parts=explode('@',$handle,2);$username=$parts[0]?:'unknown';$acct=count($parts)>1?$handle:$username.'@'.$host;
+    $avatar=(string)($cached['avatar_url']??'');$url=(string)($cached['profile_url']??'');if($url==='')$url=$actorUrl;
+    return ['id'=>'remote-'.substr(hash('sha256',$actorUrl),0,24),'username'=>$username,'acct'=>$acct,'display_name'=>(string)($cached['name']??$username),
+      'locked'=>false,'bot'=>false,'discoverable'=>true,'group'=>false,'created_at'=>'2020-01-01T00:00:00.000Z','note'=>(string)($cached['summary']??''),'url'=>$url,
+      'avatar'=>$avatar,'avatar_static'=>$avatar,'header'=>'','header_static'=>'','followers_count'=>0,'following_count'=>0,'statuses_count'=>0,
       'last_status_at'=>null,'emojis'=>[],'fields'=>[]];
+}
+function px_relationship_accounts(PDO $pdo, string $kind): array {
+    $limit=max(1,min(40,(int)($_GET['limit']??20)));$maxId=max(0,(int)($_GET['max_id']??0));$params=[];
+    if($kind==='followers'){$sql="SELECT f.id,f.actor_url,f.actor_handle,a.handle,a.name,a.avatar_url,a.summary,a.profile_url FROM snap_ap_followers f LEFT JOIN snap_ap_actors a ON a.actor_url=f.actor_url WHERE f.is_active=1";}
+    else{$sql="SELECT f.id,f.actor_url,f.actor_handle,a.handle,a.name,a.avatar_url,a.summary,a.profile_url FROM snap_ap_following f LEFT JOIN snap_ap_actors a ON a.actor_url=f.actor_url WHERE f.state='accepted'";}
+    if($maxId>0){$sql.=' AND f.id<?';$params[]=$maxId;}$sql.=' ORDER BY f.id DESC LIMIT '.(int)$limit;$q=$pdo->prepare($sql);$q->execute($params);
+    $out=[];foreach($q->fetchAll(PDO::FETCH_ASSOC) as$row){$out[]=px_remote_account((string)$row['actor_url'],(string)($row['actor_handle']??''),$row);}return $out;
 }
 function px_dm_status(PDO $pdo, array $dm): array {
     $remote=px_remote_account((string)$dm['remote_actor_url'],(string)($dm['remote_handle']??''));$mine=$dm['direction']==='out';$author=$mine?px_actor($pdo):$remote;$mentioned=$mine?$remote:px_actor($pdo);
@@ -187,6 +200,7 @@ if (($route==='api/v1/instance'||$route==='api/v2/instance') && $method==='GET')
 $token=px_bearer($pdo);
 if ($route==='api/v1/accounts/verify_credentials' || $route==='api/v1/accounts/1') { px_require_scope($token,'read');px_json(px_actor($pdo)); }
 if ($route==='api/pixelfed/v1/accounts/1') { px_require_scope($token,'read');px_json(px_actor($pdo)); }
+if (preg_match('#^api/v1/accounts/1/(followers|following)$#',$route,$m) && $method==='GET') { px_require_scope($token,'read');px_json(px_relationship_accounts($pdo,$m[1])); }
 if ($route==='api/pixelfed/v1/web/settings') {
     px_require_scope($token,'read');
     px_json(['enable_reblogs'=>false,'hide_collections'=>true,'hide_groups'=>true,'hide_stories'=>true]);

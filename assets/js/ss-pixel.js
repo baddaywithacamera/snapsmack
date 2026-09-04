@@ -175,6 +175,7 @@
   /* ---- feed card --------------------------------------------------------- */
   function feedCard(p) {
     var a = p.author || {};
+    var booster = p.boosted_by || {};
     var img0 = (p.images && p.images[0]) || "";
     var vid0 = (p.videos && p.videos[0] && p.videos[0].url) || "";
     var multi = (p.count || (p.images ? p.images.length : 0)) > 1;
@@ -194,7 +195,8 @@
         "</div>" +
         '<a class="sx-ch-menu" href="' + esc(safeUrl(p.url)) + '" target="_blank" rel="noopener">' + DOTS + "</a>" +
       "</div>" +
-      (p.is_boost ? '<div class="sx-boostline">' + BOOST + " Boosted</div>" : "") +
+      (p.is_boost ? '<div class="sx-boostline">' + BOOST + " Boosted" +
+        (booster.handle || booster.name ? ' by <a href="#" data-search="' + esc(booster.handle || booster.id) + '">' + esc(booster.handle || booster.name) + '</a>' : '') + "</div>" : "") +
       '<div class="sx-media' + (multi ? " sx-multi" : "") + '">' + mediaInner + "</div>" +
       '<div class="sx-actions">' +
         '<button class="sx-act sx-like"><span class="sx-ic">' + HEART + "</span> Like</button>" +
