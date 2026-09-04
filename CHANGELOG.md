@@ -9,6 +9,19 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.619D "OPEN THE OUTBOX" — 2026-09-04
+- **PhotoFri recovery now finds Pixelfed participants whose advertised
+  ActivityPub outbox contains only a post count.** Recovery still merges the
+  authenticated hashtag view with every active participant, but falls back to
+  SnapSmack's existing public Pixelfed/Mastodon status reader when an outbox
+  yields no Notes. Each candidate's canonical URL is then fetched as the raw
+  ActivityPub Note and sent through the unchanged eligibility and admission
+  path; no photo is copied or republished.
+- Older Pixelfed servers that protect account lookup but expose the public feed
+  used by their logged-out profile page are supported through their actor's
+  Pixelfed account identifier. Exact hashtag matching prevents lookalike tags.
+- Verified against real public posts on pixelfed.ca, pixelfed.social, and
+  photofed.world. All three return their original single-image ActivityPub Note.
 ## 0.7.618D "NEW DIALECT" — 2026-09-04
 - **The inbox door now speaks modern Mastodon's signature format (RFC-9421).**
   Mainline Mastodon 4.4+/4.7+ signs inbox POSTs with RFC-9421 HTTP Message
