@@ -9,6 +9,23 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.611D "SIGNED RECEIPT" — 2026-09-04
+- **Every verified inbound Create/Update now leaves a receipt in the Interactions
+  inbox log — no more silent 202s.** Previously a post could arrive, pass
+  signature verification, and still vanish without a trace: not from a followed
+  account (silently ignored), a replay (silently acknowledged), or a reader
+  insert that failed (error swallowed). All of those read exactly like "never
+  delivered" while chasing a lost post. Now each path records its disposition:
+  "ingested to reader", "NOT ingested: <reason>", "IGNORED: not in accepted
+  following (actor …)", "reply routed to …", "private message captured" (no
+  content logged), or "replay — already received once, suppressed".
+- **Reader ingest failures are surfaced.** Timeline insert errors report their
+  class in the receipt instead of being discarded.
+- **Follow handshakes can no longer be faked by stale Accepts.** An inbound
+  Accept/Reject must match our current Follow id + actor exactly. A response
+  carrying no Follow id at all still matches the single pending follow (logged
+  as such); anything else is IGNORED and logged instead of silently flipping a
+  newer re-follow to ACCEPTED. (Per Codex second-pass review.)
 ## 0.7.610D "WRONG DOOR" — 2026-09-04
 - **Fix: deliveries that landed on a web page no longer count as "delivered."**
   Some follower records held stale inbox addresses from old builds (e.g.
