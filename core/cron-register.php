@@ -42,6 +42,20 @@ function cron_job_registered(string $tag): bool {
     return $code === 0 && strpos(implode("\n", $out), $tag) !== false;
 }
 
+/** Start a CLI job outside the web request's process group. */
+function cron_run_detached(string $php_cli, string $script_abs): bool {
+    if (!function_exists('exec') || DIRECTORY_SEPARATOR === '\\'
+        || !is_file($php_cli) || !is_executable($php_cli)
+        || !is_file($script_abs)) return false;
+    $prefix = '';
+    foreach (['/usr/bin/setsid', '/bin/setsid', '/usr/bin/nohup', '/bin/nohup'] as $candidate) {
+        if (is_file($candidate) && is_executable($candidate)) { $prefix = $candidate . ' '; break; }
+    }
+    $out = []; $code = 1;
+    @exec($prefix . escapeshellarg($php_cli) . ' ' . escapeshellarg($script_abs) . ' > /dev/null 2>&1 &', $out, $code);
+    return $code === 0;
+}
+
 /**
  * Register (or refresh) a scheduled job.
  *   $schedule    cron time spec, e.g. '*\/10 * * * *' (pass literally, no escaping)
