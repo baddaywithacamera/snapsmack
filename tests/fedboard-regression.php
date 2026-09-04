@@ -33,8 +33,17 @@ $updater = $read('core/updater.php');
 $webcron = $read('core/fediverse-webcron.php');
 $cron = $read('cron-fediverse.php');
 
-fb_expect(str_contains($constants, "SNAPSMACK_VERSION_SHORT', '0.7.587'"), 'release must be version 0.7.587');
-fb_expect(str_contains($constants, "SNAPSMACK_VERSION_CODENAME', 'TOP OF THE PILE'"), 'release codename must be TOP OF THE PILE');
+// FEDBOARD SSO shipped in 0.7.587 "TOP OF THE PILE". The original check pinned
+// the literal version string, which re-broke on EVERY later release (588+ all
+// failed here). What it actually guards is "this build carries at least 587",
+// so compare, don't pin.
+if (preg_match("/SNAPSMACK_VERSION_SHORT', '([^']+)'/", $constants, $fb_m)
+    && preg_match('/^(\d+)\.(\d+)\.(\d+)/', $fb_m[1], $fb_v)) {
+    $fb_at_least_587 = version_compare("{$fb_v[1]}.{$fb_v[2]}.{$fb_v[3]}", '0.7.587', '>=');
+} else {
+    $fb_at_least_587 = false;
+}
+fb_expect($fb_at_least_587, 'release must be version 0.7.587 or later (FEDBOARD SSO baseline)');
 fb_expect(str_contains($migration, 'token_hash') && !str_contains($migration, '`token` VARCHAR'), 'migration must store only ticket hashes');
 fb_expect(str_contains(strtolower($migration), "enum('admin','fedboard')"), 'tickets must bind an allowlisted destination');
 fb_expect(str_contains($updater, "'migrate-fedboard-sso.sql'"), 'updater must apply the FEDBOARD migration');
