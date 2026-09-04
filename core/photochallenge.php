@@ -1079,6 +1079,53 @@ function pc_outbox_notes(string $outbox_url, array $settings, int $max = 25): ar
 }
 
 /**
+ * Return recent participant posts using the actor's advertised AP outbox, with
+ * the existing Mastodon-compatible gallery reader as the Pixelfed fallback.
+ * Current Pixelfed outboxes expose only totalItems, so an empty AP crawl is not
+ * evidence that the account has no posts. Gallery rows deliberately do not
+ * masquerade as raw Notes: recovery subsequently fetches their canonical URI
+ * as ActivityPub and sends that object through the normal admission path.
+ */
+function pc_participant_recent_posts(array $actor, string $outbox, array $settings, int $max = 25): array {
+    $notes = pc_outbox_notes($outbox, $settings, $max);
+    if ($notes || !function_exists('sv_masto_statuses')) {
+        return array_map(static fn(array $note): array => ['note' => $note], $notes);
+    }
+
+    $actor_id = trim((string)($actor['id'] ?? ''));
+    $host = strtolower((string)(parse_url($actor_id, PHP_URL_HOST) ?: ''));
+    $username = trim((string)($actor['preferredUsername'] ?? ''));
+    if ($host === '' || $username === '') return [];
+
+    $statuses = sv_masto_statuses($host, $username, $max);
+
+    // Pixelfed <=0.12.6 can protect /api/v1/accounts/lookup while leaving its
+    // logged-out profile/status feed public. Its actor avatar path contains the
+    // account snowflake in three-digit path chunks; use that vendor identifier
+    // only when the normal lookup returned no posts. This is not used for other
+    // ActivityPub software and never changes the canonical object id.
+    if (!$statuses && function_exists('sv_fetch_json') && function_exists('sv_masto_map_statuses')) {
+        $icon = is_array($actor['icon'] ?? null) ? (string)($actor['icon']['url'] ?? '') : '';
+        if ($icon !== '' && preg_match('~/avatars/((?:[0-9]{3}/)+[0-9]{1,3})/~', $icon, $m)) {
+            $account_id = ltrim(str_replace('/', '', (string)$m[1]), '0');
+            if ($account_id !== '') {
+                $limit = max(1, min($max, 40));
+                $api_rows = sv_fetch_json('https://' . $host . '/api/pixelfed/v1/accounts/'
+                    . rawurlencode($account_id) . '/statuses?limit=' . $limit);
+                $statuses = sv_masto_map_statuses(is_array($api_rows) ? $api_rows : [], $max);
+            }
+        }
+    }
+
+    $rows = [];
+    foreach ($statuses as $status) {
+        if (!is_array($status)) continue;
+        $rows[] = ['status' => $status];
+    }
+    return $rows;
+}
+
+/**
  * Recover missed entries WITHOUT anyone re-posting. For each active participant,
  * pull their recent posts straight from their outbox and run the SAME
  * ingest + admit + boost path an inbound Create would — so entries dropped while
@@ -1118,21 +1165,34 @@ function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25,
             continue;
         }
         $out['actors']++;
-        foreach (pc_outbox_notes($outbox, $settings, $per_actor) as $note) {
-            $oid = (string)($note['id'] ?? '');
+        foreach (pc_participant_recent_posts($actor, $outbox, $settings, $per_actor) as $post) {
+            $note = is_array($post['note'] ?? null) ? $post['note'] : null;
+            $status = is_array($post['status'] ?? null) ? $post['status'] : null;
+            $oid = (string)($note['id'] ?? ($status['id'] ?? ''));
             if ($oid === '') continue;
             $out['posts']++;
             if ($collect_only) {
-                if ($tag !== '' && !pc_note_has_tag($note,$tag)) continue;
-                $url = $note['url'] ?? $oid;
+                $has_tag = $note !== null
+                    ? pc_note_has_tag($note,$tag)
+                    : pc_text_has_tag((string)($status['text'] ?? ''),$tag);
+                if ($tag !== '' && !$has_tag) continue;
+                $url = $note['url'] ?? ($status['url'] ?? $oid);
                 if (is_array($url)) $url = (string)($url['href'] ?? ($url['id'] ?? $oid));
                 $out['rows'][] = [
-                    'id'=>$oid,'url'=>(string)$url,'published'=>(string)($note['published'] ?? ''),
+                    'id'=>$oid,'url'=>(string)$url,
+                    'published'=>(string)($note['published'] ?? ($status['published'] ?? '')),
                     'author'=>['id'=>$actor_url,'handle'=>''],'__object'=>$note,
                 ];
                 continue;
             }
             try {
+                if ($note === null && function_exists('sv_fetch_ap')) {
+                    $note = sv_fetch_ap($oid, $settings);
+                    if (is_array($note) && ($note['type'] ?? '') === 'Create' && is_array($note['object'] ?? null)) {
+                        $note = $note['object'];
+                    }
+                }
+                if (!is_array($note) || empty($note['id'])) { $out['errors']++; continue; }
                 sv_ingest_timeline($pdo, $note, $actor_url, '');
                 if (function_exists('pc_maybe_boost_entry') && pc_maybe_boost_entry($pdo, $settings, $oid)) {
                     $out['recovered']++;
@@ -1170,7 +1230,14 @@ function pc_note_has_tag(array $note, string $tag): bool {
     }
     // Some Pixelfed versions omit structured tags from outbox Notes but retain
     // the hashtag link/text in content. Match a complete hashtag token only.
-    $plain = html_entity_decode(strip_tags((string)($note['content'] ?? '')), ENT_QUOTES | ENT_HTML5);
+    return pc_text_has_tag((string)($note['content'] ?? ''), $want);
+}
+
+/** Match one complete hashtag token in REST text or ActivityPub HTML. */
+function pc_text_has_tag(string $text, string $tag): bool {
+    $want = strtolower(ltrim(trim($tag), '#'));
+    if ($want === '') return false;
+    $plain = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5);
     return (bool)preg_match('/(?:^|[^\pL\pN_])#' . preg_quote($want, '/') . '(?![\pL\pN_])/iu', $plain);
 }
 

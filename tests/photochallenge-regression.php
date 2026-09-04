@@ -52,6 +52,10 @@ pc_test(pc_hashtag_from_prompt('self-portrait!')['display'] === 'PhotoFriSelfPor
     'prompt punctuation is not stripped');
 pc_test(pc_hashtag_from_prompt('Belonging', 'ArtFri')['display'] === 'ArtFriBelonging',
     'prompt hashtag ignores the brand prefix');
+pc_test(pc_text_has_tag("I never lost you.\n\n#PhotoFriBelonging #graffiti", 'photofribelonging'),
+    'Pixelfed REST captions do not match the challenge hashtag');
+pc_test(!pc_text_has_tag('#PhotoFriBelongingExtra', 'photofribelonging'),
+    'challenge hashtag matching accepts a longer lookalike tag');
 
 // --- SCHEDULE A PROMPT: a specific Friday maps to the same 50-hour window pc_window() derives ---
 $fw = pc_window_for_friday('2026-09-04');            // a Friday
@@ -93,9 +97,12 @@ pc_test(str_contains($schema, 'CREATE TABLE IF NOT EXISTS `pc_entry_failures`')
     'missed-entry recovery, durable failure logging, or resubmit notification is absent');
 pc_test(str_contains($photo, 'pc_rescan_participants($pdo,$settings,12,true,$tag)')
     && str_contains($photo, 'array_merge($rows, $participant_scan[\'rows\'])')
+    && str_contains($photo, 'pc_participant_recent_posts($actor, $outbox, $settings, $per_actor)')
+    && str_contains($photo, 'sv_masto_statuses($host, $username, $max)')
+    && str_contains($photo, '/api/pixelfed/v1/accounts/')
     && str_contains($photo, "'participant_unreadable'")
     && str_contains($admin, 'every active participant&rsquo;s own outbox'),
-    'recovery relies on incomplete instance hashtag timelines instead of participant outboxes');
+    'recovery does not merge hashtag, participant outbox, and Pixelfed public-status discovery');
 pc_test(str_contains($admin, 'EXTEND UNTIL &mdash; close automatically')
     && str_contains($admin, 'LATEST RECOVERY RECEIPT')
     && str_contains($schema, '`run_token` varchar(32)'),
