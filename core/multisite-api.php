@@ -22,6 +22,8 @@
  *   multisite/blogroll/sync
  *   multisite/disconnect
  *   multisite/ban-sync      — bidirectional ban hash exchange (Shield Tier 1)
+ *   multisite/fediverse/status      — federation + relay state (fleet-join preflight)
+ *   multisite/fediverse/relay-join  — hub-triggered relay join (fail-closed on handle)
  */
 
 /**
@@ -453,6 +455,61 @@ if ($resource === 'run-crons') {
         'rss_last_run' => $settings['rss_last_run'] ?? null,
         'fediverse_cron_last_run' => $settings['fediverse_cron_last_run'] ?? null,
     ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: GET multisite/fediverse/status
+// The hub asks this spoke where it stands before a fleet relay join: is
+// federation on, what handle did the operator EXPLICITLY choose (blank means
+// the blog is still answering under the legacy site-name fallback), and what
+// is its current relay join state. Read-only. FULL api_key_local auth.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'fediverse' && $sub_action === 'status' && $method === 'GET') {
+    require_once __DIR__ . '/fediverse.php';
+    $fj_state = '';
+    try {
+        $fj = $pdo->prepare("SELECT state FROM snap_ap_following WHERE actor_url = ? LIMIT 1");
+        $fj->execute([sv_relay_actor_url($settings)]);
+        $fj_state = (string)($fj->fetchColumn() ?: '');
+    } catch (Throwable $e) { /* following table absent = never joined */ }
+    ms_ok([
+        'enabled'          => sv_enabled($settings),
+        'handle'           => trim((string)($settings['fediverse_handle'] ?? '')),
+        'handle_effective' => sv_handle($settings),
+        'domain'           => sv_domain($settings),
+        'relay_url'        => sv_relay_actor_url($settings),
+        'relay_joined'     => (string)($settings['photoblogs_relay_joined'] ?? '0') === '1',
+        'join_state'       => $fj_state,
+    ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/fediverse/relay-join
+// The hub tells this spoke to join the network relay at relay_url. FAIL-CLOSED:
+// refused unless federation is enabled AND the operator explicitly chose a
+// handle — a blog must never enter the network answering under the legacy
+// site-name/domain fallback (the trap the portal's blank+required handle field
+// exists to prevent). The Follow is signed with THIS spoke's own key, exactly
+// as if the operator pressed JOIN NETWORK on its portal. FULL api_key_local auth.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'fediverse' && $sub_action === 'relay-join' && $method === 'POST') {
+    require_once __DIR__ . '/fediverse.php';
+    if (!sv_enabled($settings)) {
+        ms_err('Federation is not enabled on this blog.');
+    }
+    if (trim((string)($settings['fediverse_handle'] ?? '')) === '') {
+        ms_err('No handle chosen — set this blog\'s fediverse handle before joining the network.');
+    }
+    $fj_relay = trim((string)($_POST['relay_url'] ?? ''));
+    if ($fj_relay === '' || stripos($fj_relay, 'https://') !== 0) {
+        ms_err('relay_url must be an https actor URL.');
+    }
+    // sv_relay_join() reads the relay actor from settings, so point it there first.
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('photoblogs_relay_url', ?)
+                   ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([$fj_relay]);
+    $settings['photoblogs_relay_url'] = $fj_relay;
+    list($fj_ok, $fj_msg) = sv_relay_join($pdo, $settings);
+    $fj_ok ? ms_ok(['message' => $fj_msg]) : ms_err($fj_msg);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

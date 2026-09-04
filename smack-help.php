@@ -3879,6 +3879,41 @@ interacts exactly the way a carousel blog does.</p>
 HTML
 ];
 
+$help_topics['fediverse-fleet-join'] = [
+    'section'  => 'FEDIVERSE',
+    'title'    => 'Network Relay — Fleet Join (hub)',
+    'icon'     => '&#x1F517;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>FLEET &mdash; join every spoke to the relay in one pass</h3>
+<p>On the relay hub, the Portal's <strong>SMACKCAST HUB</strong> box has a <strong>FLEET</strong>
+panel. Instead of visiting each connected blog and pressing JOIN NETWORK by hand, press
+<strong>REVIEW FLEET</strong>: the hub asks every connected spoke where it stands and shows one
+table &mdash; who is already on the relay, who is ready to join, and who has a problem that must
+be fixed first.</p>
+
+<h4>What gets flagged</h4>
+<ul>
+  <li><strong>Federation turned OFF</strong> &mdash; the blog is not federating at all.</li>
+  <li><strong>No handle chosen</strong> &mdash; the blog would answer under an auto-derived name
+  its owner never picked.</li>
+  <li><strong>Legacy domain-as-handle</strong> &mdash; the handle looks like the old default that
+  pre-filled the field with the blog's domain.</li>
+</ul>
+<p>A flagged blog is <strong>never joined as-is</strong>. Use its <strong>FIX IT</strong> link to open
+that blog's own Fediverse Portal, set things right, then press <strong>RE-REVIEW</strong> &mdash; it
+will show as Ready.</p>
+
+<h4>Joining</h4>
+<p>Tick the blogs you want (Ready ones are pre-ticked), enter your <strong>password and 2FA
+code</strong>, and press <strong>JOIN SELECTED TO NETWORK</strong>. Every blog is re-checked at the
+moment of joining &mdash; a blog that stopped being ready is refused, not joined quietly. Each spoke
+signs its own join with its own key, exactly as if you pressed JOIN NETWORK on that blog, and its
+domain is pre-admitted on the relay so the join completes immediately instead of sitting pending.
+The results table tells you plainly, per blog, whether it joined and why not if it didn't.</p>
+HTML
+];
+
 $help_topics['fediverse-rollcall'] = [
     'section'  => 'FEDIVERSE',
     'title'    => 'Roll Call — fediverse.info listing',

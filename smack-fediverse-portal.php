@@ -237,6 +237,83 @@ include 'core/sidebar.php';
                 <button type="submit" class="btn-smack">APPLY</button>
             </form>
         <?php endforeach; ?>
+
+        <h4 class="mt-20">FLEET</h4>
+        <p class="dim mb-20">Join every connected spoke to this relay in one pass. Each blog is reviewed
+            first: one with federation off, no chosen handle, or the old domain-as-handle default is
+            flagged for fixing FIRST — it never joins as-is. Joining needs your password and 2FA code.</p>
+
+        <?php if ($sc_fleet_results): ?>
+            <table class="data-table w-100 mb-20">
+                <thead><tr><th>Blog</th><th>Result</th><th>Detail</th></tr></thead>
+                <tbody>
+                <?php foreach ($sc_fleet_results as $fr): ?>
+                    <tr>
+                        <td><strong><?php echo htmlspecialchars((string)$fr['site']); ?></strong></td>
+                        <td><strong><?php echo !empty($fr['ok']) ? '&#10003; JOINED' : '&#10007; NOT JOINED'; ?></strong></td>
+                        <td><?php echo htmlspecialchars((string)$fr['msg']); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+
+        <?php if ($sc_fleet_review === null): ?>
+            <a class="btn-smack" href="<?php echo htmlspecialchars($sv_self); ?>?fleet_review=1">REVIEW FLEET (<?php echo (int)$sc_fleet_spoke_count; ?> SPOKES)</a>
+        <?php elseif (!$sc_fleet_review): ?>
+            <p class="dim">No connected spokes found.</p>
+        <?php else: ?>
+            <form method="POST">
+                <input type="hidden" name="action" value="fleet_join">
+                <table class="data-table w-100 mb-20">
+                    <thead><tr><th>Join</th><th>Blog</th><th>Handle</th><th>State</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($sc_fleet_review as $frow):
+                        $fnode    = $frow['node'];
+                        $fstatus  = $frow['status'];
+                        $fname    = (string)($fnode['site_name'] ?: $fnode['site_url']);
+                        $fhandle  = is_array($fstatus) ? trim((string)($fstatus['handle'] ?? '')) : '';
+                        $fdomain  = is_array($fstatus) ? (string)($fstatus['domain'] ?? '') : '';
+                        $fjoined  = is_array($fstatus) && !empty($fstatus['relay_joined'])
+                                    && in_array(strtolower((string)($fstatus['join_state'] ?? '')), ['accepted', 'active'], true);
+                        $fready   = is_array($fstatus) && !$frow['problems'] && !$fjoined;
+                        $ffix_url = rtrim((string)$fnode['site_url'], '/') . '/smack-fediverse-portal.php';
+                    ?>
+                    <tr>
+                        <td>
+                            <?php if ($fready): ?>
+                                <label><input type="checkbox" name="spoke_ids[]" value="<?php echo (int)$fnode['id']; ?>" checked> JOIN</label>
+                            <?php elseif ($fjoined): ?>
+                                &#10003;
+                            <?php else: ?>
+                                &mdash;
+                            <?php endif; ?>
+                        </td>
+                        <td><strong><?php echo htmlspecialchars($fname); ?></strong><br>
+                            <a href="<?php echo htmlspecialchars($ffix_url); ?>" target="_blank" rel="noopener"><?php echo htmlspecialchars((string)(parse_url((string)$fnode['site_url'], PHP_URL_HOST) ?: $fnode['site_url'])); ?></a></td>
+                        <td><code><?php echo $fhandle !== '' ? htmlspecialchars('@' . $fhandle . '@' . $fdomain) : '&mdash;'; ?></code></td>
+                        <td>
+                            <?php if ($fjoined): ?>
+                                Already on the relay
+                            <?php elseif ($frow['problems']): ?>
+                                &#9888; <?php echo htmlspecialchars(implode('; ', $frow['problems'])); ?>
+                                &mdash; <a href="<?php echo htmlspecialchars($ffix_url); ?>" target="_blank" rel="noopener"><strong>FIX IT</strong></a>, then review again
+                            <?php else: ?>
+                                Ready
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <p class="dim">Ticked blogs join <code><?php echo htmlspecialchars(sv_actor_url($sv_settings)); ?></code>.
+                    Each blog is re-checked at join time; a flagged blog is refused even if submitted.</p>
+                <input type="password" name="reauth_password" placeholder="Password" autocomplete="off" required>
+                <input type="text" name="reauth_totp" placeholder="2FA code" inputmode="numeric" autocomplete="off">
+                <button type="submit" class="master-update-btn">JOIN SELECTED TO NETWORK</button>
+                <a class="btn-smack" href="<?php echo htmlspecialchars($sv_self); ?>?fleet_review=1">RE-REVIEW</a>
+            </form>
+        <?php endif; ?>
     </div>
     <?php endif; ?>
 
