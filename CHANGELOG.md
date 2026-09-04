@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.630D "CUT THE CORD" — 2026-09-04
+- **Cron & Jobs now fully severs a manually started worker from Apache.** The
+  Linux launcher combines `nohup` with forced-fork `setsid -f` and closes stdin,
+  stdout and stderr. Hosts that keep a plain `setsid … &` child in the web
+  request's process group can no longer hold Cloudflare open until a paced
+  federation queue finishes.
+
 ## 0.7.629D "FIELD TRIP" — 2026-09-04
 - The relay hub's Fediverse Portal gains a FLEET panel: review every connected spoke's federation state on one screen, then join all the ready ones to the relay in a single pass, behind password + 2FA.
 - The review flags blogs that must be fixed first — federation off, no handle chosen, or the old domain-as-handle default — each with a FIX IT link to that blog's own portal. A flagged blog is never joined, and every blog is re-checked at the moment of joining.
