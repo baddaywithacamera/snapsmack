@@ -1461,6 +1461,24 @@ CREATE TABLE IF NOT EXISTS `pc_window_notices` (
   KEY `idx_pc_window_notice_state` (`state`,`attempted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `pc_entry_failures` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `object_id` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `post_url` varchar(600) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `actor_url` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `actor_handle` varchar(190) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `published` datetime DEFAULT NULL,
+  `reason` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `state` enum('open','recovered','notified') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'open',
+  `last_error` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `first_seen_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_seen_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `notified_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_pc_failure_object` (`object_id`(191)),
+  KEY `idx_pc_failure_state` (`state`,`last_seen_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `pc_blocklist` (
   `kind` enum('actor','domain') COLLATE utf8mb4_unicode_ci NOT NULL,
   `value` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
