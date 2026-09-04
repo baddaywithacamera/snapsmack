@@ -127,6 +127,16 @@ function pc_tz(array $settings): DateTimeZone {
  */
 function pc_window(array $settings, ?int $now_ts = null): array {
     $now = (new DateTimeImmutable('@' . ($now_ts ?? time())))->setTimezone(new DateTimeZone('UTC'));
+    if (($settings['photochallenge_window_mode'] ?? 'weekly') === 'extended') {
+        try {
+            $start = new DateTimeImmutable((string)($settings['photochallenge_open_since'] ?? ''), new DateTimeZone('UTC'));
+            $end = new DateTimeImmutable((string)($settings['photochallenge_extended_until'] ?? ''), new DateTimeZone('UTC'));
+        } catch (Throwable $e) { $start=$now; $end=$now; }
+        $week_key=trim((string)($settings['photochallenge_open_week_key'] ?? '')) ?: $start->format('o-\\WW');
+        return ['start'=>$start->format('Y-m-d H:i:s'),'end'=>$end->format('Y-m-d H:i:s'),
+            'open'=>($now >= $start && $now < $end),'week_key'=>$week_key,
+            'label'=>'Extended through ' . $end->format('M j, Y H:i') . ' UTC'];
+    }
     if (($settings['photochallenge_window_mode'] ?? 'weekly') === 'open') {
         try { $start = new DateTimeImmutable((string)($settings['photochallenge_open_since'] ?? ''), new DateTimeZone('UTC')); }
         catch (Throwable $e) { $start = $now->setTime(0, 0, 0); }
@@ -317,11 +327,15 @@ function pc_ensure_tables(PDO $pdo): void {
             state enum('open','recovered','notified') NOT NULL DEFAULT 'open',
             last_error varchar(500) NOT NULL DEFAULT '', first_seen_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             last_seen_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, notified_at datetime DEFAULT NULL,
+            run_token varchar(32) NOT NULL DEFAULT '',
             id bigint unsigned NOT NULL AUTO_INCREMENT, PRIMARY KEY(id),
             UNIQUE KEY uq_pc_failure_object(object_id(191)), KEY idx_pc_failure_state(state,last_seen_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
     try {
+        $has_run_token = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pc_entry_failures' AND COLUMN_NAME='run_token' LIMIT 1")->fetchColumn();
+        if (!$has_run_token) $pdo->exec("ALTER TABLE pc_entry_failures ADD COLUMN run_token varchar(32) NOT NULL DEFAULT '' AFTER notified_at");
         $has_boost_id = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pc_admissions' AND COLUMN_NAME='boost_activity_id' LIMIT 1")->fetchColumn();
         if (!$has_boost_id) $pdo->exec("ALTER TABLE pc_admissions ADD COLUMN boost_activity_id varchar(600) DEFAULT NULL AFTER boost_state, ADD UNIQUE KEY uq_pc_boost_activity(boost_activity_id(191))");
@@ -1110,34 +1124,35 @@ function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25)
 }
 
 /** Keep a durable, de-duplicated record of a discovered entry we could not process. */
-function pc_log_entry_failure(PDO $pdo, array $row, string $reason, string $error = ''): void {
+function pc_log_entry_failure(PDO $pdo, array $row, string $reason, string $error = '', string $state = 'open', string $run_token = ''): void {
     $object_id = trim((string)($row['id'] ?? ($row['url'] ?? '')));
     if ($object_id === '') return;
     $author = is_array($row['author'] ?? null) ? $row['author'] : [];
     $published = !empty($row['published']) ? date('Y-m-d H:i:s', strtotime((string)$row['published'])) : null;
     $pdo->prepare("INSERT INTO pc_entry_failures
-        (object_id,post_url,actor_url,actor_handle,published,reason,last_error)
-        VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE post_url=VALUES(post_url),
+        (object_id,post_url,actor_url,actor_handle,published,reason,last_error,state,run_token)
+        VALUES (?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE post_url=VALUES(post_url),
         actor_url=VALUES(actor_url),actor_handle=VALUES(actor_handle),published=VALUES(published),
-        reason=VALUES(reason),last_error=VALUES(last_error),last_seen_at=NOW(),state='open'")
+        reason=VALUES(reason),last_error=VALUES(last_error),last_seen_at=NOW(),state=VALUES(state),run_token=VALUES(run_token)")
         ->execute([substr($object_id,0,500),substr((string)($row['url'] ?? ''),0,600),
             substr((string)($author['id'] ?? ''),0,500),substr((string)($author['handle'] ?? ''),0,190),
-            $published,substr($reason,0,40),substr($error,0,500)]);
+            $published,substr($reason,0,40),substr($error,0,500),$state==='recovered'?'recovered':'open',substr($run_token,0,32)]);
 }
 
 /** Discover current-tag posts through configured authenticated search accounts and recover them. */
 function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40): array {
     pc_ensure_tables($pdo);
     $tag = pc_tag($settings); $win = pc_window($settings);
+    $run_token = bin2hex(random_bytes(8));
     $rows = function_exists('sv_authed_hashtag_timeline') ? sv_authed_hashtag_timeline($pdo,$settings,$tag,$limit) : null;
     if (!is_array($rows)) $rows = [];
     if (!$rows && function_exists('sv_hashtag_timeline')) $rows = sv_hashtag_timeline('mastodon.social',$tag,$limit);
-    $out = ['found'=>count($rows),'recovered'=>0,'already'=>0,'failed'=>0,'outside'=>0];
+    $out = ['found'=>count($rows),'recovered'=>0,'already'=>0,'failed'=>0,'outside'=>0,'run_token'=>$run_token];
     foreach ($rows as $row) {
         if (!is_array($row)) continue;
         $published = !empty($row['published']) ? date('Y-m-d H:i:s',strtotime((string)$row['published'])) : '';
         if ($published === '' || $published < $win['start'] || $published >= $win['end']) {
-            pc_log_entry_failure($pdo,$row,'outside_window'); $out['outside']++; continue;
+            pc_log_entry_failure($pdo,$row,'outside_window','', 'open',$run_token); $out['outside']++; continue;
         }
         $object = null;
         foreach (array_unique([(string)($row['id'] ?? ''),(string)($row['url'] ?? '')]) as $candidate) {
@@ -1145,21 +1160,20 @@ function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40): 
         }
         if (is_array($object) && ($object['type'] ?? '') === 'Create' && is_array($object['object'] ?? null)) $object=$object['object'];
         if (!is_array($object) || empty($object['id'])) {
-            pc_log_entry_failure($pdo,$row,'object_fetch_failed','The origin did not return an ActivityPub object.'); $out['failed']++; continue;
+            pc_log_entry_failure($pdo,$row,'object_fetch_failed','The origin did not return an ActivityPub object.','open',$run_token); $out['failed']++; continue;
         }
         $actor = is_array($object['attributedTo'] ?? null) ? (string)($object['attributedTo']['id'] ?? '') : (string)($object['attributedTo'] ?? '');
-        if ($actor === '') { pc_log_entry_failure($pdo,$row,'missing_actor'); $out['failed']++; continue; }
+        if ($actor === '') { pc_log_entry_failure($pdo,$row,'missing_actor','','open',$run_token); $out['failed']++; continue; }
         $row['author']['id'] = $actor;
         sv_ingest_timeline($pdo,$object,$actor,(string)($row['author']['handle'] ?? ''),false,null,'home','photochallenge-tag-recovery');
         $q=$pdo->prepare("SELECT boost_state FROM pc_admissions WHERE object_id=? LIMIT 1"); $q->execute([(string)$object['id']]); $prior=$q->fetchColumn();
         $boosted=pc_maybe_boost_entry($pdo,$settings,(string)$object['id']);
         $q->execute([(string)$object['id']]); $state=$q->fetchColumn();
         if ($boosted || in_array($state,['sent','test'],true)) {
-            $pdo->prepare("UPDATE pc_entry_failures SET state='recovered',last_seen_at=NOW() WHERE object_id IN (?,?)")
-                ->execute([(string)($row['id'] ?? ''),(string)$object['id']]);
+            pc_log_entry_failure($pdo,$row,$prior ? 'already_present' : 'recovered','', 'recovered',$run_token);
             $prior ? $out['already']++ : $out['recovered']++;
         } else {
-            pc_log_entry_failure($pdo,$row,$state === 'failed' ? 'boost_failed' : 'not_eligible'); $out['failed']++;
+            pc_log_entry_failure($pdo,$row,$state === 'failed' ? 'boost_failed' : 'not_eligible','','open',$run_token); $out['failed']++;
         }
     }
     return $out;
@@ -1184,6 +1198,15 @@ function pc_entry_failures(PDO $pdo, int $limit = 50): array {
     try {
         return $pdo->query("SELECT * FROM pc_entry_failures ORDER BY last_seen_at DESC LIMIT " . max(1,min(200,$limit)))
             ->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) { return []; }
+}
+
+function pc_latest_recovery_results(PDO $pdo, int $limit = 100): array {
+    try {
+        $token=(string)$pdo->query("SELECT run_token FROM pc_entry_failures WHERE run_token<>'' ORDER BY last_seen_at DESC LIMIT 1")->fetchColumn();
+        if ($token==='') return [];
+        $q=$pdo->prepare("SELECT * FROM pc_entry_failures WHERE run_token=? ORDER BY published DESC LIMIT " . max(1,min(200,$limit)));
+        $q->execute([$token]); return $q->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) { return []; }
 }
 
