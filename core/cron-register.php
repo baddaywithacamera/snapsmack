@@ -47,12 +47,29 @@ function cron_run_detached(string $php_cli, string $script_abs): bool {
     if (!function_exists('exec') || DIRECTORY_SEPARATOR === '\\'
         || !is_file($php_cli) || !is_executable($php_cli)
         || !is_file($script_abs)) return false;
+    $setsid = '';
+    foreach (['/usr/bin/setsid', '/bin/setsid'] as $candidate) {
+        if (is_file($candidate) && is_executable($candidate)) { $setsid = $candidate; break; }
+    }
+    $nohup = '';
+    foreach (['/usr/bin/nohup', '/bin/nohup'] as $candidate) {
+        if (is_file($candidate) && is_executable($candidate)) { $nohup = $candidate; break; }
+    }
+    // `setsid command &` is not enough on every Linux build: when setsid can
+    // reuse the shell child, Apache may retain that process in its request
+    // group and Cloudflare waits until the paced job finishes.  `setsid -f`
+    // guarantees a second fork; nohup plus a closed stdin severs every inherited
+    // request descriptor.  Keep a nohup-only fallback for minimal hosts.
     $prefix = '';
-    foreach (['/usr/bin/setsid', '/bin/setsid', '/usr/bin/nohup', '/bin/nohup'] as $candidate) {
-        if (is_file($candidate) && is_executable($candidate)) { $prefix = $candidate . ' '; break; }
+    if ($setsid !== '') {
+        $prefix = ($nohup !== '' ? escapeshellarg($nohup) . ' ' : '')
+                . escapeshellarg($setsid) . ' -f ';
+    } elseif ($nohup !== '') {
+        $prefix = escapeshellarg($nohup) . ' ';
     }
     $out = []; $code = 1;
-    @exec($prefix . escapeshellarg($php_cli) . ' ' . escapeshellarg($script_abs) . ' > /dev/null 2>&1 &', $out, $code);
+    @exec($prefix . escapeshellarg($php_cli) . ' ' . escapeshellarg($script_abs)
+        . ' < /dev/null > /dev/null 2>&1 &', $out, $code);
     return $code === 0;
 }
 
