@@ -1357,6 +1357,45 @@ function sv_deliver(array $settings, string $inbox_url, string $activity_json): 
 }
 
 /**
+ * One-shot per installed version: re-resolve EVERY active follower's inbox
+ * from their live actor doc (0.7.613D). Bounded to 60 fetches per run; the
+ * version stamp is written only when the whole roster has been walked, so a
+ * partial pass resumes on the next sweep. Never deactivates anyone — an
+ * unreachable actor keeps its existing row untouched.
+ */
+function sv_repair_follower_inboxes_once(PDO $pdo, array $settings): void {
+    try {
+        $stamp = (string)($settings['fedi_inbox_repair_done'] ?? '');
+        $ver   = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0';
+        if ($stamp === $ver) return;
+        $rows = $pdo->query(
+            "SELECT actor_url FROM snap_ap_followers WHERE is_active = 1 ORDER BY id ASC"
+        )->fetchAll(PDO::FETCH_COLUMN);
+        $budget = 60; $repaired = 0;
+        foreach ($rows as $actor) {
+            if ($budget-- <= 0) return;   // resume next sweep; stamp NOT written
+            $doc = sv_fetch_ap((string)$actor);
+            if (!is_array($doc)) continue;
+            $inbox  = trim((string)($doc['inbox'] ?? ''));
+            $shared = trim((string)($doc['endpoints']['sharedInbox'] ?? ''));
+            if ($inbox === '') continue;
+            $upd = $pdo->prepare(
+                "UPDATE snap_ap_followers SET inbox_url = ?, shared_inbox_url = ?
+                 WHERE actor_url = ? AND (inbox_url <> ? OR NOT (shared_inbox_url <=> ?))"
+            );
+            $upd->execute([$inbox, $shared !== '' ? $shared : null, $actor,
+                           $inbox, $shared !== '' ? $shared : null]);
+            if ($upd->rowCount() > 0) $repaired++;
+        }
+        $pdo->prepare(
+            "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('fedi_inbox_repair_done', ?)
+             ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+        )->execute([$ver]);
+        if ($repaired > 0) error_log("FEDIVERSE inbox repair: rewrote {$repaired} follower delivery address(es)");
+    } catch (Throwable $e) { /* repair must never break the sweep */ }
+}
+
+/**
  * Re-resolve a follower's inbox from their LIVE actor doc after a queued
  * delivery bounced off a web page (a stale/legacy inbox URL captured at
  * Follow time, before the sender's blog advertised path-style endpoints).
@@ -5840,6 +5879,14 @@ function sv_run_sweep(PDO $pdo, array &$settings): array
         }
         sv_ensure_tables($pdo);
         sv_ensure_keys($pdo, $settings);
+
+        // 0.7.613D "CHANGE OF ADDRESS": once per installed version, re-resolve
+        // every active follower's delivery inbox from their LIVE actor doc.
+        // Follower rows captured under old builds can hold a stale or plain
+        // wrong inbox URL, and if the wrong endpoint answers 2xx the delivery
+        // "succeeds" into a void — the exact fleet blackhole of 2026-09-03.
+        // This heals every flavour of wrong without waiting for a failure.
+        sv_repair_follower_inboxes_once($pdo, $settings);
 
         $relay_ingest = function_exists('sc_relay_process_ingest_jobs')
             ? sc_relay_process_ingest_jobs($pdo, $settings, 20) : [0, 0];
