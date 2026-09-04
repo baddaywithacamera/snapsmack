@@ -9,6 +9,16 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.623D "OPEN SIGN" — 2026-09-04
+- **HOTFIX: `/board` was returning a blank error (HTTP 500) on 0.7.622D.** When
+  the board began rendering through the CMS, its page file called two helper
+  functions — the hit-counter (`snapsmack_log_hit`) and the skin footer's
+  scroll-timer tag (`snapsmack_scrolltime_tag`) — without loading the file that
+  defines them (`core/stats-logger.php`). That one missing `require` took the
+  whole page down. Added the require, and wrapped the CMS bootstrap in a
+  `Throwable` guard so any future surprise degrades to a short "try again"
+  message instead of a blank white error. The board is back.
+
 ## 0.7.622D "UNDER ONE ROOF" — 2026-09-04
 - **The public board (`/board`) now renders THROUGH the CMS** — the site's own
   skin header (top nav) and skin footer (bottom nav) wrap it, so it matches
