@@ -1310,12 +1310,65 @@ function sv_deliver(array $settings, string $inbox_url, string $activity_json): 
         CURLOPT_TIMEOUT        => 10,
         CURLOPT_CONNECTTIMEOUT => 5,
     ]);
-    curl_exec($ch);
-    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    $err  = curl_error($ch);
+    $body  = curl_exec($ch);
+    $code  = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $ctype = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $err   = curl_error($ch);
     curl_close($ch);
-    if ($code >= 200 && $code < 300) return [true, (string)$code];
+    if ($code >= 200 && $code < 300) {
+        // A real AP inbox ACKs a POST with an empty/tiny body (200/202). A full
+        // HTML page back means the activity landed on a WEB PAGE — a stale or
+        // legacy inbox URL (e.g. /?ap=inbox renders the homepage with 200) that
+        // swallows the post while the queue reports "delivered". Count it as a
+        // failure so it shows on the Delivery Log instead of green silence, and
+        // so sv_process_deliveries can self-heal the stored inbox URL.
+        if (is_string($body) && strlen($body) > 1024 && stripos($ctype, 'text/html') === 0) {
+            return [false, 'not an AP inbox (HTML page answered ' . $code . ') — stale inbox URL, self-repairing'];
+        }
+        return [true, (string)$code];
+    }
     return [false, $err !== '' ? substr($err, 0, 200) : 'HTTP ' . $code];
+}
+
+/**
+ * Re-resolve a follower's inbox from their LIVE actor doc after a queued
+ * delivery bounced off a web page (a stale/legacy inbox URL captured at
+ * Follow time, before the sender's blog advertised path-style endpoints).
+ * Updates the follower row and returns the fresh delivery inbox using the
+ * same sharedInbox-first preference as sv_follower_inboxes(), or null when
+ * nothing could be repaired (unknown URL, actor unreachable).
+ */
+function sv_refresh_follower_inbox(PDO $pdo, string $bad_url): ?string {
+    try {
+        $st = $pdo->prepare(
+            "SELECT actor_url FROM snap_ap_followers WHERE inbox_url = ? OR shared_inbox_url = ? LIMIT 1"
+        );
+        $st->execute([$bad_url, $bad_url]);
+        $actor = (string)$st->fetchColumn();
+        if ($actor === '') {
+            // An earlier queue row may have already repaired the follower row,
+            // erasing the stale URL match. Fall back to the host: any follower
+            // whose actor lives on the bad URL's domain shares its inbox doc.
+            $host = parse_url($bad_url, PHP_URL_HOST) ?: '';
+            if ($host === '') return null;
+            $st = $pdo->prepare(
+                "SELECT actor_url FROM snap_ap_followers
+                 WHERE actor_url LIKE ? AND is_active = 1 LIMIT 1"
+            );
+            $st->execute(['https://' . $host . '/%']);
+            $actor = (string)$st->fetchColumn();
+            if ($actor === '') return null;
+        }
+        $doc = sv_fetch_ap($actor);
+        if (!is_array($doc)) return null;
+        $inbox  = trim((string)($doc['inbox'] ?? ''));
+        $shared = trim((string)($doc['endpoints']['sharedInbox'] ?? ''));
+        if ($inbox === '') return null;
+        $pdo->prepare(
+            "UPDATE snap_ap_followers SET inbox_url = ?, shared_inbox_url = ? WHERE actor_url = ?"
+        )->execute([$inbox, $shared !== '' ? $shared : null, $actor]);
+        return $shared !== '' ? $shared : $inbox;
+    } catch (Throwable $e) { return null; }
 }
 
 // ─── Delivery queue ──────────────────────────────────────────────────────────
@@ -1449,6 +1502,17 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
         }
         $failed++;
         $attempts = (int)$row['attempts'] + 1;
+        // Self-heal a stale inbox URL: the POST landed on a web page, not an AP
+        // inbox (see sv_deliver). Re-resolve the follower's live actor doc,
+        // rewrite the follower row AND this queue row, so the next attempt
+        // knocks on the right door instead of failing forever.
+        if (strpos($info, 'not an AP inbox') === 0) {
+            $fresh = sv_refresh_follower_inbox($pdo, (string)$row['inbox_url']);
+            if ($fresh !== null && $fresh !== $row['inbox_url']) {
+                $pdo->prepare("UPDATE snap_ap_deliveries SET inbox_url = ? WHERE id = ?")
+                    ->execute([$fresh, $row['id']]);
+            }
+        }
         if ($attempts >= 8) {
             $pdo->prepare(
                 "UPDATE snap_ap_deliveries SET status='failed', attempts=?, last_error=? WHERE id=?"
