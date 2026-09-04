@@ -62,6 +62,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
         $msg_ok = !empty($res['ok']);
         $msg = $res['msg'];
 
+    } elseif ($action === 'extend_window_24') {
+        $mode = (string)($settings['photochallenge_window_mode'] ?? 'weekly');
+        if (!in_array($mode, ['weekly','extended'], true)) {
+            $msg_ok = false;
+            $msg = 'This round is already in KEEP OPEN or DAILY mode; it has no fixed closing time to extend.';
+        } else {
+            $old_win = pc_window($settings);
+            try {
+                $new_end = (new DateTimeImmutable((string)$old_win['end'], new DateTimeZone('UTC')))->modify('+24 hours');
+                sv_set_setting($pdo,$settings,'photochallenge_open_since',(string)$old_win['start']);
+                sv_set_setting($pdo,$settings,'photochallenge_open_week_key',(string)$old_win['week_key']);
+                sv_set_setting($pdo,$settings,'photochallenge_extended_until',$new_end->format('Y-m-d H:i:s'));
+                sv_set_setting($pdo,$settings,'photochallenge_window_mode','extended');
+                $msg = 'Current round extended 24 hours. New closing time: ' . $new_end->format('M j, Y H:i') . ' UTC.';
+            } catch (Throwable $e) {
+                $msg_ok = false;
+                $msg = 'The current round could not be extended.';
+            }
+        }
+
     } elseif ($action === 'save_settings') {
         $enabled = isset($_POST['pc_enabled']) ? '1' : '0';
         $tag = ltrim(strtolower(trim((string)($_POST['pc_tag'] ?? 'photofri'))), '#');
@@ -469,6 +489,15 @@ include 'core/sidebar.php';
             participants: <strong><?php echo (int)$counts['active']; ?></strong> active,
             <?php echo (int)$counts['left']; ?> left, <?php echo (int)$counts['blocked']; ?> blocked.
         </p>
+        <p class="dim">Closes: <strong><?php echo $esc($win['end']); ?> UTC</strong></p>
+        <?php if (in_array(($settings['photochallenge_window_mode'] ?? 'weekly'), ['weekly','extended'], true)): ?>
+        <form method="post" action="" style="margin:12px 0;">
+            <?php csrf_field(); ?>
+            <input type="hidden" name="action" value="extend_window_24">
+            <button type="submit" class="btn btn-primary">EXTEND 24 HOURS</button>
+            <span class="dim">Keeps this same round and moves its closing time forward exactly one day.</span>
+        </form>
+        <?php endif; ?>
         <?php if ($test_on): ?>
         <p class="dim">
             <strong>TESTING WHITELIST is ON.</strong>
