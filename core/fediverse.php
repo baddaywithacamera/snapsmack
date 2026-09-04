@@ -1925,6 +1925,17 @@ function sv_cache_actor(PDO $pdo, array $actor_doc): void {
     } catch (Exception $e) { /* table may lag on a fresh install */ }
 }
 
+/** Best truthful handle available when an old timeline row stored none. */
+function sv_actor_handle_fallback(string $actor_url, string $stored = ''): string {
+    $stored = ltrim(trim($stored), '@');
+    if ($stored !== '') return $stored;
+    $host = (string)(parse_url($actor_url, PHP_URL_HOST) ?: '');
+    $path = trim((string)(parse_url($actor_url, PHP_URL_PATH) ?: ''), '/');
+    $bits = $path === '' ? [] : explode('/', $path);
+    $user = rawurldecode((string)(end($bits) ?: ''));
+    return ($user !== '' && $host !== '') ? $user . '@' . $host : $actor_url;
+}
+
 /** Record an inbound engagement notification (deduped on type+actor+object). */
 function sv_notify(PDO $pdo, string $ntype, string $actor_url, string $handle = '',
                    ?string $object_id = null, ?string $target_url = null, ?string $content = null): void {
@@ -2652,7 +2663,19 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                     $battr = is_array($boosted['attributedTo'] ?? null)
                         ? (string)($boosted['attributedTo']['id'] ?? '')
                         : (string)($boosted['attributedTo'] ?? '');
-                    sv_ingest_timeline($pdo, $boosted, $battr !== '' ? $battr : $actor_id, '', true, $actor_id);
+                    $original_actor = $battr !== '' ? $battr : $actor_id;
+                    $original_handle = '';
+                    if ($original_actor === $actor_id) {
+                        $original_handle = $handle;
+                    } elseif (stripos($original_actor, 'https://') === 0) {
+                        $original_doc = sv_fetch_ap($original_actor, $settings);
+                        if (is_array($original_doc) && (string)($original_doc['id'] ?? '') === $original_actor) {
+                            sv_cache_actor($pdo, $original_doc);
+                            $original_handle = ((string)($original_doc['preferredUsername'] ?? '')) . '@' . (parse_url($original_actor, PHP_URL_HOST) ?: '');
+                        }
+                    }
+                    $original_handle = sv_actor_handle_fallback($original_actor, $original_handle);
+                    sv_ingest_timeline($pdo, $boosted, $original_actor, $original_handle, true, $actor_id);
                 }
             }
             if (function_exists('pc_has_entry') && function_exists('pc_record_boost')) {
@@ -3834,10 +3857,12 @@ function sv_reader_timeline(PDO $pdo, string $feed = 'home', int $limit = 60): a
     $feed = in_array($feed, ['home','local','global'], true) ? $feed : 'home';
     try {
         $s = $pdo->prepare(
-            "SELECT t.*, a.name AS actor_name, a.avatar_url
+            "SELECT t.*, a.handle AS cached_handle, a.name AS actor_name, a.avatar_url,
+                    b.handle AS booster_handle, b.name AS booster_name
              FROM snap_ap_timeline t
              JOIN snap_ap_timeline_membership m ON m.timeline_id=t.id AND m.feed=?
              LEFT JOIN snap_ap_actors a ON a.actor_url = t.actor_url
+             LEFT JOIN snap_ap_actors b ON b.actor_url = t.boosted_by
              ORDER BY COALESCE(t.published, t.fetched_at) DESC LIMIT " . (int)$limit
         );
         $s->execute([$feed]);
@@ -3845,8 +3870,10 @@ function sv_reader_timeline(PDO $pdo, string $feed = 'home', int $limit = 60): a
     } catch (Exception $e) {
         // Upgrade-safe fallback until canonical sync + backfill migration land.
         try {
-            $s = $pdo->prepare("SELECT t.*,a.name AS actor_name,a.avatar_url
+            $s = $pdo->prepare("SELECT t.*,a.handle AS cached_handle,a.name AS actor_name,a.avatar_url,
+                    b.handle AS booster_handle,b.name AS booster_name
                 FROM snap_ap_timeline t LEFT JOIN snap_ap_actors a ON a.actor_url=t.actor_url
+                LEFT JOIN snap_ap_actors b ON b.actor_url=t.boosted_by
                 WHERE t.source=? ORDER BY COALESCE(t.published,t.fetched_at) DESC LIMIT " . (int)$limit);
             $s->execute([$feed]);
             $rows = $s->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -3854,6 +3881,9 @@ function sv_reader_timeline(PDO $pdo, string $feed = 'home', int $limit = 60): a
     }
     $out = [];
     foreach ($rows as $r) {
+        $author_handle = sv_actor_handle_fallback((string)$r['actor_url'], (string)($r['actor_handle'] ?: ($r['cached_handle'] ?? '')));
+        $booster_url = (string)($r['boosted_by'] ?? '');
+        $booster_handle = $booster_url !== '' ? sv_actor_handle_fallback($booster_url, (string)($r['booster_handle'] ?? '')) : '';
         $imgs = json_decode((string)$r['media_json'], true);
         if (!is_array($imgs)) $imgs = [];
         // Inbound video (consume-not-produce). Present only when the column exists.
@@ -3868,10 +3898,14 @@ function sv_reader_timeline(PDO $pdo, string $feed = 'home', int $limit = 60): a
             'videos' => $vids, 'count' => count($imgs),
             'is_boost' => (int)$r['is_boost'],
             'author' => [
-                'handle' => $r['actor_handle'], 'name' => $r['actor_name'] ?: $r['actor_handle'],
+                'handle' => $author_handle, 'name' => $r['actor_name'] ?: $author_handle,
                 'avatar' => sv_media_proxy_url((string)$r['avatar_url'], null, 604800), 'id' => $r['actor_url'],
                 'host'   => parse_url((string)$r['actor_url'], PHP_URL_HOST) ?: '',
             ],
+            'boosted_by' => $booster_url !== '' ? [
+                'handle' => $booster_handle, 'name' => ($r['booster_name'] ?? '') ?: $booster_handle,
+                'id' => $booster_url,
+            ] : null,
         ];
     }
     return $out;
