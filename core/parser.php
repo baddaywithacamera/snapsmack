@@ -161,6 +161,11 @@ class SnapSmack {
         // Body-only output: the CMS page and active skin own all page chrome.
         $content = $this->parsePhotoblogsDirectory($content);
 
+        // --- PHASE 12: PHOTO-CHALLENGE BOARD ([board]) ---
+        // Same block-level treatment as the feed/directory: the static page owns
+        // the chrome, this emits just the entry grid.
+        $content = $this->parseBoard($content);
+
         return $content;
     }
 
@@ -191,6 +196,20 @@ class SnapSmack {
         return preg_replace_callback('/\[photoblogs_directory\]/i', function () {
             if (!function_exists('pbdir_public_html')) require_once __DIR__ . '/photoblogs-directory-view.php';
             return pbdir_public_html($this->pdo);
+        }, $content);
+    }
+
+    // 0.7.618D — [board]: the live Photo-Challenge entry grid, inline, reusing
+    // pc_board_ranked() (same data as /board). Renders under the site's own
+    // chrome so a static page can carry the board without the standalone page's
+    // separate nav/footer.
+    private function parseBoard($content) {
+        if (stripos($content, '[board]') === false) return $content;
+        return preg_replace_callback('/\[board\]/i', function () {
+            if (!function_exists('pc_board_embed_html')) require_once __DIR__ . '/photochallenge.php';
+            $settings = is_array($this->config) ? $this->config : [];
+            try { return pc_board_embed_html($this->pdo, $settings); }
+            catch (\Throwable $e) { return ''; }
         }, $content);
     }
 
