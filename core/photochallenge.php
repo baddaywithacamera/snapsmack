@@ -1139,7 +1139,60 @@ function pc_log_entry_failure(PDO $pdo, array $row, string $reason, string $erro
             $published,substr($reason,0,40),substr($error,0,500),$state==='recovered'?'recovered':'open',substr($run_token,0,32)]);
 }
 
-/** Discover current-tag posts through configured authenticated search accounts and recover them. */
+/** Does a raw ActivityPub Note carry the challenge hashtag? */
+function pc_note_has_tag(array $note, string $tag): bool {
+    $want = strtolower(ltrim(trim($tag), '#'));
+    if ($want === '') return false;
+    foreach (($note['tag'] ?? []) as $item) {
+        if (!is_array($item)) continue;
+        $name = strtolower(ltrim(trim((string)($item['name'] ?? '')), '#'));
+        if ($name !== '' && hash_equals($want, $name)) return true;
+    }
+    // Some Pixelfed versions omit structured tags from outbox Notes but retain
+    // the hashtag link/text in content. Match a complete hashtag token only.
+    $plain = html_entity_decode(strip_tags((string)($note['content'] ?? '')), ENT_QUOTES | ENT_HTML5);
+    return (bool)preg_match('/(?:^|[^\pL\pN_])#' . preg_quote($want, '/') . '(?![\pL\pN_])/iu', $plain);
+}
+
+/**
+ * Read recent Notes from every active participant's advertised outbox. A
+ * server hashtag timeline is only that server's incomplete view of federation;
+ * it is not authoritative for posts made on other Pixelfed/Mastodon instances.
+ * Keeping the raw Note avoids fetching the same post a second time.
+ */
+function pc_participant_recovery_rows(PDO $pdo, array $settings, string $tag, int $per_actor = 12): array {
+    $rows = []; $actors = 0; $errors = 0;
+    try {
+        $participants = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active' ORDER BY id")
+            ->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) { return ['rows'=>[],'actors'=>0,'errors'=>1]; }
+    foreach ($participants as $participant) {
+        $actor_url = trim((string)($participant['actor_url'] ?? ''));
+        if ($actor_url === '') continue;
+        $actor = function_exists('sv_fetch_ap') ? sv_fetch_ap($actor_url, $settings) : null;
+        if (!is_array($actor)) { $errors++; continue; }
+        $ob = $actor['outbox'] ?? '';
+        $outbox = is_array($ob) ? trim((string)($ob['id'] ?? '')) : trim((string)$ob);
+        if ($outbox === '') { $errors++; continue; }
+        $actors++;
+        foreach (pc_outbox_notes($outbox, $settings, max(1, min(25, $per_actor))) as $note) {
+            if (!pc_note_has_tag($note, $tag)) continue;
+            $id = trim((string)($note['id'] ?? ''));
+            if ($id === '') continue;
+            $url = $note['url'] ?? $id;
+            if (is_array($url)) $url = (string)($url['href'] ?? ($url['id'] ?? $id));
+            $rows[] = [
+                'id'=>$id, 'url'=>(string)$url,
+                'published'=>(string)($note['published'] ?? ''),
+                'author'=>['id'=>$actor_url,'handle'=>(string)($participant['handle'] ?? '')],
+                '__object'=>$note,
+            ];
+        }
+    }
+    return ['rows'=>$rows,'actors'=>$actors,'errors'=>$errors];
+}
+
+/** Discover current-tag posts through search accounts AND participant outboxes, then recover them. */
 function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40): array {
     pc_ensure_tables($pdo);
     $tag = pc_tag($settings); $win = pc_window($settings);
@@ -1147,16 +1200,25 @@ function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40): 
     $rows = function_exists('sv_authed_hashtag_timeline') ? sv_authed_hashtag_timeline($pdo,$settings,$tag,$limit) : null;
     if (!is_array($rows)) $rows = [];
     if (!$rows && function_exists('sv_hashtag_timeline')) $rows = sv_hashtag_timeline('mastodon.social',$tag,$limit);
-    $out = ['found'=>count($rows),'recovered'=>0,'already'=>0,'failed'=>0,'outside'=>0,'run_token'=>$run_token];
+    $participant_scan = pc_participant_recovery_rows($pdo,$settings,$tag,12);
+    $merged = [];
+    foreach (array_merge($rows, $participant_scan['rows']) as $row) {
+        if (!is_array($row)) continue;
+        $key = trim((string)($row['id'] ?? ($row['url'] ?? '')));
+        if ($key !== '' && !isset($merged[$key])) $merged[$key] = $row;
+    }
+    $rows = array_values($merged);
+    $out = ['found'=>count($rows),'recovered'=>0,'already'=>0,'failed'=>0,'outside'=>0,
+        'actors'=>(int)$participant_scan['actors'],'scan_errors'=>(int)$participant_scan['errors'],'run_token'=>$run_token];
     foreach ($rows as $row) {
         if (!is_array($row)) continue;
         $published = !empty($row['published']) ? date('Y-m-d H:i:s',strtotime((string)$row['published'])) : '';
         if ($published === '' || $published < $win['start'] || $published >= $win['end']) {
             pc_log_entry_failure($pdo,$row,'outside_window','', 'open',$run_token); $out['outside']++; continue;
         }
-        $object = null;
+        $object = is_array($row['__object'] ?? null) ? $row['__object'] : null;
         foreach (array_unique([(string)($row['id'] ?? ''),(string)($row['url'] ?? '')]) as $candidate) {
-            if ($candidate !== '' && function_exists('sv_fetch_ap')) { $object=sv_fetch_ap($candidate,$settings); if (is_array($object)) break; }
+            if ($object === null && $candidate !== '' && function_exists('sv_fetch_ap')) { $object=sv_fetch_ap($candidate,$settings); if (is_array($object)) break; }
         }
         if (is_array($object) && ($object['type'] ?? '') === 'Create' && is_array($object['object'] ?? null)) $object=$object['object'];
         if (!is_array($object) || empty($object['id'])) {
@@ -1481,6 +1543,53 @@ function pc_participant_counts(PDO $pdo): array {
             $out['total'] += (int)$r['c'];
         }
     } catch (Throwable $e) {}
+    return $out;
+}
+
+/**
+ * 0.7.618D — [board] shortcode renderer. Returns the challenge entry grid as
+ * inline HTML (no page chrome), reusing pc_board_ranked() so it matches /board
+ * exactly. Styling lives in assets/css/photochallenge-board-embed.css (scoped
+ * under .pc-board) — no inline CSS. Dropped into any static page with [board];
+ * the page's own top-nav and footer wrap it.
+ */
+function pc_board_embed_html(PDO $pdo, array $settings): string {
+    if (!pc_enabled($settings) || !pc_feed_enabled($settings)) return '';
+    $esc  = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+    $base = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : '/';
+    $ver  = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';
+    $win  = pc_window($settings);
+    $tag  = pc_tag($settings);
+    $rows = pc_board_ranked($pdo, $settings, $win, 200);
+
+    $out  = '<link rel="stylesheet" href="' . $esc($base) . 'assets/css/photochallenge-board-embed.css?v=' . $esc($ver) . '">';
+    $out .= '<div class="pc-board">';
+    if (!$rows) {
+        $out .= '<p class="pc-board-empty">No entries yet. Post a photo tagged '
+              . '<code>#' . $esc($tag) . '</code> and follow to join.</p></div>';
+        return $out;
+    }
+    $out .= '<div class="pc-board-grid">';
+    foreach ($rows as $r) {
+        $rank      = (int)($r['rank'] ?? 0);
+        $rankClass = $rank === 1 ? 'gold' : ($rank === 2 ? 'silver' : ($rank === 3 ? 'bronze' : ''));
+        // SECAUDIT 047: only http(s) becomes a live href.
+        $u    = (string)($r['url'] ?? '');
+        $safe = preg_match('#^https?://#i', $u) ? $u : '';
+        $out .= '<a class="pc-card" href="' . ($safe !== '' ? $esc($safe) : '#') . '" rel="canonical noopener" target="_blank" title="' . $esc($r['excerpt'] ?? '') . '">';
+        if (($r['thumb'] ?? '') !== '') {
+            $out .= '<img class="pc-thumb" loading="lazy" src="' . $esc($r['thumb']) . '" alt="Photo by ' . $esc($r['handle'] ?? '') . '">';
+        } else {
+            $out .= '<span class="pc-thumb pc-thumb-none">no preview</span>';
+        }
+        $out .= '<span class="pc-meta">';
+        if ($rank > 0) $out .= '<span class="pc-rank ' . $rankClass . '">#' . $rank . '</span>';
+        $out .= '<span class="pc-by">' . $esc($r['handle'] ?? '') . '</span>';
+        if (!empty($r['horsconcours']))  $out .= '<span class="pc-badge" title="hors concours">hc</span>';
+        elseif (!empty($r['is_boost']))  $out .= '<span class="pc-badge">boost</span>';
+        $out .= '</span></a>';
+    }
+    $out .= '</div></div>';
     return $out;
 }
 

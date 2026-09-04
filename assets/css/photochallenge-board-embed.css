@@ -1,0 +1,44 @@
+/*
+ * SNAPSMACK — Photo-Challenge [board] embed styles (0.7.618D)
+ * Scoped under .pc-board so the grid can sit inside any static page without
+ * touching the host page's own theme. Mirrors the §18 board look
+ * (red #D40000 on dark cards) but self-contained and class-scoped.
+ */
+.pc-board { position: relative; width: 100%; max-width: 1180px; margin: 0 auto; }
+.pc-board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
+}
+.pc-board .pc-card {
+  position: relative; display: block; text-decoration: none; color: #f4f4f4;
+  background: #0b0b0b; border: 1px solid #262626; overflow: hidden;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.pc-board .pc-card:hover,
+.pc-board .pc-card:focus-visible { border-color: #D40000; transform: translateY(-2px); outline: none; }
+.pc-board .pc-thumb {
+  display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; background: #1a1a1a;
+}
+.pc-board .pc-thumb-none {
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Courier New', monospace; font-size: 0.7rem; color: #9a9a9a;
+}
+.pc-board .pc-meta { display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
+.pc-board .pc-by {
+  font-family: 'Courier New', monospace; font-size: 0.74rem; color: #f4f4f4;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pc-board .pc-rank {
+  flex: none; font-family: 'Arial Black', Arial, sans-serif; font-size: 0.72rem;
+  background: #D40000; color: #fff; padding: 3px 7px; letter-spacing: 0.04em;
+}
+.pc-board .pc-rank.gold   { background: #e8b100; color: #111; }
+.pc-board .pc-rank.silver { background: #c8c8c8; color: #111; }
+.pc-board .pc-rank.bronze { background: #b5702e; color: #111; }
+.pc-board .pc-badge {
+  flex: none; font-family: 'Courier New', monospace; font-size: 0.62rem; color: #9a9a9a;
+  border: 1px solid #333; padding: 2px 5px; text-transform: uppercase;
+}
+.pc-board-empty { text-align: center; color: #9a9a9a; padding: 40px 20px; }
+.pc-board-empty code { color: #f4f4f4; border-bottom: 1px solid #D40000; }

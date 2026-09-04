@@ -9,6 +9,16 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.618D "BOARD IN A BOX" — 2026-09-04
+- **New `[board]` shortcode: drop the live Photo-Challenge board into any static
+  page.** It renders the same ranked entries as `/board` (reuses
+  `pc_board_ranked()`), inline and body-only, so the page's own top-nav and
+  footer wrap it — no iframe, no separate standalone chrome. Styling is a
+  scoped, class-based stylesheet (`assets/css/photochallenge-board-embed.css`,
+  everything under `.pc-board`), so it can't touch the host page's theme and
+  carries no inline CSS. Same block-level treatment as `[photoblogs_feed]` /
+  `[photoblogs_directory]`. This supersedes the 617D iframe-embed approach for
+  putting the board under the site's normal chrome.
 ## 0.7.617D "FRAME UP" — 2026-09-04
 - **The challenge board can render bare for embedding.** `/board?embed=1` returns
   only the entries — no standalone top-nav, no big PHOTO FRIDAY masthead, no
