@@ -1770,11 +1770,14 @@ function sv_timeline_has_video_col(PDO $pdo): bool {
 /** Ingest a remote Note into the home timeline (image + video posts, de-duped). */
 function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $handle = '',
                             bool $is_boost = false, ?string $boosted_by = null,
-                            string $feed = 'home', ?string $discovered_via = null): void {
+                            string $feed = 'home', ?string $discovered_via = null): ?string {
+    // 0.7.611D: returns null on success, or a short human-readable reason the
+    // item was NOT stored (skip or DB error) so the caller can receipt it —
+    // a swallowed insert failure used to be indistinguishable from success.
     $otype = $obj['type'] ?? '';
-    if ($otype !== 'Note' && $otype !== 'Image') return;
+    if ($otype !== 'Note' && $otype !== 'Image') return 'skipped: object is ' . ($otype ?: 'untyped') . ', not Note/Image';
     $object_id = (string)($obj['id'] ?? '');
-    if ($object_id === '') return;
+    if ($object_id === '') return 'skipped: object has no id';
 
     $images = [];
     $videos = [];
@@ -1796,7 +1799,7 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
     $has_vid_col = sv_timeline_has_video_col($pdo);
     // Nothing renderable → skip (text-only, or video-only on a spoke whose schema
     // has no video column yet — exactly the pre-video behaviour, no regression).
-    if (!$images && !($videos && $has_vid_col)) return;
+    if (!$images && !($videos && $has_vid_col)) return 'skipped: nothing renderable (no image attachment)';
 
     $tags = [];
     foreach (($obj['tag'] ?? []) as $tag) {
@@ -1850,7 +1853,12 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
         if (function_exists('sc_relay_add_membership')) {
             sc_relay_add_membership($pdo, $object_id, $feed, $discovered_via ?? $actor_url);
         }
-    } catch (Exception $e) { /* table may lag on a fresh install */ }
+    } catch (Exception $e) {
+        // 0.7.611D: surface the failure class (never credentials or content) so
+        // the inbox receipt can say "INGEST FAILED" instead of lying "fine".
+        return 'DB error: ' . get_class($e);
+    }
+    return null;
 }
 
 function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $actor_doc): int {
@@ -1988,9 +1996,24 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             );
             $upd->execute([$new_state, $fid, $actor_id]);
             if ($upd->rowCount() === 0) {
-                $pdo->prepare(
-                    "UPDATE snap_ap_following SET state = ? WHERE actor_url = ? AND state = 'pending'"
-                )->execute([$new_state, $actor_id]);
+                // 0.7.611D: NO blind actor-only fallback — a delayed Accept for
+                // an OLD Follow must not flip a newer re-follow to ACCEPTED (a
+                // false ACCEPTED hides a real handshake failure). Only when the
+                // server echoed no Follow id at all is there nothing to match:
+                // then take the single pending row for this actor, and say so.
+                if ($fid === '') {
+                    $fb = $pdo->prepare(
+                        "UPDATE snap_ap_following SET state = ? WHERE actor_url = ? AND state = 'pending'"
+                    );
+                    $fb->execute([$new_state, $actor_id]);
+                    sv_inbox_log($pdo, $type, $actor_id, null,
+                        $fb->rowCount() > 0
+                            ? 'carried no Follow id — matched the pending follow by actor'
+                            : 'IGNORED: no Follow id and no pending follow for this actor');
+                } else {
+                    sv_inbox_log($pdo, $type, $actor_id, $fid,
+                        'IGNORED: does not match our current Follow for this actor (stale handshake?)');
+                }
             }
         } catch (Exception $e) { /* table may lag on a fresh install */ }
         return 202;
@@ -2113,6 +2136,8 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         if (sv_is_direct($activity, $obj, $settings)) {
             sv_cache_actor($pdo, $actor_doc);
             sv_capture_dm($pdo, $settings, $obj, $actor_id, $handle);
+            // RECEIPT (0.7.611D) — no object id and no content: it's private.
+            sv_inbox_log($pdo, 'Create', $actor_id, null, 'received — private message captured');
             return 202;
         }
 
@@ -2160,6 +2185,9 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                     sv_notify($pdo, 'reply', $actor_id, $handle, $note_id, $in_reply, $text);
                 }
             }
+            // RECEIPT (0.7.611D)
+            sv_inbox_log($pdo, 'Create', $actor_id, $note_id !== '' ? $note_id : null,
+                'received — reply routed to ' . ($lf_post_id > 0 ? 'post ' . $lf_post_id : 'image ' . $img_id));
             return 202;
         }
 
@@ -2177,14 +2205,23 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         }
 
         // (c) A normal post from an account we FOLLOW → the home timeline (reader).
+        // RECEIPT (0.7.611D): both forks leave an inbox-log row. A verified
+        // Create that missed the following match used to 202 with no trace —
+        // indistinguishable from "never delivered" when hunting a lost post.
         if (sv_is_following($pdo, $actor_id)) {
             sv_cache_actor($pdo, $actor_doc);
-            sv_ingest_timeline($pdo, $obj, $actor_id, $handle);
+            $ing = sv_ingest_timeline($pdo, $obj, $actor_id, $handle);
+            sv_inbox_log($pdo, 'Create', $actor_id, $note_id !== '' ? $note_id : null,
+                $ing === null ? 'received — ingested to reader'
+                              : 'received — NOT ingested: ' . $ing);
             if (function_exists('pc_maybe_boost_entry')) {
                 try {
                     pc_maybe_boost_entry($pdo, $settings, (string)($obj['id'] ?? ''));
                 } catch (Throwable $e) {}
             }
+        } else {
+            sv_inbox_log($pdo, 'Create', $actor_id, $note_id !== '' ? $note_id : null,
+                'received & verified — IGNORED: not in accepted following (actor ' . $actor_id . ')');
         }
         return 202;
     }
@@ -2220,7 +2257,12 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 } catch (Exception $e) { /* column lag */ }
                 if (sv_is_following($pdo, $actor_id)) {
                     $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
-                    sv_ingest_timeline($pdo, $obj, $actor_id, $handle);
+                    $ing = sv_ingest_timeline($pdo, $obj, $actor_id, $handle);
+                    // RECEIPT (0.7.611D) — Updates matter doubly: the Push &
+                    // Tools "Refresh" remediation arrives as Update per post.
+                    sv_inbox_log($pdo, 'Update', $actor_id, $oid,
+                        $ing === null ? 'received — reader copy updated/ingested'
+                                      : 'received — NOT ingested: ' . $ing);
                     if (function_exists('pc_reconcile_object')) {
                         try { pc_reconcile_object($pdo, $settings, $oid); } catch (Throwable $e) {}
                     }

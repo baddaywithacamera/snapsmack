@@ -273,7 +273,12 @@ switch ($ap) {
             http_response_code(401); exit;
         }
         if (!sv_inbox_replay_first_seen($pdo, $raw)) {
-            // A valid delivery retry/replay is idempotently acknowledged.
+            // A valid delivery retry/replay is idempotently acknowledged — and
+            // RECEIPTED for Create/Update (0.7.611D): an invisible replay-202
+            // reads exactly like "never arrived" when tracing a lost post.
+            if (($log_verb === 'Create' || $log_verb === 'Update') && function_exists('sv_inbox_log')) {
+                sv_inbox_log($pdo, $log_verb, $log_actor, $log_obj, 'replay — already received once, suppressed');
+            }
             http_response_code(202); exit;
         }
         try {
