@@ -9,6 +9,23 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.614D "TAG, YOU'RE IT" — 2026-09-04
+- **THE fleet reader-blackout bug, found and fixed: the reader's database table
+  was missing the `tags_json` column the ingest has written since the challenge
+  work.** Every install whose table predates that build — all of them — threw
+  an Unknown-column error on EVERY incoming post, silently, since mid-summer.
+  That is why reader feeds froze in July, why prompt cards never appeared on
+  fleet blogs, and why challenge entries never admitted. Caught tonight by the
+  611D receipt ("NOT ingested: DB error"), live-traced photofri.day → unzucked.
+  The column is now in the schema with the canonical information_schema ALTER
+  guard — existing installs heal on the next cron pass, no data touched.
+- **Ingest receipts now carry the driver's actual error message** (truncated;
+  SQL structure only, never post content) — "DB error: PDOException" alone
+  forced guessing; "Unknown column 'tags_json'" names the fix.
+- **A DB-side ingest failure now answers 500, not 202.** A 202 told the sender
+  "delivered" while the post fell on the floor — unrecoverable. A 500 keeps it
+  in the sender's retry queue until the receiver heals; the fleet's queued
+  prompt-card deliveries recover themselves this way after this deploy.
 ## 0.7.613D "CHANGE OF ADDRESS" — 2026-09-04
 - **The Delivery Log now shows the exact inbox URL each follower's posts are
   POSTed to** — the one value the fleet blackhole hid. A ⚠ WRONG HOST flag marks
