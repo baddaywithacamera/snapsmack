@@ -123,7 +123,7 @@ require_once __DIR__ . '/includes/header.php';
                     <li><a href="#q-mobile">Why such limited mobile support?</a></li>
                     <li><a href="#q-mobile-app">Will there be a mobile app for posting?</a></li>
                     <li><a href="#q-companion-apps">Why companion apps instead of plugins?</a></li>
-                    <li><a href="#q-no-apple">Why no Apple support?</a></li>
+                    <li><a href="#q-macos">Does SnapSmack run on macOS?</a></li>
                     <li><a href="#q-noah-grey">Who is Noah Grey?</a></li>
                     <li><a href="#q-thomas">What is Thomas the Bear?</a></li>
                     <li><a href="#q-vs-pixelpost">SnapSmack vs Pixelpost — what's the difference?</a></li>
@@ -270,8 +270,8 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="qa" id="q-platforms">
                 <h3>Platforms supported?</h3>
-                <p><strong>Server.</strong> LAMP. Linux, Apache, MySQL/MariaDB, PHP 8.1 or newer. Nginx with PHP-FPM works in principle and several testers run it. Officially supported once it's been through enough cycles to call it tested. WIMP — Windows, IIS, MySQL, PHP — can go eat a bag of dicks. Not supported. Not going to be. Don't file bug reports. See "Why no Apple support?" for the other platform we don't build for, and why.</p>
-                <p><strong>Desktop Companion Apps.</strong> Windows 10 and up. Any recent Linux distribution. The Linux builds have also been found to work on macOS, entirely by accident, but macOS remains unsupported. See "Why no Apple support?" before getting excited.</p>
+                <p><strong>Server.</strong> LAMP. Linux, Apache, MySQL/MariaDB, PHP 8.1 or newer. Nginx with PHP-FPM works in principle and several testers run it. Officially supported once it's been through enough cycles to call it tested. WIMP — Windows, IIS, MySQL, PHP — can go eat a bag of dicks. Not supported. Not going to be. Don't file bug reports. See "Does SnapSmack run on macOS?" for the other platform we don't build for, and why.</p>
+                <p><strong>Desktop Companion Apps.</strong> Windows 10 and up. Any recent Linux distribution. The Linux builds have also been found to work on macOS, entirely by accident, but macOS remains unsupported. See "Does SnapSmack run on macOS?" before getting excited.</p>
             </div>
 
             <div class="qa" id="q-mobile">
@@ -292,15 +292,11 @@ require_once __DIR__ . '/includes/header.php';
                 <p>So I'm moving as much of the workflow to desktop tools as I can. Not because desktop apps are fashionable&mdash;they absolutely are not&mdash;but because they make blogging faster, easier, and less dependent on how much horsepower your hosting company has decided to give you.</p>
             </div>
 
-            <div class="qa" id="q-no-apple">
-                <h3>Why no Apple support?</h3>
-                <p>Ray died in March 2024. Prostate cancer that metastasised. He was on disability. He was processing his life's photographic archive and trying to finish the work he wanted to leave behind.</p>
-                <p>Partway through that work, Apple obsoleted his Mac. The machine he was using to do the most important job left in his life stopped getting the updates it needed to keep functioning as the tool he needed it to be. He could not afford to replace it. He was dying.</p>
-                <p>I sent him a Windows system. He finished what he could.</p>
-                <p>SnapSmack does not and will not build for Apple platforms. Not the OS, not the App Store, not iOS, not anything Apple makes money from. Not now. Not ever.</p>
-                <p><strong>Update:</strong> SnapSmack's desktop tools for Linux accidentally work on macOS. They were designed to be highly compatible across Linux distributions and did not disappoint &mdash; until we discovered macOS compatibility as well. We do not and will not support Apple's products, so this compatibility may break in the future without any fixes coming from us. Please plan accordingly.</p>
-                <p>This is not a technical decision. It will not be revisited.</p>
-                <p>Nobody hurts my friends and gets away with it. No Apple support ever.</p>
+            <div class="qa" id="q-macos">
+                <h3>Does SnapSmack run on macOS?</h3>
+                <p>No. SnapSmack's desktop tools are built for Windows and Linux only. Windows and Linux are free to develop for. Apple's platform isn't: it charges developers to build, to renew each year, and to ship each release &mdash; for software we give away for free. We can't justify paying rent at every gate to hand you a free tool. And no, we won't take donations to change that. This is free and staying free.</p>
+                <p>The CMS itself runs fine in any browser, so Mac users can absolutely use SnapSmack sites. It's only the desktop suite that's Windows/Linux. The main missing feature is backups &mdash; those are desktop-only because online backups shred shared hosts. There's just no way around that.</p>
+                <p>If you're an Apple developer and you want the desktop tools on Mac, the repo is <a href="https://github.com/baddaywithacamera/snapsmack">right here</a>. Help yourself. Just remember: if you port them, you own the support for them, not us. We can't test or fix what we can't run.</p>
             </div>
 
             <div class="qa" id="q-noah-grey">
