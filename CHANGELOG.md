@@ -9,7 +9,7 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.618D "BOARD IN A BOX" — 2026-09-04
+## 0.7.617D "BOARD IN A BOX" — 2026-09-04
 - **New `[board]` shortcode: drop the live Photo-Challenge board into any static
   page.** It renders the same ranked entries as `/board` (reuses
   `pc_board_ranked()`), inline and body-only, so the page's own top-nav and
@@ -17,14 +17,7 @@
   scoped, class-based stylesheet (`assets/css/photochallenge-board-embed.css`,
   everything under `.pc-board`), so it can't touch the host page's theme and
   carries no inline CSS. Same block-level treatment as `[photoblogs_feed]` /
-  `[photoblogs_directory]`. This supersedes the 617D iframe-embed approach for
-  putting the board under the site's normal chrome.
-## 0.7.617D "FRAME UP" — 2026-09-04
-- **The challenge board can render bare for embedding.** `/board?embed=1` returns
-  only the entries — no standalone top-nav, no big PHOTO FRIDAY masthead, no
-  footer or Hall-of-Fame tab — so a SnapSmack static page can iframe it and the
-  board shows under the SITE's own top nav and footer instead of the board
-  page's separate chrome. (The full `/board` page is unchanged.)
+  `[photoblogs_directory]`.
 ## 0.7.616 "SECOND CHANCE" — 2026-09-04
 - PhotoFri can discover missed Mastodon and Pixelfed entries through the configured authenticated hashtag-search accounts, ingest them through the normal eligibility path, and recover qualifying boosts without relying on Pixelfed actor outboxes.
 - Failed discoveries are retained in a durable, visible entry log with their reason and recovery state.
