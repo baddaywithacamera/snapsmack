@@ -262,9 +262,13 @@ pc_test(str_contains($admin, 'name="pc_feed_enabled"')
     && str_contains($header, "case 'challenge_feed'")
     && str_contains($board, '!pc_feed_enabled($settings)'),
     'feed-page switch must control /board and its built-in Menu Manager item');
+// The board grid now renders via the shared pc_board_embed_html() (in
+// core/photochallenge.php) so both /board and the [board] shortcode honor the
+// layout choice; the layout class + external layout CSS are emitted there.
 pc_test(str_contains($admin, 'name="pc_feed_layout"')
-    && str_contains($board, 'grid--<?php echo $esc($feed_layout); ?>')
-    && str_contains($board, 'photochallenge-board-layouts.css')
+    && str_contains($photo, "grid grid--")
+    && str_contains($photo, "photochallenge_feed_layout")
+    && str_contains($photo, 'photochallenge-board-layouts.css')
     && str_contains($board_layout_css, '.grid--masonry'),
     'challenge feed must offer three-across and external-CSS masonry layouts');
 

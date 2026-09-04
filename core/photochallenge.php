@@ -1672,46 +1672,52 @@ function pc_participant_counts(PDO $pdo): array {
 }
 
 /**
- * 0.7.618D — [board] shortcode renderer. Returns the challenge entry grid as
+ * 0.7.621D — the shared board renderer. Returns the challenge entry grid as
  * inline HTML (no page chrome), reusing pc_board_ranked() so it matches /board
- * exactly. Styling lives in assets/css/photochallenge-board-embed.css (scoped
- * under .pc-board) — no inline CSS. Dropped into any static page with [board];
- * the page's own top-nav and footer wrap it.
+ * exactly. Used by the /board page (photochallenge-board.php) AND the [board]
+ * shortcode. Honors the admin's THREE-ACROSS vs MASONRY choice via the external
+ * assets/css/photochallenge-board-layouts.css (grid geometry), with card
+ * appearance in assets/css/photochallenge-board-embed.css (scoped under
+ * .pc-board) — no inline CSS either way.
  */
 function pc_board_embed_html(PDO $pdo, array $settings): string {
     if (!pc_enabled($settings) || !pc_feed_enabled($settings)) return '';
-    $esc  = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
-    $base = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : '/';
-    $ver  = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';
-    $win  = pc_window($settings);
-    $tag  = pc_tag($settings);
-    $rows = pc_board_ranked($pdo, $settings, $win, 200);
+    $esc    = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+    $base   = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : '/';
+    $ver    = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';
+    $win    = pc_window($settings);
+    $tag    = pc_tag($settings);
+    $layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonry') ? 'masonry' : 'three';
+    $rows   = pc_board_ranked($pdo, $settings, $win, 200);
 
-    $out  = '<link rel="stylesheet" href="' . $esc($base) . 'assets/css/photochallenge-board-embed.css?v=' . $esc($ver) . '">';
+    // Geometry (three-across | masonry) from the external layouts CSS; card look
+    // from the scoped embed CSS. Both files, no PHP-emitted style.
+    $out  = '<link rel="stylesheet" href="' . $esc($base) . 'assets/css/photochallenge-board-layouts.css?v=' . $esc($ver) . '">';
+    $out .= '<link rel="stylesheet" href="' . $esc($base) . 'assets/css/photochallenge-board-embed.css?v=' . $esc($ver) . '">';
     $out .= '<div class="pc-board">';
     if (!$rows) {
         $out .= '<p class="pc-board-empty">No entries yet. Post a photo tagged '
               . '<code>#' . $esc($tag) . '</code> and follow to join.</p></div>';
         return $out;
     }
-    $out .= '<div class="pc-board-grid">';
+    $out .= '<div class="grid grid--' . $esc($layout) . '">';
     foreach ($rows as $r) {
         $rank      = (int)($r['rank'] ?? 0);
         $rankClass = $rank === 1 ? 'gold' : ($rank === 2 ? 'silver' : ($rank === 3 ? 'bronze' : ''));
         // SECAUDIT 047: only http(s) becomes a live href.
         $u    = (string)($r['url'] ?? '');
         $safe = preg_match('#^https?://#i', $u) ? $u : '';
-        $out .= '<a class="pc-card" href="' . ($safe !== '' ? $esc($safe) : '#') . '" rel="canonical noopener" target="_blank" title="' . $esc($r['excerpt'] ?? '') . '">';
+        $out .= '<a class="card" href="' . ($safe !== '' ? $esc($safe) : '#') . '" rel="canonical noopener" target="_blank" title="' . $esc($r['excerpt'] ?? '') . '">';
         if (($r['thumb'] ?? '') !== '') {
-            $out .= '<img class="pc-thumb" loading="lazy" src="' . $esc($r['thumb']) . '" alt="Photo by ' . $esc($r['handle'] ?? '') . '">';
+            $out .= '<img class="thumb" loading="lazy" src="' . $esc($r['thumb']) . '" alt="Photo by ' . $esc($r['handle'] ?? '') . '">';
         } else {
-            $out .= '<span class="pc-thumb pc-thumb-none">no preview</span>';
+            $out .= '<span class="thumb none">no preview</span>';
         }
-        $out .= '<span class="pc-meta">';
-        if ($rank > 0) $out .= '<span class="pc-rank ' . $rankClass . '">#' . $rank . '</span>';
-        $out .= '<span class="pc-by">' . $esc($r['handle'] ?? '') . '</span>';
-        if (!empty($r['horsconcours']))  $out .= '<span class="pc-badge" title="hors concours">hc</span>';
-        elseif (!empty($r['is_boost']))  $out .= '<span class="pc-badge">boost</span>';
+        $out .= '<span class="meta">';
+        if ($rank > 0) $out .= '<span class="rank ' . $rankClass . '">#' . $rank . '</span>';
+        $out .= '<span class="by">' . $esc($r['handle'] ?? '') . '</span>';
+        if (!empty($r['horsconcours']))  $out .= '<span class="tag-badge" title="hors concours">hc</span>';
+        elseif (!empty($r['is_boost']))  $out .= '<span class="tag-badge">boost</span>';
         $out .= '</span></a>';
     }
     $out .= '</div></div>';
