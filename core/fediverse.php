@@ -426,7 +426,10 @@ function sv_ensure_tables(PDO $pdo): void {
             WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_ap_timeline'
               AND COLUMN_NAME='sensitive' LIMIT 1")->fetchColumn();
         if (!$has_sensitive) {
-            $pdo->exec("ALTER TABLE snap_ap_timeline ADD COLUMN sensitive tinyint(1) NOT NULL DEFAULT 0 AFTER in_reply_to");
+            // 0.7.615D: `sensitive` backtick-quoted — this ALTER silently failed
+            // for months on unzucked (column absent despite the guard running),
+            // the signature of the word turning RESERVED on an upgraded server.
+            $pdo->exec("ALTER TABLE snap_ap_timeline ADD COLUMN `sensitive` tinyint(1) NOT NULL DEFAULT 0 AFTER `in_reply_to`");
         }
     } catch (Throwable $e) { /* canonical sync remains authoritative */ }
     // Inbound federated VIDEO (consume-not-produce, 0.7.523). Existing installs
@@ -456,7 +459,7 @@ function sv_ensure_tables(PDO $pdo): void {
                 AND COLUMN_NAME = 'tags_json' LIMIT 1"
         )->fetchColumn();
         if (!$hasTags) {
-            $pdo->exec("ALTER TABLE snap_ap_timeline ADD COLUMN tags_json mediumtext DEFAULT NULL AFTER media_video_json");
+            $pdo->exec("ALTER TABLE snap_ap_timeline ADD COLUMN `tags_json` mediumtext DEFAULT NULL AFTER `media_video_json`");
         }
     } catch (Exception $e) { /* non-fatal; the ingest receipt will still name it */ }
     $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_outbound_replies` (
@@ -1923,12 +1926,21 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
         mb_substr(trim(html_entity_decode(strip_tags((string)($obj['content'] ?? '')), ENT_QUOTES, 'UTF-8')), 0, 4000),
         json_encode($images, JSON_UNESCAPED_SLASHES),
     ];
-    $dupe = "content=VALUES(content), media_json=VALUES(media_json), tags_json=VALUES(tags_json), "
-          . "url=VALUES(url), in_reply_to=VALUES(in_reply_to), sensitive=VALUES(sensitive), fetched_at=NOW()";
+    // 0.7.615D: the ON DUPLICATE KEY UPDATE clause uses BOUND PARAMS, not the
+    // VALUES(col) function — newer MySQL/MariaDB servers reject that legacy
+    // syntax with error 1064, which is exactly the "DB error … SQLSTATE[42000]
+    // … 1064" receipt unzucked produced on every ingest. Bound params parse on
+    // every MySQL and MariaDB version ever shipped. $dupe_vals mirrors $dupe's
+    // column order and is appended after the insert values below.
+    // Every identifier is also backtick-quoted: on the host's upgraded DB a
+    // column word (evidence points at `sensitive` — its ALTER guard silently
+    // failed for months while INSERTs naming it threw 1064) appears to have
+    // become RESERVED. Quoting is legal on every MySQL/MariaDB ever shipped.
+    $dupe = "`content`=?, `media_json`=?, `tags_json`=?, `url`=?, `in_reply_to`=?, `sensitive`=?, `fetched_at`=NOW()";
     if ($has_vid_col) {
         $cols[] = 'media_video_json';
         $vals[] = json_encode($videos, JSON_UNESCAPED_SLASHES);
-        $dupe  .= ", media_video_json=VALUES(media_video_json)";
+        $dupe  .= ", `media_video_json`=?";
     }
     // SECAUDIT 047 — store only http(s) permalinks. A remote Note's `url` is
     // attacker-controlled; a `javascript:` value here becomes stored XSS on the
@@ -1945,11 +1957,17 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
         in_array($feed, ['home','local','global'], true) ? $feed : 'home', $pub,
     ]);
     $ph = implode(',', array_fill(0, count($cols), '?'));
+    // Bound values for the update clause, picked BY NAME so column-order
+    // changes above can never silently misalign them.
+    $byname    = array_combine($cols, $vals);
+    $dupe_vals = [$byname['content'], $byname['media_json'], $byname['tags_json'],
+                  $byname['url'], $byname['in_reply_to'], $byname['sensitive']];
+    if ($has_vid_col) $dupe_vals[] = $byname['media_video_json'];
     try {
         $pdo->prepare(
-            "INSERT INTO snap_ap_timeline (" . implode(',', $cols) . ") VALUES ($ph)
+            "INSERT INTO snap_ap_timeline (`" . implode('`,`', $cols) . "`) VALUES ($ph)
              ON DUPLICATE KEY UPDATE {$dupe}"
-        )->execute($vals);
+        )->execute(array_merge($vals, $dupe_vals));
         if (function_exists('sc_relay_add_membership')) {
             sc_relay_add_membership($pdo, $object_id, $feed, $discovered_via ?? $actor_url);
         }
@@ -1959,7 +1977,7 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
         // message (truncated) — "DB error: PDOException" alone forced a guess;
         // "Unknown column 'tags_json'" names the fix. PDO messages carry SQL
         // structure, not bound values, so no post content leaks.
-        return 'DB error: ' . get_class($e) . ' — ' . mb_substr($e->getMessage(), 0, 160);
+        return 'DB error: ' . get_class($e) . ' — ' . mb_substr($e->getMessage(), 0, 400);
     }
     return null;
 }

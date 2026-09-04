@@ -9,6 +9,21 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.615D "RESERVED WORD" — 2026-09-04
+- **The reader ingest survives the host's database-server upgrade.** With the
+  614D receipts finally quoting real errors, the ingest failure turned out to
+  be SQL error 1064 — the upgraded server rejects statements the old one
+  accepted. Two hardenings, each valid on every MySQL/MariaDB version ever
+  shipped: the upsert's update clause now uses bound parameters instead of the
+  legacy `VALUES(col)` function, and every identifier in the ingest INSERT and
+  the timeline ALTER guards is backtick-quoted (the `sensitive` column's ALTER
+  guard had silently failed for months — the signature of a column word turning
+  reserved on the new server, which also left the column missing on live
+  tables; quoted, the guard finally works and adds it).
+- Ingest receipts now carry up to 400 characters of the driver error — the
+  160-char cap cut tonight's message one word before it named the server.
+- Follower-inbox repair is genuinely resumable (cursor per version, 20-row
+  pages, ~20s budget, runs after the delivery drain) — Codex review §3.
 ## 0.7.614D "TAG, YOU'RE IT" — 2026-09-04
 - **THE fleet reader-blackout bug, found and fixed: the reader's database table
   was missing the `tags_json` column the ingest has written since the challenge
