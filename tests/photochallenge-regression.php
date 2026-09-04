@@ -100,6 +100,8 @@ pc_test(str_contains($photo, 'pc_rescan_participants($pdo,$settings,12,true,$tag
     && str_contains($photo, 'pc_participant_recent_posts($actor, $outbox, $settings, $per_actor)')
     && str_contains($photo, 'sv_masto_statuses($host, $username, $max)')
     && str_contains($photo, '/api/pixelfed/v1/accounts/')
+    && str_contains($photo, 'SELECT actor_url,handle FROM pc_participants')
+    && str_contains($photo, "UPDATE snap_ap_timeline SET actor_handle=? WHERE object_id=? AND actor_handle=''" )
     && str_contains($photo, "'participant_unreadable'")
     && str_contains($admin, 'every active participant&rsquo;s own outbox'),
     'recovery does not merge hashtag, participant outbox, and Pixelfed public-status discovery');

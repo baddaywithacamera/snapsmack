@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.620D "SIGN YOUR WORK" — 2026-09-04
+- Recovered PhotoFri cards retain the participant's `user@server` handle.
+  A repeat recovery safely fills labels left blank by 619D without replacing
+  any known author, re-admitting an entry, or sending another boost.
 ## 0.7.619D "OPEN THE OUTBOX" — 2026-09-04
 - **PhotoFri recovery now finds Pixelfed participants whose advertised
   ActivityPub outbox contains only a post count.** Recovery still merges the
