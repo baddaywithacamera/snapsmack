@@ -9,6 +9,21 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.622D "UNDER ONE ROOF" — 2026-09-04
+- **The public board (`/board`) now renders THROUGH the CMS** — the site's own
+  skin header (top nav) and skin footer (bottom nav) wrap it, so it matches
+  every other page instead of being a standalone page with its own chrome (and
+  the premature Hall-of-Fame tab is gone with it). photochallenge-board.php
+  bootstraps the CMS like a static page and drops the entry grid into the
+  content area.
+- **One shared board renderer.** `pc_board_embed_html()` now backs BOTH `/board`
+  and the `[board]` shortcode, and honors the admin's THREE-ACROSS vs MASONRY
+  choice via the external `photochallenge-board-layouts.css` (geometry) +
+  `photochallenge-board-embed.css` (card look, scoped under `.pc-board`). No
+  PHP-emitted or inline CSS. `.grid { display:grid }` moved out of the old
+  inline `<style>` into the layouts CSS.
+- (The separate `/the-board` static page is now redundant with `/board` — safe
+  to delete from Static Pages whenever; harmless if left.)
 ## 0.7.621D "NAME NAMES" — 2026-09-04
 - PhotoFri board cards with a legacy blank author label now derive the truthful
   `user@server` handle from their stored canonical actor URL. Existing recovered

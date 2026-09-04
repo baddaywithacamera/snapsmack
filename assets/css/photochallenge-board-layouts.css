@@ -9,6 +9,11 @@
  * Last non-empty line MUST be the canonical CSS EOF marker.
  */
 
+/* Base: grids display as grid; masonry overrides to CSS columns below.
+   (Moved here from the standalone board's inline <style> in 0.7.621D, when
+   /board began rendering through the CMS with no PHP-emitted style.) */
+.grid { display: grid; }
+
 .grid.grid--three {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
