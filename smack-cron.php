@@ -76,14 +76,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif (!$script_abs) {
                 $flash = 'Job script not found: ' . $job['script']; $flash_type = 'error';
             } else {
-                $out = []; $rc = 1;
-                @exec(escapeshellarg($php_cli) . ' ' . escapeshellarg($script_abs) . ' 2>&1', $out, $rc);
-                $tail = trim(implode(' ', array_slice($out, -3)));
-                if ($rc === 0) {
-                    $flash = strtoupper($job['label']) . ' ran. ' . ($tail !== '' ? substr($tail, 0, 220) : 'Done.');
+                if (cron_run_detached($php_cli, $script_abs)) {
+                    $flash = strtoupper($job['label']) . ' started in the background. You can leave this page; refresh shortly to see its latest status.';
                     $flash_type = 'success';
                 } else {
-                    $flash = strtoupper($job['label']) . ' failed (exit ' . (int)$rc . '). ' . substr($tail, 0, 220);
+                    $flash = strtoupper($job['label']) . ' could not be started in the background. The scheduled run remains available.';
                     $flash_type = 'error';
                 }
             }
