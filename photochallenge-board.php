@@ -23,6 +23,7 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/parser.php';
 require_once __DIR__ . '/core/skin-settings.php';
+require_once __DIR__ . '/core/stats-logger.php';   // snapsmack_log_hit()
 require_once __DIR__ . '/core/fediverse.php';      // pulls core/photochallenge.php (pc_*)
 
 $settings    = [];
@@ -39,11 +40,14 @@ try {
     }
 
     $active_skin = $settings['active_skin'] ?? 'smackdown';
-    if (snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
+    if (function_exists('snapsmack_is_mobile') && defined('SNAPSMACK_MOBILE_SKIN')
+        && snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
         $active_skin = SNAPSMACK_MOBILE_SKIN;
     }
-    snapsmack_apply_skin_settings($settings, $active_skin);
-} catch (Exception $e) {
+    if (function_exists('snapsmack_apply_skin_settings')) {
+        snapsmack_apply_skin_settings($settings, $active_skin);
+    }
+} catch (Throwable $e) {
     error_log('BOARD_TRANSMISSION_ERROR: ' . $e->getMessage());
     http_response_code(500);
     die('Sorry — something went wrong loading the board. Please try again shortly.');
@@ -62,7 +66,9 @@ $state      = $win['open'] ? 'OPEN' : 'CLOSED';
 $page_title = 'The Board';
 $skin_path  = 'skins/' . $active_skin;
 
-snapsmack_log_hit($pdo, $settings, ['page_type' => 'page', 'page_slug' => 'board']);
+if (function_exists('snapsmack_log_hit')) {
+    snapsmack_log_hit($pdo, $settings, ['page_type' => 'page', 'page_slug' => 'board']);
+}
 
 if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
     include __DIR__ . '/' . $skin_path . '/skin-meta.php';
