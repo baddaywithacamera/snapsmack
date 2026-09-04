@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.616D "SECOND CHANCE" — 2026-09-04
+- PhotoFri can discover missed Mastodon and Pixelfed entries through the configured authenticated hashtag-search accounts, ingest them through the normal eligibility path, and recover qualifying boosts without relying on Pixelfed actor outboxes.
+- Failed discoveries are retained in a durable, visible entry log with their reason and recovery state.
+- A new KEEP OPEN mode preserves the same challenge round until the administrator closes it.
+- Failed-entry and late-entry messages are review-only drafts. PhotoFri sends no automatic recovery DMs and exposes no bulk-send action.
 ## 0.7.615D "RESERVED WORD" — 2026-09-04
 - **The reader ingest survives the host's database-server upgrade.** With the
   614D receipts finally quoting real errors, the ingest failure turned out to
