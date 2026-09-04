@@ -1035,6 +1035,27 @@ function sv_authed_search(PDO $pdo, array $settings, string $q, string $type = '
 // ─── HTTP Signatures (draft-cavage — Mastodon dialect) ──────────────────────
 
 /** Parse the Signature header into its key="value" params. */
+/**
+ * Compact fingerprint of the current request's signature-related headers, for
+ * the inbox log's REJECTED lines (0.7.612D "SHOW YOUR PAPERS"). Names the
+ * scheme the sender used so an unparseable signature stops being a mystery:
+ * a present Signature-Input header = RFC-9421 (modern Mastodon), which our
+ * draft-cavage parser cannot read yet. Truncated; header metadata only —
+ * signatures are public request data, never body content.
+ */
+function sv_sig_shape(): string {
+    $sig   = sv_request_header('signature');
+    $inp   = sv_request_header('signature-input');
+    $cdig  = sv_request_header('content-digest');
+    $dig   = sv_request_header('digest');
+    $ua    = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
+    return ' [shape: sig=' . ($sig === '' ? 'absent' : '"' . mb_substr($sig, 0, 60) . '"')
+         . '; 9421-input=' . ($inp === '' ? 'no' : '"' . mb_substr($inp, 0, 80) . '"')
+         . '; content-digest=' . ($cdig !== '' ? 'yes' : 'no')
+         . '; digest=' . ($dig !== '' ? 'yes' : 'no')
+         . '; ua=' . mb_substr($ua, 0, 60) . ']';
+}
+
 function sv_parse_signature_header(string $header): array {
     $out = [];
     foreach (preg_split('/\s*,\s*/', trim($header)) as $part) {
@@ -1080,10 +1101,15 @@ function sv_verify_signature(string $raw_body): ?array {
     };
 
     $sig_header = sv_request_header('signature');
-    if ($sig_header === '') { $reject('no Signature header'); return null; }
+    if ($sig_header === '') { $reject('no Signature header' . sv_sig_shape()); return null; }
     $sig = sv_parse_signature_header($sig_header);
     if (empty($sig['keyid']) || empty($sig['signature']) || empty($sig['headers'])) {
-        $reject('Signature header missing keyId/signature/headers'); return null;
+        // 0.7.612D "SHOW YOUR PAPERS": the reject line carries a compact
+        // fingerprint of the request's auth headers, so the inbox log tells us
+        // exactly WHICH signature scheme the sender used (modern RFC-9421
+        // senders land here — our parser only speaks draft-cavage). This is
+        // the evidence the 9421 verifier build needs; all public metadata.
+        $reject('Signature header missing keyId/signature/headers' . sv_sig_shape()); return null;
     }
 
     // Digest: required for POSTs; must match the raw body. Compare case-

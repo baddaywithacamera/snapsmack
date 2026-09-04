@@ -9,6 +9,17 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.612D "SHOW YOUR PAPERS" — 2026-09-04
+- **Rejected inbound signatures now say which signature scheme the sender used.**
+  Modern Mastodon servers sign with the newer RFC-9421 format, which the inbox
+  verifier can't read yet — those rejects showed only "Signature header missing
+  keyId/signature/headers" with no way to tell what arrived. The REJECTED line
+  in the Interactions inbox log now carries a compact fingerprint of the auth
+  headers (signature scheme, RFC-9421 Signature-Input presence, digest flavour,
+  sender software) — public request metadata only, never content. Every reject
+  that lands is now direct evidence for the RFC-9421 verifier build (next),
+  instead of a mystery. The door itself is unchanged: old-format senders verify
+  exactly as before; new-format senders still bounce until the verifier ships.
 ## 0.7.611D "SIGNED RECEIPT" — 2026-09-04
 - **Every verified inbound Create/Update now leaves a receipt in the Interactions
   inbox log — no more silent 202s.** Previously a post could arrive, pass
