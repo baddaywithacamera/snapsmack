@@ -3346,6 +3346,34 @@ function sv_relay_leave(PDO $pdo, array $settings): array {
 }
 
 /**
+ * Fleet-join preflight: the reasons a spoke is NOT ready to join the network
+ * relay, judged from its multisite/fediverse/status payload. Empty = ready.
+ * The blank-handle and domain-as-handle checks exist because the portal once
+ * pre-filled the handle with the domain — a blog must never enter the network
+ * under a name its owner didn't deliberately choose.
+ */
+function sv_fleet_join_problems(array $status): array {
+    $problems = [];
+    if (empty($status['enabled'])) {
+        $problems[] = 'Federation is turned OFF';
+    }
+    $handle = strtolower(trim((string)($status['handle'] ?? '')));
+    $domain = strtolower(trim((string)($status['domain'] ?? '')));
+    if ($handle === '') {
+        $problems[] = 'No handle chosen — the blog is answering under the legacy site-name fallback';
+    } elseif ($domain !== '') {
+        $first_label = explode('.', $domain)[0];
+        if ($handle === $domain
+            || $handle === str_replace('.', '', $domain)
+            || $handle === $first_label
+            || strpos($handle, '.') !== false) {
+            $problems[] = 'Handle looks like the legacy domain default (' . $handle . ') — pick a real name';
+        }
+    }
+    return $problems;
+}
+
+/**
  * Follow a fediverse account as the blog actor. Accepts @user@host or a raw
  * actor URL. Queues a signed Follow to their inbox and records it pending;
  * the inbound Accept flips it to accepted (Reject → rejected).

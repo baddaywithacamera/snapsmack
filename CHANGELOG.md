@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.629D "FIELD TRIP" — 2026-09-04
+- The relay hub's Fediverse Portal gains a FLEET panel: review every connected spoke's federation state on one screen, then join all the ready ones to the relay in a single pass, behind password + 2FA.
+- The review flags blogs that must be fixed first — federation off, no handle chosen, or the old domain-as-handle default — each with a FIX IT link to that blog's own portal. A flagged blog is never joined, and every blog is re-checked at the moment of joining.
+- Spokes joined this way are pre-admitted on the relay (they are already authenticated members of the multisite network), so joins complete immediately instead of sitting pending.
+- New spoke API endpoints: `multisite/fediverse/status` (read-only preflight) and `multisite/fediverse/relay-join` (refuses a blog with federation off or no explicitly-chosen handle).
+
 ## 0.7.628D "ACCEPT THE DAMN POST" — 2026-09-04
 - **Ordinary sites no longer answer HTTP 500 after successfully storing a
   federated post.** The shared relay policy was trying to write the hub-only
