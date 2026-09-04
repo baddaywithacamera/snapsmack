@@ -9,6 +9,19 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.610D "WRONG DOOR" — 2026-09-04
+- **Fix: deliveries that landed on a web page no longer count as "delivered."**
+  Some follower records held stale inbox addresses from old builds (e.g.
+  `/?ap=inbox`, which renders the homepage with a 200). The sender took that 200
+  as success, deleted the queue row, and the post silently vanished — the exact
+  reason SnapSmack-to-SnapSmack followers never received the Photo-Friday prompt
+  cards while Mastodon and Pixelfed got them fine. Now a 2xx that comes back as a
+  full HTML page is treated as a FAILURE ("not an AP inbox — stale inbox URL,
+  self-repairing") and shows on the Delivery Log like any other error.
+- **Self-heal: stale follower inboxes repair themselves.** On that failure the
+  sender re-fetches the follower's live actor document, rewrites the stored
+  inbox/sharedInbox on the follower record AND on the queued job, and the next
+  delivery pass knocks on the right door. No manual unfollow/refollow needed.
 ## 0.7.609D "SHOW THE VERDICT" — 2026-09-03
 - **The Interactions log now shows why a challenge entry did or didn't boost.**
   When a participant's post is processed, it records a `PHOTOFRI` line with the
