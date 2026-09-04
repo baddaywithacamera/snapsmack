@@ -95,11 +95,13 @@ sv_ensure_keys($pdo, $settings);
 // outbound delivery queue. The helper is inert when this blog has no jobs.
 $relay_ingest = [0, 0];
 if (function_exists('sc_relay_process_ingest_jobs')) {
-    $relay_ingest = sc_relay_process_ingest_jobs($pdo, $settings, 20);
+    try { $relay_ingest = sc_relay_process_ingest_jobs($pdo, $settings, 20); }
+    catch (Throwable $e) { fwrite(STDERR, "Optional relay ingest maintenance failed; ordinary delivery will continue: " . $e->getMessage() . "\n"); }
 }
 $relay_recovery = [0, 0];
 if (function_exists('sc_relay_recover_member_outboxes')) {
-    $relay_recovery = sc_relay_recover_member_outboxes($pdo, $settings, 5, 20);
+    try { $relay_recovery = sc_relay_recover_member_outboxes($pdo, $settings, 5, 20); }
+    catch (Throwable $e) { fwrite(STDERR, "Optional relay outbox recovery failed; ordinary delivery will continue: " . $e->getMessage() . "\n"); }
 }
 $pc_maintenance = [0, 0, 0];
 if (function_exists('pc_cron_maintain')) {

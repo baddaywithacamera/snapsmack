@@ -236,6 +236,9 @@ function sc_relay_receive_announce(PDO $pdo, array $settings, string $relay, str
 }
 
 function sc_relay_process_ingest_jobs(PDO $pdo, array $settings, int $limit = 20): array {
+    // This file ships everywhere, but relay tables exist only on an explicitly
+    // configured SMACKCAST hub. Ordinary blogs must never touch hub-only schema.
+    if (!sc_relay_is_hub($settings)) return [0, 0];
     $q = $pdo->prepare("SELECT * FROM snap_relay_ingest_jobs WHERE status='queued' AND next_try_at<=NOW()
         ORDER BY next_try_at,id LIMIT " . max(1, min(100, $limit)));
     $q->execute(); $done = 0; $retry = 0;

@@ -9,6 +9,15 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.626D "DELIVER THE DAMN MAIL" — 2026-09-04
+- **Ordinary blogs no longer crash their entire federation worker in optional
+  SMACKCAST maintenance.** The relay code ships fleet-wide, but its ingest
+  worker was querying a relay-only table even on normal blogs. On allinthewrist
+  that fatal error stopped the worker before it could attempt any of 132 queued
+  follower deliveries. Non-relay sites now leave the relay path immediately;
+  relay maintenance is also isolated so a damaged hub job cannot prevent
+  ordinary follower delivery from continuing.
+
 ## 0.7.625D "ONE MORE DAY" — 2026-09-04
 - **PhotoFri has a literal EXTEND 24 HOURS button.** It keeps the current round,
   participants, entries, and week key intact, moves the current closing time
