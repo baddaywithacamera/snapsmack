@@ -48,6 +48,18 @@ try {
     }
 } catch (Throwable $e) { /* tables may not exist yet on a fresh install */ }
 
+/* Follower delivery addresses (0.7.613D "CHANGE OF ADDRESS"): the exact URL a
+   post is POSTed to per follower — the value the fleet blackhole hid. A row is
+   flagged when the stored delivery host differs from the actor's own host:
+   that's a post being mailed to a different building than the person lives in. */
+$addr_rows = [];
+try {
+    $addr_rows = $pdo->query(
+        "SELECT actor_url, actor_handle, inbox_url, shared_inbox_url
+           FROM snap_ap_followers WHERE is_active = 1 ORDER BY actor_handle ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) { $addr_rows = []; }
+
 /* The outbound queue. Only pending/failed jobs live here — successful sends are
    deleted on delivery, so a short (or empty) list is the healthy state. */
 $queue = [];
@@ -243,6 +255,49 @@ include 'core/sidebar.php';
                     <td><?php echo $q['last_error'] !== null && $q['last_error'] !== ''
                             ? htmlspecialchars((string)$q['last_error'])
                             : '<span class="dim">&mdash;</span>'; ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <div class="box mb-20">
+        <h3>FOLLOWER DELIVERY ADDRESSES</h3>
+        <p class="dim mb-10">
+            The exact inbox URL each follower's posts are POSTed to (their sharedInbox when they
+            advertise one, else their personal inbox). A <strong>&#9888; WRONG HOST</strong> flag means
+            the stored delivery address points at a different domain than the follower's account lives
+            on &mdash; posts mailed there never reach them, even when the send reports success. The
+            delivery cron re-checks these against each follower's live profile once per update.
+        </p>
+        <?php if (!$addr_rows): ?>
+            <p class="dim">No active followers.</p>
+        <?php else: ?>
+        <div class="ox-auto">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Follower</th>
+                    <th>Delivers to</th>
+                    <th>Check</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($addr_rows as $ar):
+                    $actor_host = dlog_host((string)$ar['actor_url']);
+                    $deliver    = trim((string)($ar['shared_inbox_url'] ?? '')) !== ''
+                                ? (string)$ar['shared_inbox_url'] : (string)$ar['inbox_url'];
+                    $deliver_host = dlog_host($deliver);
+                    $mismatch   = strcasecmp($actor_host, $deliver_host) !== 0;
+                ?>
+                <tr>
+                    <td><?php echo htmlspecialchars((string)($ar['actor_handle'] ?: $actor_host)); ?></td>
+                    <td><?php echo htmlspecialchars($deliver !== '' ? $deliver : '(none stored!)'); ?></td>
+                    <td><?php echo $mismatch
+                            ? '&#9888; WRONG HOST &mdash; account lives on ' . htmlspecialchars($actor_host)
+                            : '&#10003;'; ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>

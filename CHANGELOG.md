@@ -9,6 +9,17 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.613D "CHANGE OF ADDRESS" — 2026-09-04
+- **The Delivery Log now shows the exact inbox URL each follower's posts are
+  POSTed to** — the one value the fleet blackhole hid. A ⚠ WRONG HOST flag marks
+  a stored delivery address pointing at a different domain than the follower's
+  account lives on: posts mailed there never arrive, even when the send reports
+  success.
+- **Follower delivery addresses self-repair.** Once per installed version the
+  delivery cron re-resolves every active follower's inbox from their live actor
+  document and rewrites any stale or wrong stored address (bounded per pass,
+  resumes if interrupted, never deactivates anyone). Follower rows captured
+  under old builds heal without anyone unfollowing/refollowing.
 ## 0.7.612D "SHOW YOUR PAPERS" — 2026-09-04
 - **Rejected inbound signatures now say which signature scheme the sender used.**
   Modern Mastodon servers sign with the newer RFC-9421 format, which the inbox
