@@ -961,9 +961,18 @@ function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit =
             if (!in_array($tag, $tags, true)) continue;
             $media = json_decode((string)($r['media_json'] ?? '[]'), true) ?: [];
             if (count($media) !== 1 || !is_string($media[0]) || trim($media[0]) === '') continue;
+            $handle = trim((string)($r['actor_handle'] ?? ''));
+            if ($handle === '') {
+                $actor_url = (string)($r['actor_url'] ?? '');
+                $host = (string)(parse_url($actor_url, PHP_URL_HOST) ?: '');
+                $path = trim((string)(parse_url($actor_url, PHP_URL_PATH) ?: ''), '/');
+                $parts = $path === '' ? [] : explode('/', $path);
+                $username = $parts ? rawurldecode((string)end($parts)) : '';
+                if ($username !== '' && $host !== '') $handle = $username . '@' . $host;
+            }
             $rows[] = [
                 'object_id'    => (string)($r['object_id'] ?? ''),   // AP object id (engagement key)
-                'handle'       => (string)($r['actor_handle'] ?? ''),
+                'handle'       => $handle,
                 'actor_url'    => (string)($r['actor_url'] ?? ''),
                 'url'          => (string)($r['url'] ?? ''),          // origin permalink (canonical)
                 'thumb'        => (string)($media[0] ?? ''),          // hotlinked, origin-hosted

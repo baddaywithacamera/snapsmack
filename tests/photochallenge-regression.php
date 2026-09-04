@@ -114,6 +114,10 @@ foreach (['pc_on_follow', 'pc_on_leave', 'pc_record_like', 'pc_record_boost', 'p
 }
 pc_test(str_contains($photo, 'SELECT id, week_key'), 'Hall of Fame rows omit the admin toggle id');
 pc_test(str_contains($photo, 'tags_json'), 'board does not require structured ActivityPub hashtags');
+pc_test(str_contains($photo, "if (\$handle === '')")
+    && str_contains($photo, "rawurldecode((string)end(\$parts))")
+    && str_contains($photo, "\$handle = \$username . '@' . \$host"),
+    'board does not recover a truthful handle from canonical actor URLs when legacy labels are blank');
 pc_test(str_contains($photo, '> 5'), 'per-author five-entry cap is missing');
 pc_test(str_contains($photo, '$slot > 5')
     && str_contains($photo, 'MAX(admission_number)')
