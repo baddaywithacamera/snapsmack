@@ -9,6 +9,19 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.628D "ACCEPT THE DAMN POST" — 2026-09-04
+- **Ordinary sites no longer answer HTTP 500 after successfully storing a
+  federated post.** The shared relay policy was trying to write the hub-only
+  `snap_ap_timeline_membership` table on every blog. Membership now stays inert
+  when that table is absent, and optional membership failures are isolated from
+  the accepted timeline insert. This is confirmed against the live
+  allinthewrist SQL receipt: the missing membership table was the exact error.
+- **Repeated SEED / RE-IMPRINT actions no longer multiply the live delivery
+  backlog.** Queue rows without a specialised key now receive a stable key from
+  destination inbox + ActivityPub activity id. A deliberate resend remains
+  possible after a successful row is removed, while concurrent duplicate work
+  collapses to one pending delivery.
+
 ## 0.7.627D "START IT AND GO" — 2026-09-04
 - **Cron & Jobs RUN NOW no longer holds the browser open while a paced worker
   runs.** It starts the existing CLI job in its own background session and
