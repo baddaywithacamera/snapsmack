@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.617D "FRAME UP" — 2026-09-04
+- **The challenge board can render bare for embedding.** `/board?embed=1` returns
+  only the entries — no standalone top-nav, no big PHOTO FRIDAY masthead, no
+  footer or Hall-of-Fame tab — so a SnapSmack static page can iframe it and the
+  board shows under the SITE's own top nav and footer instead of the board
+  page's separate chrome. (The full `/board` page is unchanged.)
 ## 0.7.616 "SECOND CHANCE" — 2026-09-04
 - PhotoFri can discover missed Mastodon and Pixelfed entries through the configured authenticated hashtag-search accounts, ingest them through the normal eligibility path, and recover qualifying boosts without relying on Pixelfed actor outboxes.
 - Failed discoveries are retained in a durable, visible entry log with their reason and recovery state.
