@@ -408,6 +408,7 @@ function sv_ensure_tables(PDO $pdo): void {
         `content`      mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `media_json`   mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `media_video_json` mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `tags_json`    mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `url`          varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `in_reply_to`  varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `sensitive`    tinyint(1)   NOT NULL DEFAULT '0',
@@ -442,6 +443,22 @@ function sv_ensure_tables(PDO $pdo): void {
             $pdo->exec("ALTER TABLE snap_ap_timeline ADD COLUMN media_video_json mediumtext DEFAULT NULL");
         }
     } catch (Exception $e) { /* non-fatal: ingest falls back to images-only */ }
+    // 0.7.614D "TAG, YOU'RE IT" — THE fleet reader-blackout bug: the ingest
+    // INSERT has written `tags_json` since the challenge work, but the column
+    // was never added to the CREATE above and never got an ALTER guard like
+    // `sensitive`/`media_video_json` did. Every install whose table predates
+    // that build (i.e. ALL of them) threw Unknown-column on EVERY reader
+    // ingest — silently until 611D's receipts. Add it the canonical way.
+    try {
+        $hasTags = $pdo->query(
+            "SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_ap_timeline'
+                AND COLUMN_NAME = 'tags_json' LIMIT 1"
+        )->fetchColumn();
+        if (!$hasTags) {
+            $pdo->exec("ALTER TABLE snap_ap_timeline ADD COLUMN tags_json mediumtext DEFAULT NULL AFTER media_video_json");
+        }
+    } catch (Exception $e) { /* non-fatal; the ingest receipt will still name it */ }
     $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_outbound_replies` (
         `id`           int unsigned NOT NULL AUTO_INCREMENT,
         `token`        varchar(40)  COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1919,9 +1936,12 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
             sc_relay_add_membership($pdo, $object_id, $feed, $discovered_via ?? $actor_url);
         }
     } catch (Exception $e) {
-        // 0.7.611D: surface the failure class (never credentials or content) so
-        // the inbox receipt can say "INGEST FAILED" instead of lying "fine".
-        return 'DB error: ' . get_class($e);
+        // 0.7.611D: surface the failure so the inbox receipt says "INGEST
+        // FAILED" instead of lying "fine". 0.7.614D: include the driver's
+        // message (truncated) — "DB error: PDOException" alone forced a guess;
+        // "Unknown column 'tags_json'" names the fix. PDO messages carry SQL
+        // structure, not bound values, so no post content leaks.
+        return 'DB error: ' . get_class($e) . ' — ' . mb_substr($e->getMessage(), 0, 160);
     }
     return null;
 }
@@ -2279,6 +2299,12 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             sv_inbox_log($pdo, 'Create', $actor_id, $note_id !== '' ? $note_id : null,
                 $ing === null ? 'received — ingested to reader'
                               : 'received — NOT ingested: ' . $ing);
+            // 0.7.614D: a DB-side ingest failure answers 500, NOT 202 — a 202
+            // tells the sender "delivered" and the post is lost forever; a 500
+            // keeps it in the sender's retry queue until the receiver is fixed
+            // (exactly how the fleet recovers its missed prompt cards). Benign
+            // skips (text-only, no id) still 202: retrying can't change those.
+            if ($ing !== null && strpos($ing, 'DB error:') === 0) return 500;
             if (function_exists('pc_maybe_boost_entry')) {
                 try {
                     pc_maybe_boost_entry($pdo, $settings, (string)($obj['id'] ?? ''));
@@ -2328,6 +2354,8 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                     sv_inbox_log($pdo, 'Update', $actor_id, $oid,
                         $ing === null ? 'received — reader copy updated/ingested'
                                       : 'received — NOT ingested: ' . $ing);
+                    // 0.7.614D: same retry semantics as the Create branch.
+                    if ($ing !== null && strpos($ing, 'DB error:') === 0) return 500;
                     if (function_exists('pc_reconcile_object')) {
                         try { pc_reconcile_object($pdo, $settings, $oid); } catch (Throwable $e) {}
                     }
