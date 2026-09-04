@@ -35,6 +35,12 @@ pc_test($closed['open'] === false, 'window remained open at its exclusive end');
 $held = pc_window(['photochallenge_window_mode'=>'open','photochallenge_open_since'=>'2026-09-03 10:00:00','photochallenge_open_week_key'=>'2026-W36'], strtotime('2026-10-05 12:00:00 UTC'));
 pc_test($held['open'] === true && $held['start'] === '2026-09-03 10:00:00' && $held['week_key'] === '2026-W36',
     'keep-open mode did not preserve the original round indefinitely');
+$extended = pc_window(['photochallenge_window_mode'=>'extended','photochallenge_open_since'=>'2026-09-03 10:00:00',
+    'photochallenge_open_week_key'=>'2026-W36','photochallenge_extended_until'=>'2026-09-06 12:00:00'], strtotime('2026-09-06 11:59:59 UTC'));
+pc_test($extended['open'] === true && $extended['end'] === '2026-09-06 12:00:00', 'fixed extension did not remain open through its deadline');
+$extended_closed = pc_window(['photochallenge_window_mode'=>'extended','photochallenge_open_since'=>'2026-09-03 10:00:00',
+    'photochallenge_open_week_key'=>'2026-W36','photochallenge_extended_until'=>'2026-09-06 12:00:00'], strtotime('2026-09-06 12:00:00 UTC'));
+pc_test($extended_closed['open'] === false, 'fixed extension did not close automatically');
 
 // --- SCHEDULE A PROMPT: hashtag generation ---
 $h = pc_hashtag_from_prompt('Belonging');
@@ -82,8 +88,13 @@ foreach (['pc_participants', 'pc_hall_of_fame', 'pc_engagement', 'pc_outbound_bo
 pc_test(str_contains($schema, 'CREATE TABLE IF NOT EXISTS `pc_entry_failures`')
     && str_contains($photo, 'function pc_recover_tagged_entries')
     && str_contains($photo, 'function pc_failed_entry_dm_drafts')
+    && str_contains($photo, 'function pc_latest_recovery_results')
     && !str_contains($admin, 'value="notify_failed_entries"'),
     'missed-entry recovery, durable failure logging, or resubmit notification is absent');
+pc_test(str_contains($admin, 'EXTEND UNTIL &mdash; close automatically')
+    && str_contains($admin, 'LATEST RECOVERY RECEIPT')
+    && str_contains($schema, '`run_token` varchar(32)'),
+    'automatic extension deadline or per-post recovery receipt is absent');
 foreach (['pc_on_follow', 'pc_on_leave', 'pc_record_like', 'pc_record_boost', 'pc_remove_engagement'] as $hook) {
     pc_test(str_contains($sv, $hook), "FEDIVERSE is missing {$hook} integration");
 }

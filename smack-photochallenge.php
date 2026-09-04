@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
         }
         $bw = (string)max(0, (int)($_POST['pc_boost_weight'] ?? 1));
         $wm = (string)($_POST['pc_window_mode'] ?? 'weekly');
-        if (!in_array($wm, ['weekly','daily','open'], true)) $wm = 'weekly';
+        if (!in_array($wm, ['weekly','daily','open','extended'], true)) $wm = 'weekly';
         $test_mode  = isset($_POST['pc_test_mode']) ? '1' : '0';
         $feed_enabled = isset($_POST['pc_feed_enabled']) ? '1' : '0';
         $feed_layout = (($_POST['pc_feed_layout'] ?? 'three') === 'masonry') ? 'masonry' : 'three';
@@ -82,10 +82,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
         sv_set_setting($pdo, $settings, 'photochallenge_tag', $tag);
         sv_set_setting($pdo, $settings, 'photochallenge_tz', $tz);
         sv_set_setting($pdo, $settings, 'photochallenge_boost_weight', $bw);
-        if ($wm === 'open' && ($settings['photochallenge_window_mode'] ?? 'weekly') !== 'open') {
+        if (in_array($wm,['open','extended'],true) && !in_array(($settings['photochallenge_window_mode'] ?? 'weekly'),['open','extended'],true)) {
             $old_win = pc_window($settings);
             sv_set_setting($pdo,$settings,'photochallenge_open_since',(string)$old_win['start']);
             sv_set_setting($pdo,$settings,'photochallenge_open_week_key',(string)$old_win['week_key']);
+        }
+        if ($wm === 'extended') {
+            $raw_until=trim((string)($_POST['pc_extended_until'] ?? ''));
+            try { $until=(new DateTimeImmutable($raw_until,new DateTimeZone('UTC')))->setTimezone(new DateTimeZone('UTC')); }
+            catch (Throwable $e) { $until=false; }
+            if (!$until || $until <= new DateTimeImmutable('now',new DateTimeZone('UTC'))) {
+                $wm='weekly'; $msg='Extension not saved — choose a future closing date and time.'; $msg_ok=false;
+            } else sv_set_setting($pdo,$settings,'photochallenge_extended_until',$until->format('Y-m-d H:i:s'));
         }
         sv_set_setting($pdo, $settings, 'photochallenge_window_mode', $wm);
         sv_set_setting($pdo, $settings, 'photochallenge_test_allow', $test_allow);
@@ -164,6 +172,7 @@ $ranked   = $pc_on ? pc_board_ranked($pdo, $settings, $win, 60) : [];
 $hof      = pc_hof_list($pdo, 100);
 $entry_failures = pc_entry_failures($pdo, 50);
 $entry_dm_drafts = pc_failed_entry_dm_drafts($pdo, $settings, 25);
+$recovery_results = pc_latest_recovery_results($pdo, 100);
 $board_url = rtrim(sv_base($settings), '/') . '/photochallenge-board.php';
 $hof_url   = rtrim(sv_base($settings), '/') . '/photochallenge-hof.php';
 $esc = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
@@ -253,12 +262,18 @@ include 'core/sidebar.php';
 
             <div class="lens-input-wrapper">
                 <label>QUALIFYING WINDOW</label>
-                <?php $pc_wm = in_array(($settings['photochallenge_window_mode'] ?? 'weekly'), ['weekly','daily','open'], true) ? $settings['photochallenge_window_mode'] : 'weekly'; ?>
+                <?php $pc_wm = in_array(($settings['photochallenge_window_mode'] ?? 'weekly'), ['weekly','daily','open','extended'], true) ? $settings['photochallenge_window_mode'] : 'weekly';
+                $pc_until=(string)($settings['photochallenge_extended_until'] ?? '');
+                if ($pc_until==='') { $base=pc_window(array_merge($settings,['photochallenge_window_mode'=>'weekly'])); $pc_until=(new DateTimeImmutable($base['end'],new DateTimeZone('UTC')))->modify('+24 hours')->format('Y-m-d\\TH:i'); }
+                else $pc_until=str_replace(' ','T',substr($pc_until,0,16)); ?>
                 <select name="pc_window_mode">
                     <option value="weekly" <?php echo $pc_wm === 'weekly' ? 'selected' : ''; ?>>WEEKLY &mdash; Photo-Friday (Thu 10:00 &rarr; Sat 12:00 UTC)</option>
                     <option value="daily"  <?php echo $pc_wm === 'daily'  ? 'selected' : ''; ?>>DAILY (TEST) &mdash; rolling 24h, always open</option>
                     <option value="open" <?php echo $pc_wm === 'open' ? 'selected' : ''; ?>>KEEP OPEN &mdash; accept entries until I close it</option>
+                    <option value="extended" <?php echo $pc_wm === 'extended' ? 'selected' : ''; ?>>EXTEND UNTIL &mdash; close automatically</option>
                 </select>
+                <label for="pc_extended_until">EXTENDED CLOSING TIME (UTC)</label>
+                <input type="datetime-local" name="pc_extended_until" id="pc_extended_until" value="<?php echo $esc($pc_until); ?>">
                 <p class="dim"><strong>Weekly</strong> is the real Photo-Friday cadence. <strong>Daily</strong> is a test/demo
                     mode &mdash; a rolling 24-hour window that is always open, so entries qualify any day. Switch back to
                     weekly before launch. <strong>Keep open</strong> keeps this same round open until you change this setting.</p>
@@ -475,6 +490,20 @@ include 'core/sidebar.php';
             <button type="submit" class="btn-smack">FIND AND RECOVER</button>
         </form>
         <p class="dim"><strong>No messages are sent from this page.</strong> Suggested DMs appear below for review only.</p>
+        <?php if ($recovery_results): ?>
+            <h4>LATEST RECOVERY RECEIPT</h4>
+            <table class="dim" style="width:100%; border-collapse:collapse; margin-top:10px;">
+                <thead><tr><th style="text-align:left;">POST</th><th style="text-align:left;">PUBLISHED</th><th style="text-align:left;">WHAT HAPPENED</th><th style="text-align:left;">DETAIL</th></tr></thead>
+                <tbody><?php foreach ($recovery_results as $item): ?>
+                    <tr class="border-b">
+                        <td class="p-8-6"><?php if (preg_match('#^https?://#i',(string)$item['post_url'])): ?><a href="<?php echo $esc($item['post_url']); ?>" target="_blank" rel="noopener"><?php echo $esc($item['actor_handle'] ?: 'post'); ?></a><?php else: ?><?php echo $esc($item['actor_handle'] ?: $item['object_id']); ?><?php endif; ?></td>
+                        <td class="p-8-6"><?php echo $esc((string)$item['published']); ?> UTC</td>
+                        <td class="p-8-6"><strong><?php echo $esc(str_replace('_',' ',(string)$item['reason'])); ?></strong></td>
+                        <td class="p-8-6"><?php echo $esc((string)$item['last_error']); ?></td>
+                    </tr>
+                <?php endforeach; ?></tbody>
+            </table>
+        <?php endif; ?>
         <?php if ($entry_dm_drafts): ?>
             <h4>DM DRAFTS &mdash; REVIEW ONLY</h4>
             <?php foreach ($entry_dm_drafts as $draft): ?>

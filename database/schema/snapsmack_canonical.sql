@@ -1474,6 +1474,7 @@ CREATE TABLE IF NOT EXISTS `pc_entry_failures` (
   `first_seen_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `last_seen_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `notified_at` datetime DEFAULT NULL,
+  `run_token` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_pc_failure_object` (`object_id`(191)),
   KEY `idx_pc_failure_state` (`state`,`last_seen_at`)
