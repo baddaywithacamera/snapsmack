@@ -1375,39 +1375,57 @@ function sv_deliver(array $settings, string $inbox_url, string $activity_json): 
 
 /**
  * One-shot per installed version: re-resolve EVERY active follower's inbox
- * from their live actor doc (0.7.613D). Bounded to 60 fetches per run; the
- * version stamp is written only when the whole roster has been walked, so a
- * partial pass resumes on the next sweep. Never deactivates anyone — an
- * unreachable actor keeps its existing row untouched.
+ * from their live actor doc (0.7.613D; made genuinely resumable in 0.7.615D
+ * per Codex review — the first cut restarted at follower #1 every sweep and
+ * could never pass 60). One PAGE per sweep (20 rows, ~20s time budget), a
+ * cursor stored per version advances even when an actor fetch fails, and the
+ * done-stamp is written only when a page comes back empty. Runs AFTER the
+ * delivery drain, so it can never starve the queue. Never deactivates anyone.
  */
 function sv_repair_follower_inboxes_once(PDO $pdo, array $settings): void {
     try {
-        $stamp = (string)($settings['fedi_inbox_repair_done'] ?? '');
         $ver   = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0';
+        $stamp = (string)($settings['fedi_inbox_repair_done'] ?? '');
         if ($stamp === $ver) return;
-        $rows = $pdo->query(
-            "SELECT actor_url FROM snap_ap_followers WHERE is_active = 1 ORDER BY id ASC"
-        )->fetchAll(PDO::FETCH_COLUMN);
-        $budget = 60; $repaired = 0;
-        foreach ($rows as $actor) {
-            if ($budget-- <= 0) return;   // resume next sweep; stamp NOT written
-            $doc = sv_fetch_ap((string)$actor);
+        // Cursor is "<version>:<last_id>" — a stale cursor from a previous
+        // version restarts the walk for this one.
+        $cursor  = 0;
+        $cur_raw = (string)($settings['fedi_inbox_repair_cursor'] ?? '');
+        if (preg_match('/^' . preg_quote($ver, '/') . ':(\d+)$/', $cur_raw, $m)) $cursor = (int)$m[1];
+        $st = $pdo->prepare(
+            "SELECT id, actor_url FROM snap_ap_followers
+             WHERE is_active = 1 AND id > ? ORDER BY id ASC LIMIT 20"
+        );
+        $st->execute([$cursor]);
+        $page = $st->fetchAll(PDO::FETCH_ASSOC);
+        if (!$page) {
+            $pdo->prepare(
+                "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('fedi_inbox_repair_done', ?)
+                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
+            )->execute([$ver]);
+            return;
+        }
+        $deadline = time() + 20; $repaired = 0;
+        foreach ($page as $row) {
+            $cursor = (int)$row['id'];          // advance PAST this row even on failure
+            if (time() > $deadline) break;      // time budget: rest of page next sweep
+            $doc = sv_fetch_ap((string)$row['actor_url']);
             if (!is_array($doc)) continue;
             $inbox  = trim((string)($doc['inbox'] ?? ''));
             $shared = trim((string)($doc['endpoints']['sharedInbox'] ?? ''));
             if ($inbox === '') continue;
             $upd = $pdo->prepare(
                 "UPDATE snap_ap_followers SET inbox_url = ?, shared_inbox_url = ?
-                 WHERE actor_url = ? AND (inbox_url <> ? OR NOT (shared_inbox_url <=> ?))"
+                 WHERE id = ? AND (inbox_url <> ? OR NOT (shared_inbox_url <=> ?))"
             );
-            $upd->execute([$inbox, $shared !== '' ? $shared : null, $actor,
+            $upd->execute([$inbox, $shared !== '' ? $shared : null, (int)$row['id'],
                            $inbox, $shared !== '' ? $shared : null]);
             if ($upd->rowCount() > 0) $repaired++;
         }
         $pdo->prepare(
-            "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('fedi_inbox_repair_done', ?)
+            "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('fedi_inbox_repair_cursor', ?)
              ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
-        )->execute([$ver]);
+        )->execute([$ver . ':' . $cursor]);
         if ($repaired > 0) error_log("FEDIVERSE inbox repair: rewrote {$repaired} follower delivery address(es)");
     } catch (Throwable $e) { /* repair must never break the sweep */ }
 }
