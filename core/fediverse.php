@@ -1650,6 +1650,16 @@ function sv_refresh_follower_inbox(PDO $pdo, string $bad_url): ?string {
 
 /** Queue one activity JSON for a remote inbox and return its queue id. */
 function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json, ?string $dedupe_key = null): int {
+    // A delivery may be requested by publish, SEED, RE-IMPRINT and a manual
+    // retry at nearly the same time.  Keep only one live queue row for the same
+    // ActivityPub activity and destination.  Successful rows are deleted, so a
+    // later deliberate re-send remains possible after the prior send lands.
+    if ($dedupe_key === null) {
+        $activity = json_decode($activity_json, true);
+        $activity_id = is_array($activity) ? trim((string)($activity['id'] ?? '')) : '';
+        $identity = $activity_id !== '' ? $activity_id : hash('sha256', $activity_json);
+        $dedupe_key = 'delivery:' . hash('sha256', $inbox_url . "\n" . $identity);
+    }
     $pdo->prepare("INSERT IGNORE INTO snap_ap_deliveries (inbox_url, activity_json, dedupe_key) VALUES (?, ?, ?)")
         ->execute([$inbox_url, $activity_json, $dedupe_key]);
     return (int)$pdo->lastInsertId();
@@ -2151,9 +2161,6 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
             "INSERT INTO snap_ap_timeline (`" . implode('`,`', $cols) . "`) VALUES ($ph)
              ON DUPLICATE KEY UPDATE {$dupe}"
         )->execute(array_merge($vals, $dupe_vals));
-        if (function_exists('sc_relay_add_membership')) {
-            sc_relay_add_membership($pdo, $object_id, $feed, $discovered_via ?? $actor_url);
-        }
     } catch (Exception $e) {
         // 0.7.611D: surface the failure so the inbox receipt says "INGEST
         // FAILED" instead of lying "fine". 0.7.614D: include the driver's
@@ -2161,6 +2168,17 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
         // "Unknown column 'tags_json'" names the fix. PDO messages carry SQL
         // structure, not bound values, so no post content leaks.
         return 'DB error: ' . get_class($e) . ' — ' . mb_substr($e->getMessage(), 0, 400);
+    }
+    // Relay membership is optional metadata, not part of accepting the Note.
+    // The relay policy file ships on every site while its tables exist only on
+    // a SMACKCAST hub.  A missing/lagging relay table must never turn a
+    // successful timeline insert into HTTP 500 and make senders retry it.
+    if (function_exists('sc_relay_add_membership')) {
+        try {
+            sc_relay_add_membership($pdo, $object_id, $feed, $discovered_via ?? $actor_url);
+        } catch (Throwable $e) {
+            error_log('SMACKCAST optional membership skipped: ' . $e->getMessage());
+        }
     }
     return null;
 }
