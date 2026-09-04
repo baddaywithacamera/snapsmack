@@ -9,6 +9,14 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.627D "START IT AND GO" — 2026-09-04
+- **Cron & Jobs RUN NOW no longer holds the browser open while a paced worker
+  runs.** It starts the existing CLI job in its own background session and
+  returns immediately with an honest “started” message. Long federation queues
+  can keep their deliberate delivery cadence without hitting Cloudflare's 524
+  request timeout; the queue and last-run fields remain the progress display,
+  and the worker's existing database lock prevents duplicate drains.
+
 ## 0.7.626D "DELIVER THE DAMN MAIL" — 2026-09-04
 - **Ordinary blogs no longer crash their entire federation worker in optional
   SMACKCAST maintenance.** The relay code ships fleet-wide, but its ingest
