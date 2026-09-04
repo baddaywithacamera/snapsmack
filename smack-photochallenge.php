@@ -73,7 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
             catch (Throwable $e) { $tz = ''; $msg = 'Unknown timezone — left blank (server default is used).'; }
         }
         $bw = (string)max(0, (int)($_POST['pc_boost_weight'] ?? 1));
-        $wm = (($_POST['pc_window_mode'] ?? 'weekly') === 'daily') ? 'daily' : 'weekly';
+        $wm = (string)($_POST['pc_window_mode'] ?? 'weekly');
+        if (!in_array($wm, ['weekly','daily','open'], true)) $wm = 'weekly';
         $test_mode  = isset($_POST['pc_test_mode']) ? '1' : '0';
         $feed_enabled = isset($_POST['pc_feed_enabled']) ? '1' : '0';
         $feed_layout = (($_POST['pc_feed_layout'] ?? 'three') === 'masonry') ? 'masonry' : 'three';
@@ -81,6 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
         sv_set_setting($pdo, $settings, 'photochallenge_tag', $tag);
         sv_set_setting($pdo, $settings, 'photochallenge_tz', $tz);
         sv_set_setting($pdo, $settings, 'photochallenge_boost_weight', $bw);
+        if ($wm === 'open' && ($settings['photochallenge_window_mode'] ?? 'weekly') !== 'open') {
+            $old_win = pc_window($settings);
+            sv_set_setting($pdo,$settings,'photochallenge_open_since',(string)$old_win['start']);
+            sv_set_setting($pdo,$settings,'photochallenge_open_week_key',(string)$old_win['week_key']);
+        }
         sv_set_setting($pdo, $settings, 'photochallenge_window_mode', $wm);
         sv_set_setting($pdo, $settings, 'photochallenge_test_allow', $test_allow);
         sv_set_setting($pdo, $settings, 'photochallenge_test_mode', $test_mode);
@@ -97,6 +103,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
         $msg = $placed > 0
             ? "Crowned {$placed} place(s) for the current window into the Hall of Fame."
             : 'No rankable entries in this window — nothing crowned.';
+
+    } elseif ($action === 'recover_entries') {
+        $r=pc_recover_tagged_entries($pdo,$settings,40);
+        $msg="Recovery checked {$r['found']} tagged post(s): {$r['recovered']} recovered, {$r['already']} already present, {$r['failed']} logged for review, {$r['outside']} outside this window.";
 
     } elseif ($action === 'hof_toggle') {
         pc_hof_set_active($pdo, (int)($_POST['hof_id'] ?? 0), (string)($_POST['to'] ?? '') === '1');
@@ -152,6 +162,8 @@ $counts   = pc_participant_counts($pdo);
 $roster   = pc_participants($pdo, 300);
 $ranked   = $pc_on ? pc_board_ranked($pdo, $settings, $win, 60) : [];
 $hof      = pc_hof_list($pdo, 100);
+$entry_failures = pc_entry_failures($pdo, 50);
+$entry_dm_drafts = pc_failed_entry_dm_drafts($pdo, $settings, 25);
 $board_url = rtrim(sv_base($settings), '/') . '/photochallenge-board.php';
 $hof_url   = rtrim(sv_base($settings), '/') . '/photochallenge-hof.php';
 $esc = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
@@ -241,14 +253,15 @@ include 'core/sidebar.php';
 
             <div class="lens-input-wrapper">
                 <label>QUALIFYING WINDOW</label>
-                <?php $pc_wm = ($settings['photochallenge_window_mode'] ?? 'weekly') === 'daily' ? 'daily' : 'weekly'; ?>
+                <?php $pc_wm = in_array(($settings['photochallenge_window_mode'] ?? 'weekly'), ['weekly','daily','open'], true) ? $settings['photochallenge_window_mode'] : 'weekly'; ?>
                 <select name="pc_window_mode">
                     <option value="weekly" <?php echo $pc_wm === 'weekly' ? 'selected' : ''; ?>>WEEKLY &mdash; Photo-Friday (Thu 10:00 &rarr; Sat 12:00 UTC)</option>
                     <option value="daily"  <?php echo $pc_wm === 'daily'  ? 'selected' : ''; ?>>DAILY (TEST) &mdash; rolling 24h, always open</option>
+                    <option value="open" <?php echo $pc_wm === 'open' ? 'selected' : ''; ?>>KEEP OPEN &mdash; accept entries until I close it</option>
                 </select>
                 <p class="dim"><strong>Weekly</strong> is the real Photo-Friday cadence. <strong>Daily</strong> is a test/demo
                     mode &mdash; a rolling 24-hour window that is always open, so entries qualify any day. Switch back to
-                    weekly before launch.</p>
+                    weekly before launch. <strong>Keep open</strong> keeps this same round open until you change this setting.</p>
             </div>
 
             <div class="lens-input-wrapper">
@@ -454,21 +467,36 @@ include 'core/sidebar.php';
         </p>
     </div>
 
-    <!-- RECOVER MISSED ENTRIES -->
     <div class="box mb-20">
         <h3>RECOVER MISSED ENTRIES</h3>
-        <p class="dim mb-20">
-            Pulls each active participant's recent posts straight from their profile and re-runs the normal
-            admit &amp; boost on any that qualify &mdash; so entries dropped while inbound delivery was failing
-            (e.g. a signature outage) are recovered <strong>without asking anyone to re-post</strong>. Honors the
-            current tag, window and testing whitelist. Safe to run repeatedly; it never double-counts. Most
-            entries also heal on their own as the senders' servers retry, so this is the belt-and-suspenders.
-        </p>
-        <form method="post" action="">
-            <?php csrf_field(); ?>
-            <input type="hidden" name="action" value="rescan_participants">
-            <button type="submit" class="btn-smack">RECOVER MISSED ENTRIES</button>
+        <p class="dim">Checks the live hashtag through your configured search accounts, imports qualifying posts, and boosts them. Anything it cannot process is retained in the failed-entry log.</p>
+        <form method="post" action="" style="display:inline-block;">
+            <?php csrf_field(); ?><input type="hidden" name="action" value="recover_entries">
+            <button type="submit" class="btn-smack">FIND AND RECOVER</button>
         </form>
+        <p class="dim"><strong>No messages are sent from this page.</strong> Suggested DMs appear below for review only.</p>
+        <?php if ($entry_dm_drafts): ?>
+            <h4>DM DRAFTS &mdash; REVIEW ONLY</h4>
+            <?php foreach ($entry_dm_drafts as $draft): ?>
+                <div style="margin:10px 0; padding:10px; border:1px solid #444;">
+                    <strong><?php echo $esc($draft['handle'] ?: $draft['recipient']); ?></strong>
+                    <p style="white-space:pre-wrap;"><?php echo $esc($draft['body']); ?></p>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+        <?php if ($entry_failures): ?>
+        <table class="dim" style="width:100%; border-collapse:collapse; margin-top:16px;">
+            <thead><tr><th style="text-align:left;">ENTRY</th><th style="text-align:left;">PROBLEM</th><th style="text-align:left;">STATE</th><th>LAST SEEN</th></tr></thead>
+            <tbody><?php foreach ($entry_failures as $failure): ?>
+                <tr class="border-b">
+                    <td class="p-8-6"><?php if (preg_match('#^https?://#i',(string)$failure['post_url'])): ?><a href="<?php echo $esc($failure['post_url']); ?>" target="_blank" rel="noopener"><?php echo $esc($failure['actor_handle'] ?: 'post'); ?></a><?php else: ?><?php echo $esc($failure['actor_handle'] ?: $failure['object_id']); ?><?php endif; ?></td>
+                    <td class="p-8-6"><?php echo $esc(str_replace('_',' ',(string)$failure['reason'])); ?><?php if ($failure['last_error']): ?><br><small><?php echo $esc($failure['last_error']); ?></small><?php endif; ?></td>
+                    <td class="p-8-6"><?php echo $esc($failure['state']); ?></td>
+                    <td class="p-8-6" style="text-align:right;"><?php echo $esc($failure['last_seen_at']); ?> UTC</td>
+                </tr>
+            <?php endforeach; ?></tbody>
+        </table>
+        <?php endif; ?>
     </div>
 
     <!-- CROWN THE WEEK -->

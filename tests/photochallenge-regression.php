@@ -32,6 +32,9 @@ pc_test($open['start'] === '2026-09-03 10:00:00', 'global window start was incor
 pc_test($open['end'] === '2026-09-05 12:00:00', 'global window end was incorrect');
 $closed = pc_window($settings, strtotime('2026-09-05 12:00:00 UTC'));
 pc_test($closed['open'] === false, 'window remained open at its exclusive end');
+$held = pc_window(['photochallenge_window_mode'=>'open','photochallenge_open_since'=>'2026-09-03 10:00:00','photochallenge_open_week_key'=>'2026-W36'], strtotime('2026-10-05 12:00:00 UTC'));
+pc_test($held['open'] === true && $held['start'] === '2026-09-03 10:00:00' && $held['week_key'] === '2026-W36',
+    'keep-open mode did not preserve the original round indefinitely');
 
 // --- SCHEDULE A PROMPT: hashtag generation ---
 $h = pc_hashtag_from_prompt('Belonging');
@@ -76,6 +79,11 @@ $packager = file_get_contents(__DIR__ . '/../smack-central/sc-release.php');
 foreach (['pc_participants', 'pc_hall_of_fame', 'pc_engagement', 'pc_outbound_boosts', 'pc_window_notices'] as $table) {
     pc_test(str_contains($schema, "CREATE TABLE IF NOT EXISTS `{$table}`"), "{$table} is absent from canonical schema");
 }
+pc_test(str_contains($schema, 'CREATE TABLE IF NOT EXISTS `pc_entry_failures`')
+    && str_contains($photo, 'function pc_recover_tagged_entries')
+    && str_contains($photo, 'function pc_failed_entry_dm_drafts')
+    && !str_contains($admin, 'value="notify_failed_entries"'),
+    'missed-entry recovery, durable failure logging, or resubmit notification is absent');
 foreach (['pc_on_follow', 'pc_on_leave', 'pc_record_like', 'pc_record_boost', 'pc_remove_engagement'] as $hook) {
     pc_test(str_contains($sv, $hook), "FEDIVERSE is missing {$hook} integration");
 }
@@ -109,10 +117,9 @@ pc_test(str_contains($photo, 'sv_boost_remote(')
     && str_contains($sv, 'pc_maybe_boost_entry'),
     'qualified original entries are not automatically boosted');
 pc_test(str_contains($photo, 'pc_notice_closed_window')
-    && str_contains($photo, 'sv_send_dm(')
-    && str_contains($photo, 'uq_pc_window_notice')
-    && str_contains($photo, "post wasn't entered or boosted"),
-    'closed-window entries do not receive one deduplicated private retry notice');
+    && str_contains($photo, "'outside_window','Held for review; no DM was sent.'")
+    && !str_contains($photo, 'sv_send_dm('),
+    'closed-window entries are not held for review without automatically sending a DM');
 pc_test(str_contains($admin, 'Thursday 10:00 UTC through Saturday 12:00 UTC'),
     'admin describes a non-canonical challenge window');
 foreach (['THE GOOD SHIT', 'FEDIVERSE', 'CHALLENGE ME', 'BORING ASS STUFF'] as $heading) {
@@ -245,11 +252,10 @@ pc_test($admit_pos !== false && $closed_pos !== false && $notice_pos !== false
     && $closed_return_pos !== false && $closed_return_pos < $boost_fn_pos
     && $admit_call_pos !== false && $boost_call_pos !== false && $admit_call_pos < $boost_call_pos,
     'an outside-window hashtag post can reach boosting before decline and courtesy notification');
-pc_test(str_contains($photo, 'INSERT IGNORE INTO pc_window_notices(actor_url,week_key,object_id)')
-    && str_contains($photo, 'if ($reserve->rowCount() !== 1) return;')
-    && str_contains($photo, 'sv_send_dm($pdo,$settings,$actor,$body)')
-    && str_contains($photo, "post wasn't entered or boosted"),
-    'closed-window courtesy DM is not private, deduplicated, and explicit about no boost');
+pc_test(str_contains($photo, 'function pc_failed_entry_dm_drafts')
+    && str_contains($admin, 'DM DRAFTS &mdash; REVIEW ONLY')
+    && str_contains($admin, 'No messages are sent from this page.'),
+    'failed-entry messages are not review-only drafts');
 
 if ($failures) {
     fwrite(STDERR, "FAIL\n- " . implode("\n- ", $failures) . "\n");

@@ -127,6 +127,15 @@ function pc_tz(array $settings): DateTimeZone {
  */
 function pc_window(array $settings, ?int $now_ts = null): array {
     $now = (new DateTimeImmutable('@' . ($now_ts ?? time())))->setTimezone(new DateTimeZone('UTC'));
+    if (($settings['photochallenge_window_mode'] ?? 'weekly') === 'open') {
+        try { $start = new DateTimeImmutable((string)($settings['photochallenge_open_since'] ?? ''), new DateTimeZone('UTC')); }
+        catch (Throwable $e) { $start = $now->setTime(0, 0, 0); }
+        $start = $start->setTimezone(new DateTimeZone('UTC'));
+        $week_key = trim((string)($settings['photochallenge_open_week_key'] ?? ''));
+        if ($week_key === '') $week_key = $start->format('o-\\WW');
+        return ['start'=>$start->format('Y-m-d H:i:s'),'end'=>'9999-12-31 23:59:59','open'=>true,
+            'week_key'=>$week_key,'label'=>'Open since ' . $start->format('M j, Y')];
+    }
     if (($settings['photochallenge_window_mode'] ?? 'weekly') === 'daily') {
         $start = $now->setTime(0, 0, 0);
         $end = $start->modify('+24 hours');
@@ -300,6 +309,18 @@ function pc_ensure_tables(PDO $pdo): void {
             KEY idx_pc_window_notice_state(state,attempted_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS pc_entry_failures (
+            object_id varchar(500) NOT NULL, post_url varchar(600) NOT NULL DEFAULT '',
+            actor_url varchar(500) NOT NULL DEFAULT '', actor_handle varchar(190) NOT NULL DEFAULT '',
+            published datetime DEFAULT NULL, reason varchar(40) NOT NULL,
+            state enum('open','recovered','notified') NOT NULL DEFAULT 'open',
+            last_error varchar(500) NOT NULL DEFAULT '', first_seen_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_seen_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, notified_at datetime DEFAULT NULL,
+            id bigint unsigned NOT NULL AUTO_INCREMENT, PRIMARY KEY(id),
+            UNIQUE KEY uq_pc_failure_object(object_id(191)), KEY idx_pc_failure_state(state,last_seen_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
     try {
         $has_boost_id = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pc_admissions' AND COLUMN_NAME='boost_activity_id' LIMIT 1")->fetchColumn();
@@ -427,42 +448,16 @@ function pc_set_horsconcours(PDO $pdo, string $actor_url, bool $on): void {
     } catch (Throwable $e) {}
 }
 
-/**
- * Privately tell an opted-in participant that a plausible entry was published
- * after the last round closed. One durable reservation per actor/upcoming round
- * prevents duplicate DMs when the same object arrives through multiple paths.
- */
+/** Record a plausible late entry for review. Never sends a message automatically. */
 function pc_notice_closed_window(PDO $pdo, array $settings, array $row, array $win): void {
-    if (!function_exists('sv_send_dm')) return;
     $published = (string)($row['published'] ?? '');
     if ($published === '' || $published < (string)$win['end']) return;
-
-    $next_start = (new DateTimeImmutable((string)$win['start'], new DateTimeZone('UTC')))->modify('+7 days');
-    $next_end = $next_start->modify('+50 hours');
-    $week_key = $next_start->modify('+14 hours')->format('o-\\WW');
-    $actor = (string)($row['actor_url'] ?? '');
-    $object_id = (string)($row['object_id'] ?? '');
-    if ($actor === '' || $object_id === '') return;
-
     try {
-        $reserve = $pdo->prepare("INSERT IGNORE INTO pc_window_notices(actor_url,week_key,object_id) VALUES(?,?,?)");
-        $reserve->execute([$actor,$week_key,$object_id]);
-        if ($reserve->rowCount() !== 1) return;
-
-        $tag = '#' . pc_tag($settings);
-        $body = "This Photo Friday round isn't open, so your post wasn't entered or boosted. "
-              . "Please post again while the round is open: "
-              . $next_start->format('Thursday, M j \\a\\t H:i') . " UTC through "
-              . $next_end->format('Saturday, M j \\a\\t H:i') . " UTC. Use {$tag}.";
-        [$ok,$message] = sv_send_dm($pdo,$settings,$actor,$body);
-        $pdo->prepare("UPDATE pc_window_notices SET state=?,last_error=? WHERE actor_url=? AND week_key=?")
-            ->execute([$ok ? 'sent' : 'failed',$ok ? '' : substr((string)$message,0,500),$actor,$week_key]);
-    } catch (Throwable $e) {
-        try {
-            $pdo->prepare("UPDATE pc_window_notices SET state='failed',last_error=? WHERE actor_url=? AND week_key=?")
-                ->execute([substr($e->getMessage(),0,500),$actor,$week_key]);
-        } catch (Throwable $ignored) {}
-    }
+        pc_log_entry_failure($pdo,[
+            'id'=>(string)($row['object_id'] ?? ''),'url'=>(string)($row['url'] ?? ''),
+            'published'=>$published,'author'=>['id'=>(string)($row['actor_url'] ?? ''),'handle'=>(string)($row['actor_handle'] ?? '')],
+        ],'outside_window','Held for review; no DM was sent.');
+    } catch (Throwable $e) {}
 }
 
 /** Allocate one immutable weekly slot under the participant-row lock. */
@@ -1112,6 +1107,84 @@ function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25)
         }
     }
     return $out;
+}
+
+/** Keep a durable, de-duplicated record of a discovered entry we could not process. */
+function pc_log_entry_failure(PDO $pdo, array $row, string $reason, string $error = ''): void {
+    $object_id = trim((string)($row['id'] ?? ($row['url'] ?? '')));
+    if ($object_id === '') return;
+    $author = is_array($row['author'] ?? null) ? $row['author'] : [];
+    $published = !empty($row['published']) ? date('Y-m-d H:i:s', strtotime((string)$row['published'])) : null;
+    $pdo->prepare("INSERT INTO pc_entry_failures
+        (object_id,post_url,actor_url,actor_handle,published,reason,last_error)
+        VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE post_url=VALUES(post_url),
+        actor_url=VALUES(actor_url),actor_handle=VALUES(actor_handle),published=VALUES(published),
+        reason=VALUES(reason),last_error=VALUES(last_error),last_seen_at=NOW(),state='open'")
+        ->execute([substr($object_id,0,500),substr((string)($row['url'] ?? ''),0,600),
+            substr((string)($author['id'] ?? ''),0,500),substr((string)($author['handle'] ?? ''),0,190),
+            $published,substr($reason,0,40),substr($error,0,500)]);
+}
+
+/** Discover current-tag posts through configured authenticated search accounts and recover them. */
+function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40): array {
+    pc_ensure_tables($pdo);
+    $tag = pc_tag($settings); $win = pc_window($settings);
+    $rows = function_exists('sv_authed_hashtag_timeline') ? sv_authed_hashtag_timeline($pdo,$settings,$tag,$limit) : null;
+    if (!is_array($rows)) $rows = [];
+    if (!$rows && function_exists('sv_hashtag_timeline')) $rows = sv_hashtag_timeline('mastodon.social',$tag,$limit);
+    $out = ['found'=>count($rows),'recovered'=>0,'already'=>0,'failed'=>0,'outside'=>0];
+    foreach ($rows as $row) {
+        if (!is_array($row)) continue;
+        $published = !empty($row['published']) ? date('Y-m-d H:i:s',strtotime((string)$row['published'])) : '';
+        if ($published === '' || $published < $win['start'] || $published >= $win['end']) {
+            pc_log_entry_failure($pdo,$row,'outside_window'); $out['outside']++; continue;
+        }
+        $object = null;
+        foreach (array_unique([(string)($row['id'] ?? ''),(string)($row['url'] ?? '')]) as $candidate) {
+            if ($candidate !== '' && function_exists('sv_fetch_ap')) { $object=sv_fetch_ap($candidate,$settings); if (is_array($object)) break; }
+        }
+        if (is_array($object) && ($object['type'] ?? '') === 'Create' && is_array($object['object'] ?? null)) $object=$object['object'];
+        if (!is_array($object) || empty($object['id'])) {
+            pc_log_entry_failure($pdo,$row,'object_fetch_failed','The origin did not return an ActivityPub object.'); $out['failed']++; continue;
+        }
+        $actor = is_array($object['attributedTo'] ?? null) ? (string)($object['attributedTo']['id'] ?? '') : (string)($object['attributedTo'] ?? '');
+        if ($actor === '') { pc_log_entry_failure($pdo,$row,'missing_actor'); $out['failed']++; continue; }
+        $row['author']['id'] = $actor;
+        sv_ingest_timeline($pdo,$object,$actor,(string)($row['author']['handle'] ?? ''),false,null,'home','photochallenge-tag-recovery');
+        $q=$pdo->prepare("SELECT boost_state FROM pc_admissions WHERE object_id=? LIMIT 1"); $q->execute([(string)$object['id']]); $prior=$q->fetchColumn();
+        $boosted=pc_maybe_boost_entry($pdo,$settings,(string)$object['id']);
+        $q->execute([(string)$object['id']]); $state=$q->fetchColumn();
+        if ($boosted || in_array($state,['sent','test'],true)) {
+            $pdo->prepare("UPDATE pc_entry_failures SET state='recovered',last_seen_at=NOW() WHERE object_id IN (?,?)")
+                ->execute([(string)($row['id'] ?? ''),(string)$object['id']]);
+            $prior ? $out['already']++ : $out['recovered']++;
+        } else {
+            pc_log_entry_failure($pdo,$row,$state === 'failed' ? 'boost_failed' : 'not_eligible'); $out['failed']++;
+        }
+    }
+    return $out;
+}
+
+/** Build review-only DM drafts. This function never sends anything. */
+function pc_failed_entry_dm_drafts(PDO $pdo, array $settings, int $limit = 25): array {
+    pc_ensure_tables($pdo);
+    $q=$pdo->query("SELECT f.*,p.actor_url AS recipient_actor FROM pc_entry_failures f JOIN pc_participants p
+        ON (p.actor_url=f.actor_url OR (f.actor_handle<>'' AND p.handle=f.actor_handle)) AND p.state='active'
+        WHERE f.state='open' AND f.reason<>'not_eligible' ORDER BY f.first_seen_at LIMIT " . max(1,min(100,$limit)));
+    $drafts=[];
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $body="We found your #" . pc_tag($settings) . " post, but PhotoFri could not process it. Please resubmit it after we confirm the entry window is open. " . (string)($row['post_url'] ?? '');
+        $drafts[]=['object_id'=>(string)$row['object_id'],'recipient'=>(string)$row['recipient_actor'],
+            'handle'=>(string)$row['actor_handle'],'body'=>$body];
+    }
+    return $drafts;
+}
+
+function pc_entry_failures(PDO $pdo, int $limit = 50): array {
+    try {
+        return $pdo->query("SELECT * FROM pc_entry_failures ORDER BY last_seen_at DESC LIMIT " . max(1,min(200,$limit)))
+            ->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) { return []; }
 }
 
 /** Render the board as a self-contained teaser-card fragment (canonical -> origin). */
