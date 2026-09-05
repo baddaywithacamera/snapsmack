@@ -206,6 +206,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-ap-timeline-membership.sql',
     'migrate-fedistructure-site-mode.sql',
     'migrate-fediverse-rename.sql',
+    'migrate-curator-directory.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────

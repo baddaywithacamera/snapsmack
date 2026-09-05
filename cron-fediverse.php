@@ -107,6 +107,11 @@ $pc_maintenance = [0, 0, 0];
 if (function_exists('pc_cron_maintain')) {
     $pc_maintenance = pc_cron_maintain($pdo, $settings, 25);
 }
+$curator = ['disabled', 0, false, ''];
+if (function_exists('sc_curator_cron')) {
+    try { $curator = sc_curator_cron($pdo, $settings); }
+    catch (Throwable $e) { fwrite(STDERR, "Optional curator maintenance failed; ordinary delivery will continue: " . $e->getMessage() . "\n"); }
+}
 
 // RESYNC mode: php cron-fediverse.php resync [N]
 // Re-federates the N most recent posts (default: fediverse_backfill_count) to
@@ -159,8 +164,9 @@ if (is_file("{$root}/core/mesh-helpers.php")) {
 sv_set_setting($pdo, $settings, 'fediverse_cron_last_run', date('Y-m-d H:i:s'));
 
 echo sprintf(
-    "FEDIVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; relay ingest: %d recovered, %d retrying/shelved; outbox recovery: %d members, %d recovered; PHOTOFRI: %d finalized, %d gardened, %d withdrawn; profile-update: %d follower(s).\n",
-    $units, $queued, $bf_jobs, $bf_queued, $sent, $failed, $relay_ingest[0], $relay_ingest[1], $relay_recovery[0], $relay_recovery[1], $pc_maintenance[0], $pc_maintenance[1], $pc_maintenance[2], $actor_upd
+    "FEDIVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; relay ingest: %d recovered, %d retrying/shelved; outbox recovery: %d members, %d recovered; PHOTOFRI: %d finalized, %d gardened, %d withdrawn; profile-update: %d follower(s); CURATOR: %s, %d discovered%s (%s).\n",
+    $units, $queued, $bf_jobs, $bf_queued, $sent, $failed, $relay_ingest[0], $relay_ingest[1], $relay_recovery[0], $relay_recovery[1], $pc_maintenance[0], $pc_maintenance[1], $pc_maintenance[2], $actor_upd,
+    $curator[0], $curator[1], $curator[2] ? ' (scan complete)' : '', $curator[3]
 );
 exit(0);
 // ===== SNAPSMACK EOF =====

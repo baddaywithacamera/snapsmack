@@ -9,6 +9,23 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.632D "YOU HAVE BEEN SELECTED" — 2026-09-04
+- **The FEDISTRUCTURE hub gains a consent-directory photography curator.** Only
+  the real `@curator@photoblogs.fyi` identity can run it. It reads
+  fediverse.info's public JSON photography directory and follows its current
+  opt-in members gradually: one 12-person page every three hours and at most one
+  remote follow every 15 minutes, spreading today's list over at least 66 hours.
+  A per-instance brake permits only one follow per destination server per hour,
+  so clusters of accounts on one server cannot turn into a burst.
+- Curator-managed, accepted follows enrich the network relay's global feed;
+  ordinary manual hub follows never become relay sources. Connected hub sites
+  are excluded and are unfollowed if they join later. Manual follows are never
+  claimed or removed by automation.
+- A complete monthly rescan removes directory-managed follows that disappeared.
+  Unreachable actors get retries and must fail three checks before retirement;
+  remote rejections are recorded honestly. The Portal shows live state counts,
+  last scan/error, pause/start, and one-step controls behind password + 2FA.
+
 ## 0.7.631D "RIGHT ADDRESS" — 2026-09-04
 - **The FLEET relay-join panel appears where the fleet lives.** It is its own box on the Fediverse Portal of any hub with connected spokes (it was first placed inside the SMACKCAST HUB box, which only renders on the blog that IS the relay — so the multisite hub with the spokes never showed it).
 - The relay the fleet joins is the one this hub uses: its own actor when this blog is the relay, otherwise the relay this blog is joined to. A hub joined to nothing is refused (with a plain message) so the stale default relay address can never be fanned out to the whole fleet.

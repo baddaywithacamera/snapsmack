@@ -327,6 +327,66 @@ include 'core/sidebar.php';
     </div>
     <?php endif; ?>
 
+    <?php if ($sc_is_hub_install):
+        $curator_on = ($sv_settings['curator_directory_enabled'] ?? '0') === '1';
+        $curator_identity_ok = function_exists('sc_curator_is_hub') && sc_curator_is_hub($sv_settings);
+        $curator_counts = [];
+        if (function_exists('sc_curator_ensure_tables')) {
+            try {
+                sc_curator_ensure_tables($pdo);
+                $curator_counts = $pdo->query("SELECT state,COUNT(*) n FROM snap_curator_directory GROUP BY state")
+                    ->fetchAll(PDO::FETCH_KEY_PAIR);
+            } catch (Throwable $e) {}
+        }
+    ?>
+    <div class="box mb-20">
+        <h3>PHOTOGRAPHY CURATOR</h3>
+        <p class="dim mb-20">
+            <code>@curator@photoblogs.fyi</code> follows people who explicitly opted into the
+            <a href="https://fediverse.info/people?topics=photography" target="_blank" rel="noopener nofollow">fediverse.info photography directory</a>.
+            This uses their public JSON directory, not page scraping. Intake is limited to one
+            follow every 15 minutes, with no more than one follow per destination server per hour.
+            The current list takes at least three days and may take longer when many people share
+            one server. Connected hub sites
+            are excluded. A complete monthly rescan unfollows directory-managed accounts that
+            disappeared, and three failed actor checks retire dead accounts. Manual follows are
+            never removed or claimed by this worker.
+        </p>
+        <?php if (!$curator_identity_ok): ?>
+            <div class="alert alert-warn">BLOCKED — this install currently answers as
+                <code><?php echo htmlspecialchars('@' . sv_handle($sv_settings) . '@' . sv_domain($sv_settings)); ?></code>.
+                Set its handle to <strong>curator</strong> and its canonical Site URL to <strong>https://photoblogs.fyi</strong> first.
+            </div>
+        <?php else: ?>
+            <p><strong><?php echo $curator_on ? 'RUNNING' : 'PAUSED'; ?></strong>
+                &middot; discovered <?php echo (int)($curator_counts['discovered'] ?? 0); ?>
+                &middot; following/pending <?php echo (int)($curator_counts['following'] ?? 0); ?>
+                &middot; healthy <?php echo (int)($curator_counts['followed'] ?? 0); ?>
+                &middot; excluded hub members <?php echo (int)($curator_counts['excluded'] ?? 0); ?>
+                &middot; removed/invalid/rejected <?php echo (int)(($curator_counts['removed'] ?? 0) + ($curator_counts['invalid'] ?? 0) + ($curator_counts['rejected'] ?? 0)); ?></p>
+            <p class="dim">Last complete directory scan:
+                <strong><?php echo htmlspecialchars((string)($sv_settings['curator_scan_completed_at'] ?? 'never')); ?></strong>
+                <?php if (!empty($sv_settings['curator_last_error'])): ?>&middot; Last error:
+                    <?php echo htmlspecialchars((string)$sv_settings['curator_last_error']); ?><?php endif; ?></p>
+            <form method="POST" style="display:inline-block;margin-right:12px;">
+                <input type="hidden" name="action" value="curator_toggle">
+                <input type="hidden" name="enabled" value="<?php echo $curator_on ? '0' : '1'; ?>">
+                <input type="password" name="reauth_password" placeholder="Password" autocomplete="off" required>
+                <input type="text" name="reauth_totp" placeholder="2FA" inputmode="numeric" autocomplete="off">
+                <button type="submit" class="btn-smack"><?php echo $curator_on ? 'PAUSE CURATOR' : 'START CURATOR'; ?></button>
+            </form>
+            <?php if ($curator_on): ?>
+            <form method="POST" style="display:inline-block;">
+                <input type="hidden" name="action" value="curator_run">
+                <input type="password" name="reauth_password" placeholder="Password" autocomplete="off" required>
+                <input type="text" name="reauth_totp" placeholder="2FA" inputmode="numeric" autocomplete="off">
+                <button type="submit" class="btn-smack">RUN ONE PACED STEP</button>
+            </form>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
     <div class="box">
         <h3>PIGGYBACK SEARCH ACCOUNTS</h3>
         <p class="dim mb-20">

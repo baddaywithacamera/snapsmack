@@ -98,11 +98,27 @@ function sc_relay_leave(PDO $pdo, string $actor_url): void {
         ->execute([$actor_url]);
 }
 
-/** Queue exactly one Announce per destination/object; snap_relay_intake dedups intake. */
-function sc_relay_fanout(PDO $pdo, array $settings, array $activity, string $actor_url): int {
+/**
+ * Is this actor an allowed relay source? Normal members join the relay. The
+ * curator's consent-directory follows are a separate, explicitly managed
+ * source; manual hub follows do not become network-wide relay sources.
+ */
+function sc_relay_actor_is_source(PDO $pdo, string $actor_url): bool {
     $member = $pdo->prepare("SELECT 1 FROM snap_relay_subscribers WHERE actor_url=? AND state='active' LIMIT 1");
     $member->execute([$actor_url]);
-    if (!$member->fetchColumn()) return 0;
+    if ($member->fetchColumn()) return true;
+    try {
+        $q = $pdo->prepare("SELECT 1 FROM snap_curator_directory c
+            JOIN snap_ap_following f ON f.id=c.follow_row_id
+            WHERE c.actor_url=? AND c.state IN ('following','followed') AND f.state='accepted' LIMIT 1");
+        $q->execute([$actor_url]);
+        return (bool)$q->fetchColumn();
+    } catch (Throwable $e) { return false; }
+}
+
+/** Queue exactly one Announce per destination/object; snap_relay_intake dedups intake. */
+function sc_relay_fanout(PDO $pdo, array $settings, array $activity, string $actor_url): int {
+    if (!sc_relay_actor_is_source($pdo, $actor_url)) return 0;
     $object = $activity['object'] ?? [];
     if (!is_array($object) || !in_array(($object['type'] ?? ''), ['Note','Image'], true)) return 0;
     if (($object['inReplyTo'] ?? null) || !sc_relay_is_discoverable($activity, $object)) return 0;
@@ -130,9 +146,7 @@ function sc_relay_fanout(PDO $pdo, array $settings, array $activity, string $act
 
 /** Refresh a relayed object after a verified origin Update. */
 function sc_relay_refresh(PDO $pdo, array $settings, array $activity, string $actor_url): int {
-    $member = $pdo->prepare("SELECT 1 FROM snap_relay_subscribers WHERE actor_url=? AND state='active' LIMIT 1");
-    $member->execute([$actor_url]);
-    if (!$member->fetchColumn()) return 0;
+    if (!sc_relay_actor_is_source($pdo, $actor_url)) return 0;
     $object = $activity['object'] ?? [];
     if (!is_array($object) || !in_array(($object['type'] ?? ''), ['Note','Image'], true)) return 0;
     $object_id = (string)($object['id'] ?? '');
