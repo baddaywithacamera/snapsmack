@@ -9,6 +9,8 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.639D "NOT ON MY TIME" — 2026-09-05
+- **Public page loads never run background jobs.** The automatic visitor-triggered federation/RSS/roster fallback is removed from `index.php`; it caused uncached SMACKONEOUT requests to wait behind network maintenance and produce Cloudflare 524 errors. Real system cron remains canonical, the authenticated fleet driver remains available, and Cron & Jobs now tells unsupported hosts to configure their hosting scheduler instead of using visitors as workers.
 ## 0.7.638D "STAY IN YOUR LANE" — 2026-09-05
 - **Consent-directory harvesting is invoked only by the FEDISTRUCTURE hub.** Ordinary blogs and non-hub installs no longer call or report curator maintenance at all. The existing curator identity check remains a second safety boundary, so only the real `photoblogs.fyi` hub can contact fediverse.info.
 - **Push & Tools can repair one follower without reseeding everyone.** Enter an existing active follower handle, choose Seed or Refresh and a recent-post count, and only that follower's advertised inbox is queued. Unknown and inactive handles are refused so this cannot become an unsolicited-delivery tool.
