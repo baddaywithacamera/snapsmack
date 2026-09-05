@@ -9,6 +9,8 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.646D "PICTURE ON THE BADGE" — 2026-09-05
+- **Pixelix finally shows your real avatar and username.** The Pixelfed-client API built its account object from two settings keys nothing in the CMS ever writes, so the app showed a blank avatar (no matter what you uploaded) and the placeholder name "snapsmack" forever. It now resolves the avatar the same way federation does — the per-skin PROFILE AVATAR from Pimp Your Ride → Smooth Your Skin, existence-checked so a broken image is never advertised — and takes the username from your actual fediverse handle.
 ## 0.7.645D "WHERE I SAID IT WAS" — 2026-09-05
 - **The profile-push button is now on the Fediverse Portal too.** REFRESH PROFILE ON REMOTES (which pushes your display name, bio AND avatar to every follower's server) only lived on the Followers page, while the Portal — the page that edits the profile — told you to press it after saving. The button now sits directly under SAVE PROFILE in the Portal's PROFILE box, labeled with what it pushes, and the save message points at it correctly. Reminder of the avatar chain: set the image under Pimp Your Ride → Smooth Your Skin (PROFILE AVATAR box), then this button — or the next cron tick — carries it to Pixelfed/Mastodon.
 ## 0.7.644D "OFF THE CLOCK" — 2026-09-05
