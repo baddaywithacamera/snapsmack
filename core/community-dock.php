@@ -102,6 +102,15 @@ $above_download   = ($dock_pos === 'bottom-right');
 $dock_classes = 'ss-community-dock ss-cdock-' . $dock_pos;
 if ($has_conflict)   $dock_classes .= ' ss-cdock-conflict';
 if ($above_download) $dock_classes .= ' ss-cdock-above-download';
+
+// The dock must never render unstyled: on a manifest skin the head already
+// emitted ss-community.css (core/meta.php marks it), but pre-manifest skin
+// builds still deployed in the field have no manifest, so emit the <link>
+// here exactly like the other core components in footer-scripts.php do.
+if (empty($GLOBALS['snapsmack_engine_css_emitted']['assets/css/ss-community.css'])) {
+    echo '<link rel="stylesheet" href="' . BASE_URL . 'assets/css/ss-community.css?v=' . SNAPSMACK_VERSION_SHORT . '">' . "\n";
+    $GLOBALS['snapsmack_engine_css_emitted']['assets/css/ss-community.css'] = true;
+}
 ?>
 
 <div class="<?php echo $dock_classes; ?>"

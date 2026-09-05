@@ -3911,8 +3911,24 @@ will show as Ready.</p>
 code</strong>, and press <strong>JOIN SELECTED TO NETWORK</strong>. Every blog is re-checked at the
 moment of joining &mdash; a blog that stopped being ready is refused, not joined quietly. Each spoke
 signs its own join with its own key, exactly as if you pressed JOIN NETWORK on that blog, and its
-domain is pre-admitted on the relay so the join completes immediately instead of sitting pending.
-The results table tells you plainly, per blog, whether it joined and why not if it didn't.</p>
+domain is pre-admitted <em>on the relay itself</em> &mdash; when the relay is another of this hub's
+connected sites, the hub asks that site to admit the domain, so the join completes immediately
+instead of sitting pending. The results table tells you plainly, per blog, whether it joined and
+why not if it didn't.</p>
+
+<h4>Reading the State column</h4>
+<ul>
+  <li><strong>Already on the relay (host)</strong> &mdash; the blog is an accepted member of the
+  relay this hub targets. It is never re-joined; nothing to do.</li>
+  <li><strong>Join sent &mdash; awaiting the relay's Accept</strong> &mdash; the join went out and
+  is waiting on the relay. It is not re-ticked on RE-REVIEW; the relay's Accept usually lands in
+  seconds once the domain is admitted.</li>
+  <li><strong>Ready &mdash; currently on a different relay</strong> &mdash; the blog is joined
+  somewhere else; ticking it moves it to this hub's relay.</li>
+</ul>
+<p>A blog that answers slowly is not failed on a stopwatch: the join call waits up to 30 seconds,
+and if the blog still hasn't answered, the hub asks it where it stands before reporting a result
+&mdash; a join that actually landed is reported as joined, not as "no answer."</p>
 HTML
 ];
 

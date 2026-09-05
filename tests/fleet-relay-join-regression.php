@@ -45,12 +45,27 @@ fj_test(str_contains($admin, '$fj_relay   = $sc_is_hub_install ? sv_actor_url($s
 fj_test(str_contains($admin, "'No answer — join NOT confirmed'"), 'an unreachable spoke reports honestly as NOT joined');
 fj_test(str_contains($admin, "role = 'spoke' AND status = 'active' AND api_key_local <> ''"), 'fleet list covers active connected spokes only');
 
+// ── 0.7.640D fixes: slow joins, pending state, relay-side admission ─────────
+fj_test(str_contains($admin, 'int $timeout = 6'), 'sc_fleet_call takes a per-call timeout (6s default for status sweeps)');
+fj_test(str_contains($admin, "['relay_url' => \$fj_relay], 30"), 'the JOIN call gets a 30s window — 6s false-failed real joins');
+fj_test(str_contains($admin, 'CURLOPT_CONNECTTIMEOUT'), 'connect timeout stays tight so a dead box still fails fast');
+fj_test(str_contains($admin, "confirmed by a follow-up check"), 'a silent join is re-checked via status before being reported as failed');
+fj_test(str_contains($admin, "'Already on the relay — nothing to do.'"), 'an already-accepted member is skipped at join time, never re-joined');
+fj_test(str_contains($admin, "multisite/fediverse/relay-admit"), 'when this hub is NOT the relay, admission is requested ON the relay');
+fj_test(preg_match('/if \(\$sc_is_hub_install\) \{\s*\n\s*try \{\s*\n\s*\$pdo->prepare\("INSERT IGNORE INTO snap_relay_allowlist/', $admin) === 1, 'the LOCAL allowlist is only written when this blog IS the relay');
+fj_test(str_contains($api, "\$resource === 'fediverse' && \$sub_action === 'relay-admit' && \$method === 'POST'"), 'relay exposes the admission endpoint');
+fj_test(str_contains($api, 'This install is not the network relay — nothing to admit to.'), 'relay-admit fails closed on any install that is not the relay');
+fj_test(str_contains($api, "domain must be a bare hostname"), 'relay-admit validates the domain shape');
+
 // ── Portal UI ───────────────────────────────────────────────────────────────
 fj_test(str_contains($portal, 'REVIEW FLEET'), 'portal offers the fleet review');
 fj_test(str_contains($portal, 'if ($sc_fleet_spoke_count > 0): ?>'), 'FLEET is its own box on ANY hub with spokes (not gated on being the smackcast relay)');
 fj_test(str_contains($portal, 'name="spoke_ids[]"'), 'join is per-spoke opt-in via checkboxes');
 fj_test(str_contains($portal, 'FIX IT'), 'flagged blogs get a FIX IT link to their own portal');
-fj_test(str_contains($portal, '$fready   = is_array($fstatus) && !$frow[\'problems\'] && !$fjoined;'), 'only problem-free, not-yet-joined blogs are tickable');
+fj_test(str_contains($portal, '$fready   = is_array($fstatus) && !$frow[\'problems\'] && !$fjoined && !$fpending;'), 'only problem-free, not-joined, not-pending blogs are tickable');
+fj_test(str_contains($portal, "Join sent &mdash; awaiting the relay's Accept"), 'a pending join shows as pending, not Ready — the re-check-everyone bug');
+fj_test(str_contains($portal, '$frelay_host !== \'\' && $frelay_host === $ftarget_host'), 'joined/pending only count against THIS hub\'s target relay, not some other relay');
+fj_test(str_contains($portal, 'Already on the relay (<?php echo htmlspecialchars($frelay_host); ?>)'), 'the joined row names WHICH relay the blog is on');
 fj_test(substr_count($portal, 'name="reauth_password"') >= 3, 'fleet join form carries the step-up password field');
 fj_test(str_contains($help, "fediverse-fleet-join"), 'help topic for the fleet join exists');
 

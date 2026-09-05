@@ -513,6 +513,34 @@ if ($resource === 'fediverse' && $sub_action === 'relay-join' && $method === 'PO
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/fediverse/relay-admit
+// A management hub asks THIS install — which must actually BE the smackcast
+// relay — to pre-admit one fleet domain, so that domain's Follow lands active
+// instead of sitting pending. Before this, the FLEET join wrote to the
+// EXECUTING hub's own allowlist, which admits nobody when the relay runs on a
+// different install (foundtextures pushes, photoblogs.fyi is the relay).
+// FAIL-CLOSED: refused on any install that is not the relay. FULL api_key_local
+// auth — the caller is a mutually-authenticated fleet peer.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'fediverse' && $sub_action === 'relay-admit' && $method === 'POST') {
+    require_once __DIR__ . '/smackcast-relay.php';
+    if (!sc_relay_is_hub($settings)) {
+        ms_err('This install is not the network relay — nothing to admit to.');
+    }
+    $fa_domain = strtolower(trim((string)($_POST['domain'] ?? '')));
+    if ($fa_domain === '' || !preg_match('/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/', $fa_domain)) {
+        ms_err('domain must be a bare hostname (e.g. blog.example.ca).');
+    }
+    try {
+        $fa_ins = $pdo->prepare("INSERT IGNORE INTO snap_relay_allowlist (domain, note) VALUES (?, 'fleet join')");
+        $fa_ins->execute([$fa_domain]);
+        ms_ok(['message' => $fa_ins->rowCount() > 0 ? 'Admitted.' : 'Already admitted.']);
+    } catch (Throwable $e) {
+        ms_err('Relay allowlist unavailable on this install.');
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: GET multisite/heartbeat
 // Returns site vitals: version, counts, backup state.
 // ─────────────────────────────────────────────────────────────────────────────

@@ -490,14 +490,18 @@ function sc_fleet_spokes(PDO $pdo): array {
 
 /** Same transport as ms_spoke_call (smack-multisite-comments.php), except a
  *  non-200 JSON body comes back too so the spoke's refusal REASON survives —
- *  null only when the spoke didn't answer at all. */
-function sc_fleet_call(string $site_url, string $api_key, string $route, string $method = 'GET', array $post_data = []): ?array {
+ *  null only when the spoke didn't answer at all. The default 6s suits the
+ *  read-only status sweep; the JOIN call passes a longer window because the
+ *  spoke does its own outbound relay work (actor fetch + signed deliveries)
+ *  before it can answer, and 6s false-failed real joins. */
+function sc_fleet_call(string $site_url, string $api_key, string $route, string $method = 'GET', array $post_data = [], int $timeout = 6): ?array {
     $url = rtrim($site_url, '/') . '/api.php?route=' . $route;
     $ch = curl_init();
     $opts = [
         CURLOPT_URL            => $url,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 6,
+        CURLOPT_TIMEOUT        => max(1, $timeout),
+        CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_HTTPHEADER     => [
             'Authorization: Bearer ' . $api_key,
@@ -547,6 +551,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'fleet
     }
     $fj_picked  = array_map('intval', (array)($_POST['spoke_ids'] ?? []));
     $fj_results = [];
+    $fj_relay_host = strtolower((string)(parse_url($fj_relay, PHP_URL_HOST) ?: ''));
+    // Pre-admission target: when this blog IS the relay the allowlist is local.
+    // Otherwise the relay lives on another install and writing to THIS hub's
+    // allowlist admits nobody — find the relay among this hub's connected nodes
+    // so the domain can be admitted THERE.
+    $fj_relay_node = null;
+    if (!$sc_is_hub_install && $fj_relay_host !== '') {
+        try {
+            $fj_all_nodes = $pdo->query(
+                "SELECT site_url, api_key_local FROM snap_multisite_nodes
+                 WHERE status = 'active' AND api_key_local <> ''"
+            )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            foreach ($fj_all_nodes as $fj_n) {
+                if (strtolower((string)(parse_url((string)$fj_n['site_url'], PHP_URL_HOST) ?: '')) === $fj_relay_host) {
+                    $fj_relay_node = $fj_n;
+                    break;
+                }
+            }
+        } catch (Throwable $e) { /* nodes table absent */ }
+    }
     foreach (sc_fleet_spokes($pdo) as $fj_node) {
         if (!in_array((int)$fj_node['id'], $fj_picked, true)) continue;
         $fj_row  = sc_fleet_status_row($fj_node);   // fail-closed: re-verify at join time
@@ -555,24 +579,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'fleet
             $fj_results[] = ['site' => $fj_name, 'ok' => false, 'msg' => implode('; ', $fj_row['problems'])];
             continue;
         }
+        // Already accepted on THIS relay: nothing to send. A stale form or a
+        // double-submit must not re-join a member blog.
+        $fj_st       = is_array($fj_row['status']) ? $fj_row['status'] : [];
+        $fj_cur_host = strtolower((string)(parse_url((string)($fj_st['relay_url'] ?? ''), PHP_URL_HOST) ?: ''));
+        if ($fj_cur_host === $fj_relay_host && !empty($fj_st['relay_joined'])
+            && in_array(strtolower((string)($fj_st['join_state'] ?? '')), ['accepted', 'active'], true)) {
+            $fj_results[] = ['site' => $fj_name, 'ok' => true, 'msg' => 'Already on the relay — nothing to do.'];
+            continue;
+        }
         // Pre-admit the spoke's domain so its Follow lands 'active' and the
         // Accept fires immediately — these are already mutually-authenticated
         // multisite spokes, and the operator just selected them behind
         // password+TOTP. Without this every join would sit pending.
+        $fj_note = '';
         $fj_host = strtolower((string)(parse_url((string)$fj_node['site_url'], PHP_URL_HOST) ?: ''));
         if ($fj_host !== '') {
-            try {
-                $pdo->prepare("INSERT IGNORE INTO snap_relay_allowlist (domain, note) VALUES (?, 'fleet join')")
-                    ->execute([$fj_host]);
-            } catch (Throwable $e) { /* allowlist absent: admission stays pending */ }
+            if ($sc_is_hub_install) {
+                try {
+                    $pdo->prepare("INSERT IGNORE INTO snap_relay_allowlist (domain, note) VALUES (?, 'fleet join')")
+                        ->execute([$fj_host]);
+                } catch (Throwable $e) { /* allowlist absent: admission stays pending */ }
+            } elseif ($fj_relay_node !== null) {
+                $fj_adm = sc_fleet_call((string)$fj_relay_node['site_url'], (string)$fj_relay_node['api_key_local'],
+                                        'multisite/fediverse/relay-admit', 'POST', ['domain' => $fj_host]);
+                if (!is_array($fj_adm) || empty($fj_adm['ok'])) {
+                    $fj_note = ' (pre-admission on the relay not confirmed — the join may sit PENDING until approved there)';
+                }
+            } else {
+                $fj_note = ' (the relay is not one of this hub\'s connected sites, so it could not be pre-admitted — the join may sit PENDING until approved on the relay)';
+            }
         }
         $fj_r = sc_fleet_call((string)$fj_node['site_url'], (string)$fj_node['api_key_local'],
-                              'multisite/fediverse/relay-join', 'POST', ['relay_url' => $fj_relay]);
+                              'multisite/fediverse/relay-join', 'POST', ['relay_url' => $fj_relay], 30);
+        if (!is_array($fj_r)) {
+            // The spoke went quiet past our wait. That usually means the join is
+            // still finishing (its own relay fetch + signed deliveries), not that
+            // it failed — ask where it stands before reporting a failure.
+            $fj_after = sc_fleet_call((string)$fj_node['site_url'], (string)$fj_node['api_key_local'],
+                                      'multisite/fediverse/status');
+            if (is_array($fj_after) && !empty($fj_after['ok'])) {
+                $fj_after_host  = strtolower((string)(parse_url((string)($fj_after['relay_url'] ?? ''), PHP_URL_HOST) ?: ''));
+                $fj_after_state = strtolower((string)($fj_after['join_state'] ?? ''));
+                if ($fj_after_host === $fj_relay_host && !empty($fj_after['relay_joined'])
+                    && in_array($fj_after_state, ['pending', 'accepted', 'active'], true)) {
+                    $fj_r = ['ok' => true, 'message' => 'Joined — the blog answered slowly, so this was confirmed by a follow-up check.'];
+                }
+            }
+        }
         if (is_array($fj_r) && !empty($fj_r['ok'])) {
-            $fj_results[] = ['site' => $fj_name, 'ok' => true, 'msg' => (string)($fj_r['message'] ?? 'Joined.')];
+            $fj_results[] = ['site' => $fj_name, 'ok' => true, 'msg' => (string)($fj_r['message'] ?? 'Joined.') . $fj_note];
         } else {
             $fj_results[] = ['site' => $fj_name, 'ok' => false,
-                             'msg' => (string)($fj_r['error'] ?? 'No answer — join NOT confirmed')];
+                             'msg' => (string)($fj_r['error'] ?? 'No answer — join NOT confirmed') . $fj_note];
         }
     }
     $_SESSION['sc_fleet_results'] = $fj_results;

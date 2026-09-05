@@ -273,22 +273,31 @@ include 'core/sidebar.php';
                 <table class="data-table w-100 mb-20">
                     <thead><tr><th>Join</th><th>Blog</th><th>Handle</th><th>State</th></tr></thead>
                     <tbody>
-                    <?php foreach ($sc_fleet_review as $frow):
+                    <?php $ftarget_host = strtolower((string)(parse_url($sc_fleet_relay_target, PHP_URL_HOST) ?: ''));
+                    foreach ($sc_fleet_review as $frow):
                         $fnode    = $frow['node'];
                         $fstatus  = $frow['status'];
                         $fname    = (string)($fnode['site_name'] ?: $fnode['site_url']);
                         $fhandle  = is_array($fstatus) ? trim((string)($fstatus['handle'] ?? '')) : '';
                         $fdomain  = is_array($fstatus) ? (string)($fstatus['domain'] ?? '') : '';
-                        $fjoined  = is_array($fstatus) && !empty($fstatus['relay_joined'])
-                                    && in_array(strtolower((string)($fstatus['join_state'] ?? '')), ['accepted', 'active'], true);
-                        $fready   = is_array($fstatus) && !$frow['problems'] && !$fjoined;
+                        // Joined/pending count ONLY against the relay this hub is
+                        // joining to — a blog sitting on some other relay is not
+                        // "already on" this one.
+                        $frelay_host = is_array($fstatus) ? strtolower((string)(parse_url((string)($fstatus['relay_url'] ?? ''), PHP_URL_HOST) ?: '')) : '';
+                        $fsame_relay = $frelay_host !== '' && $frelay_host === $ftarget_host;
+                        $fstate      = is_array($fstatus) ? strtolower((string)($fstatus['join_state'] ?? '')) : '';
+                        $fjoined  = $fsame_relay && !empty($fstatus['relay_joined'])
+                                    && in_array($fstate, ['accepted', 'active'], true);
+                        $fpending = $fsame_relay && !$fjoined && !empty($fstatus['relay_joined'])
+                                    && $fstate === 'pending';
+                        $fready   = is_array($fstatus) && !$frow['problems'] && !$fjoined && !$fpending;
                         $ffix_url = rtrim((string)$fnode['site_url'], '/') . '/smack-fediverse-portal.php';
                     ?>
                     <tr>
                         <td>
                             <?php if ($fready): ?>
                                 <label><input type="checkbox" name="spoke_ids[]" value="<?php echo (int)$fnode['id']; ?>" checked> JOIN</label>
-                            <?php elseif ($fjoined): ?>
+                            <?php elseif ($fjoined || $fpending): ?>
                                 &#10003;
                             <?php else: ?>
                                 &mdash;
@@ -299,10 +308,14 @@ include 'core/sidebar.php';
                         <td><code><?php echo $fhandle !== '' ? htmlspecialchars('@' . $fhandle . '@' . $fdomain) : '&mdash;'; ?></code></td>
                         <td>
                             <?php if ($fjoined): ?>
-                                Already on the relay
+                                Already on the relay (<?php echo htmlspecialchars($frelay_host); ?>)
+                            <?php elseif ($fpending): ?>
+                                Join sent &mdash; awaiting the relay's Accept (no need to rejoin)
                             <?php elseif ($frow['problems']): ?>
                                 &#9888; <?php echo htmlspecialchars(implode('; ', $frow['problems'])); ?>
                                 &mdash; <a href="<?php echo htmlspecialchars($ffix_url); ?>" target="_blank" rel="noopener"><strong>FIX IT</strong></a>, then review again
+                            <?php elseif (!empty($fstatus['relay_joined']) && $frelay_host !== '' && !$fsame_relay): ?>
+                                Ready &mdash; currently on a different relay (<?php echo htmlspecialchars($frelay_host); ?>); joining moves it here
                             <?php else: ?>
                                 Ready
                             <?php endif; ?>
