@@ -57,7 +57,9 @@ if (!function_exists('sv_web_cron_tick')) {
         // same rss_last_run stamp the CLI cron / Cron & Jobs RUN NOW write. A
         // blank/"never" value parses to 0 and is due immediately.
         $rss_last = strtotime((string)($settings['rss_last_run'] ?? '')) ?: 0;
-        if (!$rss_last || (time() - $rss_last) >= 3600) {
+        $rss_cli_last = strtotime((string)($settings['rss_cli_cron_last_run'] ?? '')) ?: 0;
+        $rss_cli_fresh = $rss_cli_last && (time() - $rss_cli_last) < 5400;
+        if (!$rss_cli_fresh && (!$rss_last || (time() - $rss_last) >= 3600)) {
             register_shutdown_function(static function () use ($pdo) {
                 if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request();
                 @ignore_user_abort(true);
@@ -84,6 +86,8 @@ if (!function_exists('sv_web_cron_tick')) {
 
         // Due? Reuse the exact stamp the CLI cron / RUN NOW button write. A blank
         // or "never" value parses to 0 and is treated as due right away.
+        $cli_last = strtotime((string)($settings['fediverse_cli_cron_last_run'] ?? '')) ?: 0;
+        if ($cli_last && (time() - $cli_last) < 1500) return;
         $last = strtotime((string)($settings['fediverse_cron_last_run'] ?? '')) ?: 0;
         if ($last && (time() - $last) < 600) return;
 

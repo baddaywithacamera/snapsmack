@@ -105,6 +105,35 @@ include 'core/sidebar.php';
         </form>
     </div>
 
+    <div class="box mb-20">
+        <h3>PUSH TO ONE FOLLOWER</h3>
+        <p class="dim mb-20">
+            Repair one follower without sending the same posts to everyone again. The handle must
+            already be an active follower of this site; arbitrary accounts are refused. This only
+            queues delivery to that follower's advertised inbox and the normal cron sends it at the
+            established pace.
+        </p>
+        <form method="post" action=""
+              onsubmit="return confirm('Queue these posts only for this existing follower?');">
+            <input type="hidden" name="action" value="push_one_follower">
+            <label class="dim d-block mb-12">Follower handle:
+                <input type="text" name="follower_handle" required
+                       placeholder="@user@example.social" style="width:280px; margin-left:6px;">
+            </label>
+            <label class="dim d-block mb-12">Recent posts:
+                <input type="number" name="follower_post_count" min="1" max="500" value="12"
+                       class="w-90 ml-6">
+            </label>
+            <label class="dim d-block mb-12">Mode:
+                <select name="follower_push_mode" class="ml-6">
+                    <option value="create">Seed missing posts (Create)</option>
+                    <option value="update">Refresh posts already present (Update)</option>
+                </select>
+            </label>
+            <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>QUEUE FOR THIS FOLLOWER</button>
+        </form>
+    </div>
+
     <!-- RE-IMPRINT -->
     <div class="box mb-20">
         <h3>RE-IMPRINT ORDER &mdash; fix stuck followers</h3>

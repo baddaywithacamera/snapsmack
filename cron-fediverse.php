@@ -57,6 +57,11 @@ try {
     exit(1);
 }
 
+// A fresh CLI heartbeat tells the public controller that a real worker is
+// servicing this install. The web-cron fallback may resume automatically if
+// this heartbeat becomes stale; visitors never need to inspect the crontab.
+sv_set_setting($pdo, $settings, 'fediverse_cli_cron_last_run', date('Y-m-d H:i:s'));
+
 // Roster synchronization is lightweight and must not depend on federation
 // delivery being enabled. This keeps FEDBOARD healthy on every spoke.
 require_once "{$root}/core/mesh-helpers.php";
@@ -112,8 +117,12 @@ $pc_maintenance = [0, 0, 0];
 if (function_exists('pc_cron_maintain')) {
     $pc_maintenance = pc_cron_maintain($pdo, $settings, 25);
 }
-$curator = ['disabled', 0, false, ''];
-if (function_exists('sc_curator_cron')) {
+$curator = null;
+$is_fedistructure_hub = ($settings['site_mode'] ?? '') === 'fedistructure'
+    && ($settings['node_role'] ?? '') === 'hub'
+    && function_exists('sc_curator_is_hub')
+    && sc_curator_is_hub($settings);
+if ($is_fedistructure_hub && function_exists('sc_curator_cron')) {
     try { $curator = sc_curator_cron($pdo, $settings); }
     catch (Throwable $e) { fwrite(STDERR, "Optional curator maintenance failed; ordinary delivery will continue: " . $e->getMessage() . "\n"); }
 }
@@ -174,9 +183,10 @@ sv_set_setting($pdo, $settings, 'fediverse_cron_last_run', date('Y-m-d H:i:s'));
 sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'ok');
 
 echo sprintf(
-    "FEDIVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; relay ingest: %d recovered, %d retrying/shelved; outbox recovery: %d members, %d recovered; PHOTOFRI: %d finalized, %d gardened, %d withdrawn; profile-update: %d follower(s); CURATOR: %s, %d discovered%s (%s).\n",
+    "FEDIVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; relay ingest: %d recovered, %d retrying/shelved; outbox recovery: %d members, %d recovered; PHOTOFRI: %d finalized, %d gardened, %d withdrawn; profile-update: %d follower(s)%s.\n",
     $units, $queued, $bf_jobs, $bf_queued, $sent, $failed, $relay_ingest[0], $relay_ingest[1], $relay_recovery[0], $relay_recovery[1], $pc_maintenance[0], $pc_maintenance[1], $pc_maintenance[2], $actor_upd,
-    $curator[0], $curator[1], $curator[2] ? ' (scan complete)' : '', $curator[3]
+    is_array($curator) ? sprintf('; CURATOR: %s, %d discovered%s (%s)',
+        $curator[0], $curator[1], $curator[2] ? ' (scan complete)' : '', $curator[3]) : ''
 );
 exit(0);
 // ===== SNAPSMACK EOF =====

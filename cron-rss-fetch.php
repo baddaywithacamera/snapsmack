@@ -29,6 +29,14 @@ if (!defined('SNAPSMACK_CRON')) define('SNAPSMACK_CRON', true);
 $base = dirname(__FILE__);
 require_once $base . '/core/db.php';
 
+// Distinguish a real CLI worker from the public-page fallback. A current
+// heartbeat suppresses duplicate web-cron work; if system cron stops, the
+// fallback becomes eligible again after the grace period.
+if (php_sapi_name() === 'cli') {
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('rss_cli_cron_last_run', ?)
+        ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([date('Y-m-d H:i:s')]);
+}
+
 // Standardized logging helper with timestamps. Silent off the CLI so a web-cron
 // run (inside a shutdown handler) never emits stray output.
 $log = function(string $msg) {
