@@ -27,6 +27,7 @@ Server-side items this build flags (see addendum):
 
 
 import os
+import re
 import sys
 from typing import List, Optional, Tuple
 
@@ -59,6 +60,14 @@ except ImportError:  # pragma: no cover - dev-tree import shim
     if _shared not in sys.path:
         sys.path.insert(0, _shared)
     import snap_stepup
+
+# Shared offline content library (producer/consumer store). Optional: recording a
+# post into it is best-effort and must never break a successful post, so a missing
+# module just disables the local mirror.
+try:
+    import snap_library
+except Exception:  # pragma: no cover - optional shared dependency
+    snap_library = None
 
 
 class InsecureTransportError(RuntimeError):
@@ -510,12 +519,13 @@ class SmacktalkPoster:
             raise RuntimeError("media/upload did not return an image id")
         return image_id
 
-    def build_payload(self, draft, image_ids, cover_id) -> dict:
+    def build_payload(self, draft, image_ids, cover_id, content=None) -> dict:
         """The smackpress/posts JSON body. Split out so it's unit-testable without a
-        network round-trip. Cover leads the bucket server-side (position 0)."""
+        network round-trip. Cover leads the bucket server-side (position 0).
+        `content` overrides draft.caption once mosaic placeholders are resolved."""
         payload = {
             "title": draft.title,
-            "content": draft.caption or "",
+            "content": (content if content is not None else (draft.caption or "")),
             "status": "published" if draft.img_status == "published" else "draft",
             "featured_image_id": cover_id,
             "bucket_image_ids": list(image_ids),
@@ -524,6 +534,78 @@ class SmacktalkPoster:
         if draft.post_date:
             payload["date"] = draft.post_date
         return payload
+
+    # A [mosaic] placeholder (optionally [mosaic:bucket]/[mosaic:new]/[mosaic:auto])
+    # means "build an inline gallery from THIS essay's photos here." A numeric
+    # [mosaic:123] the author typed points at an existing panel and is left alone.
+    _MOSAIC_TOKEN = re.compile(r'\[mosaic(?::\s*(?:bucket|new|auto)\s*)?\]', re.I)
+
+    def create_mosaic(self, image_ids, title="Mosaic", gap=4) -> Tuple[int, str]:
+        """Create a snap_mosaics panel from ordered Gallery image ids via
+        POST smackpress/mosaics. Returns (mosaic_id, '[mosaic:ID]')."""
+        r = self.session.post(
+            self._route("smackpress/mosaics"),
+            json={"title": title or "Mosaic", "asset_ids": [int(i) for i in image_ids],
+                  "gap": max(0, min(20, int(gap or 4)))},
+            timeout=60)
+        if r.status_code in (401, 403):
+            raise RuntimeError(_resp_msg(
+                r, "Mosaic create rejected — this site's SMACKTALK key must be a 'smackpress' key."))
+        r.raise_for_status()
+        data = r.json()
+        mid = int(data.get("mosaic_id") or 0)
+        if mid <= 0:
+            raise RuntimeError("mosaics endpoint did not return a mosaic_id")
+        return mid, data.get("shortcode") or ("[mosaic:%d]" % mid)
+
+    def _resolve_mosaics(self, content, image_ids, draft) -> Tuple[str, list]:
+        """Turn a [mosaic] placeholder in the body into a real [mosaic:ID] gallery of
+        the essay's just-uploaded photos. One mosaic is created and reused for every
+        placeholder in the body. Numeric [mosaic:123] tokens are untouched. Returns
+        (resolved_content, [mosaic_id])."""
+        content = content or ""
+        if not image_ids or not self._MOSAIC_TOKEN.search(content):
+            return content, []
+        gap = int(getattr(draft, "mosaic_gap", 4) or 4)
+        mid, shortcode = self.create_mosaic(image_ids, title=(draft.title or "Mosaic"), gap=gap)
+        return self._MOSAIC_TOKEN.sub(lambda _m: shortcode, content), [mid]
+
+    def _record_to_library(self, draft, post_id, content, server_data, image_ids) -> None:
+        """Producer contract: on post-success, record WHAT WAS POSTED into the shared
+        offline library — the post text plus which Gallery images it used (the server's
+        snap_images ids). It copies NO photo files: the originals (often RAW, never
+        uploaded) stay on the photographer's disk untouched; the web-size upload and
+        thumbs already exist from the post itself. Keeping originals would be a backup
+        feature and must be explicit + opt-in, never a silent side effect.
+        Best-effort — a library hiccup never turns a live post into a reported failure."""
+        if snap_library is None:
+            return
+        try:
+            site = self.base_url
+            imgs = draft.images or []
+            assets = []
+            for idx, im in enumerate(imgs):
+                iid = image_ids[idx] if idx < len(image_ids) else None
+                if not iid:
+                    continue
+                assets.append({
+                    "asset_id":  "img:%d" % int(iid),   # the server's snap_images id
+                    "orig_name": getattr(im, "filename", "") or "",
+                    "alt":       getattr(im, "alt", "") or "",
+                })
+            snap_library.record_post(site, {
+                "post_id":     post_id,
+                "site_mode":   "smacktalk",
+                "post_type":   "long",
+                "title":       draft.title,
+                "body":        content,
+                "permalink":   (server_data or {}).get("permalink", "")
+                               or (server_data or {}).get("url", ""),
+                "tags":        [t.lstrip("#") for t in (draft.tags or "").split() if t.strip()],
+                "source_tool": "coldsnap",
+            }, assets=assets)
+        except Exception:
+            pass
 
     def sync_smacktalk(self, draft) -> SyncResult:
         if not self.key:
@@ -544,8 +626,15 @@ class SmacktalkPoster:
             if cover_id is None and image_ids:
                 cover_id = image_ids[0]
 
+            # MOSAIC: a [mosaic] placeholder in the body becomes an inline justified
+            # gallery of this essay's photos (created from the just-uploaded Gallery
+            # ids). The photographer writes text + [mosaic]; the render is a real
+            # tiled gallery in place. No server change — smackpress/mosaics exists.
+            content = self._resolve_mosaics(draft.caption or "", image_ids, draft)[0]
+
             r = self.session.post(self._route("smackpress/posts"),
-                                  json=self.build_payload(draft, image_ids, cover_id), timeout=120)
+                                  json=self.build_payload(draft, image_ids, cover_id, content=content),
+                                  timeout=120)
             if r.status_code in (401, 403, 429):
                 return SyncResult(False, message=_resp_msg(
                     r, "Post rejected (key scope / rate limit). SMACKTALK needs a 'smackpress' key."))
@@ -559,6 +648,9 @@ class SmacktalkPoster:
         post_id = int(data.get("post_id") or 0)
         if not post_id:
             return SyncResult(False, message=data.get("error") or "server did not confirm the post")
+        # Producer: record the finished post + which Gallery images it used (ids only,
+        # no photo files copied — originals stay on disk).
+        self._record_to_library(draft, post_id, content, data, image_ids)
         return SyncResult(True, remote_post_id=post_id, message="Posted")
 
     def verify(self, draft) -> bool:

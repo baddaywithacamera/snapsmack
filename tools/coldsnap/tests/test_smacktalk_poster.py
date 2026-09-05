@@ -20,6 +20,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))), "_shared"))
 
+# Isolate the shared library: a successful post now mirrors itself into
+# shared_library/<site> (snap_library producer contract). Point that at a throwaway
+# home so the test never writes into the real C:\snapsmack library.
+os.environ["SNAPSMACK_HOME"] = tempfile.mkdtemp(prefix="smacktalk_poster_test_")
+
 from PIL import Image
 import sumna_post as P
 from sumna_offline import Draft, DraftImage, KIND_SMACKTALK, MODE_SMACKTALK
