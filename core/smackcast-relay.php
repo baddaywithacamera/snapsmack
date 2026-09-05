@@ -17,6 +17,23 @@ function sc_relay_is_hub(array $settings): bool {
         && ($settings['smackcast_relay_enabled'] ?? '0') === '1';
 }
 
+/** Hub-only schema self-heal for installs that predate the durable ingest queue. */
+function sc_relay_ensure_ingest_jobs(PDO $pdo): void {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS snap_relay_ingest_jobs (
+        id bigint unsigned NOT NULL AUTO_INCREMENT,
+        relay_actor_url varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+        object_id varchar(600) COLLATE utf8mb4_unicode_ci NOT NULL,
+        attempts int unsigned NOT NULL DEFAULT 0,
+        status enum('queued','shelved') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
+        next_try_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_error varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_relay_ingest (relay_actor_url(150),object_id(191)),
+        KEY idx_relay_ingest_due (status,next_try_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
 function sc_relay_is_public(array $activity, array $object): bool {
     $public = 'https://www.w3.org/ns/activitystreams#Public';
     foreach ([$activity['to'] ?? [], $activity['cc'] ?? [], $object['to'] ?? [], $object['cc'] ?? []] as $aud) {
@@ -237,6 +254,7 @@ function sc_relay_add_membership(PDO $pdo, string $object_id, string $feed, stri
 }
 
 function sc_relay_queue_ingest(PDO $pdo, string $relay, string $object_id, string $error): void {
+    sc_relay_ensure_ingest_jobs($pdo);
     $pdo->prepare("INSERT INTO snap_relay_ingest_jobs (relay_actor_url,object_id,last_error)
         VALUES (?,?,?) ON DUPLICATE KEY UPDATE status='queued',last_error=VALUES(last_error)")
         ->execute([$relay, $object_id, substr($error, 0, 500)]);
@@ -268,6 +286,7 @@ function sc_relay_process_ingest_jobs(PDO $pdo, array $settings, int $limit = 20
     // This file ships everywhere, but relay tables exist only on an explicitly
     // configured SMACKCAST hub. Ordinary blogs must never touch hub-only schema.
     if (!sc_relay_is_hub($settings)) return [0, 0];
+    sc_relay_ensure_ingest_jobs($pdo);
     $q = $pdo->prepare("SELECT * FROM snap_relay_ingest_jobs WHERE status='queued' AND next_try_at<=NOW()
         ORDER BY next_try_at,id LIMIT " . max(1, min(100, $limit)));
     $q->execute(); $done = 0; $retry = 0;
