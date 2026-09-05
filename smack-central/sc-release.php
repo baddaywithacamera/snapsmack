@@ -480,6 +480,16 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'tools/',
         'projects/',
         'smack-central/',
+        // ── Dev directories — SECAUDIT 055 ──────────────────────────────────
+        // tests/ and wip/ were MISSING from this list and shipped to every
+        // install, fleet-wide, for months; core/tests/ rode along because core/
+        // is not excluded. SMACKBACK then folded them into the trusted baseline
+        // (init_from_disk blesses whatever is on disk), so nothing ever fired.
+        // The packaging loop also HARD-FAILS the build if any of these paths
+        // reach the final zip — see the dev-dir tripwire after the copy loop.
+        'tests/',
+        'wip/',
+        'core/tests/',
         '_spec/',
         'docs/',
         'screenshots/',
@@ -616,6 +626,25 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
                 'size'          => strlen($content),
                 'eof_signature' => $eof_sig,
             ];
+        }
+    }
+
+    // ── Dev-dir tripwire (SECAUDIT 055) ─────────────────────────────────────
+    // Hard-fail the build if any dev directory reached the final zip. The
+    // excludes above should make this impossible; this catches a future edit
+    // (or force-include) quietly re-shipping them — silence is how tests/ and
+    // wip/ rode to 28 live installs for months.
+    $dev_dir_tripwire = ['tests/', 'wip/', 'core/tests/', 'smack-central/', '_spec/'];
+    for ($i = 0; $i < $dst->numFiles; $i++) {
+        $zrel = (string)$dst->getNameIndex($i);
+        foreach ($dev_dir_tripwire as $ddt) {
+            if (str_starts_with($zrel, $ddt)) {
+                $dst->close();
+                $src->close();
+                @unlink($tmp_src);
+                @unlink($zip_dest);   // never leave a poisoned half-built package behind
+                return ['ok' => false, 'msg' => "BUILD REFUSED — dev path '{$zrel}' reached the release zip. Fix the exclude list; never ship dev directories (SECAUDIT 055)."];
+            }
         }
     }
 

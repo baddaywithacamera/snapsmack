@@ -168,6 +168,13 @@ if ($action === 'run_verify' || ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POS
         if (count($result['missing']))              $parts[] = count($result['missing'])    . ' missing';
         if (count($result['unexpected'] ?? []))     $parts[] = count($result['unexpected']) . ' unexpected';
         $msg = 'BREACH DETECTED: ' . implode(', ', $parts) . '.';
+        if (count($result['dev_dirs'] ?? [])) {
+            $msg .= ' Plus ' . count($result['dev_dirs']) . ' file(s) in dev directories (tests/, wip/, smack-central/) that should not be on this install — see DEV DIRECTORIES below.';
+        }
+    } elseif (count($result['dev_dirs'] ?? [])) {
+        $msg = "{$result['ok']} files verified clean in {$result['duration']}s — but "
+             . count($result['dev_dirs'])
+             . ' file(s) sit in dev directories (tests/, wip/, smack-central/) that should not be on this install. They are NOT trusted and should be removed — see DEV DIRECTORIES below.';
     } else {
         $msg = "{$result['ok']} files verified clean in {$result['duration']}s.";
     }
@@ -469,6 +476,30 @@ include 'core/sidebar.php';
             </div>
         </div>
     </div>
+
+    <?php
+    // ── DEV DIRECTORIES (SECAUDIT 055) ─────────────────────────────────────
+    // Directories that should never exist on a live install. They are never
+    // trusted by the baseline; presence is surfaced here (not a lockout — see
+    // smackback_dev_dir_prefixes()).
+    $sb_dev_present = [];
+    foreach (smackback_dev_dir_prefixes() as $sb_dev_prefix) {
+        if (is_dir(SNAPSMACK_ROOT . '/' . rtrim($sb_dev_prefix, '/'))) {
+            $sb_dev_present[] = rtrim($sb_dev_prefix, '/') . '/';
+        }
+    }
+    if ($sb_dev_present): ?>
+    <div class="box" style="border-left: 4px solid var(--danger, #cc2200);">
+        <h3 style="color:var(--danger, #cc2200)">DEV DIRECTORIES ON THIS INSTALL</h3>
+        <p class="mb-16">These development directories are sitting on this install:
+            <strong><?php echo htmlspecialchars(implode('  ', $sb_dev_present)); ?></strong></p>
+        <p class="dim mb-16">They are not part of a release, SMACKBACK does not trust or protect them,
+            and they should be deleted from the server. Deleting them is safe — they are excluded from
+            the integrity baseline, so removal will not trigger a breach. They keep reappearing only if
+            an old release package put them back; updating to 0.7.641D or later stops that and removes
+            them automatically on the next update.</p>
+    </div>
+    <?php endif; ?>
 
     <?php if ($is_breach): ?>
     <!-- ── BREACH DETAIL ─────────────────────────────────────────────────── -->
