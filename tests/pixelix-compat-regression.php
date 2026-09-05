@@ -79,5 +79,11 @@ if (strpos($ui, 'ss-gram-pwa-composer.css') === false) { fwrite(STDERR, "Missing
 if (strpos($ui, 'gram-composer-form') === false || strpos($ui, 'gram-advanced') === false) { fwrite(STDERR, "Missing structured PWA composer\n"); exit(1); }
 if (strpos($js, 'cp-order-btn') === false) { fwrite(STDERR, "Missing touch/keyboard reorder controls\n"); exit(1); }
 if (strpos($auth, 'snapsmack_oauth_return') === false) { fwrite(STDERR, "OAuth consent cannot survive login\n"); exit(1); }
+// 0.7.646D: the account object must read the REAL settings keys. The old code
+// read 'fediverse_avatar' and 'fediverse_username' — keys nothing writes — so
+// Pixelix showed a blank avatar and the "snapsmack" placeholder name forever.
+if (strpos($api, "\$slug . '__skin_avatar'") === false) { fwrite(STDERR, "Pixelix avatar must resolve the per-skin PROFILE AVATAR (<skin>__skin_avatar)\n"); exit(1); }
+if (strpos($api, "px_setting(\$pdo,'fediverse_handle'") === false) { fwrite(STDERR, "Pixelix username must come from fediverse_handle (the real key)\n"); exit(1); }
+if (strpos($api, "never advertise a broken image") === false) { fwrite(STDERR, "Pixelix avatar must be existence-checked before advertising\n"); exit(1); }
 echo "Pixelix compatibility regression checks passed.\n";
 // ===== SNAPSMACK EOF =====
