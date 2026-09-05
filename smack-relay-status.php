@@ -37,8 +37,12 @@ $is_relay_host = ($settings['distribution_profile'] ?? '') === 'smackcast';
 
 /* live reachability probe of the relay actor (this is the check that would
    have caught tonight's "the server can't reach the relay" silently-failed join) */
+// A relay host must NOT probe an external relay: with no relay URL set it would
+// fetch the compiled-in default (the retired standalone box), whose actor still
+// answers under its old name — which is exactly how "SMACKVERSE Relay" leaked
+// back onto this page. This blog IS the relay; there is nothing external to reach.
 $probe = ['ok' => false, 'inbox' => '', 'name' => '', 'error' => ''];
-if ($relay_actor !== '' && function_exists('sv_fetch_ap')) {
+if (!$is_relay_host && $relay_actor !== '' && function_exists('sv_fetch_ap')) {
     try {
         $doc = sv_fetch_ap($relay_actor, $settings);
         if (is_array($doc) && !empty($doc['inbox'])) {
@@ -132,12 +136,18 @@ if ($is_relay_host) {
                 </tr>
                 <tr>
                     <th>Relay URL</th>
-                    <td><code><?php echo $relay_url_set !== '' ? htmlspecialchars($relay_url_set) : '(not set — using default)'; ?></code></td>
+                    <td><code><?php
+                        echo $is_relay_host
+                            ? 'this blog is the relay'
+                            : ($relay_url_set !== '' ? htmlspecialchars($relay_url_set) : '(not set — using default)');
+                    ?></code></td>
                 </tr>
                 <tr>
                     <th>Relay reachable</th>
                     <td>
-                        <?php if ($probe['ok']): ?>
+                        <?php if ($is_relay_host): ?>
+                            &#10003; this blog is the relay &mdash; it does not reach out to another
+                        <?php elseif ($probe['ok']): ?>
                             &#10003; yes &mdash; <?php echo htmlspecialchars($probe['name'] !== '' ? $probe['name'] : $relay_host); ?>
                             (inbox <code><?php echo htmlspecialchars($probe['inbox']); ?></code>)
                         <?php else: ?>
