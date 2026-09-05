@@ -79,6 +79,17 @@
             return vp;
         }
 
+        // The stylesheet's own bottom offset is the dock's RESTING position
+        // (dock-right-bottom sits at 84px to line up with the community-dock
+        // heart). Capture it once, BEFORE any inline clamp override, so the
+        // clamp can raise the dock above the bottom nav without ever pulling
+        // it below where the CSS put it.
+        var restingBottom = 0;
+        (function () {
+            var b = parseFloat(window.getComputedStyle(dock).bottom);
+            if (!isNaN(b)) { restingBottom = b; }
+        })();
+
         function clampDock() {
             var pos = dock.getAttribute('data-dock-position') || '';
             var vp  = window.innerHeight;
@@ -101,9 +112,10 @@
                 dock.style.top = (headerBottom + EDGE_GAP) + 'px';
             }
 
-            // Apply bottom constraint
+            // Apply bottom constraint — never drop below the CSS resting
+            // position; only rise above it when the bottom nav intrudes.
             if (isBotAnchored) {
-                dock.style.bottom = (vp - footerTop + EDGE_GAP) + 'px';
+                dock.style.bottom = Math.max(restingBottom, vp - footerTop + EDGE_GAP) + 'px';
             }
 
             // For vertical column docks, also constrain max-height so a long
