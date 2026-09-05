@@ -6,12 +6,13 @@ key here, the Drive credentials there. This is a single store under the shared
 auth dir (snap_home.auth_dir()) that every tool reads and writes, so a secret is
 entered ONCE and all tools see it.
 
-Security posture — strictly >= what the tools do today:
-  * If the shared vault (snap_vault) is set up AND unlocked, each value is SEALED
-    with it (scrypt-derived Fernet, 'enc1:' form) — stronger than any tool has now.
-  * Otherwise values are base64-obfuscated ('b64:' form) — exactly the at-rest
-    form config.py already uses for api_key. No mandatory passphrase, nothing
-    breaks, and turning the vault on later re-seals on the next set().
+Security posture:
+  * Every new value is sealed by snap_vault (scrypt-derived Fernet, 'enc1:' form).
+  * On systems with a protected credential service, first use creates a random
+    machine-bound vault automatically.
+  * Existing plaintext/base64 values are readable only as a migration source and
+    are atomically re-sealed after unlock. A locked/unavailable vault refuses new
+    writes rather than silently downgrading them to recoverable obfuscation.
 
 This module does NOT replace a tool's own config.ini. It is the shared layer for
 the handful of secrets that are genuinely the same across tools. A tool reads the
@@ -19,7 +20,11 @@ shared value first and falls back to its own config (see each tool's wiring), so
 existing installs keep working untouched.
 
 Well-known keys (conventional, not enforced):
+  claude_api_key      Anthropic Claude API key
   gemini_api_key      Google Gemini API key (vision enrichment / ALT)
+  openai_api_key      OpenAI API key
+  deepseek_api_key    DeepSeek API key
+  kimi_api_key        Kimi / Moonshot API key
   google_credentials  path to the Google OAuth client-secret json (Drive)
   drive_folder_id     default Drive folder id
   hub_key             SnapSmack hub key (future hub-authoritative auth)
@@ -42,6 +47,7 @@ import base64
 import json
 import os
 import re
+import secrets
 
 import snap_vault
 import snap_home
@@ -50,6 +56,7 @@ import snap_home
 _SHARED_APP = "SnapSmackShared"     # one vault scope shared by ALL tools (see snap_vault.init)
 _STORE_NAME = "shared_creds.json"
 _B64_PREFIX = "b64:"
+_initialized_for = None
 
 
 def _store_path() -> str:
@@ -57,23 +64,31 @@ def _store_path() -> str:
 
 
 def init() -> None:
-    """Bind the shared vault to the shared auth dir, and restore the key from the
-    OS keychain when one was cached. Idempotent; safe every launch and every call.
+    """Bind the shared vault to the shared auth dir. Idempotent; safe every launch.
+    Unlike a per-tool vault, this deliberately uses ONE scope so every tool opens
+    the SAME vault — that is the whole point of a shared store."""
+    global _initialized_for
+    auth = os.path.abspath(snap_home.auth_dir())
+    if _initialized_for == auth:
+        return
+    os.makedirs(auth, exist_ok=True)
+    snap_vault.init(_SHARED_APP, meta_dir=auth)
+    _initialized_for = auth
 
-    SECAUDIT 054 — binding alone leaves the vault LOCKED (snap_vault.init clears the
-    held key), and nothing here used to re-open it, so every seal silently fell back
-    to recoverable base64: the at-rest hole. Now, if the operator enabled the vault
-    with "remember on this machine", the key is restored from the keychain here — so
-    secrets are actually ENCRYPTED at rest, transparently, with no per-call
-    passphrase. The bind is skipped when already bound to this scope so the restored
-    key is not clobbered (one keychain read per process, not per credential)."""
-    if getattr(snap_vault, "_app", None) != _SHARED_APP:
-        snap_vault.init(_SHARED_APP, meta_dir=snap_home.auth_dir())
-    if snap_vault.is_enabled() and not snap_vault.is_unlocked():
-        try:
-            snap_vault.unlock_with_machine_key()
-        except Exception:
-            pass
+    if snap_vault.is_enabled():
+        snap_vault.unlock_with_machine_key()
+    elif snap_vault.crypto_available() and snap_vault.keychain_available():
+        # First secure launch: create a random vault key and bind it to this
+        # machine's protected credential service. Nothing recoverable is written
+        # beside the executables.
+        snap_vault.enable(secrets.token_urlsafe(48), store_machine_key=False)
+        if not snap_vault.store_machine_key_now():
+            # Do not strand a new vault behind a random passphrase if the OS
+            # credential-store write fails after its availability probe.
+            snap_vault.disable()
+
+    if snap_vault.is_unlocked():
+        _migrate_legacy_values()
 
 
 # ── Sealing (vault if available, else base64) ────────────────────────────────
@@ -81,7 +96,9 @@ def _seal(value: str) -> str:
     value = value or ""
     if snap_vault.is_unlocked():
         return snap_vault.encrypt(value)                      # 'enc1:...'
-    return _B64_PREFIX + base64.b64encode(value.encode("utf-8")).decode()
+    raise RuntimeError(
+        "The shared credential vault is locked or no protected credential service is available. "
+        "Unlock or enable the vault before saving secrets.")
 
 
 def _open(blob) -> str:
@@ -113,6 +130,7 @@ def _read() -> dict:
 
 def _write(data: dict) -> None:
     p = _store_path()
+    os.makedirs(os.path.dirname(p), exist_ok=True)
     tmp = p + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
@@ -123,9 +141,30 @@ def _write(data: dict) -> None:
         pass
 
 
+def _migrate_legacy_values() -> None:
+    """Seal plaintext/base64 entries only after the vault is usable.
+
+    The complete replacement is written atomically; a failure leaves the old
+    readable store untouched (never delete-first).
+    """
+    data = _read()
+    changed = False
+    migrated = {}
+    for key, blob in data.items():
+        if snap_vault.is_encrypted(blob):
+            migrated[key] = blob
+            continue
+        value = _open(blob)
+        migrated[key] = snap_vault.encrypt(value)
+        changed = True
+    if changed:
+        _write(migrated)
+
+
 # ── Public API ───────────────────────────────────────────────────────────────
 def get(key: str, default: str = "") -> str:
     """Return the shared secret for `key`, or `default` if unset/unreadable."""
+    init()
     data = _read()
     if key not in data:
         return default
@@ -135,6 +174,7 @@ def get(key: str, default: str = "") -> str:
 
 def set(key: str, value: str) -> None:
     """Store `value` under `key`, sealed with the vault if unlocked else base64."""
+    init()
     data = _read()
     data[key] = _seal(value or "")
     _write(data)
@@ -142,34 +182,24 @@ def set(key: str, value: str) -> None:
 
 def has(key: str) -> bool:
     """True if `key` is present (regardless of whether it decrypts right now)."""
+    init()
     return key in _read()
 
 
 def delete(key: str) -> None:
+    init()
     data = _read()
     if key in data:
         del data[key]
         _write(data)
 
 
-# ── Per-site secrets (the at-rest home for site API keys — SECAUDIT 054) ──────
-# A site's posting key must NOT live base64-encoded in its profile file. It lives
-# here, sealed by the vault, addressed by a stable per-site name. snap_profiles
-# (schema 2) hydrates api_key from here instead of carrying api_key_enc on disk.
 def site_secret_name(site_url: str, field: str) -> str:
     """Stable vault key for one site's credential (never written to profiles)."""
     clean_field = re.sub(r"[^a-z0-9_]+", "_", str(field or "").lower()).strip("_")
     if not clean_field:
         raise ValueError("site credential field is required")
     return "site:%s:%s" % (snap_home.site_key(site_url), clean_field)
-
-
-def sealing_active() -> bool:
-    """True when secrets are actually ENCRYPTED at rest (the vault is unlocked),
-    False when they would fall back to recoverable base64. Callers use this to
-    report honest at-rest status — not to gate storage (storage always works)."""
-    init()
-    return snap_vault.is_unlocked()
 
 
 def get_site(site_url: str, field: str, default: str = "") -> str:
@@ -191,10 +221,9 @@ def delete_site(site_url: str, field: str) -> None:
 # The "configure once" set: secrets that are genuinely the same across tools.
 # SYBU and COLD SNAP already use these exact dict keys, so the overlay is a
 # straight key match.
-SHARED_KEYS = (
-    "gemini_api_key", "kimi_api_key", "deepseek_api_key", "claude_api_key",
-    "openai_api_key", "google_credentials", "drive_folder_id",
-)
+SHARED_KEYS = ("claude_api_key", "gemini_api_key", "openai_api_key",
+               "deepseek_api_key", "kimi_api_key",
+               "google_credentials", "drive_folder_id")
 
 
 def apply_shared(cfg: dict, keys=SHARED_KEYS) -> dict:
