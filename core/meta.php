@@ -397,6 +397,11 @@ if (file_exists($skin_manifest_path)) {
             echo '<link rel="stylesheet" href="' . BASE_URL
                 . $_entry['css']
                 . '?v=' . SNAPSMACK_VERSION_SHORT . '">' . "\n";
+            // Core components that need one of these stylesheets check this
+            // before emitting their own <link>, so a skin WITHOUT a manifest
+            // (pre-manifest skin builds still deployed in the field) doesn't
+            // leave them unstyled — and a manifest skin doesn't double-load.
+            $GLOBALS['snapsmack_engine_css_emitted'][$_entry['css']] = true;
         }
     }
     $_skin_css_version = SNAPSMACK_VERSION_SHORT . (!empty($_skin_mf['version']) ? '-' . $_skin_mf['version'] : '');

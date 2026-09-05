@@ -219,6 +219,13 @@ $reaction_set = [
     'timing'       => ['emoji' => '⚡', 'label' => 'Perfect timing'],
     'composition'  => ['emoji' => '🔲', 'label' => 'Composition'],
 ];
+
+// Same self-heal as community-dock.php: a pre-manifest skin build has no
+// manifest for the head to read, so make sure ss-community.css is on the page.
+if (empty($GLOBALS['snapsmack_engine_css_emitted']['assets/css/ss-community.css'])) {
+    echo '<link rel="stylesheet" href="' . BASE_URL . 'assets/css/ss-community.css?v=' . SNAPSMACK_VERSION_SHORT . '">' . "\n";
+    $GLOBALS['snapsmack_engine_css_emitted']['assets/css/ss-community.css'] = true;
+}
 ?>
 
 <div class="ss-community"
