@@ -45,6 +45,8 @@ import hashlib
 import json
 import os
 import sys
+import ctypes
+from ctypes import wintypes
 from typing import Optional
 
 try:
@@ -110,6 +112,54 @@ def _meta_path() -> str:
     return os.path.join(_app_dir(), "vault.meta")
 
 
+def _dpapi_path() -> str:
+    return os.path.join(_app_dir(), "vault.machine")
+
+
+class _DATA_BLOB(ctypes.Structure):
+    _fields_ = [("cbData", wintypes.DWORD),
+                ("pbData", ctypes.POINTER(ctypes.c_ubyte))]
+
+
+def _blob(data: bytes):
+    buf = ctypes.create_string_buffer(data)
+    return _DATA_BLOB(len(data), ctypes.cast(buf, ctypes.POINTER(ctypes.c_ubyte))), buf
+
+
+def _dpapi_protect(data: bytes) -> bytes:
+    """Seal bytes to the current Windows user with the built-in DPAPI."""
+    if os.name != "nt":
+        raise RuntimeError("Windows protected storage is unavailable")
+    source, source_buf = _blob(data)
+    entropy, entropy_buf = _blob(("SnapSmack:" + _app).encode("utf-8"))
+    result = _DATA_BLOB()
+    if not ctypes.windll.crypt32.CryptProtectData(
+            ctypes.byref(source), None, ctypes.byref(entropy), None, None, 0,
+            ctypes.byref(result)):
+        raise ctypes.WinError()
+    try:
+        return ctypes.string_at(result.pbData, result.cbData)
+    finally:
+        ctypes.windll.kernel32.LocalFree(result.pbData)
+
+
+def _dpapi_unprotect(data: bytes) -> bytes:
+    """Open bytes sealed for the current Windows user."""
+    if os.name != "nt":
+        raise RuntimeError("Windows protected storage is unavailable")
+    source, source_buf = _blob(data)
+    entropy, entropy_buf = _blob(("SnapSmack:" + _app).encode("utf-8"))
+    result = _DATA_BLOB()
+    if not ctypes.windll.crypt32.CryptUnprotectData(
+            ctypes.byref(source), None, ctypes.byref(entropy), None, None, 0,
+            ctypes.byref(result)):
+        raise ctypes.WinError()
+    try:
+        return ctypes.string_at(result.pbData, result.cbData)
+    finally:
+        ctypes.windll.kernel32.LocalFree(result.pbData)
+
+
 # ── Availability ───────────────────────────────────────────────────────────
 def crypto_available() -> bool:
     """True if the encryption backend is importable."""
@@ -118,6 +168,14 @@ def crypto_available() -> bool:
 
 def keychain_available() -> bool:
     """True if a machine keychain backend is actually usable."""
+    # Every supported Windows build has DPAPI. It is part of the OS and avoids
+    # making packaged SNAP HQ depend on the optional Python `keyring` module.
+    if os.name == "nt":
+        try:
+            probe = b"snapsmack-dpapi-probe"
+            return _dpapi_unprotect(_dpapi_protect(probe)) == probe
+        except Exception:
+            pass
     if not _KEYRING_OK:
         return False
     try:
@@ -265,6 +323,15 @@ def store_machine_key_now() -> bool:
     needed on later launches. Machine-bound: it never travels with the folder."""
     if not is_unlocked() or not keychain_available():
         return False
+    if os.name == "nt":
+        try:
+            sealed = _dpapi_protect(_key if isinstance(_key, bytes) else _key.encode())
+            with open(_dpapi_path() + ".tmp", "wb") as handle:
+                handle.write(base64.b64encode(sealed))
+            os.replace(_dpapi_path() + ".tmp", _dpapi_path())
+            return True
+        except Exception:
+            return False
     try:
         keyring.set_password(_keyring_service, _keyring_user,
                              _key.decode() if isinstance(_key, bytes) else _key)
@@ -274,6 +341,8 @@ def store_machine_key_now() -> bool:
 
 
 def has_machine_key() -> bool:
+    if os.name == "nt":
+        return os.path.isfile(_dpapi_path())
     if not keychain_available():
         return False
     try:
@@ -283,6 +352,12 @@ def has_machine_key() -> bool:
 
 
 def clear_machine_key() -> None:
+    if os.name == "nt":
+        try:
+            os.remove(_dpapi_path())
+        except FileNotFoundError:
+            pass
+        return
     if not keychain_available():
         return
     try:
@@ -298,10 +373,14 @@ def unlock_with_machine_key() -> bool:
     if not is_enabled() or not _CRYPTO_OK or not keychain_available():
         return False
     try:
-        stored = keyring.get_password(_keyring_service, _keyring_user)
-        if not stored:
-            return False
-        key = stored.encode()
+        if os.name == "nt":
+            with open(_dpapi_path(), "rb") as handle:
+                key = _dpapi_unprotect(base64.b64decode(handle.read()))
+        else:
+            stored = keyring.get_password(_keyring_service, _keyring_user)
+            if not stored:
+                return False
+            key = stored.encode()
         with open(_meta_path()) as f:
             meta = json.load(f)
         if Fernet(key).decrypt(meta["verifier"].encode()) != _verifier_plain:
