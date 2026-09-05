@@ -2,6 +2,7 @@
 /** Static guards for public web-cron suppression by healthy CLI workers. */
 $root = dirname(__DIR__);
 $web = file_get_contents($root . '/core/fediverse-webcron.php');
+$index = file_get_contents($root . '/index.php');
 $fedi = file_get_contents($root . '/cron-fediverse.php');
 $rss = file_get_contents($root . '/cron-rss-fetch.php');
 $checks = [
@@ -9,6 +10,7 @@ $checks = [
     [str_contains($web, "['fediverse_cli_cron_last_run']") && str_contains($web, '< 1500'), 'fresh federation CLI heartbeat suppresses web fallback'],
     [str_contains($rss, "'rss_cli_cron_last_run'") && str_contains($rss, "php_sapi_name() === 'cli'"), 'RSS CLI writes its own heartbeat only from CLI'],
     [str_contains($web, "['rss_cli_cron_last_run']") && str_contains($web, '< 5400'), 'fresh RSS CLI heartbeat suppresses web fallback'],
+    [!str_contains($index, 'fediverse-webcron.php') && !str_contains($index, 'sv_web_cron_tick'), 'public index never invokes background cron work'],
 ];
 $failed = 0;
 foreach ($checks as [$ok, $label]) {
