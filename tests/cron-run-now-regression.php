@@ -6,7 +6,8 @@ $checks = [
     'detached runner' => 'function cron_run_detached',
     'new session' => '/usr/bin/setsid',
     'hangup fallback' => '/usr/bin/nohup',
-    'discarded detached output' => '> /dev/null 2>&1 &',
+    'durable detached output' => "'/logs'",
+    'scheduled command inspection' => 'function cron_job_inspect',
     'admin uses detached runner' => 'cron_run_detached($php_cli, $script_abs)',
     'truthful start message' => 'started in the background',
 ];
@@ -15,6 +16,9 @@ foreach ($checks as $name => $needle) {
     if (strpos($source, $needle) === false) {
         fwrite(STDERR, "Missing: {$name}\n"); exit(1);
     }
+}
+if (strpos($helper, '> /dev/null 2>&1') !== false) {
+    fwrite(STDERR, "Cron output is still discarded\n"); exit(1);
 }
 if (strpos($admin, "@exec(escapeshellarg(\$php_cli)") !== false) {
     fwrite(STDERR, "RUN NOW returned to synchronous execution\n"); exit(1);

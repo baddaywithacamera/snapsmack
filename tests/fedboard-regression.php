@@ -61,6 +61,10 @@ fb_expect(str_contains($hub, "role='spoke' AND status='active' AND maintenance_m
 fb_expect(str_contains($multisite, "csrf_url('smack-multisite-sso.php?sat="), 'ordinary Remote Login must retain CSRF protection');
 fb_expect(str_contains($multisite, 'fedboard_sso_enabled'), 'heartbeat storage must retain spoke FEDBOARD consent');
 fb_expect(str_contains($mesh, "'fedboard_sso_enabled'"), 'mesh roster must propagate FEDBOARD consent state');
+fb_expect(str_contains($mesh, 'function ms_ensure_fedboard_columns')
+    && str_contains($mesh, "'fediverse_enabled' =>")
+    && str_contains($mesh, "'fedboard_sso_enabled' =>"),
+    'partially migrated roster tables must self-heal required FEDBOARD columns');
 
 fb_expect(str_contains($roster, 'strnatcasecmp'), 'FEDBOARD roster must sort names naturally and case-insensitively');
 fb_expect(str_contains($roster, 'function fb_refresh_sparse_roster')

@@ -66,8 +66,25 @@ function ms_peer_allows(array $peer_row, string $kind): bool
     return (int)$peer_row[$col] === 1;
 }
 
+/** Self-heal columns required by the live roster path on partially migrated sites. */
+function ms_ensure_fedboard_columns(PDO $pdo): void
+{
+    $required = [
+        'fediverse_enabled' => "TINYINT(1) NOT NULL DEFAULT 0",
+        'fedboard_sso_enabled' => "TINYINT(1) NOT NULL DEFAULT 0",
+    ];
+    $seen = [];
+    foreach ($pdo->query("SHOW COLUMNS FROM snap_multisite_nodes")->fetchAll(PDO::FETCH_ASSOC) as $column) {
+        $seen[(string)($column['Field'] ?? '')] = true;
+    }
+    foreach ($required as $name => $definition) {
+        if (!isset($seen[$name])) $pdo->exec("ALTER TABLE snap_multisite_nodes ADD COLUMN `{$name}` {$definition}");
+    }
+}
+
 function ms_build_roster(PDO $pdo, string $exclude_url = ''): array
 {
+    ms_ensure_fedboard_columns($pdo);
     // SECURITY: the roster is DISCOVERY DATA ONLY (names/URLs/roles). It must
     // NEVER carry api_key_local — that is the hub->spoke credential, and
     // broadcasting it let one leaked spoke key compromise the whole fleet.
@@ -98,6 +115,7 @@ function ms_build_roster(PDO $pdo, string $exclude_url = ''): array
 
 function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
 {
+    ms_ensure_fedboard_columns($pdo);
     $now = date('Y-m-d H:i:s');
     $seen_urls = [];
     $added     = 0;
