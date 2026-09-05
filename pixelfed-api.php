@@ -65,10 +65,27 @@ function px_bearer(PDO $pdo): array {
     $s->execute([hash('sha256',$m[1])]); $row=$s->fetch(PDO::FETCH_ASSOC);
     if (!$row) px_json(['error'=>'The access token is invalid'],401); return $row;
 }
+function px_avatar(PDO $pdo, string $base): string {
+    // Same resolution as sv_avatar() in core/fediverse.php: the avatar is the
+    // per-skin PROFILE AVATAR, stored as "<active_skin>__skin_avatar". This
+    // endpoint used to read a 'fediverse_avatar' key that nothing ever writes,
+    // so Pixelix showed a blank avatar no matter what the operator uploaded.
+    $slug = px_setting($pdo, 'active_skin', '');
+    $path = $slug !== '' ? px_setting($pdo, $slug . '__skin_avatar', '') : '';
+    if ($path === '') $path = px_setting($pdo, 'fediverse_avatar', ''); // legacy key, kept as fallback
+    if ($path === '') return '';
+    if (!preg_match('#^https?://#', $path)) {
+        if (!is_file(__DIR__ . '/' . ltrim($path, '/'))) return '';   // never advertise a broken image
+        $path = $base . ltrim($path, '/');
+    }
+    return $path;
+}
 function px_actor(PDO $pdo): array {
-    $base=px_base(); $user=px_setting($pdo,'fediverse_username','snapsmack');
+    // 'fediverse_handle' is the real handle key (sv_handle); 'fediverse_username'
+    // was another never-written key, so every Pixelix profile said "snapsmack".
+    $base=px_base(); $user=px_setting($pdo,'fediverse_handle',px_setting($pdo,'fediverse_username','snapsmack'));
     $name=px_setting($pdo,'fediverse_display_name',px_setting($pdo,'site_name','GRAMOFSMACK'));
-    $avatar=px_setting($pdo,'fediverse_avatar',''); if ($avatar && !preg_match('#^https?://#',$avatar)) $avatar=$base.ltrim($avatar,'/');
+    $avatar=px_avatar($pdo,$base);
     $mode=px_mode($pdo);$countSql=$mode==='photoblog'?"SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date<=NOW()":($mode==='smacktalk'?"SELECT COUNT(*) FROM snap_posts WHERE status='published' AND created_at<=NOW() AND post_type='longform'":"SELECT COUNT(*) FROM snap_posts WHERE status='published' AND created_at<=NOW() AND post_type IN ('single','carousel','panorama')");
     $followers=0;$following=0;
     try{$followers=(int)$pdo->query("SELECT COUNT(*) FROM snap_ap_followers WHERE is_active=1")->fetchColumn();}catch(Throwable $e){}
