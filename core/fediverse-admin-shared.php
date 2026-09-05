@@ -382,6 +382,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reimp
     exit;
 }
 
+// Repair a remote ghost whose local Manage Posts row was deleted by an older
+// build. Only this actor's canonical Note paths are accepted.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'retract_stale_note') {
+    if (!sv_enabled($sv_settings)) {
+        header('Location: ' . $sv_self . '?msg=' . urlencode('Fediverse is off — the stale Note was not retracted.'));
+        exit;
+    }
+    $note_path = ltrim(trim((string)($_POST['stale_note_path'] ?? '')), '/');
+    if (!preg_match('#^ap/note/(?:p|i|l)/[1-9][0-9]*(?:~[2-9][0-9]*)?$#D', $note_path)) {
+        header('Location: ' . $sv_self . '?msg=' . urlencode('NOT RETRACTED — enter a local Note path such as ap/note/p/1.'));
+        exit;
+    }
+    $note_id = sv_base($sv_settings) . $note_path;
+    $queued = sv_retract_note($pdo, $sv_settings, $note_id);
+    header('Location: ' . $sv_self . '?msg=' . urlencode($queued > 0
+        ? "RETRACTION QUEUED — {$note_id} will be deleted from {$queued} follower inbox(es) as the delivery queue drains."
+        : 'NOT RETRACTED — there are no active follower inboxes to receive the Delete.'));
+    exit;
+}
+
 // Manual re-try of cron auto-registration (button appears if the auto step
 // didn't take but the host actually does support cron).
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'register_cron') {
