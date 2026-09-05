@@ -9,7 +9,8 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.637D "NO MORE GHOSTS" — 2026-09-05
+## 0.7.636D "NO MORE GHOSTS" — 2026-09-05
+- **SNAP HQ can save the FoundTextures hub's whole-post AI prompt.** A hub intentionally has no self-referential spoke row, so it cannot mint itself a GYSS key through the spoke-only provisioning route. The hub now accepts its existing SNAP HQ key for `GET|POST gyss/prompt` only; that key remains forbidden from photo export, metadata, batch editing, and every other GYSS operation.
 - **Deleting a post in Manage Posts now retracts its federated copy.** Before removing the local database row and files, SnapSmack queues the existing signed ActivityPub Delete/Tombstone for that exact post or standalone-image Note. Pixelfed and Mastodon no longer keep a post that vanished locally.
 - **Already-orphaned remote posts can be removed safely.** Fediverse → Push & Tools accepts only a canonical local Note path such as `ap/note/p/1` and queues a Delete to current follower inboxes. Arbitrary URLs and foreign actors are rejected. This repairs ghosts created by older builds without reseeding or touching valid posts.
 ## 0.7.635 "LET IT FINISH" — 2026-09-05
