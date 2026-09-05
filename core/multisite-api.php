@@ -1754,12 +1754,23 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
         $release_info['checksum_sha256'] ?? ''
     );
 
-    // NOTE: the remote/hub update path deliberately does NOT delete any files on
-    // the spoke. A hub-driven file-removal path is a fleet-wide deletion primitive
-    // (compromise the hub or a package → arbitrary `rm` on every spoke) and it is
-    // not the operator's right to silently alter a user's filesystem. Orphans from
-    // upstream renames are DETECTED (SMACKBACK UNEXPECTED + updater_detect_orphan_files)
-    // and removed by a local admin by hand. See secaudit 029. Do NOT add deletion here.
+    // 6b-2. Scoped orphan cleanup — the SAME curated, in-core whitelist the local
+    // SYSTEM UPDATES path runs (UPDATER_DEPRECATED_FILES/_DIRS), nothing else.
+    // Secaudit 029 kept ALL deletion out of this path because a hub-driven
+    // removal is a fleet-wide deletion primitive; SECAUDIT 055 found the flip
+    // side — junk that ships (or lingers) NEVER leaves, because the fleet only
+    // ever updates through here: wip/ was marked for removal in 0.7.426 and was
+    // still on every spoke in 2026-09. This keeps 029's real boundary intact:
+    // the hub chooses WHEN an update runs, but WHAT gets deleted is fixed by
+    // the signed core whitelist — never a hub input, never a tree scan, never
+    // user content — and it runs only after Ed25519 verification, exactly like
+    // the local path. Runs BEFORE the SMACKBACK re-baseline below so the
+    // baseline captures the CLEANED tree (055: never re-bless the mess).
+    $orphan_result = updater_remove_known_orphans($release_info['version'] ?? $installed_version);
+    if (!empty($orphan_result['removed'])) {
+        error_log('SnapSmack update: removed ' . count($orphan_result['removed']) . ' deprecated file(s)/dir(s): '
+            . implode(', ', array_slice($orphan_result['removed'], 0, 10)));
+    }
 
     // 6c. SMACKBACK: refresh the file-integrity manifest from the (Ed25519-
     // verified) update package — mirrors the local SYSTEM UPDATES path

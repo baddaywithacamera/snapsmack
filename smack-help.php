@@ -1639,7 +1639,16 @@ modified since the last known good state, SMACKBACK catches it and won't let it 
 <p>All PHP, CSS, and JS files in the install root and subdirectories are monitored — including
 skin files. Skins contain PHP templates that execute on every page load and are a prime target
 for backdoor insertion. Excluded: uploads/, user content, minified third-party assets, and
-anything in tools/ or smack-central/.</p>
+anything in tools/.</p>
+
+<h4>Dev Directories (never trusted)</h4>
+<p>Development directories — <code>tests/</code>, <code>wip/</code>, <code>smack-central/</code>,
+<code>core/tests/</code> — should never exist on a live install. Older release packages shipped
+some of them by mistake, and because they were on disk when the baseline was first captured,
+SMACKBACK used to treat them as trusted. It no longer does: these paths are never accepted into
+the baseline no matter how they arrive, and when they are present, SMACK-BACK shows a red
+<strong>DEV DIRECTORIES</strong> box naming them. This is a warning, not a lockout — deleting the
+folders is safe and will not trigger a breach, and updates remove them automatically.</p>
 
 <h4>How to Enable It</h4>
 <p>Go to <strong>Admin → SMACK-BACK</strong> (in the sidebar under Boring Ass Stuff) and

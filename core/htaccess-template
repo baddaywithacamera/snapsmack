@@ -30,6 +30,15 @@ php_value post_max_size 64M
 php_value memory_limit 128M
 php_value max_execution_time 120
 
+# ─── DEV DIRECTORIES — NEVER WEB-SERVED (SECAUDIT 055) ──────
+# Regression tests, dev scratch, and release-packaging tooling
+# have no business answering web requests on an install. Old
+# release packages shipped these fleet-wide; until the updater
+# has removed them from disk, this returns 404 for the whole
+# subtree (404, not 403, so probes learn nothing). Keep the list
+# in lockstep with UPDATER_DEPRECATED_DIRS + SMACKBACK dev dirs.
+RewriteRule ^(tests|wip|smack-central|core/tests)(/|$) - [R=404,L]
+
 # ─── CLEAN URL ROUTER ────────────────────────────────────────
 RewriteBase /
 

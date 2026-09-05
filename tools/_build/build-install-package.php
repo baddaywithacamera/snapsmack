@@ -81,6 +81,18 @@ $exclude_dirs = [
     'node_modules',
     'projects',
     'tools',               // Dev-only tools
+    // ── Dev directories — SECAUDIT 055 ──────────────────────────────────────
+    // Missing from this list, these shipped to every install for months and
+    // SMACKBACK's disk baseline then vouched for them. Keep in lockstep with
+    // sc-release.php $always_exclude and its dev-dir tripwire.
+    'tests',
+    'wip',
+    'core/tests',
+    'smack-central',
+    '_spec',
+    'docs',
+    'secaudits',
+    'migrations',
     'skins',               // NEVER bundle skins. The installer fetches ONLY the
                            // mode-appropriate default(s) + PHOTOGRAM from snapsmack.ca
                            // (see install.php "FETCH MODE-APPROPRIATE SKINS" +
