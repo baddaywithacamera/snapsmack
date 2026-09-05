@@ -9,6 +9,8 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.644D "OFF THE CLOCK" — 2026-09-05
+- **Every trace of visitor-triggered background jobs is gone or truthful.** The web-cron itself was removed in 0.7.639D after it made SMACKONEOUT landing pages time out (Cloudflare 524); this build cleans up what it left behind. The Followers page no longer claims jobs "run on the next visit" on locked-down hosts — it now says plainly that deliveries run via the hub's CRONOMETER driver or the RUN FEDIVERSE JOBS NOW button, and shows the hosting-scheduler line for fully automatic running. The old visitor-cron on/off setting is also no longer consulted anywhere: a leftover "off" from that era can no longer silently stop the hub's authenticated cron driver.
 ## 0.7.643D "LINE THEM UP" — 2026-09-05
 - **The right-side social dock now lines up with the heart.** On single-image pages the dock column's bottom icon sits at exactly the same height as the like-heart on the left (bottom 84px, inset 30px — mirror positions). Before, the dock parked itself 12px above the bottom nav at whatever height that happened to be, so the two sides never matched. The keep-clear logic still lifts the dock higher when a tall bottom bar would overlap it — it just never drops below its resting spot anymore. Harness-verified: heart and bottom icon bottom edges match exactly.
 ## 0.7.642D "NOTHING TO WEAR" — 2026-09-05

@@ -687,12 +687,11 @@ list($sv_cron_supported, )  = cron_capability();
 $sv_cron_registered = cron_job_registered('# snapsmack-fediverse');
 $sv_cron_last = trim($sv_settings['fediverse_cron_last_run'] ?? '');
 $sv_cron_ok   = $sv_cron_last !== '' && (time() - strtotime($sv_cron_last)) < 3600;
-// In-CMS web-cron: on hosts that block background jobs, index.php runs the sweep
-// from public page visits (sv_web_cron_tick). On by default; only an explicit
-// '0' disables it. This is what covers the locked-down host where the system
-// crontab cannot be registered, so the admin can stop telling users to add a
-// cron line by hand.
-$sv_webcron_on = ($sv_settings['fediverse_webcron_enabled'] ?? '1') !== '0';
+// NOTE: the visitor-triggered web-cron was REMOVED in 0.7.639D — public page
+// loads timed out behind it (Cloudflare 524 on SMACKONEOUT landings). Locked-
+// down hosts are covered by the hub's authenticated CRONOMETER driver and the
+// RUN FEDIVERSE JOBS NOW button; the status display below must never claim
+// jobs run on visits.
 
 // Queue counts + followers.
 $sv_q_queued = 0; $sv_q_failed = 0; $sv_followers = [];
