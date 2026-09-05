@@ -304,6 +304,13 @@ class App(tk.Tk):
         _item("2. Mark OFFLINE POST", "Commits a draft as ready to go. Compose as many as you like.")
         _item("3. SYNC", "When you're online, click SYNC. COLD SNAP asks you to confirm — naming the site — then publishes each ready post and verifies it landed.")
 
+        _section("MOSAIC GALLERIES (COLD TAKE)")
+        _para("Writing a longform SMACKTALK post? Put your photos in the image bucket, then click "
+              "'Insert MOSAIC gallery' where you want them in the write-up — it drops a [mosaic] "
+              "marker. On sync, COLD SNAP builds a real justified tiled gallery from those photos "
+              "and places it right there in the post. You can also type [mosaic] yourself. A "
+              "[mosaic:123] with a number points at an existing gallery and is left as-is.")
+
         _section("AI CAPTIONS")
         _para("If a Gemini key is set, COLD SNAP can suggest a caption for a photo. Treat it "
               "as a starting point and edit it to your own voice before posting.")

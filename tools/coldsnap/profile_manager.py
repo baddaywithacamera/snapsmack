@@ -16,6 +16,38 @@ import os
 import sys
 from typing import Dict, List, Optional
 
+# The ONE shared cross-tool profile store — the same profiles SNAP HQ, GYSS and
+# SYBU write to (shared_library/profiles/<site>.json via snap_profiles). COLD SNAP
+# reads it so a site set up ANYWHERE shows up in the LOAD PROFILE dropdown. Optional
+# import via the same _shared shim the offline suite uses; a local profiles/ folder
+# stays as a legacy fallback so nothing already saved locally disappears.
+try:
+    import snap_profiles as _shared_profiles
+except Exception:  # pragma: no cover - dev-tree import shim
+    try:
+        _sd = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '_shared')
+        if _sd not in sys.path:
+            sys.path.insert(0, _sd)
+        import snap_profiles as _shared_profiles
+    except Exception:
+        _shared_profiles = None
+
+
+def _shared_to_coldsnap(p: dict) -> Dict:
+    """Map a canonical shared profile (name/site_url/api_key/extras) onto the shape
+    COLD SNAP's connection panel reads (url / api_key / smackpress_key), preserving
+    any tool extras so nothing a profile carried is lost."""
+    extras = dict(p.get('extras') or {})
+    out = {
+        'name':           p.get('name', ''),
+        'url':            p.get('site_url', ''),
+        'api_key':        p.get('api_key', ''),
+        'smackpress_key': extras.get('smackpress_key', ''),
+    }
+    for k, v in extras.items():
+        out.setdefault(k, v)
+    return out
+
 
 def _app_dir() -> str:
     """Persistent directory — next to the .exe when frozen, source dir otherwise."""
@@ -51,22 +83,41 @@ def _profile_path(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 def list_profiles() -> List[str]:
-    """Return sorted list of profile display names."""
+    """Return sorted profile display names — the SHARED store (every tool's sites)
+    plus any legacy local profiles, de-duplicated by name."""
+    names = set()
+    if _shared_profiles is not None:
+        try:
+            for p in _shared_profiles.list_profiles():
+                n = p.get('name') or p.get('site_url')
+                if n:
+                    names.add(n)
+        except Exception:
+            pass
     os.makedirs(PROFILES_DIR, exist_ok=True)
-    names = []
     for fname in os.listdir(PROFILES_DIR):
         if fname.endswith('.json'):
             try:
                 with open(os.path.join(PROFILES_DIR, fname), 'r') as f:
                     data = json.load(f)
-                names.append(data.get('name', fname[:-5]))
+                names.add(data.get('name', fname[:-5]))
             except Exception:
                 pass
     return sorted(names)
 
 
 def load_profile(name: str) -> Optional[Dict]:
-    """Load a profile by display name. Returns dict with plain-text password."""
+    """Load a profile by display name. Prefers the SHARED store (SNAP HQ / GYSS /
+    SYBU) so the site you set up in the Hub loads its url + key here; falls back to
+    a legacy local profile file. Returns a dict with plain-text secrets."""
+    if _shared_profiles is not None:
+        try:
+            p = _shared_profiles.load_by_name(name)
+            if p:
+                return _shared_to_coldsnap(p)
+        except Exception:
+            pass
+
     path = _profile_path(name)
     if not os.path.exists(path):
         # Scan all profiles for matching name field

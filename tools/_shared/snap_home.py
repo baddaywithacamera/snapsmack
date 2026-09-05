@@ -140,6 +140,12 @@ def site_thumbs_dir(site: str) -> str:
     return _ensure(os.path.join(site_dir(site), "thumbs"))
 
 
+def site_media_dir(site: str) -> str:
+    """…/shared_library/<site>/media — ORIGINAL/full media a tool posted, kept so
+    other tools compose offline. Sibling of thumbs/; files are named by asset id."""
+    return _ensure(os.path.join(site_dir(site), "media"))
+
+
 # ── Per-app output ───────────────────────────────────────────────────────────
 def app_out_dir(app_name: str) -> str:
     """C:\\snapsmack\\<app>\\out — a tool's finished output. <app> is a fixed,
