@@ -326,8 +326,7 @@ include 'core/sidebar.php';
                 </div>
                 <button type="submit" class="master-update-btn">JOIN SELECTED TO NETWORK</button>
                 <?php else: ?>
-                <p class="dim">&#9888; This blog is not joined to the relay itself yet. Join it first
-                    (JOIN NETWORK above) — the fleet then joins the same relay this blog uses.</p>
+                <p class="dim">&#9888; No valid relay is configured for this hub, so there is nothing to join to.</p>
                 <?php endif; ?>
                 <a class="btn-smack" href="<?php echo htmlspecialchars($sv_self); ?>?fleet_review=1">RE-REVIEW</a>
             </form>
