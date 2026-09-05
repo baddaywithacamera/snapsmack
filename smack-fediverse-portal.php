@@ -314,8 +314,16 @@ include 'core/sidebar.php';
                 <?php if ($sc_fleet_join_allowed): ?>
                 <p class="dim">Ticked blogs join <code><?php echo htmlspecialchars($sc_fleet_relay_target); ?></code><?php echo $sc_is_hub_install ? ' (this blog is the relay)' : ' (the relay this blog is joined to)'; ?>.
                     Each blog is re-checked at join time; a flagged blog is refused even if submitted.</p>
-                <input type="password" name="reauth_password" placeholder="Password" autocomplete="off" required>
-                <input type="text" name="reauth_totp" placeholder="2FA code" inputmode="numeric" autocomplete="off">
+                <div class="reauth-row">
+                    <div class="lens-input-wrapper">
+                        <label>PASSWORD</label>
+                        <input type="password" name="reauth_password" autocomplete="off" required>
+                    </div>
+                    <div class="lens-input-wrapper">
+                        <label>2FA CODE</label>
+                        <input type="text" name="reauth_totp" inputmode="numeric" autocomplete="off" class="input-code">
+                    </div>
+                </div>
                 <button type="submit" class="master-update-btn">JOIN SELECTED TO NETWORK</button>
                 <?php else: ?>
                 <p class="dim">&#9888; This blog is not joined to the relay itself yet. Join it first
