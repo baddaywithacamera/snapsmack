@@ -207,6 +207,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-fedistructure-site-mode.sql',
     'migrate-fediverse-rename.sql',
     'migrate-curator-directory.sql',
+    'migrate-curator-secondary-actor.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────

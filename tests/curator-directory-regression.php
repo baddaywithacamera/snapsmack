@@ -6,14 +6,20 @@ $relay = file_get_contents($root . '/core/smackcast-relay.php');
 $admin = file_get_contents($root . '/core/fediverse-admin-shared.php');
 $portal = file_get_contents($root . '/smack-fediverse-portal.php');
 $cron = file_get_contents($root . '/cron-fediverse.php');
+$fedi = file_get_contents($root . '/core/fediverse.php');
+$router = file_get_contents($root . '/fediverse.php');
 $fail = 0;
 function curator_test(bool $ok, string $message): void {
     global $fail;
     echo ($ok ? 'PASS ' : 'FAIL ') . $message . "\n";
     if (!$ok) $fail++;
 }
-curator_test(str_contains($curator, "strtolower(sv_handle(\$settings)) === 'curator'"), 'worker is locked to the curator handle');
+curator_test(str_contains($curator, "\$settings['_ap_actor_url'] = \$base"), 'curator is a secondary actor rather than a relay rename');
 curator_test(str_contains($curator, "strtolower(sv_domain(\$settings)) === 'photoblogs.fyi'"), 'worker is locked to photoblogs.fyi');
+curator_test(str_contains($fedi, "'acct:curator@photoblogs.fyi'"), 'WebFinger exposes the secondary curator identity');
+curator_test(str_contains($router, "(\$seg[0] ?? '') === 'curator'"), 'curator path endpoints route independently');
+curator_test(str_contains($fedi, "actor_role") && str_contains($fedi, "sc_curator_settings(\$pdo, \$primary_settings, true)"), 'queued curator work retains curator signing keys');
+curator_test(str_contains($fedi, "\$primary_settings = \$pdo->query"), 'a curator kick cannot sign primary queue rows as curator');
 curator_test(str_contains($curator, '/api/_meta-api/explore/topic/list'), 'uses the public JSON directory endpoint');
 curator_test(!str_contains($curator, '/people?topics='), 'does not scrape the HTML people page');
 curator_test(str_contains($curator, "['slugs' => ['photography']]"), 'selects the consented photography topic');
@@ -30,6 +36,7 @@ curator_test(str_contains($relay, 'function sc_relay_actor_is_source'), 'relay r
 curator_test(str_contains($relay, "c.state IN ('following','followed') AND f.state='accepted'"), 'only accepted curator follows enrich the relay');
 curator_test(str_contains($admin, "['curator_toggle','curator_run']"), 'curator controls are step-up gated');
 curator_test(str_contains($portal, '@curator@photoblogs.fyi'), 'portal names the curator identity clearly');
+curator_test(str_contains($portal, 'SHOW STORED ACCOUNTS'), 'portal exposes the stored account ledger');
 curator_test(str_contains($cron, 'sc_curator_cron($pdo, $settings)'), 'normal federation cron advances the curator');
 echo $fail === 0 ? "ALL PASS\n" : "{$fail} FAILURE(S)\n";
 exit($fail === 0 ? 0 : 1);
