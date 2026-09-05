@@ -1763,7 +1763,7 @@ function sv_test_whitelist_recipients(PDO $pdo, array $settings): array {
  */
 function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $cadence_secs = 0,
                                ?int $first_id = null, ?int $last_id = null,
-                               ?string $inbox_url = null): array {
+                               ?string $inbox_url = null, int $max_runtime_secs = 0): array {
     // A curator action may kick the shared queue. Never let that context sign
     // unrelated primary-actor rows: recover the site's ordinary settings once.
     $primary_settings = $settings;
@@ -1795,14 +1795,21 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
     $due = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $layer_gap = ($cadence_secs > 0) ? sv_layer_cadence($settings) : 0;
+    $deadline = $max_runtime_secs > 0 ? microtime(true) + max(15, $max_runtime_secs) : 0.0;
     $sent = 0; $failed = 0; $prev_layers = 0; $i = 0;
     foreach ($due as $row) {
         // Settle gap BEFORE every send except the first, sized by the PREVIOUS
         // post's layer count — one activity in flight at a time, oldest first,
         // heavy stacks given proportionally longer to fully land.
         if ($cadence_secs > 0 && $i++ > 0) {
-            sleep($cadence_secs + $layer_gap * max(0, $prev_layers - 1));
+            $gap = $cadence_secs + $layer_gap * max(0, $prev_layers - 1);
+            // Scheduled workers must relinquish the advisory lock in time for
+            // the next tick. Leave the remaining rows queued instead of
+            // turning one slow batch into an apparently dead cron for hours.
+            if ($deadline > 0 && microtime(true) + $gap + 12 >= $deadline) break;
+            sleep($gap);
         }
+        if ($deadline > 0 && microtime(true) + 12 >= $deadline) break;
         $prev_layers = sv_activity_attachment_count($row['activity_json']);
         $delivery_settings = $primary_settings;
         if (($row['actor_role'] ?? 'primary') === 'curator' && function_exists('sc_curator_settings')) {
