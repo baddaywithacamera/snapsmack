@@ -9,6 +9,8 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.647D "DON'T WAIT FOR THE MAILMAN" — 2026-09-05
+- **Profile pushes and Pixelix posts go out immediately instead of waiting for the cron tick.** REFRESH PROFILE ON REMOTES queued its updates and then just sat there until the next 10-minute delivery run — while telling you the remotes refresh "in a minute or two." Posting from Pixelix did the same. Both now start the delivery worker the moment the queue is filled, exactly like the CMS's own posting pages always have. (The scheduled cron remains the safety net that drains anything a kick missed.)
 ## 0.7.646D "PICTURE ON THE BADGE" — 2026-09-05
 - **Pixelix finally shows your real avatar and username.** The Pixelfed-client API built its account object from two settings keys nothing in the CMS ever writes, so the app showed a blank avatar (no matter what you uploaded) and the placeholder name "snapsmack" forever. It now resolves the avatar the same way federation does — the per-skin PROFILE AVATAR from Pimp Your Ride → Smooth Your Skin, existence-checked so a broken image is never advertised — and takes the username from your actual fediverse handle.
 ## 0.7.645D "WHERE I SAID IT WAS" — 2026-09-05
