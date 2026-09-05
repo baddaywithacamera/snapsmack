@@ -9,7 +9,13 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.630D "CUT THE CORD" — 2026-09-04
+## 0.7.631D "RIGHT ADDRESS" — 2026-09-04
+- **Desktop suite (merged from the audited desktop-fixes branch, SECAUDIT 053-reviewed):**
+- GYSS: a resumed session re-binds its OWN blog's profile and API before anything runs, and PUSH (including keep-mine force-push) hard-refuses a target that isn't the session's blog — a resumed session can no longer write photos to the wrong site. SORT drag listeners bind once (no more leak), and a resume that hits a name collision reports honestly instead of claiming success.
+- CRONOMETER: the verdict re-reads the heartbeat AFTER it triggers the crons, so a job it just ran is never reported stale.
+- SNAP HQ: logs land under their own `snap_hq` name, and SAVE now clears credentials you emptied on purpose.
+- COLD SNAP: reads the shared per-site profiles SNAP HQ writes (LOAD PROFILE is no longer empty), long-form posts can insert a real MOSAIC gallery from the post's image bucket, and posted essays mirror into the shared offline library. Media filenames entering the library are contained to an image-extension allowlist.
+- Fleet stats include TODAY's live partial, so hub numbers stop reading a day behind.
 - **Cron & Jobs now fully severs a manually started worker from Apache.** The
   Linux launcher combines `nohup` with forced-fork `setsid -f` and closes stdin,
   stdout and stderr. Hosts that keep a plain `setsid … &` child in the web
