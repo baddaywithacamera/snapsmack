@@ -11,6 +11,7 @@
 # SnapSmack Changelog
 ## 0.7.633D "OWN NAME" — 2026-09-04
 - **The relay hub's Relay Status page stops calling itself "SMACKVERSE Relay."** When a blog IS the network relay, the page was still running a live reachability probe, which — with no relay URL set — fetched the compiled-in default address (the retired standalone relay box, whose actor still answers under the old name) and printed that name back. The relay host now skips the external probe entirely and the CONNECTION rows read "this blog is the relay," consistent with the Joined row. No SMACKVERSE string exists anywhere in the CMS; it was only ever this stale probe.
+- **`@relay@photoblogs.fyi` stays the relay; `@curator@photoblogs.fyi` is now a genuine second ActivityPub actor.** Curator has its own WebFinger result, actor URL, endpoints and RSA keypair. Its queued Follow/Undo activities retain the curator signing identity when retried instead of being signed by relay. The curator control now shows the stored account ledger with state, timestamps, actor link and exact error.
 ## 0.7.632D "YOU HAVE BEEN SELECTED" — 2026-09-04
 - **The FEDISTRUCTURE hub gains a consent-directory photography curator.** Only
   the real `@curator@photoblogs.fyi` identity can run it. It reads

@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $sc_is_hub_install
         header('Location: ' . $sv_self . '?msg=' . urlencode('CURATOR unchanged — ' . $ra['error'])); exit;
     }
     if (!function_exists('sc_curator_is_hub') || !sc_curator_is_hub($sv_settings)) {
-        header('Location: ' . $sv_self . '?msg=' . urlencode('CURATOR blocked — this hub must actually answer as @curator@photoblogs.fyi.')); exit;
+        header('Location: ' . $sv_self . '?msg=' . urlencode('CURATOR blocked — this is not the photoblogs.fyi hub.')); exit;
     }
     if ($_POST['action'] === 'curator_toggle') {
         $enabled = ($_POST['enabled'] ?? '0') === '1' ? '1' : '0';

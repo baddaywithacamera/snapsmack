@@ -331,11 +331,14 @@ include 'core/sidebar.php';
         $curator_on = ($sv_settings['curator_directory_enabled'] ?? '0') === '1';
         $curator_identity_ok = function_exists('sc_curator_is_hub') && sc_curator_is_hub($sv_settings);
         $curator_counts = [];
+        $curator_rows = [];
         if (function_exists('sc_curator_ensure_tables')) {
             try {
                 sc_curator_ensure_tables($pdo);
                 $curator_counts = $pdo->query("SELECT state,COUNT(*) n FROM snap_curator_directory GROUP BY state")
                     ->fetchAll(PDO::FETCH_KEY_PAIR);
+                $curator_rows = $pdo->query("SELECT acct,actor_url,state,last_seen_at,last_checked_at,last_error
+                    FROM snap_curator_directory ORDER BY first_seen_at,id LIMIT 500")->fetchAll(PDO::FETCH_ASSOC);
             } catch (Throwable $e) {}
         }
     ?>
@@ -353,10 +356,7 @@ include 'core/sidebar.php';
             never removed or claimed by this worker.
         </p>
         <?php if (!$curator_identity_ok): ?>
-            <div class="alert alert-warn">BLOCKED — this install currently answers as
-                <code><?php echo htmlspecialchars('@' . sv_handle($sv_settings) . '@' . sv_domain($sv_settings)); ?></code>.
-                Set its handle to <strong>curator</strong> and its canonical Site URL to <strong>https://photoblogs.fyi</strong> first.
-            </div>
+            <div class="alert alert-warn">BLOCKED — the secondary curator identity is available only on the photoblogs.fyi hub.</div>
         <?php else: ?>
             <p><strong><?php echo $curator_on ? 'RUNNING' : 'PAUSED'; ?></strong>
                 &middot; discovered <?php echo (int)($curator_counts['discovered'] ?? 0); ?>
@@ -383,6 +383,20 @@ include 'core/sidebar.php';
                 <button type="submit" class="btn-smack">RUN ONE PACED STEP</button>
             </form>
             <?php endif; ?>
+            <details style="margin-top:18px;">
+                <summary>SHOW STORED ACCOUNTS (<?php echo count($curator_rows); ?>)</summary>
+                <div style="overflow:auto;max-height:430px;margin-top:12px;">
+                <table class="dim" style="width:100%;border-collapse:collapse;">
+                    <thead><tr><th style="text-align:left;">ACCOUNT</th><th style="text-align:left;">STATE</th><th style="text-align:left;">LAST SEEN</th><th style="text-align:left;">LAST CHECK</th><th style="text-align:left;">DETAIL</th></tr></thead>
+                    <tbody><?php foreach ($curator_rows as $cr): ?><tr class="border-b">
+                        <td class="p-8-6"><?php if (!empty($cr['actor_url'])): ?><a href="<?php echo htmlspecialchars($cr['actor_url']); ?>" target="_blank" rel="noopener nofollow"><?php echo htmlspecialchars($cr['acct']); ?></a><?php else: ?><?php echo htmlspecialchars($cr['acct']); ?><?php endif; ?></td>
+                        <td class="p-8-6"><strong><?php echo htmlspecialchars($cr['state']); ?></strong></td>
+                        <td class="p-8-6"><?php echo htmlspecialchars($cr['last_seen_at'] ?? ''); ?></td>
+                        <td class="p-8-6"><?php echo htmlspecialchars($cr['last_checked_at'] ?? 'not yet'); ?></td>
+                        <td class="p-8-6"><?php echo htmlspecialchars($cr['last_error'] ?? ''); ?></td>
+                    </tr><?php endforeach; ?></tbody>
+                </table></div>
+            </details>
         <?php endif; ?>
     </div>
     <?php endif; ?>
