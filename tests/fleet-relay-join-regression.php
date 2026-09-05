@@ -38,7 +38,7 @@ fj_test(str_contains($sv, '$handle === $first_label'), 'preflight flags a handle
 // ── Hub handler: step-up gated, fail-closed, pre-admitted ───────────────────
 fj_test(str_contains($admin, "(\$_POST['action'] ?? '') === 'fleet_join'"), 'hub fleet_join handler exists');
 fj_test(preg_match("/fleet_join'\\)\\s*\\{\\s*\\n\\s*\\\$ra = reauth_verify/", $admin) === 1, 'fleet_join is password+TOTP step-up gated before any work');
-fj_test(str_contains($admin, "join THIS blog to the relay first"), 'a hub that is not the relay and not relay-joined is refused (no stale-default fan-out)');
+fj_test(str_contains($admin, "no valid relay is configured for this hub") && str_contains($admin, "stripos(\$fj_relay, 'https://') !== 0"), 'fleet join requires only a valid https relay target — a management hub need not be a relay member itself');
 fj_test(str_contains($admin, 'sc_fleet_status_row($fj_node);   // fail-closed: re-verify at join time'), 'each spoke is re-verified at join time, not trusted from the review');
 fj_test(str_contains($admin, 'snap_relay_allowlist'), 'selected spoke domains are pre-admitted so joins do not sit pending');
 fj_test(str_contains($admin, '$fj_relay   = $sc_is_hub_install ? sv_actor_url($sv_settings) : sv_relay_actor_url($sv_settings);'), 'target = own actor when this blog IS the relay, else the relay this hub is joined to');

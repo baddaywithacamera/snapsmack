@@ -498,16 +498,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'fleet
         exit;
     }
     // The relay the fleet joins: this blog's own actor when this blog IS the
-    // smackcast relay; otherwise the relay THIS hub is itself joined to. A
-    // multisite hub that is only a relay MEMBER fans its spokes out to the same
-    // relay it uses — and a hub joined to nothing is refused, so the stale
-    // default relay address can never be propagated to the whole fleet.
-    if (!$sc_is_hub_install && (string)($sv_settings['photoblogs_relay_joined'] ?? '0') !== '1') {
-        header('Location: ' . $sv_self . '?fleet_review=1&msg=' . urlencode('Fleet join refused — join THIS blog to the relay first (JOIN NETWORK above), so the fleet joins the same relay it does.'));
+    // smackcast relay; otherwise the relay THIS hub points at (photoblogs.fyi by
+    // default). A management hub does NOT need to be a relay member itself to push
+    // its spokes onto the relay — each spoke sends its own signed Follow and is
+    // re-verified at join time, so an unreachable target just fails that spoke.
+    $fj_relay   = $sc_is_hub_install ? sv_actor_url($sv_settings) : sv_relay_actor_url($sv_settings);
+    if (stripos($fj_relay, 'https://') !== 0) {
+        header('Location: ' . $sv_self . '?fleet_review=1&msg=' . urlencode('Fleet join refused — no valid relay is configured for this hub.'));
         exit;
     }
     $fj_picked  = array_map('intval', (array)($_POST['spoke_ids'] ?? []));
-    $fj_relay   = $sc_is_hub_install ? sv_actor_url($sv_settings) : sv_relay_actor_url($sv_settings);
     $fj_results = [];
     foreach (sc_fleet_spokes($pdo) as $fj_node) {
         if (!in_array((int)$fj_node['id'], $fj_picked, true)) continue;
@@ -574,8 +574,9 @@ if ($sc_is_hub_install) {
 // post-join redirect and are shown once.
 $sc_fleet_spoke_count  = count(sc_fleet_spokes($pdo));
 $sc_fleet_relay_target = $sc_is_hub_install ? sv_actor_url($sv_settings) : sv_relay_actor_url($sv_settings);
-$sc_fleet_join_allowed = $sc_is_hub_install
-    || (string)($sv_settings['photoblogs_relay_joined'] ?? '0') === '1';
+// A management hub can push its spokes onto the relay it points at without being a
+// relay member itself; only a valid https relay target is required.
+$sc_fleet_join_allowed = stripos($sc_fleet_relay_target, 'https://') === 0;
 $sc_fleet_review = null;
 if ($sc_fleet_spoke_count > 0 && isset($_GET['fleet_review'])) {
     $sc_fleet_review = array_map('sc_fleet_status_row', sc_fleet_spokes($pdo));
