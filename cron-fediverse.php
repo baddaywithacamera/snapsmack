@@ -88,6 +88,11 @@ if ($delivery_lock !== 1) {
     exit(0);
 }
 
+// Record the start, not merely the end. The admin can now distinguish a cron
+// that never launched from one that is actively working through a slow queue.
+sv_set_setting($pdo, $settings, 'fediverse_cron_last_run', date('Y-m-d H:i:s'));
+sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'running');
+
 sv_ensure_tables($pdo);
 sv_ensure_keys($pdo, $settings);
 
@@ -143,7 +148,11 @@ list($bf_jobs, $bf_queued) = sv_process_backfill_jobs($pdo, $settings);
 // Paced drain: same measured cadence as resync so a first-follow backfill (and
 // any sweep burst) lands on the remote in order, not shuffled by its async
 // workers. CLI/cron context, so the inter-send sleeps cost nothing user-facing.
-list($sent, $failed)  = sv_process_deliveries($pdo, $settings, 30, sv_delivery_cadence($settings));
+// Keep each ten-minute tick bounded. Remaining rows stay durable and are
+// resumed oldest-first on the next tick; no delivery is discarded.
+list($sent, $failed)  = sv_process_deliveries(
+    $pdo, $settings, 30, sv_delivery_cadence($settings), null, null, null, 240
+);
 
 // Profile propagation (AP spec): if the actor's bio, avatar or display name
 // changed since we last federated it, push a signed Update(Actor) so followers'
@@ -162,6 +171,7 @@ if (is_file("{$root}/core/mesh-helpers.php")) {
 
 // Health stamp for the FEDIVERSE admin page's delivery panel.
 sv_set_setting($pdo, $settings, 'fediverse_cron_last_run', date('Y-m-d H:i:s'));
+sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'ok');
 
 echo sprintf(
     "FEDIVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; relay ingest: %d recovered, %d retrying/shelved; outbox recovery: %d members, %d recovered; PHOTOFRI: %d finalized, %d gardened, %d withdrawn; profile-update: %d follower(s); CURATOR: %s, %d discovered%s (%s).\n",
