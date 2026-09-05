@@ -110,8 +110,8 @@ $key_hash = hash('sha256', $raw_key);
 // site mid-migration keeps working.
 try {
     $key_stmt = $pdo->prepare("
-        SELECT id FROM snap_ohsnap_keys
-        WHERE key_hash = ? AND key_type = 'gyss' AND is_active = 1
+        SELECT id, key_type FROM snap_ohsnap_keys
+        WHERE key_hash = ? AND key_type IN ('gyss','hub') AND is_active = 1
           AND (expires_at IS NULL OR expires_at > NOW())
         LIMIT 1
     ");
@@ -120,8 +120,8 @@ try {
 } catch (Exception $e) {
     try {
         $key_stmt = $pdo->prepare("
-            SELECT id FROM snap_ohsnap_keys
-            WHERE key_hash = ? AND key_type = 'gyss' AND is_active = 1
+            SELECT id, key_type FROM snap_ohsnap_keys
+            WHERE key_hash = ? AND key_type IN ('gyss','hub') AND is_active = 1
             LIMIT 1
         ");
         $key_stmt->execute([$key_hash]);
@@ -133,6 +133,14 @@ try {
 
 if (!$api_key_row) {
     gy_err('Invalid or revoked GYSS API key', 401);
+}
+
+// A SNAP HQ key may manage the hub's own whole-post prompt, because a hub has
+// no self-spoke row from which the desktop can provision a GYSS key. Keep this
+// exception deliberately narrow: no photo export, metadata or batch editing.
+if (($api_key_row['key_type'] ?? '') === 'hub'
+    && (($settings['multisite_role'] ?? '') !== 'hub' || $resource !== 'prompt')) {
+    gy_err('The SNAP HQ key is valid only for this hub prompt', 403);
 }
 
 // Touch last_used_at
