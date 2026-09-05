@@ -2,7 +2,7 @@
 /**
  * Consent-directory curator for the FEDISTRUCTURE hub.
  *
- * Only @curator@photoblogs.fyi may run this worker. It consumes the public
+ * The hub keeps @relay and exposes @curator@photoblogs.fyi as a second actor.
  * fediverse.info JSON directory, never its HTML, and manages only follows it
  * created itself. One remote-account action is allowed every 15 minutes.
  */
@@ -10,8 +10,37 @@
 function sc_curator_is_hub(array $settings): bool {
     return ($settings['site_mode'] ?? '') === 'fedistructure'
         && ($settings['node_role'] ?? '') === 'hub'
-        && strtolower(sv_handle($settings)) === 'curator'
         && strtolower(sv_domain($settings)) === 'photoblogs.fyi';
+}
+
+/** Build the secondary actor context without changing the site's primary actor. */
+function sc_curator_settings(?PDO $pdo, array $settings, bool $ensure_keys = true): array {
+    if ($ensure_keys && $pdo !== null && empty($settings['curator_private_key'])) {
+        $res = function_exists('openssl_pkey_new') ? openssl_pkey_new([
+            'private_key_bits'=>2048, 'private_key_type'=>OPENSSL_KEYTYPE_RSA,
+        ]) : false;
+        if ($res !== false && openssl_pkey_export($res, $priv)) {
+            $det = openssl_pkey_get_details($res); $pub = (string)($det['key'] ?? '');
+            if ($pub !== '') {
+                sv_set_setting($pdo, $settings, 'curator_public_key', $pub);
+                sv_set_setting($pdo, $settings, 'curator_private_key', $priv);
+            }
+        }
+    }
+    $base = rtrim(sv_base($settings), '/') . '/ap/curator';
+    $settings['_ap_actor_role'] = 'curator';
+    $settings['_ap_actor_url'] = $base;
+    $settings['_ap_inbox_url'] = $base . '/inbox';
+    $settings['_ap_outbox_url'] = $base . '/outbox';
+    $settings['_ap_followers_url'] = $base . '/followers';
+    $settings['_ap_following_url'] = $base . '/following';
+    $settings['_ap_profile_url'] = $base;
+    $settings['fediverse_handle'] = 'curator';
+    $settings['fediverse_display_name'] = 'PhotoBlogs Photography Curator';
+    $settings['fediverse_bio'] = 'Slowly follows photographers who opted into discovery at fediverse.info and enriches the PhotoBlogs relay. Managed with monthly consent checks.';
+    $settings['fediverse_public_key'] = (string)($settings['curator_public_key'] ?? '');
+    $settings['fediverse_private_key'] = (string)($settings['curator_private_key'] ?? '');
+    return $settings;
 }
 
 function sc_curator_ensure_tables(PDO $pdo): void {
@@ -145,6 +174,7 @@ function sc_curator_remove_managed_follow(PDO $pdo, array $settings, array $row,
 
 /** One follow, unfollow or health check. Manual follows are never selected. */
 function sc_curator_one_action(PDO $pdo, array &$settings): array {
+    $actor_settings = sc_curator_settings($pdo, $settings, true);
     $next = strtotime((string)($settings['curator_next_action_at'] ?? '')) ?: 0;
     if ($next > time()) return ['waiting', 'paced'];
     // A site that joins the hub after being curated must be removed too.
@@ -154,7 +184,7 @@ function sc_curator_one_action(PDO $pdo, array &$settings): array {
     foreach ($managed as $candidate) {
         $host = strtolower((string)(parse_url((string)$candidate['actor_url'], PHP_URL_HOST) ?: ''));
         if ($host !== '' && isset($hosts[$host])) {
-            sc_curator_remove_managed_follow($pdo, $settings, $candidate, 'excluded', 'joined hub');
+            sc_curator_remove_managed_follow($pdo, $actor_settings, $candidate, 'excluded', 'joined hub');
             sv_set_setting($pdo, $settings, 'curator_next_action_at', date('Y-m-d H:i:s', time() + 900));
             return ['excluded', $candidate['acct']];
         }
@@ -162,7 +192,7 @@ function sc_curator_one_action(PDO $pdo, array &$settings): array {
     $missing = $pdo->query("SELECT * FROM snap_curator_directory WHERE state='missing' AND follow_row_id IS NOT NULL ORDER BY missing_since LIMIT 1")
         ->fetch(PDO::FETCH_ASSOC);
     if ($missing) {
-        sc_curator_remove_managed_follow($pdo, $settings, $missing, 'removed', 'no longer in consent directory');
+        sc_curator_remove_managed_follow($pdo, $actor_settings, $missing, 'removed', 'no longer in consent directory');
         sv_set_setting($pdo, $settings, 'curator_next_action_at', date('Y-m-d H:i:s', time() + 900));
         return ['removed', $missing['acct']];
     }
@@ -196,10 +226,11 @@ function sc_curator_one_action(PDO $pdo, array &$settings): array {
                 return ['manual', $row['acct']];
             }
         }
-        [$ok, $message] = sv_follow_actor($pdo, $settings, $resolved ?: (string)$row['acct']);
+        [$ok, $message] = sv_follow_actor($pdo, $actor_settings, $resolved ?: (string)$row['acct']);
         if ($ok) {
-            $q = $pdo->prepare("SELECT id,actor_url,state FROM snap_ap_following WHERE actor_url=? ORDER BY id DESC LIMIT 1");
-            $q->execute([$resolved]);
+            $q = $pdo->prepare("SELECT id,actor_url,state FROM snap_ap_following
+                WHERE follow_id LIKE ? ORDER BY id DESC LIMIT 1");
+            $q->execute([sv_actor_url($actor_settings) . '#follow-%']);
             $f = $q->fetch(PDO::FETCH_ASSOC);
             $pdo->prepare("UPDATE snap_curator_directory SET actor_url=?,follow_row_id=?,state='following',failure_count=0,
                 last_checked_at=NOW(),next_check_at=DATE_ADD(NOW(),INTERVAL 30 DAY),last_error=NULL WHERE id=?")
@@ -230,14 +261,14 @@ function sc_curator_one_action(PDO $pdo, array &$settings): array {
             sv_set_setting($pdo, $settings, 'curator_next_action_at', date('Y-m-d H:i:s', time() + 900));
             return ['rejected', $row['acct']];
         }
-        $doc = !empty($row['actor_url']) ? sv_fetch_ap((string)$row['actor_url'], $settings) : null;
+        $doc = !empty($row['actor_url']) ? sv_fetch_ap((string)$row['actor_url'], $actor_settings) : null;
         if (is_array($doc) && !empty($doc['id']) && !empty($doc['inbox'])) {
             $pdo->prepare("UPDATE snap_curator_directory SET state='followed',failure_count=0,last_checked_at=NOW(),
                 next_check_at=DATE_ADD(NOW(),INTERVAL 30 DAY),last_error=NULL WHERE id=?")->execute([$row['id']]);
             return ['healthy', $row['acct']];
         }
         $failures = (int)$row['failure_count'] + 1;
-        if ($failures >= 3) sc_curator_remove_managed_follow($pdo, $settings, $row, 'invalid', 'actor failed three monthly checks');
+        if ($failures >= 3) sc_curator_remove_managed_follow($pdo, $actor_settings, $row, 'invalid', 'actor failed three monthly checks');
         else $pdo->prepare("UPDATE snap_curator_directory SET failure_count=?,last_checked_at=NOW(),next_check_at=DATE_ADD(NOW(),INTERVAL 1 DAY),last_error='actor unavailable' WHERE id=?")
             ->execute([$failures, $row['id']]);
         sv_set_setting($pdo, $settings, 'curator_next_action_at', date('Y-m-d H:i:s', time() + 900));
@@ -248,7 +279,7 @@ function sc_curator_one_action(PDO $pdo, array &$settings): array {
 
 function sc_curator_cron(PDO $pdo, array &$settings): array {
     if (($settings['curator_directory_enabled'] ?? '0') !== '1') return ['disabled', 0, false, ''];
-    if (!sc_curator_is_hub($settings)) return ['identity-blocked', 0, false, 'Set this hub to @curator@photoblogs.fyi'];
+    if (!sc_curator_is_hub($settings)) return ['identity-blocked', 0, false, 'Curator is available only on the photoblogs.fyi hub'];
     sc_curator_ensure_tables($pdo);
     $lock = $pdo->query("SELECT GET_LOCK('snapsmack_curator_directory',0)")->fetchColumn();
     if ((int)$lock !== 1) return ['busy', 0, false, 'another curator step is running'];

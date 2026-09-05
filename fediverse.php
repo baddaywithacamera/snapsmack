@@ -72,7 +72,12 @@ if (!sv_enabled($settings)) {
 // below for anything already federated.
 if (isset($_GET['appath'])) {
     $seg = explode('/', trim((string)$_GET['appath'], '/'));
-    $_GET['ap'] = $seg[0] ?? '';
+    if (($seg[0] ?? '') === 'curator') {
+        $_GET['ap'] = $seg[1] ?? 'actor';
+        $settings = sc_curator_settings($pdo, $settings, true);
+    } else {
+        $_GET['ap'] = $seg[0] ?? '';
+    }
     if (($seg[0] ?? '') === 'note') {
         $key = ['p' => 'post', 'i' => 'id', 'c' => 'comment', 'r' => 'reply', 'l' => 'longform'][$seg[1] ?? ''] ?? null;
         if ($key === null || !isset($seg[2])) sv_404();
@@ -82,6 +87,15 @@ if (isset($_GET['appath'])) {
 
 $ap     = $_GET['ap'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
+
+// Curator follows outward but does not author or republish photographs. Keep
+// its public collections truthful and empty; accepted directory follows are
+// reported by its dedicated following collection below.
+if (($settings['_ap_actor_role'] ?? '') === 'curator' && in_array($ap, ['outbox','followers'], true)) {
+    sv_respond(['@context'=>'https://www.w3.org/ns/activitystreams',
+        'id'=>$ap === 'outbox' ? sv_outbox_url($settings) : sv_followers_url($settings),
+        'type'=>'OrderedCollection','totalItems'=>0]);
+}
 
 switch ($ap) {
 

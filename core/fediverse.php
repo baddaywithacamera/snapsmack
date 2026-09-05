@@ -94,11 +94,11 @@ function sv_handle(array $settings): string {
 // HTML-encodes '&' when dereferencing object ids (?a=1&b=2 arrives as
 // ?a=1&amp;b=2 → 404), which silently killed every delivered Note. The old
 // ?ap= query routes still resolve for anything already federated.
-function sv_actor_url(array $settings): string     { return sv_base($settings) . 'ap/actor'; }
-function sv_inbox_url(array $settings): string     { return sv_base($settings) . 'ap/inbox'; }
-function sv_outbox_url(array $settings): string    { return sv_base($settings) . 'ap/outbox'; }
-function sv_followers_url(array $settings): string { return sv_base($settings) . 'ap/followers'; }
-function sv_following_url(array $settings): string { return sv_base($settings) . 'ap/following'; }
+function sv_actor_url(array $settings): string     { return $settings['_ap_actor_url'] ?? (sv_base($settings) . 'ap/actor'); }
+function sv_inbox_url(array $settings): string     { return $settings['_ap_inbox_url'] ?? (sv_base($settings) . 'ap/inbox'); }
+function sv_outbox_url(array $settings): string    { return $settings['_ap_outbox_url'] ?? (sv_base($settings) . 'ap/outbox'); }
+function sv_followers_url(array $settings): string { return $settings['_ap_followers_url'] ?? (sv_base($settings) . 'ap/followers'); }
+function sv_following_url(array $settings): string { return $settings['_ap_following_url'] ?? (sv_base($settings) . 'ap/following'); }
 function sv_featured_url(array $settings): string      { return sv_base($settings) . 'ap/featured'; }
 function sv_featured_tags_url(array $settings): string { return sv_base($settings) . 'ap/featured-tags'; }
 function sv_key_id(array $settings): string        { return sv_actor_url($settings) . '#main-key'; }
@@ -143,6 +143,7 @@ function sv_ensure_tables(PDO $pdo): void {
         `inbox_url`     varchar(500)  COLLATE utf8mb4_unicode_ci NOT NULL,
         `activity_json` mediumtext    COLLATE utf8mb4_unicode_ci NOT NULL,
         `dedupe_key`    varchar(191)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `actor_role`    varchar(32)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'primary',
         `attempts`      int unsigned  NOT NULL DEFAULT '0',
         `next_try_at`   datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `status`        enum('queued','failed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
@@ -175,6 +176,15 @@ function sv_ensure_tables(PDO $pdo): void {
         if (!$has_delivery_key) {
             $pdo->exec("ALTER TABLE snap_ap_deliveries ADD COLUMN dedupe_key varchar(191)
                 COLLATE utf8mb4_unicode_ci DEFAULT NULL, ADD UNIQUE KEY uq_ap_delivery_dedupe (dedupe_key)");
+        }
+    } catch (Throwable $e) { /* canonical sync remains authoritative */ }
+    try {
+        $has_actor_role = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_ap_deliveries'
+              AND COLUMN_NAME='actor_role' LIMIT 1")->fetchColumn();
+        if (!$has_actor_role) {
+            $pdo->exec("ALTER TABLE snap_ap_deliveries ADD COLUMN actor_role varchar(32)
+                COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'primary' AFTER dedupe_key");
         }
     } catch (Throwable $e) { /* canonical sync remains authoritative */ }
     // First-follow backfill jobs: a new/reactivated follower's catalogue backfill
@@ -566,8 +576,12 @@ function sv_ensure_keys(PDO $pdo, array &$settings): string {
     if ($pub === '') return '';
 
     try {
-        sv_set_setting($pdo, $settings, 'fediverse_public_key', $pub);
-        sv_set_setting($pdo, $settings, 'fediverse_private_key', $priv);
+        $pub_key = (($settings['_ap_actor_role'] ?? 'primary') === 'curator') ? 'curator_public_key' : 'fediverse_public_key';
+        $priv_key = (($settings['_ap_actor_role'] ?? 'primary') === 'curator') ? 'curator_private_key' : 'fediverse_private_key';
+        sv_set_setting($pdo, $settings, $pub_key, $pub);
+        sv_set_setting($pdo, $settings, $priv_key, $priv);
+        $settings['fediverse_public_key'] = $pub;
+        $settings['fediverse_private_key'] = $priv;
     } catch (Exception $e) {
         return ''; // don't serve a key we couldn't persist
     }
@@ -1661,8 +1675,11 @@ function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json, ?
         $identity = $activity_id !== '' ? $activity_id : hash('sha256', $activity_json);
         $dedupe_key = 'delivery:' . hash('sha256', $inbox_url . "\n" . $identity);
     }
-    $pdo->prepare("INSERT IGNORE INTO snap_ap_deliveries (inbox_url, activity_json, dedupe_key) VALUES (?, ?, ?)")
-        ->execute([$inbox_url, $activity_json, $dedupe_key]);
+    $activity = isset($activity) && is_array($activity) ? $activity : json_decode($activity_json, true);
+    $actor_role = is_array($activity) && str_contains((string)($activity['actor'] ?? ''), '/ap/curator')
+        ? 'curator' : 'primary';
+    $pdo->prepare("INSERT IGNORE INTO snap_ap_deliveries (inbox_url, activity_json, dedupe_key, actor_role) VALUES (?, ?, ?, ?)")
+        ->execute([$inbox_url, $activity_json, $dedupe_key, $actor_role]);
     return (int)$pdo->lastInsertId();
 }
 
@@ -1747,6 +1764,13 @@ function sv_test_whitelist_recipients(PDO $pdo, array $settings): array {
 function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $cadence_secs = 0,
                                ?int $first_id = null, ?int $last_id = null,
                                ?string $inbox_url = null): array {
+    // A curator action may kick the shared queue. Never let that context sign
+    // unrelated primary-actor rows: recover the site's ordinary settings once.
+    $primary_settings = $settings;
+    if (($settings['_ap_actor_role'] ?? 'primary') === 'curator') {
+        $primary_settings = $pdo->query("SELECT setting_key,setting_val FROM snap_settings")
+            ->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
     $now  = date('Y-m-d H:i:s');
     $where = "status = 'queued' AND next_try_at <= ?";
     $args  = [$now];
@@ -1780,7 +1804,11 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
             sleep($cadence_secs + $layer_gap * max(0, $prev_layers - 1));
         }
         $prev_layers = sv_activity_attachment_count($row['activity_json']);
-        list($ok, $info) = sv_deliver($settings, $row['inbox_url'], $row['activity_json']);
+        $delivery_settings = $primary_settings;
+        if (($row['actor_role'] ?? 'primary') === 'curator' && function_exists('sc_curator_settings')) {
+            $delivery_settings = sc_curator_settings($pdo, $primary_settings, true);
+        }
+        list($ok, $info) = sv_deliver($delivery_settings, $row['inbox_url'], $row['activity_json']);
         if ($ok) {
             $pdo->prepare("DELETE FROM snap_ap_deliveries WHERE id = ?")->execute([$row['id']]);
             $sent++;
@@ -2926,10 +2954,20 @@ function sv_avatar(array $settings): ?array {
  * Pixelfed-faithful HTML profile, a fediverse server gets the actor JSON.
  */
 function sv_profile_url(array $settings): string {
+    if (!empty($settings['_ap_profile_url'])) return (string)$settings['_ap_profile_url'];
     return rtrim(sv_base($settings), '/') . '/' . rawurlencode(sv_handle($settings));
 }
 
 function sv_webfinger(string $resource, array $settings): ?array {
+    if (function_exists('sc_curator_is_hub') && sc_curator_is_hub($settings)
+        && strcasecmp(trim($resource), 'acct:curator@photoblogs.fyi') === 0) {
+        $curator = sc_curator_settings(null, $settings, false);
+        $actor = sv_actor_url($curator);
+        return ['subject'=>'acct:curator@photoblogs.fyi','aliases'=>[$actor,sv_profile_url($curator)],'links'=>[
+            ['rel'=>'self','type'=>'application/activity+json','href'=>$actor],
+            ['rel'=>'http://webfinger.net/rel/profile-page','type'=>'text/html','href'=>sv_profile_url($curator)],
+        ]];
+    }
     $acct = 'acct:' . sv_handle($settings) . '@' . sv_domain($settings);
     if (strcasecmp(trim($resource), $acct) !== 0) return null;
     return [
@@ -3078,9 +3116,14 @@ function sv_following_doc(array $settings, ?PDO $pdo = null): array {
     $total = 0;
     if ($pdo !== null) {
         try {
-            $total = (int)$pdo->query(
-                "SELECT COUNT(*) FROM snap_ap_following WHERE state = 'accepted'"
-            )->fetchColumn();
+            if (($settings['_ap_actor_role'] ?? 'primary') === 'curator') {
+                $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_curator_directory c
+                    JOIN snap_ap_following f ON f.id=c.follow_row_id WHERE f.state='accepted'")->fetchColumn();
+            } else {
+                $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_following f
+                    WHERE f.state='accepted' AND NOT EXISTS
+                    (SELECT 1 FROM snap_curator_directory c WHERE c.follow_row_id=f.id)")->fetchColumn();
+            }
         } catch (Exception $e) { /* table may not exist yet */ }
     }
     return [

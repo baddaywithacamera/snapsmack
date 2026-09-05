@@ -1140,6 +1140,7 @@ CREATE TABLE IF NOT EXISTS `snap_ap_deliveries` (
   `inbox_url`     varchar(500)  COLLATE utf8mb4_unicode_ci NOT NULL,
   `activity_json` mediumtext    COLLATE utf8mb4_unicode_ci NOT NULL,
   `dedupe_key`    varchar(191)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `actor_role`    varchar(32)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'primary',
   `attempts`      int unsigned  NOT NULL DEFAULT '0',
   `next_try_at`   datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `status`        enum('queued','failed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
