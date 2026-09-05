@@ -59,14 +59,6 @@ try {
     $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
     $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-    // WEB-CRON: hosts that run no background jobs (crontab/exec unavailable)
-    // otherwise show "Last cron run: never" and never deliver. Run the due
-    // fediverse/relay sweep after this page is sent — throttled + locked, so the
-    // visitor never waits. Registered before page-cache so cache-served hits
-    // still keep cron alive. (locked-down-host self-heal)
-    require_once __DIR__ . '/core/fediverse-webcron.php';
-    sv_web_cron_tick($pdo, $settings);
-
     require_once __DIR__ . '/core/maintenance-gate.php';
 
     // ── Organized Mayhem JSON endpoint (early intercept) ──────────────────

@@ -112,11 +112,6 @@ function cron_age_text(?string $ts): string {
     return floor($secs / 86400) . 'd ago';
 }
 
-/* web-cron token (reuse existing if set; the endpoint core/fediverse-webcron.php
-   uses it). Read-only here — we only display the ping URL, never mint. */
-$webcron_token = trim((string)($settings['webcron_token'] ?? ''));
-$site_url = rtrim((string)($settings['site_url'] ?? ''), '/');
-
 $page_title = 'Cron & Jobs';
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -142,7 +137,7 @@ include 'core/sidebar.php';
             the thing to fix — register it, or run it now to prove it works.
         </p>
         <?php if (!$cron_supported): ?>
-            <p class="alert alert-warn">&gt; This host can't schedule cron from the CMS (no command-line PHP / crontab access). Use the <strong>WEB CRON</strong> option at the bottom — the jobs will still run.</p>
+            <p class="alert alert-warn">&gt; This host can't schedule cron from the CMS (no command-line PHP / crontab access). Public visitors will never be used to run background jobs. Configure these commands in the hosting control panel.</p>
         <?php endif; ?>
     </div>
 
@@ -202,21 +197,6 @@ include 'core/sidebar.php';
         </form>
     </div>
     <?php endforeach; ?>
-
-    <div class="box mb-20">
-        <h3>WEB CRON (fallback)</h3>
-        <p class="dim">
-            If this host can't schedule cron (shared hosting with no crontab), point an
-            external uptime pinger at the web-cron endpoint every few minutes and the due jobs
-            run on each hit. The endpoint is <code>core/fediverse-webcron.php</code>.
-        </p>
-        <?php if ($webcron_token !== '' && $site_url !== ''): ?>
-            <p>Ping URL:</p>
-            <p><code><?php echo htmlspecialchars($site_url . '/core/fediverse-webcron.php?token=' . $webcron_token); ?></code></p>
-        <?php else: ?>
-            <p class="dim">No web-cron token is set yet. Set <code>webcron_token</code> in Settings to enable the ping URL.</p>
-        <?php endif; ?>
-    </div>
 
     <p class="dim">This page controls only this site's crons. Fleet-wide cron health is in the desktop CRONOMETER board.</p>
 

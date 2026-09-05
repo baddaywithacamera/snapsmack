@@ -1,13 +1,10 @@
 <?php
 /**
- * SNAPSMACK — web-triggered cron for locked-down hosts
+ * SNAPSMACK — authenticated on-demand cron driver
  *
- * Many shared hosts run NO background jobs: crontab is unavailable and exec()
- * is disabled, so cron-fediverse.php never fires and the admin shows
- * "Last cron run: never" — fediverse delivery stalls, the relay stays empty,
- * and the FEDBOARD site-picker never fills. This runs the due sweep straight
- * from ordinary public page loads instead, so a plain single install self-heals
- * with zero setup: no terminal, no hub, no desktop tool.
+ * Called only by the authenticated multisite run-crons API. Public page loads
+ * never include or invoke this driver: visitors must not pay for background
+ * federation, RSS, or roster maintenance.
  *
  * Safety:
  *  - No-op on CLI, when FEDIVERSE is off, or when fediverse_webcron_enabled
@@ -17,10 +14,8 @@
  *    nothing but one cheap in-memory check.
  *  - The heavy engine (fediverse.php) is required ONLY when a sweep is actually
  *    due, and only inside the shutdown handler — normal page loads never pay it.
- *  - The sweep runs AFTER the response is flushed (fastcgi_finish_request where
- *    available), so the visitor never waits; sv_run_sweep's own GET_LOCK stops
- *    two requests ever sweeping at once. A first run on a site stamped "never"
- *    ($last = 0) is due immediately.
+ *  - Work runs after the authenticated API response is flushed where supported;
+ *    sv_run_sweep's own GET_LOCK stops overlapping sweeps.
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
