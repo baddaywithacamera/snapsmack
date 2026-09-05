@@ -37,7 +37,10 @@ curator_test(str_contains($relay, "c.state IN ('following','followed') AND f.sta
 curator_test(str_contains($admin, "['curator_toggle','curator_run']"), 'curator controls are step-up gated');
 curator_test(str_contains($portal, '@curator@photoblogs.fyi'), 'portal names the curator identity clearly');
 curator_test(str_contains($portal, 'SHOW STORED ACCOUNTS'), 'portal exposes the stored account ledger');
-curator_test(str_contains($cron, 'sc_curator_cron($pdo, $settings)'), 'normal federation cron advances the curator');
+curator_test(str_contains($cron, "\$settings['site_mode']") && str_contains($cron, "=== 'fedistructure'"), 'cron gates curator work to FEDISTRUCTURE');
+curator_test(str_contains($cron, "\$settings['node_role']") && str_contains($cron, "=== 'hub'"), 'cron gates curator work to the hub role');
+curator_test(str_contains($cron, '$is_fedistructure_hub && function_exists') && str_contains($cron, 'sc_curator_cron($pdo, $settings)'), 'only a FEDISTRUCTURE hub advances the curator');
+curator_test(str_contains($cron, "\$curator = null") && str_contains($cron, "is_array(\$curator)"), 'ordinary sites do not report curator activity');
 echo $fail === 0 ? "ALL PASS\n" : "{$fail} FAILURE(S)\n";
 exit($fail === 0 ? 0 : 1);
 // ===== SNAPSMACK EOF =====

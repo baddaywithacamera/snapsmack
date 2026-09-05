@@ -364,6 +364,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resyn
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'push_one_follower') {
+    if (!sv_enabled($sv_settings)) {
+        header('Location: ' . $sv_self . '?msg=' . urlencode('Fediverse is off — nothing was queued.'));
+        exit;
+    }
+    $one_handle = trim((string)($_POST['follower_handle'] ?? ''));
+    $one_count = max(1, min(500, (int)($_POST['follower_post_count'] ?? 12)));
+    $one_mode = (($_POST['follower_push_mode'] ?? 'create') === 'update') ? 'update' : 'create';
+    [$one_ok, $one_error, $one_notes, $one_queued] = sv_push_recent_to_follower(
+        $pdo, $sv_settings, $one_handle, $one_count, $one_mode
+    );
+    $one_msg = $one_ok
+        ? sprintf('SINGLE FOLLOWER: %d recent post(s), %d delivery job(s) queued only for %s.', $one_notes, $one_queued, $one_handle)
+        : 'NOT QUEUED — ' . $one_error;
+    header('Location: ' . $sv_self . '?msg=' . urlencode($one_msg));
+    exit;
+}
+
 // RE-IMPRINT — bump the federation generation, retract the current Notes, and
 // reseed everything under fresh ids so followers stuck in the old order re-ingest
 // clean. The only lever that reaches an already-poisoned follower.
