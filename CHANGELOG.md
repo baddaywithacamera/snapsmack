@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.637D "NO MORE GHOSTS" — 2026-09-05
+- **Deleting a post in Manage Posts now retracts its federated copy.** Before removing the local database row and files, SnapSmack queues the existing signed ActivityPub Delete/Tombstone for that exact post or standalone-image Note. Pixelfed and Mastodon no longer keep a post that vanished locally.
+- **Already-orphaned remote posts can be removed safely.** Fediverse → Push & Tools accepts only a canonical local Note path such as `ap/note/p/1` and queues a Delete to current follower inboxes. Arbitrary URLs and foreign actors are rejected. This repairs ghosts created by older builds without reseeding or touching valid posts.
 ## 0.7.635 "LET IT FINISH" — 2026-09-05
 - **Federation delivery cron runs are now bounded instead of monopolizing the worker lock.** Each scheduled run reports `running` immediately, drains for at most four minutes, leaves every unfinished delivery safely queued, releases the lock for the next tick, and reports `ok` when the tick completes. This prevents a large paced queue or slow remote inboxes from making cron appear dead for hours.
 - **Every SnapSmack install now defaults to the real network relay, `photoblogs.fyi`.** The built-in default relay address was still the retired standalone `relay.photoblogs.fyi` box (decommissioned 2026-09-04), so any install without an explicit relay URL — including the fleet hub — aimed its joins at a dead inbox and every join silently failed. The default is now `https://photoblogs.fyi/ap/actor` (a live actor with a real inbox that turns a Follow of Public into a relay join); an explicit per-site relay URL still overrides.

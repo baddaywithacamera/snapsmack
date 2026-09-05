@@ -17,12 +17,48 @@
 
 require_once 'core/auth-smack.php';
 require_once 'core/reauth.php';   // step-up auth (password + 2FA) for the orphan purge
+require_once 'core/fediverse.php'; // retract federated Notes before local deletion
+
+function snap_manage_federation_settings(PDO $pdo): array {
+    try {
+        return $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
+                   ->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+/** Queue a signed Delete while the local post still exists. */
+function snap_manage_retract_post(PDO $pdo, int $post_id): void {
+    $q = $pdo->prepare("SELECT id, post_type, fedi_pushed_at FROM snap_posts WHERE id = ? LIMIT 1");
+    $q->execute([$post_id]);
+    $post = $q->fetch(PDO::FETCH_ASSOC);
+    if (!$post || empty($post['fedi_pushed_at'])) return;
+    $settings = snap_manage_federation_settings($pdo);
+    if (!sv_enabled($settings)) return;
+    $kind = (($post['post_type'] ?? '') === 'longform') ? 'l' : 'p';
+    sv_retract_note($pdo, $settings,
+        sv_base($settings) . 'ap/note/' . $kind . '/' . $post_id . sv_gen_suffix($settings));
+}
+
+/** Queue a signed Delete for a published standalone-image Note. */
+function snap_manage_retract_standalone_image(PDO $pdo, int $image_id): void {
+    $q = $pdo->prepare("SELECT id, post_id, img_status FROM snap_images WHERE id = ? LIMIT 1");
+    $q->execute([$image_id]);
+    $image = $q->fetch(PDO::FETCH_ASSOC);
+    if (!$image || !empty($image['post_id']) || ($image['img_status'] ?? '') !== 'published') return;
+    $settings = snap_manage_federation_settings($pdo);
+    if (!sv_enabled($settings)) return;
+    sv_retract_note($pdo, $settings,
+        sv_base($settings) . 'ap/note/i/' . $image_id . sv_gen_suffix($settings));
+}
 
 /**
  * Delete one standalone image: its files, row, and image-level maps + comments.
  * Photoblog unit. (For carousel content use snap_manage_delete_post().)
  */
 function snap_manage_delete_image(PDO $pdo, int $id): void {
+    snap_manage_retract_standalone_image($pdo, $id);
     $stmt = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ?");
     $stmt->execute([$id]);
     $img = $stmt->fetch();
@@ -48,6 +84,7 @@ function snap_manage_delete_image(PDO $pdo, int $id): void {
  * invisible in the grid yet counted by the bulk-import guard as phantom content.
  */
 function snap_manage_delete_post(PDO $pdo, int $pid): void {
+    snap_manage_retract_post($pdo, $pid);
     $q = $pdo->prepare("SELECT image_id FROM snap_post_images WHERE post_id = ?");
     $q->execute([$pid]);
     $image_ids = array_map('intval', $q->fetchAll(PDO::FETCH_COLUMN));
