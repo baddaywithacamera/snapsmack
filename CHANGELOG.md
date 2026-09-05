@@ -9,6 +9,8 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.648D "COUNT ALL THE PAGES" — 2026-09-05
+- **The Release Packager's dev-tag dropdown can no longer miss the newest builds.** It fetched a single 50-tag page from GitHub, whose tag order is not newest-first — with 650+ tags on the repo, the newest dev tags (644D–647D) silently vanished from the dropdown. It now sweeps every tag page before sorting, the same fix the stable-tag list already had. (Smack Central hosts only: run UPDATE on snapsmack.ca to pick this up.)
 ## 0.7.647D "DON'T WAIT FOR THE MAILMAN" — 2026-09-05
 - **Profile pushes and Pixelix posts go out immediately instead of waiting for the cron tick.** REFRESH PROFILE ON REMOTES queued its updates and then just sat there until the next 10-minute delivery run — while telling you the remotes refresh "in a minute or two." Posting from Pixelix did the same. Both now start the delivery worker the moment the queue is filled, exactly like the CMS's own posting pages always have. (The scheduled cron remains the safety net that drains anything a kick missed.)
 ## 0.7.646D "PICTURE ON THE BADGE" — 2026-09-05
