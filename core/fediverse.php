@@ -5244,6 +5244,44 @@ function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null, string 
     return [count($creates), $n];
 }
 
+/** Queue recent posts for one existing active follower only.
+ *  This is a repair tool, not an unsolicited-delivery path: arbitrary remote
+ *  handles are rejected unless they already exist in snap_ap_followers.
+ *  @return array [ok, message, notes, deliveries]
+ */
+function sv_push_recent_to_follower(PDO $pdo, array $settings, string $handle,
+                                    int $limit = 12, string $mode = 'create'): array {
+    $handle = strtolower(trim($handle));
+    $handle = ltrim($handle, '@');
+    if ($handle === '' || substr_count($handle, '@') !== 1) {
+        return [false, 'Enter a complete follower handle such as user@example.social.', 0, 0];
+    }
+    $q = $pdo->prepare("SELECT actor_handle,inbox_url,shared_inbox_url
+        FROM snap_ap_followers
+        WHERE is_active=1 AND LOWER(TRIM(LEADING '@' FROM actor_handle))=?
+        LIMIT 1");
+    $q->execute([$handle]);
+    $follower = $q->fetch(PDO::FETCH_ASSOC);
+    if (!$follower) return [false, 'That handle is not an active follower of this site.', 0, 0];
+    $inbox = trim((string)($follower['shared_inbox_url'] ?? ''));
+    if ($inbox === '') $inbox = trim((string)($follower['inbox_url'] ?? ''));
+    if ($inbox === '') return [false, 'That follower has no usable delivery inbox.', 0, 0];
+
+    $creates = sv_recent_creates($pdo, $settings, max(1, min(500, $limit)));
+    $queued = 0;
+    foreach ($creates as $cjson) {
+        $payload = $cjson;
+        if ($mode === 'update') {
+            $create = json_decode($cjson, true);
+            $note = $create['object'] ?? null;
+            if (!is_array($note) || empty($note['id'])) continue;
+            $payload = json_encode(sv_update_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
+        }
+        if (sv_queue_delivery($pdo, $inbox, $payload) > 0) $queued++;
+    }
+    return [true, '', count($creates), $queued];
+}
+
 /** Retract (Delete/Tombstone) one of OUR Notes from every follower. Paced by
  *  the delivery cron. Fediverse-legal: deleting your own post is standard. */
 function sv_retract_note(PDO $pdo, array $settings, string $note_id): int {

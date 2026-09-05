@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.638D "STAY IN YOUR LANE" — 2026-09-05
+- **Consent-directory harvesting is invoked only by the FEDISTRUCTURE hub.** Ordinary blogs and non-hub installs no longer call or report curator maintenance at all. The existing curator identity check remains a second safety boundary, so only the real `photoblogs.fyi` hub can contact fediverse.info.
+- **Push & Tools can repair one follower without reseeding everyone.** Enter an existing active follower handle, choose Seed or Refresh and a recent-post count, and only that follower's advertised inbox is queued. Unknown and inactive handles are refused so this cannot become an unsolicited-delivery tool.
+- **Public pages stop launching duplicate background work when real cron is healthy.** Federation and RSS CLI jobs leave separate heartbeats; while those are current, the public-page fallback does not start another network sweep after visitor requests. If system cron stops, the fallback automatically becomes eligible again after a short grace period.
 ## 0.7.637D "SHOW YOUR WORK" — 2026-09-05
 - **Cron status now proves the registered command and recent execution.** A stale federation job is shown as stale even when its tag still exists, and REGISTER remains available to repair it. Registered jobs write to protected per-job logs instead of discarding every CLI fatal into `/dev/null`.
 - **Partially migrated FEDBOARD databases self-heal their live roster columns.** Missing `fediverse_enabled` or `fedboard_sso_enabled` columns are added before roster reads/writes, fixing the confirmed All in the Wrist refresh failure.
