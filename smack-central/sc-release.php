@@ -264,15 +264,23 @@ function sc_list_tags(): array|false {
 
 // ── Helper: list BITCHIN' (D-suffix) dev tags from GitHub ────────────────────
 // Returns vX.Y.ZD tags sorted newest-first. At most 3.
+// Pages through EVERY tag page: GitHub's /tags order is not newest-first, and
+// with 650+ tags on the repo a single 50-tag page silently dropped the newest
+// dev builds from the packager dropdown (v0.7.644D–647D went missing on
+// 2026-09-05). Same failure sc_list_tags() was already fixed for — but unlike
+// the stable list we can never stop early on a count: the newest tag can sit
+// on ANY page, so only a full sweep guarantees it's seen.
 function sc_list_dev_tags(): array {
-    $data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=50');
-    if (!is_array($data)) return [];
-    $tags = array_column($data, 'name');
-
-    // Keep only D-suffix dev tags (e.g. v0.7.184D).
-    $tags = array_values(array_filter($tags, function (string $t): bool {
-        return (bool) preg_match('/^v?\d+\.\d+\.\d+D$/i', $t);
-    }));
+    $tags = [];
+    for ($page = 1; $page <= 10; $page++) {
+        $data = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/tags?per_page=100&page=' . $page);
+        if (!is_array($data) || !$data) break;
+        foreach (array_column($data, 'name') as $t) {
+            // Keep only D-suffix dev tags (e.g. v0.7.184D).
+            if (preg_match('/^v?\d+\.\d+\.\d+D$/i', $t)) $tags[] = $t;
+        }
+        if (count($data) < 100) break;                  // last page
+    }
 
     // Sort descending — strip D suffix before numeric version_compare.
     usort($tags, function ($a, $b): int {
