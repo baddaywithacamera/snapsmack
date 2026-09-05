@@ -42,6 +42,24 @@ function cron_job_registered(string $tag): bool {
     return $code === 0 && strpos(implode("\n", $out), $tag) !== false;
 }
 
+/** Return the exact tagged line plus whether it invokes the expected PHP script. */
+function cron_job_inspect(string $tag, string $schedule, string $script_abs): array {
+    if (!function_exists('exec')) return ['registered'=>false, 'valid'=>false, 'line'=>'', 'problem'=>'crontab unavailable'];
+    $out = []; $code = 1;
+    @exec('crontab -l 2>&1', $out, $code);
+    if ($code !== 0) return ['registered'=>false, 'valid'=>false, 'line'=>'', 'problem'=>'crontab unavailable'];
+    $matches = array_values(array_filter($out, static fn($line) => strpos((string)$line, $tag) !== false));
+    if (!$matches) return ['registered'=>false, 'valid'=>false, 'line'=>'', 'problem'=>'tag is absent'];
+    if (count($matches) !== 1) return ['registered'=>true, 'valid'=>false, 'line'=>implode("\n", $matches), 'problem'=>'duplicate tagged entries'];
+    $line = trim((string)$matches[0]);
+    $script_real = realpath($script_abs) ?: $script_abs;
+    $valid = str_starts_with($line, trim($schedule) . ' ')
+        && strpos($line, $script_real) !== false
+        && strpos($line, $tag) !== false;
+    return ['registered'=>true, 'valid'=>$valid, 'line'=>$line,
+            'problem'=>$valid ? '' : 'registered command does not match this job'];
+}
+
 /** Start a CLI job outside the web request's process group. */
 function cron_run_detached(string $php_cli, string $script_abs): bool {
     if (!function_exists('exec') || DIRECTORY_SEPARATOR === '\\'
@@ -67,9 +85,12 @@ function cron_run_detached(string $php_cli, string $script_abs): bool {
     } elseif ($nohup !== '') {
         $prefix = escapeshellarg($nohup) . ' ';
     }
+    $log_dir = dirname(__DIR__) . '/logs';
+    if (!is_dir($log_dir)) @mkdir($log_dir, 0750, true);
+    $log_path = $log_dir . '/cron-' . preg_replace('/\.php$/i', '', basename($script_abs)) . '.log';
     $out = []; $code = 1;
     @exec($prefix . escapeshellarg($php_cli) . ' ' . escapeshellarg($script_abs)
-        . ' < /dev/null > /dev/null 2>&1 &', $out, $code);
+        . ' < /dev/null >> ' . escapeshellarg($log_path) . ' 2>&1 &', $out, $code);
     return $code === 0;
 }
 
@@ -92,7 +113,19 @@ function cron_register_job(string $schedule, string $script_abs, string $tag): a
 
     // Drop any existing line carrying our tag, then append the fresh one.
     $cleaned = preg_replace('/.*' . preg_quote($tag, '/') . '.*\n?/', '', $current);
-    $entry   = "{$schedule} {$php} {$script_abs} >> /dev/null 2>&1 {$tag}";
+    // Never throw cron evidence away. Each job owns a web-denied, durable log
+    // that survives the request which registered it and exposes CLI fatals that
+    // Apache's error log cannot see.
+    $log_dir = dirname(__DIR__) . '/logs';
+    if (!is_dir($log_dir)) @mkdir($log_dir, 0750, true);
+    if (is_dir($log_dir)) {
+        $deny = $log_dir . '/.htaccess';
+        if (!is_file($deny)) @file_put_contents($deny, "Require all denied\n");
+    }
+    $safe_tag = trim(preg_replace('/[^a-z0-9_-]+/i', '-', trim($tag, "# \t\r\n")), '-');
+    $log_path = $log_dir . '/cron-' . ($safe_tag !== '' ? $safe_tag : 'job') . '.log';
+    $entry = trim($schedule) . ' ' . escapeshellarg($php) . ' ' . escapeshellarg($script_abs)
+           . ' >> ' . escapeshellarg($log_path) . ' 2>&1 ' . $tag;
     $new     = trim((string)$cleaned) . "\n" . $entry . "\n";
 
     $tmp = tempnam(sys_get_temp_dir(), 'sscron');

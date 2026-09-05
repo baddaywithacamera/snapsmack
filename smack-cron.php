@@ -149,8 +149,14 @@ include 'core/sidebar.php';
     <?php foreach ($CRON_JOBS as $job):
         $last       = (string)($settings[$job['last_key']] ?? '');
         $status     = (string)($settings[$job['status_key']] ?? '');
-        $registered = cron_job_registered($job['tag']);
+        $script_abs = realpath(__DIR__ . '/' . $job['script']) ?: (__DIR__ . '/' . $job['script']);
+        $inspection = cron_job_inspect($job['tag'], $job['schedule'], $script_abs);
+        $registered = (bool)$inspection['registered'];
+        $command_ok = (bool)$inspection['valid'];
         $ever_ran   = $last !== '';
+        $last_epoch = $ever_ran ? (strtotime($last) ?: 0) : 0;
+        $stale_after = $job['key'] === 'fediverse' ? 1200 : ($job['key'] === 'rss' ? 7200 : 46800);
+        $stale = !$last_epoch || (time() - $last_epoch) > $stale_after;
     ?>
     <div class="box mb-20">
         <h3><?php echo htmlspecialchars($job['label']); ?></h3>
@@ -171,8 +177,12 @@ include 'core/sidebar.php';
                 <tr>
                     <th>Scheduled</th>
                     <td>
-                        <?php if ($registered): ?>
-                            &#10003; registered in crontab
+                        <?php if ($registered && $command_ok && !$stale): ?>
+                            &#10003; registered, command verified, and running on schedule
+                        <?php elseif ($registered && $command_ok): ?>
+                            &#10007; registered command is valid, but the job is stale and is not running on schedule
+                        <?php elseif ($registered): ?>
+                            &#10007; tagged entry exists, but it is invalid: <?php echo htmlspecialchars((string)$inspection['problem']); ?>
                         <?php else: ?>
                             &#10007; not registered &mdash; this job won't run on its own until you register it
                         <?php endif; ?>
@@ -184,7 +194,7 @@ include 'core/sidebar.php';
             <?php csrf_field(); ?>
             <input type="hidden" name="job" value="<?php echo htmlspecialchars($job['key']); ?>">
             <button type="submit" name="cron_action" value="run_now" class="btn-smack">RUN NOW</button>
-            <?php if (!$registered): ?>
+            <?php if (!$registered || !$command_ok || $stale): ?>
                 <button type="submit" name="cron_action" value="register" class="btn-smack">REGISTER</button>
             <?php else: ?>
                 <button type="submit" name="cron_action" value="remove" class="btn-smack btn-smack--danger">UNREGISTER</button>

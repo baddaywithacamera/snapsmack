@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.637D "SHOW YOUR WORK" — 2026-09-05
+- **Cron status now proves the registered command and recent execution.** A stale federation job is shown as stale even when its tag still exists, and REGISTER remains available to repair it. Registered jobs write to protected per-job logs instead of discarding every CLI fatal into `/dev/null`.
+- **Partially migrated FEDBOARD databases self-heal their live roster columns.** Missing `fediverse_enabled` or `fedboard_sso_enabled` columns are added before roster reads/writes, fixing the confirmed All in the Wrist refresh failure.
 ## 0.7.636D "NO MORE GHOSTS" — 2026-09-05
 - **SNAP HQ can save the FoundTextures hub's whole-post AI prompt.** A hub intentionally has no self-referential spoke row, so it cannot mint itself a GYSS key through the spoke-only provisioning route. The hub now accepts its existing SNAP HQ key for `GET|POST gyss/prompt` only; that key remains forbidden from photo export, metadata, batch editing, and every other GYSS operation.
 - **Deleting a post in Manage Posts now retracts its federated copy.** Before removing the local database row and files, SnapSmack queues the existing signed ActivityPub Delete/Tombstone for that exact post or standalone-image Note. Pixelfed and Mastodon no longer keep a post that vanished locally.
