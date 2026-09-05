@@ -36,10 +36,16 @@ const SNAPSMACK_MANIFEST_HIDEABLE_CONTROLS = [
 
 /**
  * Return a normalized declarative manifest for an installed skin.
+ * Tolerates a null/empty slug (no skins installed, unset active skin) by
+ * returning an empty manifest — passing null here 500'd the whole Skin
+ * Manager on installs whose skins all predate manifests (2026-09-05).
  */
-function load_skin_manifest(string $slug): array {
+function load_skin_manifest(?string $slug): array {
     static $cache = [];
 
+    if ($slug === null) {
+        return [];
+    }
     $slug = strtolower(trim($slug));
     if (!preg_match('/^[a-z0-9][a-z0-9-]{0,63}$/', $slug)) {
         error_log('SnapSmack: refused invalid skin manifest slug');
