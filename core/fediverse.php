@@ -3325,10 +3325,13 @@ function sv_unsend_dm(PDO $pdo, array $settings, int $dm_id): array {
 
 function sv_relay_actor_url(array $settings): string {
     $u = trim($settings['photoblogs_relay_url'] ?? '');
-    // Default is the SnapSmack network relay actor. Must be the relay's own
-    // actor (relay.photoblogs.fyi/actor) — NOT photoblogs.fyi/actor, which is
-    // the photoblogs.fyi blog's homepage and has no inbox, so joins never fire.
-    return $u !== '' ? $u : 'https://relay.photoblogs.fyi/actor';
+    // THE SnapSmack network relay is photoblogs.fyi itself (the smackcast CMS hub):
+    // its actor at /ap/actor has a real inbox and turns a Follow of as:Public into a
+    // relay JOIN. Every SnapSmack install points here — it populates the LOCAL reader
+    // and feeds GLOBAL. The old default (the standalone relay.photoblogs.fyi box) was
+    // RETIRED + decommissioned 2026-09-04; pointing here stops every install defaulting
+    // to a dead inbox. An explicit photoblogs_relay_url still overrides.
+    return $u !== '' ? $u : 'https://photoblogs.fyi/ap/actor';
 }
 
 /** Join the FEDIVERSE network relay. Idempotent. @return [bool ok, string msg] */
