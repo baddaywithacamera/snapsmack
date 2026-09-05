@@ -237,9 +237,14 @@ include 'core/sidebar.php';
                 <button type="submit" class="btn-smack">APPLY</button>
             </form>
         <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
 
-        <h4 class="mt-20">FLEET</h4>
-        <p class="dim mb-20">Join every connected spoke to this relay in one pass. Each blog is reviewed
+    <!-- FLEET RELAY JOIN — any hub with connected multisite spokes -->
+    <?php if ($sc_fleet_spoke_count > 0): ?>
+    <div class="box mb-20">
+        <h3>FLEET</h3>
+        <p class="dim mb-20">Join every connected spoke to the relay in one pass. Each blog is reviewed
             first: one with federation off, no chosen handle, or the old domain-as-handle default is
             flagged for fixing FIRST — it never joins as-is. Joining needs your password and 2FA code.</p>
 
@@ -306,11 +311,16 @@ include 'core/sidebar.php';
                     <?php endforeach; ?>
                     </tbody>
                 </table>
-                <p class="dim">Ticked blogs join <code><?php echo htmlspecialchars(sv_actor_url($sv_settings)); ?></code>.
+                <?php if ($sc_fleet_join_allowed): ?>
+                <p class="dim">Ticked blogs join <code><?php echo htmlspecialchars($sc_fleet_relay_target); ?></code><?php echo $sc_is_hub_install ? ' (this blog is the relay)' : ' (the relay this blog is joined to)'; ?>.
                     Each blog is re-checked at join time; a flagged blog is refused even if submitted.</p>
                 <input type="password" name="reauth_password" placeholder="Password" autocomplete="off" required>
                 <input type="text" name="reauth_totp" placeholder="2FA code" inputmode="numeric" autocomplete="off">
                 <button type="submit" class="master-update-btn">JOIN SELECTED TO NETWORK</button>
+                <?php else: ?>
+                <p class="dim">&#9888; This blog is not joined to the relay itself yet. Join it first
+                    (JOIN NETWORK above) — the fleet then joins the same relay this blog uses.</p>
+                <?php endif; ?>
                 <a class="btn-smack" href="<?php echo htmlspecialchars($sv_self); ?>?fleet_review=1">RE-REVIEW</a>
             </form>
         <?php endif; ?>

@@ -466,15 +466,23 @@ function sc_fleet_status_row(array $node): array {
     return $row;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $sc_is_hub_install
-    && ($_POST['action'] ?? '') === 'fleet_join') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'fleet_join') {
     $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
     if (!$ra['ok']) {
         header('Location: ' . $sv_self . '?fleet_review=1&msg=' . urlencode('Fleet join refused — ' . $ra['error']));
         exit;
     }
+    // The relay the fleet joins: this blog's own actor when this blog IS the
+    // smackcast relay; otherwise the relay THIS hub is itself joined to. A
+    // multisite hub that is only a relay MEMBER fans its spokes out to the same
+    // relay it uses — and a hub joined to nothing is refused, so the stale
+    // default relay address can never be propagated to the whole fleet.
+    if (!$sc_is_hub_install && (string)($sv_settings['photoblogs_relay_joined'] ?? '0') !== '1') {
+        header('Location: ' . $sv_self . '?fleet_review=1&msg=' . urlencode('Fleet join refused — join THIS blog to the relay first (JOIN NETWORK above), so the fleet joins the same relay it does.'));
+        exit;
+    }
     $fj_picked  = array_map('intval', (array)($_POST['spoke_ids'] ?? []));
-    $fj_relay   = sv_actor_url($sv_settings);   // this hub IS the relay: spokes join ITS actor
+    $fj_relay   = $sc_is_hub_install ? sv_actor_url($sv_settings) : sv_relay_actor_url($sv_settings);
     $fj_results = [];
     foreach (sc_fleet_spokes($pdo) as $fj_node) {
         if (!in_array((int)$fj_node['id'], $fj_picked, true)) continue;
@@ -534,12 +542,17 @@ if ($sc_is_hub_install) {
     } catch (Throwable $e) { $sc_subscribers = []; }
 }
 
-// FLEET JOIN state for the portal: the review sweep (read-only, one status call
-// per spoke) runs on ?fleet_review=1; join results ride the session across the
+// FLEET JOIN state for the portal: the panel shows on ANY hub with connected
+// multisite spokes (that is where the spoke keys live — it need not be the
+// smackcast relay itself). The review sweep (read-only, one status call per
+// spoke) runs on ?fleet_review=1; join results ride the session across the
 // post-join redirect and are shown once.
-$sc_fleet_spoke_count = $sc_is_hub_install ? count(sc_fleet_spokes($pdo)) : 0;
-$sc_fleet_review      = null;
-if ($sc_is_hub_install && isset($_GET['fleet_review'])) {
+$sc_fleet_spoke_count  = count(sc_fleet_spokes($pdo));
+$sc_fleet_relay_target = $sc_is_hub_install ? sv_actor_url($sv_settings) : sv_relay_actor_url($sv_settings);
+$sc_fleet_join_allowed = $sc_is_hub_install
+    || (string)($sv_settings['photoblogs_relay_joined'] ?? '0') === '1';
+$sc_fleet_review = null;
+if ($sc_fleet_spoke_count > 0 && isset($_GET['fleet_review'])) {
     $sc_fleet_review = array_map('sc_fleet_status_row', sc_fleet_spokes($pdo));
 }
 $sc_fleet_results = $_SESSION['sc_fleet_results'] ?? [];
