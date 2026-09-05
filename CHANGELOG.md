@@ -9,6 +9,8 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.643D "LINE THEM UP" — 2026-09-05
+- **The right-side social dock now lines up with the heart.** On single-image pages the dock column's bottom icon sits at exactly the same height as the like-heart on the left (bottom 84px, inset 30px — mirror positions). Before, the dock parked itself 12px above the bottom nav at whatever height that happened to be, so the two sides never matched. The keep-clear logic still lifts the dock higher when a tall bottom bar would overlap it — it just never drops below its resting spot anymore. Harness-verified: heart and bottom icon bottom edges match exactly.
 ## 0.7.642D "NOTHING TO WEAR" — 2026-09-05
 - **The Skin Manager no longer crashes on installs whose skins predate manifests.** The picker only listed skins with a `manifest.json`; on a box where every installed skin is an older build (most of the deployed fleet, including foundtextures), the list came up empty and the page died with an HTTP 500 — locking the admin out of the one page that can update the skins. Legacy skins now list normally, marked "(legacy — update it from the gallery)", the page renders even with no skins at all, and the manifest loader tolerates a missing skin instead of fataling.
 ## 0.7.641D "NOT ON THE GUEST LIST" — 2026-09-05 (SECAUDIT 055)

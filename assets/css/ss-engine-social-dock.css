@@ -191,8 +191,13 @@
 }
 
 .dock-right-bottom {
-    right: 16px;
-    bottom: 16px;
+    /* Mirrors the community dock heart (ss-cdock-bottom-left: left 30px,
+       bottom 84px) so the column's bottom icon lines up with the heart on
+       single-image pages. The JS clamp treats this as the RESTING position
+       and only ever raises the dock above it (never below) to clear the
+       bottom nav. */
+    right: 30px;
+    bottom: 84px;
 }
 
 
