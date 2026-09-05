@@ -229,6 +229,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'push_
     // Keep the fingerprint in step so the cron doesn't immediately re-push the
     // same state on its next run.
     sv_set_setting($pdo, $sv_settings, 'fediverse_actor_fp', sv_actor_profile_fingerprint($pdo, $sv_settings));
+    // Drain NOW — the button promises the remotes refresh in a minute or two,
+    // which was a lie while the queued Updates sat until the next cron tick.
+    require_once __DIR__ . '/fediverse-kick.php';
+    sv_kick_delivery();
     $ppmsg = $ppn > 0
         ? "PROFILE UPDATE queued to {$ppn} follower inbox(es) — your name, bio and avatar refresh on the remotes as the delivery cron drains (~a minute or two)."
         : 'No active followers to update yet — remotes fetch your current profile the moment someone follows.';
@@ -249,6 +253,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'rollc
     $rc_n = sv_push_actor_update($pdo, $sv_settings);
     // Keep the fingerprint in step so the cron doesn't immediately re-push.
     sv_set_setting($pdo, $sv_settings, 'fediverse_actor_fp', sv_actor_profile_fingerprint($pdo, $sv_settings));
+    // Same immediate drain as push_profile_update — the directory reads the
+    // remotes' cached bio, so the queued Update must not wait for the tick.
+    require_once __DIR__ . '/fediverse-kick.php';
+    sv_kick_delivery();
     // The bio is live on OUR server the moment the settings are saved (the
     // directory fetches the actor doc fresh), so we can submit immediately.
     if ($rc_on === '1') {

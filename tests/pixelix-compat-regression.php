@@ -85,5 +85,8 @@ if (strpos($auth, 'snapsmack_oauth_return') === false) { fwrite(STDERR, "OAuth c
 if (strpos($api, "\$slug . '__skin_avatar'") === false) { fwrite(STDERR, "Pixelix avatar must resolve the per-skin PROFILE AVATAR (<skin>__skin_avatar)\n"); exit(1); }
 if (strpos($api, "px_setting(\$pdo,'fediverse_handle'") === false) { fwrite(STDERR, "Pixelix username must come from fediverse_handle (the real key)\n"); exit(1); }
 if (strpos($api, "never advertise a broken image") === false) { fwrite(STDERR, "Pixelix avatar must be existence-checked before advertising\n"); exit(1); }
+// 0.7.647D: publishing from Pixelix must kick the delivery worker (like the
+// CMS posting pages do) — without it the post sat queued until the cron tick.
+if (strpos($api, 'sv_kick_delivery();') === false) { fwrite(STDERR, "Pixelix publish must kick the delivery worker\n"); exit(1); }
 echo "Pixelix compatibility regression checks passed.\n";
 // ===== SNAPSMACK EOF =====

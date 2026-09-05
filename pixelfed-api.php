@@ -256,6 +256,11 @@ if ($route==='api/v1/statuses' && $method==='POST') {
         $u=$pdo->prepare("UPDATE snap_images SET img_status='published',img_description=?,allow_comments=? WHERE id=?");foreach($ids as$id)$u->execute([$status,$allowComments,$id]);
         $pdo->commit();
     } catch(Throwable $e) { if($pdo->inTransaction())$pdo->rollBack();px_json(['error'=>'Post could not be created'],500); }
+    // Kick the CLI delivery worker so the new post federates NOW, exactly like
+    // the CMS's own posting pages do (smack-post-gram.php) — without this a
+    // Pixelix post sat in the outbound queue until the next 10-minute cron tick.
+    require_once __DIR__ . '/core/fediverse-kick.php';
+    sv_kick_delivery();
     px_json(px_status($pdo,$pid));
 }
 if (preg_match('#^api/v1/statuses/(\d+)$#',$route,$m) && $method==='GET') { px_require_scope($token,'read');$s=px_status($pdo,(int)$m[1]);if(!$s)px_json(['error'=>'Record not found'],404);px_json($s); }
