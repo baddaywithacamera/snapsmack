@@ -9,6 +9,8 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.642D "NOTHING TO WEAR" — 2026-09-05
+- **The Skin Manager no longer crashes on installs whose skins predate manifests.** The picker only listed skins with a `manifest.json`; on a box where every installed skin is an older build (most of the deployed fleet, including foundtextures), the list came up empty and the page died with an HTTP 500 — locking the admin out of the one page that can update the skins. Legacy skins now list normally, marked "(legacy — update it from the gallery)", the page renders even with no skins at all, and the manifest loader tolerates a missing skin instead of fataling.
 ## 0.7.641D "NOT ON THE GUEST LIST" — 2026-09-05 (SECAUDIT 055)
 - **Release packages can never carry dev directories again.** `tests/` and `wip/` were missing from the packager's exclude list and shipped to every install for months; `core/tests/` rode along with core. Both packagers now exclude them, and the release build HARD-FAILS — refusing to produce a package at all — if any dev path somehow reaches the final zip.
 - **SMACKBACK never trusts dev directories, no matter how they arrived.** The old baseline blessed whatever was on disk at capture time, so the shipped junk became "trusted" and tampering inside it would never have fired. `tests/`, `wip/`, `smack-central/` and `core/tests/` are now refused at baseline time, previously-laundered baseline rows are pruned on the next scan, and `wip/` stops being a monitoring blind spot. Files found in these paths are reported in their own red DEV DIRECTORIES bucket on SMACK-BACK — loudly visible, but deliberately NOT a lockout, because they currently sit on the whole fleet and a breach-response would lock every admin panel at once.
