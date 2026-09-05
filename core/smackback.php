@@ -466,22 +466,27 @@ function smackback_should_monitor(string $abs_path): bool {
         // smackback_scan_skins_for_js(); skin PHP/CSS integrity is intentionally
         // out of SMACKBACK's core scope (see project_smackback_false_breach_lockout).
         'skins/',
-        // Dev scratch & recovery dumps — never part of a release and must never
-        // trip the monitor. wip/ is developer scratch; _crash-recovery-<date>/ is
-        // SMACKBACK's own pre-change snapshot; _to_delete/ is quarantine. These
-        // leaking into the scan flagged 'unexpected' and LOCKED every spoke after a
-        // core update (2026-07-18, 0.7.418). Prefix match catches the dated folder.
-        'wip/',
+        // SMACKBACK's own recovery dumps — never part of a release and never
+        // monitored. _crash-recovery-<date>/ is the pre-change snapshot;
+        // _to_delete/ is quarantine. Prefix match catches the dated folder.
+        // NOTE (SECAUDIT 055): wip/ is deliberately NO LONGER excluded here.
+        // Excluding it made it a permanent webshell blind spot — a dropped
+        // .php in wip/ was invisible to every scan. It is now monitored and
+        // routed to the non-locking DEV DIRS bucket by smackback_verify_all()
+        // (never blessed at baseline, never a lockout — the 0.7.418 lesson).
         '_crash-recovery-',
         '_to_delete/',
     ];
-    // smack-central/ is release-packaging staging that exists ONLY on the Smack
-    // Central host (identified by its private signing config, sc-config.php). On
-    // any real install — hub or spoke — its presence is leaked central code and
-    // SHOULD trip the alarm, exactly like forum-server/ above (secaudit 028
-    // Finding B). Keep it excluded only on the SC host itself, where it's legit.
+    // On the Smack Central host itself (identified by its private signing
+    // config, sc-config.php) the dev/central directories are legitimate
+    // residents — exclude them there. On any real install — hub or spoke —
+    // they are leaked dev/central code (SECAUDIT 055, secaudit 028 Finding B)
+    // and stay monitored so verify can report them in the DEV DIRS bucket.
     if (is_file($root . '/smack-central/sc-config.php')) {
         $excluded_dirs[] = 'smack-central/';
+        $excluded_dirs[] = 'tests/';
+        $excluded_dirs[] = 'core/tests/';
+        $excluded_dirs[] = 'wip/';
     }
     foreach ($excluded_dirs as $dir) {
         if (strpos($rel, $dir) === 0) {
@@ -516,6 +521,63 @@ function smackback_should_monitor(string $abs_path): bool {
     }
 
     return true;
+}
+
+/**
+ * Dev/central directories that must NEVER be trusted on an install, no matter
+ * how they arrived (SECAUDIT 055). The release packager shipped tests/ and
+ * wip/ fleet-wide, and because they were on disk at baseline time,
+ * init_from_disk() folded them into the TRUSTED baseline — SMACKBACK ended up
+ * vouching for the leak instead of reporting it. These prefixes are refused at
+ * baseline time (both init paths), pruned from any existing baseline, and
+ * reported as their own DEV DIRS bucket at verify time.
+ *
+ * DELIBERATELY NOT A BREACH: they sit on ~28 installs today, so treating
+ * presence as a breach would lock every admin panel in the fleet at once
+ * (the exact 0.7.418 lockout class). They surface loudly instead; once the
+ * fleet sweep is done and verified, presence can be promoted to a breach.
+ *
+ * On the Smack Central host itself these directories are legitimate — the
+ * list is empty there (matches the should_monitor() exclusion above).
+ */
+function smackback_dev_dir_prefixes(): array {
+    if (is_file(SNAPSMACK_ROOT . '/smack-central/sc-config.php')) {
+        return [];
+    }
+    return ['tests/', 'core/tests/', 'wip/', 'smack-central/'];
+}
+
+/** True when a webroot-relative path sits inside a never-trust dev directory. */
+function smackback_is_dev_dir(string $rel): bool {
+    foreach (smackback_dev_dir_prefixes() as $prefix) {
+        if (strpos($rel, $prefix) === 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Remove any manifest rows under the never-trust prefixes — rows an older
+ * build laundered in via init_from_disk. Pruning them means (a) SMACKBACK
+ * stops guaranteeing the leaked files' integrity, and (b) deleting the
+ * directories off the box can never read as a MISSING breach — which is what
+ * makes the fleet-wide cleanup sweep safe to run.
+ */
+function smackback_prune_dev_dir_rows(): int {
+    global $pdo;
+    $pruned = 0;
+    try {
+        foreach (smackback_dev_dir_prefixes() as $prefix) {
+            $del = $pdo->prepare("DELETE FROM snap_file_manifest WHERE file_path LIKE ?");
+            $del->execute([str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $prefix) . '%']);
+            $pruned += $del->rowCount();
+        }
+    } catch (PDOException $e) { /* manifest table absent — nothing to prune */ }
+    if ($pruned > 0) {
+        error_log("SMACKBACK: pruned {$pruned} dev-dir manifest row(s) — never-trust paths (SECAUDIT 055)");
+    }
+    return $pruned;
 }
 
 /**
@@ -865,6 +927,12 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
             if (str_starts_with($path, 'skins/')) {
                 continue;
             }
+            // Never-trust dev dirs (SECAUDIT 055): even if a package carries
+            // them, they are refused a baseline row — presence gets reported by
+            // verify, never guaranteed by the manifest.
+            if (smackback_is_dev_dir($path)) {
+                continue;
+            }
             // Use eof_signature from manifest JSON if present (build pipeline sets this).
             // Fall back to computing from installed file on disk.
             $eof_sig = $info['eof_signature'] ?? null;
@@ -902,6 +970,10 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
         // skin-free core manifest. (init_from_disk already prunes; this aligns the
         // update path.)
         $pdo->exec("DELETE FROM snap_file_manifest WHERE file_path LIKE 'skins/%'");
+
+        // Same for never-trust dev dirs: rows a pre-055 baseline laundered in
+        // must not survive the update (SECAUDIT 055).
+        smackback_prune_dev_dir_rows();
     } catch (PDOException $e) {
         error_log('SMACKBACK: init_manifest skipped — ' . $e->getMessage());
         return false;
@@ -956,6 +1028,13 @@ function smackback_init_from_disk(): bool {
 
         foreach ($files as $abs) {
             $rel     = smackback_rel($abs);
+            // Never-trust dev dirs (SECAUDIT 055): this is the exact laundering
+            // hole — whatever sat on disk at init time got blessed. These paths
+            // are never blessed; the orphan prune below then drops any rows a
+            // pre-055 baseline had already absorbed for them.
+            if (smackback_is_dev_dir($rel)) {
+                continue;
+            }
             $hash    = hash_file('sha256', $abs);
             $size    = filesize($abs);
             $eof_sig = smackback_get_eof_signature($abs);
@@ -1074,6 +1153,7 @@ function smackback_verify_all(string $source = 'unknown'): array {
             'corrupted'  => [],
             'missing'    => [],
             'unexpected' => [],
+            'dev_dirs'   => [],
             'ok'         => 0,
             'checked'    => 0,
             'duration'   => 0.0,
@@ -1084,8 +1164,17 @@ function smackback_verify_all(string $source = 'unknown'): array {
     $truncated = [];
     $corrupted = [];
     $missing   = [];
+    $dev_dirs  = [];
     $ok_count  = 0;
     $now       = date('Y-m-d H:i:s');
+
+    // Never-trust dev dirs (SECAUDIT 055): a pre-055 baseline may still carry
+    // laundered rows for them — prune here so this very scan stops vouching for
+    // leaked files, and so the cleanup sweep can never produce MISSING rows.
+    smackback_prune_dev_dir_rows();
+    $rows = array_values(array_filter($rows, function (array $row): bool {
+        return !smackback_is_dev_dir((string)$row['file_path']);
+    }));
 
     $stmt_update = $pdo->prepare(
         "UPDATE snap_file_manifest
@@ -1143,7 +1232,14 @@ function smackback_verify_all(string $source = 'unknown'): array {
         foreach (smackback_get_monitored_files() as $abs) {
             $rel = smackback_rel($abs);
             if (!isset($known[$rel])) {
-                $unexpected[] = $rel;
+                // Files inside a never-trust dev dir get their own bucket:
+                // loudly reported, never baselined, but NOT a lockout — they
+                // sit on the whole fleet today (SECAUDIT 055).
+                if (smackback_is_dev_dir($rel)) {
+                    $dev_dirs[] = $rel;
+                } else {
+                    $unexpected[] = $rel;
+                }
             }
         }
     }
@@ -1172,6 +1268,7 @@ function smackback_verify_all(string $source = 'unknown'): array {
         'corrupted'  => count($corrupted),
         'missing'    => count($missing),
         'unexpected' => count($unexpected),
+        'dev_dirs'   => count($dev_dirs),
         'duration'   => $duration,
         'maint_lock' => snap_maint_lock_state(),
         'version'    => defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : null,
@@ -1184,6 +1281,7 @@ function smackback_verify_all(string $source = 'unknown'): array {
         'corrupted'  => $corrupted,
         'missing'    => $missing,
         'unexpected' => $unexpected,
+        'dev_dirs'   => $dev_dirs,
         'ok'         => $ok_count,
         'checked'    => count($rows),
         'duration'   => $duration,

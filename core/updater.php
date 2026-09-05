@@ -279,6 +279,16 @@ const UPDATER_DEPRECATED_FILES = [
 const UPDATER_DEPRECATED_DIRS = [
     'wip' => '0.7.426',  // dev work-in-progress scratch; never belongs on an install
     'projects/smackverse-relay' => '0.7.585D',  // renamed → projects/photoblogs-relay (de-smackverse)
+    // SECAUDIT 055: the packager shipped these fleet-wide (tests/ actively,
+    // smack-central/ as pre-exclusion leftovers) and nothing ever cleaned them
+    // off. Regression tests, the release packager, and core test scripts have
+    // no business on a live install. SMACKBACK never trusts these paths
+    // (smackback_dev_dir_prefixes), so removal cannot read as a MISSING breach.
+    // The SC host itself is safe: sc-config.php is gitignored, never ships, and
+    // updates never run against the packaging tree.
+    'tests'         => '0.7.641D',
+    'core/tests'    => '0.7.641D',
+    'smack-central' => '0.7.641D',
 ];
 
 // ─── VERSION CHECK ──────────────────────────────────────────────────────────
@@ -2142,6 +2152,14 @@ function updater_remove_known_orphans(string $installing_version): array {
             continue;
         }
         if (str_contains($rel_path, '..') || str_starts_with($rel_path, '/')) {
+            continue;
+        }
+        // On the Smack Central host itself (private signing config present) the
+        // dev/central directories are legitimate residents — deleting
+        // smack-central/ there would delete the release packager. Skip the
+        // SECAUDIT 055 entries on that one box; every real install proceeds.
+        if (in_array($rel_path, ['tests', 'core/tests', 'smack-central'], true)
+            && is_file($root . '/smack-central/sc-config.php')) {
             continue;
         }
         $full = $root . '/' . ltrim($rel_path, '/');
