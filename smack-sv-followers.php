@@ -80,17 +80,15 @@ include 'core/sidebar.php';
                             <input type="hidden" name="action" value="register_cron">
                             <button type="submit" class="btn-smack" style="padding:2px 10px;">SCHEDULE IT</button>
                         </form>
-                    <?php elseif ($sv_webcron_on): ?>
-                        &#10003; running automatically<?php echo $sv_cron_last !== ''
-                            ? ' — last run ' . htmlspecialchars($sv_cron_last) . ($sv_cron_ok ? '' : ' (stale)')
-                            : ' — runs on the next visit to this site'; ?>
-                        <p class="dim">This host won&rsquo;t allow a scheduled background job, so SnapSmack
-                            runs the jobs itself whenever the site is visited (at most once every 10&nbsp;min).
-                            No server access or setup needed. Use RUN FEDIVERSE JOBS NOW below to run them this second.</p>
                     <?php else: ?>
-                        &#9888; automatic running is turned off, and this host won&rsquo;t let SnapSmack schedule jobs.
-                        Turn automatic running back on, or add this line on the server:
-                        <code>*/10 * * * * php <?php echo htmlspecialchars(__DIR__); ?>/cron-fediverse.php</code>
+                        &#9888; no scheduled job on this host<?php echo $sv_cron_last !== ''
+                            ? ' — last run ' . htmlspecialchars($sv_cron_last) . ($sv_cron_ok ? '' : ' (stale)')
+                            : ''; ?>
+                        <p class="dim">This host won&rsquo;t let SnapSmack schedule jobs itself. Deliveries
+                            still run when the hub&rsquo;s CRONOMETER driver calls this site, or when you press
+                            RUN FEDIVERSE JOBS NOW below. For fully automatic running, add this line in your
+                            hosting panel&rsquo;s scheduler:
+                            <code>*/10 * * * * php <?php echo htmlspecialchars(__DIR__); ?>/cron-fediverse.php</code></p>
                     <?php endif; ?>
                 </td>
             </tr>

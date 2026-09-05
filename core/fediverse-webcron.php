@@ -7,8 +7,11 @@
  * federation, RSS, or roster maintenance.
  *
  * Safety:
- *  - No-op on CLI, when FEDIVERSE is off, or when fediverse_webcron_enabled
- *    is explicitly '0'.
+ *  - No-op on CLI, or when FEDIVERSE is off. The old fediverse_webcron_enabled
+ *    toggle is deliberately IGNORED here: it governed the removed
+ *    visitor-triggered path (yeeted in 0.7.639D — it 524'd SMACKONEOUT landing
+ *    pages), and a leftover '0' from that era must not silently disable the
+ *    hub's authenticated CRONOMETER driver, which is now the only caller.
  *  - Throttled to the 10-minute delivery cadence using the SAME last-run stamp
  *    the CLI cron and the RUN NOW button write, so nearly every request does
  *    nothing but one cheap in-memory check.
@@ -27,7 +30,6 @@ if (!function_exists('sv_web_cron_tick')) {
     function sv_web_cron_tick(PDO $pdo, array $settings): void
     {
         if (PHP_SAPI === 'cli') return;
-        if (($settings['fediverse_webcron_enabled'] ?? '1') === '0') return;
 
         // FEDBOARD roster health is independent of ActivityPub delivery. A
         // spoke must keep learning its fleet even when FEDIVERSE is disabled
