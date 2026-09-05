@@ -3886,11 +3886,13 @@ $help_topics['fediverse-fleet-join'] = [
     'role'     => 'admin',
     'content'  => <<<'HTML'
 <h3>FLEET &mdash; join every spoke to the relay in one pass</h3>
-<p>On the relay hub, the Portal's <strong>SMACKCAST HUB</strong> box has a <strong>FLEET</strong>
-panel. Instead of visiting each connected blog and pressing JOIN NETWORK by hand, press
+<p>On any hub with connected spokes, the Portal has a <strong>FLEET</strong> box. Instead of
+visiting each connected blog and pressing JOIN NETWORK by hand, press
 <strong>REVIEW FLEET</strong>: the hub asks every connected spoke where it stands and shows one
 table &mdash; who is already on the relay, who is ready to join, and who has a problem that must
-be fixed first.</p>
+be fixed first. The relay the fleet joins is the one <em>this hub</em> uses: its own actor when
+this blog is the relay itself, otherwise the relay this blog is joined to &mdash; so join this
+blog to the relay first, and the fleet follows it to the same place.</p>
 
 <h4>What gets flagged</h4>
 <ul>

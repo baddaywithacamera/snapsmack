@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.632D "FRONT DESK" — 2026-09-04
+- **Fix: the FLEET relay-join panel now actually appears where the fleet lives.** It was hidden inside the SMACKCAST HUB box, which only renders on a blog that IS the relay — so the multisite hub with the spokes never showed it. FLEET is now its own box on the Fediverse Portal of any hub with connected spokes.
+- The relay the fleet joins is the one this hub uses: its own actor when this blog is the relay, otherwise the relay this blog is joined to. A hub joined to nothing is refused (with a plain message) so the stale default relay address can never be fanned out to the whole fleet.
+
 ## 0.7.631D "RIGHT ADDRESS" — 2026-09-04
 - **Desktop suite (merged from the audited desktop-fixes branch, SECAUDIT 053-reviewed):**
 - GYSS: a resumed session re-binds its OWN blog's profile and API before anything runs, and PUSH (including keep-mine force-push) hard-refuses a target that isn't the session's blog — a resumed session can no longer write photos to the wrong site. SORT drag listeners bind once (no more leak), and a resume that hits a name collision reports honestly instead of claiming success.
