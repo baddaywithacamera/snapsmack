@@ -153,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
     $sv_setting_upsert('fediverse_pronouns',     trim((string)($_POST['sv_pronouns'] ?? '')));
     // The delivery cron's fingerprint check (sv_maybe_push_actor_update) auto-pushes
     // an Update(Actor) to followers within a tick; REFRESH PROFILE forces it now.
-    header('Location: ' . $sv_self . '?msg=' . urlencode('Profile saved — display name, website and pronouns propagate to followers within a cron tick (or hit REFRESH PROFILE ON REMOTES to push now).'));
+    header('Location: ' . $sv_self . '?msg=' . urlencode('Profile saved — display name, website and pronouns propagate to followers within a cron tick, or hit REFRESH PROFILE ON REMOTES in the PROFILE box below to push now.'));
     exit;
 }
 

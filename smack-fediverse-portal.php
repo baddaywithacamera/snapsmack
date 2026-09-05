@@ -137,6 +137,14 @@ include 'core/sidebar.php';
             </div>
             <button type="submit" class="btn-smack">SAVE PROFILE</button>
         </form>
+        <!-- Same action the Followers page offers. It belongs HERE too: this is
+             the box that edits the profile, and its save message tells you to
+             push — the button must be on the page that says so. Pushes display
+             name, bio AND avatar to every follower's server, right now. -->
+        <form method="post" action="" class="mt-8">
+            <input type="hidden" name="action" value="push_profile_update">
+            <button type="submit" class="btn-smack">REFRESH PROFILE ON REMOTES (NAME, BIO &amp; AVATAR)</button>
+        </form>
     </div>
 
     <!-- ROLL CALL — fediverse.info people directory -->
