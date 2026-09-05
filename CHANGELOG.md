@@ -9,6 +9,8 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.645D "WHERE I SAID IT WAS" — 2026-09-05
+- **The profile-push button is now on the Fediverse Portal too.** REFRESH PROFILE ON REMOTES (which pushes your display name, bio AND avatar to every follower's server) only lived on the Followers page, while the Portal — the page that edits the profile — told you to press it after saving. The button now sits directly under SAVE PROFILE in the Portal's PROFILE box, labeled with what it pushes, and the save message points at it correctly. Reminder of the avatar chain: set the image under Pimp Your Ride → Smooth Your Skin (PROFILE AVATAR box), then this button — or the next cron tick — carries it to Pixelfed/Mastodon.
 ## 0.7.644D "OFF THE CLOCK" — 2026-09-05
 - **Every trace of visitor-triggered background jobs is gone or truthful.** The web-cron itself was removed in 0.7.639D after it made SMACKONEOUT landing pages time out (Cloudflare 524); this build cleans up what it left behind. The Followers page no longer claims jobs "run on the next visit" on locked-down hosts — it now says plainly that deliveries run via the hub's CRONOMETER driver or the RUN FEDIVERSE JOBS NOW button, and shows the hosting-scheduler line for fully automatic running. The old visitor-cron on/off setting is also no longer consulted anywhere: a leftover "off" from that era can no longer silently stop the hub's authenticated cron driver.
 ## 0.7.643D "LINE THEM UP" — 2026-09-05
