@@ -38,6 +38,31 @@ $sc_is_hub_install = ($sv_settings['site_mode'] ?? '') === 'fedistructure'
     && ($sv_settings['node_role'] ?? '') === 'hub'
     && ($sv_settings['distribution_profile'] ?? '') === 'smackcast';
 
+// The consent-directory curator is deliberately separate from the relay.
+// Enabling or forcing a run can create outbound follows, so both require step-up.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $sc_is_hub_install
+    && in_array(($_POST['action'] ?? ''), ['curator_toggle','curator_run'], true)) {
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    if (!$ra['ok']) {
+        header('Location: ' . $sv_self . '?msg=' . urlencode('CURATOR unchanged — ' . $ra['error'])); exit;
+    }
+    if (!function_exists('sc_curator_is_hub') || !sc_curator_is_hub($sv_settings)) {
+        header('Location: ' . $sv_self . '?msg=' . urlencode('CURATOR blocked — this hub must actually answer as @curator@photoblogs.fyi.')); exit;
+    }
+    if ($_POST['action'] === 'curator_toggle') {
+        $enabled = ($_POST['enabled'] ?? '0') === '1' ? '1' : '0';
+        $sv_setting_upsert('curator_directory_enabled', $enabled);
+        header('Location: ' . $sv_self . '?msg=' . urlencode($enabled === '1'
+            ? 'CURATOR enabled — the 2–3 day paced intake begins with the next cron run.'
+            : 'CURATOR paused — existing follows are untouched.')); exit;
+    }
+    $sv_setting_upsert('curator_scan_completed_at', '');
+    $sv_setting_upsert('curator_next_scan_at', '');
+    $sv_setting_upsert('curator_next_action_at', '');
+    $result = sc_curator_cron($pdo, $sv_settings);
+    header('Location: ' . $sv_self . '?msg=' . urlencode('CURATOR run: ' . $result[0] . ' — ' . $result[1] . ' discovered; ' . $result[3])); exit;
+}
+
 // SMACKCAST consequential controls are step-up gated. Code installation never
 // opens the relay; an operator must deliberately enable it and admit members.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $sc_is_hub_install

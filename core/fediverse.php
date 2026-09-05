@@ -35,6 +35,7 @@
 /** Is federation switched on for this install? Absent setting = OFF. */
 if (is_file(__DIR__ . '/photochallenge.php')) require_once __DIR__ . '/photochallenge.php';  // FEDISTRUCTURE photo-challenge profile — inert unless enabled
 if (is_file(__DIR__ . '/smackcast-relay.php')) require_once __DIR__ . '/smackcast-relay.php'; // FEDISTRUCTURE 4.0 hub policy — inert unless explicitly enabled
+if (is_file(__DIR__ . '/curator-directory.php')) require_once __DIR__ . '/curator-directory.php'; // consent-directory curator — identity gated
 require_once __DIR__ . '/client-ip.php';  // mandatory security boundary — SECAUDIT 035
 
 function sv_enabled(array $settings): bool {
