@@ -73,8 +73,6 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
   `img_description`     text           COLLATE utf8mb4_unicode_ci,
   `img_alt`             varchar(500)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                         COMMENT 'Accessibility ALT text — plain screen-reader description of the image. Distinct from caption/title. Render paths fall back to img_title when NULL/blank. Added 0.7.512.',
-  `img_color_mode`      varchar(10)    COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
-                        COMMENT 'Per-image colour classification: color | bw | blank. A search/filter tag that travels WITH the image, never the post. Long added lazily (ALTER IF NOT EXISTS) by smack-post-solo/image-ingest/gyss-api; canonical since 0.7.651.',
   `img_film`            varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `img_license`         varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                         COMMENT 'Rights/licence label (e.g. Flickr import: "All Rights Reserved", CC BY 2.0). Optional; surfaced per-image.',
