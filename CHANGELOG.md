@@ -9,6 +9,16 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.649D "CLOSING TIME" — 2026-09-05 (SECAUDIT 053/054 closeout work — one folded build)
+- **SNAP SLAPPER's untrusted image doors now go through the safe front door.** Downloaded textures are verified as real allowed images before they're cached (a hostile server can't park junk wearing a .jpg name), thumbnail bytes are checked before Qt decodes them (and only the detected format's decoder runs), and .slapper-embedded masks accept PNG only. All three fail closed if the safety module is missing. 14-assert wiring regression.
+- **An out-of-scope API key can no longer authenticate anywhere.** New suite-wide regression asserts every Bearer-key lookup constrains the key's tool type — and its first run caught a real hole: Oh Snap's legacy-schema fallback accepted ANY tool's key (and expired keys). Fixed to keep the scope and drop only the missing column.
+- **Images can be reused across posts in the shared library.** New membership table: attaching the same photo to a second post no longer steals it from the first, deleting a post never takes a shared photo from another, and deleting a photo still in use is refused with "used in N posts." Legacy libraries migrate themselves on open.
+- **GYSS hardening (exe rebuilt, awaiting the four-tabs live test).** Real content-security policy (was null — the top open code-exec control from SECAUDIT 054), no more global Tauri handle (the bridge is captured once at startup), and the file commands refuse to write, download or delete executable targets — so a compromised page can never swap a tool exe for a payload.
+- **The Hub now fingerprints every tool exe it launches.** First launch pins the exe's hash (ledger lives outside the tools' write-jail); a changed exe gets one plain question — "did you rebuild this on purpose?" — before it runs.
+- **Dependency-CVE watch built — and it fired on its first run.** `tools/_build/cve-watch.py` checks our bundled parsers against the OSV vulnerability database; it found 13 published vulnerabilities in the installed Pillow 12.2.0 (several on photo-editing paths) → upgraded to 12.3.0, zero advisories, all suites green.
+- **SNAP SLAPPER's PSD export was crashing under the Qt shell** — Qt's binding layer injects a fake typing symbol on Python 3.10 that killed the PSD library's import. Scrubbed at the package door; the full Qt suite passes again.
+- **AI-generated titles and captions are cleaned at storage** (markup and control characters stripped, length capped) instead of being trusted raw — matching what alt text already got.
+- **SECURITY.md added** — a public vulnerability-disclosure path (one placeholder: the contact address).
 ## 0.7.648D "COUNT ALL THE PAGES" — 2026-09-05
 - **The Release Packager's dev-tag dropdown can no longer miss the newest builds.** It fetched a single 50-tag page from GitHub, whose tag order is not newest-first — with 650+ tags on the repo, the newest dev tags (644D–647D) silently vanished from the dropdown. It now sweeps every tag page before sorting, the same fix the stable-tag list already had. (Smack Central hosts only: run UPDATE on snapsmack.ca to pick this up.)
 ## 0.7.647D "DON'T WAIT FOR THE MAILMAN" — 2026-09-05

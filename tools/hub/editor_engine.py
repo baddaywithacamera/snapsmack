@@ -23,6 +23,17 @@ import numpy as np
 import photo_manager
 import slapper_filters
 
+# SECAUDIT 054 chokepoint 1 (image ingress): importing snap_imgsafe pins
+# Image.MAX_IMAGE_PIXELS process-wide (decompression-bomb cap) for EVERY
+# Image.open in the editor, and _mask_from_text below routes .slapper-embedded
+# mask blobs through its allowlisted safe_open. The import is best-effort only
+# because the Tk main and Qt main each add _shared to sys.path before this
+# module loads; a missing module FAILS CLOSED at the mask gate, never open.
+try:
+    import snap_imgsafe
+except ImportError:  # _shared not on path — untrusted decodes will refuse below
+    snap_imgsafe = None
+
 
 # Fit/live previews repeatedly render the same source. Decoding a large TIFF
 # for every slider tick costs far more than the tonal adjustment, so retain a
@@ -231,9 +242,20 @@ def _mask_to_text(mask):
 
 
 def _mask_from_text(value):
+    # Masks ride inside .slapper project files — a shared/received project is
+    # untrusted input. _mask_to_text() always writes PNG, so anything that is
+    # not a PNG here is a tampered project: refuse it rather than hand the
+    # bytes to whatever exotic Pillow decoder they were crafted for.
+    # FAIL-CLOSED when the safety module is missing (broken install).
     if not value:
         return None
-    return Image.open(io.BytesIO(base64.b64decode(value))).convert("L")
+    if snap_imgsafe is None:
+        raise ValueError(
+            "Mask refused — snap_imgsafe (shared image safety module) is not "
+            "available. Reinstall/repair SNAP SLAPPER; masks are never decoded "
+            "unguarded.")
+    return snap_imgsafe.safe_open(
+        base64.b64decode(value), formats={"PNG"}).convert("L")
 
 
 def _write_project_archive(path, value):
