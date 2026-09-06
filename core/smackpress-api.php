@@ -265,6 +265,11 @@ if ($sub === 'media/upload' && $method === 'POST') {
         $upload_opts['caption_from_filename'] =
             ($_POST['caption_from_filename'] === '1' || $_POST['caption_from_filename'] === 'true');
     }
+    // Per-image accessibility ALT — travels with the image (snap_images.img_alt).
+    // snap_ingest_image sanitizes via snap_sanitize_alt.
+    if (isset($_POST['alt'])) {
+        $upload_opts['alt'] = (string)$_POST['alt'];
+    }
     $ingest = snap_ingest_image($pdo, $settings, $_FILES['file'], $upload_opts);
     if (empty($ingest['ok'])) {
         smackpress_error(500, $ingest['error'] ?? 'Image ingest failed.');

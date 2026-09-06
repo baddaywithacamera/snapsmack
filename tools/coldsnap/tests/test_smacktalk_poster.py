@@ -50,7 +50,7 @@ class FakeSession:
         self.uploads = 0
         self.post_calls = []
         self.last_json = None
-    def post(self, url, files=None, json=None, timeout=None):
+    def post(self, url, files=None, data=None, json=None, timeout=None):
         self.post_calls.append(url)
         if "smackpress/media/upload" in url:
             self.uploads += 1

@@ -96,6 +96,11 @@ class TakeMode(QWidget):
         brow.addWidget(bl)
         self.bucket_count = hint("none yet")
         brow.addWidget(self.bucket_count, 1)
+        ai_btn = QPushButton("✨ AI ALT (Gemini)")
+        ai_btn.setToolTip("Writes a plain screen-reader ALT sentence for every "
+                          "photo in the bucket — edit them to your own voice after.")
+        ai_btn.clicked.connect(self._ai_alt)
+        brow.addWidget(ai_btn)
         add_btn = QPushButton("Add photos…")
         add_btn.clicked.connect(self._add_photos)
         brow.addWidget(add_btn)
@@ -189,8 +194,10 @@ class TakeMode(QWidget):
             is_cover = (i == self._cover_idx)
             row = QFrame()
             row.setObjectName("Card")
-            lay = QHBoxLayout(row)
-            lay.setContentsMargins(6, 6, 6, 6)
+            col = QVBoxLayout(row)
+            col.setContentsMargins(6, 6, 6, 6)
+            col.setSpacing(4)
+            lay = QHBoxLayout()
             lay.addWidget(thumb_label(im.thumb_square or im.local_path, 40))
             name = QLabel(("★ " if is_cover else "") +
                           (im.filename or os.path.basename(im.local_path)))
@@ -209,7 +216,36 @@ class TakeMode(QWidget):
             rm = QPushButton("✕"); rm.setObjectName("Danger"); rm.setFixedWidth(34)
             rm.clicked.connect(lambda _=False, i=i: self._remove(i))
             lay.addWidget(rm)
+            col.addLayout(lay)
+            # Per-photo ALT — saved with the image on the site (img_alt).
+            alt = QLineEdit(getattr(im, "alt", "") or "")
+            alt.setPlaceholderText("ALT — one plain sentence describing this photo")
+            alt.textChanged.connect(lambda text, im=im: setattr(im, "alt", text.strip()))
+            col.addWidget(alt)
             self.bucket_col.addWidget(row)
+
+    def _ai_alt(self):
+        if not self._bucket:
+            QMessageBox.warning(self, "No photos", "Add photos first.")
+            return
+        from .enrich_worker import EnrichWorker
+        imgs = list(self._bucket)
+        self._ai_worker = EnrichWorker()
+
+        def _one_done(idx, meta, imgs=imgs):
+            if 0 <= idx < len(imgs) and meta.get("alt"):
+                imgs[idx].alt = meta["alt"]
+
+        self._ai_worker.image_done.connect(_one_done)
+        self._ai_worker.progressed.connect(
+            lambda done, total: self.bucket_count.setText(
+                f"AI ALT… photo {done} of {total} (Gemini)"))
+        self._ai_worker.finished.connect(self._refresh_bucket)
+        self._ai_worker.failed.connect(
+            lambda msg: (self._refresh_bucket(),
+                         QMessageBox.critical(self, "AI ALT failed", msg)))
+        self.bucket_count.setText(f"AI ALT… photo 1 of {len(imgs)} (Gemini)")
+        self._ai_worker.start([im.local_path for im in imgs])
 
     def _edit(self, draft: O.Draft):
         self._editing_id = draft.draft_id
@@ -219,7 +255,8 @@ class TakeMode(QWidget):
         self.body_edit.setPlainText(draft.caption)
         self.body_edit.moveCursor(QTextCursor.End)   # so an insert lands where writing resumes
         self._bucket = [O.DraftImage(local_path=im.local_path, filename=im.filename,
-                                     thumb_square=im.thumb_square, is_cover=im.is_cover)
+                                     thumb_square=im.thumb_square, is_cover=im.is_cover,
+                                     alt=getattr(im, "alt", "") or "")
                         for im in draft.images]
         self._cover_idx = next((i for i, im in enumerate(self._bucket) if im.is_cover), 0)
         self._refresh_bucket()
@@ -248,7 +285,8 @@ class TakeMode(QWidget):
         draft.images = [
             O.DraftImage(local_path=im.local_path,
                          filename=im.filename or os.path.basename(im.local_path),
-                         sort_position=i, is_cover=(i == self._cover_idx))
+                         sort_position=i, is_cover=(i == self._cover_idx),
+                         alt=getattr(im, "alt", "") or "")
             for i, im in enumerate(self._bucket)]
         O.generate_draft_thumbs(draft)
         problems = draft.validate()

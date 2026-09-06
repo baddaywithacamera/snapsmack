@@ -126,6 +126,8 @@ class DraftImage:
     remote_path:  str = ""    # img_uploads/YYYY/MM/... assigned by the server on sync
     remote_thumb_square: str = ""   # server thumb path after upload
     remote_thumb_aspect: str = ""
+    alt:          str = ""    # per-image accessibility ALT — travels WITH the
+                              # image (snap_images.img_alt), never the post
     sort_position: int = 0    # carousel order (0-based)
     is_cover:     bool = False
     # Per-image GRAM controls — map 1:1 to snap_post_images columns. These are
