@@ -281,7 +281,7 @@ if ($resource === 'photos' && $method === 'GET') {
         $params[] = $date_to . ' 23:59:59';
     }
     if ($category_id !== null) {
-        $where[]  = 'EXISTS (SELECT 1 FROM snap_image_cat_map cm WHERE cm.image_id = i.id AND cm.category_id = ?)';
+        $where[]  = 'EXISTS (SELECT 1 FROM snap_image_cat_map cm WHERE cm.image_id = i.id AND cm.cat_id = ?)';
         $params[] = $category_id;
     }
     if ($album_id !== null) {
@@ -310,10 +310,6 @@ if ($resource === 'photos' && $method === 'GET') {
     }
 
     // Fetch page
-    $params_page   = $params;
-    $params_page[] = $limit;
-    $params_page[] = $offset;
-
     try {
         $stmt = $pdo->prepare("
             SELECT
@@ -332,8 +328,8 @@ if ($resource === 'photos' && $method === 'GET') {
                     WHEN EXISTS (SELECT 1 FROM snap_image_tags rit JOIN snap_tags rt ON rt.id = rit.tag_id WHERE rit.image_id = i.id AND rt.slug = 'certifiedrights') THEN 'clear'
                     ELSE 'unknown'
                 END AS rights_status,
-                (SELECT c2.id       FROM snap_image_cat_map cm2 JOIN snap_categories c2 ON c2.id = cm2.category_id WHERE cm2.image_id = i.id LIMIT 1) AS category_id,
-                (SELECT c2.cat_name FROM snap_image_cat_map cm2 JOIN snap_categories c2 ON c2.id = cm2.category_id WHERE cm2.image_id = i.id LIMIT 1) AS category_name,
+                (SELECT c2.id       FROM snap_image_cat_map cm2 JOIN snap_categories c2 ON c2.id = cm2.cat_id WHERE cm2.image_id = i.id LIMIT 1) AS category_id,
+                (SELECT c2.cat_name FROM snap_image_cat_map cm2 JOIN snap_categories c2 ON c2.id = cm2.cat_id WHERE cm2.image_id = i.id LIMIT 1) AS category_name,
                 (SELECT a2.id         FROM snap_image_album_map am2 JOIN snap_albums a2 ON a2.id = am2.album_id WHERE am2.image_id = i.id LIMIT 1) AS album_id,
                 (SELECT a2.album_name FROM snap_image_album_map am2 JOIN snap_albums a2 ON a2.id = am2.album_id WHERE am2.image_id = i.id LIMIT 1) AS album_name
             FROM snap_images i
@@ -341,7 +337,12 @@ if ($resource === 'photos' && $method === 'GET') {
             ORDER BY i.sort_order ASC, i.id DESC
             LIMIT ? OFFSET ?
         ");
-        $stmt->execute($params_page);
+        foreach ($params as $index => $value) {
+            $stmt->bindValue($index + 1, $value);
+        }
+        $stmt->bindValue(count($params) + 1, $limit, PDO::PARAM_INT);
+        $stmt->bindValue(count($params) + 2, $offset, PDO::PARAM_INT);
+        $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
         gy_err('Database error fetching photos', 500);
@@ -382,7 +383,7 @@ if ($resource === 'meta' && $method === 'GET') {
         $cats = $pdo->query("
             SELECT c.id, c.cat_name AS name, COUNT(cm.image_id) AS `count`
             FROM snap_categories c
-            LEFT JOIN snap_image_cat_map cm ON cm.category_id = c.id
+            LEFT JOIN snap_image_cat_map cm ON cm.cat_id = c.id
             GROUP BY c.id, c.cat_name
             ORDER BY c.cat_name ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -510,7 +511,7 @@ if ($resource === 'library' && $method === 'GET') {
 
         // --- MEMBERSHIP MAPS (whole int pairs — catches re-tags on unchanged images) ---
         $cat_map = [];
-        foreach ($pdo->query("SELECT image_id, category_id FROM snap_image_cat_map")->fetchAll(PDO::FETCH_NUM) as $p) {
+        foreach ($pdo->query("SELECT image_id, cat_id FROM snap_image_cat_map")->fetchAll(PDO::FETCH_NUM) as $p) {
             $cat_map[] = [(int)$p[0], (int)$p[1]];
         }
         $album_map = [];
@@ -726,7 +727,7 @@ if ($resource === 'enrich-one' && $method === 'POST') {
             $ids = $apply_names($parsed['category'], $cats);
             if ($ids) {
                 if ($overwrite) $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")->execute([$id]);
-                $ins = $pdo->prepare("INSERT IGNORE INTO snap_image_cat_map (image_id, category_id) VALUES (?, ?)");
+                $ins = $pdo->prepare("INSERT IGNORE INTO snap_image_cat_map (image_id, cat_id) VALUES (?, ?)");
                 foreach ($ids as $option_id) $ins->execute([$id, $option_id]);
                 $applied[] = 'category';
             }
@@ -806,7 +807,7 @@ if ($resource === 'batch-update' && $method === 'POST') {
             $row_stmt = $pdo->prepare("
                 SELECT i2.id, i2.img_title AS title, i2.img_description AS description,
                        i2.sort_order, i2.modified_at,
-                       (SELECT cm3.category_id FROM snap_image_cat_map cm3 WHERE cm3.image_id = i2.id LIMIT 1) AS category_id
+                       (SELECT cm3.cat_id FROM snap_image_cat_map cm3 WHERE cm3.image_id = i2.id LIMIT 1) AS category_id
                 FROM snap_images i2 WHERE i2.id = ? LIMIT 1
             ");
             $row_stmt->execute([$id]);
@@ -901,7 +902,7 @@ if ($resource === 'batch-update' && $method === 'POST') {
                 }
                 $pdo->prepare("DELETE FROM snap_image_cat_map WHERE image_id = ?")
                     ->execute([$id]);
-                $pdo->prepare("INSERT INTO snap_image_cat_map (image_id, category_id) VALUES (?, ?)")
+                $pdo->prepare("INSERT INTO snap_image_cat_map (image_id, cat_id) VALUES (?, ?)")
                     ->execute([$id, $new_cat]);
             } catch (Exception $e) {
                 $failed[] = ['id' => $id, 'error' => 'Failed to update category'];
