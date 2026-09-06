@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 from _version import BUILD_VERSION
 
 from . import SHELL_LABEL
+from .cold_storage import StorageMode
 from .connect_panel import ConnectPanel
 from .mode_solo import SoloMode
 from .mode_stack import StackMode
@@ -51,9 +52,12 @@ class MainWindow(QMainWindow):
         tabs.addTab(SoloMode(cfg), "COLD ONE")
         tabs.addTab(StackMode(cfg), "COLD STACK")
         tabs.addTab(TakeMode(cfg), "COLD TAKE")
+        tabs.addTab(StorageMode(cfg), "COLD STORAGE")
         tabs.setTabToolTip(0, "One photo, one post — solo photoblog sites")
         tabs.setTabToolTip(1, "Carousels, stacks and trigrams — gram grid sites")
         tabs.setTabToolTip(2, "An essay with photos — long-form sites")
+        tabs.setTabToolTip(3, "This blog's images, offline — browse, sync more "
+                              "down, AI-describe, save metadata back")
         col.addWidget(tabs, 1)
 
         self.setCentralWidget(central)
