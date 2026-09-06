@@ -149,6 +149,11 @@ class StackMode(QWidget):
         fit_row.addStretch(1)
         ctrl.body.addLayout(fit_row)
 
+        ctrl.body.addWidget(field_label("ALT text — one plain sentence for screen readers"))
+        self.alt_edit = QLineEdit()
+        self.alt_edit.setPlaceholderText("Describes THIS photo — saved with the image on the site.")
+        ctrl.body.addWidget(self.alt_edit)
+
         self.size_row = SliderRow("Image size %", 10, 100, 100)
         self.fx_row = SliderRow("Focal X %", 0, 100, 50)
         self.fy_row = SliderRow("Focal Y %", 0, 100, 50)
@@ -193,6 +198,7 @@ class StackMode(QWidget):
             r.slider.valueChanged.connect(self._write_controls)
         self.border_colour.textChanged.connect(self._write_controls)
         self.bg_colour.textChanged.connect(self._write_controls)
+        self.alt_edit.textChanged.connect(self._write_controls)
 
         # ---- POST card --------------------------------------------------------------
         post = Card("POST")
@@ -203,6 +209,17 @@ class StackMode(QWidget):
         # Same shortcode toolbar the CMS carousel editor puts on this field.
         post.body.addWidget(ShortcodeBar(self.caption_edit))
         post.body.addWidget(self.caption_edit)
+
+        ai_row = QHBoxLayout()
+        ai_btn = QPushButton("✨ AI Fill (Gemini)")
+        ai_btn.setToolTip("Writes an ALT sentence for EVERY photo in the post, "
+                          "and suggests a caption and tags from the cover if "
+                          "those boxes are empty.")
+        ai_btn.clicked.connect(self._ai_fill)
+        ai_row.addWidget(ai_btn)
+        self.ai_status = hint("")
+        ai_row.addWidget(self.ai_status, 1)
+        post.body.addLayout(ai_row)
         post.body.addWidget(field_label("Tags (space-separated #hashtags)"))
         self.tags_edit = QLineEdit()
         post.body.addWidget(self.tags_edit)
@@ -278,6 +295,54 @@ class StackMode(QWidget):
 
     def _reflect_ctrl_enabled(self):
         self.ctrl_card.setEnabled(self._sel_img is not None)
+
+    # ======================================================================
+    # AI fill (per-photo ALT + caption/tags from the cover)
+    # ======================================================================
+    def _all_images(self) -> list:
+        if self._kind() == "trigram":
+            return [im for slot in self._trig_slots for im in slot]
+        return list(self._work_images)
+
+    def _ai_fill(self):
+        imgs = self._all_images()
+        if not imgs:
+            QMessageBox.warning(self, "No photos", "Add photos first.")
+            return
+        from .enrich_worker import EnrichWorker
+        self._ai_imgs = imgs
+        self._ai_worker = EnrichWorker()
+        self._ai_worker.image_done.connect(self._ai_image_done)
+        self._ai_worker.progressed.connect(
+            lambda done, total: self.ai_status.setText(
+                f"Thinking… photo {done} of {total} (Gemini)"))
+        self._ai_worker.finished.connect(
+            lambda: self.ai_status.setText("Filled ✓ — make it yours before posting"))
+        self._ai_worker.failed.connect(self._ai_failed)
+        self.ai_status.setText(f"Thinking… photo 1 of {len(imgs)} (Gemini)")
+        self._ai_worker.start([im.local_path for im in imgs])
+
+    def _ai_image_done(self, idx: int, meta: dict):
+        imgs = getattr(self, "_ai_imgs", [])
+        if not (0 <= idx < len(imgs)):
+            return
+        im = imgs[idx]
+        if meta.get("alt"):
+            im.alt = meta["alt"]
+            if im is self._sel_img:
+                self._loading_controls = True
+                self.alt_edit.setText(im.alt)
+                self._loading_controls = False
+        # The cover speaks for the post — fill caption/tags only if still empty.
+        if im.is_cover or (idx == 0 and not any(x.is_cover for x in imgs)):
+            if meta.get("caption") and not self.caption_edit.toPlainText().strip():
+                self.caption_edit.setPlainText(meta["caption"])
+            if meta.get("tags") and not self.tags_edit.text().strip():
+                self.tags_edit.setText(meta["tags"])
+
+    def _ai_failed(self, msg: str):
+        self.ai_status.setText("")
+        QMessageBox.critical(self, "AI Fill failed", msg)
 
     # ======================================================================
     # Kind / sources
@@ -498,6 +563,7 @@ class StackMode(QWidget):
         self.fy_row.set_value(im.focus_y)
         self.zoom_row.set_value(im.zoom)
         self.split_check.setChecked(im.split)
+        self.alt_edit.setText(getattr(im, "alt", "") or "")
         self._loading_controls = False
         self._show_sel_preview()
         self._render_strip()
@@ -516,6 +582,7 @@ class StackMode(QWidget):
         im.border_color = self.border_colour.text().strip() or "#000000"
         im.bg_color = self.bg_colour.text().strip() or "#ffffff"
         im.split = self.split_check.isChecked()
+        im.alt = self.alt_edit.text().strip()
 
     def _recrop_selected(self):
         if self._sel_img is None:

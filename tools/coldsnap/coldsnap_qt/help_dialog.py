@@ -83,10 +83,25 @@ TOPICS = [
      "value instead of landing a fine drag, or use the arrow keys on a focused "
      "slider. Colours are picked from the swatch button; the hex field stays "
      "for typing an exact value."),
-    ("AI captions",
-     "If a Gemini key is set, AI Fill suggests a title, caption, ALT text and "
-     "tags for the chosen photo. Treat it as a starting point and edit it to "
-     "your own voice before posting."),
+    ("AI assist (titles, captions, ALT, tags)",
+     "If a Gemini key is set: COLD ONE's AI Fill suggests a title, caption, "
+     "ALT text and tags for the chosen photo. COLD STACK's AI Fill writes an "
+     "ALT sentence for EVERY photo in the post and suggests a caption and "
+     "tags from the cover when those boxes are empty. COLD TAKE's AI ALT "
+     "writes an ALT sentence for every photo in the bucket. Always a starting "
+     "point — edit it to your own voice before posting.\n\n"
+     "ALT text is saved WITH THE IMAGE on the site (so is the Colour/B&W "
+     "tag), not with the post — wherever the image appears, its description "
+     "travels along."),
+    ("The shared store",
+     "Every post COLD SNAP sends is also recorded in the shared library on "
+     "this computer (C:\\snapsmack\\shared_library\\<site>) — the post text, "
+     "which images it used, their ALT text, and the web-size image file that "
+     "was actually uploaded. Identical bytes are stored once, and the same "
+     "image used in two posts belongs to both. Other tools (GYSS, SYBU) read "
+     "this store offline instead of re-pulling from the site.\n\n"
+     "Your originals are never copied anywhere — the store holds only what "
+     "went to the site."),
     ("Your drafts are safe",
      "Drafts are saved on this computer and survive closing COLD SNAP, so you "
      "can work across several sittings. A failed send leaves the post marked "

@@ -242,7 +242,8 @@ class SoloMode(QWidget):
         draft.download_url = self.dl_url.text().strip()
         draft.images = [O.DraftImage(local_path=self._image_path,
                                      filename=os.path.basename(self._image_path),
-                                     is_cover=True)]
+                                     is_cover=True,
+                                     alt=draft.alt)]   # solo: the post's ALT IS the image's
         O.generate_draft_thumbs(draft)
         problems = draft.validate()
         if ready and problems:
