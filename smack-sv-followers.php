@@ -143,13 +143,13 @@ include 'core/sidebar.php';
                     <td><code><?php echo htmlspecialchars($f['actor_url']); ?></code></td>
                     <td><?php echo htmlspecialchars($f['followed_at']); ?></td>
                     <td>
-                        <form method="post" action="" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;"
+                        <form method="post" action="" class="sv-push-form"
                               onsubmit="return confirm('Push posts ONLY to this follower?');">
                             <input type="hidden" name="action" value="push_follower">
                             <input type="hidden" name="follower_actor" value="<?php echo htmlspecialchars($f['actor_url']); ?>">
                             <input type="number" name="follower_count" min="1" max="500"
-                                   value="<?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 200); ?>"
-                                   aria-label="Posts to push" style="width:72px;">
+                                   value="<?php echo (int)($sv_settings['fediverse_backfill_count'] ?? 200); ?>"
+                                   aria-label="Posts to push" class="sv-push-count">
                             <select name="follower_mode" aria-label="Push mode">
                                 <option value="create">Seed missing posts</option>
                                 <option value="update">Refresh existing posts</option>

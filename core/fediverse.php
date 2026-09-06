@@ -5282,6 +5282,44 @@ function sv_push_recent_to_follower(PDO $pdo, array $settings, string $handle,
     return [true, '', count($creates), $queued];
 }
 
+/** TARGETED PUSH — seed/refresh ONE follower without touching the rest.
+ *  Recovered from the codex/new-app line (the 652D merge kept its followers-page
+ *  button and its regression but dropped this function in the smackverse→
+ *  fediverse rename). The browser supplies only the actor id; the trusted
+ *  direct inbox is resolved from our active-follower table here. */
+function sv_push_to_follower(PDO $pdo, array $settings, string $actor_url,
+                             ?int $limit = null, string $mode = 'create'): array {
+    $actor_url = trim($actor_url);
+    if ($actor_url === '' || !sv_enabled($settings)) return [0, 0, ''];
+    if ($limit === null) $limit = (int)($settings['fediverse_backfill_count'] ?? 200);
+    $limit = max(1, min(500, (int)$limit));
+    $mode = $mode === 'update' ? 'update' : 'create';
+
+    $st = $pdo->prepare(
+        "SELECT actor_handle, inbox_url FROM snap_ap_followers
+         WHERE actor_url = ? AND is_active = 1 LIMIT 1"
+    );
+    $st->execute([$actor_url]);
+    $follower = $st->fetch(PDO::FETCH_ASSOC);
+    $inbox = trim((string)($follower['inbox_url'] ?? ''));
+    if (!$follower || $inbox === '') return [0, 0, ''];
+
+    $creates = sv_recent_creates($pdo, $settings, $limit);
+    $queued = 0;
+    foreach ($creates as $cjson) {
+        $payload = $cjson;
+        if ($mode === 'update') {
+            $create = json_decode($cjson, true);
+            $note = $create['object'] ?? null;
+            if (!is_array($note) || empty($note['id'])) continue;
+            $payload = json_encode(sv_update_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
+        }
+        sv_queue_delivery($pdo, $inbox, $payload);
+        $queued++;
+    }
+    return [count($creates), $queued, (string)($follower['actor_handle'] ?? '')];
+}
+
 /** Retract (Delete/Tombstone) one of OUR Notes from every follower. Paced by
  *  the delivery cron. Fediverse-legal: deleting your own post is standard. */
 function sv_retract_note(PDO $pdo, array $settings, string $note_id): int {

@@ -2248,6 +2248,17 @@ input[type="range"]:active::-webkit-slider-thumb {
     margin-left: 6px;
 }
 
+/* Per-follower targeted-push controls (smack-sv-followers) */
+.sv-push-form {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.sv-push-count {
+    width: 72px;
+}
+
 /* Active session badge (smack-users) */
 .badge-active-session {
     font-size: 0.6rem;
