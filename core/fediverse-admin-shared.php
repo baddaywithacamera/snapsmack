@@ -390,6 +390,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'push_
     exit;
 }
 
+// TARGETED PUSH: seed/refresh one follower without sending anything to every
+// other follower. The browser supplies only the actor id; the trusted direct
+// inbox is resolved from our active-follower table inside sv_push_to_follower.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'push_follower') {
+    if (!sv_enabled($sv_settings)) {
+        header('Location: ' . $sv_self . '?msg=' . urlencode('Fediverse is off — nothing was pushed.'));
+        exit;
+    }
+    $pf_actor = trim((string)($_POST['follower_actor'] ?? ''));
+    $pf_count = max(1, min(500, (int)($_POST['follower_count'] ?? 200)));
+    $pf_mode  = (($_POST['follower_mode'] ?? 'create') === 'update') ? 'update' : 'create';
+    list($pf_notes, $pf_queued, $pf_handle) = sv_push_to_follower(
+        $pdo, $sv_settings, $pf_actor, $pf_count, $pf_mode
+    );
+    if ($pf_queued < 1) {
+        $pf_msg = 'TARGETED PUSH: follower not found, inactive, or no posts were available.';
+    } else {
+        $pf_label = $pf_handle !== '' ? $pf_handle : $pf_actor;
+        $pf_verb = $pf_mode === 'update' ? 'Refresh' : 'Seed';
+        $pf_msg = sprintf('%s: %d post(s) queued only for %s — no other followers were included.',
+            $pf_verb, $pf_notes, $pf_label);
+        require_once __DIR__ . '/fediverse-kick.php';
+        sv_kick_delivery();
+    }
+    header('Location: ' . $sv_self . '?msg=' . urlencode($pf_msg));
+    exit;
+}
+
 // RE-IMPRINT — bump the federation generation, retract the current Notes, and
 // reseed everything under fresh ids so followers stuck in the old order re-ingest
 // clean. The only lever that reaches an already-poisoned follower.
