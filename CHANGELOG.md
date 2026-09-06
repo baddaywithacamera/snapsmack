@@ -9,6 +9,8 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.650D "RIGHT COLUMN" — 2026-09-06
+- **GYSS can pull, sync and edit photo libraries again.** The 0.7.649D API queried `snap_image_cat_map.category_id`, but the canonical and deployed membership column is `cat_id`, so authenticated photo requests failed with MariaDB error 1054. Every GYSS category read/write now uses `cat_id`; photo pagination binds LIMIT/OFFSET as integers for native prepared-statement compatibility.
 ## 0.7.649D "CLOSING TIME" — 2026-09-05 (SECAUDIT 053/054 closeout work — one folded build)
 - **SNAP SLAPPER's untrusted image doors now go through the safe front door.** Downloaded textures are verified as real allowed images before they're cached (a hostile server can't park junk wearing a .jpg name), thumbnail bytes are checked before Qt decodes them (and only the detected format's decoder runs), and .slapper-embedded masks accept PNG only. All three fail closed if the safety module is missing. 14-assert wiring regression.
 - **An out-of-scope API key can no longer authenticate anywhere.** New suite-wide regression asserts every Bearer-key lookup constrains the key's tool type — and its first run caught a real hole: Oh Snap's legacy-schema fallback accepted ANY tool's key (and expired keys). Fixed to keep the scope and drop only the missing column.
