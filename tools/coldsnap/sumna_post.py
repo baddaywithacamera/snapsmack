@@ -139,6 +139,57 @@ def _mime(path: str) -> str:
     }.get(ext, "image/jpeg")
 
 
+def _produce_library(site, draft, post_id, *, site_mode, post_type, body="",
+                     permalink="", per_image=None, source_tool="coldsnap"):
+    """Producer contract (shared-library-post-cache-producer spec): on
+    post-success, EVERY COLD SNAP mode records what it posted into the shared
+    library — post metadata plus the images, so the other tools can read them
+    offline without re-pulling (Sean, 2026-09-06: discovered images go into the
+    shared store).
+
+    What gets stored is the WEB-SIZE file that actually went over the wire —
+    a cache of server state. The photographer's originals (often RAW, never
+    uploaded) are NOT copied anywhere; keeping originals would be a backup
+    feature and stays explicit + opt-in, never a silent side effect
+    ([[feedback_user_owns_archive]]).
+
+    per_image: list of (DraftImage, server_image_id_or_None, uploaded_path).
+    Best-effort — a library hiccup never turns a live post into a failure."""
+    if snap_library is None or not post_id:
+        return
+    try:
+        assets = []
+        for im, server_id, up_path in (per_image or []):
+            entry = None
+            if up_path and os.path.isfile(up_path):
+                entry = snap_library.store_media(
+                    site, up_path,
+                    orig_name=getattr(im, "filename", "") or os.path.basename(up_path))
+            elif server_id:
+                entry = {"asset_id": "img:%d" % int(server_id),
+                         "orig_name": getattr(im, "filename", "") or ""}
+            if entry is None:
+                continue
+            entry["alt"] = getattr(im, "alt", "") or ""
+            entry["width"] = int(getattr(im, "width", 0) or 0)
+            entry["height"] = int(getattr(im, "height", 0) or 0)
+            if server_id:
+                entry["source_ref"] = "img:%d" % int(server_id)
+            assets.append(entry)
+        snap_library.record_post(site, {
+            "post_id":     int(post_id),
+            "site_mode":   site_mode,
+            "post_type":   post_type,
+            "title":       draft.title,
+            "body":        body,
+            "permalink":   permalink or "",
+            "tags":        [t.lstrip("#") for t in (draft.tags or "").split() if t.strip()],
+            "source_tool": source_tool,
+        }, assets=assets)
+    except Exception:
+        pass
+
+
 def _resp_msg(r, default: str) -> str:
     """Surface the server's JSON error message (consent gate / rate limit / etc.)
     so the user sees 'Offline posting is not enabled…' rather than a generic note."""
@@ -247,6 +298,12 @@ class SoloPoster:
             "tags":                 post_tags,
             "img_status":           draft.img_status,
             "desc":                 draft.caption or self.copyright_text,
+            # ALT + colour travel WITH THE IMAGE (snap_images.img_alt /
+            # img_color_mode). The endpoint accepted both all along — the tool
+            # was silently dropping them on the wire.
+            "alt":                  draft.alt,
+            "color_mode":           draft.color_mode,
+            "want_id":              "1",   # opt-in: server returns "success:<img id>"
             "allow_download":       "1" if (draft.allow_download and draft.download_url) else "0",
             "download_url":         draft.download_url,
             "orientation_override": draft.orientation or "auto",
@@ -287,12 +344,27 @@ class SoloPoster:
                     pass
 
         body = (resp.text or "").strip()
-        confirmed = (body == "success"
+        confirmed = (body == "success" or body.startswith("success:")
                      or "TRANSMISSION_LIVE" in (resp.url or "")
                      or "TRANSMISSION_LIVE" in body)
         if not confirmed:
             return SyncResult(False, message=_server_reason(body))
-        return SyncResult(True, message="Posted")
+        # "success:<id>" (want_id servers) carries the new snap_images id — the
+        # key for the shared-library record. An older server's bare "success"
+        # just means no local record; the post itself is fine either way.
+        img_id = 0
+        if body.startswith("success:"):
+            try:
+                img_id = int(body.split(":", 1)[1])
+            except ValueError:
+                img_id = 0
+        if img_id:
+            im.alt = draft.alt   # solo: the post's ALT is the image's ALT
+            _produce_library(self.conn.base_url, draft, img_id,
+                             site_mode="photoblog", post_type="solo",
+                             body=draft.caption or "",
+                             per_image=[(im, img_id, _up)])
+        return SyncResult(True, remote_post_id=(img_id or None), message="Posted")
 
     # Positive verification — pull the live post back and confirm it exists.
     def verify(self, draft: Draft) -> bool:
@@ -316,6 +388,7 @@ class GramPoster:
         opened = []
         try:
             _up = _upload_ready(im.local_path, self.policy)  # size-cap + mild sharpen; original untouched
+            im.uploaded_path = _up   # runtime-only: the exact file that went over the wire
             fh = open(_up, "rb"); opened.append(fh)
             files = {"image": (os.path.basename(im.local_path), fh, _mime(_up))}
             if im.thumb_square and os.path.isfile(im.thumb_square):
@@ -348,6 +421,7 @@ class GramPoster:
             "thumb_square": im.remote_thumb_square,
             "thumb_aspect": im.remote_thumb_aspect,
             "width": im.width, "height": im.height,
+            "alt": im.alt,   # → snap_images.img_alt (travels with the image)
             "crop_mode": im.crop_mode, "size_pct": im.size_pct,
             "border_px": im.border_px, "border_color": im.border_color,
             "bg_color": im.bg_color, "shadow": im.shadow,
@@ -407,6 +481,24 @@ class GramPoster:
             return SyncResult(False, message=data.get("error", "server did not confirm the post"))
         # Stash the fanned-out post ids so verify() can confirm each one.
         draft._split_post_ids = split_ids
+        # Producer: the grouped post records all its images; an all-split draft
+        # records each split post with its own image when the counts line up.
+        per_image = [(im, None, getattr(im, "uploaded_path", "")) for im in draft.images]
+        if post_id:
+            _produce_library(self.conn.base_url, draft, post_id,
+                             site_mode="carousel",
+                             post_type=(draft.post_type or "carousel"),
+                             body=draft.caption or "",
+                             per_image=per_image)
+        elif len(split_ids) == len(per_image):
+            for sid, pi in zip(split_ids, per_image):
+                _produce_library(self.conn.base_url, draft, sid,
+                                 site_mode="carousel", post_type="single",
+                                 body=draft.caption or "", per_image=[pi])
+        elif split_ids:
+            _produce_library(self.conn.base_url, draft, split_ids[0],
+                             site_mode="carousel", post_type="single",
+                             body=draft.caption or "", per_image=per_image)
         return SyncResult(True, remote_post_id=(post_id or split_ids[0]), message="Posted")
 
     def link_trigram(self, post_ids: List[int], orientation: str = "h") -> int:
@@ -503,10 +595,14 @@ class SmacktalkPoster:
         """Upload one photo to the Gallery via smackpress/media/upload and return its
         snap_images id. Sizes/sharpens to the site's policy first; original untouched."""
         up = _upload_ready(im.local_path, self.policy)
+        im.uploaded_path = up   # runtime-only: the exact file that went over the wire
         fh = open(up, "rb")
         try:
             files = {"file": (im.filename or os.path.basename(im.local_path), fh, _mime(up))}
-            r = self.session.post(self._route("smackpress/media/upload"), files=files, timeout=120)
+            # ALT rides the upload → snap_images.img_alt (travels with the image).
+            data = {"alt": im.alt} if getattr(im, "alt", "") else None
+            r = self.session.post(self._route("smackpress/media/upload"),
+                                  files=files, data=data, timeout=120)
         finally:
             fh.close()
         if r.status_code in (401, 403):
@@ -571,41 +667,20 @@ class SmacktalkPoster:
         return self._MOSAIC_TOKEN.sub(lambda _m: shortcode, content), [mid]
 
     def _record_to_library(self, draft, post_id, content, server_data, image_ids) -> None:
-        """Producer contract: on post-success, record WHAT WAS POSTED into the shared
-        offline library — the post text plus which Gallery images it used (the server's
-        snap_images ids). It copies NO photo files: the originals (often RAW, never
-        uploaded) stay on the photographer's disk untouched; the web-size upload and
-        thumbs already exist from the post itself. Keeping originals would be a backup
-        feature and must be explicit + opt-in, never a silent side effect.
-        Best-effort — a library hiccup never turns a live post into a reported failure."""
-        if snap_library is None:
-            return
-        try:
-            site = self.base_url
-            imgs = draft.images or []
-            assets = []
-            for idx, im in enumerate(imgs):
-                iid = image_ids[idx] if idx < len(image_ids) else None
-                if not iid:
-                    continue
-                assets.append({
-                    "asset_id":  "img:%d" % int(iid),   # the server's snap_images id
-                    "orig_name": getattr(im, "filename", "") or "",
-                    "alt":       getattr(im, "alt", "") or "",
-                })
-            snap_library.record_post(site, {
-                "post_id":     post_id,
-                "site_mode":   "smacktalk",
-                "post_type":   "long",
-                "title":       draft.title,
-                "body":        content,
-                "permalink":   (server_data or {}).get("permalink", "")
-                               or (server_data or {}).get("url", ""),
-                "tags":        [t.lstrip("#") for t in (draft.tags or "").split() if t.strip()],
-                "source_tool": "coldsnap",
-            }, assets=assets)
-        except Exception:
-            pass
+        """Producer contract — now via the shared _produce_library, which also
+        stores the web-size upload bytes in shared_library/<site>/media (a cache
+        of server state; originals are never copied)."""
+        imgs = draft.images or []
+        per_image = []
+        for idx, im in enumerate(imgs):
+            iid = image_ids[idx] if idx < len(image_ids) else None
+            per_image.append((im, iid, getattr(im, "uploaded_path", "")))
+        _produce_library(
+            self.base_url, draft, post_id,
+            site_mode="smacktalk", post_type="long", body=content,
+            permalink=(server_data or {}).get("permalink", "")
+                      or (server_data or {}).get("url", ""),
+            per_image=per_image)
 
     def sync_smacktalk(self, draft) -> SyncResult:
         if not self.key:

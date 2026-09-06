@@ -717,7 +717,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
 
         if ($is_ajax_request) {
             header('Content-Type: text/plain; charset=UTF-8');
-            echo "success";
+            // Desktop tools opt in (want_id=1) to get the new image id back so
+            // they can key their shared-library record. Bare "success" stays the
+            // default — SYBU and older clients string-compare against it.
+            echo (($_POST['want_id'] ?? '') === '1')
+                ? "success:" . (int)$new_img_id
+                : "success";
             exit;
         }
         header("Location: smack-manage.php?msg=TRANSMISSION_LIVE");
