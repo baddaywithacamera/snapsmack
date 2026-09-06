@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 
 import lewk_again
 import snap_creds
+import snap_device_auth
 from . import theme
 from .engine_bridge import pil_to_qpixmap
 
@@ -36,6 +37,7 @@ class _Worker(QObject):
 
 class LewkAgainDialog(QDialog):
     def __init__(self, host):
+        snap_device_auth.require_full("LEWK AGAIN")
         super().__init__(host)
         self.host = host
         self.recipe = None

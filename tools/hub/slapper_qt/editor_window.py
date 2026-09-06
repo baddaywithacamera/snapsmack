@@ -179,6 +179,7 @@ class EditorWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.doc = None
+        self._restricted = False
         self.rows = {}
         self.active_target = "base"   # "base" or a layer id
         self.setWindowTitle("")
@@ -976,6 +977,17 @@ class EditorWindow(QMainWindow):
         dock.setAllowedAreas(Qt.RightDockWidgetArea)
         dock.setWidget(rail)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
+        self._controls_dock = dock
+
+    def set_restricted_mode(self, restricted=True):
+        """Unlicensed mode may open/view and export formats, nothing else."""
+        self._restricted = bool(restricted)
+        if hasattr(self, "_controls_dock"):
+            self._controls_dock.setEnabled(not self._restricted)
+        self._refresh_actions()
+        if self._restricted:
+            self.statusBar().showMessage(
+                "RESTRICTED — authorize this computer in SNAP HQ to edit, organize, publish, or use LEWK AGAIN.")
 
     def _build_histogram(self):
         wrap = QWidget()
@@ -3192,26 +3204,28 @@ class EditorWindow(QMainWindow):
     def _refresh_actions(self):
         has = self.doc is not None
         has_layer = self._mask_layer() is not None
-        self.act_undo.setEnabled(has and self.doc.history_index > 0)
-        self.act_redo.setEnabled(has and self.doc.history_index + 1 < len(self.doc.history))
+        editing = has and not self._restricted
+        self.act_undo.setEnabled(editing and self.doc.history_index > 0)
+        self.act_redo.setEnabled(editing and self.doc.history_index + 1 < len(self.doc.history))
         self.act_export.setEnabled(has)
-        self.act_reset.setEnabled(has)
+        self.act_reset.setEnabled(editing)
         self.act_fit.setEnabled(has)
         self.act_full.setEnabled(has)
-        self.act_compare.setEnabled(has)
-        self.act_crop.setEnabled(has)
-        self.act_heal.setEnabled(has)
-        self.act_redeye.setEnabled(has)
-        self.act_recipe_save.setEnabled(has)
-        self.act_recipe_apply.setEnabled(has)
-        self.act_save_project.setEnabled(has)
-        self.act_textures.setEnabled(has)
-        self.act_lewks.setEnabled(has)
-        self.act_lewk_again.setEnabled(has)
-        self.act_auto.setEnabled(has)
-        self.act_mask_brush.setEnabled(has_layer)
-        self.act_mask_gradient.setEnabled(has_layer)
-        self.act_colour_range.setEnabled(has_layer)
+        self.act_compare.setEnabled(editing)
+        self.act_crop.setEnabled(editing)
+        self.act_heal.setEnabled(editing)
+        self.act_redeye.setEnabled(editing)
+        self.act_recipe_save.setEnabled(editing)
+        self.act_recipe_apply.setEnabled(editing)
+        self.act_save_project.setEnabled(editing)
+        self.act_textures.setEnabled(editing)
+        self.act_lewks.setEnabled(editing)
+        self.act_lewk_again.setEnabled(editing)
+        self.act_auto.setEnabled(editing)
+        self.act_blog_copy.setEnabled(editing)
+        self.act_mask_brush.setEnabled(editing and has_layer)
+        self.act_mask_gradient.setEnabled(editing and has_layer)
+        self.act_colour_range.setEnabled(editing and has_layer)
 
     def _refresh_history(self):
         if not hasattr(self, "history_list"):
