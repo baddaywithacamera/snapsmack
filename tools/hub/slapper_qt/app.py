@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 from . import theme, BUILD_VERSION
 from .editor_window import EditorWindow
 from .library_window import LibraryWindow
+import snap_device_auth
 
 try:
     import snap_log
@@ -48,15 +49,24 @@ def main(argv=None):
     qa_psd = os.environ.get("SNAP_SLAPPER_QA_PSD", "")
     target = qa_image or next(
         (c for c in argv[1:] if c and not c.startswith("-")), None)
-    if target:
+    authorization = snap_device_auth.decision()
+    restricted = not authorization.get("authorized", False)
+    if target or restricted:
         window = EditorWindow()
-        if os.path.splitext(target)[1].lower() == ".slapper":
-            window.open_project_path(target)
-        else:
-            window.open_path(target)
+        if target:
+            if os.path.splitext(target)[1].lower() == ".slapper":
+                window.open_project_path(target)
+            else:
+                window.open_path(target)
+        window.set_restricted_mode(restricted)
     else:
         window = LibraryWindow()
     window.show()
+    if restricted and not qa_image:
+        QTimer.singleShot(100, lambda: QMessageBox.information(
+            window, "SNAP SLAPPER restricted mode",
+            "This computer is not currently authorized by a SnapSmack CMS.\n\n"
+            "You can open photographs and export them in another format. Editing, the library, publishing, and LEWK AGAIN stay locked until you authorize this computer in SNAP HQ."))
 
     # Packaged-build smoke test: open a real image, prove the Qt event loop can
     # start, write a marker, and exit without requiring desktop interaction.

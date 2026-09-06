@@ -298,6 +298,22 @@ def disable() -> None:
     lock()
 
 
+def discard_locked_metadata() -> None:
+    """Remove unusable vault metadata without pretending ciphertext is recoverable.
+
+    This deliberately does not inspect or rewrite any credential store. A caller
+    may use it only after proving that no stored value is encrypted by this
+    locked vault (the SNAP HQ 0.7.30 orphan-metadata recovery case).
+    """
+    if is_unlocked():
+        raise RuntimeError("Refusing to discard an unlocked vault.")
+    try:
+        os.remove(_meta_path())
+    except FileNotFoundError:
+        pass
+    clear_machine_key()
+
+
 # ── Secret sealing ─────────────────────────────────────────────────────────
 def encrypt(plaintext: str) -> str:
     """Seal a secret. Returns a tagged, text-safe string. Requires unlocked."""

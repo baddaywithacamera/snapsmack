@@ -130,6 +130,27 @@ include 'core/sidebar.php';
         </form>
     </div>
 
+    <!-- STALE NOTE RETRACTION -->
+    <div class="box mb-20">
+        <h3>RETRACT A STALE FEDIVERSE POST</h3>
+        <p class="dim mb-20">
+            Use this only when an older build deleted a post locally but left its cached copy on
+            Pixelfed or Mastodon. Enter this site's original ActivityPub Note path. SnapSmack sends
+            a signed Delete only for that exact local Note; it does not delete or resend anything else.
+        </p>
+        <form method="post" action=""
+              onsubmit="return confirm('Retract this exact stale Note from every current follower? This removes the remote cached copy and cannot be undone.');">
+            <input type="hidden" name="action" value="retract_stale_note">
+            <label class="dim d-block mb-12">
+                Local Note path:
+                <input type="text" name="stale_note_path" required
+                       pattern="ap/note/(p|i|l)/[1-9][0-9]*(~[2-9][0-9]*)?"
+                       placeholder="ap/note/p/1" style="width:240px; margin-left:6px;">
+            </label>
+            <button type="submit" class="btn-smack btn-danger" <?php echo $sv_on ? '' : 'disabled'; ?>>RETRACT THIS NOTE</button>
+        </form>
+    </div>
+
     <!-- COMBINE INTO CAROUSEL -->
     <div class="box mb-20">
         <h3>COMBINE POSTS INTO A CAROUSEL</h3>

@@ -38,6 +38,17 @@ CREATE TABLE IF NOT EXISTS categories (name TEXT PRIMARY KEY, description TEXT D
 CREATE TABLE IF NOT EXISTS albums     (name TEXT PRIMARY KEY, description TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS tags       (tag  TEXT PRIMARY KEY);
 CREATE TABLE IF NOT EXISTS titles     (title TEXT PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS enrichment_cache (
+  cache_key TEXT PRIMARY KEY, image_sha256 TEXT NOT NULL, domain TEXT NOT NULL,
+  model TEXT NOT NULL, prompt_sha256 TEXT NOT NULL, prompt_version TEXT NOT NULL DEFAULT '1',
+  bundle_json TEXT NOT NULL, raw_response TEXT NOT NULL DEFAULT '',
+  accepted_json TEXT NOT NULL DEFAULT '{}', revision INTEGER NOT NULL DEFAULT 1,
+  base_revision INTEGER NOT NULL DEFAULT 0, generated_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL, modified_at INTEGER NOT NULL,
+  source TEXT NOT NULL DEFAULT 'desktop', dirty INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS idx_enrichment_lookup
+  ON enrichment_cache(image_sha256, domain, model, prompt_sha256, expires_at);
 """
 
 

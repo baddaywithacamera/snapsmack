@@ -42,7 +42,7 @@ REM by import, so static analysis misses every backend and the frozen exe quietl
 REM reports "no keychain" instead of failing loudly.
 REM --add-data schema: the portable JSON Schema ships inside every archive, so it
 REM has to be inside the exe to be copied out.
-pyinstaller --onefile --windowed --name tyswy --version-file version_info.txt --paths ..\_shared --hidden-import snap_vault --hidden-import snap_paths --collect-submodules keyring.backends --add-data "schema;schema" main.py
+pyinstaller --onefile --windowed --name tyswy --version-file version_info.txt --paths ..\_shared --hidden-import snap_vault --hidden-import snap_paths --hidden-import snap_connections --hidden-import snap_profiles --hidden-import snap_creds --hidden-import snap_home --hidden-import snap_site_settings --collect-submodules keyring.backends --add-data "schema;schema" main.py
 
 echo.
 echo Done. Exe is in dist\tyswy.exe

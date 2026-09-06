@@ -132,6 +132,38 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             http_response_code(500); echo json_encode(['ok'=>false,'error'=>'Could not save site settings']); exit;
         }
     }
+    $tool_types = ['sybu','gyss','ohsnap','tyswy','unzucker','flkrfckr','smackpress'];
+    if ($action === 'provision-tool-key') {
+        // A SUYB-scoped backup key may read discovery data, but must never be
+        // able to mint credentials for other desktop tools. Only THE HUB's
+        // fleet credential (or the existing authenticated admin session path)
+        // has that authority.
+        if (defined('SNAP_API_AUTH') && (!defined('SNAP_API_KEY_TYPE') || SNAP_API_KEY_TYPE !== 'hub')) {
+            http_response_code(403); echo json_encode(['ok'=>false,'error'=>'Hub credential required']); exit;
+        }
+        $tool_type = strtolower(trim((string)($body['key_type'] ?? '')));
+        if (!in_array($tool_type, $tool_types, true)) {
+            http_response_code(400); echo json_encode(['ok'=>false,'error'=>'key_type not provisionable']); exit;
+        }
+        try {
+            foreach ([
+                "ALTER TABLE snap_ohsnap_keys ADD COLUMN key_type VARCHAR(20) NOT NULL DEFAULT 'ohsnap' AFTER label",
+                "ALTER TABLE snap_ohsnap_keys ADD COLUMN key_prefix VARCHAR(8) NOT NULL DEFAULT '' AFTER key_hash",
+                "ALTER TABLE snap_ohsnap_keys ADD COLUMN expires_at DATETIME DEFAULT NULL AFTER last_used_at",
+            ] as $alter) { try { $pdo->exec($alter); } catch (PDOException $e) {} }
+            $raw = bin2hex(random_bytes(32)); $prefix = substr($raw, 0, 8);
+            $expires = date('Y-m-d H:i:s', strtotime('+1 year'));
+            $pdo->beginTransaction();
+            $pdo->prepare("UPDATE snap_ohsnap_keys SET is_active=0 WHERE key_type=? AND label LIKE 'HUB %'")->execute([$tool_type]);
+            $pdo->prepare("INSERT INTO snap_ohsnap_keys (label,key_type,key_hash,key_prefix,expires_at,user_id) VALUES (?,?,?,?,?,NULL)")
+                ->execute(['HUB auto-provisioned (' . $tool_type . ')', $tool_type, hash('sha256',$raw), $prefix, $expires]);
+            $pdo->commit();
+            echo json_encode(['ok'=>true,'key_type'=>$tool_type,'api_key'=>$raw,'key_prefix'=>$prefix,'expires_at'=>$expires]); exit;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            http_response_code(500); echo json_encode(['ok'=>false,'error'=>'Provisioning failed.']); exit;
+        }
+    }
     if ($action !== 'provision-backup-key') {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'Unknown action.']);

@@ -29,7 +29,7 @@ import logging
 
 import requests
 from bs4 import BeautifulSoup
-from PIL import Image as PILImage
+from PIL import Image as PILImage, ImageFilter, ImageOps
 
 log = logging.getLogger('sybu')
 
@@ -309,6 +309,11 @@ class SnapSmackClient:
         drive_service=None,
         drive_folder_id:     str = '',
         copyright_text:      str = '',
+        max_width_landscape: int = WEB_MAX_W,
+        max_height_portrait: int = WEB_MAX_H,
+        jpeg_quality:        int = 92,
+        image_resize_enabled: bool = True,
+        export_sharpen:      str = 'auto',
     ) -> PostResult:
         """
         Full workflow for one image. Returns PostResult — never raises.
@@ -329,18 +334,39 @@ class SnapSmackClient:
             new_filename = haiku_to_filename(entry.title, ext)
             web_path     = os.path.join(web_folder, new_filename)
 
-            img = PILImage.open(src_path)
-            img.thumbnail((WEB_MAX_W, WEB_MAX_H), PILImage.LANCZOS)
+            img = ImageOps.exif_transpose(PILImage.open(src_path))
+            before_size = img.size
+            if image_resize_enabled:
+                # SNAP HQ defines a long-edge limit by orientation, matching the
+                # server pipeline: landscape/square use max width; portrait uses
+                # max height. Never enlarge a smaller photograph.
+                limit = (int(max_width_landscape) if img.width >= img.height
+                         else int(max_height_portrait))
+                if max(img.size) > limit:
+                    ratio = limit / float(max(img.size))
+                    img = img.resize(
+                        (max(1, round(img.width * ratio)),
+                         max(1, round(img.height * ratio))), PILImage.LANCZOS)
+
+            sharpen = str(export_sharpen or 'auto').strip().lower()
+            if sharpen == 'auto':
+                sharpen = 'low' if img.size != before_size else 'off'
+            if sharpen == 'low':
+                img = img.filter(ImageFilter.UnsharpMask(radius=1.0, percent=70, threshold=3))
+            elif sharpen == 'medium':
+                img = img.filter(ImageFilter.UnsharpMask(radius=1.4, percent=120, threshold=2))
+
+            save_quality = max(50, min(100, int(jpeg_quality)))
 
             # ── 2. Build EXIF and embed during save (single step, reliable) ──
             exif_ok = True
             try:
                 exif_bytes = exif_writer.build_exif_bytes(entry.title, entry.tags, copyright_str)
-                img.save(web_path, quality=92, optimize=True, exif=exif_bytes)
+                img.save(web_path, quality=save_quality, optimize=True, exif=exif_bytes)
             except Exception as e:
                 exif_ok = False
                 notes.insert(0, f"⚠ EXIF FAILED: {e}")
-                img.save(web_path, quality=92, optimize=True)  # save without EXIF as fallback
+                img.save(web_path, quality=save_quality, optimize=True)  # save without EXIF as fallback
 
             # ── 3. Upload original to Google Drive ────────────────────
             drive_url = ''
@@ -484,7 +510,13 @@ def run_batch(
     drive_service=None,
     drive_folder_id:     str = '',
     copyright_text:      str = '',
+    max_width_landscape: int = WEB_MAX_W,
+    max_height_portrait: int = WEB_MAX_H,
+    jpeg_quality:        int = 92,
+    image_resize_enabled: bool = True,
+    export_sharpen:      str = 'auto',
     cancel_event=None,
+    completed_dir:       str = '',
 ) -> List[PostResult]:
     results = []
     total   = len(entries)
@@ -504,7 +536,13 @@ def run_batch(
             drive_service=drive_service,
             drive_folder_id=drive_folder_id,
             copyright_text=copyright_text,
+            max_width_landscape=max_width_landscape,
+            max_height_portrait=max_height_portrait,
+            jpeg_quality=jpeg_quality,
+            image_resize_enabled=image_resize_enabled,
+            export_sharpen=export_sharpen,
         )
+        _archive_success(result, image_folder, completed_dir)
         results.append(result)
         on_progress(i, total, result)
 
@@ -633,6 +671,7 @@ def run_gram_batch(
     image_folder: str,
     on_progress:  Callable[[int, int, PostResult], None] = None,
     cancel_event=None,
+    completed_dir: str = '',
 ) -> List[PostResult]:
     """Gram counterpart of run_batch — post each selected entry as its own single
     gram to a GRAMOFSMACK (carousel) site. Same enriched batch table (Gemini
@@ -644,6 +683,7 @@ def run_gram_batch(
         if cancel_event is not None and cancel_event.is_set():
             break
         result = post_gram(conn, entry, image_folder)
+        _archive_success(result, image_folder, completed_dir)
         results.append(result)
         if on_progress is not None:
             on_progress(i, total, result)
@@ -653,6 +693,39 @@ def run_gram_batch(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _archive_success(result: PostResult, image_folder: str, completed_dir: str) -> str:
+    """Move a confirmed upload into the managed sibling `completed` folder.
+
+    Never overwrites an existing file. Posting remains successful if the local
+    move fails, but the row is marked as a warning with the exact reason.
+    """
+    if not result.success or not completed_dir:
+        return ''
+    source = result.entry.file
+    if not os.path.isabs(source):
+        source = os.path.join(image_folder, source)
+    source = os.path.abspath(source)
+    root = os.path.abspath(image_folder)
+    try:
+        if os.path.commonpath([source, root]) != root or not os.path.isfile(source):
+            raise OSError('source image is not inside the upload folder')
+        os.makedirs(completed_dir, exist_ok=True)
+        stem, ext = os.path.splitext(os.path.basename(source))
+        target = os.path.join(completed_dir, stem + ext)
+        number = 2
+        while os.path.exists(target):
+            target = os.path.join(completed_dir, f'{stem} ({number}){ext}')
+            number += 1
+        shutil.move(source, target)
+        result.message += ' + moved to completed'
+        return target
+    except Exception as exc:
+        result.exif_ok = False
+        result.message += f' (posted, but could not move to completed: {exc})'
+        log.warning('POSTED BUT ARCHIVE FAILED %s: %s', source, exc)
+        return ''
+
 
 def _server_reason(body: str) -> str:
     """Best-effort short, human reason from a non-confirming server response."""

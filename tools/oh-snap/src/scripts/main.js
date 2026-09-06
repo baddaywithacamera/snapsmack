@@ -131,8 +131,15 @@ function saveProfiles(profiles) {
     localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
 }
 
-function renderProfiles() {
-    const profiles = loadProfiles();
+async function renderProfiles() {
+    const local = loadProfiles();
+    let discovered = [];
+    try {
+        discovered = (await window.__TAURI__.core.invoke('shared_profiles')).map(p => ({ ...p, shared: true }));
+    } catch { /* standalone/web preview */ }
+    const byUrl = new Map(discovered.map(p => [p.url.replace(/\/$/, '').toLowerCase(), p]));
+    for (const p of local) byUrl.set(p.url.replace(/\/$/, '').toLowerCase(), p);
+    const profiles = [...byUrl.values()];
     if (!profiles.length) { connectProfiles.classList.add('hidden'); return; }
 
     connectProfiles.classList.remove('hidden');
@@ -146,19 +153,23 @@ function renderProfiles() {
                 <div class="profile-name">${esc(p.name || p.url)}</div>
                 <div class="profile-url">${esc(p.url)}</div>
             </div>
-            <button class="profile-remove" data-index="${i}" title="Remove">✕</button>`;
+            ${p.shared ? '' : `<button class="profile-remove" data-index="${i}" title="Remove">✕</button>`}`;
 
         item.addEventListener('click', async e => {
             if (e.target.classList.contains('profile-remove')) return;
             inputUrl.value     = p.url;
-            inputKey.value     = p.vault_account ? (await OhSnapVault.get(p.vault_account).catch(() => null) || '') : '';
+            inputKey.value     = p.shared
+                ? (await window.__TAURI__.core.invoke('shared_site_credential', { siteUrl: p.url }).catch(() => '') || '')
+                : p.vault_account ? (await OhSnapVault.get(p.vault_account).catch(() => null) || '') : '';
             inputProfile.value = p.name;
         });
 
-        item.querySelector('.profile-remove').addEventListener('click', async () => {
+        item.querySelector('.profile-remove')?.addEventListener('click', async () => {
             const updated = loadProfiles();
-            if (updated[i]?.vault_account) await OhSnapVault.remove(updated[i].vault_account).catch(() => {});
-            updated.splice(i, 1);
+            const localIndex = updated.findIndex(row => row.url === p.url);
+            if (localIndex < 0) return;
+            if (updated[localIndex]?.vault_account) await OhSnapVault.remove(updated[localIndex].vault_account).catch(() => {});
+            updated.splice(localIndex, 1);
             saveProfiles(updated);
             renderProfiles();
         });

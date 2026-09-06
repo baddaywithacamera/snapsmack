@@ -417,11 +417,22 @@ class LibraryWindow(QMainWindow):
         self.act_open.triggered.connect(self.choose_folder)
         bar.addAction(self.act_open)
 
-        self.act_folder_up = QAction("Up One Folder", self)
+        self.act_folder_up = QAction("↑ Up", self)
         self.act_folder_up.setShortcut(QKeySequence("Alt+Up"))
         self.act_folder_up.setToolTip("Open the parent folder (Alt+Up)")
         self.act_folder_up.triggered.connect(self._go_up_folder)
-        bar.addAction(self.act_folder_up)
+        self.act_folder_up.setEnabled(False)
+        self.folder_up_button = QToolButton()
+        self.folder_up_button.setObjectName("FolderUpButton")
+        self.folder_up_button.setDefaultAction(self.act_folder_up)
+        self.folder_up_button.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self.folder_up_button.setStyleSheet(
+            "QToolButton#FolderUpButton { color:#dddddd; background:transparent; "
+            "border:0; padding:4px 8px; font-weight:600; }"
+            "QToolButton#FolderUpButton:hover { color:#39FF14; }"
+            "QToolButton#FolderUpButton:disabled { color:#555; }"
+        )
+        bar.addWidget(self.folder_up_button)
 
         self.act_folders = QAction("Folders", self)
         self.act_folders.setCheckable(True)
@@ -774,6 +785,7 @@ class LibraryWindow(QMainWindow):
              if os.path.isfile(path)]
         self._virtual_source = source
         self._folder = None
+        self._update_folder_up_action()
         self._scan_generation += 1
         if self._scan_token is not None:
             self._scan_token.cancelled = True
@@ -1300,6 +1312,20 @@ class LibraryWindow(QMainWindow):
         self.catalog.register_folder(parent)
         self.load_folder(parent)
 
+    def _update_folder_up_action(self):
+        """Make parent navigation obvious and name the folder it will open."""
+        current = os.path.abspath(self._folder) if self._folder else ""
+        parent = os.path.dirname(current) if current else ""
+        available = bool(parent and os.path.normcase(parent) != os.path.normcase(current))
+        if available:
+            parent_name = os.path.basename(parent.rstrip(os.sep)) or parent
+            self.act_folder_up.setText("↑ Up")
+            self.act_folder_up.setToolTip(f"Up to {parent_name} — {parent} (Alt+Up)")
+        else:
+            self.act_folder_up.setText("↑ Up")
+            self.act_folder_up.setToolTip("Choose a folder first (Alt+Up)")
+        self.act_folder_up.setEnabled(available)
+
     def _subfolders_toggled(self, checked):
         from . import prefs
         values = prefs.load()
@@ -1331,6 +1357,7 @@ class LibraryWindow(QMainWindow):
         self._virtual_source = None
         recursive = self.act_subfolders.isChecked()
         self._folder = folder
+        self._update_folder_up_action()
         self._show_folder_in_tree(folder)
         self._scan_generation += 1
         generation = self._scan_generation

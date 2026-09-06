@@ -1184,6 +1184,13 @@ class Engine:
             'default_category': p.get('default_category', ''),
             'default_album': p.get('default_album', ''),
             'default_orientation': p.get('default_orientation', 'auto') or 'auto',
+            'upload_dir': p.get('upload_dir', ''),
+            'prompt': p.get('prompt', ''),
+            'max_width_landscape': p.get('max_width_landscape', 3840),
+            'max_height_portrait': p.get('max_height_portrait', 2160),
+            'jpeg_quality': p.get('jpeg_quality', 85),
+            'image_resize_enabled': bool(p.get('image_resize_enabled', True)),
+            'export_sharpen': p.get('export_sharpen', 'auto'),
         }
 
     def profile_new(self) -> dict:
@@ -1260,6 +1267,8 @@ class Engine:
             'default_album': p.get('default_album', ''),
             'default_orientation': p.get('default_orientation', 'auto') or 'auto',
             'drive_enabled': bool(p.get('drive_enabled', True)),
+            'image_folder': p.get('upload_dir', ''),
+            'prompt': p.get('prompt', ''),
         }
 
     def sp_test(self, url: str, api_key: str, ack_insecure: bool = False) -> dict:
