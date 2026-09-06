@@ -23,6 +23,7 @@ _hidden = collect_submodules('slapper_qt') + [
     'editor_engine', 'built_in_lewks', 'found_textures', 'texture_assets',
     'photo_manager', 'slapper_filters', 'lewk_again',
     'snap_home', 'snap_log', 'snap_profiles', 'snap_creds', 'snap_vault',
+    'snap_device_auth', 'snap_native_creds', 'cryptography',
     'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
     'PySide6.QtPrintSupport', 'PySide6.QtSvg',
     'PIL', 'PIL.Image', 'psd_tools',
