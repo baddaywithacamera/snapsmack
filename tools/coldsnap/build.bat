@@ -26,9 +26,10 @@ set EXE_NAME=coldsnap.exe
 echo Build version: %BUILD_VER%
 echo Output name:   %EXE_NAME%
 
-REM ── Single fixed spec (COLD SNAP). coldsnap.spec auto-bundles every local
-REM    .py, so there is NO per-version spec to clone/rename.
-set SPEC_FILE=coldsnap.spec
+REM ── Single fixed spec (COLD SNAP — the Qt shell IS coldsnap now; Sean,
+REM    2026-09-06: "WE ARE NOT GOING BACK TO THE OLD VERSION IN ANY FASHION").
+REM    The spec auto-bundles every local .py + the coldsnap_qt package.
+set SPEC_FILE=coldsnap-qt.spec
 if not exist %SPEC_FILE% (
     echo ERROR: Spec file %SPEC_FILE% not found.
     pause

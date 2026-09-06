@@ -69,7 +69,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='coldsnap-qt',
+    name='coldsnap',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
