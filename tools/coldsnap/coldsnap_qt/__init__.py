@@ -27,7 +27,10 @@ Plain-words UI contract (the reasons this rebuild exists):
 import os
 import sys
 
-BUILD_VERSION_QT = "0.8.0-qt"
+# NOTE: the Qt shell carries NO version of its own — _version.py BUILD_VERSION
+# is the single source of truth, and the 0.8.x line is RESERVED for the closed
+# beta (Sean, 2026-09-06). The title just appends the words "Qt shell".
+SHELL_LABEL = "Qt shell"
 
 # The engine modules are siblings in tools/coldsnap; _shared is one up. Make
 # both importable no matter how this package is launched (source, -m, frozen).
