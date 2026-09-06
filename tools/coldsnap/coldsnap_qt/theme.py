@@ -11,16 +11,20 @@ whole app should be retuned by lives here.
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
+# COLD SNAP runs its own slightly-lifted greys (vs the SLAPPER source): the
+# near-identical panel/background of the SLAPPER palette washed out at COLD
+# SNAP's larger sizes, so cards, chrome and borders are stepped up for real
+# separation and the secondary text greys are brighter (Sean, 2026-09-06).
 BG         = "#141414"   # app background
-PANEL      = "#1c1c1c"   # cards / boxes
-PANEL_HI   = "#111111"   # card headers
-FIELD      = "#1a1a1a"   # input chrome
-FIELD_HI   = "#2a2a2a"   # hover chrome / border grey
-BORDER     = "#2a2a2a"
-INK        = "#eeeeee"   # primary text
-BODY       = "#cccccc"
-DIM        = "#777777"
-FAINT      = "#555555"
+PANEL      = "#272727"   # cards / boxes — clearly above the background now
+PANEL_HI   = "#1b1b1b"   # card headers
+FIELD      = "#303030"   # input chrome / quiet buttons
+FIELD_HI   = "#3a3a3a"   # hover chrome
+BORDER     = "#3d3d3d"   # visible hairline separators
+INK        = "#f2f2f2"   # primary text
+BODY       = "#d8d8d8"   # body text — lifted
+DIM        = "#9a9a9a"   # secondary labels — was #777, too dim to read
+FAINT      = "#6a6a6a"   # tertiary / disabled
 ACCENT     = "#39FF14"   # neon green
 ACCENT_HI  = "#5bff42"
 ACCENT_DIM = "#1E6610"
@@ -46,7 +50,7 @@ def stylesheet() -> str:
     return f"""
     * {{
         font-family: "{FONT}", "Inter", sans-serif;
-        font-size: 13px;
+        font-size: 15px;
         color: {BODY};
         outline: none;
     }}
@@ -60,7 +64,7 @@ def stylesheet() -> str:
     }}
     QLabel#CardTitle {{
         color: {ACCENT};
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 700;
         letter-spacing: 1px;
         background: transparent;
@@ -70,13 +74,13 @@ def stylesheet() -> str:
     QFrame#Card QLabel, QFrame#Card QCheckBox, QFrame#Card QRadioButton {{
         background: transparent;
     }}
-    QLabel#Hint {{ color: {DIM}; font-size: 12px; background: transparent; }}
+    QLabel#Hint {{ color: {DIM}; font-size: 14px; background: transparent; }}
     QLabel#FieldLabel {{
-        color: {DIM}; font-size: 11px; font-weight: 600;
+        color: {DIM}; font-size: 13px; font-weight: 600;
         letter-spacing: 0.5px; background: transparent;
     }}
     QLabel#BigTitle {{
-        color: {INK}; font-size: 17px; font-weight: 700; background: transparent;
+        color: {INK}; font-size: 20px; font-weight: 700; background: transparent;
     }}
 
     /* --- Tabs (pill strip, SLAPPER-toolbar family) ------------------------ */
@@ -88,7 +92,7 @@ def stylesheet() -> str:
         padding: 9px 26px;
         margin-right: 6px;
         margin-bottom: 6px;
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 700;
         letter-spacing: 1.5px;
         border: 1px solid {BORDER};
@@ -108,7 +112,7 @@ def stylesheet() -> str:
         border: 1px solid {BORDER};
         border-radius: 6px;
         padding: 7px 14px;
-        font-size: 12px;
+        font-size: 14px;
     }}
     QPushButton:hover    {{ border: 1px solid {ACCENT}; color: {ACCENT}; }}
     QPushButton:disabled {{ color: {FAINT}; border: 1px solid {BORDER}; }}
@@ -134,12 +138,12 @@ def stylesheet() -> str:
 
     /* --- Inputs ------------------------------------------------------------*/
     QLineEdit, QPlainTextEdit, QTextEdit {{
-        background: #050505;
+        background: #101010;
         color: {INK};
         border: 1px solid {BORDER};
         border-radius: 5px;
         padding: 6px 9px;
-        font-size: 13px;
+        font-size: 15px;
         selection-background-color: {ACCENT_DIM};
     }}
     QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus {{
@@ -151,7 +155,7 @@ def stylesheet() -> str:
         border: 1px solid {BORDER};
         border-radius: 5px;
         padding: 5px 9px;
-        font-size: 12px;
+        font-size: 14px;
     }}
     QComboBox:hover {{ border: 1px solid {ACCENT}; }}
     QComboBox QAbstractItemView {{
@@ -162,16 +166,16 @@ def stylesheet() -> str:
         selection-color: {ACCENT};
         outline: none;
     }}
-    QCheckBox {{ color: {BODY}; font-size: 12px; spacing: 8px; background: transparent; }}
+    QCheckBox {{ color: {BODY}; font-size: 14px; spacing: 8px; background: transparent; }}
     QCheckBox::indicator {{
         width: 16px; height: 16px; border-radius: 4px;
-        border: 1px solid {FAINT}; background: #050505;
+        border: 1px solid {FAINT}; background: #101010;
     }}
     QCheckBox::indicator:checked {{ background: {ACCENT}; border: 1px solid {ACCENT}; }}
-    QRadioButton {{ color: {BODY}; font-size: 12px; spacing: 7px; background: transparent; }}
+    QRadioButton {{ color: {BODY}; font-size: 14px; spacing: 7px; background: transparent; }}
     QRadioButton::indicator {{
         width: 15px; height: 15px; border-radius: 8px;
-        border: 1px solid {FAINT}; background: #050505;
+        border: 1px solid {FAINT}; background: #101010;
     }}
     QRadioButton::indicator:checked {{ background: {ACCENT}; border: 1px solid {ACCENT}; }}
 
@@ -200,7 +204,7 @@ def stylesheet() -> str:
 
     QStatusBar {{
         background: {BG}; color: {DIM};
-        border-top: 1px solid {BORDER}; font-size: 12px;
+        border-top: 1px solid {BORDER}; font-size: 14px;
     }}
     QToolTip {{
         background: {PANEL_HI}; color: {INK};
