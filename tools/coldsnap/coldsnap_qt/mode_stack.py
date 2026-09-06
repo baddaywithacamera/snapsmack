@@ -27,7 +27,7 @@ from sumna_post import SumnaConnection, GramPoster, InsecureTransportError
 from . import theme
 from .widgets import (Card, hint, field_label, big_button, thumb_label,
                       load_pixmap, SliderRow, status_badge)
-from .shortcode_bar import ShortcodeBar
+from .body_editor import BodyEditor
 from .drafts_panel import BatchRail, default_draft_row
 
 
@@ -204,10 +204,9 @@ class StackMode(QWidget):
         post = Card("POST")
         right.addWidget(post)
         post.body.addWidget(field_label("Caption"))
-        self.caption_edit = QPlainTextEdit()
-        self.caption_edit.setFixedHeight(84)
-        # Same shortcode toolbar the CMS carousel editor puts on this field.
-        post.body.addWidget(ShortcodeBar(self.caption_edit))
+        # Same shortcode toolbar the CMS carousel editor puts on this field;
+        # BIGGIE face builds the same caption out of blocks.
+        self.caption_edit = BodyEditor(allow_mosaic=False, simple_height=84)
         post.body.addWidget(self.caption_edit)
 
         ai_row = QHBoxLayout()
@@ -613,6 +612,7 @@ class StackMode(QWidget):
     # Commit
     # ======================================================================
     def _apply_post_fields(self, d: O.Draft):
+        d.body_blocks = self.caption_edit.blocks_json()
         d.img_status = self.status_combo.currentText()
         d.post_date = self.date_edit.text().strip()
         d.allow_comments = self.comments_check.isChecked()
@@ -815,7 +815,7 @@ class StackMode(QWidget):
             self._select_image(self._trig_slots[0][0])
 
     def _load_post_fields(self, draft: O.Draft):
-        self.caption_edit.setPlainText(draft.caption)
+        self.caption_edit.set_state(draft.caption, getattr(draft, "body_blocks", ""))
         self.tags_edit.setText(draft.tags)
         self.date_edit.setText(draft.post_date)
         self.status_combo.setCurrentText(draft.img_status)

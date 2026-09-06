@@ -23,7 +23,7 @@ from sumna_post import SumnaConnection, SoloPoster, InsecureTransportError
 
 from . import theme
 from .widgets import Card, hint, field_label, big_button, thumb_label, load_pixmap
-from .shortcode_bar import ShortcodeBar
+from .body_editor import BodyEditor
 from .drafts_panel import BatchRail, default_draft_row
 
 _COLOUR_LABELS = ["—", "Colour", "B&W"]
@@ -82,11 +82,9 @@ class SoloMode(QWidget):
         card.body.addWidget(self.title_edit)
 
         card.body.addWidget(field_label("Caption / description"))
-        self.caption_edit = QPlainTextEdit()
-        self.caption_edit.setFixedHeight(84)
         # The CMS solo poster has the shortcode toolbar on this exact field —
-        # the desktop composer gets the same controls (design-bible parity).
-        card.body.addWidget(ShortcodeBar(self.caption_edit))
+        # SIMPLE face = same controls; BIGGIE face = the same body as blocks.
+        self.caption_edit = BodyEditor(allow_mosaic=False, simple_height=84)
         card.body.addWidget(self.caption_edit)
 
         card.body.addWidget(field_label("ALT text — one plain sentence for screen readers"))
@@ -196,7 +194,7 @@ class SoloMode(QWidget):
             self.preview.setPixmap(pm)
         self.title_edit.setText(draft.title)
         self.tags_edit.setText(draft.tags)
-        self.caption_edit.setPlainText(draft.caption)
+        self.caption_edit.set_state(draft.caption, getattr(draft, "body_blocks", ""))
         self.alt_edit.setPlainText(draft.alt)
         self.cat_edit.setText(draft.category)
         self.album_edit.setText(draft.album)
@@ -232,6 +230,7 @@ class SoloMode(QWidget):
         draft.title = self.title_edit.text().strip()
         draft.tags = self.tags_edit.text().strip()
         draft.caption = self.caption_edit.toPlainText().strip()
+        draft.body_blocks = self.caption_edit.blocks_json()
         draft.alt = self.alt_edit.toPlainText().strip()
         draft.category = self.cat_edit.text().strip()
         draft.album = self.album_edit.text().strip()
