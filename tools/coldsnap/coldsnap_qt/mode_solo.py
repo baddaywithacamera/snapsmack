@@ -22,7 +22,8 @@ import sumna_offline as O
 from sumna_post import SumnaConnection, SoloPoster, InsecureTransportError
 
 from . import theme
-from .widgets import Card, hint, field_label, big_button, thumb_label, load_pixmap
+from .widgets import (Accordion, Card, build_rail, hint, field_label,
+                      big_button, thumb_label, load_pixmap)
 from .body_editor import BodyEditor
 from .drafts_panel import BatchRail, default_draft_row
 
@@ -46,15 +47,14 @@ class SoloMode(QWidget):
         self._image_path = ""
 
         outer = QHBoxLayout(self)
-        outer.setContentsMargins(10, 10, 10, 10)
+        outer.setContentsMargins(10, 10, 0, 0)
         outer.setSpacing(10)
 
         self.rail = BatchRail(
             self.SUITE_MODE, "photo", self._poster_and_url,
             row_builder=self._rows)
-        outer.addWidget(self.rail)
 
-        # -- compose ----------------------------------------------------------
+        # -- compose (centre — the writing dominates the window) ---------------
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         compose_host = QWidget()
@@ -64,6 +64,9 @@ class SoloMode(QWidget):
         card = Card("COMPOSE — one photo, one post")
         right.addWidget(card)
 
+        # -- PHOTO — a rail section, opened when wanted (Sean: images don't
+        #    need to be on screen all the time) --------------------------------
+        self.photo_sec = Accordion("PHOTO — none yet")
         pick_row = QHBoxLayout()
         self.preview = thumb_label("", 120)
         pick_row.addWidget(self.preview)
@@ -72,10 +75,11 @@ class SoloMode(QWidget):
         pick_btn.clicked.connect(self._choose_image)
         pick_col.addWidget(pick_btn, 0, Qt.AlignLeft)
         self.path_lbl = hint("No photo yet.")
+        self.path_lbl.setWordWrap(True)
         pick_col.addWidget(self.path_lbl)
         pick_col.addStretch(1)
         pick_row.addLayout(pick_col, 1)
-        card.body.addLayout(pick_row)
+        self.photo_sec.add_layout(pick_row)
 
         card.body.addWidget(field_label("Title"))
         self.title_edit = QLineEdit()
@@ -104,6 +108,8 @@ class SoloMode(QWidget):
         self.tags_edit = QLineEdit()
         card.body.addWidget(self.tags_edit)
 
+        # -- OPTIONS — a rail section ------------------------------------------
+        self.options_sec = Accordion("OPTIONS — category · status · colour")
         grid = QGridLayout()
         grid.addWidget(field_label("Category"), 0, 0)
         grid.addWidget(field_label("Album"), 0, 1)
@@ -111,32 +117,31 @@ class SoloMode(QWidget):
         self.album_edit = QLineEdit()
         grid.addWidget(self.cat_edit, 1, 0)
         grid.addWidget(self.album_edit, 1, 1)
-        card.body.addLayout(grid)
+        self.options_sec.add_layout(grid)
 
-        opts = QHBoxLayout()
-        opts.addWidget(field_label("Orientation"))
+        opts = QGridLayout()
+        opts.addWidget(field_label("Orientation"), 0, 0)
         self.orient_combo = QComboBox()
         self.orient_combo.addItems(["auto", "landscape", "portrait", "square"])
-        opts.addWidget(self.orient_combo)
-        opts.addWidget(field_label("Status"))
+        opts.addWidget(self.orient_combo, 0, 1)
+        opts.addWidget(field_label("Status"), 1, 0)
         self.status_combo = QComboBox()
         self.status_combo.addItems(["published", "draft"])
-        opts.addWidget(self.status_combo)
-        opts.addWidget(field_label("Colour / B&W"))
+        opts.addWidget(self.status_combo, 1, 1)
+        opts.addWidget(field_label("Colour / B&W"), 2, 0)
         self.colour_combo = QComboBox()
         self.colour_combo.addItems(_COLOUR_LABELS)
         self.colour_combo.setToolTip("A search/filter tag — never changes how the photo looks.")
-        opts.addWidget(self.colour_combo)
-        opts.addStretch(1)
-        card.body.addLayout(opts)
+        opts.addWidget(self.colour_combo, 2, 1)
+        self.options_sec.add_layout(opts)
 
         dl_row = QHBoxLayout()
         self.dl_check = QCheckBox("Allow download")
         dl_row.addWidget(self.dl_check)
+        self.options_sec.add_layout(dl_row)
         self.dl_url = QLineEdit()
         self.dl_url.setPlaceholderText("Download URL (only if allowed)")
-        dl_row.addWidget(self.dl_url, 1)
-        card.body.addLayout(dl_row)
+        self.options_sec.add(self.dl_url)
 
         right.addStretch(1)
         scroll.setWidget(compose_host)
@@ -144,6 +149,7 @@ class SoloMode(QWidget):
         # QUEUE POST lives OUTSIDE the scroll, pinned under it — the compose
         # form may scroll, but its primary action must never be below the fold.
         act = QHBoxLayout()
+        act.setContentsMargins(0, 0, 0, 10)
         self.queue_btn = big_button("QUEUE POST  →  goes in the batch, sends on SEND")
         self.queue_btn.clicked.connect(lambda: self._save(ready=True))
         act.addWidget(self.queue_btn, 1)
@@ -155,11 +161,16 @@ class SoloMode(QWidget):
         clear_btn.clicked.connect(self._clear)
         act.addWidget(clear_btn)
 
-        right_wrap = QVBoxLayout()
-        right_wrap.setSpacing(8)
-        right_wrap.addWidget(scroll, 1)
-        right_wrap.addLayout(act)
-        outer.addLayout(right_wrap, 1)
+        centre = QVBoxLayout()
+        centre.setSpacing(8)
+        centre.addWidget(scroll, 1)
+        centre.addLayout(act)
+        outer.addLayout(centre, 1)
+
+        # -- the rail: sections scroll, SEND stays pinned ----------------------
+        outer.addWidget(build_rail(
+            [self.photo_sec, self.options_sec, self.rail.section],
+            [self.rail.send_box]))
 
         self._ai_bridge = _AiBridge()
         self._ai_bridge.done.connect(self._apply_ai)
@@ -178,6 +189,7 @@ class SoloMode(QWidget):
             return
         self._image_path = p
         self.path_lbl.setText(os.path.basename(p))
+        self.photo_sec.header.setText(f"PHOTO — {os.path.basename(p)}")
         if not self.title_edit.text().strip():
             self.title_edit.setText(os.path.splitext(os.path.basename(p))[0])
         pm = load_pixmap(p, 120)
@@ -189,6 +201,9 @@ class SoloMode(QWidget):
         cover = draft.cover()
         self._image_path = cover.local_path if cover else ""
         self.path_lbl.setText(os.path.basename(self._image_path) or "No photo yet.")
+        self.photo_sec.header.setText(
+            f"PHOTO — {os.path.basename(self._image_path)}" if self._image_path
+            else "PHOTO — none yet")
         pm = load_pixmap(cover.thumb_square if cover else self._image_path, 120)
         if pm:
             self.preview.setPixmap(pm)
@@ -208,6 +223,7 @@ class SoloMode(QWidget):
         self._editing_id = None
         self._image_path = ""
         self.path_lbl.setText("No photo yet.")
+        self.photo_sec.header.setText("PHOTO — none yet")
         self.preview.clear()
         for w in (self.title_edit, self.tags_edit, self.cat_edit,
                   self.album_edit, self.dl_url):
