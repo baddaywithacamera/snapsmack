@@ -163,6 +163,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Sep 5</span><a href="#a055">Release Packages Shipped Dev Directories &mdash; and the Integrity Monitor Vouched for Them</a></li>
                 <li><span class="idx-date">Aug 27</span><a href="#a052"><code>llms.txt</code> &mdash; Agent Instructions, Executable References &amp; Publisher Data</a></li>
                 <li><span class="idx-date">Aug 25</span><a href="#a051">Multisite Federation &mdash; Cross-Blog Trust, the Public Directory &amp; SNAP SLAPPER</a></li>
                 <li><span class="idx-date">Aug 21</span><a href="#a050">CMS Architecture Assessment &mdash; Direct-Access Guards &amp; Content-Model Integrity</a></li>
@@ -219,6 +220,14 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a055">
+                <div class="post-meta"><span class="post-date">September 5, 2026</span><span class="post-tag">High Findings Closed</span></div>
+                <h2>Release Packages Shipped Dev Directories &mdash; and the Integrity Monitor Vouched for Them</h2>
+                <p>A routine FTP look at a live blog turned up folders that had no business being there: our own regression tests, developer scratch space, and a stale copy of the release-packaging tooling &mdash; on every install in the fleet. Nobody attacked anything; our packager shipped them, and nothing ever cleaned them off. The audit&rsquo;s real headline was worse than the folders: SMACKBACK, the file-integrity monitor whose whole job is flagging files that don&rsquo;t belong, had been <em>guaranteeing</em> them &mdash; because its baseline blessed whatever was on disk the first time it looked. A scanner that mints trust from disk at first sight cannot catch what shipped before it looked. The one genuinely dangerous possibility &mdash; that the fleet&rsquo;s release-signing key had ridden along inside the packaging folder &mdash; was checked first, by direct inspection of the live servers: absent everywhere. It is excluded from packaging by construction and never shipped.</p>
+                <p>The fix landed at every layer at once. The packagers now exclude the dev directories <em>and</em> refuse outright to produce a release if any dev path somehow reaches the final package. SMACKBACK now treats those directories as never-trust paths: they can never enter its baseline no matter how they arrive, previously-absorbed entries are purged, and anything found there is reported in its own loud bucket. Updates now remove the leaked directories themselves, using a deletion list fixed inside signed code &mdash; never something a server can be told to delete remotely &mdash; and the web server returns not-found for those paths independently of cleanup. Deployed fleet-wide the day after the audit: the folders vanished from every install automatically, with zero admins locked out, verified live. Twenty-six regression checks pin every layer so this class stays dead.</p>
+                <a class="report-link" href="secaudits/2026-09-04-055-release-package-dev-dir-leak.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a052">
                 <div class="post-meta"><span class="post-date">August 27, 2026</span><span class="post-tag">Preventive Finding Closed</span></div>
