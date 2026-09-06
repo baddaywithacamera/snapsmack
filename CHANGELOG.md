@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.650D "NO NAME DROPPING" — 2026-09-06
+- **Captions in the fediverse reader no longer start with the author's username.** The reader printed the poster's name in bold in front of every caption ("**baddaywithacamera** Finally, now I fit in…") even though the card header directly above the photo already says who posted it. The caption now shows only the caption. (Asked for ~6 weeks ago; done.)
+- **COLD SNAP is now a Qt app** (rides this tag; work from the 2026-09-05/06 sessions). Full three-mode PySide6 rebuild of the shell — the exe and build.bat now target the Qt app, Add Photos opens in the site's image-workflow upload folder, the picker root inherits the SNAP HQ workflow-root setting, plus two readability/contrast polish rounds from Sean's first-look notes. COLD SNAP's own tool version is 0.7.10.
 ## 0.7.649D "CLOSING TIME" — 2026-09-05 (SECAUDIT 053/054 closeout work — one folded build)
 - **SNAP SLAPPER's untrusted image doors now go through the safe front door.** Downloaded textures are verified as real allowed images before they're cached (a hostile server can't park junk wearing a .jpg name), thumbnail bytes are checked before Qt decodes them (and only the detected format's decoder runs), and .slapper-embedded masks accept PNG only. All three fail closed if the safety module is missing. 14-assert wiring regression.
 - **An out-of-scope API key can no longer authenticate anywhere.** New suite-wide regression asserts every Bearer-key lookup constrains the key's tool type — and its first run caught a real hole: Oh Snap's legacy-schema fallback accepted ANY tool's key (and expired keys). Fixed to keep the scope and drop only the missing column.
