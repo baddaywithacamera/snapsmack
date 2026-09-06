@@ -13,10 +13,7 @@ them irreplaceable. We treat security reports as a favour, not a nuisance.
 
 ## Reporting a vulnerability
 
-**Email: [SECURITY-CONTACT-ADDRESS]**
-
-<!-- OWNER TODO before this file ships: replace the placeholder above with the
-     real disclosure address (a dedicated alias, not a personal inbox). -->
+**Email: security@snapsmack.ca**
 
 Please include:
 - What you found, where (URL, file, or tool), and what it lets someone do.
