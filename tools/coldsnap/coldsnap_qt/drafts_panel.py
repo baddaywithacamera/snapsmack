@@ -47,21 +47,31 @@ class BatchRail(QWidget):
         self.store = O.SessionStore()
         self.session = None
 
-        self.setFixedWidth(340)
+        self._expanded_width = 360
+        self._collapsed = False
+        self.setFixedWidth(self._expanded_width)
         col = QVBoxLayout(self)
         col.setContentsMargins(0, 0, 0, 0)
         col.setSpacing(8)
+        self._col = col
 
-        # One slim line: which batch + a Manage… button. The picker, New,
-        # Export and Import live in a modal — the rail's space belongs to the
-        # drafts, not batch bookkeeping (Sean, 2026-09-06).
+        # Collapse toggle + batch line. The whole rail folds to a thin strip so
+        # the compose side gets the width when you don't need the draft list
+        # (Sean, 2026-09-06: "make the batch window accordion in and out").
         head = QHBoxLayout()
+        self.collapse_btn = QPushButton("◀")
+        self.collapse_btn.setObjectName("Quiet")
+        self.collapse_btn.setFixedWidth(30)
+        self.collapse_btn.setToolTip("Collapse the batch panel")
+        self.collapse_btn.clicked.connect(self._toggle_collapsed)
+        head.addWidget(self.collapse_btn)
         self.batch_lbl = QLabel("")
         self.batch_lbl.setObjectName("CardTitle")
         head.addWidget(self.batch_lbl, 1)
         manage = QPushButton("Manage…")
         manage.setObjectName("Quiet")
         manage.clicked.connect(self._manage_batches)
+        self._manage_btn = manage
         head.addWidget(manage)
         col.addLayout(head)
 
@@ -94,7 +104,27 @@ class BatchRail(QWidget):
         self._bridge.progressed.connect(self.refresh_drafts)
         self._bridge.finished.connect(self._send_done)
 
+        # Widgets hidden when the rail is collapsed (label + manage stay via
+        # their own handling; these are the space-eaters).
+        self._collapsible = [self._scroll, self.send_btn, self.sync_status]
+
         self.refresh_batches()
+
+    # -- collapse ------------------------------------------------------------
+    def _toggle_collapsed(self):
+        self._collapsed = not self._collapsed
+        for w in self._collapsible:
+            w.setVisible(not self._collapsed)
+        self.batch_lbl.setVisible(not self._collapsed)
+        self._manage_btn.setVisible(not self._collapsed)
+        if self._collapsed:
+            self.setFixedWidth(46)
+            self.collapse_btn.setText("▶")
+            self.collapse_btn.setToolTip("Show the batch panel")
+        else:
+            self.setFixedWidth(self._expanded_width)
+            self.collapse_btn.setText("◀")
+            self.collapse_btn.setToolTip("Collapse the batch panel")
 
     # -- batches ------------------------------------------------------------
     def _batches(self):
