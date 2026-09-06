@@ -2,12 +2,12 @@
 setlocal
 set "BUILD_PYTHON=%~dp0..\..\.python-build\python.exe"
 if not exist "%BUILD_PYTHON%" set "BUILD_PYTHON=python"
-REM ─────────────────────────────────────────────────────────────────────────
+REM -------------------------------------------------------------------------
 REM  SNAP HQ + standalone SNAP SLAPPER — build script
 REM  Requires: Python 3.10+, pip install -r requirements.txt
 REM  Outputs:  C:\snapsmack\hub\SNAP HQ.exe
 REM            C:\snapsmack\snap_slapper\SNAP SLAPPER.exe
-REM ─────────────────────────────────────────────────────────────────────────
+REM -------------------------------------------------------------------------
 
 if not exist hub.spec (
     echo ERROR: hub.spec not found.

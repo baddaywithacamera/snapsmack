@@ -829,7 +829,14 @@ class GramMode(tk.Frame):
         def worker():
             def on_event(phase, draft, msg):
                 self.after(0, self._refresh_drafts)
-            engine = O.SyncEngine(self.session, poster, on_event=on_event)
+            try:
+                import snap_site_settings
+                _paths = snap_site_settings.handoff_paths(_url, create=True)
+            except Exception:
+                _paths = {"upload": "", "completed": ""}
+            engine = O.SyncEngine(self.session, poster, on_event=on_event,
+                                  upload_dir=_paths.get("upload", ""),
+                                  completed_dir=_paths.get("completed", ""))
             results = engine.sync_all(ready)
             ok = sum(1 for r in results.values() if r.ok)
             self.after(0, lambda: self._sync_done(ok, len(results)))

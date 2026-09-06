@@ -11,6 +11,14 @@ red / amber / grey / green — so a silently-dead cron is caught before it bites
 Versioning follows the SnapSmack desktop-family `0.7.x` convention;
 `bump_version.py` adds one patch for subsequent builds.
 
+## 0.7.9 — 2026-09-05
+
+### Fixed
+- **Reads the repaired shared credential vault.** The executable is rebuilt with
+  the current protected-storage and orphan-recovery modules, so existing
+  per-site fleet keys no longer appear as 25 missing keys after SNAP HQ repairs
+  the vault. No keys are recreated, copied into profiles, or entered again.
+
 ## 0.7.8 — 2026-09-01
 
 ### Added

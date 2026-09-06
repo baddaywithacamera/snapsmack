@@ -72,6 +72,8 @@ import snap_blink  # noqa: E402  (path set up above)
 # fall back to the identical env-var-or-default logic so the jail still holds.
 try:
     import snap_home  # noqa: E402
+    import snap_connections  # noqa: E402
+    import snap_creds  # noqa: E402
     _home = snap_home.home
 except Exception:  # pragma: no cover - defensive
     def _home():
@@ -133,6 +135,38 @@ def shared_home():
     """Rust `shared_home`: the resolved SnapSmack root, so JS can build paths under
     it. Matches snap_home.home()."""
     return os.path.normpath(_home())
+
+
+@app.api
+def shared_site_credential(args):
+    site = str(args.get("siteUrl") or "")
+    if args.get("keyType") != "gyss":
+        raise ValueError("Refused unsupported credential scope")
+    row = snap_connections.resolve(site, "gyss")
+    if not row or not row.get("api_key"):
+        raise ValueError("Discover has no GYSS key for this site")
+    return row["api_key"]
+
+
+@app.api
+def gyss_vault_get(args):
+    # The JS account is a site key; resolve it against the non-secret profiles.
+    for row in snap_connections.list_connections("gyss"):
+        if snap_home.site_key(row["site_url"]) == args.get("account"):
+            return row.get("api_key") or None
+    return None
+
+
+@app.api
+def gyss_vault_set(args):
+    account = str(args.get("account") or "")
+    secret = str(args.get("secret") or "")
+    for profile in __import__('snap_profiles').list_profiles():
+        site = profile.get("site_url") or ""
+        if snap_home.site_key(site) == account:
+            snap_creds.set_site(site, "api_key_gyss", secret)
+            return None
+    raise ValueError("No shared profile matches this site")
 
 
 @app.api

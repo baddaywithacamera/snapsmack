@@ -14,7 +14,9 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 use serde::Deserialize;
+use serde::Serialize;
 use zip::write::SimpleFileOptions;
+mod shared_credentials;
 
 #[cfg(windows)]
 fn replace_file(from: &Path, to: &Path) -> Result<(), String> {
@@ -53,9 +55,39 @@ pub fn run() {
             vault_set,
             vault_get,
             vault_delete,
+            shared_profiles,
+            shared_site_credential,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Oh Snap!");
+}
+
+fn shared_root() -> std::path::PathBuf {
+    std::env::var("SNAPSMACK_HOME").ok().filter(|v| !v.trim().is_empty())
+        .map(std::path::PathBuf::from).unwrap_or_else(|| std::path::PathBuf::from(r"C:\snapsmack"))
+}
+
+#[derive(Serialize)]
+struct SharedProfile { name: String, url: String }
+
+#[tauri::command]
+fn shared_profiles() -> Result<Vec<SharedProfile>, String> {
+    let dir = shared_root().join("shared_library").join("profiles");
+    if !dir.exists() { return Ok(vec![]); }
+    let mut rows = Vec::new();
+    for item in fs::read_dir(dir).map_err(|e| e.to_string())?.flatten() {
+        if item.path().extension().and_then(|v| v.to_str()) != Some("json") { continue; }
+        let value: serde_json::Value = match serde_json::from_slice(&fs::read(item.path()).unwrap_or_default()) { Ok(v) => v, Err(_) => continue };
+        let url = value.get("site_url").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        if url.is_empty() { continue; }
+        rows.push(SharedProfile { name: value.get("name").and_then(|v| v.as_str()).unwrap_or(&url).to_string(), url });
+    }
+    rows.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase())); Ok(rows)
+}
+
+#[tauri::command]
+fn shared_site_credential(site_url: String) -> Result<String, String> {
+    shared_credentials::read(&shared_root(), &site_url, "ohsnap")
 }
 
 /// Save a project JSON string to disk.

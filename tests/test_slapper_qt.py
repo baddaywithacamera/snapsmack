@@ -142,6 +142,17 @@ def test_histogram_compare_recipe_project():
     assert loaded.adjustments["contrast"] == 40.0 and not loaded.is_dirty()
 
 
+def test_histogram_stays_right_and_lock_controls_scrolling():
+    win = _editor(_image("histogram-rail.jpg"))
+    assert win._histogram_locked is False
+    assert win._rail_inner_layout.indexOf(win._histogram_wrap) == 0
+    win._set_histogram_locked(True)
+    assert win._rail_layout.indexOf(win._histogram_wrap) == 0
+    assert win._histogram_wrap.width() <= win.width()
+    win._set_histogram_locked(False)
+    assert win._rail_inner_layout.indexOf(win._histogram_wrap) == 0
+
+
 def test_layers_isolation_and_ops():
     win = _editor(_image("d.jpg"))
     lp = win.layers_panel
@@ -330,7 +341,8 @@ def test_normal_advanced_mode():
     assert win.split_shadow_btn.styleSheet() == ""
     assert win.rows["vignette_feather"].isHidden()
     assert win.grain_darken_check.isHidden()
-    assert win._histogram_wrap.isHidden()
+    # The same live, lockable histogram remains available in Normal mode.
+    assert not win._histogram_wrap.isHidden()
     # advanced-only toolbar hidden, Normal tools kept
     assert win.act_textures.isVisible() is False
     assert win.act_save_project.isVisible() is False

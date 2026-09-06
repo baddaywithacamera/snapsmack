@@ -112,6 +112,7 @@ def _new_id() -> str:
 @dataclass
 class DraftImage:
     local_path:   str = ""    # absolute local path to the full-res image
+    original_path: str = ""   # source before the session makes its safe working copy
     filename:     str = ""    # basename used on upload
     width:        int = 0
     height:       int = 0
@@ -621,6 +622,8 @@ class Session:
         thumbs_dir = os.path.join(self.images_dir, "thumbs")
         os.makedirs(thumbs_dir, exist_ok=True)
         for im in draft.images:
+            if not im.original_path and im.local_path:
+                im.original_path = os.path.abspath(im.local_path)
             for attr, dest_dir in (("local_path", self.images_dir),
                                    ("thumb_square", thumbs_dir),
                                    ("thumb_aspect", thumbs_dir)):
@@ -960,10 +963,40 @@ class SyncResult:
 
 class SyncEngine:
     def __init__(self, session: Session, poster,
-                 on_event: Optional[Callable[[str, Draft, str], None]] = None):
+                 on_event: Optional[Callable[[str, Draft, str], None]] = None,
+                 upload_dir: str = "", completed_dir: str = ""):
         self.session = session
         self.poster = poster
         self.on_event = on_event or (lambda phase, draft, msg: None)
+        self.upload_dir = os.path.abspath(upload_dir) if upload_dir else ""
+        self.completed_dir = os.path.abspath(completed_dir) if completed_dir else ""
+
+    def _archive_completed(self, draft: Draft) -> None:
+        """Move verified source images from managed `upload` to `completed`."""
+        if not self.upload_dir or not self.completed_dir:
+            return
+        changed = False
+        for image in draft.images:
+            source = os.path.abspath(image.original_path or image.local_path)
+            try:
+                if os.path.commonpath([source, self.upload_dir]) != self.upload_dir:
+                    continue
+                if not os.path.isfile(source):
+                    continue
+                os.makedirs(self.completed_dir, exist_ok=True)
+                stem, ext = os.path.splitext(os.path.basename(source))
+                target = os.path.join(self.completed_dir, stem + ext)
+                number = 2
+                while os.path.exists(target):
+                    target = os.path.join(self.completed_dir, f"{stem} ({number}){ext}")
+                    number += 1
+                shutil.move(source, target)
+                image.original_path = target
+                changed = True
+            except (OSError, ValueError):
+                continue
+        if changed:
+            self.session.save_draft(draft)
 
     def _emit(self, phase: str, draft: Draft, msg: str = "") -> None:
         try:
@@ -1036,6 +1069,7 @@ class SyncEngine:
             self._emit("failed", draft, vmsg)
             return SyncResult(False, res.remote_post_id, vmsg)
 
+        self._archive_completed(draft)
         self._mark(draft, ST_SYNCED)
         self._emit("synced", draft)
         return res
@@ -1108,6 +1142,7 @@ class SyncEngine:
             else:
                 vmsg = "" if verified else "server post did not match the local draft"
             if verified:
+                self._archive_completed(d)
                 self._mark(d, ST_SYNCED)
                 self._emit("synced", d)
             else:

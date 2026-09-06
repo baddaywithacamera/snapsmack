@@ -383,7 +383,8 @@ if ($resource === 'provision-key' && $method === 'POST') {
     $pv_body = json_decode(file_get_contents('php://input') ?: '', true);
     $pv_type = is_array($pv_body) ? strtolower(trim((string)($pv_body['key_type'] ?? 'sybu'))) : 'sybu';
     // Only genuine per-site TOOL keys may be installed this way — never 'hub'.
-    if (!in_array($pv_type, ['sybu', 'suyb', 'gyss', 'ohsnap', 'tyswy'], true)) {
+    if (!in_array($pv_type, ['sybu', 'suyb', 'gyss', 'ohsnap', 'tyswy',
+                              'unzucker', 'flkrfckr', 'smackpress'], true)) {
         ms_err('key_type not provisionable', 400);
     }
     // Optional caller-supplied value = the single shared fleet key. Must match the

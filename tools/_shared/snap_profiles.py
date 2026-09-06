@@ -12,17 +12,12 @@ keyed by the site's hostname (snap_home.site_key), so EVERY tool computes the sa
 filename for the same blog and therefore finds what another tool saved. Set a blog
 up once; the rest pick it up.
 
-CANONICAL ON-DISK SHAPE (what every tool — Python and JS — agrees on):
+CANONICAL ON-DISK SHAPE:
 
     {
-      "schema": 1,
+      "schema": 2,
       "name":        "Forever Photograph",         # display name
       "site_url":    "https://foreverphotograph.ing",
-      "api_key_enc": "<base64>",                    # the blog's API key, base64 —
-                                                    #   obfuscation, NOT encryption
-                                                    #   (matches the SYBU/SUYB
-                                                    #   convention, and base64 ports
-                                                    #   cleanly to GYSS's JS).
       "last_connected": null,
       "extras": { ... }                             # tool-specific / blog-default
                                                     #   keys. A tool that doesn't
@@ -30,10 +25,10 @@ CANONICAL ON-DISK SHAPE (what every tool — Python and JS — agrees on):
                                                     #   value still travels intact.
     }
 
-In memory a profile is the same dict but carries a plaintext "api_key" instead of
-"api_key_enc". save() obfuscates on the way out; load()/list() de-obfuscate on the
-way in. Nothing here is a secret store — the shared credential VAULT
-(shared_library/auth) is where real secrets live; this holds per-blog connections.
+In memory a profile carries a plaintext ``api_key`` hydrated from the protected
+shared credential vault.  No credential is written to profile JSON.  Schema-1
+base64/plaintext fields are accepted only as migration input, verified in the
+vault, and then atomically scrubbed from the profile.
 
 # SNAPSMACK_EOF_HEADER
 #     # ===== SNAPSMACK EOF =====
@@ -60,7 +55,9 @@ _CORE_KEYS = {"name", "site_url", "api_key", "last_connected", "extras",
               "portable", "portable_sync"}
 _SECRET_EXTRA_KEYS = {
     "api_key", "api_key_local", "api_key_remote", "api_key_backup",
-    "api_key_gyss", "api_key_sybu", "heartbeat_key", "backup_key",
+    "api_key_gyss", "api_key_sybu", "api_key_ohsnap", "api_key_tyswy",
+    "api_key_unzucker", "api_key_flkrfckr", "api_key_smackpress",
+    "heartbeat_key", "backup_key",
 }
 
 
@@ -87,7 +84,7 @@ def _atomic_write(path: str, data: dict) -> None:
 
 
 def _to_disk(profile: dict) -> dict:
-    """Canonical in-memory (plaintext api_key) -> on-disk (api_key_enc)."""
+    """Canonical in-memory profile -> non-secret on-disk profile."""
     p = dict(profile)
     extras = dict(p.get("extras") or {})
     # Fold any stray non-core keys into extras rather than dropping them.

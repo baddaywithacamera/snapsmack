@@ -16,6 +16,14 @@ import os
 import sys
 from typing import Dict, List, Optional
 
+_SHARED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '_shared')
+if os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in sys.path:
+    sys.path.insert(0, _SHARED_DIR)
+try:
+    import snap_connections
+except Exception:
+    snap_connections = None
+
 
 def _app_dir() -> str:
     """Persistent directory — next to the .exe when frozen, source dir otherwise."""
@@ -62,11 +70,22 @@ def list_profiles() -> List[str]:
                 names.append(data.get('name', fname[:-5]))
             except Exception:
                 pass
-    return sorted(names)
+    if snap_connections:
+        names.extend(row['name'] for row in snap_connections.list_connections('sybu'))
+    return sorted(set(names))
 
 
 def load_profile(name: str) -> Optional[Dict]:
     """Load a profile by display name. Returns dict with plain-text password."""
+    if snap_connections:
+        shared = next((row for row in snap_connections.list_connections('sybu')
+                       if row.get('name') == name), None)
+        if shared:
+            return {
+                'name': shared['name'], 'url': shared['site_url'],
+                'api_key': shared['api_key'], 'password': '', 'username': '',
+                '_shared': True,
+            }
     path = _profile_path(name)
     if not os.path.exists(path):
         # Scan all profiles for matching name field
