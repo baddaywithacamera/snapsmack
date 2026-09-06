@@ -72,8 +72,8 @@ def effective_backup_key(profile: dict) -> str:
     (there is deliberately no per-site fallback once the hub key is in force, so a
     per-blog revoke actually stops that blog).
 
-    SELF-HEAL ("just works"): if this profile carries the site's FULL hub key
-    (extras.api_key_local — stored by The Hub's Discover Fleet), mint a FRESH
+    SELF-HEAL ("just works"): if the shared vault carries the site's FULL hub key,
+    mint a FRESH
     backup key from it right here, every run. The site retires the prior one, so
     the backup key can never drift, expire, or get revoked into a 401 — there is
     no key to paste, no CLI, no per-site setup. If that path isn't available
@@ -81,7 +81,15 @@ def effective_backup_key(profile: dict) -> str:
     exactly as before — non-breaking."""
     profile = profile or {}
     site = (profile.get("site_url") or profile.get("url") or "").strip()
-    akl  = ((profile.get("extras") or {}).get("api_key_local") or "").strip()
+    akl = ""
+    try:
+        _sd = os.path.join(_app_dir(), '..', '_shared')
+        if os.path.isdir(_sd) and _sd not in sys.path:
+            sys.path.insert(0, _sd)
+        import snap_creds
+        akl = snap_creds.get_site(site, "api_key_local").strip()
+    except Exception:
+        pass
     # SUYB keeps its OWN profile store, but the site's FULL hub key lives in The
     # Hub's SHARED store (snap_profiles), where Discover Fleet writes it. If our
     # passed-in profile doesn't carry it, pull it from the shared store by
@@ -93,9 +101,8 @@ def effective_backup_key(profile: dict) -> str:
             _sd = os.path.join(_app_dir(), '..', '_shared')
             if os.path.isdir(_sd) and _sd not in sys.path:
                 sys.path.insert(0, _sd)
-            import snap_profiles
-            shared_prof = snap_profiles.load_by_site(site) or {}
-            akl = ((shared_prof.get("extras") or {}).get("api_key_local") or "").strip()
+            import snap_creds
+            akl = snap_creds.get_site(site, "api_key_local").strip()
         except Exception:
             pass
     if akl and site:

@@ -429,6 +429,7 @@ async function browseLibrary() {
             filename:         r.filename,
             thumb_url:        r.src,
             remote_thumb_url: r.thumb_url,
+            color_mode:       r.color_mode || '',
         }));
         state.session     = createSession(state.activeProfile, filter, photos);
         state.sessionPath = await saveSession(state.session);
@@ -455,12 +456,35 @@ function renderSortGrid() {
             <div class="drag-handle" title="Drag to reorder">⠿</div>
             ${p.dirty ? '<div class="dirty-dot" title="Unsaved changes"></div>' : ''}
             <img src="${escHtml(p.thumb_url)}" alt="${escHtml(p.title)}" loading="lazy">
+            ${p.color_mode === 'color' ? '<span class="color-mode-badge">COLOUR</span>' :
+              p.color_mode === 'bw' ? '<span class="color-mode-badge">B&amp;W</span>' : ''}
             <div class="card-title">${escHtml(p.title || '')}</div>
         </div>
     `).join('');
 
     updateSortTopBar();
+    updateClassificationCounts();
     initDragAndDrop();
+}
+
+function updateClassificationCounts() {
+    const photos = state.session?.photos || [];
+    const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+    set('colour-bin-count', photos.filter(p => p.color_mode === 'color').length);
+    set('bw-bin-count', photos.filter(p => p.color_mode === 'bw').length);
+    set('clear-bin-count', photos.filter(p => !p.color_mode).length);
+}
+
+function classifyPhotos(ids, mode) {
+    if (!state.session) return;
+    const normalized = mode === 'color' || mode === 'bw' ? mode : '';
+    for (const photo of state.session.photos) {
+        if (ids.includes(photo.id) && (photo.color_mode || '') !== normalized) {
+            photo.color_mode = normalized;
+            photo.dirty = true;
+        }
+    }
+    renderSortGrid();
 }
 
 function updateSortTopBar() {
@@ -507,6 +531,7 @@ function initDragAndDrop() {
             draggedIds = [id];
         }
         e.dataTransfer.effectAllowed = 'move';
+        state.dragIds = [...draggedIds];
         card.classList.add('dragging');
     });
 
@@ -548,6 +573,20 @@ function initDragAndDrop() {
             c.classList.remove('dragging', 'drop-target');
         });
         draggedIds = [];
+        state.dragIds = [];
+    });
+
+    document.querySelectorAll('.classification-bin').forEach(bin => {
+        bin.ondragover = e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; bin.classList.add('drag-over'); };
+        bin.ondragleave = () => bin.classList.remove('drag-over');
+        bin.ondrop = e => {
+            e.preventDefault();
+            bin.classList.remove('drag-over');
+            const ids = state.dragIds.length ? [...state.dragIds] : [...draggedIds];
+            classifyPhotos(ids, bin.dataset.colorMode || '');
+            state.dragIds = [];
+            draggedIds = [];
+        };
     });
 }
 

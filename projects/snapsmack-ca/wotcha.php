@@ -158,6 +158,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>All Posts</h3>
             <ol>
+                <li><span class="idx-date">Aug 30</span><a href="#snap-slapper-editor">SNAP SLAPPER Is Ready for the Box O&rsquo; Tricks</a></li>
                 <li>
                     <span class="idx-date">Aug 30</span>
                     <a href="#lewk-again">LEWK AGAIN Shows Its Work</a>

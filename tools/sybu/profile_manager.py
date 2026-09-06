@@ -72,13 +72,21 @@ def _shared():
 # ── SYBU shape <-> canonical shape ──────────────────────────────────────────
 def _sybu_to_canonical(d: Dict) -> Dict:
     extras = {k: d[k] for k in _SYBU_EXTRA_KEYS if k in d}
-    return {
+    out = {
         'name':           d.get('name', ''),
         'site_url':       d.get('url', ''),
         'api_key':        d.get('api_key', ''),
         'last_connected': d.get('last_connected'),
         'extras':         extras,
     }
+    # These are shared-site fields, not SYBU-owned settings.  Carry them through
+    # when a profile is edited in SYBU so saving connection details cannot reset
+    # the values SNAP HQ synchronized from the site.
+    if 'portable' in d:
+        out['portable'] = dict(d.get('portable') or {})
+    if 'portable_sync' in d:
+        out['portable_sync'] = dict(d.get('portable_sync') or {})
+    return out
 
 
 def _canonical_to_sybu(c: Dict) -> Dict:
@@ -89,6 +97,38 @@ def _canonical_to_sybu(c: Dict) -> Dict:
     }
     for k, v in (c.get('extras') or {}).items():
         out[k] = v
+    portable = dict(c.get('portable') or {})
+    out['portable'] = portable
+    out['portable_sync'] = dict(c.get('portable_sync') or {})
+    # SNAP HQ's synced portable value is authoritative when present.  Existing
+    # installations also keep the per-site prompt in the shared prompt pool,
+    # keyed by the canonical hostname.  Falling back to that pool keeps profile
+    # selection atomic: the site's upload folder and its prompt arrive together.
+    prompt = portable.get('prompt', '')
+    if not str(prompt or '').strip():
+        try:
+            import snap_home
+            import snap_prompts
+            prompt = snap_prompts.load().get(
+                snap_home.site_key(c.get('site_url', '')), '')
+        except Exception:
+            prompt = ''
+    out['prompt'] = prompt
+    # Flatten the remaining SNAP HQ site settings into SYBU's profile-shaped
+    # adapter.  Keeping only `prompt` here made the values exist on disk but
+    # disappear at the final handoff into the posting UI.
+    for key in ('max_width_landscape', 'max_height_portrait', 'jpeg_quality',
+                'image_resize_enabled', 'export_sharpen'):
+        if key in portable:
+            out[key] = portable[key]
+    # SNAP HQ owns the local path.  SYBU consumes the ready-to-upload folder for
+    # the selected site; it never stores that machine path in the portable profile.
+    try:
+        import snap_site_settings
+        out['upload_dir'] = snap_site_settings.handoff_paths(
+            c.get('site_url', ''), create=False).get('upload', '')
+    except Exception:
+        out['upload_dir'] = ''
     if c.get('last_connected') is not None:
         out['last_connected'] = c['last_connected']
     return out
@@ -194,7 +234,12 @@ def save_profile(profile: Dict) -> None:
     sp = _shared()
     if sp:
         _migrate_once(sp)
-        sp.save(_sybu_to_canonical(profile))
+        canonical = _sybu_to_canonical(profile)
+        existing = sp.load_by_site(canonical.get('site_url', ''))
+        if existing:
+            canonical.setdefault('portable', existing.get('portable') or {})
+            canonical.setdefault('portable_sync', existing.get('portable_sync') or {})
+        sp.save(canonical)
         return
     os.makedirs(LEGACY_PROFILES_DIR, exist_ok=True)
     with open(_legacy_path(profile.get('name', '')), 'w', encoding='utf-8') as f:

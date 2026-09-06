@@ -108,6 +108,8 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
                         COMMENT 'SHA-256 hash of main image file for recovery verification',
   `img_display_options` text           COLLATE utf8mb4_unicode_ci
                         COMMENT 'JSON: per-image frame/mat/bevel overrides and extracted colour palette',
+  `img_color_mode`      varchar(10)    COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''
+                        COMMENT 'Editorial classification: color, bw, or blank when not yet classified.',
   `post_id`             int            DEFAULT NULL
                         COMMENT 'FK to snap_posts — populated when image is wrapped in a post',
   `user_id`             int unsigned   DEFAULT NULL
@@ -757,6 +759,59 @@ CREATE TABLE IF NOT EXISTS `snap_ohsnap_keys` (
   UNIQUE KEY `uq_key_hash` (`key_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- SNAP HQ device licences are deliberately separate from tool API keys.  An
+-- activation secret is single-use; after activation the desktop authenticates
+-- with its own Ed25519 public key.  IP addresses are audit data, never identity.
+CREATE TABLE IF NOT EXISTS `snap_desktop_activation_keys` (
+  `id`                  bigint unsigned NOT NULL AUTO_INCREMENT,
+  `key_hash`            char(64)         COLLATE utf8mb4_unicode_ci NOT NULL,
+  `key_prefix`          varchar(12)      COLLATE utf8mb4_unicode_ci NOT NULL,
+  `label`               varchar(100)     COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'SNAP HQ device',
+  `created_by_user_id`  int unsigned     DEFAULT NULL,
+  `created_at`          datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `expires_at`          datetime         NOT NULL,
+  `consumed_at`         datetime         DEFAULT NULL,
+  `consumed_device_id`  char(36)         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_desktop_activation_hash` (`key_hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_desktop_devices` (
+  `id`                  char(36)         COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id`             int unsigned     DEFAULT NULL,
+  `public_key`          varchar(100)     COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fingerprint`         char(64)         COLLATE utf8mb4_unicode_ci NOT NULL,
+  `device_name`         varchar(120)     COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'SNAP HQ device',
+  `locale_name`         varchar(40)      COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `timezone_name`       varchar(80)      COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `os_name`             varchar(160)     COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `hq_version`          varchar(40)      COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `first_ip`            varchar(45)      COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `last_ip`             varchar(45)      COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status`              enum('active','disabled','blocked') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+  `created_at`          datetime         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `first_used_at`       datetime         DEFAULT NULL,
+  `last_used_at`        datetime         DEFAULT NULL,
+  `term_started_at`     datetime         NOT NULL,
+  `expires_at`          datetime         NOT NULL,
+  `grace_ends_at`       datetime         NOT NULL,
+  `disabled_at`         datetime         DEFAULT NULL,
+  `blocked_at`          datetime         DEFAULT NULL,
+  `token_version`       int unsigned     NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_desktop_device_fingerprint` (`fingerprint`),
+  KEY `idx_desktop_device_status` (`status`),
+  KEY `idx_desktop_device_last_used` (`last_used_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_desktop_nonces` (
+  `device_id`  char(36)     COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nonce_hash` char(64)     COLLATE utf8mb4_unicode_ci NOT NULL,
+  `seen_at`    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`device_id`, `nonce_hash`),
+  KEY `idx_desktop_nonce_seen` (`seen_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 -- ─── MULTISITE MANAGEMENT ─────────────────────────────────────────────────────
 
@@ -1095,6 +1150,29 @@ CREATE TABLE IF NOT EXISTS `snap_ai_acceptance_audit` (
   `accepted_at` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_accepted_at` (`accepted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Complete AI image-analysis bundles. The online CMS row is authoritative;
+-- desktop catalog.sqlite mirrors it and uses revision/base_revision to expose
+-- concurrent edits rather than silently choosing a winner.
+CREATE TABLE IF NOT EXISTS `snap_ai_enrichment_cache` (
+  `id`                bigint unsigned NOT NULL AUTO_INCREMENT,
+  `cache_key`         char(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `image_sha256`      char(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `domain`            varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `model`             varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `prompt_sha256`     char(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `prompt_version`    varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '1',
+  `bundle_json`       longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `raw_response`      longtext COLLATE utf8mb4_unicode_ci,
+  `accepted_json`     longtext COLLATE utf8mb4_unicode_ci,
+  `revision`          int unsigned NOT NULL DEFAULT 1,
+  `generated_at`      datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `expires_at`        datetime NOT NULL,
+  `modified_at`       datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ai_enrichment_cache_key` (`cache_key`),
+  KEY `idx_ai_enrichment_lookup` (`image_sha256`,`domain`,`model`,`prompt_sha256`,`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

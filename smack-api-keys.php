@@ -40,6 +40,65 @@ try { $pdo->query("SELECT user_id FROM snap_ohsnap_keys LIMIT 0");
     $pdo->exec("ALTER TABLE snap_ohsnap_keys ADD COLUMN user_id INT UNSIGNED DEFAULT NULL AFTER is_active");
 }
 
+// Device-bound SNAP HQ authorization is separate from reusable tool API keys.
+// Keep these defensive creates here so an older install can open this page and
+// provision its first device before the next schema-sync run.
+$pdo->exec("CREATE TABLE IF NOT EXISTS snap_desktop_activation_keys (
+ id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,key_hash CHAR(64) NOT NULL,key_prefix VARCHAR(12) NOT NULL,
+ label VARCHAR(100) NOT NULL DEFAULT 'SNAP HQ device',created_by_user_id INT UNSIGNED NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,expires_at DATETIME NOT NULL,
+ consumed_at DATETIME NULL,consumed_device_id CHAR(36) NULL,PRIMARY KEY(id),UNIQUE KEY uq_desktop_activation_hash(key_hash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+$pdo->exec("CREATE TABLE IF NOT EXISTS snap_desktop_devices (
+ id CHAR(36) NOT NULL,user_id INT UNSIGNED NULL,public_key VARCHAR(100) NOT NULL,fingerprint CHAR(64) NOT NULL,
+ device_name VARCHAR(120) NOT NULL DEFAULT 'SNAP HQ device',locale_name VARCHAR(40) NULL,timezone_name VARCHAR(80) NULL,
+ os_name VARCHAR(160) NULL,hq_version VARCHAR(40) NULL,first_ip VARCHAR(45) NULL,last_ip VARCHAR(45) NULL,
+ status ENUM('active','disabled','blocked') NOT NULL DEFAULT 'active',created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ first_used_at DATETIME NULL,last_used_at DATETIME NULL,term_started_at DATETIME NOT NULL,expires_at DATETIME NOT NULL,
+ grace_ends_at DATETIME NOT NULL,disabled_at DATETIME NULL,blocked_at DATETIME NULL,token_version INT UNSIGNED NOT NULL DEFAULT 1,
+ PRIMARY KEY(id),UNIQUE KEY uq_desktop_device_fingerprint(fingerprint),KEY idx_desktop_device_status(status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+// --- SNAP HQ DEVICE ACTIVATION + MANAGEMENT ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate_device_activation') {
+    require_once 'core/reauth.php';
+    $ra = reauth_verify($pdo, (string)($_POST['reauth_password'] ?? ''), (string)($_POST['reauth_totp'] ?? ''));
+    $active_devices = (int)$pdo->query("SELECT COUNT(*) FROM snap_desktop_devices WHERE status='active'")->fetchColumn();
+    if (!$ra['ok']) {
+        $msg = 'DEVICE KEY NOT GENERATED — ' . $ra['error'];
+    } elseif ($active_devices >= 4) {
+        $msg = 'DEVICE KEY NOT GENERATED — four devices are active. Disable one first.';
+    } else {
+        $new_key_raw = 'shq_' . bin2hex(random_bytes(32));
+        $label = substr(trim((string)($_POST['device_label'] ?? 'SNAP HQ device')), 0, 100) ?: 'SNAP HQ device';
+        $pdo->prepare("INSERT INTO snap_desktop_activation_keys(key_hash,key_prefix,label,created_by_user_id,expires_at)
+                       VALUES(?,?,?,?,DATE_ADD(NOW(),INTERVAL 24 HOUR))")
+            ->execute([hash('sha256', $new_key_raw), substr($new_key_raw, 0, 12), $label, (int)($_SESSION['user_id'] ?? 0) ?: null]);
+        $msg = '> ONE-USE SNAP HQ ACTIVATION KEY. COPY IT NOW — IT EXPIRES IN 24 HOURS.';
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), ['disable_device','block_device','unblock_device','rename_device'], true)) {
+    $device_id = trim((string)($_POST['device_id'] ?? ''));
+    $action = (string)$_POST['action'];
+    if ($device_id !== '') {
+        if ($action === 'rename_device') {
+            $name = substr(trim((string)($_POST['device_name'] ?? '')), 0, 120);
+            if ($name !== '') $pdo->prepare('UPDATE snap_desktop_devices SET device_name=? WHERE id=?')->execute([$name,$device_id]);
+        } elseif ($action === 'disable_device') {
+            $pdo->prepare("UPDATE snap_desktop_devices SET status='disabled',disabled_at=NOW(),token_version=token_version+1 WHERE id=? AND status<>'blocked'")->execute([$device_id]);
+        } elseif ($action === 'block_device') {
+            $pdo->prepare("UPDATE snap_desktop_devices SET status='blocked',blocked_at=NOW(),disabled_at=COALESCE(disabled_at,NOW()),token_version=token_version+1 WHERE id=?")->execute([$device_id]);
+        } else {
+            // Unblocking does not silently grant a slot. The machine becomes
+            // disabled and must consume a fresh one-use activation key.
+            $pdo->prepare("UPDATE snap_desktop_devices SET status='disabled',blocked_at=NULL,token_version=token_version+1 WHERE id=? AND status='blocked'")->execute([$device_id]);
+        }
+    }
+    header('Location: smack-api-keys.php?msg=' . urlencode('SNAP HQ device updated.'));
+    exit;
+}
+
 // --- GENERATE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate') {
     $label    = trim($_POST['label'] ?? '');
@@ -210,6 +269,9 @@ if ($api_site_mode === 'carousel') {
             GROUP BY a.id,a.name,a.created_at ORDER BY connected_at DESC")->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) { $pixelix_apps = []; }
 }
+$desktop_devices = $pdo->query("SELECT * FROM snap_desktop_devices ORDER BY FIELD(status,'active','disabled','blocked'),COALESCE(last_used_at,created_at) DESC")->fetchAll(PDO::FETCH_ASSOC);
+$desktop_active_count = count(array_filter($desktop_devices, fn($d) => $d['status'] === 'active'));
+$desktop_pending_codes = (int)$pdo->query("SELECT COUNT(*) FROM snap_desktop_activation_keys WHERE consumed_at IS NULL AND expires_at>NOW()")->fetchColumn();
 
 include 'core/admin-header.php';
 include 'core/sidebar.php';
@@ -241,6 +303,50 @@ include 'core/sidebar.php';
             ">COPY</button>
         </div>
     <?php endif; ?>
+
+    <div class="box mb-20">
+        <h3>SNAP HQ DEVICES — <?php echo $desktop_active_count; ?> / 4 ACTIVE</h3>
+        <p class="dim mb-20">Each computer needs its own one-use activation key. The key binds to that
+            computer's cryptographic identity and cannot be reused. Disabling frees a slot; blocking also
+            prevents that same device identity from returning. IP is displayed for auditing only.</p>
+        <?php if ($desktop_pending_codes): ?><div class="alert alert-warn"><?php echo $desktop_pending_codes; ?> unused activation key(s) expire within 24 hours.</div><?php endif; ?>
+        <?php if ($desktop_active_count < 4): ?>
+        <form method="post" action="smack-api-keys.php">
+            <input type="hidden" name="action" value="generate_device_activation">
+            <div class="reauth-row">
+                <div class="lens-input-wrapper"><label>DEVICE LABEL</label><input name="device_label" placeholder="E.G. OFFICE DESKTOP"></div>
+                <div class="lens-input-wrapper"><label>PASSWORD</label><input type="password" name="reauth_password" autocomplete="off"></div>
+                <div class="lens-input-wrapper"><label>2FA CODE (IF ENABLED)</label><input name="reauth_totp" inputmode="numeric" autocomplete="off" class="input-code"></div>
+            </div>
+            <button type="submit" class="master-update-btn">MAKE ONE-USE DEVICE KEY</button>
+        </form>
+        <?php else: ?><div class="alert alert-warn">All four slots are occupied. Disable or block a device before adding another.</div><?php endif; ?>
+
+        <div class="mt-20">
+        <?php if (!$desktop_devices): ?><p class="dim">No SNAP HQ devices have been authorized.</p><?php endif; ?>
+        <?php foreach ($desktop_devices as $device): ?>
+            <div class="recent-item">
+                <div class="item-details"><div class="item-text">
+                    <strong><?php echo htmlspecialchars($device['device_name']); ?></strong>
+                    <code class="slug-display"><?php echo strtoupper(htmlspecialchars($device['status'])); ?> &middot; <?php echo htmlspecialchars(substr($device['fingerprint'],0,12)); ?>…</code>
+                    <div class="item-meta">
+                        FIRST USED: <?php echo htmlspecialchars((string)($device['first_used_at'] ?: 'NEVER')); ?> &middot;
+                        LAST USED: <?php echo htmlspecialchars((string)($device['last_used_at'] ?: 'NEVER')); ?> &middot;
+                        IP: <?php echo htmlspecialchars((string)($device['last_ip'] ?: 'UNKNOWN')); ?> &middot;
+                        <?php echo htmlspecialchars(trim((string)$device['locale_name'].' · '.(string)$device['timezone_name'].' · '.(string)$device['os_name'].' · HQ '.(string)$device['hq_version'], ' ·')); ?><br>
+                        EXPIRES <?php echo htmlspecialchars($device['expires_at']); ?> &middot; GRACE TO <?php echo htmlspecialchars($device['grace_ends_at']); ?>
+                    </div>
+                </div></div>
+                <div class="item-actions" style="flex-wrap:wrap;">
+                    <form method="post" action="smack-api-keys.php" class="form-inline"><input type="hidden" name="action" value="rename_device"><input type="hidden" name="device_id" value="<?php echo htmlspecialchars($device['id']); ?>"><input name="device_name" placeholder="Rename" style="width:110px"><button class="btn-reset">RENAME</button></form>
+                    <?php if ($device['status'] === 'active'): ?><form method="post" action="smack-api-keys.php" class="form-inline"><input type="hidden" name="action" value="disable_device"><input type="hidden" name="device_id" value="<?php echo htmlspecialchars($device['id']); ?>"><button class="btn-reset">DISABLE</button></form><?php endif; ?>
+                    <?php if ($device['status'] !== 'blocked'): ?><form method="post" action="smack-api-keys.php" class="form-inline" onsubmit="return confirm('BLOCK THIS DEVICE IDENTITY?');"><input type="hidden" name="action" value="block_device"><input type="hidden" name="device_id" value="<?php echo htmlspecialchars($device['id']); ?>"><button class="btn-reset action-delete">BLOCK</button></form>
+                    <?php else: ?><form method="post" action="smack-api-keys.php" class="form-inline"><input type="hidden" name="action" value="unblock_device"><input type="hidden" name="device_id" value="<?php echo htmlspecialchars($device['id']); ?>"><button class="btn-reset">UNBLOCK</button></form><?php endif; ?>
+                </div>
+            </div>
+        <?php endforeach; ?>
+        </div>
+    </div>
 
     <!-- BULK IMPORT AUTHORIZATION (Flkr Fckr / Unzucker non-empty-site gate) -->
     <div class="box mb-20">

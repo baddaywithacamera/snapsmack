@@ -12,6 +12,14 @@ import os
 import sys
 from pathlib import Path
 
+_SHARED_DIR = Path(__file__).resolve().parents[2] / "_shared"
+if _SHARED_DIR.is_dir() and str(_SHARED_DIR) not in sys.path:
+    sys.path.insert(0, str(_SHARED_DIR))
+try:
+    import snap_connections
+except Exception:
+    snap_connections = None
+
 
 # --- Secret-at-rest hardening -------------------------------------------------
 # The WordPress app password, SnapSmack API key, and AI key are live credentials.
@@ -166,6 +174,11 @@ def get_all() -> dict:
                     out[k] = v
             except Exception:
                 pass
+    if snap_connections:
+        shared = snap_connections.resolve(out.get("snap_url", ""), "smackpress")
+        if shared and shared.get("api_key"):
+            out["snap_url"] = shared["site_url"]
+            out["snap_api_key"] = shared["api_key"]
     return out
 
 

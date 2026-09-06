@@ -1,11 +1,11 @@
 <!--
   PHOTOFRI.DAY — home page body (CMS page: title "PHOTOFRI.DAY", slug "home").
   Set this page as the homepage: Settings -> Homepage mode -> Static page.
-  Styling lives in skins/crimson-onyx/style.css. Do not nest a div in a div.
+  Styling lives in skins/onyx/style.css. Do not nest a div in a div.
   SNAPSMACK_EOF_HEADER — last non-empty line must be the HTML EOF marker.
 -->
 
-<img class="pfd-logo-mark" src="skins/crimson-onyx/img/logo-pf-whiteondark-trans.png" alt="" width="850" height="850">
+<img class="pfd-logo-mark" src="skins/onyx/img/logo-pf-whiteondark-trans.png" alt="" width="850" height="850">
 
 <p class="pfd-wordmark">PHOTOFRI<span class="pfd-dot">.</span>DAY</p>
 
@@ -19,16 +19,16 @@
   <p class="pfd-label">Participate through any<br>Fediverse-compatible software</p>
   <section class="pfd-links">
     <a class="pfd-pill" href="https://snapsmack.ca/" target="_blank" rel="noopener">
-      <span class="pfd-pill-main"><img class="pfd-ico" src="skins/crimson-onyx/img/logo-trans-snapsmack.png" alt="">SnapSmack</span><span class="pfd-host">snapsmack.ca</span>
+      <span class="pfd-pill-main"><img class="pfd-ico" src="skins/onyx/img/logo-trans-snapsmack.png" alt="">SnapSmack</span><span class="pfd-host">snapsmack.ca</span>
     </a>
     <a class="pfd-pill" href="https://pixelfed.org/" target="_blank" rel="noopener">
-      <span class="pfd-pill-main"><img class="pfd-ico" src="skins/crimson-onyx/img/logo-trans-pixelfed.png" alt="">Pixelfed</span><span class="pfd-host">pixelfed.org</span>
+      <span class="pfd-pill-main"><img class="pfd-ico" src="skins/onyx/img/logo-trans-pixelfed.png" alt="">Pixelfed</span><span class="pfd-host">pixelfed.org</span>
     </a>
     <a class="pfd-pill" href="https://vernissage.photos/" target="_blank" rel="noopener">
-      <span class="pfd-pill-main"><img class="pfd-ico" src="skins/crimson-onyx/img/logo-trans-vernissage.png" alt="">Vernissage</span><span class="pfd-host">vernissage.photos</span>
+      <span class="pfd-pill-main"><img class="pfd-ico" src="skins/onyx/img/logo-trans-vernissage.png" alt="">Vernissage</span><span class="pfd-host">vernissage.photos</span>
     </a>
     <a class="pfd-pill" href="https://joinmastodon.org/" target="_blank" rel="noopener">
-      <span class="pfd-pill-main"><img class="pfd-ico" src="skins/crimson-onyx/img/logo-trans-mastodon.png" alt="">Mastodon</span><span class="pfd-host">joinmastodon.org</span>
+      <span class="pfd-pill-main"><img class="pfd-ico" src="skins/onyx/img/logo-trans-mastodon.png" alt="">Mastodon</span><span class="pfd-host">joinmastodon.org</span>
     </a>
   </section>
 </nav>
@@ -36,12 +36,14 @@
 <p class="pfd-follow">Following is now <strong>live</strong> &mdash; join by following <code class="pfd-handle">@participate@photofri.day</code> from your own instance.</p>
 
 <section class="pfd-countdowns" aria-label="Launch countdown">
-  <p class="pfd-countdown smack-countdown" data-until="2026-08-27T10:00:00Z" data-done="The first prompt is live.">
-    <span class="pfd-cd-caption">First prompt drops in</span>
+  <p class="pfd-countdown smack-countdown" data-until="2026-08-27T10:00:00Z" data-every="7d" data-roll-caption="Next prompt drops in" data-done="The first prompt is live.">
+    <span class="pfd-cd-caption" data-cd-caption>First prompt drops in</span>
+    <time class="pfd-cd-date" data-cd-date datetime="2026-09-03">2026-09-03</time>
     <span class="pfd-cd-clock" data-cd-clock aria-hidden="true"><span class="pfd-cd-cell"><b data-cd="d">--</b><i>days</i></span><span class="pfd-cd-cell"><b data-cd="h">--</b><i>hrs</i></span><span class="pfd-cd-cell"><b data-cd="m">--</b><i>min</i></span><span class="pfd-cd-cell"><b data-cd="s">--</b><i>sec</i></span></span>
   </p>
-  <p class="pfd-countdown smack-countdown" data-until="2026-09-03T10:00:00Z" data-done="The first submission window is open.">
-    <span class="pfd-cd-caption">First submissions open in</span>
+  <p class="pfd-countdown smack-countdown" data-until="2026-09-03T10:00:00Z" data-every="7d" data-roll-caption="Next submissions open in" data-done="The first submission window is open.">
+    <span class="pfd-cd-caption" data-cd-caption>First submissions open in</span>
+    <time class="pfd-cd-date" data-cd-date datetime="2026-09-03">2026-09-03</time>
     <span class="pfd-cd-clock" data-cd-clock aria-hidden="true"><span class="pfd-cd-cell"><b data-cd="d">--</b><i>days</i></span><span class="pfd-cd-cell"><b data-cd="h">--</b><i>hrs</i></span><span class="pfd-cd-cell"><b data-cd="m">--</b><i>min</i></span><span class="pfd-cd-cell"><b data-cd="s">--</b><i>sec</i></span></span>
   </p>
 </section>

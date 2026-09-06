@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.1.45"   # SUMNABATCH versioning — fresh start at 0.1.0 (was SYBU 0.7.x); bump_version.py +1 patch each build
+BUILD_VERSION = "0.7.53"   # SYBU uses the agreed 0.7.x desktop-tool version line; bump_version.py +1 patch each build
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -1185,6 +1185,16 @@ class SybuMatchRow(tk.Frame):
 class App(tk.Tk):
 
     def __init__(self):
+        # Give Windows a stable identity before Tk creates its first window.
+        # Without an explicit AppUserModelID, the taskbar can group the process
+        # as a generic Tcl/Tk app and show Tk's feather despite our window icon.
+        if sys.platform == 'win32':
+            try:
+                import ctypes
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+                    'SnapSmack.SmackYourBatchUp.0.7')
+            except Exception:
+                pass
         super().__init__()
         self.title(f"SMACK YOUR BATCH UP  —  build {BUILD_VERSION}")
         self.geometry(f"{WIN_W}x{WIN_H}")
@@ -1226,24 +1236,41 @@ class App(tk.Tk):
             self.bind_class(_cls, "<Control-X>", _clip("<<Cut>>"))
             self.bind_class(_cls, "<Button-3>", _clip_menu)
 
-        # Set window/taskbar icon explicitly — the exe icon set via PyInstaller
-        # only affects File Explorer; tkinter needs iconbitmap() for the taskbar.
+        # Set the current SYBU artwork in both the title bar and taskbar.  The
+        # executable icon alone only changes File Explorer on Windows.
         try:
             if getattr(sys, 'frozen', False):
-                _ico = os.path.join(sys._MEIPASS, 'assets', 'sybu.ico')
+                _ico = os.path.join(sys._MEIPASS, 'assets', 'sybu-taskbar.ico')
+                _png = os.path.join(sys._MEIPASS, 'assets', 'sybu-taskbar.png')
             else:
-                _ico = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    'assets', 'sybu.ico')
+                _hub_icons = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                          '..', 'hub', 'icons')
+                _ico = os.path.join(_hub_icons, 'sybu-taskbar.ico')
+                _png = os.path.join(_hub_icons, 'sybu-taskbar.png')
             if os.path.exists(_ico):
-                self.iconbitmap(_ico)
-        except Exception:
-            pass  # non-fatal — falls back to default tkinter feather
+                # On Windows the ICO owns the HWND/taskbar icon.  Calling
+                # iconphoto afterwards can replace it with Tk's generic feather
+                # while the frozen app is still starting, so use only the ICO
+                # there and re-assert it after the window handle exists.
+                self.iconbitmap(default=_ico)
+                if sys.platform == 'win32':
+                    self.after(250, lambda p=_ico: self.iconbitmap(default=p))
+            if sys.platform != 'win32' and os.path.exists(_png):
+                self._window_icon = ImageTk.PhotoImage(Image.open(_png).convert('RGBA'))
+                self.iconphoto(True, self._window_icon)
+        except Exception as _icon_error:
+            print(f"SYBU icon setup failed: {_icon_error!r}", flush=True)
 
         # State
         self._config        = cfg_module.load()
         self._client:       Optional[SnapSmackClient] = None
         self._site_data:    Optional[SiteData]        = None
         self._drive_service = None
+        self._site_image_settings = {
+            'max_width_landscape': 3840, 'max_height_portrait': 2160,
+            'jpeg_quality': 85, 'image_resize_enabled': True,
+            'export_sharpen': 'auto',
+        }
         self._posting           = False
         # Failed or incomplete AI enrichment is a hard posting latch. It can
         # only be removed by a successful retry or an explicit user override.
@@ -1650,6 +1677,7 @@ class App(tk.Tk):
         self._goog_creds_var   = tk.StringVar()
         self._drive_folder_var = tk.StringVar()
         self._drive_enabled_var = tk.BooleanVar(value=True)
+        self._drive_toggle_text = tk.StringVar(value="✓  GOOGLE DRIVE ENABLED")
 
         drv_box  = self._box(cfg, "GOOGLE DRIVE (OPTIONAL)")
         drv_box.pack(fill="x", pady=(10, 0))
@@ -1657,10 +1685,15 @@ class App(tk.Tk):
 
         drv_toggle_row = tk.Frame(drv_body, bg=BG_CARD)
         drv_toggle_row.pack(anchor="w", pady=(0, 6))
-        ttk.Checkbutton(
-            drv_toggle_row, text="Enable Google Drive", variable=self._drive_enabled_var,
-            command=self._on_drive_toggle,
-        ).pack(side="left")
+        self._drive_toggle = tk.Checkbutton(
+            drv_toggle_row, textvariable=self._drive_toggle_text,
+            variable=self._drive_enabled_var, command=self._on_drive_toggle,
+            indicatoron=False, relief="flat", borderwidth=0, padx=14, pady=7,
+            bg="#173a20", fg=LED_OK, selectcolor="#173a20",
+            activebackground="#214c2b", activeforeground=LED_OK,
+            font=("Segoe UI", 9, "bold"), cursor="hand2",
+        )
+        self._drive_toggle.pack(side="left")
 
         drv_row = tk.Frame(drv_body, bg=BG_CARD)
         drv_row.pack(fill="x")
@@ -2853,6 +2886,15 @@ class App(tk.Tk):
         self._def_alb_var.set(p.get('default_album', ''))
         orient = p.get('default_orientation', 'auto')
         self._def_orient_var.set(orient.capitalize() if orient != 'auto' else 'Auto')
+        # SNAP HQ is the one per-site configuration surface.  Choosing a server
+        # in SYBU must therefore choose its incoming folder and AI prompt too.
+        self._folder_var.set(p.get('upload_dir', ''))
+        prompt = p.get('prompt', '')
+        self._gem_prompt_txt.delete('1.0', 'end')
+        self._gem_prompt_txt.insert('1.0', prompt)
+        for key in self._site_image_settings:
+            if key in p:
+                self._site_image_settings[key] = p[key]
 
     def _on_post_profile_pick(self, _event=None):
         """POST-page profile dropdown → load + apply the selected profile."""
@@ -3625,6 +3667,7 @@ class App(tk.Tk):
         self._goog_creds_var.set(c.get('google_credentials', ''))
         self._drive_folder_var.set(c.get('drive_folder_id', ''))
         self._drive_enabled_var.set(c.get('drive_enabled', True))
+        self._render_drive_toggle()
         self._gemini_key_var.set(c.get('gemini_api_key', ''))
         last_prompt = c.get('gemini_last_prompt', '')
         self._gem_prompt_txt.delete('1.0', 'end')
@@ -3676,7 +3719,7 @@ class App(tk.Tk):
                         service = drive_module.authenticate(creds_path)
                         self._drive_service = service
                         self.after(0, lambda: self._drive_dot.configure(fg=LED_OK))
-                        self.after(0, lambda: self._drive_lbl.configure(text="AUTHENTICATED", fg=LED_OK))
+                        self.after(0, lambda: self._drive_lbl.configure(text="DRIVE ENABLED", fg=LED_OK))
                     except Exception:
                         self.after(0, lambda: self._drive_dot.configure(fg=LED_OFF))
                         self.after(0, lambda: self._drive_lbl.configure(text="NOT CONNECTED", fg=LED_OFF))
@@ -3874,6 +3917,7 @@ class App(tk.Tk):
     def _on_drive_toggle(self):
         """Called when the Enable Google Drive checkbox is toggled."""
         enabled = self._drive_enabled_var.get()
+        self._render_drive_toggle(enabled)
         if enabled:
             # Re-show the normal not-connected state; auto-reconnect will
             # pick it up if credentials are already saved.
@@ -3885,6 +3929,21 @@ class App(tk.Tk):
             self._drive_dot.configure(fg=LED_OFF)
             self._drive_lbl.configure(text="DISABLED", fg=LED_OFF)
         self._save_config()
+
+    def _render_drive_toggle(self, enabled=None):
+        """Make Drive's on/off control readable at a glance."""
+        if enabled is None:
+            enabled = self._drive_enabled_var.get()
+        if enabled:
+            self._drive_toggle_text.set("✓  GOOGLE DRIVE ENABLED")
+            self._drive_toggle.configure(
+                bg="#173a20", fg=LED_OK, selectcolor="#173a20",
+                activebackground="#214c2b", activeforeground=LED_OK)
+        else:
+            self._drive_toggle_text.set("GOOGLE DRIVE DISABLED — CLICK TO ENABLE")
+            self._drive_toggle.configure(
+                bg="#3a2417", fg=FG_WARN, selectcolor="#3a2417",
+                activebackground="#51331f", activeforeground=FG_WARN)
 
     # ------------------------------------------------------------------
     # Google Drive auth
@@ -3910,7 +3969,7 @@ class App(tk.Tk):
                 service = drive_module.authenticate(creds_path)
                 self._drive_service = service
                 self.after(0, lambda: self._drive_dot.configure(fg=LED_OK))
-                self.after(0, lambda: self._drive_lbl.configure(text="AUTHENTICATED", fg=LED_OK))
+                self.after(0, lambda: self._drive_lbl.configure(text="DRIVE ENABLED", fg=LED_OK))
                 self.after(0, lambda: self._set_status("Google Drive connected.", FG_OK))
                 self.after(0, self._save_config)
             except Exception as e:
@@ -4743,15 +4802,23 @@ class App(tk.Tk):
         self._set_status("Posting…", FG_WARN)
         self._save_config()
 
+        _image_folder = self._folder_var.get().strip()
+        # Managed SNAP HQ workflow: successful files leave `upload` and land in
+        # its sibling `completed`. Other manually chosen folders are untouched.
+        _completed_dir = ''
+        if os.path.basename(os.path.normpath(_image_folder)).lower() == 'upload':
+            _completed_dir = os.path.join(os.path.dirname(os.path.normpath(_image_folder)), 'completed')
+            os.makedirs(_completed_dir, exist_ok=True)
+
         thread = threading.Thread(
             target=self._post_thread,
-            args=(entries, self._folder_var.get().strip(), count,
-                  self._active_tab == 'gram'),
+            args=(entries, _image_folder, count, self._active_tab == 'gram',
+                  _completed_dir),
             daemon=True,
         )
         thread.start()
 
-    def _post_thread(self, entries, image_folder, total, post_as_grams):
+    def _post_thread(self, entries, image_folder, total, post_as_grams, completed_dir=''):
         def on_progress(current, total, result):
             self._msg_queue.put(('progress', current, total, result))
 
@@ -4788,6 +4855,7 @@ class App(tk.Tk):
                 image_folder=image_folder,
                 on_progress=on_progress,
                 cancel_event=self._cancel_evt,
+                completed_dir=completed_dir,
             )
         else:
             results = poster_module.run_batch(
@@ -4802,7 +4870,9 @@ class App(tk.Tk):
                 drive_service=self._drive_service,
                 drive_folder_id=self._drive_folder_var.get().strip(),
                 copyright_text=self._copyright_var.get().strip(),
+                **self._site_image_settings,
                 cancel_event=self._cancel_evt,
+                completed_dir=completed_dir,
             )
         cancelled = self._cancel_evt.is_set()
         self._active_conn = None  # run finished — don't let a later cancel touch a stale conn
@@ -5151,6 +5221,8 @@ class App(tk.Tk):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    import snap_hq_gate
+    snap_hq_gate.require()
     app = App()
     app.mainloop()
 # ===== SNAPSMACK EOF =====

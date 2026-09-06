@@ -42,9 +42,13 @@ SEV_UNKNOWN = 'unknown'   # grey   — site doesn't report this job yet (caution
 SEV_OK      = 'ok'        # green  — ran within its expected window
 SEV_NA      = 'na'        # dim    — job not applicable here (feature disabled)
 SEV_OFFLINE = 'offline'   # red    — the heartbeat itself did not answer
+SEV_PARKED  = 'parked'    # dim    — site is in maintenance mode (deliberately idle)
 
 # Ordering used to roll a site's many jobs up to one overall dot. Higher wins.
+# PARKED sits below everything: a maintenance site is set at the SITE level in
+# overall(), never rolled up from jobs, so it can never mask a real red.
 _SEV_RANK = {
+    SEV_PARKED:  -1,
     SEV_NA:      0,
     SEV_OK:      1,
     SEV_UNKNOWN: 2,
@@ -115,10 +119,21 @@ class SiteHealth:
     version: str = ''
     jobs: List[JobHealth] = field(default_factory=list)
     checked_at: Optional[datetime.datetime] = None
+    # Fleet context the heartbeat ships — used to classify a site so a
+    # deliberately-idle or empty blog isn't screamed at like a broken active one.
+    maintenance: bool = False               # snap_settings.maintenance_mode
+    site_mode: str = ''                     # photoblog | carousel | smacktalk
+    post_count: int = 0
+    followers: int = 0                       # fediverse followers (delivery audience)
 
     def overall(self) -> str:
         if not self.online:
             return SEV_OFFLINE
+        # Maintenance mode is a deliberate state, not a failure: a parked site has
+        # no content and runs no meaningful crons, so it must never colour the
+        # fleet red. Surfaced as its own dim PARKED verdict instead.
+        if self.maintenance:
+            return SEV_PARKED
         return worst(j.severity for j in self.jobs) if self.jobs else SEV_UNKNOWN
 
 
@@ -313,13 +328,26 @@ def _jobs_from_heartbeat(data: dict) -> List[JobHealth]:
     """Turn a heartbeat payload into one JobHealth per catalogued job. Prefers a
     future `jobs` block; otherwise derives honestly from today's fields."""
     jobs_block = data.get('jobs') if isinstance(data.get('jobs'), dict) else {}
+    fedi_on = str(data.get('fediverse_enabled') or data.get('smackverse_enabled') or '0') in ('1', 'true', 'True')
+    followers = int(data.get('smackverse_followers') or 0)
     out: List[JobHealth] = []
     for spec in JOB_SPECS:
         rich = jobs_block.get(spec.key) if isinstance(jobs_block.get(spec.key), dict) else None
         if rich is not None:
-            out.append(_job_from_rich(spec, rich))
+            jh = _job_from_rich(spec, rich)
         else:
-            out.append(_job_derived(spec, data))
+            jh = _job_derived(spec, data)
+        # Fediverse delivery is only meaningful when there is an audience. With
+        # federation ON but ZERO followers, the delivery cron has nothing to send,
+        # so its last-run freshness says nothing about health — report a calm N/A
+        # ("nothing to deliver") so quiet blogs stop lighting the board red/grey.
+        # A site WITH followers is still judged on freshness, so a genuinely broken
+        # delivery on an active, followed blog still shows red.
+        if spec.key == 'fediverse' and fedi_on and followers == 0:
+            jh = JobHealth(spec.key, spec.label, SEV_NA, jh.last_run,
+                           'federation on, but no followers yet — nothing to deliver',
+                           reported=jh.reported)
+        out.append(jh)
     return out
 
 

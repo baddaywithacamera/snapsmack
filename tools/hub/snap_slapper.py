@@ -78,6 +78,8 @@ from photo_library import PhotoLibrary
 
 
 def main():
+    import snap_hq_gate
+    snap_hq_gate.require()
     root = tk.Tk()
     root.withdraw()
     state_path = snap_home.config_path("snap-slapper", "library_folders.json")

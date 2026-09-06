@@ -47,9 +47,22 @@ def friendly_hint(exc) -> str:
     return ""
 
 
+def _log_error(title, exc):
+    """Best-effort: record this error (with traceback) to the run log, if the
+    tool set one up. Never raises — logging must not break the dialog."""
+    try:
+        import snap_log
+        logger = snap_log.primary()
+        if logger is not None:
+            logger.error("%s", title, exc_info=exc)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def show_error(title, exc, *, parent=None, hint=None):
     """Friendly error dialog: a plain remedy on top, technical detail below a
     divider. `hint` overrides the auto-detected remedy (pass '' to suppress)."""
+    _log_error(title, exc)
     h = friendly_hint(exc) if hint is None else hint
     detail = (str(exc) or type(exc).__name__).strip()
     body = f"{h}\n\n———\nDetails: {detail}" if h else detail

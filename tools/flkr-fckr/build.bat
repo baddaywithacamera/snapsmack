@@ -40,7 +40,7 @@ REM --collect-submodules keyring.backends: keyring picks its backend at runtime 
 REM import, so PyInstaller's static analysis misses every backend and the frozen
 REM exe silently reports "no keychain" — which would quietly disable the
 REM remember-on-this-machine option rather than failing loudly.
-pyinstaller --onefile --windowed --name flkrfckr --icon assets\icon.ico --version-file version_info.txt --collect-all PIL --hidden-import PIL._tkinter_finder --paths ..\_shared --hidden-import snap_thumbs --hidden-import snap_stepup --hidden-import snap_vault --collect-submodules keyring.backends main.py
+pyinstaller --onefile --windowed --name flkrfckr --icon assets\icon.ico --version-file version_info.txt --collect-all PIL --hidden-import PIL._tkinter_finder --paths ..\_shared --hidden-import snap_thumbs --hidden-import snap_stepup --hidden-import snap_vault --hidden-import snap_connections --hidden-import snap_profiles --hidden-import snap_creds --hidden-import snap_home --hidden-import snap_site_settings --collect-submodules keyring.backends main.py
 
 echo.
 echo Done. Exe is in dist\flkrfckr.exe

@@ -115,6 +115,10 @@ tools/*/vault.meta
 # PyInstaller build artifacts — all tools
 tools/*/build/
 tools/*/dist/
+# Versioned PyInstaller output (e.g. build-0.7.28/, dist-0.7.28/) — same junk,
+# just carries the tool version in the folder name.
+tools/*/build-*/
+tools/*/dist-*/
 tools/*/*.spec
 !tools/smack-up-your-backup/smackupyourbackup.spec
 !tools/hub/hub.spec

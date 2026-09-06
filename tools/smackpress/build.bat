@@ -4,7 +4,7 @@ cd /d "%~dp0"
 echo === Installing build deps (pyinstaller + customtkinter) ===
 python -m pip install --upgrade pyinstaller customtkinter
 echo === Building SmackPress.exe ===
-python -m PyInstaller --noconfirm --clean --onefile --windowed --name SmackPress --paths smackpress --collect-all customtkinter --hidden-import config --hidden-import db --hidden-import wp_client --hidden-import smacktalk_client --hidden-import ai_client app.py
+python -m PyInstaller --noconfirm --clean --onefile --windowed --name SmackPress --paths smackpress --paths ..\_shared --collect-all customtkinter --hidden-import config --hidden-import db --hidden-import wp_client --hidden-import smacktalk_client --hidden-import ai_client --hidden-import snap_connections --hidden-import snap_profiles --hidden-import snap_creds --hidden-import snap_home --hidden-import snap_site_settings --hidden-import snap_vault app.py
 if errorlevel 1 goto fail
 set DEPLOY=C:\smackpress
 if not exist "%DEPLOY%" mkdir "%DEPLOY%"

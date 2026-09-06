@@ -3,8 +3,9 @@
 // Manages tab state, CONNECT/FILTER/SORT screens, and the Conflict Resolution Modal.
 
 import { SnapSmackGYSSAPI } from './api.js';
+import { invoke } from '@tauri-apps/api/core';
 import {
-    listProfiles, loadProfile, saveProfile, deleteProfile, touchProfile
+    listProfiles, loadProfile, saveProfile, deleteProfile, touchProfile, cacheProfileSiteMode
 } from './profiles.js';
 import {
     createSession, dirtyCount, markDirty, clearDirty,
@@ -12,7 +13,7 @@ import {
     saveSession, listSessions, loadSession, deleteSession
 } from './session.js';
 import {
-    syncLibrary, libraryImages, libraryStatus, hostnameFor
+    syncLibrary, libraryImages, libraryStatus, hostnameFor, catalogPath
 } from './library.js';
 import { getCred } from './shared-creds.js';
 
@@ -39,6 +40,7 @@ let state = {
     gramSelected:   new Set(),    // selected post ids in the GRID tab
     sharedCreds:    {},           // shared secret store (gemini_api_key, drive_folder_id, google_credentials)
 };
+const profileModeChecks = new Set();
 
 // ---------------------------------------------------------------------------
 // Boot
@@ -97,6 +99,44 @@ document.addEventListener('click', e => {
 async function refreshProfiles() {
     state.profiles = await listProfiles();
     renderProfileList();
+    renderImagesBlogSelect();
+    classifyUnknownProfiles(state.profiles.filter(p => !p.site_mode));
+}
+
+function renderImagesBlogSelect() {
+    const select = document.getElementById('images-blog-select');
+    if (!select) return;
+    const current = state.activeProfile?._path || '';
+    select.innerHTML = '<option value="">— select a blog —</option>' + state.profiles.map(p =>
+        `<option value="${escHtml(p._path)}" ${p._path === current ? 'selected' : ''}>${escHtml(p.name)} — ${escHtml(p.site_url)}</option>`
+    ).join('');
+    const label = document.getElementById('images-blog-current');
+    if (label) label.textContent = state.activeProfile
+        ? `${state.activeProfile.name} · ${state.siteMode}` : 'No blog selected';
+}
+
+// Shared profiles are used by every desktop tool, including SMACKTALK. Identify
+// unknown entries once in the background, cache their mode, then remove longform
+// sites from GYSS without making the user click through each one.
+async function classifyUnknownProfiles(profiles) {
+    const pending = profiles.filter(p => !profileModeChecks.has(p._path));
+    for (const summary of pending) profileModeChecks.add(summary._path);
+    const workers = Array.from({ length: Math.min(4, pending.length) }, async () => {
+        while (pending.length) {
+            const summary = pending.shift();
+            try {
+                const profile = await loadProfile(summary._path);
+                if (!profile.api_key) continue;
+                const reply = await new SnapSmackGYSSAPI(profile.site_url, profile.api_key).ping();
+                await cacheProfileSiteMode(summary._path, reply.site_mode || 'photoblog');
+            } catch { /* offline/old sites stay visible and can be retried manually */ }
+        }
+    });
+    await Promise.all(workers);
+    if (workers.length) {
+        state.profiles = await listProfiles();
+        renderProfileList();
+    }
 }
 
 function renderProfileList() {
@@ -203,7 +243,9 @@ async function activateProfile(profile) {
         const r = await state.api.ping();
         await touchProfile(profile._path, new Date().toISOString());
         state.siteMode = r.site_mode || 'photoblog';
+        await cacheProfileSiteMode(profile._path, state.siteMode);
         applyModeTabs();
+        renderImagesBlogSelect();
 
         if (state.siteMode === 'carousel') {
             // GRAMOFSMACK: straight to the grid (posts, not the photo sorter).
@@ -213,22 +255,26 @@ async function activateProfile(profile) {
         } else if (state.siteMode === 'photoblog') {
             // SMACKONEOUT: the original photo sorter.
             setStatus('connect-status', `Connected: ${r.site_name} (v${r.version}) — SMACKONEOUT`, 'ok');
-            state.meta = await state.api.meta();
+            try {
+                state.meta = await state.api.meta();
+            } catch (metaErr) {
+                // Old sites can sort photographs even when their optional
+                // category/album membership schema cannot provide counts yet.
+                state.meta = { categories: [], albums: [] };
+                toast(`Connected, but category/album metadata is unavailable: ${metaErr.message}`, 'error');
+            }
             populateFilterDropdowns();
             await refreshSessions();
             await refreshLibraryStatus();
             showTab('filter');
+        } else if (state.siteMode !== 'fedistructure') {
+            // Longform and SMACKTHEMUP do not expose a sortable feed here, but
+            // their public image records still belong in the asset-first IMAGES tab.
+            setStatus('connect-status', `Connected: ${r.site_name} (v${r.version}) — image library`, 'ok');
+            showTab('repair');
+            await scanEnrichment();
         } else {
-            // SMACKTALK (longform) or an unknown mode: GYSS can't sort it. Longform
-            // images live INSIDE essays (via [mosaic:ID] post-body shortcodes + a
-            // single featured asset), not as sortable tiles — there is no feed to
-            // arrange and no per-image order that means anything. Refuse cleanly and
-            // stay on CONNECT rather than show a meaningless sorter.
-            const modeName = state.siteMode === 'smacktalk' ? 'SMACKTALK (longform)' : `"${state.siteMode}"`;
-            setStatus('connect-status',
-                `Connected to ${r.site_name}, but GYSS doesn't support ${modeName} sites. ` +
-                `Longform images live inside essays and aren't sortable — use SmackPress to manage longform.`,
-                'error');
+            setStatus('connect-status', 'FEDISTRUCTURE is deliberately excluded from GYSS image enrichment.', 'error');
             showTab('connect');
         }
     } catch (err) {
@@ -290,15 +336,14 @@ async function restoreSessionProfile(session) {
 
 // Show only the tabs that apply to the connected site's mode. CONNECT always
 // shows. FILTER/SORT are photoblog-only; GRID is carousel-only (data-mode). REPAIR
-// (image-metadata enrichment) applies to both photo modes but NOT to SMACKTALK
-// longform — so on any unsupported mode, only CONNECT remains.
+// IMAGES applies to every normal user mode. FEDISTRUCTURE is deliberately out.
 function applyModeTabs() {
     const supported = (state.siteMode === 'photoblog' || state.siteMode === 'carousel');
     document.querySelectorAll('.tab-btn[data-mode]').forEach(btn => {
         btn.hidden = !supported || (btn.dataset.mode !== state.siteMode);
     });
     const repairBtn = document.querySelector('.tab-btn[data-tab="repair"]');
-    if (repairBtn) repairBtn.hidden = !supported;
+    if (repairBtn) repairBtn.hidden = state.siteMode === 'fedistructure';
 }
 
 // ---------------------------------------------------------------------------
@@ -494,6 +539,7 @@ async function browseLibrary() {
             filename:         r.filename,
             thumb_url:        r.src,
             remote_thumb_url: r.thumb_url,
+            color_mode:       r.color_mode || '',
         }));
         state.session     = createSession(state.activeProfile, filter, photos);
         state.sessionPath = await saveSession(state.session);
@@ -520,6 +566,8 @@ function renderSortGrid() {
             <div class="drag-handle" title="Drag to reorder">⠿</div>
             ${p.dirty ? '<div class="dirty-dot" title="Unsaved changes"></div>' : ''}
             <img src="${escHtml(p.thumb_url)}" alt="${escHtml(p.title)}" loading="lazy">
+            ${p.color_mode === 'color' ? '<span class="color-mode-badge">COLOUR</span>' :
+              p.color_mode === 'bw' ? '<span class="color-mode-badge">B&amp;W</span>' : ''}
             <div class="card-title">${escHtml(p.title || '')}</div>
         </div>
     `).join('');
@@ -528,6 +576,26 @@ function renderSortGrid() {
     // Drag listeners are attached ONCE in bindSortTab (delegated on the persistent
     // #sort-grid), NOT here — re-attaching every render stacked a fresh set of five
     // listeners each reorder, so long sessions fired the drop handler repeatedly.
+}
+
+function updateClassificationCounts() {
+    const photos = state.session?.photos || [];
+    const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+    set('colour-bin-count', photos.filter(p => p.color_mode === 'color').length);
+    set('bw-bin-count', photos.filter(p => p.color_mode === 'bw').length);
+    set('clear-bin-count', photos.filter(p => !p.color_mode).length);
+}
+
+function classifyPhotos(ids, mode) {
+    if (!state.session) return;
+    const normalized = mode === 'color' || mode === 'bw' ? mode : '';
+    for (const photo of state.session.photos) {
+        if (ids.includes(photo.id) && (photo.color_mode || '') !== normalized) {
+            photo.color_mode = normalized;
+            photo.dirty = true;
+        }
+    }
+    renderSortGrid();
 }
 
 function updateSortTopBar() {
@@ -578,6 +646,7 @@ function initDragAndDrop() {
             draggedIds = [id];
         }
         e.dataTransfer.effectAllowed = 'move';
+        state.dragIds = [...draggedIds];
         card.classList.add('dragging');
     });
 
@@ -619,6 +688,20 @@ function initDragAndDrop() {
             c.classList.remove('dragging', 'drop-target');
         });
         draggedIds = [];
+        state.dragIds = [];
+    });
+
+    document.querySelectorAll('.classification-bin').forEach(bin => {
+        bin.ondragover = e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; bin.classList.add('drag-over'); };
+        bin.ondragleave = () => bin.classList.remove('drag-over');
+        bin.ondrop = e => {
+            e.preventDefault();
+            bin.classList.remove('drag-over');
+            const ids = state.dragIds.length ? [...state.dragIds] : [...draggedIds];
+            classifyPhotos(ids, bin.dataset.colorMode || '');
+            state.dragIds = [];
+            draggedIds = [];
+        };
     });
 }
 
@@ -993,6 +1076,13 @@ function bindRepairTab() {
     document.querySelectorAll('.repair-field').forEach(box => {
         box.addEventListener('change', renderRepairCount);
     });
+    document.getElementById('images-blog-select')?.addEventListener('change', async e => {
+        if (!e.target.value) return;
+        const profile = await loadProfile(e.target.value);
+        await activateProfile(profile);
+        showTab('repair');
+        await scanEnrichment();
+    });
 }
 
 function selectedRepairFields() {
@@ -1007,7 +1097,7 @@ function repairQueue() {
 function renderRepairCount() {
     const queue = repairQueue();
     const count = document.getElementById('enrich-count');
-    if (count) count.textContent = `${queue.length} post${queue.length === 1 ? '' : 's'} need selected fields`;
+    if (count) count.textContent = `${queue.length} image${queue.length === 1 ? '' : 's'} need selected fields`;
     const run = document.getElementById('btn-enrich-run');
     if (run) run.disabled = !state.api || queue.length === 0 || selectedRepairFields().length === 0;
 }
@@ -1018,7 +1108,7 @@ async function scanEnrichment() {
         showTab('connect');
         return;
     }
-    setStatus('enrich-status', 'Scanning published posts…', 'info');
+    setStatus('enrich-status', 'Scanning published images…', 'info');
     document.getElementById('btn-enrich-run').disabled = true;
     try {
         const result = await state.api.enrichmentAudit(1000);
@@ -1032,7 +1122,7 @@ async function scanEnrichment() {
         setStatus(
             'enrich-status',
             result.ai_ready
-                ? `Scan complete. ${state.repairItems.length} posts have missing metadata.`
+                ? `Scan complete. ${state.repairItems.length} images have missing metadata.`
                 : 'Scan complete, but AI is not configured on this site.',
             result.ai_ready ? 'ok' : 'error'
         );
@@ -1047,6 +1137,7 @@ async function runEnrichment() {
     const queue = repairQueue();
     const prompt = document.getElementById('enrich-prompt').value.trim();
     const overwrite = document.getElementById('enrich-overwrite').checked;
+    const forceRefresh = document.getElementById('enrich-force-refresh').checked;
     if (!queue.length || !fields.length || !prompt) {
         toast('Scan, select fields, and provide a prompt first.', 'error');
         return;
@@ -1084,13 +1175,26 @@ async function runEnrichment() {
         setStatus('enrich-status', `Enriching image ${item.id}…`, 'info');
         try {
             const wanted = overwrite ? fields : fields.filter(field => item.missing.includes(field));
-            const result = await state.api.enrichOne(item.id, prompt, wanted, overwrite);
+            const result = await state.api.enrichOne(item.id, prompt, wanted, overwrite, forceRefresh);
+            // Write-through mirror: the CMS has committed the authoritative row;
+            // immediately pull it into shared SQLite for every other desktop app.
+            try {
+                const cache = await state.api.enrichmentCache(Math.max(0, Math.floor(Date.now() / 1000) - 10));
+                const merged = await invoke('enrichment_cache_merge', {
+                    path: await catalogPath(hostnameFor(state.activeProfile.site_url)),
+                    records: cache.records || [],
+                });
+                if ((merged.collisions || []).length) {
+                    setStatus('enrich-status', 'Enrichment saved online, but its local cache has a collision requiring review.', 'error');
+                    state.repairStop = true;
+                }
+            } catch { /* old CMS/cache sync failure never discards the committed enrichment */ }
             completed++;
             item.missing = item.missing.filter(field => !(result.applied || []).includes(field));
             results.insertAdjacentHTML('afterbegin',
                 `<div class="enrich-result"><img src="${escHtml(item.thumb_url)}" alt="">` +
                 `<span>${escHtml(result.metadata?.title || item.title || `Image ${item.id}`)}</span>` +
-                `<strong class="ok">${escHtml((result.applied || []).join(', ') || 'review')}</strong></div>`);
+                `<strong class="ok">${result.cache?.hit ? 'CACHE · ' : 'AI · '}${escHtml((result.applied || []).join(', ') || 'review')}</strong></div>`);
         } catch (err) {
             results.insertAdjacentHTML('afterbegin',
                 `<div class="enrich-result"><img src="${escHtml(item.thumb_url)}" alt="">` +
