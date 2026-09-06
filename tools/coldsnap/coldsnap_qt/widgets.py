@@ -12,8 +12,8 @@ from urllib.parse import urlparse
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QPixmap, QIntValidator
 from PySide6.QtWidgets import (
-    QFrame, QLabel, QLineEdit, QVBoxLayout, QHBoxLayout, QMessageBox,
-    QPushButton, QSlider, QWidget,
+    QFrame, QLabel, QLineEdit, QScrollArea, QSizePolicy, QVBoxLayout,
+    QHBoxLayout, QMessageBox, QPushButton, QSlider, QWidget,
 )
 
 from . import theme
@@ -112,7 +112,7 @@ class SliderRow(QWidget):
         row.setContentsMargins(0, 0, 0, 0)
         name = QLabel(label)
         name.setObjectName("Hint")
-        name.setFixedWidth(120)
+        name.setFixedWidth(90)   # rail-width friendly; every label here fits
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(lo, hi)
         self.slider.setValue(value)
@@ -140,6 +140,80 @@ class SliderRow(QWidget):
 
     def set_value(self, v: int) -> None:
         self.slider.setValue(int(v))
+
+
+# --- Accordion rail (same design as SNAP SLAPPER) -----------------------------
+
+class Accordion(QWidget):
+    """A collapsible titled section — SNAP SLAPPER's rail idiom, verbatim
+    (tools/hub/slapper_qt/widgets.py). Click the header to open/close."""
+
+    def __init__(self, title, expanded=False, parent=None):
+        super().__init__(parent)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        self.header = QPushButton(title)
+        self.header.setObjectName("AccordionHeader")
+        self.header.setCheckable(True)
+        self.header.setChecked(expanded)
+        self.header.setCursor(Qt.PointingHandCursor)
+        self.header.toggled.connect(self._toggle)
+        outer.addWidget(self.header)
+
+        self.body = QWidget()
+        self.body_layout = QVBoxLayout(self.body)
+        self.body_layout.setContentsMargins(10, 6, 10, 10)
+        self.body_layout.setSpacing(8)
+        self.body.setVisible(expanded)
+        outer.addWidget(self.body)
+
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+
+    def add(self, widget):
+        self.body_layout.addWidget(widget)
+
+    def add_layout(self, lay):
+        self.body_layout.addLayout(lay)
+
+    def set_expanded(self, on: bool):
+        self.header.setChecked(bool(on))
+
+    def _toggle(self, checked):
+        self.body.setVisible(checked)
+
+
+def build_rail(sections, bottom_widgets=(), width: int = 340) -> QWidget:
+    """The right-hand control rail, SNAP SLAPPER-style: a fixed-width column
+    where the accordion sections scroll and `bottom_widgets` (SEND, status)
+    stay pinned and always visible."""
+    rail = QWidget()
+    rail.setObjectName("Rail")
+    rail.setFixedWidth(width)
+    col = QVBoxLayout(rail)
+    col.setContentsMargins(0, 0, 0, 0)
+    col.setSpacing(0)
+
+    scroll = QScrollArea()
+    scroll.setWidgetResizable(True)
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    inner = QWidget()
+    inner_col = QVBoxLayout(inner)
+    inner_col.setContentsMargins(0, 0, 0, 0)
+    inner_col.setSpacing(0)
+    for s in sections:
+        inner_col.addWidget(s)
+    inner_col.addStretch(1)
+    scroll.setWidget(inner)
+    col.addWidget(scroll, 1)
+
+    for w in bottom_widgets:
+        w.setParent(rail)
+        col.addWidget(w)
+        if isinstance(w, QPushButton):
+            col.setContentsMargins(0, 0, 0, 0)
+    return rail
 
 
 # --- The publish gate ---------------------------------------------------------------

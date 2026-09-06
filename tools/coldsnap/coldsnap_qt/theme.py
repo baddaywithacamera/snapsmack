@@ -56,6 +56,28 @@ def stylesheet() -> str:
     }}
     QMainWindow, QWidget {{ background: {BG}; }}
 
+    /* --- The control rail (same design as SNAP SLAPPER) ------------------- */
+    #Rail {{
+        background: {PANEL};
+        border-left: 1px solid {BORDER};
+    }}
+    #Rail QScrollArea, #Rail QScrollArea > QWidget > QWidget {{
+        background: {PANEL};
+    }}
+    QPushButton#AccordionHeader {{
+        background: {PANEL_HI};
+        color: {DIM};
+        text-align: left;
+        padding: 11px 12px;
+        border: none;
+        border-top: 1px solid {BORDER};
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 1px;
+    }}
+    QPushButton#AccordionHeader:hover {{ color: {ACCENT}; }}
+    QPushButton#AccordionHeader:checked {{ color: {ACCENT}; }}
+
     /* --- Cards ----------------------------------------------------------- */
     QFrame#Card {{
         background: {PANEL};

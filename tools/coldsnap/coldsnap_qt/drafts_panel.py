@@ -27,7 +27,8 @@ from PySide6.QtWidgets import (
 import sumna_offline as O
 
 from . import theme
-from .widgets import Card, hint, big_button, confirm_post, status_badge, thumb_label
+from .widgets import (Accordion, Card, hint, big_button, confirm_post,
+                      status_badge, thumb_label)
 
 
 class _SyncBridge(QObject):
@@ -47,85 +48,54 @@ class BatchRail(QWidget):
         self.store = O.SessionStore()
         self.session = None
 
-        self._expanded_width = 360
-        self._collapsed = False
-        self.setFixedWidth(self._expanded_width)
-        col = QVBoxLayout(self)
-        col.setContentsMargins(0, 0, 0, 0)
-        col.setSpacing(8)
-        self._col = col
-
-        # Collapse toggle + batch line. The whole rail folds to a thin strip so
-        # the compose side gets the width when you don't need the draft list
-        # (Sean, 2026-09-06: "make the batch window accordion in and out").
-        head = QHBoxLayout()
-        self.collapse_btn = QPushButton("◀")
-        self.collapse_btn.setObjectName("Quiet")
-        self.collapse_btn.setFixedWidth(30)
-        self.collapse_btn.setToolTip("Collapse the batch panel")
-        self.collapse_btn.clicked.connect(self._toggle_collapsed)
-        head.addWidget(self.collapse_btn)
-        self.batch_lbl = QLabel("")
-        self.batch_lbl.setObjectName("CardTitle")
-        head.addWidget(self.batch_lbl, 1)
+        # SNAP SLAPPER rail design (Sean, 2026-09-06): the batch is an accordion
+        # SECTION on the right rail, opened when wanted; only SEND stays pinned.
+        # This widget itself is never shown — modes place .section and .send_box
+        # into build_rail(); it exists to own the logic and the Qt signals.
+        self.section = Accordion("BATCH", expanded=False)
+        manage_row = QHBoxLayout()
+        manage_row.addStretch(1)
         manage = QPushButton("Manage…")
         manage.setObjectName("Quiet")
+        manage.setToolTip("Pick another batch, start a new one, or move a "
+                          "batch between machines")
         manage.clicked.connect(self._manage_batches)
-        self._manage_btn = manage
-        head.addWidget(manage)
-        col.addLayout(head)
+        manage_row.addWidget(manage)
+        self.section.add_layout(manage_row)
 
         # Kept (hidden) as the single source the modal drives.
         self.batch_combo = QComboBox()
         self.batch_combo.currentIndexChanged.connect(self._on_pick_batch)
         self.batch_combo.hide()
 
-        # Draft list
-        self._scroll = QScrollArea()
-        self._scroll.setWidgetResizable(True)
+        # Draft list — no scroll of its own; the rail scrolls.
         self._list_host = QWidget()
         self._list_col = QVBoxLayout(self._list_host)
-        self._list_col.setContentsMargins(2, 2, 2, 2)
+        self._list_col.setContentsMargins(0, 0, 0, 0)
         self._list_col.setSpacing(6)
         self._list_col.addStretch(1)
-        self._scroll.setWidget(self._list_host)
-        col.addWidget(self._scroll, 1)
+        self.section.add(self._list_host)
 
-        # SEND
+        # SEND — pinned under the rail, always visible.
         self._sending = False
+        self.send_box = QWidget()
+        sb = QVBoxLayout(self.send_box)
+        sb.setContentsMargins(10, 8, 10, 8)
+        sb.setSpacing(4)
         self.send_btn = big_button("SEND QUEUED POSTS ⇪")
         self.send_btn.setToolTip("Nothing reaches the site until you press this — "
                                  "and it always asks first, naming the site.")
         self.send_btn.clicked.connect(self._send)
-        col.addWidget(self.send_btn)
+        sb.addWidget(self.send_btn)
         self.sync_status = hint("")   # speaks only when something happens
-        col.addWidget(self.sync_status)
+        self.sync_status.setWordWrap(True)
+        sb.addWidget(self.sync_status)
 
         self._bridge = _SyncBridge()
         self._bridge.progressed.connect(self.refresh_drafts)
         self._bridge.finished.connect(self._send_done)
 
-        # Widgets hidden when the rail is collapsed (label + manage stay via
-        # their own handling; these are the space-eaters).
-        self._collapsible = [self._scroll, self.send_btn, self.sync_status]
-
         self.refresh_batches()
-
-    # -- collapse ------------------------------------------------------------
-    def _toggle_collapsed(self):
-        self._collapsed = not self._collapsed
-        for w in self._collapsible:
-            w.setVisible(not self._collapsed)
-        self.batch_lbl.setVisible(not self._collapsed)
-        self._manage_btn.setVisible(not self._collapsed)
-        if self._collapsed:
-            self.setFixedWidth(46)
-            self.collapse_btn.setText("▶")
-            self.collapse_btn.setToolTip("Show the batch panel")
-        else:
-            self.setFixedWidth(self._expanded_width)
-            self.collapse_btn.setText("◀")
-            self.collapse_btn.setToolTip("Collapse the batch panel")
 
     # -- batches ------------------------------------------------------------
     def _batches(self):
@@ -160,9 +130,9 @@ class BatchRail(QWidget):
         self.batch_combo.blockSignals(False)
         if self.session is not None:
             n = len(self.session.list_drafts())
-            self.batch_lbl.setText(f"BATCH — {self.session.name} · {n} item(s)")
+            self.section.header.setText(f"BATCH — {self.session.name} · {n} item(s)")
         else:
-            self.batch_lbl.setText("BATCH — starts automatically")
+            self.section.header.setText("BATCH — starts automatically")
         self.refresh_drafts()
 
     def _manage_batches(self):
@@ -241,7 +211,7 @@ class BatchRail(QWidget):
             if w:
                 w.deleteLater()
         if not self.session:
-            self._list_col.insertWidget(0, hint("Nothing here yet — compose on the right."))
+            self._list_col.insertWidget(0, hint("Nothing here yet — compose on the left."))
             self._reflect_send()
             return
         if self.row_builder:
@@ -251,7 +221,7 @@ class BatchRail(QWidget):
                     for d in self.session.list_drafts()]
         if not rows:
             self._list_col.insertWidget(0, hint(
-                "Nothing here yet — compose on the right, then QUEUE POST."))
+                "Nothing here yet — compose on the left, then QUEUE POST."))
         for i, r in enumerate(rows):
             self._list_col.insertWidget(i, r)
         self._reflect_send()
