@@ -93,6 +93,16 @@ TOPICS = [
      "ALT text is saved WITH THE IMAGE on the site (so is the Colour/B&W "
      "tag), not with the post — wherever the image appears, its description "
      "travels along."),
+    ("COLD STORAGE (the fourth tab)",
+     "The browsing face of the shared store: a grid of every image held "
+     "offline for the connected blog. SYNC FROM SITE pulls the rest of the "
+     "site's Gallery down — web-size files plus each image's title, caption, "
+     "ALT and Colour/B&W tag — and skips what's already here.\n\n"
+     "Click an image to see and edit its metadata. AI Fill suggests a title, "
+     "caption and ALT for it; SAVE TO SITE lands your edits back on that "
+     "image's row on the live site. Metadata only — COLD STORAGE never "
+     "changes the photo file, never publishes, never deletes.\n\n"
+     "Needs the site on 0.7.651 or newer (the sybu-images endpoint)."),
     ("The shared store",
      "Every post COLD SNAP sends is also recorded in the shared library on "
      "this computer (C:\\snapsmack\\shared_library\\<site>) — the post text, "
