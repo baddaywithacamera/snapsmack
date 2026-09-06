@@ -15,6 +15,8 @@ the network (the spec's hard "distribution" question) is deliberately out of v1.
 """
 
 import glob
+import hashlib
+import json
 import os
 import subprocess
 import sys
@@ -120,8 +122,75 @@ def _find_exe(paths):
     return None
 
 
-def _launch(path):
+# ── Roster-exe hash pinning (SECAUDIT 054) ───────────────────────────────────
+# The Hub launches exes that live inside the shared root — the same tree the
+# GYSS fs-jail can write into. Pin each exe's sha256 on first launch and verify
+# it on every launch after; a changed exe is refused until the operator says,
+# in one click, "yes, I rebuilt this on purpose." The pin ledger lives OUTSIDE
+# the shared root (%APPDATA%) so nothing inside the jail can bless a payload.
+
+def _exe_ledger_path():
+    base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    folder = os.path.join(base, "snapsmack-hub")
+    os.makedirs(folder, exist_ok=True)
+    return os.path.join(folder, "exe-pins.json")
+
+
+def _sha256_file(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _exe_pin_verify(path):
+    """(status, pinned_hash, current_hash). status: 'ok' | 'new' | 'changed'."""
+    current = _sha256_file(path)
+    ledger_file = _exe_ledger_path()
     try:
+        with open(ledger_file, encoding="utf-8") as fh:
+            ledger = json.load(fh)
+    except Exception:  # noqa: BLE001 — absent/corrupt ledger = start fresh
+        ledger = {}
+    key = os.path.abspath(path).lower()
+    pinned = ledger.get(key)
+    if pinned == current:
+        return "ok", pinned, current
+    return ("new" if pinned is None else "changed"), pinned, current
+
+
+def _exe_pin_store(path, digest):
+    ledger_file = _exe_ledger_path()
+    try:
+        with open(ledger_file, encoding="utf-8") as fh:
+            ledger = json.load(fh)
+    except Exception:  # noqa: BLE001
+        ledger = {}
+    ledger[os.path.abspath(path).lower()] = digest
+    with open(ledger_file, "w", encoding="utf-8") as fh:
+        json.dump(ledger, fh, indent=1, sort_keys=True)
+
+
+def _launch(path, parent=None):
+    try:
+        status, _pinned, current = _exe_pin_verify(path)
+        if status == "changed":
+            # A different exe than the one this Hub has been launching. That is
+            # either the operator's own rebuild — or exactly the swap the pin
+            # exists to catch. One plain question, one click.
+            proceed = messagebox.askyesno(
+                "This program changed",
+                f"{os.path.basename(path)} is not the same file the Hub "
+                f"launched last time.\n\nIf you rebuilt or updated this tool "
+                f"on purpose, choose Yes to trust the new build and launch "
+                f"it.\n\nIf you did NOT change this tool, choose No and do "
+                f"not run it until you know why it changed.",
+                parent=parent)
+            if not proceed:
+                return False, "Launch cancelled — the exe changed and was not trusted."
+        if status in ("new", "changed"):
+            _exe_pin_store(path, current)
         subprocess.Popen([path], cwd=os.path.dirname(path))
         return True, ""
     except Exception as e:
@@ -254,7 +323,7 @@ class Hub(tk.Tk):
                      bg=CARD, fg=DIM, font=("Segoe UI", 8)).pack(anchor="w", pady=(2, 0))
 
     def _on_launch(self, path, name):
-        ok, err = _launch(path)
+        ok, err = _launch(path, parent=self)
         if not ok:
             messagebox.showerror("Launch failed", f"{name}\n\n{err}", parent=self)
 

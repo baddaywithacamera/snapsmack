@@ -18,6 +18,14 @@ import found_textures
 from . import theme
 from .layers_panel import BLEND_MODES
 
+# SECAUDIT 054 chokepoint 1: thumbnail bytes come off the network — identify
+# them as a real allowed image before Qt decodes, and hand Qt the detected
+# format so ONLY that decoder runs. FAIL-CLOSED: no safety module, no thumbs.
+try:
+    import snap_imgsafe
+except Exception:  # noqa: BLE001
+    snap_imgsafe = None
+
 try:
     import snap_log
     _log = snap_log.get("snap_slapper")
@@ -47,8 +55,12 @@ class _ThumbTask(QRunnable):
 
     def run(self):
         try:
+            if snap_imgsafe is None:
+                _log.warning("thumb refused — snap_imgsafe unavailable: %s", self.url)
+                return
             data = found_textures.fetch_bytes(self.url, self.key)
-            image = QImage.fromData(data)
+            fmt = snap_imgsafe.check_bytes(data)   # raises UnsafeImageError on junk
+            image = QImage.fromData(data, fmt)     # only the detected decoder runs
             if not image.isNull():
                 self.signals.ready.emit(self.url, image)
         except Exception:  # noqa: BLE001

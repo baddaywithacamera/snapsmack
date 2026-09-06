@@ -27,6 +27,14 @@ try:
 except Exception:  # noqa: BLE001
     snap_profiles = None
 
+# SECAUDIT 054 chokepoint 1: downloaded texture bytes are validated as a real
+# image in an allowed format BEFORE they are cached to disk for the editor to
+# decode. FAIL-CLOSED — with the safety module missing, download() refuses.
+try:
+    import snap_imgsafe
+except Exception:  # noqa: BLE001
+    snap_imgsafe = None
+
 try:
     import snap_log
     _log = snap_log.get("snap_slapper")
@@ -202,6 +210,15 @@ def download(texture, api_key=None, timeout=30):
         return dest                                  # already cached
     _log.info("Found Textures download: %s -> %s", url, dest)
     data = fetch_bytes(url, api_key, timeout=timeout)
+    # A hostile or compromised server must not be able to park arbitrary bytes
+    # in the local cache wearing a .jpg name — the editor decodes this file
+    # later. Identify the bytes as a real allowed image or refuse the download.
+    if snap_imgsafe is None:
+        raise RuntimeError(
+            "Texture refused — snap_imgsafe (shared image safety module) is "
+            "not available. Reinstall/repair SNAP SLAPPER; downloads are "
+            "never cached unguarded.")
+    snap_imgsafe.check_bytes(data)   # raises UnsafeImageError on junk
     tmp = dest + ".part"
     with open(tmp, "wb") as handle:
         handle.write(data)

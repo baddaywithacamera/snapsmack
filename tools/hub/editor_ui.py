@@ -726,7 +726,7 @@ class EditorWindow(tk.Toplevel):
 
     def displayed_layer_mask(self, layer, shown_size):
         import base64, io
-        mask = Image.open(io.BytesIO(base64.b64decode(layer["mask"]))).convert("L")
+        mask = editor_engine._mask_from_text(layer["mask"])
         if not layer.get("mask_linked", True):
             return self.document._canvas_mask(mask, shown_size,
                                               layer.get("mask_transform", {}))
@@ -1157,7 +1157,7 @@ class EditorWindow(tk.Toplevel):
         if layer.get("mask"):
             try:
                 import base64, io
-                mask = Image.open(io.BytesIO(base64.b64decode(layer["mask"]))).convert("L")
+                mask = editor_engine._mask_from_text(layer["mask"])
                 return self._thumbnail_photo(Image.merge("RGB", (mask, mask, mask)))
             except Exception:
                 pass
@@ -1658,7 +1658,7 @@ class EditorWindow(tk.Toplevel):
         if not layer or not layer.get("mask"):
             return
         import base64, io
-        mask = Image.open(io.BytesIO(base64.b64decode(layer["mask"]))).convert("L")
+        mask = editor_engine._mask_from_text(layer["mask"])
         stream = io.BytesIO(); ImageOps.invert(mask).save(stream, "PNG")
         layer["mask"] = base64.b64encode(stream.getvalue()).decode("ascii")
         self.document.record("Invert mask")
@@ -1732,7 +1732,7 @@ class EditorWindow(tk.Toplevel):
             proposed = ImageOps.invert(proposed)
         current = None
         if layer.get("mask") and self.mask_combine_mode.get() != "replace":
-            current = Image.open(io.BytesIO(base64.b64decode(layer["mask"]))).convert("L")
+            current = editor_engine._mask_from_text(layer["mask"])
             if current.size != proposed.size:
                 current = current.resize(proposed.size, Image.Resampling.LANCZOS)
         mode = self.mask_combine_mode.get()
@@ -1863,7 +1863,7 @@ class EditorWindow(tk.Toplevel):
             return
         import base64, io
         if layer.get("mask"):
-            mask = Image.open(io.BytesIO(base64.b64decode(layer["mask"]))).convert("L")
+            mask = editor_engine._mask_from_text(layer["mask"])
         else:
             with Image.open(self.document.source_path) as source:
                 mask = Image.new("L", source.size, 255)

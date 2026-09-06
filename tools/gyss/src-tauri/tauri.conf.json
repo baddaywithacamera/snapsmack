@@ -7,7 +7,7 @@
     "frontendDist": "../src"
   },
   "app": {
-    "withGlobalTauri": true,
+    "withGlobalTauri": false,
     "windows": [
       {
         "title": "GET YOUR SHIT SORTED",
@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": null,
+      "csp": "default-src 'self'; script-src 'self' 'sha256-aNkw9ThUtD7eiGbFBeA6FQ67Ztb9JevlFf+t/UKYwwE='; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: https: http:; connect-src 'self' ipc: http://ipc.localhost https: http:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'",
       "assetProtocol": {
         "enable": true,
         "scope": ["C:/snapsmack/**", "$APPDATA/**"]

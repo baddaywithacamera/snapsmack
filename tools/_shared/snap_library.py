@@ -84,6 +84,28 @@ CREATE TABLE IF NOT EXISTS assets (
     source_ref  TEXT DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS assets_post ON assets(post_id);
+
+-- SECAUDIT 053 / Sean 2026-09-05: "image re-use should be allowed between
+-- posts." assets.asset_id is the sha256 of the bytes, so the same image in a
+-- second post used to REPLACE the row and re-point it — the older post lost
+-- its image. post_assets is the real membership: one row per (post, image),
+-- ordered. assets.post_id stays only as a legacy column; nothing reads it
+-- as authority any more.
+CREATE TABLE IF NOT EXISTS post_assets (
+    post_id  INTEGER NOT NULL,
+    asset_id TEXT    NOT NULL,
+    ord      INTEGER DEFAULT 0,
+    PRIMARY KEY (post_id, asset_id)
+);
+CREATE INDEX IF NOT EXISTS post_assets_asset ON post_assets(asset_id);
+
+-- Self-healing migration: fold any legacy single-post link into the join
+-- table, then CONSUME it (null it out). Runs on every open — that catches a
+-- stale writer that still only sets assets.post_id — and consuming the value
+-- is what stops a deleted membership from being resurrected on the next open.
+INSERT OR IGNORE INTO post_assets (post_id, asset_id, ord)
+    SELECT post_id, asset_id, rowid FROM assets WHERE post_id IS NOT NULL;
+UPDATE assets SET post_id = NULL WHERE post_id IS NOT NULL;
 """
 
 
@@ -309,7 +331,7 @@ def record_post(site, post: dict, assets=None) -> dict:
                  str(post.get("source_tool", "") or ""),
                  str(post.get("source_ref", "") or "")),
             )
-            for a in assets:
+            for ord_i, a in enumerate(assets):
                 aid = a.get("asset_id")
                 if not aid:
                     continue
@@ -318,7 +340,7 @@ def record_post(site, post: dict, assets=None) -> dict:
                        (asset_id, post_id, media_path, thumb_path, orig_name,
                         mime, width, height, alt, source_ref)
                        VALUES (?,?,?,?,?,?,?,?,?,?)""",
-                    (str(aid), post_id,
+                    (str(aid), None,   # membership lives in post_assets only
                      str(a.get("media_path", "") or ""),
                      str(a.get("thumb_path", "") or ""),
                      str(a.get("orig_name", "") or ""),
@@ -327,6 +349,14 @@ def record_post(site, post: dict, assets=None) -> dict:
                      int(a.get("height", 0) or 0),
                      str(a.get("alt", "") or ""),
                      str(a.get("source_ref", "") or "")),
+                )
+                # Membership lives in the join table: attaching the same image
+                # to a second post adds a row instead of stealing the image
+                # from the first post (Sean, 2026-09-05: re-use is required).
+                conn.execute(
+                    """INSERT OR REPLACE INTO post_assets (post_id, asset_id, ord)
+                       VALUES (?,?,?)""",
+                    (post_id, str(aid), ord_i),
                 )
         return {"post_id": post_id,
                 "assets": len([a for a in assets if a.get("asset_id")])}
@@ -383,8 +413,69 @@ def assets_for(site, post_id) -> list:
     conn = _connect(site)
     conn.row_factory = sqlite3.Row
     try:
+        # Membership via the join table (legacy assets.post_id rows are folded
+        # in by the self-healing migration on connect).
         return [dict(r) for r in conn.execute(
-            "SELECT * FROM assets WHERE post_id = ? ORDER BY rowid", (int(post_id),)).fetchall()]
+            """SELECT a.* FROM post_assets pa
+               JOIN assets a ON a.asset_id = pa.asset_id
+               WHERE pa.post_id = ? ORDER BY pa.ord, a.rowid""",
+            (int(post_id),)).fetchall()]
+    finally:
+        conn.close()
+
+
+def posts_for_asset(site, asset_id) -> list:
+    """All post_ids an image appears in — the 'used in N posts' readout."""
+    if not os.path.isfile(_db_path(site)):
+        return []
+    conn = _connect(site)
+    try:
+        return [int(r[0]) for r in conn.execute(
+            "SELECT post_id FROM post_assets WHERE asset_id = ? ORDER BY post_id",
+            (str(asset_id),)).fetchall()]
+    finally:
+        conn.close()
+
+
+def remove_post(site, post_id) -> dict:
+    """Remove one post's library record. Its images STAY — a photo shared with
+    another post is untouched there, and even an now-unreferenced photo remains
+    in the library until remove_asset() is called on it deliberately."""
+    if not os.path.isfile(_db_path(site)):
+        return {"post_id": int(post_id), "removed": False}
+    conn = _connect(site)
+    try:
+        with conn:
+            conn.execute("DELETE FROM post_assets WHERE post_id = ?", (int(post_id),))
+            cur = conn.execute("DELETE FROM posts WHERE post_id = ?", (int(post_id),))
+        return {"post_id": int(post_id), "removed": cur.rowcount > 0}
+    finally:
+        conn.close()
+
+
+def remove_asset(site, asset_id):
+    """Delete one image from the library. REFUSED while any post still uses it
+    ('used in N posts' — never a silent cascade). Best-effort removal of the
+    stored media file after the row goes."""
+    if not os.path.isfile(_db_path(site)):
+        return False
+    conn = _connect(site)
+    try:
+        used = [int(r[0]) for r in conn.execute(
+            "SELECT post_id FROM post_assets WHERE asset_id = ?", (str(asset_id),)).fetchall()]
+        if used:
+            raise ValueError(
+                f"Image is used in {len(used)} post(s) ({', '.join(map(str, used))}) — "
+                "remove it from those posts first.")
+        media = asset_file(site, asset_id)
+        with conn:
+            conn.execute("DELETE FROM assets WHERE asset_id = ?", (str(asset_id),))
+        if media:
+            try:
+                os.remove(media)
+            except OSError:
+                pass
+        return True
     finally:
         conn.close()
 
