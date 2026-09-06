@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.653D "ONE COLUMN ONLY" — 2026-09-06
+- **Fresh installs no longer fail while creating `snap_images`.** The canonical installer schema contains exactly one `img_color_mode` declaration. This release is rebuilt from the clean `dev` source so the downloadable installer matches the tracked schema instead of carrying the stale duplicate that escaped into the 0.7.652D package.
+
 ## 0.7.652D "ONE KEY PER BOX" — 2026-09-06
 - **All deployed desktop work is back on one canonical `dev` line.** The divergent `codex/new-app` history is folded into current 0.7.651D, preferring the newer dev implementation wherever both histories touched the same area. Shared credentials, site profiles, workflow folders, completed-image handling, GYSS image work, COLD SNAP, SNAP HQ icons and the accompanying regression suites now travel together instead of living on scattered online branches.
 - **SNAP HQ device authorization is device-bound and capped at four active computers.** Every computer consumes its own one-use activation key, then proves its identity with an Ed25519 key held in Windows Credential Manager. The CMS lists device name, fingerprint, first/last use, IP, locale, timezone, OS and HQ version; disable frees a slot, block also prevents the same cryptographic identity returning, and keys show once and expire unused after 24 hours.
