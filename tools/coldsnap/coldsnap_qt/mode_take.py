@@ -24,7 +24,7 @@ from sumna_post import SmacktalkPoster
 
 from . import theme
 from .widgets import Card, hint, field_label, big_button, thumb_label
-from .shortcode_bar import ShortcodeBar
+from .body_editor import BodyEditor
 from .drafts_panel import BatchRail, default_draft_row
 
 
@@ -60,18 +60,14 @@ class TakeMode(QWidget):
         card.body.addWidget(self.title_edit)
 
         card.body.addWidget(field_label("The write-up"))
-        self.body_edit = QPlainTextEdit()
-        self.body_edit.setMinimumHeight(160)
-        # The CMS long-form poster's shortcode toolbar, plus MOSAIC — the one
-        # marker that's COLD SNAP's own (it consumes THE PHOTOS below).
-        bar = ShortcodeBar(self.body_edit)
-        bar.add_button(
+        # SIMPLE (text + the CMS shortcode bar) / BIGGIE (block stack) — one field.
+        self.body = BodyEditor(allow_mosaic=True, simple_height=160)
+        self.body.bar.add_button(
             "MOSAIC",
             "Puts a [mosaic] marker at the cursor — on send, the photos below "
             "become a tiled grid right at that spot",
             self._insert_mosaic)
-        card.body.addWidget(bar)
-        card.body.addWidget(self.body_edit)
+        card.body.addWidget(self.body)
         card.body.addWidget(hint(
             "MOSAIC = a tiled grid of this post's photos at the marker. For a "
             "text grid with no photos, use COL 2 / COL 3. For one inline image "
@@ -142,8 +138,8 @@ class TakeMode(QWidget):
 
     # -- compose -----------------------------------------------------------------
     def _insert_mosaic(self):
-        self.body_edit.insertPlainText("[mosaic]")
-        self.body_edit.setFocus()
+        self.body.editor.insertPlainText("[mosaic]")
+        self.body.editor.setFocus()
 
     def _add_photos(self):
         from .pickers import pick_images
@@ -252,8 +248,8 @@ class TakeMode(QWidget):
         self.title_edit.setText(draft.title)
         self.tags_edit.setText(draft.tags)
         self.status_combo.setCurrentText(draft.img_status)
-        self.body_edit.setPlainText(draft.caption)
-        self.body_edit.moveCursor(QTextCursor.End)   # so an insert lands where writing resumes
+        self.body.set_state(draft.caption, getattr(draft, "body_blocks", ""))
+        self.body.editor.moveCursor(QTextCursor.End)   # so an insert lands where writing resumes
         self._bucket = [O.DraftImage(local_path=im.local_path, filename=im.filename,
                                      thumb_square=im.thumb_square, is_cover=im.is_cover,
                                      alt=getattr(im, "alt", "") or "")
@@ -266,7 +262,7 @@ class TakeMode(QWidget):
         self.title_edit.clear()
         self.tags_edit.clear()
         self.status_combo.setCurrentText("published")
-        self.body_edit.clear()
+        self.body.clear()
         self._bucket = []
         self._cover_idx = 0
         self._refresh_bucket()
@@ -280,7 +276,8 @@ class TakeMode(QWidget):
             or O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK, mode=self.SUITE_MODE)
         draft.title = self.title_edit.text().strip()
         draft.tags = self.tags_edit.text().strip()
-        draft.caption = self.body_edit.toPlainText().strip()
+        draft.caption = self.body.toPlainText().strip()
+        draft.body_blocks = self.body.blocks_json()
         draft.img_status = self.status_combo.currentText()
         draft.images = [
             O.DraftImage(local_path=im.local_path,

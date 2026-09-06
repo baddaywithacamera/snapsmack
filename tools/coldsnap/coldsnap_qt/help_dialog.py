@@ -53,6 +53,20 @@ TOPICS = [
      "starts a new one, or exports/imports a batch through a thumb drive so "
      "you can compose on one machine and send from another. The ◀ button "
      "folds the rail away to give the composer the full width."),
+    ("BIGGIE — the block editor",
+     "Every compose box has two faces, switched by the SIMPLE / BIGGIE — "
+     "BLOCKS pills above it. SIMPLE is the plain text box with the shortcode "
+     "bar, exactly like the site editor. BIGGIE builds the same body out of "
+     "stacked blocks: press + ADD BLOCK, choose the type — Paragraph, "
+     "Heading, Quote, List, Image, Columns, Dropcap, Spacer, Divider, Mosaic "
+     "(COLD TAKE) — then type or paste its content. ▲▼ reorder blocks, ✕ "
+     "removes one.\n\n"
+     "Switching faces never loses anything: BIGGIE reads your text into "
+     "blocks (anything it doesn't recognise becomes a RAW block, kept "
+     "byte-for-byte), and blocks always send as the exact same shortcodes "
+     "and HTML the SIMPLE bar makes — the site renders both identically. "
+     "The face you used last is remembered. Desktop-only: BIGGIE never "
+     "appears in the web admin."),
     ("The shortcode bar",
      "The two button rows above the caption and write-up boxes are the same "
      "toolbar the CMS compose pages have — the desktop composer has the same "

@@ -58,7 +58,7 @@ except ImportError:  # pragma: no cover - import shim for dev tree
 # is validated/migrated instead of inserted wrong.
 # ---------------------------------------------------------------------------
 
-SCHEMA_VERSION = 1          # draft-JSON structure version
+SCHEMA_VERSION = 2          # draft-JSON structure version (2: + body_blocks, BIGGIE)
 from _version import BUILD_VERSION  # single source of truth (shared with coldsnap.py)
 EXPORT_MANIFEST_VERSION = 1  # thumb-drive export folder format
 
@@ -163,7 +163,10 @@ class Draft:
     status:     str = ST_DRAFT
     # Post fields (superset; only the ones relevant to `kind` are used on sync).
     title:      str = ""
-    caption:    str = ""                  # body / description
+    caption:    str = ""                  # body / description — ALWAYS the synced truth
+    body_blocks: str = ""                 # BIGGIE authoring blocks (JSON array); caption
+                                          # is recomputed from these on every save, so a
+                                          # BIGGIE-off build always reads a correct body
     alt:        str = ""                  # accessibility ALT (screen-reader) -> img_alt
     color_mode: str = ""                  # 'color' | 'bw' | '' — search/filter tag -> img_color_mode
     tags:       str = ""                  # space-separated #hashtags
@@ -273,6 +276,10 @@ def migrate_draft_dict(d: dict) -> dict:
         d.setdefault("status", ST_DRAFT)
         d.setdefault("img_status", "published")
         d["schema_version"] = 1
+    if v < 2:
+        # v1 draft = plain body only; its caption IS the content (spec §8).
+        d.setdefault("body_blocks", "")
+        d["schema_version"] = 2
     return d
 
 

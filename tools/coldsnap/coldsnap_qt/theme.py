@@ -148,6 +148,9 @@ def stylesheet() -> str:
         letter-spacing: 0.5px;
     }}
     QPushButton#ScBtn:hover {{ border: 1px solid {ACCENT}; color: {ACCENT}; }}
+    QPushButton#ScBtn:checked {{
+        background: {ACCENT_DIM}; border: 1px solid {ACCENT}; color: {ACCENT};
+    }}
     /* Colour well — the swatch IS the button; click opens the picker. */
     QPushButton#ColourWell {{
         border: 1px solid {BORDER};
