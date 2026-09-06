@@ -212,7 +212,6 @@ button{ font-family:inherit; cursor:pointer; }
 .sx-act-sp{ flex:1; }
 .sx-caption{ padding:2px 14px 14px; font-size:.93rem; color:var(--fg); overflow-wrap:anywhere; }
 .sx-caption a{ color:var(--accent); }
-.sx-caption .sx-ch-h{ display:inline; font-weight:700; }
 
 /* comments (inline) */
 .sx-comments{ border-top:1px solid var(--line-soft); padding:6px 14px 10px; }

@@ -204,7 +204,7 @@
         '<span class="sx-act-sp"></span>' +
         '<button class="sx-act sx-boost" title="Boost" aria-label="Boost"><span class="sx-ic">' + BOOST + "</span></button>" +
       "</div>" +
-      (p.text ? '<div class="sx-caption"><span class="sx-ch-h">' + esc(a.handle ? a.handle.split("@")[0] : a.name) + "</span> " + linkifyCaption(p.text) + "</div>" : "") +
+      (p.text ? '<div class="sx-caption">' + linkifyCaption(p.text) + "</div>" : "") +
       '<div class="sx-comments sx-hide"></div>';
 
     $(".sx-media img", card).addEventListener("click", function () { openLightbox(img0); });
