@@ -9,6 +9,19 @@ Photoshop without pretending they remain native SNAP SLAPPER adjustments.
 
 import copy
 import os
+import sys
+import typing
+
+# shiboken6 (PySide6's binding layer) injects a `Self` special form into the
+# STDLIB typing module on Python 3.10, where no such form exists. Python
+# 3.10's own Union type-check then rejects it ("Plain typing.Self is not valid
+# as type argument") the moment psd_tools' class annotations use Self — which
+# made every PSD export crash under the Qt shell. Remove the injected form
+# (3.11+ has a real one; leave that alone) and evict a typing_extensions that
+# already aliased it, so psd_tools re-imports the genuine backport.
+if sys.version_info < (3, 11) and hasattr(typing, "Self"):
+    del typing.Self
+    sys.modules.pop("typing_extensions", None)
 
 from psd_tools import PSDImage
 

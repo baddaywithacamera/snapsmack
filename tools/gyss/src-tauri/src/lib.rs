@@ -103,6 +103,28 @@ fn resolve_in_root(path: &str) -> Result<PathBuf, String> {
     Ok(p)
 }
 
+/// SECAUDIT 054 (the write_file→roster-exe→Hub-launch chain): the jail keeps
+/// writes INSIDE the shared root — but the tool executables live inside that
+/// root too, and SNAP HQ launches them. Refuse any write, download or delete
+/// whose target has an executable extension, so a compromised webview can
+/// never swap a roster exe (or drop a script) for the Hub to run. GYSS's own
+/// legitimate writes are JSON, JPEG/PNG thumbnails and SQLite — never these.
+const FORBIDDEN_EXE_EXTS: [&str; 12] = [
+    "exe", "dll", "bat", "cmd", "ps1", "msi", "scr", "com", "vbs", "lnk", "hta", "jar",
+];
+
+fn refuse_executable(p: &std::path::Path) -> Result<(), String> {
+    if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
+        let low = ext.to_ascii_lowercase();
+        if FORBIDDEN_EXE_EXTS.contains(&low.as_str()) {
+            return Err(format!(
+                "Refused: '.{low}' is an executable target — GYSS never writes or deletes those."
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// Return the resolved shared root as a string so JS can build paths under it
 /// (replaces the old appDataDir() base). Matches snap_home.home().
 #[tauri::command]
@@ -121,6 +143,7 @@ fn read_file(path: String) -> Result<String, String> {
 #[tauri::command]
 fn write_file(path: String, content: String) -> Result<(), String> {
     let p = resolve_in_root(&path)?;
+    refuse_executable(&p)?;
     if let Some(parent) = p.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
@@ -167,6 +190,7 @@ async fn download_to(url: String, path: String) -> Result<(), String> {
     }
     // Resolve + jail the destination BEFORE spending a network round-trip.
     let dest = resolve_in_root(&path)?;
+    refuse_executable(&dest)?;
 
     let resp = reqwest::get(&url).await.map_err(|e| e.to_string())?;
     if !resp.status().is_success() {
@@ -194,6 +218,7 @@ async fn download_to(url: String, path: String) -> Result<(), String> {
 #[tauri::command]
 fn delete_file(path: String) -> Result<(), String> {
     let p = resolve_in_root(&path)?;
+    refuse_executable(&p)?;
     match std::fs::remove_file(&p) {
         Ok(()) => Ok(()),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),

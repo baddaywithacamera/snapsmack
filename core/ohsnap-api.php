@@ -104,10 +104,17 @@ try {
     $key_stmt->execute([$key_hash]);
     $api_key_row = $key_stmt->fetch(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
+    // Legacy-schema fallback: drop ONLY the expires_at predicate (the column
+    // that may be absent) and KEEP the key_type scope — the old fallback here
+    // dropped both, so on a schema-behind install (or any transient DB error
+    // on the first query) a key minted for ANY other tool, or an expired key,
+    // authenticated to Oh Snap. Same shape as core/api-auth.php's fallback.
+    // If key_type itself is absent the install predates scoped keys entirely —
+    // fail closed until the schema sync lands (SECAUDIT 054 A1).
     try {
         $key_stmt = $pdo->prepare("
             SELECT id FROM snap_ohsnap_keys
-            WHERE key_hash = ? AND is_active = 1
+            WHERE key_hash = ? AND is_active = 1 AND key_type = 'ohsnap'
             LIMIT 1
         ");
         $key_stmt->execute([$key_hash]);

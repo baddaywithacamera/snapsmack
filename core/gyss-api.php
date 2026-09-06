@@ -658,12 +658,20 @@ if ($resource === 'enrich-one' && $method === 'POST') {
     try {
         $title = (string)$image['img_title'];
         $caption = (string)$image['img_description'];
+        // AI output = untrusted (SECAUDIT 054): titles and captions get the
+        // same storage-time cleanup alt already had — strip markup + control
+        // characters, cap length — instead of trusting the model's text raw.
         if (in_array('title', $fields, true) && ($overwrite || trim($title) === '') && $parsed['title'] !== '') {
-            $title = mb_substr($parsed['title'], 0, 255);
+            $title = (string)(snap_sanitize_alt(strip_tags($parsed['title']), 255) ?? '');
             $applied[] = 'title';
         }
         if (in_array('caption', $fields, true) && ($overwrite || trim($caption) === '') && $parsed['caption'] !== '') {
-            $caption = mb_substr($parsed['caption'], 0, 20000);
+            // Same cleanup as the title, but KEEP newlines — captions are
+            // legitimately multi-paragraph.
+            $cap = strip_tags((string)$parsed['caption']);
+            $cap = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $cap) ?? '';
+            $cap = trim(preg_replace('/[ \t]+/u', ' ', $cap) ?? '');
+            $caption = mb_substr($cap, 0, 20000);
             $applied[] = 'caption';
         }
         $alt = (string)($image['img_alt'] ?? '');
