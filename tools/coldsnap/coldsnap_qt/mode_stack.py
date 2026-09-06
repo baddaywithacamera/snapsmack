@@ -251,8 +251,8 @@ class StackMode(QWidget):
                             is_cover=cover, sort_position=pos)
 
     def _add_images(self):
-        paths, _ = QFileDialog.getOpenFileNames(
-            self, "Add photos", "", "Images (*.jpg *.jpeg *.png *.webp);;All files (*.*)")
+        from .pickers import pick_images
+        paths = pick_images(self, (self.app_config() or {}).get("url", ""))
         for p in paths:
             if len(self._work_images) >= O.CAROUSEL_MAX_IMAGES:
                 QMessageBox.information(self, "That's the lot",
@@ -268,9 +268,9 @@ class StackMode(QWidget):
         self._render_strip()
 
     def _slice_cover(self):
-        cover, _ = QFileDialog.getOpenFileName(
-            self, "Choose a cover to slice into three", "",
-            "Images (*.jpg *.jpeg *.png *.webp);;All files (*.*)")
+        from .pickers import pick_image
+        cover = pick_image(self, (self.app_config() or {}).get("url", ""),
+                           "Choose a cover to slice into three")
         if not cover:
             return
         self.rail.ensure_session()
@@ -309,9 +309,9 @@ class StackMode(QWidget):
                 self, "Single slices",
                 "Switch 'Trigram of' to '3 carousels' to add photos to a slot.")
             return
-        paths, _ = QFileDialog.getOpenFileNames(
-            self, f"Add photos to slot {slot_idx + 1}", "",
-            "Images (*.jpg *.jpeg *.png *.webp);;All files (*.*)")
+        from .pickers import pick_images
+        paths = pick_images(self, (self.app_config() or {}).get("url", ""),
+                            f"Add photos to slot {slot_idx + 1}")
         slot = self._trig_slots[slot_idx]
         for p in paths:
             if len(slot) >= O.CAROUSEL_MAX_IMAGES:
