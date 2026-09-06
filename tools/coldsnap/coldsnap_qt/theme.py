@@ -65,7 +65,11 @@ def stylesheet() -> str:
         letter-spacing: 1px;
         background: transparent;
     }}
-    QFrame#Card QWidget {{ background: transparent; }}
+    /* Text-ish widgets inside cards sit on the card colour — but NEVER blanket
+       QWidget here: that flattened the Primary button's green fill. */
+    QFrame#Card QLabel, QFrame#Card QCheckBox, QFrame#Card QRadioButton {{
+        background: transparent;
+    }}
     QLabel#Hint {{ color: {DIM}; font-size: 12px; background: transparent; }}
     QLabel#FieldLabel {{
         color: {DIM}; font-size: 11px; font-weight: 600;
@@ -75,19 +79,27 @@ def stylesheet() -> str:
         color: {INK}; font-size: 17px; font-weight: 700; background: transparent;
     }}
 
-    /* --- Tabs ------------------------------------------------------------ */
+    /* --- Tabs (pill strip, SLAPPER-toolbar family) ------------------------ */
     QTabWidget::pane {{ border: none; }}
+    QTabBar {{ background: transparent; }}
     QTabBar::tab {{
-        background: transparent;
+        background: {PANEL};
         color: {DIM};
-        padding: 10px 22px;
-        font-size: 13px;
+        padding: 9px 26px;
+        margin-right: 6px;
+        margin-bottom: 6px;
+        font-size: 12px;
         font-weight: 700;
-        letter-spacing: 1px;
-        border-bottom: 2px solid transparent;
+        letter-spacing: 1.5px;
+        border: 1px solid {BORDER};
+        border-radius: 7px;
     }}
-    QTabBar::tab:hover    {{ color: {BODY}; }}
-    QTabBar::tab:selected {{ color: {ACCENT}; border-bottom: 2px solid {ACCENT}; }}
+    QTabBar::tab:hover {{ color: {BODY}; border: 1px solid {FIELD_HI}; }}
+    QTabBar::tab:selected {{
+        background: {ACCENT_DIM};
+        color: {ACCENT};
+        border: 1px solid {ACCENT};
+    }}
 
     /* --- Buttons ----------------------------------------------------------*/
     QPushButton {{

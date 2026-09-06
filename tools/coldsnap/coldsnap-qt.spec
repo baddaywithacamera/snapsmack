@@ -70,6 +70,7 @@ exe = EXE(
     a.datas,
     [],
     name='coldsnap',
+    icon=os.path.join(_src, 'assets', 'coldsnap.ico'),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

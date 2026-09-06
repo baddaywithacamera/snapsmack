@@ -21,7 +21,7 @@ from datetime import datetime
 from PySide6.QtCore import QObject, Signal, Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
-    QScrollArea, QFileDialog, QMessageBox, QInputDialog, QFrame,
+    QScrollArea, QFileDialog, QMessageBox, QInputDialog, QFrame, QDialog,
 )
 
 import sumna_offline as O
@@ -52,28 +52,23 @@ class BatchRail(QWidget):
         col.setContentsMargins(0, 0, 0, 0)
         col.setSpacing(8)
 
-        batch_card = Card("THE BATCH")
-        row = QHBoxLayout()
+        # One slim line: which batch + a Manage… button. The picker, New,
+        # Export and Import live in a modal — the rail's space belongs to the
+        # drafts, not batch bookkeeping (Sean, 2026-09-06).
+        head = QHBoxLayout()
+        self.batch_lbl = QLabel("")
+        self.batch_lbl.setObjectName("CardTitle")
+        head.addWidget(self.batch_lbl, 1)
+        manage = QPushButton("Manage…")
+        manage.setObjectName("Quiet")
+        manage.clicked.connect(self._manage_batches)
+        head.addWidget(manage)
+        col.addLayout(head)
+
+        # Kept (hidden) as the single source the modal drives.
         self.batch_combo = QComboBox()
         self.batch_combo.currentIndexChanged.connect(self._on_pick_batch)
-        row.addWidget(self.batch_combo, 1)
-        new_btn = QPushButton("New")
-        new_btn.clicked.connect(self._new_batch)
-        row.addWidget(new_btn)
-        batch_card.body.addLayout(row)
-
-        io_row = QHBoxLayout()
-        exp = QPushButton("Export to USB…")
-        exp.setObjectName("Quiet")
-        exp.clicked.connect(self._export)
-        imp = QPushButton("Import…")
-        imp.setObjectName("Quiet")
-        imp.clicked.connect(self._import)
-        io_row.addWidget(exp)
-        io_row.addWidget(imp)
-        io_row.addStretch(1)
-        batch_card.body.addLayout(io_row)
-        col.addWidget(batch_card)
+        self.batch_combo.hide()
 
         # Draft list
         self._scroll = QScrollArea()
@@ -88,9 +83,11 @@ class BatchRail(QWidget):
 
         # SEND
         self.send_btn = big_button("SEND QUEUED POSTS ⇪")
+        self.send_btn.setToolTip("Nothing reaches the site until you press this — "
+                                 "and it always asks first, naming the site.")
         self.send_btn.clicked.connect(self._send)
         col.addWidget(self.send_btn)
-        self.sync_status = hint("Compose offline. Send whenever you're connected.")
+        self.sync_status = hint("")   # speaks only when something happens
         col.addWidget(self.sync_status)
 
         self._bridge = _SyncBridge()
@@ -130,7 +127,45 @@ class BatchRail(QWidget):
                     self.batch_combo.setCurrentIndex(i)
                     break
         self.batch_combo.blockSignals(False)
+        if self.session is not None:
+            n = len(self.session.list_drafts())
+            self.batch_lbl.setText(f"BATCH — {self.session.name} · {n} item(s)")
+        else:
+            self.batch_lbl.setText("BATCH — starts automatically")
         self.refresh_drafts()
+
+    def _manage_batches(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Batches")
+        lay = QVBoxLayout(dlg)
+        lay.addWidget(hint("A batch is a folder of queued posts. Pick one, start "
+                           "another, or move a batch between machines."))
+        combo = QComboBox()
+        for i in range(self.batch_combo.count()):
+            combo.addItem(self.batch_combo.itemText(i), self.batch_combo.itemData(i))
+        combo.setCurrentIndex(self.batch_combo.currentIndex())
+        lay.addWidget(combo)
+        row = QHBoxLayout()
+        new_btn = QPushButton("New batch…")
+        exp_btn = QPushButton("Export to USB…")
+        imp_btn = QPushButton("Import…")
+        row.addWidget(new_btn)
+        row.addWidget(exp_btn)
+        row.addWidget(imp_btn)
+        lay.addLayout(row)
+        close_row = QHBoxLayout()
+        close_row.addStretch(1)
+        done = QPushButton("Done")
+        done.setObjectName("Primary")
+        close_row.addWidget(done)
+        lay.addLayout(close_row)
+
+        combo.currentIndexChanged.connect(self.batch_combo.setCurrentIndex)
+        new_btn.clicked.connect(lambda: (dlg.accept(), self._new_batch()))
+        exp_btn.clicked.connect(lambda: (dlg.accept(), self._export()))
+        imp_btn.clicked.connect(lambda: (dlg.accept(), self._import()))
+        done.clicked.connect(dlg.accept)
+        dlg.exec()
 
     def _on_pick_batch(self, idx: int):
         sid = self.batch_combo.itemData(idx)
