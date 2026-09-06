@@ -23,7 +23,8 @@ import sumna_offline as O
 from sumna_post import SmacktalkPoster
 
 from . import theme
-from .widgets import Card, hint, field_label, big_button, thumb_label
+from .widgets import (Accordion, Card, build_rail, hint, field_label,
+                      big_button, thumb_label)
 from .body_editor import BodyEditor
 from .drafts_panel import BatchRail, default_draft_row
 
@@ -39,12 +40,11 @@ class TakeMode(QWidget):
         self._cover_idx = 0
 
         outer = QHBoxLayout(self)
-        outer.setContentsMargins(10, 10, 10, 10)
+        outer.setContentsMargins(10, 10, 0, 0)
         outer.setSpacing(10)
 
         self.rail = BatchRail(self.SUITE_MODE, "post", self._poster_and_url,
                               row_builder=self._rows)
-        outer.addWidget(self.rail)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -85,11 +85,9 @@ class TakeMode(QWidget):
         srow.addStretch(1)
         card.body.addLayout(srow)
 
-        # -- the bucket ---------------------------------------------------------
+        # -- THE PHOTOS — a rail section, opened when wanted --------------------
+        self.photos_sec = Accordion("THE PHOTOS — none yet")
         brow = QHBoxLayout()
-        bl = QLabel("THE PHOTOS")
-        bl.setObjectName("CardTitle")
-        brow.addWidget(bl)
         self.bucket_count = hint("none yet")
         brow.addWidget(self.bucket_count, 1)
         ai_btn = QPushButton("✨ AI ALT (Gemini)")
@@ -100,12 +98,13 @@ class TakeMode(QWidget):
         add_btn = QPushButton("Add photos…")
         add_btn.clicked.connect(self._add_photos)
         brow.addWidget(add_btn)
-        card.body.addLayout(brow)
-        card.body.addWidget(hint("The ★ photo leads the post. This order is the order in the post."))
+        self.photos_sec.add_layout(brow)
+        self.photos_sec.add(
+            hint("The ★ photo leads the post. This order is the order in the post."))
 
         self.bucket_col = QVBoxLayout()
         self.bucket_col.setSpacing(4)
-        card.body.addLayout(self.bucket_col)
+        self.photos_sec.add_layout(self.bucket_col)
 
         right.addStretch(1)
         scroll.setWidget(host)
@@ -123,11 +122,16 @@ class TakeMode(QWidget):
         clear_btn.clicked.connect(self._clear)
         act.addWidget(clear_btn)
 
-        right_wrap = QVBoxLayout()
-        right_wrap.setSpacing(8)
-        right_wrap.addWidget(scroll, 1)
-        right_wrap.addLayout(act)
-        outer.addLayout(right_wrap, 1)
+        centre = QVBoxLayout()
+        centre.setSpacing(8)
+        centre.addWidget(scroll, 1)
+        centre.addLayout(act)
+        outer.addLayout(centre, 1)
+
+        # The rail: photos + batch accordion open when wanted; SEND pinned.
+        outer.addWidget(build_rail(
+            [self.photos_sec, self.rail.section],
+            [self.rail.send_box]))
         self._refresh_bucket()
 
     # -- rail rows -----------------------------------------------------------
@@ -183,6 +187,8 @@ class TakeMode(QWidget):
                 w.deleteLater()
         n = len(self._bucket)
         self.bucket_count.setText("none yet" if n == 0 else f"{n} photo(s)")
+        self.photos_sec.header.setText(
+            f"THE PHOTOS — {n} in the bucket" if n else "THE PHOTOS — none yet")
         if not self._bucket:
             self.bucket_col.addWidget(hint("No photos yet — click “Add photos…”."))
             return

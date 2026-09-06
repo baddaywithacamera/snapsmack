@@ -25,8 +25,9 @@ import sumna_offline as O
 from sumna_post import SumnaConnection, GramPoster, InsecureTransportError
 
 from . import theme
-from .widgets import (Card, hint, field_label, big_button, thumb_label,
-                      load_pixmap, SliderRow, status_badge)
+from .widgets import (Accordion, Card, build_rail, hint, field_label,
+                      big_button, thumb_label, load_pixmap, SliderRow,
+                      status_badge)
 from .body_editor import BodyEditor
 from .drafts_panel import BatchRail, default_draft_row
 
@@ -49,12 +50,11 @@ class StackMode(QWidget):
         self._loading_controls = False
 
         outer = QHBoxLayout(self)
-        outer.setContentsMargins(10, 10, 10, 10)
+        outer.setContentsMargins(10, 10, 0, 0)
         outer.setSpacing(10)
 
         self.rail = BatchRail(self.SUITE_MODE, "post", self._poster_and_url,
                               row_builder=self._rows)
-        outer.addWidget(self.rail)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -62,11 +62,10 @@ class StackMode(QWidget):
         right = QVBoxLayout(host)
         right.setContentsMargins(0, 0, 0, 0)
 
-        # ---- COMPOSE card -----------------------------------------------------
-        card = Card("COMPOSE")
-        right.addWidget(card)
+        # ---- PHOTOS — a rail section, opened when wanted ----------------------
+        self.photos_sec = Accordion("PHOTOS — none yet")
 
-        kind_row = QHBoxLayout()
+        kind_row = QVBoxLayout()   # stacked — the rail is a narrow column
         self.kind_group = QButtonGroup(self)
         self._kind_btns = {}
         for val, label in (("single", "One photo"), ("carousel", "Carousel (stack)"),
@@ -77,25 +76,23 @@ class StackMode(QWidget):
             kind_row.addWidget(rb)
         self._kind_btns["carousel"].setChecked(True)
         self.kind_group.buttonToggled.connect(lambda *_: self._on_kind_change())
-        kind_row.addStretch(1)
-        card.body.addLayout(kind_row)
+        self.photos_sec.add_layout(kind_row)
 
         # trigram controls (hidden unless trigram)
         self.trig_box = QWidget()
         tb = QVBoxLayout(self.trig_box)
         tb.setContentsMargins(0, 0, 0, 0)
-        style_row = QHBoxLayout()
-        style_row.addWidget(field_label("Trigram of"))
+        style_row = QGridLayout()   # stacked pairs — the rail is a narrow column
+        style_row.addWidget(field_label("Trigram of"), 0, 0)
         self.trig_style = QComboBox()
         self.trig_style.addItem("3 single slices", "single")
         self.trig_style.addItem("3 carousels (slice = cover)", "carousels")
-        style_row.addWidget(self.trig_style)
-        style_row.addWidget(field_label("Direction"))
+        style_row.addWidget(self.trig_style, 0, 1)
+        style_row.addWidget(field_label("Direction"), 1, 0)
         self.trig_orient = QComboBox()
         self.trig_orient.addItem("across (left · mid · right)", "h")
         self.trig_orient.addItem("down (top · mid · bottom)", "v")
-        style_row.addWidget(self.trig_orient)
-        style_row.addStretch(1)
+        style_row.addWidget(self.trig_orient, 1, 1)
         tb.addLayout(style_row)
         self.cut_a = SliderRow("Seam A %", 5, 90, 33)
         self.cut_b = SliderRow("Seam B %", 10, 95, 67)
@@ -109,50 +106,51 @@ class StackMode(QWidget):
         band_row.addLayout(self.band_host)
         band_row.addStretch(1)
         tb.addLayout(band_row)
-        card.body.addWidget(self.trig_box)
+        self.photos_sec.add(self.trig_box)
 
         src_row = QHBoxLayout()
         self.add_btn = QPushButton("Add photos…")
         self.add_btn.clicked.connect(self._add_images)
-        self.slice_btn = QPushButton("Choose cover & slice into three…")
-        self.slice_btn.clicked.connect(self._slice_cover)
         self.clear_imgs_btn = QPushButton("Clear photos")
         self.clear_imgs_btn.setObjectName("Quiet")
         self.clear_imgs_btn.clicked.connect(self._clear_images)
         src_row.addWidget(self.add_btn)
-        src_row.addWidget(self.slice_btn)
         src_row.addWidget(self.clear_imgs_btn)
         src_row.addStretch(1)
-        card.body.addLayout(src_row)
+        self.photos_sec.add_layout(src_row)
+        self.slice_btn = QPushButton("Choose cover & slice into three…")
+        self.slice_btn.clicked.connect(self._slice_cover)
+        self.photos_sec.add(self.slice_btn)
 
         self.strip_col = QVBoxLayout()
         self.strip_col.setSpacing(4)
-        card.body.addLayout(self.strip_col)
+        self.photos_sec.add_layout(self.strip_col)
 
         # ---- IMAGE CONTROLS card -------------------------------------------------
         # Locked until a photo is actually selected — live sliders over
         # "(no photos)" are controls that operate on nothing.
-        ctrl = Card("SELECTED PHOTO — same controls as the web poster")
-        self.ctrl_card = ctrl
-        ctrl.setEnabled(False)
-        ctrl.setToolTip("Add photos above, then click one — these controls "
-                        "work on the clicked photo.")
-        right.addWidget(ctrl)
+        ctrl = Accordion("SELECTED PHOTO")
+        self.ctrl_card = ctrl.body
+        ctrl.body.setEnabled(False)
+        ctrl.setToolTip("The same per-photo controls as the web poster. Add "
+                        "photos, then click one — these work on the clicked photo.")
+        self.sel_sec = ctrl
         fit_row = QHBoxLayout()
         fit_row.addWidget(field_label("Fit"))
         self.crop_combo = QComboBox()
         self.crop_combo.addItem("Fit — whole image in the tile", "fit")
         self.crop_combo.addItem("Fill — square crop", "fill")
-        fit_row.addWidget(self.crop_combo)
+        fit_row.addWidget(self.crop_combo, 1)
+        ctrl.add_layout(fit_row)
         self.split_check = QCheckBox("Post this photo separately (split)")
-        fit_row.addWidget(self.split_check)
-        fit_row.addStretch(1)
-        ctrl.body.addLayout(fit_row)
+        ctrl.add(self.split_check)
 
-        ctrl.body.addWidget(field_label("ALT text — one plain sentence for screen readers"))
+        ctrl.add(field_label("ALT text"))
         self.alt_edit = QLineEdit()
-        self.alt_edit.setPlaceholderText("Describes THIS photo — saved with the image on the site.")
-        ctrl.body.addWidget(self.alt_edit)
+        self.alt_edit.setPlaceholderText("One plain sentence — saved with the image.")
+        self.alt_edit.setToolTip("Accessibility ALT for screen readers — saved "
+                                 "with THIS image on the site (img_alt).")
+        ctrl.add(self.alt_edit)
 
         self.size_row = SliderRow("Image size %", 10, 100, 100)
         self.fx_row = SliderRow("Focal X %", 0, 100, 50)
@@ -162,24 +160,25 @@ class StackMode(QWidget):
         self.shadow_row = SliderRow("Shadow", 0, 3, 0)
         for r in (self.size_row, self.fx_row, self.fy_row, self.zoom_row,
                   self.border_row, self.shadow_row):
-            ctrl.body.addWidget(r)
+            ctrl.add(r)
         for r in (self.fx_row, self.fy_row, self.zoom_row):
             r.slider.sliderReleased.connect(self._recrop_selected)
 
+        # A colour is picked from a picker, not typed as hex — the swatch IS
+        # the button; the hex field stays as the typed alternative. Stacked
+        # pairs: the rail is a narrow column.
         colour_grid = QGridLayout()
         colour_grid.addWidget(field_label("Border colour"), 0, 0, 1, 2)
-        colour_grid.addWidget(field_label("Background matte"), 0, 2, 1, 2)
         self.border_colour = QLineEdit("#000000")
-        self.bg_colour = QLineEdit("#ffffff")
-        # A colour is picked from a picker, not typed as hex — the swatch IS
-        # the button; the hex field stays as the typed alternative.
         self.border_well = self._colour_well(self.border_colour, "Pick the border colour")
-        self.bg_well = self._colour_well(self.bg_colour, "Pick the background matte")
         colour_grid.addWidget(self.border_well, 1, 0)
         colour_grid.addWidget(self.border_colour, 1, 1)
-        colour_grid.addWidget(self.bg_well, 1, 2)
-        colour_grid.addWidget(self.bg_colour, 1, 3)
-        ctrl.body.addLayout(colour_grid)
+        colour_grid.addWidget(field_label("Background matte"), 2, 0, 1, 2)
+        self.bg_colour = QLineEdit("#ffffff")
+        self.bg_well = self._colour_well(self.bg_colour, "Pick the background matte")
+        colour_grid.addWidget(self.bg_well, 3, 0)
+        colour_grid.addWidget(self.bg_colour, 3, 1)
+        ctrl.add_layout(colour_grid)
 
         prow = QHBoxLayout()
         self.sel_preview = thumb_label("", 110)
@@ -188,7 +187,7 @@ class StackMode(QWidget):
         upd.clicked.connect(self._recrop_selected)
         prow.addWidget(upd)
         prow.addStretch(1)
-        ctrl.body.addLayout(prow)
+        ctrl.add_layout(prow)
 
         # write-back wiring (guarded by _loading_controls)
         self.crop_combo.currentIndexChanged.connect(self._write_controls)
@@ -222,32 +221,37 @@ class StackMode(QWidget):
         post.body.addWidget(field_label("Tags (space-separated #hashtags)"))
         self.tags_edit = QLineEdit()
         post.body.addWidget(self.tags_edit)
-        meta_row = QHBoxLayout()
-        meta_row.addWidget(field_label("Date (YYYY-MM-DD HH:MM:SS, blank = now)"))
+
+        # ---- OPTIONS — a rail section ----------------------------------------
+        self.options_sec = Accordion("OPTIONS — date · status · download")
+        self.options_sec.add(field_label("Date (YYYY-MM-DD HH:MM:SS, blank = now)"))
         self.date_edit = QLineEdit()
-        meta_row.addWidget(self.date_edit, 1)
-        post.body.addLayout(meta_row)
+        self.options_sec.add(self.date_edit)
         opt_row = QHBoxLayout()
         self.comments_check = QCheckBox("Comments")
         self.comments_check.setChecked(True)
         opt_row.addWidget(self.comments_check)
         self.dl_check = QCheckBox("Allow download")
         opt_row.addWidget(self.dl_check)
-        opt_row.addWidget(field_label("Status"))
+        opt_row.addStretch(1)
+        self.options_sec.add_layout(opt_row)
+        st_row = QHBoxLayout()
+        st_row.addWidget(field_label("Status"))
         self.status_combo = QComboBox()
         self.status_combo.addItems(["published", "draft"])
-        opt_row.addWidget(self.status_combo)
-        opt_row.addStretch(1)
-        post.body.addLayout(opt_row)
+        st_row.addWidget(self.status_combo)
+        st_row.addStretch(1)
+        self.options_sec.add_layout(st_row)
         self.dl_url = QLineEdit()
         self.dl_url.setPlaceholderText("Download URL (only if allowed)")
-        post.body.addWidget(self.dl_url)
+        self.options_sec.add(self.dl_url)
 
         right.addStretch(1)
         scroll.setWidget(host)
 
         # Primary action pinned under the scroll — never below the fold.
         act = QHBoxLayout()
+        act.setContentsMargins(0, 0, 0, 10)
         self.queue_btn = big_button("QUEUE POST  →  goes in the batch, sends on SEND")
         self.queue_btn.clicked.connect(lambda: self._commit(ready=True))
         act.addWidget(self.queue_btn, 1)
@@ -259,11 +263,17 @@ class StackMode(QWidget):
         clear_btn.clicked.connect(self._clear_compose)
         act.addWidget(clear_btn)
 
-        right_wrap = QVBoxLayout()
-        right_wrap.setSpacing(8)
-        right_wrap.addWidget(scroll, 1)
-        right_wrap.addLayout(act)
-        outer.addLayout(right_wrap, 1)
+        centre = QVBoxLayout()
+        centre.setSpacing(8)
+        centre.addWidget(scroll, 1)
+        centre.addLayout(act)
+        outer.addLayout(centre, 1)
+
+        # The rail: PHOTOS, the per-photo controls, options and the batch all
+        # accordion open when wanted; SEND stays pinned (SNAP SLAPPER design).
+        outer.addWidget(build_rail(
+            [self.photos_sec, self.sel_sec, self.options_sec, self.rail.section],
+            [self.rail.send_box]))
         self._on_kind_change()
 
     # ======================================================================
@@ -293,7 +303,10 @@ class StackMode(QWidget):
         return well
 
     def _reflect_ctrl_enabled(self):
-        self.ctrl_card.setEnabled(self._sel_img is not None)
+        on = self._sel_img is not None
+        self.ctrl_card.setEnabled(on)
+        if on and not self.sel_sec.header.isChecked():
+            self.sel_sec.set_expanded(True)   # clicking a photo opens its controls
 
     # ======================================================================
     # AI fill (per-photo ALT + caption/tags from the cover)
@@ -471,6 +484,10 @@ class StackMode(QWidget):
             self.strip_col.addLayout(row)
         self._render_band()
         self._reflect_ctrl_enabled()   # every photo mutation lands here
+        n = (sum(len(s) for s in self._trig_slots) if self._kind() == "trigram"
+             else len(self._work_images))
+        self.photos_sec.header.setText(
+            f"PHOTOS — {n} added" if n else "PHOTOS — none yet")
 
     def _render_image_row(self, lay, images, slot_idx):
         if not images:
