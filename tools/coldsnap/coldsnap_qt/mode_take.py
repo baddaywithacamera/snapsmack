@@ -24,6 +24,7 @@ from sumna_post import SmacktalkPoster
 
 from . import theme
 from .widgets import Card, hint, field_label, big_button, thumb_label
+from .shortcode_bar import ShortcodeBar
 from .drafts_panel import BatchRail, default_draft_row
 
 
@@ -61,15 +62,20 @@ class TakeMode(QWidget):
         card.body.addWidget(field_label("The write-up"))
         self.body_edit = QPlainTextEdit()
         self.body_edit.setMinimumHeight(160)
+        # The CMS long-form poster's shortcode toolbar, plus MOSAIC — the one
+        # marker that's COLD SNAP's own (it consumes THE PHOTOS below).
+        bar = ShortcodeBar(self.body_edit)
+        bar.add_button(
+            "MOSAIC",
+            "Puts a [mosaic] marker at the cursor — on send, the photos below "
+            "become a tiled grid right at that spot",
+            self._insert_mosaic)
+        card.body.addWidget(bar)
         card.body.addWidget(self.body_edit)
-
-        mrow = QHBoxLayout()
-        mosaic_btn = QPushButton("Insert photo grid here")
-        mosaic_btn.clicked.connect(self._insert_mosaic)
-        mrow.addWidget(mosaic_btn)
-        mrow.addWidget(hint("puts a [mosaic] marker at the cursor — on send, the photos "
-                            "below become a tiled grid right at that spot"), 1)
-        card.body.addLayout(mrow)
+        card.body.addWidget(hint(
+            "MOSAIC = a tiled grid of this post's photos at the marker. For a "
+            "text grid with no photos, use COL 2 / COL 3. For one inline image "
+            "from the site's Media Library, use IMG."))
 
         card.body.addWidget(field_label("Tags (space-separated #hashtags)"))
         self.tags_edit = QLineEdit()
@@ -100,6 +106,10 @@ class TakeMode(QWidget):
         self.bucket_col.setSpacing(4)
         card.body.addLayout(self.bucket_col)
 
+        right.addStretch(1)
+        scroll.setWidget(host)
+
+        # Primary action pinned under the scroll — never below the fold.
         act = QHBoxLayout()
         self.queue_btn = big_button("QUEUE POST  →  goes in the batch, sends on SEND")
         self.queue_btn.clicked.connect(lambda: self._save(ready=True))
@@ -111,11 +121,12 @@ class TakeMode(QWidget):
         clear_btn.setObjectName("Quiet")
         clear_btn.clicked.connect(self._clear)
         act.addWidget(clear_btn)
-        card.body.addLayout(act)
 
-        right.addStretch(1)
-        scroll.setWidget(host)
-        outer.addWidget(scroll, 1)
+        right_wrap = QVBoxLayout()
+        right_wrap.setSpacing(8)
+        right_wrap.addWidget(scroll, 1)
+        right_wrap.addLayout(act)
+        outer.addLayout(right_wrap, 1)
         self._refresh_bucket()
 
     # -- rail rows -----------------------------------------------------------

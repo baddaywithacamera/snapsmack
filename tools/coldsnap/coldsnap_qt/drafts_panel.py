@@ -92,6 +92,7 @@ class BatchRail(QWidget):
         col.addWidget(self._scroll, 1)
 
         # SEND
+        self._sending = False
         self.send_btn = big_button("SEND QUEUED POSTS ⇪")
         self.send_btn.setToolTip("Nothing reaches the site until you press this — "
                                  "and it always asks first, naming the site.")
@@ -241,6 +242,7 @@ class BatchRail(QWidget):
                 w.deleteLater()
         if not self.session:
             self._list_col.insertWidget(0, hint("Nothing here yet — compose on the right."))
+            self._reflect_send()
             return
         if self.row_builder:
             rows = self.row_builder(self.session, self.refresh_batches)
@@ -252,6 +254,26 @@ class BatchRail(QWidget):
                 "Nothing here yet — compose on the right, then QUEUE POST."))
         for i, r in enumerate(rows):
             self._list_col.insertWidget(i, r)
+        self._reflect_send()
+
+    def _ready_count(self) -> int:
+        if not self.session:
+            return 0
+        return sum(1 for d in self.session.list_drafts() if d.status == O.ST_READY)
+
+    def _reflect_send(self):
+        """The SEND button states its load and goes dark when there is none —
+        a lit primary button over an empty queue is a lie about state."""
+        if self._sending:
+            return
+        n = self._ready_count()
+        noun = self.item_noun.upper()
+        if n > 0:
+            self.send_btn.setText(f"SEND {n} QUEUED {noun}{'' if n == 1 else 'S'} ⇪")
+            self.send_btn.setEnabled(True)
+        else:
+            self.send_btn.setText("SEND QUEUED POSTS ⇪")
+            self.send_btn.setEnabled(False)
 
     # -- send ------------------------------------------------------------------
     def _send(self):
@@ -268,6 +290,7 @@ class BatchRail(QWidget):
         if not confirm_post(self, url, len(ready), self.item_noun):
             self.sync_status.setText("Sending cancelled.")
             return
+        self._sending = True
         self.send_btn.setEnabled(False)
         self.sync_status.setText(f"Sending {len(ready)} {self.item_noun}(s)…")
         self.sync_status.setStyleSheet(f"color: {theme.WARN};")
@@ -284,7 +307,7 @@ class BatchRail(QWidget):
         threading.Thread(target=worker, daemon=True).start()
 
     def _send_done(self, ok: int, total: int):
-        self.send_btn.setEnabled(True)
+        self._sending = False
         colour = theme.OK if ok == total else theme.DANGER
         self.sync_status.setStyleSheet(f"color: {colour};")
         self.sync_status.setText(

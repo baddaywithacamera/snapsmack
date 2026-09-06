@@ -14,10 +14,11 @@ trigram groups that send as one unit. Engines untouched.
 import os
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit,
     QPlainTextEdit, QComboBox, QCheckBox, QPushButton, QRadioButton,
-    QButtonGroup, QFileDialog, QMessageBox, QScrollArea, QFrame,
+    QButtonGroup, QColorDialog, QFileDialog, QMessageBox, QScrollArea, QFrame,
 )
 
 import sumna_offline as O
@@ -26,6 +27,7 @@ from sumna_post import SumnaConnection, GramPoster, InsecureTransportError
 from . import theme
 from .widgets import (Card, hint, field_label, big_button, thumb_label,
                       load_pixmap, SliderRow, status_badge)
+from .shortcode_bar import ShortcodeBar
 from .drafts_panel import BatchRail, default_draft_row
 
 
@@ -128,7 +130,13 @@ class StackMode(QWidget):
         card.body.addLayout(self.strip_col)
 
         # ---- IMAGE CONTROLS card -------------------------------------------------
+        # Locked until a photo is actually selected — live sliders over
+        # "(no photos)" are controls that operate on nothing.
         ctrl = Card("SELECTED PHOTO — same controls as the web poster")
+        self.ctrl_card = ctrl
+        ctrl.setEnabled(False)
+        ctrl.setToolTip("Add photos above, then click one — these controls "
+                        "work on the clicked photo.")
         right.addWidget(ctrl)
         fit_row = QHBoxLayout()
         fit_row.addWidget(field_label("Fit"))
@@ -154,12 +162,18 @@ class StackMode(QWidget):
             r.slider.sliderReleased.connect(self._recrop_selected)
 
         colour_grid = QGridLayout()
-        colour_grid.addWidget(field_label("Border colour (#RRGGBB)"), 0, 0)
-        colour_grid.addWidget(field_label("Background matte (#RRGGBB)"), 0, 1)
+        colour_grid.addWidget(field_label("Border colour"), 0, 0, 1, 2)
+        colour_grid.addWidget(field_label("Background matte"), 0, 2, 1, 2)
         self.border_colour = QLineEdit("#000000")
         self.bg_colour = QLineEdit("#ffffff")
-        colour_grid.addWidget(self.border_colour, 1, 0)
-        colour_grid.addWidget(self.bg_colour, 1, 1)
+        # A colour is picked from a picker, not typed as hex — the swatch IS
+        # the button; the hex field stays as the typed alternative.
+        self.border_well = self._colour_well(self.border_colour, "Pick the border colour")
+        self.bg_well = self._colour_well(self.bg_colour, "Pick the background matte")
+        colour_grid.addWidget(self.border_well, 1, 0)
+        colour_grid.addWidget(self.border_colour, 1, 1)
+        colour_grid.addWidget(self.bg_well, 1, 2)
+        colour_grid.addWidget(self.bg_colour, 1, 3)
         ctrl.body.addLayout(colour_grid)
 
         prow = QHBoxLayout()
@@ -186,6 +200,8 @@ class StackMode(QWidget):
         post.body.addWidget(field_label("Caption"))
         self.caption_edit = QPlainTextEdit()
         self.caption_edit.setFixedHeight(84)
+        # Same shortcode toolbar the CMS carousel editor puts on this field.
+        post.body.addWidget(ShortcodeBar(self.caption_edit))
         post.body.addWidget(self.caption_edit)
         post.body.addWidget(field_label("Tags (space-separated #hashtags)"))
         self.tags_edit = QLineEdit()
@@ -211,6 +227,10 @@ class StackMode(QWidget):
         self.dl_url.setPlaceholderText("Download URL (only if allowed)")
         post.body.addWidget(self.dl_url)
 
+        right.addStretch(1)
+        scroll.setWidget(host)
+
+        # Primary action pinned under the scroll — never below the fold.
         act = QHBoxLayout()
         self.queue_btn = big_button("QUEUE POST  →  goes in the batch, sends on SEND")
         self.queue_btn.clicked.connect(lambda: self._commit(ready=True))
@@ -222,12 +242,42 @@ class StackMode(QWidget):
         clear_btn.setObjectName("Quiet")
         clear_btn.clicked.connect(self._clear_compose)
         act.addWidget(clear_btn)
-        post.body.addLayout(act)
 
-        right.addStretch(1)
-        scroll.setWidget(host)
-        outer.addWidget(scroll, 1)
+        right_wrap = QVBoxLayout()
+        right_wrap.setSpacing(8)
+        right_wrap.addWidget(scroll, 1)
+        right_wrap.addLayout(act)
+        outer.addLayout(right_wrap, 1)
         self._on_kind_change()
+
+    # ======================================================================
+    # Colour wells
+    # ======================================================================
+    def _colour_well(self, hex_edit: QLineEdit, tip: str) -> QPushButton:
+        well = QPushButton()
+        well.setObjectName("ColourWell")
+        well.setToolTip(tip)
+        well.setCursor(Qt.PointingHandCursor)
+
+        def paint():
+            c = QColor(hex_edit.text().strip())
+            well.setStyleSheet(
+                f"background: {c.name() if c.isValid() else theme.CANVAS};")
+
+        def pick():
+            seed = QColor(hex_edit.text().strip())
+            c = QColorDialog.getColor(
+                seed if seed.isValid() else QColor("#000000"), self, tip)
+            if c.isValid():
+                hex_edit.setText(c.name())   # textChanged → _write_controls
+
+        hex_edit.textChanged.connect(lambda *_: paint())
+        well.clicked.connect(pick)
+        paint()
+        return well
+
+    def _reflect_ctrl_enabled(self):
+        self.ctrl_card.setEnabled(self._sel_img is not None)
 
     # ======================================================================
     # Kind / sources
@@ -356,6 +406,7 @@ class StackMode(QWidget):
             row.addStretch(1)
             self.strip_col.addLayout(row)
         self._render_band()
+        self._reflect_ctrl_enabled()   # every photo mutation lands here
 
     def _render_image_row(self, lay, images, slot_idx):
         if not images:

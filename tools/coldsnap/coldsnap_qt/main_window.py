@@ -9,7 +9,7 @@
 import os
 import sys
 
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QTabWidget, QLabel, QHBoxLayout,
 )
@@ -57,5 +57,8 @@ class MainWindow(QMainWindow):
         col.addWidget(tabs, 1)
 
         self.setCentralWidget(central)
+
+        QShortcut(QKeySequence("F1"), self).activated.connect(
+            self.connect_panel._show_help)
 
 # ===== SNAPSMACK EOF =====
