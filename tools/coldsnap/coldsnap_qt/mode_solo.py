@@ -23,6 +23,7 @@ from sumna_post import SumnaConnection, SoloPoster, InsecureTransportError
 
 from . import theme
 from .widgets import Card, hint, field_label, big_button, thumb_label, load_pixmap
+from .shortcode_bar import ShortcodeBar
 from .drafts_panel import BatchRail, default_draft_row
 
 _COLOUR_LABELS = ["—", "Colour", "B&W"]
@@ -83,6 +84,9 @@ class SoloMode(QWidget):
         card.body.addWidget(field_label("Caption / description"))
         self.caption_edit = QPlainTextEdit()
         self.caption_edit.setFixedHeight(84)
+        # The CMS solo poster has the shortcode toolbar on this exact field —
+        # the desktop composer gets the same controls (design-bible parity).
+        card.body.addWidget(ShortcodeBar(self.caption_edit))
         card.body.addWidget(self.caption_edit)
 
         card.body.addWidget(field_label("ALT text — one plain sentence for screen readers"))
@@ -136,6 +140,11 @@ class SoloMode(QWidget):
         dl_row.addWidget(self.dl_url, 1)
         card.body.addLayout(dl_row)
 
+        right.addStretch(1)
+        scroll.setWidget(compose_host)
+
+        # QUEUE POST lives OUTSIDE the scroll, pinned under it — the compose
+        # form may scroll, but its primary action must never be below the fold.
         act = QHBoxLayout()
         self.queue_btn = big_button("QUEUE POST  →  goes in the batch, sends on SEND")
         self.queue_btn.clicked.connect(lambda: self._save(ready=True))
@@ -147,11 +156,12 @@ class SoloMode(QWidget):
         clear_btn.setObjectName("Quiet")
         clear_btn.clicked.connect(self._clear)
         act.addWidget(clear_btn)
-        card.body.addLayout(act)
 
-        right.addStretch(1)
-        scroll.setWidget(compose_host)
-        outer.addWidget(scroll, 1)
+        right_wrap = QVBoxLayout()
+        right_wrap.setSpacing(8)
+        right_wrap.addWidget(scroll, 1)
+        right_wrap.addLayout(act)
+        outer.addLayout(right_wrap, 1)
 
         self._ai_bridge = _AiBridge()
         self._ai_bridge.done.connect(self._apply_ai)
