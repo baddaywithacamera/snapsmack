@@ -25,7 +25,8 @@
  * counter re-aims at the next occurrence instead of finishing — a weekly prompt
  * clock that resets itself. Add data-roll-caption="Next prompt drops in" and,
  * on the first roll, the [data-cd-caption] element is relabelled from its launch
- * wording to that text.
+ * wording to that text. An optional [data-cd-date] slot is kept in sync with the
+ * active target as an unambiguous UTC date in YYYY-MM-DD format.
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -69,8 +70,16 @@ function _ssCountdownInit() {
             d: el.querySelector('[data-cd="d"]'),
             h: el.querySelector('[data-cd="h"]'),
             m: el.querySelector('[data-cd="m"]'),
-            s: el.querySelector('[data-cd="s"]')
+            s: el.querySelector('[data-cd="s"]'),
+            date: el.querySelector('[data-cd-date]')
         };
+
+        function showTargetDate() {
+            if (!slots.date) return;
+            const isoDate = new Date(target).toISOString().slice(0, 10);
+            slots.date.textContent = isoDate;
+            slots.date.setAttribute('datetime', isoDate);
+        }
 
         function finish() {
             const done = el.getAttribute('data-done');
@@ -109,6 +118,7 @@ function _ssCountdownInit() {
             if (slots.h) slots.h.textContent = pad(h);
             if (slots.m) slots.m.textContent = pad(m);
             if (slots.s) slots.s.textContent = pad(s);
+            showTargetDate();
             return true;
         }
 

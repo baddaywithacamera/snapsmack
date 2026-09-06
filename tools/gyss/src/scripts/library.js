@@ -48,6 +48,7 @@ async function libraryDir(hostname) {
 async function thumbsDir(hostname) { return join(await libraryDir(hostname), 'thumbs'); }
 async function indexPath(hostname) { return join(await libraryDir(hostname), 'index.json'); }
 async function metaPath(hostname)  { return join(await libraryDir(hostname), 'meta.json'); }
+export async function catalogPath(hostname) { return join(await libraryDir(hostname), 'db', 'catalog.sqlite'); }
 
 // ── Load / save ──────────────────────────────────────────────────────────────
 
@@ -211,7 +212,7 @@ export async function syncLibrary(api, profile, opts = {}) {
     //    (gyss/library ships categories/albums/site_mode; it does not ship a tags
     //    or titles vocabulary, so those land empty.)
     try {
-        const dbPath = await join(await libraryDir(hostname), 'db', 'catalog.sqlite');
+        const dbPath = await catalogPath(hostname);
         await invoke('catalog_sync', {
             path: dbPath,
             payload: {
@@ -225,12 +226,24 @@ export async function syncLibrary(api, profile, opts = {}) {
         });
     } catch { /* catalog mirror is best-effort */ }
 
+    // 7. Pull the CMS-authoritative enrichment cache into that same SQLite file.
+    // Conflicts are surfaced in the summary and never resolved silently.
+    let cacheUpdated = 0, cacheCollisions = [];
+    try {
+        const cache = await api.enrichmentCache(0);
+        const merged = await invoke('enrichment_cache_merge', {
+            path: await catalogPath(hostname), records: cache.records || []
+        });
+        cacheUpdated = merged.updated || 0;
+        cacheCollisions = merged.collisions || [];
+    } catch { /* old CMS versions have no cache endpoint; image sync still succeeds */ }
+
     onProgress('done', 1, 1);
 
     return {
         full: !!resp.full,
         upserted, pruned, thumbsDownloaded, thumbsFailed,
-        total: Object.keys(index.images).length,
+        total: Object.keys(index.images).length, cacheUpdated, cacheCollisions,
     };
 }
 

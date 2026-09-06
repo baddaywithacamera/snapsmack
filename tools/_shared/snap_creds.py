@@ -180,6 +180,12 @@ def set(key: str, value: str) -> None:
     _write(data)
 
 
+def prepare_explicit_replacement() -> None:
+    """Recover an orphaned vault only for an explicit user save/discovery action."""
+    init()
+    _recover_orphaned_vault_for_save()
+
+
 def has(key: str) -> bool:
     """True if `key` is present (regardless of whether it decrypts right now)."""
     init()

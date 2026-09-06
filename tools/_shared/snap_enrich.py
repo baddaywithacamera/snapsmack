@@ -33,6 +33,7 @@ them from its local shared-library mirror, so enrichment needs no live site call
 
 import os
 import re
+from urllib.parse import urlparse
 from typing import List, Optional
 
 
@@ -87,11 +88,13 @@ def build_prompt(
     cat_descriptions: Optional[dict] = None,
     album_descriptions: Optional[dict] = None,
     existing_tags: Optional[List[str]] = None,
+    collections: Optional[List[str]] = None,
 ) -> str:
     """Default enrichment prompt. Mirrors SYBU's format and its ALT guidance. A
     tool may ignore this and pass its own custom_prompt (e.g. a per-site preset)."""
     categories = categories or []
     albums = albums or []
+    collections = collections or []
 
     if categories:
         lines = []
@@ -130,7 +133,12 @@ ALT: <one plain sentence of accessibility ALT text describing what is visibly in
 TAGS: <5 to 8 space-separated lowercase hashtags, e.g. #stone #rust #texture #macro #urban>
 CATEGORY: <every applicable match from this list, comma-separated, or blank:{cats_str}>
 ALBUM: <every applicable match from this list, comma-separated, or blank:{albums_str}>
+COLLECTION: <applicable exact collection names, comma-separated, or blank: {', '.join(collections) if collections else '(none)'}>
 COLORS: <the three most prominent colours as uppercase hex codes, space-separated, e.g. #A3724B #2E1F0D #8C6B3A>
+COLOR_MODE: <exactly colour or bw>
+OCR: <visible text transcribed faithfully, or blank>
+CONTENT_WARNING: <short factual warning when warranted, or blank>
+SENSITIVE: <yes or no>
 
 Rules:
 - TITLE: plain description of what is literally in the image, not poetic.
@@ -138,8 +146,9 @@ Rules:
 - ALT: accessibility text — one plain sentence, lead with the main subject, describe only what is visibly in frame, never begin with "image of"/"photo of", do not just echo the caption.
 - {tags_guidance}
 - Tags must be lowercase with no spaces within a tag.
-- CATEGORY / ALBUM: only exact options from the lists, comma-separated, or blank. Never invent one.
+- CATEGORY / ALBUM / COLLECTION: only exact options from the lists, comma-separated, or blank. Never invent one.
 - COLORS: exactly 3 uppercase #RRGGBB hex codes.
+- CONTENT_WARNING is a suggestion. When SENSITIVE is yes, TAGS must include #nsfw.
 - No preamble, Markdown, or extra lines."""
 
 
@@ -147,9 +156,10 @@ Rules:
 def parse_response(text: str) -> dict:
     """Extract TITLE/CAPTION/ALT/TAGS/CATEGORY/ALBUM/COLORS from a model reply."""
     result = {"title": "", "caption": "", "alt": "", "tags": "",
-              "category": "", "album": "", "colors": ""}
+              "category": "", "album": "", "collection": "", "colors": "",
+              "color_mode": "", "ocr": "", "content_warning": "", "sensitive": "no"}
     for line in (text or "").strip().splitlines():
-        m = re.match(r"^(TITLE|CAPTION|ALT|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)",
+        m = re.match(r"^(TITLE|CAPTION|ALT|TAGS|CATEGORY|ALBUM|COLLECTION|COLORS|COLOR_MODE|OCR|CONTENT_WARNING|SENSITIVE):\s*(.*)",
                      line.strip(), re.IGNORECASE)
         if m:
             key = m.group(1).lower()
@@ -158,6 +168,10 @@ def parse_response(text: str) -> dict:
     if result["colors"]:
         hexes = re.findall(r"#[0-9A-Fa-f]{6}", result["colors"])
         result["colors"] = " ".join(h.upper() for h in hexes[:3])
+    result["color_mode"] = "bw" if result["color_mode"].strip().lower() in {"bw", "b&w", "black and white", "black & white"} else "color"
+    result["sensitive"] = "yes" if result["sensitive"].strip().lower() in {"yes", "true", "1"} else "no"
+    if result["sensitive"] == "yes" and "#nsfw" not in result["tags"].lower().split():
+        result["tags"] = (result["tags"].strip() + " #nsfw").strip()
     return result
 
 
@@ -193,6 +207,11 @@ def enrich_image(
     cat_descriptions: Optional[dict] = None,
     album_descriptions: Optional[dict] = None,
     existing_tags: Optional[List[str]] = None,
+    collections: Optional[List[str]] = None,
+    site_url: str = "",
+    cache_days: int = 90,
+    force_refresh: bool = False,
+    prompt_version: str = "1",
 ) -> dict:
     """Send one image to Gemini and return the parsed metadata dict with keys
     title/caption/alt/tags/category/album/colors (any may be ''). Raises on a
@@ -213,8 +232,37 @@ def enrich_image(
         cat_descriptions=cat_descriptions,
         album_descriptions=album_descriptions,
         existing_tags=existing_tags,
+        collections=collections,
     )
+    # A custom voice prompt still receives the complete shared metadata contract.
+    if custom_prompt.strip() and "CONTENT_WARNING:" not in prompt.upper():
+        prompt += "\n\n" + build_prompt(categories, albums, cat_descriptions,
+                                            album_descriptions, existing_tags, collections)
+
+    domain = (urlparse(site_url).hostname or site_url or "global").lower().strip()
+    try:
+        import snap_enrichment_cache as cache
+        image_hash = cache.image_sha256(image_path)
+        prompt_hash = cache.prompt_sha256(prompt)
+        if not force_refresh:
+            hit = cache.get(site_url or domain, image_hash, domain, MODEL_NAME,
+                            prompt_hash, prompt_version)
+            if hit:
+                bundle = dict(hit["bundle"])
+                bundle["_cache"] = {"hit": True, "expires_at": hit["expires_at"],
+                                    "revision": hit["revision"]}
+                return bundle
+    except Exception:
+        cache = None
     img_part = _load_image_part(image_path)
     response = model.generate_content([prompt, img_part])
-    return parse_response(getattr(response, "text", "") or "")
+    raw = getattr(response, "text", "") or ""
+    parsed = parse_response(raw)
+    if cache is not None:
+        saved = cache.put(site_url or domain, image_hash, domain, MODEL_NAME,
+                          prompt_hash, parsed, raw_response=raw,
+                          prompt_version=prompt_version, ttl_days=cache_days)
+        parsed["_cache"] = {"hit": False, "expires_at": saved.get("expires_at"),
+                            "revision": saved.get("revision")}
+    return parsed
 # ===== SNAPSMACK EOF =====

@@ -103,7 +103,9 @@ def list_profiles() -> List[str]:
                 names.add(data.get('name', fname[:-5]))
             except Exception:
                 pass
-    return sorted(names)
+    if snap_connections:
+        names.extend(row['name'] for row in snap_connections.list_connections('sybu'))
+    return sorted(set(names))
 
 
 def load_profile(name: str) -> Optional[Dict]:

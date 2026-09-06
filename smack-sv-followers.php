@@ -133,13 +133,30 @@ include 'core/sidebar.php';
         <?php if (!$sv_followers): ?>
             <p class="dim">Nobody yet. Once you're enabled, search <code><?php echo htmlspecialchars($sv_address); ?></code> from any Mastodon or Pixelfed account and hit follow.</p>
         <?php else: ?>
+            <p class="dim mb-20">Use <strong>Seed missing posts</strong> when one server has an incomplete profile.
+                It sends only to that follower. Use Refresh only for posts already stored there.</p>
             <table class="admin-table">
-                <tr><th>WHO</th><th>ACTOR</th><th>SINCE</th></tr>
+                <tr><th>WHO</th><th>ACTOR</th><th>SINCE</th><th>PUSH ONLY TO THIS FOLLOWER</th></tr>
                 <?php foreach ($sv_followers as $f): ?>
                 <tr>
                     <td><?php echo htmlspecialchars($f['actor_handle'] ?? ''); ?></td>
                     <td><code><?php echo htmlspecialchars($f['actor_url']); ?></code></td>
                     <td><?php echo htmlspecialchars($f['followed_at']); ?></td>
+                    <td>
+                        <form method="post" action="" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;"
+                              onsubmit="return confirm('Push posts ONLY to this follower?');">
+                            <input type="hidden" name="action" value="push_follower">
+                            <input type="hidden" name="follower_actor" value="<?php echo htmlspecialchars($f['actor_url']); ?>">
+                            <input type="number" name="follower_count" min="1" max="500"
+                                   value="<?php echo (int)($sv_settings['smackverse_backfill_count'] ?? 200); ?>"
+                                   aria-label="Posts to push" style="width:72px;">
+                            <select name="follower_mode" aria-label="Push mode">
+                                <option value="create">Seed missing posts</option>
+                                <option value="update">Refresh existing posts</option>
+                            </select>
+                            <button type="submit" class="btn-smack">PUSH</button>
+                        </form>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
             </table>

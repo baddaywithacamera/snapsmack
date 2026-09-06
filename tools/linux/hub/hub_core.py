@@ -22,6 +22,7 @@ import sys
 # Shared library is put on sys.path by app.py / run.sh before this imports.
 import snap_discovery
 import snap_prompt_sync  # noqa: F401  (re-exported convenience for callers)
+import snap_creds
 
 BUILD_VERSION = "0.1.11"
 
@@ -144,7 +145,7 @@ def gyss_key_for(profile):
     site = (profile.get("site_url") or "").rstrip("/")
     if _GYSS_KEYS.get(site):
         return _GYSS_KEYS[site]
-    akl = ((profile.get("extras") or {}).get("api_key_local") or "").strip()
+    akl = snap_creds.get_site(site, "api_key_local").strip()
     key = ""
     if akl:
         try:

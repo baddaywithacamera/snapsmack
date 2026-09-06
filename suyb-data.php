@@ -88,6 +88,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 // ── Load settings ────────────────────────────────────────────────────────────
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                 ->fetchAll(PDO::FETCH_KEY_PAIR);
+$portable_sites = snap_load_portable_rows($pdo);
 
 // ── Cloud configuration ──────────────────────────────────────────────────────
 // Only expose whether cloud is configured and which provider — never send
@@ -167,6 +168,7 @@ echo json_encode([
     'site_name'     => $site_name,
     'cloud_config'  => $cloud_config,
     'backup_status' => $backup_status,
+    'portable_sites'=> $portable_sites,
     'multisite'     => [
         'is_hub'   => count($nodes) > 0,
         'nodes'    => $nodes,
