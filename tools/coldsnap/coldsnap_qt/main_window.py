@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 
 from _version import BUILD_VERSION
 
-from . import BUILD_VERSION_QT
+from . import SHELL_LABEL
 from .connect_panel import ConnectPanel
 from .mode_solo import SoloMode
 from .mode_stack import StackMode
@@ -27,7 +27,7 @@ from .widgets import hint
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(f"COLD SNAP — build {BUILD_VERSION} (Qt {BUILD_VERSION_QT})")
+        self.setWindowTitle(f"COLD SNAP — build {BUILD_VERSION} · {SHELL_LABEL}")
         self.resize(1240, 860)
         self.setMinimumSize(980, 680)
 
