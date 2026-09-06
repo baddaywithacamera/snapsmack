@@ -81,7 +81,15 @@ CREATE TABLE IF NOT EXISTS assets (
     width       INTEGER DEFAULT 0,
     height      INTEGER DEFAULT 0,
     alt         TEXT DEFAULT '',
-    source_ref  TEXT DEFAULT ''
+    source_ref  TEXT DEFAULT '',
+    -- COLD STORAGE (2026-09-06): the image's OWN metadata mirrors the server's
+    -- snap_images row — title/caption/colour travel with the image, never the
+    -- post. Blank on rows written before this; a sync refreshes them.
+    title       TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    color_mode  TEXT DEFAULT '',       -- 'color' | 'bw' | ''
+    status      TEXT DEFAULT '',       -- published | draft (as the server reported)
+    img_date    TEXT DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS assets_post ON assets(post_id);
 
@@ -113,9 +121,26 @@ def _db_path(site: str) -> str:
     return os.path.join(snap_home.site_db_dir(site), "catalog.sqlite")
 
 
+# Columns added to an already-created assets table (SQLite has no ADD COLUMN
+# IF NOT EXISTS — each ALTER is tried once per open and the "duplicate column"
+# error is the fine/expected case).
+_ASSET_COLUMN_MIGRATIONS = (
+    "ALTER TABLE assets ADD COLUMN title       TEXT DEFAULT ''",
+    "ALTER TABLE assets ADD COLUMN description TEXT DEFAULT ''",
+    "ALTER TABLE assets ADD COLUMN color_mode  TEXT DEFAULT ''",
+    "ALTER TABLE assets ADD COLUMN status      TEXT DEFAULT ''",
+    "ALTER TABLE assets ADD COLUMN img_date    TEXT DEFAULT ''",
+)
+
+
 def _connect(site: str) -> sqlite3.Connection:
     conn = sqlite3.connect(_db_path(site))
     conn.executescript(_SCHEMA)
+    for stmt in _ASSET_COLUMN_MIGRATIONS:
+        try:
+            conn.execute(stmt)
+        except sqlite3.OperationalError:
+            pass  # duplicate column — already migrated
     return conn
 
 
@@ -335,11 +360,23 @@ def record_post(site, post: dict, assets=None) -> dict:
                 aid = a.get("asset_id")
                 if not aid:
                     continue
+                # Upsert, not REPLACE: a full-row REPLACE would wipe the
+                # COLD-STORAGE metadata columns (title/description/colour)
+                # on an image the sync had already enriched.
                 conn.execute(
-                    """INSERT OR REPLACE INTO assets
+                    """INSERT INTO assets
                        (asset_id, post_id, media_path, thumb_path, orig_name,
                         mime, width, height, alt, source_ref)
-                       VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                       VALUES (?,?,?,?,?,?,?,?,?,?)
+                       ON CONFLICT(asset_id) DO UPDATE SET
+                         media_path = excluded.media_path,
+                         thumb_path = excluded.thumb_path,
+                         orig_name  = excluded.orig_name,
+                         mime       = excluded.mime,
+                         width      = excluded.width,
+                         height     = excluded.height,
+                         alt        = excluded.alt,
+                         source_ref = excluded.source_ref""",
                     (str(aid), None,   # membership lives in post_assets only
                      str(a.get("media_path", "") or ""),
                      str(a.get("thumb_path", "") or ""),
@@ -476,6 +513,85 @@ def remove_asset(site, asset_id):
             except OSError:
                 pass
         return True
+    finally:
+        conn.close()
+
+
+def all_assets(site) -> list:
+    """Every image in the library (posted or pulled), newest row first, each
+    with used_in = how many posts reference it. The COLD STORAGE grid reads
+    this — offline, no site call."""
+    if not os.path.isfile(_db_path(site)):
+        return []
+    conn = _connect(site)
+    conn.row_factory = sqlite3.Row
+    try:
+        return [dict(r) for r in conn.execute(
+            """SELECT a.*, (SELECT COUNT(*) FROM post_assets pa
+                            WHERE pa.asset_id = a.asset_id) AS used_in
+               FROM assets a ORDER BY a.rowid DESC""").fetchall()]
+    finally:
+        conn.close()
+
+
+def upsert_asset(site, entry: dict) -> None:
+    """Write/refresh ONE asset row with no post membership — how a pulled
+    Gallery image (COLD STORAGE sync) enters the library, metadata included.
+    The server is the source of truth here, so provided fields overwrite; a
+    row's membership stays with record_post only."""
+    aid = str(entry.get("asset_id") or "")
+    if not aid:
+        raise ValueError("upsert_asset requires entry['asset_id']")
+    conn = _connect(site)
+    try:
+        with conn:
+            conn.execute(
+                """INSERT INTO assets
+                   (asset_id, post_id, media_path, thumb_path, orig_name,
+                    mime, width, height, alt, source_ref,
+                    title, description, color_mode, status, img_date)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(asset_id) DO UPDATE SET
+                     media_path  = excluded.media_path,
+                     thumb_path  = excluded.thumb_path,
+                     orig_name   = excluded.orig_name,
+                     mime        = excluded.mime,
+                     width       = excluded.width,
+                     height      = excluded.height,
+                     alt         = excluded.alt,
+                     source_ref  = excluded.source_ref,
+                     title       = excluded.title,
+                     description = excluded.description,
+                     color_mode  = excluded.color_mode,
+                     status      = excluded.status,
+                     img_date    = excluded.img_date""",
+                (aid, None,
+                 str(entry.get("media_path", "") or ""),
+                 str(entry.get("thumb_path", "") or ""),
+                 str(entry.get("orig_name", "") or ""),
+                 str(entry.get("mime", "") or ""),
+                 int(entry.get("width", 0) or 0),
+                 int(entry.get("height", 0) or 0),
+                 str(entry.get("alt", "") or ""),
+                 str(entry.get("source_ref", "") or ""),
+                 str(entry.get("title", "") or ""),
+                 str(entry.get("description", "") or ""),
+                 str(entry.get("color_mode", "") or ""),
+                 str(entry.get("status", "") or ""),
+                 str(entry.get("img_date", "") or "")))
+    finally:
+        conn.close()
+
+
+def asset_source_refs(site) -> set:
+    """All source_refs already in the library (e.g. 'img:123') — the skip-list
+    a COLD STORAGE sync checks so it never re-downloads what it holds."""
+    if not os.path.isfile(_db_path(site)):
+        return set()
+    conn = _connect(site)
+    try:
+        return {str(r[0]) for r in conn.execute(
+            "SELECT source_ref FROM assets WHERE source_ref != ''").fetchall()}
     finally:
         conn.close()
 

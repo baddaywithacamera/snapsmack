@@ -97,6 +97,31 @@ check("bare success is still success (SYBU contract untouched)",
 body = "success:123"
 check("want_id reply parses to the image id", int(body.split(":", 1)[1]) == 123)
 
+# --- COLD STORAGE: pulled images enter the store with FULL metadata ----------
+pulled = L.store_media(SITE, b"\xff\xd8\xff\xe0PULLEDBYTES", orig_name="dsc9.jpg", ext=".jpg")
+pulled.update({"alt": "a dog on a dock", "title": "Dock dog", "description": "the dog waits",
+               "color_mode": "bw", "status": "published", "img_date": "2026-09-06 10:00:00",
+               "source_ref": "img:90", "width": 640, "height": 480})
+L.upsert_asset(SITE, pulled)
+rows = {a["asset_id"]: a for a in L.all_assets(SITE)}
+pa = rows[pulled["asset_id"]]
+check("pulled title with the image", pa["title"] == "Dock dog")
+check("pulled caption with the image", pa["description"] == "the dog waits")
+check("pulled colour with the image", pa["color_mode"] == "bw")
+check("pulled asset in no posts yet", pa["used_in"] == 0)
+check("skip-list knows it", "img:90" in L.asset_source_refs(SITE))
+
+# --- record_post on the same bytes must NOT wipe the pulled metadata ---------
+draft3 = O.Draft(draft_id="d3", kind=O.KIND_SOLO, mode=O.MODE_SOLO, title="Dock post")
+di2 = O.DraftImage(local_path=img_file, filename="dsc9.jpg", alt="a dog on a dock")
+media_file = L.asset_file(SITE, pulled["asset_id"])
+P._produce_library(SITE, draft3, 4245, site_mode="photoblog", post_type="solo",
+                   per_image=[(di2, 91, media_file)])
+pa2 = {a["asset_id"]: a for a in L.all_assets(SITE)}[pulled["asset_id"]]
+check("posting kept the pulled title", pa2["title"] == "Dock dog")
+check("posting kept the pulled colour", pa2["color_mode"] == "bw")
+check("posting attached membership", pa2["used_in"] == 1)
+
 print(f"OK — {passed} asserts (sandbox: {_SANDBOX})")
 
 # ===== SNAPSMACK EOF =====
