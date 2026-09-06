@@ -333,7 +333,7 @@ class EditorWindow(tk.Toplevel):
             bg="#181818", fg=DIM, font=("Segoe UI", 8), anchor="w", justify="left")
         self.adjustment_target_help.pack(fill="x", padx=8, pady=(0, 5))
         groups = [
-            ("LIGHT", ("exposure", "brightness", "contrast", "highlights", "shadows", "whites", "blacks")),
+            ("LIGHT", ("exposure", "brightness", "contrast", "highlights", "midtones", "shadows", "whites", "blacks")),
             ("COLOUR", ("temperature", "tint", "saturation", "vibrance")),
             ("PRESENCE", ("clarity", "texture", "dehaze", "sharpen")),
             ("EFFECTS", ("vignette", "grain")),

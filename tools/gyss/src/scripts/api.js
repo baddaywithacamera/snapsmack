@@ -2,10 +2,32 @@
 // GET YOUR SHIT SORTED — SnapSmack API client
 // Adapted from tools/oh-snap/src/scripts/api.js
 // Adds GYSS-specific methods: ping, photos, meta, batchUpdate.
-// HTTP calls go directly from the webview to the blog — no Rust proxy.
-// gyss-api.php emits CORS headers for tauri:// origins.
+// Authenticated HTTP calls go through the narrowly scoped native command. This
+// avoids WebView CORS failures without exposing a general-purpose network proxy.
 
 // ===== SNAPSMACK EOF =====  (header reference only — JS marker at bottom)
+
+import { invoke } from '@tauri-apps/api/core';
+
+// Older deployed GYSS endpoints accidentally returned /uploads/img_uploads/...
+// even though img_uploads already lives at the site root. Repair that response
+// locally so mixed-version fleets still display their photographs.
+function repairMediaUrl(value) {
+    return typeof value === 'string'
+        ? value.replace(/\/uploads\/img_uploads\//g, '/img_uploads/')
+        : value;
+}
+
+function repairMediaUrls(value) {
+    if (Array.isArray(value)) return value.map(repairMediaUrls);
+    if (!value || typeof value !== 'object') return value;
+    for (const [key, child] of Object.entries(value)) {
+        value[key] = /(?:^|_)(?:thumb_?url|image_?url|src)$/i.test(key)
+            ? repairMediaUrl(child)
+            : repairMediaUrls(child);
+    }
+    return value;
+}
 
 export class SnapSmackGYSSAPI {
     constructor(siteUrl, apiKey) {
@@ -21,35 +43,23 @@ export class SnapSmackGYSSAPI {
             url += '&' + qs.toString();
         }
 
-        const opts = {
-            method,
-            headers: {
-                'Authorization': `Bearer ${this.apiKey}`,
-                'Content-Type':  'application/json',
-            },
-        };
-        if (body !== null) {
-            opts.body = JSON.stringify(body);
-        }
-
-        let res;
-        try {
-            res = await fetch(url, opts);
-        } catch (err) {
-            throw new Error(`Network error: ${err.message}`);
-        }
-
         let data;
         try {
-            data = await res.json();
-        } catch {
-            throw new Error(`Server returned non-JSON response (HTTP ${res.status})`);
+            data = await invoke('api_request', {
+                method,
+                url,
+                apiKey: this.apiKey,
+                body: body === null ? null : JSON.stringify(body),
+            });
+        } catch (err) {
+            const detail = typeof err === 'string' ? err : (err?.message || String(err));
+            throw new Error(`Network error: ${detail}`);
         }
 
         if (!data.ok) {
-            throw new Error(data.error || `API error (HTTP ${res.status})`);
+            throw new Error(data.error || 'API request failed');
         }
-        return data;
+        return repairMediaUrls(data);
     }
 
     /** GET gyss/ping — connection test */
@@ -97,10 +107,18 @@ export class SnapSmackGYSSAPI {
     }
 
     /** Enrich exactly one photo. Queueing always remains in the desktop app. */
-    async enrichOne(id, prompt, fields, overwrite = false) {
+    async enrichOne(id, prompt, fields, overwrite = false, forceRefresh = false) {
         return this._call('POST', 'enrich-one', null, {
-            id, prompt, fields, overwrite
+            id, prompt, fields, overwrite, force_refresh: forceRefresh
         });
+    }
+
+    async enrichmentCache(since = 0) {
+        return this._call('GET', 'enrichment-cache', { since });
+    }
+
+    async pushEnrichmentCache(record) {
+        return this._call('POST', 'enrichment-cache', null, { record });
     }
 
     /**

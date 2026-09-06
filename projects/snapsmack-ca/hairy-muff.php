@@ -73,7 +73,7 @@ include __DIR__ . '/includes/header.php';
         <div class="page-body">
 
             <h2>The situation, plainly</h2>
-            <p>SnapSmack is co-authored by a human and AI partners. The human is Sean McCormick. The AI co-authors are Claude (Anthropic) and OpenAI Codex. All three are named in the <a href="licenses/SNAPSMACK-LICENSE.txt">full Smack Public License</a>. We are not shy about this.</p>
+            <p>SnapSmack was conceived and directed by Sean McCormick, with implementation co-authored by Claude (Anthropic) and OpenAI Codex. Sean is the photographer, creator, product designer, requirements source, chief tester, and final decision-maker—not a programmer beyond a few minor CSS contributions. All three collaborators are named in the <a href="licenses/SNAPSMACK-LICENSE.txt">full Smack Public License</a>. We are not shy about this.</p>
             <p>This project is a Human/AI collaboration — architecture decisions, security audits, code review, the works. That's honest. What is also honest is that it raises a question worth addressing directly: AI models are trained on data scraped from the internet. Some of that data is code. Some of that code belongs to people who never consented to have it used as training material. The provenance of what shaped these models is, frankly, murky. That is not the models' fault. But it's a real thing.</p>
             <p>Our answer to that is simple: if the raw material might have come from the commons, then what we make with it goes back to the commons. Permanently. No exceptions.</p>
 

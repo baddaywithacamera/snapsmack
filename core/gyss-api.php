@@ -55,10 +55,18 @@ require_once __DIR__ . '/ai-enrichment-prompts.php';
 require_once __DIR__ . '/snap-tags.php';
 require_once __DIR__ . '/alt-text.php';
 
-// --- CORS: allow GYSS desktop app (tauri:// and file://) ---
+// --- CORS: allow GYSS desktop app origins only ---
+// Tauri 1 used tauri://localhost; Tauri 2 uses http://tauri.localhost on
+// Windows/WebView2 (and may use the HTTPS equivalent on other builds).
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if (preg_match('#^(file://|tauri://)#', $origin)) {
+$gyss_origins = [
+    'tauri://localhost',
+    'http://tauri.localhost',
+    'https://tauri.localhost',
+];
+if (in_array($origin, $gyss_origins, true) || preg_match('#^file://#', $origin)) {
     header('Access-Control-Allow-Origin: ' . $origin);
+    header('Vary: Origin');
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
     header('Access-Control-Allow-Headers: Authorization, Content-Type');
 }
@@ -75,7 +83,70 @@ function gy_respond(array $data, int $status = 200): void {
     exit;
 }
 function gy_ok(array $data = []): void  { gy_respond(array_merge(['ok' => true], $data)); }
-function gy_err(string $msg, int $code = 400): void { gy_respond(['ok' => false, 'error' => $msg], $code); }
+function gy_err(string $msg, int $code = 400, array $details = []): void {
+    gy_respond(array_merge(['ok' => false, 'error' => $msg], $details), $code);
+}
+
+/** Read compatibility: fleet sites can lag a schema migration during rollout. */
+function gy_has_column(PDO $pdo, string $table, string $column): bool {
+    static $cache = [];
+    $key = $table . '.' . $column;
+    if (array_key_exists($key, $cache)) return $cache[$key];
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS '
+            . 'WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
+        );
+        $stmt->execute([$table, $column]);
+        return $cache[$key] = ((int)$stmt->fetchColumn() > 0);
+    } catch (Throwable $e) {
+        return $cache[$key] = false;
+    }
+}
+
+/** Read compatibility companion for optional category/album tables. */
+function gy_has_table(PDO $pdo, string $table): bool {
+    static $cache = [];
+    if (array_key_exists($table, $cache)) return $cache[$table];
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.TABLES '
+            . 'WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?'
+        );
+        $stmt->execute([$table]);
+        return $cache[$table] = ((int)$stmt->fetchColumn() > 0);
+    } catch (Throwable $e) {
+        return $cache[$table] = false;
+    }
+}
+
+/** Ensure the authoritative enrichment store exists even before schema-sync runs. */
+function gy_ensure_enrichment_cache(PDO $pdo): void {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS snap_ai_enrichment_cache (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      cache_key CHAR(64) NOT NULL, image_sha256 CHAR(64) NOT NULL,
+      domain VARCHAR(255) NOT NULL, model VARCHAR(100) NOT NULL,
+      prompt_sha256 CHAR(64) NOT NULL, prompt_version VARCHAR(32) NOT NULL DEFAULT '1',
+      bundle_json LONGTEXT NOT NULL, raw_response LONGTEXT NULL, accepted_json LONGTEXT NULL,
+      revision INT UNSIGNED NOT NULL DEFAULT 1, generated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      expires_at DATETIME NOT NULL, modified_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id), UNIQUE KEY uq_ai_enrichment_cache_key (cache_key),
+      KEY idx_ai_enrichment_lookup (image_sha256,domain,model,prompt_sha256,expires_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
+function gy_enrichment_cache_days(PDO $pdo): int {
+    try {
+        $s = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'ai_enrichment_cache_days' LIMIT 1");
+        $s->execute();
+        return min(3650, max(1, (int)($s->fetchColumn() ?: 90)));
+    } catch (Throwable $e) { return 90; }
+}
+
+function gy_cache_key(string $imageHash, string $domain, string $model,
+                      string $promptHash, string $promptVersion = '1'): string {
+    return hash('sha256', implode("\n", [$imageHash, strtolower(trim($domain)), $model, $promptHash, $promptVersion]));
+}
 
 // --- ROUTE PARSING ---
 $parts    = explode('/', trim($GLOBALS['route'] ?? ($_GET['route'] ?? ''), '/'));
@@ -153,15 +224,36 @@ $pdo->prepare("UPDATE snap_ohsnap_keys SET last_used_at = NOW() WHERE id = ?")
  * Build an absolute thumb URL for an image file path.
  * Uses aspect thumbnail (a_ prefix). Falls back to full image if thumb missing.
  */
-function gy_thumb_url(string $img_file): string {
-    if (!$img_file) return '';
-    $thumb_rel = ltrim(dirname($img_file) . '/thumbs/a_' . basename($img_file), '/');
-    $thumb_abs = dirname(__DIR__) . '/uploads/' . $thumb_rel;
-    if (file_exists($thumb_abs)) {
-        return BASE_URL . 'uploads/' . $thumb_rel;
+function gy_media_url(string $path): string {
+    $rel = ltrim(str_replace('\\', '/', trim($path)), '/');
+    if ($rel === '') return '';
+    if (preg_match('#^https?://#i', $rel)) return $rel;
+
+    // Canonical rows already include their media root (`img_uploads/...` or a
+    // legacy `uploads/...`). Never prepend a second root to a stored path.
+    if (str_starts_with($rel, 'img_uploads/') || str_starts_with($rel, 'uploads/')) {
+        return rtrim(BASE_URL, '/') . '/' . $rel;
     }
-    // Fall back to full image
-    return BASE_URL . 'uploads/' . ltrim($img_file, '/');
+
+    // Very old rows stored only YYYY/MM/file.jpg. Prefer the current root when
+    // it exists, then retain the legacy uploads fallback.
+    $site_root = dirname(__DIR__);
+    if (is_file($site_root . '/img_uploads/' . $rel)) {
+        return rtrim(BASE_URL, '/') . '/img_uploads/' . $rel;
+    }
+    return rtrim(BASE_URL, '/') . '/uploads/' . $rel;
+}
+
+function gy_thumb_url(string $img_file, string $stored_thumb = ''): string {
+    if ($stored_thumb !== '') return gy_media_url($stored_thumb);
+    if ($img_file === '') return '';
+
+    $rel = ltrim(str_replace('\\', '/', $img_file), '/');
+    $thumb_rel = dirname($rel) . '/thumbs/a_' . basename($rel);
+    if (is_file(dirname(__DIR__) . '/' . $thumb_rel)) {
+        return gy_media_url($thumb_rel);
+    }
+    return gy_media_url($rel);
 }
 
 
@@ -301,6 +393,24 @@ if ($resource === 'photos' && $method === 'GET') {
     $where_sql = implode(' AND ', $where);
 
     // Count total matching (for pagination info)
+    $modified_select = gy_has_column($pdo, 'snap_images', 'modified_at')
+        ? 'i.modified_at' : 'i.img_date AS modified_at';
+    $color_select = gy_has_column($pdo, 'snap_images', 'img_color_mode')
+        ? 'i.img_color_mode AS color_mode' : "'' AS color_mode";
+    $sort_select = gy_has_column($pdo, 'snap_images', 'sort_order')
+        ? 'i.sort_order' : '0 AS sort_order';
+    $sort_order = gy_has_column($pdo, 'snap_images', 'sort_order')
+        ? 'i.sort_order ASC, i.id DESC' : 'i.id DESC';
+    $has_categories = gy_has_table($pdo, 'snap_categories') && gy_has_table($pdo, 'snap_image_cat_map');
+    $has_albums = gy_has_table($pdo, 'snap_albums') && gy_has_table($pdo, 'snap_image_album_map');
+    $category_select = $has_categories
+        ? '(SELECT c2.id FROM snap_image_cat_map cm2 JOIN snap_categories c2 ON c2.id = cm2.cat_id WHERE cm2.image_id = i.id LIMIT 1) AS category_id, '
+          . '(SELECT c2.cat_name FROM snap_image_cat_map cm2 JOIN snap_categories c2 ON c2.id = cm2.cat_id WHERE cm2.image_id = i.id LIMIT 1) AS category_name'
+        : 'NULL AS category_id, NULL AS category_name';
+    $album_select = $has_albums
+        ? '(SELECT a2.id FROM snap_image_album_map am2 JOIN snap_albums a2 ON a2.id = am2.album_id WHERE am2.image_id = i.id LIMIT 1) AS album_id, '
+          . '(SELECT a2.album_name FROM snap_image_album_map am2 JOIN snap_albums a2 ON a2.id = am2.album_id WHERE am2.image_id = i.id LIMIT 1) AS album_name'
+        : 'NULL AS album_id, NULL AS album_name';
     try {
         $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_images i WHERE $where_sql");
         $count_stmt->execute($params);
@@ -316,7 +426,7 @@ if ($resource === 'photos' && $method === 'GET') {
                 i.id,
                 i.img_title       AS title,
                 i.img_description AS description,
-                i.sort_order,
+                $sort_select,
                 i.img_file,
                 i.img_slug,
                 i.download_url,
@@ -334,7 +444,7 @@ if ($resource === 'photos' && $method === 'GET') {
                 (SELECT a2.album_name FROM snap_image_album_map am2 JOIN snap_albums a2 ON a2.id = am2.album_id WHERE am2.image_id = i.id LIMIT 1) AS album_name
             FROM snap_images i
             WHERE $where_sql
-            ORDER BY i.sort_order ASC, i.id DESC
+            ORDER BY $sort_order
             LIMIT ? OFFSET ?
         ");
         foreach ($params as $index => $value) {
@@ -379,6 +489,8 @@ if ($resource === 'photos' && $method === 'GET') {
 // Returns categories and albums for filter/edit dropdowns.
 // =============================================================================
 if ($resource === 'meta' && $method === 'GET') {
+    $cats = [];
+    $albums = [];
     try {
         $cats = $pdo->query("
             SELECT c.id, c.cat_name AS name, COUNT(cm.image_id) AS `count`
@@ -388,6 +500,19 @@ if ($resource === 'meta' && $method === 'GET') {
             ORDER BY c.cat_name ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
 
+    } catch (Exception $e) {
+        // Some older installations have categories but pre-date (or have a
+        // differently shaped) membership table. Metadata must still connect;
+        // counts can safely be unknown until that site's schema is upgraded.
+        try {
+            $cats = $pdo->query("
+                SELECT c.id, c.cat_name AS name, 0 AS `count`
+                FROM snap_categories c ORDER BY c.cat_name ASC
+            ")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $ignored) { $cats = []; }
+    }
+
+    try {
         $albums = $pdo->query("
             SELECT a.id, a.album_name AS name, COUNT(am.image_id) AS `count`
             FROM snap_albums a
@@ -396,7 +521,12 @@ if ($resource === 'meta' && $method === 'GET') {
             ORDER BY a.album_name ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
-        gy_err('Database error fetching meta', 500);
+        try {
+            $albums = $pdo->query("
+                SELECT a.id, a.album_name AS name, 0 AS `count`
+                FROM snap_albums a ORDER BY a.album_name ASC
+            ")->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $ignored) { $albums = []; }
     }
 
     // Cast count to int
@@ -461,7 +591,8 @@ if ($resource === 'library' && $method === 'GET') {
         // --- IMAGES (full, or changed-since) ---
         $img_where  = ["i.img_status = 'published'"];
         $img_params = [];
-        if ($since_sql !== null) {
+        $has_modified = gy_has_column($pdo, 'snap_images', 'modified_at');
+        if ($since_sql !== null && $has_modified) {
             $img_where[]  = 'i.modified_at >= ?';
             $img_params[] = $since_sql;
         }
@@ -469,20 +600,22 @@ if ($resource === 'library' && $method === 'GET') {
         // Read-only path: never mutate schema on a GET. Only SELECT the colour tag
         // if the column exists yet — the write paths create it on first post; an
         // install that updated core but hasn't posted since simply reports ''.
-        $has_color = (bool)$pdo->query(
-            "SELECT COUNT(*) FROM information_schema.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_images'
-               AND COLUMN_NAME = 'img_color_mode'"
-        )->fetchColumn();
+        $has_color = gy_has_column($pdo, 'snap_images', 'img_color_mode');
         $color_select = $has_color ? "i.img_color_mode AS color_mode" : "'' AS color_mode";
+        $alt_select = gy_has_column($pdo, 'snap_images', 'img_alt') ? 'i.img_alt AS alt' : "'' AS alt";
+        $width_select = gy_has_column($pdo, 'snap_images', 'img_width') ? 'i.img_width' : 'NULL AS img_width';
+        $height_select = gy_has_column($pdo, 'snap_images', 'img_height') ? 'i.img_height' : 'NULL AS img_height';
+        $modified_select = $has_modified ? 'i.modified_at' : 'i.img_date AS modified_at';
+        $sort_select = gy_has_column($pdo, 'snap_images', 'sort_order') ? 'i.sort_order' : '0 AS sort_order';
+        $sort_order = gy_has_column($pdo, 'snap_images', 'sort_order') ? 'i.sort_order ASC, i.id DESC' : 'i.id DESC';
         $img_stmt = $pdo->prepare("
             SELECT i.id, i.img_title AS title, i.img_description AS description,
-                   i.img_alt AS alt, $color_select, i.sort_order, i.img_file,
-                   i.img_date AS posted_date, i.modified_at,
-                   i.img_width, i.img_height
+                   $alt_select, $color_select, $sort_select, i.img_file,
+                   i.img_date AS posted_date, $modified_select,
+                   $width_select, $height_select
             FROM snap_images i
             WHERE $img_where_sql
-            ORDER BY i.sort_order ASC, i.id DESC
+            ORDER BY $sort_order
         ");
         $img_stmt->execute($img_params);
         $images = [];
@@ -504,9 +637,15 @@ if ($resource === 'library' && $method === 'GET') {
         }
 
         // --- CATEGORIES + ALBUMS (whole; small) ---
-        $categories = $pdo->query("SELECT id, cat_name AS name FROM snap_categories ORDER BY cat_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $has_categories = gy_has_table($pdo, 'snap_categories') && gy_has_table($pdo, 'snap_image_cat_map');
+        $has_albums = gy_has_table($pdo, 'snap_albums') && gy_has_table($pdo, 'snap_image_album_map');
+        $categories = $has_categories
+            ? $pdo->query("SELECT id, cat_name AS name FROM snap_categories ORDER BY cat_name ASC")->fetchAll(PDO::FETCH_ASSOC)
+            : [];
         foreach ($categories as &$c) { $c['id'] = (int)$c['id']; } unset($c);
-        $albums = $pdo->query("SELECT id, album_name AS name FROM snap_albums ORDER BY album_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $albums = $has_albums
+            ? $pdo->query("SELECT id, album_name AS name FROM snap_albums ORDER BY album_name ASC")->fetchAll(PDO::FETCH_ASSOC)
+            : [];
         foreach ($albums as &$a) { $a['id'] = (int)$a['id']; } unset($a);
 
         // --- MEMBERSHIP MAPS (whole int pairs — catches re-tags on unchanged images) ---
@@ -515,8 +654,10 @@ if ($resource === 'library' && $method === 'GET') {
             $cat_map[] = [(int)$p[0], (int)$p[1]];
         }
         $album_map = [];
-        foreach ($pdo->query("SELECT image_id, album_id FROM snap_image_album_map")->fetchAll(PDO::FETCH_NUM) as $p) {
-            $album_map[] = [(int)$p[0], (int)$p[1]];
+        if ($has_albums) {
+            foreach ($pdo->query("SELECT image_id, album_id FROM snap_image_album_map")->fetchAll(PDO::FETCH_NUM) as $p) {
+                $album_map[] = [(int)$p[0], (int)$p[1]];
+            }
         }
 
         // --- CURRENT IDS (whole published set — client prunes orphans / hard deletes) ---
@@ -542,17 +683,93 @@ if ($resource === 'library' && $method === 'GET') {
 }
 
 // =============================================================================
+// ENDPOINT: GET/POST gyss/enrichment-cache
+// The CMS is authoritative. GET supplies changed rows to SNAP HQ/GYSS; POST uses
+// base_revision to reject a stale desktop write with an explicit 409 collision.
+// =============================================================================
+if ($resource === 'enrichment-cache') {
+    gy_ensure_enrichment_cache($pdo);
+    if ($method === 'GET') {
+        $since = max(0, (int)($_GET['since'] ?? 0));
+        $stmt = $pdo->prepare("SELECT cache_key,image_sha256,domain,model,prompt_sha256,prompt_version,
+            bundle_json,raw_response,accepted_json,revision,
+            UNIX_TIMESTAMP(generated_at) generated_at,UNIX_TIMESTAMP(expires_at) expires_at,
+            UNIX_TIMESTAMP(modified_at) modified_at
+            FROM snap_ai_enrichment_cache WHERE UNIX_TIMESTAMP(modified_at) >= ? ORDER BY modified_at,id LIMIT 2000");
+        $stmt->execute([$since]);
+        $records = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $row['bundle'] = json_decode((string)$row['bundle_json'], true) ?: [];
+            $row['accepted'] = json_decode((string)($row['accepted_json'] ?? ''), true) ?: [];
+            unset($row['bundle_json'], $row['accepted_json']);
+            $row['revision'] = (int)$row['revision'];
+            $records[] = $row;
+        }
+        gy_ok(['records' => $records, 'server_time' => time(),
+               'cache_days' => gy_enrichment_cache_days($pdo)]);
+    }
+    if ($method === 'POST') {
+        $data = json_decode((string)file_get_contents('php://input'), true);
+        $record = is_array($data['record'] ?? null) ? $data['record'] : [];
+        $key = strtolower((string)($record['cache_key'] ?? ''));
+        if (!preg_match('/^[a-f0-9]{64}$/', $key)) gy_err('Valid cache_key required');
+        $current = $pdo->prepare("SELECT revision,bundle_json,accepted_json,UNIX_TIMESTAMP(modified_at) modified_at
+                                  FROM snap_ai_enrichment_cache WHERE cache_key = ? LIMIT 1");
+        $current->execute([$key]);
+        $live = $current->fetch(PDO::FETCH_ASSOC);
+        $base = max(0, (int)($record['base_revision'] ?? 0));
+        if ($live && (int)$live['revision'] !== $base) {
+            gy_err('Enrichment cache collision', 409, [
+                'collision' => true, 'cache_key' => $key, 'expected_revision' => $base,
+                'current_revision' => (int)$live['revision'],
+                'theirs' => json_decode((string)$live['bundle_json'], true) ?: [],
+                'theirs_accepted' => json_decode((string)$live['accepted_json'], true) ?: [],
+                'modified_at' => (int)$live['modified_at'],
+            ]);
+        }
+        foreach (['image_sha256','prompt_sha256'] as $hashField) {
+            if (!preg_match('/^[a-f0-9]{64}$/', strtolower((string)($record[$hashField] ?? '')))) {
+                gy_err("Valid $hashField required");
+            }
+        }
+        $revision = ($live ? (int)$live['revision'] : 0) + 1;
+        $days = gy_enrichment_cache_days($pdo);
+        $stmt = $pdo->prepare("INSERT INTO snap_ai_enrichment_cache
+          (cache_key,image_sha256,domain,model,prompt_sha256,prompt_version,bundle_json,raw_response,
+           accepted_json,revision,generated_at,expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,FROM_UNIXTIME(?),DATE_ADD(NOW(),INTERVAL ? DAY))
+          ON DUPLICATE KEY UPDATE bundle_json=VALUES(bundle_json),raw_response=VALUES(raw_response),
+           accepted_json=VALUES(accepted_json),revision=VALUES(revision),generated_at=VALUES(generated_at),
+           expires_at=VALUES(expires_at)");
+        $stmt->execute([$key, strtolower((string)$record['image_sha256']), mb_substr(strtolower((string)($record['domain'] ?? '')),0,255),
+            mb_substr((string)($record['model'] ?? ''),0,100), strtolower((string)$record['prompt_sha256']),
+            mb_substr((string)($record['prompt_version'] ?? '1'),0,32),
+            json_encode($record['bundle'] ?? [], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
+            (string)($record['raw_response'] ?? ''),
+            json_encode($record['accepted'] ?? [], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
+            $revision, max(1, (int)($record['generated_at'] ?? time())), $days]);
+        gy_ok(['cache_key' => $key, 'revision' => $revision, 'cache_days' => $days]);
+    }
+    gy_err('Method not allowed', 405);
+}
+
+// =============================================================================
 // ENDPOINT: GET gyss/enrichment-audit
 // Read-only list of published photos with missing metadata. GYSS owns iteration;
 // the server never runs a long batch.
 // =============================================================================
 if ($resource === 'enrichment-audit' && $method === 'GET') {
     $limit = min(max((int)($_GET['limit'] ?? 500), 1), 1000);
+    $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_color_mode VARCHAR(10) NOT NULL DEFAULT ''");
+    $collection_count_select = gy_has_table($pdo, 'snap_collection_items')
+        ? "(SELECT COUNT(*) FROM snap_collection_items ci WHERE ci.item_type='image' AND ci.item_id=i.id)"
+        : "0";
     $rows = $pdo->query("
         SELECT i.id, i.img_title, i.img_description, i.img_alt, i.img_file, i.img_display_options,
+               i.img_color_mode, i.content_warning, i.is_sensitive,
                (SELECT COUNT(*) FROM snap_image_tags it WHERE it.image_id = i.id) AS tag_count,
                (SELECT COUNT(*) FROM snap_image_cat_map cm WHERE cm.image_id = i.id) AS cat_count,
-               (SELECT COUNT(*) FROM snap_image_album_map am WHERE am.image_id = i.id) AS album_count
+               (SELECT COUNT(*) FROM snap_image_album_map am WHERE am.image_id = i.id) AS album_count,
+               $collection_count_select AS collection_count
         FROM snap_images i
         WHERE i.img_status = 'published'
         ORDER BY i.id ASC
@@ -567,8 +784,14 @@ if ($resource === 'enrichment-audit' && $method === 'GET') {
         if ((int)$row['tag_count'] === 0)                 $missing[] = 'tags';
         if ((int)$row['cat_count'] === 0)                 $missing[] = 'category';
         if ((int)$row['album_count'] === 0)               $missing[] = 'album';
+        if ((int)$row['collection_count'] === 0)          $missing[] = 'collection';
+        if (trim((string)($row['img_color_mode'] ?? '')) === '') $missing[] = 'color_mode';
         $display = json_decode((string)($row['img_display_options'] ?? ''), true);
         if (empty($display['ai_colors']))                   $missing[] = 'colors';
+        if (!array_key_exists('ai_ocr', is_array($display) ? $display : [])) $missing[] = 'ocr';
+        if (empty($display['ai_safety_reviewed'])) {
+            $missing[] = 'content_warning';
+        }
         if (!$missing) continue;
         $items[] = [
             'id'        => (int)$row['id'],
@@ -600,7 +823,8 @@ if ($resource === 'enrich-one' && $method === 'POST') {
         409
     );
 
-    $allowed_fields = ['title', 'caption', 'alt', 'tags', 'category', 'album', 'colors'];
+    $allowed_fields = ['title', 'caption', 'alt', 'tags', 'category', 'album', 'collection',
+                       'colors', 'color_mode', 'ocr', 'content_warning'];
     $fields = array_values(array_intersect(
         $allowed_fields,
         is_array($data['fields'] ?? null) ? $data['fields'] : $allowed_fields
@@ -631,19 +855,69 @@ if ($resource === 'enrich-one' && $method === 'POST') {
              . "\n\nAVAILABLE ALBUMS (exact names only):\n"
              . implode("\n", array_map(fn($r) => '- ' . $r['name'], $albums));
 
-    $result = snap_ai_vision(
-        $prompt,
-        $options,
-        [['mime' => $mime, 'data' => base64_encode((string)file_get_contents($path))]],
-        1024
-    );
-    if (!$result['ok']) gy_err($result['error'] ?: 'AI enrichment failed.', 502);
+    $collections = gy_has_table($pdo, 'snap_collections')
+        ? $pdo->query("SELECT id, title AS name FROM snap_collections ORDER BY title")->fetchAll(PDO::FETCH_ASSOC)
+        : [];
+    $options .= "\n\nAVAILABLE COLLECTIONS (exact names only):\n"
+             . implode("\n", array_map(fn($r) => '- ' . $r['name'], $collections));
 
-    $parsed = ['title'=>'', 'caption'=>'', 'alt'=>'', 'tags'=>'', 'category'=>'', 'album'=>'', 'colors'=>''];
-    foreach (preg_split('/\R/', trim($result['text'])) as $line) {
-        if (preg_match('/^(TITLE|CAPTION|ALT|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)$/i', trim($line), $m)) {
+    // Every paid request returns the complete bundle, irrespective of which
+    // missing field prompted it. This makes one cache hit useful everywhere.
+    $contract = "\n\nALWAYS return every line below, even when only one field was requested:\n"
+        . "TITLE:\nCAPTION:\nALT:\nTAGS:\nCATEGORY:\nALBUM:\nCOLLECTION:\nCOLORS:\n"
+        . "COLOR_MODE: (colour or bw)\nOCR:\nCONTENT_WARNING:\nSENSITIVE: (yes or no)\n"
+        . "If SENSITIVE is yes, include #nsfw in TAGS. CONTENT_WARNING is a suggestion; "
+        . "Fediverse delivery uses sensitive=true plus summary and must not rely on the hashtag alone.";
+    $effective_prompt = $prompt . $contract;
+    $image_hash = strtolower((string)($image['img_checksum'] ?? ''));
+    if (!preg_match('/^[a-f0-9]{64}$/', $image_hash)) $image_hash = hash_file('sha256', $path);
+    $domain = strtolower((string)(parse_url(BASE_URL, PHP_URL_HOST) ?: ''));
+    $model = 'cms-configured';
+    $prompt_hash = hash('sha256', $effective_prompt . "\n" . $options);
+    $cache_key = gy_cache_key($image_hash, $domain, $model, $prompt_hash);
+    gy_ensure_enrichment_cache($pdo);
+    $cached = null;
+    if (empty($data['force_refresh'])) {
+        $cache_stmt = $pdo->prepare("SELECT bundle_json,revision,UNIX_TIMESTAMP(expires_at) expires_at
+            FROM snap_ai_enrichment_cache WHERE cache_key = ? AND expires_at > NOW() LIMIT 1");
+        $cache_stmt->execute([$cache_key]);
+        $cached = $cache_stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    $cache_hit = false;
+    if ($cached) {
+        $parsed = json_decode((string)$cached['bundle_json'], true) ?: [];
+        $cache_hit = true;
+    } else {
+        $result = snap_ai_vision(
+            $effective_prompt,
+            $options,
+            [['mime' => $mime, 'data' => base64_encode((string)file_get_contents($path))]],
+            1400
+        );
+        if (!$result['ok']) gy_err($result['error'] ?: 'AI enrichment failed.', 502);
+        $parsed = ['title'=>'', 'caption'=>'', 'alt'=>'', 'tags'=>'', 'category'=>'', 'album'=>'',
+                   'collection'=>'', 'colors'=>'', 'color_mode'=>'', 'ocr'=>'',
+                   'content_warning'=>'', 'sensitive'=>'no'];
+        foreach (preg_split('/\R/', trim($result['text'])) as $line) {
+          if (preg_match('/^(TITLE|CAPTION|ALT|TAGS|CATEGORY|ALBUM|COLLECTION|COLORS|COLOR_MODE|OCR|CONTENT_WARNING|SENSITIVE):\s*(.*)$/i', trim($line), $m)) {
             $parsed[strtolower($m[1])] = trim($m[2]);
+          }
         }
+        $parsed['color_mode'] = in_array(strtolower((string)$parsed['color_mode']), ['bw','b&w','black and white','black & white'], true) ? 'bw' : 'color';
+        $parsed['sensitive'] = in_array(strtolower((string)$parsed['sensitive']), ['yes','true','1'], true) ? 'yes' : 'no';
+        if ($parsed['sensitive'] === 'yes' && !preg_match('/(^|\s)#nsfw(\s|$)/i', (string)$parsed['tags'])) {
+            $parsed['tags'] = trim((string)$parsed['tags'] . ' #nsfw');
+        }
+        $days = gy_enrichment_cache_days($pdo);
+        $pdo->prepare("INSERT INTO snap_ai_enrichment_cache
+          (cache_key,image_sha256,domain,model,prompt_sha256,prompt_version,bundle_json,raw_response,accepted_json,revision,expires_at)
+          VALUES (?,?,?,?,?,'1',?,?,?,1,DATE_ADD(NOW(),INTERVAL ? DAY))
+          ON DUPLICATE KEY UPDATE bundle_json=VALUES(bundle_json),raw_response=VALUES(raw_response),
+            revision=revision+1,generated_at=NOW(),expires_at=VALUES(expires_at)")
+          ->execute([$cache_key,$image_hash,$domain,$model,$prompt_hash,
+                     json_encode($parsed, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
+                     (string)$result['text'],'{}',$days]);
     }
     if (!$parsed['title'] && !$parsed['caption'] && !$parsed['tags']) {
         gy_err('AI returned an unreadable metadata response.', 502);
@@ -653,6 +927,9 @@ if ($resource === 'enrich-one' && $method === 'POST') {
     $has_tags = !empty($current_tags);
     $cat_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_image_cat_map WHERE image_id = " . $id)->fetchColumn();
     $album_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_image_album_map WHERE image_id = " . $id)->fetchColumn();
+    $collection_count = gy_has_table($pdo, 'snap_collection_items')
+        ? (int)$pdo->query("SELECT COUNT(*) FROM snap_collection_items WHERE item_type = 'image' AND item_id = " . $id)->fetchColumn()
+        : 0;
     $applied = [];
 
     $pdo->beginTransaction();
@@ -693,9 +970,29 @@ if ($resource === 'enrich-one' && $method === 'POST') {
                 $applied[] = 'colors';
             }
         }
+        if (in_array('ocr', $fields, true) && ($overwrite || empty($display_options['ai_ocr'])) && !empty($parsed['ocr'])) {
+            $display_options['ai_ocr'] = mb_substr((string)$parsed['ocr'], 0, 4000);
+            $applied[] = 'ocr';
+        }
+        if (in_array('content_warning', $fields, true)) {
+            $display_options['ai_safety_reviewed'] = true;
+        }
         $display_json = $display_options ? json_encode($display_options, JSON_UNESCAPED_SLASHES) : null;
-        $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_alt = ?, img_display_options = ? WHERE id = ?")
-            ->execute([$title, $caption, $alt, $display_json, $id]);
+        $color_mode = snap_normalize_color_mode((string)($image['img_color_mode'] ?? ''));
+        if (in_array('color_mode', $fields, true) && ($overwrite || $color_mode === '') && !empty($parsed['color_mode'])) {
+            $color_mode = snap_normalize_color_mode((string)$parsed['color_mode']);
+            $applied[] = 'color_mode';
+        }
+        $warning = (string)($image['content_warning'] ?? '');
+        $sensitive = (int)($image['is_sensitive'] ?? 0);
+        if (in_array('content_warning', $fields, true) && ($overwrite || trim($warning) === '') && !empty($parsed['content_warning'])) {
+            $warning = mb_substr(trim((string)$parsed['content_warning']), 0, 255);
+            $sensitive = (($parsed['sensitive'] ?? 'no') === 'yes') ? 1 : $sensitive;
+            $applied[] = 'content_warning';
+        }
+        $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_color_mode VARCHAR(10) NOT NULL DEFAULT ''");
+        $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_alt = ?, img_display_options = ?, img_color_mode = ?, content_warning = ?, is_sensitive = ? WHERE id = ?")
+            ->execute([$title, $caption, $alt, $display_json, $color_mode, $warning ?: null, $sensitive, $id]);
 
         $tags_applied = false;
         if (in_array('tags', $fields, true) && ($overwrite || !$has_tags) && $parsed['tags'] !== '') {
@@ -741,6 +1038,15 @@ if ($resource === 'enrich-one' && $method === 'POST') {
                 $applied[] = 'album';
             }
         }
+        if (in_array('collection', $fields, true) && ($overwrite || $collection_count === 0) && gy_has_table($pdo, 'snap_collection_items')) {
+            $ids = $apply_names((string)($parsed['collection'] ?? ''), $collections);
+            if ($ids) {
+                if ($overwrite) $pdo->prepare("DELETE FROM snap_collection_items WHERE item_type = 'image' AND item_id = ?")->execute([$id]);
+                $ins = $pdo->prepare("INSERT IGNORE INTO snap_collection_items (collection_id,item_type,item_id,image_id) VALUES (?,'image',?,?)");
+                foreach ($ids as $option_id) $ins->execute([$option_id, $id, $id]);
+                $applied[] = 'collection';
+            }
+        }
         $pdo->prepare(
             "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('ai_post_enrichment_prompt', ?)
              ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
@@ -750,7 +1056,9 @@ if ($resource === 'enrich-one' && $method === 'POST') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         gy_err('Could not save enrichment: ' . $e->getMessage(), 500);
     }
-    gy_ok(['id' => $id, 'applied' => $applied, 'metadata' => $parsed]);
+    gy_ok(['id' => $id, 'applied' => $applied, 'metadata' => $parsed,
+           'cache' => ['hit' => $cache_hit, 'cache_key' => $cache_key,
+                       'expires_at' => $cached ? (int)$cached['expires_at'] : time() + gy_enrichment_cache_days($pdo) * 86400]]);
 }
 
 
@@ -795,6 +1103,8 @@ if ($resource === 'batch-update' && $method === 'POST') {
     $conflicts = [];
     $sort_touched = false;   // did any successful update carry a new sort_order?
 
+    $has_modified = gy_has_column($pdo, 'snap_images', 'modified_at');
+    $modified_select = $has_modified ? 'i2.modified_at' : 'NULL AS modified_at';
     foreach ($updates as $upd) {
         $id = isset($upd['id']) ? (int)$upd['id'] : 0;
         if ($id <= 0) {
@@ -826,7 +1136,7 @@ if ($resource === 'batch-update' && $method === 'POST') {
         $force    = !empty($upd['force']);
         $expected = $upd['expected_modified_at'] ?? null;
 
-        if (!$force && $expected !== null) {
+        if ($has_modified && !$force && $expected !== null) {
             // Normalise both to comparable strings (strip microseconds if any)
             $exp_ts  = strtotime($expected);
             $live_ts = strtotime($current['modified_at']);
@@ -836,6 +1146,7 @@ if ($resource === 'batch-update' && $method === 'POST') {
                 if (isset($upd['title']))       $mine['title']       = $upd['title'];
                 if (isset($upd['description'])) $mine['description'] = $upd['description'];
                 if (isset($upd['category_id'])) $mine['category_id'] = (int)$upd['category_id'];
+                if (isset($upd['color_mode']))  $mine['color_mode']  = snap_normalize_color_mode($upd['color_mode']);
 
                 // "theirs" = current live values
                 $theirs = [
@@ -843,6 +1154,7 @@ if ($resource === 'batch-update' && $method === 'POST') {
                     'description' => $current['description'],
                     'sort_order'  => (int)$current['sort_order'],
                     'category_id' => $current['category_id'] !== null ? (int)$current['category_id'] : null,
+                    'color_mode'  => $current['color_mode'] ?? '',
                 ];
 
                 $conflicts[] = [
@@ -977,7 +1289,12 @@ if ($resource === 'gram-posts' && $method === 'GET') {
                     (SELECT i1.img_file FROM snap_post_images pi1 JOIN snap_images i1 ON i1.id = pi1.image_id
                       WHERE pi1.post_id = p.id AND pi1.is_cover = 1 LIMIT 1),
                     (SELECT i2.img_file FROM snap_images i2 WHERE i2.post_id = p.id ORDER BY i2.id LIMIT 1)
-                ) AS cover_file
+                ) AS cover_file,
+                COALESCE(
+                    (SELECT i1.img_thumb_aspect FROM snap_post_images pi1 JOIN snap_images i1 ON i1.id = pi1.image_id
+                      WHERE pi1.post_id = p.id AND pi1.is_cover = 1 LIMIT 1),
+                    (SELECT i2.img_thumb_aspect FROM snap_images i2 WHERE i2.post_id = p.id ORDER BY i2.id LIMIT 1)
+                ) AS cover_thumb
             FROM snap_posts p
             WHERE p.trigram_id IS NULL
               AND p.post_type IN ('single','carousel','panorama')
@@ -1004,7 +1321,7 @@ if ($resource === 'gram-posts' && $method === 'GET') {
             // A post is combinable only if it's an ungrouped published single.
             'combinable'  => ($count <= 1 && $row['post_type'] === 'single' && $row['status'] === 'published'),
             'created_at'  => $row['created_at'],
-            'thumb_url'   => gy_thumb_url((string)$row['cover_file']),
+            'thumb_url'   => gy_thumb_url((string)$row['cover_file'], (string)$row['cover_thumb']),
         ];
     }
 

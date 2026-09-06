@@ -4,12 +4,12 @@ REM GET YOUR SHIT SORTED - Build script
 REM Requires: Rust and the Tauri CLI
 REM Usage: build.bat [dev|release]
 REM   dev     - cargo tauri dev
-REM   release - build, then install the completed portable exe in C:\GYSS
+REM   release - build, then install the portable exe used by THE HUB
 
 set "MODE=%~1"
 if "%MODE%"=="" set "MODE=dev"
 set "GYSS_ROOT=%~dp0"
-set "GYSS_INSTALL_DIR=C:\GYSS"
+set "GYSS_INSTALL_DIR=C:\snapsmack\gyss"
 set "GYSS_BUILT_EXE=%GYSS_ROOT%src-tauri\target\release\get-your-shit-sorted.exe"
 set "GYSS_INSTALLED_EXE=%GYSS_INSTALL_DIR%\GET YOUR SHIT SORTED.exe"
 

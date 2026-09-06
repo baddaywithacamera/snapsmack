@@ -43,6 +43,13 @@ pyinstaller ^
     --hidden-import=PIL.Image ^
     --hidden-import=PIL.ImageTk ^
     --hidden-import=piexif ^
+    --paths=..\_shared ^
+    --hidden-import=snap_connections ^
+    --hidden-import=snap_profiles ^
+    --hidden-import=snap_creds ^
+    --hidden-import=snap_home ^
+    --hidden-import=snap_site_settings ^
+    --hidden-import=snap_vault ^
     main.py
 
 echo.

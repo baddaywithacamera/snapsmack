@@ -10,12 +10,14 @@
 // thumbs + db/catalog.sqlite) and config_files/gyss/ holds GYSS's own profiles
 // and sessions. See tools/_shared/snap_home.py for the authoritative layout.
 //
-// HTTP calls to the SnapSmack gyss-api.php handler are made directly from JS
-// via fetch(). The API emits CORS headers for tauri:// origins so no Rust
-// proxy is needed.
+// Authenticated calls to gyss-api.php use one narrowly scoped native command.
+// Browser fetch is not reliable here because WebView2 applies CORS before the
+// request reaches SnapSmack.
 
 use std::path::{Path, PathBuf};
 use tauri::Manager;
+use rusqlite::OptionalExtension;
+mod shared_credentials;
 
 // snap_library.py's _SCHEMA, VERBATIM — the shared catalog both the Python tools
 // and this Rust tool open. Keep byte-for-byte in step with snap_library.py.
@@ -25,11 +27,39 @@ CREATE TABLE IF NOT EXISTS categories (name TEXT PRIMARY KEY, description TEXT D
 CREATE TABLE IF NOT EXISTS albums     (name TEXT PRIMARY KEY, description TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS tags       (tag  TEXT PRIMARY KEY);
 CREATE TABLE IF NOT EXISTS titles     (title TEXT PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS enrichment_cache (
+  cache_key TEXT PRIMARY KEY, image_sha256 TEXT NOT NULL, domain TEXT NOT NULL,
+  model TEXT NOT NULL, prompt_sha256 TEXT NOT NULL, prompt_version TEXT NOT NULL DEFAULT '1',
+  bundle_json TEXT NOT NULL, raw_response TEXT NOT NULL DEFAULT '', accepted_json TEXT NOT NULL DEFAULT '{}',
+  revision INTEGER NOT NULL DEFAULT 1, base_revision INTEGER NOT NULL DEFAULT 0,
+  generated_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, modified_at INTEGER NOT NULL,
+  source TEXT NOT NULL DEFAULT 'desktop', dirty INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS idx_enrichment_lookup
+  ON enrichment_cache(image_sha256, domain, model, prompt_sha256, expires_at);
 ";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(windows)]
+    if !std::path::Path::new(r"C:\snapsmack\hub\SNAP HQ.exe").is_file()
+        && !std::path::Path::new(r"C:\snapsmack\hub\hub.exe").is_file()
+        && std::env::var("SNAPSMACK_DEV_BYPASS_HQ").ok().as_deref() != Some("1")
+    {
+        eprintln!("SNAP HQ is required. Install SNAP HQ, then launch GYSS from it.");
+        return;
+    }
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // A second launch activates the existing window instead of creating
+            // another process/window. This covers SNAP HQ, Start, desktop, and
+            // taskbar launches equally.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
@@ -55,6 +85,12 @@ pub fn run() {
             delete_file,
             catalog_sync,
             catalog_read,
+            enrichment_cache_merge,
+            api_request,
+            provision_gyss_key,
+            shared_site_credential,
+            gyss_vault_get,
+            gyss_vault_set,
         ])
         .run(tauri::generate_context!())
         .expect("error while running GET YOUR SHIT SORTED");
@@ -130,6 +166,163 @@ fn refuse_executable(p: &std::path::Path) -> Result<(), String> {
 #[tauri::command]
 fn shared_home() -> String {
     shared_root().to_string_lossy().to_string()
+}
+
+#[tauri::command]
+fn shared_site_credential(site_url: String, key_type: String) -> Result<String, String> {
+    if key_type != "gyss" { return Err("Refused unsupported credential scope".into()); }
+    shared_credentials::read(&shared_root(), &site_url, &key_type)
+}
+
+#[cfg(windows)]
+#[tauri::command]
+fn gyss_vault_get(account: String) -> Result<Option<String>, String> {
+    let entry = keyring::Entry::new("ca.snapsmack.gyss", &account).map_err(|e| e.to_string())?;
+    match entry.get_password() {
+        Ok(value) => Ok(Some(value)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[cfg(windows)]
+#[tauri::command]
+fn gyss_vault_set(account: String, secret: String) -> Result<(), String> {
+    keyring::Entry::new("ca.snapsmack.gyss", &account).map_err(|e| e.to_string())?
+        .set_password(&secret).map_err(|e| e.to_string())
+}
+
+#[cfg(not(windows))]
+#[tauri::command]
+fn gyss_vault_get(_account: String) -> Result<Option<String>, String> { Ok(None) }
+
+#[cfg(not(windows))]
+#[tauri::command]
+fn gyss_vault_set(_account: String, _secret: String) -> Result<(), String> {
+    Err("No protected credential service is available".into())
+}
+
+/// Perform only authenticated GET/POST calls to SnapSmack's GYSS API route.
+/// This is intentionally not a generic HTTP proxy: HTTPS is mandatory except
+/// for loopback development, redirects are refused so credentials cannot cross
+/// hosts, the path/route are fixed, and replies are size-capped.
+#[tauri::command]
+async fn api_request(
+    method: String,
+    url: String,
+    api_key: String,
+    body: Option<String>,
+) -> Result<serde_json::Value, String> {
+    const MAX_BYTES: usize = 16 * 1024 * 1024;
+    let parsed = reqwest::Url::parse(&url).map_err(|_| "Invalid site URL".to_string())?;
+    let host = parsed.host_str().unwrap_or_default();
+    let loopback = host.eq_ignore_ascii_case("localhost")
+        || host == "127.0.0.1"
+        || host == "::1";
+    if parsed.scheme() != "https" && !(parsed.scheme() == "http" && loopback) {
+        return Err("Refused: GYSS credentials require HTTPS".into());
+    }
+    if parsed.username() != "" || parsed.password().is_some() || parsed.fragment().is_some() {
+        return Err("Refused: malformed site URL".into());
+    }
+    if parsed.path() != "/api.php" {
+        return Err("Refused: only the SnapSmack API endpoint is allowed".into());
+    }
+    let route_ok = parsed
+        .query_pairs()
+        .any(|(key, value)| key == "route" && value.starts_with("gyss/"));
+    if !route_ok {
+        return Err("Refused: only GYSS API routes are allowed".into());
+    }
+    if api_key.trim().is_empty() {
+        return Err("No GYSS API key supplied".into());
+    }
+
+    let verb = method.to_ascii_uppercase();
+    if verb != "GET" && verb != "POST" {
+        return Err("Refused: only GET and POST are allowed".into());
+    }
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(45))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let mut request = if verb == "GET" { client.get(parsed) } else { client.post(parsed) };
+    request = request
+        .bearer_auth(api_key.trim())
+        .header(reqwest::header::ACCEPT, "application/json")
+        .header(reqwest::header::CONTENT_TYPE, "application/json");
+    if let Some(payload) = body {
+        request = request.body(payload);
+    }
+    let response = request.send().await.map_err(|e| e.to_string())?;
+    let status = response.status();
+    if status.is_redirection() {
+        return Err(format!("Refused server redirect (HTTP {status})"));
+    }
+    if let Some(length) = response.content_length() {
+        if length as usize > MAX_BYTES {
+            return Err("Refused: API response is too large".into());
+        }
+    }
+    let bytes = response.bytes().await.map_err(|e| e.to_string())?;
+    if bytes.len() > MAX_BYTES {
+        return Err("Refused: API response is too large".into());
+    }
+    serde_json::from_slice(&bytes)
+        .map_err(|_| format!("Server returned non-JSON response (HTTP {status})"))
+}
+
+/// Mint a least-privilege GYSS key using the full hub-to-spoke credential that
+/// fleet discovery already stores locally. The URL and request body are fixed so
+/// this cannot become a general authenticated HTTP proxy.
+#[tauri::command]
+async fn provision_gyss_key(site_url: String, api_key_local: String) -> Result<String, String> {
+    const MAX_BYTES: usize = 64 * 1024;
+    let mut parsed = reqwest::Url::parse(site_url.trim()).map_err(|_| "Invalid site URL".to_string())?;
+    let host = parsed.host_str().unwrap_or_default();
+    let loopback = host.eq_ignore_ascii_case("localhost") || host == "127.0.0.1" || host == "::1";
+    if parsed.scheme() != "https" && !(parsed.scheme() == "http" && loopback) {
+        return Err("Refused: key provisioning requires HTTPS".into());
+    }
+    if parsed.username() != "" || parsed.password().is_some() || parsed.fragment().is_some() {
+        return Err("Refused: malformed site URL".into());
+    }
+    if api_key_local.trim().is_empty() {
+        return Err("No fleet provisioning key is available for this site".into());
+    }
+    parsed.set_path("/api.php");
+    parsed.set_query(Some("route=multisite/provision-key"));
+    parsed.set_fragment(None);
+
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(45))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let response = client.post(parsed)
+        .bearer_auth(api_key_local.trim())
+        .header(reqwest::header::ACCEPT, "application/json")
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .body(r#"{"key_type":"gyss"}"#)
+        .send().await.map_err(|e| e.to_string())?;
+    let status = response.status();
+    if status.is_redirection() {
+        return Err(format!("Refused server redirect (HTTP {status})"));
+    }
+    if let Some(length) = response.content_length() {
+        if length as usize > MAX_BYTES { return Err("Refused: provisioning response is too large".into()); }
+    }
+    let bytes = response.bytes().await.map_err(|e| e.to_string())?;
+    if bytes.len() > MAX_BYTES { return Err("Refused: provisioning response is too large".into()); }
+    let data: serde_json::Value = serde_json::from_slice(&bytes)
+        .map_err(|_| format!("Server returned non-JSON response (HTTP {status})"))?;
+    if !data.get("ok").and_then(|v| v.as_bool()).unwrap_or(false) {
+        return Err(data.get("error").and_then(|v| v.as_str())
+            .unwrap_or("The site refused GYSS key provisioning").to_string());
+    }
+    data.get("api_key").and_then(|v| v.as_str()).filter(|v| !v.is_empty())
+        .map(str::to_string).ok_or_else(|| "The site did not return the new GYSS key".to_string())
 }
 
 /// Read a UTF-8 file from disk. Used for profile and session JSON.
@@ -412,6 +605,55 @@ fn catalog_read(path: String) -> Result<serde_json::Value, String> {
         "site_mode": site_mode,
         "synced_at": synced_at,
     }))
+}
+
+/// Merge authoritative CMS enrichment rows into the shared SQLite mirror.
+/// A locally dirty row whose base revision is older is returned as a collision.
+#[tauri::command]
+fn enrichment_cache_merge(path: String, records: Vec<serde_json::Value>) -> Result<serde_json::Value, String> {
+    let p = resolve_in_root(&path)?;
+    if let Some(parent) = p.parent() { std::fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
+    let mut conn = rusqlite::Connection::open(&p).map_err(|e| e.to_string())?;
+    conn.execute_batch(CATALOG_SCHEMA).map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let mut updated = 0usize;
+    let mut collisions: Vec<serde_json::Value> = vec![];
+    for record in records {
+        let key = record.get("cache_key").and_then(|v| v.as_str()).unwrap_or_default();
+        if key.len() != 64 { continue; }
+        let local: Option<(i64,i64)> = tx.query_row(
+            "SELECT dirty,base_revision FROM enrichment_cache WHERE cache_key=?1",
+            rusqlite::params![key], |row| Ok((row.get(0)?, row.get(1)?)))
+            .optional().map_err(|e| e.to_string())?;
+        let remote_revision = record.get("revision").and_then(|v| v.as_i64()).unwrap_or(1);
+        if let Some((dirty, base)) = local {
+            if dirty != 0 && remote_revision > base {
+                collisions.push(serde_json::json!({"cache_key":key,"remote":record}));
+                continue;
+            }
+        }
+        tx.execute("INSERT OR REPLACE INTO enrichment_cache
+          (cache_key,image_sha256,domain,model,prompt_sha256,prompt_version,bundle_json,raw_response,
+           accepted_json,revision,base_revision,generated_at,expires_at,modified_at,source,dirty)
+          VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?10,?11,?12,?13,'cms',0)",
+          rusqlite::params![key,
+            record.get("image_sha256").and_then(|v| v.as_str()).unwrap_or_default(),
+            record.get("domain").and_then(|v| v.as_str()).unwrap_or_default(),
+            record.get("model").and_then(|v| v.as_str()).unwrap_or_default(),
+            record.get("prompt_sha256").and_then(|v| v.as_str()).unwrap_or_default(),
+            record.get("prompt_version").and_then(|v| v.as_str()).unwrap_or("1"),
+            serde_json::to_string(record.get("bundle").unwrap_or(&serde_json::json!({}))).map_err(|e| e.to_string())?,
+            record.get("raw_response").and_then(|v| v.as_str()).unwrap_or_default(),
+            serde_json::to_string(record.get("accepted").unwrap_or(&serde_json::json!({}))).map_err(|e| e.to_string())?,
+            remote_revision,
+            record.get("generated_at").and_then(|v| v.as_i64()).unwrap_or(0),
+            record.get("expires_at").and_then(|v| v.as_i64()).unwrap_or(0),
+            record.get("modified_at").and_then(|v| v.as_i64()).unwrap_or(0),
+          ]).map_err(|e| e.to_string())?;
+        updated += 1;
+    }
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({"updated":updated,"collisions":collisions}))
 }
 
 // ── First-run migration (off %APPDATA%\GetYourShitSorted) ─────────────────────

@@ -21,7 +21,7 @@ import { sharedHome, siteKey } from './paths.js';
 
 // ===== SNAPSMACK EOF =====  (header reference only — JS marker at bottom)
 
-const SCHEMA = 1;
+const SCHEMA = 2;
 
 let _profilesDir = null;
 let _legacyDir = null;
@@ -59,13 +59,15 @@ function b64DecodeUtf8(b64) {
 }
 
 /** On-disk canonical -> in-memory profile (plaintext api_key). */
-function fromDisk(data, path) {
+function fromDisk(data, path, apiKey = '') {
+    const extras = (data.extras && typeof data.extras === 'object') ? data.extras : {};
     return {
         name:           data.name || '',
         site_url:       data.site_url || '',
-        api_key:        b64DecodeUtf8(data.api_key_enc || ''),
+        // GYSS must not mistake another tool's shared-profile key for its own.
+        api_key:        apiKey || String(extras.api_key_gyss || '') || b64DecodeUtf8(data.api_key_enc || ''),
         last_connected: data.last_connected ?? null,
-        extras:         (data.extras && typeof data.extras === 'object') ? data.extras : {},
+        extras,
         _path:          path,
     };
 }
@@ -91,21 +93,55 @@ export async function listProfiles() {
         if (!/\.json$/i.test(p)) continue;
         try {
             const data = await readProfile(p);
+            const extras = (data.extras && typeof data.extras === 'object') ? data.extras : {};
+            if (extras.gyss_site_mode === 'smacktalk') continue;
             profiles.push({
                 _path:          p,
                 name:           data.name || '',
                 site_url:       data.site_url || '',
                 last_connected: data.last_connected ?? null,
+                site_mode:      extras.gyss_site_mode || '',
             });
         } catch { /* skip malformed / non-profile json */ }
     }
     return profiles.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 }
 
+/** Cache the site's mode without disturbing keys or settings owned by other tools. */
+export async function cacheProfileSiteMode(path, mode) {
+    try {
+        const data = await readProfile(path);
+        data.extras = (data.extras && typeof data.extras === 'object') ? data.extras : {};
+        data.extras.gyss_site_mode = String(mode || '');
+        await invoke('write_file', { path, content: JSON.stringify(data, null, 2) });
+    } catch { /* classification is best-effort */ }
+}
+
 /** Load a single profile by path. Returns profile with raw api_key + extras. */
 export async function loadProfile(path) {
     const data = await readProfile(path);
-    return fromDisk(data, path);
+    const extras = (data.extras && typeof data.extras === 'object') ? data.extras : {};
+    let apiKey = '';
+    try {
+        apiKey = await invoke('shared_site_credential', { siteUrl: String(data.site_url || ''), keyType: 'gyss' });
+    } catch { /* fall through to the app's protected manual-key vault */ }
+    if (!apiKey) {
+        try { apiKey = await invoke('gyss_vault_get', { account: siteKey(data.site_url) }) || ''; }
+        catch { /* legacy migration below */ }
+    }
+    const legacyKey = String(extras.api_key_gyss || '') || b64DecodeUtf8(data.api_key_enc || '');
+    apiKey ||= legacyKey;
+    if (!apiKey) throw new Error('Discover has no GYSS key for this site. Run Discover Fleet again.');
+    if (legacyKey) {
+        await invoke('gyss_vault_set', { account: siteKey(data.site_url), secret: apiKey });
+        delete extras.api_key_gyss;
+        delete extras.api_key_local;
+        delete data.api_key_enc;
+        data.schema = SCHEMA;
+        data.extras = extras;
+        await invoke('write_file', { path, content: JSON.stringify(data, null, 2) });
+    }
+    return fromDisk(data, path, apiKey);
 }
 
 /** Save a profile. Keyed by site (siteKey), so re-saving the same blog updates it
@@ -117,16 +153,23 @@ export async function saveProfile(profile) {
     const path = await join(dir, `${siteKey(site)}.json`);
 
     // Merge over any existing on-disk profile so we never drop another tool's extras.
+    let existing = null;
+    try { existing = await readProfile(path); } catch { /* new profile */ }
     let extras = (profile.extras && typeof profile.extras === 'object') ? profile.extras : null;
     if (!extras) {
-        try { extras = (await readProfile(path)).extras || {}; } catch { extras = {}; }
+        extras = existing?.extras || {};
     }
+    if (profile.api_key) {
+        await invoke('gyss_vault_set', { account: siteKey(site), secret: String(profile.api_key) });
+    }
+    delete extras.api_key_gyss;
+    delete extras.api_key_local;
 
     const toWrite = {
         schema:         SCHEMA,
         name:           profile.name || site,
         site_url:       site,
-        api_key_enc:    b64EncodeUtf8(profile.api_key || ''),
+        // Preserve the shared profile's primary key; GYSS owns its scoped entry.
         last_connected: profile.last_connected ?? null,
         extras:         (extras && typeof extras === 'object') ? extras : {},
     };

@@ -409,5 +409,7 @@ class App(tk.Tk):
 
 
 if __name__ == "__main__":
+    import snap_hq_gate
+    snap_hq_gate.require()
     App().mainloop()
 # ===== SNAPSMACK EOF =====

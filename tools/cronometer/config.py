@@ -149,10 +149,17 @@ def load() -> dict:
         cfg.read(_config_path())
     except Exception:
         pass
+    # Muted sites the operator has chosen to ignore (e.g. a known-parked or
+    # not-yet-live blog). Stored as a comma-separated URL list; URLs never
+    # contain commas so the split is safe.
+    _muted_raw = cfg.get('mute', 'sites', fallback='')
+    muted = [u.strip() for u in _muted_raw.split(',') if u.strip()]
     return {
         'poll_timeout':  cfg.getint('net', 'poll_timeout', fallback=DEFAULT_POLL_TIMEOUT),
         'auto_refresh':  cfg.getint('ui', 'auto_refresh', fallback=DEFAULT_AUTO_REFRESH),
         'win_geometry':  cfg.get('ui', 'win_geometry', fallback=''),
+        'hide_parked':   cfg.getboolean('ui', 'hide_parked', fallback=False),
+        'muted_sites':   muted,
     }
 
 
@@ -165,6 +172,11 @@ def save(data: dict) -> None:
     cfg['ui'] = {
         'auto_refresh': str(int(data.get('auto_refresh', DEFAULT_AUTO_REFRESH))),
         'win_geometry': str(data.get('win_geometry', '') or ''),
+        'hide_parked':  str(bool(data.get('hide_parked', False))),
+    }
+    _muted = data.get('muted_sites', []) or []
+    cfg['mute'] = {
+        'sites': ','.join(u.strip() for u in _muted if u and u.strip()),
     }
     try:
         with open(_config_path(), 'w') as f:
