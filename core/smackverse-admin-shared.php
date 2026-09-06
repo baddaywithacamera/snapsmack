@@ -315,6 +315,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resyn
     exit;
 }
 
+// TARGETED PUSH: seed/refresh one follower without sending anything to every
+// other follower. The browser supplies only the actor id; the trusted direct
+// inbox is resolved from our active-follower table inside sv_push_to_follower.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'push_follower') {
+    if (!sv_enabled($sv_settings)) {
+        header('Location: ' . $sv_self . '?msg=' . urlencode('Fediverse is off — nothing was pushed.'));
+        exit;
+    }
+    $pf_actor = trim((string)($_POST['follower_actor'] ?? ''));
+    $pf_count = max(1, min(500, (int)($_POST['follower_count'] ?? 200)));
+    $pf_mode  = (($_POST['follower_mode'] ?? 'create') === 'update') ? 'update' : 'create';
+    list($pf_notes, $pf_queued, $pf_handle) = sv_push_to_follower(
+        $pdo, $sv_settings, $pf_actor, $pf_count, $pf_mode
+    );
+    if ($pf_queued < 1) {
+        $pf_msg = 'TARGETED PUSH: follower not found, inactive, or no posts were available.';
+    } else {
+        $pf_label = $pf_handle !== '' ? $pf_handle : $pf_actor;
+        $pf_verb = $pf_mode === 'update' ? 'Refresh' : 'Seed';
+        $pf_msg = sprintf('%s: %d post(s) queued only for %s — no other followers were included.',
+            $pf_verb, $pf_notes, $pf_label);
+        require_once __DIR__ . '/smackverse-kick.php';
+        sv_kick_delivery();
+    }
+    header('Location: ' . $sv_self . '?msg=' . urlencode($pf_msg));
+    exit;
+}
+
 // RE-IMPRINT — bump the federation generation, retract the current Notes, and
 // reseed everything under fresh ids so followers stuck in the old order re-ingest
 // clean. The only lever that reaches an already-poisoned follower.
@@ -330,6 +358,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reimp
         'RE-IMPRINT: retracted %d old Note(s) and re-seeded %d post(s) under fresh ids (%d deliveries) in your current grid order. Followers delete the stale copies and re-ingest clean — let the delivery cron drain (~%ds each). This is the fix for a follower stuck in the old order.',
         $ri_ret, $ri_posts, $ri_deliv, $cadence
     )));
+    exit;
+}
+
+// RETRACT A STALE LOCAL NOTE — repair a remote ghost whose local Manage Posts
+// row was already deleted by an older build. Accept only this actor's canonical
+// relative Note ids; never accept an arbitrary URL or another actor's object.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'retract_stale_note') {
+    if (!sv_enabled($sv_settings)) {
+        header('Location: ' . $sv_self . '?msg=' . urlencode('Fediverse is off — the stale Note was not retracted.'));
+        exit;
+    }
+    $note_path = trim((string)($_POST['stale_note_path'] ?? ''));
+    $note_path = ltrim($note_path, '/');
+    if (!preg_match('#^ap/note/(?:p|i|l)/[1-9][0-9]*(?:~[2-9][0-9]*)?$#D', $note_path)) {
+        header('Location: ' . $sv_self . '?msg=' . urlencode('NOT RETRACTED — enter a local Note path such as ap/note/p/1.'));
+        exit;
+    }
+    $note_id = sv_base($sv_settings) . $note_path;
+    $queued = sv_retract_note($pdo, $sv_settings, $note_id);
+    header('Location: ' . $sv_self . '?msg=' . urlencode($queued > 0
+        ? "RETRACTION QUEUED — {$note_id} will be deleted from {$queued} follower inbox(es) as the delivery queue drains."
+        : 'NOT RETRACTED — there are no active follower inboxes to receive the Delete.'));
     exit;
 }
 

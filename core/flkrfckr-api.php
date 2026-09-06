@@ -272,6 +272,9 @@ if ($sub === 'authorize' && $method === 'POST') {
         'message'          => 'Import authorized.',
         'authorized_until' => $until,
         'window_minutes'   => flkrfckr_window_minutes($pdo),
+        // Desktop clients use this server-declared policy for their local TOTP
+        // evidence window. Older clients ignore the additive field.
+        'totp_window_days' => 30,
     ]);
 }
 

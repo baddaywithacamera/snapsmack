@@ -21,6 +21,14 @@ import configparser
 import os
 import sys
 
+_SHARED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '_shared')
+if os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in sys.path:
+    sys.path.insert(0, _SHARED_DIR)
+try:
+    import snap_connections
+except Exception:
+    snap_connections = None
+
 # Keyring: OS credential store. Optional — falls back to base64 if absent.
 try:
     import keyring
@@ -117,6 +125,9 @@ def load() -> dict:
         if api_key and _HAS_KEYRING:
             _kr_set(_api_key_account(url), api_key)  # migrate on first load
 
+    shared = snap_connections.resolve(url, "unzucker") if snap_connections else None
+    if shared and shared.get('api_key'):
+        url, api_key = shared['site_url'], shared['api_key']
     return {
         'url':             url,
         'api_key':         api_key,

@@ -66,7 +66,13 @@ function px_bearer(PDO $pdo): array {
     if (!$row) px_json(['error'=>'The access token is invalid'],401); return $row;
 }
 function px_actor(PDO $pdo): array {
-    $base=px_base(); $user=px_setting($pdo,'smackverse_username','snapsmack');
+    $base=px_base();
+    // The canonical ActivityPub setting is smackverse_handle (sv_handle()).
+    // Reading the abandoned smackverse_username key made Pixelix silently fall
+    // back to "snapsmack" even when the owner had configured their real handle.
+    $user=trim(px_setting($pdo,'smackverse_handle',''));
+    if($user===''){$user=strtolower(trim((string)preg_replace('/[^a-z0-9_]+/i','_',px_setting($pdo,'site_name','')),'_'));}
+    if($user==='')$user='photoblog';
     $name=px_setting($pdo,'smackverse_display_name',px_setting($pdo,'site_name','GRAMOFSMACK'));
     $avatar=px_setting($pdo,'smackverse_avatar',''); if ($avatar && !preg_match('#^https?://#',$avatar)) $avatar=$base.ltrim($avatar,'/');
     $mode=px_mode($pdo);$countSql=$mode==='photoblog'?"SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date<=NOW()":($mode==='smacktalk'?"SELECT COUNT(*) FROM snap_posts WHERE status='published' AND created_at<=NOW() AND post_type='longform'":"SELECT COUNT(*) FROM snap_posts WHERE status='published' AND created_at<=NOW() AND post_type IN ('single','carousel','panorama')");

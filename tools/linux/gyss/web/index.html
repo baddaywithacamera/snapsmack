@@ -144,6 +144,20 @@
 
             <!-- Grid + edit panel -->
             <div id="sort-body">
+                <aside id="classification-bins" aria-label="Photo classification">
+                    <h3>CLASSIFY</h3>
+                    <p>Drag photos here. This changes the classification only.</p>
+                    <div class="classification-bin" data-color-mode="color">
+                        <strong>COLOUR</strong><span id="colour-bin-count">0</span>
+                    </div>
+                    <div class="classification-bin" data-color-mode="bw">
+                        <strong>B&amp;W</strong><span id="bw-bin-count">0</span>
+                    </div>
+                    <div class="classification-bin classification-clear" data-color-mode="">
+                        <strong>REMOVE CLASSIFICATION</strong><span id="clear-bin-count">0</span>
+                    </div>
+                    <small>Removing a classification never deletes the image or changes its albums or categories.</small>
+                </aside>
                 <div id="sort-grid-wrap">
                     <div id="sort-grid">
                         <p class="empty-hint" style="padding:20px">Pull photos from the FILTER tab to begin.</p>

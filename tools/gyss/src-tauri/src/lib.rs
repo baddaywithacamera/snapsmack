@@ -16,6 +16,8 @@
 
 use std::path::{Path, PathBuf};
 use tauri::Manager;
+use rusqlite::OptionalExtension;
+mod shared_credentials;
 
 // snap_library.py's _SCHEMA, VERBATIM — the shared catalog both the Python tools
 // and this Rust tool open. Keep byte-for-byte in step with snap_library.py.
@@ -25,10 +27,28 @@ CREATE TABLE IF NOT EXISTS categories (name TEXT PRIMARY KEY, description TEXT D
 CREATE TABLE IF NOT EXISTS albums     (name TEXT PRIMARY KEY, description TEXT DEFAULT '');
 CREATE TABLE IF NOT EXISTS tags       (tag  TEXT PRIMARY KEY);
 CREATE TABLE IF NOT EXISTS titles     (title TEXT PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS enrichment_cache (
+  cache_key TEXT PRIMARY KEY, image_sha256 TEXT NOT NULL, domain TEXT NOT NULL,
+  model TEXT NOT NULL, prompt_sha256 TEXT NOT NULL, prompt_version TEXT NOT NULL DEFAULT '1',
+  bundle_json TEXT NOT NULL, raw_response TEXT NOT NULL DEFAULT '', accepted_json TEXT NOT NULL DEFAULT '{}',
+  revision INTEGER NOT NULL DEFAULT 1, base_revision INTEGER NOT NULL DEFAULT 0,
+  generated_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, modified_at INTEGER NOT NULL,
+  source TEXT NOT NULL DEFAULT 'desktop', dirty INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS idx_enrichment_lookup
+  ON enrichment_cache(image_sha256, domain, model, prompt_sha256, expires_at);
 ";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(windows)]
+    if !std::path::Path::new(r"C:\snapsmack\hub\SNAP HQ.exe").is_file()
+        && !std::path::Path::new(r"C:\snapsmack\hub\hub.exe").is_file()
+        && std::env::var("SNAPSMACK_DEV_BYPASS_HQ").ok().as_deref() != Some("1")
+    {
+        eprintln!("SNAP HQ is required. Install SNAP HQ, then launch GYSS from it.");
+        return;
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // A second launch activates the existing window instead of creating
@@ -65,8 +85,12 @@ pub fn run() {
             delete_file,
             catalog_sync,
             catalog_read,
+            enrichment_cache_merge,
             api_request,
             provision_gyss_key,
+            shared_site_credential,
+            gyss_vault_get,
+            gyss_vault_set,
         ])
         .run(tauri::generate_context!())
         .expect("error while running GET YOUR SHIT SORTED");
@@ -120,6 +144,40 @@ fn resolve_in_root(path: &str) -> Result<PathBuf, String> {
 #[tauri::command]
 fn shared_home() -> String {
     shared_root().to_string_lossy().to_string()
+}
+
+#[tauri::command]
+fn shared_site_credential(site_url: String, key_type: String) -> Result<String, String> {
+    if key_type != "gyss" { return Err("Refused unsupported credential scope".into()); }
+    shared_credentials::read(&shared_root(), &site_url, &key_type)
+}
+
+#[cfg(windows)]
+#[tauri::command]
+fn gyss_vault_get(account: String) -> Result<Option<String>, String> {
+    let entry = keyring::Entry::new("ca.snapsmack.gyss", &account).map_err(|e| e.to_string())?;
+    match entry.get_password() {
+        Ok(value) => Ok(Some(value)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[cfg(windows)]
+#[tauri::command]
+fn gyss_vault_set(account: String, secret: String) -> Result<(), String> {
+    keyring::Entry::new("ca.snapsmack.gyss", &account).map_err(|e| e.to_string())?
+        .set_password(&secret).map_err(|e| e.to_string())
+}
+
+#[cfg(not(windows))]
+#[tauri::command]
+fn gyss_vault_get(_account: String) -> Result<Option<String>, String> { Ok(None) }
+
+#[cfg(not(windows))]
+#[tauri::command]
+fn gyss_vault_set(_account: String, _secret: String) -> Result<(), String> {
+    Err("No protected credential service is available".into())
 }
 
 /// Perform only authenticated GET/POST calls to SnapSmack's GYSS API route.
@@ -522,6 +580,55 @@ fn catalog_read(path: String) -> Result<serde_json::Value, String> {
         "site_mode": site_mode,
         "synced_at": synced_at,
     }))
+}
+
+/// Merge authoritative CMS enrichment rows into the shared SQLite mirror.
+/// A locally dirty row whose base revision is older is returned as a collision.
+#[tauri::command]
+fn enrichment_cache_merge(path: String, records: Vec<serde_json::Value>) -> Result<serde_json::Value, String> {
+    let p = resolve_in_root(&path)?;
+    if let Some(parent) = p.parent() { std::fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
+    let mut conn = rusqlite::Connection::open(&p).map_err(|e| e.to_string())?;
+    conn.execute_batch(CATALOG_SCHEMA).map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let mut updated = 0usize;
+    let mut collisions: Vec<serde_json::Value> = vec![];
+    for record in records {
+        let key = record.get("cache_key").and_then(|v| v.as_str()).unwrap_or_default();
+        if key.len() != 64 { continue; }
+        let local: Option<(i64,i64)> = tx.query_row(
+            "SELECT dirty,base_revision FROM enrichment_cache WHERE cache_key=?1",
+            rusqlite::params![key], |row| Ok((row.get(0)?, row.get(1)?)))
+            .optional().map_err(|e| e.to_string())?;
+        let remote_revision = record.get("revision").and_then(|v| v.as_i64()).unwrap_or(1);
+        if let Some((dirty, base)) = local {
+            if dirty != 0 && remote_revision > base {
+                collisions.push(serde_json::json!({"cache_key":key,"remote":record}));
+                continue;
+            }
+        }
+        tx.execute("INSERT OR REPLACE INTO enrichment_cache
+          (cache_key,image_sha256,domain,model,prompt_sha256,prompt_version,bundle_json,raw_response,
+           accepted_json,revision,base_revision,generated_at,expires_at,modified_at,source,dirty)
+          VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?10,?11,?12,?13,'cms',0)",
+          rusqlite::params![key,
+            record.get("image_sha256").and_then(|v| v.as_str()).unwrap_or_default(),
+            record.get("domain").and_then(|v| v.as_str()).unwrap_or_default(),
+            record.get("model").and_then(|v| v.as_str()).unwrap_or_default(),
+            record.get("prompt_sha256").and_then(|v| v.as_str()).unwrap_or_default(),
+            record.get("prompt_version").and_then(|v| v.as_str()).unwrap_or("1"),
+            serde_json::to_string(record.get("bundle").unwrap_or(&serde_json::json!({}))).map_err(|e| e.to_string())?,
+            record.get("raw_response").and_then(|v| v.as_str()).unwrap_or_default(),
+            serde_json::to_string(record.get("accepted").unwrap_or(&serde_json::json!({}))).map_err(|e| e.to_string())?,
+            remote_revision,
+            record.get("generated_at").and_then(|v| v.as_i64()).unwrap_or(0),
+            record.get("expires_at").and_then(|v| v.as_i64()).unwrap_or(0),
+            record.get("modified_at").and_then(|v| v.as_i64()).unwrap_or(0),
+          ]).map_err(|e| e.to_string())?;
+        updated += 1;
+    }
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({"updated":updated,"collisions":collisions}))
 }
 
 // ── First-run migration (off %APPDATA%\GetYourShitSorted) ─────────────────────

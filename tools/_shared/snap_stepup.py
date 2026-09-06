@@ -98,6 +98,7 @@ class AuthResult:
     window_minutes:   int  = 0
     needs_enrollment: bool = False   # user has no 2FA enrolled — can't step up yet
     username:         str  = ''      # the username that was used (caller may persist it)
+    totp_window_days: int  = 30      # server policy; old servers omit it
 
 
 def confirm_insecure_transport(parent, base_url: str, *, what: str = 'your API key') -> bool:
@@ -177,6 +178,7 @@ def request_authorization(base_url: str, route: str, api_key: str,
             data.get('message', 'Import authorized.'),
             authorized_until=int(data.get('authorized_until', 0) or 0),
             window_minutes=int(data.get('window_minutes', 0) or 0),
+            totp_window_days=max(1, int(data.get('totp_window_days', 30) or 30)),
             username=username,
         )
 

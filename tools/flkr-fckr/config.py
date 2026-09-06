@@ -40,6 +40,10 @@ try:
 except Exception:
     snap_vault = None
     _VAULT_OK = False
+try:
+    import snap_connections
+except Exception:
+    snap_connections = None
 
 
 def vault_available() -> bool:
@@ -123,10 +127,15 @@ def load() -> dict:
     cfg = configparser.ConfigParser()
     cfg.read(_config_path())
 
+    site_url = cfg.get('site', 'url', fallback='')
+    api_key = _decode_pw(cfg.get('site', 'api_key', fallback=''))
+    shared = snap_connections.resolve(site_url, "flkrfckr") if snap_connections else None
+    if shared and shared.get('api_key'):
+        site_url, api_key = shared['site_url'], shared['api_key']
     return {
         # SnapSmack site
-        'site_url':         cfg.get('site', 'url',          fallback=''),
-        'api_key':          _decode_pw(cfg.get('site', 'api_key', fallback='')),
+        'site_url':         site_url,
+        'api_key':          api_key,
         'auth_username':    cfg.get('site', 'auth_username', fallback=''),
         # Username prefilled in the step-up dialog. Convenience only — the
         # password and TOTP code are NEVER stored.

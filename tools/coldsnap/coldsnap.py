@@ -14,7 +14,7 @@ host App that supplies `_config` (url / api_key) and `_site_data` to them.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.1.7"
+BUILD_VERSION = "0.7.10"
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to coldsnap-debug.log next to the exe.
@@ -384,5 +384,7 @@ class App(tk.Tk):
 
 
 if __name__ == "__main__":
+    import snap_hq_gate
+    snap_hq_gate.require()
     App().mainloop()
 # ===== SNAPSMACK EOF =====

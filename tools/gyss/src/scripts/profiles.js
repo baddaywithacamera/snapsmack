@@ -21,7 +21,7 @@ import { sharedHome, siteKey } from './paths.js';
 
 // ===== SNAPSMACK EOF =====  (header reference only — JS marker at bottom)
 
-const SCHEMA = 1;
+const SCHEMA = 2;
 
 let _profilesDir = null;
 let _legacyDir = null;
@@ -59,13 +59,13 @@ function b64DecodeUtf8(b64) {
 }
 
 /** On-disk canonical -> in-memory profile (plaintext api_key). */
-function fromDisk(data, path) {
+function fromDisk(data, path, apiKey = '') {
     const extras = (data.extras && typeof data.extras === 'object') ? data.extras : {};
     return {
         name:           data.name || '',
         site_url:       data.site_url || '',
         // GYSS must not mistake another tool's shared-profile key for its own.
-        api_key:        String(extras.api_key_gyss || '') || b64DecodeUtf8(data.api_key_enc || ''),
+        api_key:        apiKey || String(extras.api_key_gyss || '') || b64DecodeUtf8(data.api_key_enc || ''),
         last_connected: data.last_connected ?? null,
         extras,
         _path:          path,
@@ -121,23 +121,27 @@ export async function cacheProfileSiteMode(path, mode) {
 export async function loadProfile(path) {
     const data = await readProfile(path);
     const extras = (data.extras && typeof data.extras === 'object') ? data.extras : {};
-    // Fleet discovery retains the full hub→spoke key locally. Use it once to
-    // mint a restricted GYSS-only key, then persist that scoped key separately.
-    if (!String(extras.api_key_gyss || '').trim() && String(extras.api_key_local || '').trim()) {
-        try {
-            extras.api_key_gyss = await invoke('provision_gyss_key', {
-                siteUrl: String(data.site_url || ''),
-                apiKeyLocal: String(extras.api_key_local),
-            });
-            data.extras = extras;
-            await invoke('write_file', { path, content: JSON.stringify(data, null, 2) });
-        } catch (err) {
-            // The fleet hub cannot provision itself through its spoke-only route.
-            // Keep loading so a manually created GYSS key remains usable.
-            console.warn('Automatic GYSS key provisioning failed:', err);
-        }
+    let apiKey = '';
+    try {
+        apiKey = await invoke('shared_site_credential', { siteUrl: String(data.site_url || ''), keyType: 'gyss' });
+    } catch { /* fall through to the app's protected manual-key vault */ }
+    if (!apiKey) {
+        try { apiKey = await invoke('gyss_vault_get', { account: siteKey(data.site_url) }) || ''; }
+        catch { /* legacy migration below */ }
     }
-    return fromDisk(data, path);
+    const legacyKey = String(extras.api_key_gyss || '') || b64DecodeUtf8(data.api_key_enc || '');
+    apiKey ||= legacyKey;
+    if (!apiKey) throw new Error('Discover has no GYSS key for this site. Run Discover Fleet again.');
+    if (legacyKey) {
+        await invoke('gyss_vault_set', { account: siteKey(data.site_url), secret: apiKey });
+        delete extras.api_key_gyss;
+        delete extras.api_key_local;
+        delete data.api_key_enc;
+        data.schema = SCHEMA;
+        data.extras = extras;
+        await invoke('write_file', { path, content: JSON.stringify(data, null, 2) });
+    }
+    return fromDisk(data, path, apiKey);
 }
 
 /** Save a profile. Keyed by site (siteKey), so re-saving the same blog updates it
@@ -155,14 +159,17 @@ export async function saveProfile(profile) {
     if (!extras) {
         extras = existing?.extras || {};
     }
-    extras.api_key_gyss = String(profile.api_key || '');
+    if (profile.api_key) {
+        await invoke('gyss_vault_set', { account: siteKey(site), secret: String(profile.api_key) });
+    }
+    delete extras.api_key_gyss;
+    delete extras.api_key_local;
 
     const toWrite = {
         schema:         SCHEMA,
         name:           profile.name || site,
         site_url:       site,
         // Preserve the shared profile's primary key; GYSS owns its scoped entry.
-        api_key_enc:    existing?.api_key_enc || b64EncodeUtf8(profile.api_key || ''),
         last_connected: profile.last_connected ?? null,
         extras:         (extras && typeof extras === 'object') ? extras : {},
     };

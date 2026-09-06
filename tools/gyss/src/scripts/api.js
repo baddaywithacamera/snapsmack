@@ -107,10 +107,18 @@ export class SnapSmackGYSSAPI {
     }
 
     /** Enrich exactly one photo. Queueing always remains in the desktop app. */
-    async enrichOne(id, prompt, fields, overwrite = false) {
+    async enrichOne(id, prompt, fields, overwrite = false, forceRefresh = false) {
         return this._call('POST', 'enrich-one', null, {
-            id, prompt, fields, overwrite
+            id, prompt, fields, overwrite, force_refresh: forceRefresh
         });
+    }
+
+    async enrichmentCache(since = 0) {
+        return this._call('GET', 'enrichment-cache', { since });
+    }
+
+    async pushEnrichmentCache(record) {
+        return this._call('POST', 'enrichment-cache', null, { record });
     }
 
     /**

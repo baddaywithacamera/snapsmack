@@ -45,6 +45,7 @@ $checks = [
     'separate ALT update'      => "method==='PUT'",
     'Pixelix settings'         => "'hide_collections'=>true",
     'Pixelix account alias'    => "api/pixelfed/v1/accounts/1",
+    'canonical actor handle'   => "px_setting(\$pdo,'smackverse_handle','')",
     'location search fallback' => "api/v1.1/compose/search/location",
     'collections fallback'     => "api/v1\\.1/collections/accounts/1",
     'federated DM conversations'=> "route==='api/v1/conversations'",

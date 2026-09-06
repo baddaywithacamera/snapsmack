@@ -33,6 +33,7 @@ if _HERE not in sys.path:
 
 import snap_creds
 import snap_profiles
+import snap_native_creds
 
 try:
     from snap_stepup import insecure_transport_reason
@@ -206,11 +207,29 @@ def _provision_hub_backup_key(site_url, hub_api_key, key_value, timeout=20):
     return ""
 
 
+def _provision_hub_tool_key(site_url, hub_api_key, key_type, timeout=20):
+    if not (site_url and hub_api_key and key_type):
+        return ""
+    try:
+        r = requests.post(site_url.rstrip("/") + "/suyb-data.php",
+            json={"action": "provision-tool-key", "key_type": key_type},
+            headers={"Authorization": "Bearer " + hub_api_key.strip(),
+                     "User-Agent": "SnapSmackHub/1.0"}, timeout=timeout)
+        if r.status_code == 200:
+            data = r.json()
+            if data.get("ok"):
+                return str(data.get("api_key") or "").strip()
+    except Exception:
+        pass
+    return ""
+
+
 def save_to_shared(hub_info, spokes, hub_api_key="") -> dict:
     """Write a discovered fleet into the shared stores. Returns a summary dict."""
     vault_keys = _save_cloud_to_vault(hub_info.get("site_url", ""), hub_api_key,
                                       hub_info.get("cloud_config", {}))
     saved_sites = []
+    native_credential_failures = []
     # The hub itself is a site too — save it so the tools can target it.
     hub_node = {"site_url": hub_info.get("site_url", ""),
                 "site_name": hub_info.get("site_name", "")}
@@ -226,17 +245,28 @@ def save_to_shared(hub_info, spokes, hub_api_key="") -> dict:
         akl_for_extras = akl or ((hub_api_key or "").strip() if node is hub_node else "")
         if akl_for_extras:
             prof.setdefault("extras", {})["api_key_local"] = akl_for_extras
-        # Have the spoke mint a real sybu posting key for the fleet (set-up-once).
-        if akl:
-            minted = _provision_spoke_key(prof["site_url"], akl, "sybu")
-            if minted:
-                prof["api_key"] = minted
+        # Have the spoke mint least-privilege keys for every fleet tool.  Store
+        # each under an explicit field so no app has to reuse a posting/full key.
+        provisioner_key = akl or ((hub_api_key or "").strip() if node is hub_node else "")
+        if provisioner_key:
+            for key_type in ("sybu", "gyss", "ohsnap", "tyswy", "unzucker",
+                             "flkrfckr", "smackpress"):
+                minted = (_provision_spoke_key(prof["site_url"], provisioner_key, key_type)
+                          if akl else _provision_hub_tool_key(
+                              prof["site_url"], provisioner_key, key_type))
+                if minted:
+                    if os.name == "nt" and not snap_native_creds.set_site(prof["site_url"], key_type, minted):
+                        native_credential_failures.append({"site_url": prof["site_url"], "key_type": key_type})
+                    prof.setdefault("extras", {})["api_key_" + key_type] = minted
+                    if key_type == "sybu":
+                        prof["api_key"] = minted
         try:
             snap_profiles.save(prof)
             saved_sites.append(prof["site_url"])
         except Exception:
             pass
-    return {"vault_keys": vault_keys, "sites": saved_sites, "count": len(saved_sites)}
+    return {"vault_keys": vault_keys, "sites": saved_sites, "count": len(saved_sites),
+            "native_credential_failures": native_credential_failures}
 
 
 def discover_and_save(hub_url, api_key="", admin_user="", admin_pass="", timeout=30) -> dict:

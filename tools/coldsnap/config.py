@@ -290,6 +290,15 @@ def load() -> dict:
         'win_maximized':           cfg.getboolean('ui', 'win_maximized', fallback=False),
         'win_geometry':            cfg.get('ui', 'win_geometry', fallback=''),
     }
+    _add_shared_to_path()
+    try:
+        import snap_connections
+        connection = snap_connections.resolve(_data['url'], 'sybu')
+        if connection and connection.get('api_key'):
+            _data['url'] = connection['site_url']
+            _data['api_key'] = connection['api_key']
+    except Exception:
+        pass
     # Shared store wins when set, else this tool's own config — configure once,
     # every tool sees it. No-op if _shared is absent (existing installs unaffected).
     _sc = _shared_creds()

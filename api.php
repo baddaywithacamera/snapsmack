@@ -36,6 +36,13 @@ if (strpos($route, 'multisite') === 0) {
     exit;
 }
 
+// --- SNAP HQ DEVICE AUTHORIZATION ---
+// One-use activation followed by device-signed status/renewal requests.
+if (strpos($route, 'desktop-auth') === 0) {
+    require_once 'core/desktop-auth.php';
+    exit;
+}
+
 // --- OH SNAP! ROUTES ---
 // Route all /api/ohsnap/* requests to the Oh Snap! skin designer API handler
 if (strpos($route, 'ohsnap') === 0) {
