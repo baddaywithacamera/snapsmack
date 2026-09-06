@@ -130,8 +130,8 @@ class TakeMode(QWidget):
         self.body_edit.setFocus()
 
     def _add_photos(self):
-        paths, _ = QFileDialog.getOpenFileNames(
-            self, "Add photos", "", "Images (*.jpg *.jpeg *.png *.webp);;All files (*.*)")
+        from .pickers import pick_images
+        paths = pick_images(self, (self.app_config() or {}).get("url", ""))
         for p in paths:
             if len(self._bucket) >= O.SMACKTALK_BUCKET_MAX:
                 QMessageBox.information(

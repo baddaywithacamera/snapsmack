@@ -164,8 +164,8 @@ class SoloMode(QWidget):
 
     # -- compose behaviour ------------------------------------------------------
     def _choose_image(self):
-        p, _ = QFileDialog.getOpenFileName(
-            self, "Choose photo", "", "Images (*.jpg *.jpeg *.png *.webp);;All files (*.*)")
+        from .pickers import pick_image
+        p = pick_image(self, (self.app_config() or {}).get("url", ""))
         if not p:
             return
         self._image_path = p
