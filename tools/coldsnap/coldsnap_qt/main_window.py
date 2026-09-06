@@ -48,16 +48,13 @@ class MainWindow(QMainWindow):
         cfg = lambda: self.connect_panel.config
 
         tabs = QTabWidget()
-        tabs.addTab(SoloMode(cfg), "COLD ONE — one photo")
-        tabs.addTab(StackMode(cfg), "COLD STACK — carousels")
-        tabs.addTab(TakeMode(cfg), "COLD TAKE — essays")
+        tabs.addTab(SoloMode(cfg), "COLD ONE")
+        tabs.addTab(StackMode(cfg), "COLD STACK")
+        tabs.addTab(TakeMode(cfg), "COLD TAKE")
+        tabs.setTabToolTip(0, "One photo, one post — solo photoblog sites")
+        tabs.setTabToolTip(1, "Carousels, stacks and trigrams — gram grid sites")
+        tabs.setTabToolTip(2, "An essay with photos — long-form sites")
         col.addWidget(tabs, 1)
-
-        foot = QHBoxLayout()
-        foot.addWidget(hint("Everything composes offline. Nothing reaches the site "
-                            "until you press SEND — and it always asks first, by name."))
-        foot.addStretch(1)
-        col.addLayout(foot)
 
         self.setCentralWidget(central)
 
