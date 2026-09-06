@@ -39,6 +39,15 @@ class ConnectPanel(QWidget):
         self.profile_combo.addItem("— pick a saved site —", "")
         for name in profile_manager.list_profiles():
             self.profile_combo.addItem(name, name)
+        # The combo must TELL THE TRUTH about which site is loaded: showing
+        # "pick a saved site" next to "connected to X" was two contradicting
+        # statements in one header. Select the profile the saved URL belongs to.
+        current = self._match_profile(self.config.get("url", ""))
+        if current:
+            self.profile_combo.blockSignals(True)
+            self.profile_combo.setCurrentIndex(
+                max(0, self.profile_combo.findData(current)))
+            self.profile_combo.blockSignals(False)
         self.profile_combo.currentIndexChanged.connect(self._on_profile)
         top.addWidget(self.profile_combo, 1)
 
@@ -51,6 +60,12 @@ class ConnectPanel(QWidget):
         self.details_btn.setCheckable(True)
         self.details_btn.toggled.connect(self._toggle_details)
         top.addWidget(self.details_btn)
+
+        help_btn = QPushButton("?  Help")
+        help_btn.setObjectName("Quiet")
+        help_btn.setToolTip("Open the help (F1)")
+        help_btn.clicked.connect(self._show_help)
+        top.addWidget(help_btn)
         card.body.addLayout(top)
 
         # -- the expander ------------------------------------------------------
@@ -82,6 +97,26 @@ class ConnectPanel(QWidget):
         self._reflect_status()
 
     # -- behaviour ------------------------------------------------------------
+    def _show_help(self):
+        from .help_dialog import HelpDialog
+        HelpDialog(self).exec()
+
+    @staticmethod
+    def _norm_url(url: str) -> str:
+        return (url or "").strip().lower().replace("https://", "") \
+                                          .replace("http://", "").rstrip("/")
+
+    def _match_profile(self, url: str):
+        """Name of the saved profile whose URL matches, or None."""
+        want = self._norm_url(url)
+        if not want:
+            return None
+        for name in profile_manager.list_profiles():
+            prof = profile_manager.load_profile(name) or {}
+            if self._norm_url(prof.get("url", "")) == want:
+                return name
+        return None
+
     def _toggle_details(self, on: bool):
         self.details.setVisible(on)
         self.details_btn.setText("Connection details ▴" if on else "Connection details ▾")
@@ -128,8 +163,10 @@ class ConnectPanel(QWidget):
         url = (self.config.get("url") or self.url_edit.text() or "").strip()
         key = (self.config.get("api_key") or "").strip()
         if url and key:
+            # "will post to", not "connected to" — nothing has been verified
+            # over the network yet, and this app is honest about state.
             shown = url.replace("https://", "").replace("http://", "").rstrip("/")
-            self.status_lbl.setText(f"● connected to {shown}")
+            self.status_lbl.setText(f"● will post to {shown}")
             self.status_lbl.setStyleSheet(f"color: {theme.OK};")
         else:
             self.status_lbl.setText("○ no site yet — pick one, or open Connection details")

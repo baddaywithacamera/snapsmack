@@ -10,10 +10,10 @@ import os
 from urllib.parse import urlparse
 
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QIntValidator
 from PySide6.QtWidgets import (
-    QFrame, QLabel, QVBoxLayout, QHBoxLayout, QMessageBox, QPushButton,
-    QSlider, QWidget,
+    QFrame, QLabel, QLineEdit, QVBoxLayout, QHBoxLayout, QMessageBox,
+    QPushButton, QSlider, QWidget,
 )
 
 from . import theme
@@ -100,7 +100,11 @@ def thumb_label(path: str, size: int = 64) -> QLabel:
 # --- Slider row -------------------------------------------------------------------
 
 class SliderRow(QWidget):
-    """label — slider — live value. The COLD SNAP control-row idiom."""
+    """label — slider — typed value. The COLD SNAP control-row idiom.
+
+    The number is a real editable field, not a readout: type an exact value
+    instead of landing a fine drag (design-bible law — precision is optional,
+    never mandatory). Arrow keys step the focused slider as Qt always does."""
 
     def __init__(self, label: str, lo: int, hi: int, value: int, parent=None):
         super().__init__(parent)
@@ -112,14 +116,24 @@ class SliderRow(QWidget):
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(lo, hi)
         self.slider.setValue(value)
-        self.value_lbl = QLabel(str(value))
-        self.value_lbl.setObjectName("Hint")
-        self.value_lbl.setFixedWidth(36)
-        self.value_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.slider.valueChanged.connect(lambda v: self.value_lbl.setText(str(v)))
+        self.value_edit = QLineEdit(str(value))
+        self.value_edit.setFixedWidth(56)
+        self.value_edit.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.value_edit.setValidator(QIntValidator(lo, hi, self))
+        self.slider.valueChanged.connect(
+            lambda v: self.value_edit.setText(str(v)))
+        self.value_edit.editingFinished.connect(self._typed)
         row.addWidget(name)
         row.addWidget(self.slider, 1)
-        row.addWidget(self.value_lbl)
+        row.addWidget(self.value_edit)
+
+    def _typed(self):
+        text = self.value_edit.text().strip()
+        if text in ("", "-"):
+            self.value_edit.setText(str(self.slider.value()))
+            return
+        self.slider.setValue(int(text))            # clamps to range
+        self.value_edit.setText(str(self.slider.value()))
 
     def value(self) -> int:
         return int(self.slider.value())

@@ -135,6 +135,28 @@ def stylesheet() -> str:
         background: transparent; border: none; color: {DIM}; padding: 4px 8px;
     }}
     QPushButton#Quiet:hover {{ color: {ACCENT}; }}
+    /* Shortcode-bar buttons — compact but still a real target (min 30px tall). */
+    QPushButton#ScBtn {{
+        background: {FIELD};
+        color: {BODY};
+        border: 1px solid {BORDER};
+        border-radius: 5px;
+        padding: 5px 10px;
+        min-height: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }}
+    QPushButton#ScBtn:hover {{ border: 1px solid {ACCENT}; color: {ACCENT}; }}
+    /* Colour well — the swatch IS the button; click opens the picker. */
+    QPushButton#ColourWell {{
+        border: 1px solid {BORDER};
+        border-radius: 5px;
+        min-width: 40px;
+        max-width: 40px;
+        min-height: 30px;
+    }}
+    QPushButton#ColourWell:hover {{ border: 1px solid {ACCENT}; }}
 
     /* --- Inputs ------------------------------------------------------------*/
     QLineEdit, QPlainTextEdit, QTextEdit {{
@@ -187,6 +209,17 @@ def stylesheet() -> str:
         margin: -6px 0; border-radius: 7px; border: 2px solid {PANEL};
     }}
     QSlider::handle:horizontal:hover {{ background: {ACCENT_HI}; }}
+
+    /* Disabled controls read as OFF, not merely dim (a QSS-styled label keeps
+       its colour on disable unless told otherwise — tell it otherwise). */
+    QSlider::handle:horizontal:disabled {{ background: {FAINT}; }}
+    QSlider::sub-page:horizontal:disabled {{ background: {FIELD_HI}; }}
+    QLabel:disabled, QCheckBox:disabled, QRadioButton:disabled {{ color: {FAINT}; }}
+    QLabel#CardTitle:disabled {{ color: {FAINT}; }}
+    QLineEdit:disabled, QPlainTextEdit:disabled, QComboBox:disabled {{
+        color: {FAINT}; border: 1px solid {FIELD};
+    }}
+    QCheckBox::indicator:disabled {{ border: 1px solid {FIELD}; background: {BG}; }}
 
     /* --- Scroll ------------------------------------------------------------*/
     QScrollArea {{ border: none; background: transparent; }}
