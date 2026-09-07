@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.654D "NO SECRET HANDSHAKE" — 2026-09-06
+- **SNAP HQ authorization is seamless again.** The saved Hub key identifies the installation, then the ordinary password-and-authenticator step binds this computer's Ed25519 identity and returns its signed entitlement in one operation. There is no one-use key to copy between the CMS and desktop app. The device cap, block list, 90-day entitlement and offline grace rules remain unchanged.
+- **Desktop authorization uses the CMS router that is actually deployed.** SNAP HQ now calls `api.php?route=desktop-auth/...` instead of relying on an unconfigured pretty-URL rewrite, and reports an explicitly outdated CMS instead of the misleading “unexpected response (404).”
+
 ## 0.7.653D "ONE COLUMN ONLY" — 2026-09-06
 - **Fresh installs no longer fail while creating `snap_images`.** The canonical installer schema contains exactly one `img_color_mode` declaration. This release is rebuilt from the clean `dev` source so the downloadable installer matches the tracked schema instead of carrying the stale duplicate that escaped into the 0.7.652D package.
 - **The per-follower PUSH button works again.** The 652D merge brought the followers page's TARGETED PUSH control (and its regression test) back from the old desktop branch — but the smackverse→fediverse rename had dropped the backend, so the button posted into nothing. Recovered `sv_push_to_follower` and its POST handler onto the current fediverse files, pointed the default count at the renamed `fediverse_backfill_count` setting (the page was still reading the stranded `smackverse_*` name), moved the form's inline styles into the admin geometry CSS, and re-pinned it all under `tests/fediverse-targeted-push-regression.php` so it can't silently vanish again.

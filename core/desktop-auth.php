@@ -11,6 +11,7 @@
  */
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/totp.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -19,6 +20,15 @@ function da_out(array $body, int $status = 200): never {
     http_response_code($status);
     echo json_encode($body, JSON_UNESCAPED_SLASHES);
     exit;
+}
+
+function da_auth_header(): string {
+    $header = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+    if ($header === '' && function_exists('getallheaders')) {
+        $headers = getallheaders();
+        $header = (string)($headers['Authorization'] ?? $headers['authorization'] ?? '');
+    }
+    return trim($header);
 }
 function da_b64u(string $raw): string { return rtrim(strtr(base64_encode($raw), '+/', '-_'), '='); }
 function da_unb64u(string $text): string|false {
@@ -122,6 +132,60 @@ $action = strtolower((string)basename(parse_url($_SERVER['REQUEST_URI'] ?? '', P
 if (isset($_GET['route'])) $action = strtolower((string)basename(trim((string)$_GET['route'],'/')));
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') da_out(['ok'=>false,'error'=>'POST required.'],405);
 [$data,$raw]=da_body();
+
+if ($action === 'enroll') {
+    // Seamless HQ enrolment: the saved Hub key identifies the desktop client;
+    // the account password + TOTP prove the human owner for this consequential
+    // action. Neither credential is stored by HQ or returned by this endpoint.
+    $auth = da_auth_header();
+    if (!preg_match('/^Bearer\s+(\S+)$/i', $auth, $m)) {
+        da_out(['ok'=>false,'error'=>'A Hub API key is required.'],401);
+    }
+    $q=$pdo->prepare("SELECT user_id,is_active,expires_at FROM snap_ohsnap_keys WHERE key_hash=? AND key_type='hub' LIMIT 1");
+    $q->execute([hash('sha256',trim($m[1]))]); $hub=$q->fetch(PDO::FETCH_ASSOC);
+    if (!$hub || !(int)$hub['is_active'] || ($hub['expires_at'] && strtotime($hub['expires_at'])<=time())) {
+        da_out(['ok'=>false,'error'=>'The saved Hub API key is invalid or expired.'],403);
+    }
+    $username=trim((string)($data['username']??''));
+    $password=(string)($data['password']??'');
+    $totp=preg_replace('/\s+/','',(string)($data['totp_code']??''));
+    $q=$pdo->prepare('SELECT id,password_hash,totp_enabled,totp_secret FROM snap_users WHERE username=? LIMIT 1');
+    $q->execute([$username]); $user=$q->fetch(PDO::FETCH_ASSOC);
+    if (!$user || ($hub['user_id'] && (int)$hub['user_id']!==(int)$user['id'])) {
+        da_out(['ok'=>false,'error'=>'These credentials do not match the saved Hub key.'],403);
+    }
+    if ($password==='' || !password_verify($password,(string)$user['password_hash'])) {
+        da_out(['ok'=>false,'error'=>'Password incorrect.'],401);
+    }
+    if (empty($user['totp_enabled']) || empty($user['totp_secret'])) {
+        da_out(['ok'=>false,'error'=>'Two-factor authentication must be enabled before authorizing a computer.'],403);
+    }
+    if ($totp==='' || !totp_verify((string)$user['totp_secret'],$totp)) {
+        da_out(['ok'=>false,'error'=>'Authenticator code incorrect.'],401);
+    }
+    $pk64=trim((string)($data['public_key']??'')); $pk=base64_decode($pk64,true);
+    if ($pk===false || strlen($pk)!==SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
+        da_out(['ok'=>false,'error'=>'Invalid device public key.'],400);
+    }
+    $fingerprint=hash('sha256',$pk); $pdo->beginTransaction();
+    try {
+      $q=$pdo->prepare('SELECT * FROM snap_desktop_devices WHERE fingerprint=? FOR UPDATE'); $q->execute([$fingerprint]); $existing=$q->fetch(PDO::FETCH_ASSOC);
+      if ($existing && $existing['status']==='blocked') throw new RuntimeException('This device identity is blocked.');
+      $active=(int)$pdo->query("SELECT COUNT(*) FROM snap_desktop_devices WHERE status='active'")->fetchColumn();
+      if ((!$existing || $existing['status']!=='active') && $active>=4) throw new RuntimeException('Four devices are already active. Disable one before adding another.');
+      $id=$existing['id']??da_uuid(); $now=date('Y-m-d H:i:s'); $exp=date('Y-m-d H:i:s',strtotime('+3 months')); $grace=date('Y-m-d H:i:s',strtotime($exp.' +14 days')); $ip=da_ip();
+      $meta=[substr(trim((string)($data['device_name']??'SNAP HQ device')),0,120),substr(trim((string)($data['locale']??'')),0,40),substr(trim((string)($data['timezone']??'')),0,80),substr(trim((string)($data['os']??'')),0,160),substr(trim((string)($data['hq_version']??'')),0,40)];
+      if ($existing) {
+        $pdo->prepare("UPDATE snap_desktop_devices SET user_id=?,public_key=?,device_name=?,locale_name=?,timezone_name=?,os_name=?,hq_version=?,last_ip=?,status='active',term_started_at=?,expires_at=?,grace_ends_at=?,disabled_at=NULL,token_version=token_version+1 WHERE id=?")
+          ->execute([(int)$user['id'],$pk64,...$meta,$ip,$now,$exp,$grace,$id]);
+      } else {
+        $pdo->prepare("INSERT INTO snap_desktop_devices(id,user_id,public_key,fingerprint,device_name,locale_name,timezone_name,os_name,hq_version,first_ip,last_ip,status,term_started_at,expires_at,grace_ends_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,'active',?,?,?)")
+          ->execute([$id,(int)$user['id'],$pk64,$fingerprint,...$meta,$ip,$ip,$now,$exp,$grace]);
+      }
+      $pdo->commit(); $q=$pdo->prepare('SELECT * FROM snap_desktop_devices WHERE id=?');$q->execute([$id]);$device=$q->fetch(PDO::FETCH_ASSOC);
+      da_out(['ok'=>true,'device_id'=>$id,'entitlement'=>da_token($pdo,$device)]);
+    } catch (Throwable $e) { if($pdo->inTransaction())$pdo->rollBack(); da_out(['ok'=>false,'error'=>$e->getMessage()],409); }
+}
 
 if ($action === 'activate') {
     if (!function_exists('sodium_crypto_sign_verify_detached')) da_out(['ok'=>false,'error'=>'This server needs the PHP Sodium extension for device authorization.'],503);
