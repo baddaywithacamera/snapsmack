@@ -25,6 +25,17 @@ $feed_off_settings['photochallenge_feed_enabled'] = '0';
 pc_test(!pc_feed_enabled($feed_off_settings), 'explicitly disabled challenge feed remained available');
 pc_test(pc_tag($settings) === 'photofri', 'challenge tag normalization failed');
 
+$test_gate = ['photochallenge_test_mode'=>'1',
+    'photochallenge_test_allow'=>'leo@goto.photoblogs.fyi twilight@pix.photoblogs.fyi'];
+pc_test(pc_test_allowed($test_gate, 'https://goto.photoblogs.fyi/users/leo', 'leo@goto.photoblogs.fyi'),
+    'exact full-handle whitelist entry was rejected');
+pc_test(!pc_test_allowed($test_gate, 'https://goto.photoblogs.fyi/users/leonardo', 'leonardo@goto.photoblogs.fyi'),
+    'leo whitelist entry widened to leonardo');
+$loose_gate = ['photochallenge_test_mode'=>'1',
+    'photochallenge_test_allow'=>'leo goto.photoblogs.fyi'];
+pc_test(!pc_test_allowed($loose_gate, 'https://goto.photoblogs.fyi/users/leo', 'leo@goto.photoblogs.fyi'),
+    'bare username or host widened the testing whitelist');
+
 $open = pc_window($settings, strtotime('2026-09-04 12:00:00 UTC'));
 $closed = pc_window($settings, strtotime('2026-09-06 02:00:00 UTC'));
 pc_test($open['open'] === true, 'Friday challenge window was not open');
@@ -140,6 +151,11 @@ pc_test(str_contains($photo, "(int)(\$row['sensitive'] ?? 0) !== 0"),
     'sensitive/CW entries are not rejected');
 pc_test(str_contains($photo, 'pc_withdraw_actor_admissions') && str_contains($photo, 'sv_unboost_remote'),
     'leave/block does not withdraw entries and undo challenge boosts');
+pc_test(str_contains($schema, '`follow_owned` tinyint(1)')
+    && str_contains($photo, 'SET follow_owned=1 WHERE actor_url=?')
+    && str_contains($photo, 'p.follow_owned=1')
+    && !str_contains($photo, 'SELECT id FROM snap_ap_following WHERE actor_url=? LIMIT 1'),
+    'PhotoFriday can erase an ordinary pre-existing follow when a participant leaves');
 pc_test(str_contains($photo, 'boost_activity_id') && str_contains($photo, 'pc_entry_object_id'),
     'engagement on the challenge Announce is not normalized to the admitted object');
 pc_test(str_contains($photo, 'pc_blocklist') && str_contains($photo, 'pc_is_blocked'),

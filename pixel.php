@@ -81,8 +81,11 @@ if (isset($_GET['ajax'])) {
     if ($panel === 'home') {
         if (!$sv_on) { echo json_encode(['ok' => true, 'items' => []]); exit; }
         $items = sv_home_timeline($pdo, 60);
-        if (!$items) { @set_time_limit(30); $items = sv_home_feed($pdo, 6, 40); }
-        echo json_encode(['ok' => true, 'items' => $items], JSON_UNESCAPED_SLASHES); exit;
+        echo json_encode([
+            'ok' => true,
+            'items' => $items,
+            'msg' => $items ? '' : 'Nothing received from followed accounts yet.',
+        ], JSON_UNESCAPED_SLASHES); exit;
     }
 
     if ($panel === 'notifications') {

@@ -1480,6 +1480,7 @@ CREATE TABLE IF NOT EXISTS `pc_participants` (
   `handle` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `joined_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `horsconcours` tinyint(1) NOT NULL DEFAULT '0',
+  `follow_owned` tinyint(1) NOT NULL DEFAULT '0' COMMENT '1 only when PhotoFriday created the reciprocal follow',
   `state` enum('active','left','blocked') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
   PRIMARY KEY (`actor_url`(191)),
   KEY `idx_pc_participant_state` (`state`)
