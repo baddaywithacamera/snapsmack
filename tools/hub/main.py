@@ -979,12 +979,14 @@ class Hub(tk.Tk):
 
         editor = tk.Frame(wrap, bg=CARD)
         editor.pack(fill="both", expand=True)
+        # Schema-2 sizing: max_long_edge is the ONE canonical size control (the
+        # legacy landscape/portrait pair is derived from it and no longer edited
+        # here — two boxes whose values get overwritten are two dead controls).
         self._site_vars = {key: tk.StringVar() for key in
-            ("max_width_landscape", "max_height_portrait", "jpeg_quality",
+            ("max_long_edge", "jpeg_quality",
              "image_resize_enabled", "export_sharpen", "handoff_dir")}
         fields = [
-            ("LANDSCAPE MAX WIDTH", "max_width_landscape"),
-            ("PORTRAIT MAX HEIGHT", "max_height_portrait"), ("JPEG QUALITY", "jpeg_quality"),
+            ("LONGEST EDGE MAX (px)", "max_long_edge"), ("JPEG QUALITY", "jpeg_quality"),
             ("RESIZE (on/off)", "image_resize_enabled"), ("SHARPEN", "export_sharpen"),
             ("BLOG FOLDER OVERRIDE (optional)", "handoff_dir"),
         ]
@@ -1085,7 +1087,9 @@ class Hub(tk.Tk):
         self._site_prompt.delete("1.0", "end")
         self._site_prompt.insert("1.0", portable.get("prompt", ""))
         for key, value in portable.items():
-            if key == "prompt":
+            # Skip fields this pane doesn't edit (derived legacy pair, future
+            # schema additions) — an unknown key must never crash the window.
+            if key == "prompt" or key not in self._site_vars:
                 continue
             self._site_vars[key].set("on" if value is True else "off" if value is False else str(value))
         self._site_vars["handoff_dir"].set(local_override["handoff_dir"])
@@ -1124,8 +1128,7 @@ class Hub(tk.Tk):
     def _portable_form(self):
         return snap_site_settings.validate_portable({
             "prompt": self._site_prompt.get("1.0", "end").strip(),
-            "max_width_landscape": self._site_vars["max_width_landscape"].get(),
-            "max_height_portrait": self._site_vars["max_height_portrait"].get(),
+            "max_long_edge": self._site_vars["max_long_edge"].get(),
             "jpeg_quality": self._site_vars["jpeg_quality"].get(),
             "image_resize_enabled": self._site_vars["image_resize_enabled"].get().lower() in ("on","1","true","yes"),
             "export_sharpen": self._site_vars["export_sharpen"].get(),
