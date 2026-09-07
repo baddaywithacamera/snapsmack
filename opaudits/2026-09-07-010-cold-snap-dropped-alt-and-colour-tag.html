@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 010 — The desktop poster silently dropped ALT text and the colour tag</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 010 — The desktop poster silently dropped ALT text and the colour tag</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-07-010</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-07 (compiled from the incident record)</td></tr>
+        <tr><td class="k">First observed</td><td>Fixed in the COLD SNAP desktop poster work (September 2026).</td></tr>
+        <tr><td class="k">Theme</td><td>The receiving end accepting a field proves nothing if the sender never sends it.</td></tr>
+        <tr><td class="k">Surfaces</td><td>COLD SNAP desktop poster (all three posting modes); image alt text and Colour/B&amp;W tag.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-watched">Watched working</span> &nbsp; All three modes now send both; the fields land on the image.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes</strong> — Sean confirms fixed.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean + Claude.</td></tr>
+        <tr><td class="k">Related</td><td>The desktop-tools family; accessibility (alt text) and the Colour/B&amp;W classification.</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No exploitable detail.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>The alt text you typed into the COLD SNAP desktop poster &mdash; the description that makes a
+    photo accessible &mdash; went nowhere. So did the Colour / black-and-white tag. The site was ready
+    to receive both; the desktop app just never put them on the wire.</p>
+
+    <h2>2. What a human saw</h2>
+    <p>You wrote a careful description for a photo in COLD SNAP, posted it, and the published image had
+    no alt text and no colour tag. Nothing warned you; the post otherwise succeeded.</p>
+
+    <h2>3. Root cause</h2>
+    <p>The site&rsquo;s posting endpoint accepted an <code>alt</code> value and a colour-mode value all
+    along. The COLD SNAP desktop poster simply never included them in what it sent. Because the two
+    ends were built at different times, &ldquo;the server accepts it&rdquo; was mistaken for &ldquo;the
+    field arrives,&rdquo; and nobody had watched the whole path end to end.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>Posted images arrived with empty alt and colour fields even when they were filled in the app
+    &mdash; and the server endpoint plainly supported both, which located the loss in the desktop
+    sender, not the site.</p>
+
+    <h2>5. What we did</h2>
+    <p>All three COLD SNAP posting modes now send both fields: the solo mode sends alt and colour;
+    the stacked mode gained a per-photo alt box sent for each image; the bucket mode carries alt on
+    the media upload into ingest. Everything lands on the image&rsquo;s own record, so a photo&rsquo;s
+    description and colour tag travel with it &mdash; offline and on the wire. The colour-mode column
+    was also added to the canonical schema so it stops depending on scattered ad-hoc fixes.</p>
+
+    <h2>6. Verified live</h2>
+    <p>Confirmed fixed by Sean. Alt text and colour tag now travel with the image.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>Any other desktop tool or posting path where the receiving end accepts a field the sender might
+    not actually be sending &mdash; the same whole-path check applies.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>Test the whole path, both ends at once. &ldquo;The server accepts this field&rdquo; is not
+        &ldquo;this field arrives&rdquo; &mdash; a sender that never sends it will pass every test that
+        only checks the receiver. Watch a real value go in one end and come out the other.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
