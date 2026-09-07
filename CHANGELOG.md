@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.659D "QUEUE FIRST" — 2026-09-07
+- **Federation cron now attempts due deliveries before any optional network maintenance.** The worker previously reconciled mesh follows, recovered relay outboxes, maintained PhotoFriday, and refreshed follower inboxes before touching its outbound queue. A slow remote fetch could leave the job marked running while every queued row remained at zero attempts. Both the scheduled worker and the admin RUN NOW path now drain durable outbound work first; maintenance and newly discovered work follow, with new rows safely deferred to the next tick.
+- **Regression coverage enforces the operational promise.** The cron test now fails if either execution path places mesh or remote maintenance ahead of the delivery drain.
+
 ## 0.7.658D "NO DRIVE, NO POST" — 2026-09-07
 - **Desktop posting now obeys the destination CMS download policy.** `sybu-data.php` exposes the live `download_link_required` and `download_default_mode` values to both `sybu` and `smackpress` clients. SMACK YOUR BATCH UP reads them on connect; COLD SNAP re-reads them immediately before Send so a changed server rule cannot be bypassed by a stale saved profile.
 - **A Drive-required site now fails closed before receiving a post.** SYBU gives no dismissible “continue without Drive” path when the CMS requires a download link. Solo and GRAM posting both require a real Drive upload result, so expired credentials, revoked access, bad folders, and mid-batch Drive errors stop that item before its web post is created. GRAM posting now uploads its original and sends the resulting URL instead of always hardcoding downloads off.

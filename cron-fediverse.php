@@ -101,6 +101,14 @@ sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'running');
 sv_ensure_tables($pdo);
 sv_ensure_keys($pdo, $settings);
 
+// Drain durable outbound work FIRST. Optional maintenance below performs
+// remote network fetches and must never prevent already-queued posts from
+// getting an attempt. New sweep/backfill rows created later wait for the next
+// ten-minute tick; that is preferable to starving an existing backlog.
+list($sent, $failed) = sv_process_deliveries(
+    $pdo, $settings, 30, sv_delivery_cadence($settings), null, null, null, 240
+);
+
 // Make the multisite roster's peer-follow promise real, gradually. One missing
 // edge per ten-minute tick avoids a follow/backfill thundering herd.
 $mesh_follow = sv_reconcile_mesh_follows($pdo, $settings, 1);
@@ -158,14 +166,9 @@ list($units, $queued) = sv_sweep_new_posts($pdo, $settings);
 // Follow handler) into paced deliveries BEFORE the drain, so a new follower's
 // catalogue starts landing this run instead of next.
 list($bf_jobs, $bf_queued) = sv_process_backfill_jobs($pdo, $settings);
-// Paced drain: same measured cadence as resync so a first-follow backfill (and
-// any sweep burst) lands on the remote in order, not shuffled by its async
-// workers. CLI/cron context, so the inter-send sleeps cost nothing user-facing.
-// Keep each ten-minute tick bounded. Remaining rows stay durable and are
-// resumed oldest-first on the next tick; no delivery is discarded.
-list($sent, $failed)  = sv_process_deliveries(
-    $pdo, $settings, 30, sv_delivery_cadence($settings), null, null, null, 240
-);
+// New sweep and backfill rows are durable and will be the first work attempted
+// on the next tick. Keeping this phase enqueue-only prevents optional work from
+// consuming the current tick's delivery budget.
 
 // Profile propagation (AP spec): if the actor's bio, avatar or display name
 // changed since we last federated it, push a signed Update(Actor) so followers'
