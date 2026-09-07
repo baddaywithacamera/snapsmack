@@ -11,7 +11,7 @@ per-row category/album editing, and Google Drive upload.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.53"   # SYBU uses the agreed 0.7.x desktop-tool version line; bump_version.py +1 patch each build
+BUILD_VERSION = "0.7.58"   # SYBU uses the agreed 0.7.x desktop-tool version line; bump_version.py +1 patch each build
 
 # ---------------------------------------------------------------------------
 # Debug log — redirect stdout/stderr to sybu-debug.log next to the exe.
@@ -68,8 +68,14 @@ import manifest_parser
 import poster as poster_module
 import profile_manager
 import recovery as recovery_module
+import library_bridge
 from manifest_parser import ManifestEntry
 from poster import SnapSmackClient, SiteData, WrongSiteModeError
+
+
+def canonical_site_url(value: str) -> str:
+    """Stable identity used to prove the visible profile matches the live client."""
+    return str(value or '').strip().rstrip('/').lower()
 
 # Shared transport guard (tools/_shared/snap_stepup.py). SECAUDIT 040 recorded
 # SYBU as covered by the shared fix; SECAUDIT 042 found SYBU imports the module
@@ -349,14 +355,31 @@ class EntryRow(tk.Frame):
                       lambda e: setattr(self.entry, 'orientation',
                                         orient_reverse.get(self._orient_var.get(), 'auto')))
 
+        # ── Colour / B&W classification (posted as img_color_mode) ──
+        self._colour_mode_lbl = tk.Label(
+            self, text="colour/B&W", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
+        self._colour_mode_lbl.place(x=736, y=78)
+        colour_display = {'color': 'Colour', 'bw': 'B&W'}
+        self._colour_mode_var = tk.StringVar(
+            value=colour_display.get(getattr(self.entry, 'color_mode', ''), '—'))
+        self._colour_mode_cb = ttk.Combobox(
+            self, textvariable=self._colour_mode_var,
+            values=['—', 'Colour', 'B&W'], font=FONT_SMALL, state="readonly")
+        self._colour_mode_cb.place(x=736, y=100, width=96)
+        colour_reverse = {'Colour': 'color', 'B&W': 'bw'}
+        self._colour_mode_cb.bind(
+            "<<ComboboxSelected>>",
+            lambda e: setattr(self.entry, 'color_mode',
+                              colour_reverse.get(self._colour_mode_var.get(), '')))
+
         # ── Colour swatches (filled by Gemini) ────────────────────────
         self._colors_lbl = tk.Label(self, text="colors", bg=BG_CARD, fg=FG_DIM, font=FONT_SMALL)
-        self._colors_lbl.place(x=736, y=78)
+        self._colors_lbl.place(x=844, y=78)
         self._swatch_labels = []
         for i in range(3):
             sw = tk.Label(self, bg=BG_CARD, relief="flat", width=4,
                           cursor="hand2", font=FONT_SMALL)
-            sw.place(x=736 + i * 50, y=100, width=44, height=20)
+            sw.place(x=844 + i * 50, y=100, width=44, height=20)
             self._swatch_labels.append(sw)
         self._update_swatches(self.entry.colors)
 
@@ -420,21 +443,25 @@ class EntryRow(tk.Frame):
         #    clipped / hidden behind the status badge and the row looked cut off.
         GAP       = 14
         orient_w  = 110
+        mode_w    = 96
         colours_w = 3 * 50            # three 44px swatches on a 50px pitch
         row_right = badge_x - self._BADGE_GAP
         usable    = row_right - 190
-        combo_w   = int((usable - orient_w - colours_w - 3 * GAP) / 2)
+        combo_w   = int((usable - orient_w - mode_w - colours_w - 4 * GAP) / 2)
         combo_w   = max(140, min(combo_w, 460))
         cat_x     = 190
         album_x   = cat_x   + combo_w + GAP
         orient_x  = album_x + combo_w + GAP
-        colours_x = orient_x + orient_w + GAP
+        mode_x    = orient_x + orient_w + GAP
+        colours_x = mode_x + mode_w + GAP
         self._cat_lbl.place(x=cat_x)
         self._cat_cb.place(x=cat_x, width=combo_w)
         self._album_lbl.place(x=album_x)
         self._album_cb.place(x=album_x, width=combo_w)
         self._orient_lbl.place(x=orient_x)
         self._orient_cb.place(x=orient_x, width=orient_w)
+        self._colour_mode_lbl.place(x=mode_x)
+        self._colour_mode_cb.place(x=mode_x, width=mode_w)
         self._colors_lbl.place(x=colours_x)
         for _i, _sw in enumerate(self._swatch_labels):
             _sw.place(x=colours_x + _i * 50)
@@ -502,7 +529,8 @@ class EntryRow(tk.Frame):
             return FG_MAIN
 
     def fill_from_ai(self, title: str = '', tags: str = '', category: str = '',
-                     album: str = '', colors: str = '', caption: str = '', alt: str = ''):
+                     album: str = '', colors: str = '', caption: str = '', alt: str = '',
+                     orientation: str = '', color_mode: str = ''):
         """Push Gemini-generated values into the live fields. Skips blank values."""
         if title:
             self._title_var.set(title)
@@ -519,6 +547,12 @@ class EntryRow(tk.Frame):
         if colors:
             self.entry.colors = colors
             self._update_swatches(colors)
+        if orientation:
+            self._orient_var.set({'0': 'Landscape', '1': 'Portrait', '2': 'Square'}.get(
+                orientation, 'Auto'))
+        if color_mode:
+            self._colour_mode_var.set({'color': 'Colour', 'bw': 'B&W'}.get(
+                color_mode, '—'))
         # Force immediate repaint so fields appear filled before the next image starts
         self.update_idletasks()
 
@@ -2897,10 +2931,16 @@ class App(tk.Tk):
                 self._site_image_settings[key] = p[key]
 
     def _on_post_profile_pick(self, _event=None):
-        """POST-page profile dropdown → load + apply the selected profile."""
+        """POST-page profile dropdown → atomically select and connect that site."""
         name = self._post_profile_var.get().strip()
         if name:
+            # A profile change must retire the previous live client immediately.
+            # Merely repainting URL/key fields left POST bound to the old site,
+            # making the UI say site B while uploads still went to site A.
+            self._invalidate_connection("PROFILE CHANGED — CONNECTING...")
             self._apply_profile_to_post(profile_manager.load_profile(name))
+            self._save_config()
+            self.after_idle(self._on_connect)
 
     def _on_profile_load(self):
         """Load selected profile into POST tab fields and reconnect."""
@@ -3752,15 +3792,26 @@ class App(tk.Tk):
                     cats   = sorted(site_data._cat_display.values())
                     albums = sorted(site_data._album_display.values())
                     def _done():
+                        mode = (getattr(site_data, 'site_mode', '') or '').strip().lower()
+                        mode_tab = {'photoblog': 'solo', 'carousel': 'gram'}.get(mode)
+                        mode_name = {'solo': 'SOLO', 'gram': 'GRAM'}.get(mode_tab, '')
+                        badge = f"{mode_name}  " if mode_name else ""
                         self._conn_dot.configure(fg=LED_OK)
                         self._conn_lbl.configure(
-                            text=f"CONNECTED  {len(cats)} CATS  {len(albums)} ALBUMS",
+                            text=f"CONNECTED  {badge}{len(cats)} CATS  {len(albums)} ALBUMS",
                             fg=LED_OK,
                         )
                         self._entry_list.update_combos(cats, albums)
                         self._def_cat_cb['values'] = [''] + cats
                         self._def_alb_cb['values'] = [''] + albums
-
+                        # Startup auto-connect must make the same mode choice as
+                        # the Connect button. Previously only the manual path did.
+                        if mode_tab and self._active_tab in ('solo', 'gram') \
+                                and self._active_tab != mode_tab:
+                            self._switch_tab(mode_tab)
+                            self._set_status(
+                                f"Connected — this is a {mode_name} site, so I switched you to the {mode_name} tab.",
+                                FG_OK)
                         self._save_config()
                     self.after(0, _done)
                 except Exception:
@@ -3993,6 +4044,11 @@ class App(tk.Tk):
             messagebox.showerror("Missing credentials", "Fill in Site URL and API Key.")
             return
 
+        # Never retain a usable client while attempting to connect elsewhere.
+        # If this connection fails, posting remains blocked instead of silently
+        # falling back to the previously connected site.
+        self._invalidate_connection("CONNECTING...")
+
         # Before the client is built — constructing it puts the key in a session
         # header and verify() sends it on the next line (SECAUDIT 042).
         if not confirm_insecure_transport(self, url, what='your API key'):
@@ -4013,6 +4069,10 @@ class App(tk.Tk):
 
             self._client    = client
             self._site_data = site_data
+
+            # A prior offline/server-failed enrichment is durable with dirty=1.
+            # Connecting to this exact site is the safe moment to retry it.
+            cache_sync = library_bridge.sync_pending(url, client.session)
 
             cats   = sorted(site_data._cat_display.values())
             albums = sorted(site_data._album_display.values())
@@ -4040,7 +4100,16 @@ class App(tk.Tk):
                     f"Connected — this is a {_mode_name} site, so I switched you to "
                     f"the {_mode_name} tab.", FG_OK)
             else:
-                self._set_status("Connected. Load a manifest to begin.", FG_OK)
+                if cache_sync['pending']:
+                    self._set_status(
+                        f"Connected — {cache_sync['pending']} enrichment record(s) still pending sync.",
+                        FG_WARN)
+                elif cache_sync['synced']:
+                    self._set_status(
+                        f"Connected — synced {cache_sync['synced']} saved enrichment record(s).",
+                        FG_OK)
+                else:
+                    self._set_status("Connected. Load a manifest to begin.", FG_OK)
             self._save_config()
 
         except WrongSiteModeError as e:
@@ -4330,6 +4399,8 @@ class App(tk.Tk):
                                 category=entry.category,
                                 album=entry.album,
                                 colors=entry.colors,
+                                orientation=entry.orientation,
+                                color_mode=getattr(entry, 'color_mode', ''),
                             )
                             row.set_status('enriched')
                         # Persist this item's enrichment to disk the moment it lands
@@ -4339,6 +4410,16 @@ class App(tk.Tk):
                                 self._recovery.upsert(entry, 'enriched')
                             except Exception:
                                 pass
+                        # The enrichment and original now belong to the selected
+                        # site's shared library even before posting. A later
+                        # confirmed post attaches its canonical server identity.
+                        try:
+                            library_bridge.record_enrichment(
+                                self._url_var.get().strip(),
+                                os.path.join(image_folder, entry.file), entry,
+                                session=getattr(self._client, 'session', None))
+                        except Exception as exc:
+                            print(f"[shared library] enrichment save failed: {exc}")
                         self._set_status(
                             f"Gemini: enriched {idx} / {total} — {entry.file}", FG_OK)
                 self.after(0, _ui_update)
@@ -4977,7 +5058,29 @@ class App(tk.Tk):
             messagebox.showinfo("Not connected",
                                 "Click Connect first and enter your credentials.")
             return False
+        visible_url = canonical_site_url(self._url_var.get())
+        connected_url = canonical_site_url(getattr(self._client, 'base_url', ''))
+        if not visible_url or visible_url != connected_url:
+            self._invalidate_connection("SITE CHANGED — NOT CONNECTED")
+            messagebox.showerror(
+                "Site changed",
+                "Posting is blocked because the selected profile does not match "
+                "the connected site. Select the profile again or click Connect.")
+            return False
         return True
+
+    def _invalidate_connection(self, label="NOT CONNECTED"):
+        """Make a stale connection impossible to use after profile/URL changes."""
+        client = getattr(self, '_client', None)
+        if client is not None:
+            try:
+                client.session.close()
+            except Exception:
+                pass
+        self._client = None
+        self._site_data = None
+        self._conn_dot.configure(fg=LED_WARN if 'CONNECT' in label else LED_ERR)
+        self._conn_lbl.configure(text=label, fg=LED_WARN if 'CONNECT' in label else LED_ERR)
 
     # ------------------------------------------------------------------
     # Session countdown timer
@@ -5222,6 +5325,9 @@ class App(tk.Tk):
 
 if __name__ == "__main__":
     import snap_hq_gate
+    import snap_single_instance
+    if not snap_single_instance.acquire("sybu", "SMACK YOUR BATCH UP"):
+        raise SystemExit(0)
     snap_hq_gate.require()
     app = App()
     app.mainloop()

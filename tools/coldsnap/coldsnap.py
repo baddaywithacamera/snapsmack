@@ -410,6 +410,9 @@ class App(tk.Tk):
 
 if __name__ == "__main__":
     import snap_hq_gate
+    import snap_single_instance
+    if not snap_single_instance.acquire("cold-snap", "COLD SNAP"):
+        raise SystemExit(0)
     snap_hq_gate.require()
     App().mainloop()
 # ===== SNAPSMACK EOF =====
