@@ -291,7 +291,7 @@ require_once __DIR__ . '/includes/header.php';
     <section class="family-head ddb-shade">
         <div class="wrap">
             <h2>Where talking to other software fell down</h2>
-            <p>The fediverse is a room full of different implementations, and every assumption about how a peer reads our output was wrong until proven. One peer working proves nothing about the next.</p>
+            <p>The fediverse is a room full of different implementations, and every assumption about how a peer reads our output was wrong until proven. One peer working proves nothing about the next. So we stopped guessing from the outside: we now run our own instances of the major fediverse software &mdash; Pixelfed, Mastodon, GoToSocial &mdash; alongside our own SnapSmack fleet, and test against them. Controlling both ends means we get all the data, the raw logs from every server, and see each failure the moment it happens &mdash; instead of inferring it from a post that never showed up.</p>
         </div>
     </section>
 
@@ -453,6 +453,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2>How &ldquo;Watched Working&rdquo; Gets Earned</h2>
             <p>SnapSmack is early &mdash; still closed beta, essentially one operator testing on real boxes. So right now almost everything that earns a green tag here was watched by us, and the honest defaults (&ldquo;confirming&rdquo;) are the things one pair of hands hasn&rsquo;t gotten to yet. That&rsquo;s the whole reason the labels are split the way they are: a named person watching the real outcome on a real machine is what turns &ldquo;fixed&rdquo; into &ldquo;watched working,&rdquo; and until the beta widens there simply aren&rsquo;t many pairs of hands to do the watching.</p>
+            <p>What one operator <em>does</em> have is a controlled test bench that punches above its headcount. We run our own fediverse lab &mdash; Pixelfed, Mastodon and GoToSocial instances plus our own SnapSmack fleet &mdash; so we hold both ends of every test, with all the data and the raw logs and failures visible in real time. And we drive it with accelerated agentic testing: AI agents running the same paths over and over, fast, so failures surface quickly and repeatably instead of waiting on a manual pass. That&rsquo;s how a &ldquo;confirming&rdquo; item gets watched to green without needing a crowd.</p>
             <p>As more people run it, their named observations &mdash; a delivery that failed, a peer that choked, a job watched succeeding &mdash; will feed this ledger too. The codebase is public and open to inspection at any time: <a href="https://github.com/baddaywithacamera/snapsmack" target="_blank" rel="noopener">github.com/baddaywithacamera/snapsmack</a>. Security issues &mdash; something that could be abused rather than something that just doesn&rsquo;t work &mdash; belong in <a href="buzzers.php">BUZZERS!</a> once closed, and should be reported privately, not posted in public.</p>
         </div>
     </section>
