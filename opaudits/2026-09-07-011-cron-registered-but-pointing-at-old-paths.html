@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 011 — The scheduled jobs looked registered while pointing at yesterday’s door</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 011 — The scheduled jobs looked registered while pointing at yesterday’s door</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-07-011</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-07</td></tr>
+        <tr><td class="k">First observed</td><td>2026-09-07 (a recurrence — &ldquo;cron is fucked again&rdquo;); last good federation run ~2 days prior. Fleet on 0.7.656D.</td></tr>
+        <tr><td class="k">Theme</td><td>&ldquo;Registered&rdquo; is not &ldquo;running.&rdquo;</td></tr>
+        <tr><td class="k">Surfaces</td><td>Federation delivery, new-follow catalogue backfill, and version-check cron across the hub and all 24 spokes.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-confirm">Fixed — confirming</span> &nbsp; Live repair watched working; the permanent self-heal shipped as v0.7.657D but is not yet deployed fleet-wide.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes, for the repair</strong> — a detached hub federation run completed <code>ok</code> at 2026-09-07 19:06:44, and backfill was proven end to end (see §6). The permanent fix awaits deployment + fleet re-verify.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean (observed and reported the outage) + Codex (diagnosed the command-path drift, ran the bounded fleet repair, shipped the fix).</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 003 (all paced work lives in the CLI cron — so if cron is dead, delivery is dead); OPAUDIT 012 (the follow-mesh gap this outage exposed); OPAUDIT 006 (the stale relay row seen alongside).</td></tr>
+        <tr><td class="k">Publication</td><td>Public. Operability/availability post-mortem, no exploitable detail.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>Federation quietly stopped across the whole fleet for about two days, and it looked like several
+    unrelated features breaking at once &mdash; new follows got no catalogue, posts never pushed, the
+    version check went quiet. It was one cause: the scheduled jobs still <em>existed</em>, but the
+    command each one ran pointed at a script path that no longer existed. A check that only asks
+    &ldquo;is the job registered?&rdquo; said yes. The job was registered to run nothing.</p>
+
+    <h2>2. What a human saw</h2>
+    <p>Federation cron had &ldquo;stopped again.&rdquo; New follows were not receiving the catalogue
+    backfill a new follower should get. FoundTextures&rsquo; delivery log showed published,
+    federation-enabled posts as <em>not pushed</em>. From the outside it read as the whole federation
+    layer being broken.</p>
+
+    <h2>3. Root cause</h2>
+    <p>The tagged crontab entries were present, but their <em>registered command paths no longer
+    matched the installed scripts</em>. This is deployment path-drift: a deploy moved or replaced the
+    installation directory while the crontab lines kept pointing at the old absolute path. A
+    check that only confirms the tagged line is present &mdash; presence, not command &mdash; falsely
+    reports that as healthy. So the scheduler dutifully ran a command that led nowhere, and no paced
+    delivery, backfill, or version check ever happened.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>The Cron &amp; Jobs page&rsquo;s command-level verifier (not just a heartbeat) exposed it: on the
+    hub, federation and version-check commands were invalid while RSS was healthy; on the first spoke
+    checked, all three were invalid. The last successful federation run was roughly two days old. Live
+    checking across the fleet found the same stale-path defect on all 24 spokes &mdash; a fleet-wide
+    deployment drift, not independent failures.</p>
+
+    <h2>5. What we did</h2>
+    <p><strong>Repair:</strong> re-registered the real cron commands through each site&rsquo;s
+    authenticated Cron &amp; Jobs page &mdash; the hub first, then the spokes in small batches through
+    the hub&rsquo;s authenticated remote-login path, deliberately <em>not</em> pressing RUN NOW on every
+    site at once so the fleet didn&rsquo;t create a thundering herd. <strong>Permanent fix
+    (0.7.657D):</strong> update finalization now refreshes every owned scheduled job to the current
+    absolute path, so a deploy that moves the install directory can no longer strand the jobs.</p>
+
+    <h2>6. Verified live — and what remains</h2>
+    <p>A detached hub federation run completed with status <code>ok</code> at
+    2026-09-07 19:06:44 (it did not run inside a browser request &mdash; see OPAUDIT 003). A controlled
+    backfill test using two peers (one and two posts respectively) confirmed their accounts and
+    historical posts appeared in FoundTextures&rsquo; home feed &mdash; proving the whole chain works
+    once cron is alive. The permanent self-heal is shipped in source as tag <code>v0.7.657D</code>
+    (&ldquo;NO MORE ISLANDS&rdquo;) but is <em>not yet built and deployed fleet-wide</em>, so this stays
+    <span class="state-chip chip-confirm">Fixed — confirming</span> until every site is on 657D and
+    reports its exact command registered.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>After 657D is deployed, confirm all 25 sites report the exact command as registered. Build a
+    fleet cron report that distinguishes <em>absent</em>, <em>wrong-command</em>, <em>stale</em>,
+    <em>running</em>, and <em>healthy</em> per job per node &mdash; so a wrong command can never again
+    hide behind &ldquo;present.&rdquo;</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>&ldquo;Registered&rdquo; is not &ldquo;running.&rdquo; A presence check passes happily on a
+        job whose command points at yesterday&rsquo;s door. Verify the command itself resolves to the
+        script that&rsquo;s actually installed &mdash; and when a deploy can move the ground under a
+        scheduled job, the deploy is responsible for re-pointing it.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
