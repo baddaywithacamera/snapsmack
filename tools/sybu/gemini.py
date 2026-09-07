@@ -15,6 +15,8 @@ import os
 import re
 from typing import Callable, List, Optional
 
+from PIL import Image
+
 from manifest_parser import ManifestEntry
 
 log = logging.getLogger('sybu')
@@ -128,13 +130,33 @@ Rules:
 
 
 def _parse_response(text: str) -> dict:
-    """Extract TITLE/CAPTION/ALT/TAGS/CATEGORY/ALBUM/COLORS from the model response."""
-    result = {'title': '', 'caption': '', 'alt': '', 'tags': '', 'category': '', 'album': '', 'colors': ''}
+    """Extract every supported metadata field from the model response."""
+    result = {'title': '', 'caption': '', 'alt': '', 'tags': '', 'category': '',
+              'album': '', 'colors': '', 'color_mode': '', 'orientation': ''}
     for line in text.strip().splitlines():
-        m = re.match(r'^(TITLE|CAPTION|ALT|TAGS|CATEGORY|ALBUM|COLORS):\s*(.*)', line.strip(), re.IGNORECASE)
+        m = re.match(
+            r'^(TITLE|CAPTION|ALT|TAGS|CATEGORY|ALBUM|COLORS|COLOURS|'
+            r'COLOUR DROPDOWN|COLOR DROPDOWN|ORIENTATION):\s*(.*)',
+            line.strip(), re.IGNORECASE)
         if m:
             key = m.group(1).lower()
             val = m.group(2).strip()
+            if key in ('colour dropdown', 'color dropdown'):
+                key = 'color_mode'
+                normal = val.lower().replace('&', 'and').replace('/', ' ')
+                compact = re.sub(r'[^a-z0-9]+', '', normal)
+                if (any(word in normal for word in
+                        ('black and white', 'monochrome', 'greyscale', 'grayscale'))
+                        or compact in ('bw', 'bandw', 'blackandwhite')):
+                    val = 'bw'
+                elif 'colour' in normal or 'color' in normal:
+                    val = 'color'
+                else:
+                    val = ''
+            elif key == 'orientation':
+                val = {'landscape': '0', 'portrait': '1', 'square': '2'}.get(val.lower(), '')
+            elif key == 'colours':
+                key = 'colors'
             if key in result:
                 result[key] = val
     # Normalise colors: ensure valid hex codes only
@@ -142,6 +164,31 @@ def _parse_response(text: str) -> dict:
         hexes = re.findall(r'#[0-9A-Fa-f]{6}', result['colors'])
         result['colors'] = ' '.join(h.upper() for h in hexes[:3])
     return result
+
+
+def _orientation_from_image(path: str) -> str:
+    """Return SYBU's orientation value from pixels: landscape=0 portrait=1 square=2."""
+    with Image.open(path) as image:
+        width, height = image.size
+    if width <= 0 or height <= 0:
+        return 'auto'
+    if abs(width - height) / max(width, height) <= 0.05:
+        return '2'
+    return '0' if width > height else '1'
+
+
+def _color_mode_from_image(path: str) -> str:
+    """Return bw for genuinely grayscale pixels and color for chromatic images."""
+    with Image.open(path) as image:
+        sample = image.convert('RGB')
+        sample.thumbnail((160, 160))
+        pixels = list(sample.getdata())
+    if not pixels:
+        return 'color'
+    spreads = [max(pixel) - min(pixel) for pixel in pixels]
+    chromatic = sum(1 for spread in spreads if spread > 10) / len(spreads)
+    mean_spread = sum(spreads) / len(spreads)
+    return 'bw' if chromatic < 0.04 and mean_spread < 5.0 else 'color'
 
 
 MAX_TITLE_RETRIES = 4   # max attempts to generate a unique title before giving up
@@ -202,12 +249,19 @@ def enrich_batch(
         if cancel_event is not None and cancel_event.is_set():
             log.info("ENRICH cancelled by user at image %d of %d", i, total)
             break
+
+        img_path = os.path.join(image_folder, entry.file)
+        if os.path.isfile(img_path):
+            # Repair Auto/missing orientation even when resume skips metadata that
+            # Gemini already supplied before an interruption.
+            entry.orientation = _orientation_from_image(img_path)
+            entry.color_mode = _color_mode_from_image(img_path)
+
         if skip_filled and (entry.title.strip() or entry.caption.strip()):
             if on_progress:
                 on_progress(i, total, entry, None)
             continue
 
-        img_path = os.path.join(image_folder, entry.file)
         if not os.path.isfile(img_path):
             if on_progress:
                 on_progress(i, total, entry, f"File not found: {entry.file}")
@@ -235,10 +289,19 @@ def enrich_batch(
                 log.info("GEMINI RESPONSE %s (attempt %d):\n%s",
                          entry.file, attempt, response.text)
                 parsed   = _parse_response(response.text)
-                log.info("GEMINI PARSED %s — title=%r alt=%r tags=%r category=%r album=%r colors=%r",
+                # Keep provenance on the in-memory entry until the UI callback
+                # commits the complete bundle to the shared library/CMS cache.
+                # These are deliberately transient attributes: manifest/recovery
+                # compatibility stays unchanged.
+                entry._enrichment_raw_response = response.text
+                entry._enrichment_prompt = run_prompt
+                entry._enrichment_model = MODEL_NAME
+                entry._enrichment_prompt_version = '1'
+                log.info("GEMINI PARSED %s — title=%r alt=%r tags=%r category=%r album=%r colors=%r color_mode=%r orientation=%r",
                          entry.file, parsed.get('title', ''), parsed.get('alt', ''),
                          parsed.get('tags', ''), parsed.get('category', ''),
-                         parsed.get('album', ''), parsed.get('colors', ''))
+                         parsed.get('album', ''), parsed.get('colors', ''),
+                         parsed.get('color_mode', ''), parsed.get('orientation', ''))
                 title    = parsed.get('title', '').strip()
                 caption  = parsed.get('caption', '').strip()
 
@@ -265,6 +328,8 @@ def enrich_batch(
                         entry.album = parsed['album']
                     if parsed['colors']:
                         entry.colors = parsed['colors']
+                    if parsed['color_mode']:
+                        entry.color_mode = parsed['color_mode']
                     last_error = None
                     break
                 else:

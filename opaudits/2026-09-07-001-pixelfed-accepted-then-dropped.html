@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 001 — Pixelfed accepted our posts, then silently dropped them</title>
+<style>
+    @page { size: letter; margin: 22mm 20mm 20mm; }
+    * { box-sizing: border-box; }
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body {
+        font-family: Georgia, "Times New Roman", serif;
+        color: #1a1a1a;
+        font-size: 10.5pt;
+        line-height: 1.5;
+        margin: 0;
+    }
+    .doc-kicker {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 8pt;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #666;
+        margin: 0 0 6px;
+    }
+    h1 {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 17pt;
+        line-height: 1.2;
+        color: #111;
+        margin: 0 0 14px;
+    }
+    h2 {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 11pt;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #b00;
+        margin: 22px 0 6px;
+        padding-bottom: 3px;
+        border-bottom: 1px solid #ddd;
+    }
+    p { margin: 0 0 9px; }
+    strong { color: #111; }
+    code {
+        font-family: "Consolas", "Courier New", monospace;
+        font-size: 9pt;
+        background: #f3f3f3;
+        padding: 0 3px;
+        border-radius: 2px;
+    }
+    table.meta {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0 0 8px;
+        font-size: 9.5pt;
+    }
+    table.meta td {
+        border: 1px solid #ddd;
+        padding: 5px 8px;
+        vertical-align: top;
+    }
+    table.meta td.k {
+        font-family: Arial, Helvetica, sans-serif;
+        font-weight: bold;
+        width: 130px;
+        background: #f7f7f7;
+        color: #333;
+    }
+    .state-chip {
+        font-family: Arial, Helvetica, sans-serif;
+        font-weight: bold;
+        font-size: 8.5pt;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 2px 7px;
+        border-radius: 3px;
+    }
+    .chip-watched { background: #1a7a3c; color: #fff; }
+    .chip-confirm { background: #F3E2B3; color: #6b4c00; border: 1px solid #d9b84e; }
+    .doctrine {
+        background: #f4f4f4;
+        border-left: 4px solid #111;
+        padding: 10px 14px;
+        margin: 10px 0 0;
+        font-style: italic;
+    }
+    .footer {
+        margin-top: 26px;
+        padding-top: 8px;
+        border-top: 1px solid #ddd;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 8pt;
+        color: #888;
+    }
+</style>
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 001 — Pixelfed accepted our posts, then silently dropped them</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-07-001</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-07 (compiled from the incident record)</td></tr>
+        <tr><td class="k">First observed</td><td>~0.7.347–0.7.350 (July 2026)</td></tr>
+        <tr><td class="k">Theme</td><td>Every assumption about how a peer reads our output was wrong until proven against that peer.</td></tr>
+        <tr><td class="k">Surfaces</td><td>Inbound Follow from Pixelfed; outbound Note delivery to Pixelfed.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-confirm">Fixed — confirming</span> &nbsp; The two named bugs are fixed and posts landed in testing; Pixelfed as a peer still behaves inconsistently and is being watched.</td></tr>
+        <tr><td class="k">Watched live?</td><td>The two fixes: <strong>yes</strong> — Sean, on live boxes (Mastodon + pixelfed.ca), posts landed and displayed. The peer overall: still rough, see §6.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean (chose the target; ran the live boxes) + Claude (diagnosed the signing and object-URL failures end to end).</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT on modern-Mastodon RFC-9421 signing; OPAUDIT on the failed signed fetch (“Second Knock”). Both are the same theme: peer behaviour proven only one peer at a time.</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No live exploitable detail; this is an interoperability post-mortem.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>This is the incident that taught SnapSmack its central federation rule. Talking to another
+    fediverse server is not like calling your own code: what the specification says a peer
+    <em>should</em> do and what a specific peer <em>actually</em> does are different things, and the
+    gap between them is where posts quietly disappear. Two separate bugs, a fortnight apart, both
+    against Pixelfed, both invisible until proven &mdash; and neither of them a crash or an error
+    message. The system reported success the whole time.</p>
+
+    <h2>2. What a human saw</h2>
+    <p><strong>First:</strong> for about two weeks, every attempt to follow a SnapSmack blog from
+    Pixelfed simply failed. The follow never completed, with nothing on the SnapSmack side to
+    explain why &mdash; the request arrived and was rejected as unverifiable.</p>
+    <p><strong>Then, once that was fixed:</strong> deliveries to Pixelfed were <em>accepted</em> &mdash;
+    the server answered normally &mdash; and yet no post ever appeared on Pixelfed. Everything on the
+    sending side looked like it had worked. The post was simply not there.</p>
+
+    <h2>3. Root cause</h2>
+    <p><strong>Bug one — the signature never matched (the failed Follow).</strong> Every request
+    between fediverse servers is signed, and both sides must build the exact same text to check the
+    signature against. Pixelfed builds that text from the <em>path only</em> &mdash; it drops the
+    query string. Our inbox address carried a query string (<code>?ap=inbox</code>). So Pixelfed
+    signed one version of the text and we checked a different one; they could never match, and every
+    Follow was rejected as unverifiable.</p>
+    <p><strong>Bug two — the object address arrived mangled (the vanishing post).</strong> When
+    Pixelfed accepts a delivery it later fetches the post object back by its address to display it.
+    Our object address used a query string with an <code>&amp;</code> in it
+    (<code>?ap=note&amp;post=N</code>). Pixelfed HTML-encoded that <code>&amp;</code> into
+    <code>&amp;amp;</code> when it dereferenced the address, so the address it actually requested was
+    wrong and returned <code>404</code>. The post was dropped <em>after</em> being accepted &mdash;
+    which is why the sending side saw success and the post still never appeared.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p><strong>Bug one:</strong> eight different signing-string constructions were tested against the
+    captured signature and public key using raw <code>openssl dgst</code>. Only the path-only form
+    returned <code>Verified OK</code>. That is direct proof of which text Pixelfed actually signs, not
+    a guess from reading the spec.</p>
+    <p><strong>Bug two:</strong> the Apache access log showed <code>PixelFedBot/1.0.0</code>
+    requesting the <code>&amp;amp;</code> form of the object address and receiving a <code>404</code>.
+    The drop was visible in the log once we knew to look for the encoded address.</p>
+
+    <h2>5. What we did</h2>
+    <p><strong>Bug one:</strong> the inbox verifier now accepts both legitimate ways of building the
+    signing text &mdash; including Pixelfed's path-only form &mdash; so a correctly-signed Follow from
+    Pixelfed verifies.</p>
+    <p><strong>Bug two:</strong> object addresses were changed to a plain, path-style form with no
+    query string (<code>/ap/note/p/N</code>), so there is no <code>&amp;</code> left for a peer to
+    re-encode. (Fixes shipped across 0.7.349 / 0.7.350.)</p>
+
+    <h2>6. Verified live — and the honest caveat</h2>
+    <p>The two fixes were watched working on live boxes: posts landed and displayed on Mastodon and
+    on pixelfed.ca. Those two specific bugs are closed.</p>
+    <p>But we will not call Pixelfed <em>solid</em>. In continued use it still behaves
+    inconsistently, and we still see occasional drops we have not fully explained. By contrast our
+    Mastodon side is confirmed clean across solo posts and carousels. So this incident is marked
+    <span class="state-chip chip-confirm">Fixed — confirming</span>: the known bugs are fixed; the
+    peer itself stays under watch.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>Everything proven here was proven <em>against Pixelfed</em>. GoToSocial and every other peer are
+    unconfirmed on the exact same two axes &mdash; how they build the signing text, and how they
+    encode an object address when they fetch it back. Not because there is a known bug in them, but
+    because it was only ever proven against one peer. Each new peer must be watched on those axes
+    before it is trusted.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>“A <code>2xx</code> proves transport only, never federation.” A success response proves the
+        bytes were carried &mdash; not that the other end kept, stored, or displayed the post. Confirm
+        the human-visible outcome on the real peer, separately from the fact that the message was
+        accepted. This rule was learned by getting kicked in the teeth, and it now governs how every
+        federation feature is tested.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->

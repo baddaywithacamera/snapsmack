@@ -11,5 +11,5 @@ it and bump_version.py increments it. No imports — safe to load from anywhere,
 frozen or not, with no risk of an import cycle.
 """
 
-BUILD_VERSION = "0.7.10"
+BUILD_VERSION = "0.7.13"
 # ===== SNAPSMACK EOF =====
