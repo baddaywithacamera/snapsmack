@@ -99,6 +99,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
         $feed_enabled = isset($_POST['pc_feed_enabled']) ? '1' : '0';
         $feed_layout = (($_POST['pc_feed_layout'] ?? 'three') === 'masonry') ? 'masonry' : 'three';
         $test_allow = trim((string)($_POST['pc_test_allow'] ?? ''));
+        $next_test_settings = $settings;
+        $next_test_settings['photochallenge_test_mode'] = $test_mode;
+        $next_test_settings['photochallenge_test_allow'] = $test_allow;
+        $purged_test_deliveries = pc_purge_removed_whitelist($pdo, $settings, $next_test_settings);
         sv_set_setting($pdo, $settings, 'photochallenge_tag', $tag);
         sv_set_setting($pdo, $settings, 'photochallenge_tz', $tz);
         sv_set_setting($pdo, $settings, 'photochallenge_boost_weight', $bw);
@@ -124,6 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
         sv_set_setting($pdo, $settings, 'photochallenge_enabled', $enabled);   // flip last
         if ($msg === '') $msg = $enabled === '1' ? 'Photo challenge ON. Settings saved.' : 'Settings saved (challenge OFF).';
         if ($test_mode === '1') $msg .= ' TESTING WHITELIST is ON — only listed handles qualify, and boosts go only to those whitelisted accounts, never your real followers.';
+        if ($purged_test_deliveries > 0) $msg .= " Purged {$purged_test_deliveries} queued test boost(s) for removed recipients.";
 
     } elseif ($action === 'crown_week') {
         $n = max(1, min(10, (int)($_POST['pc_places'] ?? 3)));

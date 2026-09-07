@@ -112,12 +112,15 @@ if (isset($_GET['ajax'])) {
 
     if ($panel === 'home') {
         if (!$sv_on) { echo json_encode(['ok' => true, 'items' => []]); exit; }
-        // Real reader: the ingested inbound timeline (posts from accounts we
-        // follow, pushed to our inbox). Seed with a live crawl until inbound
-        // Creates accrue, so Home is never empty right after you follow someone.
+        // Real reader: use the ingested inbound timeline. Never synchronously
+        // fan out to remote servers during an interactive page request: one
+        // unreachable peer used to hold Home behind stacked network timeouts.
         $items = sv_home_timeline($pdo, 60);
-        if (!$items) { @set_time_limit(30); $items = sv_home_feed($pdo, 6, 40); }
-        echo json_encode(['ok' => true, 'items' => $items], JSON_UNESCAPED_SLASHES);
+        echo json_encode([
+            'ok' => true,
+            'items' => $items,
+            'msg' => $items ? '' : 'Nothing received from followed accounts yet.',
+        ], JSON_UNESCAPED_SLASHES);
         exit;
     }
 
