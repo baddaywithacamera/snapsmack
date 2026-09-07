@@ -289,6 +289,9 @@
             case 'dropcap':
                 insertAtCursor(textarea, '[dropcap]', '[/dropcap]');
                 break;
+            case 'pullquote':
+                insertAtCursor(textarea, '[pullquote]', '[/pullquote]');
+                break;
             case 'ul':
                 insertList(textarea, 'ul');
                 break;

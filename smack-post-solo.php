@@ -717,12 +717,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
 
         if ($is_ajax_request) {
             header('Content-Type: text/plain; charset=UTF-8');
-            // Desktop tools opt in (want_id=1) to get the new image id back so
-            // they can key their shared-library record. Bare "success" stays the
-            // default — SYBU and older clients string-compare against it.
-            echo (($_POST['want_id'] ?? '') === '1')
-                ? "success:" . (int)$new_img_id
-                : "success";
+            // New producers need the canonical post id AND image id. Keep the
+            // older want_id response and bare response byte-for-byte compatible.
+            if (($_POST['want_ids'] ?? '') === '1') {
+                echo "success:" . (int)$new_post_id . ":" . (int)$new_img_id;
+            } elseif (($_POST['want_id'] ?? '') === '1') {
+                echo "success:" . (int)$new_img_id;
+            } else {
+                echo "success";
+            }
             exit;
         }
         header("Location: smack-manage.php?msg=TRANSMISSION_LIVE");
@@ -849,6 +852,7 @@ include 'core/sidebar.php';
                                 <button type="button" class="sc-btn" data-action="col2" title="2-Column Layout">COL 2</button>
                                 <button type="button" class="sc-btn" data-action="col3" title="3-Column Layout">COL 3</button>
                                 <button type="button" class="sc-btn" data-action="dropcap" title="Dropcap">DROP</button>
+                                <button type="button" class="sc-btn" data-action="pullquote" title="Pullquote">PULL</button>
                                 <button type="button" class="sc-btn" data-action="spacer" title="Vertical Spacer (1-100px)">SPACER</button>
                                 <button type="button" class="sc-btn sc-btn-preview" data-action="preview" title="Preview in New Tab">PREVIEW</button>
                                 <?php if (snap_ai_active()): ?>

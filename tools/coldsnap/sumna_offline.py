@@ -58,7 +58,7 @@ except ImportError:  # pragma: no cover - import shim for dev tree
 # is validated/migrated instead of inserted wrong.
 # ---------------------------------------------------------------------------
 
-SCHEMA_VERSION = 2          # draft-JSON structure version (2: + body_blocks, BIGGIE)
+SCHEMA_VERSION = 3          # v3: nested BIGGIE columns + paragraph drop-cap mark
 from _version import BUILD_VERSION  # single source of truth (shared with coldsnap.py)
 EXPORT_MANIFEST_VERSION = 1  # thumb-drive export folder format
 
@@ -281,6 +281,10 @@ def migrate_draft_dict(d: dict) -> dict:
         # v1 draft = plain body only; its caption IS the content (spec §8).
         d.setdefault("body_blocks", "")
         d["schema_version"] = 2
+    if v < 3:
+        # body_blocks migrates lazily in biggie.blocks_from_json(); retaining the
+        # original JSON here keeps draft migration independent of the Qt layer.
+        d["schema_version"] = 3
     return d
 
 

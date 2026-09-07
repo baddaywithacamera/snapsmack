@@ -17,6 +17,44 @@ import tempfile
 _GUARDS = []
 
 
+def _tell_user(display_name: str) -> None:
+    """Raise an existing app window when possible, otherwise explain the no-op."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        user32 = ctypes.windll.user32
+        found = []
+
+        @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        def visit(hwnd, _):
+            if not user32.IsWindowVisible(hwnd):
+                return True
+            length = user32.GetWindowTextLengthW(hwnd)
+            if not length:
+                return True
+            title = ctypes.create_unicode_buffer(length + 1)
+            user32.GetWindowTextW(hwnd, title, length + 1)
+            if display_name.casefold() in title.value.casefold():
+                found.append(hwnd)
+                return False
+            return True
+
+        user32.EnumWindows(visit, 0)
+        if found:
+            user32.ShowWindow(found[0], 9)  # SW_RESTORE
+            user32.SetForegroundWindow(found[0])
+            return
+        user32.MessageBoxW(
+            None,
+            f"{display_name} is already running. Check the taskbar or system tray.",
+            "Already running",
+            0x00000040,
+        )
+    except Exception:  # noqa: BLE001 — duplicate still exits if UI activation fails
+        pass
+
+
 def acquire(app_id: str, display_name: str) -> bool:
     """Return True for the first process and False for every later process."""
     safe_id = re.sub(r"[^A-Za-z0-9_.-]+", "-", app_id).strip("-") or "desktop"
@@ -24,20 +62,27 @@ def acquire(app_id: str, display_name: str) -> bool:
         import ctypes
 
         kernel32 = ctypes.windll.kernel32
-        kernel32.SetLastError(0)
-        handle = kernel32.CreateMutexW(None, False, f"Local\\SnapSmack.{safe_id}")
-        if not handle:
-            return True  # A lock failure must not make the application unusable.
-        if kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
-            kernel32.CloseHandle(handle)
-            ctypes.windll.user32.MessageBoxW(
-                None,
-                f"{display_name} is already running. Check the taskbar or system tray.",
-                "Already running",
-                0x00000040,
-            )
-            return False
-        _GUARDS.append(handle)
+        created = []
+        # Local catches every normal second launch in this sign-in session.
+        # Global also catches accidental launches in another Windows session
+        # (Fast User Switching / elevated launch). It can be denied by policy,
+        # so Local remains the mandatory guard and Global is best effort.
+        for scope in ("Local", "Global"):
+            kernel32.SetLastError(0)
+            handle = kernel32.CreateMutexW(
+                None, False, f"{scope}\\SnapSmack.{safe_id}")
+            if not handle:
+                continue
+            if kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
+                kernel32.CloseHandle(handle)
+                for owned in created:
+                    kernel32.CloseHandle(owned)
+                _tell_user(display_name)
+                return False
+            created.append(handle)
+        if not created:
+            return True  # Lock infrastructure failure must not strand the app.
+        _GUARDS.extend(created)
         return True
 
     import fcntl

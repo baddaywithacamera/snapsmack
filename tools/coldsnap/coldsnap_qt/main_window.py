@@ -40,8 +40,8 @@ class MainWindow(QMainWindow):
 
         central = QWidget()
         col = QVBoxLayout(central)
-        col.setContentsMargins(12, 12, 12, 8)
-        col.setSpacing(10)
+        col.setContentsMargins(0, 0, 0, 0)
+        col.setSpacing(0)
 
         self.connect_panel = ConnectPanel()
         col.addWidget(self.connect_panel)
@@ -49,6 +49,7 @@ class MainWindow(QMainWindow):
         cfg = lambda: self.connect_panel.config
 
         tabs = QTabWidget()
+        tabs.setObjectName("ModeTabs")
         tabs.addTab(SoloMode(cfg), "COLD ONE")
         tabs.addTab(StackMode(cfg), "COLD STACK")
         tabs.addTab(TakeMode(cfg), "COLD TAKE")

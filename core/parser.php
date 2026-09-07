@@ -91,7 +91,11 @@ class SnapSmack {
     public function parseContent($content) {
         if (empty($content)) return "";
 
-        // --- PHASE 1: COLUMNS ---
+        // --- PHASE 1: PULLQUOTES + COLUMNS ---
+        // Pullquotes become real block-level HTML before columns and paragraph
+        // wrapping, including when authored inside a column cell.
+        $content = $this->parsePullquotes($content);
+
         // Extract column blocks before auto-paragraph so the [columns] wrapper
         // doesn't get wrapped in <p> tags. Column INNER content gets its own
         // auto-paragraph pass.
@@ -367,7 +371,8 @@ class SnapSmack {
             // what each engine binds to; the item class is '.ss-masonry-item' for all
             // three. Square needs no JS at all — it is native CSS Grid.
             $layout = (string)($mosaic['layout'] ?? 'asymmetric');
-            if (!in_array($layout, ['asymmetric', 'columns', 'rows', 'square'], true)) {
+            $templates = ['one-left', 'one-right', 'three-across', 'one-top'];
+            if (!in_array($layout, array_merge(['asymmetric', 'columns', 'rows', 'square'], $templates), true)) {
                 $layout = 'asymmetric';
             }
 
@@ -413,10 +418,12 @@ class SnapSmack {
             }
             if (empty($images)) return '';
 
-            if ($layout === 'asymmetric') {
+            if ($layout === 'asymmetric' || in_array($layout, $templates, true)) {
                 return '<div class="snap-mosaic" data-mosaic="'
                     . htmlspecialchars(json_encode($images), ENT_QUOTES)
-                    . '" data-gap="' . $gap . '" data-emphasis="' . htmlspecialchars($emphasis, ENT_QUOTES) . '"></div>';
+                    . '" data-gap="' . $gap . '" data-emphasis="' . htmlspecialchars($emphasis, ENT_QUOTES) . '"'
+                    . ($layout !== 'asymmetric' ? ' data-template="' . htmlspecialchars($layout, ENT_QUOTES) . '"' : '')
+                    . '></div>';
             }
 
             // Wall layouts. The engines read --ss-gap (and --ss-cols for columns)
@@ -450,22 +457,30 @@ class SnapSmack {
      *
      * Content between [columns=N] and [/columns] is split on [col] markers.
      * Each segment becomes a grid cell. The outer wrapper gets a CSS class
-     * for the requested column count (cols-2, cols-3, cols-4).
+     * for the requested column count (cols-1 through cols-4). An optional
+     * ratio=1-2 token selects a whitelisted width preset without inline CSS.
      *
      * Inner content of each column is run through autoParagraph + parseImages
      * so images and text formatting work inside columns.
      */
     private function parseColumns($content) {
         return preg_replace_callback(
-            '/\[columns=(\d+)\](.*?)\[\/columns\]/si',
+            '/\[columns=(\d+)(?:\s+ratio=([0-9-]+))?\](.*?)\[\/columns\]/si',
             function ($matches) {
-                $count = max(2, min(4, (int) $matches[1])); // clamp 2-4
-                $inner = trim($matches[2]);
+                $count = max(1, min(4, (int) $matches[1])); // clamp 1-4
+                $ratio = strtolower((string)($matches[2] ?? ''));
+                $allowed = [
+                    2 => ['1-2', '2-1', '1-3', '3-1'],
+                    3 => ['1-1-2', '2-1-1'],
+                ];
+                $ratio_class = in_array($ratio, $allowed[$count] ?? [], true)
+                    ? ' ratio-' . $ratio : '';
+                $inner = trim($matches[3]);
 
                 // Split on [col] markers
                 $cells = preg_split('/\[col\]/i', $inner);
 
-                $html = '<div class="snapsmack-columns cols-' . $count . '">' . "\n";
+                $html = '<div class="snapsmack-columns cols-' . $count . $ratio_class . '">' . "\n";
                 foreach ($cells as $cell) {
                     $cell_content = trim($cell);
                     // Run inner content through paragraph + image parsing
@@ -477,6 +492,19 @@ class SnapSmack {
 
                 return $html;
             },
+            $content
+        );
+    }
+
+    // =========================================================================
+    //  PULLQUOTE SHORTCODE
+    // =========================================================================
+
+    /** Turn an explicitly authored pullquote into semantic block-level HTML. */
+    private function parsePullquotes($content) {
+        return preg_replace(
+            '/\[pullquote\](.*?)\[\/pullquote\]/si',
+            '<blockquote class="ss-pullquote">$1</blockquote>',
             $content
         );
     }

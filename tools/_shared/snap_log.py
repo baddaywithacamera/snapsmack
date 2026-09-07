@@ -8,6 +8,7 @@ import snap_home
 
 
 _LOGGERS = {}
+_PRIMARY = None
 
 
 def setup(tool, logname="run"):
@@ -31,11 +32,19 @@ def setup(tool, logname="run"):
         logger.addHandler(stream)
     logger.log_path = path
     _LOGGERS[key] = logger
+    global _PRIMARY
+    if _PRIMARY is None:
+        _PRIMARY = logger
     return logger
 
 
 def get(tool):
     return _LOGGERS.get(f"snapsmack.{tool}") or setup(tool)
+
+
+def primary():
+    """Return the first logger configured by the host desktop tool."""
+    return _PRIMARY
 
 
 # ===== SNAPSMACK EOF =====

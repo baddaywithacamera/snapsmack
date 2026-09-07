@@ -484,6 +484,7 @@ include 'core/sidebar.php';
                     <button type="button" class="sc-btn" data-action="col2" title="2-Column Layout">COL 2</button>
                     <button type="button" class="sc-btn" data-action="col3" title="3-Column Layout">COL 3</button>
                     <button type="button" class="sc-btn" data-action="dropcap" title="Dropcap">DROP</button>
+                    <button type="button" class="sc-btn" data-action="pullquote" title="Pullquote">PULL</button>
                     <button type="button" class="sc-btn" data-action="spacer" title="Vertical Spacer (1-100px)">SPACER</button>
                     <span class="sc-sep"></span>
                     <button type="button" class="sc-btn" id="mosaic-insert-btn" title="Insert MOSAIC panel">MOSAIC</button>

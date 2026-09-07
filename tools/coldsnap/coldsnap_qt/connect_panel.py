@@ -19,7 +19,7 @@ import config as cfg_module
 import profile_manager
 
 from . import theme
-from .widgets import Card, hint, field_label
+from .widgets import hint, field_label
 
 
 class ConnectPanel(QWidget):
@@ -28,13 +28,16 @@ class ConnectPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.config = cfg_module.load()
+        self.setObjectName("AppHeader")
 
         col = QVBoxLayout(self)
-        col.setContentsMargins(0, 0, 0, 0)
-        card = Card("SITE")
-        col.addWidget(card)
+        col.setContentsMargins(18, 9, 14, 9)
+        col.setSpacing(5)
 
         top = QHBoxLayout()
+        site_label = QLabel("SITE")
+        site_label.setObjectName("ChromeLabel")
+        top.addWidget(site_label)
         self.profile_combo = QComboBox()
         self.profile_combo.addItem("— pick a saved site —", "")
         for name in profile_manager.list_profiles():
@@ -66,7 +69,7 @@ class ConnectPanel(QWidget):
         help_btn.setToolTip("Open the help (F1)")
         help_btn.clicked.connect(self._show_help)
         top.addWidget(help_btn)
-        card.body.addLayout(top)
+        col.addLayout(top)
 
         # -- the expander ------------------------------------------------------
         self.details = QWidget()
@@ -92,7 +95,7 @@ class ConnectPanel(QWidget):
         save_row.addWidget(save_btn)
         d.addLayout(save_row)
         self.details.setVisible(False)
-        card.body.addWidget(self.details)
+        col.addWidget(self.details)
 
         self._reflect_status()
 

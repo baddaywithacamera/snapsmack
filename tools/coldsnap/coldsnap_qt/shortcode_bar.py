@@ -45,6 +45,7 @@ class ShortcodeBar(QWidget):
             ("H2", "Heading 2", lambda: self._wrap("<h2>", "</h2>")),
             ("H3", "Heading 3", lambda: self._wrap("<h3>", "</h3>")),
             ("BQ", "Blockquote", lambda: self._wrap("<blockquote>", "</blockquote>")),
+            ("PULL", "Pullquote", lambda: self._wrap("[pullquote]", "[/pullquote]")),
             ("HR", "Horizontal rule", lambda: self._wrap("\n<hr>\n")),
         ):
             row1.addWidget(self._btn(label, tip, cb))
