@@ -1,0 +1,84 @@
+/* SNAPSMACK OPAUDIT — shared print stylesheet for DING DONG BELL detailed reports.
+   Source lives in /opaudits/. PDFs are generated via headless Chrome print-to-pdf.
+   Not deployed to the live site (only the generated PDFs are). */
+@page { size: letter; margin: 22mm 20mm 20mm; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+    font-family: Georgia, "Times New Roman", serif;
+    color: #1a1a1a;
+    font-size: 10.5pt;
+    line-height: 1.5;
+    margin: 0;
+}
+.doc-kicker {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 8pt;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #666;
+    margin: 0 0 6px;
+}
+h1 {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 17pt;
+    line-height: 1.2;
+    color: #111;
+    margin: 0 0 14px;
+}
+h2 {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11pt;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #b00;
+    margin: 22px 0 6px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid #ddd;
+}
+p { margin: 0 0 9px; }
+strong { color: #111; }
+code {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 9pt;
+    background: #f3f3f3;
+    padding: 0 3px;
+    border-radius: 2px;
+}
+table.meta { width: 100%; border-collapse: collapse; margin: 0 0 8px; font-size: 9.5pt; }
+table.meta td { border: 1px solid #ddd; padding: 5px 8px; vertical-align: top; }
+table.meta td.k {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bold;
+    width: 130px;
+    background: #f7f7f7;
+    color: #333;
+}
+.state-chip {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bold;
+    font-size: 8.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 7px;
+    border-radius: 3px;
+}
+.chip-watched  { background: #1a7a3c; color: #fff; }
+.chip-confirm  { background: #F3E2B3; color: #6b4c00; border: 1px solid #d9b84e; }
+.chip-open     { background: #D40000; color: #fff; }
+.doctrine {
+    background: #f4f4f4;
+    border-left: 4px solid #111;
+    padding: 10px 14px;
+    margin: 10px 0 0;
+    font-style: italic;
+}
+.footer {
+    margin-top: 26px;
+    padding-top: 8px;
+    border-top: 1px solid #ddd;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 8pt;
+    color: #888;
+}
+/* ===== SNAPSMACK EOF ===== */

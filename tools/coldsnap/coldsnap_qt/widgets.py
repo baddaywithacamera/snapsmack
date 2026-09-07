@@ -28,8 +28,8 @@ class Card(QFrame):
         super().__init__(parent)
         self.setObjectName("Card")
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(14, 12, 14, 14)
-        outer.setSpacing(8)
+        outer.setContentsMargins(16, 14, 16, 16)
+        outer.setSpacing(9)
         if title:
             t = QLabel(title)
             t.setObjectName("CardTitle")
@@ -184,7 +184,7 @@ class Accordion(QWidget):
         self.body.setVisible(checked)
 
 
-def build_rail(sections, bottom_widgets=(), width: int = 340) -> QWidget:
+def build_rail(sections, bottom_widgets=(), width: int = 310) -> QWidget:
     """The right-hand control rail, SNAP SLAPPER-style: a fixed-width column
     where the accordion sections scroll and `bottom_widgets` (SEND, status)
     stay pinned and always visible."""

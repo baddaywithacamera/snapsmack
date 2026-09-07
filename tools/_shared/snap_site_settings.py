@@ -134,11 +134,38 @@ def _atomic_write(path, data):
     os.replace(tmp, path)
 
 
-def load_local(site_url):
+def load_workflow_root():
+    """Return the machine-wide parent directory for per-blog workflows."""
+    store = _read_json(_local_path(), {})
+    path = str(store.get("workflow_root", "") or "").strip()
+    return os.path.abspath(path) if path else ""
+
+
+def save_workflow_root(path):
+    """Persist the machine-wide workflow parent directory."""
+    store = _read_json(_local_path(), {})
+    value = str(path or "").strip()
+    store["schema"] = SCHEMA
+    store["workflow_root"] = os.path.abspath(value) if value else ""
+    _atomic_write(_local_path(), store)
+    return store["workflow_root"]
+
+
+def load_local_override(site_url):
+    """Return only the explicit per-site path, without root derivation."""
     key = snap_home.site_key(site_url)
     store = _read_json(_local_path(), {})
     row = (store.get("sites") or {}).get(key, {})
     return validate_local(row.get("settings") or {})
+
+
+def load_local(site_url):
+    local = load_local_override(site_url)
+    if not local["handoff_dir"]:
+        root = load_workflow_root()
+        if root:
+            local["handoff_dir"] = os.path.join(root, snap_home.site_key(site_url))
+    return local
 
 
 def save_local(site_url, values):
@@ -159,13 +186,13 @@ def save_local(site_url, values):
 def handoff_paths(site_url, create=False):
     parent = load_local(site_url)["handoff_dir"]
     if not parent:
-        return {"handoff_dir": "", "upload": "", "done": ""}
+        return {"handoff_dir": "", "upload": "", "completed": ""}
     upload = os.path.join(parent, "upload")
-    done = os.path.join(parent, "done")
+    completed = os.path.join(parent, "completed")
     if create:
         os.makedirs(upload, exist_ok=True)
-        os.makedirs(done, exist_ok=True)
-    return {"handoff_dir": parent, "upload": upload, "done": done}
+        os.makedirs(completed, exist_ok=True)
+    return {"handoff_dir": parent, "upload": upload, "completed": completed}
 
 
 def combined(site_url, portable=None, *, synced_at=None, offline=True):

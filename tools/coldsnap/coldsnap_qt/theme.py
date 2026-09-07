@@ -15,12 +15,12 @@ whole app should be retuned by lives here.
 # near-identical panel/background of the SLAPPER palette washed out at COLD
 # SNAP's larger sizes, so cards, chrome and borders are stepped up for real
 # separation and the secondary text greys are brighter (Sean, 2026-09-06).
-BG         = "#141414"   # app background
-PANEL      = "#272727"   # cards / boxes — clearly above the background now
-PANEL_HI   = "#1b1b1b"   # card headers
-FIELD      = "#303030"   # input chrome / quiet buttons
-FIELD_HI   = "#3a3a3a"   # hover chrome
-BORDER     = "#3d3d3d"   # visible hairline separators
+BG         = "#0d0e0e"   # app background
+PANEL      = "#171817"   # cards / boxes
+PANEL_HI   = "#121312"   # card headers
+FIELD      = "#222422"   # input chrome / quiet buttons
+FIELD_HI   = "#303330"   # hover chrome
+BORDER     = "#343734"   # visible hairline separators
 INK        = "#f2f2f2"   # primary text
 BODY       = "#d8d8d8"   # body text — lifted
 DIM        = "#9a9a9a"   # secondary labels — was #777, too dim to read
@@ -56,6 +56,15 @@ def stylesheet() -> str:
     }}
     QMainWindow, QWidget {{ background: {BG}; }}
 
+    #AppHeader {{
+        background: {PANEL_HI};
+        border-bottom: 1px solid {BORDER};
+    }}
+    QLabel#ChromeLabel {{
+        color: {ACCENT}; font-size: 12px; font-weight: 700;
+        letter-spacing: 1.2px; background: transparent;
+    }}
+
     /* --- The control rail (same design as SNAP SLAPPER) ------------------- */
     #Rail {{
         background: {PANEL};
@@ -80,9 +89,8 @@ def stylesheet() -> str:
 
     /* --- Cards ----------------------------------------------------------- */
     QFrame#Card {{
-        background: {PANEL};
-        border: 1px solid {BORDER};
-        border-radius: 8px;
+        background: transparent;
+        border: none;
     }}
     QLabel#CardTitle {{
         color: {ACCENT};
@@ -104,27 +112,33 @@ def stylesheet() -> str:
     QLabel#BigTitle {{
         color: {INK}; font-size: 20px; font-weight: 700; background: transparent;
     }}
-
-    /* --- Tabs (pill strip, SLAPPER-toolbar family) ------------------------ */
-    QTabWidget::pane {{ border: none; }}
-    QTabBar {{ background: transparent; }}
-    QTabBar::tab {{
-        background: {PANEL};
-        color: {DIM};
-        padding: 9px 26px;
-        margin-right: 6px;
-        margin-bottom: 6px;
-        font-size: 14px;
-        font-weight: 700;
-        letter-spacing: 1.5px;
-        border: 1px solid {BORDER};
-        border-radius: 7px;
+    QLabel#EmptyTitle {{
+        color: {INK}; font-size: 24px; font-weight: 800; background: transparent;
     }}
-    QTabBar::tab:hover {{ color: {BODY}; border: 1px solid {FIELD_HI}; }}
+    QLabel#EmptyBody {{
+        color: {DIM}; font-size: 15px; background: transparent;
+    }}
+
+    /* --- Modes are application chrome, not four floating pill buttons. ---- */
+    QTabWidget#ModeTabs::pane {{ border: none; top: -1px; }}
+    QTabWidget#ModeTabs > QTabBar {{
+        background: {PANEL_HI}; border-bottom: 1px solid {BORDER};
+    }}
+    QTabBar::tab {{
+        background: transparent;
+        color: {DIM};
+        padding: 11px 24px 9px 24px;
+        margin: 0;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 1.2px;
+        border: none;
+        border-bottom: 2px solid transparent;
+    }}
+    QTabBar::tab:hover {{ color: {BODY}; background: {FIELD}; }}
     QTabBar::tab:selected {{
-        background: {ACCENT_DIM};
         color: {ACCENT};
-        border: 1px solid {ACCENT};
+        border-bottom: 2px solid {ACCENT};
     }}
 
     /* --- Buttons ----------------------------------------------------------*/
@@ -143,7 +157,7 @@ def stylesheet() -> str:
         color: #000000;
         font-weight: 700;
         border: none;
-        padding: 10px 18px;
+        padding: 9px 18px;
     }}
     QPushButton#Primary:hover    {{ background: {ACCENT_HI}; color: #000000; }}
     QPushButton#Primary:disabled {{ background: {ACCENT_DIM}; color: {FAINT}; }}
@@ -268,6 +282,18 @@ def stylesheet() -> str:
         background: {PANEL_HI}; color: {INK};
         border: 1px solid {BORDER}; padding: 4px 7px;
     }}
+    QSplitter::handle {{ background: {BG}; }}
+    QSplitter::handle:horizontal {{ width: 10px; }}
+    QListWidget {{
+        background: {PANEL_HI}; border: 1px solid {BORDER}; border-radius: 8px;
+        padding: 12px;
+    }}
+    QListWidget::item {{
+        background: {PANEL}; border: 1px solid transparent; border-radius: 6px;
+        padding: 8px; margin: 4px;
+    }}
+    QListWidget::item:hover {{ border-color: {FIELD_HI}; }}
+    QListWidget::item:selected {{ border-color: {ACCENT}; background: {ACCENT_DIM}; }}
     """
 
 # ===== SNAPSMACK EOF =====

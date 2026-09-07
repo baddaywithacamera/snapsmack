@@ -21,6 +21,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QListWidget, QListWidgetItem, QMessageBox,
+    QSplitter, QStackedWidget,
 )
 
 import snap_home
@@ -50,10 +51,16 @@ class StorageMode(QWidget):
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(10, 10, 10, 10)
-        outer.setSpacing(10)
+        outer.setSpacing(0)
+        split = QSplitter(Qt.Horizontal)
+        split.setChildrenCollapsible(False)
+        outer.addWidget(split)
 
         # ── the grid ─────────────────────────────────────────────────────────
-        left = QVBoxLayout()
+        left_panel = QWidget()
+        left = QVBoxLayout(left_panel)
+        left.setContentsMargins(0, 0, 0, 0)
+        left.setSpacing(12)
         head = QHBoxLayout()
         self.count_lbl = QLabel("COLD STORAGE")
         self.count_lbl.setObjectName("CardTitle")
@@ -79,8 +86,30 @@ class StorageMode(QWidget):
         self.grid.setUniformItemSizes(True)
         self.grid.setWordWrap(True)
         self.grid.currentItemChanged.connect(self._on_pick)
-        left.addWidget(self.grid, 1)
-        outer.addLayout(left, 3)
+        self.grid_stack = QStackedWidget()
+        self.grid_stack.addWidget(self.grid)
+        empty = QWidget()
+        empty_col = QVBoxLayout(empty)
+        empty_col.setContentsMargins(40, 40, 40, 40)
+        empty_col.addStretch(2)
+        empty_title = QLabel("YOUR OFFLINE SHELF IS EMPTY")
+        empty_title.setObjectName("EmptyTitle")
+        empty_title.setAlignment(Qt.AlignCenter)
+        empty_col.addWidget(empty_title)
+        empty_body = QLabel(
+            "Pull this site's photographs down once, then browse and work with them offline.")
+        empty_body.setObjectName("EmptyBody")
+        empty_body.setAlignment(Qt.AlignCenter)
+        empty_body.setWordWrap(True)
+        empty_col.addWidget(empty_body)
+        empty_sync = big_button("SYNC PHOTOGRAPHS FROM SITE")
+        empty_sync.setMaximumWidth(320)
+        empty_sync.clicked.connect(self._sync)
+        empty_col.addWidget(empty_sync, 0, Qt.AlignHCenter)
+        empty_col.addStretch(3)
+        self.grid_stack.addWidget(empty)
+        left.addWidget(self.grid_stack, 1)
+        split.addWidget(left_panel)
 
         # ── the detail panel ────────────────────────────────────────────────
         card = Card("SELECTED IMAGE")
@@ -135,7 +164,31 @@ class StorageMode(QWidget):
         self.save_status = hint("")
         card.body.addWidget(self.save_status)
         card.body.addStretch(1)
-        outer.addWidget(card, 2)
+        card.setMinimumWidth(390)
+        card.setMaximumWidth(560)
+
+        detail_stack = QStackedWidget()
+        detail_stack.setMinimumWidth(390)
+        detail_stack.setMaximumWidth(560)
+        detail_stack.addWidget(card)
+        waiting = Card("PHOTO DETAILS")
+        waiting.body.addStretch(2)
+        waiting_title = QLabel("SELECT A PHOTO")
+        waiting_title.setObjectName("EmptyTitle")
+        waiting_title.setAlignment(Qt.AlignCenter)
+        waiting.body.addWidget(waiting_title)
+        waiting_body = QLabel("Its preview, description and site metadata will appear here.")
+        waiting_body.setObjectName("EmptyBody")
+        waiting_body.setAlignment(Qt.AlignCenter)
+        waiting_body.setWordWrap(True)
+        waiting.body.addWidget(waiting_body)
+        waiting.body.addStretch(3)
+        detail_stack.addWidget(waiting)
+        self.detail_stack = detail_stack
+        split.addWidget(detail_stack)
+        split.setStretchFactor(0, 5)
+        split.setStretchFactor(1, 3)
+        split.setSizes([900, 500])
 
         self._sync_bridge = _SyncBridge()
         self._sync_bridge.progressed.connect(self.status_lbl.setText)
@@ -165,8 +218,12 @@ class StorageMode(QWidget):
         self.count_lbl.setText(f"COLD STORAGE — {n} image{'' if n == 1 else 's'} offline")
         if not n:
             self.status_lbl.setText("Nothing stored yet — SYNC FROM SITE, or post something.")
+            self.grid_stack.setCurrentIndex(1)
+        else:
+            self.grid_stack.setCurrentIndex(0)
         self._sel = None
         self.detail.setEnabled(False)
+        self.detail_stack.setCurrentIndex(1)
 
     def _on_pick(self, item, _prev=None):
         if item is None:
@@ -177,6 +234,7 @@ class StorageMode(QWidget):
             return
         self._sel = a
         self.detail.setEnabled(True)
+        self.detail_stack.setCurrentIndex(0)
         site = self._site()
         media = snap_library.asset_file(site, aid)
         pm = load_pixmap(media, 180) if media else None

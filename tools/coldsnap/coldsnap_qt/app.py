@@ -13,6 +13,10 @@ import sys
 
 
 def main() -> int:
+    import snap_single_instance
+    if not snap_single_instance.acquire("cold-snap", "COLD SNAP"):
+        return 0
+
     from PySide6.QtWidgets import QApplication
 
     from . import theme

@@ -17,6 +17,7 @@ from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
+    QDialog, QDialogButtonBox, QListWidget, QListWidgetItem,
 )
 
 import sumna_offline as O
@@ -53,7 +54,8 @@ class TakeMode(QWidget):
         right.setContentsMargins(0, 0, 0, 0)
 
         card = Card("COMPOSE — an essay with photos")
-        right.addWidget(card)
+        card.setMaximumWidth(1120)
+        right.addWidget(card, 0, Qt.AlignHCenter)
 
         card.body.addWidget(field_label("Title"))
         self.title_edit = QLineEdit()
@@ -111,9 +113,11 @@ class TakeMode(QWidget):
 
         # Primary action pinned under the scroll — never below the fold.
         act = QHBoxLayout()
-        self.queue_btn = big_button("QUEUE POST  →  goes in the batch, sends on SEND")
+        act.addStretch(1)
+        self.queue_btn = big_button("QUEUE POST")
+        self.queue_btn.setMaximumWidth(260)
+        self.queue_btn.setToolTip("Add this post to the batch. Nothing publishes until SEND.")
         self.queue_btn.clicked.connect(lambda: self._save(ready=True))
-        act.addWidget(self.queue_btn, 1)
         save_btn = QPushButton("Save as draft")
         save_btn.clicked.connect(lambda: self._save(ready=False))
         act.addWidget(save_btn)
@@ -121,6 +125,7 @@ class TakeMode(QWidget):
         clear_btn.setObjectName("Quiet")
         clear_btn.clicked.connect(self._clear)
         act.addWidget(clear_btn)
+        act.addWidget(self.queue_btn)
 
         centre = QVBoxLayout()
         centre.setSpacing(8)
@@ -142,7 +147,69 @@ class TakeMode(QWidget):
 
     # -- compose -----------------------------------------------------------------
     def _insert_mosaic(self):
-        self.body.editor.insertPlainText("[mosaic]")
+        if not self._bucket:
+            QMessageBox.warning(self, "No photos", "Add photos before building a mosaic.")
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Build mosaic")
+        dialog.resize(520, 430)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel(
+            "Choose the photos for this mosaic. Drag them—or use the arrows—to set "
+            "the mosaic order. This does not change the post's photo order."))
+        photos = QListWidget()
+        photos.setDragDropMode(QListWidget.InternalMove)
+        for bucket_index, image in enumerate(self._bucket):
+            item = QListWidgetItem(image.filename or os.path.basename(image.local_path))
+            item.setData(Qt.UserRole, bucket_index)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsDragEnabled)
+            item.setCheckState(Qt.Checked)
+            photos.addItem(item)
+        layout.addWidget(photos, 1)
+
+        preset_row = QHBoxLayout()
+        preset_row.addWidget(QLabel("Layout"))
+        preset = QComboBox()
+        preset.addItem("One left, two right", "one-left")
+        preset.addItem("One right, two left", "one-right")
+        preset.addItem("Three across", "three-across")
+        preset.addItem("One top, two below", "one-top")
+        preset_row.addWidget(preset, 1)
+        layout.addLayout(preset_row)
+
+        arrows = QHBoxLayout()
+        up = QPushButton("Move up")
+        down = QPushButton("Move down")
+        arrows.addWidget(up); arrows.addWidget(down); arrows.addStretch(1)
+        layout.addLayout(arrows)
+
+        def move(delta):
+            row = photos.currentRow()
+            target = row + delta
+            if row >= 0 and 0 <= target < photos.count():
+                item = photos.takeItem(row)
+                photos.insertItem(target, item)
+                photos.setCurrentRow(target)
+
+        up.clicked.connect(lambda: move(-1))
+        down.clicked.connect(lambda: move(1))
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        if dialog.exec() != QDialog.Accepted:
+            return
+
+        chosen = [int(photos.item(i).data(Qt.UserRole)) + 1
+                  for i in range(photos.count())
+                  if photos.item(i).checkState() == Qt.Checked]
+        if not chosen:
+            QMessageBox.warning(self, "Empty mosaic", "Choose at least one photo.")
+            return
+        marker = "[mosaic=" + ",".join(map(str, chosen)) \
+            + " layout=" + str(preset.currentData()) + "]"
+        self.body.editor.insertPlainText(marker)
         self.body.editor.setFocus()
 
     def _add_photos(self):

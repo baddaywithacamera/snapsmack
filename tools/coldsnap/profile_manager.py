@@ -32,6 +32,11 @@ except Exception:  # pragma: no cover - dev-tree import shim
     except Exception:
         _shared_profiles = None
 
+try:
+    import snap_connections
+except Exception:
+    snap_connections = None
+
 
 def _shared_to_coldsnap(p: dict) -> Dict:
     """Map a canonical shared profile (name/site_url/api_key/extras) onto the shape
@@ -104,7 +109,7 @@ def list_profiles() -> List[str]:
             except Exception:
                 pass
     if snap_connections:
-        names.extend(row['name'] for row in snap_connections.list_connections('sybu'))
+        names.update(row['name'] for row in snap_connections.list_connections('sybu'))
     return sorted(set(names))
 
 

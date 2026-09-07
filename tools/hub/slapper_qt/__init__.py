@@ -9,7 +9,7 @@ The Tk application (``editor_ui.py``) is left completely intact and runnable so
 nothing is lost while the Qt shell is built out phase by phase.
 """
 
-BUILD_VERSION = "0.7.26"
+BUILD_VERSION = "0.7.30"
 
 # shiboken6 (PySide6's binding layer) injects a `Self` special form into the
 # STDLIB typing module on Python 3.10, where none exists — and 3.10's own

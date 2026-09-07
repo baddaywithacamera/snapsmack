@@ -224,6 +224,15 @@ tempwork/
 tmp/
 .python-build/
 
+# Generated release/build output — reproducible from tracked source and build recipes.
+/build/
+/.release-*/
+**/.tmp/
+
+# Disposable upstream checkout used for comparison/auditing. Its upstream
+# repository remains the source of truth; do not record a dangling gitlink.
+/.pixelfed-upstream-audit/
+
 # Working documents kept beside the repo but not part of it — same reasoning as
 # the named .docx specs above. Binary, they churn, and they are not source.
 SNAPSMACK-AI-Class-Case-Study.docx

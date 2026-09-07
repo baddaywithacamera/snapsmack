@@ -754,7 +754,7 @@ class EditorWindow(QMainWindow):
         layout = QVBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        self._rail_layout = layout
+        self._canvas_layout = layout
 
         # The histogram can remain visible while the editing controls scroll.
         self._histogram_wrap = self._build_histogram()
@@ -777,6 +777,7 @@ class EditorWindow(QMainWindow):
         layout = QVBoxLayout(rail)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
+        self._rail_layout = layout
 
         scroll = QScrollArea()
         self.rail_scroll = scroll
@@ -967,7 +968,9 @@ class EditorWindow(QMainWindow):
         scroll.setWidget(inner)
         layout.addWidget(scroll)
 
-        if not self._histogram_locked:
+        if self._histogram_locked:
+            self._rail_layout.insertWidget(0, self._histogram_wrap, 0)
+        else:
             self._sections["LIGHT"].body_layout.insertWidget(0, self._histogram_wrap)
 
         from PySide6.QtWidgets import QDockWidget
