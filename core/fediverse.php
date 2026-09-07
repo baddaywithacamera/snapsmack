@@ -6391,6 +6391,13 @@ function sv_run_sweep(PDO $pdo, array &$settings): array
         sv_ensure_tables($pdo);
         sv_ensure_keys($pdo, $settings);
 
+        // Existing deliveries are the primary job. Everything below can make
+        // remote requests and is optional maintenance; none of it may starve
+        // rows which are already due.
+        list($sent, $failed) = sv_process_deliveries(
+            $pdo, $settings, 30, sv_delivery_cadence($settings), null, null, null, 240
+        );
+
         $mesh_follow = sv_reconcile_mesh_follows($pdo, $settings, 1);
 
         // 0.7.613D "CHANGE OF ADDRESS": once per installed version, re-resolve
@@ -6412,7 +6419,6 @@ function sv_run_sweep(PDO $pdo, array &$settings): array
 
         list($units, $queued)   = sv_sweep_new_posts($pdo, $settings);
         list($bf_jobs, $bf_q)   = sv_process_backfill_jobs($pdo, $settings);
-        list($sent, $failed)    = sv_process_deliveries($pdo, $settings, 30, sv_delivery_cadence($settings));
         $actor_upd = sv_maybe_push_actor_update($pdo, $settings);
 
         // Refresh the mesh roster so the FEDBOARD picker fills (the only other
