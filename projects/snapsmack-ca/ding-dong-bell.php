@@ -96,8 +96,7 @@ h3 { font-size: 1rem; }
 .family-head p  { color: var(--mid-grey); max-width: 72ch; margin: 0; }
 
 .entry {
-    padding: 30px 0;
-    border-bottom: 1px solid #e2e2e2;
+    padding: 26px 0 0;
     max-width: 860px;
 }
 .entry-top {
