@@ -86,6 +86,8 @@ class SiteData:
     tags:            List[str]          = field(default_factory=list)  # existing hashtags
     titles:          List[str]          = field(default_factory=list)  # existing post titles
     site_mode:       str                = ''   # 'photoblog' (solo) | 'carousel' (gram); '' = server didn't report
+    download_link_required: bool        = False
+    download_default_mode: str          = 'per_post'
 
 
 # ---------------------------------------------------------------------------
@@ -260,6 +262,10 @@ class SnapSmackClient:
                 data.tags    = payload.get('tags', [])
                 data.titles  = payload.get('titles', [])
                 data.site_mode = str(payload.get('site_mode', '') or '').strip().lower()
+                policy = payload.get('publishing_policy') or {}
+                data.download_link_required = bool(policy.get('download_link_required', False))
+                data.download_default_mode = str(
+                    policy.get('download_default_mode', 'per_post') or 'per_post')
                 return data
             why = f"sybu-data.php returned HTTP {api_resp.status_code}"
         except Exception as e:
@@ -316,6 +322,7 @@ class SnapSmackClient:
         jpeg_quality:        int = 92,
         image_resize_enabled: bool = True,
         export_sharpen:      str = 'auto',
+        download_link_required: bool = False,
     ) -> PostResult:
         """
         Full workflow for one image. Returns PostResult — never raises.
@@ -397,6 +404,16 @@ class SnapSmackClient:
                             os.unlink(tmp_drive)
                         except OSError:
                             pass
+
+            # A required-download site must never receive the web post when its
+            # original did not make it to Drive.  This catches expired tokens,
+            # revoked access, folder failures, and other mid-batch failures—not
+            # merely the obvious "Drive is not connected" UI state.
+            if download_link_required and not drive_url:
+                detail = notes[-1] if notes else "Google Drive is not connected"
+                raise RuntimeError(
+                    "Post blocked: this site requires a Drive download link, but "
+                    f"the Drive upload did not succeed. {detail}")
 
             # ── 4. Resolve category and album IDs ─────────────────────
             cat_name   = entry.category or default_category
@@ -537,6 +554,7 @@ def run_batch(
     jpeg_quality:        int = 92,
     image_resize_enabled: bool = True,
     export_sharpen:      str = 'auto',
+    download_link_required: bool = False,
     cancel_event=None,
     completed_dir:       str = '',
 ) -> List[PostResult]:
@@ -563,6 +581,7 @@ def run_batch(
             jpeg_quality=jpeg_quality,
             image_resize_enabled=image_resize_enabled,
             export_sharpen=export_sharpen,
+            download_link_required=download_link_required,
         )
         _archive_success(result, image_folder, completed_dir)
         results.append(result)
@@ -626,7 +645,9 @@ def _gram_upload(conn: 'GramConnection', local_path: str) -> dict:
     return data
 
 
-def post_gram(conn: 'GramConnection', entry: ManifestEntry, image_folder: str) -> PostResult:
+def post_gram(conn: 'GramConnection', entry: ManifestEntry, image_folder: str,
+              drive_service=None, drive_folder_id: str = '',
+              download_link_required: bool = False) -> PostResult:
     """Post one POST-tab entry as its own single gram. Never raises — always
     returns a PostResult (same shape the solo path returns, so _poll_queue reads
     .entry / .success / .exif_ok / .message with no shim)."""
@@ -634,6 +655,26 @@ def post_gram(conn: 'GramConnection', entry: ManifestEntry, image_folder: str) -
     if not os.path.isfile(local_path):
         return PostResult(entry, False, f"image not found: {local_path}")
     try:
+        drive_url = ''
+        if drive_service is not None:
+            try:
+                import drive as drive_module
+                drive_url = drive_module.upload(
+                    service=drive_service, file_path=local_path,
+                    filename=os.path.basename(local_path),
+                    folder_id=drive_folder_id or None)
+            except Exception as exc:
+                if download_link_required:
+                    return PostResult(
+                        entry, False,
+                        "Post blocked: this site requires a Drive download link, "
+                        f"but the Drive upload failed: {exc}")
+        if download_link_required and not drive_url:
+            return PostResult(
+                entry, False,
+                "Post blocked: this site requires a Drive download link, but "
+                "Google Drive is not connected.")
+
         up = _gram_upload(conn, local_path)
         controls = {
             'path':         up.get('path', ''),
@@ -657,8 +698,8 @@ def post_gram(conn: 'GramConnection', entry: ManifestEntry, image_folder: str) -
             'post_type':      'single',
             'panorama_rows':  1,
             'allow_comments': 1,
-            'allow_download': 0,
-            'download_url':   '',
+            'allow_download': 1 if drive_url else 0,
+            'download_url':   drive_url,
             'images':         [controls],
             'tags':           [t.lstrip('#') for t in (entry.tags or '').split() if t.strip()],
         }
@@ -702,6 +743,9 @@ def run_gram_batch(
     entries:      List[ManifestEntry],
     image_folder: str,
     on_progress:  Callable[[int, int, PostResult], None] = None,
+    drive_service=None,
+    drive_folder_id: str = '',
+    download_link_required: bool = False,
     cancel_event=None,
     completed_dir: str = '',
 ) -> List[PostResult]:
@@ -714,7 +758,11 @@ def run_gram_batch(
     for i, entry in enumerate(entries, start=1):
         if cancel_event is not None and cancel_event.is_set():
             break
-        result = post_gram(conn, entry, image_folder)
+        result = post_gram(
+            conn, entry, image_folder,
+            drive_service=drive_service,
+            drive_folder_id=drive_folder_id,
+            download_link_required=download_link_required)
         _archive_success(result, image_folder, completed_dir)
         results.append(result)
         if on_progress is not None:

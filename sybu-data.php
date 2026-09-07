@@ -24,11 +24,11 @@
 // the key; the mode gate refuses non-photoblog TOOL access (browser sessions are
 // exempt). Field-level write scope (chunk 3) is PENDING Sean's confirm. Legacy
 // X-Snap-Key + admin session still work (additive).
-$GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu'];
+$GLOBALS['SNAP_API_KEY_TYPES']    = ['sybu', 'smackpress'];
 // Read-only metadata (cats/albums/tags/titles) — valid on photo modes alike.
 // Allow gram (carousel) as well as photoblog so SMACK YOUR BATCH UP can connect to The
 // Grid sites, not just solo photoblogs.
-$GLOBALS['SNAP_API_REQUIRE_MODE'] = ['photoblog', 'carousel'];
+$GLOBALS['SNAP_API_REQUIRE_MODE'] = ['photoblog', 'carousel', 'smacktalk'];
 require_once 'core/api-auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -110,6 +110,18 @@ $site_mode = (string)($pdo->query(
     "SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1"
 )->fetchColumn() ?: 'photoblog');
 
+// Publishing invariants belong to the destination site, not to a desktop
+// tool's remembered preferences.  Clients read these on connect and fail
+// closed before uploading when the site requires a Drive-backed download.
+$publishing_rows = $pdo->query(
+    "SELECT setting_key, setting_val FROM snap_settings
+     WHERE setting_key IN ('download_link_required', 'download_default_mode')"
+)->fetchAll(PDO::FETCH_KEY_PAIR);
+$publishing_policy = [
+    'download_link_required' => (($publishing_rows['download_link_required'] ?? '0') === '1'),
+    'download_default_mode'  => (string)($publishing_rows['download_default_mode'] ?? 'per_post'),
+];
+
 // ── Response ──────────────────────────────────────────────────────────────────
 
 echo json_encode([
@@ -118,5 +130,6 @@ echo json_encode([
     'tags'       => $tags,
     'titles'     => $titles,
     'site_mode'  => $site_mode,
+    'publishing_policy' => $publishing_policy,
 ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 // ===== SNAPSMACK EOF =====
