@@ -359,7 +359,7 @@ require_once __DIR__ . '/includes/header.php';
     <section class="family-head">
         <div class="wrap">
             <h2>What this cost us to learn &mdash; for anyone building with AI</h2>
-            <p>SnapSmack is built by one photographer directing AI to write code he can&rsquo;t read himself. If that&rsquo;s you &mdash; building a real thing through an AI, or building something like this &mdash; every lesson below was paid for in one of the incidents above. They&rsquo;re the part worth stealing.</p>
+            <p>SnapSmack is built by one photographer directing AI to write the code &mdash; and reading it back. An hour or more a day goes into reading the PHP and Python that comes out, with a second AI on hand to explain the tricky parts. That&rsquo;s enough to follow what a chunk does and whether it fits, even where writing it from scratch is still out of reach &mdash; the way you can order confidently off a menu in a language you don&rsquo;t yet speak. Not trying to understand the input would be the irresponsible move. If that&rsquo;s you &mdash; building a real thing through AI &mdash; every lesson below was paid for in one of the incidents above. They&rsquo;re the part worth stealing.</p>
         </div>
     </section>
 
@@ -368,12 +368,12 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="entry">
                 <div class="entry-top"><h3>&ldquo;Fixed&rdquo; and &ldquo;watched working&rdquo; are two different claims &mdash; never let them blur</h3></div>
-                <p>This is the expensive one, and it&rsquo;s why this whole page has coloured tags. When an AI writes code you can&rsquo;t read, &ldquo;the agent says it&rsquo;s fixed&rdquo; is a claim, not a result. Track what you <em>changed</em> separately from what you&rsquo;ve <em>watched actually work on a real machine</em>, and never let the first quietly become the second. The word &ldquo;fixed&rdquo; in a changelog fooled us more than once &mdash; the Photo Friday cards read &ldquo;delivered&rdquo; and vanished for weeks.</p>
+                <p>This is the expensive one, and it&rsquo;s why this whole page has coloured tags. When an AI writes the code, &ldquo;the agent says it&rsquo;s fixed&rdquo; is a claim, not a result &mdash; even after you&rsquo;ve read the change and it looks right. Track what you <em>changed</em> separately from what you&rsquo;ve <em>watched actually work on a real machine</em>, and never let the first quietly become the second. The word &ldquo;fixed&rdquo; in a changelog fooled us more than once &mdash; the Photo Friday cards read &ldquo;delivered&rdquo; and vanished for weeks.</p>
             </div>
 
             <div class="entry">
-                <div class="entry-top"><h3>You verify by the outcome on a real machine, not by reading the code</h3></div>
-                <p>If you can&rsquo;t read the code, that isn&rsquo;t the weakness it sounds like &mdash; it just moves where you check. Your real power is knowing exactly what the finished thing must <em>do</em>. Define that hole precisely before a line is written, then test the running system against it and pare off anything that doesn&rsquo;t fit. &ldquo;The agent says it&rsquo;s done&rdquo; doesn&rsquo;t fill the hole; filling the hole fills the hole &mdash; and you can see that with your own eyes without reading a single function.</p>
+                <div class="entry-top"><h3>Read the input, then watch the output &mdash; neither one alone is proof</h3></div>
+                <p>Read what the AI hands you: understanding the change is part of the job, not something to skip because you didn&rsquo;t write it. But reading it &mdash; even reading it carefully &mdash; is not proof it works. Knowing exactly what the finished thing must <em>do</em>, then watching the running system actually do it on a real machine, is the proof. Define that hole precisely before a line is written, read the code that comes back to check it fits, then test the real outcome against it and pare off anything that doesn&rsquo;t. &ldquo;The agent says it&rsquo;s done&rdquo; and &ldquo;the code looks right&rdquo; are both claims; the working outcome is the result.</p>
             </div>
 
             <div class="entry">
