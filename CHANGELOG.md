@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.655D "BROWN COW" — 2026-09-07
+- **Existing SNAP HQ 0.7.40 installations can authorize again.** The CMS now routes the already-shipped `/api/desktop-auth/{action}` URLs to the device-authorization handler, while newer clients may continue using `api.php?route=desktop-auth/...`. 0.7.654D added seamless enrolment but only its newer, not-yet-installed HQ 0.7.41 client knew the query-router URL, leaving the real installed editor locked behind an HTML 404. Fresh installs receive the compatibility route too.
+- **Every app on the SNAP HQ launcher is single-instance.** A shared operating-system lock now stops duplicate HQ, SNAP SLAPPER, SYBU, COLD SNAP, SMACK YOUR MOUTH, SHOTS FIRED, and CRONOMETER processes; OH SNAP uses the native Tauri single-instance plugin, while GYSS and SUYB retain their existing guards. Crashes and Task Manager exits release the lock automatically, so stale PID files cannot leave false RUNNING state behind.
+
 ## 0.7.654D "NO SECRET HANDSHAKE" — 2026-09-06
 - **SNAP HQ authorization is seamless again.** The saved Hub key identifies the installation, then the ordinary password-and-authenticator step binds this computer's Ed25519 identity and returns its signed entitlement in one operation. There is no one-use key to copy between the CMS and desktop app. The device cap, block list, 90-day entitlement and offline grace rules remain unchanged.
 - **Desktop authorization uses the CMS router that is actually deployed.** SNAP HQ now calls `api.php?route=desktop-auth/...` instead of relying on an unconfigured pretty-URL rewrite, and reports an explicitly outdated CMS instead of the misleading “unexpected response (404).”

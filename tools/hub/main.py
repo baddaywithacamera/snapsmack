@@ -1499,6 +1499,9 @@ class Hub(tk.Tk):
 
 
 if __name__ == "__main__":
+    import snap_single_instance
+    if not snap_single_instance.acquire("snap-hq", "SNAP HQ"):
+        raise SystemExit(0)
     app = Hub()
     if "--authorize" in sys.argv:
         app.after_idle(app._open_authorization)

@@ -676,5 +676,8 @@ class App(tk.Tk):
 
 
 if __name__ == "__main__":
+    import snap_single_instance
+    if not snap_single_instance.acquire("cronometer", "CRONOMETER"):
+        raise SystemExit(0)
     App().mainloop()
 # ===== SNAPSMACK EOF =====
