@@ -451,9 +451,9 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="disclosure">
         <div class="wrap">
-            <h2>Watched Something Break? Or Watched It Work?</h2>
-            <p>This ledger gets more accurate when people who run SnapSmack tell us what they actually saw &mdash; a delivery that failed, a peer that choked, or, just as usefully, a job you watched succeed on your own box. A named observation is what turns &ldquo;fixed&rdquo; into &ldquo;watched working&rdquo; here.</p>
-            <p>Tell us through the SnapSmack support forum. If it&rsquo;s a security issue &mdash; something that could be abused rather than something that just doesn&rsquo;t work &mdash; report it privately and it&rsquo;ll join <a href="buzzers.php">BUZZERS!</a> once it&rsquo;s closed. <a href="https://github.com/baddaywithacamera/snapsmack" target="_blank" rel="noopener">The codebase is public and open to inspection at any time.</a></p>
+            <h2>How &ldquo;Watched Working&rdquo; Gets Earned</h2>
+            <p>SnapSmack is early &mdash; still closed beta, essentially one operator testing on real boxes. So right now almost everything that earns a green tag here was watched by us, and the honest defaults (&ldquo;confirming&rdquo;) are the things one pair of hands hasn&rsquo;t gotten to yet. That&rsquo;s the whole reason the labels are split the way they are: a named person watching the real outcome on a real machine is what turns &ldquo;fixed&rdquo; into &ldquo;watched working,&rdquo; and until the beta widens there simply aren&rsquo;t many pairs of hands to do the watching.</p>
+            <p>As more people run it, their named observations &mdash; a delivery that failed, a peer that choked, a job watched succeeding &mdash; will feed this ledger too. The codebase is public and open to inspection at any time: <a href="https://github.com/baddaywithacamera/snapsmack" target="_blank" rel="noopener">github.com/baddaywithacamera/snapsmack</a>. Security issues &mdash; something that could be abused rather than something that just doesn&rsquo;t work &mdash; belong in <a href="buzzers.php">BUZZERS!</a> once closed, and should be reported privately, not posted in public.</p>
         </div>
     </section>
 </main>
