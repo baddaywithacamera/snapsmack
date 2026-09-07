@@ -1,18 +1,26 @@
 """
-SECAUDIT 054 — the shared credential vault was never actually engaging.
+SECAUDIT 054 follow-through — secrets are sealed at rest, or refused.
 
-snap_vault.init() clears the held key, and snap_creds.init() (called on every
-get/set) used to only re-bind — so every secret silently fell back to recoverable
-base64 even when a vault existed. snap_creds.init() now restores the key from the
-OS keychain (and, once unlocked, stays unlocked across calls). This proves secrets
-are genuinely ENCRYPTED at rest, including across the keychain-restore path that is
-the real production mechanism (enable with "remember on this machine").
+Rewritten 2026-09-06 for the MANDATORY-vault contract that superseded the
+original opt-in design (the 652D merge landed the stronger snap_creds: a new
+value is sealed with the shared vault, and a locked/unavailable vault REFUSES
+the write instead of silently downgrading to recoverable base64). The old
+test asserted the interim behaviour (`sealing_active()`, b64 fallback) and
+went stale; these checks pin the current, stronger promise.
+
+Sandboxed: SNAPSMACK_HOME points at a temp dir and the vault is enabled with
+a throwaway passphrase (store_machine_key=False), so the test never touches
+the real Windows Credential Manager or the real shared vault.
 
 Run: python tools/_shared/tests/test_snap_creds_sealing.py   (exit 0 = all pass)
 Skips the sealed-at-rest assertions cleanly if the crypto backend is absent.
+
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
 """
 
-import base64
 import os
 import sys
 import tempfile
@@ -21,74 +29,76 @@ os.environ["SNAPSMACK_HOME"] = tempfile.mkdtemp(prefix="creds-seal-")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import snap_creds
+import snap_home
 import snap_vault
 
 
-def _store_bytes():
-    with open(snap_creds._store_path(), "rb") as f:
-        return f.read()
+def _store_bytes() -> bytes:
+    try:
+        with open(snap_creds._store_path(), "rb") as f:
+            return f.read()
+    except FileNotFoundError:
+        return b""
 
 
-def _checks():
+def _checks() -> int:
     n = 0
     SECRET = "AT-REST-SECRET-9Z"
 
-    # Baseline: with NO vault, secrets are base64 (the pre-fix at-rest exposure) —
-    # documents the interim, and that storage always works.
-    snap_creds.set("plain_probe", "PROBE-VALUE")
-    assert snap_creds.get("plain_probe") == "PROBE-VALUE"
-    assert snap_creds.sealing_active() is False, "no vault yet, so nothing is sealed"
-    n += 1
-
     if not snap_vault.crypto_available():
-        print("  (vault crypto not available — sealed-at-rest assertions skipped)")
-        return n
-
-    # THE FIX, held-key path: enable a vault; snap_creds.init() (every set) must not
-    # re-lock it, so the secret is sealed, not base64.
-    snap_creds.init()
-    if not snap_vault.is_enabled():
-        snap_vault.enable("test-pass", store_machine_key=False)
-    assert snap_creds.sealing_active() is True
-    snap_creds.set("held_secret", SECRET)
-    assert snap_creds.sealing_active() is True, "vault re-locked between calls (the old bug)"
-    raw = _store_bytes()
-    assert SECRET.encode() not in raw, "plaintext secret in store"
-    assert base64.b64encode(SECRET.encode()) not in raw, "base64 secret in store — not sealed"
-    assert snap_creds.get("held_secret") == SECRET, "sealed secret won't round-trip"
-    n += 1
-
-    # THE FIX, keychain-restore path (the real transparent mechanism): cache the key
-    # in the OS keychain, drop the in-process key, and confirm snap_creds.init()
-    # transparently restores it and still seals. Cleans up the keychain entry after.
-    if snap_vault.keychain_available():
+        # No crypto backend: the contract is REFUSAL, never a recoverable write.
         try:
-            snap_vault.store_machine_key_now()
-            snap_vault.lock()                       # forget the in-process key
-            assert snap_vault.is_unlocked() is False
-            # get_site / set_site call snap_creds.init(), which now restores the key
-            # from the keychain — the real per-site path profiles use.
-            snap_creds.set_site("https://kc.ing", "api_key", "KC-" + SECRET)
-            assert snap_creds.sealing_active() is True, "keychain restore did not re-open the vault"
-            raw = _store_bytes()
-            assert ("KC-" + SECRET).encode() not in raw, "keychain-path secret left plaintext"
-            assert base64.b64encode(("KC-" + SECRET).encode()) not in raw, "keychain-path secret base64 — not sealed"
-            assert snap_creds.get_site("https://kc.ing", "api_key") == "KC-" + SECRET
-            n += 1
-        finally:
-            try:
-                snap_vault.clear_machine_key()
-            except Exception:
-                pass
+            snap_creds.set("probe", SECRET)
+            raise AssertionError("set() must refuse when no vault can exist")
+        except RuntimeError:
+            pass
+        assert SECRET.encode() not in _store_bytes(), "refused write must leave no trace"
+        print("  (crypto backend absent — refusal path verified, sealing skipped)")
+        return n + 1
+
+    # Bind snap_creds FIRST (its init() re-binds the vault and clears any held
+    # key). On a machine with a protected credential service init() auto-creates
+    # a machine-bound sandbox vault (DPAPI file INSIDE the sandbox meta dir —
+    # the real credential store is never written); elsewhere we enable one with
+    # a throwaway passphrase.
+    snap_creds.init()
+    auto_vault = snap_vault.is_enabled()
+    if not auto_vault:
+        snap_vault.enable("test-passphrase-only", store_machine_key=False)
+    assert snap_vault.is_unlocked(), "the sandbox vault should be unlocked after init"
+
+    # Sealed at rest: round-trips, stored as enc1:, plaintext nowhere on disk.
+    snap_creds.set("gemini_api_key", SECRET)
+    assert snap_creds.get("gemini_api_key") == SECRET
+    raw = _store_bytes()
+    assert b"enc1:" in raw, "stored value must carry the vault-sealed form"
+    assert SECRET.encode() not in raw, "plaintext secret must never reach disk"
+    assert b"b64:" not in raw, "no recoverable-obfuscation fallback for new writes"
+    n += 3
+
+    # Locked vault: reads fail soft (empty), writes REFUSE — never downgrade.
+    snap_vault.lock()
+    assert snap_creds.get("gemini_api_key") == "", "locked vault must not decrypt"
+    try:
+        snap_creds.set("gemini_api_key", "NEW-VALUE-WHILE-LOCKED")
+        raise AssertionError("set() must refuse while the vault is locked")
+    except RuntimeError:
+        pass
+    assert b"NEW-VALUE-WHILE-LOCKED" not in _store_bytes()
+    n += 3
+
+    # Unlock restores access to the sealed value untouched.
+    if auto_vault:
+        assert snap_vault.unlock_with_machine_key()
     else:
-        print("  (no usable keychain — restore-path assertion skipped)")
+        assert snap_vault.unlock("test-passphrase-only")
+    assert snap_creds.get("gemini_api_key") == SECRET
+    n += 1
 
     return n
 
 
-if __name__ == "__main__":
-    try:
-        print("OK — %d checks passed" % _checks())
-    finally:
-        import shutil
-        shutil.rmtree(os.environ["SNAPSMACK_HOME"], ignore_errors=True)
+passed = _checks()
+print(f"OK — {passed} checks passed")
+
+# ===== SNAPSMACK EOF =====

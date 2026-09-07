@@ -8,7 +8,7 @@ import snap_home
 
 
 _LOGGERS = {}
-_PRIMARY = None
+_PRIMARY = None   # first logger configured this run (recovered post-652D-merge)
 
 
 def setup(tool, logname="run"):
@@ -43,7 +43,8 @@ def get(tool):
 
 
 def primary():
-    """Return the first logger configured by the host desktop tool."""
+    """The first logger configured this run (for shared code like snap_errors
+    that doesn't know which tool it's running inside). None if setup() unused."""
     return _PRIMARY
 
 

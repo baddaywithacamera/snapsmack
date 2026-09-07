@@ -4,96 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <title>OPAUDIT 001 — Pixelfed accepted our posts, then silently dropped them</title>
-<style>
-    @page { size: letter; margin: 22mm 20mm 20mm; }
-    * { box-sizing: border-box; }
-    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    body {
-        font-family: Georgia, "Times New Roman", serif;
-        color: #1a1a1a;
-        font-size: 10.5pt;
-        line-height: 1.5;
-        margin: 0;
-    }
-    .doc-kicker {
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 8pt;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: #666;
-        margin: 0 0 6px;
-    }
-    h1 {
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 17pt;
-        line-height: 1.2;
-        color: #111;
-        margin: 0 0 14px;
-    }
-    h2 {
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 11pt;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #b00;
-        margin: 22px 0 6px;
-        padding-bottom: 3px;
-        border-bottom: 1px solid #ddd;
-    }
-    p { margin: 0 0 9px; }
-    strong { color: #111; }
-    code {
-        font-family: "Consolas", "Courier New", monospace;
-        font-size: 9pt;
-        background: #f3f3f3;
-        padding: 0 3px;
-        border-radius: 2px;
-    }
-    table.meta {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 0 0 8px;
-        font-size: 9.5pt;
-    }
-    table.meta td {
-        border: 1px solid #ddd;
-        padding: 5px 8px;
-        vertical-align: top;
-    }
-    table.meta td.k {
-        font-family: Arial, Helvetica, sans-serif;
-        font-weight: bold;
-        width: 130px;
-        background: #f7f7f7;
-        color: #333;
-    }
-    .state-chip {
-        font-family: Arial, Helvetica, sans-serif;
-        font-weight: bold;
-        font-size: 8.5pt;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        padding: 2px 7px;
-        border-radius: 3px;
-    }
-    .chip-watched { background: #1a7a3c; color: #fff; }
-    .chip-confirm { background: #F3E2B3; color: #6b4c00; border: 1px solid #d9b84e; }
-    .doctrine {
-        background: #f4f4f4;
-        border-left: 4px solid #111;
-        padding: 10px 14px;
-        margin: 10px 0 0;
-        font-style: italic;
-    }
-    .footer {
-        margin-top: 26px;
-        padding-top: 8px;
-        border-top: 1px solid #ddd;
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 8pt;
-        color: #888;
-    }
-</style>
+<link rel="stylesheet" href="_report.css">
 </head>
 <body>
 
@@ -109,7 +20,7 @@
         <tr><td class="k">State</td><td><span class="state-chip chip-confirm">Fixed — confirming</span> &nbsp; The two named bugs are fixed and posts landed in testing; Pixelfed as a peer still behaves inconsistently and is being watched.</td></tr>
         <tr><td class="k">Watched live?</td><td>The two fixes: <strong>yes</strong> — Sean, on live boxes (Mastodon + pixelfed.ca), posts landed and displayed. The peer overall: still rough, see §6.</td></tr>
         <tr><td class="k">Reporter</td><td>Sean (chose the target; ran the live boxes) + Claude (diagnosed the signing and object-URL failures end to end).</td></tr>
-        <tr><td class="k">Related</td><td>OPAUDIT on modern-Mastodon RFC-9421 signing; OPAUDIT on the failed signed fetch (“Second Knock”). Both are the same theme: peer behaviour proven only one peer at a time.</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 008 (modern-Mastodon RFC-9421 signing); OPAUDIT 007 (failed signed fetch, “Second Knock”). Same theme: peer behaviour proven only one peer at a time.</td></tr>
         <tr><td class="k">Publication</td><td>Public. No live exploitable detail; this is an interoperability post-mortem.</td></tr>
     </table>
 
