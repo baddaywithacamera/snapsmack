@@ -89,7 +89,6 @@ h3 { font-size: 1rem; }
 /* ─── ENTRY LIST ──────────────────────────────────────────────────────────── */
 .family-head {
     padding: 48px 0 8px;
-    border-bottom: 3px solid var(--black);
     margin-bottom: 0;
 }
 .family-head h2 { color: var(--red); margin-bottom: 8px; }
