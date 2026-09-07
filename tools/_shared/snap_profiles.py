@@ -74,7 +74,8 @@ def _path_for_site(site_url: str) -> str:
 
 
 def _atomic_write(path: str, data: dict) -> None:
-    """Write a profile completely or leave the prior file intact."""
+    """Recovered post-652D-merge — save() calls this; the merge dropped it and
+    every profile save crashed with NameError."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as handle:
