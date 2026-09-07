@@ -1789,7 +1789,11 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
     $stmt = $pdo->prepare(
         "SELECT * FROM snap_ap_deliveries
          WHERE {$where}
-         ORDER BY id ASC LIMIT " . max(1, (int)$limit)
+         ORDER BY CASE JSON_UNQUOTE(JSON_EXTRACT(activity_json, '$.type'))
+                    WHEN 'Accept' THEN 0 WHEN 'Reject' THEN 0
+                    WHEN 'Follow' THEN 0 WHEN 'Undo' THEN 0
+                    ELSE 1 END,
+                  id ASC LIMIT " . max(1, (int)$limit)
     );
     $stmt->execute($args);
     $due = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -3479,9 +3483,63 @@ function sv_follow_actor(PDO $pdo, array $settings, string $target): array {
         'actor'    => sv_actor_url($settings),
         'object'   => $canonical,
     ];
-    sv_queue_delivery($pdo, $inbox, json_encode($follow, JSON_UNESCAPED_SLASHES));
-    sv_process_deliveries($pdo, $settings, 10);
+    $follow_qid = sv_queue_delivery($pdo, $inbox, json_encode($follow, JSON_UNESCAPED_SLASHES));
+    // Send THIS handshake now. Draining the oldest ten generic queue rows here
+    // could leave the Follow buried behind a catalogue backlog while the UI
+    // claimed it had been sent, and could make one click wait through unrelated
+    // network work. The normal cron remains the fallback if this exact send fails.
+    sv_process_deliveries($pdo, $settings, 1, 0, $follow_qid, $follow_qid, $inbox);
     return [true, 'Follow sent to ' . $handle . ' — it shows as PENDING until their server accepts (usually seconds).'];
+}
+
+/**
+ * Add missing active multisite peers to this actor's Following ledger.
+ *
+ * Roster synchronization makes peers visible to FEDBOARD, but historically did
+ * not establish the promised peer-network follows. Additions therefore left the
+ * new node isolated and every established node unaware of it. This reconciler is
+ * deliberately additive and bounded: no external follow is inspected or removed,
+ * rejected/manual rows are preserved, self is skipped, and cron advances at most
+ * one missing peer per run to avoid a fleet-wide backfill burst.
+ *
+ * @return array{checked:int,followed:int,message:string}
+ */
+function sv_reconcile_mesh_follows(PDO $pdo, array $settings, int $limit = 1): array {
+    $result = ['checked' => 0, 'followed' => 0, 'message' => ''];
+    $limit = max(0, min(5, $limit));
+    if ($limit === 0 || !sv_enabled($settings)) return $result;
+    try {
+        $table = (bool)$pdo->query("SELECT 1 FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_multisite_nodes' LIMIT 1")->fetchColumn();
+        if (!$table) return $result;
+        $has_fedi = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_multisite_nodes'
+              AND COLUMN_NAME='fediverse_enabled' LIMIT 1")->fetchColumn();
+        $sql = "SELECT site_url FROM snap_multisite_nodes WHERE status='active'";
+        if ($has_fedi) $sql .= " AND fediverse_enabled=1";
+        $sql .= " ORDER BY site_url ASC";
+        $sites = $pdo->query($sql)->fetchAll(PDO::FETCH_COLUMN);
+        $existing = array_fill_keys($pdo->query(
+            "SELECT actor_url FROM snap_ap_following"
+        )->fetchAll(PDO::FETCH_COLUMN), true);
+    } catch (Throwable $e) {
+        $result['message'] = 'mesh roster unavailable';
+        return $result;
+    }
+    $self = rtrim(sv_actor_url($settings), '/');
+    foreach ($sites as $site_url) {
+        $actor = rtrim((string)$site_url, '/') . '/ap/actor';
+        if ($actor === $self || isset($existing[$actor])) continue;
+        $result['checked']++;
+        [$ok, $message] = sv_follow_actor($pdo, $settings, $actor);
+        $result['message'] = $message;
+        if ($ok) {
+            $existing[$actor] = true;
+            $result['followed']++;
+        }
+        if ($result['checked'] >= $limit) break;
+    }
+    return $result;
 }
 
 /** Unfollow: signed Undo wrapping the original Follow, then drop the row. */
@@ -6333,6 +6391,8 @@ function sv_run_sweep(PDO $pdo, array &$settings): array
         sv_ensure_tables($pdo);
         sv_ensure_keys($pdo, $settings);
 
+        $mesh_follow = sv_reconcile_mesh_follows($pdo, $settings, 1);
+
         // 0.7.613D "CHANGE OF ADDRESS": once per installed version, re-resolve
         // every active follower's delivery inbox from their LIVE actor doc.
         // Follower rows captured under old builds can hold a stale or plain
@@ -6379,6 +6439,7 @@ function sv_run_sweep(PDO $pdo, array &$settings): array
             'relay'     => $relay_ingest,
             'roster'    => $roster,
             'actor_upd' => $actor_upd,
+            'mesh_follow'=> $mesh_follow,
         ];
     } finally {
         try {
