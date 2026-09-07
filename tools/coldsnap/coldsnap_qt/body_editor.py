@@ -57,8 +57,8 @@ class BodyEditor(QWidget):
         self.editor.setMinimumHeight(simple_height)
         self.bar = ShortcodeBar(self.editor)
         s.addWidget(self.bar)
-        s.addWidget(self.editor)
-        col.addWidget(self._simple)
+        s.addWidget(self.editor, 1)   # the textarea fills the space BodyEditor is given
+        col.addWidget(self._simple, 1)
 
         # -- BIGGIE face --------------------------------------------------------
         self._biggie_page = QWidget()
@@ -66,10 +66,10 @@ class BodyEditor(QWidget):
         g.setContentsMargins(0, 0, 0, 0)
         g.setSpacing(4)
         self.biggie = biggie.BiggieEditor(allow_mosaic=allow_mosaic)
-        g.addWidget(self.biggie)
+        g.addWidget(self.biggie, 1)   # the block canvas fills too
         g.addWidget(hint("Blocks send as the same shortcodes/HTML the SIMPLE "
                          "bar makes — the site renders them identically."))
-        col.addWidget(self._biggie_page)
+        col.addWidget(self._biggie_page, 1)
 
         # Last-used face is a per-tool setting (spec §7: biggie_enabled).
         self._biggie_on = False

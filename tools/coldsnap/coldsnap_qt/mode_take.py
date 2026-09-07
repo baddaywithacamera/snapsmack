@@ -53,7 +53,7 @@ class TakeMode(QWidget):
         right.setContentsMargins(0, 0, 0, 0)
 
         card = Card("COMPOSE — an essay with photos")
-        right.addWidget(card)
+        right.addWidget(card, 1)   # the compose card fills the window — no dead void
 
         card.body.addWidget(field_label("Title"))
         self.title_edit = QLineEdit()
@@ -67,7 +67,7 @@ class TakeMode(QWidget):
             "Puts a [mosaic] marker at the cursor — on send, the photos below "
             "become a tiled grid right at that spot",
             self._insert_mosaic)
-        card.body.addWidget(self.body)
+        card.body.addWidget(self.body, 1)   # the write-up is the main event — it grows
         card.body.addWidget(hint(
             "MOSAIC = a tiled grid of this post's photos at the marker. For a "
             "text grid with no photos, use COL 2 / COL 3. For one inline image "
@@ -85,28 +85,32 @@ class TakeMode(QWidget):
         srow.addStretch(1)
         card.body.addLayout(srow)
 
-        # -- THE PHOTOS — a rail section, opened when wanted --------------------
+        # -- THE PHOTOS — a rail section, opened when wanted. The count lives in
+        #    the accordion header (no redundant, cramped label fighting the
+        #    buttons for the 340px rail width). --------------------------------
         self.photos_sec = Accordion("THE PHOTOS — none yet")
         brow = QHBoxLayout()
-        self.bucket_count = hint("none yet")
-        brow.addWidget(self.bucket_count, 1)
-        ai_btn = QPushButton("✨ AI ALT (Gemini)")
+        add_btn = QPushButton("Add photos…")
+        add_btn.clicked.connect(self._add_photos)
+        ai_btn = QPushButton("✨ AI ALT")
         ai_btn.setToolTip("Writes a plain screen-reader ALT sentence for every "
                           "photo in the bucket — edit them to your own voice after.")
         ai_btn.clicked.connect(self._ai_alt)
-        brow.addWidget(ai_btn)
-        add_btn = QPushButton("Add photos…")
-        add_btn.clicked.connect(self._add_photos)
         brow.addWidget(add_btn)
+        brow.addWidget(ai_btn)
+        brow.addStretch(1)
         self.photos_sec.add_layout(brow)
         self.photos_sec.add(
             hint("The ★ photo leads the post. This order is the order in the post."))
+        self.bucket_count = hint("")   # its own line — AI-ALT progress / status only
+        self.photos_sec.add(self.bucket_count)
 
         self.bucket_col = QVBoxLayout()
         self.bucket_col.setSpacing(4)
         self.photos_sec.add_layout(self.bucket_col)
 
-        right.addStretch(1)
+        # No trailing stretch — the compose card (stretch 1 above) fills the
+        # height itself, so there is no dead void beneath it.
         scroll.setWidget(host)
 
         # Primary action pinned under the scroll — never below the fold.
@@ -186,7 +190,7 @@ class TakeMode(QWidget):
             if w:
                 w.deleteLater()
         n = len(self._bucket)
-        self.bucket_count.setText("none yet" if n == 0 else f"{n} photo(s)")
+        self.bucket_count.setText("")   # count lives in the header; this line = AI progress only
         self.photos_sec.header.setText(
             f"THE PHOTOS — {n} in the bucket" if n else "THE PHOTOS — none yet")
         if not self._bucket:
