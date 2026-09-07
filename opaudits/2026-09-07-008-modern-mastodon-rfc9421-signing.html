@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 008 — Modern Mastodon signs in a format our door couldn’t read</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 008 — Modern Mastodon signs in a format our door couldn’t read</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-07-008</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-07 (compiled from the incident record)</td></tr>
+        <tr><td class="k">First observed</td><td>Reason-logging at 0.7.612D; verifier shipped ~0.7.618D (September 2026).</td></tr>
+        <tr><td class="k">Theme</td><td>Log the unknown before you build the fix.</td></tr>
+        <tr><td class="k">Surfaces</td><td>Inbound deliveries from mainline Mastodon 4.4+/4.7+.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-watched">Watched working</span> &nbsp; Talking to Mastodon looks flawless now, across solo posts and carousels.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes</strong> — Sean; Mastodon interop is clean, and Mastodon also displays our carousels and solo posts correctly.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean + Claude.</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 001, 007 &mdash; all the &ldquo;prove it per peer&rdquo; family.</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No exploitable detail.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>The way servers sign their messages has more than one standard, and Mastodon moved to a newer
+    one. Our inbox could read the older style but not the new, so modern Mastodon deliveries bounced
+    at the door &mdash; through no fault of theirs.</p>
+
+    <h2>2. What a human saw</h2>
+    <p>Deliveries from up-to-date Mastodon servers were rejected. Older Mastodon servers worked fine,
+    which made it look intermittent until the pattern &mdash; server version &mdash; became clear.</p>
+
+    <h2>3. Root cause</h2>
+    <p>Mainline Mastodon 4.4 and later sign inbox deliveries with the newer RFC-9421 HTTP Message
+    Signatures format. Our inbox verifier only understood the older draft-cavage style, so it had no
+    way to read a correctly-signed modern Mastodon request and rejected it as unverifiable.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>Before building anything, we made the rejection log record <em>which</em> signature scheme each
+    bounced request used &mdash; a compact fingerprint of the auth headers (scheme, whether the newer
+    signature input was present, digest flavour, sender software), never any content. Every rejected
+    modern-Mastodon delivery then became direct evidence for what the verifier needed to accept.</p>
+
+    <h2>5. What we did</h2>
+    <p>Built the verifier to accept the RFC-9421 format alongside the older one. Old-format senders
+    verify exactly as before; new-format senders now verify too, instead of bouncing.</p>
+
+    <h2>6. Verified live</h2>
+    <p>Talking to Mastodon looks flawless now, confirmed by Sean &mdash; and Mastodon displays our
+    carousels and solo posts correctly as well. This is the cleanest interop on the page.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>Keep an eye on other implementations adopting the newer signing standard; each should be watched
+    on inbound the way Mastodon now has been.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>When something unknown is failing, make it tell you what it is before you try to fix it. Turn
+        every bounce into a labelled piece of evidence first; guessing at a format you can&rsquo;t see
+        wastes builds, while a fingerprint in the log points straight at the answer.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
