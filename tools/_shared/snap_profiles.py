@@ -73,6 +73,18 @@ def _path_for_site(site_url: str) -> str:
     return os.path.join(profiles_dir(), site_key(site_url) + ".json")
 
 
+def _atomic_write(path: str, data: dict) -> None:
+    """Recovered post-652D-merge — save() calls this; the merge dropped it and
+    every profile save crashed with NameError."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2, ensure_ascii=False)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp, path)
+
+
 def _profile_is_untampered(path: str, data: dict) -> str:
     """SECAUDIT 054 F1 — tamper check on a shared profile.
 
