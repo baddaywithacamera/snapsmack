@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.658D "NO DRIVE, NO POST" — 2026-09-07
+- **Desktop posting now obeys the destination CMS download policy.** `sybu-data.php` exposes the live `download_link_required` and `download_default_mode` values to both `sybu` and `smackpress` clients. SMACK YOUR BATCH UP reads them on connect; COLD SNAP re-reads them immediately before Send so a changed server rule cannot be bypassed by a stale saved profile.
+- **A Drive-required site now fails closed before receiving a post.** SYBU gives no dismissible “continue without Drive” path when the CMS requires a download link. Solo and GRAM posting both require a real Drive upload result, so expired credentials, revoked access, bad folders, and mid-batch Drive errors stop that item before its web post is created. GRAM posting now uploads its original and sends the resulting URL instead of always hardcoding downloads off.
+- **COLD SNAP tells the truth about its current capability.** It does not yet own a verified Google Drive session, so it refuses to send to a Drive-required destination and directs the operator to SYBU with Drive connected. Nothing is uploaded while the policy cannot be verified.
+
 ## 0.7.657D "NO MORE ISLANDS" — 2026-09-07
 - **Deployments can no longer strand enabled cron jobs at yesterday's path.** After either a signed automatic update or a manual package update, SnapSmack refreshes every already-enabled tagged cron command to the final live directory. Jobs the operator disabled remain disabled. The update log reports whether the repair succeeded, and Cron & Jobs remains the exact-command proof surface.
 - **The connected fleet now maintains its promised all-to-all peer follow mesh.** Roster synchronization previously filled FEDBOARD but never established ActivityPub follows, so the hub and newer spokes remained islands while established sites never learned about them. Each federation tick now adds at most one missing active peer, additively: self is skipped, external/manual/rejected follows are never deleted or overwritten, and gradual convergence avoids a fleet-wide Follow/Accept/backfill burst.

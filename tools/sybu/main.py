@@ -4806,6 +4806,18 @@ class App(tk.Tk):
             return
 
         # ── Warn if Drive is enabled but not connected (dismissable) ────
+        if (getattr(self._site_data, 'download_link_required', False)
+                and self._drive_service is None):
+            self._set_status(
+                "POSTING BLOCKED — this site requires a valid Google Drive connection.",
+                FG_ERR)
+            messagebox.showerror(
+                "Google Drive required — posting blocked",
+                "This site's CMS requires every published post to have a Drive "
+                "download link. Google Drive is not currently connected.\n\n"
+                "Connect Drive and try again. Nothing was uploaded.",
+            )
+            return
         if self._drive_enabled_var.get() and self._drive_service is None:
             if not self._confirm_no_drive():
                 return
@@ -4935,6 +4947,10 @@ class App(tk.Tk):
                 entries=entries,
                 image_folder=image_folder,
                 on_progress=on_progress,
+                drive_service=self._drive_service,
+                drive_folder_id=self._drive_folder_var.get().strip(),
+                download_link_required=bool(
+                    getattr(self._site_data, 'download_link_required', False)),
                 cancel_event=self._cancel_evt,
                 completed_dir=completed_dir,
             )
@@ -4952,6 +4968,8 @@ class App(tk.Tk):
                 drive_folder_id=self._drive_folder_var.get().strip(),
                 copyright_text=self._copyright_var.get().strip(),
                 **self._site_image_settings,
+                download_link_required=bool(
+                    getattr(self._site_data, 'download_link_required', False)),
                 cancel_event=self._cancel_evt,
                 completed_dir=completed_dir,
             )
