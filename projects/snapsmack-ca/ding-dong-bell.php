@@ -250,6 +250,28 @@ require_once __DIR__ . '/includes/header.php';
                 <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-006-default-relay-pointed-at-a-dead-box.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 
+            <div class="entry">
+                <div class="entry-top">
+                    <h3>The scheduled jobs looked registered while pointing at yesterday&rsquo;s door</h3>
+                    <span class="date">the cron drift</span>
+                    <span class="state notwatch">Fixed &mdash; confirming</span>
+                </div>
+                <p>Federation quietly stopped across the whole fleet for about two days, and it looked like several separate features breaking at once &mdash; new follows got no catalogue, posts never pushed, the version check went silent. It was one cause: the scheduled jobs still existed, but the command each one ran pointed at a script path that no longer existed after a deploy moved the install directory. A check that only asks &ldquo;is the job registered?&rdquo; said yes &mdash; the job was registered to run nothing.</p>
+                <p>The command-level checker (not just a heartbeat) exposed it, the jobs were re-registered across the hub and all 24 spokes, and a permanent self-heal shipped so a deploy re-points every job to the current path. The repair was watched working &mdash; a hub run completed and a backfill test landed end to end &mdash; but the durable fix isn&rsquo;t deployed fleet-wide yet.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-011-cron-registered-but-pointing-at-old-paths.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top">
+                    <h3>Adding a blog to the fleet never actually made it follow the others</h3>
+                    <span class="date">discovery &ne; connection</span>
+                    <span class="state notwatch">Fixed &mdash; confirming</span>
+                </div>
+                <p>The fleet is meant to be all-to-all: every blog follows every other, so a post on one reaches the rest. It wasn&rsquo;t. Blogs had been added to the fleet&rsquo;s roster &mdash; the list of who exists &mdash; but adding them never established the actual follow relationships. Being on the list is not being connected, and nothing ever did the connecting: about 180 of the 600 relationships a 25-blog network needs were simply never made.</p>
+                <p>The missing follows were added back through each site&rsquo;s own controls (adding only, never deleting anyone&rsquo;s external follows), and a permanent reconciler now fills one missing peer per cron tick. All 600 relationships now exist and a backfill test landed end to end; the durable reconciler ships in the same build that isn&rsquo;t deployed fleet-wide yet.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-012-fleet-follow-mesh-never-reconciled.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
+            </div>
+
         </div>
     </section>
 
@@ -359,6 +381,11 @@ require_once __DIR__ . '/includes/header.php';
             <div class="entry">
                 <div class="entry-top"><h3>Slow or background work never belongs inside a page load</h3></div>
                 <p>If a job can be slow, never run it while a person is waiting for a page &mdash; it can take the whole site down with it. Ours did: paced work running inside web requests starved the server and timed out entire sites. Move anything slow to a place that can fail on its own without a visitor noticing.</p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top"><h3>&ldquo;Set up&rdquo; is not &ldquo;working,&rdquo; and &ldquo;on the list&rdquo; is not &ldquo;connected&rdquo;</h3></div>
+                <p>Two of the worst outages here were things that <em>looked</em> configured and weren&rsquo;t. Scheduled jobs were registered &mdash; pointing at a script that no longer existed. Blogs were added to the network roster &mdash; without ever being made to follow anyone. A presence check passes on both, and the failure is silent and looks like something else breaking. Check the real thing: that the command resolves to the installed script, that the relationship actually exists &mdash; not just that a record of it does.</p>
             </div>
 
             <div class="entry">
