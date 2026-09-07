@@ -2248,6 +2248,11 @@ input[type="range"]:active::-webkit-slider-thumb {
     margin-left: 6px;
 }
 
+/* Device rename box (smack-api-keys, SNAP HQ devices table) */
+.device-rename-input {
+    width: 110px;
+}
+
 /* Per-follower targeted-push controls (smack-sv-followers) */
 .sv-push-form {
     display: flex;
