@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 004 — Deliveries that landed on a web page counted as “delivered”</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 004 — Deliveries that landed on a web page counted as “delivered”</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-07-004</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-07 (compiled from the incident record)</td></tr>
+        <tr><td class="k">First observed</td><td>Fixed at 0.7.610D “WRONG DOOR” (September 2026).</td></tr>
+        <tr><td class="k">Theme</td><td>A success code proves transport, never that the job was done.</td></tr>
+        <tr><td class="k">Surfaces</td><td>Outbound fediverse delivery to other SnapSmack blogs; the Photo Friday prompt cards.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-confirm">Fixed — confirming</span> &nbsp; The site now confirms delivery; not yet proven end-to-end in the test lab.</td></tr>
+        <tr><td class="k">Watched live?</td><td>Partly — the CMS reports delivery correctly. A full test-lab run watching a post travel the whole way is the remaining step.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean + Claude.</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 001 (same 2xx doctrine); OPAUDIT 005 (the receipt log that makes drops visible).</td></tr>
+        <tr><td class="k">Publication</td><td>Public. Delivery-correctness post-mortem, no exploitable detail.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>Some follower records held an old, wrong delivery address. Because that wrong address quietly
+    returned a normal web page, the sender believed the post had been delivered &mdash; and threw it
+    away. This is the same lesson as OPAUDIT 001, learned again from a different direction: a
+    <code>200 OK</code> is not proof the job was done.</p>
+
+    <h2>2. What a human saw</h2>
+    <p>SnapSmack-to-SnapSmack followers never received the Photo Friday prompt cards, while the same
+    cards reached Mastodon and Pixelfed followers just fine. From the sending side everything looked
+    successful.</p>
+
+    <h2>3. Root cause</h2>
+    <p>A number of follower records, captured under older builds, stored an inbox address that
+    actually rendered the site&rsquo;s homepage (for example <code>/?ap=inbox</code>). A homepage
+    returns <code>200 OK</code>. The sender read that <code>200</code> as a successful delivery,
+    ticked the post off, and deleted it from the queue &mdash; so the post was gone, delivered to a
+    web page that ignored it.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>The tell was the split: external peers received the cards and internal followers did not, which
+    pointed straight at the stored inbox addresses rather than the sending code. The wrong addresses
+    returned full HTML pages instead of the small machine acknowledgement a real inbox returns.</p>
+
+    <h2>5. What we did</h2>
+    <p>A success that comes back as a full web page is now treated as a <em>failure</em> &mdash;
+    &ldquo;not an inbox.&rdquo; On that failure the sender re-fetches the follower&rsquo;s live actor
+    document, rewrites the stored address (and the queued job), and knocks on the correct door on the
+    next pass. No manual unfollow-and-refollow is needed; the records heal themselves.</p>
+
+    <h2>6. Verified live — and what remains</h2>
+    <p>The site now correctly recognises and records real deliveries. What has not yet been done is a
+    full run through the test lab, watching a marked post travel from one box to another end to end.
+    Until that is watched, this stays <span class="state-chip chip-confirm">Fixed — confirming</span>.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>Run one post through the local test lab, intake to display, and watch the queue clean up
+    correctly &mdash; the observation that turns this green.</p>
+
+    <h2>8. The doctrine this incident reinforced</h2>
+    <div class="doctrine">
+        <p>A <code>200</code> that is a web page is not a delivery. Treat every &ldquo;success&rdquo; as
+        &ldquo;received,&rdquo; and confirm the actual outcome separately &mdash; here, that the other
+        end was a real inbox that kept the post, not a homepage that shrugged.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->

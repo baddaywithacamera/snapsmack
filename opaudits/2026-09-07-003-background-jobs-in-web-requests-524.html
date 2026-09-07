@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 003 — Background jobs ran inside web requests and took whole sites down</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 003 — Background jobs ran inside web requests and took whole sites down</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-07-003</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-07 (compiled from the incident record)</td></tr>
+        <tr><td class="k">First observed</td><td>~0.7.358 (paced delivery); the visitor-triggered variant removed at 0.7.639D (September 2026).</td></tr>
+        <tr><td class="k">Theme</td><td>Slow work running where a person is waiting.</td></tr>
+        <tr><td class="k">Surfaces</td><td>Whole-site availability; photoblog landing pages; fediverse delivery.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-watched">Watched working</span> &nbsp; The offending feature was removed, and the outages stopped.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes</strong> — Sean; sites stopped timing out once the feature was pulled.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean + Claude.</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 001, 004 (delivery correctness).</td></tr>
+        <tr><td class="k">Publication</td><td>Public. Availability post-mortem, no exploitable detail.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>To be kind to other servers, fediverse deliveries were paced &mdash; the code paused between
+    sends. The mistake was <em>where</em> it paused: inside a live web request. Slow work belongs
+    nowhere near a page a person is waiting for, and this proved it by taking entire sites offline.</p>
+
+    <h2>2. What a human saw</h2>
+    <p>Whole sites timed out with a Cloudflare <code>524</code> error, even on a plain page load with
+    nothing to do with federation. A related version leaned on ordinary visitors to trigger
+    background work, which made photoblog landing pages hang behind network maintenance and
+    <code>524</code> as well.</p>
+
+    <h2>3. Root cause</h2>
+    <p>Each pause inside a web request held a web-server worker hostage for the duration. Inbound
+    federation deliveries then piled up more sleeping workers; the pool starved; and once there were
+    no free workers, every request &mdash; including a plain homepage &mdash; had to wait, and
+    Cloudflare gave up with a <code>524</code>. Using visitor page-loads as the trigger for slow work
+    had the same shape: a real person&rsquo;s page load was doing the waiting.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>The <code>524</code> appeared on requests that did no slow work themselves, which points at
+    worker-pool starvation rather than any single slow page; and inbound federation traffic correlated
+    with the pile-up of sleeping workers.</p>
+
+    <h2>5. What we did</h2>
+    <p>The fix was not to patch the pause &mdash; it was to <strong>remove the feature that leaned on
+    page loads</strong>. All paced, measured delivery now happens only in a command-line scheduled job
+    that has no web timeout and refuses to run from the web at all. The visitor-triggered background
+    jobs were removed entirely; buttons and the hub&rsquo;s own scheduler do that work now. File
+    backups moved to the desktop side, and the site owner can always pull files straight off the
+    server by FTP or SFTP.</p>
+
+    <h2>6. Verified live</h2>
+    <p>The outages stopped once the feature was pulled. Confirmed by Sean on live sites.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>Any remaining place that still assumes a page view is a safe time to do slow work.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>Web requests never sleep. If a job can be slow, it runs somewhere that can fail on its own
+        without a visitor noticing &mdash; never inside the request a person is waiting on. A visitor
+        is not a worker.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->

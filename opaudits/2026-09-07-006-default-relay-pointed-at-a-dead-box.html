@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 006 — The default network relay pointed at a machine that no longer existed</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 006 — The default network relay pointed at a machine that no longer existed</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-07-006</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-07 (compiled from the incident record)</td></tr>
+        <tr><td class="k">First observed</td><td>After the standalone relay box was decommissioned (2026-09-04); default corrected shortly after.</td></tr>
+        <tr><td class="k">Theme</td><td>A default that points at a dead thing fails silently.</td></tr>
+        <tr><td class="k">Surfaces</td><td>Joining the photoblogs.fyi network relay; the fleet hub&rsquo;s own join.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-confirm">Fixed — confirming</span> &nbsp; The default is corrected; a fresh install joining cleanly on it alone hasn&rsquo;t been watched yet.</td></tr>
+        <tr><td class="k">Watched live?</td><td>Not yet on the corrected default specifically. (The fleet has joined the relay by other means; see §6.)</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean + Claude.</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 004 (silent delivery failure); the relay/fleet work generally.</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No exploitable detail.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>The built-in default address for the network relay still named a server that had been retired.
+    Any install that hadn&rsquo;t set its own relay address aimed every join at a dead inbox &mdash;
+    and, being a relay join, failed with no error anyone would see.</p>
+
+    <h2>2. What a human saw</h2>
+    <p>Nothing &mdash; which was the problem. Joins to the network relay simply didn&rsquo;t take,
+    including from the fleet hub, with no visible failure to explain why.</p>
+
+    <h2>3. Root cause</h2>
+    <p>The default relay address pointed at the old standalone relay box, which had been
+    decommissioned. With no live inbox at that address, every join sent to the default went nowhere,
+    and the join path had no loud failure for a dead-inbox case.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>Installs without an explicit relay address failed to join while ones with a correct explicit
+    address succeeded &mdash; isolating the fault to the built-in default rather than the join code.</p>
+
+    <h2>5. What we did</h2>
+    <p>The default now points at the live network actor (<code>https://photoblogs.fyi/ap/actor</code>),
+    which has a real inbox that turns a follow into a relay join. An explicit per-site relay address
+    still overrides the default for anyone who sets one.</p>
+
+    <h2>6. Verified live — and what remains</h2>
+    <p>The fleet is on the relay, but that join was achieved through explicit configuration during a
+    fleet-join session, not by relying on the corrected default. What has not been watched yet is a
+    brand-new install joining the relay cleanly on the new default alone. Until that is seen, this
+    stays <span class="state-chip chip-confirm">Fixed — confirming</span>.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>Stand up a fresh install with no relay address set and watch it join the live relay on the
+    default &mdash; the observation that turns this green.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>A default deserves the same proof as a feature. A built-in value that points at something no
+        longer alive doesn&rsquo;t announce itself &mdash; it just quietly does nothing. When a
+        dependency is retired, every default that named it has to be found and re-pointed, and then
+        watched.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->

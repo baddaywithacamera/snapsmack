@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 007 — A failed signed fetch dropped every incoming like, boost, and reply</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 007 — A failed signed fetch dropped every incoming like, boost, and reply</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-07-007</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-07 (compiled from the incident record)</td></tr>
+        <tr><td class="k">First observed</td><td>Fixed at 0.7.607D “SECOND KNOCK” (September 2026), diagnosed via the on-screen reason added in 0.7.606D.</td></tr>
+        <tr><td class="k">Theme</td><td>One failing sub-step silently swallowing a whole class of inbound.</td></tr>
+        <tr><td class="k">Surfaces</td><td>Inbound likes, boosts and replies from other fediverse servers.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-watched">Watched working</span> &nbsp; Boosts now show up correctly on our own site&rsquo;s Pixelfed page. One class of peer remains unconfirmed (see §7).</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes</strong> — Sean; boosts display properly on the SnapSmack Pixelfed page.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean + Claude.</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 005 (the receipt log that made the reason visible); OPAUDIT 008.</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No exploitable detail.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>A wall of &ldquo;signature verify failed&rdquo; rejections looked like a cryptography problem.
+    It wasn&rsquo;t. A single sub-step &mdash; fetching the sender&rsquo;s key &mdash; was failing, and
+    because the whole verification depended on it, one failure silently dropped every like, boost and
+    reply from that server.</p>
+
+    <h2>2. What a human saw</h2>
+    <p>Interactions from other servers stopped arriving, and the log filled with generic
+    &ldquo;signature verify failed&rdquo; lines that gave no way to tell why.</p>
+
+    <h2>3. Root cause</h2>
+    <p>To verify an inbound activity, SnapSmack fetches the sender&rsquo;s actor document (which holds
+    their key) &mdash; and it <em>signed</em> that outbound fetch (&ldquo;authorized fetch&rdquo;).
+    When a peer refused the signed fetch, the whole verification failed with &ldquo;could not fetch
+    signer,&rdquo; and the inbound activity was dropped. So a peer that didn&rsquo;t like our signed
+    request cost us <em>all</em> of its likes, boosts and replies &mdash; and it read as a signature
+    failure, pointing the investigation in the wrong direction.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>An earlier build (0.7.606D) had made the log print the <em>exact</em> reason a verification
+    failed instead of a generic message. That change turned the mystery into a fact: the failures were
+    &ldquo;could not fetch signer,&rdquo; not digest or key mismatches. The fix followed directly from
+    seeing the real reason.</p>
+
+    <h2>5. What we did</h2>
+    <p>A failed signed fetch now retries <em>unsigned</em> &mdash; the ActivityPub default that most
+    instances serve &mdash; so the actor and its key are fetched and the activity verifies. A separate
+    tool re-pulls entries that were dropped during the outage, so nobody had to re-post. The log now
+    names the exact remaining reason (transport error, HTTP 401, or an SSRF block) so any leftover
+    case is diagnosable.</p>
+
+    <h2>6. Verified live</h2>
+    <p>Boosts now show up properly on our own site&rsquo;s Pixelfed page. Confirmed by Sean.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>A few instances genuinely insist on a valid <em>signed</em> fetch (strict authorized-fetch mode)
+    and still refuse ours. Those specific servers are named and unconfirmed &mdash; inbound from them
+    is not yet proven, and closing that gap is the next piece of work.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>A whole class of failures can hide behind one shared sub-step, and a generic error message
+        will send you hunting in the wrong place. Make the system report the <em>exact</em> reason
+        first; the fix usually follows the moment you can see what actually failed.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
