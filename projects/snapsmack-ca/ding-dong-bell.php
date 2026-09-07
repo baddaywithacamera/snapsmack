@@ -134,6 +134,21 @@ h3 { font-size: 1rem; }
     color: var(--red);
 }
 .report-link:hover { color: var(--black); text-decoration: none; }
+
+/* ─── KILL STACKED-SECTION GAPS ───────────────────────────────────────────────
+   Base CSS gives every <section> 72px top+bottom padding and a border between
+   sections. This page uses several sections per family, so those paddings and
+   borders compound into big empty bands. Collapse them: a family header sits
+   directly above its own entries, with the header's black underline as the only
+   divider between families. */
+main section + section { border-top: none; }   /* kill the thin 1px inter-section lines */
+section.state-legend { padding: 48px 0 44px; }
+section.family-head  { padding: 52px 0 8px; }
+section.posts        { padding: 0 0 44px; }
+section.disclosure   { padding: 52px 0 72px; }
+/* Alternating tinted bands, like the landing page. A family header and its
+   entries share one background so each family reads as one block. */
+.ddb-shade { background: var(--light-grey); }
 CSS;
 
 require_once __DIR__ . '/includes/header.php';
@@ -160,7 +175,7 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <section class="state-legend">
+    <section class="state-legend ddb-shade">
         <div class="wrap">
             <h3>How to read the labels</h3>
             <dl>
@@ -275,14 +290,14 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <section class="family-head">
+    <section class="family-head ddb-shade">
         <div class="wrap">
             <h2>Where talking to other software fell down</h2>
             <p>The fediverse is a room full of different implementations, and every assumption about how a peer reads our output was wrong until proven. One peer working proves nothing about the next.</p>
         </div>
     </section>
 
-    <section class="posts">
+    <section class="posts ddb-shade">
         <div class="wrap">
 
             <div class="entry">
@@ -396,14 +411,14 @@ require_once __DIR__ . '/includes/header.php';
         </div>
     </section>
 
-    <section class="family-head">
+    <section class="family-head ddb-shade">
         <div class="wrap">
             <h2>What we haven&rsquo;t confirmed yet</h2>
             <p>These aren&rsquo;t broken and they aren&rsquo;t known bugs &mdash; they&rsquo;re things we expect to work but haven&rsquo;t yet stood in front of and watched. A quarter-million-line system confirmed by one photographer&rsquo;s hands-on testing has a real list of things still to confirm, and we&rsquo;d rather show you the list and work through it than quietly assume it&rsquo;s all fine.</p>
         </div>
     </section>
 
-    <section class="posts">
+    <section class="posts ddb-shade">
         <div class="wrap">
 
             <div class="entry">
