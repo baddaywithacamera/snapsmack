@@ -124,6 +124,16 @@ h3 { font-size: 1rem; }
     margin: 0 0 6px;
 }
 .entry .next-line strong { color: var(--black); }
+.report-link-wrap { margin: 12px 0 0 !important; }
+.report-link {
+    font-family: Arial Black, Arial, sans-serif;
+    font-size: 0.8rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--red);
+}
+.report-link:hover { color: var(--black); text-decoration: none; }
 CSS;
 
 require_once __DIR__ . '/includes/header.php';
@@ -191,6 +201,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>For a long time a published photograph was stored as a bare image, not as a <em>post</em>. That sounds like an internal detail; it wasn&rsquo;t. With no post to hang things on, a photo&rsquo;s ownership, its date, its comments and likes, the collections it belonged to, and its identity out on the fediverse had no single home. Comments imported from Flickr were written against the picture instead of the post and came unstuck from it. Post counts collapsed to near-zero on photoblogs. A profile with thousands of live photos reported &ldquo;no posts yet.&rdquo; A repair tool kept having to convert loose photos into posts, and sites kept drifting back.</p>
                 <p>The going-forward fix: posting a new photo now creates a real post in the background, built to match exactly what the repair tool and the poster already produced, so nothing else on the site can tell the difference &mdash; and web addresses never change, so federation stays stable. The deeper remediation is a proper post-model inventory with a transactional conversion.</p>
                 <p class="next-line"><strong>One tail still being tidied:</strong> a batch of older comments are still being moved across from the photo to the post. They&rsquo;re real people&rsquo;s words, so it&rsquo;s being done carefully rather than rushed.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-002-picture-containers-no-post-containers.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 
             <div class="entry">
@@ -202,6 +213,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>To pace out fediverse deliveries kindly, the code slept between them &mdash; but it was doing that <em>inside a live web request</em>. Each pause held a web-server worker hostage; enough of them piling up starved the pool, and the entire site timed out with a Cloudflare 524, even on a plain page load. A related version leaned on ordinary visitors to do background work, which made photoblog pages hang and 524 as well.</p>
                 <p>The fix wasn&rsquo;t to patch it &mdash; it was to <strong>remove the feature that leaned on page loads.</strong> That work now runs through the desktop tools and proper scheduled jobs instead, never a visitor&rsquo;s page view. File backups now go through the desktop side; and you can always pull your files straight off the server yourself by FTP or SFTP. The sites stopped timing out.</p>
                 <p class="watched-line"><strong>Watched working:</strong> the outages stopped once the feature was pulled &mdash; confirmed on live sites.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-003-background-jobs-in-web-requests-524.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 
             <div class="entry">
@@ -213,6 +225,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Some follower records held an old, wrong delivery address that quietly rendered the site&rsquo;s homepage &mdash; a normal <code>200 OK</code>. The sender read that <code>200</code> as success, ticked the post off, deleted it from the queue, and the post simply vanished. This is the exact reason SnapSmack-to-SnapSmack followers never received the Photo Friday prompt cards while Mastodon and Pixelfed followers got them fine.</p>
                 <p>Now a success that comes back as a full web page is treated as a <em>failure</em> &mdash; &ldquo;not an inbox&rdquo; &mdash; and on that failure the sender re-fetches the follower&rsquo;s live address, rewrites the wrong one, and knocks on the right door next pass. No manual unfollow-and-refollow needed. The lesson underneath it drives everything below: <strong>a <code>2xx</code> proves the pipe carried the bytes, never that the other end kept the post.</strong></p>
                 <p class="next-line"><strong>Confirming:</strong> the site itself now confirms the delivery landed, but we haven&rsquo;t yet run it end-to-end through the test lab to watch a post travel the whole way. That&rsquo;s the remaining step.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-004-wrong-door-delivered-to-a-web-page.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 
             <div class="entry">
@@ -223,6 +236,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <p>Something coming in from another fediverse server &mdash; a post, a like, a reply &mdash; could arrive, pass its signature check, and still disappear: because it came from an account we weren&rsquo;t following, or was a duplicate, or the save failed and the error was swallowed. Every one of those read exactly like &ldquo;never delivered&rdquo; while someone hunted for a lost post. You can&rsquo;t fix what you can&rsquo;t see, and this class of bug was invisible.</p>
                 <p>Every inbound item now leaves a receipt in the interactions log saying what happened to it &mdash; ingested, ignored and why, a duplicate suppressed, a reply routed &mdash; so a drop is now something you can read instead of a mystery. Several of the federation fixes on this page were only findable <em>after</em> this went in.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-005-incoming-fediverse-verified-then-vanished.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 
             <div class="entry">
@@ -233,6 +247,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <p>The built-in default relay address still named a standalone server that had been decommissioned. Any install that hadn&rsquo;t set its own relay address &mdash; including the fleet hub &mdash; aimed every join at a dead inbox, and every join silently failed with no error to show for it. The default now points at the live network actor; an explicit per-site address still overrides it.</p>
                 <p class="next-line"><strong>Confirming:</strong> the default is corrected in the code; we haven&rsquo;t yet watched a fresh install join the relay cleanly on that new default alone.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-006-default-relay-pointed-at-a-dead-box.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 
         </div>
@@ -257,6 +272,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>The saga that taught us the whole doctrine. First, every Follow from Pixelfed was rejected for two weeks &mdash; Pixelfed builds its signature check from the path only and dropped the query string our inbox address carried, so the signatures never matched. Then, once that was fixed, deliveries were <em>accepted</em> and no post ever appeared: Pixelfed re-encodes an <code>&amp;</code> when it fetches an object back, so our object address arrived mangled and 404&rsquo;d &mdash; the post dropped <em>after</em> being accepted.</p>
                 <p>Both of those specific bugs were found and fixed by matching what Pixelfed actually does rather than what the spec says it should: verify against both signature styles, and use plain object addresses with no query string. Posts did land in testing once those were in.</p>
                 <p class="next-line"><strong>Still confirming &mdash; Pixelfed stays the rough one:</strong> our Mastodon side is confirmed solid, but Pixelfed still behaves inconsistently and we see drops we haven&rsquo;t fully explained yet. So we won&rsquo;t call Pixelfed solid the way we can call Mastodon solid. The known bugs are fixed; the peer itself is still being watched.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-001-pixelfed-accepted-then-dropped.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 
             <div class="entry">
@@ -268,6 +284,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p>To verify an inbound activity we fetch the sender&rsquo;s key, and we signed that outbound fetch. When a peer refused the signed fetch, the whole verification failed with &ldquo;could not fetch signer,&rdquo; and <em>every</em> like, boost, and reply from that server was dropped &mdash; which is why a wall of &ldquo;signature verify failed&rdquo; rejections was never actually a crypto problem. A failed signed fetch now retries unsigned, which is what most instances serve anyway. A companion tool re-pulls entries dropped during the outage so nobody had to re-post.</p>
                 <p class="watched-line"><strong>Watched working:</strong> boosts now show up properly on our own site&rsquo;s Pixelfed page &mdash; confirmed live.</p>
                 <p class="next-line"><strong>Eyeball next:</strong> a few instances genuinely insist on a signed fetch (authorized-fetch mode) and still refuse ours, so those specific servers aren&rsquo;t confirmed yet. Named and being worked on.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-007-second-knock-signed-fetch-dropped-inbound.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 
             <div class="entry">
@@ -278,6 +295,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <p>Mainline Mastodon 4.4 and later sign their inbox deliveries with a newer signature standard (RFC-9421) that our inbox verifier couldn&rsquo;t read, so those deliveries bounced. We first made the rejection log say <em>which</em> scheme arrived &mdash; turning every bounce into direct evidence &mdash; then built the verifier to accept the new format alongside the old.</p>
                 <p class="watched-line"><strong>Watched working:</strong> talking to Mastodon looks flawless now &mdash; confirmed live. Mastodon also displays our GRAMOFSMACK carousels and our solo posts correctly.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-008-modern-mastodon-rfc9421-signing.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 
             <div class="entry">
@@ -287,6 +305,7 @@ require_once __DIR__ . '/includes/header.php';
                     <span class="state notwatch">Fixed &mdash; confirming</span>
                 </div>
                 <p>A Like from Pixelfed points at the human-readable permalink of a photo, not the machine address our resolver knew how to match &mdash; so every like from a Pixelfed follower resolved to nothing and was dropped, each one showing as <em>unresolved</em> in the log. The resolver now also accepts the public permalink and maps it back to the right post or photo. (Notably, this was caught by the inbox log built for exactly this purpose &mdash; the drop was visible, so it got fixed.)</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-009-pixelfed-likes-never-landed.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 
             <div class="entry">
@@ -296,6 +315,7 @@ require_once __DIR__ . '/includes/header.php';
                     <span class="state watched">Watched working</span>
                 </div>
                 <p>The site accepted alt text and the colour / black-and-white tag all along, but the COLD SNAP desktop poster never actually sent them &mdash; so the ALT you carefully typed went nowhere, quietly. All three posting modes now send both, and every photo travels with its own description and colour tag attached to the image, offline and on the wire.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-010-cold-snap-dropped-alt-and-colour-tag.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 
         </div>
