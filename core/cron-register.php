@@ -140,6 +140,34 @@ function cron_register_job(string $schedule, string $script_abs, string $tag): a
 }
 
 /**
+ * Refresh every SnapSmack-owned cron entry that is already enabled.
+ *
+ * Deployments may move the live install to a new absolute directory while the
+ * tagged crontab line keeps yesterday's script path. Merely checking for the tag
+ * then reports a false "registered" state and the job silently stops. Run this
+ * after a successful update, once the new files are in their final location.
+ * Deliberately preserves operator intent: absent/disabled jobs remain absent.
+ *
+ * @return array<int,array{tag:string,ok:bool,message:string}>
+ */
+function cron_refresh_enabled_jobs(string $root): array {
+    $jobs = [
+        ['*/10 * * * *', 'cron-fediverse.php',   '# snapsmack-fediverse'],
+        ['0 * * * *',    'cron-rss-fetch.php',   '# snapsmack-rss-fetch'],
+        ['0 */6 * * *',  'cron-version-check.php','# snapsmack-version-check'],
+    ];
+    $results = [];
+    foreach ($jobs as [$schedule, $script, $tag]) {
+        if (!cron_job_registered($tag)) continue;
+        $path = realpath(rtrim($root, '/\\') . DIRECTORY_SEPARATOR . $script)
+             ?: rtrim($root, '/\\') . DIRECTORY_SEPARATOR . $script;
+        [$ok, $message] = cron_register_job($schedule, $path, $tag);
+        $results[] = ['tag' => $tag, 'ok' => $ok, 'message' => $message];
+    }
+    return $results;
+}
+
+/**
  * Ensure the FEDIVERSE WebFinger rewrite is present in the root .htaccess.
  * Called on federation-enable so the user never hand-edits Apache config.
  * Idempotent: no-op when already present. Inserts the rule just before the

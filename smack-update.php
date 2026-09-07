@@ -1215,6 +1215,22 @@ if ($action === 'stage_migrate'
             $_SESSION['update_state']['log'][] = ['label' => '.htaccess repair', 'status' => 'warn', 'detail' => 'core/htaccess-template missing — skipped'];
         }
 
+        // A release may change the install's absolute path (for example when a
+        // deployment swaps a versioned directory). Refresh only cron jobs that
+        // were already enabled so their tagged commands follow the live files.
+        require_once __DIR__ . '/core/cron-register.php';
+        $cron_refresh = cron_refresh_enabled_jobs(__DIR__);
+        if ($cron_refresh) {
+            $cron_failures = array_values(array_filter($cron_refresh, static fn($row) => empty($row['ok'])));
+            $_SESSION['update_state']['log'][] = [
+                'label'  => 'Cron command paths',
+                'status' => $cron_failures ? 'warn' : 'ok',
+                'detail' => $cron_failures
+                    ? count($cron_failures) . ' enabled job(s) could not be refreshed — open Cron & Jobs'
+                    : count($cron_refresh) . ' enabled job command(s) refreshed to this install',
+            ];
+        }
+
         // Store log for display after session clear
         $_SESSION['update_complete_log'] = $_SESSION['update_state']['log'];
         unset($_SESSION['update_state']);
@@ -1436,6 +1452,21 @@ if ($action === 'stage_migrate_upload' && !empty($_SESSION['upload_migrate_pendi
         $backfilled = snap_backfill_color_families($pdo);
         if ($backfilled > 0) {
             $upload_steps[] = ['label' => 'Colour tag backfill', 'status' => 'ok', 'detail' => "{$backfilled} hex tag(s) classified"];
+        }
+
+        // Manual package installs need the same post-deploy cron path repair as
+        // the signed automatic updater. Preserve disabled jobs as disabled.
+        require_once __DIR__ . '/core/cron-register.php';
+        $cron_refresh = cron_refresh_enabled_jobs(__DIR__);
+        if ($cron_refresh) {
+            $cron_failures = array_values(array_filter($cron_refresh, static fn($row) => empty($row['ok'])));
+            $upload_steps[] = [
+                'label'  => 'Cron command paths',
+                'status' => $cron_failures ? 'warn' : 'ok',
+                'detail' => $cron_failures
+                    ? count($cron_failures) . ' enabled job(s) could not be refreshed — open Cron & Jobs'
+                    : count($cron_refresh) . ' enabled job command(s) refreshed to this install',
+            ];
         }
 
         $flash_msg  = $target_version ? "UPDATE COMPLETE VIA UPLOAD. NOW RUNNING v{$target_version}." : "PACKAGE EXTRACTED SUCCESSFULLY.";

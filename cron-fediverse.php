@@ -101,6 +101,10 @@ sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'running');
 sv_ensure_tables($pdo);
 sv_ensure_keys($pdo, $settings);
 
+// Make the multisite roster's peer-follow promise real, gradually. One missing
+// edge per ten-minute tick avoids a follow/backfill thundering herd.
+$mesh_follow = sv_reconcile_mesh_follows($pdo, $settings, 1);
+
 // Receiver-side relay dereference failures are durable work, separate from the
 // outbound delivery queue. The helper is inert when this blog has no jobs.
 $relay_ingest = [0, 0];
@@ -183,8 +187,9 @@ sv_set_setting($pdo, $settings, 'fediverse_cron_last_run', date('Y-m-d H:i:s'));
 sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'ok');
 
 echo sprintf(
-    "FEDIVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; relay ingest: %d recovered, %d retrying/shelved; outbox recovery: %d members, %d recovered; PHOTOFRI: %d finalized, %d gardened, %d withdrawn; profile-update: %d follower(s)%s.\n",
+    "FEDIVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; relay ingest: %d recovered, %d retrying/shelved; outbox recovery: %d members, %d recovered; PHOTOFRI: %d finalized, %d gardened, %d withdrawn; profile-update: %d follower(s); mesh-follow: %d%s.\n",
     $units, $queued, $bf_jobs, $bf_queued, $sent, $failed, $relay_ingest[0], $relay_ingest[1], $relay_recovery[0], $relay_recovery[1], $pc_maintenance[0], $pc_maintenance[1], $pc_maintenance[2], $actor_upd,
+    $mesh_follow['followed'],
     is_array($curator) ? sprintf('; CURATOR: %s, %d discovered%s (%s)',
         $curator[0], $curator[1], $curator[2] ? ' (scan complete)' : '', $curator[3]) : ''
 );
