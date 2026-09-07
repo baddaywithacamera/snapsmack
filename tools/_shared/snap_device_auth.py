@@ -91,7 +91,7 @@ def device_metadata(hq_version: str = "") -> dict:
 
 
 def _endpoint(site_url: str, action: str) -> str:
-    return site_url.rstrip("/") + "/api/desktop-auth/" + action
+    return site_url.rstrip("/") + "/api.php?route=desktop-auth/" + action
 
 
 def _verify_and_store(site_url: str, entitlement: dict, *, allow_new_server_key: bool) -> dict:
@@ -131,6 +131,32 @@ def activate(site_url: str, activation_code: str, hq_version: str = "") -> dict:
     data = response.json()
     if not response.ok or not data.get("ok"):
         raise RuntimeError(str(data.get("error") or f"Activation failed ({response.status_code})."))
+    return _verify_and_store(site_url, data["entitlement"], allow_new_server_key=True)
+
+
+def enroll(site_url: str, hub_key: str, username: str, password: str,
+           totp_code: str, hq_version: str = "") -> dict:
+    """Bind this device in one step after password + TOTP verification."""
+    key = _private_key()
+    public = key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+    body = {
+        "username": username.strip(), "password": password,
+        "totp_code": totp_code.strip(),
+        "public_key": base64.b64encode(public).decode("ascii"),
+        **device_metadata(hq_version),
+    }
+    response = requests.post(
+        _endpoint(site_url, "enroll"), json=body,
+        headers={"Authorization": f"Bearer {hub_key.strip()}"}, timeout=30)
+    try:
+        data = response.json()
+    except ValueError as exc:
+        raise RuntimeError(f"The CMS returned an unexpected response ({response.status_code}).") from exc
+    if not response.ok or not data.get("ok"):
+        detail = str(data.get("error") or data.get("message") or "").strip()
+        if response.status_code == 404 and detail == "Unknown API endpoint":
+            raise RuntimeError("This CMS has not yet been updated for seamless device authorization.")
+        raise RuntimeError(detail or f"Authorization failed ({response.status_code}).")
     return _verify_and_store(site_url, data["entitlement"], allow_new_server_key=True)
 
 

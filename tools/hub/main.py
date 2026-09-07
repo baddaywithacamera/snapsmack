@@ -25,7 +25,7 @@ from datetime import datetime
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
-BUILD_VERSION = "0.7.36"
+BUILD_VERSION = "0.7.41"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -48,6 +48,8 @@ try:
     import snap_site_settings
     import snap_settings_sync
     import snap_device_auth
+    import snap_stepup
+    import snap_session_gate
     _SHARED_OK = True
 except Exception as _e:                      # pragma: no cover
     _SHARED_OK = False
@@ -72,6 +74,15 @@ DIM     = "#8a8a8a"
 ACCENT  = "#39ff14"
 FIELD   = "#1c1c1c"
 BORDER  = "#2a2a2a"
+
+
+def _launcher_column_count(width):
+    """Use every column that fits without crushing a launch tile."""
+    if width >= 900:
+        return 3
+    if width >= 600:
+        return 2
+    return 1
 
 # ── the tools SNAP HQ fronts, and where they install ─────────────────────
 # The SnapSmack shared root. This is ALSO the GYSS file-jail root (SECAUDIT 039): a
@@ -307,32 +318,31 @@ class Hub(tk.Tk):
             tk.Label(self, text=f"Shared modules unavailable: {_SHARED_ERR}",
                      bg=BG, fg="#ff5555", font=("Segoe UI", 11)).pack(pady=40)
             return
-        # The dashboard is taller than a small/restored window.  Keep every
-        # card reachable instead of clipping the lower controls off-screen.
+        # Keep the launcher reachable in a genuinely small window, but do not
+        # reserve a scrollbar when all launch tiles already fit.
         scroll_shell = tk.Frame(self, bg=BG)
-        scroll_shell.pack(fill="both", expand=True)
+        scroll_shell.pack(fill="both", expand=True, padx=18, pady=(0, 14))
         self._body_canvas = tk.Canvas(
             scroll_shell, bg=BG, highlightthickness=0, bd=0)
         body_scroll = tk.Scrollbar(
-            scroll_shell, orient="vertical", command=self._body_canvas.yview)
+            scroll_shell, orient="vertical", command=self._body_canvas.yview,
+            bg=FIELD, troughcolor=BG, activebackground=ACCENT,
+            highlightthickness=0, bd=0)
         self._body_canvas.configure(yscrollcommand=body_scroll.set)
-        body_scroll.pack(side="right", fill="y")
-        self._body_canvas.pack(side="left", fill="both", expand=True)
+        scroll_shell.grid_rowconfigure(0, weight=1)
+        scroll_shell.grid_columnconfigure(0, weight=1)
+        self._body_canvas.grid(row=0, column=0, sticky="nsew")
 
         body = tk.Frame(self._body_canvas, bg=BG)
         self._body_window = self._body_canvas.create_window(
-            (18, 0), window=body, anchor="nw")
-        body.bind("<Configure>", self._update_body_scroll_region)
-        self._body_canvas.bind("<Configure>", self._resize_scroll_body)
-        self.bind_all("<MouseWheel>", self._scroll_body, add="+")
+            (0, 0), window=body, anchor="nw")
+        self._install_auto_scroll(
+            self._body_canvas, body_scroll, body, self._body_window)
+        self._body_canvas.bind_all(
+            "<MouseWheel>",
+            lambda e: self._body_canvas.yview_scroll(int(-e.delta / 120), "units"))
         self._gyss_keys = {}          # site_url -> minted gyss key (cached per run)
         self._build_launcher(body)
-        self._build_setup(body)
-        self._build_profiles(body)
-        self._build_prompts(body)
-        self._load_creds()
-        self._refresh_profiles()
-        self._refresh_prompt_sites()
         # A dashboard benefits from the available desktop.  Defer this until
         # Tk has created the native window so Windows honours the request.
         self.after_idle(self._open_maximized)
@@ -430,9 +440,19 @@ class Hub(tk.Tk):
 
         self._build_setup(body)
         self._build_profiles(body)
+        self._build_prompts(body)
         self._load_creds()
         self._refresh_profiles()
+        self._refresh_prompt_sites()
         win.protocol("WM_DELETE_WINDOW", win.destroy)
+
+    def _open_authorization(self):
+        """Open Settings directly at the device-authorization card."""
+        self._open_settings()
+        if self._settings_window is not None and self._settings_window.winfo_exists():
+            self._settings_window.deiconify()
+            self._settings_window.lift()
+            self._device_site_entry.focus_set()
 
     def _install_auto_scroll(self, canvas, scroll, body, window):
         """Show the scrollbar only when the page is taller than its viewport."""
@@ -560,7 +580,7 @@ class Hub(tk.Tk):
         layout = {"columns": 0}
         def _reflow(event=None):
             width = event.width if event is not None else grid.winfo_width()
-            columns = 3 if width >= 1320 else 2
+            columns = _launcher_column_count(width)
             if layout["columns"] == columns:
                 return
             layout["columns"] = columns
@@ -747,16 +767,17 @@ class Hub(tk.Tk):
         auth_row = tk.Frame(auth, bg=CARD)
         auth_row.pack(fill="x", padx=14, pady=(0, 8))
         self._device_site = tk.StringVar()
-        self._device_code = tk.StringVar()
         for column, (label, variable, secret) in enumerate((
-                ("CMS SITE URL", self._device_site, False),
-                ("ONE-USE DEVICE KEY", self._device_code, True))):
+                ("CMS SITE URL", self._device_site, False),)):
             cell = tk.Frame(auth_row, bg=CARD)
             cell.grid(row=0, column=column, sticky="ew", padx=(0, 10))
             auth_row.grid_columnconfigure(column, weight=1)
             tk.Label(cell, text=label, bg=CARD, fg=DIM, font=("Segoe UI", 8)).pack(anchor="w")
-            tk.Entry(cell, textvariable=variable, show="•" if secret else "", bg=FIELD, fg=INK,
-                     insertbackground=INK, relief="flat", font=("Consolas", 9)).pack(fill="x", ipady=5)
+            entry = tk.Entry(cell, textvariable=variable, show="•" if secret else "", bg=FIELD, fg=INK,
+                             insertbackground=INK, relief="flat", font=("Consolas", 9))
+            entry.pack(fill="x", ipady=5)
+            if not secret:
+                self._device_site_entry = entry
         auth_buttons = tk.Frame(auth, bg=CARD)
         auth_buttons.pack(fill="x", padx=14, pady=(0, 12))
         tk.Button(auth_buttons, text="AUTHORIZE THIS COMPUTER", command=self._activate_device,
@@ -816,14 +837,28 @@ class Hub(tk.Tk):
             self._device_site.set(result["site_url"])
 
     def _activate_device(self):
-        site, code = self._device_site.get().strip(), self._device_code.get().strip()
-        if not site or not code:
-            messagebox.showwarning("Device authorization", "Enter the CMS site and its one-use device key.", parent=self._settings_window)
+        site = self._device_site.get().strip()
+        hub_key = self._creds_vars.get("hub_key").get().strip()
+        if not site or not hub_key:
+            messagebox.showwarning(
+                "Device authorization",
+                "Enter the CMS site and save its Hub API key first.",
+                parent=self._settings_window)
             return
-        self._device_status.configure(text="authorizing…", fg=DIM); self.update_idletasks()
+        evidence = snap_session_gate.load()
+        creds = snap_stepup.prompt_stepup_dialog(
+            self._settings_window, site_url=site,
+            username_default=getattr(evidence, "username", ""),
+            title="Authorize this computer")
+        if creds is None:
+            return
+        username, password, totp = creds
+        self._device_status.configure(text="authorizing…", fg=DIM)
+        self.update_idletasks()
         try:
-            result = snap_device_auth.activate(site, code, BUILD_VERSION)
-            self._device_code.set(""); self._show_device_auth_status(result)
+            result = snap_device_auth.enroll(
+                site, hub_key, username, password, totp, BUILD_VERSION)
+            self._show_device_auth_status(result)
         except Exception as exc:
             self._device_status.configure(text=f"authorization failed: {exc}", fg="#ff5555")
 
@@ -833,6 +868,7 @@ class Hub(tk.Tk):
             self._show_device_auth_status(snap_device_auth.refresh(BUILD_VERSION))
         except Exception as exc:
             self._device_status.configure(text=f"check failed: {exc}", fg="#ff5555")
+
 
     def _load_creds(self):
         for key, var in self._creds_vars.items():
@@ -1469,12 +1505,45 @@ class Hub(tk.Tk):
 
 if __name__ == "__main__":
     app = Hub()
+    if "--authorize" in sys.argv:
+        app.after_idle(app._open_authorization)
     # Packaged-build smoke test: construct and lay out the real interface, then
     # exit without requiring a person to close a test window.
     qa_marker = os.environ.get("SNAP_HQ_QA_MARKER", "").strip()
+    layout_qa_marker = os.environ.get("SNAP_HQ_LAYOUT_QA_MARKER", "").strip()
     credential_qa_marker = os.environ.get("SNAP_HQ_CREDENTIAL_QA_MARKER", "").strip()
     orphan_qa_marker = os.environ.get("SNAP_HQ_ORPHAN_QA_MARKER", "").strip()
-    if orphan_qa_marker:
+    if layout_qa_marker:
+        def widget_texts(root):
+            texts = []
+            pending = list(root.winfo_children())
+            while pending:
+                widget = pending.pop()
+                pending.extend(widget.winfo_children())
+                try:
+                    text = str(widget.cget("text")).strip()
+                except tk.TclError:
+                    text = ""
+                if text:
+                    texts.append(text)
+            return texts
+
+        app.update_idletasks()
+        launcher_text = widget_texts(app)
+        forbidden = ("DEVICE AUTHORIZATION", "HUB SETUP", "BLOG IMAGE SETUP", "PROMPT SYNC")
+        if any(any(text.startswith(title) for text in launcher_text) for title in forbidden):
+            raise RuntimeError("Settings content leaked into the SNAP HQ launcher")
+        app._open_settings()
+        app.update_idletasks()
+        settings_text = widget_texts(app._settings_window)
+        required = ("DEVICE AUTHORIZATION", "HUB SETUP", "BLOG IMAGE SETUP", "PROMPT SYNC")
+        if not all(any(text.startswith(title) for text in settings_text) for title in required):
+            raise RuntimeError("SNAP HQ Settings is missing a configuration section")
+        app.withdraw()
+        with open(layout_qa_marker, "w", encoding="utf-8") as handle:
+            handle.write(BUILD_VERSION)
+        app.destroy()
+    elif orphan_qa_marker:
         # Reproduce the real 0.7.30 mixed state inside the frozen executable:
         # inaccessible ciphertext plus readable legacy settings and no machine
         # key. The first new save must archive/rebuild, not fail or erase.
