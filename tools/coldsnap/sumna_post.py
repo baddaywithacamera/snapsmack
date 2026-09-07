@@ -230,6 +230,18 @@ class SumnaConnection:
     def _api(self, route: str) -> str:
         return f"{self.base_url}{self.api_path}?route={route}"
 
+    def publishing_policy(self, timeout: int = 15) -> dict:
+        """Read live publish invariants from the destination CMS."""
+        r = self.session.get(f"{self.base_url}/sybu-data.php", timeout=timeout)
+        r.raise_for_status()
+        data = r.json()
+        policy = data.get("publishing_policy") or {}
+        return {
+            "download_link_required": bool(policy.get("download_link_required", False)),
+            "download_default_mode": str(
+                policy.get("download_default_mode", "per_post") or "per_post"),
+        }
+
     # -- site mode probe ----------------------------------------------------
     def probe_site_mode(self, timeout: int = 12) -> Tuple[str, bool, str]:
         """
@@ -273,6 +285,9 @@ class SoloPoster:
         # Resolve the destination's export sizing policy once (fleet default until
         # the site's portable settings are mirrored — see _export_policy).
         self.policy = _export_policy(_portable_from_site_data(site_data))
+
+    def publishing_policy(self) -> dict:
+        return self.conn.publishing_policy()
 
     def _resolve_ids(self, draft: Draft) -> Tuple[Optional[int], Optional[int]]:
         cat_id = album_id = None
@@ -380,6 +395,9 @@ class GramPoster:
         self.conn = conn
         # Same destination-aware sizing policy as solo posts.
         self.policy = _export_policy(_portable_from_site_data(site_data))
+
+    def publishing_policy(self) -> dict:
+        return self.conn.publishing_policy()
 
     def _upload_image(self, im) -> dict:
         """POST one JPEG + its client thumbs to threeacross/gram/upload. Client
@@ -587,6 +605,16 @@ class SmacktalkPoster:
         # Same destination-aware sizing policy as solo/gram (per-site max_long_edge,
         # falling back to the fleet default). Resolved once per poster.
         self.policy = _export_policy(_portable_from_site_data(site_data))
+
+    def publishing_policy(self, timeout: int = 15) -> dict:
+        r = self.session.get(f"{self.base_url}/sybu-data.php", timeout=timeout)
+        r.raise_for_status()
+        policy = (r.json().get("publishing_policy") or {})
+        return {
+            "download_link_required": bool(policy.get("download_link_required", False)),
+            "download_default_mode": str(
+                policy.get("download_default_mode", "per_post") or "per_post"),
+        }
 
     def _route(self, route: str) -> str:
         return f"{self.base_url}/api.php?route={route}"

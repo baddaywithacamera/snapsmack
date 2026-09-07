@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 012 — Adding a blog to the fleet never actually made it follow the others</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 012 — Adding a blog to the fleet never actually made it follow the others</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-07-012</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-07</td></tr>
+        <tr><td class="k">First observed</td><td>2026-09-07, surfaced while repairing the cron outage (OPAUDIT 011). Fleet on 0.7.656D.</td></tr>
+        <tr><td class="k">Theme</td><td>Discovery is not connection &mdash; an invariant that was never implemented.</td></tr>
+        <tr><td class="k">Surfaces</td><td>The 25-site hub/spoke all-to-all peer-follow mesh; onboarding a new blog to the fleet.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-confirm">Fixed — confirming</span> &nbsp; The mesh is fully repaired and watched working; the permanent auto-reconciler shipped as v0.7.657D but is not yet deployed.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes, for the repair</strong> — all 600 peer relationships now exist, first full audit found zero missing, and backfill was proven end to end (see §6). The permanent reconciler awaits deployment.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean + Codex (established the exact missing-edge pattern, ran the live recovery, shipped the reconciler).</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 011 (the cron outage that exposed this); OPAUDIT 006 (the intentionally-stale external relay row, not a fleet peer).</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No exploitable detail.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>The fleet is meant to be an all-to-all network: every blog follows every other, so a post on one
+    reaches all the rest. It wasn&rsquo;t. Blogs had been added to the fleet&rsquo;s <em>roster</em>
+    &mdash; the list of who exists &mdash; but adding them never actually established the follow
+    relationships. Being on the list is not the same as being connected, and nothing ever did the
+    connecting.</p>
+
+    <h2>2. What a human saw</h2>
+    <p>The fleet was no longer all-to-all. One blog&rsquo;s profile showed a single accepted outgoing
+    follow where it should have had two dozen. Fleet Stats reported 449 outgoing follows across 25
+    sites &mdash; but a true 25-node all-to-all mesh needs 600 directed relationships before counting
+    any external follows, so the network was materially incomplete.</p>
+
+    <h2>3. Root cause</h2>
+    <p>Connecting or adding a node updates the multisite <em>discovery roster</em>, but it does not
+    reconcile the actual following ledger. The multisite action labelled <code>RUN JOBS — ALL
+    SPOKES</code> refreshes roster data only &mdash; it never establishes peer follows. This was an
+    <em>unimplemented invariant</em>, not a mysterious deletion: the system assumed &ldquo;on the
+    roster&rdquo; meant &ldquo;following,&rdquo; and nothing ever made that true.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>The missing-edge pattern was exact, not random. Twenty-one established spokes each lacked the same
+    four actors (the hub plus three of the newest spokes); those four newer nodes each had only one
+    outbound relationship and lacked all 24 peers. That accounts for exactly 180 missing directed edges,
+    and 600 &minus; 180 = 420 peer edges plus unrelated external follows is consistent with the observed
+    449. A precise boundary like that points at an operation that was never run for those nodes, not at
+    random loss.</p>
+
+    <h2>5. What we did</h2>
+    <p><strong>Repair:</strong> live recovery sent only the <em>missing</em> follows, through each
+    site&rsquo;s own authenticated CMS &mdash; adding directed relationships only, never deleting an
+    external follow, skipping self, validating each actor, and advancing gradually to avoid a burst of
+    Accepts and catalogue backfills. <strong>Permanent fix (0.7.657D):</strong> the cron now adds one
+    missing fleet peer per tick from the hub&rsquo;s canonical roster; a Follow sends its exact queue
+    row; and handshake responses (Accepts) are prioritised ahead of large content backfills so a new
+    relationship completes promptly instead of waiting behind a catalogue.</p>
+
+    <h2>6. Verified live — and what remains</h2>
+    <p>The first repaired handshakes were accepted within seconds. A controlled backfill test using two
+    peers (one and two posts) confirmed both accounts and their historical posts appeared in the
+    hub&rsquo;s home feed &mdash; proving Follow, Accept, backfill-job creation, paced delivery, inbound
+    ingest, and reader display all work end to end once the follow exists. All 600 directed peer rows
+    now exist, and the first full audit found zero missing on every site. What remains: the permanent
+    auto-reconciler is shipped as <code>v0.7.657D</code> but not yet deployed, and some Accepts are still
+    pending on 0.7.656D (inline-Accept fallbacks queued behind large backfills &mdash; the exact thing
+    657D reprioritises). So this stays <span class="state-chip chip-confirm">Fixed — confirming</span>
+    until 657D is live and every site reports zero missing and zero pending fleet peers.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>After 657D deploys, verify all 25 sites report zero missing and zero pending fleet peers &mdash;
+    and do not mistake the intentionally-stale external relay row (OPAUDIT 006) for a fleet peer.
+    Separately, and kept separate on purpose: prove <em>why</em> some pre-existing edges were absent
+    beyond the unimplemented-reconciler explanation. An earlier PhotoFriday leave-cleanup could remove
+    individual ambiguous relationships before 657D, but that does not explain the exact four-node
+    boundary; preserve the evidence rather than guessing.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>Discovery is not connection. Updating a roster of who exists is not the same as establishing
+        the relationships between them &mdash; and an invariant you assume but never implement fails
+        silently and looks exactly like data loss. If a network is supposed to be all-to-all, something
+        has to actively reconcile it to that shape, and prove it did.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
