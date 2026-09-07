@@ -17,6 +17,10 @@ $checks = [
     'cron drain supplies a 240 second budget' => preg_match('/sv_process_deliveries\([\s\S]*?null,\s*null,\s*null,\s*240\s*\)/', $cron) === 1,
     'delivery processor accepts a runtime budget' => strpos($fediverse, 'int $max_runtime_secs = 0') !== false,
     'delivery processor enforces a deadline' => strpos($fediverse, 'microtime(true) + $gap + 12 >= $deadline') !== false,
+    'CLI drains before mesh and optional network maintenance' =>
+        strpos($cron, 'list($sent, $failed) = sv_process_deliveries(') < strpos($cron, '$mesh_follow = sv_reconcile_mesh_follows('),
+    'web runner drains before mesh and optional network maintenance' =>
+        strpos($fediverse, 'list($sent, $failed) = sv_process_deliveries(') < strpos($fediverse, '$mesh_follow = sv_reconcile_mesh_follows('),
 ];
 
 $failed = [];
