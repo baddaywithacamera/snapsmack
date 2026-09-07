@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 005 — Incoming fediverse activity arrived, passed checks, then vanished</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 005 — Incoming fediverse activity arrived, passed checks, then vanished</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-07-005</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-07 (compiled from the incident record)</td></tr>
+        <tr><td class="k">First observed</td><td>Fixed at 0.7.611D “SIGNED RECEIPT” (September 2026).</td></tr>
+        <tr><td class="k">Theme</td><td>You cannot fix what you cannot see.</td></tr>
+        <tr><td class="k">Surfaces</td><td>Inbound fediverse posts, likes, replies and follows arriving from other servers.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-confirm">Fixed — confirming</span> &nbsp; Every inbound item now leaves a receipt; the fix needs live watching before it goes green.</td></tr>
+        <tr><td class="k">Watched live?</td><td>Not yet named; the instrumentation is in and already surfaced other bugs (see Related).</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean + Claude (Codex second-pass review on the follow-handshake hardening).</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 007, 008, 009 &mdash; several of those were only findable after this receipt log existed.</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No content is logged; only dispositions.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>The worst bugs on this whole page share one property: they were invisible. Something would
+    arrive from another server, pass its signature check, and then quietly disappear &mdash; which
+    reads to a human exactly like &ldquo;it never arrived.&rdquo; This incident is the one where we
+    stopped chasing ghosts and made the system tell us what it did with every item.</p>
+
+    <h2>2. What a human saw</h2>
+    <p>A post, like, or reply from a followed account would seem never to arrive &mdash; no error, no
+    trace, nothing to distinguish &ldquo;dropped on our side&rdquo; from &ldquo;never sent.&rdquo;
+    People chased lost posts with no way to tell where they went.</p>
+
+    <h2>3. Root cause</h2>
+    <p>Several separate paths all ended in silence. An item from an account we were not following was
+    silently ignored. A duplicate was silently acknowledged. A reader-insert that failed had its
+    error swallowed. Each of those is a reasonable thing to do &mdash; but doing it <em>silently</em>
+    meant every one looked identical to a delivery that never happened.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>The evidence was the absence itself: verified items acknowledged with a success code, yet no
+    corresponding record and no log line. The only way to prove where they went was to make each path
+    record its own outcome.</p>
+
+    <h2>5. What we did</h2>
+    <p>Every inbound item now leaves a receipt in the interactions log describing exactly what
+    happened to it: &ldquo;ingested to reader,&rdquo; &ldquo;not ingested&rdquo; with the reason,
+    &ldquo;ignored: not in accepted following,&rdquo; &ldquo;reply routed to &hellip;,&rdquo;
+    &ldquo;private message captured&rdquo; (no content logged), or &ldquo;replay &mdash; already
+    received once, suppressed.&rdquo; Reader-insert failures now report their cause instead of being
+    discarded. Follow handshakes were also hardened so a stale acknowledgement can no longer flip a
+    newer follow to accepted.</p>
+
+    <h2>6. Verified live — and what remains</h2>
+    <p>The receipt log is in and has already earned its keep by making other drops findable. A named
+    live observation of a formerly-silent drop now showing correctly in the log is the step that turns
+    this green.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>Watch a real inbound item that would previously have vanished and confirm its receipt reads
+    correctly &mdash; then apply the same &ldquo;never fail silently&rdquo; rule to any other path that
+    can still swallow an outcome.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>Instrument before you hunt. A step that drops something silently is indistinguishable from a
+        step that never ran &mdash; so make every path say what it did. You cannot fix what you cannot
+        see, and most of the fixes on this page were only possible once the system started talking.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->

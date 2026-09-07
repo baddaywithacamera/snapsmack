@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 002 — The site had picture containers but no post containers</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 002 — The site had picture containers but no post containers</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-07-002</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-07 (compiled from the incident record)</td></tr>
+        <tr><td class="k">First observed</td><td>Foundational — present from early on; named sharply in the CMS architecture review (August 2026).</td></tr>
+        <tr><td class="k">Theme</td><td>A missing data-model idea, invisible to a code review, that quietly broke ownership, counts, comments and identity.</td></tr>
+        <tr><td class="k">Surfaces</td><td>Publishing; comments/likes; post counts; public profile; the fediverse identity of a post.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-watched">Watched working</span> &nbsp; The going-forward fix is confirmed. One tail of old comments is still being moved across (see §7).</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes</strong> — Sean confirms new posts are born correctly and the counts/profile read right.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean + Claude; the architectural gap was named in the CMS architecture review.</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 001, 009 (federation identity of a post depends on this).</td></tr>
+        <tr><td class="k">Publication</td><td>Public. A structural/operability lesson, no exploitable detail.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>This is the deepest one, and the least visible. For a long time a published photograph was
+    stored as a bare <em>image</em>, not as a <em>post</em>. That sounds like an internal detail, but
+    with no post to hang things on, a photo&rsquo;s ownership, its date, its comments and likes, the
+    collections it belonged to, and its identity out on the fediverse had no single home. Everything
+    that needs &ldquo;the post&rdquo; to point at had nothing to point at.</p>
+
+    <h2>2. What a human saw</h2>
+    <p>Comments imported from Flickr came unstuck from their photos. Post counts collapsed to
+    near-zero on photoblogs. A profile with thousands of live, federating photos reported &ldquo;no
+    posts yet.&rdquo; A repair tool kept having to convert loose photos into posts, and sites kept
+    drifting back to the broken state after it was run.</p>
+
+    <h2>3. Root cause</h2>
+    <p>Legacy solo publishing wrote a photograph as a row in the images table with no post record
+    behind it (the post link was empty). So anything that counted or displayed &ldquo;posts&rdquo;
+    either missed this content entirely or had nowhere to attach related data. Worse, the Flickr
+    comment importer wrote the <em>image</em>&rsquo;s id into the column meant for the <em>post</em>,
+    which detached every imported comment from the thing it was a comment on.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>Total-post counts were badly wrong on imported installs &mdash; a photoblog with roughly ten
+    thousand imported posts counted as near-zero, because the counter looked only at the posts table
+    while the content lived in the images table with no post wrapper. The public profile had the same
+    blind spot: it listed only grouped posts and never the standalone images where photoblog content
+    actually lives.</p>
+
+    <h2>5. What we did</h2>
+    <p>Two things. Going forward, posting a new photo now creates a real post in the background,
+    built to match exactly what the repair tool and the carousel poster already produced &mdash; so
+    nothing else on the site can tell the difference, and web addresses never change (federation
+    stays stable). Behind that, a proper post-model inventory and a transactional conversion, plus a
+    single shared definition of &ldquo;a post&rdquo; used by the dashboard, the heartbeat and the
+    fleet rollup so the counts can&rsquo;t drift apart again. The public profile was made mode-aware
+    so it counts and lists both standalone images and grouped posts.</p>
+
+    <h2>6. Verified live</h2>
+    <p>New posts are born correctly, counts read right, and profiles show the real content. Confirmed
+    by Sean on live sites.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>A tail of older comments are still being moved across from the photo to the post. They are
+    real people&rsquo;s words, so that migration is being done carefully rather than rushed. It is the
+    one part of this not yet finished.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>Define what a &ldquo;post&rdquo; is <em>once</em>, and make everything use that one
+        definition. A code review reads the code that exists; it cannot see a missing idea. The most
+        expensive bug here wasn&rsquo;t a wrong line &mdash; it was an absent one, and the fix was to
+        give the whole system a single home for the thing it kept assuming was there.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
