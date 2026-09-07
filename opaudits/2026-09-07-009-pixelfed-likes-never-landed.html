@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 009 — Likes from Pixelfed never landed</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 009 — Likes from Pixelfed never landed</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-07-009</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-07 (compiled from the incident record)</td></tr>
+        <tr><td class="k">First observed</td><td>Surfaced by the inbox log built ~0.7.378; resolver fix followed.</td></tr>
+        <tr><td class="k">Theme</td><td>A peer references your content by a different address than you expect.</td></tr>
+        <tr><td class="k">Surfaces</td><td>Inbound Likes from Pixelfed followers.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-confirm">Fixed — confirming</span> &nbsp; Resolver accepts the permalink form; not yet confirmed live.</td></tr>
+        <tr><td class="k">Watched live?</td><td>Not yet named.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean + Claude.</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 001 (Pixelfed object-address handling); OPAUDIT 005 (the log that caught this).</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No exploitable detail.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>Every like from a Pixelfed follower resolved to nothing and was dropped, each one showing in the
+    inbox log as <em>unresolved</em>. The cause was a mismatch in how Pixelfed names the thing being
+    liked versus how our resolver looked it up.</p>
+
+    <h2>2. What a human saw</h2>
+    <p>Likes from Pixelfed followers didn&rsquo;t register on the liked post, and the inbox log marked
+    every one of them <code>UNRESOLVED</code>.</p>
+
+    <h2>3. Root cause</h2>
+    <p>A Like from Pixelfed points at the Note&rsquo;s <em>human</em> permalink (for example
+    <code>/ig-20260624-061822-0705</code>), not the machine address (<code>/ap/note/p/N</code>) that
+    our resolver knew how to match. So the resolver was handed an address it didn&rsquo;t recognise,
+    matched nothing, and the like was dropped on the floor.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>The inbox log &mdash; built precisely to catch drops &mdash; showed every Pixelfed like arriving
+    and resolving to nothing. The address in each one was the public permalink, not the machine id,
+    which named the exact mismatch.</p>
+
+    <h2>5. What we did</h2>
+    <p>The resolver now also accepts the public permalink form: it looks the slug up and maps it to the
+    <em>post</em> when the image belongs to one (matching how the machine id resolves) or to the
+    standalone <em>image</em> otherwise. The database handle was threaded into all four inbox call
+    sites so every path can resolve the same way.</p>
+
+    <h2>6. Verified live — and what remains</h2>
+    <p>The fix is in and matches how the machine-id path already resolves, but a live like from a
+    Pixelfed follower landing on the right post has not yet been named as watched. Until then this
+    stays <span class="state-chip chip-confirm">Fixed — confirming</span>.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>Watch one real Pixelfed like resolve and register on the correct post in the inbox log.</p>
+
+    <h2>8. The doctrine this incident reinforced</h2>
+    <div class="doctrine">
+        <p>The log we built to catch drops caught this one &mdash; the payoff of instrumenting first
+        (OPAUDIT 005). And the specific lesson: a peer may refer to your content by a different address
+        than you handed it, so a resolver has to accept every address a real peer will actually use,
+        not only the canonical one.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
