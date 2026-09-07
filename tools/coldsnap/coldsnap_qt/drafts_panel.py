@@ -257,6 +257,28 @@ class BatchRail(QWidget):
         if not ready:
             self.sync_status.setText("Nothing queued yet — QUEUE POST puts a draft in line.")
             return
+        # The destination CMS owns this rule.  Re-read it immediately before
+        # sending so a setting changed after app launch cannot be bypassed by a
+        # stale desktop profile. COLD SNAP does not currently own a verified
+        # Drive session, so required-Drive sites fail closed here.
+        try:
+            policy = poster.publishing_policy()
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(
+                self, "Could not verify publishing rules",
+                f"COLD SNAP could not confirm this site's live publishing rules:\n\n{exc}\n\n"
+                "Nothing was uploaded.")
+            return
+        if policy.get("download_link_required"):
+            QMessageBox.warning(
+                self, "Google Drive required — posting blocked",
+                "This site's CMS requires every published post to have a Drive "
+                "download link. COLD SNAP has no verified Google Drive connection, "
+                "so nothing was uploaded.\n\nUse SMACK YOUR BATCH UP with Drive connected.")
+            self.sync_status.setText(
+                "Posting blocked — this site requires a valid Google Drive connection.")
+            self.sync_status.setStyleSheet(f"color: {theme.DANGER};")
+            return
         if not confirm_post(self, url, len(ready), self.item_noun):
             self.sync_status.setText("Sending cancelled.")
             return
