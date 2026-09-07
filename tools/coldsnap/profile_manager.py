@@ -32,6 +32,14 @@ except Exception:  # pragma: no cover - dev-tree import shim
     except Exception:
         _shared_profiles = None
 
+# Shared cross-tool CONNECTIONS store (sybu-typed rows). Recovered post-652D-merge:
+# the merge kept the `if snap_connections:` usages below but dropped this guarded
+# import, so list_profiles() crashed with NameError at COLD SNAP launch.
+try:
+    import snap_connections
+except Exception:  # pragma: no cover - optional; None = skip the connections source
+    snap_connections = None
+
 
 def _shared_to_coldsnap(p: dict) -> Dict:
     """Map a canonical shared profile (name/site_url/api_key/extras) onto the shape
@@ -103,9 +111,17 @@ def list_profiles() -> List[str]:
                 names.add(data.get('name', fname[:-5]))
             except Exception:
                 pass
-    if snap_connections:
-        names.extend(row['name'] for row in snap_connections.list_connections('sybu'))
-    return sorted(set(names))
+    if snap_connections is not None:
+        # `names` is a set (the merge grafted a list-style .extend here — wrong
+        # type, crashed at launch). Add each connection name into the set.
+        try:
+            for row in snap_connections.list_connections('sybu'):
+                n = row.get('name') if isinstance(row, dict) else None
+                if n:
+                    names.add(n)
+        except Exception:
+            pass
+    return sorted(names)
 
 
 def load_profile(name: str) -> Optional[Dict]:
