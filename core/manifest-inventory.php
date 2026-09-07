@@ -889,6 +889,11 @@ return [
             'path'         => 'assets/js/ss-engine-jive-border.js',
             'has_settings' => false,
         ],
+        'smack-kompromat-bg' => [
+            'label'        => 'KOMPROMAT Layer 1 background (canvas; full-frame revolving RED SCARE spears + emblem)',
+            'path'         => 'assets/js/ss-kompromat.js',
+            'has_settings' => false,
+        ],
         'smack-progressive-reveal' => [
             'label'        => 'Progressive reveal — grid tiles + justified rows (grow-as-you-scroll)',
             'path'         => 'assets/js/ss-engine-progressive-reveal.js',
