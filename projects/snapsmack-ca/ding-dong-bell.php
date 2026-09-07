@@ -303,6 +303,54 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="family-head">
         <div class="wrap">
+            <h2>What this cost us to learn &mdash; for anyone building with AI</h2>
+            <p>SnapSmack is built by one photographer directing AI to write code he can&rsquo;t read himself. If that&rsquo;s you &mdash; building a real thing through an AI, or building something like this &mdash; every lesson below was paid for in one of the incidents above. They&rsquo;re the part worth stealing.</p>
+        </div>
+    </section>
+
+    <section class="posts">
+        <div class="wrap">
+
+            <div class="entry">
+                <div class="entry-top"><h3>&ldquo;Fixed&rdquo; and &ldquo;watched working&rdquo; are two different claims &mdash; never let them blur</h3></div>
+                <p>This is the expensive one, and it&rsquo;s why this whole page has coloured tags. When an AI writes code you can&rsquo;t read, &ldquo;the agent says it&rsquo;s fixed&rdquo; is a claim, not a result. Track what you <em>changed</em> separately from what you&rsquo;ve <em>watched actually work on a real machine</em>, and never let the first quietly become the second. The word &ldquo;fixed&rdquo; in a changelog fooled us more than once &mdash; the Photo Friday cards read &ldquo;delivered&rdquo; and vanished for weeks.</p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top"><h3>You verify by the outcome on a real machine, not by reading the code</h3></div>
+                <p>If you can&rsquo;t read the code, that isn&rsquo;t the weakness it sounds like &mdash; it just moves where you check. Your real power is knowing exactly what the finished thing must <em>do</em>. Define that hole precisely before a line is written, then test the running system against it and pare off anything that doesn&rsquo;t fit. &ldquo;The agent says it&rsquo;s done&rdquo; doesn&rsquo;t fill the hole; filling the hole fills the hole &mdash; and you can see that with your own eyes without reading a single function.</p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top"><h3>A success code proves the message was carried, never that the job got done</h3></div>
+                <p>A server answering <code>200</code> means the bytes arrived &mdash; not that your post landed, saved, or displayed. Treat every &ldquo;success&rdquo; as &ldquo;received,&rdquo; and confirm the actual outcome separately. Pixelfed <em>accepted</em> our posts and then silently dropped them; the acceptance was real and the post was gone.</p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top"><h3>Every assumption about how another system behaves is wrong until you prove it against that exact system</h3></div>
+                <p>One peer working tells you nothing about the next. The fixes that made Pixelfed work proved nothing about Mastodon or GoToSocial &mdash; each had to be watched on its own. If your thing talks to anyone else&rsquo;s thing, confirm it against <em>their</em> real system, not the spec and not a sibling that happened to pass.</p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top"><h3>You can&rsquo;t fix what you can&rsquo;t see &mdash; build the log before you chase the bug</h3></div>
+                <p>Our worst bugs were invisible: things arrived, passed their checks, and disappeared with no trace, which reads exactly like &ldquo;never happened.&rdquo; The moment we made the system report what it did with each item &mdash; kept, ignored and why, dropped and where &mdash; the bugs became findable. Instrument first; then hunt.</p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top"><h3>Slow or background work never belongs inside a page load</h3></div>
+                <p>If a job can be slow, never run it while a person is waiting for a page &mdash; it can take the whole site down with it. Ours did: paced work running inside web requests starved the server and timed out entire sites. Move anything slow to a place that can fail on its own without a visitor noticing.</p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top"><h3>Git history tells you what got fixed &mdash; never what&rsquo;s still untested</h3></div>
+                <p>A test you never ran writes nothing to the record. So &ldquo;the changelog is clean&rdquo; is not &ldquo;the software is proven&rdquo; &mdash; the two just look alike. That&rsquo;s exactly why most tags on this page start yellow: the history proves the fix was written, and a person still has to watch it work before it earns green.</p>
+            </div>
+
+        </div>
+    </section>
+
+    <section class="family-head">
+        <div class="wrap">
             <h2>What we haven&rsquo;t confirmed yet</h2>
             <p>These aren&rsquo;t broken and they aren&rsquo;t known bugs &mdash; they&rsquo;re things we expect to work but haven&rsquo;t yet stood in front of and watched. A quarter-million-line system confirmed by one photographer&rsquo;s hands-on testing has a real list of things still to confirm, and we&rsquo;d rather show you the list and work through it than quietly assume it&rsquo;s all fine.</p>
         </div>
