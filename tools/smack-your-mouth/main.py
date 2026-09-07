@@ -770,5 +770,8 @@ def main():
 
 
 if __name__ == "__main__":
+    import snap_single_instance
+    if not snap_single_instance.acquire("smack-your-mouth", "SMACK YOUR MOUTH"):
+        raise SystemExit(0)
     main()
 # ===== SNAPSMACK EOF =====
