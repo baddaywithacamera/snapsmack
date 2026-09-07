@@ -634,15 +634,19 @@ class SmacktalkPoster:
     # A [mosaic] placeholder (optionally [mosaic:bucket]/[mosaic:new]/[mosaic:auto])
     # means "build an inline gallery from THIS essay's photos here." A numeric
     # [mosaic:123] the author typed points at an existing panel and is left alone.
-    _MOSAIC_TOKEN = re.compile(r'\[mosaic(?::\s*(?:bucket|new|auto)\s*)?\]', re.I)
+    _MOSAIC_TOKEN = re.compile(
+        r'\[mosaic(?:=\s*([0-9]+(?:\s*,\s*[0-9]+)*))?'
+        r'(?:\s+layout=(one-left|one-right|three-across|one-top))?'
+        r'(?::\s*(?:bucket|new|auto)\s*)?\]', re.I)
 
-    def create_mosaic(self, image_ids, title="Mosaic", gap=4) -> Tuple[int, str]:
+    def create_mosaic(self, image_ids, title="Mosaic", gap=4,
+                      layout="asymmetric") -> Tuple[int, str]:
         """Create a snap_mosaics panel from ordered Gallery image ids via
         POST smackpress/mosaics. Returns (mosaic_id, '[mosaic:ID]')."""
         r = self.session.post(
             self._route("smackpress/mosaics"),
             json={"title": title or "Mosaic", "asset_ids": [int(i) for i in image_ids],
-                  "gap": max(0, min(20, int(gap or 4)))},
+                  "gap": max(0, min(20, int(gap or 4))), "layout": layout},
             timeout=60)
         if r.status_code in (401, 403):
             raise RuntimeError(_resp_msg(
@@ -663,8 +667,24 @@ class SmacktalkPoster:
         if not image_ids or not self._MOSAIC_TOKEN.search(content):
             return content, []
         gap = int(getattr(draft, "mosaic_gap", 4) or 4)
-        mid, shortcode = self.create_mosaic(image_ids, title=(draft.title or "Mosaic"), gap=gap)
-        return self._MOSAIC_TOKEN.sub(lambda _m: shortcode, content), [mid]
+        mosaic_ids = []
+
+        def build(match):
+            selection = match.group(1)
+            layout = (match.group(2) or 'asymmetric').lower()
+            chosen = list(image_ids)
+            if selection:
+                positions = [int(value.strip()) for value in selection.split(',')]
+                chosen = [image_ids[pos - 1] for pos in positions
+                          if 1 <= pos <= len(image_ids)]
+            if not chosen:
+                return ''
+            mid, shortcode = self.create_mosaic(
+                chosen, title=(draft.title or "Mosaic"), gap=gap, layout=layout)
+            mosaic_ids.append(mid)
+            return shortcode
+
+        return self._MOSAIC_TOKEN.sub(build, content), mosaic_ids
 
     def _record_to_library(self, draft, post_id, content, server_data, image_ids) -> None:
         """Producer contract — now via the shared _produce_library, which also

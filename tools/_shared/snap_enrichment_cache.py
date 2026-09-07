@@ -173,4 +173,19 @@ def pending(site: str) -> list:
     finally:
         conn.close()
 
+
+def mark_synced(site: str, cache_key_value: str, revision: int) -> None:
+    """Mark one desktop record accepted by the authoritative CMS copy."""
+    conn = _connect(site)
+    try:
+        with conn:
+            conn.execute(
+                """UPDATE enrichment_cache
+                   SET revision = ?, base_revision = ?, dirty = 0
+                   WHERE cache_key = ?""",
+                (int(revision), int(revision), str(cache_key_value)),
+            )
+    finally:
+        conn.close()
+
 # ===== SNAPSMACK EOF =====

@@ -124,6 +124,17 @@ def _checks():
     assert draft.validate() == [], draft.validate()
     n += 1
 
+    # 7. A composed mosaic can select/reorder bucket positions and carry an
+    # explicit three-photo layout through to mosaic creation.
+    calls = []
+    poster.create_mosaic = lambda ids, title="Mosaic", gap=4, layout="asymmetric": (
+        calls.append((list(ids), layout)) or (55, "[mosaic:55]"))
+    resolved, mids = poster._resolve_mosaics(
+        "before\n[mosaic=3,1,2 layout=one-top]\nafter", [101, 102, 103, 104], draft)
+    assert resolved == "before\n[mosaic:55]\nafter", resolved
+    assert mids == [55] and calls == [([103, 101, 102], "one-top")], calls
+    n += 1
+
     return n
 
 

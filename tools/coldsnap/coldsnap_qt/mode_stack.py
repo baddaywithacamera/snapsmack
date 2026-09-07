@@ -201,7 +201,8 @@ class StackMode(QWidget):
 
         # ---- POST card --------------------------------------------------------------
         post = Card("POST")
-        right.addWidget(post)
+        post.setMaximumWidth(1120)
+        right.addWidget(post, 0, Qt.AlignHCenter)
         post.body.addWidget(field_label("Caption"))
         # Same shortcode toolbar the CMS carousel editor puts on this field;
         # BIGGIE face builds the same caption out of blocks.
@@ -252,9 +253,11 @@ class StackMode(QWidget):
         # Primary action pinned under the scroll — never below the fold.
         act = QHBoxLayout()
         act.setContentsMargins(0, 0, 0, 10)
-        self.queue_btn = big_button("QUEUE POST  →  goes in the batch, sends on SEND")
+        act.addStretch(1)
+        self.queue_btn = big_button("QUEUE POST")
+        self.queue_btn.setMaximumWidth(260)
+        self.queue_btn.setToolTip("Add this post to the batch. Nothing publishes until SEND.")
         self.queue_btn.clicked.connect(lambda: self._commit(ready=True))
-        act.addWidget(self.queue_btn, 1)
         save_btn = QPushButton("Save as draft")
         save_btn.clicked.connect(lambda: self._commit(ready=False))
         act.addWidget(save_btn)
@@ -262,6 +265,7 @@ class StackMode(QWidget):
         clear_btn.setObjectName("Quiet")
         clear_btn.clicked.connect(self._clear_compose)
         act.addWidget(clear_btn)
+        act.addWidget(self.queue_btn)
 
         centre = QVBoxLayout()
         centre.setSpacing(8)

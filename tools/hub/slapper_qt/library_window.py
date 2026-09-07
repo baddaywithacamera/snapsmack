@@ -287,6 +287,7 @@ class LibraryWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(f"Library (build {BUILD_VERSION})")
         self.resize(1180, 780)
+        self._restricted = False
         self._pool = QThreadPool.globalInstance()
         self._scan_pool = QThreadPool(self)
         self._scan_pool.setMaxThreadCount(1)
@@ -404,6 +405,22 @@ class LibraryWindow(QMainWindow):
         starting_folder = remembered if os.path.isdir(remembered) else initial_root
         if starting_folder and os.path.isdir(starting_folder):
             self.load_folder(starting_folder)
+
+    def set_restricted_mode(self, restricted=True):
+        """Keep local browsing/opening available while locking library changes."""
+        self._restricted = bool(restricted)
+        locked_actions = (
+            self.act_import, self.act_panomerge, self.act_new_folder,
+            self.act_rename, self.act_batch_rename, self.act_move,
+            self.act_copy, self.act_trash, self.act_restore_trash,
+            self.act_undo_files, self.act_rotate_left, self.act_rotate_right,
+            self.act_find_duplicates, self.act_apply_recipe,
+        )
+        for action in locked_actions:
+            action.setEnabled(not self._restricted)
+        if self._restricted:
+            self.statusBar().showMessage(
+                "RESTRICTED — browse and open photos; authorize in SNAP HQ to edit or organize.")
 
     # --- Toolbar ------------------------------------------------------------
     def _build_toolbar(self):
@@ -1554,6 +1571,7 @@ class LibraryWindow(QMainWindow):
         self._opening_editor_paths.add(path_key)
         try:
             editor = EditorWindow()
+            editor.set_restricted_mode(self._restricted)
             # Retain the window before opening the document. Image decoding and
             # layout can process queued UI events; a second activation during
             # that interval must not manufacture another editor.

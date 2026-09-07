@@ -46,13 +46,17 @@
      * mixed-span quilt: image one crosses two columns, image two crosses two
      * rows, and the remaining pair occupy unequal cells beneath image one.
      */
-    function buildSection(images, preferLandscapeHero) {
+    function buildSection(images, preferLandscapeHero, template) {
         var cells = images.map(function (image, index) { return leaf(image, index); });
 
         if (cells.length === 1) return cells[0];
         if (cells.length === 2) return group('horizontal', cells);
 
         if (cells.length === 3) {
+            if (template === 'one-left') return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
+            if (template === 'one-right') return group('horizontal', [group('vertical', cells.slice(1)), cells[0]]);
+            if (template === 'three-across') return group('horizontal', cells);
+            if (template === 'one-top') return group('vertical', [cells[0], group('horizontal', cells.slice(1))]);
             if (cells[0].ar < 1.15) {
                 return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
             }
@@ -241,7 +245,7 @@
         return best;
     }
 
-    function preferredBlock(images, y, containerWidth, gap, emphasis) {
+    function preferredBlock(images, y, containerWidth, gap, emphasis, template) {
         /* buildSection is the original editorial composition used by the demo.
            Keep it when it is safe, but never let it bypass either hard size
            boundary. Six-image groups require the general solver because the
@@ -250,7 +254,7 @@
         if (images.length >= 6) {
             return solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize);
         }
-        var tree = buildSection(images, false);
+        var tree = buildSection(images, false, template);
         var items = [];
         var height = placeNode(tree, 0, y, containerWidth, gap, items);
         if (height > 0 && !items.some(tileExceedsLimit) &&
@@ -279,7 +283,7 @@
         };
     }
 
-    function computeLayout(images, containerWidth, gap, emphasis) {
+    function computeLayout(images, containerWidth, gap, emphasis, template) {
         gap = Math.max(0, Math.min(20, Number(gap) || 0));
         containerWidth = Math.max(0, Number(containerWidth) || 0);
         emphasis = ['natural', 'balanced', 'landscape', 'portrait'].indexOf(emphasis) >= 0 ? emphasis : 'natural';
@@ -311,7 +315,7 @@
                    derivative ceiling; never fall back to the invalid geometry. */
                 while (count >= 2 && !solved) {
                     sectionImages = images.slice(index, index + count);
-                    solved = preferredBlock(sectionImages, y, containerWidth, gap, emphasis);
+                    solved = preferredBlock(sectionImages, y, containerWidth, gap, emphasis, template);
                     if (!solved) count--;
                 }
                 if (!solved) {
@@ -356,10 +360,11 @@
 
         var gap = parseInt(container.getAttribute('data-gap') || '4', 10);
         var emphasis = container.getAttribute('data-emphasis') || 'natural';
+        var template = container.getAttribute('data-template') || '';
         var width = container.clientWidth || container.offsetWidth;
         if (width <= 0) return;
 
-        var layout = computeLayout(images, width, gap, emphasis);
+        var layout = computeLayout(images, width, gap, emphasis, template);
         var fragment = document.createDocumentFragment();
 
         layout.items.forEach(function (tile) {

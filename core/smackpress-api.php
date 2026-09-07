@@ -451,11 +451,16 @@ if ($sub === 'mosaics' && $method === 'POST') {
     $title     = trim($body['title'] ?? 'Untitled Mosaic');
     $asset_ids = array_map('intval', $body['asset_ids'] ?? []);
     $gap       = max(0, min(20, (int)($body['gap'] ?? 4)));
+    $layout    = (string)($body['layout'] ?? 'asymmetric');
+    if (!in_array($layout, ['asymmetric', 'columns', 'rows', 'square',
+                            'one-left', 'one-right', 'three-across', 'one-top'], true)) {
+        $layout = 'asymmetric';
+    }
 
     if (empty($asset_ids)) smackpress_error(422, 'asset_ids required.');
 
-    $stmt = $pdo->prepare("INSERT INTO snap_mosaics (title, asset_ids, gap) VALUES (?, ?, ?)");
-    $stmt->execute([$title, json_encode($asset_ids), $gap]);
+    $stmt = $pdo->prepare("INSERT INTO snap_mosaics (title, asset_ids, gap, layout) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$title, json_encode($asset_ids), $gap, $layout]);
     $mosaic_id = (int)$pdo->lastInsertId();
     smackpress_ok(['mosaic_id' => $mosaic_id, 'shortcode' => '[mosaic:' . $mosaic_id . ']']);
 }
