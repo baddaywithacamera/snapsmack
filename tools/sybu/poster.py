@@ -70,6 +70,8 @@ class PostResult:
     web_path:  str  = ''    # path to the saved web version
     drive_url: str  = ''    # Google Drive share link (if uploaded)
     exif_ok:   bool = True  # False if EXIF embedding failed
+    post_id:   int  = 0     # canonical snap_posts.id returned by the server
+    image_id:  int  = 0     # canonical snap_images.id returned by the server
 
 
 @dataclass
@@ -437,6 +439,7 @@ class SnapSmackClient:
                 'orientation_override': orient,
                 'source_file':          entry.file,   # original filename — stored in img_source_file
                 'img_ai_colors':        entry.colors, # space-separated hex codes from Gemini
+                'want_ids':             '1',          # success:<post_id>:<image_id>
             }
             if cat_id is not None:
                 form_data['cat_ids[]'] = str(cat_id)
@@ -465,6 +468,7 @@ class SnapSmackClient:
             body = (resp.text or '').strip()
             confirmed = (
                 body == 'success'
+                or body.startswith('success:')
                 or 'TRANSMISSION_LIVE' in resp.url
                 or 'TRANSMISSION_LIVE' in body
             )
@@ -484,7 +488,25 @@ class SnapSmackClient:
                 msg += f" ({'; '.join(notes)})"
 
             log.info("POST OK %s — %s (drive=%s)", entry.file, msg, bool(drive_url))
-            return PostResult(entry, True, msg, web_path=web_path, drive_url=drive_url, exif_ok=exif_ok)
+            post_id = image_id = 0
+            if body.startswith('success:'):
+                parts = body.split(':')
+                try:
+                    post_id = int(parts[1]) if len(parts) > 1 else 0
+                    image_id = int(parts[2]) if len(parts) > 2 else 0
+                except ValueError:
+                    post_id = image_id = 0
+            if post_id:
+                try:
+                    import library_bridge
+                    library_bridge.record_post_success(
+                        self.base_url, web_path, entry, post_id,
+                        site_mode='photoblog', post_type='solo',
+                        session=self.session)
+                except Exception as exc:
+                    log.warning("SHARED LIBRARY WRITE FAILED %s: %s", entry.file, exc)
+            return PostResult(entry, True, msg, web_path=web_path, drive_url=drive_url,
+                              exif_ok=exif_ok, post_id=post_id, image_id=image_id)
 
         except requests.RequestException as e:
             log.error("POST NETWORK ERROR %s: %s", entry.file, e)
@@ -662,7 +684,17 @@ def post_gram(conn: 'GramConnection', entry: ManifestEntry, image_folder: str) -
     if data.get('status') != 'ok' or (not post_id and not split_ids):
         return PostResult(entry, False, data.get('error', 'server did not confirm the post'))
     log.info("GRAM OK %s — post_id=%s", entry.file, post_id or (split_ids[0] if split_ids else 0))
-    return PostResult(entry, True, 'Posted (gram)')
+    canonical_id = post_id or (split_ids[0] if split_ids else 0)
+    if canonical_id:
+        try:
+            import library_bridge
+            library_bridge.record_post_success(
+                conn.base_url, local_path, entry, canonical_id,
+                site_mode='carousel', post_type='single',
+                session=conn.session)
+        except Exception as exc:
+            log.warning("SHARED LIBRARY WRITE FAILED %s: %s", entry.file, exc)
+    return PostResult(entry, True, 'Posted (gram)', post_id=canonical_id)
 
 
 def run_gram_batch(

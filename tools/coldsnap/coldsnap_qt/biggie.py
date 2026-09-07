@@ -24,34 +24,54 @@ import re
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPlainTextEdit, QComboBox, QPushButton, QMenu, QSpinBox,
+    QPlainTextEdit, QComboBox, QPushButton, QMenu, QSpinBox, QCheckBox,
 )
 
 from .widgets import hint, field_label
 
 # ── Block model ──────────────────────────────────────────────────────────────
-# {"type": "para"|"raw",     "text": str}
+# {"type": "para", "text": str, "dropcap": bool}
+# {"type": "raw",  "text": str}
 # {"type": "heading", "level": 2|3, "text": str}
 # {"type": "quote",   "text": str}
 # {"type": "hr"}
 # {"type": "list",    "ordered": bool, "items": [str, ...]}
 # {"type": "image",   "img_id": str, "size": str, "align": str}
-# {"type": "columns", "cols": [str, ...]}          (2-4 columns)
-# {"type": "dropcap", "text": str}
+# {"type": "columns", "cols": [[block, ...], ...], "ratio": str}
+#     One to four columns. Each cell owns blocks; columns cannot nest.
+# {"type": "pullquote", "text": str}
 # {"type": "spacer",  "px": int}
 # {"type": "mosaic"}
 
 IMG_SIZES = ["full", "wall", "small"]
 IMG_ALIGNS = ["center", "left", "right"]
+RATIO_PRESETS = {
+    1: [("Full width", "equal")],
+    2: [("Equal — 1/2 + 1/2", "equal"), ("1/3 + 2/3", "1-2"),
+        ("2/3 + 1/3", "2-1"), ("1/4 + 3/4", "1-3"), ("3/4 + 1/4", "3-1")],
+    3: [("Equal thirds", "equal"), ("1/4 + 1/4 + 1/2", "1-1-2"),
+        ("1/2 + 1/4 + 1/4", "2-1-1")],
+    4: [("Equal quarters", "equal")],
+}
 
 
 def serialize_block(b: dict) -> str:
     t = b.get("type", "para")
+    if t == "para":
+        text = str(b.get("text", ""))
+        if b.get("dropcap") and text:
+            match = re.search(r"\S", text)
+            if match:
+                i = match.start()
+                text = text[:i] + f"[dropcap]{text[i]}[/dropcap]" + text[i + 1:]
+        return text
     if t == "heading":
         lvl = 3 if int(b.get("level", 2)) == 3 else 2
         return f"<h{lvl}>{b.get('text', '')}</h{lvl}>"
     if t == "quote":
         return f"<blockquote>{b.get('text', '')}</blockquote>"
+    if t == "pullquote":
+        return f"[pullquote]{b.get('text', '')}[/pullquote]"
     if t == "hr":
         return "<hr>"
     if t == "list":
@@ -64,18 +84,19 @@ def serialize_block(b: dict) -> str:
         align = b.get("align") or "center"
         return f"[img:{str(b.get('img_id', '')).strip()}|{size}|{align}]"
     if t == "columns":
-        cols = [str(c) for c in (b.get("cols") or ["", ""])]
-        out = f"[columns={len(cols)}]\n{cols[0]}\n"
-        for c in cols[1:]:
-            out += f"\n[col]\n\n{c}\n"
+        cols = b.get("cols") or [[]]
+        rendered = [serialize_blocks(_normalise_cell(c)) for c in cols]
+        ratio = _normalise_ratio(str(b.get("ratio") or "equal"), len(cols))
+        ratio_attr = "" if ratio == "equal" else f" ratio={ratio}"
+        out = f"[columns={len(cols)}{ratio_attr}]\n{rendered[0]}\n"
+        for cell in rendered[1:]:
+            out += f"\n[col]\n\n{cell}\n"
         return out + "[/columns]"
-    if t == "dropcap":
-        return f"[dropcap]{b.get('text', '')}[/dropcap]"
     if t == "spacer":
         return f"[spacer:{max(1, min(100, int(b.get('px', 20) or 20)))}]"
     if t == "mosaic":
         return "[mosaic]"
-    return str(b.get("text", ""))          # para / raw — verbatim
+    return str(b.get("text", ""))          # raw — verbatim
 
 
 def serialize_blocks(blocks: list) -> str:
@@ -85,28 +106,44 @@ def serialize_blocks(blocks: list) -> str:
 
 # Shortcodes BIGGIE understands as blocks; any OTHER [name…] construct in a
 # segment turns the whole segment into a RAW block (verbatim passthrough).
-_KNOWN_SC = {"img", "columns", "col", "dropcap", "spacer", "mosaic"}
+_KNOWN_SC = {"img", "columns", "col", "dropcap", "pullquote", "spacer", "mosaic"}
 
 _MULTI = re.compile(
-    r"(\[columns=\d+\].*?\[/columns\]"
+    r"(\[columns=\d+(?:\s+ratio=[0-9-]+)?\].*?\[/columns\]"
     r"|<(?:ul|ol)>.*?</(?:ul|ol)>"
-    r"|<blockquote>.*?</blockquote>)",
+    r"|<blockquote>.*?</blockquote>"
+    r"|\[pullquote\].*?\[/pullquote\])",
     re.DOTALL | re.IGNORECASE)
 
 _RX = {
     "heading": re.compile(r"^<h([23])>(.*)</h\1>$", re.DOTALL | re.IGNORECASE),
     "hr":      re.compile(r"^<hr\s*/?>$", re.IGNORECASE),
-    "dropcap": re.compile(r"^\[dropcap\](.*)\[/dropcap\]$", re.DOTALL | re.IGNORECASE),
+    "dropcap_para": re.compile(r"^(\s*)\[dropcap\](.*?)\[/dropcap\](.*)$", re.DOTALL | re.IGNORECASE),
+    "pullquote": re.compile(r"^\[pullquote\](.*)\[/pullquote\]$", re.DOTALL | re.IGNORECASE),
     "spacer":  re.compile(r"^\[spacer:(\d+)\]$", re.IGNORECASE),
     "image":   re.compile(r"^\[img:([^|\]]+)(?:\|([^|\]]+))?(?:\|([^\]]+))?\]$", re.IGNORECASE),
     "mosaic":  re.compile(r"^\[mosaic\]$", re.IGNORECASE),
-    "columns": re.compile(r"^\[columns=(\d+)\](.*)\[/columns\]$", re.DOTALL | re.IGNORECASE),
+    "columns": re.compile(r"^\[columns=(\d+)(?:\s+ratio=([0-9-]+))?\](.*)\[/columns\]$", re.DOTALL | re.IGNORECASE),
     "list":    re.compile(r"^<(ul|ol)>(.*)</\1>$", re.DOTALL | re.IGNORECASE),
     "quote":   re.compile(r"^<blockquote>(.*)</blockquote>$", re.DOTALL | re.IGNORECASE),
     "li":      re.compile(r"<li>(.*?)</li>", re.DOTALL | re.IGNORECASE),
     "colsep":  re.compile(r"\n?\[col\]\n?", re.IGNORECASE),
     "any_sc":  re.compile(r"\[([a-z_]+)[:=\]|]", re.IGNORECASE),
 }
+
+
+def _normalise_cell(cell) -> list:
+    """Migrate v1 string cells to the nested block model without data loss."""
+    if isinstance(cell, list):
+        return cell
+    return parse_body(str(cell)) if str(cell) else []
+
+
+def _normalise_ratio(ratio: str, count: int) -> str:
+    parts = ratio.split("-") if ratio != "equal" else []
+    if len(parts) != count or any(not p.isdigit() or not 1 <= int(p) <= 4 for p in parts):
+        return "equal"
+    return "-".join(str(int(p)) for p in parts)
 
 
 def _classify(seg: str) -> dict:
@@ -116,9 +153,12 @@ def _classify(seg: str) -> dict:
         return {"type": "heading", "level": int(m.group(1)), "text": m.group(2)}
     if _RX["hr"].match(seg):
         return {"type": "hr"}
-    m = _RX["dropcap"].match(seg)
+    m = _RX["dropcap_para"].match(seg)
     if m:
-        return {"type": "dropcap", "text": m.group(1)}
+        return {"type": "para", "text": m.group(1) + m.group(2) + m.group(3), "dropcap": True}
+    m = _RX["pullquote"].match(seg)
+    if m:
+        return {"type": "pullquote", "text": m.group(1)}
     m = _RX["spacer"].match(seg)
     if m:
         return {"type": "spacer", "px": int(m.group(1))}
@@ -132,8 +172,10 @@ def _classify(seg: str) -> dict:
                 "align": (m.group(3) or "center").strip()}
     m = _RX["columns"].match(seg)
     if m:
-        cols = [c.strip() for c in _RX["colsep"].split(m.group(2))]
-        return {"type": "columns", "cols": cols or ["", ""]}
+        cells = [c.strip() for c in _RX["colsep"].split(m.group(3))]
+        cols = [parse_body(c) for c in cells]
+        return {"type": "columns", "cols": cols or [[]],
+                "ratio": _normalise_ratio(m.group(2) or "equal", len(cols or [[]]))}
     m = _RX["list"].match(seg)
     if m:
         return {"type": "list", "ordered": m.group(1).lower() == "ol",
@@ -182,9 +224,21 @@ def blocks_to_json(blocks: list) -> str:
 def blocks_from_json(raw: str) -> list:
     try:
         v = json.loads(raw or "[]")
-        return v if isinstance(v, list) else []
+        return [_migrate_block(b) for b in v] if isinstance(v, list) else []
     except ValueError:
         return []
+
+
+def _migrate_block(block: dict) -> dict:
+    """Read v1 BIGGIE drafts into the corrected container/mark model."""
+    b = dict(block or {})
+    if b.get("type") == "dropcap":
+        return {"type": "para", "text": str(b.get("text", "")), "dropcap": True}
+    if b.get("type") == "columns":
+        b["cols"] = [[_migrate_block(child) for child in _normalise_cell(cell)]
+                     for cell in (b.get("cols") or [[]])]
+        b["ratio"] = _normalise_ratio(str(b.get("ratio") or "equal"), len(b["cols"]))
+    return b
 
 
 # ── Widgets ──────────────────────────────────────────────────────────────────
@@ -193,10 +247,10 @@ _TYPE_LABELS = [
     ("para",    "Paragraph"),
     ("heading", "Heading"),
     ("quote",   "Quote"),
+    ("pullquote", "Pullquote"),
     ("list",    "List"),
     ("image",   "Image (Media Library)"),
     ("columns", "Columns"),
-    ("dropcap", "Dropcap"),
     ("spacer",  "Spacer"),
     ("hr",      "Divider line"),
     ("mosaic",  "Mosaic — this post's photos"),
@@ -239,12 +293,17 @@ class _BlockRow(QFrame):
     # -- per-type editors ---------------------------------------------------
     def _build_body(self, col, b):
         t = self.btype
-        if t in ("para", "raw", "quote"):
+        if t in ("para", "raw", "quote", "pullquote"):
             self.text = QPlainTextEdit(b.get("text", ""))
             self.text.setPlaceholderText(
-                "Type or paste…" if t != "quote" else "The quoted words…")
+                "The words to pull out…" if t == "pullquote" else
+                "The quoted words…" if t == "quote" else "Type or paste…")
             self.text.setFixedHeight(72 if t != "raw" else 88)
             col.addWidget(self.text)
+            if t == "para":
+                self.dropcap = QCheckBox("Make the first letter a drop cap")
+                self.dropcap.setChecked(bool(b.get("dropcap")))
+                col.addWidget(self.dropcap)
             if t == "raw":
                 col.addWidget(hint("Kept exactly as written — shortcodes and HTML "
                                    "here go to the site untouched."))
@@ -293,22 +352,22 @@ class _BlockRow(QFrame):
             row.addLayout(acol)
             col.addLayout(row)
         elif t == "columns":
+            controls = QHBoxLayout()
             self.count = QComboBox()
-            for n in (2, 3, 4):
-                self.count.addItem(f"{n} columns", n)
-            cols = b.get("cols") or ["", ""]
-            self.count.setCurrentIndex(max(0, min(2, len(cols) - 2)))
-            col.addWidget(self.count)
-            self._cols_host = QVBoxLayout()
+            for n in (1, 2, 3, 4):
+                self.count.addItem(f"{n} column" if n == 1 else f"{n} columns", n)
+            cols = [_normalise_cell(c) for c in (b.get("cols") or [[]])]
+            self.count.setCurrentIndex(max(0, min(3, len(cols) - 1)))
+            controls.addWidget(self.count)
+            self.ratio = QComboBox()
+            controls.addWidget(self.ratio, 1)
+            col.addLayout(controls)
+            self._cols_host = QHBoxLayout()
             col.addLayout(self._cols_host)
-            self._col_edits = []
+            self._col_editors = []
+            self._fill_ratio_menu(b.get("ratio") or "equal")
             self._rebuild_cols(cols)
-            self.count.currentIndexChanged.connect(
-                lambda *_: self._rebuild_cols(self.col_texts()))
-        elif t == "dropcap":
-            self.text = QLineEdit(b.get("text", ""))
-            self.text.setPlaceholderText("The letter or word the skin makes big…")
-            col.addWidget(self.text)
+            self.count.currentIndexChanged.connect(self._column_count_changed)
         elif t == "spacer":
             row = QHBoxLayout()
             row.addWidget(field_label("Gap height (px)"))
@@ -324,29 +383,50 @@ class _BlockRow(QFrame):
             col.addWidget(hint("On send, THE PHOTOS below become a tiled grid "
                                "right here in the post."))
 
-    def _rebuild_cols(self, texts):
+    def _fill_ratio_menu(self, selected="equal"):
+        count = int(self.count.currentData() or 1)
+        self.ratio.clear()
+        for label, value in RATIO_PRESETS[count]:
+            self.ratio.addItem(label, value)
+        index = self.ratio.findData(_normalise_ratio(str(selected), count))
+        self.ratio.setCurrentIndex(max(0, index))
+
+    def _column_count_changed(self):
+        cells = self.col_blocks()
+        self._fill_ratio_menu("equal")
+        self._rebuild_cols(cells)
+
+    def _rebuild_cols(self, cells):
         while self._cols_host.count():
             item = self._cols_host.takeAt(0)
             w = item.widget()
             if w:
                 w.deleteLater()
-        self._col_edits = []
-        n = int(self.count.currentData() or 2)
+        self._col_editors = []
+        n = int(self.count.currentData() or 1)
         for i in range(n):
-            e = QPlainTextEdit(texts[i] if i < len(texts) else "")
-            e.setPlaceholderText(f"Column {i + 1}…")
-            e.setFixedHeight(60)
-            self._cols_host.addWidget(e)
-            self._col_edits.append(e)
+            frame = QFrame()
+            frame.setObjectName("ColumnCell")
+            layout = QVBoxLayout(frame)
+            layout.setContentsMargins(6, 6, 6, 6)
+            layout.addWidget(field_label(f"Column {i + 1}"))
+            editor = BiggieEditor(allow_mosaic=self._owner.allow_mosaic, allow_columns=False)
+            editor.from_blocks(cells[i] if i < len(cells) else [])
+            layout.addWidget(editor)
+            self._cols_host.addWidget(frame, 1)
+            self._col_editors.append(editor)
 
-    def col_texts(self):
-        return [e.toPlainText() for e in getattr(self, "_col_edits", [])]
+    def col_blocks(self):
+        return [editor.to_blocks() for editor in getattr(self, "_col_editors", [])]
 
     # -- read back ----------------------------------------------------------
     def to_block(self) -> dict:
         t = self.btype
-        if t in ("para", "raw", "quote"):
-            return {"type": t, "text": self.text.toPlainText()}
+        if t in ("para", "raw", "quote", "pullquote"):
+            block = {"type": t, "text": self.text.toPlainText()}
+            if t == "para" and self.dropcap.isChecked():
+                block["dropcap"] = True
+            return block
         if t == "heading":
             return {"type": t, "level": int(self.level.currentData()),
                     "text": self.text.text()}
@@ -357,9 +437,8 @@ class _BlockRow(QFrame):
             return {"type": t, "img_id": self.img_id.text().strip(),
                     "size": self.size.currentText(), "align": self.align.currentText()}
         if t == "columns":
-            return {"type": t, "cols": self.col_texts()}
-        if t == "dropcap":
-            return {"type": t, "text": self.text.text()}
+            return {"type": t, "cols": self.col_blocks(),
+                    "ratio": str(self.ratio.currentData() or "equal")}
         if t == "spacer":
             return {"type": t, "px": int(self.px.value())}
         return {"type": t}
@@ -368,9 +447,10 @@ class _BlockRow(QFrame):
 class BiggieEditor(QWidget):
     """The block stack + ADD BLOCK menu."""
 
-    def __init__(self, allow_mosaic: bool = False, parent=None):
+    def __init__(self, allow_mosaic: bool = False, allow_columns: bool = True, parent=None):
         super().__init__(parent)
         self.allow_mosaic = allow_mosaic
+        self.allow_columns = allow_columns
         self._rows = []
         col = QVBoxLayout(self)
         col.setContentsMargins(0, 0, 0, 0)
@@ -384,6 +464,8 @@ class BiggieEditor(QWidget):
         menu = QMenu(add)
         for key, label in _TYPE_LABELS:
             if key == "mosaic" and not allow_mosaic:
+                continue
+            if key == "columns" and not allow_columns:
                 continue
             menu.addAction(label, lambda k=key: self.add_block({"type": k}))
         add.setMenu(menu)
@@ -419,6 +501,7 @@ class BiggieEditor(QWidget):
     def from_blocks(self, blocks: list):
         self.clear()
         for b in blocks or []:
+            b = _migrate_block(b)
             if b.get("type") == "mosaic" and not self.allow_mosaic:
                 b = {"type": "raw", "text": "[mosaic]"}
             self.add_block(b)

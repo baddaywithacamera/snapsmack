@@ -161,7 +161,12 @@ try {
     gy_err('Database unavailable', 503);
 }
 
-// --- BEARER TOKEN AUTH (key_type = gyss) ---
+// --- BEARER TOKEN AUTH ---
+// SYBU may write only the shared enrichment cache it produces. It does not gain
+// access to GYSS photo export, sorting, prompt management, or batch editing.
+$allowed_key_types = $resource === 'enrichment-cache'
+    ? "'gyss','hub','sybu'"
+    : "'gyss','hub'";
 $auth_header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
 $raw_key     = '';
 if (preg_match('/^Bearer\s+(\S+)$/i', $auth_header, $m)) {
@@ -182,7 +187,7 @@ $key_hash = hash('sha256', $raw_key);
 try {
     $key_stmt = $pdo->prepare("
         SELECT id, key_type FROM snap_ohsnap_keys
-        WHERE key_hash = ? AND key_type IN ('gyss','hub') AND is_active = 1
+        WHERE key_hash = ? AND key_type IN ($allowed_key_types) AND is_active = 1
           AND (expires_at IS NULL OR expires_at > NOW())
         LIMIT 1
     ");
@@ -192,7 +197,7 @@ try {
     try {
         $key_stmt = $pdo->prepare("
             SELECT id, key_type FROM snap_ohsnap_keys
-            WHERE key_hash = ? AND key_type IN ('gyss','hub') AND is_active = 1
+            WHERE key_hash = ? AND key_type IN ($allowed_key_types) AND is_active = 1
             LIMIT 1
         ");
         $key_stmt->execute([$key_hash]);
@@ -204,6 +209,10 @@ try {
 
 if (!$api_key_row) {
     gy_err('Invalid or revoked GYSS API key', 401);
+}
+
+if (($api_key_row['key_type'] ?? '') === 'sybu' && $resource !== 'enrichment-cache') {
+    gy_err('The SYBU key is valid only for enrichment cache writes', 403);
 }
 
 // A SNAP HQ key may manage the hub's own whole-post prompt, because a hub has

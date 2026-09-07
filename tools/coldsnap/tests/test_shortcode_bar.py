@@ -57,6 +57,10 @@ ed, bar = fresh("one\ntwo", select=True)
 bar._wrap("<blockquote>", "</blockquote>")
 check("multiline wrap", ed.toPlainText(), "<blockquote>one\ntwo</blockquote>")
 
+ed, bar = fresh("pull this", select=True)
+bar._wrap("[pullquote]", "[/pullquote]")
+check("pullquote wrap", ed.toPlainText(), "[pullquote]pull this[/pullquote]")
+
 # --- list: selected lines become <li> items (web insertList) -----------------
 ed, bar = fresh("alpha\nbeta\ngamma", select=True)
 bar._list("ul")

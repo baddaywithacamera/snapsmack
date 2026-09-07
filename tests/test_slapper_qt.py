@@ -72,6 +72,40 @@ def _wait_for(predicate, timeout=5.0):
     return bool(predicate())
 
 
+def test_restricted_library_remains_browser_and_propagates_gate():
+    library = LibraryWindow()
+    library.set_restricted_mode(True)
+    assert library.act_open.isEnabled()
+    assert library.act_edit.isEnabled()
+    assert not library.act_import.isEnabled()
+    assert not library.act_rename.isEnabled()
+
+    path = _image("restricted-browser.jpg")
+    library._open_editor_path(path)
+    assert len(library._editors) == 1
+    assert library._editors[0]._restricted is True
+    library._editors[0].close()
+    library.close()
+
+
+def test_locked_histogram_lives_at_top_of_right_control_rail():
+    win = EditorWindow()
+    win.apply_mode("advanced")
+    APP.processEvents()
+
+    rail = win._controls_dock.widget()
+    assert win._rail_layout.indexOf(win._histogram_wrap) == 0
+    assert win._histogram_wrap.parentWidget() is rail
+
+    win._set_histogram_locked(False)
+    assert win._sections["LIGHT"].body_layout.indexOf(win._histogram_wrap) == 0
+
+    win._set_histogram_locked(True)
+    assert win._rail_layout.indexOf(win._histogram_wrap) == 0
+    assert win._histogram_wrap.parentWidget() is rail
+    win.close()
+
+
 def test_bad_file_does_not_crash():
     # a corrupt/non-image file must fail cleanly, not crash the app
     from PySide6.QtWidgets import QMessageBox
