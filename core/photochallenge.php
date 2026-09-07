@@ -90,10 +90,10 @@ function pc_tag(array $settings): string {
 /**
  * Testing gate. When photochallenge_test_mode is ON, only entries whose author
  * appears on the whitelist are admitted (and therefore boosted and scored). This
- * lets a live site be exercised end to end without touching real participants and
- * without standing up a second install. OFF (the default) = everyone qualifies as
- * normal. Matching is deliberately forgiving: a whitelist line matches on the full
- * user@host handle, the bare username, the domain, or any substring of the actor URL.
+ * lets a live site be exercised end to end without touching real participants.
+ * OFF (the default) = everyone qualifies as normal. Test entries MUST be exact
+ * user@host handles. Bare users, bare hosts and actor-URL substrings are rejected:
+ * a typo must narrow the lab, never widen it.
  */
 function pc_test_allowed(array $settings, string $actor_url, string $handle = ''): bool {
     if ((string)($settings['photochallenge_test_mode'] ?? '0') !== '1') return true;
@@ -101,14 +101,66 @@ function pc_test_allowed(array $settings, string $actor_url, string $handle = ''
     $list = array_values(array_filter(array_map($norm, preg_split('/[\s,]+/', (string)($settings['photochallenge_test_allow'] ?? '')) ?: [])));
     if (!$list) return false;   // test mode on, nobody listed = admit nobody
     $host = strtolower((string)parse_url($actor_url, PHP_URL_HOST));
-    $bare = $norm($handle);
-    $full = ($bare !== '' && $host !== '') ? $bare . '@' . $host : '';
-    $url  = strtolower($actor_url);
+    $given = $norm($handle);
+    $at = strpos($given, '@');
+    $user = $at === false ? $given : substr($given, 0, $at);
+    $handle_host = $at === false ? '' : substr($given, $at + 1);
+    if ($host === '') $host = $handle_host;
+    $full = ($user !== '' && $host !== '') ? $user . '@' . $host : '';
+    if ($full === '') return false;
     foreach ($list as $entry) {
-        if ($entry === $full || ($bare !== '' && $entry === $bare) || ($host !== '' && $entry === $host)) return true;
-        if (strpos($url, $entry) !== false) return true;
+        if (preg_match('/^[a-z0-9_.-]+@[a-z0-9.-]+$/', $entry) && $entry === $full) return true;
     }
     return false;
+}
+
+/**
+ * Purge queued PhotoFriday Announces for recipients removed from the test
+ * whitelist. Only challenge boost IDs are touched; ordinary federation queue
+ * traffic (Follow/Accept/posts/other boosts) is left intact.
+ */
+function pc_purge_test_deliveries(PDO $pdo, array $actor_urls): int {
+    $actor_urls = array_values(array_unique(array_filter(array_map('trim', $actor_urls))));
+    if (!$actor_urls) return 0;
+    $marks = implode(',', array_fill(0, count($actor_urls), '?'));
+    $q = $pdo->prepare("SELECT inbox_url FROM snap_ap_followers WHERE actor_url IN ($marks)");
+    $q->execute($actor_urls);
+    $inboxes = array_values(array_unique(array_filter(array_map('trim', $q->fetchAll(PDO::FETCH_COLUMN)))));
+    if (!$inboxes) return 0;
+
+    $boost_ids = array_fill_keys(array_filter(array_map('strval',
+        $pdo->query("SELECT boost_activity_id FROM pc_admissions WHERE boost_activity_id IS NOT NULL AND boost_activity_id<>''")
+            ->fetchAll(PDO::FETCH_COLUMN))), true);
+    if (!$boost_ids) return 0;
+
+    $imarks = implode(',', array_fill(0, count($inboxes), '?'));
+    $rows = $pdo->prepare("SELECT id,activity_json FROM snap_ap_deliveries WHERE inbox_url IN ($imarks)");
+    $rows->execute($inboxes);
+    $delete_ids = [];
+    foreach ($rows->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $activity = json_decode((string)($row['activity_json'] ?? ''), true);
+        if (!is_array($activity) || ($activity['type'] ?? '') !== 'Announce') continue;
+        if (isset($boost_ids[(string)($activity['id'] ?? '')])) $delete_ids[] = (int)$row['id'];
+    }
+    if (!$delete_ids) return 0;
+    $dmarks = implode(',', array_fill(0, count($delete_ids), '?'));
+    $pdo->prepare("DELETE FROM snap_ap_deliveries WHERE id IN ($dmarks)")->execute($delete_ids);
+    return count($delete_ids);
+}
+
+/** Purge actors that were allowed before a settings save but are not afterward. */
+function pc_purge_removed_whitelist(PDO $pdo, array $old_settings, array $new_settings): int {
+    if (($old_settings['photochallenge_test_mode'] ?? '0') !== '1'
+        || ($new_settings['photochallenge_test_mode'] ?? '0') !== '1') return 0;
+    $rows = $pdo->query("SELECT actor_url,actor_handle FROM snap_ap_followers")->fetchAll(PDO::FETCH_ASSOC);
+    $removed = [];
+    foreach ($rows as $row) {
+        $actor = (string)($row['actor_url'] ?? '');
+        $handle = (string)($row['actor_handle'] ?? '');
+        if (pc_test_allowed($old_settings, $actor, $handle)
+            && !pc_test_allowed($new_settings, $actor, $handle)) $removed[] = $actor;
+    }
+    return pc_purge_test_deliveries($pdo, $removed);
 }
 
 /** Display timezone retained for admin copy; qualification uses the shared global UTC window. */
@@ -233,6 +285,7 @@ function pc_ensure_tables(PDO $pdo): void {
             handle       varchar(190) NOT NULL DEFAULT '',
             joined_at    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
             horsconcours tinyint(1)   NOT NULL DEFAULT 0,
+            follow_owned tinyint(1)   NOT NULL DEFAULT 0,
             state        varchar(16)  NOT NULL DEFAULT 'active',
             PRIMARY KEY (actor_url(191)),
             KEY idx_state (state)
@@ -255,6 +308,9 @@ function pc_ensure_tables(PDO $pdo): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
     try {
+        $has_follow_owned = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pc_participants' AND COLUMN_NAME='follow_owned' LIMIT 1")->fetchColumn();
+        if (!$has_follow_owned) $pdo->exec("ALTER TABLE pc_participants ADD COLUMN follow_owned tinyint(1) NOT NULL DEFAULT 0 AFTER horsconcours");
         $has_hof_object = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pc_hall_of_fame' AND COLUMN_NAME='object_id' LIMIT 1")->fetchColumn();
         if (!$has_hof_object) $pdo->exec("ALTER TABLE pc_hall_of_fame ADD COLUMN object_id varchar(500) DEFAULT NULL AFTER actor_url");
@@ -426,7 +482,13 @@ function pc_on_follow(PDO $pdo, array $settings, array $actor_doc): void {
 
     // Follow them back through the shared federation stack — no new crypto.
     if (function_exists('sv_follow_actor') && !sv_is_following($pdo, $actor_id)) {
-        try { sv_follow_actor($pdo, $settings, $actor_id); } catch (Throwable $e) {}
+        try {
+            [$follow_ok] = sv_follow_actor($pdo, $settings, $actor_id);
+            if ($follow_ok) {
+                $pdo->prepare("UPDATE pc_participants SET follow_owned=1 WHERE actor_url=?")
+                    ->execute([$actor_id]);
+            }
+        } catch (Throwable $e) {}
     }
     if (function_exists('sv_notify')) {
         try { sv_notify($pdo, 'pc_join', $actor_id, $handle); } catch (Throwable $e) {}
@@ -439,11 +501,21 @@ function pc_on_leave(PDO $pdo, array $settings, string $actor_url): void {
     try {
         $pdo->prepare("UPDATE pc_participants SET state='left' WHERE actor_url = ?")
             ->execute([$actor_url]);
+        pc_purge_test_deliveries($pdo, [$actor_url]);
         pc_withdraw_actor_admissions($pdo, $settings, $actor_url, 'withdrawn');
+        // Undo only a follow that PhotoFriday itself created. Before follow_owned
+        // existed, leaving the challenge deleted any matching ordinary/manual
+        // follow, including a pre-existing site-to-site fleet relationship.
         if (function_exists('sv_unfollow_actor')) {
-            $f = $pdo->prepare("SELECT id FROM snap_ap_following WHERE actor_url=? LIMIT 1");
+            $f = $pdo->prepare("SELECT f.id FROM snap_ap_following f
+                JOIN pc_participants p ON p.actor_url=f.actor_url
+                WHERE f.actor_url=? AND p.follow_owned=1 LIMIT 1");
             $f->execute([$actor_url]); $fid = (int)$f->fetchColumn();
-            if ($fid > 0) sv_unfollow_actor($pdo, $settings, $fid);
+            if ($fid > 0) {
+                sv_unfollow_actor($pdo, $settings, $fid);
+                $pdo->prepare("UPDATE pc_participants SET follow_owned=0 WHERE actor_url=?")
+                    ->execute([$actor_url]);
+            }
         }
     } catch (Throwable $e) {}
 }
@@ -451,7 +523,10 @@ function pc_on_leave(PDO $pdo, array $settings, string $actor_url): void {
 function pc_set_participant_state(PDO $pdo, array $settings, string $actor_url, string $state): void {
     if (!in_array($state, ['active','blocked','left'], true) || $actor_url === '') return;
     $pdo->prepare("UPDATE pc_participants SET state=? WHERE actor_url=?")->execute([$state,$actor_url]);
-    if ($state !== 'active') pc_withdraw_actor_admissions($pdo,$settings,$actor_url,$state === 'blocked' ? 'moderated' : 'withdrawn');
+    if ($state !== 'active') {
+        pc_purge_test_deliveries($pdo, [$actor_url]);
+        pc_withdraw_actor_admissions($pdo,$settings,$actor_url,$state === 'blocked' ? 'moderated' : 'withdrawn');
+    }
 }
 
 /** Set/clear a participant's #horsconcours opt-out (show on board, never ranked). */

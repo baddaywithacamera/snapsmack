@@ -3127,9 +3127,16 @@ function sv_following_doc(array $settings, ?PDO $pdo = null): array {
                 $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_curator_directory c
                     JOIN snap_ap_following f ON f.id=c.follow_row_id WHERE f.state='accepted'")->fetchColumn();
             } else {
-                $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_ap_following f
-                    WHERE f.state='accepted' AND NOT EXISTS
-                    (SELECT 1 FROM snap_curator_directory c WHERE c.follow_row_id=f.id)")->fetchColumn();
+                // Ordinary blog installs do not create the curator-only table.
+                // Referring to that absent table made /ap/following catch the SQL
+                // error and publicly report zero even while real rows existed.
+                $has_curator = (bool)$pdo->query("SELECT 1 FROM information_schema.TABLES
+                    WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_curator_directory' LIMIT 1")->fetchColumn();
+                $sql = "SELECT COUNT(*) FROM snap_ap_following f WHERE f.state='accepted'";
+                if ($has_curator) {
+                    $sql .= " AND NOT EXISTS (SELECT 1 FROM snap_curator_directory c WHERE c.follow_row_id=f.id)";
+                }
+                $total = (int)$pdo->query($sql)->fetchColumn();
             }
         } catch (Exception $e) { /* table may not exist yet */ }
     }
