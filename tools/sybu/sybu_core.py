@@ -692,6 +692,7 @@ class Engine:
             'dest': dest,
             'blocked_enrichment': blocked,
             'drive_missing': bool(drive_enabled and self.drive_service is None),
+            'drive_required': bool(getattr(self.site_data, 'download_link_required', False)),
             'mode_state': mode_state,
             'tab_label': tab_label,
             'site_label': site_label,
@@ -711,6 +712,10 @@ class Engine:
                 f"Wrong mode — post blocked. You're posting {pf['tab_label']}, but "
                 f"{pf['dest']} is a {pf['site_label']} site. Switch tabs or connect to a "
                 f"matching site.")
+        if pf['drive_required'] and self.drive_service is None:
+            raise RuntimeError(
+                "Posting blocked — this site requires every post to have a Google "
+                "Drive download link. Connect Drive, then post again.")
         if pf['drive_missing'] and not ack_no_drive:
             return {'needs_ack': 'no_drive'}
         if pf['mode_state'] == 'unknown' and not ack_unknown_mode:
@@ -763,7 +768,11 @@ class Engine:
                 op.active_conn = conn
                 results = poster_module.run_gram_batch(
                     conn=conn, entries=sel_entries, image_folder=image_folder,
-                    on_progress=on_progress, cancel_event=op.cancel)
+                    on_progress=on_progress,
+                    drive_service=self.drive_service,
+                    drive_folder_id=(drive_folder_id or '').strip(),
+                    download_link_required=pf['drive_required'],
+                    cancel_event=op.cancel)
             else:
                 results = poster_module.run_batch(
                     client=self.client, entries=sel_entries, image_folder=image_folder,
@@ -774,6 +783,7 @@ class Engine:
                     on_progress=on_progress,
                     drive_service=self.drive_service,
                     drive_folder_id=(drive_folder_id or '').strip(),
+                    download_link_required=pf['drive_required'],
                     copyright_text=(copyright_text or '').strip(),
                     cancel_event=op.cancel)
             op.active_conn = None
