@@ -54,8 +54,8 @@ class TakeMode(QWidget):
         right.setContentsMargins(0, 0, 0, 0)
 
         card = Card("COMPOSE — an essay with photos")
-        card.setMaximumWidth(1120)
-        right.addWidget(card, 0, Qt.AlignHCenter)
+        # Let the editor use the centre pane instead of shrinking to sizeHint.
+        right.addWidget(card)
 
         card.body.addWidget(field_label("Title"))
         self.title_edit = QLineEdit()
