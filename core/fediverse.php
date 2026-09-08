@@ -1573,6 +1573,9 @@ function sv_deliver(array $settings, string $inbox_url, string $activity_json): 
     if ($headers === null) return [false, 'no signing key'];
 
     $ch = curl_init($inbox_url);
+    // Capture Retry-After on a 429 so the caller can back the whole HOST off for
+    // exactly as long as the receiver asked, instead of hammering it row by row.
+    $retry_after = 0;
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $activity_json,
@@ -1582,6 +1585,14 @@ function sv_deliver(array $settings, string $inbox_url, string $activity_json): 
         CURLOPT_RESOLVE        => $res['pin'], // pin the vetted IP — DNS-rebinding guard
         CURLOPT_TIMEOUT        => 10,
         CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_HEADERFUNCTION => function ($ch, $h) use (&$retry_after) {
+            if (stripos($h, 'retry-after:') === 0) {
+                $v = trim(substr($h, strlen('retry-after:')));
+                if (is_numeric($v)) $retry_after = (int)$v;
+                elseif (($t = strtotime($v)) !== false) $retry_after = max(0, $t - time());
+            }
+            return strlen($h);
+        },
     ]);
     $body  = curl_exec($ch);
     $code  = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
@@ -1608,7 +1619,10 @@ function sv_deliver(array $settings, string $inbox_url, string $activity_json): 
         $detail = trim((string)preg_replace('/\s+/', ' ', strip_tags($body)));
         if ($detail !== '') $detail = ' — ' . substr($detail, 0, 160);
     }
-    return [false, substr('HTTP ' . $code . $detail, 0, 200)];
+    // Third element = machine-readable meta so the caller can special-case a
+    // rate limit (429) without string-sniffing. `retry_after` is seconds the
+    // receiver asked us to wait (0 if it did not say).
+    return [false, substr('HTTP ' . $code . $detail, 0, 200), ['code' => $code, 'retry_after' => $retry_after]];
 }
 
 /**
@@ -1770,23 +1784,44 @@ function sv_normalize_delivery_host(string $inbox_url): string {
 /** Deliver ONE queued row and settle its queue state: DELETE on success, else
  *  backoff (5min · 2^attempts, capped 24h) and park as status=failed after 8
  *  tries; self-heal a stale inbox URL on a "not an AP inbox" bounce. Returns
- *  true if the activity was sent. Extracted verbatim from the old drain loop so
- *  the paced and unpaced paths share identical completion semantics — a poison
- *  row is recorded through the normal retry path and never aborts the run. */
-function sv_finish_delivery_row(PDO $pdo, array $primary_settings, array $row): bool {
+ *  A 429 (rate limit) is treated specially: the receiver is busy, not broken, so
+ *  the row is rescheduled after its Retry-After (default 15min) WITHOUT counting
+ *  a failed attempt — a rate limit must never march a good post to the parked cliff
+ *  — and the returned `cooldown` tells the paced drain to rest that whole host for
+ *  the same window instead of poking it row by row. Returns
+ *  ['sent'=>bool,'cooldown'=>int secs]. Shared verbatim by both drain paths. */
+function sv_finish_delivery_row(PDO $pdo, array $primary_settings, array $row): array {
+    $meta = [];
     try {
         $delivery_settings = $primary_settings;
         if (($row['actor_role'] ?? 'primary') === 'curator' && function_exists('sc_curator_settings')) {
             $delivery_settings = sc_curator_settings($pdo, $primary_settings, true);
         }
-        list($ok, $info) = sv_deliver($delivery_settings, $row['inbox_url'], $row['activity_json']);
+        $r    = sv_deliver($delivery_settings, $row['inbox_url'], $row['activity_json']);
+        $ok   = (bool)($r[0] ?? false);
+        $info = (string)($r[1] ?? '');
+        $meta = is_array($r[2] ?? null) ? $r[2] : [];
     } catch (Throwable $e) {
         $ok = false;
         $info = 'delivery worker error: ' . substr($e->getMessage(), 0, 176);
     }
     if ($ok) {
         $pdo->prepare("DELETE FROM snap_ap_deliveries WHERE id = ?")->execute([$row['id']]);
-        return true;
+        return ['sent' => true, 'cooldown' => 0];
+    }
+    // Rate limited: reschedule after the receiver's own Retry-After (clamped
+    // 1–60min, default 15) and DO NOT increment attempts — a busy receiver must
+    // never drop a good post at the 8-try cliff. Signal the host cooldown so the
+    // paced drain rests this whole host instead of hammering it row by row.
+    $is_429 = ((int)($meta['code'] ?? 0) === 429) || strncmp($info, 'HTTP 429', 8) === 0;
+    if ($is_429) {
+        $ra = (int)($meta['retry_after'] ?? 0);
+        $cooldown = $ra > 0 ? max(60, min(3600, $ra)) : 900;
+        $pdo->prepare(
+            "UPDATE snap_ap_deliveries
+             SET last_error=?, next_try_at=DATE_ADD(NOW(), INTERVAL ? SECOND) WHERE id=?"
+        )->execute([$info, $cooldown, $row['id']]);
+        return ['sent' => false, 'cooldown' => $cooldown];
     }
     $attempts = (int)$row['attempts'] + 1;
     // Self-heal a stale inbox URL: the POST landed on a web page, not an AP
@@ -1811,7 +1846,7 @@ function sv_finish_delivery_row(PDO $pdo, array $primary_settings, array $row): 
              WHERE id=?"
         )->execute([$attempts, $info, $delay, $row['id']]);
     }
-    return false;
+    return ['sent' => false, 'cooldown' => 0];
 }
 
 /** Distinct delivery inboxes for all active followers (sharedInbox preferred). */
@@ -1913,7 +1948,8 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
         $sent = 0; $failed = 0;
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             if ($deadline > 0 && microtime(true) + 12 >= $deadline) break;
-            if (sv_finish_delivery_row($pdo, $primary_settings, $row)) $sent++; else $failed++;
+            $r = sv_finish_delivery_row($pdo, $primary_settings, $row);
+            if ($r['sent']) $sent++; else $failed++;
         }
         return [$sent, $failed];
     }
@@ -1989,11 +2025,16 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
         if (!$row) continue;                       // vanished / parked elsewhere
 
         $layers = sv_activity_attachment_count($row['activity_json']);
-        if (sv_finish_delivery_row($pdo, $primary_settings, $row)) $sent++; else $failed++;
+        $r = sv_finish_delivery_row($pdo, $primary_settings, $row);
+        if ($r['sent']) $sent++; else $failed++;
 
         // Per-HOST settle gap, sized by the layer count of the post just sent —
         // a fat carousel earns proportionally longer to fully land on THAT host.
-        $next_allowed[$pick] = microtime(true) + $cadence_secs + $layer_gap * max(0, $layers - 1);
+        // A 429 overrides that with the receiver's own back-off, so we rest this
+        // whole host instead of feeding it another paced row every 10s.
+        $next_allowed[$pick] = microtime(true) + ($r['cooldown'] > 0
+            ? $r['cooldown']
+            : $cadence_secs + $layer_gap * max(0, $layers - 1));
     }
     return [$sent, $failed];
 }
