@@ -89,6 +89,11 @@ $px = (string)file_get_contents($root . '/pixelfed-api.php');
 $ok(str_contains($px, "px_mode(\$pdo)!=='carousel'"),
     'Pixelix publishing gate already blocks any non-carousel mode (incl. smackthemup)');
 
+// --- Admin nav: no "New Post" composer link for smackthemup (spec §5.1) --------
+$sb = (string)file_get_contents($root . '/core/sidebar.php');
+$ok(str_contains($sb, '$_site_is_smackthemup') && str_contains($sb, 'if (!$_site_is_smackthemup):'),
+    'admin sidebar hides the New Post composer link for smackthemup');
+
 echo $fail === 0 ? "\nALL PASS\n" : "\n$fail CHECK(S) FAILED\n";
 exit($fail === 0 ? 0 : 1);
 // ===== SNAPSMACK EOF =====
