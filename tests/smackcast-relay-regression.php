@@ -35,6 +35,11 @@ sc_test(str_contains($sv, "\$dedupe_key = 'delivery:' . hash('sha256'"),
     'ordinary delivery queue rows are destination/activity idempotent');
 sc_test(str_contains($sv, "sc_relay_receive_announce(\$pdo, \$settings, \$actor_id, \$obj_id)"), 'relay Announce has a distinct receiver path');
 sc_test(str_contains($relay, 'snap_relay_ingest_jobs'), 'origin fetch failure is durable receiver work');
+sc_test(str_contains($relay, 'sc_relay_is_receiver')
+    && str_contains($relay, '!sc_relay_is_hub($settings) && !sc_relay_is_receiver($pdo, $settings)'),
+    'ordinary relay followers process durable receiver work');
+sc_test(substr_count($relay, 'sc_relay_ensure_ingest_jobs($pdo);') >= 3,
+    'relay receiver creates its recovery table before success cleanup or queue access');
 sc_test(str_contains($relay, "\$shelve ? 'shelved' : 'queued'"), 'bounded retry has an observable shelved terminal state');
 sc_test(str_contains($schema, 'snap_relay_intake'), 'hub intake has durable object/activity deduplication');
 sc_test(str_contains($schema, 'uq_ap_delivery_dedupe'), 'fan-out delivery is durable and destination-idempotent');
@@ -50,11 +55,11 @@ sc_test(str_contains($sv, "in_array('date', \$signed_names, true)"), 'inbox Date
 sc_test(str_contains($sv, 'sv_inbox_replay_first_seen'), 'verified inbox requests have durable replay suppression');
 sc_test(str_contains($sv, "if (\$relay_inbox !== ''"), 'publisher queues a separate best-effort relay notify');
 sc_test(str_contains($cron, 'sc_relay_process_ingest_jobs'), 'cron recovers receiver-side origin fetch failures');
-sc_test(str_contains($relay, 'if (!sc_relay_is_hub($settings)) return [0, 0]'),
-    'ordinary blogs can enter relay-only ingest maintenance');
 sc_test(str_contains($cron, 'Optional relay ingest maintenance failed; ordinary delivery will continue')
     && str_contains($cron, 'Optional relay outbox recovery failed; ordinary delivery will continue'),
-    'optional relay maintenance can still kill ordinary follower delivery');
+    'optional relay maintenance cannot kill ordinary follower delivery');
+sc_test(str_contains($sv, "strip_tags(\$body)") && str_contains($sv, "substr('HTTP ' . \$code . \$detail"),
+    'delivery failures retain a bounded plain-text receiver explanation');
 sc_test(str_contains($cron, 'sc_relay_recover_member_outboxes'), 'cron separately recovers hub-missed publication notifications');
 sc_test(str_contains($relay, 'time() - 604800'), 'hub outbox recovery is bounded to seven days');
 sc_test(str_contains($admin, "['smackcast_toggle','smackcast_member']"), 'CMS-native hub controls exist');
