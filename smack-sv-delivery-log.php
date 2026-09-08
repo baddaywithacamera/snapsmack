@@ -134,6 +134,16 @@ if (!$fedi_on) {
              . ' failing and retrying — read the Error column below to see why.'
              . ($queued_count > 0 ? ' (' . $queued_count . ' more are just waiting their turn.)' : '');
     $verdict_ok = false;
+} elseif ($queued_count > 0 && $cron_sent === 0 && ($cron_failed ?? 0) > 0) {
+    // The queue is not empty, yet the last run delivered NOTHING and hit
+    // problems. The rows sit in 'queued' state (so the failing/retrying count is
+    // 0), but nothing is actually getting out — usually a receiver rate-limiting
+    // us (HTTP 429) or briefly down. Do NOT call this "normal".
+    $verdict = 'The last cron run delivered nothing and hit ' . (int)$cron_failed
+             . ' problem' . (((int)$cron_failed) === 1 ? '' : 's') . ', while ' . $queued_count
+             . ' post' . ($queued_count === 1 ? ' is' : 's are')
+             . ' queued. The receiving server(s) are not accepting right now — usually rate-limiting (HTTP 429) or briefly down. Nothing is lost; it keeps retrying. Read the Error column below for the exact reason.';
+    $verdict_ok = false;
 } elseif ($queued_count > 0) {
     $verdict = $queued_count . ($queued_count === 1 ? ' post is' : ' posts are')
              . ' waiting to send. Nothing is failing — the queue sends a batch every cron run and shrinks each time. This is normal, not stuck.';
