@@ -717,10 +717,25 @@ function sv_inbox_replay_first_seen(PDO $pdo, string $raw_body): bool {
 function sv_inbox_rate_ok(PDO $pdo, string $ip, array $settings = []): bool {
     $ip = snap_trusted_client_ip($pdo);
     try {
-        // Honour a ban set by other subsystems, but this path never sets one.
-        $b = $pdo->prepare("SELECT 1 FROM snap_ip_bans WHERE ip = ? AND expires_at > NOW() LIMIT 1");
+        // Honour a ban set by other subsystems — but SELF-HEAL the retired
+        // 'auto:fediverse_inbox' reason on contact (0.7.669D). The pre-666D IP
+        // limiter created those bans; 666D+ never does, so any that remains is
+        // provably stale — a fleet that self-banned its own shared IP. Drop it
+        // right here and let the request through. This is the enduring automatic
+        // clear: it needs no cron, no DNS, no roster (all of which failed on a
+        // quiet spoke / IPv6 host) — the blocked request heals its own block the
+        // instant it knocks. A real ban (auto:probe, auth) still stands.
+        $b = $pdo->prepare("SELECT id, reason FROM snap_ip_bans WHERE ip = ? AND expires_at > NOW()");
         $b->execute([$ip]);
-        if ($b->fetchColumn()) return false;
+        $real_ban = false;
+        foreach ($b->fetchAll(PDO::FETCH_ASSOC) as $ban) {
+            if (($ban['reason'] ?? '') === 'auto:fediverse_inbox') {
+                $pdo->prepare("DELETE FROM snap_ip_bans WHERE id = ?")->execute([(int)$ban['id']]);
+            } else {
+                $real_ban = true;
+            }
+        }
+        if ($real_ban) return false;
 
         // UNVERIFIED attempts per 10 min per IP. Legit (verified) traffic never
         // reaches this counter, so this is a generous ceiling on garbage only.
@@ -1737,74 +1752,27 @@ function sv_repair_follower_inboxes_once(PDO $pdo, array $settings): void {
 }
 
 /**
- * One-shot per installed version: clear a STALE inbox IP-ban this fleet inflicted
- * on ITSELF. The pre-666D inbox limiter banned by IP (reason 'auto:fediverse_inbox',
- * 24h) when one IP crossed 180 posts/10min. On real shared hosting a whole fleet
- * shares one IP, so a backfill self-banned every fleet site's federation for a day.
- * 666D retired IP-banning from the inbox path but cannot lift a ban already written.
+ * One-shot per installed version: sweep away STALE inbox self-bans the pre-666D
+ * limiter inflicted (reason 'auto:fediverse_inbox'). That reason is RETIRED —
+ * 666D+ never creates it — so every such row is provably stale and safe to drop.
+ * A genuine outside flooder is NOT set loose: 666D's inbox limiter re-throttles
+ * with 429s instead of banning. Scoped strictly to the retired reason, so real
+ * bans (auto:probe, auth) are never touched.
  *
- * This deletes such a ban ONLY when the banned IP resolves to a site in THIS
- * install's own multisite roster (its fleet) — or to this site itself. It is
- * roster-resolved, not hardcoded to one shared IP, so a fleet spread across more
- * than one host/IP is fully covered while a genuine outside flooder the old code
- * caught is left banned (666D would only 429 it now anyway). Runs once per version,
- * best-effort; never blocks the sweep. If the roster can't be fully resolved this
- * run, it does NOT stamp done — it retries next sweep rather than leave a self-ban.
+ * This is the SECONDARY sweep. The primary, immediate clear lives in
+ * sv_inbox_rate_ok(): it drops the same retired-reason ban on contact, needing no
+ * cron, no DNS, no roster — the 0.7.667D/668D roster+DNS scoping failed exactly
+ * there (a dormant spoke never ran the cron; the fleet's domains resolve to IPv6
+ * while the ban was on the internal IPv4). Reason-scoped blanket delete has no
+ * such dependency. Best-effort; never breaks the sweep.
  */
 function sv_heal_stale_inbox_bans_once(PDO $pdo, array $settings): void {
     try {
         $ver = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0';
         if ((string)($settings['fedi_inbox_ban_heal_done'] ?? '') === $ver) return;
-
-        // The retired ban reason — nothing on 666D+ writes it, so every such row
-        // is a pre-fix artifact.
-        $bans = $pdo->query(
-            "SELECT id, ip FROM snap_ip_bans WHERE reason = 'auto:fediverse_inbox'"
-        )->fetchAll(PDO::FETCH_ASSOC);
-        if (!$bans) { sv_set_setting($pdo, $settings, 'fedi_inbox_ban_heal_done', $ver); return; }
-
-        // Resolve this install's fleet to IPs: every active roster peer, plus this
-        // site itself (they share the shared-host IP; a multi-host fleet resolves
-        // to several). A ban is only cleared if its IP is one of these.
-        $hosts = [];
-        $self_host = parse_url(sv_actor_url($settings), PHP_URL_HOST);
-        if (is_string($self_host) && $self_host !== '') $hosts[] = $self_host;
-        try {
-            $has_nodes = (bool)$pdo->query("SELECT 1 FROM information_schema.TABLES
-                WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_multisite_nodes' LIMIT 1")->fetchColumn();
-            if ($has_nodes) {
-                foreach ($pdo->query("SELECT site_url FROM snap_multisite_nodes WHERE status='active'")
-                             ->fetchAll(PDO::FETCH_COLUMN) as $su) {
-                    $h = parse_url((string)$su, PHP_URL_HOST);
-                    if (is_string($h) && $h !== '') $hosts[] = $h;
-                }
-            }
-        } catch (Throwable $e) { /* roster read best-effort */ }
-
-        $fleet_ips = [];
-        $resolve_failed = false;
-        foreach (array_unique($hosts) as $h) {
-            $ip = filter_var($h, FILTER_VALIDATE_IP) ? $h : sv_resolve_host_bounded($h);
-            if (filter_var($ip, FILTER_VALIDATE_IP)) $fleet_ips[$ip] = true;
-            else $resolve_failed = true;
-        }
-        if (!$fleet_ips) return;   // resolved nothing — retry next sweep, don't stamp
-
-        $cleared = 0;
-        $del = $pdo->prepare("DELETE FROM snap_ip_bans WHERE id = ?");
-        foreach ($bans as $b) {
-            if (isset($fleet_ips[(string)$b['ip']])) { $del->execute([(int)$b['id']]); $cleared++; }
-        }
-        if ($cleared > 0) error_log("FEDIVERSE: healed {$cleared} stale auto:fediverse_inbox self-ban(s).");
-
-        // Only close the book if we had the full picture. If a peer failed to
-        // resolve, a remaining self-ban for it may still be here — retry next run.
-        $remaining = (int)$pdo->query(
-            "SELECT COUNT(*) FROM snap_ip_bans WHERE reason = 'auto:fediverse_inbox'"
-        )->fetchColumn();
-        if ($remaining === 0 || !$resolve_failed) {
-            sv_set_setting($pdo, $settings, 'fedi_inbox_ban_heal_done', $ver);
-        }
+        $n = $pdo->exec("DELETE FROM snap_ip_bans WHERE reason = 'auto:fediverse_inbox'");
+        if ($n) error_log("FEDIVERSE: cleared " . (int)$n . " stale auto:fediverse_inbox self-ban(s).");
+        sv_set_setting($pdo, $settings, 'fedi_inbox_ban_heal_done', $ver);
     } catch (Throwable $e) { /* the healer must never break the sweep */ }
 }
 

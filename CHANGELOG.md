@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.669D "DOORMAN" — 2026-09-08
+- **The fleet's self-inflicted inbox ban now clears itself the instant a blocked post arrives — no cron, no manual database edits.** 667D/668D tried to auto-clear it from a cron and from the updater, but both leaned on resolving the fleet's domain names to match the banned address — and those domains resolve to an IPv6 address while the ban was on the shared IPv4, so the match never happened and the ban was never lifted; on top of that, a dead-quiet site never runs that cron at all. The clear now happens at the door: when a post is refused because the sender is under the old, now-retired `auto:fediverse_inbox` ban, the site drops that stale ban on the spot and lets the post through. It needs nothing to be scheduled and no address matching, so it works on any site regardless of how it's hosted. A genuine outside ban (bad bots, failed logins) is untouched.
+
 ## 0.7.668D "HOUSE CALL" — 2026-09-08
 - **A quiet site now clears its stale self-ban the moment it updates — it no longer has to wait for a cron that never runs.** 667D taught sites to auto-clear the fleet-wide inbox self-ban, but it ran that cleanup only from the federation cron/sweep. A near-idle receiving site (no visitors, no posts of its own to send) doesn't run that sweep, so its ban just sat there for the full 24 hours. The same cleanup now also runs from the updater, which every site executes when it takes an update — so a dormant site heals on upgrade instead of staying dark until the ban expires. Same roster-scoped safety: only a ban on your own fleet's address is lifted, never a real outsider's.
 
