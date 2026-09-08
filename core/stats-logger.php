@@ -439,7 +439,9 @@ function snapsmack_scrolltime_tag($settings) {
     // so gating photoblog on 'archive' alone left the one page visitors actually
     // scroll — the front feed — with no tracker at all, pinning Scroll Time near
     // zero. The rollup already counts page_type IN ('landing','archive').
-    $ok = ($mode === 'carousel'  && $type === 'landing')
+    // SMACKTHEMUP shows the same GRAMOFSMACK-family landing feed as carousel, so
+    // its landing gets the same scroll tracking (spec §6).
+    $ok = (in_array($mode, ['carousel', 'smackthemup'], true) && $type === 'landing')
        || ($mode === 'photoblog' && ($type === 'landing' || $type === 'archive'));
     if (!$ok) return;
 
