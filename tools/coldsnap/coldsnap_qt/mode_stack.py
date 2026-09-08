@@ -201,8 +201,9 @@ class StackMode(QWidget):
 
         # ---- POST card --------------------------------------------------------------
         post = Card("POST")
-        post.setMaximumWidth(1120)
-        right.addWidget(post, 0, Qt.AlignHCenter)
+        # The compose card owns the centre pane; do not centre-align it at its
+        # narrow sizeHint or widescreen layouts collapse into a tiny column.
+        right.addWidget(post)
         post.body.addWidget(field_label("Caption"))
         # Same shortcode toolbar the CMS carousel editor puts on this field;
         # BIGGIE face builds the same caption out of blocks.
