@@ -1,4 +1,9 @@
 @echo off
+REM Always resolve relative paths from this script's directory. SNAP HQ and
+REM repository-root invocations otherwise look for bump_version.py/spec files
+REM in the caller's working directory and abort before producing an EXE.
+pushd "%~dp0"
+if errorlevel 1 exit /b 1
 REM ─────────────────────────────────────────────────────────────────────────
 REM  COLD SNAP — build script
 REM  Requires: Python 3.11+, pip install -r requirements.txt
@@ -63,3 +68,5 @@ if exist "C:\snapsmack\coldsnap\%EXE_NAME%" (
     pause
     exit /b 1
 )
+
+popd
