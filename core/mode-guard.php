@@ -32,10 +32,11 @@ if (!function_exists('snap_mode_label')) {
     /** Human-facing label for an internal site_mode value. */
     function snap_mode_label(string $mode): string {
         switch ($mode) {
-            case 'photoblog': return 'SMACKONEOUT (photoblog)';
-            case 'carousel':  return 'GRAMOFSMACK (carousel)';
-            case 'smacktalk': return 'SmackTalk (essays)';
-            default:          return $mode;
+            case 'photoblog':   return 'SMACKONEOUT (photoblog)';
+            case 'carousel':    return 'GRAMOFSMACK (carousel)';
+            case 'smacktalk':   return 'SmackTalk (essays)';
+            case 'smackthemup': return 'SMACKTHEMUP (public album blog)';
+            default:            return $mode;
         }
     }
 }
@@ -110,7 +111,7 @@ if (!function_exists('snap_mode_conflict')) {
             $content_count = (int)$pdo->query(
                 "SELECT (SELECT COUNT(*) FROM snap_posts) + (SELECT COUNT(*) FROM snap_images)"
             )->fetchColumn();
-            if (in_array($saved_mode, ['photoblog', 'carousel', 'smacktalk'], true)
+            if (in_array($saved_mode, ['photoblog', 'carousel', 'smacktalk', 'smackthemup'], true)
                 && $content_count > $threshold) {
                 if ($saved_mode === $target_mode) return null;
                 return [

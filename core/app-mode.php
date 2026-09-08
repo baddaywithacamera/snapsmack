@@ -17,18 +17,33 @@
 if (!function_exists('snapsmack_app_mode')) {
     function snapsmack_app_mode(array $settings): string {
         $mode = (string)($settings['site_mode'] ?? 'photoblog');
-        return in_array($mode, ['photoblog', 'carousel', 'smacktalk'], true)
+        return in_array($mode, ['photoblog', 'carousel', 'smacktalk', 'smackthemup'], true)
             ? $mode
             : 'photoblog';
+    }
+}
+
+if (!function_exists('snapsmack_mode_has_web_composer')) {
+    /**
+     * Whether the installed mode allows creating a photograph post through the
+     * browser/PWA at all. SMACKTHEMUP is desktop-only: SNAP SLAPPER is the sole
+     * creation path, so it has NO web composer (spec §4.1, §5.1). Enforced here,
+     * server-side — hiding buttons is not enough.
+     */
+    function snapsmack_mode_has_web_composer(array $settings): bool {
+        return snapsmack_app_mode($settings) !== 'smackthemup';
     }
 }
 
 if (!function_exists('snapsmack_app_composer')) {
     function snapsmack_app_composer(array $settings): string {
         return [
-            'photoblog' => 'smack-post-solo.php',
-            'carousel'  => 'smack-post-gram.php',
-            'smacktalk' => 'smack-post-long.php',
+            'photoblog'   => 'smack-post-solo.php',
+            'carousel'    => 'smack-post-gram.php',
+            'smacktalk'   => 'smack-post-long.php',
+            // SMACKTHEMUP has no web composer; fall back to the admin dashboard
+            // so any redirect target resolves to a safe, non-creating page.
+            'smackthemup' => 'smack-app.php',
         ][snapsmack_app_mode($settings)];
     }
 }
@@ -37,6 +52,14 @@ if (!function_exists('snapsmack_require_app_mode')) {
     function snapsmack_require_app_mode(array $settings, string $required_mode): void {
         if (snapsmack_app_mode($settings) === $required_mode) {
             return;
+        }
+
+        // SMACKTHEMUP publishes from SNAP SLAPPER (desktop) only — there is no
+        // browser composer for this mode. Refuse rather than redirect to a
+        // composer that does not exist for it (spec §5.1).
+        if (snapsmack_app_mode($settings) === 'smackthemup') {
+            http_response_code(409);
+            exit('SMACKTHEMUP publishes from SNAP SLAPPER (desktop) only — there is no browser composer for this mode. Open SNAP SLAPPER to add photographs.');
         }
 
         $target = snapsmack_app_composer($settings);
