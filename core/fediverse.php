@@ -613,12 +613,43 @@ function sv_resolve_public(string $url): ?array {
     $host = $p['host'] ?? '';
     if ($host === '') return null;
     $port = (int)($p['port'] ?? (($p['scheme'] === 'https') ? 443 : 80));
-    $ip = filter_var($host, FILTER_VALIDATE_IP) ? $host : gethostbyname($host);
+    $ip = filter_var($host, FILTER_VALIDATE_IP) ? $host : sv_resolve_host_bounded($host);
     if (!filter_var($ip, FILTER_VALIDATE_IP)) return null; // did not resolve
     if (!filter_var($ip, FILTER_VALIDATE_IP,
         FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return null;
     return ['host' => $host, 'port' => $port, 'ip' => $ip,
             'pin' => [$host . ':' . $port . ':' . $ip]];
+}
+
+/**
+ * Resolve an IPv4 host without allowing a CLI delivery worker to disappear
+ * forever inside libc DNS. cURL's connect timeout starts only after resolution,
+ * so the SSRF preflight needs its own wall-clock bound. SnapSmack-managed cron
+ * hosts already expose exec(); use the OS timeout utility there. Web/shared-host
+ * callers retain PHP's resolver fallback because they cannot spawn a helper.
+ */
+function sv_resolve_host_bounded(string $host): string {
+    if (PHP_SAPI === 'cli' && function_exists('exec')) {
+        $timeout = is_executable('/usr/bin/timeout') ? '/usr/bin/timeout'
+                 : (is_executable('/bin/timeout') ? '/bin/timeout' : '');
+        $getent  = is_executable('/usr/bin/getent') ? '/usr/bin/getent'
+                 : (is_executable('/bin/getent') ? '/bin/getent' : '');
+        if ($timeout !== '' && $getent !== '') {
+            $out = []; $code = 1;
+            @exec(escapeshellarg($timeout) . ' 5 ' . escapeshellarg($getent)
+                . ' ahostsv4 ' . escapeshellarg($host) . ' 2>/dev/null', $out, $code);
+            if ($code !== 0) return '';
+            foreach ($out as $line) {
+                $candidate = strtok(trim((string)$line), " \t");
+                if (is_string($candidate) && filter_var($candidate, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                    return $candidate;
+                }
+            }
+            return '';
+        }
+    }
+    $resolved = @gethostbyname($host);
+    return $resolved !== $host ? (string)$resolved : '';
 }
 
 /** Boolean convenience wrapper over sv_resolve_public() for validation-only checks. */
