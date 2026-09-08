@@ -32,6 +32,11 @@ try {
 $fedi_on   = ($settings['fediverse_enabled'] ?? '0') === '1';
 $push_mode = ($settings['fediverse_push_mode'] ?? 'auto') === 'manual' ? 'manual' : 'auto';
 $cron_last = (string)($settings['fediverse_cron_last_run'] ?? '');
+/* How many the LAST cron run actually delivered. Null on installs older than the
+   build that started recording it — successful sends are deleted, so without this
+   the page can only ever show the waiting line, never the wins. */
+$cron_sent   = array_key_exists('fediverse_cron_last_sent', $settings)   ? (int)$settings['fediverse_cron_last_sent']   : null;
+$cron_failed = array_key_exists('fediverse_cron_last_failed', $settings) ? (int)$settings['fediverse_cron_last_failed'] : null;
 
 /* Active followers + inbox → handle map, so a raw inbox URL reads as @user@host. */
 $follower_count = 0;
@@ -116,6 +121,29 @@ function dlog_title(PDO $pdo, array &$cache, string $kind, int $ref_id): string 
 $failed_count = 0; $queued_count = 0;
 foreach ($queue as $q) { ($q['status'] === 'failed') ? $failed_count++ : $queued_count++; }
 
+/* Plain-English verdict for the top of the page. The whole point: tell the owner
+   at a glance whether this is HEALTHY (a normal waiting line that drains a batch
+   each run) or a PROBLEM (deliveries actually failing) — the distinction the raw
+   "STUCK & PENDING" table hides. */
+$verdict_ok = true;
+if (!$fedi_on) {
+    $verdict = 'Federation is OFF — nothing is being sent to followers.';
+    $verdict_ok = false;
+} elseif ($failed_count > 0) {
+    $verdict = $failed_count . ' delivery' . ($failed_count === 1 ? ' is' : 's are')
+             . ' failing and retrying — read the Error column below to see why.'
+             . ($queued_count > 0 ? ' (' . $queued_count . ' more are just waiting their turn.)' : '');
+    $verdict_ok = false;
+} elseif ($queued_count > 0) {
+    $verdict = $queued_count . ($queued_count === 1 ? ' post is' : ' posts are')
+             . ' waiting to send. Nothing is failing — the queue sends a batch every cron run and shrinks each time. This is normal, not stuck.';
+} else {
+    $verdict = 'All caught up — nothing waiting, nothing failing.';
+}
+if ($cron_sent !== null && $cron_sent > 0) {
+    $verdict .= ' Last run delivered ' . $cron_sent . '.';
+}
+
 /* Recent posts and whether they went out. fedi_pushed_at is stamped when the sweep
    (or a manual push) federates a post; NULL on a fedi-enabled published post means
    it has NOT reached followers yet — the thing to catch. */
@@ -169,11 +197,15 @@ include 'core/sidebar.php';
 
     <div class="box mb-20">
         <p class="dim">
-            What is trying to reach your followers and why it is stuck &mdash; read-only. The outbound
-            queue keeps only jobs that are <strong>still pending or failing</strong>; a send that
-            succeeds is removed the instant it lands, so an empty queue is the healthy state. To act on
+            What is trying to reach your followers, and which sends (if any) are actually failing &mdash;
+            read-only. The outbound queue keeps only jobs that are <strong>still waiting or failing</strong>;
+            a send that succeeds is removed the instant it lands, so an empty queue is the healthy state. To act on
             what you see here, use <a href="smack-cron.php">RUN NOW on Cron &amp; Jobs</a> to drain the
             queue now, or <a href="smack-sv-tools.php">PUSH / RE-IMPRINT on Push &amp; Tools</a>.
+        </p>
+        <p class="mb-10">
+            <strong><?php echo $verdict_ok ? '&#10003;' : '&#9888;'; ?>
+            <?php echo htmlspecialchars($verdict); ?></strong>
         </p>
         <table class="data-table mb-10">
             <tbody>
@@ -202,10 +234,20 @@ include 'core/sidebar.php';
                     </td>
                 </tr>
                 <tr>
+                    <th>Last run delivered</th>
+                    <td>
+                        <?php if ($cron_sent === null): ?>
+                            <span class="dim">not recorded yet</span>
+                        <?php else: ?>
+                            <?php echo (int)$cron_sent; ?> sent<?php if ((int)$cron_failed > 0): ?>, <?php echo (int)$cron_failed; ?> failed<?php endif; ?>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <tr>
                     <th>Queue right now</th>
                     <td>
-                        <?php echo (int)$queued_count; ?> waiting,
-                        <?php echo (int)$failed_count; ?> retrying/failed
+                        <?php echo (int)$queued_count; ?> waiting to send,
+                        <?php echo (int)$failed_count; ?> failing/retrying
                     </td>
                 </tr>
             </tbody>
@@ -213,14 +255,16 @@ include 'core/sidebar.php';
     </div>
 
     <div class="box mb-20">
-        <h3>OUTBOUND QUEUE &mdash; STUCK &amp; PENDING JOBS</h3>
+        <h3>OUTBOUND QUEUE &mdash; WAITING TO SEND</h3>
         <?php if (!$queue): ?>
             <p class="dim">&#10003; The queue is empty. Nothing is waiting or failing &mdash; every send that
             was tried has landed. (This does not prove a specific post reached a specific follower; check the
             per-post panel below for what has been pushed.)</p>
         <?php else: ?>
-        <p class="dim mb-10">Newest failures first. <strong>ERROR</strong> is the exact reason the remote gave
-        on the last attempt &mdash; that is what to read when a post won't go out.</p>
+        <p class="dim mb-10">Posts lined up to send, oldest first &mdash; the queue sends a batch each cron run
+        and shrinks each time, so a long list here is normal, not broken. A row is only a problem when its
+        <strong>Status</strong> reads <strong>failing/retrying</strong>; then <strong>ERROR</strong> is the exact
+        reason the remote gave &mdash; that is what to read when a post won't go out.</p>
         <div class="ox-auto">
         <table class="data-table">
             <thead>
