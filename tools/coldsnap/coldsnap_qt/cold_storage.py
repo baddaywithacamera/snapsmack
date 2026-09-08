@@ -357,7 +357,7 @@ class StorageMode(QWidget):
                                 "This image's file isn't in the store — SYNC FROM SITE first.")
             return
         from .enrich_worker import EnrichWorker
-        self._ai_worker = EnrichWorker()
+        self._ai_worker = EnrichWorker(self.app_config() or {})
 
         def _done(_idx, meta):
             if meta.get("title") and not self.title_edit.text().strip():

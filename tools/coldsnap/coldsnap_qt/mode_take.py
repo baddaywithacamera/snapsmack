@@ -99,12 +99,15 @@ class MosaicPreview(QWidget):
             rect = cell.translated(inner.topLeft())
             pix = QPixmap(path)
             if not pix.isNull():
-                scaled = pix.scaled(rect.size(), Qt.KeepAspectRatioByExpanding,
+                # Preview the whole photograph.  Cropping here made the composer
+                # imply a crop the photographer had never chosen.
+                scaled = pix.scaled(rect.size(), Qt.KeepAspectRatio,
                                     Qt.SmoothTransformation)
-                source = QRect(max(0, (scaled.width() - rect.width()) // 2),
-                               max(0, (scaled.height() - rect.height()) // 2),
-                               rect.width(), rect.height())
-                painter.drawPixmap(rect, scaled, source)
+                painter.fillRect(rect, QColor("#141714"))
+                target = QRect(rect.left() + (rect.width() - scaled.width()) // 2,
+                               rect.top() + (rect.height() - scaled.height()) // 2,
+                               scaled.width(), scaled.height())
+                painter.drawPixmap(target, scaled)
             else:
                 painter.fillRect(rect, QColor("#202320"))
             painter.setPen(QPen(QColor("#35ff14"), 2 if row == self._drag_from else 1))
@@ -194,10 +197,10 @@ class TakeMode(QWidget):
         brow = QHBoxLayout()
         add_btn = QPushButton("Add photos…")
         add_btn.clicked.connect(self._add_photos)
-        ai_btn = QPushButton("✨ AI ALT")
-        ai_btn.setToolTip("Writes a plain screen-reader ALT sentence for every "
-                          "photo in the bucket — edit them to your own voice after.")
-        ai_btn.clicked.connect(self._ai_alt)
+        ai_btn = QPushButton("✨ AI FILL")
+        ai_btn.setToolTip("Uses this site's prompt to fill all supported metadata: "
+                          "post fields from the lead photo and ALT for every photo.")
+        ai_btn.clicked.connect(self._ai_fill)
         brow.addWidget(add_btn)
         brow.addWidget(ai_btn)
         brow.addStretch(1)
@@ -607,27 +610,39 @@ class TakeMode(QWidget):
             col.addWidget(alt)
             self.bucket_col.addWidget(row)
 
-    def _ai_alt(self):
+    def _ai_fill(self):
         if not self._bucket:
             QMessageBox.warning(self, "No photos", "Add photos first.")
             return
         from .enrich_worker import EnrichWorker
         imgs = list(self._bucket)
-        self._ai_worker = EnrichWorker()
+        self._ai_worker = EnrichWorker(self.app_config() or {})
 
         def _one_done(idx, meta, imgs=imgs):
-            if 0 <= idx < len(imgs) and meta.get("alt"):
+            if not (0 <= idx < len(imgs)):
+                return
+            if meta.get("alt"):
                 imgs[idx].alt = meta["alt"]
+            # One call per photograph supplies its ALT.  The lead photograph
+            # supplies post-level metadata; keep authored values intact.
+            if idx == self._cover_idx:
+                if meta.get("title") and not self.title_edit.text().strip():
+                    self.title_edit.setText(meta["title"])
+                if meta.get("caption") and not self.body.toPlainText().strip():
+                    self.body.set_state(meta["caption"], "")
+                if meta.get("tags") and not self.tags_edit.text().strip():
+                    self.tags_edit.setText(meta["tags"])
+                self._ai_post_meta = dict(meta)
 
         self._ai_worker.image_done.connect(_one_done)
         self._ai_worker.progressed.connect(
             lambda done, total: self.bucket_count.setText(
-                f"AI ALT… photo {done} of {total} (Gemini)"))
+                f"AI FILL… photo {done} of {total} (Gemini)"))
         self._ai_worker.finished.connect(self._refresh_bucket)
         self._ai_worker.failed.connect(
             lambda msg: (self._refresh_bucket(),
-                         QMessageBox.critical(self, "AI ALT failed", msg)))
-        self.bucket_count.setText(f"AI ALT… photo 1 of {len(imgs)} (Gemini)")
+                         QMessageBox.critical(self, "AI FILL failed", msg)))
+        self.bucket_count.setText(f"AI FILL… photo 1 of {len(imgs)} (Gemini)")
         self._ai_worker.start([im.local_path for im in imgs])
 
     def _edit(self, draft: O.Draft):
@@ -642,6 +657,13 @@ class TakeMode(QWidget):
                                      alt=getattr(im, "alt", "") or "")
                         for im in draft.images]
         self._cover_idx = next((i for i, im in enumerate(self._bucket) if im.is_cover), 0)
+        self._ai_post_meta = {
+            "category": getattr(draft, "category", ""),
+            "album": getattr(draft, "album", ""),
+            "orientation": getattr(draft, "orientation", "auto"),
+            "color_mode": getattr(draft, "color_mode", ""),
+            "colors": getattr(draft, "ai_colors", ""),
+        }
         self._refresh_bucket()
 
     def _clear(self):
@@ -652,6 +674,7 @@ class TakeMode(QWidget):
         self.body.clear()
         self._bucket = []
         self._cover_idx = 0
+        self._ai_post_meta = {}
         self._refresh_bucket()
 
     def _save(self, ready: bool):
@@ -666,6 +689,12 @@ class TakeMode(QWidget):
         draft.caption = self.body.toPlainText().strip()
         draft.body_blocks = self.body.blocks_json()
         draft.img_status = self.status_combo.currentText()
+        meta = getattr(self, "_ai_post_meta", {}) or {}
+        draft.category = meta.get("category", "")
+        draft.album = meta.get("album", "")
+        draft.orientation = meta.get("orientation", "auto") or "auto"
+        draft.color_mode = meta.get("color_mode", "")
+        draft.ai_colors = meta.get("colors", "")
         draft.images = [
             O.DraftImage(local_path=im.local_path,
                          filename=im.filename or os.path.basename(im.local_path),
