@@ -67,6 +67,20 @@ $fedrouter = (string)file_get_contents($root . '/fediverse.php');
 $ok(str_contains($fedrouter, "=== 'smackthemup'"),
     'public federation router hard-404s smackthemup (belt-and-suspenders)');
 
+// --- Render-family mapping: display treats smackthemup like the GRAMOFSMACK grid -
+$hdr = (string)file_get_contents($root . '/core/header.php');
+$ok(str_contains($hdr, "['carousel', 'smackthemup']"),
+    'header masthead treats smackthemup as the GRAMOFSMACK text-only header');
+$smap = (string)file_get_contents($root . '/sitemap.php');
+$ok(str_contains($smap, "['carousel', 'smackthemup']"),
+    'sitemap treats smackthemup like carousel for public output');
+$stats = (string)file_get_contents($root . '/core/stats-logger.php');
+$ok(str_contains($stats, "['carousel', 'smackthemup']"),
+    'scroll-stats track the smackthemup landing feed');
+$idx = (string)file_get_contents($root . '/index.php');
+$ok(!str_contains($idx, 'site_mode'),
+    'public landing stays mode-agnostic (renders via the active skin, no site_mode branch)');
+
 echo $fail === 0 ? "\nALL PASS\n" : "\n$fail CHECK(S) FAILED\n";
 exit($fail === 0 ? 0 : 1);
 // ===== SNAPSMACK EOF =====
