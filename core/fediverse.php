@@ -1798,10 +1798,9 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
     $stmt = $pdo->prepare(
         "SELECT * FROM snap_ap_deliveries
          WHERE {$where}
-         ORDER BY CASE JSON_UNQUOTE(JSON_EXTRACT(activity_json, '$.type'))
-                    WHEN 'Accept' THEN 0 WHEN 'Reject' THEN 0
-                    WHEN 'Follow' THEN 0 WHEN 'Undo' THEN 0
-                    ELSE 1 END,
+         ORDER BY CASE WHEN activity_json REGEXP
+                    '\"type\"[[:space:]]*:[[:space:]]*\"(Accept|Reject|Follow|Undo)\"'
+                    THEN 0 ELSE 1 END,
                   id ASC LIMIT " . max(1, (int)$limit)
     );
     $stmt->execute($args);
@@ -1823,12 +1822,19 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
             sleep($gap);
         }
         if ($deadline > 0 && microtime(true) + 12 >= $deadline) break;
-        $prev_layers = sv_activity_attachment_count($row['activity_json']);
-        $delivery_settings = $primary_settings;
-        if (($row['actor_role'] ?? 'primary') === 'curator' && function_exists('sc_curator_settings')) {
-            $delivery_settings = sc_curator_settings($pdo, $primary_settings, true);
+        try {
+            $prev_layers = sv_activity_attachment_count($row['activity_json']);
+            $delivery_settings = $primary_settings;
+            if (($row['actor_role'] ?? 'primary') === 'curator' && function_exists('sc_curator_settings')) {
+                $delivery_settings = sc_curator_settings($pdo, $primary_settings, true);
+            }
+            list($ok, $info) = sv_deliver($delivery_settings, $row['inbox_url'], $row['activity_json']);
+        } catch (Throwable $e) {
+            // A poison row must never abort the whole scheduled run. Record it
+            // through the normal retry/failed path and move on to the next job.
+            $ok = false;
+            $info = 'delivery worker error: ' . substr($e->getMessage(), 0, 176);
         }
-        list($ok, $info) = sv_deliver($delivery_settings, $row['inbox_url'], $row['activity_json']);
         if ($ok) {
             $pdo->prepare("DELETE FROM snap_ap_deliveries WHERE id = ?")->execute([$row['id']]);
             $sent++;
