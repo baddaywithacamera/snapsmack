@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.664D "PARALLEL PACE" — 2026-09-07
+- **A backlog of federated posts now reaches many servers at once instead of one every ten seconds.** The delivery worker used to pause after *every* send, even when the next post was going to a completely different server, so throughput was fixed at roughly two dozen deliveries per run no matter how large the backlog — posts for idle servers sat hours behind older-due posts for busy ones. The worker now paces **each receiving server on its own clock** (the same settle gap as before, longer for a fat carousel) and delivers to other servers in parallel while any one server is in its cooldown. It only waits when every server with work due is still cooling, and only until the soonest one is ready. The in-order carousel protection is unchanged — a single server still receives one post at a time, oldest first — so multi-image posts land in the right order. (Dev build: queue/lock change, not yet exercised on a live backlog — run a canary drain before deploying to the fleet.)
+
 ## Desktop COLD SNAP 0.7.18 — 2026-09-07
 - **Mosaic inclusion is now one unambiguous action.** New mosaics start with no photos included; tick exactly the photographs wanted and the live preview/layout list responds immediately. Row highlighting is reserved for Move/Rotate controls, eliminating the hidden Ctrl-click multi-selection behaviour that made an exact subset effectively impossible to choose.
 - **Bad camera orientation can be corrected where it matters.** Some Kodak files store sideways pixels while falsely claiming normal landscape orientation, so metadata inspection cannot infer the intended portrait. The mosaic builder now rotates the current photograph left or right non-destructively, immediately updates its portrait/landscape report and live preview, and uploads the corrected working copy while preserving the original. Cancelling restores the untouched bucket state.

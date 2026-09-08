@@ -1756,6 +1756,64 @@ function sv_activity_attachment_count(string $activity_json): int {
     return is_array($att) ? count($att) : 0;
 }
 
+/** Normalized RECEIVING HOST for pacing (BUILD-ORDER throughput fix). Pacing is
+ *  keyed on the host, NOT the per-actor inbox: two actors on one Pixelfed
+ *  instance share that instance's ingestion workers, and the a447d362 in-order
+ *  failure was per SERVER. Collapses a shared-inbox URL and every per-actor
+ *  inbox on the same host to one key. Falls back to the full URL as its own key
+ *  if the host can't be parsed, so a weird inbox still gets its own cooldown. */
+function sv_normalize_delivery_host(string $inbox_url): string {
+    $h = parse_url($inbox_url, PHP_URL_HOST);
+    return (is_string($h) && $h !== '') ? strtolower($h) : $inbox_url;
+}
+
+/** Deliver ONE queued row and settle its queue state: DELETE on success, else
+ *  backoff (5min · 2^attempts, capped 24h) and park as status=failed after 8
+ *  tries; self-heal a stale inbox URL on a "not an AP inbox" bounce. Returns
+ *  true if the activity was sent. Extracted verbatim from the old drain loop so
+ *  the paced and unpaced paths share identical completion semantics — a poison
+ *  row is recorded through the normal retry path and never aborts the run. */
+function sv_finish_delivery_row(PDO $pdo, array $primary_settings, array $row): bool {
+    try {
+        $delivery_settings = $primary_settings;
+        if (($row['actor_role'] ?? 'primary') === 'curator' && function_exists('sc_curator_settings')) {
+            $delivery_settings = sc_curator_settings($pdo, $primary_settings, true);
+        }
+        list($ok, $info) = sv_deliver($delivery_settings, $row['inbox_url'], $row['activity_json']);
+    } catch (Throwable $e) {
+        $ok = false;
+        $info = 'delivery worker error: ' . substr($e->getMessage(), 0, 176);
+    }
+    if ($ok) {
+        $pdo->prepare("DELETE FROM snap_ap_deliveries WHERE id = ?")->execute([$row['id']]);
+        return true;
+    }
+    $attempts = (int)$row['attempts'] + 1;
+    // Self-heal a stale inbox URL: the POST landed on a web page, not an AP
+    // inbox (see sv_deliver). Re-resolve the follower's live actor doc and
+    // rewrite this queue row so the next attempt knocks on the right door.
+    if (strpos($info, 'not an AP inbox') === 0) {
+        $fresh = sv_refresh_follower_inbox($pdo, (string)$row['inbox_url']);
+        if ($fresh !== null && $fresh !== $row['inbox_url']) {
+            $pdo->prepare("UPDATE snap_ap_deliveries SET inbox_url = ? WHERE id = ?")
+                ->execute([$fresh, $row['id']]);
+        }
+    }
+    if ($attempts >= 8) {
+        $pdo->prepare(
+            "UPDATE snap_ap_deliveries SET status='failed', attempts=?, last_error=? WHERE id=?"
+        )->execute([$attempts, $info, $row['id']]);
+    } else {
+        $delay = min(300 * (2 ** $attempts), 86400);
+        $pdo->prepare(
+            "UPDATE snap_ap_deliveries
+             SET attempts=?, last_error=?, next_try_at=DATE_ADD(NOW(), INTERVAL ? SECOND)
+             WHERE id=?"
+        )->execute([$attempts, $info, $delay, $row['id']]);
+    }
+    return false;
+}
+
 /** Distinct delivery inboxes for all active followers (sharedInbox preferred). */
 function sv_follower_inboxes(PDO $pdo): array {
     $rows = $pdo->query(
@@ -1797,17 +1855,17 @@ function sv_test_whitelist_recipients(PDO $pdo, array $settings): array {
  * (5min · 2^attempts, capped 24h); parked as status=failed after 8 tries.
  * Returns [sent, failed_now].
  *
- * MEASURED CADENCE ($cadence_secs > 0): pause between consecutive sends so a
- * remote ingests one activity — and finishes fetching its media — before the
- * next arrives. Rows are already ordered oldest-first (id ASC), so a paced run
- * lands posts on the remote in strict chronological order with no concurrent
- * async workers to shuffle same-second timestamps or drop half a carousel
- * stack. The gap SCALES with the layer count of the post just sent: a fat
- * carousel earns cadence + layer_gap·(layers−1) of settle time so the remote
- * finishes pulling every frame before the next Note lands; a single image pays
- * only the base gap. Only ever call with a cadence from a detached context
- * (CLI cron or a post-fastcgi_finish_request web tail) — never inline before a
- * response.
+ * PACED CADENCE ($cadence_secs > 0): spacing is enforced PER RECEIVING HOST,
+ * not globally. Each host ingests one activity — and finishes fetching its
+ * media — before the next arrives for THAT host (strict oldest-first within a
+ * host, cadence + layer_gap·(layers−1) between its sends so a fat carousel
+ * lands whole), while unrelated hosts deliver in parallel. This preserves the
+ * a447d362 in-order-carousel protection (which was per SERVER) but lets a
+ * backlog for many hosts drain concurrently instead of one-every-10s. The
+ * worker idles only when every host with due work is still cooling, and only
+ * until the soonest one frees — never past the runtime deadline. Only ever call
+ * with a cadence from a detached context (CLI cron or a
+ * post-fastcgi_finish_request web tail) — never inline before a response.
  */
 function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $cadence_secs = 0,
                                ?int $first_id = null, ?int $last_id = null,
@@ -1834,76 +1892,108 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
         $where .= " AND inbox_url = ?";
         $args[] = $inbox_url;
     }
-    $stmt = $pdo->prepare(
-        "SELECT * FROM snap_ap_deliveries
-         WHERE {$where}
-         ORDER BY CASE WHEN activity_json REGEXP
-                    '\"type\"[[:space:]]*:[[:space:]]*\"(Accept|Reject|Follow|Undo)\"'
-                    THEN 0 ELSE 1 END,
-                  id ASC LIMIT " . max(1, (int)$limit)
-    );
-    $stmt->execute($args);
-    $due = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $layer_gap = ($cadence_secs > 0) ? sv_layer_cadence($settings) : 0;
+    // Oldest-first, but control activities (Follow/Accept/Undo handshakes) go
+    // ahead of content — the ordering both drain paths share.
+    $order_by =
+        "CASE WHEN activity_json REGEXP
+            '\"type\"[[:space:]]*:[[:space:]]*\"(Accept|Reject|Follow|Undo)\"'
+            THEN 0 ELSE 1 END, id ASC";
     $deadline = $max_runtime_secs > 0 ? microtime(true) + max(15, $max_runtime_secs) : 0.0;
-    $sent = 0; $failed = 0; $prev_layers = 0; $i = 0;
-    foreach ($due as $row) {
-        // Settle gap BEFORE every send except the first, sized by the PREVIOUS
-        // post's layer count — one activity in flight at a time, oldest first,
-        // heavy stacks given proportionally longer to fully land.
-        if ($cadence_secs > 0 && $i++ > 0) {
-            $gap = $cadence_secs + $layer_gap * max(0, $prev_layers - 1);
-            // Scheduled workers must relinquish the advisory lock in time for
-            // the next tick. Leave the remaining rows queued instead of
-            // turning one slow batch into an apparently dead cron for hours.
-            if ($deadline > 0 && microtime(true) + $gap + 12 >= $deadline) break;
-            sleep($gap);
+
+    // ── UNPACED PATH (cadence_secs <= 0) ────────────────────────────────────
+    // Interactive/targeted kicks (inbox handlers, mesh-follow, smack-fediverse).
+    // Bounded drain up to $limit in oldest-first order, no per-host cooldown.
+    // Behaviour unchanged from before the throughput fix.
+    if ($cadence_secs <= 0) {
+        $stmt = $pdo->prepare(
+            "SELECT * FROM snap_ap_deliveries WHERE {$where}
+             ORDER BY {$order_by} LIMIT " . max(1, (int)$limit)
+        );
+        $stmt->execute($args);
+        $sent = 0; $failed = 0;
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if ($deadline > 0 && microtime(true) + 12 >= $deadline) break;
+            if (sv_finish_delivery_row($pdo, $primary_settings, $row)) $sent++; else $failed++;
         }
+        return [$sent, $failed];
+    }
+
+    // ── PACED PATH (cadence_secs > 0) ───────────────────────────────────────
+    // BUILD-ORDER: Delivery Worker Throughput Fix v1.1.
+    // WAS: a global sleep($gap) fired before EVERY send, even across unrelated
+    // hosts, so throughput was ~usable_budget/gap (~23/run) no matter the
+    // backlog and rows sat hours behind older-due rows for other servers.
+    // NOW: pace PER RECEIVING HOST. Each host keeps its original settle gap
+    // (cadence + layer_gap·(layers−1)) — preserving the a447d362 in-order
+    // carousel protection — while other hosts deliver in parallel. The worker
+    // only idles when EVERY host with due work is still cooling, and only until
+    // the soonest one frees, never past the deadline.
+    $layer_gap = sv_layer_cadence($settings);
+
+    // REFILL/PLAN: fetch lightweight (id, inbox_url) for ALL currently-due rows,
+    // oldest-first. No 30-row cap here — every due row enters the working set, so
+    // previously-buried rows for idle hosts are reachable this run. activity_json
+    // is pulled per row at send time, not held for the whole plan (memory). The
+    // 5000 ceiling is a runaway guard, not the governor — the deadline is.
+    $plan = $pdo->prepare(
+        "SELECT id, inbox_url FROM snap_ap_deliveries WHERE {$where}
+         ORDER BY {$order_by} LIMIT 5000"
+    );
+    $plan->execute($args);
+
+    // Per-host FIFO queue of row ids, oldest-first within each host (§3.1/§3.2):
+    // strict oldest-first per host, free interleave across hosts.
+    $by_host = [];
+    foreach ($plan->fetchAll(PDO::FETCH_ASSOC) as $p) {
+        $by_host[sv_normalize_delivery_host((string)$p['inbox_url'])][] = (int)$p['id'];
+    }
+
+    $next_allowed = [];   // host => unix ts (microtime) the host may next receive
+    $row_stmt = $pdo->prepare(
+        "SELECT * FROM snap_ap_deliveries WHERE id = ? AND status = 'queued'"
+    );
+    $sent = 0; $failed = 0;
+
+    while (($sent + $failed) < max(1, (int)$limit)) {
         if ($deadline > 0 && microtime(true) + 12 >= $deadline) break;
-        try {
-            $prev_layers = sv_activity_attachment_count($row['activity_json']);
-            $delivery_settings = $primary_settings;
-            if (($row['actor_role'] ?? 'primary') === 'curator' && function_exists('sc_curator_settings')) {
-                $delivery_settings = sc_curator_settings($pdo, $primary_settings, true);
-            }
-            list($ok, $info) = sv_deliver($delivery_settings, $row['inbox_url'], $row['activity_json']);
-        } catch (Throwable $e) {
-            // A poison row must never abort the whole scheduled run. Record it
-            // through the normal retry/failed path and move on to the next job.
-            $ok = false;
-            $info = 'delivery worker error: ' . substr($e->getMessage(), 0, 176);
-        }
-        if ($ok) {
-            $pdo->prepare("DELETE FROM snap_ap_deliveries WHERE id = ?")->execute([$row['id']]);
-            $sent++;
+
+        // Hosts that STILL have work. A drained host drops out entirely, so it
+        // can never gate the idle-sleep below — no busy-spin (§3.3).
+        $hosts = [];
+        foreach ($by_host as $h => $ids) { if ($ids) $hosts[] = $h; }
+        if (!$hosts) break;                       // queue drained -> done
+
+        $now_ts = microtime(true);
+        $ready  = [];
+        foreach ($hosts as $h) { if (($next_allowed[$h] ?? 0.0) <= $now_ts) $ready[] = $h; }
+
+        if (!$ready) {
+            // Every host with due work is cooling down: idle only until the
+            // SOONEST one frees, scoped to hosts that actually have rows, and
+            // never across the deadline. No sleep may cross the budget (§0).
+            $wake = min(array_map(function ($h) use ($next_allowed) { return $next_allowed[$h]; }, $hosts));
+            $nap  = $wake - microtime(true);
+            if ($deadline > 0) $nap = min($nap, $deadline - microtime(true) - 12);
+            if ($nap > 0) sleep((int)ceil($nap));
             continue;
         }
-        $failed++;
-        $attempts = (int)$row['attempts'] + 1;
-        // Self-heal a stale inbox URL: the POST landed on a web page, not an AP
-        // inbox (see sv_deliver). Re-resolve the follower's live actor doc,
-        // rewrite the follower row AND this queue row, so the next attempt
-        // knocks on the right door instead of failing forever.
-        if (strpos($info, 'not an AP inbox') === 0) {
-            $fresh = sv_refresh_follower_inbox($pdo, (string)$row['inbox_url']);
-            if ($fresh !== null && $fresh !== $row['inbox_url']) {
-                $pdo->prepare("UPDATE snap_ap_deliveries SET inbox_url = ? WHERE id = ?")
-                    ->execute([$fresh, $row['id']]);
-            }
-        }
-        if ($attempts >= 8) {
-            $pdo->prepare(
-                "UPDATE snap_ap_deliveries SET status='failed', attempts=?, last_error=? WHERE id=?"
-            )->execute([$attempts, $info, $row['id']]);
-        } else {
-            $delay = min(300 * (2 ** $attempts), 86400);
-            $pdo->prepare(
-                "UPDATE snap_ap_deliveries
-                 SET attempts=?, last_error=?, next_try_at=DATE_ADD(NOW(), INTERVAL ? SECOND)
-                 WHERE id=?"
-            )->execute([$attempts, $info, $delay, $row['id']]);
-        }
+
+        // Among ready hosts, serve the one whose oldest row is oldest overall —
+        // keeps a global oldest-first bias while interleaving across hosts.
+        $pick = $ready[0];
+        foreach ($ready as $h) { if ($by_host[$h][0] < $by_host[$pick][0]) $pick = $h; }
+        $id = array_shift($by_host[$pick]);
+
+        $row_stmt->execute([$id]);
+        $row = $row_stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) continue;                       // vanished / parked elsewhere
+
+        $layers = sv_activity_attachment_count($row['activity_json']);
+        if (sv_finish_delivery_row($pdo, $primary_settings, $row)) $sent++; else $failed++;
+
+        // Per-HOST settle gap, sized by the layer count of the post just sent —
+        // a fat carousel earns proportionally longer to fully land on THAT host.
+        $next_allowed[$pick] = microtime(true) + $cadence_secs + $layer_gap * max(0, $layers - 1);
     }
     return [$sent, $failed];
 }
@@ -6452,7 +6542,7 @@ function sv_run_sweep(PDO $pdo, array &$settings): array
         // remote requests and is optional maintenance; none of it may starve
         // rows which are already due.
         list($sent, $failed) = sv_process_deliveries(
-            $pdo, $settings, 30, sv_delivery_cadence($settings), null, null, null, 240
+            $pdo, $settings, 1000, sv_delivery_cadence($settings), null, null, null, 240
         );
 
         $mesh_follow = sv_reconcile_mesh_follows($pdo, $settings, 1);
