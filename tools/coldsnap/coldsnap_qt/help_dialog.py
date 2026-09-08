@@ -104,7 +104,7 @@ TOPICS = [
      "If a Gemini key is set: COLD ONE's AI Fill suggests a title, caption, "
      "ALT text and tags for the chosen photo. COLD STACK's AI Fill writes an "
      "ALT sentence for EVERY photo in the post and suggests a caption and "
-     "tags from the cover when those boxes are empty. COLD TAKE's AI ALT "
+     "tags from the cover when those boxes are empty. COLD TAKE's AI Fill "
      "writes an ALT sentence for every photo in the bucket. Always a starting "
      "point — edit it to your own voice before posting.\n\n"
      "ALT text is saved WITH THE IMAGE on the site (so is the Colour/B&W "
