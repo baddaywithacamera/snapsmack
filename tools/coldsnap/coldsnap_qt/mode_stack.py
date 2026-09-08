@@ -344,8 +344,8 @@ class StackMode(QWidget):
         if not (0 <= idx < len(imgs)):
             return
         im = imgs[idx]
+        im.apply_enrichment(meta)
         if meta.get("alt"):
-            im.alt = meta["alt"]
             if im is self._sel_img:
                 self._loading_controls = True
                 self.alt_edit.setText(im.alt)

@@ -129,6 +129,21 @@ class DraftImage:
     remote_thumb_aspect: str = ""
     alt:          str = ""    # per-image accessibility ALT — travels WITH the
                               # image (snap_images.img_alt), never the post
+    # Complete per-image enrichment bundle.  Some post types and skins expose
+    # only ALT, but the library must never discard metadata merely because the
+    # current presentation does not use it.
+    title:        str = ""
+    caption:      str = ""
+    tags:         str = ""
+    category:     str = ""
+    album:        str = ""
+    collection:   str = ""
+    orientation:  str = "auto"
+    color_mode:   str = ""
+    ai_colors:    str = ""
+    ocr:          str = ""
+    content_warning: str = ""
+    sensitive:    str = "no"
     sort_position: int = 0    # carousel order (0-based)
     is_cover:     bool = False
     # Per-image GRAM controls — map 1:1 to snap_post_images columns. These are
@@ -150,6 +165,16 @@ class DraftImage:
     @classmethod
     def from_dict(cls, d: dict) -> "DraftImage":
         return cls(**{k: d.get(k, getattr(cls, k, "")) for k in cls.__dataclass_fields__})
+
+    def apply_enrichment(self, meta: dict) -> None:
+        """Retain the full normalized AI result on this image, regardless of UI."""
+        aliases = {"colors": "ai_colors"}
+        for source in ("title", "caption", "alt", "tags", "category", "album",
+                       "collection", "orientation", "color_mode", "colors", "ocr",
+                       "content_warning", "sensitive"):
+            value = (meta or {}).get(source)
+            if value not in (None, ""):
+                setattr(self, aliases.get(source, source), value)
 
 
 # ---------------------------------------------------------------------------
