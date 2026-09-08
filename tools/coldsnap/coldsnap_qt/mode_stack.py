@@ -328,7 +328,7 @@ class StackMode(QWidget):
             return
         from .enrich_worker import EnrichWorker
         self._ai_imgs = imgs
-        self._ai_worker = EnrichWorker()
+        self._ai_worker = EnrichWorker(self.app_config() or {})
         self._ai_worker.image_done.connect(self._ai_image_done)
         self._ai_worker.progressed.connect(
             lambda done, total: self.ai_status.setText(
