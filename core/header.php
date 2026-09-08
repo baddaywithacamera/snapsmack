@@ -49,8 +49,10 @@ if ($logo_path !== '' && ($settings['header_type'] ?? '') !== 'text') {
 }
 
 // GramOfSmack (carousel) mastheads are text-only — no logo image, matching the
-// Instagram-style header. Force text regardless of any stored header_type.
-if (($settings['site_mode'] ?? 'photoblog') === 'carousel') {
+// Instagram-style header. SMACKTHEMUP renders through the same GRAMOFSMACK grid
+// family (spec §15.2), so it gets the text-only masthead too. Force text
+// regardless of any stored header_type.
+if (in_array(($settings['site_mode'] ?? 'photoblog'), ['carousel', 'smackthemup'], true)) {
     $header_type = 'text';
 }
 
