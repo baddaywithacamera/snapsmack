@@ -1,0 +1,5 @@
+{
+  "_comment": "Version floor for desktop apps. The integrity guard (tools/check-desktop-integrity.php) FAILS if a tool's version drops below its baseline here — catching merges that silently revert a desktop version (e.g. GYSS 0.7.9 -> 0.1.5-alpha). When you INTENTIONALLY bump a version, raise it here in the same commit. Never lower a baseline to get past a failure; fix the reverted version instead.",
+  "gyss": { "version": "0.7.10" },
+  "oh-snap": { "version": "0.2.0" }
+}
