@@ -82,10 +82,34 @@ foreach (glob($toolsDir . '/*/src-tauri/tauri.conf.json') as $conf) {
     }
 }
 
+// --- Non-Tauri (Qt/PySide) tools: version floor read from a declared file ------
+// These lose their icon/version a different way — a merge/fold drags the whole tool
+// back to an older build (e.g. COLD SNAP from the Qt build to the previous one).
+// A version-floor check on each tool's canonical BUILD_VERSION/__version__ catches it.
+foreach ($baseline as $tool => $meta) {
+    if ($tool !== '' && $tool[0] === '_') continue;
+    if (!is_array($meta) || empty($meta['version_file'])) continue;   // Tauri tools handled above
+    $seen[$tool] = true;
+    $vf = $toolsDir . '/' . $meta['version_file'];
+    if (!is_file($vf)) { echo "FAIL $tool: version_file missing: {$meta['version_file']}\n"; $fail++; continue; }
+    if (!preg_match('/(?:BUILD_VERSION|__version__)\s*=\s*["\']([^"\']+)["\']/', (string)file_get_contents($vf), $mm)) {
+        echo "FAIL $tool: no BUILD_VERSION/__version__ literal in {$meta['version_file']}\n"; $fail++; continue;
+    }
+    $cur = $mm[1];
+    $base = (string)($meta['version'] ?? '');
+    if ($base !== '' && ver_cmp($cur, $base) < 0) {
+        echo "FAIL $tool: version REVERTED $base -> $cur (a merge/fold likely dragged this tool to an older build). "
+           . "If intentional, update tools/desktop-versions.json in this commit.\n";
+        $fail++;
+    } else {
+        echo "ok   $tool: version $cur (>= floor $base)\n";
+    }
+}
+
 // A tool disappearing from the baseline set is worth a nudge, not a failure.
 foreach ($baseline as $tool => $_) {
     if ($tool !== '' && $tool[0] === '_') continue;   // skip _comment and other notes
-    if (!isset($seen[$tool])) echo "WARN baseline lists '$tool' but no tauri.conf.json was found for it\n";
+    if (!isset($seen[$tool])) echo "WARN baseline lists '$tool' but no config/version_file was found for it\n";
 }
 
 echo $fail === 0 ? "\nDESKTOP INTEGRITY OK\n" : "\n$fail PROBLEM(S) — do not ship until resolved\n";
