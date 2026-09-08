@@ -11,6 +11,7 @@
 # SnapSmack Changelog
 ## Desktop COLD SNAP 0.7.17 — 2026-09-07
 - **COLD TAKE's mosaic builder now exceeds the CMS workflow instead of reducing a composition to a shortcode guess.** A large live preview changes with the contextual layout and exact included-photo set; numbered tiles swap directly by dragging one preview image onto another. “Use only selected” now means precisely that—the highlighted subset replaces the default all-checked set—closing the bug that turned a requested three-photo mosaic back into four. Put the cursor on an existing composed mosaic marker and press MOSAIC to reopen, preview, reorder, change its layout, and replace it in place.
+- **COLD SNAP's Qt build is reproducible again.** Its requirements now pin the suite's known-compatible PySide6 6.8.3 runtime. The undeclared dependency had allowed a clean machine to fetch Qt 6.11.2 and produce an executable that failed while loading QtWidgets; the installed 0.7.17 executable was rebuilt with 6.8.3 and launch-tested before replacement.
 
 ## 0.7.663D "HEAD COUNT" — 2026-09-07
 - **Multisite Management reports its connected-spoke count in the dashboard heading.** The number uses the same registered spoke state represented by the board and excludes nodes explicitly marked disconnected.
