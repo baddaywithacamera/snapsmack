@@ -9,6 +9,12 @@ $checks = [
     'active peers only' => str_contains($fedi, "WHERE status='active'"),
     'enabled peers only when supported' => str_contains($fedi, 'AND fediverse_enabled=1'),
     'existing follows are preserved' => str_contains($fedi, 'isset($existing[$actor])'),
+    // A stuck handshake must be able to heal: an accepted/rejected row is left
+    // alone, but a stale PENDING (Follow sent, Accept never arrived) is retried
+    // instead of counting as "already following" forever.
+    'reconciler retries stale pending' => str_contains($fedi, '$stale_pending_secs'),
+    'reconciler leaves accepted and rejected alone' =>
+        str_contains($fedi, "\$st === 'accepted' || \$st === 'rejected'"),
     'no delete in reconciler' => !str_contains(substr($fedi,
         strpos($fedi, 'function sv_reconcile_mesh_follows'),
         strpos($fedi, '/** Unfollow:', strpos($fedi, 'function sv_reconcile_mesh_follows'))
