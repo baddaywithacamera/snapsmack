@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## Desktop COLD SNAP 0.7.19 — 2026-09-07
+- **Mosaic previews now show the whole photograph.** Each image is fitted inside its tile instead of being silently centre-cropped, so the composition dialog does not imply destructive framing the photographer never selected.
+- **COLD TAKE's AI button is now a real AI Fill.** It resolves the selected site's CMS-synced prompt before any generic local fallback, writes ALT for every bucket image, fills visible post fields from the lead image, and retains category, album, orientation, colour mode, and dominant colours in the draft even when the active skin does not display them.
+
 ## Desktop COLD SNAP 0.7.18 — 2026-09-07
 - **Mosaic inclusion is now one unambiguous action.** New mosaics start with no photos included; tick exactly the photographs wanted and the live preview/layout list responds immediately. Row highlighting is reserved for Move/Rotate controls, eliminating the hidden Ctrl-click multi-selection behaviour that made an exact subset effectively impossible to choose.
 - **Bad camera orientation can be corrected where it matters.** Some Kodak files store sideways pixels while falsely claiming normal landscape orientation, so metadata inspection cannot infer the intended portrait. The mosaic builder now rotates the current photograph left or right non-destructively, immediately updates its portrait/landscape report and live preview, and uploads the corrected working copy while preserving the original. Cancelling restores the untouched bucket state.

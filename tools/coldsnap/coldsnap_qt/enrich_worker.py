@@ -13,6 +13,7 @@ caption/tag suggestions.
 
 import os
 import threading
+from urllib.parse import urlparse
 
 from PySide6.QtCore import QObject, Signal
 
@@ -29,6 +30,10 @@ class EnrichWorker(QObject):
     finished = Signal()
     failed = Signal(str)
 
+    def __init__(self, site_config=None, parent=None):
+        super().__init__(parent)
+        self.site_config = dict(site_config or {})
+
     def start(self, paths: list) -> None:
         threading.Thread(target=self._run, args=(list(paths),), daemon=True).start()
 
@@ -41,8 +46,19 @@ class EnrichWorker(QObject):
             return
         data = _cfg.load()
         api_key = (data.get("gemini_api_key") or "").strip()
-        prompt = (data.get("gemini_last_prompt") or "").strip()
-        site = (data.get("url") or "").strip()
+        site = (self.site_config.get("url") or data.get("url") or "").strip()
+        # The CMS prompt is mirrored into the shared prompt pool under the site's
+        # hostname.  Prefer it over whichever generic preset happened to be used
+        # most recently by another desktop tool.
+        prompt = ""
+        try:
+            import snap_prompts
+            host = (urlparse(site).hostname or site).lower().rstrip("/")
+            prompt = str((snap_prompts.load() or {}).get(host, "") or "").strip()
+        except Exception:
+            pass
+        if not prompt:
+            prompt = (data.get("gemini_last_prompt") or "").strip()
         cats, albums, cat_d, alb_d, etags = [], [], {}, {}, []
         try:
             import snap_library as lib
@@ -62,7 +78,8 @@ class EnrichWorker(QObject):
                 meta = snap_enrich.enrich_image(
                     p, categories=cats, albums=albums, api_key=api_key,
                     custom_prompt=prompt, cat_descriptions=cat_d,
-                    album_descriptions=alb_d, existing_tags=etags) or {}
+                    album_descriptions=alb_d, existing_tags=etags,
+                    site_url=site) or {}
             except Exception as e:  # noqa: BLE001
                 self.failed.emit(str(e))
                 return
