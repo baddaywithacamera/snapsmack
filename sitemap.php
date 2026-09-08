@@ -35,7 +35,9 @@ require_once __DIR__ . '/core/db.php';
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 
 $site_url    = rtrim($settings['site_url'] ?? ('https://' . ($_SERVER['HTTP_HOST'] ?? 'example.com')), '/') . '/';
-$is_carousel = ($settings['site_mode'] ?? 'photoblog') === 'carousel';
+// SMACKTHEMUP shares GRAMOFSMACK's post/image shape for public output (spec §3),
+// so it takes the same sitemap treatment as carousel.
+$is_carousel = in_array(($settings['site_mode'] ?? 'photoblog'), ['carousel', 'smackthemup'], true);
 $cap         = max(0, (int)($settings['sitemap_image_cap'] ?? 0));   // 0 = unlimited
 
 const SS_SITEMAP_PAGE_SIZE = 45000;   // safely under the 50k-URL spec ceiling
