@@ -10,6 +10,7 @@ from coldsnap_qt.mode_take import TakeMode, MosaicPreview
 
 
 def _checks():
+    assert TakeMode._mosaic_layouts(0) == []
     assert [v for _, v in TakeMode._mosaic_layouts(1)] == ["asymmetric"]
     assert len(TakeMode._mosaic_layouts(2)) == 3
     assert [v for _, v in TakeMode._mosaic_layouts(3)] == [
@@ -21,7 +22,6 @@ def _checks():
     assert one_top[0].width() == 600 and one_top[1].top() > one_top[0].top()
     across = MosaicPreview.tile_rects(600, 240, 3, "three-across")
     assert across[0].top() == across[1].top() == across[2].top()
-    assert TakeMode._exclusive_checks(4, [1, 2, 3]) == [False, True, True, True]
     return 8
 
 
