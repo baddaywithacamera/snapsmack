@@ -16,7 +16,13 @@ $checks = [
     'cron records ok after maintenance' => strpos($cron, "'fediverse_cron_last_status', 'ok'") !== false,
     'cron drain supplies a 240 second budget' => preg_match('/sv_process_deliveries\([\s\S]*?null,\s*null,\s*null,\s*240\s*\)/', $cron) === 1,
     'delivery processor accepts a runtime budget' => strpos($fediverse, 'int $max_runtime_secs = 0') !== false,
-    'delivery processor enforces a deadline' => strpos($fediverse, 'microtime(true) + $gap + 12 >= $deadline') !== false,
+    'delivery processor enforces a deadline' => strpos($fediverse, 'microtime(true) + 12 >= $deadline') !== false,
+    // Throughput fix: pacing is per receiving HOST, and the old global
+    // sleep-before-every-send ($gap) is gone. A regression to a global sleep
+    // reopens the ~23/run starvation this build removed.
+    'delivery pacing is keyed per receiving host' => strpos($fediverse, '$next_allowed[$pick]') !== false
+        && strpos($fediverse, 'sv_normalize_delivery_host(') !== false,
+    'no global sleep-before-every-send survives' => strpos($fediverse, 'microtime(true) + $gap + 12 >= $deadline') === false,
     'CLI drains before mesh and optional network maintenance' =>
         strpos($cron, 'list($sent, $failed) = sv_process_deliveries(') < strpos($cron, '$mesh_follow = sv_reconcile_mesh_follows('),
     'web runner drains before mesh and optional network maintenance' =>
