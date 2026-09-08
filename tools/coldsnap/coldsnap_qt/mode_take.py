@@ -12,6 +12,8 @@ mosaic marker keeps its one-line plain-words explainer right beside the button.
 
 import os
 import re
+import tempfile
+import uuid
 
 from PySide6.QtCore import Qt, QRect, Signal
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen
@@ -251,7 +253,9 @@ class TakeMode(QWidget):
     @staticmethod
     def _mosaic_layouts(photo_count):
         """Only offer layouts the selected number of photos can actually use."""
-        if photo_count <= 1:
+        if photo_count <= 0:
+            return []
+        if photo_count == 1:
             return [("Single photo", "asymmetric")]
         if photo_count == 2:
             return [("Side by side", "asymmetric"),
@@ -282,12 +286,6 @@ class TakeMode(QWidget):
             return "portrait", ratio
         return "square", ratio
 
-    @staticmethod
-    def _exclusive_checks(photo_count, selected_rows):
-        """The Use-only-selected contract, kept testable without a running UI."""
-        selected = set(selected_rows)
-        return [row in selected for row in range(photo_count)]
-
     def _insert_mosaic(self):
         if not self._bucket:
             QMessageBox.warning(self, "No photos", "Add photos before building a mosaic.")
@@ -303,6 +301,7 @@ class TakeMode(QWidget):
             block_text, re.IGNORECASE)
         existing_span = None
         existing_order, existing_layout = [], None
+        rotation_originals = {}
         if existing:
             existing_order = [int(value) - 1 for value in existing.group(1).split(',')]
             existing_order = [value for value in existing_order
@@ -325,29 +324,31 @@ class TakeMode(QWidget):
         layout.addWidget(preview_hint)
         photos = QListWidget()
         photos.setDragDropMode(QListWidget.InternalMove)
-        photos.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        # Checkboxes own inclusion. Row selection is only the current photo for
+        # move/rotate controls, avoiding Windows Ctrl-click multi-select rules.
+        photos.setSelectionMode(QAbstractItemView.SingleSelection)
         display_order = existing_order + [i for i in range(len(self._bucket))
                                           if i not in existing_order]
         for bucket_index in display_order:
             image = self._bucket[bucket_index]
+            if bucket_index not in rotation_originals:
+                rotation_originals[bucket_index] = (
+                    image.local_path, image.original_path, image.width, image.height)
             shape, ratio = self._image_shape(image)
             name = image.filename or os.path.basename(image.local_path)
             item = QListWidgetItem(f"{name}    {shape} · {ratio:.2f}:1")
             item.setData(Qt.UserRole, bucket_index)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsDragEnabled)
-            item.setCheckState(Qt.Checked if not existing or bucket_index in existing_order
+            item.setCheckState(Qt.Checked if existing and bucket_index in existing_order
                                else Qt.Unchecked)
             photos.addItem(item)
         layout.addWidget(photos, 1)
 
         selection_row = QHBoxLayout()
-        use_selected = QPushButton("Use only selected")
-        exclude_selected = QPushButton("Exclude selected")
         select_all = QPushButton("Select all")
         clear_all = QPushButton("Clear all")
         selected_count = QLabel()
-        selection_row.addWidget(use_selected)
-        selection_row.addWidget(exclude_selected)
+        selection_row.addWidget(QLabel("Tick exactly the photos to include"))
         selection_row.addWidget(select_all)
         selection_row.addWidget(clear_all)
         selection_row.addStretch(1)
@@ -363,9 +364,11 @@ class TakeMode(QWidget):
         arrows = QHBoxLayout()
         up = QPushButton("Move up")
         down = QPushButton("Move down")
-        swap = QPushButton("Swap two selected")
+        rotate_left = QPushButton("↶ Rotate left")
+        rotate_right = QPushButton("↷ Rotate right")
         suggest = QPushButton("✨ Suggest arrangement")
-        arrows.addWidget(up); arrows.addWidget(down); arrows.addWidget(swap)
+        arrows.addWidget(up); arrows.addWidget(down)
+        arrows.addWidget(rotate_left); arrows.addWidget(rotate_right)
         arrows.addStretch(1); arrows.addWidget(suggest)
         layout.addLayout(arrows)
 
@@ -395,32 +398,9 @@ class TakeMode(QWidget):
             selected_count.setText(f"{count} of {photos.count()} included")
             refresh_preview()
 
-        def use_only_selected():
-            selected = photos.selectedItems()
-            if not selected:
-                return
-            selected_rows = [photos.row(item) for item in selected]
-            for i, enabled in enumerate(self._exclusive_checks(
-                    photos.count(), selected_rows)):
-                photos.item(i).setCheckState(Qt.Checked if enabled else Qt.Unchecked)
-
         def set_all(state):
             for i in range(photos.count()):
                 photos.item(i).setCheckState(state)
-
-        def swap_selected():
-            rows = sorted(photos.row(item) for item in photos.selectedItems())
-            if len(rows) != 2:
-                QMessageBox.information(dialog, "Choose two photos",
-                                        "Select exactly two rows to swap.")
-                return
-            first, second = rows
-            a = photos.takeItem(second)
-            b = photos.takeItem(first)
-            photos.insertItem(first, a)
-            photos.insertItem(second, b)
-            a.setSelected(True); b.setSelected(True)
-            refresh_preview()
 
         def swap_rows(first, second):
             if first == second or first < 0 or second < 0:
@@ -431,6 +411,40 @@ class TakeMode(QWidget):
             photos.insertItem(low, high_item)
             photos.insertItem(high, low_item)
             refresh_preview()
+
+        def rotate_current(degrees):
+            row = photos.currentRow()
+            if row < 0:
+                QMessageBox.information(dialog, "Choose a photo",
+                                        "Click one photo row before rotating it.")
+                return
+            item = photos.item(row)
+            bucket_index = int(item.data(Qt.UserRole))
+            image = self._bucket[bucket_index]
+            try:
+                from PIL import Image, ImageOps
+                target_dir = os.path.join(tempfile.gettempdir(), "coldsnap-rotated")
+                os.makedirs(target_dir, exist_ok=True)
+                ext = os.path.splitext(image.filename or image.local_path)[1].lower()
+                if ext not in (".jpg", ".jpeg", ".png", ".webp"):
+                    ext = ".jpg"
+                target = os.path.join(target_dir, uuid.uuid4().hex + ext)
+                with Image.open(image.local_path) as source:
+                    corrected = ImageOps.exif_transpose(source).rotate(degrees, expand=True)
+                    save_args = {"quality": 95} if ext in (".jpg", ".jpeg") else {}
+                    if corrected.mode not in ("RGB", "RGBA"):
+                        corrected = corrected.convert("RGB")
+                    corrected.save(target, **save_args)
+                    image.width, image.height = corrected.size
+                if not image.original_path:
+                    image.original_path = image.local_path
+                image.local_path = target
+                shape, ratio = self._image_shape(image)
+                name = image.filename or os.path.basename(image.local_path)
+                item.setText(f"{name}    {shape} · {ratio:.2f}:1")
+                refresh_preview()
+            except Exception as exc:
+                QMessageBox.warning(dialog, "Could not rotate photo", str(exc))
 
         def suggest_arrangement():
             included = [photos.item(i) for i in range(photos.count())
@@ -455,12 +469,10 @@ class TakeMode(QWidget):
             elif len(included) >= 4:
                 preset.setCurrentIndex(preset.findData("asymmetric"))
 
-        use_selected.clicked.connect(use_only_selected)
-        exclude_selected.clicked.connect(lambda: [item.setCheckState(Qt.Unchecked)
-                                                    for item in photos.selectedItems()])
         select_all.clicked.connect(lambda: set_all(Qt.Checked))
         clear_all.clicked.connect(lambda: set_all(Qt.Unchecked))
-        swap.clicked.connect(swap_selected)
+        rotate_left.clicked.connect(lambda: rotate_current(90))
+        rotate_right.clicked.connect(lambda: rotate_current(-90))
         suggest.clicked.connect(suggest_arrangement)
         photos.itemChanged.connect(lambda _item: refresh_layouts())
         photos.model().rowsMoved.connect(lambda *_args: refresh_preview())
@@ -488,12 +500,18 @@ class TakeMode(QWidget):
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
         if dialog.exec() != QDialog.Accepted:
+            for bucket_index, state in rotation_originals.items():
+                image = self._bucket[bucket_index]
+                image.local_path, image.original_path, image.width, image.height = state
             return
 
         chosen = [int(photos.item(i).data(Qt.UserRole)) + 1
                   for i in range(photos.count())
                   if photos.item(i).checkState() == Qt.Checked]
         if not chosen:
+            for bucket_index, state in rotation_originals.items():
+                image = self._bucket[bucket_index]
+                image.local_path, image.original_path, image.width, image.height = state
             QMessageBox.warning(self, "Empty mosaic", "Choose at least one photo.")
             return
         marker = "[mosaic=" + ",".join(map(str, chosen)) \
