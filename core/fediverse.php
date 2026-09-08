@@ -3663,17 +3663,39 @@ function sv_reconcile_mesh_follows(PDO $pdo, array $settings, int $limit = 1): a
         if ($has_fedi) $sql .= " AND fediverse_enabled=1";
         $sql .= " ORDER BY site_url ASC";
         $sites = $pdo->query($sql)->fetchAll(PDO::FETCH_COLUMN);
-        $existing = array_fill_keys($pdo->query(
-            "SELECT actor_url FROM snap_ap_following"
-        )->fetchAll(PDO::FETCH_COLUMN), true);
+        // Key existing rows by actor with their STATE + age, not merely presence.
+        // The old code treated ANY row as "already following", so a peer stuck at
+        // pending (Follow sent, Accept never arrived) or rejected counted as done
+        // and was skipped forever — the mesh could never heal those edges. We now
+        // retry a MISSING peer or a STALE-PENDING handshake, while leaving a
+        // fresh-pending row (still legitimately in flight) and a rejected row
+        // (needs an explicit operator retry, never an automatic one) untouched.
+        $existing = [];
+        foreach ($pdo->query(
+            "SELECT actor_url, state, followed_at FROM snap_ap_following"
+        )->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $existing[(string)$r['actor_url']] = $r;
+        }
     } catch (Throwable $e) {
         $result['message'] = 'mesh roster unavailable';
         return $result;
     }
+    // A pending handshake older than this never got its Accept — re-send it.
+    // Comfortably longer than a healthy Accept (seconds) so we never re-follow a
+    // handshake that is simply still in flight.
+    $stale_pending_secs = 3600;
+    $now  = time();
     $self = rtrim(sv_actor_url($settings), '/');
     foreach ($sites as $site_url) {
         $actor = rtrim((string)$site_url, '/') . '/ap/actor';
-        if ($actor === $self || isset($existing[$actor])) continue;
+        if ($actor === $self) continue;
+        if (isset($existing[$actor])) {
+            $st = (string)$existing[$actor]['state'];
+            if ($st === 'accepted' || $st === 'rejected') continue;   // done / preserve
+            // pending: skip while still in flight; only re-send once it is stale.
+            $age = $now - (int)strtotime((string)$existing[$actor]['followed_at']);
+            if ($age < $stale_pending_secs) continue;
+        }
         $result['checked']++;
         [$ok, $message] = sv_follow_actor($pdo, $settings, $actor);
         $result['message'] = $message;
