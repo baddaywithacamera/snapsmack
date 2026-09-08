@@ -39,6 +39,15 @@ if (is_file(__DIR__ . '/curator-directory.php')) require_once __DIR__ . '/curato
 require_once __DIR__ . '/client-ip.php';  // mandatory security boundary — SECAUDIT 035
 
 function sv_enabled(array $settings): bool {
+    // SMACKTHEMUP is a non-federated mode by design (spec §5.3). Federation-off
+    // is a mode-level server rule, not a flippable setting — so this central gate
+    // reports OFF for smackthemup regardless of fediverse_enabled. Every path that
+    // checks sv_enabled() (the publish sweep, seed, delivery queue, and the public
+    // actor/webfinger/outbox/inbox router) is therefore suppressed in one place,
+    // so a reused publish pipeline can never federate a smackthemup post.
+    if (($settings['site_mode'] ?? '') === 'smackthemup') {
+        return false;
+    }
     return ($settings['fediverse_enabled'] ?? '0') === '1';
 }
 
