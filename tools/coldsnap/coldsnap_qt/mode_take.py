@@ -17,7 +17,7 @@ from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
-    QDialog, QDialogButtonBox, QListWidget, QListWidgetItem,
+    QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
 )
 
 import sumna_offline as O
@@ -150,6 +150,40 @@ class TakeMode(QWidget):
                 for d in session.list_drafts()]
 
     # -- compose -----------------------------------------------------------------
+    @staticmethod
+    def _mosaic_layouts(photo_count):
+        """Only offer layouts the selected number of photos can actually use."""
+        if photo_count <= 1:
+            return [("Single photo", "asymmetric")]
+        if photo_count == 2:
+            return [("Side by side", "asymmetric"),
+                    ("Columns", "columns"), ("Rows", "rows")]
+        if photo_count == 3:
+            return [("One left, two right", "one-left"),
+                    ("One right, two left", "one-right"),
+                    ("Three across", "three-across"),
+                    ("One top, two below", "one-top")]
+        return [("Asymmetric quilt", "asymmetric"),
+                ("Columns", "columns"), ("Rows", "rows"),
+                ("Even square grid", "square")]
+
+    @staticmethod
+    def _image_shape(image):
+        width, height = int(image.width or 0), int(image.height or 0)
+        if not width or not height:
+            try:
+                from PIL import Image
+                with Image.open(image.local_path) as source:
+                    width, height = source.size
+            except Exception:
+                return "unknown", 1.0
+        ratio = width / max(1, height)
+        if ratio > 1.08:
+            return "landscape", ratio
+        if ratio < 0.92:
+            return "portrait", ratio
+        return "square", ratio
+
     def _insert_mosaic(self):
         if not self._bucket:
             QMessageBox.warning(self, "No photos", "Add photos before building a mosaic.")
@@ -157,36 +191,121 @@ class TakeMode(QWidget):
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Build mosaic")
-        dialog.resize(520, 430)
+        dialog.resize(760, 500)
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel(
-            "Choose the photos for this mosaic. Drag them—or use the arrows—to set "
-            "the mosaic order. This does not change the post's photo order."))
+            "Choose exactly which photos belong in this mosaic. Drag them—or use "
+            "the controls—to set its order. The post's photo order is unchanged."))
         photos = QListWidget()
         photos.setDragDropMode(QListWidget.InternalMove)
+        photos.setSelectionMode(QAbstractItemView.ExtendedSelection)
         for bucket_index, image in enumerate(self._bucket):
-            item = QListWidgetItem(image.filename or os.path.basename(image.local_path))
+            shape, ratio = self._image_shape(image)
+            name = image.filename or os.path.basename(image.local_path)
+            item = QListWidgetItem(f"{name}    {shape} · {ratio:.2f}:1")
             item.setData(Qt.UserRole, bucket_index)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsDragEnabled)
             item.setCheckState(Qt.Checked)
             photos.addItem(item)
         layout.addWidget(photos, 1)
 
+        selection_row = QHBoxLayout()
+        use_selected = QPushButton("Use selected")
+        exclude_selected = QPushButton("Exclude selected")
+        select_all = QPushButton("Select all")
+        clear_all = QPushButton("Clear all")
+        selected_count = QLabel()
+        selection_row.addWidget(use_selected)
+        selection_row.addWidget(exclude_selected)
+        selection_row.addWidget(select_all)
+        selection_row.addWidget(clear_all)
+        selection_row.addStretch(1)
+        selection_row.addWidget(selected_count)
+        layout.addLayout(selection_row)
+
         preset_row = QHBoxLayout()
         preset_row.addWidget(QLabel("Layout"))
         preset = QComboBox()
-        preset.addItem("One left, two right", "one-left")
-        preset.addItem("One right, two left", "one-right")
-        preset.addItem("Three across", "three-across")
-        preset.addItem("One top, two below", "one-top")
         preset_row.addWidget(preset, 1)
         layout.addLayout(preset_row)
 
         arrows = QHBoxLayout()
         up = QPushButton("Move up")
         down = QPushButton("Move down")
-        arrows.addWidget(up); arrows.addWidget(down); arrows.addStretch(1)
+        swap = QPushButton("Swap two selected")
+        suggest = QPushButton("✨ Suggest arrangement")
+        arrows.addWidget(up); arrows.addWidget(down); arrows.addWidget(swap)
+        arrows.addStretch(1); arrows.addWidget(suggest)
         layout.addLayout(arrows)
+
+        def checked_count():
+            return sum(photos.item(i).checkState() == Qt.Checked
+                       for i in range(photos.count()))
+
+        def refresh_layouts():
+            count = checked_count()
+            previous = preset.currentData()
+            preset.blockSignals(True)
+            preset.clear()
+            for label, value in self._mosaic_layouts(count):
+                preset.addItem(label, value)
+            old = preset.findData(previous)
+            preset.setCurrentIndex(old if old >= 0 else 0)
+            preset.blockSignals(False)
+            selected_count.setText(f"{count} of {photos.count()} included")
+
+        def set_selected(state):
+            for item in photos.selectedItems():
+                item.setCheckState(state)
+
+        def set_all(state):
+            for i in range(photos.count()):
+                photos.item(i).setCheckState(state)
+
+        def swap_selected():
+            rows = sorted(photos.row(item) for item in photos.selectedItems())
+            if len(rows) != 2:
+                QMessageBox.information(dialog, "Choose two photos",
+                                        "Select exactly two rows to swap.")
+                return
+            first, second = rows
+            a = photos.takeItem(second)
+            b = photos.takeItem(first)
+            photos.insertItem(first, a)
+            photos.insertItem(second, b)
+            a.setSelected(True); b.setSelected(True)
+
+        def suggest_arrangement():
+            included = [photos.item(i) for i in range(photos.count())
+                        if photos.item(i).checkState() == Qt.Checked]
+            if not included:
+                return
+            # Local, deterministic assist: similar shapes stay together and a
+            # three-photo hero is chosen from the strongest outlier.
+            included.sort(key=lambda item: self._image_shape(
+                self._bucket[int(item.data(Qt.UserRole))])[1])
+            excluded = [photos.item(i) for i in range(photos.count())
+                        if photos.item(i).checkState() != Qt.Checked]
+            while photos.count():
+                photos.takeItem(0)
+            for item in included + excluded:
+                photos.addItem(item)
+            if len(included) == 3:
+                ratios = [self._image_shape(self._bucket[int(i.data(Qt.UserRole))])[1]
+                          for i in included]
+                preset.setCurrentIndex(preset.findData(
+                    "one-top" if sum(r > 1.08 for r in ratios) >= 2 else "one-left"))
+            elif len(included) >= 4:
+                preset.setCurrentIndex(preset.findData("asymmetric"))
+
+        use_selected.clicked.connect(lambda: set_selected(Qt.Checked))
+        exclude_selected.clicked.connect(lambda: set_selected(Qt.Unchecked))
+        select_all.clicked.connect(lambda: set_all(Qt.Checked))
+        clear_all.clicked.connect(lambda: set_all(Qt.Unchecked))
+        swap.clicked.connect(swap_selected)
+        suggest.clicked.connect(suggest_arrangement)
+        photos.itemChanged.connect(lambda _item: refresh_layouts())
+        refresh_layouts()
 
         def move(delta):
             row = photos.currentRow()
