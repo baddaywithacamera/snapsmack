@@ -1,8 +1,16 @@
 <?php
 /**
- * Regression: the stale-inbox-ban self-heal (0.7.667D) must be ROSTER-SCOPED and
- * one-shot — it must never become a blanket "delete all inbox bans", which would
- * unban a genuine outside flooder the old limiter legitimately caught.
+ * Regression: the fleet's self-inflicted inbox ban (reason 'auto:fediverse_inbox',
+ * created by the retired pre-666D IP limiter) must clear AUTOMATICALLY, with no
+ * cron / DNS / roster dependency, and must never wipe unrelated bans.
+ *
+ * Two mechanisms:
+ *   1. PRIMARY — sv_inbox_rate_ok() drops the retired-reason ban ON CONTACT (the
+ *      blocked request heals its own block; works on a dormant spoke and IPv6
+ *      host, where the 667D/668D roster+DNS scoping failed).
+ *   2. SECONDARY — sv_heal_stale_inbox_bans_once() sweeps the retired reason once
+ *      per version, wired into cron + web sweep + updater.
+ * Both are scoped strictly to the retired reason, so real bans (probe, auth) stand.
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -12,30 +20,33 @@ $fedi = file_get_contents($root . '/core/fediverse.php');
 $cron = file_get_contents($root . '/cron-fediverse.php');
 $updr = file_get_contents($root . '/core/updater.php');
 
-// The healer body (function to the next function).
-$start = strpos($fedi, 'function sv_heal_stale_inbox_bans_once');
-$body  = $start !== false ? substr($fedi, $start, 2600) : '';
+$rl_start = strpos($fedi, 'function sv_inbox_rate_ok');
+$rl = $rl_start !== false ? substr($fedi, $rl_start, 1600) : '';
+$hl_start = strpos($fedi, 'function sv_heal_stale_inbox_bans_once');
+$hl = $hl_start !== false ? substr($fedi, $hl_start, 1400) : '';
 
 $checks = [
-    'healer exists' => $start !== false,
-    'targets only the retired ban reason' =>
-        str_contains($body, "reason = 'auto:fediverse_inbox'"),
-    'is roster-scoped (reads the multisite roster to build fleet IPs)' =>
-        str_contains($body, 'snap_multisite_nodes') && str_contains($body, '$fleet_ips'),
-    'deletes only a ban whose IP is a fleet IP — never blanket' =>
-        str_contains($body, 'isset($fleet_ips[(string)$b[\'ip\']])')
-        && !preg_match('/DELETE FROM `?snap_ip_bans`?\s+WHERE\s+reason/i', $body),
-    'resolves hosts (multi-server fleets, not one hardcoded IP)' =>
-        str_contains($body, 'sv_resolve_host_bounded') && !str_contains($body, '199.126.129.179'),
-    'one-shot per version (done-stamp)' =>
-        str_contains($body, "'fedi_inbox_ban_heal_done'"),
-    'will not stamp done if the roster could not be fully resolved' =>
-        str_contains($body, '$resolve_failed'),
-    'wired into the CLI cron' =>
-        str_contains($cron, 'sv_heal_stale_inbox_bans_once('),
-    'wired into the web sweep' =>
-        substr_count($fedi, 'sv_heal_stale_inbox_bans_once(') >= 2, // definition + sweep call
-    'wired into the updater — a dormant spoke heals on upgrade, not just on a cron it never runs' =>
+    // --- PRIMARY: self-heal at the door ---
+    'inbox check self-heals the retired ban on contact' =>
+        strpos($rl, "'auto:fediverse_inbox'") !== false
+        && strpos($rl, 'DELETE FROM snap_ip_bans WHERE id = ?') !== false,
+    'inbox check still honours a real ban (probe/auth)' =>
+        strpos($rl, '$real_ban') !== false && strpos($rl, 'if ($real_ban) return false;') !== false,
+
+    // --- SECONDARY: one-shot sweep, reason-scoped ---
+    'sweep clears the retired reason' =>
+        strpos($hl, "DELETE FROM snap_ip_bans WHERE reason = 'auto:fediverse_inbox'") !== false,
+    'sweep is one-shot per version' =>
+        strpos($hl, "'fedi_inbox_ban_heal_done'") !== false,
+
+    // --- SAFETY: never an unscoped ban wipe, anywhere ---
+    'no unscoped snap_ip_bans wipe exists' =>
+        !preg_match('/DELETE\s+FROM\s+`?snap_ip_bans`?\s*(?:;|WHERE\s+1\b)/i', $fedi),
+
+    // --- wired everywhere a spoke might run ---
+    'sweep wired into CLI cron' => str_contains($cron, 'sv_heal_stale_inbox_bans_once('),
+    'sweep wired into web sweep' => substr_count($fedi, 'sv_heal_stale_inbox_bans_once(') >= 2,
+    'sweep wired into updater (dormant spokes heal on upgrade)' =>
         str_contains($updr, 'sv_heal_stale_inbox_bans_once('),
 ];
 
@@ -45,5 +56,5 @@ if ($failed) {
     fwrite(STDERR, "FAIL: " . implode('; ', $failed) . "\n");
     exit(1);
 }
-echo "PASS: stale-inbox-ban heal is roster-scoped, one-shot, and never a blanket delete.\n";
+echo "PASS: inbox self-ban clears on contact + one-shot sweep, reason-scoped, no unscoped wipe.\n";
 // ===== SNAPSMACK EOF =====
