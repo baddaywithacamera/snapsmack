@@ -6423,7 +6423,10 @@ function sv_run_sweep(PDO $pdo, array &$settings): array
         return ['busy' => false, 'disabled' => true];
     }
     $root      = dirname(__DIR__);
-    $lock_name = 'snapsmack_sv_' . substr(hash('sha256', realpath($root) ?: $root), 0, 40);
+    // v2 deliberately leaves behind the pre-0.7.662 lock namespace. A CLI
+    // worker wedged forever in unbounded DNS cannot release its advisory lock,
+    // and shared hosting does not expose its process table to the application.
+    $lock_name = 'snapsmack_sv2_' . substr(hash('sha256', realpath($root) ?: $root), 0, 39);
     $ls = $pdo->prepare("SELECT GET_LOCK(?, 0)");
     $ls->execute([$lock_name]);
     if ((int)$ls->fetchColumn() !== 1) {
