@@ -1600,7 +1600,15 @@ function sv_deliver(array $settings, string $inbox_url, string $activity_json): 
         }
         return [true, (string)$code];
     }
-    return [false, $err !== '' ? substr($err, 0, 200) : 'HTTP ' . $code];
+    if ($err !== '') return [false, substr($err, 0, 200)];
+    // Keep a small, plain-text receiver explanation. A bare "HTTP 500" made
+    // fleet-wide receiver failures needlessly opaque in the delivery log.
+    $detail = '';
+    if (is_string($body) && trim($body) !== '') {
+        $detail = trim((string)preg_replace('/\s+/', ' ', strip_tags($body)));
+        if ($detail !== '') $detail = ' — ' . substr($detail, 0, 160);
+    }
+    return [false, substr('HTTP ' . $code . $detail, 0, 200)];
 }
 
 /**
