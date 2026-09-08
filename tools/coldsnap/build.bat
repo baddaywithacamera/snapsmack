@@ -58,6 +58,11 @@ echo.
 echo Building %EXE_NAME%...
 if not exist C:\snapsmack\coldsnap mkdir C:\snapsmack\coldsnap
 pyinstaller --clean %SPEC_FILE% --distpath "C:\snapsmack\coldsnap"
+if errorlevel 1 (
+    echo ERROR: PyInstaller failed. The existing executable was NOT replaced.
+    popd
+    exit /b 1
+)
 
 echo.
 if exist "C:\snapsmack\coldsnap\%EXE_NAME%" (
