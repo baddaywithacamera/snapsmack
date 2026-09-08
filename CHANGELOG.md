@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.668D "HOUSE CALL" — 2026-09-08
+- **A quiet site now clears its stale self-ban the moment it updates — it no longer has to wait for a cron that never runs.** 667D taught sites to auto-clear the fleet-wide inbox self-ban, but it ran that cleanup only from the federation cron/sweep. A near-idle receiving site (no visitors, no posts of its own to send) doesn't run that sweep, so its ban just sat there for the full 24 hours. The same cleanup now also runs from the updater, which every site executes when it takes an update — so a dormant site heals on upgrade instead of staying dark until the ban expires. Same roster-scoped safety: only a ban on your own fleet's address is lifted, never a real outsider's.
+
 ## 0.7.667D "JAILBREAK" — 2026-09-08
 - **Sites automatically undo the fleet-wide self-ban the old limiter caused — no manual database surgery on 24 boxes.** The pre-666D inbox limiter banned by IP for 24 hours when one address sent too fast; because your whole fleet shares one server IP, a catalogue backfill banned every site's federation to a given box at once. 666D stopped *creating* those bans but couldn't lift one already written. Now, once per version, each site clears such a ban on its own — but only when the banned address belongs to a site in its own multisite roster (its fleet), leaving a genuine outside flooder blocked. It resolves the roster rather than assuming a single shared IP, so a fleet spread across more than one server/IP is fully covered. Runs on both the CLI cron and the web sweep, so a site heals whichever way its jobs fire.
 
