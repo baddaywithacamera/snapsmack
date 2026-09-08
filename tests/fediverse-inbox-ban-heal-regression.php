@@ -10,6 +10,7 @@
 $root = dirname(__DIR__);
 $fedi = file_get_contents($root . '/core/fediverse.php');
 $cron = file_get_contents($root . '/cron-fediverse.php');
+$updr = file_get_contents($root . '/core/updater.php');
 
 // The healer body (function to the next function).
 $start = strpos($fedi, 'function sv_heal_stale_inbox_bans_once');
@@ -34,6 +35,8 @@ $checks = [
         str_contains($cron, 'sv_heal_stale_inbox_bans_once('),
     'wired into the web sweep' =>
         substr_count($fedi, 'sv_heal_stale_inbox_bans_once(') >= 2, // definition + sweep call
+    'wired into the updater — a dormant spoke heals on upgrade, not just on a cron it never runs' =>
+        str_contains($updr, 'sv_heal_stale_inbox_bans_once('),
 ];
 
 $failed = [];
