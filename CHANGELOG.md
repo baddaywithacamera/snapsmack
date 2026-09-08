@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## Desktop COLD SNAP 0.7.20 — 2026-09-08
+- **AI enrichment now has a mandatory complete metadata contract.** Site prompts still control voice and site-specific instructions, but can no longer omit fields: every request also asks for title, caption, ALT, tags, category, album, collection, orientation, colour mode, dominant colours, OCR, content warning, and sensitivity.
+- **Every enriched photograph retains its own complete result.** Image records now preserve the full metadata bundle even when a GramOfSmack skin or current posting mode does not display or consume a field; visible post-level fields remain projections of the lead image rather than the only surviving copy.
+
 ## Desktop COLD SNAP 0.7.19 — 2026-09-07
 - **Mosaic previews now show the whole photograph.** Each image is fitted inside its tile instead of being silently centre-cropped, so the composition dialog does not imply destructive framing the photographer never selected.
 - **COLD TAKE's AI button is now a real AI Fill.** It resolves the selected site's CMS-synced prompt before any generic local fallback, writes ALT for every bucket image, fills visible post fields from the lead image, and retains category, album, orientation, colour mode, and dominant colours in the draft even when the active skin does not display them.

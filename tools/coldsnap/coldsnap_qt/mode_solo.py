@@ -222,6 +222,7 @@ class SoloMode(QWidget):
         self.orient_combo.setCurrentText(draft.orientation or "auto")
         self.status_combo.setCurrentText(draft.img_status)
         self.colour_combo.setCurrentText(_VAL_TO_COLOUR.get(draft.color_mode, "—"))
+        self._ai_meta = cover.to_dict() if cover else {}
         self.dl_check.setChecked(draft.allow_download)
         self.dl_url.setText(draft.download_url)
 
@@ -241,6 +242,7 @@ class SoloMode(QWidget):
         self.colour_combo.setCurrentText("—")
         self.dl_check.setChecked(False)
         self.ai_status.setText("")
+        self._ai_meta = {}
 
     def _save(self, ready: bool):
         session = self.rail.ensure_session()
@@ -258,13 +260,21 @@ class SoloMode(QWidget):
         draft.album = self.album_edit.text().strip()
         draft.orientation = self.orient_combo.currentText()
         draft.color_mode = _COLOUR_TO_VAL.get(self.colour_combo.currentText(), "")
+        draft.ai_colors = (getattr(self, "_ai_meta", {}) or {}).get("colors", draft.ai_colors)
         draft.img_status = self.status_combo.currentText()
         draft.allow_download = self.dl_check.isChecked()
         draft.download_url = self.dl_url.text().strip()
-        draft.images = [O.DraftImage(local_path=self._image_path,
-                                     filename=os.path.basename(self._image_path),
-                                     is_cover=True,
-                                     alt=draft.alt)]   # solo: the post's ALT IS the image's
+        image = O.DraftImage(local_path=self._image_path,
+                             filename=os.path.basename(self._image_path),
+                             is_cover=True, alt=draft.alt)
+        image.apply_enrichment(getattr(self, "_ai_meta", {}) or {})
+        # Visible edits remain authoritative over the AI suggestions.
+        image.title, image.caption, image.alt, image.tags = (
+            draft.title, draft.caption, draft.alt, draft.tags)
+        image.category, image.album = draft.category, draft.album
+        image.orientation, image.color_mode = draft.orientation, draft.color_mode
+        image.ai_colors = draft.ai_colors
+        draft.images = [image]   # solo: post metadata is also retained per image
         O.generate_draft_thumbs(draft)
         problems = draft.validate()
         if ready and problems:
@@ -324,6 +334,7 @@ class SoloMode(QWidget):
         threading.Thread(target=work, daemon=True).start()
 
     def _apply_ai(self, meta: dict):
+        self._ai_meta = dict(meta or {})
         if meta.get("caption"):
             self.caption_edit.setPlainText(meta["caption"])
         if meta.get("alt"):
@@ -336,6 +347,13 @@ class SoloMode(QWidget):
             self.cat_edit.setText(meta["category"])
         if meta.get("album") and not self.album_edit.text().strip():
             self.album_edit.setText(meta["album"])
+        if meta.get("orientation"):
+            self.orient_combo.setCurrentText(meta["orientation"])
+        if meta.get("color_mode"):
+            self.colour_combo.setCurrentText(_VAL_TO_COLOUR.get(meta["color_mode"], "—"))
+        if meta.get("colors"):
+            # Not currently displayed by every skin, but it remains in the draft.
+            self._ai_meta["colors"] = meta["colors"]
         self.ai_status.setText("Filled ✓ — make it yours before posting")
 
     def _ai_failed(self, msg: str):

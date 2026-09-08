@@ -230,17 +230,17 @@ def enrich_image(
     genai.configure(api_key=key)
     model = genai.GenerativeModel(MODEL_NAME)
 
-    prompt = custom_prompt.strip() or build_prompt(
+    contract = build_prompt(
         categories, albums,
         cat_descriptions=cat_descriptions,
         album_descriptions=album_descriptions,
         existing_tags=existing_tags,
         collections=collections,
     )
-    # A custom voice prompt still receives the complete shared metadata contract.
-    if custom_prompt.strip() and "CONTENT_WARNING:" not in prompt.upper():
-        prompt += "\n\n" + build_prompt(categories, albums, cat_descriptions,
-                                            album_descriptions, existing_tags, collections)
+    # A site prompt controls voice and site-specific rules, never which metadata
+    # survives.  Always append the canonical complete contract so every call asks
+    # for every field even when the custom prompt mentions only a subset.
+    prompt = ((custom_prompt.strip() + "\n\n") if custom_prompt.strip() else "") + contract
 
     domain = (urlparse(site_url).hostname or site_url or "global").lower().strip()
     try:
