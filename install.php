@@ -236,7 +236,7 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
             }
         } else {
         $posted_mode = $_POST['site_mode'] ?? '';
-        if (in_array($posted_mode, ['photoblog', 'carousel', 'smacktalk'], true)) {
+        if (in_array($posted_mode, ['photoblog', 'carousel', 'smacktalk', 'smackthemup'], true)) {
             // Mode-vs-content safety: refuse to set a mode that mismatches the
             // database's dominant existing content (e.g. choosing GRAMOFSMACK on a
             // DB full of SmackTalk essays). A normal re-install is already blocked
@@ -1279,11 +1279,13 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
             $is_carousel      = ($install_mode === 'carousel');
             // Default skin per mode — fetched from snapsmack.ca during install.
             // carousel → the-grid, smacktalk → alfred (proven longform skin),
+            // smackthemup → the-grid (renders through the GRAMOFSMACK grid family),
             // everything else → new-horizon.
             $default_skin     = match($install_mode) {
-                'carousel'  => 'the-grid',
-                'smacktalk' => 'alfred',
-                default     => 'new-horizon',
+                'carousel'    => 'the-grid',
+                'smackthemup' => 'the-grid',
+                'smacktalk'   => 'alfred',
+                default       => 'new-horizon',
             };
             $default_variant  = '';
 
@@ -2440,6 +2442,16 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                         <div class="install-mode-body">
                             <div class="install-mode-name">SMACKTALK</div>
                             <div class="install-mode-desc">For photographers who write. Longform photo essays, diary entries, personal narratives — writing and images at equal billing, the way the web was supposed to work before everything became a feed. No follower counts. No algorithm deciding who reads you. Just a blog, a domain you own, and a place to put words and pictures together the way you mean them.</div>
+                        </div>
+                    </div>
+                </label>
+                <label class="install-mode-card">
+                    <input type="radio" name="site_mode" value="smackthemup">
+                    <div class="install-mode-card-inner">
+                        <div class="install-mode-version">4.0</div>
+                        <div class="install-mode-body">
+                            <div class="install-mode-name">SMACKTHEMUP</div>
+                            <div class="install-mode-desc">Build your public scrapbook, no fediverse. Publish photographs by dragging them from SNAP SLAPPER, organize and curate them with GYSS, moderate comments with SHOTS FIRED, and display them through any GRAMOFSMACK skin in a public three-across gallery-blog. Public web pages, desktop publishing, and no social network to join.</div>
                         </div>
                     </div>
                 </label>

@@ -65,6 +65,14 @@ if (!sv_enabled($settings)) {
     sv_404();
 }
 
+// SMACKTHEMUP is non-federated by design (spec §5.3). Federation-off is a
+// mode-level server rule, not a flippable setting: even if fediverse_enabled
+// were somehow on, this mode must never serve an actor, webfinger, outbox, or
+// inbox, and must refuse inbound delivery. Belt-and-suspenders over the flag.
+if (($settings['site_mode'] ?? '') === 'smackthemup') {
+    sv_404();
+}
+
 // Path-style routes (/ap/actor, /ap/note/p/N…) arrive via the .htaccess
 // rewrite as ?appath=. AP object ids must be query-string-free — Pixelfed
 // HTML-encodes '&' when it fetches object URLs (?a=1&b=2 becomes &amp; and
