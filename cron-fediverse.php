@@ -185,9 +185,14 @@ if (is_file("{$root}/core/mesh-helpers.php")) {
     }
 }
 
-// Health stamp for the FEDIVERSE admin page's delivery panel.
+// Health stamp for the FEDIVERSE admin page's delivery panel. Record how many
+// this run actually delivered/failed so the page can SHOW success — otherwise a
+// successful send just vanishes (rows are deleted on delivery) and the operator
+// only ever sees the waiting line.
 sv_set_setting($pdo, $settings, 'fediverse_cron_last_run', date('Y-m-d H:i:s'));
 sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'ok');
+sv_set_setting($pdo, $settings, 'fediverse_cron_last_sent', (string)(int)$sent);
+sv_set_setting($pdo, $settings, 'fediverse_cron_last_failed', (string)(int)$failed);
 
 echo sprintf(
     "FEDIVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; relay ingest: %d recovered, %d retrying/shelved; outbox recovery: %d members, %d recovered; PHOTOFRI: %d finalized, %d gardened, %d withdrawn; profile-update: %d follower(s); mesh-follow: %d%s.\n",
