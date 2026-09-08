@@ -36,6 +36,10 @@ $_ui_pimpmobile    = ($_SESSION['user_ui_mode'] ?? 'bigwheel') === 'pimpmobile';
 $_longform_enabled = ($settings['enable_longform'] ?? '0')        === '1';
 $_site_is_carousel = ($settings['site_mode']      ?? 'photoblog') === 'carousel';
 $_site_is_smacktalk = ($settings['site_mode']     ?? 'photoblog') === 'smacktalk';
+// SMACKTHEMUP publishes from SNAP SLAPPER only — no browser composer (spec §5.1),
+// so the "New Post" nav link is hidden. It still renders/organizes like the
+// GRAMOFSMACK grid family otherwise.
+$_site_is_smackthemup = ($settings['site_mode']   ?? 'photoblog') === 'smackthemup';
 
 // --- CONDITIONAL PIMPOTRON DETECTION ---
 $_sidebar_pimpotron = false;
@@ -108,12 +112,15 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     $_new_post_pages = $_site_is_smacktalk ? ['smack-post-long.php']
                                      : ['smack-post-solo.php','smack-post-gram.php'];
                     ?>
+                    <?php // SMACKTHEMUP has no browser composer — publishing is SNAP SLAPPER only (spec §5.1). ?>
+                    <?php if (!$_site_is_smackthemup): ?>
                     <li class="<?php echo in_array($current_page, $_new_post_pages) ? 'active' : ''; ?>">
                         <a href="<?php echo $_new_post_href; ?>">New Post</a>
                     </li>
+                    <?php endif; ?>
                     <?php // Separate longform link only for non-SMACKTALK sites that enabled longform as an add-on
                           // (on a SMACKTALK site NEW POST already IS the longform editor). ?>
-                    <?php if ($_ui_pimpmobile && $_longform_enabled && !$_site_is_smacktalk): ?>
+                    <?php if ($_ui_pimpmobile && $_longform_enabled && !$_site_is_smacktalk && !$_site_is_smackthemup): ?>
                     <li class="<?php echo ($current_page == 'smack-post-long.php') ? 'active' : ''; ?>">
                         <a href="smack-post-long.php">New Longform Post</a>
                     </li>
