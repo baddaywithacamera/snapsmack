@@ -6580,6 +6580,10 @@ function sv_run_sweep(PDO $pdo, array &$settings): array
 
         sv_set_setting($pdo, $settings, 'fediverse_cron_last_run', date('Y-m-d H:i:s'));
         sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'ok');
+        // Record what this run delivered so the delivery-log page can SHOW
+        // success (sent rows are deleted, so they vanish otherwise).
+        sv_set_setting($pdo, $settings, 'fediverse_cron_last_sent', (string)(int)$sent);
+        sv_set_setting($pdo, $settings, 'fediverse_cron_last_failed', (string)(int)$failed);
 
         return [
             'busy'      => false,
