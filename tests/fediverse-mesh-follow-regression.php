@@ -16,9 +16,8 @@ $checks = [
     'cron advances one edge' => str_contains($cron, 'sv_reconcile_mesh_follows($pdo, $settings, 1)'),
     'manual follow sends exact row' => str_contains($fedi,
         'sv_process_deliveries($pdo, $settings, 1, 0, $follow_qid, $follow_qid, $inbox)'),
-    'handshakes outrank content backlog' => str_contains($fedi,
-        "WHEN 'Accept' THEN 0 WHEN 'Reject' THEN 0")
-        && str_contains($fedi, "WHEN 'Follow' THEN 0 WHEN 'Undo' THEN 0"),
+    'handshakes outrank content backlog' => str_contains($fedi, 'activity_json REGEXP')
+        && str_contains($fedi, '(Accept|Reject|Follow|Undo)'),
 ];
 
 $failed = false;

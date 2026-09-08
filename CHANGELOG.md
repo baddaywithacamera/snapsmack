@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.660D "NO POISON PILL" — 2026-09-07
+- **One malformed legacy federation job can no longer stop the entire outbound queue.** Queue ordering no longer asks MySQL to parse every stored activity as JSON before selecting the first row. Handshake activities still outrank content, but malformed historical payloads cannot make the selection query throw and leave cron permanently stamped `running` with every overdue job at zero attempts.
+- **Delivery failures are isolated per row.** An unexpected exception while preparing or sending one activity is recorded through the ordinary retry/failed path, and the worker continues with the remaining due jobs instead of abandoning the whole run.
+
 ## 0.7.659D "QUEUE FIRST" — 2026-09-07
 - **Federation cron now attempts due deliveries before any optional network maintenance.** The worker previously reconciled mesh follows, recovered relay outboxes, maintained PhotoFriday, and refreshed follower inboxes before touching its outbound queue. A slow remote fetch could leave the job marked running while every queued row remained at zero attempts. Both the scheduled worker and the admin RUN NOW path now drain durable outbound work first; maintenance and newly discovered work follow, with new rows safely deferred to the next tick.
 - **Regression coverage enforces the operational promise.** The cron test now fails if either execution path places mesh or remote maintenance ahead of the delivery drain.
