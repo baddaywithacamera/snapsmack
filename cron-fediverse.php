@@ -57,11 +57,6 @@ try {
     exit(1);
 }
 
-// A fresh CLI heartbeat tells the public controller that a real worker is
-// servicing this install. The web-cron fallback may resume automatically if
-// this heartbeat becomes stale; visitors never need to inspect the crontab.
-sv_set_setting($pdo, $settings, 'fediverse_cli_cron_last_run', date('Y-m-d H:i:s'));
-
 // Roster synchronization is lightweight and must not depend on federation
 // delivery being enabled. This keeps FEDBOARD healthy on every spoke.
 require_once "{$root}/core/mesh-helpers.php";
@@ -92,6 +87,11 @@ if ($delivery_lock !== 1) {
     echo "FEDIVERSE delivery worker already running — nothing to do.\n";
     exit(0);
 }
+
+// This is a WORKER heartbeat, not merely a scheduler-launch heartbeat. Stamp
+// it only after acquiring the lock; otherwise a wedged old worker can hold the
+// lock forever while each new cron launch refreshes a misleading green status.
+sv_set_setting($pdo, $settings, 'fediverse_cli_cron_last_run', date('Y-m-d H:i:s'));
 
 // Record the start, not merely the end. The admin can now distinguish a cron
 // that never launched from one that is actively working through a slow queue.
