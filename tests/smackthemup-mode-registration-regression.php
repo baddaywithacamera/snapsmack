@@ -81,6 +81,14 @@ $idx = (string)file_get_contents($root . '/index.php');
 $ok(!str_contains($idx, 'site_mode'),
     'public landing stays mode-agnostic (renders via the active skin, no site_mode branch)');
 
+// --- Fail-closed writes: no other tool can create on a smackthemup site (§5.2) -
+$sp = (string)file_get_contents($root . '/core/smackpress-api.php');
+$ok(str_contains($sp, "=== 'smackthemup'") && str_contains($sp, 'smackpress_error(409'),
+    'SMACKPRESS/COLD SNAP API refuses smackthemup with 409 (fail closed)');
+$px = (string)file_get_contents($root . '/pixelfed-api.php');
+$ok(str_contains($px, "px_mode(\$pdo)!=='carousel'"),
+    'Pixelix publishing gate already blocks any non-carousel mode (incl. smackthemup)');
+
 echo $fail === 0 ? "\nALL PASS\n" : "\n$fail CHECK(S) FAILED\n";
 exit($fail === 0 ? 0 : 1);
 // ===== SNAPSMACK EOF =====
