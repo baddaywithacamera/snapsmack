@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.663D "HEAD COUNT" — 2026-09-07
+- **Multisite Management reports its connected-spoke count in the dashboard heading.** The number uses the same registered spoke state represented by the board and excludes nodes explicitly marked disconnected.
+
 ## 0.7.662D "NO GHOST BOOSTS" — 2026-09-07
 - **SMACKCAST relay posts no longer succeed and then answer HTTP 500.** An ordinary relay-following blog ingested an announced post and then tried to clear a recovery row from a table that only some installs had. Relay receivers now create their small recovery table before either cleanup or queue access, so the sender receives the truthful success response and stops retrying the same boost.
 - **Transient relay fetch failures now recover on ordinary member blogs.** The durable recovery worker was mistakenly restricted to the SMACKCAST hub even though the failed object fetch occurred on the receiving blog. It now runs on explicit relay followers while unrelated installs remain inert.

@@ -1344,7 +1344,14 @@ include 'core/sidebar.php';
 
         <!-- HUB MODE: Manage spokes -->
         <div class="box">
-            <h3>CONNECTED SPOKES</h3>
+            <?php
+                // Match the dashboard's meaning of connected: registered spoke
+                // rows that have not been explicitly disconnected.
+                $connected_spoke_count = count(array_filter($nodes, fn($n) =>
+                    ($n['role'] ?? '') === 'spoke' && ($n['status'] ?? '') !== 'disconnected'
+                ));
+            ?>
+            <h3>CONNECTED SPOKES — <?php echo $connected_spoke_count; ?></h3>
 
             <?php
                 // Count spokes that are behind and active (eligible for bulk update)
