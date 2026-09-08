@@ -1,5 +1,14 @@
 {
-  "_comment": "Version floor for desktop apps. The integrity guard (tools/check-desktop-integrity.php) FAILS if a tool's version drops below its baseline here — catching merges that silently revert a desktop version (e.g. GYSS 0.7.9 -> 0.1.5-alpha). When you INTENTIONALLY bump a version, raise it here in the same commit. Never lower a baseline to get past a failure; fix the reverted version instead.",
-  "gyss": { "version": "0.7.10" },
-  "oh-snap": { "version": "0.2.0" }
+  "_comment": "Version floor for desktop apps. tools/check-desktop-integrity.php FAILS if a tool's version drops below its floor here — catching merges/folds that silently revert a desktop tool to an older build (e.g. GYSS 0.7.9 -> 0.1.5-alpha, or COLD SNAP dragged from the Qt build back to the previous one). Tauri apps are read from src-tauri/tauri.conf.json automatically; the others declare version_file (relative to the tool dir) holding a BUILD_VERSION/__version__ literal. When you INTENTIONALLY bump a version, raise its floor here in the SAME commit. Never lower a floor to get past a failure — restore the reverted version instead.",
+  "gyss":                    { "version": "0.7.10" },
+  "oh-snap":                 { "version": "0.2.0" },
+  "coldsnap":                { "version": "0.7.15", "version_file": "coldsnap/_version.py" },
+  "sybu":                    { "version": "0.7.59", "version_file": "sybu/main.py" },
+  "smack-up-your-backup":    { "version": "0.7.29", "version_file": "smack-up-your-backup/main.py" },
+  "flkr-fckr":               { "version": "0.7.25", "version_file": "flkr-fckr/main.py" },
+  "unzucker":                { "version": "0.7.40", "version_file": "unzucker/main.py" },
+  "cronometer":              { "version": "0.7.6",  "version_file": "cronometer/cronometer.py" },
+  "shots-fired":             { "version": "0.1.0",  "version_file": "shots-fired/main.py" },
+  "smack-your-mouth":        { "version": "0.1.1",  "version_file": "smack-your-mouth/main.py" },
+  "smackpress":              { "version": "0.1.0",  "version_file": "smackpress/smackpress/__init__.py" }
 }
