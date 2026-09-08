@@ -621,8 +621,7 @@ class TakeMode(QWidget):
         def _one_done(idx, meta, imgs=imgs):
             if not (0 <= idx < len(imgs)):
                 return
-            if meta.get("alt"):
-                imgs[idx].alt = meta["alt"]
+            imgs[idx].apply_enrichment(meta)
             # One call per photograph supplies its ALT.  The lead photograph
             # supplies post-level metadata; keep authored values intact.
             if idx == self._cover_idx:
@@ -654,7 +653,10 @@ class TakeMode(QWidget):
         self.body.editor.moveCursor(QTextCursor.End)   # so an insert lands where writing resumes
         self._bucket = [O.DraftImage(local_path=im.local_path, filename=im.filename,
                                      thumb_square=im.thumb_square, is_cover=im.is_cover,
-                                     alt=getattr(im, "alt", "") or "")
+                                     **{name: getattr(im, name)
+                                        for name in O.DraftImage.__dataclass_fields__
+                                        if name not in {"local_path", "filename", "thumb_square",
+                                                        "is_cover"}})
                         for im in draft.images]
         self._cover_idx = next((i for i, im in enumerate(self._bucket) if im.is_cover), 0)
         self._ai_post_meta = {
@@ -695,12 +697,13 @@ class TakeMode(QWidget):
         draft.orientation = meta.get("orientation", "auto") or "auto"
         draft.color_mode = meta.get("color_mode", "")
         draft.ai_colors = meta.get("colors", "")
-        draft.images = [
-            O.DraftImage(local_path=im.local_path,
-                         filename=im.filename or os.path.basename(im.local_path),
-                         sort_position=i, is_cover=(i == self._cover_idx),
-                         alt=getattr(im, "alt", "") or "")
-            for i, im in enumerate(self._bucket)]
+        draft.images = []
+        for i, im in enumerate(self._bucket):
+            saved = O.DraftImage.from_dict(im.to_dict())
+            saved.filename = im.filename or os.path.basename(im.local_path)
+            saved.sort_position = i
+            saved.is_cover = (i == self._cover_idx)
+            draft.images.append(saved)
         O.generate_draft_thumbs(draft)
         problems = draft.validate()
         if ready and problems:
