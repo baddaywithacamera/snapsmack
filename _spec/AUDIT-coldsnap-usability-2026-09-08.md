@@ -15,6 +15,14 @@ The block editor is presently a structured shortcode form, not a visual block ed
 
 The recommended repair is a workflow redesign around a persistent post canvas and contextual inspector—not another set of isolated controls added to the existing screens.
 
+### Non-negotiable product target: genuinely luscious desktop WYSIWYG
+
+BIGGIE must not resemble a CMS form merely because the CMS ultimately receives HTML and shortcodes. COLD SNAP is a native desktop application with local CPU, memory, storage, image decoding, and GPU-backed Qt painting available to it. The authoring surface must use those resources to make the final post tangible while it is being created.
+
+WYSIWYG means the canvas itself displays and directly edits paragraphs, typography, pull quotes, drop caps, images, columns, spacers, dividers, and mosaics in their real geometry. Selecting an object reveals contextual controls without replacing the object with a settings form. Dragging changes layout immediately. Images retain their uncropped composition unless the selected layout explicitly requires a crop, and crop/fit decisions are adjustable on the canvas. The selected site's skin, content width, typography, colours, and responsive breakpoints should be represented faithfully enough that Preview is verification, not revelation.
+
+The acceptable feel is closer to a polished desktop page-layout tool than WordPress blocks: instant insertion, generous writing surfaces, smooth direct manipulation, visible hierarchy, fluid zoom, undoable experimentation, and no shortcode syntax exposed during normal use. Shortcodes remain an export format and compatibility escape hatch only.
+
 ## Severity scale
 
 - P0: prevents posting or creates a serious wrong-site/wrong-content risk.
