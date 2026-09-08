@@ -23,6 +23,12 @@ $checks = [
     'delivery pacing is keyed per receiving host' => strpos($fediverse, '$next_allowed[$pick]') !== false
         && strpos($fediverse, 'sv_normalize_delivery_host(') !== false,
     'no global sleep-before-every-send survives' => strpos($fediverse, 'microtime(true) + $gap + 12 >= $deadline') === false,
+    // A rate-limited receiver (429) must rest the whole host (honouring
+    // Retry-After) and must NOT count toward the 8-try park cliff, or a busy
+    // peer silently drops good posts.
+    'delivery honours a 429 rate limit per host' => strpos($fediverse, "'retry_after'") !== false
+        && strpos($fediverse, '$is_429') !== false
+        && strpos($fediverse, "'cooldown'") !== false,
     'CLI drains before mesh and optional network maintenance' =>
         strpos($cron, 'list($sent, $failed) = sv_process_deliveries(') < strpos($cron, '$mesh_follow = sv_reconcile_mesh_follows('),
     'web runner drains before mesh and optional network maintenance' =>
