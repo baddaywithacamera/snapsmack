@@ -157,18 +157,21 @@ def parse_response(text: str) -> dict:
     """Extract TITLE/CAPTION/ALT/TAGS/CATEGORY/ALBUM/COLORS from a model reply."""
     result = {"title": "", "caption": "", "alt": "", "tags": "",
               "category": "", "album": "", "collection": "", "colors": "",
-              "color_mode": "", "ocr": "", "content_warning": "", "sensitive": "no"}
+              "color_mode": "", "orientation": "", "ocr": "",
+              "content_warning": "", "sensitive": "no"}
     for line in (text or "").strip().splitlines():
-        m = re.match(r"^(TITLE|CAPTION|ALT|TAGS|CATEGORY|ALBUM|COLLECTION|COLORS|COLOR_MODE|OCR|CONTENT_WARNING|SENSITIVE):\s*(.*)",
+        m = re.match(r"^(TITLE|CAPTION|ALT|TAGS|CATEGORY|ALBUM|COLLECTION|COLORS|COLOR_MODE|COLOUR DROPDOWN|ORIENTATION|OCR|CONTENT_WARNING|SENSITIVE):\s*(.*)",
                      line.strip(), re.IGNORECASE)
         if m:
-            key = m.group(1).lower()
+            key = m.group(1).lower().replace("colour dropdown", "color_mode")
             if key in result:
                 result[key] = m.group(2).strip()
     if result["colors"]:
         hexes = re.findall(r"#[0-9A-Fa-f]{6}", result["colors"])
         result["colors"] = " ".join(h.upper() for h in hexes[:3])
     result["color_mode"] = "bw" if result["color_mode"].strip().lower() in {"bw", "b&w", "black and white", "black & white"} else "color"
+    orientation = result["orientation"].strip().lower()
+    result["orientation"] = orientation if orientation in {"landscape", "portrait", "square"} else "auto"
     result["sensitive"] = "yes" if result["sensitive"].strip().lower() in {"yes", "true", "1"} else "no"
     if result["sensitive"] == "yes" and "#nsfw" not in result["tags"].lower().split():
         result["tags"] = (result["tags"].strip() + " #nsfw").strip()
