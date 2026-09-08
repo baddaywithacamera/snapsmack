@@ -135,6 +135,14 @@ def _checks():
     assert mids == [55] and calls == [([103, 101, 102], "one-top")], calls
     n += 1
 
+    # 8. A four-photo bucket can use only its bottom three, in their chosen order.
+    calls.clear()
+    resolved, mids = poster._resolve_mosaics(
+        "[mosaic=2,3,4 layout=three-across]", [101, 102, 103, 104], draft)
+    assert resolved == "[mosaic:55]", resolved
+    assert mids == [55] and calls == [([102, 103, 104], "three-across")], calls
+    n += 1
+
     return n
 
 
