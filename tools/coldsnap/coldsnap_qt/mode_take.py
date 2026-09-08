@@ -11,9 +11,10 @@ mosaic marker keeps its one-line plain-words explainer right beside the button.
 """
 
 import os
+import re
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QTextCursor
+from PySide6.QtCore import Qt, QRect, Signal
+from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QFrame,
@@ -28,6 +29,103 @@ from .widgets import (Accordion, Card, build_rail, hint, field_label,
                       big_button, thumb_label)
 from .body_editor import BodyEditor
 from .drafts_panel import BatchRail, default_draft_row
+
+
+class MosaicPreview(QWidget):
+    """Large live preview; dragging one tile onto another swaps their slots."""
+
+    swapRequested = Signal(int, int)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumHeight(210)
+        self.setToolTip("Drag one preview tile onto another to swap them.")
+        self._tiles, self._rects = [], []
+        self._layout_name, self._drag_from = "asymmetric", None
+
+    def set_mosaic(self, tiles, layout_name):
+        self._tiles = list(tiles)  # (row-in-list, local-path), in mosaic order
+        self._layout_name = str(layout_name or "asymmetric")
+        self.update()
+
+    @staticmethod
+    def tile_rects(width, height, count, layout_name, gap=5):
+        if count <= 0:
+            return []
+        w, h = max(1, width), max(1, height)
+        if count == 1:
+            return [QRect(0, 0, w, h)]
+        if count == 2:
+            if layout_name == "rows":
+                hh = (h - gap) // 2
+                return [QRect(0, 0, w, hh), QRect(0, hh + gap, w, h - hh - gap)]
+            ww = (w - gap) // 2
+            return [QRect(0, 0, ww, h), QRect(ww + gap, 0, w - ww - gap, h)]
+        if count == 3:
+            if layout_name == "three-across":
+                ww = (w - gap * 2) // 3
+                return [QRect(i * (ww + gap), 0,
+                              ww if i < 2 else w - i * (ww + gap), h)
+                        for i in range(3)]
+            if layout_name == "one-top":
+                hh, ww = (h - gap) // 2, (w - gap) // 2
+                return [QRect(0, 0, w, hh), QRect(0, hh + gap, ww, h - hh - gap),
+                        QRect(ww + gap, hh + gap, w - ww - gap, h - hh - gap)]
+            hero = (w - gap) * 2 // 3
+            small, hh = w - hero - gap, (h - gap) // 2
+            if layout_name == "one-right":
+                return [QRect(small + gap, 0, hero, h), QRect(0, 0, small, hh),
+                        QRect(0, hh + gap, small, h - hh - gap)]
+            return [QRect(0, 0, hero, h), QRect(hero + gap, 0, small, hh),
+                    QRect(hero + gap, hh + gap, small, h - hh - gap)]
+        cols = count if layout_name == "columns" else min(3, count)
+        rows = 1 if layout_name == "columns" else (count + cols - 1) // cols
+        cw, ch = (w - gap * (cols - 1)) // cols, (h - gap * (rows - 1)) // rows
+        return [QRect((i % cols) * (cw + gap), (i // cols) * (ch + gap), cw, ch)
+                for i in range(count)]
+
+    def paintEvent(self, _event):
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), QColor("#090b0a"))
+        inner = self.rect().adjusted(7, 7, -7, -7)
+        cells = self.tile_rects(inner.width(), inner.height(), len(self._tiles),
+                                self._layout_name)
+        self._rects = [(row, rect.translated(inner.topLeft()))
+                       for (row, _path), rect in zip(self._tiles, cells)]
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        for position, ((row, path), cell) in enumerate(zip(self._tiles, cells), 1):
+            rect = cell.translated(inner.topLeft())
+            pix = QPixmap(path)
+            if not pix.isNull():
+                scaled = pix.scaled(rect.size(), Qt.KeepAspectRatioByExpanding,
+                                    Qt.SmoothTransformation)
+                source = QRect(max(0, (scaled.width() - rect.width()) // 2),
+                               max(0, (scaled.height() - rect.height()) // 2),
+                               rect.width(), rect.height())
+                painter.drawPixmap(rect, scaled, source)
+            else:
+                painter.fillRect(rect, QColor("#202320"))
+            painter.setPen(QPen(QColor("#35ff14"), 2 if row == self._drag_from else 1))
+            painter.drawRect(rect.adjusted(0, 0, -1, -1))
+            badge = QRect(rect.left() + 4, rect.top() + 4, 24, 20)
+            painter.fillRect(badge, QColor(0, 0, 0, 190))
+            painter.setPen(QColor("#ffffff"))
+            painter.drawText(badge, Qt.AlignCenter, str(position))
+
+    def _row_at(self, point):
+        return next((row for row, rect in self._rects if rect.contains(point)), None)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._drag_from = self._row_at(event.position().toPoint())
+            self.update()
+
+    def mouseReleaseEvent(self, event):
+        source, target = self._drag_from, self._row_at(event.position().toPoint())
+        self._drag_from = None
+        self.update()
+        if source is not None and target is not None and source != target:
+            self.swapRequested.emit(source, target)
 
 
 class TakeMode(QWidget):
@@ -184,33 +282,66 @@ class TakeMode(QWidget):
             return "portrait", ratio
         return "square", ratio
 
+    @staticmethod
+    def _exclusive_checks(photo_count, selected_rows):
+        """The Use-only-selected contract, kept testable without a running UI."""
+        selected = set(selected_rows)
+        return [row in selected for row in range(photo_count)]
+
     def _insert_mosaic(self):
         if not self._bucket:
             QMessageBox.warning(self, "No photos", "Add photos before building a mosaic.")
             return
 
+        # Pressing MOSAIC while the cursor is on an existing composed marker
+        # edits that marker instead of blindly inserting another one.
+        cursor = self.body.editor.textCursor()
+        block = cursor.block()
+        block_text = block.text()
+        existing = re.search(
+            r'\[mosaic=([0-9]+(?:\s*,\s*[0-9]+)*)\s+layout=([a-z-]+)\]',
+            block_text, re.IGNORECASE)
+        existing_span = None
+        existing_order, existing_layout = [], None
+        if existing:
+            existing_order = [int(value) - 1 for value in existing.group(1).split(',')]
+            existing_order = [value for value in existing_order
+                              if 0 <= value < len(self._bucket)]
+            existing_layout = existing.group(2).lower()
+            existing_span = (block.position() + existing.start(),
+                             block.position() + existing.end())
+
         dialog = QDialog(self)
-        dialog.setWindowTitle("Build mosaic")
-        dialog.resize(760, 500)
+        dialog.setWindowTitle("Edit mosaic" if existing else "Build mosaic")
+        dialog.resize(900, 760)
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel(
             "Choose exactly which photos belong in this mosaic. Drag them—or use "
             "the controls—to set its order. The post's photo order is unchanged."))
+        preview = MosaicPreview()
+        layout.addWidget(preview)
+        preview_hint = QLabel("LIVE PREVIEW — drag one image onto another to swap them")
+        preview_hint.setAlignment(Qt.AlignCenter)
+        layout.addWidget(preview_hint)
         photos = QListWidget()
         photos.setDragDropMode(QListWidget.InternalMove)
         photos.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        for bucket_index, image in enumerate(self._bucket):
+        display_order = existing_order + [i for i in range(len(self._bucket))
+                                          if i not in existing_order]
+        for bucket_index in display_order:
+            image = self._bucket[bucket_index]
             shape, ratio = self._image_shape(image)
             name = image.filename or os.path.basename(image.local_path)
             item = QListWidgetItem(f"{name}    {shape} · {ratio:.2f}:1")
             item.setData(Qt.UserRole, bucket_index)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsDragEnabled)
-            item.setCheckState(Qt.Checked)
+            item.setCheckState(Qt.Checked if not existing or bucket_index in existing_order
+                               else Qt.Unchecked)
             photos.addItem(item)
         layout.addWidget(photos, 1)
 
         selection_row = QHBoxLayout()
-        use_selected = QPushButton("Use selected")
+        use_selected = QPushButton("Use only selected")
         exclude_selected = QPushButton("Exclude selected")
         select_all = QPushButton("Select all")
         clear_all = QPushButton("Clear all")
@@ -242,6 +373,15 @@ class TakeMode(QWidget):
             return sum(photos.item(i).checkState() == Qt.Checked
                        for i in range(photos.count()))
 
+        def refresh_preview():
+            tiles = []
+            for i in range(photos.count()):
+                item = photos.item(i)
+                if item.checkState() == Qt.Checked:
+                    bucket_index = int(item.data(Qt.UserRole))
+                    tiles.append((i, self._bucket[bucket_index].local_path))
+            preview.set_mosaic(tiles, preset.currentData())
+
         def refresh_layouts():
             count = checked_count()
             previous = preset.currentData()
@@ -253,10 +393,16 @@ class TakeMode(QWidget):
             preset.setCurrentIndex(old if old >= 0 else 0)
             preset.blockSignals(False)
             selected_count.setText(f"{count} of {photos.count()} included")
+            refresh_preview()
 
-        def set_selected(state):
-            for item in photos.selectedItems():
-                item.setCheckState(state)
+        def use_only_selected():
+            selected = photos.selectedItems()
+            if not selected:
+                return
+            selected_rows = [photos.row(item) for item in selected]
+            for i, enabled in enumerate(self._exclusive_checks(
+                    photos.count(), selected_rows)):
+                photos.item(i).setCheckState(Qt.Checked if enabled else Qt.Unchecked)
 
         def set_all(state):
             for i in range(photos.count()):
@@ -274,6 +420,17 @@ class TakeMode(QWidget):
             photos.insertItem(first, a)
             photos.insertItem(second, b)
             a.setSelected(True); b.setSelected(True)
+            refresh_preview()
+
+        def swap_rows(first, second):
+            if first == second or first < 0 or second < 0:
+                return
+            low, high = sorted((first, second))
+            high_item = photos.takeItem(high)
+            low_item = photos.takeItem(low)
+            photos.insertItem(low, high_item)
+            photos.insertItem(high, low_item)
+            refresh_preview()
 
         def suggest_arrangement():
             included = [photos.item(i) for i in range(photos.count())
@@ -298,14 +455,22 @@ class TakeMode(QWidget):
             elif len(included) >= 4:
                 preset.setCurrentIndex(preset.findData("asymmetric"))
 
-        use_selected.clicked.connect(lambda: set_selected(Qt.Checked))
-        exclude_selected.clicked.connect(lambda: set_selected(Qt.Unchecked))
+        use_selected.clicked.connect(use_only_selected)
+        exclude_selected.clicked.connect(lambda: [item.setCheckState(Qt.Unchecked)
+                                                    for item in photos.selectedItems()])
         select_all.clicked.connect(lambda: set_all(Qt.Checked))
         clear_all.clicked.connect(lambda: set_all(Qt.Unchecked))
         swap.clicked.connect(swap_selected)
         suggest.clicked.connect(suggest_arrangement)
         photos.itemChanged.connect(lambda _item: refresh_layouts())
+        photos.model().rowsMoved.connect(lambda *_args: refresh_preview())
+        preset.currentIndexChanged.connect(lambda _index: refresh_preview())
+        preview.swapRequested.connect(swap_rows)
         refresh_layouts()
+        if existing_layout:
+            found = preset.findData(existing_layout)
+            if found >= 0:
+                preset.setCurrentIndex(found)
 
         def move(delta):
             row = photos.currentRow()
@@ -314,6 +479,7 @@ class TakeMode(QWidget):
                 item = photos.takeItem(row)
                 photos.insertItem(target, item)
                 photos.setCurrentRow(target)
+                refresh_preview()
 
         up.clicked.connect(lambda: move(-1))
         down.clicked.connect(lambda: move(1))
@@ -332,7 +498,14 @@ class TakeMode(QWidget):
             return
         marker = "[mosaic=" + ",".join(map(str, chosen)) \
             + " layout=" + str(preset.currentData()) + "]"
-        self.body.editor.insertPlainText(marker)
+        if existing_span:
+            replace_cursor = self.body.editor.textCursor()
+            replace_cursor.setPosition(existing_span[0])
+            replace_cursor.setPosition(existing_span[1], QTextCursor.KeepAnchor)
+            replace_cursor.insertText(marker)
+            self.body.editor.setTextCursor(replace_cursor)
+        else:
+            self.body.editor.insertPlainText(marker)
         self.body.editor.setFocus()
 
     def _add_photos(self):
