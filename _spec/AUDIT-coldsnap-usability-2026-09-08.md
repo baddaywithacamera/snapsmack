@@ -15,13 +15,22 @@ The block editor is presently a structured shortcode form, not a visual block ed
 
 The recommended repair is a workflow redesign around a persistent post canvas and contextual inspector—not another set of isolated controls added to the existing screens.
 
-### Non-negotiable product target: genuinely luscious desktop WYSIWYG
+### Non-negotiable product target: genuinely luscious desktop WYSIWYG for SMACKTALK only
 
-BIGGIE must not resemble a CMS form merely because the CMS ultimately receives HTML and shortcodes. COLD SNAP is a native desktop application with local CPU, memory, storage, image decoding, and GPU-backed Qt painting available to it. The authoring surface must use those resources to make the final post tangible while it is being created.
+The rich block editor belongs exclusively to the SMACKTALK/COLD TAKE long-form workflow. It must not resemble a CMS form merely because the CMS ultimately receives HTML and shortcodes. COLD SNAP is a native desktop application with local CPU, memory, storage, image decoding, and GPU-backed Qt painting available to it. The SMACKTALK authoring surface must use those resources to make the final post tangible while it is being created.
 
 WYSIWYG means the canvas itself displays and directly edits paragraphs, typography, pull quotes, drop caps, images, columns, spacers, dividers, and mosaics in their real geometry. Selecting an object reveals contextual controls without replacing the object with a settings form. Dragging changes layout immediately. Images retain their uncropped composition unless the selected layout explicitly requires a crop, and crop/fit decisions are adjustable on the canvas. The selected site's skin, content width, typography, colours, and responsive breakpoints should be represented faithfully enough that Preview is verification, not revelation.
 
 The acceptable feel is closer to a polished desktop page-layout tool than WordPress blocks: instant insertion, generous writing surfaces, smooth direct manipulation, visible hierarchy, fluid zoom, undoable experimentation, and no shortcode syntax exposed during normal use. Shortcodes remain an export format and compatibility escape hatch only.
+
+### Product boundaries
+
+- **SMACKONEOUT / COLD ONE:** deliberately basic single-photo posting. Plain caption/description and metadata only. No rich-text blocks and no images embedded in the text area.
+- **GRAMOFSMACK / COLD STACK:** deliberately basic gram/gallery posting. Plain post text and per-image metadata only. No rich-text blocks and no images embedded in the text area.
+- **SMACKTALK / COLD TAKE:** the only rich long-form authoring mode. This owns desktop WYSIWYG, inline images, columns, pull quotes, drop caps, mosaics, and other page-layout structures.
+- **SMACKTHEMUP:** not a COLD SNAP mode. Album creation and sharing originate in the SNAP SLAPPER library, using a constrained Picasa-style sharing model. GYSS may curate an existing album. Offline album posting is prohibited. SNAP SLAPPER may queue the album-sharing job as a courtesy, but it does not move album authoring into COLD SNAP.
+
+These are intentional capability boundaries, not missing parity. Shared visual language, destination safety, drafts, queues, AI metadata, and status feedback should remain consistent without making every mode equally complex.
 
 ## Severity scale
 
@@ -42,11 +51,11 @@ Acceptance criterion: changing site immediately enters a visible `Connecting…`
 
 COLD ONE initially gives most of the window to empty title/body/ALT/tag fields while “PHOTO — none yet” is collapsed in a narrow rail. A photo post should begin with the photo. The first obvious action should be `Add photo`, followed by a large preview. Metadata and writing should grow around the selected asset.
 
-### P1 — The four modes are product vocabulary, not task vocabulary
+### P1 — The four visible modes need explicit scope, not feature parity
 
-`COLD ONE`, `COLD STACK`, and `COLD TAKE` are brand-consistent but do not explain what the user is choosing. Tooltips are insufficient because mode selection is prerequisite knowledge. The user must remember that ONE means a single-image post, STACK means a gallery/gram post, and TAKE means a long-form essay.
+`COLD ONE`, `COLD STACK`, and `COLD TAKE` are brand-consistent but do not explain what the user is choosing. Tooltips are insufficient because mode selection is prerequisite knowledge. The interface must make both the task and its boundary clear: ONE is a basic single-photo post, STACK is a basic gram/gallery post, and TAKE is the rich long-form editor. COLD STORAGE is a local image store, not an album publisher.
 
-Recommended labels: `Single photo`, `Gallery / carousel`, `Essay with photos`, `Library`, with the branded names as secondary text if desired.
+Recommended labels or subtitles: `Single photo · basic`, `Gram/gallery · basic`, `Essay with photos · rich`, and `Offline library`, with the branded names retained prominently if desired.
 
 ### P1 — Queueing and sending create an avoidable two-stage mental trap
 
@@ -60,9 +69,9 @@ Photo choice, orientation, colour/B&W, status, download policy, selected-photo c
 
 Recommended pattern: show a compact visible summary for every required section (`Photo: missing`, `Colour: Colour`, `Orientation: Portrait`, `Batch: Test · 3 ready`). Missing or conflicting values should be visible without expanding anything.
 
-### P1 — BIGGIE is not yet a visual block editor
+### P1 — BIGGIE is not yet a visual SMACKTALK block editor and appears where it should not
 
-Direct interaction confirms that BIGGIE opens an empty canvas with a single `+ ADD BLOCK` menu. Adding a paragraph produces another framed form with a fixed-height text box, tiny arrow buttons, a tiny delete symbol, and a drop-cap checkbox. Source inspection confirms the same form-driven pattern for headings, quotes, lists, images, columns, spacers, dividers, and mosaics.
+Direct interaction confirms that BIGGIE is currently exposed in COLD ONE and COLD STACK even though those products do not require or permit rich composition. It opens an empty canvas with a single `+ ADD BLOCK` menu. Adding a paragraph produces another framed form with a fixed-height text box, tiny arrow buttons, a tiny delete symbol, and a drop-cap checkbox. Source inspection confirms the same form-driven pattern for headings, quotes, lists, images, columns, spacers, dividers, and mosaics. Remove BIGGIE and the shortcode toolbar from the basic modes; redesign it as the native WYSIWYG surface for COLD TAKE only.
 
 Missing editor fundamentals:
 
@@ -109,9 +118,9 @@ AI actions appear in different places and with varying labels. The user cannot s
 
 Recommended pattern: `Enrich metadata` opens or reveals a result review showing the active site prompt and every target field. It fills the complete canonical metadata record for every image, marks inferred/defaulted fields, preserves authored values unless explicitly replaced, and exposes per-field retry/accept.
 
-### P2 — Acronyms and compact labels make the editor hostile to discovery
+### P2 — Acronyms and compact labels make the rich editor hostile to discovery
 
-`B`, `I`, `U`, `BQ`, `PULL`, `HR`, `UL`, `OL`, `IMG`, `COL 2`, `COL 3`, and `DROP` optimize for toolbar width, not recognition. Tooltips help only after exploration. `DROP` is particularly misleading because drop cap is a paragraph attribute, not a standalone content object; BIGGIE correctly models it as a paragraph checkbox, exposing the mismatch in SIMPLE.
+`B`, `I`, `U`, `BQ`, `PULL`, `HR`, `UL`, `OL`, `IMG`, `COL 2`, `COL 3`, and `DROP` optimize for toolbar width, not recognition. They should not appear at all in SMACKONEOUT or GRAMOFSMACK. In SMACKTALK, familiar inline formatting may remain compact, while structural elements need named, visual insertion choices. `DROP` is particularly misleading because drop cap is a paragraph attribute, not a standalone content object.
 
 Recommended pattern: keep familiar icon buttons only for inline formatting. Use named insertion choices for structural elements: `Heading`, `Quote`, `Pull quote`, `Image`, `Columns`, `Divider`, `Spacer`, `Mosaic`.
 
@@ -152,6 +161,15 @@ The help dialog explains essential workflow semantics, including the distinction
 5. Readiness summary explains any missing values.
 6. `Add to batch` moves the complete post into the visible batch drawer.
 
+The body remains plain text. Adding an image inside it is not offered.
+
+### Gram/gallery flow
+
+1. Add and arrange the post's images.
+2. Select the lead image and complete per-image metadata.
+3. Write plain post text; no rich blocks or inline-image insertion are available.
+4. Review the gallery/carousel presentation and add it to the visible batch.
+
 ### Essay/block flow
 
 1. Photos live in a persistent filmstrip/tray.
@@ -171,13 +189,22 @@ The help dialog explains essential workflow semantics, including the distinction
 4. Replace queue/send language and expose the current batch.
 5. Automatic local draft recovery and undo for clear/delete.
 
-### Phase 2 — Replace BIGGIE interaction, keep its serializer
+### Phase 2 — Remove BIGGIE from basic modes and replace its SMACKTALK interaction
 
-1. Preserve the existing parse/serialize model and tests.
-2. Replace stacked form cards with a canvas/outline editor.
-3. Add rendered preview, drag order, between-block insertion, duplicate, undo/redo.
-4. Use visual image selection and live columns/mosaic blocks.
-5. Make paragraph the implicit default and drop cap a paragraph style.
+1. Remove BIGGIE, structural shortcodes, and inline-image insertion from SMACKONEOUT and GRAMOFSMACK.
+2. Preserve the existing parse/serialize model and tests as SMACKTALK's import/export compatibility layer.
+3. Replace SMACKTALK's stacked form cards with a canvas/outline editor.
+4. Add rendered preview, drag order, between-block insertion, duplicate, undo/redo.
+5. Use visual image selection and live columns/mosaic blocks.
+6. Make paragraph the implicit default and drop cap a paragraph style.
+
+### Phase 2b — Keep album sharing in its proper home
+
+1. Do not add SMACKTHEMUP to COLD SNAP.
+2. Build Picasa-style album selection and sharing in the SNAP SLAPPER library.
+3. Permit light post-creation curation in GYSS.
+4. Permit SNAP SLAPPER to queue the sharing job, consistent with the desktop suite's courtesy queue.
+5. Do not permit offline album posting.
 
 ### Phase 3 — Consistency and polish
 
