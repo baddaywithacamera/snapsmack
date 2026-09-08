@@ -106,7 +106,7 @@ sv_ensure_keys($pdo, $settings);
 // getting an attempt. New sweep/backfill rows created later wait for the next
 // ten-minute tick; that is preferable to starving an existing backlog.
 list($sent, $failed) = sv_process_deliveries(
-    $pdo, $settings, 30, sv_delivery_cadence($settings), null, null, null, 240
+    $pdo, $settings, 1000, sv_delivery_cadence($settings), null, null, null, 240
 );
 
 // Make the multisite roster's peer-follow promise real, gradually. One missing
