@@ -3,7 +3,8 @@
  * SNAPSMACK — SMACKCAST relay policy (0.7.545D)
  *
  * Thin policy layer over the shared FEDIVERSE signature, fetch and delivery
- * primitives. It is inert unless this is the FEDISTRUCTURE 4.0 SMACKCAST hub.
+ * primitives. Fan-out policy is hub-only; a normal blog that explicitly
+ * follows the configured relay also runs the receiver and recovery paths.
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -17,7 +18,7 @@ function sc_relay_is_hub(array $settings): bool {
         && ($settings['smackcast_relay_enabled'] ?? '0') === '1';
 }
 
-/** Hub-only schema self-heal for installs that predate the durable ingest queue. */
+/** Receiver-side schema self-heal for installs that predate the durable ingest queue. */
 function sc_relay_ensure_ingest_jobs(PDO $pdo): void {
     $pdo->exec("CREATE TABLE IF NOT EXISTS snap_relay_ingest_jobs (
         id bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -32,6 +33,11 @@ function sc_relay_ensure_ingest_jobs(PDO $pdo): void {
         UNIQUE KEY uq_relay_ingest (relay_actor_url(150),object_id(191)),
         KEY idx_relay_ingest_due (status,next_try_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
+function sc_relay_is_receiver(PDO $pdo, array $settings): bool {
+    $relay = sv_relay_actor_url($settings);
+    return $relay !== '' && sv_is_following($pdo, $relay);
 }
 
 function sc_relay_is_public(array $activity, array $object): bool {
@@ -263,6 +269,9 @@ function sc_relay_queue_ingest(PDO $pdo, string $relay, string $object_id, strin
 /** Try one relay Announce. A transient fetch creates durable receiver work. */
 function sc_relay_receive_announce(PDO $pdo, array $settings, string $relay, string $object_id): bool {
     if ($relay !== sv_relay_actor_url($settings) || !sv_is_following($pdo, $relay)) return false;
+    // Successful receipt also clears any earlier fetch-recovery row.  The
+    // table therefore belongs to relay receivers, not only to the hub.
+    sc_relay_ensure_ingest_jobs($pdo);
     $object = sv_fetch_ap($object_id, $settings);
     if (!is_array($object)) {
         sc_relay_queue_ingest($pdo, $relay, $object_id, 'origin fetch failed');
@@ -283,9 +292,9 @@ function sc_relay_receive_announce(PDO $pdo, array $settings, string $relay, str
 }
 
 function sc_relay_process_ingest_jobs(PDO $pdo, array $settings, int $limit = 20): array {
-    // This file ships everywhere, but relay tables exist only on an explicitly
-    // configured SMACKCAST hub. Ordinary blogs must never touch hub-only schema.
-    if (!sc_relay_is_hub($settings)) return [0, 0];
+    // The hub may receive relay work, and ordinary blogs need this worker when
+    // they explicitly follow the relay. Unrelated installs remain inert.
+    if (!sc_relay_is_hub($settings) && !sc_relay_is_receiver($pdo, $settings)) return [0, 0];
     sc_relay_ensure_ingest_jobs($pdo);
     $q = $pdo->prepare("SELECT * FROM snap_relay_ingest_jobs WHERE status='queued' AND next_try_at<=NOW()
         ORDER BY next_try_at,id LIMIT " . max(1, min(100, $limit)));

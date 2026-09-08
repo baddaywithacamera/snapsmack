@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.662D "NO GHOST BOOSTS" — 2026-09-07
+- **SMACKCAST relay posts no longer succeed and then answer HTTP 500.** An ordinary relay-following blog ingested an announced post and then tried to clear a recovery row from a table that only some installs had. Relay receivers now create their small recovery table before either cleanup or queue access, so the sender receives the truthful success response and stops retrying the same boost.
+- **Transient relay fetch failures now recover on ordinary member blogs.** The durable recovery worker was mistakenly restricted to the SMACKCAST hub even though the failed object fetch occurred on the receiving blog. It now runs on explicit relay followers while unrelated installs remain inert.
+- **Delivery failures retain a safe receiver clue.** The outbound log records a short plain-text response alongside the HTTP status instead of reducing every server-side failure to an unhelpful bare `HTTP 500`.
+
 ## 0.7.661D "CUT THE LOCK" — 2026-09-07
 - **CLI delivery DNS now has a real five-second wall-clock limit.** The SSRF guard resolved each destination before starting cURL, so cURL's advertised connect/total timeouts did not cover a stalled system resolver. A stuck lookup could keep the database worker lock forever while later cron launches merely refreshed a misleading heartbeat. Managed CLI runs now resolve through the operating system's bounded resolver helper, and the CLI heartbeat is written only after the worker lock is actually acquired.
 - **A healthy worker can recover from the abandoned advisory lock left by the pre-fix process.** The bounded resolver prevents future permanent DNS stalls, but updating source cannot release a database lock owned by an already-wedged PHP process. Cron and RUN NOW now share a new lock generation, allowing the repaired worker to resume without production shell/process access.
