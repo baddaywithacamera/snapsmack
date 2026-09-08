@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.661D "DEAD MAN'S SWITCH" — 2026-09-07
+- **CLI delivery DNS now has a real five-second wall-clock limit.** The SSRF guard resolved each destination before starting cURL, so cURL's advertised connect/total timeouts did not cover a stalled system resolver. A stuck lookup could keep the database worker lock forever while later cron launches merely refreshed a misleading heartbeat. Managed CLI runs now resolve through the operating system's bounded resolver helper, and the CLI heartbeat is written only after the worker lock is actually acquired.
+
 ## 0.7.660D "NO POISON PILL" — 2026-09-07
 - **One malformed legacy federation job can no longer stop the entire outbound queue.** Queue ordering no longer asks MySQL to parse every stored activity as JSON before selecting the first row. Handshake activities still outrank content, but malformed historical payloads cannot make the selection query throw and leave cron permanently stamped `running` with every overdue job at zero attempts.
 - **Delivery failures are isolated per row.** An unexpected exception while preparing or sending one activity is recorded through the ordinary retry/failed path, and the worker continues with the remaining due jobs instead of abandoning the whole run.
