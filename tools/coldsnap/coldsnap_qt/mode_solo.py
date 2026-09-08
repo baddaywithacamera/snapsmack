@@ -62,8 +62,10 @@ class SoloMode(QWidget):
         right.setContentsMargins(0, 0, 0, 0)
 
         card = Card("COMPOSE — one photo, one post")
-        card.setMaximumWidth(1120)
-        right.addWidget(card, 0, Qt.AlignHCenter)
+        # Fill the available centre pane. AlignHCenter makes Qt honour the
+        # card's narrow sizeHint instead of expanding it, which collapsed the
+        # editor to ~390 px on a 1920 px screen and left a sea of dead space.
+        right.addWidget(card)
 
         # -- PHOTO — a rail section, opened when wanted (Sean: images don't
         #    need to be on screen all the time) --------------------------------
