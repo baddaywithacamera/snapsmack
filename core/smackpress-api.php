@@ -245,6 +245,15 @@ $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
     ->fetchAll(PDO::FETCH_KEY_PAIR);
 $base_url = rtrim($settings['site_url'] ?? '', '/') . '/';
 
+// SMACKTHEMUP fail-closed (spec §5.2): it publishes only through SNAP SLAPPER's
+// scoped publishing path, never the SMACKPRESS / COLD SNAP longform API. Refuse
+// this whole API on a smackthemup site so no other tool's key can create or
+// mutate content there. The scoped SLAPPER contract (smackthemup.publish) lands
+// with the desktop slice; until then nothing legitimately writes here.
+if (($settings['site_mode'] ?? '') === 'smackthemup') {
+    smackpress_error(409, 'SMACKTHEMUP publishes from SNAP SLAPPER (desktop) only — this API is not available for this mode.');
+}
+
 // =====================================================================
 // ROUTE: POST smackpress/media/upload
 // =====================================================================
