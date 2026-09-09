@@ -493,6 +493,7 @@ img { display: block; max-width: 100%; }
     display: block;
     border-style: solid;
     border-color: transparent;
+    border-radius: var(--tile-radius, 0px);
     box-sizing: border-box;
     pointer-events: none;
     will-change: clip-path;
@@ -1559,7 +1560,24 @@ body:has(.go-puzzle-field) {
         inset 2px 2px 1px rgba(255,255,255,.3),
         inset -3px -3px 3px rgba(0,0,0,.42),
         2px 3px 5px rgba(0,0,0,.55);
+    transition-property: transform, opacity;
 }
+.go-puzzle-complete {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border: 0;
+    border-radius: 8px;
+    background-repeat: no-repeat;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease;
+}
+.go-game-board.is-previewing .go-puzzle-piece,
+.go-game-board.is-complete .go-puzzle-piece { opacity: 0; }
+.go-game-board.is-previewing .go-puzzle-complete,
+.go-game-board.is-complete .go-puzzle-complete { opacity: 1; }
+.go-game-board.is-previewing { cursor: default; }
 .go-game-board.is-solved-pulse {
     animation: he-screen-pulse .9s ease-in-out 2;
 }

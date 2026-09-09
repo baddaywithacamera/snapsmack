@@ -217,6 +217,7 @@ $_go_asset_url = static function (string $path): string {
      data-puzzle-density="<?php echo (int)($settings['go_puzzle_density'] ?? 100); ?>"
      data-activity="<?php echo (int)($settings['go_motion_activity'] ?? 3); ?>"
      data-speed="<?php echo (int)($settings['go_motion_speed'] ?? 3); ?>"
+     data-border-activity="<?php echo (int)($settings['go_border_activity'] ?? 3); ?>"
      data-modal-theme="<?php echo htmlspecialchars($settings['go_modal_theme'] ?? 'light'); ?>"
      data-score-url="<?php echo htmlspecialchars(BASE_URL . 'game-on-scores.php'); ?>"
      aria-hidden="true">

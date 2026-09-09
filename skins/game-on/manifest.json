@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "GAME ON",
-  "version": "0.1.11",
+  "version": "0.1.12",
     "requires_snapsmack": "0.7.676D",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
@@ -110,6 +110,16 @@
             "section": "GAME ON",
             "type": "range_numeric",
             "label": "Puzzle Movement Speed",
+            "default": "3",
+            "min": "1",
+            "max": "5",
+            "step": "1",
+            "unit": ""
+        },
+        "go_border_activity": {
+            "section": "GAME ON",
+            "type": "range_numeric",
+            "label": "Image Border Activity",
             "default": "3",
             "min": "1",
             "max": "5",
