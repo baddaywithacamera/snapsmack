@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.670D "GAME ON" — 2026-09-08
+- **The BITCHIN' track continues from the same verified GAME ON source promoted as stable 0.7.670.** This development build keeps the `D` suffix required by the dev updater while the BORING track receives the suffix-free stable twin.
+
 ## 0.7.670 "GAME ON" — 2026-09-08
 - **The tested BITCHIN' development line is promoted to the BORING stable track.** This is the first stable package after 0.7.456 and carries the accumulated CMS, federation, fleet-management, security, accessibility, publishing, editor-integration, and operational repairs documented below through 0.7.669D. The version deliberately drops the development-only `D` suffix.
 - **GAME ON joins the skin system as a separately packaged GRAMOFSMACK showcase skin.** Its executable engine is now part of the audited shared CMS asset inventory so the signed skin package can request it without bundling JavaScript. The skin itself is still published through Smack Central's separate Skin Packager.
