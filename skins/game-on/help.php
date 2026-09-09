@@ -31,6 +31,10 @@ return [
             'body'  => 'Background Activity controls how often puzzles move and how many can move together; Puzzle Movement Speed controls how quickly each move travels. One lightweight conductor coordinates the field, so increasing the puzzle amount does not create a timer for every game. Puzzle movement and the sliding border colours are independent. Choose Electric, Film Box, monochrome, or one automatic palette per visit. Visitors who request reduced motion receive a still puzzle field and the established safe completion treatment.',
         ],
         [
+            'title' => 'Content Backing and Glow',
+            'body'  => 'The 0.1.4 starting calibration uses a 935px content area with 80px side padding. Content, navigation and footer backgrounds are white at 75% opacity. Content Edge Glow defaults to 0; raise it only when you deliberately want a halo around the content card.',
+        ],
+        [
             'title' => 'Three-Column Grid Layout',
             'body'  => 'Game On presents your photographs in a clean, square-tile 3-column layout — the same format that made Instagram the de-facto portfolio platform for photographers. Every post occupies one tile on the landing page, regardless of how many images it contains. Tap or click any tile to view the full post.',
         ],

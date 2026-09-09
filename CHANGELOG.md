@@ -28,6 +28,13 @@
 ## PARADE Skin 1.2.35 — 2026-09-09
 - **Reorganizes and relabels configuration without changing saved keys or live rendering.** Existing site choices carry forward; the administrative controls now explain the three distinct border layers and collect content-area geometry and transparency in one place. New installations also receive the shared grid-family defaults.
 
+## GAME ON Skin 0.1.4 — 2026-09-09
+- **GAME ON now ships the requested readable starting calibration.** The inner content remains 935px wide with 80px padding on each side. Content, padding, navigation and footer surfaces are white at 75% opacity. Footer colour and opacity are now explicit controls, and Content Edge Glow defaults to 0 so the unwanted halo is off unless deliberately enabled.
+- **Background game spacing now completes at the viewport boundary.** The centred square-board field includes its outer half-gutter in the coverage calculation, preserving the 10px relationship between games while preventing the edge spacing from looking abruptly sliced off. Non-matching viewport shapes still bleed rather than expose empty strips.
+- **Border Travel is now a visible directional handoff rather than a delayed colour-value swap.** The source image frame reveals its replacement colour as the old colour slides toward an adjacent photograph; that neighbour fills from the incoming edge. The photographs stay still, and reduced-motion visitors receive the final colour change without animation.
+- **The background field now measures the scrollbar-safe visible viewport.** Its right edge is calculated from the document client area rather than the browser window’s scrollbar-inclusive width. The game action always reads “View image”; missing photograph titles can no longer leak “Untitled” into it.
+- **Reloading GAME ON now produces a fresh-looking puzzle field even when the landing page is cached.** The browser reshuffles the rendered photograph pool before constructing and scrambling the games, preserving the page-cache performance benefit without freezing every image in the same position.
+
 ## GAME ON Skin 0.1.3 — 2026-09-09
 - **The living puzzle field is now adjustable and gap-free.** Background Puzzle Amount scales up to the agreed 16-by-9/144-puzzle desktop field. Separate Activity and Movement Speed sliders control simultaneous movement and travel time, while one lightweight conductor replaces a timer per puzzle. Square boards remain square and the centred field overshoots non-matching viewports instead of leaving empty strips. White backing remains visible through the 10px game spacing.
 
