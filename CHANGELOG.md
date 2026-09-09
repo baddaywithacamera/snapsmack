@@ -17,6 +17,7 @@
 - Makes legal moves persistently visible on touchscreens, enlarges modal controls for touch, and prevents a swipe's synthetic follow-up click from moving a second tile.
 - Gives every travelling border colour a five-second return memory, preventing an immediate bounce back to any photograph it just left even after an indirect route.
 - Adds separately named Post Viewer Backdrop Colour and Opacity controls, independent of the playable puzzle backdrop, while preserving the existing black-at-80% appearance by default.
+- Sizes the playable board from the browser's dynamic content viewport rather than its old fullscreen allowance, keeping instructions, statistics, and actions visible in windowed and short-screen layouts with a safe scroll fallback.
 
 ## GAME ON Skin 0.1.12 — 2026-09-09
 
