@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "GAME ON",
-    "version": "0.1.7",
+    "version": "0.1.8",
     "requires_snapsmack": "0.7.675D",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
@@ -1102,6 +1102,28 @@
                 "dark": "Dark"
             },
             "hint": "Changes the playable puzzle window only."
+        },
+        "go_modal_backdrop_color": {
+            "section": "PUZZLE MODAL",
+            "type": "color",
+            "label": "Puzzle Backdrop Colour",
+            "default": "#000000",
+            "selector": ":root",
+            "property": "--go-modal-backdrop-color",
+            "hint": "The full-screen layer behind the playable puzzle window."
+        },
+        "go_modal_backdrop_opacity": {
+            "section": "PUZZLE MODAL",
+            "type": "range_numeric",
+            "label": "Puzzle Backdrop Opacity",
+            "default": "84",
+            "min": "0",
+            "max": "100",
+            "step": "1",
+            "unit": "%",
+            "selector": ":root",
+            "property": "--go-modal-backdrop-opacity",
+            "hint": "0 is transparent; 100 completely covers the page behind the puzzle."
         },
         "go_max_width": {
             "section": "LAYOUT",
