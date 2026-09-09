@@ -1,8 +1,8 @@
 {
     "schema_version": 1,
     "name": "GAME ON",
-    "version": "0.1.4",
-    "requires_snapsmack": "0.7.672D",
+    "version": "0.1.5",
+    "requires_snapsmack": "0.7.673D",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Interactive showcase skin: a living field of always-solvable image sliding puzzles behind a clean GRAM grid, with an 80%-viewport playable modal.",
@@ -275,13 +275,13 @@
         "go_treatment_overlay": {
             "section": "TREATMENT",
             "type": "range_numeric",
-            "label": "Overlay  (left darkens · right lightens)",
+            "label": "Background Puzzle Brightness",
             "default": "0",
             "min": "-100",
             "max": "100",
             "step": "5",
             "unit": "%",
-            "hint": "Centre = none. Drag left to darken the background, right to lighten it."
+            "hint": "0 leaves the puzzles unchanged. Negative values darken them; positive values lighten them. This does not change the content-area opacity."
         },
         "go_content_bg_color": {
             "section": "CONTENT AREA",
