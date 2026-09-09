@@ -1102,6 +1102,28 @@
             "is_font": true,
             "no_size_slider": true
         },
+        "go_post_viewer_backdrop_color": {
+            "section": "POST VIEWER",
+            "type": "color",
+            "label": "Post Viewer Backdrop Colour",
+            "default": "#000000",
+            "selector": ":root",
+            "property": "--go-post-viewer-backdrop-color",
+            "hint": "The full-screen layer behind the photograph and its information panel. This does not affect the playable puzzle."
+        },
+        "go_post_viewer_backdrop_opacity": {
+            "section": "POST VIEWER",
+            "type": "range_numeric",
+            "label": "Post Viewer Backdrop Opacity",
+            "default": "80",
+            "min": "0",
+            "max": "100",
+            "step": "1",
+            "unit": "%",
+            "selector": ":root",
+            "property": "--go-post-viewer-backdrop-opacity",
+            "hint": "0 is transparent; 100 completely covers the gallery behind the post viewer."
+        },
         "go_modal_theme": {
             "section": "PUZZLE MODAL",
             "type": "select",
