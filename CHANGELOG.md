@@ -9,10 +9,13 @@
 -->
 
 # SnapSmack Changelog
-## GAME ON Skin 0.1.13 / SnapSmack 0.7.677D — 2026-09-09
+## 0.7.677D / GAME ON Skin 0.1.14 — 2026-09-09
 
 - Replaces the puzzle modal's outbound View Image link with an in-place preview: pieces animate into their solved positions, the uninterrupted photograph holds for two seconds, and the exact puzzle arrangement returns.
 - Starts and continuously runs the solve timer during the preview, so leaving the puzzle page is no longer necessary and preview time is naturally included.
+- Explains the one essential move directly above the board and visually distinguishes tiles beside the empty space, making the puzzle discoverable without an external tutorial.
+- Makes legal moves persistently visible on touchscreens, enlarges modal controls for touch, and prevents a swipe's synthetic follow-up click from moving a second tile.
+- Gives every travelling border colour a five-second return memory, preventing an immediate bounce back to any photograph it just left even after an indirect route.
 
 ## GAME ON Skin 0.1.12 — 2026-09-09
 
