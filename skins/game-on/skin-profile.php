@@ -56,42 +56,7 @@ $_go_active_slug = $_GET['slug'] ?? null;
 $_go_on_blogroll = ($_go_script === 'blogroll.php');
 $_go_on_home     = ($_go_script === 'index.php' && !isset($_GET['s']) && $_go_active_slug === null);
 
-// ── Background treatment (skin admin → Treatment) ──────────────────────────
-// Emitted on every Grid page. The full-screen layers sit behind the centred
-// content card; CSS (:has(.go-treatment-bg)) turns the card on only when present.
-$_go_treat_mode  = $settings['go_treatment_mode']     ?? 'none';
-$_go_treat_img   = trim($settings['go_treatment_image'] ?? '');
-$_go_treat_color = trim($settings['go_treatment_color'] ?? '');
-$_go_treat_pos   = $settings['go_treatment_position'] ?? 'center';
-$_go_treat_ov    = (int)($settings['go_treatment_overlay'] ?? 0); // -100 dark .. +100 light
-$_go_has_treat   = ($_go_treat_mode === 'image' && $_go_treat_img !== '')
-                || ($_go_treat_mode === 'color' && $_go_treat_color !== '');
-
-$_go_bg_style = '';
-$_go_ov_style = '';
-if ($_go_has_treat) {
-    if ($_go_treat_mode === 'image' && $_go_treat_img !== '') {
-        $_go_treat_pos_css = ($_go_treat_pos === 'top')    ? 'center top'
-                           : (($_go_treat_pos === 'bottom') ? 'center bottom' : 'center center');
-        $_go_bg_style = "background-image:url('" . BASE_URL . htmlspecialchars($_go_treat_img) . "');"
-                      . 'background-position:' . $_go_treat_pos_css . ';';
-    } elseif ($_go_treat_mode === 'color' && $_go_treat_color !== '') {
-        $_go_bg_style = 'background-color:' . htmlspecialchars($_go_treat_color) . ';';
-    }
-    if ($_go_treat_ov < 0) {
-        $_go_ov_style = 'background-color:rgba(0,0,0,' . round(min(100, -$_go_treat_ov) / 100, 2) . ');';
-    } elseif ($_go_treat_ov > 0) {
-        $_go_ov_style = 'background-color:rgba(255,255,255,' . round(min(100, $_go_treat_ov) / 100, 2) . ');';
-    }
-}
 ?>
-
-<?php if ($_go_has_treat): ?>
-<div class="go-treatment-bg" style="<?php echo $_go_bg_style; ?>" aria-hidden="true"></div>
-<?php if ($_go_ov_style !== ''): ?>
-<div class="go-treatment-overlay" style="<?php echo $_go_ov_style; ?>" aria-hidden="true"></div>
-<?php endif; ?>
-<?php endif; ?>
 
 <?php if ($show_profile): ?>
 <!-- ── Profile Header (shared across all Grid pages) ───────────────────────── -->
