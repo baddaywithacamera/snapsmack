@@ -254,8 +254,9 @@
             slots: state.slots.slice(), empty: state.empty,
             tiles: [], moves: 0, lastEmpty: -1, busyUntil: 0,
             paused: false, modal: !!isModal, startedAt: 0, finished: false,
-            naturalWidth: 0, naturalHeight: 0, penaltyMs: 0,
-            previewing: false, complete: null
+            naturalWidth: 0, naturalHeight: 0,
+            previewing: false, previewSlots: null, previewEmpty: -1,
+            previewTimer: 0, complete: null
         };
     }
 
@@ -429,7 +430,7 @@
             '<span><b data-stat="solved">0</b> solved</span>' +
             '<span><b data-stat="best">—</b> best</span>' +
             '<span><b data-stat="average">—</b> average</span></div>' +
-            '<div class="go-game-actions"><a data-game-post href="#">View photograph</a><button data-game-preview type="button">View whole image (+2 seconds)</button><button data-game-new type="button">New puzzle</button><button data-game-scores type="button">High scores</button></div>' +
+            '<div class="go-game-actions"><button data-game-preview type="button">View image</button><button data-game-new type="button">New puzzle</button><button data-game-scores type="button">High scores</button></div>' +
             '<section class="go-scoreboard" data-scoreboard hidden aria-label="GAME ON high scores">' +
             '<div class="go-scoreboard-head"><b>HIGH SCORES</b><button type="button" data-score-close aria-label="Close high scores">&times;</button></div>' +
             '<div class="go-score-lists"><div><h3>FASTEST</h3><ol data-score-fastest></ol></div><div><h3>MOST SOLVED</h3><ol data-score-most></ol></div></div>' +
@@ -521,8 +522,6 @@
         active.source = source;
         active.thumb = source.thumb; active.full = source.full;
         active.postUrl = source.postUrl; active.label = source.label;
-        modal.querySelector('[data-game-post]').href = active.postUrl;
-        modal.querySelector('[data-game-post]').textContent = 'View image';
         modal.hidden = false;
         if (!modalEngaged) {
             modalEngaged = true;
@@ -547,6 +546,7 @@
 
     function closeModal() {
         if (!active || !modal) return;
+        restorePreview(active, true);
         if (active.source && !active.finished) {
             active.source.slots = active.slots.slice();
             active.source.empty = active.empty;
@@ -567,6 +567,7 @@
 
     function nextPuzzle() {
         if (!active) return;
+        restorePreview(active, true);
         var current = active.source;
         var candidates = boards.filter(function (b) { return b !== current; });
         var source = candidates.length ? candidates[Math.floor(Math.random() * candidates.length)] : current;
@@ -581,22 +582,41 @@
         var min = Math.floor(total / 60);
         return min + ':' + (total % 60).toFixed(1).padStart(4, '0');
     }
+    function restorePreview(board, immediate) {
+        if (!board || !board.previewing || !board.previewSlots) return;
+        window.clearTimeout(board.previewTimer);
+        board.previewTimer = 0;
+        board.el.classList.remove('is-previewing');
+        board.slots = board.previewSlots.slice();
+        board.empty = board.previewEmpty;
+        board.previewSlots = null;
+        board.previewEmpty = -1;
+        board.previewing = false;
+        positionTiles(board, !immediate);
+        var button = modal && modal.querySelector('[data-game-preview]');
+        if (button) button.disabled = false;
+    }
     function togglePreview() {
-        if (!active || active.finished) return;
-        active.previewing = !active.previewing;
-        active.el.classList.toggle('is-previewing', active.previewing);
+        if (!active || active.finished || active.previewing) return;
+        if (!active.startedAt) active.startedAt = performance.now();
+        active.previewing = true;
+        active.previewSlots = active.slots.slice();
+        active.previewEmpty = active.empty;
+        active.slots = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, null];
+        active.empty = 15;
+        positionTiles(active, true);
         var button = modal.querySelector('[data-game-preview]');
-        if (active.previewing) {
-            active.penaltyMs += 2000;
-            button.textContent = 'Return to puzzle';
-        } else {
-            button.textContent = 'View whole image (+2 seconds)';
-        }
-        updateStats();
+        if (button) button.disabled = true;
+        window.setTimeout(function () {
+            if (active && active.previewing) active.el.classList.add('is-previewing');
+        }, durationFor(active));
+        active.previewTimer = window.setTimeout(function () {
+            if (active) restorePreview(active, false);
+        }, durationFor(active) + 2000);
     }
     function updateStats() {
         if (!modal) return;
-        var elapsed = active ? (active.startedAt ? performance.now() - active.startedAt : 0) + active.penaltyMs : 0;
+        var elapsed = active && active.startedAt ? performance.now() - active.startedAt : 0;
         var values = {
             time: formatMs(elapsed), moves: active ? active.moves : 0,
             solved: session.solved,
@@ -618,7 +638,7 @@
     function finish(board) {
         if (board.finished) return;
         board.finished = true;
-        var elapsed = (board.startedAt ? performance.now() - board.startedAt : 0) + board.penaltyMs;
+        var elapsed = board.startedAt ? performance.now() - board.startedAt : 0;
         session.solved++;
         session.totalMs += elapsed;
         session.bestMs = session.bestMs === null ? elapsed : Math.min(session.bestMs, elapsed);
@@ -627,7 +647,7 @@
         board.el.classList.remove('is-previewing');
         board.el.classList.add('is-complete');
         var previewButton = modal.querySelector('[data-game-preview]');
-        if (previewButton) previewButton.textContent = 'View whole image (+2 seconds)';
+        if (previewButton) previewButton.disabled = true;
         var scoreForm = modal.querySelector('[data-score-form]');
         if (scoreForm) scoreForm.hidden = false;
         window.setTimeout(function () {
