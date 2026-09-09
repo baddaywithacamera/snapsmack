@@ -27,6 +27,10 @@ return [
             'body'  => 'Tap or click a tile beside the empty space to rebuild the image; movable tiles respond on desktop and remain visibly marked on touchscreens. Arrow keys or WASD work too. The timer begins with your first legal move—or when View Image is used. GAME ON tracks moves, completed puzzles, fastest solve, and average solve for this browser session only. View Image animates the pieces into place, holds the complete photograph for two seconds, and restores the exact puzzle while the timer keeps running. When solved, the tile lines disappear to reveal the complete photograph before it pulses twice using the HEURISTIC-safe motion treatment, fades away, and returns as a new solvable puzzle.',
         ],
         [
+            'title' => 'Post Viewer Backdrop',
+            'body'  => 'Post Viewer Backdrop Colour and Opacity control the layer behind the large photograph-and-details viewer. These are deliberately separate from Puzzle Backdrop Colour and Opacity, which affect only the playable sliding-puzzle window.',
+        ],
+        [
             'title' => 'Background Motion and Colour',
             'body'  => 'Background Activity controls how often puzzles move and how many can move together; Puzzle Movement Speed controls how quickly each move travels. Image Border Activity independently controls how often the photograph-border colours hand off and whether one, two, or three can move together. A colour cannot return to a photograph it left during the previous five seconds. Choose Electric, Film Box, monochrome, or one automatic palette per visit. Visitors who request reduced motion receive a still puzzle field and the established safe completion treatment.',
         ],
