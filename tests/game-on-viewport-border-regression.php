@@ -34,6 +34,10 @@ $checks = [
     'border colours cannot return for five seconds' => str_contains($engine, 'now - token.history.get(frame) >= 5000'),
     'border return memory follows the colour' => str_contains($engine, 'target.borderToken = sourceToken;'),
     'touch swipes suppress their synthetic click' => str_contains($engine, 'suppressBoardClickUntil = performance.now() + 400;'),
+    'post viewer backdrop colour is configurable' => str_contains($manifest, 'go_post_viewer_backdrop_color'),
+    'post viewer backdrop opacity is configurable' => str_contains($manifest, 'go_post_viewer_backdrop_opacity'),
+    'post viewer backdrop uses its own colour variable' => str_contains($style, '--go-post-viewer-backdrop-color'),
+    'post viewer backdrop uses its own opacity variable' => str_contains($style, '--go-post-viewer-backdrop-opacity'),
     'solved puzzle reveals complete image' => str_contains($engine, "board.el.classList.add('is-complete');"),
     'complete image hides puzzle lines' => str_contains($style, '.go-game-board.is-complete .go-puzzle-piece { opacity: 0; }'),
 ];
