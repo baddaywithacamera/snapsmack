@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.675D — 2026-09-09
+- **Time actively spent playing a GAME ON puzzle now counts as engaged Scroll Time.** Opening the playable modal holds the existing dwell clock active even when the player pauses to study the board; closing it releases that hold, and hidden tabs remain paused. It uses the existing capped dwell statistic rather than inventing scroll distance or a separate incompatible metric.
+
+## GAME ON Skin 0.1.7 — 2026-09-09
+- Requires SnapSmack 0.7.675D for puzzle-play engagement accounting.
+- **Landing-page surfaces now share one opacity layer.** The tile gutters and navigation no longer repaint translucent white over the content card, and the profile/nav seam no longer stacks two 1px borders into a 2px line.
+
 ## 0.7.674D — 2026-09-09
 - **Large-site updates no longer attempt the entire database backup inside one proxy-bound request.** The pre-update dump now resumes through short, automatically continued stages with conservative batches and primary-key paging, avoiding repeated full-prefix scans as post counts grow into the thousands.
 - **GAME ON sizes its puzzle field from the visible browser window.** Quirks-mode pages can report the full document height as the viewport; using the real window height prevents enormous background games while retaining scrollbar-aware width.

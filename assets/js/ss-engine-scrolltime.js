@@ -40,10 +40,14 @@
     var engaged = 0;           // accumulated engaged milliseconds
     var lastTick = null;       // timestamp of the previous accumulation tick
     var lastActivity = Date.now();
+    // Rich interactions can explicitly hold the visitor in an engaged state
+    // without manufacturing scroll or pointer movement. GAME ON uses this while
+    // its playable modal is open; visibility still gates the clock below.
+    var externalEngagement = 0;
 
     function isActive() {
         return document.visibilityState === 'visible' &&
-               (Date.now() - lastActivity) < IDLE_MS;
+               (externalEngagement > 0 || (Date.now() - lastActivity) < IDLE_MS);
     }
 
     function tick() {
@@ -64,6 +68,16 @@
         .forEach(function (ev) {
             window.addEventListener(ev, bump, { passive: true });
         });
+
+    window.addEventListener('snapsmack:engagement-start', function () {
+        tick();
+        externalEngagement++;
+        bump();
+    });
+    window.addEventListener('snapsmack:engagement-stop', function () {
+        tick();
+        externalEngagement = Math.max(0, externalEngagement - 1);
+    });
 
     function send() {
         tick();

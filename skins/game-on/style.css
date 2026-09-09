@@ -105,6 +105,11 @@ img { display: block; max-width: 100%; }
     border-bottom: var(--go-nav-line-width, 1px) solid color-mix(in srgb, var(--go-nav-line, #750787) var(--go-nav-line-opacity, 100%), transparent);
     box-shadow: var(--go-nav-shadow-size, 0px) var(--go-nav-shadow-size, 0px) var(--go-nav-shadow-size, 0px) color-mix(in srgb, var(--go-nav-shadow-color, #000) var(--go-nav-shadow-opacity, 40%), transparent);
 }
+/* On the landing page the nav already sits on the translucent content card.
+   Painting the same 75% white a second time made it effectively 94% opaque. */
+.go-content-wrap .go-sticky-nav {
+    background: transparent;
+}
 .go-sticky-nav-inner {
     display: flex;
     align-items: center;
@@ -224,6 +229,11 @@ img { display: block; max-width: 100%; }
     gap: 32px;
     border-bottom: 1px solid var(--border-color);
 }
+/* The nav supplies the divider. Keeping the profile's bottom border directly
+   against the nav's top border rendered the requested 1px line as 2px. */
+.go-content-wrap .go-profile {
+    border-bottom: 0;
+}
 
 .go-profile-avatar {
     width: 77px;
@@ -325,7 +335,9 @@ img { display: block; max-width: 100%; }
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--grid-gap);
-    background: color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 75%), transparent);
+    /* The content card owns the translucent surface. A second translucent
+       white layer in the grid made the gutters nearly solid white. */
+    background: transparent;
     margin-top: var(--nav-tile-gap, var(--grid-gap));
     width: 100%;
 }
