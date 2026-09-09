@@ -235,6 +235,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-curator-directory.sql',
     'migrate-curator-secondary-actor.sql',
     'migrate-relay-ingest-jobs.sql',
+    'migrate-game-scores-ledger.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
