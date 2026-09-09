@@ -162,12 +162,13 @@
         "pa_wave_speed": {
             "section": "BORDER WAVE",
             "type": "range_numeric",
-            "label": "Wave Speed",
+            "label": "Wave Cycle Duration",
             "default": "160",
             "min": "40",
             "max": "400",
             "step": "5",
-            "hint": "Border-wave clock. Lower = faster shimmer; higher = slower."
+            "unit": "s",
+            "hint": "Seconds for one complete palette cycle. Lower is faster; higher is slower."
         },
         "pa_border_width": {
             "section": "BORDER WAVE",
