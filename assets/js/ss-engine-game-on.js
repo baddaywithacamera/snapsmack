@@ -524,24 +524,22 @@
     // browser-side sample from the complete rendered grid, so reloads change
     // the photographs rather than merely their positions.
     var boardElements = shuffled(Array.prototype.slice.call(root.querySelectorAll('.go-puzzle')));
-    var candidates = Array.prototype.slice.call(document.querySelectorAll('.go-content-wrap .go-grid img[data-game-thumb][data-game-full]'));
+    var poolNode = document.getElementById('go-puzzle-candidates');
     var sample = [];
-    candidates.forEach(function (img, index) {
-        if (sample.length < boardElements.length) sample.push(img);
-        else {
-            var slot = Math.floor(Math.random() * (index + 1));
-            if (slot < boardElements.length) sample[slot] = img;
-        }
-    });
-    sample = shuffled(sample);
+    if (poolNode) {
+        try { sample = shuffled(JSON.parse(poolNode.textContent || '[]')); }
+        catch (ignore) { sample = []; }
+    }
     boardElements.forEach(function (el, index) {
-        var img = sample[index];
-        if (!img) return;
-        var link = img.closest('a');
-        el.dataset.thumb = img.dataset.gameThumb;
-        el.dataset.full = img.dataset.gameFull;
-        el.dataset.postUrl = link ? link.href : '#';
-        el.dataset.label = img.alt || 'Photograph';
+        var image = sample[index];
+        if (!image) return;
+        el.dataset.thumb = image.thumb;
+        el.dataset.full = image.full;
+        el.dataset.postUrl = image.postUrl;
+        el.dataset.label = image.label || 'Photograph';
+        el.dataset.focusX = image.focusX;
+        el.dataset.focusY = image.focusY;
+        el.dataset.zoom = image.zoom;
     });
     boardElements.forEach(function (el) { root.appendChild(el); });
     boardElements.forEach(function (el) {
