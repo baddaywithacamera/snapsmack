@@ -80,7 +80,11 @@
     function layoutField() {
         var amount = Math.max(0, Math.min(100, Number(root.dataset.puzzleDensity || 100))) / 100;
         var viewportWidth = document.documentElement.clientWidth;
-        var viewportHeight = document.documentElement.clientHeight;
+        // In quirks-mode documents documentElement.clientHeight can be the
+        // entire page height (thousands of pixels), not the visible window.
+        // innerHeight is the real viewport height; clientWidth still excludes
+        // the vertical scrollbar, which is what the horizontal fit needs.
+        var viewportHeight = window.innerHeight;
         var narrow = viewportWidth <= 900;
         var columns = narrow ? Math.round(2 + amount * 4) : Math.round(4 + amount * 12);
         columns = Math.max(2, columns);
@@ -274,6 +278,17 @@
             if (row > 0) choices.push({ board: pool[at - columns], side: 'bottom' });
             if (at + columns < pool.length) choices.push({ board: pool[at + columns], side: 'top' });
         }
+        // A strictly horizontal walk otherwise bounces forever inside one row;
+        // a strictly vertical walk has the equivalent one-column trap. At an
+        // edge, permit one perpendicular hand-off so travel covers the grid.
+        if (direction === 'horizontal' && (col === 0 || col === columns - 1)) {
+            if (row > 0) choices.push({ board: pool[at - columns], side: 'bottom' });
+            if (at + columns < pool.length) choices.push({ board: pool[at + columns], side: 'top' });
+        }
+        if (direction === 'vertical' && (row === 0 || at + columns >= pool.length)) {
+            if (col > 0) choices.push({ board: pool[at - 1], side: 'right' });
+            if (col + 1 < columns && at + 1 < pool.length) choices.push({ board: pool[at + 1], side: 'left' });
+        }
         return choices.length ? choices[Math.floor(Math.random() * choices.length)] : null;
     }
 
@@ -316,16 +331,11 @@
         if (image) image.style.setProperty('--tile-border-c', colour);
     }
 
-    function handOffBorder() {
-        var pool = visibleFrames();
-        if (pool.length < 2) return scheduleBorder();
-        var source = pool.indexOf(frames[borderCursor]) >= 0 ? frames[borderCursor] : pool[Math.floor(Math.random() * pool.length)];
+    function handOffOneBorder(pool, source, occupied) {
         var next = adjacentFrame(source, pool);
-        if (!next) {
-            source = pool[Math.floor(Math.random() * pool.length)];
-            next = adjacentFrame(source, pool);
-        }
-        if (next) {
+        if (next && !occupied.has(source) && !occupied.has(next.board)) {
+            occupied.add(source);
+            occupied.add(next.board);
             var colour = source.borderColour;
             var target = next.board;
             var displaced = target.borderColour;
@@ -346,6 +356,24 @@
                 }, 570);
             }
             borderCursor = frames.indexOf(target);
+            return true;
+        }
+        return false;
+    }
+
+    function handOffBorder() {
+        var pool = visibleFrames();
+        if (pool.length < 2) return scheduleBorder();
+        var occupied = new Set();
+        var changes = rand(1, Math.min(3, Math.floor(pool.length / 2)));
+        var completed = 0;
+        var attempts = 0;
+        while (completed < changes && attempts < pool.length * 2) {
+            var source = attempts === 0 && pool.indexOf(frames[borderCursor]) >= 0
+                ? frames[borderCursor]
+                : pool[Math.floor(Math.random() * pool.length)];
+            if (handOffOneBorder(pool, source, occupied)) completed++;
+            attempts++;
         }
         scheduleBorder();
     }
