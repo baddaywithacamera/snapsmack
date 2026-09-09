@@ -707,6 +707,105 @@ function updater_is_protected(string $relative_path, array $protected): bool {
 // ─── BACKUP ─────────────────────────────────────────────────────────────────
 
 /**
+ * Advance a pre-update database dump for a bounded amount of wall time.
+ *
+ * State is stored by the caller in the update session, allowing large sites to
+ * continue across short HTTP requests instead of hitting a proxy timeout.
+ * Returns the completed path, null while more work remains, or false on error.
+ */
+function updater_backup_step(array &$state, string &$error = '', float $budget_seconds = 8.0): string|false|null {
+    global $pdo;
+
+    @set_time_limit(30);
+    $started = microtime(true);
+    $backup_dir = UPDATER_BACKUP_DIR;
+    if (!is_dir($backup_dir) && !mkdir($backup_dir, 0755, true) && !is_dir($backup_dir)) {
+        $error = 'Could not create backup directory ' . $backup_dir;
+        return false;
+    }
+
+    if (empty($state['file'])) {
+        $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
+        if (!$tables) { $error = 'No tables found in database.'; return false; }
+        $version = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : 'unknown';
+        $safe_version = preg_replace('/[^a-zA-Z0-9._-]/', '', $version);
+        $state = [
+            'file' => $backup_dir . '/pre-update_' . $safe_version . '_' . date('Y-m-d_H-i-s') . '.sql',
+            'tables' => array_values($tables), 'table' => 0, 'offset' => 0,
+            'key_column' => null, 'last_key' => null, 'batch' => 200,
+        ];
+        $fh = fopen($state['file'], 'wb');
+        if (!$fh) { $error = 'Could not write backup file to ' . $backup_dir; return false; }
+        fwrite($fh, "-- SnapSmack pre-update DB backup\n-- Version: {$version}  Date: " . date('Y-m-d H:i:s') . "\n");
+        fwrite($fh, '-- Tables: ' . implode(', ', $tables) . "\n\nSET FOREIGN_KEY_CHECKS=0;\n\n");
+        fclose($fh);
+    }
+
+    $fh = fopen((string)$state['file'], 'ab');
+    if (!$fh) { $error = 'Could not continue database backup.'; return false; }
+    try {
+        while ((int)$state['table'] < count($state['tables'])) {
+            $table = (string)$state['tables'][(int)$state['table']];
+            if (!preg_match('/^[A-Za-z0-9_]+$/', $table)) throw new RuntimeException('Unsafe table name.');
+            $quoted = '`' . $table . '`';
+            if ((int)$state['offset'] === 0) {
+                $create = $pdo->query("SHOW CREATE TABLE {$quoted}")->fetch(PDO::FETCH_NUM);
+                fwrite($fh, "DROP TABLE IF EXISTS {$quoted};\n" . $create[1] . ";\n\n");
+
+                // Prefer keyset pagination. OFFSET makes every later page
+                // rescan all earlier rows and becomes painfully slow on sites
+                // with many thousands of posts. A single-column primary key
+                // lets each continuation begin exactly where the last stopped.
+                $primary = $pdo->query("SHOW INDEX FROM {$quoted} WHERE Key_name = 'PRIMARY'")->fetchAll(PDO::FETCH_ASSOC);
+                $state['key_column'] = count($primary) === 1 ? (string)$primary[0]['Column_name'] : null;
+                $state['last_key'] = null;
+            }
+            $batch = (int)$state['batch'];
+            $offset = (int)$state['offset'];
+            $key_column = $state['key_column'] ?? null;
+            if (is_string($key_column) && preg_match('/^[A-Za-z0-9_]+$/', $key_column)) {
+                $key_quoted = '`' . $key_column . '`';
+                $where = $state['last_key'] === null ? '' : ' WHERE ' . $key_quoted . ' > ' . $pdo->quote($state['last_key']);
+                $sql = "SELECT * FROM {$quoted}{$where} ORDER BY {$key_quoted} ASC LIMIT {$batch}";
+            } else {
+                // Tables without a simple primary key retain the generic path.
+                $sql = "SELECT * FROM {$quoted} LIMIT {$batch} OFFSET {$offset}";
+            }
+            $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+            if ($rows) {
+                $cols = '`' . implode('`, `', array_keys($rows[0])) . '`';
+                $values = [];
+                foreach ($rows as $row) {
+                    $escaped = array_map(static fn($v) => $v === null ? 'NULL' : $pdo->quote($v), array_values($row));
+                    $values[] = '(' . implode(', ', $escaped) . ')';
+                }
+                fwrite($fh, "INSERT INTO {$quoted} ({$cols}) VALUES\n" . implode(",\n", $values) . ";\n\n");
+                $state['offset'] = $offset + count($rows);
+                if ($key_column !== null) {
+                    $last_row = $rows[count($rows) - 1];
+                    $state['last_key'] = $last_row[$key_column];
+                }
+            }
+            if (!$rows || count($rows) < $batch) {
+                $state['table'] = (int)$state['table'] + 1;
+                $state['offset'] = 0;
+                $state['key_column'] = null;
+                $state['last_key'] = null;
+            }
+            if (microtime(true) - $started >= $budget_seconds) { fclose($fh); return null; }
+        }
+        fwrite($fh, "SET FOREIGN_KEY_CHECKS=1;\n");
+        fclose($fh);
+        return (string)$state['file'];
+    } catch (Throwable $e) {
+        fclose($fh);
+        @unlink((string)($state['file'] ?? ''));
+        $error = 'Backup failed: ' . $e->getMessage();
+        return false;
+    }
+}
+
+/**
  * Create a pre-update database dump.
  *
  * Dumps all SnapSmack tables to a .sql file in the backups directory.
