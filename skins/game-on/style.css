@@ -52,7 +52,7 @@
 
 body {
     margin: 0;
-    padding: 0;
+    padding: 0 0 48px;
     background: var(--bg-primary);
     color: var(--text-primary);
     font-family: var(--font-body);
@@ -105,8 +105,13 @@ img { display: block; max-width: 100%; }
     border-bottom: var(--go-nav-line-width, 1px) solid color-mix(in srgb, var(--go-nav-line, #750787) var(--go-nav-line-opacity, 100%), transparent);
     box-shadow: var(--go-nav-shadow-size, 0px) var(--go-nav-shadow-size, 0px) var(--go-nav-shadow-size, 0px) color-mix(in srgb, var(--go-nav-shadow-color, #000) var(--go-nav-shadow-opacity, 40%), transparent);
 }
-/* Keep the navigation legible in both its resting and sticky states. */
-.go-content-wrap .go-sticky-nav {
+/* At rest the nav borrows the already-painted content backing. Repaint only
+   after the profile has left the viewport, otherwise two translucent whites
+   composite into an apparently opaque strip. */
+.go-content-wrap .go-sticky-nav:not(.profile-hidden) {
+    background: transparent;
+}
+.go-content-wrap .go-sticky-nav.profile-hidden {
     background: color-mix(
         in srgb,
         var(--go-content-bg, #fff) var(--go-content-opacity, 75%),
@@ -453,6 +458,10 @@ img { display: block; max-width: 100%; }
     justify-content: center;
     background:      var(--tile-bg, #ffffff);
     overflow:        visible;
+}
+.go-tile--edge-frame,
+.go-tile--edge-frame > a {
+    background: transparent;
 }
 
 .go-tile--framed img {
@@ -1041,13 +1050,19 @@ body.go-modal-open { overflow: hidden; }
     border-top: 1px solid var(--border-color);
     background: color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 75%), transparent);
     max-width: calc(var(--grid-max-width, 935px) + 2 * var(--grid-gutter, 0px));
-    margin: 0 auto;
+    width: min(100%, calc(var(--grid-max-width, 935px) + 2 * var(--grid-gutter, 0px)));
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    z-index: 95;
+    margin: 0;
+    transform: translateX(-50%);
 }
 
 #system-footer .inside {
     max-width: var(--grid-max-width, 935px);
     margin: 0 auto;
-    padding: 20px var(--grid-gutter, 0px);
+    padding: 8px 16px;
 }
 
 #system-footer .footer-metadata-bar {
@@ -1060,6 +1075,7 @@ body.go-modal-open { overflow: hidden; }
     color: var(--text-secondary);
     letter-spacing: 0.4px;
     line-height: 2;
+    white-space: nowrap;
 }
 
 #system-footer .footer-metadata-bar .sep {
@@ -1570,12 +1586,9 @@ body:has(.go-puzzle-field) {
 }
 
 .go-play-as-puzzle {
-    position: absolute;
-    left: 50%;
-    bottom: 18px;
-    transform: translateX(-50%);
-    z-index: 3;
-    padding: 9px 14px;
+    position: static;
+    transform: none;
+    padding: 6px 10px;
     border: 1px solid currentColor;
     border-radius: 4px;
     background: color-mix(in srgb, var(--go-content-bg, #fff) 88%, transparent);
@@ -1583,6 +1596,12 @@ body:has(.go-puzzle-field) {
     font: 700 12px/1 var(--font-body, sans-serif);
     letter-spacing: .08em;
     cursor: pointer;
+}
+@media (max-width: 700px) {
+    #system-footer .footer-metadata-bar p {
+        white-space: normal;
+        line-height: 1.45;
+    }
 }
 .go-scoreboard {
     position: absolute;

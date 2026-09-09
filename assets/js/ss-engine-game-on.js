@@ -79,6 +79,15 @@
         return rand(ranges[activity - 1][0], ranges[activity - 1][1]);
     }
 
+    function placeSoloPuzzleAction() {
+        document.querySelectorAll('.go-play-as-puzzle[data-action-placement="community"]').forEach(function (button) {
+            if (button.parentElement && button.parentElement.classList.contains('ss-community-bar')) return;
+            var wrap = button.closest('.go-community-wrap');
+            var like = wrap && wrap.querySelector('.ss-community-bar .ss-like-btn');
+            if (like) like.insertAdjacentElement('afterend', button);
+        });
+    }
+
     function layoutField() {
         var amount = Math.max(0, Math.min(100, Number(root.dataset.puzzleDensity || 100))) / 100;
         var viewportWidth = document.documentElement.clientWidth;
@@ -626,6 +635,10 @@
     }
 
     selectPalette();
+    placeSoloPuzzleAction();
+    if (typeof MutationObserver !== 'undefined') {
+        new MutationObserver(placeSoloPuzzleAction).observe(document.body, { childList: true, subtree: true });
+    }
     // The landing page may come from the anonymous page cache. Draw a fresh
     // browser-side sample from the complete rendered grid, so reloads change
     // the photographs rather than merely their positions.

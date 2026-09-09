@@ -336,6 +336,9 @@ $_go_asset_url = static function (string $path): string {
 
             if ($do_frame) {
                 $tile_class .= ' go-tile--framed';
+                if ((int)$tile_frame['size_pct'] >= 100) {
+                    $tile_class .= ' go-tile--edge-frame';
+                }
                 // Orientation decides which axis the size% applies to: landscape
                 // fills width, portrait fills height (so it never overflows the
                 // square tile). The border hugs the actual image either way.
