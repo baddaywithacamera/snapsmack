@@ -18,6 +18,7 @@
     var modalOpener = null;
     var modalEngaged = false;
     var swipeStart = null;
+    var suppressBoardClickUntil = 0;
     var activePalette = null;
     var frames = [];
     var borderCursor = 0;
@@ -126,11 +127,13 @@
 
     function positionTiles(board, animate) {
         var dur = animate ? durationFor(board) : 0;
+        var movable = legal(board.empty);
         board.tiles.forEach(function (tile) {
             var slot = board.slots.indexOf(tile._piece);
             var x = slot % 4, y = Math.floor(slot / 4);
             tile.style.transitionDuration = dur + 'ms';
             tile.style.transform = 'translate3d(' + (x * 100) + '%, ' + (y * 100) + '%, 0)';
+            tile.classList.toggle('is-movable', board.modal && !board.previewing && movable.indexOf(slot) !== -1);
         });
         board.busyUntil = performance.now() + dur;
         if (board.modal) updateModalImageGeometry(board);
@@ -358,14 +361,27 @@
         if (image) image.style.setProperty('--tile-border-c', colour);
     }
 
+    function tokenCanOccupy(token, frame, now) {
+        return !token.history.has(frame) || now - token.history.get(frame) >= 5000;
+    }
+
     function handOffOneBorder(pool, source, occupied) {
         var next = adjacentFrame(source, pool);
-        if (next && !occupied.has(source) && !occupied.has(next.board)) {
+        var target = next && next.board;
+        var now = performance.now();
+        if (next && !occupied.has(source) && !occupied.has(target) &&
+                tokenCanOccupy(source.borderToken, target, now) &&
+                tokenCanOccupy(target.borderToken, source, now)) {
             occupied.add(source);
-            occupied.add(next.board);
-            var colour = source.borderColour;
-            var target = next.board;
-            var displaced = target.borderColour;
+            occupied.add(target);
+            var sourceToken = source.borderToken;
+            var targetToken = target.borderToken;
+            var colour = sourceToken.colour;
+            var displaced = targetToken.colour;
+            sourceToken.history.set(source, now);
+            targetToken.history.set(target, now);
+            source.borderToken = targetToken;
+            target.borderToken = sourceToken;
             source.borderColour = displaced;
             setFrameBorder(source, displaced);
             if (reduced.matches) {
@@ -423,6 +439,7 @@
             '<section class="go-game-dialog" role="dialog" aria-modal="true" aria-labelledby="go-game-title">' +
             '<button class="go-game-close" type="button" aria-label="Close puzzle">&times;</button>' +
             '<p id="go-game-title" class="go-game-invite">I WANT TO PLAY A GAME</p>' +
+            '<p class="go-game-help">Move a tile beside the empty space to rebuild the image. Arrow keys and WASD work too.</p>' +
             '<div class="go-game-board" role="application" aria-label="Sliding image puzzle"></div>' +
             '<div class="go-game-stats" aria-live="polite">' +
             '<span><b data-stat="time">0:00.0</b> time</span>' +
@@ -457,8 +474,10 @@
             var rect = active.el.getBoundingClientRect();
             var col = Math.max(0, Math.min(3, Math.floor((event.clientX - rect.left) / (rect.width / 4))));
             var row = Math.max(0, Math.min(3, Math.floor((event.clientY - rect.top) / (rect.height / 4))));
+            suppressBoardClickUntil = performance.now() + 400;
             move(active, row * 4 + col, true);
         });
+        gameBoard.addEventListener('pointercancel', function () { swipeStart = null; });
         return wrap;
     }
 
@@ -668,6 +687,7 @@
 
     function clickBoard(event) {
         if (!active || active.finished) return;
+        if (performance.now() < suppressBoardClickUntil) return;
         var rect = active.el.getBoundingClientRect();
         var col = Math.max(0, Math.min(3, Math.floor((event.clientX - rect.left) / (rect.width / 4))));
         var row = Math.max(0, Math.min(3, Math.floor((event.clientY - rect.top) / (rect.height / 4))));
@@ -734,7 +754,8 @@
     // `root` (the puzzle field) returned zero frames, so Border Travel could be
     // enabled yet never animate a photograph border.
     document.querySelectorAll('.go-content-wrap .go-grid .go-tile--framed:not(.go-tile--phantom)').forEach(function (el) {
-        var frame = { el: el, borderColour: activePalette[frames.length % activePalette.length] };
+        var colour = activePalette[frames.length % activePalette.length];
+        var frame = { el: el, borderColour: colour, borderToken: { colour: colour, history: new Map() } };
         setFrameBorder(frame, frame.borderColour);
         frames.push(frame);
     });

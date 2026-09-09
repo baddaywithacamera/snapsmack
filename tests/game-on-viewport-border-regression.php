@@ -29,6 +29,11 @@ $checks = [
     'preview restores the exact puzzle state' => str_contains($engine, 'board.slots = board.previewSlots.slice();'),
     'view image is an in-place button' => str_contains($engine, '<button data-game-preview type="button">View image</button>'),
     'view image is no longer an outbound link' => !str_contains($engine, 'data-game-post'),
+    'modal explains the legal move' => str_contains($engine, 'Move a tile beside the empty space'),
+    'legal modal tiles are identified' => str_contains($engine, "tile.classList.toggle('is-movable'"),
+    'border colours cannot return for five seconds' => str_contains($engine, 'now - token.history.get(frame) >= 5000'),
+    'border return memory follows the colour' => str_contains($engine, 'target.borderToken = sourceToken;'),
+    'touch swipes suppress their synthetic click' => str_contains($engine, 'suppressBoardClickUntil = performance.now() + 400;'),
     'solved puzzle reveals complete image' => str_contains($engine, "board.el.classList.add('is-complete');"),
     'complete image hides puzzle lines' => str_contains($style, '.go-game-board.is-complete .go-puzzle-piece { opacity: 0; }'),
 ];
