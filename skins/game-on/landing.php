@@ -154,10 +154,10 @@ if (function_exists('trigram_align_backfill')) $grid_posts = trigram_align_backf
 
 include dirname(__DIR__, 2) . '/core/meta.php';
 
-// GAME ON's living background is deliberately fed from the rows already
-// fetched for the public grid: no second archive query and no full-resolution
-// background downloads. Render the maximum 16-by-9 desktop field; the engine
-// hides surplus boards when the visitor selects a lower density.
+// GAME ON's living background has a deliberately different image pool from the
+// public grid. A normal one-image post is eligible; a carousel's designated
+// cover is not, though its other images are. Every trigram/triptych member is
+// excluded because those derived slices only make visual sense as a set.
 $_go_puzzle_mode = $settings['go_puzzle_mode'] ?? 'moving';
 $_go_puzzle_brightness = max(-100, min(100, (int)($settings['go_treatment_overlay'] ?? 0)));
 $_go_puzzle_tone_style = '';
@@ -167,11 +167,30 @@ if ($_go_puzzle_brightness < 0) {
     $_go_puzzle_tone_style = 'background:rgba(255,255,255,' . round($_go_puzzle_brightness / 100, 2) . ');';
 }
 $_go_puzzle_pool = [];
-if ($_go_puzzle_mode !== 'off' && !empty($grid_posts)) {
-    foreach ($grid_posts as $_go_candidate) {
-        if (empty($_go_candidate['img_thumb_square'])) continue;
-        $_go_puzzle_pool[] = $_go_candidate;
-    }
+if ($_go_puzzle_mode !== 'off') {
+    $_go_pool_stmt = $pdo->prepare("
+        SELECT p.title, i.img_file, i.img_thumb_square,
+               i.img_slug, pi.img_focus_x, pi.img_focus_y, pi.img_zoom,
+               COALESCE(ci.img_slug, i.img_slug) AS post_img_slug
+          FROM snap_posts p
+          JOIN snap_post_images pi ON pi.post_id = p.id AND pi.sort_position >= 0
+          JOIN snap_images i ON i.id = pi.image_id
+          LEFT JOIN snap_post_images cpi ON cpi.post_id = p.id AND cpi.is_cover = 1
+          LEFT JOIN snap_images ci ON ci.id = cpi.image_id
+         WHERE p.status = 'published'
+           AND p.created_at <= ?
+           AND p.trigram_id IS NULL
+           AND i.img_thumb_square IS NOT NULL
+           AND i.img_thumb_square <> ''
+           AND NOT (
+               pi.is_cover = 1
+               AND (SELECT COUNT(*) FROM snap_post_images spi
+                     WHERE spi.post_id = p.id AND spi.sort_position >= 0) > 1
+           )
+         ORDER BY i.id DESC
+    ");
+    $_go_pool_stmt->execute([$now_local]);
+    $_go_puzzle_pool = $_go_pool_stmt->fetchAll(PDO::FETCH_ASSOC);
     shuffle($_go_puzzle_pool);
 }
 $_go_puzzle_slots = [];
@@ -204,7 +223,7 @@ $_go_asset_url = static function (string $path): string {
         $_go_title = trim((string)($_go_image['title'] ?? '')) ?: 'Photograph';
         $_go_thumb = $_go_asset_url((string)$_go_image['img_thumb_square']);
         $_go_full  = $_go_asset_url((string)$_go_image['img_file']);
-        $_go_url   = BASE_URL . '?s=' . urlencode((string)$_go_image['img_slug']);
+        $_go_url   = BASE_URL . '?s=' . urlencode((string)$_go_image['post_img_slug']);
     ?>
     <button class="go-puzzle" type="button"
             tabindex="-1"
@@ -218,6 +237,19 @@ $_go_asset_url = static function (string $path): string {
             data-zoom="<?php echo (int)($_go_image['img_zoom'] ?? 100); ?>"></button>
     <?php endforeach; ?>
 </div>
+<script type="application/json" id="go-puzzle-candidates"><?php
+echo json_encode(array_map(static function (array $image) use ($_go_asset_url): array {
+    return [
+        'thumb' => $_go_asset_url((string)$image['img_thumb_square']),
+        'full' => $_go_asset_url((string)$image['img_file']),
+        'postUrl' => BASE_URL . '?s=' . urlencode((string)$image['post_img_slug']),
+        'label' => trim((string)($image['title'] ?? '')) ?: 'Photograph',
+        'focusX' => (int)($image['img_focus_x'] ?? 50),
+        'focusY' => (int)($image['img_focus_y'] ?? 50),
+        'zoom' => (int)($image['img_zoom'] ?? 100),
+    ];
+}, $_go_puzzle_pool), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
+?></script>
 <?php if ($_go_puzzle_tone_style !== ''): ?>
 <div class="go-puzzle-tone" style="<?php echo $_go_puzzle_tone_style; ?>" aria-hidden="true"></div>
 <?php endif; ?>
@@ -331,8 +363,6 @@ $_go_asset_url = static function (string $path): string {
              <?php if ($tile_css_vars): ?>style="<?php echo $tile_css_vars; ?>"<?php endif; ?>>
             <a href="<?php echo $post_url; ?>" title="<?php echo $title_safe; ?>">
                 <img src="<?php echo htmlspecialchars($thumb_src); ?>"
-                     data-game-thumb="<?php echo htmlspecialchars($_go_asset_url((string)($post['img_thumb_square'] ?: $thumb_src))); ?>"
-                     data-game-full="<?php echo htmlspecialchars($_go_asset_url((string)$post['img_file'])); ?>"
                      alt="<?php echo $title_safe; ?>"
                      loading="lazy">
             </a>
