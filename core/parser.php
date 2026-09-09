@@ -22,6 +22,7 @@
  *   [oldest_post]                    — date of first post
  *   [embed:key]                      — named HTML embed from Smack Your Scripts Up!
  *   [fedi_handle]                    — blog's own fediverse @handle as a follow link (blank if federation off)
+ *   [game_scores]                    — current and historical game leaderboards
  *
  * SMACKONEOUT + SMACKTALK only (not carousel/GRAMOFSMACK):
  *   [lede]text[/lede]                — large grey introductory paragraph
@@ -170,6 +171,9 @@ class SnapSmack {
         // the chrome, this emits just the entry grid.
         $content = $this->parseBoard($content);
 
+        // --- PHASE 13: GAME SCORE HISTORY ---
+        $content = $this->parseGameScores($content);
+
         return $content;
     }
 
@@ -214,6 +218,15 @@ class SnapSmack {
             $settings = is_array($this->config) ? $this->config : [];
             try { return pc_board_embed_html($this->pdo, $settings); }
             catch (\Throwable $e) { return ''; }
+        }, $content);
+    }
+
+    private function parseGameScores($content) {
+        if (stripos($content, '[game_scores]') === false) return $content;
+        return preg_replace_callback('/\[game_scores(?:\s+game=["\']?([a-z0-9_-]+)["\']?)?\]/i', function ($match) {
+            if (!function_exists('snapsmack_game_scores_html')) require_once __DIR__ . '/game-scores.php';
+            try { return snapsmack_game_scores_html($this->pdo, $match[1] ?? 'game-on'); }
+            catch (Throwable $e) { return '<p>High scores are temporarily unavailable.</p>'; }
         }, $content);
     }
 

@@ -220,6 +220,7 @@ $_go_asset_url = static function (string $path): string {
      data-border-activity="<?php echo (int)($settings['go_border_activity'] ?? 3); ?>"
      data-modal-theme="<?php echo htmlspecialchars($settings['go_modal_theme'] ?? 'light'); ?>"
      data-score-url="<?php echo htmlspecialchars(BASE_URL . 'game-on-scores.php'); ?>"
+     data-help-url="<?php echo htmlspecialchars(BASE_URL . 'page.php?slug=how-to-play-15-puzzle'); ?>"
      aria-hidden="true">
     <?php foreach ($_go_puzzle_slots as $_go_index => $_go_image):
         $_go_title = trim((string)($_go_image['title'] ?? '')) ?: 'Photograph';

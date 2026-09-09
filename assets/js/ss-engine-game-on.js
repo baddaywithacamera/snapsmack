@@ -25,7 +25,8 @@
     var borderTimer = 0;
     var motionTimer = 0;
     var session = { solved: 0, totalMs: 0, bestMs: null };
-    var scoreBoard = { fastest: [], most_solved: [] };
+    var scoreBoard = { periods: {} };
+    var scorePeriod = 'daily';
     var palettes = {
         electric: ['#B7FF00', '#FF2B9D', '#00D9FF', '#5A25B5'],
         'film-box': ['#F6C515', '#D82C2C', '#36A8B8', '#563B70'],
@@ -447,9 +448,10 @@
             '<span><b data-stat="solved">0</b> solved</span>' +
             '<span><b data-stat="best">—</b> best</span>' +
             '<span><b data-stat="average">—</b> average</span></div>' +
-            '<div class="go-game-actions"><button data-game-preview type="button">View image</button><button data-game-new type="button">New puzzle</button><button data-game-scores type="button">High scores</button></div>' +
+            '<div class="go-game-actions"><button data-game-preview type="button">View image</button><button data-game-new type="button">New puzzle</button><button data-game-scores type="button">High scores</button><a data-game-help href="' + String(root.dataset.helpUrl || '#').replace(/"/g, '&quot;') + '">How to play</a></div>' +
             '<section class="go-scoreboard" data-scoreboard hidden aria-label="GAME ON high scores">' +
             '<div class="go-scoreboard-head"><b>HIGH SCORES</b><button type="button" data-score-close aria-label="Close high scores">&times;</button></div>' +
+            '<div class="go-score-periods" role="tablist" aria-label="Score period"><button type="button" data-score-period="daily">Today</button><button type="button" data-score-period="weekly">Week</button><button type="button" data-score-period="monthly">Month</button><button type="button" data-score-period="all">All time</button></div>' +
             '<div class="go-score-lists"><div><h3>FASTEST</h3><ol data-score-fastest></ol></div><div><h3>MOST SOLVED</h3><ol data-score-most></ol></div></div>' +
             '<form class="go-score-entry" data-score-form hidden><label>YOUR INITIALS <input data-score-initials maxlength="3" pattern="[A-Za-z0-9]{3}" autocomplete="off" required></label><button type="submit">SAVE SCORE</button><span data-score-status></span></form>' +
             '</section>' +
@@ -461,6 +463,12 @@
         wrap.querySelector('[data-game-preview]').addEventListener('click', togglePreview);
         wrap.querySelector('[data-game-scores]').addEventListener('click', function () { showScores(true); });
         wrap.querySelector('[data-score-close]').addEventListener('click', function () { showScores(false); });
+        wrap.querySelectorAll('[data-score-period]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                scorePeriod = button.dataset.scorePeriod;
+                renderScores();
+            });
+        });
         wrap.querySelector('[data-score-form]').addEventListener('submit', submitScore);
         var gameBoard = wrap.querySelector('.go-game-board');
         gameBoard.addEventListener('pointerdown', function (event) {
@@ -489,14 +497,20 @@
     function scoreRows(rows, kind) {
         if (!rows || !rows.length) return '<li class="go-score-empty">No scores yet</li>';
         return rows.map(function (row) {
-            var score = kind === 'fastest' ? formatMs(Number(row.best_ms)) : String(row.solved_count);
+            var score = kind === 'fastest' ? formatMs(Number(row.score_value)) : String(row.score_value);
             return '<li><b>' + String(row.initials || '---').replace(/[^A-Z0-9]/gi, '') + '</b><span>' + score + '</span><time>' + scoreDate(row.score_date) + '</time></li>';
         }).join('');
     }
     function renderScores() {
         if (!modal) return;
-        modal.querySelector('[data-score-fastest]').innerHTML = scoreRows(scoreBoard.fastest, 'fastest');
-        modal.querySelector('[data-score-most]').innerHTML = scoreRows(scoreBoard.most_solved, 'most');
+        var board = scoreBoard.periods && scoreBoard.periods[scorePeriod] ? scoreBoard.periods[scorePeriod] : { fastest: [], most_solved: [] };
+        modal.querySelector('[data-score-fastest]').innerHTML = scoreRows(board.fastest, 'fastest');
+        modal.querySelector('[data-score-most]').innerHTML = scoreRows(board.most_solved, 'most');
+        modal.querySelectorAll('[data-score-period]').forEach(function (button) {
+            var selected = button.dataset.scorePeriod === scorePeriod;
+            button.classList.toggle('is-active', selected);
+            button.setAttribute('aria-selected', selected ? 'true' : 'false');
+        });
     }
     function loadScores() {
         var url = root.dataset.scoreUrl;
@@ -694,7 +708,7 @@
         move(active, row * 4 + col, true);
     }
     function keyBoard(event) {
-        if (!active || active.finished) return;
+        if (!active) return;
         if (event.key === 'Tab' && modal) {
             var focusable = Array.prototype.slice.call(modal.querySelectorAll('button:not([disabled]),a[href]'));
             if (focusable.length) {
@@ -704,13 +718,32 @@
             }
             return;
         }
+        var lower = event.key.toLowerCase();
+        var arrow = event.key === 'ArrowUp' || event.key === 'ArrowDown' ||
+            event.key === 'ArrowLeft' || event.key === 'ArrowRight';
+        var letterMove = lower === 'w' || lower === 'a' || lower === 's' || lower === 'd';
+        var editable = event.target && (event.target.matches('input, textarea, select') || event.target.isContentEditable);
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            closeModal();
+            return;
+        }
+        if (!arrow && !letterMove) return;
+
+        // While the puzzle is open it exclusively owns navigation keys. This
+        // listener runs in capture phase so the global post hotkeys cannot
+        // navigate away before the puzzle receives the same arrow event.
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (active.finished || (editable && letterMove)) return;
+
         var e = active.empty, from = -1;
-        if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') from = e + 4;
-        if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') from = e - 4;
-        if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') from = e + 1;
-        if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') from = e - 1;
-        if (event.key === 'Escape') { closeModal(); return; }
-        if (from >= 0 && from < 16) { event.preventDefault(); move(active, from, true); }
+        if (event.key === 'ArrowUp' || lower === 'w') from = e + 4;
+        if (event.key === 'ArrowDown' || lower === 's') from = e - 4;
+        if (event.key === 'ArrowLeft' || lower === 'a') from = e + 1;
+        if (event.key === 'ArrowRight' || lower === 'd') from = e - 1;
+        if (from >= 0 && from < 16) move(active, from, true);
     }
 
     selectPalette();
@@ -776,7 +809,7 @@
             openModal(source);
         }
     });
-    document.addEventListener('keydown', keyBoard);
+    document.addEventListener('keydown', keyBoard, true);
     window.addEventListener('resize', function () {
         layoutField();
         if (active) updateModalImageGeometry(active);
