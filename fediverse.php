@@ -253,9 +253,12 @@ switch ($ap) {
             http_response_code(503);
             exit;
         }
-        // Rate limit BEFORE any work — every inbox POST otherwise costs a
-        // signature check including a remote key fetch. Login-pattern limiter.
+        // Flood guard BEFORE the expensive signature check. Only UNVERIFIED
+        // traffic accrues here (see sv_inbox_rate_ok), so a whole fleet behind
+        // one shared IP is never throttled by its own legitimate deliveries. A
+        // Retry-After lets the sender back off precisely instead of guessing.
         if (!sv_inbox_rate_ok($pdo, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', $settings)) {
+            header('Retry-After: 600');
             http_response_code(429); exit;
         }
         $raw = file_get_contents('php://input') ?: '';
@@ -273,6 +276,10 @@ switch ($ap) {
         // Signature first — unverified requests change NOTHING.
         $actor_doc = sv_verify_signature($raw);
         if ($actor_doc === null) {
+            // Only a FAILED verification accrues against the flood guard — this
+            // is the sole thing the shared-IP-safe limiter counts. A verified
+            // POST (the legitimate fleet case) never reaches here.
+            sv_inbox_note_unverified($pdo);
             // A Delete we can't verify is almost always routine fediverse garbage
             // collection: a remote instance purging a (usually spam) account
             // broadcasts a Delete, but the actor — and its signing key — is
@@ -293,6 +300,15 @@ switch ($ap) {
             if (function_exists('sv_inbox_log')) sv_inbox_log($pdo, $log_verb, $log_actor, $log_obj,
                 'REJECTED: ' . ($sig_why !== '' ? $sig_why : 'signature verify failed'));
             http_response_code(401); exit;
+        }
+        // Per-SENDER limit on VERIFIED traffic (shared-IP safe). Keyed on the
+        // signer's instance, not the client IP, so 28 fleet sites on one shared
+        // IP each get their own budget while a single flooding instance stays
+        // bounded. 429 + Retry-After, never a ban.
+        $sv_actor_host = (string)parse_url((string)($actor_doc['id'] ?? ''), PHP_URL_HOST);
+        if (!sv_inbox_actor_rate_ok($pdo, $sv_actor_host, $settings)) {
+            header('Retry-After: 600');
+            http_response_code(429); exit;
         }
         if (!sv_inbox_replay_first_seen($pdo, $raw)) {
             // A valid delivery retry/replay is idempotently acknowledged — and
