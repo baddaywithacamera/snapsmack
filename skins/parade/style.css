@@ -1080,7 +1080,7 @@ body.pa-modal-open { overflow: hidden; }
     border-top: 1px solid var(--border-color);
     background:  var(--footer-bg, var(--panel-bg, transparent));
     max-width:   calc(var(--grid-max-width, 935px) + 2 * var(--panel-extend, 0px));
-    margin:      0 auto;
+    margin:      var(--footer-gap, 0px) auto 0;
 }
 
 #system-footer .inside {

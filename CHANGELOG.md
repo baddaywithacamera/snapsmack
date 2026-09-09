@@ -13,13 +13,14 @@
 - **New grid-skin installations now start from one practical visual baseline.** The tiled three-column family defaults to a 935px content area, 20px below the navigation, 20px between tiles, 50%-opaque navigation and content surfaces, 10px photograph frames, 20px titles and taglines, and bold titles. Navigation and content surfaces default white except AURORA's intentionally black surfaces. Existing saved site settings are not rewritten.
 - **PARADE's overlapping border controls now name the layer they actually affect.** “Animated Tile Ring,” “Photograph Frame,” and “Interface Divider” replace three flavours of ambiguous “border,” with plain hints explaining that they are separate treatments rather than duplicate controls.
 - **PARADE's border-wave timing is labelled honestly.** The control now reads “Wave Cycle Duration” and reports seconds instead of inheriting a meaningless `px` suffix.
+- **PARADE now exposes the missing footer layout controls.** “Tiles → Footer Gap” controls the clear space below the last tile row, while footer background colour and opacity control the footer surface independently of its text glow.
 - **PARADE's content-column controls are now together under CONTENT AREA.** Colour, opacity, backing extension, inner side padding, maximum width, and space between image tiles no longer hide across Panel, Treatment, Layout, and Grid.
 - **GAME ON's Navigation panel now uses PARADE's mature calibration model.** It includes separate landing/inner navbar opacity, optional dual divider lines, line shadow, link glow, font and complete spacing/type controls while omitting only PARADE's flag-tracking behavior.
 - **GAME ON's palette handoff belongs to the content image frames.** Background puzzle squares are borderless. Framed photographs take their colours from the selected palette and pass one colour to one adjacent content frame at a time.
 - **GAME ON's puzzles now read as physical game tiles.** Small seams, rounded corners, edge highlights, inset shading and restrained shadows give both background and modal puzzles tactile depth, with a consistent 10px gutter between games.
 - **The GAME ON modal action now says “View image.”** It no longer exposes missing metadata as “View untitled image.”
 
-## PARADE Skin 1.2.34 — 2026-09-09
+## PARADE Skin 1.2.35 — 2026-09-09
 - **Reorganizes and relabels configuration without changing saved keys or live rendering.** Existing site choices carry forward; the administrative controls now explain the three distinct border layers and collect content-area geometry and transparency in one place. New installations also receive the shared grid-family defaults.
 
 ## GAME ON Skin 0.1.5 — 2026-09-09
