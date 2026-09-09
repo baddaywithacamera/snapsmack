@@ -285,7 +285,7 @@
         wrap.innerHTML = '<div class="go-game-backdrop"></div>' +
             '<section class="go-game-dialog" role="dialog" aria-modal="true" aria-labelledby="go-game-title">' +
             '<button class="go-game-close" type="button" aria-label="Close puzzle">&times;</button>' +
-            '<p id="go-game-title" class="go-game-invite">I want to play a game.</p>' +
+            '<p id="go-game-title" class="go-game-invite">I WANT TO PLAY A GAME</p>' +
             '<div class="go-game-board" role="application" aria-label="Sliding image puzzle"></div>' +
             '<div class="go-game-stats" aria-live="polite">' +
             '<span><b data-stat="time">0:00.0</b> time</span>' +
