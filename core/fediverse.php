@@ -692,57 +692,126 @@ function sv_inbox_replay_first_seen(PDO $pdo, string $raw_body): bool {
 }
 
 /**
- * Inbox rate limit — reuses snap_rate_limits / snap_ip_bans (the login /
- * FLKR FCKR pattern). Every inbox POST costs a signature check including a
- * remote key fetch, so it is not free to serve: cap 60 per 10 minutes per
- * IP; a sustained flood (>180 in the window) earns a 24-hour auto-ban.
- * Best-effort: a limiter failure never blocks legitimate federation.
+ * Inbox flood guard — SHARED-IP SAFE (0.7.665D redesign).
+ *
+ * ActivityPub defines no inbox rate limit; this is SnapSmack's own anti-flood
+ * protection. The old version counted EVERY inbox POST against the sender IP
+ * (cap 60/10min, auto-ban >180). That is fatal on shared hosting: a whole fleet
+ * of sites lives behind ONE shared IP (vhost-differentiated — the normal, real
+ * deployment), so all fleet-to-fleet delivery pours into one IP bucket, trips
+ * the cap instantly, and the auto-ban blacks out the ENTIRE fleet's federation
+ * to that site for 24 hours. Giving each site its own IP is not a real setup, so
+ * the guard must work with the shared IP, not around it.
+ *
+ * Redesign: the accountable identity in ActivityPub is the SIGNATURE, not the
+ * IP. A signature-verified inbox POST is legitimate and NEVER counts here and
+ * NEVER triggers a ban — so 1 or 28 verified sites behind one IP federate
+ * freely. Only requests that FAIL verification (the real flood/abuse risk, and
+ * the expensive ones) accrue against the sender IP, recorded by
+ * sv_inbox_note_unverified(). This check is read-only: it just asks whether the
+ * IP has blown its UNVERIFIED budget in the window. A flood is answered with a
+ * cheap 429 + Retry-After — never a 24h IP ban, which would silence the fleet.
+ *
+ * Best-effort: a limiter hiccup never blocks legitimate federation.
  */
 function sv_inbox_rate_ok(PDO $pdo, string $ip, array $settings = []): bool {
-    // SECAUDIT 035: the router hands us REMOTE_ADDR, which behind Cloudflare is
-    // the shared tunnel address — auto-banning it would cut off ALL federation
-    // to this site at once. Resolve the real peer through the one trusted
-    // accessor so enforcement, rate-limit keying and any ban use the true client.
     $ip = snap_trusted_client_ip($pdo);
     try {
-        snap_ip_ban_maintenance($pdo);
-        $b = $pdo->prepare("SELECT 1 FROM snap_ip_bans WHERE ip = ? AND expires_at > NOW() LIMIT 1");
+        // Honour a ban set by other subsystems — but SELF-HEAL the retired
+        // 'auto:fediverse_inbox' reason on contact (0.7.669D). The pre-666D IP
+        // limiter created those bans; 666D+ never does, so any that remains is
+        // provably stale — a fleet that self-banned its own shared IP. Drop it
+        // right here and let the request through. This is the enduring automatic
+        // clear: it needs no cron, no DNS, no roster (all of which failed on a
+        // quiet spoke / IPv6 host) — the blocked request heals its own block the
+        // instant it knocks. A real ban (auto:probe, auth) still stands.
+        $b = $pdo->prepare("SELECT id, reason FROM snap_ip_bans WHERE ip = ? AND expires_at > NOW()");
         $b->execute([$ip]);
-        if ($b->fetchColumn()) return false;
+        $real_ban = false;
+        foreach ($b->fetchAll(PDO::FETCH_ASSOC) as $ban) {
+            if (($ban['reason'] ?? '') === 'auto:fediverse_inbox') {
+                $pdo->prepare("DELETE FROM snap_ip_bans WHERE id = ?")->execute([(int)$ban['id']]);
+            } else {
+                $real_ban = true;
+            }
+        }
+        if ($real_ban) return false;
 
+        // UNVERIFIED attempts per 10 min per IP. Legit (verified) traffic never
+        // reaches this counter, so this is a generous ceiling on garbage only.
+        $is_relay = ($settings['distribution_profile'] ?? '') === 'smackcast';
+        $cap = $is_relay ? 1200 : 240;
+        $q = $pdo->prepare(
+            "SELECT count FROM snap_rate_limits
+             WHERE ip = ? AND action = 'fediverse_inbox_unverified'
+               AND window_start >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
+        );
+        $q->execute([$ip]);
+        return (int)($q->fetchColumn() ?: 0) <= $cap;
+    } catch (PDOException $e) {
+        return true; // never block federation on a limiter hiccup
+    }
+}
+
+/**
+ * Record ONE unverified/failed inbox attempt against the sender IP. This is the
+ * only thing that accrues toward the flood guard — a signature-verified POST
+ * never calls this, so legitimate fleet traffic on a shared IP never counts.
+ * Best-effort; never throws into the request path, never bans.
+ */
+function sv_inbox_note_unverified(PDO $pdo): void {
+    try {
+        $ip = snap_trusted_client_ip($pdo);
         $pdo->prepare(
             "INSERT INTO snap_rate_limits (ip, action, count, window_start)
-             VALUES (?, 'fediverse_inbox', 1, NOW())
+             VALUES (?, 'fediverse_inbox_unverified', 1, NOW())
              ON DUPLICATE KEY UPDATE
                count        = IF(window_start < DATE_SUB(NOW(), INTERVAL 10 MINUTE), 1, count + 1),
                window_start = IF(window_start < DATE_SUB(NOW(), INTERVAL 10 MINUTE), NOW(), window_start)"
         )->execute([$ip]);
+    } catch (PDOException $e) { /* best-effort */ }
+}
+
+/**
+ * Per-SENDER limit for VERIFIED inbox traffic — the accountable, shared-IP-safe
+ * cap (0.7.665D). Keyed on the signer's INSTANCE (actor host), NOT the client
+ * IP: the 28-site fleet lives on ONE shared IP but is 28 distinct hosts, so each
+ * site gets its own budget and legit backfills flow, while a single malicious
+ * instance minting a thousand actors is still ONE host = ONE bounded budget
+ * (actor rotation cannot walk around a per-instance limit). Only reached AFTER
+ * signature verification succeeds, so it governs real, accountable senders. Over
+ * cap → the caller answers 429 + Retry-After (never a ban — banning a shared IP
+ * would silence the whole fleet). Cap is generous: a paced fleet backfill runs
+ * ~60/10min from one sender; 300 leaves wide headroom yet bounds an instance.
+ *
+ * The instance key is stored HASHED in the `ip` column: that column is
+ * varchar(45) and a hostname can exceed it, so a hash is the collision-free key.
+ * Best-effort: a limiter hiccup never blocks legitimate federation.
+ */
+function sv_inbox_actor_rate_ok(PDO $pdo, string $actor_host, array $settings = []): bool {
+    $actor_host = strtolower(trim($actor_host));
+    if ($actor_host === '') return true;   // unkeyable — never block a verified send
+    $key = substr('vhost:' . hash('sha256', $actor_host), 0, 45);
+    try {
+        $pdo->prepare(
+            "INSERT INTO snap_rate_limits (ip, action, count, window_start)
+             VALUES (?, 'fediverse_inbox_verified', 1, NOW())
+             ON DUPLICATE KEY UPDATE
+               count        = IF(window_start < DATE_SUB(NOW(), INTERVAL 10 MINUTE), 1, count + 1),
+               window_start = IF(window_start < DATE_SUB(NOW(), INTERVAL 10 MINUTE), NOW(), window_start)"
+        )->execute([$key]);
         $q = $pdo->prepare(
             "SELECT count FROM snap_rate_limits
-             WHERE ip = ? AND action = 'fediverse_inbox'
+             WHERE ip = ? AND action = 'fediverse_inbox_verified'
                AND window_start >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
         );
-        $q->execute([$ip]);
+        $q->execute([$key]);
         $n = (int)($q->fetchColumn() ?: 0);
-
-        // SMACKCAST is a relay and legitimately receives a much denser signed
-        // inbox stream than a photoblog. This is a route-specific allowance,
-        // not an IP trust bypass: signatures, body caps, SSRF checks, replay
-        // handling and the flood ceiling all remain enforced.
         $is_relay = ($settings['distribution_profile'] ?? '') === 'smackcast';
-        $soft_cap = $is_relay ? 600 : 60;
-        $ban_cap  = $is_relay ? 1800 : 180;
-        if ($n > $ban_cap) {
-            // SECAUDIT 035: never record a ban against a private/loopback/proxy
-            // address — that silences the whole audience, not the flooder.
-            if (snap_ip_is_bannable($ip, $pdo)) {
-                snap_ip_record_ban($pdo, $ip, 'auto:fediverse_inbox', 86400);
-            }
-            return false;
-        }
-        return $n <= $soft_cap;
+        $cap = $is_relay ? 3000 : 300;   // verified activities / 10 min / sending instance
+        return $n <= $cap;
     } catch (PDOException $e) {
-        return true; // never block federation on a limiter hiccup
+        return true; // never block legitimate federation on a limiter hiccup
     }
 }
 
@@ -1680,6 +1749,31 @@ function sv_repair_follower_inboxes_once(PDO $pdo, array $settings): void {
         )->execute([$ver . ':' . $cursor]);
         if ($repaired > 0) error_log("FEDIVERSE inbox repair: rewrote {$repaired} follower delivery address(es)");
     } catch (Throwable $e) { /* repair must never break the sweep */ }
+}
+
+/**
+ * One-shot per installed version: sweep away STALE inbox self-bans the pre-666D
+ * limiter inflicted (reason 'auto:fediverse_inbox'). That reason is RETIRED —
+ * 666D+ never creates it — so every such row is provably stale and safe to drop.
+ * A genuine outside flooder is NOT set loose: 666D's inbox limiter re-throttles
+ * with 429s instead of banning. Scoped strictly to the retired reason, so real
+ * bans (auto:probe, auth) are never touched.
+ *
+ * This is the SECONDARY sweep. The primary, immediate clear lives in
+ * sv_inbox_rate_ok(): it drops the same retired-reason ban on contact, needing no
+ * cron, no DNS, no roster — the 0.7.667D/668D roster+DNS scoping failed exactly
+ * there (a dormant spoke never ran the cron; the fleet's domains resolve to IPv6
+ * while the ban was on the internal IPv4). Reason-scoped blanket delete has no
+ * such dependency. Best-effort; never breaks the sweep.
+ */
+function sv_heal_stale_inbox_bans_once(PDO $pdo, array $settings): void {
+    try {
+        $ver = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0';
+        if ((string)($settings['fedi_inbox_ban_heal_done'] ?? '') === $ver) return;
+        $n = $pdo->exec("DELETE FROM snap_ip_bans WHERE reason = 'auto:fediverse_inbox'");
+        if ($n) error_log("FEDIVERSE: cleared " . (int)$n . " stale auto:fediverse_inbox self-ban(s).");
+        sv_set_setting($pdo, $settings, 'fedi_inbox_ban_heal_done', $ver);
+    } catch (Throwable $e) { /* the healer must never break the sweep */ }
 }
 
 /**
@@ -6617,6 +6711,9 @@ function sv_run_sweep(PDO $pdo, array &$settings): array
         // "succeeds" into a void — the exact fleet blackhole of 2026-09-03.
         // This heals every flavour of wrong without waiting for a failure.
         sv_repair_follower_inboxes_once($pdo, $settings);
+        // Clear a stale self-inflicted inbox IP-ban (pre-666D limiter). One-shot
+        // per version, roster-scoped — see sv_heal_stale_inbox_bans_once.
+        sv_heal_stale_inbox_bans_once($pdo, $settings);
 
         $relay_ingest = function_exists('sc_relay_process_ingest_jobs')
             ? sc_relay_process_ingest_jobs($pdo, $settings, 20) : [0, 0];
