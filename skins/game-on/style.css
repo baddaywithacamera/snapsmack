@@ -413,6 +413,9 @@ img { display: block; max-width: 100%; }
 .go-tile-overlay {
     position: absolute;
     inset: 0;
+    /* The overlay sits above the rounded tile and image.  Without its own
+       clipping radius, the hover tint paints square corners over both. */
+    border-radius: inherit;
     background: rgba(0,0,0,0.35);
     display: flex;
     align-items: center;
