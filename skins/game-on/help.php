@@ -24,7 +24,7 @@ return [
         ],
         [
             'title' => 'Solving and Session Scores',
-            'body'  => 'The timer begins with your first legal move. GAME ON tracks moves, completed puzzles, fastest solve, and average solve for this browser session only. View Whole Image temporarily removes the pieces and adds exactly two seconds to that solve. When solved, the tile lines disappear to reveal the complete photograph before it pulses twice using the HEURISTIC-safe motion treatment, fades away, and returns as a new solvable puzzle.',
+            'body'  => 'The timer begins with your first legal move—or when View Image is used. GAME ON tracks moves, completed puzzles, fastest solve, and average solve for this browser session only. View Image animates the pieces into place, holds the complete photograph for two seconds, and restores the exact puzzle while the timer keeps running. When solved, the tile lines disappear to reveal the complete photograph before it pulses twice using the HEURISTIC-safe motion treatment, fades away, and returns as a new solvable puzzle.',
         ],
         [
             'title' => 'Background Motion and Colour',

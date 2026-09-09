@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## GAME ON Skin 0.1.13 / SnapSmack 0.7.677D — 2026-09-09
+
+- Replaces the puzzle modal's outbound View Image link with an in-place preview: pieces animate into their solved positions, the uninterrupted photograph holds for two seconds, and the exact puzzle arrangement returns.
+- Starts and continuously runs the solve timer during the preview, so leaving the puzzle page is no longer necessary and preview time is naturally included.
+
 ## GAME ON Skin 0.1.12 — 2026-09-09
 
 - Adds an independent five-level Image Border Activity control for the frequency and concurrency of colour hand-offs.
