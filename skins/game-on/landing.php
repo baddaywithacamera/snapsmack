@@ -210,6 +210,7 @@ $_go_asset_url = static function (string $path): string {
             data-zoom="<?php echo (int)($_go_image['img_zoom'] ?? 100); ?>"></button>
     <?php endforeach; ?>
 </div>
+<div class="go-puzzle-edge-mask" aria-hidden="true"></div>
 <?php endif; ?>
 <div class="go-content-wrap">
 
