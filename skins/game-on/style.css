@@ -174,7 +174,9 @@ body:not(:has(.go-puzzle-field)) .go-sticky-nav {
 .go-sticky-nav-links a {
     font-size: 13px;
     font-weight: 500;
-    font-family: var(--nav-font, inherit);
+    /* Grid navigation deliberately uses the standard body/UI face. Decorative
+       photo/title fonts do not belong in the menu. */
+    font-family: inherit;
     color: var(--go-nav-color, var(--text-secondary));
     text-decoration: none;
     letter-spacing: 0.2px;
@@ -1334,7 +1336,9 @@ body:has(.go-puzzle-field) {
     --go-c3: #00d9ff;
     --go-c4: #5a25b5;
     --go-board-gap: 10px;
-    --go-board: max(20vw, 33.333vh);
+    /* Five complete columns by three complete rows. Use the limiting viewport
+       axis so no board is deliberately centred beyond and clipped by an edge. */
+    --go-board: min(calc(20vw - 8px), calc(33.333vh - 6.667px));
     position: fixed;
     z-index: 0;
     left: 50%;
@@ -1512,9 +1516,11 @@ body:has(.go-puzzle-field) {
 
 @media (max-width: 900px) {
     .go-puzzle-field {
-        --go-board: max(33.333vw, 33.333vh);
+        --go-board: min(calc(33.333vw - 6.667px), calc(33.333vh - 6.667px));
         grid-template-columns: repeat(3, var(--go-board));
+        grid-template-rows: repeat(3, var(--go-board));
         width: calc((var(--go-board) * 3) + (var(--go-board-gap) * 2));
+        height: calc((var(--go-board) * 3) + (var(--go-board-gap) * 2));
     }
     .go-puzzle:nth-child(n+10) { display: none; }
 }

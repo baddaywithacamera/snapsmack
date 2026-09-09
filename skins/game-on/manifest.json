@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "GAME ON",
-    "version": "0.1.6",
+    "version": "0.1.7",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Interactive showcase skin: a living field of always-solvable image sliding puzzles behind a clean GRAM grid, with an 80%-viewport playable modal.",
@@ -878,16 +878,6 @@
             "unit": "px",
             "selector": ".go-sticky-nav-links a",
             "property": "font-size"
-        },
-        "go_nav_font": {
-            "section": "NAV",
-            "type": "select",
-            "label": "Nav Font",
-            "default": "inherit",
-            "selector": ":root",
-            "property": "--nav-font",
-            "is_font": true,
-            "no_size_slider": true
         },
         "go_nav_weight": {
             "section": "NAV",
