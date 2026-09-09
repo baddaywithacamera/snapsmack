@@ -27,14 +27,8 @@
 ## PARADE Skin 1.2.35 — 2026-09-09
 - **Reorganizes and relabels configuration without changing saved keys or live rendering.** Existing site choices carry forward; the administrative controls now explain the three distinct border layers and collect content-area geometry and transparency in one place. New installations also receive the shared grid-family defaults.
 
-## GAME ON Skin 0.1.7 — 2026-09-09
-- **Ports PARADE's applicable Navigation controls, hides borrowed engine settings that do not describe GAME ON, and adopts the shared grid-family defaults for new installations.**
-
-## GAME ON Skin 0.1.3 — 2026-09-08
-- **Adds physical tile depth and 10px spacing between background games.** Piece treatment is stronger in the large playable modal while remaining restrained in the moving background.
-
-## GAME ON Skin 0.1.2 — 2026-09-08
-- **Moves palette colours off the background games and onto the actual GramOfSmack image frames.** The background remains a field of playable picture puzzles without decorative borders; content frame thickness is still controlled by the standard Image Frame setting.
+## GAME ON Skin 0.1.2 — 2026-09-09
+- **This is the second actual GAME ON update, consolidating the unpublished internal revisions that were incorrectly numbered through 0.1.7.** It moves palette colours onto the content photograph frames, adds physical puzzle-tile depth and spacing, corrects complete-board viewport fitting, repairs Border Travel, refines the high-key game modal, restores the standard grid navigation font, adds its dedicated invitation-font picker, ports the applicable navigation calibration, removes irrelevant borrowed controls, and adopts the shared grid-family defaults for new installations.
 
 ## 0.7.671D "PASS IT ON" — 2026-09-08
 - **GAME ON's borders now pass colour from one puzzle to one neighbour at a time.** The whole background no longer flashes synchronized neon grid bands: a single colour travels left, right, up, or down into an adjacent board, which then becomes the source of the next handoff. Border motion remains independent of puzzle motion, and reduced-motion visitors receive the colour change without the sliding animation.
