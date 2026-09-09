@@ -16,6 +16,7 @@
 - Explains the one essential move directly above the board and visually distinguishes tiles beside the empty space, making the puzzle discoverable without an external tutorial.
 - Makes legal moves persistently visible on touchscreens, enlarges modal controls for touch, and prevents a swipe's synthetic follow-up click from moving a second tile.
 - Gives every travelling border colour a five-second return memory, preventing an immediate bounce back to any photograph it just left even after an indirect route.
+- Adds separately named Post Viewer Backdrop Colour and Opacity controls, independent of the playable puzzle backdrop, while preserving the existing black-at-80% appearance by default.
 
 ## GAME ON Skin 0.1.12 — 2026-09-09
 
