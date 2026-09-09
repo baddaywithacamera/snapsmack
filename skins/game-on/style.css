@@ -1366,6 +1366,13 @@ body:has(.go-puzzle-field) {
     background: #fff;
 }
 .go-puzzle-field.is-game-ready { pointer-events: auto; }
+.go-puzzle-edge-mask {
+    position: fixed;
+    z-index: 1;
+    inset: 0;
+    pointer-events: none;
+    box-shadow: inset 10px 0 #fff, inset -10px 0 #fff;
+}
 .go-puzzle {
     position: relative;
     display: block;

@@ -531,6 +531,7 @@
         el.addEventListener('click', function () { openModal(board); });
     });
     layoutField();
+    window.requestAnimationFrame(layoutField);
     scheduleMotion();
     // The puzzle field and the content grid are siblings. Scoping this lookup to
     // `root` (the puzzle field) returned zero frames, so Border Travel could be
@@ -551,6 +552,9 @@
         layoutField();
         if (active) updateModalImageGeometry(active);
     });
+    if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(layoutField).observe(document.documentElement);
+    }
     document.addEventListener('visibilitychange', function () {
         if (!document.hidden) scheduleMotion();
     });
