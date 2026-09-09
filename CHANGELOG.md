@@ -18,12 +18,13 @@
 - **GAME ON's Navigation panel now uses PARADE's mature calibration model.** It includes separate landing/inner navbar opacity, optional dual divider lines, line shadow, link glow, font and complete spacing/type controls while omitting only PARADE's flag-tracking behavior.
 - **GAME ON's palette handoff belongs to the content image frames.** Background puzzle squares are borderless. Framed photographs take their colours from the selected palette and pass one colour to one adjacent content frame at a time.
 - **GAME ON's puzzles now read as physical game tiles.** Small seams, rounded corners, edge highlights, inset shading and restrained shadows give both background and modal puzzles tactile depth, with a consistent 10px gutter between games.
+- **GAME ON's invitation is now centred, uppercase and punctuation-free.** The modal uses a high-key game-board surface rather than clinical white or an unrelated black box, and Skin Admin includes a dedicated invitation-font picker.
 - **The GAME ON modal action now says “View image.”** It no longer exposes missing metadata as “View untitled image.”
 
 ## PARADE Skin 1.2.35 — 2026-09-09
 - **Reorganizes and relabels configuration without changing saved keys or live rendering.** Existing site choices carry forward; the administrative controls now explain the three distinct border layers and collect content-area geometry and transparency in one place. New installations also receive the shared grid-family defaults.
 
-## GAME ON Skin 0.1.5 — 2026-09-09
+## GAME ON Skin 0.1.6 — 2026-09-09
 - **Ports PARADE's applicable Navigation controls, hides borrowed engine settings that do not describe GAME ON, and adopts the shared grid-family defaults for new installations.**
 
 ## GAME ON Skin 0.1.3 — 2026-09-08

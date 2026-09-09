@@ -1432,9 +1432,9 @@ body:has(.go-puzzle-field) {
     width: min(92vw, 980px);
     max-height: 96vh;
     padding: 16px 22px 18px;
-    color: #f5f5f2;
-    background: #101010;
-    border: 1px solid #444;
+    color: #25231f;
+    background: #f4f1e8;
+    border: 1px solid #c9c3b6;
     box-shadow: 0 26px 90px rgba(0,0,0,.75);
     transition: opacity .65s ease;
 }
@@ -1446,15 +1446,20 @@ body:has(.go-puzzle-field) {
     top: 6px;
     border: 0;
     background: transparent;
-    color: #fff;
+    color: #25231f;
     font-size: 30px;
     line-height: 1;
     cursor: pointer;
 }
 .go-game-invite {
+    width: 100%;
     margin: 0;
-    padding-right: 28px;
-    font: 600 clamp(14px, 1.6vw, 22px)/1.2 Georgia, serif;
+    padding: 0 28px;
+    text-align: center;
+    font-family: Georgia, serif;
+    font-size: clamp(14px, 1.6vw, 22px);
+    font-weight: 600;
+    line-height: 1.2;
     letter-spacing: .08em;
 }
 .go-game-board {
@@ -1492,16 +1497,16 @@ body:has(.go-puzzle-field) {
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: .08em;
-    color: #aaa;
+    color: #69645b;
 }
-.go-game-stats b { color: #fff; font-variant-numeric: tabular-nums; }
+.go-game-stats b { color: #25231f; font-variant-numeric: tabular-nums; }
 .go-game-actions { display: flex; gap: 18px; align-items: center; font-size: 12px; }
-.go-game-actions a { color: #d8d8d0; }
+.go-game-actions a { color: #4c4840; }
 .go-game-actions button {
-    border: 1px solid #555;
+    border: 1px solid #aaa397;
     padding: 6px 11px;
-    background: #1d1d1d;
-    color: #eee;
+    background: #e7e2d7;
+    color: #25231f;
     cursor: pointer;
 }
 
