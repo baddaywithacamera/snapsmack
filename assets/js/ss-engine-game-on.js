@@ -527,8 +527,9 @@
     var poolNode = document.getElementById('go-puzzle-candidates');
     var sample = [];
     if (poolNode) {
-        try { sample = shuffled(JSON.parse(poolNode.textContent || '[]')); }
-        catch (ignore) { sample = []; }
+        sample = shuffled(Array.prototype.slice.call(poolNode.children).map(function (node) {
+            return node.dataset;
+        }));
     }
     boardElements.forEach(function (el, index) {
         var image = sample[index];
