@@ -24,6 +24,7 @@
     var borderTimer = 0;
     var motionTimer = 0;
     var session = { solved: 0, totalMs: 0, bestMs: null };
+    var scoreBoard = { fastest: [], most_solved: [] };
     var palettes = {
         electric: ['#B7FF00', '#FF2B9D', '#00D9FF', '#5A25B5'],
         'film-box': ['#F6C515', '#D82C2C', '#36A8B8', '#563B70'],
@@ -399,12 +400,20 @@
             '<span><b data-stat="solved">0</b> solved</span>' +
             '<span><b data-stat="best">—</b> best</span>' +
             '<span><b data-stat="average">—</b> average</span></div>' +
-            '<div class="go-game-actions"><a data-game-post href="#">View photograph</a><button data-game-new type="button">New puzzle</button></div>' +
+            '<div class="go-game-actions"><a data-game-post href="#">View photograph</a><button data-game-new type="button">New puzzle</button><button data-game-scores type="button">High scores</button></div>' +
+            '<section class="go-scoreboard" data-scoreboard hidden aria-label="GAME ON high scores">' +
+            '<div class="go-scoreboard-head"><b>HIGH SCORES</b><button type="button" data-score-close aria-label="Close high scores">&times;</button></div>' +
+            '<div class="go-score-lists"><div><h3>FASTEST</h3><ol data-score-fastest></ol></div><div><h3>MOST SOLVED</h3><ol data-score-most></ol></div></div>' +
+            '<form class="go-score-entry" data-score-form hidden><label>YOUR INITIALS <input data-score-initials maxlength="3" pattern="[A-Za-z0-9]{3}" autocomplete="off" required></label><button type="submit">SAVE SCORE</button><span data-score-status></span></form>' +
+            '</section>' +
             '</section>';
         document.body.appendChild(wrap);
         wrap.querySelector('.go-game-close').addEventListener('click', closeModal);
         wrap.querySelector('.go-game-backdrop').addEventListener('click', closeModal);
         wrap.querySelector('[data-game-new]').addEventListener('click', nextPuzzle);
+        wrap.querySelector('[data-game-scores]').addEventListener('click', function () { showScores(true); });
+        wrap.querySelector('[data-score-close]').addEventListener('click', function () { showScores(false); });
+        wrap.querySelector('[data-score-form]').addEventListener('submit', submitScore);
         var gameBoard = wrap.querySelector('.go-game-board');
         gameBoard.addEventListener('pointerdown', function (event) {
             swipeStart = { x: event.clientX, y: event.clientY };
@@ -420,6 +429,58 @@
             move(active, row * 4 + col, true);
         });
         return wrap;
+    }
+
+    function scoreDate(value) {
+        if (!value) return '';
+        var bits = String(value).split('-');
+        return bits.length === 3 ? bits[1] + '/' + bits[2] + '/' + bits[0].slice(2) : value;
+    }
+    function scoreRows(rows, kind) {
+        if (!rows || !rows.length) return '<li class="go-score-empty">No scores yet</li>';
+        return rows.map(function (row) {
+            var score = kind === 'fastest' ? formatMs(Number(row.best_ms)) : String(row.solved_count);
+            return '<li><b>' + String(row.initials || '---').replace(/[^A-Z0-9]/gi, '') + '</b><span>' + score + '</span><time>' + scoreDate(row.score_date) + '</time></li>';
+        }).join('');
+    }
+    function renderScores() {
+        if (!modal) return;
+        modal.querySelector('[data-score-fastest]').innerHTML = scoreRows(scoreBoard.fastest, 'fastest');
+        modal.querySelector('[data-score-most]').innerHTML = scoreRows(scoreBoard.most_solved, 'most');
+    }
+    function loadScores() {
+        var url = root.dataset.scoreUrl;
+        if (!url || !window.fetch) return;
+        fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (response) { if (!response.ok) throw new Error('scoreboard'); return response.json(); })
+            .then(function (data) { scoreBoard = data; renderScores(); })
+            .catch(function () {
+                if (modal) modal.querySelector('[data-score-fastest]').innerHTML = '<li class="go-score-empty">Scores unavailable</li>';
+            });
+    }
+    function showScores(show) {
+        if (!modal) return;
+        modal.querySelector('[data-scoreboard]').hidden = !show;
+        if (show) loadScores();
+    }
+    function submitScore(event) {
+        event.preventDefault();
+        if (!session.solved || session.bestMs === null) return;
+        var form = event.currentTarget;
+        var input = form.querySelector('[data-score-initials]');
+        var status = form.querySelector('[data-score-status]');
+        var initials = input.value.trim().toUpperCase();
+        if (!/^[A-Z0-9]{3}$/.test(initials)) { status.textContent = 'Enter 3 letters'; return; }
+        status.textContent = 'Saving…';
+        fetch(root.dataset.scoreUrl, {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ initials: initials, best_ms: Math.round(session.bestMs), solved_count: session.solved })
+        }).then(function (response) { if (!response.ok) throw new Error('save'); return response.json(); })
+          .then(function (data) {
+              scoreBoard = data; renderScores(); status.textContent = 'Saved';
+              try { localStorage.setItem('snapsmack-game-on-initials', initials); } catch (e) { /* private mode */ }
+          }).catch(function () { status.textContent = 'Could not save'; });
     }
 
     function openModal(source) {
@@ -450,6 +511,7 @@
         };
         probe.src = active.full;
         modal.querySelector('.go-game-close').focus();
+        try { modal.querySelector('[data-score-initials]').value = localStorage.getItem('snapsmack-game-on-initials') || ''; } catch (e) { /* private mode */ }
         updateStats(); startTicker();
     }
 
@@ -518,6 +580,8 @@
         session.totalMs += elapsed;
         session.bestMs = session.bestMs === null ? elapsed : Math.min(session.bestMs, elapsed);
         updateStats();
+        var scoreForm = modal.querySelector('[data-score-form]');
+        if (scoreForm) scoreForm.hidden = false;
         window.setTimeout(function () {
             if (!active) return;
             board.el.classList.add('is-solved-pulse');
@@ -607,6 +671,17 @@
     scheduleBorder();
     document.addEventListener('click', function (e) {
         if (active && e.target.closest('.go-game-board')) clickBoard(e);
+        var play = e.target.closest('[data-play-as-puzzle]');
+        if (play) {
+            e.preventDefault();
+            var state = scramble(100 + Math.floor(Math.random() * 151));
+            var source = boardFrom(play, state, false);
+            source.thumb = play.dataset.thumb || play.dataset.full;
+            source.full = play.dataset.full;
+            source.postUrl = play.dataset.postUrl || window.location.href;
+            source.label = play.dataset.label || 'Photograph';
+            openModal(source);
+        }
     });
     document.addEventListener('keydown', keyBoard);
     window.addEventListener('resize', function () {
