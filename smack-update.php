@@ -923,7 +923,10 @@ if ($action === 'stage_backup'
     && ($stage_state['stage'] ?? '') === 'verified'
 ) {
     $backup_error = '';
-    $backup_file  = updater_create_backup($backup_error);
+    if (!isset($_SESSION['update_state']['backup_progress'])) {
+        $_SESSION['update_state']['backup_progress'] = [];
+    }
+    $backup_file = updater_backup_step($_SESSION['update_state']['backup_progress'], $backup_error);
 
     if ($backup_file === false) {
         $flash_msg  = "BACKUP FAILED: {$backup_error}. UPDATE ABORTED.";
@@ -936,7 +939,26 @@ if ($action === 'stage_backup'
             echo json_encode(['status' => 'error', 'stage' => 'backup', 'message' => $flash_msg]);
             exit;
         }
+    } elseif ($backup_file === null) {
+        $progress = $_SESSION['update_state']['backup_progress'];
+        $done = (int)($progress['table'] ?? 0);
+        $total = count($progress['tables'] ?? []);
+        $_SESSION['update_state']['log'] = array_values(array_filter(
+            $_SESSION['update_state']['log'] ?? [],
+            static fn($row) => ($row['label'] ?? '') !== 'Backup in progress'
+        ));
+        $_SESSION['update_state']['log'][] = [
+            'label' => 'Backup in progress', 'status' => 'warn',
+            'detail' => $done . ' of ' . $total . ' tables complete',
+        ];
+        $stage_state = $_SESSION['update_state'];
+        if ($wants_json) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'progress', 'stage' => 'backup', 'message' => 'Backup continuing.']);
+            exit;
+        }
     } else {
+        unset($_SESSION['update_state']['backup_progress']);
         $_SESSION['update_state']['stage']       = 'backed_up';
         $_SESSION['update_state']['backup_file'] = $backup_file;
         $_SESSION['update_backup_file']          = $backup_file; // keep for rollback button

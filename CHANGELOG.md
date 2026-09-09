@@ -9,6 +9,14 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.674D — 2026-09-09
+- **Large-site updates no longer attempt the entire database backup inside one proxy-bound request.** The pre-update dump now resumes through short, automatically continued stages with conservative batches and primary-key paging, avoiding repeated full-prefix scans as post counts grow into the thousands.
+- **GAME ON sizes its puzzle field from the visible browser window.** Quirks-mode pages can report the full document height as the viewport; using the real window height prevents enormous background games while retaining scrollbar-aware width.
+- **GAME ON border travel can cross the whole photograph grid.** Horizontal and vertical paths hand off at row and column edges instead of bouncing forever along one line, and each beat randomly advances one to three non-colliding colour paths.
+
+## GAME ON Skin 0.1.6 — 2026-09-09
+- Requires SnapSmack 0.7.674D for corrected viewport sizing and whole-grid, one-to-three-at-a-time border travel.
+
 ## 0.7.672D "HOUSE STYLE" — 2026-09-09
 - **New grid-skin installations now start from one practical visual baseline.** The tiled three-column family defaults to a 935px content area, 20px below the navigation, 20px between tiles, 50%-opaque navigation and content surfaces, 10px photograph frames, 20px titles and taglines, and bold titles. Navigation and content surfaces default white except AURORA's intentionally black surfaces. Existing saved site settings are not rewritten.
 - **PARADE's overlapping border controls now name the layer they actually affect.** “Animated Tile Ring,” “Photograph Frame,” and “Interface Divider” replace three flavours of ambiguous “border,” with plain hints explaining that they are separate treatments rather than duplicate controls.
