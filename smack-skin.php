@@ -343,12 +343,12 @@ if (isset($_POST['ic_aspect_detect'])) {
     header('Location: smack-skin.php?s=instant-camera&msg=updated'); exit;
 }
 
-// --- RESET PARADE BACKGROUND TUNING (flag + fireworks) to manifest defaults ---
+// --- RESET PARADE BACKGROUND TUNING (waving flag) to manifest defaults ---
 // Deletes ONLY the animated-background tuning keys so the manifest defaults take
 // over (snapsmack_apply_skin_settings falls back to them at render). Leaves the
 // chosen background MODE, flag palette, colours, glow and nav settings intact.
-// Exists because there was no reset control and the 1.0.3 slider rescale left
-// old saved values misread (sparse straight-line fireworks).
+// Exists because there was no reset control and a slider rescale could leave old
+// saved values misread. (Fireworks was removed; only the waving flag remains.)
 if (isset($_POST['reset_pa_bg'])) {
     if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'] ?? '')) {
         http_response_code(403);
@@ -356,9 +356,6 @@ if (isset($_POST['reset_pa_bg'])) {
     }
     $reset_skin = preg_replace('/[^a-z0-9_\-]/', '', $_POST['active_skin_target'] ?? 'parade');
     $reset_opts = [
-        // Fireworks tuning
-        'pa_rate', 'pa_explode', 'pa_intensity', 'pa_soft',
-        'pa_spread', 'pa_launch', 'pa_streamer',
         // Waving-flag tuning
         'pa_flag_speed', 'pa_flag_amplitude', 'pa_flag_opacity',
     ];
@@ -369,7 +366,7 @@ if (isset($_POST['reset_pa_bg'])) {
     require_once __DIR__ . '/core/page-cache.php';
     page_cache_purge_all();
 
-    $_SESSION['gallery_flash'] = 'Flag & Fireworks settings reset to defaults.';
+    $_SESSION['gallery_flash'] = 'Flag settings reset to defaults.';
     header('Location: smack-skin.php?s=' . urlencode($reset_skin) . '&msg=reset');
     exit;
 }
@@ -1347,7 +1344,7 @@ if (!empty($google_families)) {
             /* Context-sensitive skin controls: show a [data-show-when] wrapper only
                while the named control equals data-show-eq, and hide a whole section
                box when all of its conditional controls are hidden. Reusable across
-               skins (e.g. PARADE fireworks vs waving-flag controls). */
+               skins (e.g. a skin's conditional per-mode controls). */
             (function () {
                 function applyShowWhen() {
                     document.querySelectorAll('[data-show-when]').forEach(function (el) {
@@ -1442,13 +1439,13 @@ if (!empty($google_families)) {
     </form>
 
     <?php if (($target_skin ?? '') === 'parade'): ?>
-    <!-- PARADE — reset the animated-background tuning (flag + fireworks) to the
+    <!-- PARADE — reset the animated-background tuning (waving flag) to the
          manifest defaults. Keeps the chosen mode, palette, colours, glow, nav. -->
     <form method="post" action="smack-skin.php?s=parade" class="mt-12"
-          onsubmit="return confirm('Reset PARADE Flag &amp; Fireworks settings to their defaults?\n\nYour background mode, flag palette, colours, glow and nav settings are kept.');">
+          onsubmit="return confirm('Reset PARADE Flag settings to their defaults?\n\nYour background mode, flag palette, colours, glow and nav settings are kept.');">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
         <input type="hidden" name="active_skin_target" value="parade">
-        <button type="submit" name="reset_pa_bg" class="master-update-btn">RESET FLAG &amp; FIREWORKS TO DEFAULTS</button>
+        <button type="submit" name="reset_pa_bg" class="master-update-btn">RESET FLAG TO DEFAULTS</button>
     </form>
     <?php endif; ?>
 
