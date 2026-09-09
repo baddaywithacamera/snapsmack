@@ -86,16 +86,33 @@
                 "vertical": "Up / down"
             }
         },
-        "go_motion_density": {
+        "go_puzzle_density": {
             "section": "GAME ON",
-            "type": "select",
-            "label": "Puzzle Motion",
-            "default": "normal",
-            "options": {
-                "calm": "Calm",
-                "normal": "Normal — every 1–3 seconds",
-                "busy": "Busy"
-            }
+            "type": "range_numeric",
+            "label": "Background Puzzle Amount",
+            "default": "100",
+            "min": "0",
+            "max": "100",
+            "step": "5",
+            "unit": "%"
+        },
+        "go_motion_activity": {
+            "section": "GAME ON",
+            "type": "range_numeric",
+            "label": "Background Activity",
+            "default": "3",
+            "min": "1",
+            "max": "5",
+            "step": "1"
+        },
+        "go_motion_speed": {
+            "section": "GAME ON",
+            "type": "range_numeric",
+            "label": "Puzzle Movement Speed",
+            "default": "3",
+            "min": "1",
+            "max": "5",
+            "step": "1"
         },
         "go_carousel_indicator": {
             "section": "GRID",
