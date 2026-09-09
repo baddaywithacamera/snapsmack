@@ -449,7 +449,10 @@
         boards.push(board); makeTiles(board, false); schedule(board);
         el.addEventListener('click', function () { openModal(board); });
     });
-    root.querySelectorAll('.go-grid .go-tile--framed:not(.go-tile--phantom)').forEach(function (el) {
+    // The puzzle field and the content grid are siblings. Scoping this lookup to
+    // `root` (the puzzle field) returned zero frames, so Border Travel could be
+    // enabled yet never animate a photograph border.
+    document.querySelectorAll('.go-content-wrap .go-grid .go-tile--framed:not(.go-tile--phantom)').forEach(function (el) {
         var frame = { el: el, borderColour: activePalette[frames.length % activePalette.length] };
         el.style.setProperty('--tile-border-c', frame.borderColour);
         frames.push(frame);
