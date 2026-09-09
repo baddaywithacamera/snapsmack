@@ -440,6 +440,7 @@ body:not(:has(.go-puzzle-field)) .go-sticky-nav {
     align-items:     center;
     justify-content: center;
     background:      var(--tile-bg, #ffffff);
+    overflow:        hidden;
 }
 
 .go-tile--framed img {
@@ -459,7 +460,17 @@ body:not(:has(.go-puzzle-field)) .go-sticky-nav {
     background-color: var(--tile-border-c, transparent);
     box-shadow:   var(--tile-shadow, none);
     box-sizing:   border-box;
-    transition:   opacity 0.2s, border-color .56s ease-out;
+    transition:   opacity 0.2s;
+}
+.go-border-travel-layer {
+    position: absolute;
+    z-index: 3;
+    display: block;
+    border-style: solid;
+    border-color: transparent;
+    box-sizing: border-box;
+    pointer-events: none;
+    will-change: clip-path;
 }
 .go-tile--framed.go-tile--portrait img {
     /* Portrait: size% of HEIGHT so it can't overflow the square tile. */
@@ -1015,7 +1026,7 @@ body.go-modal-open { overflow: hidden; }
        blogroll, #scroll-stage clamps it to grid-max-width, which is correct
        there. --footer-bg (admin colour + opacity) overrides the default. */
     border-top: 1px solid var(--border-color);
-    background: var(--footer-bg, var(--bg-primary));
+    background: color-mix(in srgb, var(--go-footer-bg, #fff) var(--go-footer-bg-opacity, 75%), transparent);
     max-width: calc(var(--grid-max-width, 935px) + 2 * var(--grid-gutter, 0px));
     margin: 0 auto;
 }
@@ -1344,6 +1355,8 @@ body:has(.go-puzzle-field) {
     width: 100vw;
     height: 100vh;
     transform: translate(-50%, -50%);
+    box-sizing: content-box;
+    padding: calc(var(--go-board-gap) / 2);
     display: grid;
     grid-template-columns: repeat(16, var(--go-board));
     grid-template-rows: repeat(9, var(--go-board));
@@ -1404,7 +1417,7 @@ body:has(.go-puzzle-field) {
     position: relative;
     z-index: 5;
     background: color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 50%), transparent);
-    box-shadow: 0 0 70px 45px color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 50%), transparent);
+    box-shadow: 0 0 var(--go-content-glow, 0px) var(--go-content-glow, 0px) color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 75%), transparent);
 }
 .go-content-wrap a,
 .go-content-wrap button { pointer-events: auto; }
