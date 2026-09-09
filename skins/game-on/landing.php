@@ -159,6 +159,13 @@ include dirname(__DIR__, 2) . '/core/meta.php';
 // background downloads. Render the maximum 16-by-9 desktop field; the engine
 // hides surplus boards when the visitor selects a lower density.
 $_go_puzzle_mode = $settings['go_puzzle_mode'] ?? 'moving';
+$_go_puzzle_brightness = max(-100, min(100, (int)($settings['go_treatment_overlay'] ?? 0)));
+$_go_puzzle_tone_style = '';
+if ($_go_puzzle_brightness < 0) {
+    $_go_puzzle_tone_style = 'background:rgba(0,0,0,' . round(abs($_go_puzzle_brightness) / 100, 2) . ');';
+} elseif ($_go_puzzle_brightness > 0) {
+    $_go_puzzle_tone_style = 'background:rgba(255,255,255,' . round($_go_puzzle_brightness / 100, 2) . ');';
+}
 $_go_puzzle_pool = [];
 if ($_go_puzzle_mode !== 'off' && !empty($grid_posts)) {
     foreach ($grid_posts as $_go_candidate) {
@@ -191,6 +198,7 @@ $_go_asset_url = static function (string $path): string {
      data-puzzle-density="<?php echo (int)($settings['go_puzzle_density'] ?? 100); ?>"
      data-activity="<?php echo (int)($settings['go_motion_activity'] ?? 3); ?>"
      data-speed="<?php echo (int)($settings['go_motion_speed'] ?? 3); ?>"
+     data-modal-theme="<?php echo htmlspecialchars($settings['go_modal_theme'] ?? 'light'); ?>"
      aria-hidden="true">
     <?php foreach ($_go_puzzle_slots as $_go_index => $_go_image):
         $_go_title = trim((string)($_go_image['title'] ?? '')) ?: 'Photograph';
@@ -210,6 +218,9 @@ $_go_asset_url = static function (string $path): string {
             data-zoom="<?php echo (int)($_go_image['img_zoom'] ?? 100); ?>"></button>
     <?php endforeach; ?>
 </div>
+<?php if ($_go_puzzle_tone_style !== ''): ?>
+<div class="go-puzzle-tone" style="<?php echo $_go_puzzle_tone_style; ?>" aria-hidden="true"></div>
+<?php endif; ?>
 <div class="go-puzzle-edge-mask" aria-hidden="true"></div>
 <?php endif; ?>
 <div class="go-content-wrap">
@@ -320,6 +331,8 @@ $_go_asset_url = static function (string $path): string {
              <?php if ($tile_css_vars): ?>style="<?php echo $tile_css_vars; ?>"<?php endif; ?>>
             <a href="<?php echo $post_url; ?>" title="<?php echo $title_safe; ?>">
                 <img src="<?php echo htmlspecialchars($thumb_src); ?>"
+                     data-game-thumb="<?php echo htmlspecialchars($_go_asset_url((string)($post['img_thumb_square'] ?: $thumb_src))); ?>"
+                     data-game-full="<?php echo htmlspecialchars($_go_asset_url((string)$post['img_file'])); ?>"
                      alt="<?php echo $title_safe; ?>"
                      loading="lazy">
             </a>
