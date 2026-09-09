@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "SLIDERS",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Sean McCormick, OpenAI Codex",
   "support": "sean@baddaywithacamera.ca",
   "description": "A GRAMOFSMACK grid with normal square tiles over GLIDE's moving wall of your own photographs. A configurable opacity layer keeps the foreground readable.",
@@ -70,7 +70,7 @@
     },
     "ic_gap": {
       "section": "GRID", "type": "range_numeric", "label": "Space Between Tiles",
-      "default": "6", "min": "0", "max": "40", "step": "1", "unit": "px",
+      "default": "20", "min": "0", "max": "40", "step": "1", "unit": "px",
       "selector": ":root", "property": "--grid-gap"
     },
     "ic_profile_header": {
@@ -86,14 +86,14 @@
     },
     "ic_panel_opacity": {
       "section": "READABILITY", "type": "range_numeric", "label": "Content Panel Opacity",
-      "default": "0", "min": "0", "max": "100", "step": "5", "unit": "%"
+      "default": "50", "min": "0", "max": "100", "step": "5", "unit": "%"
     },
     "ic_nav_color": {
       "section": "READABILITY", "type": "color", "label": "Navigation Colour", "default": "#ffffff"
     },
     "ic_nav_opacity": {
       "section": "READABILITY", "type": "range_numeric", "label": "Navigation Opacity",
-      "default": "0", "min": "0", "max": "100", "step": "5", "unit": "%"
+      "default": "50", "min": "0", "max": "100", "step": "5", "unit": "%"
     },
     "ic_bg_primary": {
       "section": "COLOURS", "type": "color", "label": "Grid Surface", "default": "#ffffff",
