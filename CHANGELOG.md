@@ -19,12 +19,15 @@
 - **GAME ON's palette handoff belongs to the content image frames.** Background puzzle squares are borderless. Framed photographs take their colours from the selected palette and pass one colour to one adjacent content frame at a time.
 - **GAME ON's puzzles now read as physical game tiles.** Small seams, rounded corners, edge highlights, inset shading and restrained shadows give both background and modal puzzles tactile depth, with a consistent 10px gutter between games.
 - **GAME ON's invitation is now centred, uppercase and punctuation-free.** The modal uses a high-key game-board surface rather than clinical white or an unrelated black box, and Skin Admin includes a dedicated invitation-font picker.
+- **GAME ON's Border Travel now reaches the content grid it is meant to animate.** The engine had searched for framed photographs inside the background puzzle element even though the two are siblings, always finding zero frames and silently doing nothing.
+- **GAME ON no longer crops whole background puzzles at viewport edges.** Board size now uses whichever viewport axis is limiting, keeping complete five-by-three desktop or three-by-three compact fields on screen.
+- **GAME ON navigation is back to the standard grid UI font.** The mistakenly added decorative menu-font picker is removed and stale generated font choices can no longer override the menu.
 - **The GAME ON modal action now says “View image.”** It no longer exposes missing metadata as “View untitled image.”
 
 ## PARADE Skin 1.2.35 — 2026-09-09
 - **Reorganizes and relabels configuration without changing saved keys or live rendering.** Existing site choices carry forward; the administrative controls now explain the three distinct border layers and collect content-area geometry and transparency in one place. New installations also receive the shared grid-family defaults.
 
-## GAME ON Skin 0.1.6 — 2026-09-09
+## GAME ON Skin 0.1.7 — 2026-09-09
 - **Ports PARADE's applicable Navigation controls, hides borrowed engine settings that do not describe GAME ON, and adopts the shared grid-family defaults for new installations.**
 
 ## GAME ON Skin 0.1.3 — 2026-09-08
