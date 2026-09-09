@@ -156,8 +156,8 @@ include dirname(__DIR__, 2) . '/core/meta.php';
 
 // GAME ON's living background is deliberately fed from the rows already
 // fetched for the public grid: no second archive query and no full-resolution
-// background downloads. Repeat the available pool only when fewer than the
-// fifteen visible boards exist.
+// background downloads. Render the maximum 16-by-9 desktop field; the engine
+// hides surplus boards when the visitor selects a lower density.
 $_go_puzzle_mode = $settings['go_puzzle_mode'] ?? 'moving';
 $_go_puzzle_pool = [];
 if ($_go_puzzle_mode !== 'off' && !empty($grid_posts)) {
@@ -172,7 +172,7 @@ if (!empty($_go_puzzle_pool)) {
     // A per-request rotation keeps the deep archive alive without changing the
     // canonical feed order. Adjacent duplicate avoidance falls out naturally
     // until the inventory contains fewer than two usable images.
-    for ($i = 0; $i < 15; $i++) {
+    for ($i = 0; $i < 144; $i++) {
         $_go_puzzle_slots[] = $_go_puzzle_pool[$i % count($_go_puzzle_pool)];
     }
 }
@@ -188,7 +188,9 @@ $_go_asset_url = static function (string $path): string {
      data-mode="<?php echo htmlspecialchars($_go_puzzle_mode); ?>"
      data-palette="<?php echo htmlspecialchars($settings['go_border_palette'] ?? 'automatic'); ?>"
      data-direction="<?php echo htmlspecialchars($settings['go_border_direction'] ?? 'automatic'); ?>"
-     data-density="<?php echo htmlspecialchars($settings['go_motion_density'] ?? 'normal'); ?>"
+     data-puzzle-density="<?php echo (int)($settings['go_puzzle_density'] ?? 100); ?>"
+     data-activity="<?php echo (int)($settings['go_motion_activity'] ?? 3); ?>"
+     data-speed="<?php echo (int)($settings['go_motion_speed'] ?? 3); ?>"
      aria-hidden="true">
     <?php foreach ($_go_puzzle_slots as $_go_index => $_go_image):
         $_go_title = trim((string)($_go_image['title'] ?? '')) ?: 'Untitled photograph';

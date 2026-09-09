@@ -20,7 +20,7 @@ return [
     'topics' => [
         [
             'title' => 'I Want to Play a Game',
-            'body'  => 'The background is a field of always-solvable fifteen-piece sliding puzzles made from this site’s square photograph thumbnails. The puzzles move independently. Click an uncovered puzzle to bring the same state into a large playable modal, then click, tap, swipe, or use the arrow keys to solve it.',
+            'body'  => 'The background is a gap-free field of always-solvable fifteen-piece sliding puzzles made from this site’s square photograph thumbnails. Background Puzzle Amount controls the field density up to a 16-by-9, 144-puzzle desktop field. The field slightly overshoots unusual screen shapes instead of leaving empty edges. Click an uncovered puzzle to bring the same state into a large playable modal, then click, tap, swipe, or use the arrow keys to solve it.',
         ],
         [
             'title' => 'Solving and Session Scores',
@@ -28,7 +28,7 @@ return [
         ],
         [
             'title' => 'Background Motion and Colour',
-            'body'  => 'Background puzzle movement and the sliding border colours are independent. Choose Electric, Film Box, monochrome, or one automatic palette per visit. Visitors who request reduced motion receive a still puzzle field and the established safe completion treatment.',
+            'body'  => 'Background Activity controls how often puzzles move and how many can move together; Puzzle Movement Speed controls how quickly each move travels. One lightweight conductor coordinates the field, so increasing the puzzle amount does not create a timer for every game. Puzzle movement and the sliding border colours are independent. Choose Electric, Film Box, monochrome, or one automatic palette per visit. Visitors who request reduced motion receive a still puzzle field and the established safe completion treatment.',
         ],
         [
             'title' => 'Three-Column Grid Layout',
