@@ -919,6 +919,11 @@ return [
             'path'         => 'assets/js/ss-engine-heuristic.js',
             'has_settings' => false,
         ],
+        'smack-game-on' => [
+            'label'        => 'GAME ON living fifteen-puzzle field and playable modal',
+            'path'         => 'assets/js/ss-engine-game-on.js',
+            'has_settings' => false,
+        ],
         'smack-racetrack' => [
             'label'        => 'RACETRACK (long-exposure light trails lapping a circuit, canvas)',
             'path'         => 'assets/js/ss-engine-racetrack.js',
