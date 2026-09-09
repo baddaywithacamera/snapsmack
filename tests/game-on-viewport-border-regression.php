@@ -38,6 +38,8 @@ $checks = [
     'post viewer backdrop opacity is configurable' => str_contains($manifest, 'go_post_viewer_backdrop_opacity'),
     'post viewer backdrop uses its own colour variable' => str_contains($style, '--go-post-viewer-backdrop-color'),
     'post viewer backdrop uses its own opacity variable' => str_contains($style, '--go-post-viewer-backdrop-opacity'),
+    'modal uses the dynamic viewport height' => str_contains($style, 'calc(100dvh - 260px)'),
+    'short modal has a scroll fallback' => str_contains($style, 'overflow-y: auto;'),
     'solved puzzle reveals complete image' => str_contains($engine, "board.el.classList.add('is-complete');"),
     'complete image hides puzzle lines' => str_contains($style, '.go-game-board.is-complete .go-puzzle-piece { opacity: 0; }'),
 ];
