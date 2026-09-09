@@ -103,7 +103,8 @@
             "default": "3",
             "min": "1",
             "max": "5",
-            "step": "1"
+            "step": "1",
+            "unit": ""
         },
         "go_motion_speed": {
             "section": "GAME ON",
@@ -112,7 +113,8 @@
             "default": "3",
             "min": "1",
             "max": "5",
-            "step": "1"
+            "step": "1",
+            "unit": ""
         },
         "go_carousel_indicator": {
             "section": "GRID",
@@ -193,7 +195,7 @@
         "go_frame_border_px": {
             "section": "IMAGE FRAME",
             "type": "select",
-            "label": "Border Thickness",
+            "label": "Image Border Thickness",
             "default": "10",
             "options": {
                 "0": "None",
@@ -231,49 +233,21 @@
                 "Heavy"
             ]
         },
-        "go_treatment_mode": {
-            "section": "TREATMENT",
-            "type": "select",
-            "label": "Background Treatment",
-            "default": "none",
-            "options": {
-                "none": "None (flat page background)",
-                "image": "Background image",
-                "color": "Solid colour"
-            },
-            "hint": "Adds a full-page background behind a centred content card on every page."
-        },
-        "go_treatment_image": {
-            "section": "TREATMENT",
-            "type": "image",
-            "label": "Treatment Image",
-            "default": "",
-            "accept": "image/jpeg,image/png,image/webp",
-            "min_width": 1920,
-            "min_height": 1080,
-            "hint": "Used when Treatment = Background image. Minimum 1920×1080px."
-        },
-        "go_treatment_position": {
-            "section": "TREATMENT",
-            "type": "select",
-            "label": "Image Anchor (when it overshoots)",
-            "default": "center",
-            "options": {
-                "center": "Centre",
-                "top": "Snap to top",
-                "bottom": "Snap to bottom"
-            },
-            "hint": "Which edge the background image hugs when it is taller than the screen."
-        },
-        "go_treatment_color": {
-            "section": "TREATMENT",
-            "type": "color",
-            "label": "Treatment Colour",
-            "default": "#ffffff",
-            "hint": "Used when Treatment = Solid colour."
+        "go_border_radius": {
+            "section": "IMAGE FRAME",
+            "type": "range_numeric",
+            "label": "Image Corner Radius",
+            "default": "0",
+            "min": "0",
+            "max": "40",
+            "step": "1",
+            "unit": "px",
+            "selector": ":root",
+            "property": "--tile-radius",
+            "hint": "0 keeps square corners; increase it for progressively rounder image frames."
         },
         "go_treatment_overlay": {
-            "section": "TREATMENT",
+            "section": "GAME ON",
             "type": "range_numeric",
             "label": "Background Puzzle Brightness",
             "default": "0",
@@ -351,28 +325,6 @@
             "selector": ":root",
             "property": "--post-count-color",
             "hint": "Colour of the post count number and label."
-        },
-        "go_bg_color": {
-            "section": "GRID",
-            "type": "color",
-            "label": "Grid Background / Gap Colour",
-            "default": "#ffffff",
-            "selector": ":root",
-            "property": "--grid-bg"
-        },
-        "go_border_radius": {
-            "section": "GRID",
-            "type": "select",
-            "label": "Tile Border Radius",
-            "default": "0",
-            "options": {
-                "0": "0px (sharp)",
-                "2": "2px",
-                "4": "4px",
-                "8": "8px (rounded)"
-            },
-            "selector": ":root",
-            "property": "--tile-radius"
         },
         "go_blog_title_font": {
             "section": "PROFILE HEADER",
@@ -738,6 +690,14 @@
             "selector": ":root",
             "property": "--tagline-color"
         },
+        "go_bio_color": {
+            "section": "PROFILE HEADER",
+            "type": "color",
+            "label": "Bio Text Colour",
+            "default": "#8e8e8e",
+            "selector": ":root",
+            "property": "--go-bio-color"
+        },
         "go_nav_case": {
             "section": "NAV",
             "type": "select",
@@ -751,38 +711,6 @@
             },
             "selector": ":root",
             "property": "--nav-text-transform"
-        },
-        "go_nav_bg": {
-            "section": "NAV",
-            "type": "color",
-            "label": "Navigation Background",
-            "default": "#ffffff",
-            "selector": ":root",
-            "property": "--go-nav-bg"
-        },
-        "go_nav_bg_opacity": {
-            "section": "NAV",
-            "type": "range_numeric",
-            "label": "Navbar Opacity — Landing",
-            "default": "75",
-            "min": "0",
-            "max": "100",
-            "step": "5",
-            "unit": "%",
-            "selector": ":root",
-            "property": "--go-nav-bg-opacity"
-        },
-        "go_nav_bg_opacity_inner": {
-            "section": "NAV",
-            "type": "range_numeric",
-            "label": "Navbar Opacity — Other Pages",
-            "default": "75",
-            "min": "0",
-            "max": "100",
-            "step": "5",
-            "unit": "%",
-            "selector": ":root",
-            "property": "--go-nav-bg-opacity-inner"
         },
         "go_nav_link_color": {
             "section": "NAV",
@@ -946,26 +874,6 @@
             },
             "selector": ".go-sticky-nav-links a",
             "property": "font-weight"
-        },
-        "go_footer_bg": {
-            "section": "FOOTER",
-            "type": "color",
-            "label": "Footer Background",
-            "default": "#ffffff",
-            "selector": ":root",
-            "property": "--go-footer-bg"
-        },
-        "go_footer_bg_opacity": {
-            "section": "FOOTER",
-            "type": "range_numeric",
-            "label": "Footer Background Opacity",
-            "default": "75",
-            "min": "0",
-            "max": "100",
-            "step": "5",
-            "unit": "%",
-            "selector": ":root",
-            "property": "--go-footer-bg-opacity"
         },
         "go_post_bg_color": {
             "section": "COLOURS",
@@ -1184,6 +1092,17 @@
             "is_font": true,
             "no_size_slider": true
         },
+        "go_modal_theme": {
+            "section": "PUZZLE MODAL",
+            "type": "select",
+            "label": "Puzzle Window Theme",
+            "default": "light",
+            "options": {
+                "light": "Light",
+                "dark": "Dark"
+            },
+            "hint": "Changes the playable puzzle window only."
+        },
         "go_max_width": {
             "section": "LAYOUT",
             "type": "range_numeric",
@@ -1197,9 +1116,9 @@
             "property": "--grid-max-width"
         },
         "go_gutter": {
-            "section": "TREATMENT",
+            "section": "LAYOUT",
             "type": "range_numeric",
-            "label": "Side Gutter (white margin over background)",
+            "label": "Content Side Padding",
             "default": "80",
             "min": "0",
             "max": "400",

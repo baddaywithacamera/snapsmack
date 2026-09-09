@@ -358,6 +358,7 @@
     function createModal() {
         var wrap = document.createElement('div');
         wrap.className = 'go-game-modal'; wrap.hidden = true;
+        wrap.dataset.theme = root.dataset.modalTheme === 'dark' ? 'dark' : 'light';
         wrap.innerHTML = '<div class="go-game-backdrop"></div>' +
             '<section class="go-game-dialog" role="dialog" aria-modal="true" aria-labelledby="go-game-title">' +
             '<button class="go-game-close" type="button" aria-label="Close puzzle">&times;</button>' +
@@ -519,10 +520,29 @@
     }
 
     selectPalette();
-    // The landing page may come from the anonymous page cache. Reorder its
-    // already-rendered image pool in the browser so every reload still builds
-    // a visibly different field without defeating the cache.
+    // The landing page may come from the anonymous page cache. Draw a fresh
+    // browser-side sample from the complete rendered grid, so reloads change
+    // the photographs rather than merely their positions.
     var boardElements = shuffled(Array.prototype.slice.call(root.querySelectorAll('.go-puzzle')));
+    var candidates = Array.prototype.slice.call(document.querySelectorAll('.go-content-wrap .go-grid img[data-game-thumb][data-game-full]'));
+    var sample = [];
+    candidates.forEach(function (img, index) {
+        if (sample.length < boardElements.length) sample.push(img);
+        else {
+            var slot = Math.floor(Math.random() * (index + 1));
+            if (slot < boardElements.length) sample[slot] = img;
+        }
+    });
+    sample = shuffled(sample);
+    boardElements.forEach(function (el, index) {
+        var img = sample[index];
+        if (!img) return;
+        var link = img.closest('a');
+        el.dataset.thumb = img.dataset.gameThumb;
+        el.dataset.full = img.dataset.gameFull;
+        el.dataset.postUrl = link ? link.href : '#';
+        el.dataset.label = img.alt || 'Photograph';
+    });
     boardElements.forEach(function (el) { root.appendChild(el); });
     boardElements.forEach(function (el) {
         var state = scramble(100 + Math.floor(Math.random() * 151));
