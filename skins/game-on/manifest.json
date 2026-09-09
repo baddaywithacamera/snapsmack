@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "GAME ON",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Interactive showcase skin: a living field of always-solvable image sliding puzzles behind a clean GRAM grid, with an 80%-viewport playable modal.",
@@ -11,6 +11,9 @@
     ],
     "post_page": "gram",
     "edit_page": "carousel",
+    "hide_controls": [
+        "carousel_cosmetics"
+    ],
     "features": {
         "supports_wall": false,
         "masonry_supported": false,
@@ -40,7 +43,6 @@
         "smack-progressive-reveal",
         "smack-tag-infinite",
         "smack-image-fade-load",
-        "smack-lightbox",
         "smack-gram-search",
         "smack-game-on",
         "smack-thomas"
@@ -276,7 +278,7 @@
             "property": "--grid-gap"
         },
         "go_nav_tile_gap": {
-            "section": "GRID",
+            "section": "NAV",
             "type": "range_numeric",
             "label": "Nav → Tiles Gap",
             "default": "2",
@@ -684,7 +686,7 @@
             "property": "--tagline-color"
         },
         "go_nav_case": {
-            "section": "PROFILE HEADER",
+            "section": "NAV",
             "type": "select",
             "label": "Nav Link Case",
             "default": "none",
@@ -696,6 +698,89 @@
             },
             "selector": ":root",
             "property": "--nav-text-transform"
+        },
+        "go_nav_bg": {
+            "section": "NAV",
+            "type": "color",
+            "label": "Navigation Background",
+            "default": "#ffffff",
+            "selector": ".go-sticky-nav",
+            "property": "background"
+        },
+        "go_nav_link_color": {
+            "section": "NAV",
+            "type": "color",
+            "label": "Navigation Link Colour",
+            "default": "#8e8e8e",
+            "selector": ".go-sticky-nav-links a",
+            "property": "color"
+        },
+        "go_nav_active_color": {
+            "section": "NAV",
+            "type": "color",
+            "label": "Active / Hover Colour",
+            "default": "#262626",
+            "selector": ".go-sticky-nav-links a:hover, .go-sticky-nav-links a.active",
+            "property": "color"
+        },
+        "go_nav_divider_color": {
+            "section": "NAV",
+            "type": "color",
+            "label": "Navigation Divider Colour",
+            "default": "#dbdbdb",
+            "selector": ".go-sticky-nav",
+            "property": "border-bottom-color"
+        },
+        "go_nav_height": {
+            "section": "NAV",
+            "type": "range_numeric",
+            "label": "Navigation Height",
+            "default": "40",
+            "min": "32",
+            "max": "80",
+            "step": "1",
+            "unit": "px",
+            "selector": ".go-sticky-nav-inner",
+            "property": "height"
+        },
+        "go_nav_link_gap": {
+            "section": "NAV",
+            "type": "range_numeric",
+            "label": "Space Between Links",
+            "default": "20",
+            "min": "4",
+            "max": "60",
+            "step": "1",
+            "unit": "px",
+            "selector": ".go-sticky-nav-links",
+            "property": "gap"
+        },
+        "go_nav_font_size": {
+            "section": "NAV",
+            "type": "range_numeric",
+            "label": "Navigation Text Size",
+            "default": "13",
+            "min": "9",
+            "max": "24",
+            "step": "1",
+            "unit": "px",
+            "selector": ".go-sticky-nav-links a",
+            "property": "font-size"
+        },
+        "go_nav_weight": {
+            "section": "NAV",
+            "type": "select",
+            "label": "Navigation Text Weight",
+            "default": "500",
+            "options": {
+                "300": "Light",
+                "400": "Regular",
+                "500": "Medium",
+                "600": "Semibold",
+                "700": "Bold"
+            },
+            "selector": ".go-sticky-nav-links a",
+            "property": "font-weight"
         },
         "go_post_bg_color": {
             "section": "COLOURS",
