@@ -1,0 +1,1529 @@
+/**
+ * SNAPSMACK - Game On Skin Styles
+ * Alpha v0.7.5
+ *
+ * Clean, minimal Instagram-inspired grid skin.
+ * All configurable values are CSS custom properties on :root.
+ * The compiled CSS blob from smack-skin.php loads after this file
+ * and overrides defaults via the same :root variables.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be the canonical CSS EOF
+ * marker: slash-star, space, five equals, space, the literal string
+ * 'SNAPSMACK EOF', space, five equals, space, star-slash.
+ * (Authoritative byte sequence: tools/check-eof.py EOF_MARKERS['.css'].)
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+
+
+/* ==========================================================================
+   CUSTOM PROPERTY DEFAULTS
+   Override these via the skin settings panel (compiled CSS blob).
+   ========================================================================== */
+
+:root {
+    --bg-primary:        #ffffff;
+    --text-primary:      #262626;
+    --text-secondary:    #8e8e8e;
+    --accent-color:      #0095f6;
+    --border-color:      #dbdbdb;
+    --font-body:         'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+    --grid-gap:          2px;
+    --grid-bg:           #ffffff;
+    --tile-radius:       0px;
+    --grid-gutter:       0px;
+    --grid-max-width:    935px;
+
+    /* Carousel dot colours — inherit site accent */
+    --carousel-dot-color:        rgba(38, 38, 38, 0.2);
+    --carousel-dot-active-color: var(--accent-color);
+}
+
+/* ==========================================================================
+   RESET & BASE
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: var(--text-primary);
+    text-decoration: none;
+}
+a:hover { opacity: 0.7; }
+
+img { display: block; max-width: 100%; }
+
+/* ==========================================================================
+   LAYOUT SHELL
+   ========================================================================== */
+
+/* Max-width content column — wraps profile, sticky nav, and grid on landing page */
+.go-content-wrap {
+    box-sizing: border-box;
+    /* Card = grid width + a white gutter on each side. With box-sizing:border-box
+       the inner content stays at --grid-max-width while the card itself grows by
+       the gutter, so the white extends outward over the background treatment. */
+    max-width: calc(var(--grid-max-width, 935px) + (2 * var(--grid-gutter, 0px)));
+    margin: 0 auto;
+    padding-left: var(--grid-gutter, 0px);
+    padding-right: var(--grid-gutter, 0px);
+}
+
+/* General constrained wrapper — profile header, topbar, post view, archive */
+.go-wrap {
+    padding: 0 var(--grid-gutter);
+}
+
+/* ==========================================================================
+   STICKY NAV
+   Sits between profile header and grid. Sticks to top when profile scrolls off.
+   JS (go-nav.js) adds .profile-hidden class to reveal the mini avatar.
+   ========================================================================== */
+
+.go-sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.go-sticky-nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 0 var(--grid-gutter, 0px);
+    height: 40px;
+    overflow: hidden;
+}
+
+/* Mini avatar — absolutely positioned left, hidden until profile scrolls off screen */
+.go-sticky-avatar {
+    position: absolute;
+    left: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.go-sticky-avatar-initials {
+    position: absolute;
+    left: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+}
+
+.go-sticky-nav.profile-hidden .go-sticky-avatar,
+.go-sticky-nav.profile-hidden .go-sticky-avatar-initials {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+/* Nav links */
+.go-sticky-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.go-sticky-nav-links a {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none;
+    letter-spacing: 0.2px;
+    text-transform: var(--nav-text-transform, none);
+    transition: color 0.15s;
+}
+
+.go-sticky-nav-links a:hover,
+.go-sticky-nav-links a.active {
+    color: var(--text-primary);
+    opacity: 1;
+}
+
+/* Top nav bar (existing) */
+.go-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.go-topbar-inner {
+    padding: 0 var(--grid-gutter);
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.go-site-name {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   PROFILE HEADER
+   Shown above the grid on the landing page.
+   ========================================================================== */
+
+.go-profile {
+    padding: 30px 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.go-profile-avatar {
+    width: 77px;
+    height: 77px;
+    border-radius: 50%;
+    background: var(--border-color);
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.go-profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.go-profile-avatar-initials {
+    font-size: 28px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.go-profile-info { flex: 0 1 auto; min-width: 0; }
+
+.go-profile-nameline {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 10px;
+}
+
+.go-profile-username {
+    font-size:   var(--blog-title-size, 20px);
+    font-weight: var(--blog-title-weight, 300);
+    font-family: var(--blog-title-font, inherit);
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.go-profile-tagline-sep {
+    font-size: var(--blog-title-size, 20px);
+    font-weight: 300;
+    color: var(--text-secondary);
+    line-height: 1;
+}
+
+.go-profile-tagline {
+    font-size:   var(--tagline-size, 16px);
+    font-weight: var(--tagline-weight, 300);
+    font-family: var(--tagline-font, inherit);
+    color: var(--tagline-color, var(--text-secondary));
+    margin: 0;
+}
+
+.go-profile-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 10px;
+}
+
+.go-profile-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.go-profile-stat-num {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--post-count-color, var(--text-primary));
+}
+
+.go-profile-stat-label {
+    font-size: 14px;
+    color: var(--post-count-color, var(--text-secondary));
+}
+
+.go-profile-bio {
+    margin:      8px 0 0;
+    font-size:   14px;
+    line-height: 1.5;
+    color:       var(--text-secondary);
+    max-width:   480px;
+}
+
+
+/* ==========================================================================
+   3-COLUMN GRID
+   ========================================================================== */
+
+/* 3-column grid — constrained by .go-content-wrap max-width.
+   Width is 100% of the content column (not full viewport). */
+.go-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--grid-gap);
+    background: var(--grid-bg);
+    margin-top: var(--nav-tile-gap, var(--grid-gap));
+    width: 100%;
+}
+
+/* Individual grid tile */
+.go-tile {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: var(--border-color);
+    border-radius: var(--tile-radius);
+}
+
+/* Folded tiles (beyond the first batch) are removed from layout by
+   ss-engine-aurora-reveal.js so a large blog starts short and GROWS as you
+   scroll, instead of laying out every post at full height at once. */
+.go-grid .go-tile.go-fold { display: none; }
+
+.go-tile a {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+}
+
+.go-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: opacity 0.2s;
+}
+
+.go-tile:hover img { opacity: 0.85; }
+
+/* Carousel indicator badge (top-right corner) */
+.go-tile-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.go-tile-indicator--icon {
+    color: #fff;
+    font-size: 16px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    /* Unicode: layered squares ⧉ */
+}
+
+.go-tile-indicator--count {
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    letter-spacing: 0.3px;
+}
+
+/* Hover overlay: title or count shown on hover */
+.go-tile-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 1;
+    pointer-events: none;
+    padding: 12px;
+}
+
+.go-tile:hover .go-tile-overlay { opacity: 1; }
+
+/* Dark-only hover: no pointer events, no padding needed */
+.go-tile-overlay--dark { padding: 0; }
+
+.go-tile-overlay-text {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.3;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+/* ── Framed tile mode ──────────────────────────────────────────────────────
+   Applied when per-image/carousel/grid style brings size below 100%,
+   adds a border, or adds a shadow. PHP emits class .go-tile--framed and
+   CSS custom properties on the .go-tile element itself.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.go-tile--framed {
+    background: var(--tile-bg, #ffffff);
+}
+
+.go-tile--framed a {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--tile-bg, #ffffff);
+}
+
+.go-tile--framed img {
+    /* Border/shadow hug the IMAGE itself (natural aspect), not a square box.
+       Landscape: size% of WIDTH, height follows. Portrait override below. */
+    width:        var(--tile-img-size, 100%);
+    height:       auto;
+    max-width:    var(--tile-img-size, 100%);
+    max-height:   100%;
+    margin:       auto;   /* bulletproof flex centring — splits matte evenly */
+    object-fit:   contain;
+    border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
+    /* Fill the sub-pixel object-fit:contain letterbox with the border colour
+       instead of letting the white tile bg show through as a thin sliver
+       between the image and its border (the "white line at the bottom" bug).
+       Falls back to transparent when there's no border, preserving the matte. */
+    background-color: var(--tile-border-c, transparent);
+    box-shadow:   var(--tile-shadow, none);
+    box-sizing:   border-box;
+    transition:   opacity 0.2s;
+}
+.go-tile--framed.go-tile--portrait img {
+    /* Portrait: size% of HEIGHT so it can't overflow the square tile. */
+    width:        auto;
+    height:       var(--tile-img-size, 100%);
+    max-width:    100%;
+    max-height:   var(--tile-img-size, 100%);
+}
+
+/* ── Trigram row ──────────────────────────────────────────────────────────
+   Trigram tiles are plain square tiles. No special CSS needed — L, M, R
+   all inherit .go-tile's aspect-ratio: 1/1 and sit in the grid normally.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* Phantom tile: invisible placeholder to complete a partial row before a
+   trigram set, so the L tile always starts at column 0. */
+.go-tile--phantom {
+    visibility:     hidden;
+    pointer-events: none;
+}
+
+/* Panorama tiles: the first tile forces a new row via grid-column: 1 */
+.go-tile--pano-first  { grid-column: 1; }
+.go-tile--pano-middle { /* naturally placed in column 2 */ }
+.go-tile--pano-last   { /* naturally placed in column 3 */ }
+
+/* ==========================================================================
+   SINGLE POST VIEW (layout.php) — Instagram two-panel layout
+   ========================================================================== */
+
+/* ── Outer two-panel container ─────────────────────────────────────────── */
+.go-post-ig {
+    display:         flex;
+    justify-content: center;
+    height:          100dvh;
+    overflow:        hidden;
+    background:      var(--post-bg, #000);
+}
+
+/* ── Left: image panel (fixed, never scrolls) ──────────────────────────── */
+.go-post-ig-image {
+    /* Game On is classic-IG: the image panel is ALWAYS 1:1 square.
+       Sized by container height; width derives from aspect-ratio. */
+    flex:            0 0 auto;
+    height:          100%;
+    aspect-ratio:    1 / 1;
+    min-width:       0;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    overflow:        hidden;
+    background:      var(--post-bg, #000);
+    position:        relative;
+    padding:         0;
+}
+
+.go-post-ig-image .go-single-img {
+    width:      100%;
+    height:     100%;
+    object-fit: contain;
+    display:    block;
+}
+
+/* Carousel fills the image panel */
+.go-post-ig-image .go-carousel-wrap {
+    width:    100%;
+    height:   100%;
+    position: relative;
+}
+
+.go-post-ig-image .ss-slider,
+.go-post-ig-image .slider-track {
+    height: 100%;
+}
+
+.go-post-ig-image .slider-slide {
+    height:          100%;
+    display:         flex !important;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--post-bg, #000);
+}
+
+.go-post-ig-image .slider-slide img {
+    max-width:   100% !important;
+    max-height:  100% !important;
+    width:       auto !important;
+    height:      auto !important;
+    object-fit:  contain !important;
+}
+
+/* Framed slides inside the image panel */
+.go-post-ig-image .go-slide--framed img {
+    max-height: 100% !important;
+}
+
+/* Square crop (classic IG): the image fills the 1:1 panel, centre-cropped.
+   Per-image — set with the "Square crop" toggle in the gram composer. */
+.go-post-ig-image .slider-slide.go-crop--fill img {
+    width:      100% !important;
+    height:     100% !important;
+    max-width:  none !important;
+    max-height: none !important;
+    object-fit: cover !important;
+}
+.go-post-ig-image .go-single-img.go-crop--fill {
+    object-fit: cover;
+}
+
+/* ── Right: info panel (scrollable) ────────────────────────────────────── */
+.go-post-ig-info {
+    flex:           0 0 335px;
+    width:          335px;
+    border-left:    1px solid var(--border-color);
+    background:     var(--bg-primary, #fff);
+    display:        flex;
+    flex-direction: column;
+    overflow:       hidden;
+}
+
+/* Fixed header: back + avatar + site name */
+.go-post-ig-header {
+    display:       flex;
+    align-items:   center;
+    gap:           10px;
+    padding:       14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink:   0;
+}
+
+.go-back-btn {
+    background:  none;
+    border:      none;
+    cursor:      pointer;
+    color:       var(--text-primary);
+    font-size:   20px;
+    padding:     4px 8px 4px 0;
+    display:     flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.go-back-btn:hover { opacity: 0.6; }
+
+.go-post-ig-avatar {
+    width:         32px;
+    height:        32px;
+    border-radius: 50%;
+    object-fit:    cover;
+    flex-shrink:   0;
+}
+
+.go-post-ig-avatar--initials {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    background:      var(--text-secondary, #8e8e8e);
+    color:           #fff;
+    font-size:       14px;
+    font-weight:     600;
+}
+
+.go-post-ig-sitename {
+    font-size:     14px;
+    font-weight:   600;
+    color:         var(--text-primary);
+    flex:          1;
+    overflow:      hidden;
+    white-space:   nowrap;
+    text-overflow: ellipsis;
+}
+
+/* Scrollable body */
+.go-post-ig-body {
+    flex:       1 1 0;
+    overflow-y: auto;
+    padding:    20px 22px;
+}
+
+/* IG-style caption block: bold username inline then caption text */
+.go-post-caption-block {
+    margin-bottom: 12px;
+}
+
+.go-post-ig-caption {
+    font-size:   14px;
+    color:       var(--text-primary);
+    line-height: 1.6;
+    margin:      0;
+}
+
+.go-post-ig-caption-user {
+    font-weight:  600;
+    margin-right: 4px;
+}
+
+.description a,
+.static-content a:not(.nav-menu a) {
+    color:                  var(--accent-color);
+    text-decoration:        underline;
+    text-underline-offset:  2px;
+}
+
+.description a:hover,
+.static-content a:not(.nav-menu a):hover { color: var(--text-primary); }
+
+.description a:has(img),
+.static-content a:has(img) {
+    text-decoration: none !important;
+    border-bottom:   none !important;
+}
+
+/* EXIF panel */
+.go-exif-panel {
+    display:       flex;
+    flex-wrap:     wrap;
+    gap:           6px 16px;
+    padding:       10px 0;
+    border-top:    1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 12px;
+}
+/* No EXIF to show (phone/IG imports, GramOfSmack mode) → don't paint the bordered
+   strip as empty stray lines. PHP also skips emitting the panel when no image has
+   EXIF; this covers the carousel edge where only a later slide does. */
+.go-exif-panel:empty { display: none; }
+
+.go-exif-item {
+    display:        flex;
+    flex-direction: column;
+}
+
+.go-exif-label {
+    font-size:      10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color:          var(--text-secondary);
+}
+
+.go-exif-value {
+    font-size: 13px;
+    color:     var(--text-primary);
+}
+
+/* Engagement bar — pinned between body and footer */
+.go-post-ig-actions {
+    flex-shrink:  0;
+    border-top:   1px solid var(--border-color);
+    padding:      10px 16px 8px;
+    background:   var(--bg-primary, #fff);
+}
+
+.go-post-ig-action-icons {
+    display:       flex;
+    gap:           16px;
+    margin-bottom: 6px;
+}
+
+.go-action-btn {
+    background:  none;
+    border:      none;
+    padding:     0;
+    cursor:      pointer;
+    color:       var(--text-primary);
+    line-height: 1;
+    display:     flex;
+    align-items: center;
+}
+
+.go-action-btn:hover { opacity: 0.6; }
+
+.go-action-bookmark { margin-left: auto; }
+
+.go-post-ig-date {
+    font-size:      10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color:          var(--text-secondary);
+    margin:         0;
+}
+
+/* Community component — flush to body edges */
+.go-community-wrap {
+    border-top: 1px solid var(--border-color);
+    margin:     16px -16px 0;
+    padding:    0 16px;
+}
+
+/* ── Framed carousel slide (shared with grid tiles) ────────────────────── */
+.go-slide--framed {
+    background:      var(--slide-bg, #000) !important;
+    display:         flex !important;
+    align-items:     center;
+    justify-content: center;
+    min-height:      280px;
+}
+
+.go-slide--framed img {
+    width:      var(--slide-img-size, 100%) !important;
+    height:     auto !important;
+    max-height: 80vh !important;
+    object-fit: contain !important;
+    border:     var(--slide-border-w, 0px) solid var(--slide-border-c, transparent) !important;
+    box-shadow: var(--slide-shadow, none) !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+}
+
+/* Fallback carousel/single-img classes (used outside post view) */
+.go-carousel-wrap {
+    position:   relative;
+    background: var(--post-bg, #000);
+    width:      100%;
+}
+
+.go-single-img {
+    width:      100%;
+    max-height: 80vh;
+    object-fit: contain;
+    display:    block;
+}
+
+/* ── Footer pinned to bottom of right panel ────────────────────────────── */
+.go-post-ig-info > #system-footer {
+    flex-shrink:   0;
+    border-top:    1px solid var(--border-color);
+    background:    var(--bg-primary, #fff);
+    padding:       8px 16px;
+    margin:        0;
+}
+
+.go-post-ig-info > #system-footer .footer-metadata-bar p {
+    font-size:      10px;
+    letter-spacing: 0.3px;
+    color:          var(--text-secondary);
+    margin:         0;
+}
+
+/* ── Mobile: stack vertically ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .go-post-ig {
+        flex-direction: column;
+        height:         auto;
+        overflow:       visible;
+    }
+
+    .go-post-ig-image {
+        /* Square here too — full width, 1:1. */
+        flex:         0 0 auto;
+        width:        100%;
+        aspect-ratio: 1 / 1;
+        height:       auto;
+    }
+
+    .go-post-ig-info {
+        width:    100%;
+        flex:     0 0 auto;
+        height:   auto;
+        overflow: visible;
+    }
+
+    .go-post-ig-body {
+        overflow: visible;
+    }
+}
+
+/* ==========================================================================
+   POST MODAL OVERLAY
+   IG-style popover: grid stays visible, dimmed behind 80% opaque backdrop.
+   go-modal.js populates #go-modal-frame by fetching ?modal=1 fragments.
+   ========================================================================== */
+
+.go-modal-overlay {
+    position:        fixed;
+    inset:           0;
+    z-index:         900;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+}
+
+.go-modal-overlay[hidden] { display: none; }
+
+/* Prevent grid scroll while modal is open */
+body.go-modal-open { overflow: hidden; }
+
+.go-modal-backdrop {
+    position:   absolute;
+    inset:      0;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.go-modal-frame {
+    position:      relative;
+    z-index:       1;
+    width:         auto;
+    max-width:     92vw;
+    height:        min(92vh, 900px);
+    border-radius: 4px;
+    overflow:      hidden;
+    box-shadow:    0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* Force the post layout to fill the frame (overrides 100dvh default) */
+.go-modal-frame .go-post-ig {
+    height: 100%;
+}
+
+/* ==========================================================================
+   ARCHIVE VIEW (categories, albums)
+   Same grid as landing — just no profile header.
+   ========================================================================== */
+
+.go-archive-header {
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.go-archive-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 4px;
+}
+
+.go-archive-meta {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ── Hashtag / Tag Page ──────────────────────────────────────────────────── */
+
+.go-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    opacity: .7;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.go-archive-header h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 4px;
+}
+
+.go-archive-header p {
+    font-size: 13px;
+    opacity: .6;
+    margin: 0;
+}
+
+.go-grid-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    opacity: .5;
+}
+
+/* ==========================================================================
+   PAGINATION
+   ========================================================================== */
+
+.go-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 20px 16px;
+}
+
+.go-page-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    transition: background 0.15s;
+}
+
+.go-page-btn:hover,
+.go-page-btn.is-current {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border-color: var(--text-primary);
+}
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+
+.go-footer {
+    border-top: 1px solid var(--border-color);
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.go-footer a {
+    color: var(--text-secondary);
+}
+
+.go-footer a:hover {
+    color: var(--text-primary);
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 600px) {
+    .go-profile {
+        gap: 20px;
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+    .go-profile-avatar {
+        width: 56px;
+        height: 56px;
+    }
+    .go-profile-username { font-size: 16px; }
+    .go-profile-tagline-sep { font-size: 16px; }
+    .go-profile-tagline { font-size: 14px; }
+    .go-profile-stats { gap: 16px; }
+}
+
+/* ── Hashtag links in captions ────────────────────────────────────────────── */
+.go-hashtag {
+    color: var(--accent-color, #0095f6);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.go-hashtag:hover {
+    text-decoration: underline;
+}
+/* ==========================================================================
+   SYSTEM FOOTER OVERRIDES (core/footer.php → #system-footer)
+   ========================================================================== */
+
+#system-footer {
+    /* Footer spans the CARD — .go-content-wrap, the layer BELOW the grid =
+       grid-max-width + the treatment gutter each side — and is centred, so the
+       bar reaches the card's edges and lines up with the grid above it. NOT the
+       inner content column (that left a gutter-width gap each side). On the
+       blogroll, #scroll-stage clamps it to grid-max-width, which is correct
+       there. --footer-bg (admin colour + opacity) overrides the default. */
+    border-top: 1px solid var(--border-color);
+    background: var(--footer-bg, var(--bg-primary));
+    max-width: calc(var(--grid-max-width, 935px) + 2 * var(--grid-gutter, 0px));
+    margin: 0 auto;
+}
+
+#system-footer .inside {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+    padding: 20px var(--grid-gutter, 0px);
+}
+
+#system-footer .footer-metadata-bar {
+    text-align: center;
+}
+
+#system-footer .footer-metadata-bar p {
+    margin: 0;
+    font-size: 11px;
+    color: var(--text-secondary);
+    letter-spacing: 0.4px;
+    line-height: 2;
+}
+
+#system-footer .footer-metadata-bar .sep {
+    margin: 0 8px;
+    opacity: 0.4;
+}
+
+#system-footer .footer-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+#system-footer .footer-link:hover {
+    color: var(--text-primary);
+    opacity: 1;
+}
+
+/* ==========================================================================
+   STATIC PAGE (About, etc.)
+   ========================================================================== */
+
+.go-static-page .go-sticky-nav {
+    position: sticky;
+    top: 0;
+}
+
+.go-static-content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+}
+
+.go-static-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 24px;
+}
+
+.go-static-body {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.go-static-body p {
+    margin: 0 0 16px;
+}
+
+.go-static-body a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.go-static-body a:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   BACKGROUND TREATMENT  (skin admin → Treatment)
+   Full-viewport image/colour layer behind the centred content card.
+   The .go-treatment-* layers are emitted by skin-profile.php ONLY when a
+   treatment is active, so with no treatment these rules never match and the
+   default flat layout is completely untouched.
+   ========================================================================== */
+
+.go-treatment-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+.go-treatment-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* When a treatment is present, the content column reads as a card floating
+   over the background. */
+body:has(.go-treatment-bg) .go-content-wrap,
+body:has(.go-treatment-bg).is-blogroll #scroll-stage {
+    background: var(--bg-primary, #ffffff);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.28);
+    min-height: 100vh;
+}
+
+body:has(.go-treatment-bg).is-blogroll #scroll-stage {
+    max-width: var(--grid-max-width, 935px);
+    margin: 0 auto;
+}
+
+/* ==========================================================================
+   AVATAR LIGHTBOX
+   ========================================================================== */
+
+.go-profile-avatar--zoom { cursor: zoom-in; }
+
+.go-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5vmin;
+    background: rgba(0, 0, 0, 0.85);
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+.go-lightbox[hidden] { display: none; }
+.go-lightbox.is-open { opacity: 1; }
+
+.go-lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 4px;
+    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.6);
+    cursor: zoom-out;
+}
+
+.go-lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 34px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.8;
+}
+.go-lightbox-close:hover { opacity: 1; }
+
+/* ==========================================================================
+   BLOGROLL  (core blogroll.php rendered inside the Grid shell)
+   Scoped to body.is-blogroll so it only affects the blogroll page, and only
+   on Game On (this stylesheet is loaded only when Game On is active).
+   ========================================================================== */
+
+body.is-blogroll .blogroll-canvas {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 32px 20px 60px;
+}
+
+body.is-blogroll .static-page-title {
+    font-size: var(--blog-title-size, 24px);
+    font-weight: 300;
+    color: var(--text-primary);
+    margin: 0 0 24px;
+}
+
+body.is-blogroll .blogroll-category-heading {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
+    margin: 32px 0 16px;
+}
+
+body.is-blogroll .blogroll-peer { margin: 0 0 20px; }
+
+body.is-blogroll .blogroll-peer-name a {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+body.is-blogroll .blogroll-peer-name a:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+
+body.is-blogroll .blogroll-peer-desc {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: 3px 0 0;
+}
+
+/* Drop the raw URL line — the peer name is the link. */
+body.is-blogroll .blogroll-peer-url { display: none; }
+
+/* ==========================================================================
+   COMMUNITY COMMENT FORM  (inside the Grid post modal)
+   The core community component ships raw browser inputs; theme them to match
+   the Grid modal. Scoped to .go-post-ig so only the modal is affected, and
+   higher specificity than ss-community.css so these win regardless of order.
+   ========================================================================== */
+
+.go-post-ig .ss-comment-guest-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.go-post-ig .ss-guest-name,
+.go-post-ig .ss-guest-email,
+.go-post-ig .ss-comment-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--border-color, #dbdbdb);
+    border-radius: 8px;
+    background: transparent;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+    transition: border-color 0.15s ease;
+}
+
+.go-post-ig .ss-guest-name::placeholder,
+.go-post-ig .ss-guest-email::placeholder,
+.go-post-ig .ss-comment-textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+.go-post-ig .ss-guest-name:focus,
+.go-post-ig .ss-guest-email:focus,
+.go-post-ig .ss-comment-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color, #0095f6);
+}
+
+.go-post-ig .ss-comment-input-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.go-post-ig .ss-comment-textarea {
+    resize: none;
+    line-height: 1.4;
+    min-height: 38px;
+}
+
+.go-post-ig .ss-comment-input-row .ss-avatar-placeholder {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--border-color, #dbdbdb);
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.go-post-ig .ss-comment-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+.go-post-ig .ss-comment-cancel,
+.go-post-ig .ss-comment-submit {
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+}
+
+.go-post-ig .ss-comment-cancel { color: var(--text-secondary); }
+.go-post-ig .ss-comment-submit { color: var(--accent-color, #0095f6); }
+.go-post-ig .ss-comment-submit:hover { background: rgba(0, 149, 246, 0.08); }
+
+.go-post-ig .ss-comment-author {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ── GAME ON: living puzzle field ─────────────────────────────────────── */
+body:has(.go-puzzle-field) {
+    background: #080808;
+}
+.go-puzzle-field {
+    --go-c1: #b7ff00;
+    --go-c2: #ff2b9d;
+    --go-c3: #00d9ff;
+    --go-c4: #5a25b5;
+    --go-board: max(20vw, 33.333vh);
+    position: fixed;
+    z-index: 0;
+    left: 50%;
+    top: 50%;
+    width: calc(var(--go-board) * 5);
+    height: calc(var(--go-board) * 3);
+    transform: translate(-50%, -50%);
+    display: grid;
+    grid-template-columns: repeat(5, var(--go-board));
+    grid-template-rows: repeat(3, var(--go-board));
+    overflow: hidden;
+    pointer-events: auto;
+    background: #080808;
+}
+.go-puzzle-field::after {
+    content: "";
+    position: absolute;
+    inset: -35%;
+    pointer-events: none;
+    z-index: 2;
+    background: repeating-linear-gradient(90deg,
+        var(--go-c1) 0 7%, var(--go-c2) 7% 14%,
+        var(--go-c3) 14% 21%, var(--go-c4) 21% 28%);
+    opacity: .9;
+    mix-blend-mode: screen;
+    -webkit-mask: repeating-linear-gradient(90deg,
+        #000 0 3px, transparent 3px calc(var(--go-board) - 3px), #000 calc(var(--go-board) - 3px) var(--go-board)),
+        repeating-linear-gradient(0deg,
+        #000 0 3px, transparent 3px calc(var(--go-board) - 3px), #000 calc(var(--go-board) - 3px) var(--go-board));
+    mask: repeating-linear-gradient(90deg,
+        #000 0 3px, transparent 3px calc(var(--go-board) - 3px), #000 calc(var(--go-board) - 3px) var(--go-board)),
+        repeating-linear-gradient(0deg,
+        #000 0 3px, transparent 3px calc(var(--go-board) - 3px), #000 calc(var(--go-board) - 3px) var(--go-board));
+    animation: go-border-slide-x 18s linear infinite;
+}
+.go-puzzle-field[data-active-direction="vertical"]::after {
+    animation-name: go-border-slide-y;
+}
+@keyframes go-border-slide-x {
+    from { transform: translate3d(-14%, 0, 0); }
+    to { transform: translate3d(14%, 0, 0); }
+}
+@keyframes go-border-slide-y {
+    from { transform: translate3d(0, -14%, 0); }
+    to { transform: translate3d(0, 14%, 0); }
+}
+.go-puzzle {
+    position: relative;
+    display: block;
+    width: var(--go-board);
+    height: var(--go-board);
+    border: 3px solid transparent;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    background: rgba(0,0,0,.82);
+    cursor: pointer;
+    isolation: isolate;
+}
+.go-puzzle::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    background: rgba(0,0,0,.18);
+    opacity: 0;
+    transition: opacity .2s ease;
+}
+.go-puzzle:hover::after { opacity: 1; }
+.go-puzzle.is-changing { opacity: 0; transition: opacity .65s ease; }
+.go-puzzle.is-solved-pulse { animation: he-screen-pulse .9s ease-in-out 2; }
+.go-puzzle-piece {
+    position: absolute;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 25%;
+    height: 25%;
+    background-repeat: no-repeat;
+    will-change: transform;
+    transition-property: transform;
+    transition-timing-function: cubic-bezier(.2,.75,.25,1);
+    box-shadow: inset 0 0 0 .5px rgba(255,255,255,.1);
+}
+.go-content-wrap {
+    position: relative;
+    z-index: 5;
+    background: rgba(255,255,255,.9);
+    box-shadow: 0 0 70px 45px rgba(255,255,255,.72);
+}
+.go-content-wrap a,
+.go-content-wrap button { pointer-events: auto; }
+
+/* ── Foreground game ──────────────────────────────────────────────────── */
+.go-game-open { overflow: hidden; }
+.go-game-modal[hidden] { display: none !important; }
+.go-game-modal {
+    position: fixed;
+    z-index: 100000;
+    inset: 0;
+    display: grid;
+    place-items: center;
+}
+.go-game-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.84);
+    backdrop-filter: blur(8px);
+}
+.go-game-dialog {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    width: min(92vw, 980px);
+    max-height: 96vh;
+    padding: 16px 22px 18px;
+    color: #f5f5f2;
+    background: #101010;
+    border: 1px solid #444;
+    box-shadow: 0 26px 90px rgba(0,0,0,.75);
+    transition: opacity .65s ease;
+}
+.go-game-dialog.is-changing { opacity: 0; }
+.go-game-close {
+    position: absolute;
+    z-index: 5;
+    right: 9px;
+    top: 6px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 30px;
+    line-height: 1;
+    cursor: pointer;
+}
+.go-game-invite {
+    margin: 0;
+    padding-right: 28px;
+    font: 600 clamp(14px, 1.6vw, 22px)/1.2 Georgia, serif;
+    letter-spacing: .08em;
+}
+.go-game-board {
+    position: relative;
+    width: min(80vw, 80vh);
+    height: min(80vw, 80vh);
+    max-width: calc(96vh - 150px);
+    max-height: calc(96vh - 150px);
+    overflow: hidden;
+    background: #030303;
+    box-shadow: 0 0 0 2px #555, 0 14px 50px rgba(0,0,0,.7);
+    touch-action: none;
+    cursor: pointer;
+}
+.go-game-board .go-puzzle-piece { box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+.go-game-board.is-solved-pulse {
+    animation: he-screen-pulse .9s ease-in-out 2;
+}
+@keyframes he-screen-pulse {
+    0%, 100% { opacity: 1; filter: brightness(1); }
+    50% { opacity: .68; filter: brightness(.82); }
+}
+.go-game-stats {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 18px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #aaa;
+}
+.go-game-stats b { color: #fff; font-variant-numeric: tabular-nums; }
+.go-game-actions { display: flex; gap: 18px; align-items: center; font-size: 12px; }
+.go-game-actions a { color: #d8d8d0; }
+.go-game-actions button {
+    border: 1px solid #555;
+    padding: 6px 11px;
+    background: #1d1d1d;
+    color: #eee;
+    cursor: pointer;
+}
+
+@media (max-width: 900px) {
+    .go-puzzle-field {
+        --go-board: max(33.333vw, 33.333vh);
+        grid-template-columns: repeat(3, var(--go-board));
+        width: calc(var(--go-board) * 3);
+    }
+    .go-puzzle:nth-child(n+10) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .go-puzzle-field::after { animation: none; }
+    .go-puzzle-piece { transition: none !important; }
+    .go-game-board.is-solved-pulse { animation: none; outline: 3px solid #f2f0e9; }
+}
+
+/* ===== SNAPSMACK EOF ===== */
