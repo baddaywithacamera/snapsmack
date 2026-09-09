@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## GAME ON Skin 0.1.12 — 2026-09-09
+
+- Adds an independent five-level Image Border Activity control for the frequency and concurrency of colour hand-offs.
+- Keeps travelling colour borders rounded instead of briefly drawing square corners.
+- Adds a whole-image solving aid; each reveal adds exactly two seconds to the current solve.
+- Removes the piece lines at completion so the solved puzzle becomes the uninterrupted photograph before pulsing and advancing.
+
 ## GAME ON Skin 0.1.11 — 2026-09-09
 
 - Keeps the configured rounded image-tile corners intact when the hover overlay appears.
