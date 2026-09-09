@@ -24,11 +24,11 @@ return [
         ],
         [
             'title' => 'Solving and Session Scores',
-            'body'  => 'The timer begins with your first legal move. GAME ON tracks moves, completed puzzles, fastest solve, and average solve for this browser session only. A solved photograph pulses twice using the HEURISTIC-safe motion treatment, fades away, and returns as a new solvable puzzle.',
+            'body'  => 'The timer begins with your first legal move. GAME ON tracks moves, completed puzzles, fastest solve, and average solve for this browser session only. View Whole Image temporarily removes the pieces and adds exactly two seconds to that solve. When solved, the tile lines disappear to reveal the complete photograph before it pulses twice using the HEURISTIC-safe motion treatment, fades away, and returns as a new solvable puzzle.',
         ],
         [
             'title' => 'Background Motion and Colour',
-            'body'  => 'Background Activity controls how often puzzles move and how many can move together; Puzzle Movement Speed controls how quickly each move travels. One lightweight conductor coordinates the field, so increasing the puzzle amount does not create a timer for every game. Puzzle movement and the sliding border colours are independent. Choose Electric, Film Box, monochrome, or one automatic palette per visit. Visitors who request reduced motion receive a still puzzle field and the established safe completion treatment.',
+            'body'  => 'Background Activity controls how often puzzles move and how many can move together; Puzzle Movement Speed controls how quickly each move travels. Image Border Activity independently controls how often the photograph-border colours hand off and whether one, two, or three can move together. Choose Electric, Film Box, monochrome, or one automatic palette per visit. Visitors who request reduced motion receive a still puzzle field and the established safe completion treatment.',
         ],
         [
             'title' => 'Content Backing and Glow',
