@@ -193,7 +193,7 @@ $_go_asset_url = static function (string $path): string {
      data-speed="<?php echo (int)($settings['go_motion_speed'] ?? 3); ?>"
      aria-hidden="true">
     <?php foreach ($_go_puzzle_slots as $_go_index => $_go_image):
-        $_go_title = trim((string)($_go_image['title'] ?? '')) ?: 'Untitled photograph';
+        $_go_title = trim((string)($_go_image['title'] ?? '')) ?: 'Photograph';
         $_go_thumb = $_go_asset_url((string)$_go_image['img_thumb_square']);
         $_go_full  = $_go_asset_url((string)$_go_image['img_file']);
         $_go_url   = BASE_URL . '?s=' . urlencode((string)$_go_image['img_slug']);
