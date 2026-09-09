@@ -1391,6 +1391,9 @@ if (!empty($google_families)) {
             foreach ($resolved_engines as $engine_key => $engine):
                 if (empty($engine['has_settings']) || empty($engine['controls'])) continue;
                 if (($engine['admin_page'] ?? 'skin') !== 'skin') continue;
+                // A skin may need the carousel runtime without exposing landing-
+                // gallery cosmetics that do not apply to its one-image post modal.
+                if ($engine_key === 'smack-slider' && manifest_hides($manifest, 'carousel_cosmetics')) continue;
                 $engine_label = strtoupper($engine['label'] ?? $engine_key);
             ?>
             <div class="box">
