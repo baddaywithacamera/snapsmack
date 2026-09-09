@@ -79,13 +79,16 @@
 
     function layoutField() {
         var amount = Math.max(0, Math.min(100, Number(root.dataset.puzzleDensity || 100))) / 100;
-        var narrow = window.innerWidth <= 900;
+        var viewportWidth = document.documentElement.clientWidth;
+        var viewportHeight = document.documentElement.clientHeight;
+        var narrow = viewportWidth <= 900;
         var columns = narrow ? Math.round(2 + amount * 4) : Math.round(4 + amount * 12);
         columns = Math.max(2, columns);
-        var rows = Math.max(2, Math.round(columns * window.innerHeight / window.innerWidth));
+        var rows = Math.max(2, Math.round(columns * viewportHeight / viewportWidth));
         while (columns * rows > boards.length && rows > 2) rows--;
         var visible = Math.min(boards.length, columns * rows);
-        var size = Math.max(window.innerWidth / columns, window.innerHeight / rows);
+        var edge = 10;
+        var size = Math.max((viewportWidth - edge) / columns, (viewportHeight - edge) / rows);
         root.style.setProperty('--go-board', size + 'px');
         root.style.gridTemplateColumns = 'repeat(' + columns + ', var(--go-board))';
         root.style.gridTemplateRows = 'repeat(' + rows + ', var(--go-board))';
@@ -274,6 +277,45 @@
         return choices.length ? choices[Math.floor(Math.random() * choices.length)] : null;
     }
 
+    function borderClip(side, entering) {
+        var hidden = {
+            left: 'inset(0 100% 0 0)',
+            right: 'inset(0 0 0 100%)',
+            top: 'inset(0 0 100% 0)',
+            bottom: 'inset(100% 0 0 0)'
+        }[side] || 'inset(0 100% 0 0)';
+        return entering ? [hidden, 'inset(0 0 0 0)'] : ['inset(0 0 0 0)', hidden];
+    }
+
+    function animateBorderLayer(frame, colour, side, entering) {
+        var image = frame.el.querySelector('img');
+        var anchor = frame.el.querySelector('a');
+        if (!image || !anchor) return null;
+        var imageRect = image.getBoundingClientRect();
+        var anchorRect = anchor.getBoundingClientRect();
+        var layer = document.createElement('span');
+        layer.className = 'go-border-travel-layer';
+        layer.style.left = (imageRect.left - anchorRect.left) + 'px';
+        layer.style.top = (imageRect.top - anchorRect.top) + 'px';
+        layer.style.width = imageRect.width + 'px';
+        layer.style.height = imageRect.height + 'px';
+        layer.style.borderWidth = getComputedStyle(image).borderTopWidth;
+        layer.style.borderColor = colour;
+        anchor.appendChild(layer);
+        var clips = borderClip(side, entering);
+        var animation = layer.animate(
+            [{ clipPath: clips[0] }, { clipPath: clips[1] }],
+            { duration: 560, easing: 'cubic-bezier(.2,.75,.25,1)', fill: 'forwards' }
+        );
+        return { layer: layer, animation: animation };
+    }
+
+    function setFrameBorder(frame, colour) {
+        frame.el.style.setProperty('--tile-border-c', colour);
+        var image = frame.el.querySelector('img');
+        if (image) image.style.setProperty('--tile-border-c', colour);
+    }
+
     function handOffBorder() {
         var pool = visibleFrames();
         if (pool.length < 2) return scheduleBorder();
@@ -287,14 +329,22 @@
             var colour = source.borderColour;
             var target = next.board;
             var displaced = target.borderColour;
-            target.el.style.setProperty('--tile-border-c', colour);
-            target.el.dataset.borderArrivedFrom = next.side;
-            window.setTimeout(function () {
-                source.borderColour = displaced;
-                source.el.style.setProperty('--tile-border-c', displaced);
+            source.borderColour = displaced;
+            setFrameBorder(source, displaced);
+            if (reduced.matches) {
                 target.borderColour = colour;
-                delete target.el.dataset.borderArrivedFrom;
-            }, reduced.matches ? 0 : 560);
+                setFrameBorder(target, colour);
+            } else {
+                var departingSide = { left: 'right', right: 'left', top: 'bottom', bottom: 'top' }[next.side];
+                var departing = animateBorderLayer(source, colour, departingSide, false);
+                var arriving = animateBorderLayer(target, colour, next.side, true);
+                window.setTimeout(function () {
+                    target.borderColour = colour;
+                    setFrameBorder(target, colour);
+                    if (departing && departing.layer) departing.layer.remove();
+                    if (arriving && arriving.layer) arriving.layer.remove();
+                }, 570);
+            }
             borderCursor = frames.indexOf(target);
         }
         scheduleBorder();
@@ -469,7 +519,12 @@
     }
 
     selectPalette();
-    root.querySelectorAll('.go-puzzle').forEach(function (el) {
+    // The landing page may come from the anonymous page cache. Reorder its
+    // already-rendered image pool in the browser so every reload still builds
+    // a visibly different field without defeating the cache.
+    var boardElements = shuffled(Array.prototype.slice.call(root.querySelectorAll('.go-puzzle')));
+    boardElements.forEach(function (el) { root.appendChild(el); });
+    boardElements.forEach(function (el) {
         var state = scramble(100 + Math.floor(Math.random() * 151));
         var board = boardFrom(el, state, false);
         boards.push(board); makeTiles(board, false);
@@ -482,7 +537,7 @@
     // enabled yet never animate a photograph border.
     document.querySelectorAll('.go-content-wrap .go-grid .go-tile--framed:not(.go-tile--phantom)').forEach(function (el) {
         var frame = { el: el, borderColour: activePalette[frames.length % activePalette.length] };
-        el.style.setProperty('--tile-border-c', frame.borderColour);
+        setFrameBorder(frame, frame.borderColour);
         frames.push(frame);
     });
     root.classList.add('is-game-ready');
