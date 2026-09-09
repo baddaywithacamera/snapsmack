@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## GAME ON Skin 0.1.11 — 2026-09-09
+
+- Keeps the configured rounded image-tile corners intact when the hover overlay appears.
+
 ## GAME ON Skin 0.1.10 — 2026-09-09
 - **PLAY AS PUZZLE now lives beside Like.** Solo-image puzzle launch is part of the community action row rather than floating over the photograph.
 - **Navigation opacity now matches the content card.** At rest it borrows the existing translucent backing; once sticky, it paints the configured colour and opacity itself.
