@@ -100,9 +100,13 @@ img { display: block; max-width: 100%; }
     position: sticky;
     top: 0;
     z-index: 100;
-    background: var(--bg-primary);
-    border-bottom: 1px solid var(--border-color);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    background: color-mix(in srgb, var(--go-nav-bg, #fff) var(--go-nav-bg-opacity, 20%), transparent);
+    border-top: var(--go-nav-line-width, 1px) solid color-mix(in srgb, var(--go-nav-line, #750787) var(--go-nav-line-opacity, 100%), transparent);
+    border-bottom: var(--go-nav-line-width, 1px) solid color-mix(in srgb, var(--go-nav-line, #750787) var(--go-nav-line-opacity, 100%), transparent);
+    box-shadow: var(--go-nav-shadow-size, 0px) var(--go-nav-shadow-size, 0px) var(--go-nav-shadow-size, 0px) color-mix(in srgb, var(--go-nav-shadow-color, #000) var(--go-nav-shadow-opacity, 40%), transparent);
+}
+body:not(:has(.go-puzzle-field)) .go-sticky-nav {
+    background: color-mix(in srgb, var(--go-nav-bg, #fff) var(--go-nav-bg-opacity-inner, var(--go-nav-bg-opacity, 20%)), transparent);
 }
 
 .go-sticky-nav-inner {
@@ -170,11 +174,13 @@ img { display: block; max-width: 100%; }
 .go-sticky-nav-links a {
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-secondary);
+    font-family: var(--nav-font, inherit);
+    color: var(--go-nav-color, var(--text-secondary));
     text-decoration: none;
     letter-spacing: 0.2px;
     text-transform: var(--nav-text-transform, none);
-    transition: color 0.15s;
+    text-shadow: 0 0 var(--go-nav-glow-size, 0px) color-mix(in srgb, var(--go-nav-glow-color, #750787) var(--go-nav-glow-opacity, 45%), transparent);
+    transition: color 0.15s, text-shadow 0.15s;
 }
 
 .go-sticky-nav-links a:hover,

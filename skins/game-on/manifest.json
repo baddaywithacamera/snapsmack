@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "GAME ON",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Interactive showcase skin: a living field of always-solvable image sliding puzzles behind a clean GRAM grid, with an 80%-viewport playable modal.",
@@ -704,16 +704,40 @@
             "type": "color",
             "label": "Navigation Background",
             "default": "#ffffff",
-            "selector": ".go-sticky-nav",
-            "property": "background"
+            "selector": ":root",
+            "property": "--go-nav-bg"
+        },
+        "go_nav_bg_opacity": {
+            "section": "NAV",
+            "type": "range_numeric",
+            "label": "Navbar Opacity — Landing",
+            "default": "20",
+            "min": "0",
+            "max": "100",
+            "step": "5",
+            "unit": "%",
+            "selector": ":root",
+            "property": "--go-nav-bg-opacity"
+        },
+        "go_nav_bg_opacity_inner": {
+            "section": "NAV",
+            "type": "range_numeric",
+            "label": "Navbar Opacity — Other Pages",
+            "default": "100",
+            "min": "0",
+            "max": "100",
+            "step": "5",
+            "unit": "%",
+            "selector": ":root",
+            "property": "--go-nav-bg-opacity-inner"
         },
         "go_nav_link_color": {
             "section": "NAV",
             "type": "color",
             "label": "Navigation Link Colour",
             "default": "#8e8e8e",
-            "selector": ".go-sticky-nav-links a",
-            "property": "color"
+            "selector": ":root",
+            "property": "--go-nav-color"
         },
         "go_nav_active_color": {
             "section": "NAV",
@@ -728,8 +752,96 @@
             "type": "color",
             "label": "Navigation Divider Colour",
             "default": "#dbdbdb",
-            "selector": ".go-sticky-nav",
-            "property": "border-bottom-color"
+            "selector": ":root",
+            "property": "--go-nav-line"
+        },
+        "go_nav_divider_lines": {
+            "section": "NAV",
+            "type": "select",
+            "label": "Nav Divider Lines",
+            "default": "1px",
+            "options": {
+                "1px": "Enabled",
+                "0px": "Disabled"
+            },
+            "selector": ":root",
+            "property": "--go-nav-line-width"
+        },
+        "go_nav_line_opacity": {
+            "section": "NAV",
+            "type": "range_numeric",
+            "label": "Nav Line Opacity",
+            "default": "100",
+            "min": "0",
+            "max": "100",
+            "step": "5",
+            "unit": "%",
+            "selector": ":root",
+            "property": "--go-nav-line-opacity"
+        },
+        "go_nav_shadow_color": {
+            "section": "NAV",
+            "type": "color",
+            "label": "Nav Line Shadow Colour",
+            "default": "#000000",
+            "selector": ":root",
+            "property": "--go-nav-shadow-color"
+        },
+        "go_nav_shadow_size": {
+            "section": "NAV",
+            "type": "range_numeric",
+            "label": "Nav Line Shadow Size",
+            "default": "0",
+            "min": "0",
+            "max": "3",
+            "step": "1",
+            "unit": "px",
+            "selector": ":root",
+            "property": "--go-nav-shadow-size"
+        },
+        "go_nav_shadow_opacity": {
+            "section": "NAV",
+            "type": "range_numeric",
+            "label": "Nav Line Shadow Opacity",
+            "default": "40",
+            "min": "0",
+            "max": "100",
+            "step": "5",
+            "unit": "%",
+            "selector": ":root",
+            "property": "--go-nav-shadow-opacity"
+        },
+        "go_nav_glow_color": {
+            "section": "NAV",
+            "type": "color",
+            "label": "Nav Glow Colour",
+            "default": "#750787",
+            "selector": ":root",
+            "property": "--go-nav-glow-color"
+        },
+        "go_nav_glow_size": {
+            "section": "NAV",
+            "type": "range_numeric",
+            "label": "Nav Glow Size",
+            "default": "0",
+            "min": "0",
+            "max": "40",
+            "step": "2",
+            "unit": "px",
+            "selector": ":root",
+            "property": "--go-nav-glow-size"
+        },
+        "go_nav_glow_opacity": {
+            "section": "NAV",
+            "type": "range_numeric",
+            "label": "Nav Glow Opacity",
+            "default": "45",
+            "min": "0",
+            "max": "100",
+            "step": "5",
+            "unit": "%",
+            "selector": ":root",
+            "property": "--go-nav-glow-opacity"
         },
         "go_nav_height": {
             "section": "NAV",
@@ -766,6 +878,16 @@
             "unit": "px",
             "selector": ".go-sticky-nav-links a",
             "property": "font-size"
+        },
+        "go_nav_font": {
+            "section": "NAV",
+            "type": "select",
+            "label": "Nav Font",
+            "default": "inherit",
+            "selector": ":root",
+            "property": "--nav-font",
+            "is_font": true,
+            "no_size_slider": true
         },
         "go_nav_weight": {
             "section": "NAV",
