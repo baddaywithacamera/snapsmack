@@ -107,8 +107,15 @@ img { display: block; max-width: 100%; }
 }
 /* On the landing page the nav already sits on the translucent content card.
    Painting the same 75% white a second time made it effectively 94% opaque. */
-.go-content-wrap .go-sticky-nav {
+.go-content-wrap .go-sticky-nav:not(.profile-hidden) {
     background: transparent;
+}
+.go-content-wrap .go-sticky-nav.profile-hidden {
+    background: color-mix(
+        in srgb,
+        var(--go-content-bg, #fff) var(--go-content-opacity, 75%),
+        transparent
+    );
 }
 .go-sticky-nav-inner {
     display: flex;
@@ -441,6 +448,7 @@ img { display: block; max-width: 100%; }
 
 .go-tile--framed {
     background: var(--tile-bg, #ffffff);
+    overflow: visible;
 }
 
 .go-tile--framed a {
@@ -448,7 +456,7 @@ img { display: block; max-width: 100%; }
     align-items:     center;
     justify-content: center;
     background:      var(--tile-bg, #ffffff);
-    overflow:        hidden;
+    overflow:        visible;
 }
 
 .go-tile--framed img {
@@ -1457,7 +1465,11 @@ body:has(.go-puzzle-field) {
 .go-game-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,.84);
+    background: color-mix(
+        in srgb,
+        var(--go-modal-backdrop-color, #000000) var(--go-modal-backdrop-opacity, 84%),
+        transparent
+    );
     backdrop-filter: blur(8px);
 }
 .go-game-dialog {

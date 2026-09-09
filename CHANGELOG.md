@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## GAME ON Skin 0.1.8 — 2026-09-09
+- **The full-screen layer behind the playable puzzle is now configurable.** Puzzle Modal includes independent Backdrop Colour and Backdrop Opacity controls; the Light/Dark selector continues to control the puzzle window itself.
+- **The navigation regains its backing when it sticks.** It remains transparent while resting over the already-painted content card, then uses Content Background Colour and Content Background Opacity after the profile scrolls away, keeping the dropdown navigation readable without double-compositing its landing state.
+- **Image-frame shadows are no longer clipped away.** Framed grid tiles now permit their configured Soft, Medium or Heavy shadow to extend into the existing gutter instead of hiding it at both the tile and link boundaries.
+
 ## 0.7.675D — 2026-09-09
 - **Time actively spent playing a GAME ON puzzle now counts as engaged Scroll Time.** Opening the playable modal holds the existing dwell clock active even when the player pauses to study the board; closing it releases that hold, and hidden tabs remain paused. It uses the existing capped dwell statistic rather than inventing scroll distance or a separate incompatible metric.
 
