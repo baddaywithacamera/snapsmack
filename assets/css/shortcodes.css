@@ -331,4 +331,16 @@
     .snap-bio { flex-direction: column; }
     .snap-bio-portrait { width: 80px; }
 }
+
+/* Reusable game-score history for [game_scores]. */
+.snap-game-score-history { display:grid; gap:28px; margin:28px 0; }
+.snap-game-score-period { border-top:1px solid currentColor; padding-top:14px; }
+.snap-game-score-period > h2 { margin:0 0 14px; }
+.snap-game-score-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:28px; }
+.snap-game-score-columns h3 { margin:0 0 10px; }
+.snap-game-score-columns ol { margin:0; padding-left:28px; }
+.snap-game-score-columns li { padding:4px 0; font-variant-numeric:tabular-nums; }
+.snap-game-score-columns li span { display:inline-block; min-width:70px; margin-left:8px; }
+.snap-game-score-columns time { opacity:.65; font-size:.85em; }
+@media (max-width:650px) { .snap-game-score-columns { grid-template-columns:1fr; } }
 /* ===== SNAPSMACK EOF ===== */
