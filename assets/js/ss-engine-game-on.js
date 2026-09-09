@@ -16,6 +16,7 @@
     var active = null;
     var modal = null;
     var modalOpener = null;
+    var modalEngaged = false;
     var swipeStart = null;
     var activePalette = null;
     var frames = [];
@@ -432,6 +433,12 @@
         modal.querySelector('[data-game-post]').href = active.postUrl;
         modal.querySelector('[data-game-post]').textContent = 'View image';
         modal.hidden = false;
+        if (!modalEngaged) {
+            modalEngaged = true;
+            window.dispatchEvent(new CustomEvent('snapsmack:engagement-start', {
+                detail: { source: 'game-on' }
+            }));
+        }
         document.documentElement.classList.add('go-game-open');
         makeTiles(active, true);
         var requestedFull = active.full;
@@ -455,6 +462,12 @@
         }
         if (active.source) active.source.paused = false;
         active = null; modal.hidden = true;
+        if (modalEngaged) {
+            modalEngaged = false;
+            window.dispatchEvent(new CustomEvent('snapsmack:engagement-stop', {
+                detail: { source: 'game-on' }
+            }));
+        }
         document.documentElement.classList.remove('go-game-open');
         if (modalOpener && typeof modalOpener.focus === 'function') modalOpener.focus({ preventScroll: true });
         modalOpener = null;
@@ -466,6 +479,7 @@
         var candidates = boards.filter(function (b) { return b !== current; });
         var source = candidates.length ? candidates[Math.floor(Math.random() * candidates.length)] : current;
         if (current) current.paused = false;
+        // Keep the same modal engagement session alive while its puzzle swaps.
         modal.hidden = true; active = null;
         window.setTimeout(function () { openModal(source); }, 30);
     }
