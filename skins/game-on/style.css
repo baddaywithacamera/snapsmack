@@ -451,7 +451,7 @@ img { display: block; max-width: 100%; }
     background-color: var(--tile-border-c, transparent);
     box-shadow:   var(--tile-shadow, none);
     box-sizing:   border-box;
-    transition:   opacity 0.2s;
+    transition:   opacity 0.2s, border-color .56s ease-out;
 }
 .go-tile--framed.go-tile--portrait img {
     /* Portrait: size% of HEIGHT so it can't overflow the square tile. */
@@ -1344,13 +1344,11 @@ body:has(.go-puzzle-field) {
 }
 .go-puzzle-field.is-game-ready { pointer-events: auto; }
 .go-puzzle {
-    --go-border-color: transparent;
-    --go-border-next: var(--go-border-color);
     position: relative;
     display: block;
     width: var(--go-board);
     height: var(--go-board);
-    border: 3px solid var(--go-border-color);
+    border: 0;
     padding: 0;
     margin: 0;
     overflow: hidden;
@@ -1358,23 +1356,6 @@ body:has(.go-puzzle-field) {
     cursor: pointer;
     isolation: isolate;
 }
-.go-puzzle::before {
-    content: "";
-    position: absolute;
-    inset: -3px;
-    z-index: 4;
-    border: 3px solid var(--go-border-next);
-    pointer-events: none;
-    opacity: 0;
-}
-.go-puzzle.border-arrive-left::before { animation: go-border-from-left .56s ease-out both; }
-.go-puzzle.border-arrive-right::before { animation: go-border-from-right .56s ease-out both; }
-.go-puzzle.border-arrive-top::before { animation: go-border-from-top .56s ease-out both; }
-.go-puzzle.border-arrive-bottom::before { animation: go-border-from-bottom .56s ease-out both; }
-@keyframes go-border-from-left { from { opacity: 1; transform: translateX(-100%); } to { opacity: 1; transform: none; } }
-@keyframes go-border-from-right { from { opacity: 1; transform: translateX(100%); } to { opacity: 1; transform: none; } }
-@keyframes go-border-from-top { from { opacity: 1; transform: translateY(-100%); } to { opacity: 1; transform: none; } }
-@keyframes go-border-from-bottom { from { opacity: 1; transform: translateY(100%); } to { opacity: 1; transform: none; } }
 .go-puzzle::after {
     content: "";
     position: absolute;
@@ -1509,7 +1490,7 @@ body:has(.go-puzzle-field) {
     .go-puzzle:nth-child(n+10) { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .go-puzzle::before { animation: none !important; }
+    .go-tile--framed img { transition: none !important; }
     .go-puzzle-piece { transition: none !important; }
     .go-game-board.is-solved-pulse { animation: none; outline: 3px solid #f2f0e9; }
 }
