@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## GAME ON Skin 0.1.10 — 2026-09-09
+- **PLAY AS PUZZLE now lives beside Like.** Solo-image puzzle launch is part of the community action row rather than floating over the photograph.
+- **Navigation opacity now matches the content card.** At rest it borrows the existing translucent backing; once sticky, it paints the configured colour and opacity itself.
+- **Rounded full-size image frames no longer expose opaque white corner wedges.** Their outer tile matte is transparent so the surrounding content backing remains visually continuous.
+- **The footer remains reachable on long galleries.** It is a compact fixed bottom bar on desktop and wraps cleanly only on narrow screens.
+
 ## 0.7.676D / GAME ON Skin 0.1.9 — 2026-09-09
 - **Solo photographs can become the game.** The post viewer now offers PLAY AS PUZZLE for a single image and opens that exact full-resolution photograph in the existing playable modal.
 - **GAME ON gains a site-wide arcade scoreboard.** Players enter three initials, results retain the date, and the score view ranks fastest solves and most puzzles solved while the existing session totals remain live beneath the board.
