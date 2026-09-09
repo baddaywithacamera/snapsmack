@@ -7,7 +7,9 @@ $migration = file_get_contents($root . '/migrations/migrate-game-on-scores.sql')
 $fail = [];
 foreach ([
     [$layout, 'data-play-as-puzzle', 'solo view has no PLAY AS PUZZLE carrier'],
+    [$layout, 'data-action-placement="community"', 'solo puzzle action is not assigned to the community bar'],
     [$js, "e.target.closest('[data-play-as-puzzle]')", 'game engine does not open solo images'],
+    [$js, "like.insertAdjacentElement('afterend', button)", 'solo puzzle action is not placed after Like'],
     [$js, 'data-scoreboard', 'high-score modal is missing'],
     [$js, 'data-score-initials', 'three-initial entry is missing'],
     [$js, "solved_count: session.solved", 'session solve total is not submitted'],
