@@ -28,6 +28,10 @@
 ## PARADE Skin 1.2.35 — 2026-09-09
 - **Reorganizes and relabels configuration without changing saved keys or live rendering.** Existing site choices carry forward; the administrative controls now explain the three distinct border layers and collect content-area geometry and transparency in one place. New installations also receive the shared grid-family defaults.
 
+## GAME ON Skin 0.1.5 — 2026-09-09
+- **Background puzzles now have guaranteed 10px white clearance at both browser edges.** A viewport-fixed safety mask is independent of the deliberately oversized puzzle field, so bleed can still cover every screen shape without allowing tiles to press against the left edge or the scrollbar-side edge. The engine measures `documentElement.clientWidth`, repeats the measurement after first layout, and observes later client-area changes so scrollbar appearance is included.
+- **“Treatment Overlay” is renamed “Background Puzzle Brightness.”** Its help now plainly distinguishes darkening/lightening the puzzle layer from changing the content-area opacity.
+
 ## GAME ON Skin 0.1.4 — 2026-09-09
 - **GAME ON now ships the requested readable starting calibration.** The inner content remains 935px wide with 80px padding on each side. Content, padding, navigation and footer surfaces are white at 75% opacity. Footer colour and opacity are now explicit controls, and Content Edge Glow defaults to 0 so the unwanted halo is off unless deliberately enabled.
 - **Background game spacing now completes at the viewport boundary.** The centred square-board field includes its outer half-gutter in the coverage calculation, preserving the 10px relationship between games while preventing the edge spacing from looking abruptly sliced off. Non-matching viewport shapes still bleed rather than expose empty strips.
