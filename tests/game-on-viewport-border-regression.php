@@ -23,7 +23,12 @@ $checks = [
     'border activity control is declared' => str_contains($manifest, 'go_border_activity'),
     'border activity reaches the engine' => str_contains($landing, 'data-border-activity='),
     'border activity changes timing' => str_contains($engine, 'var intervals = [[4200, 7000], [2400, 4400], [700, 1500], [400, 1000], [220, 650]];'),
-    'whole-image preview charges two seconds' => str_contains($engine, 'active.penaltyMs += 2000;'),
+    'whole-image preview lasts two seconds' => str_contains($engine, 'durationFor(active) + 2000'),
+    'preview starts the timer when needed' => str_contains($engine, 'if (!active.startedAt) active.startedAt = performance.now();'),
+    'preview preserves the exact puzzle state' => str_contains($engine, 'active.previewSlots = active.slots.slice();'),
+    'preview restores the exact puzzle state' => str_contains($engine, 'board.slots = board.previewSlots.slice();'),
+    'view image is an in-place button' => str_contains($engine, '<button data-game-preview type="button">View image</button>'),
+    'view image is no longer an outbound link' => !str_contains($engine, 'data-game-post'),
     'solved puzzle reveals complete image' => str_contains($engine, "board.el.classList.add('is-complete');"),
     'complete image hides puzzle lines' => str_contains($style, '.go-game-board.is-complete .go-puzzle-piece { opacity: 0; }'),
 ];
