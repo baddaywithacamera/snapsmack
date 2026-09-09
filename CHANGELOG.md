@@ -9,7 +9,7 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.678D / GAME ON Skin 0.1.15 — 2026-09-09
+## 0.7.678 / GAME ON Skin 0.1.15 — 2026-09-09
 
 - Gives an open GAME ON puzzle exclusive control of the arrow keys and WASD, preventing the global post navigator from leaving the game on the same keystroke. High-score initials remain safe to type.
 - Replaces the GAME ON-only score storage path with a reusable CMS game-score ledger. Named metrics let future skins store their own kinds of scores without inventing another database subsystem.
