@@ -228,15 +228,6 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
              alt="<?php echo htmlspecialchars($cover_img['img_title']); ?>"
              class="go-single-img<?php echo $frame['is_fill'] ? ' go-crop--fill' : ''; ?>"
              <?php if ($single_img_style): ?>style="<?php echo $single_img_style; ?>"<?php endif; ?>>
-        <button type="button" class="go-play-as-puzzle"
-                data-play-as-puzzle
-                data-thumb="<?php echo htmlspecialchars($cover_img['img_thumb_square'] ?: $cover_img['img_file']); ?>"
-                data-full="<?php echo htmlspecialchars($cover_img['img_file']); ?>"
-                data-post-url="<?php echo htmlspecialchars(BASE_URL . '?s=' . urlencode((string)$cover_img['img_slug'])); ?>"
-                data-label="<?php echo htmlspecialchars(trim((string)$cover_img['img_title']) ?: 'Photograph'); ?>"
-                data-focus-x="<?php echo (int)($cover_img['img_focus_x'] ?? 50); ?>"
-                data-focus-y="<?php echo (int)($cover_img['img_focus_y'] ?? 50); ?>"
-                data-zoom="<?php echo (int)($cover_img['img_zoom'] ?? 100); ?>">PLAY AS PUZZLE</button>
         <?php endif; ?>
 
     </div><!-- .go-post-ig-image -->
@@ -319,6 +310,17 @@ $_avatar_initial = strtoupper(substr($_site_name, 0, 1));
                 $img = $cover_img;
                 include dirname(__DIR__, 2) . '/core/community-component.php';
                 ?>
+                <?php if (!$is_carousel): ?>
+                <button type="button" class="go-play-as-puzzle"
+                        data-play-as-puzzle data-action-placement="community"
+                        data-thumb="<?php echo htmlspecialchars($cover_img['img_thumb_square'] ?: $cover_img['img_file']); ?>"
+                        data-full="<?php echo htmlspecialchars($cover_img['img_file']); ?>"
+                        data-post-url="<?php echo htmlspecialchars(BASE_URL . '?s=' . urlencode((string)$cover_img['img_slug'])); ?>"
+                        data-label="<?php echo htmlspecialchars(trim((string)$cover_img['img_title']) ?: 'Photograph'); ?>"
+                        data-focus-x="<?php echo (int)($cover_img['img_focus_x'] ?? 50); ?>"
+                        data-focus-y="<?php echo (int)($cover_img['img_focus_y'] ?? 50); ?>"
+                        data-zoom="<?php echo (int)($cover_img['img_zoom'] ?? 100); ?>">PLAY AS PUZZLE</button>
+                <?php endif; ?>
             </div>
             <?php endif; ?>
 
