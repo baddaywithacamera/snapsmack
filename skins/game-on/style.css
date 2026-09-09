@@ -886,7 +886,11 @@ body.go-modal-open { overflow: hidden; }
 .go-modal-backdrop {
     position:   absolute;
     inset:      0;
-    background: rgba(0, 0, 0, 0.8);
+    background: color-mix(
+        in srgb,
+        var(--go-post-viewer-backdrop-color, #000000) var(--go-post-viewer-backdrop-opacity, 80%),
+        transparent
+    );
 }
 
 .go-modal-frame {
