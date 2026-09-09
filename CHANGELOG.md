@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.671D "PASS IT ON" — 2026-09-08
+- **GAME ON's borders now pass colour from one puzzle to one neighbour at a time.** The whole background no longer flashes synchronized neon grid bands: a single colour travels left, right, up, or down into an adjacent board, which then becomes the source of the next handoff. Border motion remains independent of puzzle motion, and reduced-motion visitors receive the colour change without the sliding animation.
+- **A GAME ON skin installed ahead of its required CMS engine now fails dark and harmless.** The background does not expose giant decorative borders or intercept clicks until the shared puzzle engine has actually constructed the games. This matters during split skin/core deployments and makes a missing engine obvious without wrecking the live page.
+
+## GAME ON Skin 0.1.1 — 2026-09-08
+- **Replaces the synchronized full-screen border mask with individual puzzle borders and one-at-a-time neighbour handoffs.** The skin also waits for the CMS game engine to declare the puzzle field ready before enabling background interaction.
+
 ## 0.7.670D "GAME ON" — 2026-09-08
 - **The BITCHIN' track continues from the same verified GAME ON source promoted as stable 0.7.670.** This development build keeps the `D` suffix required by the dev updater while the BORING track receives the suffix-free stable twin.
 
