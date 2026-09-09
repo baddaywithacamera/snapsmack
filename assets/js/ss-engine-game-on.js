@@ -151,11 +151,17 @@
             tile.style.backgroundSize = dw + 'px ' + dh + 'px';
             tile.style.backgroundPosition = (-cropX - col * cell) + 'px ' + (-cropY - row * cell) + 'px';
         });
+        if (board.complete) {
+            board.complete.style.backgroundSize = dw + 'px ' + dh + 'px';
+            board.complete.style.backgroundPosition = (-cropX) + 'px ' + (-cropY) + 'px';
+        }
     }
 
     function makeTiles(board, full) {
         board.el.innerHTML = '';
+        board.el.classList.remove('is-complete', 'is-previewing', 'is-solved-pulse');
         board.tiles = [];
+        board.complete = null;
         for (var i = 0; i < 15; i++) {
             var tile = document.createElement('span');
             tile.className = 'go-puzzle-piece';
@@ -164,10 +170,17 @@
             board.el.appendChild(tile);
             board.tiles.push(tile);
         }
+        if (board.modal) {
+            board.complete = document.createElement('span');
+            board.complete.className = 'go-puzzle-complete';
+            board.complete.style.backgroundImage = 'url("' + String(board.full || '').replace(/"/g, '%22') + '")';
+            board.el.appendChild(board.complete);
+        }
         positionTiles(board, false);
     }
 
     function move(board, from, userMove) {
+        if (board.modal && board.previewing) return false;
         if (performance.now() < board.busyUntil) return false;
         if (legal(board.empty).indexOf(from) === -1) return false;
         if (userMove && board.modal && !board.startedAt) board.startedAt = performance.now();
@@ -241,7 +254,8 @@
             slots: state.slots.slice(), empty: state.empty,
             tiles: [], moves: 0, lastEmpty: -1, busyUntil: 0,
             paused: false, modal: !!isModal, startedAt: 0, finished: false,
-            naturalWidth: 0, naturalHeight: 0
+            naturalWidth: 0, naturalHeight: 0, penaltyMs: 0,
+            previewing: false, complete: null
         };
     }
 
@@ -327,6 +341,7 @@
         layer.style.height = imageRect.height + 'px';
         layer.style.borderWidth = getComputedStyle(image).borderTopWidth;
         layer.style.borderColor = colour;
+        layer.style.borderRadius = getComputedStyle(image).borderRadius;
         anchor.appendChild(layer);
         var clips = borderClip(side, entering);
         var animation = layer.animate(
@@ -376,7 +391,10 @@
         var pool = visibleFrames();
         if (pool.length < 2) return scheduleBorder();
         var occupied = new Set();
-        var changes = rand(1, Math.min(3, Math.floor(pool.length / 2)));
+        var activity = Math.max(1, Math.min(5, Math.round(Number(root.dataset.borderActivity || 3))));
+        var maximum = [1, 1, 3, 3, 3][activity - 1];
+        var limit = Math.max(1, Math.min(maximum, Math.floor(pool.length / 2)));
+        var changes = 1 + Math.floor(Math.random() * limit);
         var completed = 0;
         var attempts = 0;
         while (completed < changes && attempts < pool.length * 2) {
@@ -391,7 +409,9 @@
 
     function scheduleBorder() {
         window.clearTimeout(borderTimer);
-        borderTimer = window.setTimeout(handOffBorder, rand(700, 1500));
+        var activity = Math.max(1, Math.min(5, Math.round(Number(root.dataset.borderActivity || 3))));
+        var intervals = [[4200, 7000], [2400, 4400], [700, 1500], [400, 1000], [220, 650]];
+        borderTimer = window.setTimeout(handOffBorder, rand(intervals[activity - 1][0], intervals[activity - 1][1]));
     }
 
     function createModal() {
@@ -409,7 +429,7 @@
             '<span><b data-stat="solved">0</b> solved</span>' +
             '<span><b data-stat="best">—</b> best</span>' +
             '<span><b data-stat="average">—</b> average</span></div>' +
-            '<div class="go-game-actions"><a data-game-post href="#">View photograph</a><button data-game-new type="button">New puzzle</button><button data-game-scores type="button">High scores</button></div>' +
+            '<div class="go-game-actions"><a data-game-post href="#">View photograph</a><button data-game-preview type="button">View whole image (+2 seconds)</button><button data-game-new type="button">New puzzle</button><button data-game-scores type="button">High scores</button></div>' +
             '<section class="go-scoreboard" data-scoreboard hidden aria-label="GAME ON high scores">' +
             '<div class="go-scoreboard-head"><b>HIGH SCORES</b><button type="button" data-score-close aria-label="Close high scores">&times;</button></div>' +
             '<div class="go-score-lists"><div><h3>FASTEST</h3><ol data-score-fastest></ol></div><div><h3>MOST SOLVED</h3><ol data-score-most></ol></div></div>' +
@@ -420,6 +440,7 @@
         wrap.querySelector('.go-game-close').addEventListener('click', closeModal);
         wrap.querySelector('.go-game-backdrop').addEventListener('click', closeModal);
         wrap.querySelector('[data-game-new]').addEventListener('click', nextPuzzle);
+        wrap.querySelector('[data-game-preview]').addEventListener('click', togglePreview);
         wrap.querySelector('[data-game-scores]').addEventListener('click', function () { showScores(true); });
         wrap.querySelector('[data-score-close]').addEventListener('click', function () { showScores(false); });
         wrap.querySelector('[data-score-form]').addEventListener('submit', submitScore);
@@ -560,9 +581,22 @@
         var min = Math.floor(total / 60);
         return min + ':' + (total % 60).toFixed(1).padStart(4, '0');
     }
+    function togglePreview() {
+        if (!active || active.finished) return;
+        active.previewing = !active.previewing;
+        active.el.classList.toggle('is-previewing', active.previewing);
+        var button = modal.querySelector('[data-game-preview]');
+        if (active.previewing) {
+            active.penaltyMs += 2000;
+            button.textContent = 'Return to puzzle';
+        } else {
+            button.textContent = 'View whole image (+2 seconds)';
+        }
+        updateStats();
+    }
     function updateStats() {
         if (!modal) return;
-        var elapsed = active && active.startedAt ? performance.now() - active.startedAt : 0;
+        var elapsed = active ? (active.startedAt ? performance.now() - active.startedAt : 0) + active.penaltyMs : 0;
         var values = {
             time: formatMs(elapsed), moves: active ? active.moves : 0,
             solved: session.solved,
@@ -584,11 +618,16 @@
     function finish(board) {
         if (board.finished) return;
         board.finished = true;
-        var elapsed = board.startedAt ? performance.now() - board.startedAt : 0;
+        var elapsed = (board.startedAt ? performance.now() - board.startedAt : 0) + board.penaltyMs;
         session.solved++;
         session.totalMs += elapsed;
         session.bestMs = session.bestMs === null ? elapsed : Math.min(session.bestMs, elapsed);
         updateStats();
+        board.previewing = false;
+        board.el.classList.remove('is-previewing');
+        board.el.classList.add('is-complete');
+        var previewButton = modal.querySelector('[data-game-preview]');
+        if (previewButton) previewButton.textContent = 'View whole image (+2 seconds)';
         var scoreForm = modal.querySelector('[data-score-form]');
         if (scoreForm) scoreForm.hidden = false;
         window.setTimeout(function () {
