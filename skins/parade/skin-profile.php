@@ -181,6 +181,21 @@ if ($_pa_ftglow_sz > 0 && $_pa_ftglow_op > 0) {
     $_pa_ftglow_css = $_pa_glow_stack($_fgr, $_fgg, $_fgb, $_pa_ftglow_sz, $_pa_ftglow_op);
 }
 
+// Footer geometry and surface. Keep the historical inherited panel background
+// when these new settings do not yet exist on an established site; installers
+// seed the manifest defaults for new sites.
+$_pa_footer_gap = max(0, min(100, (int)($settings['pa_footer_gap'] ?? 0)));
+$_pa_footer_bg = 'var(--panel-bg, transparent)';
+if (array_key_exists('pa_footer_bg_color', $settings) || array_key_exists('pa_footer_bg_opacity', $settings)) {
+    $_pa_footer_hex = trim((string)($settings['pa_footer_bg_color'] ?? '#ffffff'));
+    $_pa_footer_op  = max(0, min(100, (int)($settings['pa_footer_bg_opacity'] ?? 50)));
+    $_fc = ltrim($_pa_footer_hex, '#');
+    if (strlen($_fc) === 3) $_fc = $_fc[0].$_fc[0].$_fc[1].$_fc[1].$_fc[2].$_fc[2];
+    if (preg_match('/^[0-9a-fA-F]{6}$/', $_fc)) {
+        $_pa_footer_bg = sprintf('rgba(%d,%d,%d,%s)', hexdec(substr($_fc, 0, 2)), hexdec(substr($_fc, 2, 2)), hexdec(substr($_fc, 4, 2)), number_format($_pa_footer_op / 100, 2));
+    }
+}
+
 // Nav companion-line opacity (0–100 → 0–1) — also previously unemitted.
 $_pa_nav_line_op = number_format(max(0, min(100, (int)($settings['pa_nav_line_opacity'] ?? 100))) / 100, 2);
 
@@ -236,7 +251,7 @@ if ($_pa_nls_sz > 0 && $_pa_nls_op > 0) {
 ?>
 
 <!-- PARADE CSS vars: high-key field + text colours (read by style.css) -->
-<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;--nav-line-opacity:<?php echo $_pa_nav_line_op; ?>;--nav-text-glow:<?php echo $_pa_navglow_css; ?>;--nav-text-glow-strong:<?php echo $_pa_navglow_strong; ?>;--profile-text-glow:<?php echo $_pa_glow_css; ?>;--footer-text-glow:<?php echo $_pa_ftglow_css; ?>;--panel-bg:<?php echo htmlspecialchars($_pa_panel_bg); ?>;--panel-extend:<?php echo (int)$_pa_panel_extend; ?>px;--pa-navbar-bg:<?php echo htmlspecialchars($_pa_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_pa_posts_glow); ?>;--post-count-color:<?php echo htmlspecialchars($settings['pa_posts_color'] ?? '#8a8a8a'); ?>;--pa-navline-shadow:<?php echo htmlspecialchars($_pa_navline_shadow); ?>;}</style>
+<style id="pa-vars">:root{--pa-bg:<?php echo $_pa_bg_css; ?>;--pa-text:<?php echo htmlspecialchars($_pa_text); ?>;--pa-muted:<?php echo htmlspecialchars($_pa_muted); ?>;--pa-accent:<?php echo htmlspecialchars($_pa_accent); ?>;--tile-bw:<?php echo $_pa_bw; ?>px;--tile-radius:<?php echo $_pa_radius; ?>px;--ring-op:<?php echo $_pa_bo; ?>;--pa-nav-line:<?php echo $_pa_nav_col; ?>;--nav-line-opacity:<?php echo $_pa_nav_line_op; ?>;--nav-text-glow:<?php echo $_pa_navglow_css; ?>;--nav-text-glow-strong:<?php echo $_pa_navglow_strong; ?>;--profile-text-glow:<?php echo $_pa_glow_css; ?>;--footer-text-glow:<?php echo $_pa_ftglow_css; ?>;--footer-gap:<?php echo $_pa_footer_gap; ?>px;--footer-bg:<?php echo htmlspecialchars($_pa_footer_bg); ?>;--panel-bg:<?php echo htmlspecialchars($_pa_panel_bg); ?>;--panel-extend:<?php echo (int)$_pa_panel_extend; ?>px;--pa-navbar-bg:<?php echo htmlspecialchars($_pa_navbar_bg); ?>;--posts-glow:<?php echo htmlspecialchars($_pa_posts_glow); ?>;--post-count-color:<?php echo htmlspecialchars($settings['pa_posts_color'] ?? '#8a8a8a'); ?>;--pa-navline-shadow:<?php echo htmlspecialchars($_pa_navline_shadow); ?>;}</style>
 
 <!-- PARADE waving-flag carrier — read by ss-engine-flag-wave.js. -->
 <div class="pa-parade-bg pa-flag-bg" aria-hidden="true"
