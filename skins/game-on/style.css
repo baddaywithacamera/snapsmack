@@ -1683,6 +1683,10 @@ body:has(.go-puzzle-field) {
 .go-game-modal[data-theme="dark"] .go-scoreboard { background: #171717; color: #f2f0e9; }
 .go-scoreboard-head { display:flex; align-items:center; justify-content:space-between; letter-spacing:.14em; }
 .go-scoreboard-head button { border:0; background:transparent; color:inherit; font-size:25px; cursor:pointer; }
+.go-score-periods { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+.go-score-periods button { border:1px solid currentColor; background:transparent; color:inherit; padding:5px 9px; cursor:pointer; opacity:.65; }
+.go-score-periods button.is-active { background:#262626; color:#fff; opacity:1; }
+.go-game-modal[data-theme="dark"] .go-score-periods button.is-active { background:#f2f0e9; color:#171717; }
 .go-score-lists { display:grid; grid-template-columns:1fr 1fr; gap:28px; }
 .go-score-lists h3 { margin:18px 0 8px; font-size:12px; letter-spacing:.12em; }
 .go-score-lists ol { margin:0; padding-left:25px; }

@@ -9,6 +9,14 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.678D / GAME ON Skin 0.1.15 — 2026-09-09
+
+- Gives an open GAME ON puzzle exclusive control of the arrow keys and WASD, preventing the global post navigator from leaving the game on the same keystroke. High-score initials remain safe to type.
+- Replaces the GAME ON-only score storage path with a reusable CMS game-score ledger. Named metrics let future skins store their own kinds of scores without inventing another database subsystem.
+- Adds Today, This Week, This Month and All Time views while preserving every result rather than resetting leaderboards at calendar boundaries.
+- Adds the `[game_scores]` static-page shortcode for a permanent, responsive score-history page under the site's own skin and navigation.
+- Adds a How to play link to the puzzle controls for the new 15 Puzzle guide and score-history page.
+
 ## 0.7.677D / GAME ON Skin 0.1.14 — 2026-09-09
 
 - Replaces the puzzle modal's outbound View Image link with an in-place preview: pieces animate into their solved positions, the uninterrupted photograph holds for two seconds, and the exact puzzle arrangement returns.
