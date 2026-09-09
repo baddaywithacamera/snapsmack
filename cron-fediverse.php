@@ -109,6 +109,11 @@ list($sent, $failed) = sv_process_deliveries(
     $pdo, $settings, 1000, sv_delivery_cadence($settings), null, null, null, 240
 );
 
+// Clear a stale self-inflicted inbox IP-ban left by the pre-666D limiter (one
+// shared IP → a backfill self-banned the fleet). One-shot per version, roster-
+// scoped so only a fleet member's IP is lifted, never a real stranger's.
+sv_heal_stale_inbox_bans_once($pdo, $settings);
+
 // Make the multisite roster's peer-follow promise real, gradually. One missing
 // edge per ten-minute tick avoids a follow/backfill thundering herd.
 $mesh_follow = sv_reconcile_mesh_follows($pdo, $settings, 1);
