@@ -325,7 +325,7 @@
         active.thumb = source.thumb; active.full = source.full;
         active.postUrl = source.postUrl; active.label = source.label;
         modal.querySelector('[data-game-post]').href = active.postUrl;
-        modal.querySelector('[data-game-post]').textContent = 'View ' + active.label;
+        modal.querySelector('[data-game-post]').textContent = 'View image';
         modal.hidden = false;
         document.documentElement.classList.add('go-game-open');
         makeTiles(active, true);

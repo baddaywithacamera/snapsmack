@@ -9,6 +9,15 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.673D "TABLETOP" — 2026-09-08
+- **GAME ON's puzzle pieces now read as physical game tiles.** Small seams, gently rounded corners, edge highlights, inset shading, and restrained cast shadows give both the background and modal puzzles tactile depth without obscuring their photographs. Separate background games have a consistent 10px gutter.
+- **The modal action now says “View image.”** It no longer exposes missing metadata as the awkward “View untitled image.”
+- **GAME ON no longer exposes irrelevant Gallery Slider or Core Lightbox controls in Skin Admin.** Its multi-image post modal uses the shared carousel runtime but always presents one photograph at a time, while its profile avatar has its own Grid-family lightbox. Landing-slider controls such as images-per-view, auto-advance, and looping—and an unrelated second lightbox-opacity control—were misleading and did not describe this skin's behavior.
+- **GAME ON now has an actual Navigation section in Skin Admin.** Navigation background, link and active colours, divider colour, bar height, link spacing, text size, weight, case, and the nav-to-tiles gap are grouped together instead of leaving two stray controls buried under Grid and Profile Header.
+
+## GAME ON Skin 0.1.3 — 2026-09-08
+- **Adds physical tile depth and 10px spacing between background games.** Piece treatment is stronger in the large playable modal while remaining restrained in the moving background.
+
 ## 0.7.672D "RIGHT ADDRESS" — 2026-09-08
 - **GAME ON's palette handoff now belongs to the content image frames, where GramOfSmack frame treatments live.** Background puzzle squares are borderless. Framed photographs in the three-column feed take their colours from the selected Electric, Film Box, or monochrome set; one frame passes its colour to an adjacent content frame at a time, preserving the photographer's configured frame thickness, matte, size, and shadow.
 
