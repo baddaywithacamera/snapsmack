@@ -17,12 +17,16 @@
     var modal = null;
     var modalOpener = null;
     var swipeStart = null;
+    var activePalette = null;
+    var borderCursor = 0;
+    var borderTimer = 0;
     var session = { solved: 0, totalMs: 0, bestMs: null };
     var palettes = {
         electric: ['#B7FF00', '#FF2B9D', '#00D9FF', '#5A25B5'],
         'film-box': ['#F6C515', '#D82C2C', '#36A8B8', '#563B70'],
         monochrome: ['#F2F0E9', '#B7B7B2', '#626262', '#161616']
     };
+    activePalette = palettes.electric;
 
     function rand(min, max) { return min + Math.random() * (max - min); }
     function shuffled(a) {
@@ -205,6 +209,7 @@
             try { sessionStorage.setItem('snapsmack-game-on-palette', key); } catch (e) { /* private mode */ }
         }
         root.dataset.activePalette = key;
+        activePalette = palettes[key];
         root.style.setProperty('--go-c1', palettes[key][0]);
         root.style.setProperty('--go-c2', palettes[key][1]);
         root.style.setProperty('--go-c3', palettes[key][2]);
@@ -216,6 +221,64 @@
             try { sessionStorage.setItem('snapsmack-game-on-direction', direction); } catch (e) { /* private mode */ }
         }
         root.dataset.activeDirection = direction;
+    }
+
+    function visibleBoards() {
+        return boards.filter(function (board) {
+            return window.getComputedStyle(board.el).display !== 'none';
+        });
+    }
+
+    function adjacentBoard(source, pool) {
+        var columns = window.innerWidth <= 900 ? 3 : 5;
+        var at = pool.indexOf(source);
+        if (at < 0) return null;
+        var row = Math.floor(at / columns), col = at % columns;
+        var choices = [];
+        var direction = root.dataset.activeDirection;
+        if (direction !== 'vertical') {
+            if (col > 0) choices.push({ board: pool[at - 1], side: 'right' });
+            if (col + 1 < columns && at + 1 < pool.length) choices.push({ board: pool[at + 1], side: 'left' });
+        }
+        if (direction !== 'horizontal') {
+            if (row > 0) choices.push({ board: pool[at - columns], side: 'bottom' });
+            if (at + columns < pool.length) choices.push({ board: pool[at + columns], side: 'top' });
+        }
+        return choices.length ? choices[Math.floor(Math.random() * choices.length)] : null;
+    }
+
+    function handOffBorder() {
+        var pool = visibleBoards();
+        if (pool.length < 2) return scheduleBorder();
+        var source = pool.indexOf(boards[borderCursor]) >= 0 ? boards[borderCursor] : pool[Math.floor(Math.random() * pool.length)];
+        var next = adjacentBoard(source, pool);
+        if (!next) {
+            source = pool[Math.floor(Math.random() * pool.length)];
+            next = adjacentBoard(source, pool);
+        }
+        if (next) {
+            var colour = source.borderColour;
+            var target = next.board;
+            var displaced = target.borderColour;
+            target.el.style.setProperty('--go-border-next', colour);
+            target.el.classList.remove('border-arrive-left', 'border-arrive-right', 'border-arrive-top', 'border-arrive-bottom');
+            void target.el.offsetWidth;
+            target.el.classList.add('border-arrive-' + next.side);
+            window.setTimeout(function () {
+                source.borderColour = displaced;
+                source.el.style.setProperty('--go-border-color', displaced);
+                target.borderColour = colour;
+                target.el.style.setProperty('--go-border-color', colour);
+                target.el.classList.remove('border-arrive-' + next.side);
+            }, reduced.matches ? 0 : 560);
+            borderCursor = boards.indexOf(target);
+        }
+        scheduleBorder();
+    }
+
+    function scheduleBorder() {
+        window.clearTimeout(borderTimer);
+        borderTimer = window.setTimeout(handOffBorder, rand(700, 1500));
     }
 
     function createModal() {
@@ -385,9 +448,14 @@
     root.querySelectorAll('.go-puzzle').forEach(function (el) {
         var state = scramble(100 + Math.floor(Math.random() * 151));
         var board = boardFrom(el, state, false);
+        board.borderColour = activePalette[boards.length % activePalette.length];
+        el.style.setProperty('--go-border-color', board.borderColour);
         boards.push(board); makeTiles(board, false); schedule(board);
         el.addEventListener('click', function () { openModal(board); });
     });
+    root.classList.add('is-game-ready');
+    borderCursor = Math.floor(Math.random() * Math.max(1, boards.length));
+    scheduleBorder();
     document.addEventListener('click', function (e) {
         if (active && e.target.closest('.go-game-board')) clickBoard(e);
     });
