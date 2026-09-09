@@ -105,12 +105,8 @@ img { display: block; max-width: 100%; }
     border-bottom: var(--go-nav-line-width, 1px) solid color-mix(in srgb, var(--go-nav-line, #750787) var(--go-nav-line-opacity, 100%), transparent);
     box-shadow: var(--go-nav-shadow-size, 0px) var(--go-nav-shadow-size, 0px) var(--go-nav-shadow-size, 0px) color-mix(in srgb, var(--go-nav-shadow-color, #000) var(--go-nav-shadow-opacity, 40%), transparent);
 }
-/* On the landing page the nav already sits on the translucent content card.
-   Painting the same 75% white a second time made it effectively 94% opaque. */
-.go-content-wrap .go-sticky-nav:not(.profile-hidden) {
-    background: transparent;
-}
-.go-content-wrap .go-sticky-nav.profile-hidden {
+/* Keep the navigation legible in both its resting and sticky states. */
+.go-content-wrap .go-sticky-nav {
     background: color-mix(
         in srgb,
         var(--go-content-bg, #fff) var(--go-content-opacity, 75%),
@@ -1572,6 +1568,48 @@ body:has(.go-puzzle-field) {
     color: #25231f;
     cursor: pointer;
 }
+
+.go-play-as-puzzle {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    z-index: 3;
+    padding: 9px 14px;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--go-content-bg, #fff) 88%, transparent);
+    color: var(--text-primary, #262626);
+    font: 700 12px/1 var(--font-body, sans-serif);
+    letter-spacing: .08em;
+    cursor: pointer;
+}
+.go-scoreboard {
+    position: absolute;
+    inset: 54px 5% 52px;
+    z-index: 5;
+    overflow: auto;
+    padding: 20px;
+    border: 1px solid rgba(128,128,128,.45);
+    background: #f7f5ef;
+    color: #25231f;
+    box-shadow: 0 12px 40px rgba(0,0,0,.3);
+}
+.go-game-modal[data-theme="dark"] .go-scoreboard { background: #171717; color: #f2f0e9; }
+.go-scoreboard-head { display:flex; align-items:center; justify-content:space-between; letter-spacing:.14em; }
+.go-scoreboard-head button { border:0; background:transparent; color:inherit; font-size:25px; cursor:pointer; }
+.go-score-lists { display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+.go-score-lists h3 { margin:18px 0 8px; font-size:12px; letter-spacing:.12em; }
+.go-score-lists ol { margin:0; padding-left:25px; }
+.go-score-lists li { display:grid; grid-template-columns:42px 1fr auto; gap:10px; padding:5px 0; font-variant-numeric:tabular-nums; }
+.go-score-lists time { opacity:.65; }
+.go-score-empty { display:list-item !important; opacity:.65; }
+.go-score-entry { display:flex; gap:10px; align-items:end; margin-top:20px; padding-top:16px; border-top:1px solid rgba(128,128,128,.35); }
+.go-score-entry label { display:grid; gap:5px; font-size:10px; letter-spacing:.1em; }
+.go-score-entry input { width:62px; padding:7px; text-align:center; text-transform:uppercase; font:bold 18px/1 monospace; }
+.go-score-entry button { padding:9px 12px; }
+.go-score-entry span { min-width:80px; font-size:12px; }
+@media (max-width: 700px) { .go-score-lists { grid-template-columns:1fr; } }
 
 @media (max-width: 900px) {
     .go-puzzle-field { --go-board-gap: 8px; }

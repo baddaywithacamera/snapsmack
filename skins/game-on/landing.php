@@ -218,6 +218,7 @@ $_go_asset_url = static function (string $path): string {
      data-activity="<?php echo (int)($settings['go_motion_activity'] ?? 3); ?>"
      data-speed="<?php echo (int)($settings['go_motion_speed'] ?? 3); ?>"
      data-modal-theme="<?php echo htmlspecialchars($settings['go_modal_theme'] ?? 'light'); ?>"
+     data-score-url="<?php echo htmlspecialchars(BASE_URL . 'game-on-scores.php'); ?>"
      aria-hidden="true">
     <?php foreach ($_go_puzzle_slots as $_go_index => $_go_image):
         $_go_title = trim((string)($_go_image['title'] ?? '')) ?: 'Photograph';

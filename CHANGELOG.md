@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.676D / GAME ON Skin 0.1.9 — 2026-09-09
+- **Solo photographs can become the game.** The post viewer now offers PLAY AS PUZZLE for a single image and opens that exact full-resolution photograph in the existing playable modal.
+- **GAME ON gains a site-wide arcade scoreboard.** Players enter three initials, results retain the date, and the score view ranks fastest solves and most puzzles solved while the existing session totals remain live beneath the board.
+- **The GAME ON navigation backing is no longer transparent at rest.** The configured content background colour and opacity now remain behind the menu before and after it becomes sticky.
+
 ## GAME ON Skin 0.1.8 — 2026-09-09
 - **The full-screen layer behind the playable puzzle is now configurable.** Puzzle Modal includes independent Backdrop Colour and Backdrop Opacity controls; the Light/Dark selector continues to control the puzzle window itself.
 - **The navigation regains its backing when it sticks.** It remains transparent while resting over the already-painted content card, then uses Content Background Colour and Content Background Opacity after the profile scrolls away, keeping the dropdown navigation readable without double-compositing its landing state.
