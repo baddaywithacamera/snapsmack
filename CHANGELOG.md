@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.672D "RIGHT ADDRESS" — 2026-09-08
+- **GAME ON's palette handoff now belongs to the content image frames, where GramOfSmack frame treatments live.** Background puzzle squares are borderless. Framed photographs in the three-column feed take their colours from the selected Electric, Film Box, or monochrome set; one frame passes its colour to an adjacent content frame at a time, preserving the photographer's configured frame thickness, matte, size, and shadow.
+
+## GAME ON Skin 0.1.2 — 2026-09-08
+- **Moves palette colours off the background games and onto the actual GramOfSmack image frames.** The background remains a field of playable picture puzzles without decorative borders; content frame thickness is still controlled by the standard Image Frame setting.
+
 ## 0.7.671D "PASS IT ON" — 2026-09-08
 - **GAME ON's borders now pass colour from one puzzle to one neighbour at a time.** The whole background no longer flashes synchronized neon grid bands: a single colour travels left, right, up, or down into an adjacent board, which then becomes the source of the next handoff. Border motion remains independent of puzzle motion, and reduced-motion visitors receive the colour change without the sliding animation.
 - **A GAME ON skin installed ahead of its required CMS engine now fails dark and harmless.** The background does not expose giant decorative borders or intercept clicks until the shared puzzle engine has actually constructed the games. This matters during split skin/core deployments and makes a missing engine obvious without wrecking the live page.
