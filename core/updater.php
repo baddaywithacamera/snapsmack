@@ -108,6 +108,32 @@ catch (\Throwable $e) { error_log('SnapSmack Updater: .htaccess self-heal skippe
 try { updater_reconcile_user_ini(); }
 catch (\Throwable $e) { error_log('SnapSmack Updater: .user.ini self-heal skipped — ' . $e->getMessage()); }
 
+// ─── FEDIVERSE INBOX-BAN SELF-HEAL (0.7.668D) ────────────────────────────────
+// The pre-666D inbox limiter IP-banned the shared fleet IP (auto:fediverse_inbox,
+// 24h); on shared hosting that blacked out the whole fleet's federation to a box.
+// 666D stopped creating those bans and a per-cron healer clears stale ones — but
+// a QUIET receiver spoke (no traffic, no delivery work) never runs that cron, so
+// its ban lingered until the 24h expiry. The UPDATER runs on every spoke at
+// upgrade, so clear it here too — the one place guaranteed to execute even on a
+// dormant box. Roster-scoped (see sv_heal_stale_inbox_bans_once); best-effort.
+if (isset($GLOBALS['pdo']) && $GLOBALS['pdo'] instanceof PDO) {
+    try {
+        if (!function_exists('sv_heal_stale_inbox_bans_once')) {
+            $_fedi_lib = dirname(__DIR__) . '/core/fediverse.php';
+            if (is_file($_fedi_lib)) require_once $_fedi_lib;
+        }
+        if (function_exists('sv_heal_stale_inbox_bans_once')) {
+            $_hb_settings = (isset($GLOBALS['settings']) && is_array($GLOBALS['settings'])) ? $GLOBALS['settings'] : [];
+            if (!$_hb_settings) {
+                try { $_hb_settings = $GLOBALS['pdo']->query(
+                    "SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR); }
+                catch (\Throwable $e) { $_hb_settings = []; }
+            }
+            sv_heal_stale_inbox_bans_once($GLOBALS['pdo'], $_hb_settings);
+        }
+    } catch (\Throwable $e) { error_log('SnapSmack Updater: inbox-ban self-heal skipped — ' . $e->getMessage()); }
+}
+
 // ─── SECURITY SELF-HEAL (0.7.324): retire web-host cloud push ────────────────
 // SnapSmack no longer pushes backups to Google Drive / OneDrive from the web
 // host. A broad `drive.file` OAuth scope plus a server-stored refresh token on a
