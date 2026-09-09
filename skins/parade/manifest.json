@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "PARADE",
-    "version": "1.2.32",
+    "version": "1.2.33",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "High-key desktop skin — AURORA's daylight twin. A classic 3-across square grid over a full-screen waving identity flag with animated flag-coloured tile borders. A real show of support, built so the photos are still why you came.",
@@ -172,17 +172,18 @@
         "pa_border_width": {
             "section": "BORDER WAVE",
             "type": "range_numeric",
-            "label": "Border Width",
+            "label": "Animated Tile Ring Thickness",
             "default": "5",
             "min": "1",
             "max": "10",
             "step": "1",
-            "unit": "px"
+            "unit": "px",
+            "hint": "Thickness of the moving flag-colour ring around each square grid tile. This is not the photograph's own frame."
         },
         "pa_border_opacity": {
             "section": "BORDER WAVE",
             "type": "range_numeric",
-            "label": "Border Opacity",
+            "label": "Animated Tile Ring Opacity",
             "default": "100",
             "min": "10",
             "max": "100",
@@ -369,16 +370,16 @@
             "unit": "%"
         },
         "pa_panel_color": {
-            "section": "PANEL",
+            "section": "CONTENT AREA",
             "type": "color",
-            "label": "Panel Colour",
+            "label": "Content Area Colour",
             "default": "#ffffff",
             "hint": "Backing colour behind the content column on every page so it reads over the waving flag. PHP-handled → --panel-bg."
         },
         "pa_panel_opacity": {
-            "section": "PANEL",
+            "section": "CONTENT AREA",
             "type": "range_numeric",
-            "label": "Panel Opacity",
+            "label": "Content Area Opacity",
             "default": "0",
             "min": "0",
             "max": "100",
@@ -387,15 +388,15 @@
             "hint": "0 = transparent (the background shows through). Raise until text is comfortable to read."
         },
         "pa_panel_extend": {
-            "section": "PANEL",
+            "section": "CONTENT AREA",
             "type": "range_numeric",
-            "label": "Panel Extend (gutters)",
+            "label": "Colour Beyond Content Edges",
             "default": "0",
             "min": "0",
             "max": "100",
             "step": "5",
             "unit": "px",
-            "hint": "How far the panel bleeds out past the content each side. 0 = flush, 100 = 100px gutters."
+            "hint": "How far the coloured content backing extends beyond the grid on each side. This does not change the inner padding."
         },
         "pa_profile_header": {
             "section": "PROFILE HEADER",
@@ -499,7 +500,7 @@
         "pa_frame_border_px": {
             "section": "IMAGE FRAME",
             "type": "select",
-            "label": "Border Thickness",
+            "label": "Photograph Frame Thickness",
             "default": "0",
             "options": {
                 "0": "None",
@@ -511,13 +512,15 @@
                 "10": "10px",
                 "15": "15px",
                 "20": "20px"
-            }
+            },
+            "hint": "A literal border hugging a fitted photograph inside its square tile. This is separate from the animated tile ring."
         },
         "pa_frame_border_color": {
             "section": "IMAGE FRAME",
             "type": "color",
-            "label": "Border Colour",
-            "default": "#ffffff"
+            "label": "Photograph Frame Colour",
+            "default": "#ffffff",
+            "hint": "Colour of the literal photograph frame. The animated grid-tile ring is configured under BORDER WAVE."
         },
         "pa_frame_bg_color": {
             "section": "IMAGE FRAME",
@@ -566,9 +569,9 @@
             "unit": "%"
         },
         "pa_gap": {
-            "section": "GRID",
+            "section": "CONTENT AREA",
             "type": "range_numeric",
-            "label": "Image Gap",
+            "label": "Space Between Image Tiles",
             "default": "2",
             "min": "0",
             "max": "20",
@@ -591,9 +594,9 @@
             "hint": "Vertical space between the sticky nav bar and the first row of tiles."
         },
         "pa_max_width": {
-            "section": "LAYOUT",
+            "section": "CONTENT AREA",
             "type": "range_numeric",
-            "label": "Grid Max Width",
+            "label": "Content / Grid Maximum Width",
             "default": "935",
             "min": "600",
             "max": "1600",
@@ -1170,10 +1173,11 @@
         "pa_border_color": {
             "section": "COLOURS",
             "type": "color",
-            "label": "Border / Divider Colour",
+            "label": "Interface Divider Colour",
             "default": "#e2e2e2",
             "selector": ":root",
-            "property": "--border-color"
+            "property": "--border-color",
+            "hint": "Quiet rules around headers, metadata, and interface panels. This does not colour image frames or animated tile rings."
         },
         "pa_bio_color": {
             "section": "COLOURS",
@@ -1333,16 +1337,17 @@
             "property": "--font-body"
         },
         "pa_gutter": {
-            "section": "TREATMENT",
+            "section": "CONTENT AREA",
             "type": "range_numeric",
-            "label": "Side Gutter (margin over background)",
+            "label": "Inner Side Padding",
             "default": "0",
             "min": "0",
             "max": "400",
             "step": "4",
             "unit": "px",
             "selector": ":root",
-            "property": "--grid-gutter"
+            "property": "--grid-gutter",
+            "hint": "Whitespace inside the content column between its edges and the grid. The coloured backing extension is a separate control above."
         },
         "gsd_disc_color": {
             "section": "SEARCH DOCK",
