@@ -28,8 +28,11 @@
 ## PARADE Skin 1.2.35 — 2026-09-09
 - **Reorganizes and relabels configuration without changing saved keys or live rendering.** Existing site choices carry forward; the administrative controls now explain the three distinct border layers and collect content-area geometry and transparency in one place. New installations also receive the shared grid-family defaults.
 
+## GAME ON Skin 0.1.3 — 2026-09-09
+- **The living puzzle field is now adjustable and gap-free.** Background Puzzle Amount scales up to the agreed 16-by-9/144-puzzle desktop field. Separate Activity and Movement Speed sliders control simultaneous movement and travel time, while one lightweight conductor replaces a timer per puzzle. Square boards remain square and the centred field overshoots non-matching viewports instead of leaving empty strips. White backing remains visible through the 10px game spacing.
+
 ## GAME ON Skin 0.1.2 — 2026-09-09
-- **This is the second actual GAME ON update, consolidating the unpublished internal revisions that were incorrectly numbered through 0.1.7.** It moves palette colours onto the content photograph frames, adds physical puzzle-tile depth and spacing, restores the 16-by-9/144-puzzle desktop design with adjustable amount, activity and speed, repairs Border Travel, refines the high-key game modal, restores the standard grid navigation font, adds its dedicated invitation-font picker, ports the applicable navigation calibration, removes irrelevant borrowed controls, and adopts the shared grid-family defaults for new installations.
+- **This is the second actual GAME ON update, consolidating the unpublished internal revisions that were incorrectly numbered through 0.1.7.** It moves palette colours onto the content photograph frames, adds physical puzzle-tile depth and spacing, repairs Border Travel, refines the high-key game modal, restores the standard grid navigation font, adds its dedicated invitation-font picker, ports the applicable navigation calibration, removes irrelevant borrowed controls, and adopts the shared grid-family defaults for new installations.
 
 ## 0.7.671D "PASS IT ON" — 2026-09-08
 - **GAME ON's borders now pass colour from one puzzle to one neighbour at a time.** The whole background no longer flashes synchronized neon grid bands: a single colour travels left, right, up, or down into an adjacent board, which then becomes the source of the next handoff. Border motion remains independent of puzzle motion, and reduced-motion visitors receive the colour change without the sliding animation.
