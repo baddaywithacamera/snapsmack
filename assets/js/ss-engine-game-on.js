@@ -21,6 +21,7 @@
     var frames = [];
     var borderCursor = 0;
     var borderTimer = 0;
+    var motionTimer = 0;
     var session = { solved: 0, totalMs: 0, bestMs: null };
     var palettes = {
         electric: ['#B7FF00', '#FF2B9D', '#00D9FF', '#5A25B5'],
@@ -66,16 +67,33 @@
     }
     function durationFor(board) {
         if (board.modal) return 210;
-        var density = root.dataset.density || 'normal';
-        if (density === 'calm') return rand(320, 520);
-        if (density === 'busy') return rand(150, 330);
-        return rand(180, 450);
+        var speed = Math.max(1, Math.min(5, Number(root.dataset.speed || 3)));
+        var ranges = [[520, 760], [390, 610], [280, 480], [190, 350], [120, 250]];
+        return rand(ranges[speed - 1][0], ranges[speed - 1][1]);
     }
     function delayFor() {
-        var density = root.dataset.density || 'normal';
-        if (density === 'calm') return rand(2400, 5000);
-        if (density === 'busy') return rand(650, 1900);
-        return rand(1000, 3000);
+        var activity = Math.max(1, Math.min(5, Number(root.dataset.activity || 3)));
+        var ranges = [[4200, 7000], [2600, 4800], [1000, 3000], [550, 1700], [250, 900]];
+        return rand(ranges[activity - 1][0], ranges[activity - 1][1]);
+    }
+
+    function layoutField() {
+        var amount = Math.max(0, Math.min(100, Number(root.dataset.puzzleDensity || 100))) / 100;
+        var narrow = window.innerWidth <= 900;
+        var columns = narrow ? Math.round(2 + amount * 4) : Math.round(4 + amount * 12);
+        columns = Math.max(2, columns);
+        var rows = Math.max(2, Math.round(columns * window.innerHeight / window.innerWidth));
+        while (columns * rows > boards.length && rows > 2) rows--;
+        var visible = Math.min(boards.length, columns * rows);
+        var size = Math.max(window.innerWidth / columns, window.innerHeight / rows);
+        root.style.setProperty('--go-board', size + 'px');
+        root.style.gridTemplateColumns = 'repeat(' + columns + ', var(--go-board))';
+        root.style.gridTemplateRows = 'repeat(' + rows + ', var(--go-board))';
+        root.style.width = (columns * size) + 'px';
+        root.style.height = (rows * size) + 'px';
+        boards.forEach(function (board, index) {
+            board.el.style.display = index < visible ? 'block' : 'none';
+        });
     }
 
     function tileImage(tile, board, full) {
@@ -148,7 +166,7 @@
     }
 
     function autoStep(board) {
-        if (document.hidden || reduced.matches || root.dataset.mode !== 'moving' || board.paused) return;
+        if (document.hidden || reduced.matches || root.dataset.mode !== 'moving' || board.paused || board.el.style.display === 'none') return;
         var choices = legal(board.empty);
         if (choices.length > 1 && board.lastEmpty >= 0) {
             choices = choices.filter(function (x) { return x !== board.lastEmpty; });
@@ -176,11 +194,19 @@
         }, reduced.matches ? 150 : 1900);
     }
 
-    function schedule(board) {
-        window.clearTimeout(board.timer);
-        board.timer = window.setTimeout(function tick() {
-            autoStep(board);
-            board.timer = window.setTimeout(tick, delayFor());
+    function scheduleMotion() {
+        window.clearTimeout(motionTimer);
+        motionTimer = window.setTimeout(function tick() {
+            if (!document.hidden && !reduced.matches && root.dataset.mode === 'moving') {
+                var activity = Math.max(1, Math.min(5, Number(root.dataset.activity || 3)));
+                var candidates = shuffled(boards.filter(function (board) {
+                    return !board.paused && board.el.style.display !== 'none';
+                }));
+                var maximum = [1, 2, 3, 5, 8][activity - 1];
+                var count = 1 + Math.floor(Math.random() * maximum);
+                candidates.slice(0, count).forEach(autoStep);
+            }
+            scheduleMotion();
         }, delayFor());
     }
 
@@ -197,7 +223,7 @@
             slots: state.slots.slice(), empty: state.empty,
             tiles: [], moves: 0, lastEmpty: -1, busyUntil: 0,
             paused: false, modal: !!isModal, startedAt: 0, finished: false,
-            naturalWidth: 0, naturalHeight: 0, timer: 0
+            naturalWidth: 0, naturalHeight: 0
         };
     }
 
@@ -446,9 +472,11 @@
     root.querySelectorAll('.go-puzzle').forEach(function (el) {
         var state = scramble(100 + Math.floor(Math.random() * 151));
         var board = boardFrom(el, state, false);
-        boards.push(board); makeTiles(board, false); schedule(board);
+        boards.push(board); makeTiles(board, false);
         el.addEventListener('click', function () { openModal(board); });
     });
+    layoutField();
+    scheduleMotion();
     // The puzzle field and the content grid are siblings. Scoping this lookup to
     // `root` (the puzzle field) returned zero frames, so Border Travel could be
     // enabled yet never animate a photograph border.
@@ -464,9 +492,12 @@
         if (active && e.target.closest('.go-game-board')) clickBoard(e);
     });
     document.addEventListener('keydown', keyBoard);
-    window.addEventListener('resize', function () { if (active) updateModalImageGeometry(active); });
+    window.addEventListener('resize', function () {
+        layoutField();
+        if (active) updateModalImageGeometry(active);
+    });
     document.addEventListener('visibilitychange', function () {
-        if (!document.hidden) boards.forEach(schedule);
+        if (!document.hidden) scheduleMotion();
     });
 
     // Thomas clause: the machine would like you to know it is enjoying itself.
