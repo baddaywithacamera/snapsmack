@@ -100,15 +100,11 @@ img { display: block; max-width: 100%; }
     position: sticky;
     top: 0;
     z-index: 100;
-    background: color-mix(in srgb, var(--go-nav-bg, #fff) var(--go-nav-bg-opacity, 20%), transparent);
+    background: color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 75%), transparent);
     border-top: var(--go-nav-line-width, 1px) solid color-mix(in srgb, var(--go-nav-line, #750787) var(--go-nav-line-opacity, 100%), transparent);
     border-bottom: var(--go-nav-line-width, 1px) solid color-mix(in srgb, var(--go-nav-line, #750787) var(--go-nav-line-opacity, 100%), transparent);
     box-shadow: var(--go-nav-shadow-size, 0px) var(--go-nav-shadow-size, 0px) var(--go-nav-shadow-size, 0px) color-mix(in srgb, var(--go-nav-shadow-color, #000) var(--go-nav-shadow-opacity, 40%), transparent);
 }
-body:not(:has(.go-puzzle-field)) .go-sticky-nav {
-    background: color-mix(in srgb, var(--go-nav-bg, #fff) var(--go-nav-bg-opacity-inner, var(--go-nav-bg-opacity, 20%)), transparent);
-}
-
 .go-sticky-nav-inner {
     display: flex;
     align-items: center;
@@ -314,7 +310,7 @@ body:not(:has(.go-puzzle-field)) .go-sticky-nav {
     margin:      8px 0 0;
     font-size:   14px;
     line-height: 1.5;
-    color:       var(--text-secondary);
+    color:       var(--go-bio-color, var(--text-secondary));
     max-width:   480px;
 }
 
@@ -329,7 +325,7 @@ body:not(:has(.go-puzzle-field)) .go-sticky-nav {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--grid-gap);
-    background: var(--grid-bg);
+    background: color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 75%), transparent);
     margin-top: var(--nav-tile-gap, var(--grid-gap));
     width: 100%;
 }
@@ -453,6 +449,7 @@ body:not(:has(.go-puzzle-field)) .go-sticky-nav {
     margin:       auto;   /* bulletproof flex centring — splits matte evenly */
     object-fit:   contain;
     border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
+    border-radius: var(--tile-radius, 0px);
     /* Fill the sub-pixel object-fit:contain letterbox with the border colour
        instead of letting the white tile bg show through as a thin sliver
        between the image and its border (the "white line at the bottom" bug).
@@ -1026,7 +1023,7 @@ body.go-modal-open { overflow: hidden; }
        blogroll, #scroll-stage clamps it to grid-max-width, which is correct
        there. --footer-bg (admin colour + opacity) overrides the default. */
     border-top: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--go-footer-bg, #fff) var(--go-footer-bg-opacity, 75%), transparent);
+    background: color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 75%), transparent);
     max-width: calc(var(--grid-max-width, 935px) + 2 * var(--grid-gutter, 0px));
     margin: 0 auto;
 }
@@ -1373,6 +1370,12 @@ body:has(.go-puzzle-field) {
     pointer-events: none;
     box-shadow: inset 10px 0 #fff, inset -10px 0 #fff;
 }
+.go-puzzle-tone {
+    position: fixed;
+    z-index: 1;
+    inset: 0;
+    pointer-events: none;
+}
 .go-puzzle {
     position: relative;
     display: block;
@@ -1423,7 +1426,7 @@ body:has(.go-puzzle-field) {
 .go-content-wrap {
     position: relative;
     z-index: 5;
-    background: color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 50%), transparent);
+    background: color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 75%), transparent);
     box-shadow: 0 0 var(--go-content-glow, 0px) var(--go-content-glow, 0px) color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 75%), transparent);
 }
 .go-content-wrap a,
@@ -1459,6 +1462,20 @@ body:has(.go-puzzle-field) {
     border: 1px solid #c9c3b6;
     box-shadow: 0 26px 90px rgba(0,0,0,.75);
     transition: opacity .65s ease;
+}
+.go-game-modal[data-theme="dark"] .go-game-dialog {
+    color: #f2f0e9;
+    background: #151515;
+    border-color: #555;
+}
+.go-game-modal[data-theme="dark"] .go-game-close,
+.go-game-modal[data-theme="dark"] .go-game-stats b { color: #f2f0e9; }
+.go-game-modal[data-theme="dark"] .go-game-stats,
+.go-game-modal[data-theme="dark"] .go-game-actions a { color: #bbb; }
+.go-game-modal[data-theme="dark"] .go-game-actions button {
+    color: #f2f0e9;
+    background: #292929;
+    border-color: #666;
 }
 .go-game-dialog.is-changing { opacity: 0; }
 .go-game-close {
