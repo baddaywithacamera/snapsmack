@@ -1405,8 +1405,8 @@ body:has(.go-puzzle-field) {
 .go-content-wrap {
     position: relative;
     z-index: 5;
-    background: rgba(255,255,255,.9);
-    box-shadow: 0 0 70px 45px rgba(255,255,255,.72);
+    background: color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 50%), transparent);
+    box-shadow: 0 0 70px 45px color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 50%), transparent);
 }
 .go-content-wrap a,
 .go-content-wrap button { pointer-events: auto; }

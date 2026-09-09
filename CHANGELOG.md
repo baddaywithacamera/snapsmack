@@ -22,6 +22,7 @@
 - **GAME ON's Border Travel now reaches the content grid it is meant to animate.** The engine had searched for framed photographs inside the background puzzle element even though the two are siblings, always finding zero frames and silently doing nothing.
 - **GAME ON no longer crops whole background puzzles at viewport edges.** Board size now uses whichever viewport axis is limiting, keeping complete five-by-three desktop or three-by-three compact fields on screen.
 - **GAME ON navigation is back to the standard grid UI font.** The mistakenly added decorative menu-font picker is removed and stale generated font choices can no longer override the menu.
+- **GAME ON now has the agreed content backing controls.** Content Background Colour defaults white and Content Background Opacity defaults 50%, replacing the inaccessible hard-coded 90% white veil. The skin now declares CMS 0.7.672D as its minimum because Border Travel depends on the repaired shared engine shipped there.
 - **The GAME ON modal action now says “View image.”** It no longer exposes missing metadata as “View untitled image.”
 
 ## PARADE Skin 1.2.35 — 2026-09-09
