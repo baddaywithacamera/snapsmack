@@ -1,8 +1,8 @@
 {
     "schema_version": 1,
     "name": "GAME ON",
-    "version": "0.1.16",
-    "requires_snapsmack": "0.7.679D",
+    "version": "0.1.17",
+    "requires_snapsmack": "0.7.680D",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Interactive showcase skin: a living field of always-solvable image sliding puzzles behind a clean GRAM grid, with an 80%-viewport playable modal.",

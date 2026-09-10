@@ -1119,7 +1119,7 @@ body.go-modal-open { overflow: hidden; }
 }
 
 .go-static-title {
-    font-size: clamp(30px, 4vw, 42px);
+    font-size: clamp(26px, 3vw, 34px);
     font-weight: 800;
     line-height: 1.1;
     color: var(--text-primary);
@@ -1130,6 +1130,18 @@ body.go-modal-open { overflow: hidden; }
     max-width: calc(var(--static-content-width, 850px) + (2 * var(--static-content-gutter, 40px)));
     padding-left: var(--static-content-gutter, 40px);
     padding-right: var(--static-content-gutter, 40px);
+}
+
+/* Static pages have their own width controls. Keep the fixed footer on that
+   same card instead of falling back to the landing-grid width variables. */
+.go-static-page #system-footer {
+    max-width: calc(var(--static-content-width, 850px) + (2 * var(--static-content-gutter, 40px)));
+    width: min(100%, calc(var(--static-content-width, 850px) + (2 * var(--static-content-gutter, 40px))));
+}
+
+.go-static-page #system-footer .inside {
+    box-sizing: border-box;
+    max-width: var(--static-content-width, 850px);
 }
 
 @media (max-width: 700px) {
