@@ -2536,11 +2536,16 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
     if ($type === 'Follow') {
         $object = is_array($activity['object'] ?? null)
             ? ($activity['object']['id'] ?? '') : ($activity['object'] ?? '');
-        // GoToSocial may preserve a trailing slash on the Follow object even
-        // when WebFinger advertised the equivalent slashless actor id. Compare
-        // canonical URL forms so the valid Follow is not silently acknowledged
-        // and discarded before challenge participant creation.
-        if (rtrim((string)$object, '/') !== rtrim(sv_actor_url($settings), '/')) return 202; // not us — ignore politely
+        // GoToSocial's Mastodon-compatible account record can expose only the
+        // human profile URL (no `uri` field), so its Follow object may be our
+        // public profile URL rather than the AP actor id. Both URLs identify
+        // this same local actor. Normalize a harmless trailing slash as well.
+        $follow_object = rtrim((string)$object, '/');
+        $our_actor_ids = [
+            rtrim(sv_actor_url($settings), '/'),
+            rtrim(sv_profile_url($settings), '/'),
+        ];
+        if (!in_array($follow_object, $our_actor_ids, true)) return 202; // not us — ignore politely
 
         $inbox  = $actor_doc['inbox'] ?? '';
         if ($inbox === '' || !sv_url_is_public($inbox)) return 202;
