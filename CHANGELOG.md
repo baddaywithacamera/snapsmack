@@ -11,6 +11,7 @@
 # SnapSmack Changelog
 ## 0.7.680 / GAME ON Skin 0.1.17 — 2026-09-09
 
+- **The GLOBAL reader tab finally gets fed.** Every post the relay handed to a member blog was filed under LOCAL, and no code path anywhere wrote GLOBAL, so the GLOBAL tab was empty on every install no matter what the curator did. The hub now tags each relay Announce with the tab it belongs in: a relay member's post is LOCAL, a post from a curator-followed outside photographer (fediverse.info consent directory) is GLOBAL. Receiving blogs file by that tag, a retried fetch keeps it, and a relay retract clears both tabs. A blog talking to an older hub still gets LOCAL as before. (`core/smackcast-relay.php`, `core/fediverse.php`, help updated.)
 - Brings static-page titles back into proportion while keeping them visibly stronger than section headings.
 - Makes the fixed footer on GAME ON static pages follow the static-page width and gutter controls, matching the content card instead of using the landing-grid measurements.
 

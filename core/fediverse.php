@@ -2667,7 +2667,11 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             && $actor_id === sv_relay_actor_url($settings) && sv_is_following($pdo, $actor_id)) {
             $relayed = is_array($obj['object'] ?? null)
                 ? (string)($obj['object']['id'] ?? '') : (string)($obj['object'] ?? '');
-            if ($relayed !== '') sc_relay_remove_membership($pdo, $relayed, 'local');
+            if ($relayed !== '') {
+                // A relayed post lives in exactly one of these; clear whichever it was in.
+                sc_relay_remove_membership($pdo, $relayed, 'local');
+                sc_relay_remove_membership($pdo, $relayed, 'global');
+            }
         } elseif ($otype === 'Follow') {
             if (function_exists('sc_relay_is_hub') && sc_relay_is_hub($settings)) {
                 sc_relay_leave($pdo, $actor_id);
@@ -2974,7 +2978,8 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         $obj_id = is_array($obj) ? (string)($obj['id'] ?? '') : (string)$obj;
         if ($obj_id !== '') {
             if (function_exists('sc_relay_receive_announce')
-                && sc_relay_receive_announce($pdo, $settings, $actor_id, $obj_id)) {
+                && sc_relay_receive_announce($pdo, $settings, $actor_id, $obj_id,
+                    function_exists('sc_relay_announce_feed') ? sc_relay_announce_feed($activity) : 'local')) {
                 return 202;
             }
             $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
