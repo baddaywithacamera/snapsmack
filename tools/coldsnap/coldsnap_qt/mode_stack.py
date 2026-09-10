@@ -207,7 +207,7 @@ class StackMode(QWidget):
         post.body.addWidget(field_label("Caption"))
         # Same shortcode toolbar the CMS carousel editor puts on this field;
         # BIGGIE face builds the same caption out of blocks.
-        self.caption_edit = BodyEditor(allow_mosaic=False, simple_height=84)
+        self.caption_edit = BodyEditor(allow_mosaic=False, simple_height=84, rich=False)
         post.body.addWidget(self.caption_edit)
 
         ai_row = QHBoxLayout()
