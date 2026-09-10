@@ -41,7 +41,9 @@ from .widgets import hint, field_label
 #     One to four columns. Each cell owns blocks; columns cannot nest.
 # {"type": "pullquote", "text": str}
 # {"type": "spacer",  "px": int}
-# {"type": "mosaic"}
+# {"type": "mosaic", "order": [1, 3, 2], "layout": "one-left"}
+#     A composed mosaic: 1-based positions in THE PHOTOS bucket + a layout the
+#     site's mosaics endpoint accepts. Bare {"type": "mosaic"} = every photo.
 
 IMG_SIZES = ["full", "wall", "small"]
 IMG_ALIGNS = ["center", "left", "right"]
@@ -95,7 +97,11 @@ def serialize_block(b: dict) -> str:
     if t == "spacer":
         return f"[spacer:{max(1, min(100, int(b.get('px', 20) or 20)))}]"
     if t == "mosaic":
-        return "[mosaic]"
+        order = [int(i) for i in (b.get("order") or []) if str(i).strip().isdigit() and int(i) >= 1]
+        if not order:
+            return "[mosaic]"
+        layout = str(b.get("layout") or "asymmetric").lower()
+        return "[mosaic=" + ",".join(map(str, order)) + " layout=" + layout + "]"
     return str(b.get("text", ""))          # raw — verbatim
 
 
@@ -122,7 +128,7 @@ _RX = {
     "pullquote": re.compile(r"^\[pullquote\](.*)\[/pullquote\]$", re.DOTALL | re.IGNORECASE),
     "spacer":  re.compile(r"^\[spacer:(\d+)\]$", re.IGNORECASE),
     "image":   re.compile(r"^\[img:([^|\]]+)(?:\|([^|\]]+))?(?:\|([^\]]+))?\]$", re.IGNORECASE),
-    "mosaic":  re.compile(r"^\[mosaic\]$", re.IGNORECASE),
+    "mosaic":  re.compile(r"^\[mosaic(?:=([0-9]+(?:\s*,\s*[0-9]+)*)\s+layout=([a-z-]+))?\]$", re.IGNORECASE),
     "columns": re.compile(r"^\[columns=(\d+)(?:\s+ratio=([0-9-]+))?\](.*)\[/columns\]$", re.DOTALL | re.IGNORECASE),
     "list":    re.compile(r"^<(ul|ol)>(.*)</\1>$", re.DOTALL | re.IGNORECASE),
     "quote":   re.compile(r"^<blockquote>(.*)</blockquote>$", re.DOTALL | re.IGNORECASE),
@@ -164,6 +170,10 @@ def _classify(seg: str) -> dict:
         return {"type": "spacer", "px": int(m.group(1))}
     m = _RX["mosaic"].match(seg)
     if m:
+        if m.group(1):
+            return {"type": "mosaic",
+                    "order": [int(v) for v in re.split(r"\s*,\s*", m.group(1).strip())],
+                    "layout": m.group(2).lower()}
         return {"type": "mosaic"}
     m = _RX["image"].match(seg)
     if m:
@@ -267,6 +277,7 @@ class _BlockRow(QFrame):
         super().__init__(parent)
         self.setObjectName("Card")
         self.btype = block.get("type", "para")
+        self._block = dict(block)
         self._owner = owner
         col = QVBoxLayout(self)
         col.setContentsMargins(10, 8, 10, 10)
@@ -441,6 +452,8 @@ class _BlockRow(QFrame):
                     "ratio": str(self.ratio.currentData() or "equal")}
         if t == "spacer":
             return {"type": t, "px": int(self.px.value())}
+        if t == "mosaic":
+            return {**self._block, "type": "mosaic"}   # a composed mosaic keeps its photos + layout
         return {"type": t}
 
 

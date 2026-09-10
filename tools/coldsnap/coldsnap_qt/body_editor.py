@@ -1,10 +1,11 @@
 """COLD SNAP Qt — BodyEditor: one body field, two faces.
 
 SIMPLE = the plain text box with the CMS shortcode bar (unchanged behaviour).
-BIGGIE = the same content as a block stack (biggie.py). The toggle is lossless
+BIGGIE = the WYSIWYG canvas (canvas.py): one writing surface where headings,
+quotes, photos and mosaics look like what they are. The toggle is lossless
 both ways: switching to BIGGIE parses the text into blocks (unrecognised bits
-become RAW blocks, byte-preserved); switching back serializes the blocks into
-the exact toolbar vocabulary. Drop-in for a QPlainTextEdit — it answers
+become RAW, byte-preserved) and draws them; switching back serializes the
+canvas into the exact toolbar vocabulary. Drop-in for a QPlainTextEdit — it answers
 toPlainText / setPlainText / clear so the modes barely change.
 
 # SNAPSMACK_EOF_HEADER
@@ -18,6 +19,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPlainTextEdit,
 import config as cfg_module
 
 from . import biggie
+from . import canvas as canvas_mod
 from .shortcode_bar import ShortcodeBar
 from .widgets import hint
 
@@ -39,8 +41,9 @@ class BodyEditor(QWidget):
             b.setCheckable(True)
         self.simple_btn.setToolTip("One text box + the shortcode bar — how the "
                                    "site editor works.")
-        self.biggie_btn.setToolTip("Build the body out of blocks: add a block, "
-                                   "choose its type, type or paste its content.")
+        self.biggie_btn.setToolTip("The writing surface: click and type, Enter for a "
+                                   "new paragraph. Headings, quotes, photos and the "
+                                   "MOSAIC appear as they will on the site.")
         self.simple_btn.clicked.connect(lambda: self._set_biggie(False))
         self.biggie_btn.clicked.connect(lambda: self._set_biggie(True))
         row.addWidget(self.simple_btn)
@@ -65,10 +68,13 @@ class BodyEditor(QWidget):
         g = QVBoxLayout(self._biggie_page)
         g.setContentsMargins(0, 0, 0, 0)
         g.setSpacing(4)
-        self.biggie = biggie.BiggieEditor(allow_mosaic=allow_mosaic)
-        g.addWidget(self.biggie, 1)   # the block canvas fills too
-        g.addWidget(hint("Blocks send as the same shortcodes/HTML the SIMPLE "
-                         "bar makes — the site renders them identically."))
+        self.canvas = canvas_mod.BiggieCanvas(allow_mosaic=allow_mosaic)
+        self.biggie = self.canvas          # model API: to_blocks / from_blocks / clear
+        self.canvas_bar = canvas_mod.CanvasBar(self.canvas)
+        g.addWidget(self.canvas_bar)
+        g.addWidget(self.canvas, 1)        # the canvas fills the space it is given
+        g.addWidget(hint("What you see here sends as the same shortcodes/HTML the "
+                         "SIMPLE bar makes — the site renders it identically."))
         col.addWidget(self._biggie_page, 1)
 
         # Last-used face is a per-tool setting (spec §7: biggie_enabled).
@@ -102,6 +108,13 @@ class BodyEditor(QWidget):
             cfg_module.save(data)
         except Exception:  # noqa: BLE001 — remembering the face is best-effort
             pass
+
+    def is_biggie(self) -> bool:
+        return self._biggie_on
+
+    def set_bucket(self, paths):
+        """The post's photos, in order — the canvas paints mosaics from them."""
+        self.canvas.set_bucket(paths)
 
     # -- QPlainTextEdit-compatible API ------------------------------------------
     def toPlainText(self) -> str:
