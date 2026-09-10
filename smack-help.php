@@ -913,6 +913,16 @@ as a number between the colons.</p>
     (default to 1 if omitted).</li>
     <li><code>[newest_post]</code> — formatted date of the most recent published image.</li>
     <li><code>[oldest_post]</code> — formatted date of the first published image.</li>
+    <li><code>[pc_prompt which="next" field="drop"]</code> — PHOTO CHALLENGE schedule, read live
+    from QUEUE CONTEST POST so a FAQ never carries a stale date. <code>which</code> is
+    <code>next</code> (the soonest prompt that has not dropped yet) or <code>current</code> (the
+    prompt whose submission window is open now or opens next). <code>field</code> is
+    <code>prompt</code> (the word), <code>tag</code> (the #hashtag), <code>drop</code> (when the
+    prompt goes out), <code>open</code> / <code>close</code> (the submission window, UTC), or
+    <code>friday</code> (the post-on date). Optional <code>format="F j, Y"</code> uses PHP date
+    letters; optional <code>empty="not queued yet"</code> shows when nothing is queued. Example:
+    <em>The next prompt drops [pc_prompt which="next" field="drop"]. Submissions for
+    [pc_prompt which="current" field="tag"] close [pc_prompt which="current" field="close"].</em></li>
     <li><code>[archive_link]</code> — clickable link to the archive (blank if archive is disabled).</li>
     <li><code>[gallery_link]</code> — clickable link to the floating gallery (blank if disabled).</li>
     <li><code>[random_image]</code> — displays a random published image with lightbox.</li>

@@ -250,6 +250,7 @@ include 'core/sidebar.php';
                         <option value="[random_image]">Random Image</option>
                         <option value="[latest_image]">Latest Image</option>
                         <option value="[embed:]">Embed&hellip;</option>
+                        <option value='[pc_prompt which="next" field="prompt"]'>Challenge: Next Prompt&hellip;</option>
                     </select>
                 </div>
                 <div class="sc-row">
