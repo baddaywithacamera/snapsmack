@@ -31,6 +31,10 @@ return [
             'body'  => 'PARADE is built to fly a flag, not toggle a token. Pick the palette that represents you or your community: Rainbow, Progress Pride, Trans, Bisexual, Non-Binary, Pansexual, Lesbian, Asexual, Aromantic, Genderfluid, Genderqueer, or Two-Spirit. The full-screen flag and moving tile borders stay coordinated without changing the colours themselves.',
         ],
         [
+            'title' => 'Tile Outer Glow',
+            'body'  => 'Every grid tile carries a soft dark glow just outside its animated ring, so a white ring still stands out when it lands on the white stripe of the flag. Under BORDER WAVE, Tile Outer Glow Size sets how far it spreads (0 turns it off) and Tile Outer Glow Strength sets how dark it is. The glow is always dark on purpose: it is there for contrast, not colour.',
+        ],
+        [
             'title' => 'Motion & Accessibility',
             'body'  => 'The waving flag and animated tile borders respect your operating system\'s "reduce motion" setting. When reduced motion is enabled, PARADE paints a still flag and a static border state. Animation also pauses whenever the browser tab is hidden.',
         ],
