@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.684D — 2026-09-10
+
+- Accepts a Follow addressed to the blog's equivalent public profile URL, which GoToSocial uses when its Mastodon-compatible account record has no canonical `uri`; Photo Challenge joins now reach participant creation instead of being silently acknowledged and discarded.
+
 ## 0.7.683D — 2026-09-09
 
 - Accepts GoToSocial Follow activities whose object uses the equivalent trailing-slash form of the Photo Challenge actor URL, allowing those accounts to join instead of remaining pending.
