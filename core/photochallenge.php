@@ -976,10 +976,35 @@ function pc_cancel_prompt(PDO $pdo, array &$settings, int $id): array {
  *
  * @return int prompts dropped this pass
  */
+/**
+ * Reconcile the live hashtag with the prompt whose submission window is current.
+ *
+ * This deliberately runs even when there are no queued prompts left to drop. A
+ * previous release only performed the repair inside pc_activate_due_prompts()
+ * after finding a due row, so an already-published next-week card could leave
+ * its hashtag active forever.
+ */
+function pc_sync_active_prompt_tag(PDO $pdo, array &$settings): bool {
+    $active = $pdo->query(
+        "SELECT tag FROM pc_prompts
+         WHERE status IN ('live','done')
+           AND submit_start<=UTC_TIMESTAMP()
+         ORDER BY (submit_end>UTC_TIMESTAMP()) DESC, submit_start DESC
+         LIMIT 1"
+    )->fetchColumn();
+    if (!is_string($active) || $active === '') return false;
+    if (pc_tag($settings) === strtolower($active)) return false;
+    sv_set_setting($pdo, $settings, 'photochallenge_tag', $active);
+    return true;
+}
+
 function pc_activate_due_prompts(PDO $pdo, array &$settings): int {
     $due = $pdo->query("SELECT * FROM pc_prompts WHERE status='queued' AND drop_at<=UTC_TIMESTAMP() ORDER BY drop_at LIMIT 5")
         ->fetchAll(PDO::FETCH_ASSOC);
-    if (!$due) return 0;
+    if (!$due) {
+        pc_sync_active_prompt_tag($pdo, $settings);
+        return 0;
+    }
     $dropped = 0;
     foreach ($due as $p) {
         $post_id = (int)$p['post_id'];
@@ -1002,14 +1027,7 @@ function pc_activate_due_prompts(PDO $pdo, array &$settings): int {
     // during this week's contest. Select the latest prompt whose own submission
     // window has started; at the Sep 10 drop this keeps VROOM active while
     // Numbers waits for Sep 17.
-    $active = $pdo->query(
-        "SELECT tag FROM pc_prompts
-         WHERE status IN ('live','done') AND submit_start<=UTC_TIMESTAMP()
-         ORDER BY submit_start DESC LIMIT 1"
-    )->fetchColumn();
-    if (is_string($active) && $active !== '') {
-        sv_set_setting($pdo, $settings, 'photochallenge_tag', $active);
-    }
+    pc_sync_active_prompt_tag($pdo, $settings);
     pc_refresh_prompt_pointers($pdo, $settings);
     require_once __DIR__ . '/page-cache.php';
     if (function_exists('page_cache_purge_all')) page_cache_purge_all();     // card appears immediately
