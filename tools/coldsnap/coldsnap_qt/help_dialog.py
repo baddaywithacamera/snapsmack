@@ -54,7 +54,8 @@ TOPICS = [
      "you can compose on one machine and send from another. The ◀ button "
      "folds the rail away to give the composer the full width."),
     ("BIGGIE — the WYSIWYG editor",
-     "Every compose box has two faces, switched by the SIMPLE / BIGGIE — "
+     "COLD TAKE's write-up has two faces (COLD ONE and COLD STACK are "
+     "deliberately basic: the plain box and bar only), switched by the SIMPLE / BIGGIE — "
      "BLOCKS pills above it. SIMPLE is the plain text box with the shortcode "
      "bar, exactly like the site editor. BIGGIE is one writing surface: click "
      "in it and type. Enter makes a new paragraph. Headings, quotes and pull "
