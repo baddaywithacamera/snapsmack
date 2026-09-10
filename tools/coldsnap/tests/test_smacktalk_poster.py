@@ -146,7 +146,19 @@ def _checks():
     return n
 
 
+def _mosaic_token_checks():
+    """Every layout the site accepts must resolve — Columns/Rows used to go out as text."""
+    from sumna_post import SmacktalkPoster
+    rx = SmacktalkPoster._MOSAIC_TOKEN
+    for name in SmacktalkPoster._MOSAIC_LAYOUTS:
+        m = rx.search(f"[mosaic=1,2 layout={name}]")
+        assert m and m.group(2) == name, name
+    assert rx.search("[mosaic]") and rx.search("[mosaic:bucket]")
+    assert not rx.search("[mosaic:123]"), "numeric mosaic ids are the site's, left alone"
+    return 3
+
+
 if __name__ == "__main__":
-    passed = _checks()
+    passed = _checks() + _mosaic_token_checks()
     print(f"OK - {passed} checks passed")
 # ===== SNAPSMACK EOF =====
