@@ -45,8 +45,16 @@ r_ok(!preg_match('/function\s+exportPortableJSON\s*\(/i', $engine),
 
 // ── No caller anywhere in the shipped tree ──────────────────────────────────
 $callers = [];
+$tree = new RecursiveDirectoryIterator($root, RecursiveDirectoryIterator::SKIP_DOTS);
+$tree = new RecursiveCallbackFilterIterator($tree, static function (SplFileInfo $entry): bool {
+    if (!$entry->isDir()) return true;
+    return !in_array($entry->getFilename(), [
+        '.tmp', '.pytest_cache', '.claude', '_continuity', '_spec',
+        'node_modules', 'vendor', 'tests', 'smack-central',
+    ], true);
+});
 $it = new RecursiveIteratorIterator(
-    new RecursiveDirectoryIterator($root, RecursiveDirectoryIterator::SKIP_DOTS));
+    $tree);
 foreach ($it as $file) {
     $path = str_replace('\\', '/', $file->getPathname());
     if (substr($path, -4) !== '.php') continue;
