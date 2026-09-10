@@ -4692,7 +4692,10 @@ class App(tk.Tk):
               "desktop tools (COLD SNAP, etc.), so you only enter it once.")
         _item("Custom Prompt", "Leave the prompt blank to use the built-in default, which "
               "generates haiku-style titles and descriptive hashtags. Write your own prompt "
-              "to change the tone, style, or output format.")
+              "to change the tone, style, or output format. Every image is sent with its "
+              "own file name (extension removed) on a FILENAME: line at the top, so a prompt "
+              "can say \"the title is the filename\" and Gemini can actually do it. Put "
+              "{filename} anywhere in your prompt to drop the name in at that exact spot instead.")
         _item("Saved Presets", "Type a name and click Save As… to store a prompt for reuse. "
               "Delete removes the selected preset.")
         _item("Skip Filled", "Gemini skips any row that already has a title, so you can "
