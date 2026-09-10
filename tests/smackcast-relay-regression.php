@@ -33,7 +33,14 @@ sc_test(str_contains($sv, 'SMACKCAST optional membership skipped:'),
     'optional relay membership failure cannot reject an accepted inbox post');
 sc_test(str_contains($sv, "\$dedupe_key = 'delivery:' . hash('sha256'"),
     'ordinary delivery queue rows are destination/activity idempotent');
-sc_test(str_contains($sv, "sc_relay_receive_announce(\$pdo, \$settings, \$actor_id, \$obj_id)"), 'relay Announce has a distinct receiver path');
+sc_test(str_contains($sv, "sc_relay_receive_announce(\$pdo, \$settings, \$actor_id, \$obj_id,"), 'relay Announce has a distinct receiver path');
+// 680D: GLOBAL tab. Hub tags every Announce with the reader tab it belongs in;
+// member posts stay LOCAL, curator-sourced outside photographers go GLOBAL.
+sc_test(str_contains($relay, "'feed' => sc_relay_origin_feed(\$pdo, \$actor_url)"), 'hub tags each relay Announce with its reader feed');
+sc_test(str_contains($relay, "return \$member->fetchColumn() ? 'local' : 'global';"), 'relay members are local, non-members (curator-followed) are global');
+sc_test(str_contains($relay, "sv_ingest_timeline(\$pdo, \$object, \$actor, '', false, null, \$feed, \$relay);"), 'receiver files a relayed post into the tagged feed, not hard-coded local');
+sc_test(str_contains($relay, "(string)(\$job['feed'] ?? 'local')"), 'retried relay ingest keeps the tagged feed');
+sc_test(str_contains($sv, "sc_relay_remove_membership(\$pdo, \$relayed, 'global');"), 'relay retract clears the GLOBAL membership too');
 sc_test(str_contains($relay, 'snap_relay_ingest_jobs'), 'origin fetch failure is durable receiver work');
 sc_test(str_contains($relay, 'sc_relay_is_receiver')
     && str_contains($relay, '!sc_relay_is_hub($settings) && !sc_relay_is_receiver($pdo, $settings)'),
