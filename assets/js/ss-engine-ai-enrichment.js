@@ -118,6 +118,19 @@
         });
     }
 
+    // The image's file name (new post: the chosen file; edit page: the stored
+    // upload). Sent alongside the pixels so a prompt can use "the filename".
+    function currentImageName() {
+        var fileInput = document.getElementById('post-file-input');
+        var file = fileInput && fileInput.files && fileInput.files[0];
+        if (file && file.name) return file.name;
+        var vb = document.getElementById('btn-ai-vision');
+        var url = vb && vb.getAttribute('data-image-url');
+        if (!url) return '';
+        try { return decodeURIComponent(url.split('?')[0].split('/').pop() || ''); }
+        catch (e) { return url.split('?')[0].split('/').pop() || ''; }
+    }
+
     // Resolve the current image to a data URL, or null if none is available.
     function currentImageDataUrl() {
         var fileInput = document.getElementById('post-file-input');
@@ -141,7 +154,7 @@
                 noimg._friendly = 'Choose an image first — vision reads the photo itself.';
                 throw noimg;
             }
-            return request({ mode: 'vision', image: dataUrl });
+            return request({ mode: 'vision', image: dataUrl, filename: currentImageName() });
         }).then(function (result) {
             visionInFlight = null;
             if (!result || !result.ok) {

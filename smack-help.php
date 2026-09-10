@@ -1380,8 +1380,11 @@ key (Claude, Gemini, or OpenAI) and bills <strong>per use</strong>.</p>
 <h4>One pull, not three (how billing works now)</h4>
 <p><strong>VISION FILL</strong> analyses the photo <strong>once</strong> and fills the title,
 caption, <strong>ALT text</strong>, and hashtags — and ticks the matching categories and albums —
-in a single call, using the very same prompt (and your own category/album/tag vocabulary) that the
-SYBU desktop tool uses. That one result is then cached in the page: the per-field buttons
+in a single call, using your site's saved enrichment prompt (Configuration &rarr; AI) on top of the
+very same field contract and category/album/tag vocabulary that the SYBU desktop tool uses. The
+photo's <strong>file name</strong> (extension removed) is sent with it on a <code>FILENAME:</code>
+line, so a prompt can say &ldquo;the title is the filename&rdquo; and mean it; write
+<code>{filename}</code> in your prompt to drop the name in at that exact spot instead. That one result is then cached in the page: the per-field buttons
 (<strong>AI TITLE / AI CAPTION / AI ALT / AI HASHTAGS</strong>) fill from that cached pull instead
 of each spending a separate request. So a single photo is never billed two or three times for
 different fields. If you haven't run a pull yet, the first field button triggers the one analysis;

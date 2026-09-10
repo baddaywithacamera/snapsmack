@@ -257,6 +257,34 @@ PROMPT;
 }
 
 /**
+ * Bind one image's file name into the prompt sent with that image.
+ *
+ * The vision request only ever carried the prompt and the pixels, so a site
+ * prompt saying "the title is the filename" produced invented titles (Sean,
+ * 2026-09-10 — same bug as SYBU / the shared desktop client, fixed the same
+ * way). A prompt may place the name with {filename}; otherwise a FILENAME:
+ * line is prepended so "the filename" means something.
+ */
+function snap_ai_filename_stem(string $file): string
+{
+    $base = basename(str_replace('\\', '/', trim($file)));
+    return trim((string)pathinfo($base, PATHINFO_FILENAME));
+}
+
+function snap_ai_prompt_with_filename(string $prompt, string $file): string
+{
+    $stem = snap_ai_filename_stem($file);
+    if ($stem === '') return $prompt;
+    $tokens = ['{filename}', '{FILENAME}', '{file}', '{FILE}'];
+    foreach ($tokens as $t) {
+        if (strpos($prompt, $t) !== false) return str_replace($tokens, $stem, $prompt);
+    }
+    return "FILENAME: {$stem}\n"
+         . "(That is this image's file name with the extension removed. Wherever the "
+         . "instructions below refer to the filename, use exactly that text.)\n\n" . $prompt;
+}
+
+/**
  * Parse a SYBU-format vision response — port of gemini.py::_parse_response().
  * Returns keys: title, caption, alt, tags, category, album, colors.
  */
