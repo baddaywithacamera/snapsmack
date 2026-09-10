@@ -52,8 +52,12 @@ ks_test(str_contains($auth, 'fail closed'),
 
 // ── 3. Per-surface scoping stays put (the 054/636D boundaries) ───────────────
 $gyss = file_get_contents($root . '/core/gyss-api.php');
-ks_test(str_contains($gyss, "key_type IN ('gyss','hub')"),
-    'GYSS accepts only gyss + hub key types');
+ks_test(str_contains($gyss, "\$resource === 'enrichment-cache'")
+     && str_contains($gyss, "\"'gyss','hub','sybu'\"")
+     && str_contains($gyss, "\"'gyss','hub'\""),
+    'GYSS permits SYBU only for enrichment-cache and otherwise accepts gyss + hub keys');
+ks_test(str_contains($gyss, "=== 'sybu' && \$resource !== 'enrichment-cache'"),
+    'SYBU keys remain route-restricted inside the GYSS surface');
 ks_test(preg_match("/\\(\\\$api_key_row\\['key_type'\\] \\?\\? ''\\) === 'hub'/", $gyss) === 1,
     'hub-type keys stay route-restricted inside the GYSS surface (0.7.636D boundary)');
 foreach ([['core/ohsnap-api.php', "key_type = 'ohsnap'"],
