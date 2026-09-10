@@ -3843,8 +3843,13 @@ switches to a white theme, and your choice is remembered on that browser.</p>
     <li><strong>Home</strong> &mdash; the latest photos from the accounts your blog follows,
     newest first. If your ingested timeline is still filling, it seeds from a live crawl so Home
     is never empty right after you follow someone.</li>
-    <li><strong>Local / Global</strong> &mdash; the public timelines of your home instance (set
-    one in Federation, or the client borrows the host of someone you already follow).</li>
+    <li><strong>Local</strong> &mdash; public photos from every blog on the PhotoBlogs network
+    relay (photoblogs.fyi). Your blog must have joined the relay (Federation &rarr; JOIN NETWORK).</li>
+    <li><strong>Global</strong> &mdash; public photos from photographers OUTSIDE the network who
+    opted into discovery at fediverse.info. The relay's PHOTOGRAPHY CURATOR follows them slowly
+    (one every 15 minutes) and only their NEW posts arrive, so this tab fills over days, not
+    minutes. Needs the curator switched on at the photoblogs.fyi hub and a hub on 0.7.680 or
+    later; older hubs file everything under Local.</li>
     <li><strong>Discover</strong> &mdash; a photo grid drawn from the global timeline.</li>
     <li><strong>Notifications</strong> &mdash; follows, likes, comments and boosts aimed at you,
     with filter tabs (All / Mentions / Likes / Followers / Reblogs / DMs). Opening the panel
