@@ -1111,16 +1111,32 @@ body.go-modal-open { overflow: hidden; }
 }
 
 .go-static-content {
-    max-width: 680px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: var(--static-content-width, 850px);
     margin: 0 auto;
-    padding: 40px 20px 60px;
+    padding: 40px 0 60px;
 }
 
 .go-static-title {
-    font-size: 22px;
-    font-weight: 600;
+    font-size: clamp(30px, 4vw, 42px);
+    font-weight: 800;
+    line-height: 1.1;
     color: var(--text-primary);
     margin: 0 0 24px;
+}
+
+.go-static-page .go-content-wrap {
+    max-width: calc(var(--static-content-width, 850px) + (2 * var(--static-content-gutter, 40px)));
+    padding-left: var(--static-content-gutter, 40px);
+    padding-right: var(--static-content-gutter, 40px);
+}
+
+@media (max-width: 700px) {
+    .go-static-page .go-content-wrap {
+        padding-left: min(var(--static-content-gutter, 40px), 20px);
+        padding-right: min(var(--static-content-gutter, 40px), 20px);
+    }
 }
 
 .go-static-body {
@@ -1536,6 +1552,20 @@ body:has(.go-puzzle-field) {
     font-size: 30px;
     line-height: 1;
     cursor: pointer;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    appearance: none;
+    outline: none;
+    box-shadow: none;
+    opacity: .82;
+    transition: opacity .15s ease, transform .15s ease, text-shadow .15s ease;
+}
+.go-game-close:hover,
+.go-game-close:focus-visible {
+    opacity: 1;
+    transform: scale(1.08);
+    text-shadow: 0 0 2px currentColor;
 }
 .go-game-invite {
     width: 100%;

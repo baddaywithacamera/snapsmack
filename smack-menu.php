@@ -20,6 +20,23 @@
 
 require_once 'core/auth-smack.php';
 
+$menu_is_gramofsmack = (($settings['site_mode'] ?? 'photoblog') === 'carousel');
+
+/** GRAMOFSMACK's continuous landing scroll is its archive. */
+function smack_menu_without_archive(array $items): array {
+    $clean = [];
+    foreach ($items as $item) {
+        if (!is_array($item) || (($item['type'] ?? '') === 'archive')) {
+            continue;
+        }
+        if (isset($item['children']) && is_array($item['children'])) {
+            $item['children'] = smack_menu_without_archive($item['children']);
+        }
+        $clean[] = $item;
+    }
+    return $clean;
+}
+
 // ── SETTINGS WE MANAGE ────────────────────────────────────────────────────
 // Dropdown appearance settings stored as flat keys in snap_settings.
 $dropdown_keys = [
@@ -36,6 +53,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_nav_menu'])) {
     $decoded  = @json_decode($raw_json, true);
 
     if ($decoded !== null && is_array($decoded)) {
+        if ($menu_is_gramofsmack) {
+            $decoded = smack_menu_without_archive($decoded);
+            $raw_json = json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
         $stmt = $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val)
                                VALUES ('nav_menu_json', ?)
                                ON DUPLICATE KEY UPDATE setting_val = ?");
@@ -68,6 +89,9 @@ if (!empty($menu_json_raw)) {
     $decoded = @json_decode($menu_json_raw, true);
     if (is_array($decoded)) {
         $current_menu = $decoded;
+        if ($menu_is_gramofsmack) {
+            $current_menu = smack_menu_without_archive($current_menu);
+        }
     }
 }
 
@@ -84,7 +108,7 @@ if (empty($current_menu)) {
     }
 
     $archive_layout = $settings['archive_layout'] ?? 'square';
-    if ($archive_layout !== 'none') {
+    if (!$menu_is_gramofsmack && $archive_layout !== 'none') {
         $current_menu[] = ['id' => 'archive', 'type' => 'archive', 'label' => 'ARCHIVE VIEW', 'children' => []];
     }
 
@@ -141,7 +165,7 @@ if (($settings['photochallenge_feed_enabled'] ?? '0') === '1') {
 // When archive is disabled (Archive Appearance → Disabled), drop it from the
 // add-pool too so it can't be re-added as a dead link — matches the auto-build
 // skip above and the nav renderers.
-if (($settings['archive_layout'] ?? 'square') === 'none') {
+if ($menu_is_gramofsmack || ($settings['archive_layout'] ?? 'square') === 'none') {
     $builtin_items = array_values(array_filter($builtin_items, fn($i) => $i['type'] !== 'archive'));
 }
 if ($homepage_mode === 'static_page') {
