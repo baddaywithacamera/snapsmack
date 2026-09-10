@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.682D — 2026-09-09
+
+- Makes Photo Challenge test-mode boosts interoperable with Mastodon and GoToSocial by publicly addressing each Announce while still delivering it only to the whitelisted test accounts' direct inboxes.
+
 ## 0.7.681D "WORLD VIEW" — 2026-09-09
 - **Static pages can print the live PHOTO CHALLENGE schedule.** New `[pc_prompt which="next|current" field="prompt|tag|drop|open|close|friday"]` shortcode reads the prompt queue (QUEUE CONTEST POST), so a FAQ answer like "the next prompt drops … and submissions for #… close …" updates itself every time a prompt is queued or drops. Nothing hand-typed to go stale. In the static-page shortcode dropdown and HELP → Static Pages. (`core/parser.php`, `smack-pages.php`, `smack-help.php`.)
 - **The GLOBAL reader tab finally gets fed.** Every post the relay handed to a member blog was filed under LOCAL, and no code path anywhere wrote GLOBAL, so the GLOBAL tab was empty on every install no matter what the curator did. The hub now tags each relay Announce with the tab it belongs in: a relay member's post is LOCAL, a post from a curator-followed outside photographer (fediverse.info consent directory) is GLOBAL. Receiving blogs file by that tag, a retried fetch keeps it, and a relay retract clears both tabs. A blog talking to an older hub still gets LOCAL as before. (`core/smackcast-relay.php`, `core/fediverse.php`, help updated.)
