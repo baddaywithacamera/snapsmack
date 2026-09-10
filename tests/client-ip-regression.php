@@ -40,7 +40,10 @@ $sources = [
     'snap-in.php' => ['snap_trusted_client_ip', 'snap_ip_is_bannable'],
     'probe-ban.php' => ['snap_trusted_client_ip', 'snap_ip_is_bannable'],
     'core/flkrfckr-api.php' => ['snap_trusted_client_ip', 'snap_ip_is_bannable'],
-    'core/fediverse.php' => ['snap_trusted_client_ip', 'snap_ip_is_bannable'],
+    // The signed-activity inbox deliberately stopped writing shared-IP bans in
+    // 0.7.665D; its flood guard is signature-keyed so federated servers cannot
+    // cause one another to be banned behind a shared address.
+    'core/fediverse.php' => ['snap_trusted_client_ip'],
     'password-reset.php' => ['snap_trusted_client_ip'],
     'core/community-session.php' => ['snap_trusted_client_ip'],
 ];
@@ -50,13 +53,13 @@ foreach ($sources as $file => $needles) {
         ip_test(str_contains($body, $needle), "{$file} does not use {$needle}");
     }
 }
-foreach (['core/flkrfckr-api.php', 'core/fediverse.php'] as $file) {
+foreach (['core/flkrfckr-api.php'] as $file) {
     $body = file_get_contents(__DIR__ . '/../' . $file);
     ip_test(!str_contains($body, "!function_exists('snap_ip_is_bannable')"), "{$file} still fails open when the ban guard is missing");
     ip_test(str_contains($body, "require_once __DIR__ . '/client-ip.php'"), "{$file} does not require the security component");
 }
 
-foreach (['snap-in.php', 'probe-ban.php', 'core/flkrfckr-api.php', 'core/fediverse.php'] as $file) {
+foreach (['snap-in.php', 'probe-ban.php', 'core/flkrfckr-api.php'] as $file) {
     $body = file_get_contents(__DIR__ . '/../' . $file);
     ip_test(str_contains($body, 'snap_ip_record_ban'), "{$file} bypasses the bounded fixed-lifetime ban writer");
     ip_test(!str_contains($body, 'INTO snap_ip_bans'), "{$file} still writes the ban table directly");
