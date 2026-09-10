@@ -53,7 +53,7 @@ foreach ($it as $file) {
     // Release staging, worktrees and archived copies of the codebase are not
     // the shipped tree and are deliberately not policed here.
     foreach (['/smack-central/', '/.claude/', '/_continuity/', '/_spec/',
-              '/node_modules/', '/vendor/', '/tests/'] as $skip) {
+              '/node_modules/', '/vendor/', '/tests/', '/.tmp/'] as $skip) {
         if (strpos($path, $skip) !== false) continue 2;
     }
     $src = file_get_contents($path);
