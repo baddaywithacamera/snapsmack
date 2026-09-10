@@ -230,9 +230,13 @@ pc_test(strpos($cron, "pc_activate_due_prompts(\$pdo, \$settings)") <
         strpos($cron, 'sv_sweep_new_posts(')
     && strpos($cron, 'sv_sweep_new_posts(') < strpos($cron, 'sv_process_deliveries('),
     'CLI cron must activate and sweep overdue prompt drafts before its first delivery drain');
-pc_test(str_contains($photo, "submit_start<=UTC_TIMESTAMP()")
+pc_test(str_contains($photo, 'function pc_sync_active_prompt_tag')
+    && str_contains($photo, "submit_start<=UTC_TIMESTAMP()")
+    && str_contains($photo, "ORDER BY (submit_end>UTC_TIMESTAMP()) DESC, submit_start DESC")
     && str_contains($photo, "sv_set_setting(\$pdo, \$settings, 'photochallenge_tag', \$active)"),
-    'dropping next week prompt must retain the prompt whose submission window is current');
+    'the active tag must track the prompt whose submission window is current');
+pc_test(str_contains($photo, "if (!\$due) {\n        pc_sync_active_prompt_tag(\$pdo, \$settings);"),
+    'active-tag reconciliation must run even when no queued prompt remains to drop');
 pc_test(str_contains($photo, "'status'      => 'draft'") && str_contains($photo, 'snap_ingest_image('),
     'the queued card must be ingested as a hidden draft, not published immediately');
 pc_test(str_contains($photo, 'INSERT INTO snap_posts') && str_contains($photo, 'INSERT INTO snap_post_images'),
