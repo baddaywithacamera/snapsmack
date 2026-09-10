@@ -135,6 +135,9 @@
 - **GAME ON now has the agreed content backing controls.** Content Background Colour defaults white and Content Background Opacity defaults 50%, replacing the inaccessible hard-coded 90% white veil. The skin now declares CMS 0.7.672D as its minimum because Border Travel depends on the repaired shared engine shipped there.
 - **The GAME ON modal action now says “View image.”** It no longer exposes missing metadata as “View untitled image.”
 
+## PARADE Skin 1.2.36 — 2026-09-10
+- **Every grid tile gets a soft dark outer glow, so a white ring no longer vanishes on the white stripe of the flag.** Two new BORDER WAVE controls: Tile Outer Glow Size (0 to 30 px, default 10, 0 = off) and Tile Outer Glow Strength (default 35%). The glow is always dark by design; it exists for contrast. Help updated. (`skins/parade/style.css`, `skin-profile.php`, `manifest.json`, `help.php`.)
+
 ## PARADE Skin 1.2.35 — 2026-09-09
 - **Reorganizes and relabels configuration without changing saved keys or live rendering.** Existing site choices carry forward; the administrative controls now explain the three distinct border layers and collect content-area geometry and transparency in one place. New installations also receive the shared grid-family defaults.
 

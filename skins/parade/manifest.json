@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "PARADE",
-    "version": "1.2.35",
+    "version": "1.2.36",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "High-key desktop skin — AURORA's daylight twin. A classic 3-across square grid over a full-screen waving identity flag with animated flag-coloured tile borders. A real show of support, built so the photos are still why you came.",
@@ -187,6 +187,27 @@
             "label": "Animated Tile Ring Opacity",
             "default": "100",
             "min": "10",
+            "max": "100",
+            "step": "5",
+            "unit": "%"
+        },
+        "pa_tile_glow": {
+            "section": "BORDER WAVE",
+            "type": "range_numeric",
+            "label": "Tile Outer Glow Size",
+            "default": "10",
+            "min": "0",
+            "max": "30",
+            "step": "1",
+            "unit": "px",
+            "hint": "A soft dark glow outside every tile so a white ring still reads against the white stripe of the flag. 0 turns it off."
+        },
+        "pa_tile_glow_strength": {
+            "section": "BORDER WAVE",
+            "type": "range_numeric",
+            "label": "Tile Outer Glow Strength",
+            "default": "35",
+            "min": "0",
             "max": "100",
             "step": "5",
             "unit": "%"

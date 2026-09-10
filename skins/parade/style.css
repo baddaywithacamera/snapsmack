@@ -58,6 +58,10 @@
        <style id="pa-vars"> block; these are just before-save fallbacks. */
     --pa-sky:       #ffffff;
     --tile-bw:      2px;   /* border ring thickness */
+    --tile-glow:    10px;  /* outer glow size; skin-profile.php overrides (0 = off) */
+    --tile-glow-op: 0.35;  /* outer glow strength */
+    --tile-glow-color: 0, 0, 0;   /* the glow is always DARK: it exists so a white
+                                     ring still reads on the flag's white stripe */
     --tile-radius:  4px;   /* tile corner radius    */
     --ring-op:      1;     /* border ring opacity   */
 }
@@ -378,6 +382,10 @@ img { display: block; max-width: 100%; }
     overflow: hidden;
     background: var(--border-color);
     border-radius: var(--tile-radius);
+    /* Dark outer glow. overflow:hidden clips the tile's CONTENT, not its own
+       shadow, so this paints outside the ring. Sean 2026-09-10: white frames
+       vanished on the white stripe of the flag. */
+    box-shadow: 0 0 var(--tile-glow, 10px) rgba(var(--tile-glow-color, 0, 0, 0), var(--tile-glow-op, 0.35));
     /* Off-screen tiles skip layout/paint entirely — the mask-composite ring is
        costly, so on a 1400-image grid this keeps render work to what's visible.
        aspect-ratio already fixes the square height; contain-intrinsic-size is the
