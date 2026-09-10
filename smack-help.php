@@ -3848,7 +3848,7 @@ switches to a white theme, and your choice is remembered on that browser.</p>
     <li><strong>Global</strong> &mdash; public photos from photographers OUTSIDE the network who
     opted into discovery at fediverse.info. The relay's PHOTOGRAPHY CURATOR follows them slowly
     (one every 15 minutes) and only their NEW posts arrive, so this tab fills over days, not
-    minutes. Needs the curator switched on at the photoblogs.fyi hub and a hub on 0.7.680 or
+    minutes. Needs the curator switched on at the photoblogs.fyi hub and a hub on 0.7.681 or
     later; older hubs file everything under Local.</li>
     <li><strong>Discover</strong> &mdash; a photo grid drawn from the global timeline.</li>
     <li><strong>Notifications</strong> &mdash; follows, likes, comments and boosts aimed at you,
