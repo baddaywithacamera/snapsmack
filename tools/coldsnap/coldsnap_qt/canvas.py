@@ -693,7 +693,7 @@ class BiggieCanvas(QTextEdit):
                 if bool(block.blockFormat().property(PROP_DROPCAP)):
                     self._apply_dropcap(block)
                 block = block.next()
-            cur.movePosition(QTextCursor.Start)
+            cur.movePosition(QTextCursor.End)      # resume where the writing stopped
             self.setTextCursor(cur)
             self.document().clearUndoRedoStacks()
             self.document().setModified(False)
