@@ -184,10 +184,14 @@ function pc_window(array $settings, ?int $now_ts = null): array {
             $start = new DateTimeImmutable((string)($settings['photochallenge_open_since'] ?? ''), new DateTimeZone('UTC'));
             $end = new DateTimeImmutable((string)($settings['photochallenge_extended_until'] ?? ''), new DateTimeZone('UTC'));
         } catch (Throwable $e) { $start=$now; $end=$now; }
-        $week_key=trim((string)($settings['photochallenge_open_week_key'] ?? '')) ?: $start->format('o-\\WW');
-        return ['start'=>$start->format('Y-m-d H:i:s'),'end'=>$end->format('Y-m-d H:i:s'),
-            'open'=>($now >= $start && $now < $end),'week_key'=>$week_key,
-            'label'=>'Extended through ' . $end->format('M j, Y H:i') . ' UTC'];
+        // An extension belongs to one round, not every future Friday. Once its
+        // deadline passes, fall through to normal weekly window calculation.
+        if ($now < $end) {
+            $week_key=trim((string)($settings['photochallenge_open_week_key'] ?? '')) ?: $start->format('o-\\WW');
+            return ['start'=>$start->format('Y-m-d H:i:s'),'end'=>$end->format('Y-m-d H:i:s'),
+                'open'=>($now >= $start),'week_key'=>$week_key,
+                'label'=>'Extended through ' . $end->format('M j, Y H:i') . ' UTC'];
+        }
     }
     if (($settings['photochallenge_window_mode'] ?? 'weekly') === 'open') {
         try { $start = new DateTimeImmutable((string)($settings['photochallenge_open_since'] ?? ''), new DateTimeZone('UTC')); }
@@ -716,6 +720,12 @@ function pc_reconcile_object(PDO $pdo, array $settings, string $object_id): void
 function pc_cron_maintain(PDO $pdo, array &$settings, int $limit = 25): array {
     if (!pc_enabled($settings)) return [0,0,0];
     pc_ensure_tables($pdo);
+    if (($settings['photochallenge_window_mode'] ?? 'weekly') === 'extended') {
+        $until = strtotime((string)($settings['photochallenge_extended_until'] ?? '') . ' UTC') ?: 0;
+        if ($until > 0 && time() >= $until) {
+            sv_set_setting($pdo, $settings, 'photochallenge_window_mode', 'weekly');
+        }
+    }
     pc_activate_due_prompts($pdo, $settings);   // drop any scheduled prompt whose time has come
     $finalized = 0; $checked = 0; $withdrawn = 0;
     $rounds = $pdo->query("SELECT * FROM pc_rounds WHERE finalized_at IS NULL AND window_end<=UTC_TIMESTAMP() ORDER BY window_end LIMIT 4")
@@ -985,9 +995,20 @@ function pc_activate_due_prompts(PDO $pdo, array &$settings): int {
         // "staged" hint (sv_staged_count) accurate until fedi_pushed_at lands.
         if ($post_id > 0) $pdo->prepare("UPDATE snap_posts SET status='published', created_at=UTC_TIMESTAMP(), updated_at=UTC_TIMESTAMP() WHERE id=?")->execute([$post_id]);
         if ($img_id  > 0) $pdo->prepare("UPDATE snap_images SET img_status='published', img_date=UTC_TIMESTAMP() WHERE id=?")->execute([$img_id]);
-        sv_set_setting($pdo, $settings, 'photochallenge_tag', (string)$p['tag']);  // this week's qualifying tag goes live
         $pdo->prepare("UPDATE pc_prompts SET status='live', dropped_at=UTC_TIMESTAMP() WHERE id=?")->execute([(int)$p['id']]);
         $dropped++;
+    }
+    // Dropping next week's announcement must not make next week's hashtag live
+    // during this week's contest. Select the latest prompt whose own submission
+    // window has started; at the Sep 10 drop this keeps VROOM active while
+    // Numbers waits for Sep 17.
+    $active = $pdo->query(
+        "SELECT tag FROM pc_prompts
+         WHERE status IN ('live','done') AND submit_start<=UTC_TIMESTAMP()
+         ORDER BY submit_start DESC LIMIT 1"
+    )->fetchColumn();
+    if (is_string($active) && $active !== '') {
+        sv_set_setting($pdo, $settings, 'photochallenge_tag', $active);
     }
     pc_refresh_prompt_pointers($pdo, $settings);
     require_once __DIR__ . '/page-cache.php';

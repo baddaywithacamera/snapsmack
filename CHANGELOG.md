@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.688D — 2026-09-10
+
+- Makes a fixed extension expire with the round it extended instead of freezing every future PhotoFriday board on the old closed deadline.
+- Keeps the currently posting prompt's hashtag live when next week's announcement drops. Today the board correctly remains open for VROOM; Numbers becomes active only when its own September 17 submission window begins.
+
 ## 0.7.687D — 2026-09-10
 
 - Prevents unreachable servers from starving healthy followers: a hard failure circuit-breaks that host for the rest of the minute, eight-attempt delivery jobs are discarded instead of retained forever, and legacy terminal failures are purged at worker startup. Source posts are never deleted.
