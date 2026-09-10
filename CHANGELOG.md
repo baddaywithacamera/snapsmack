@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.686D — 2026-09-10
+
+- Fixes scheduled PhotoFriday cards remaining drafts until the server's local clock reaches the UTC drop hour. Prompt activation, publication stamps, pointer refresh, and round finalization now use MySQL UTC_TIMESTAMP() explicitly; the first cron tick after deployment immediately publishes any overdue queued prompt and the same tick stages it for federation.
+
 ## 0.7.685D — 2026-09-10
 
 - Records the exact reason a verified Follow is rejected or ignored before follower creation, exposing GoToSocial actor, target, and inbox compatibility failures in the existing Fediverse inbox diagnostic instead of silently returning an empty success.
