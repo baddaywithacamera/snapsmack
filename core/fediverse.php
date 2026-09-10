@@ -153,6 +153,7 @@ function sv_ensure_tables(PDO $pdo): void {
         `activity_json` mediumtext    COLLATE utf8mb4_unicode_ci NOT NULL,
         `dedupe_key`    varchar(191)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `actor_role`    varchar(32)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'primary',
+        `priority`      tinyint unsigned NOT NULL DEFAULT '10',
         `attempts`      int unsigned  NOT NULL DEFAULT '0',
         `next_try_at`   datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `status`        enum('queued','failed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
@@ -160,7 +161,7 @@ function sv_ensure_tables(PDO $pdo): void {
         `created_at`    datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
         UNIQUE KEY `uq_ap_delivery_dedupe` (`dedupe_key`),
-        KEY `idx_ap_due` (`status`, `next_try_at`)
+        KEY `idx_ap_due` (`status`, `next_try_at`, `priority`, `id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_replays` (
         `fingerprint` char(64) COLLATE ascii_bin NOT NULL,
@@ -194,6 +195,21 @@ function sv_ensure_tables(PDO $pdo): void {
         if (!$has_actor_role) {
             $pdo->exec("ALTER TABLE snap_ap_deliveries ADD COLUMN actor_role varchar(32)
                 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'primary' AFTER dedupe_key");
+        }
+    } catch (Throwable $e) { /* canonical sync remains authoritative */ }
+    try {
+        $has_priority = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_ap_deliveries'
+              AND COLUMN_NAME='priority' LIMIT 1")->fetchColumn();
+        if (!$has_priority) {
+            $pdo->exec("ALTER TABLE snap_ap_deliveries ADD COLUMN priority tinyint unsigned
+                NOT NULL DEFAULT 10 AFTER actor_role, ADD KEY idx_ap_priority (status,next_try_at,priority,id)");
+            $pdo->exec("UPDATE snap_ap_deliveries SET priority=100 WHERE activity_json REGEXP
+                '\"type\"[[:space:]]*:[[:space:]]*\"(Create|Update)\"'");
+            $pdo->exec("UPDATE snap_ap_deliveries SET priority=5 WHERE activity_json REGEXP
+                '\"type\"[[:space:]]*:[[:space:]]*\"Announce\"'");
+            $pdo->exec("UPDATE snap_ap_deliveries SET priority=0 WHERE activity_json REGEXP
+                '\"type\"[[:space:]]*:[[:space:]]*\"(Accept|Reject|Follow|Undo)\"'");
         }
     } catch (Throwable $e) { /* canonical sync remains authoritative */ }
     // First-follow backfill jobs: a new/reactivated follower's catalogue backfill
@@ -1820,7 +1836,8 @@ function sv_refresh_follower_inbox(PDO $pdo, string $bad_url): ?string {
 // ─── Delivery queue ──────────────────────────────────────────────────────────
 
 /** Queue one activity JSON for a remote inbox and return its queue id. */
-function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json, ?string $dedupe_key = null): int {
+function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json, ?string $dedupe_key = null,
+                           ?int $priority = null): int {
     // A delivery may be requested by publish, SEED, RE-IMPRINT and a manual
     // retry at nearly the same time.  Keep only one live queue row for the same
     // ActivityPub activity and destination.  Successful rows are deleted, so a
@@ -1834,8 +1851,15 @@ function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json, ?
     $activity = isset($activity) && is_array($activity) ? $activity : json_decode($activity_json, true);
     $actor_role = is_array($activity) && str_contains((string)($activity['actor'] ?? ''), '/ap/curator')
         ? 'curator' : 'primary';
-    $pdo->prepare("INSERT IGNORE INTO snap_ap_deliveries (inbox_url, activity_json, dedupe_key, actor_role) VALUES (?, ?, ?, ?)")
-        ->execute([$inbox_url, $activity_json, $dedupe_key, $actor_role]);
+    if ($priority === null) {
+        $type = is_array($activity) ? (string)($activity['type'] ?? '') : '';
+        $priority = in_array($type, ['Accept','Reject','Follow','Undo'], true) ? 0
+            : ($type === 'Announce' ? 5 : 10);
+    }
+    $priority = max(0, min(255, $priority));
+    $pdo->prepare("INSERT IGNORE INTO snap_ap_deliveries
+        (inbox_url, activity_json, dedupe_key, actor_role, priority) VALUES (?, ?, ?, ?, ?)")
+        ->execute([$inbox_url, $activity_json, $dedupe_key, $actor_role, $priority]);
     return (int)$pdo->lastInsertId();
 }
 
@@ -2027,12 +2051,9 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
         $where .= " AND inbox_url = ?";
         $args[] = $inbox_url;
     }
-    // Oldest-first, but control activities (Follow/Accept/Undo handshakes) go
-    // ahead of content — the ordering both drain paths share.
-    $order_by =
-        "CASE WHEN activity_json REGEXP
-            '\"type\"[[:space:]]*:[[:space:]]*\"(Accept|Reject|Follow|Undo)\"'
-            THEN 0 ELSE 1 END, id ASC";
+    // Explicit service class, then FIFO within that class: protocol handshakes
+    // (0), boosts (5), live publications (10), catalogue backfills (100).
+    $order_by = "priority ASC, id ASC";
     $deadline = $max_runtime_secs > 0 ? microtime(true) + max(15, $max_runtime_secs) : 0.0;
 
     // ── UNPACED PATH (cadence_secs <= 0) ────────────────────────────────────
@@ -5644,7 +5665,7 @@ function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null, string 
         } else {
             $payload = $cjson;   // Create as built: seeds missing, idempotent for existing
         }
-        foreach ($inboxes as $ib) { sv_queue_delivery($pdo, $ib, $payload); $n++; }
+        foreach ($inboxes as $ib) { sv_queue_delivery($pdo, $ib, $payload, null, 100); $n++; }
     }
     return [count($creates), $n];
 }
@@ -5682,7 +5703,7 @@ function sv_push_recent_to_follower(PDO $pdo, array $settings, string $handle,
             if (!is_array($note) || empty($note['id'])) continue;
             $payload = json_encode(sv_update_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
         }
-        if (sv_queue_delivery($pdo, $inbox, $payload) > 0) $queued++;
+        if (sv_queue_delivery($pdo, $inbox, $payload, null, 100) > 0) $queued++;
     }
     return [true, '', count($creates), $queued];
 }
@@ -5719,7 +5740,7 @@ function sv_push_to_follower(PDO $pdo, array $settings, string $actor_url,
             if (!is_array($note) || empty($note['id'])) continue;
             $payload = json_encode(sv_update_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
         }
-        sv_queue_delivery($pdo, $inbox, $payload);
+        sv_queue_delivery($pdo, $inbox, $payload, null, 100);
         $queued++;
     }
     return [count($creates), $queued, (string)($follower['actor_handle'] ?? '')];
@@ -6338,13 +6359,13 @@ function sv_process_backfill_jobs(PDO $pdo, array $settings, int $max_jobs = 3,
         $inbox = (string)$job['inbox_url'];
         if ($inbox !== '') {
             foreach ($creates as $create_json) {
-                $qid = sv_queue_delivery($pdo, $inbox, $create_json);
+                $qid = sv_queue_delivery($pdo, $inbox, $create_json, null, 100);
                 if ($firstQueueId === null) $firstQueueId = $qid;
                 $lastQueueId = $qid;
                 $queued++;
             }
             if ($total > 500) {
-                $qid = sv_queue_delivery($pdo, $inbox, sv_backfill_addendum_create($pdo, $settings, $shown, $total));
+                $qid = sv_queue_delivery($pdo, $inbox, sv_backfill_addendum_create($pdo, $settings, $shown, $total), null, 100);
                 if ($firstQueueId === null) $firstQueueId = $qid;
                 $lastQueueId = $qid;
                 $queued++;
@@ -6415,7 +6436,7 @@ function sv_reseed_all(PDO $pdo, array $settings, ?int $limit = null): array {
             : sv_note_for_image($pdo, $u['row'], $settings);
         if ($note === null) continue;
         $create = json_encode(sv_create_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
-        foreach ($inboxes as $ib) { sv_queue_delivery($pdo, $ib, $create); $deliveries++; }
+        foreach ($inboxes as $ib) { sv_queue_delivery($pdo, $ib, $create, null, 100); $deliveries++; }
         if ($u['kind'] === 'post') $mark_pushed->execute([(int)$u['row']['id']]);
         $posts++;
         // Threaded local comments right after their content Note (same FIFO queue

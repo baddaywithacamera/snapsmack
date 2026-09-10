@@ -22,6 +22,9 @@ $ok(str_contains($core, 'function sv_push_to_follower'), 'targeted push helper m
 $ok(str_contains($core, 'WHERE actor_url = ? AND is_active = 1'), 'actor is not resolved through active followers');
 $ok(str_contains($core, "['inbox_url']"), 'trusted direct inbox is not used');
 $ok(str_contains($core, "fediverse_backfill_count"), 'default count must read the CURRENT setting name');
+$ok(str_contains($core, '$order_by = "priority ASC, id ASC"'), 'delivery drain is not ordered by explicit priority');
+$ok(str_contains($core, '$type === \'Announce\' ? 5 : 10'), 'boosts are not prioritized ahead of live posts');
+$ok(substr_count($core, 'null, 100)') >= 6, 'bulk backfill writers are not demoted behind live posts');
 $ok(str_contains($admin, "=== 'push_follower'"), 'targeted push POST handler missing');
 $ok(str_contains($admin, "fediverse-kick.php"), 'delivery kick must use the renamed kick module');
 $ok(str_contains($page, 'name="follower_actor"'), 'per-follower control missing');
