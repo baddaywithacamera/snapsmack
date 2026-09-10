@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.680 / GAME ON Skin 0.1.17 — 2026-09-09
+
+- Brings static-page titles back into proportion while keeping them visibly stronger than section headings.
+- Makes the fixed footer on GAME ON static pages follow the static-page width and gutter controls, matching the content card instead of using the landing-grid measurements.
+
 ## 0.7.679 / GAME ON Skin 0.1.16 — 2026-09-09
 
 - Gives an open GAME ON puzzle exclusive control of the arrow keys and WASD, preventing the global post navigator from leaving the game on the same keystroke. High-score initials remain safe to type.
