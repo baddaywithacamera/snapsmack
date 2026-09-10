@@ -31,6 +31,7 @@ from .widgets import (Accordion, Card, build_rail, hint, field_label,
                       big_button, thumb_label)
 from .body_editor import BodyEditor
 from .drafts_panel import BatchRail, default_draft_row
+from .mosaic_layout import tile_rects as _tile_rects
 
 
 class MosaicPreview(QWidget):
@@ -52,39 +53,8 @@ class MosaicPreview(QWidget):
 
     @staticmethod
     def tile_rects(width, height, count, layout_name, gap=5):
-        if count <= 0:
-            return []
-        w, h = max(1, width), max(1, height)
-        if count == 1:
-            return [QRect(0, 0, w, h)]
-        if count == 2:
-            if layout_name == "rows":
-                hh = (h - gap) // 2
-                return [QRect(0, 0, w, hh), QRect(0, hh + gap, w, h - hh - gap)]
-            ww = (w - gap) // 2
-            return [QRect(0, 0, ww, h), QRect(ww + gap, 0, w - ww - gap, h)]
-        if count == 3:
-            if layout_name == "three-across":
-                ww = (w - gap * 2) // 3
-                return [QRect(i * (ww + gap), 0,
-                              ww if i < 2 else w - i * (ww + gap), h)
-                        for i in range(3)]
-            if layout_name == "one-top":
-                hh, ww = (h - gap) // 2, (w - gap) // 2
-                return [QRect(0, 0, w, hh), QRect(0, hh + gap, ww, h - hh - gap),
-                        QRect(ww + gap, hh + gap, w - ww - gap, h - hh - gap)]
-            hero = (w - gap) * 2 // 3
-            small, hh = w - hero - gap, (h - gap) // 2
-            if layout_name == "one-right":
-                return [QRect(small + gap, 0, hero, h), QRect(0, 0, small, hh),
-                        QRect(0, hh + gap, small, h - hh - gap)]
-            return [QRect(0, 0, hero, h), QRect(hero + gap, 0, small, hh),
-                    QRect(hero + gap, hh + gap, small, h - hh - gap)]
-        cols = count if layout_name == "columns" else min(3, count)
-        rows = 1 if layout_name == "columns" else (count + cols - 1) // cols
-        cw, ch = (w - gap * (cols - 1)) // cols, (h - gap * (rows - 1)) // rows
-        return [QRect((i % cols) * (cw + gap), (i // cols) * (ch + gap), cw, ch)
-                for i in range(count)]
+        # One geometry for the dialog preview AND the BIGGIE canvas (mosaic_layout.py).
+        return _tile_rects(width, height, count, layout_name, gap)
 
     def paintEvent(self, _event):
         painter = QPainter(self)
@@ -172,6 +142,14 @@ class TakeMode(QWidget):
             "Puts a [mosaic] marker at the cursor — on send, the photos below "
             "become a tiled grid right at that spot",
             self._insert_mosaic)
+        # BIGGIE: the same button on the canvas bar; the canvas asks for the
+        # dialog itself on double-click / right-click of a drawn mosaic.
+        self.body.canvas_bar.add_button(
+            "MOSAIC",
+            "Build a tiled grid of this post's photos right here — you see it "
+            "in the page as you write",
+            self._insert_mosaic)
+        self.body.canvas.mosaicEditRequested.connect(self._canvas_mosaic)
         card.body.addWidget(self.body, 1)   # the write-up is the main event — it grows
         card.body.addWidget(hint(
             "MOSAIC = a tiled grid of this post's photos at the marker. For a "
@@ -290,6 +268,14 @@ class TakeMode(QWidget):
         return "square", ratio
 
     def _insert_mosaic(self):
+        """MOSAIC button. BIGGIE face: the canvas decides new-vs-edit and asks
+        via mosaicEditRequested. SIMPLE face: the text marker, as always."""
+        if self.body.is_biggie():
+            if not self._bucket:
+                QMessageBox.warning(self, "No photos", "Add photos before building a mosaic.")
+                return
+            self.body.canvas.request_mosaic()
+            return
         if not self._bucket:
             QMessageBox.warning(self, "No photos", "Add photos before building a mosaic.")
             return
@@ -313,6 +299,43 @@ class TakeMode(QWidget):
             existing_span = (block.position() + existing.start(),
                              block.position() + existing.end())
 
+        result = self._mosaic_dialog(existing_order, existing_layout)
+        if not result:
+            return
+        chosen, layout_name = result
+        marker = "[mosaic=" + ",".join(map(str, chosen)) + " layout=" + layout_name + "]"
+        if existing_span:
+            replace_cursor = self.body.editor.textCursor()
+            replace_cursor.setPosition(existing_span[0])
+            replace_cursor.setPosition(existing_span[1], QTextCursor.KeepAnchor)
+            replace_cursor.insertText(marker)
+            self.body.editor.setTextCursor(replace_cursor)
+        else:
+            self.body.editor.insertPlainText(marker)
+        self.body.editor.setFocus()
+
+    def _canvas_mosaic(self, order, layout):
+        """The BIGGIE canvas wants a mosaic built (order == []) or changed."""
+        if not self._bucket:
+            QMessageBox.warning(self, "No photos", "Add photos before building a mosaic.")
+            return
+        existing_order = [int(i) - 1 for i in (order or [])
+                          if 1 <= int(i) <= len(self._bucket)]
+        result = self._mosaic_dialog(existing_order, (layout or "").lower() or None)
+        if not result:
+            self.body.canvas._pending_obj_pos = None
+            return
+        chosen, layout_name = result
+        if order:
+            self.body.canvas.replace_mosaic(chosen, layout_name)
+        else:
+            self.body.canvas.insert_mosaic(chosen, layout_name)
+
+    def _mosaic_dialog(self, existing_order, existing_layout):
+        """The one mosaic builder (live preview, tick photos, drag order, layout,
+        rotate). Returns (chosen 1-based bucket positions, layout) or None."""
+        existing = bool(existing_order)
+        rotation_originals = {}
         dialog = QDialog(self)
         dialog.setWindowTitle("Edit mosaic" if existing else "Build mosaic")
         dialog.resize(900, 760)
@@ -506,7 +529,7 @@ class TakeMode(QWidget):
             for bucket_index, state in rotation_originals.items():
                 image = self._bucket[bucket_index]
                 image.local_path, image.original_path, image.width, image.height = state
-            return
+            return None
 
         chosen = [int(photos.item(i).data(Qt.UserRole)) + 1
                   for i in range(photos.count())
@@ -516,18 +539,10 @@ class TakeMode(QWidget):
                 image = self._bucket[bucket_index]
                 image.local_path, image.original_path, image.width, image.height = state
             QMessageBox.warning(self, "Empty mosaic", "Choose at least one photo.")
-            return
-        marker = "[mosaic=" + ",".join(map(str, chosen)) \
-            + " layout=" + str(preset.currentData()) + "]"
-        if existing_span:
-            replace_cursor = self.body.editor.textCursor()
-            replace_cursor.setPosition(existing_span[0])
-            replace_cursor.setPosition(existing_span[1], QTextCursor.KeepAnchor)
-            replace_cursor.insertText(marker)
-            self.body.editor.setTextCursor(replace_cursor)
-        else:
-            self.body.editor.insertPlainText(marker)
-        self.body.editor.setFocus()
+            return None
+        # A rotate changed a working copy: the canvas must repaint from the new file.
+        self.body.set_bucket([im.local_path for im in self._bucket])
+        return chosen, str(preset.currentData())
 
     def _add_photos(self):
         from .pickers import pick_images
@@ -570,6 +585,7 @@ class TakeMode(QWidget):
             if w:
                 w.deleteLater()
         n = len(self._bucket)
+        self.body.set_bucket([im.local_path for im in self._bucket])   # mosaics repaint
         self.bucket_count.setText("")   # count lives in the header; this line = AI progress only
         self.photos_sec.header.setText(
             f"THE PHOTOS — {n} in the bucket" if n else "THE PHOTOS — none yet")
