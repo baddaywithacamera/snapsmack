@@ -81,6 +81,7 @@ pc_test(pc_window_for_friday('2026-09-02')['friday'] === '2026-09-04',
 pc_test(pc_window_for_friday('not-a-date') === null, 'an unparseable date was not rejected');
 
 $photo = file_get_contents(__DIR__ . '/../core/photochallenge.php');
+$cron = file_get_contents(__DIR__ . '/../cron-fediverse.php');
 $sv = file_get_contents(__DIR__ . '/../core/fediverse.php');
 $schema = file_get_contents(__DIR__ . '/../database/schema/snapsmack_canonical.sql');
 $htaccess = file_get_contents(__DIR__ . '/../core/htaccess-template');
@@ -220,6 +221,10 @@ pc_test(str_contains($photo, 'function pc_queue_prompt')
     'prompt scheduler engine functions are missing');
 pc_test(str_contains($photo, 'pc_activate_due_prompts($pdo, $settings);   // drop any scheduled prompt'),
     'the cron (pc_cron_maintain) must activate due prompts');
+pc_test(strpos($cron, "pc_activate_due_prompts(\$pdo, \$settings)") <
+        strpos($cron, 'sv_sweep_new_posts(')
+    && strpos($cron, 'sv_sweep_new_posts(') < strpos($cron, 'sv_process_deliveries('),
+    'CLI cron must activate and sweep overdue prompt drafts before its first delivery drain');
 pc_test(str_contains($photo, "sv_set_setting(\$pdo, \$settings, 'photochallenge_tag', (string)\$p['tag'])"),
     'dropping a prompt must switch the live qualifying hashtag');
 pc_test(str_contains($photo, "'status'      => 'draft'") && str_contains($photo, 'snap_ingest_image('),
