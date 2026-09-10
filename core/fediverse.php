@@ -1876,7 +1876,7 @@ function sv_normalize_delivery_host(string $inbox_url): string {
 }
 
 /** Deliver ONE queued row and settle its queue state: DELETE on success, else
- *  backoff (5min · 2^attempts, capped 24h) and park as status=failed after 8
+ *  backoff (5min · 2^attempts, capped 24h) and discard after 8
  *  tries; self-heal a stale inbox URL on a "not an AP inbox" bounce. Returns
  *  A 429 (rate limit) is treated specially: the receiver is busy, not broken, so
  *  the row is rescheduled after its Retry-After (default 15min) WITHOUT counting
@@ -1929,9 +1929,10 @@ function sv_finish_delivery_row(PDO $pdo, array $primary_settings, array $row): 
         }
     }
     if ($attempts >= 8) {
-        $pdo->prepare(
-            "UPDATE snap_ap_deliveries SET status='failed', attempts=?, last_error=? WHERE id=?"
-        )->execute([$attempts, $info, $row['id']]);
+        // Eight tries spans several days under the exponential backoff. Keeping
+        // the corpse forever only bloats diagnostics and lets dead destinations
+        // dominate operator attention; the published source post is untouched.
+        $pdo->prepare("DELETE FROM snap_ap_deliveries WHERE id=?")->execute([$row['id']]);
     } else {
         $delay = min(300 * (2 ** $attempts), 86400);
         $pdo->prepare(
@@ -1940,7 +1941,9 @@ function sv_finish_delivery_row(PDO $pdo, array $primary_settings, array $row): 
              WHERE id=?"
         )->execute([$attempts, $info, $delay, $row['id']]);
     }
-    return ['sent' => false, 'cooldown' => 0];
+    // Circuit-break this receiving host for a minute. A five-second timeout
+    // must not be selected repeatedly while healthy hosts are waiting.
+    return ['sent' => false, 'cooldown' => 60];
 }
 
 /** Distinct delivery inboxes for all active followers (sharedInbox preferred). */
@@ -1999,6 +2002,9 @@ function sv_test_whitelist_recipients(PDO $pdo, array $settings): array {
 function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $cadence_secs = 0,
                                ?int $first_id = null, ?int $last_id = null,
                                ?string $inbox_url = null, int $max_runtime_secs = 0): array {
+    // Pre-687D workers parked terminal failures forever. Retire those legacy
+    // corpses before planning a run; only outbound copies are removed.
+    $pdo->exec("DELETE FROM snap_ap_deliveries WHERE status='failed' AND attempts>=8");
     // A curator action may kick the shared queue. Never let that context sign
     // unrelated primary-actor rows: recover the site's ordinary settings once.
     $primary_settings = $settings;
@@ -6728,6 +6734,13 @@ function sv_run_sweep(PDO $pdo, array &$settings): array
         sv_ensure_tables($pdo);
         sv_ensure_keys($pdo, $settings);
 
+        // Activate due prompt drafts before the first drain so their freshly
+        // swept Create deliveries can leave during this same worker pass.
+        if (function_exists('pc_activate_due_prompts')) {
+            pc_activate_due_prompts($pdo, $settings);
+        }
+        list($units, $queued) = sv_sweep_new_posts($pdo, $settings);
+
         // Existing deliveries are the primary job. Everything below can make
         // remote requests and is optional maintenance; none of it may starve
         // rows which are already due.
@@ -6757,7 +6770,6 @@ function sv_run_sweep(PDO $pdo, array &$settings): array
             pc_cron_maintain($pdo, $settings, 25);
         }
 
-        list($units, $queued)   = sv_sweep_new_posts($pdo, $settings);
         list($bf_jobs, $bf_q)   = sv_process_backfill_jobs($pdo, $settings);
         $actor_upd = sv_maybe_push_actor_update($pdo, $settings);
 

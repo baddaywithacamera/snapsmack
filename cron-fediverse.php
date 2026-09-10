@@ -101,10 +101,15 @@ sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'running');
 sv_ensure_tables($pdo);
 sv_ensure_keys($pdo, $settings);
 
-// Drain durable outbound work FIRST. Optional maintenance below performs
-// remote network fetches and must never prevent already-queued posts from
-// getting an attempt. New sweep/backfill rows created later wait for the next
-// ten-minute tick; that is preferable to starving an existing backlog.
+// Publishing an overdue prompt is fast local work. Do it before the first
+// drain so this same tick can discover and deliver its Create activity.
+if (function_exists('pc_activate_due_prompts')) {
+    pc_activate_due_prompts($pdo, $settings);
+}
+list($units, $queued) = sv_sweep_new_posts($pdo, $settings);
+
+// Drain durable outbound work FIRST. Optional remote maintenance below must
+// never prevent already-queued posts from getting an attempt.
 list($sent, $failed) = sv_process_deliveries(
     $pdo, $settings, 1000, sv_delivery_cadence($settings), null, null, null, 240
 );
@@ -166,14 +171,12 @@ if (($argv[1] ?? '') === 'resync') {
     exit(0);
 }
 
-list($units, $queued) = sv_sweep_new_posts($pdo, $settings);
 // First-follow backfill: turn any pending backfill jobs (recorded by the inbox
 // Follow handler) into paced deliveries BEFORE the drain, so a new follower's
 // catalogue starts landing this run instead of next.
 list($bf_jobs, $bf_queued) = sv_process_backfill_jobs($pdo, $settings);
-// New sweep and backfill rows are durable and will be the first work attempted
-// on the next tick. Keeping this phase enqueue-only prevents optional work from
-// consuming the current tick's delivery budget.
+// Backfill rows are durable and wait for the next tick; newly published posts
+// were swept before the drain above and therefore leave in this pass.
 
 // Profile propagation (AP spec): if the actor's bio, avatar or display name
 // changed since we last federated it, push a signed Update(Actor) so followers'
