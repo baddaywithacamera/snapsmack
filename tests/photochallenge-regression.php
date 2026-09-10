@@ -226,12 +226,15 @@ pc_test(str_contains($photo, "'status'      => 'draft'") && str_contains($photo,
     'the queued card must be ingested as a hidden draft, not published immediately');
 pc_test(str_contains($photo, 'INSERT INTO snap_posts') && str_contains($photo, 'INSERT INTO snap_post_images'),
     'the queued card must be post-backed so it federates on drop');
-// 0.7.602D: the drop MUST re-stamp created_at to NOW. The AUTO fediverse sweep
+// The drop MUST compare and re-stamp in explicit UTC. The AUTO fediverse sweep
 // federates grouped posts by created_at > last-federated marker; a card carrying
 // its old queue-time date slips past the marker and never reaches followers
-// ("staged, never pushed"). Re-stamping on publish makes the next sweep send it.
-pc_test(str_contains($photo, "SET status='published', created_at=NOW(), updated_at=NOW() WHERE id=?"),
-    'dropping a prompt must re-stamp snap_posts.created_at to NOW so the fediverse sweep federates the card');
+// ("staged, never pushed"). MySQL NOW() may be local time even though prompt
+// fields are UTC, so using it can delay the drop by the server's UTC offset.
+pc_test(str_contains($photo, "drop_at<=UTC_TIMESTAMP()")
+    && str_contains($photo, "SET status='published', created_at=UTC_TIMESTAMP(), updated_at=UTC_TIMESTAMP() WHERE id=?")
+    && !str_contains($photo, "drop_at<=NOW()"),
+    'prompt activation must compare and stamp in UTC so local MySQL time cannot delay the drop');
 pc_test(str_contains($admin, "'queue_prompt'") && str_contains($admin, 'SCHEDULE A PROMPT'),
     'the admin is missing the SCHEDULE A PROMPT panel');
 pc_test(str_contains($admin, 'name="pc_caption"')
