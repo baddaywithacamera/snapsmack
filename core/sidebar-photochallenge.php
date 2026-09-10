@@ -16,6 +16,7 @@ $_pc_sections = [
     'fediverse' => [
         'smack-fediverse.php', 'smack-dms.php', 'smack-fediverse-portal.php',
         'smack-sv-followers.php', 'smack-sv-tools.php',
+        'smack-sv-delivery-log.php',
     ],
     'pimp' => [
         'smack-globalvibe.php', 'smack-masthead.php', 'smack-skin.php',
@@ -32,7 +33,7 @@ $_pc_sections = [
         'smack-maintenance.php', 'smack-fingerprints.php', 'smack-backup.php',
         'smack-disaster.php', 'smack-break-glass.php', 'smack-stats.php',
         'smack-update.php', 'smack-schema.php', 'smack-api-keys.php',
-        'smack-back.php', 'smack-multisite.php',
+        'smack-back.php', 'smack-multisite.php', 'smack-cron.php',
     ],
 ];
 $_pc_active = 'good-shit';
@@ -76,6 +77,7 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                     <li class="<?php echo $_pc_active_class('smack-fediverse-portal.php'); ?>"><a href="smack-fediverse-portal.php">Federation</a></li>
                     <li class="<?php echo $_pc_active_class('smack-sv-followers.php'); ?>"><a href="smack-sv-followers.php">Followers</a></li>
                     <li class="<?php echo $_pc_active_class('smack-sv-tools.php'); ?>"><a href="smack-sv-tools.php">Push &amp; Tools</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-sv-delivery-log.php'); ?>"><a href="smack-sv-delivery-log.php">Delivery Log</a></li>
                 </ul>
             </div>
 
@@ -120,6 +122,7 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                     <li class="<?php echo $_pc_active_class('smack-users.php'); ?>"><a href="smack-users.php">User Manager</a></li>
                     <li class="<?php echo $_pc_active_class('smack-2fa.php'); ?>"><a href="smack-2fa.php">Two-Factor Auth</a></li>
                     <li class="<?php echo $_pc_active_class('smack-maintenance.php'); ?>"><a href="smack-maintenance.php">Maintenance</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-cron.php'); ?>"><a href="smack-cron.php">Cron &amp; Jobs</a></li>
                     <li class="<?php echo $_pc_active_class('smack-fingerprints.php'); ?>"><a href="smack-fingerprints.php">Troll Control</a></li>
                     <li class="<?php echo $_pc_active_class('smack-backup.php'); ?>"><a href="smack-backup.php">Backup &amp; Recovery</a></li>
                     <li class="<?php echo $_pc_active_class('smack-disaster.php'); ?>"><a href="smack-disaster.php">Disaster Recovery</a></li>

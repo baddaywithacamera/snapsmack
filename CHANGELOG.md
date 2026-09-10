@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.687D — 2026-09-10
+
+- Prevents unreachable servers from starving healthy followers: a hard failure circuit-breaks that host for the rest of the minute, eight-attempt delivery jobs are discarded instead of retained forever, and legacy terminal failures are purged at worker startup. Source posts are never deleted.
+- Activates overdue PhotoFriday drafts before the worker's first delivery drain, so a scheduled prompt can publish and leave in one cron pass instead of requiring a second pass.
+- Restores Delivery Log and Cron & Jobs navigation to the reduced FEDISTRUCTURE sidebar.
+
 ## 0.7.686D — 2026-09-10
 
 - Fixes scheduled PhotoFriday cards remaining drafts until the server's local clock reaches the UTC drop hour. Prompt activation, publication stamps, pointer refresh, and round finalization now use MySQL UTC_TIMESTAMP() explicitly; the first cron tick after deployment immediately publishes any overdue queued prompt and the same tick stages it for federation.
