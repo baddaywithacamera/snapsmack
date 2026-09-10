@@ -130,6 +130,10 @@ pc_test(str_contains($sv, 'rtrim(sv_actor_url($settings)')
     && str_contains($sv, 'rtrim(sv_profile_url($settings)')
     && str_contains($sv, 'in_array($follow_object, $our_actor_ids, true)'),
     'GoToSocial profile-URL Follow objects are silently discarded');
+pc_test(str_contains($sv, 'IGNORED: Follow object is not this actor')
+    && str_contains($sv, 'IGNORED: signing actor has no inbox')
+    && str_contains($sv, 'REJECTED: activity actor does not match signing actor'),
+    'Follow compatibility failures are still invisible in the inbox diagnostic');
 pc_test(str_contains($photo, 'SELECT id, week_key'), 'Hall of Fame rows omit the admin toggle id');
 pc_test(str_contains($photo, 'tags_json'), 'board does not require structured ActivityPub hashtags');
 pc_test(str_contains($photo, "if (\$handle === '')")

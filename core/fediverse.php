@@ -2506,7 +2506,12 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
     $actor_id = $actor_doc['id'] ?? '';
     $act_actor = is_array($activity['actor'] ?? null)
         ? ($activity['actor']['id'] ?? '') : ($activity['actor'] ?? '');
-    if ($actor_id === '' || $act_actor !== $actor_id) return 401;
+    if ($actor_id === '' || $act_actor !== $actor_id) {
+        sv_inbox_log($pdo, (string)($activity['type'] ?? 'Unknown'),
+            (string)$act_actor, null,
+            'REJECTED: activity actor does not match signing actor ' . (string)$actor_id);
+        return 401;
+    }
 
     $type = $activity['type'] ?? '';
 
@@ -2545,10 +2550,19 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             rtrim(sv_actor_url($settings), '/'),
             rtrim(sv_profile_url($settings), '/'),
         ];
-        if (!in_array($follow_object, $our_actor_ids, true)) return 202; // not us — ignore politely
+        if (!in_array($follow_object, $our_actor_ids, true)) {
+            sv_inbox_log($pdo, 'Follow', $actor_id, (string)$object,
+                'IGNORED: Follow object is not this actor');
+            return 202; // not us — ignore politely
+        }
 
         $inbox  = $actor_doc['inbox'] ?? '';
-        if ($inbox === '' || !sv_url_is_public($inbox)) return 202;
+        if ($inbox === '' || !sv_url_is_public($inbox)) {
+            sv_inbox_log($pdo, 'Follow', $actor_id, (string)$object,
+                $inbox === '' ? 'IGNORED: signing actor has no inbox'
+                              : 'IGNORED: signing actor inbox is not a public URL');
+            return 202;
+        }
         $shared = $actor_doc['endpoints']['sharedInbox'] ?? null;
         if ($shared !== null && !sv_url_is_public($shared)) $shared = null;
         $handle = ($actor_doc['preferredUsername'] ?? '') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
