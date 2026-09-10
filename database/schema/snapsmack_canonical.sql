@@ -1219,6 +1219,7 @@ CREATE TABLE IF NOT EXISTS `snap_ap_deliveries` (
   `activity_json` mediumtext    COLLATE utf8mb4_unicode_ci NOT NULL,
   `dedupe_key`    varchar(191)  COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `actor_role`    varchar(32)   COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'primary',
+  `priority`      tinyint unsigned NOT NULL DEFAULT '10',
   `attempts`      int unsigned  NOT NULL DEFAULT '0',
   `next_try_at`   datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `status`        enum('queued','failed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
@@ -1226,7 +1227,7 @@ CREATE TABLE IF NOT EXISTS `snap_ap_deliveries` (
   `created_at`    datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_ap_delivery_dedupe` (`dedupe_key`),
-  KEY `idx_ap_due` (`status`, `next_try_at`)
+  KEY `idx_ap_due` (`status`, `next_try_at`, `priority`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `snap_ap_replays` (
