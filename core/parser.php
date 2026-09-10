@@ -22,6 +22,8 @@
  *   [oldest_post]                    — date of first post
  *   [embed:key]                      — named HTML embed from Smack Your Scripts Up!
  *   [fedi_handle]                    — blog's own fediverse @handle as a follow link (blank if federation off)
+ *   [pc_prompt which="next|current" field="prompt|tag|drop|open|close|friday" format="" empty=""]
+ *                                    — live PHOTO CHALLENGE schedule read from the prompt queue
  *   [game_scores]                    — current and historical game leaderboards
  *
  * SMACKONEOUT + SMACKTALK only (not carousel/GRAMOFSMACK):
@@ -775,6 +777,56 @@ class SnapSmack {
             $at = '@' . $handle . '@' . $domain;
             return '<a class="snap-fedi-handle" href="' . htmlspecialchars(sv_actor_url($this->config))
                  . '" rel="me">' . htmlspecialchars($at) . '</a>';
+        }, $content);
+
+        // --- [pc_prompt which="next|current" field="..." format="..." empty="..."] ---
+        // PHOTO CHALLENGE schedule pulled LIVE from the prompt queue (pc_prompts),
+        // so a FAQ/About page never carries a hand-typed date that goes stale.
+        //   which="next"    = the soonest queued prompt that has not dropped yet
+        //   which="current" = the prompt whose submission window is open now or
+        //                     opens next (the one people are shooting for)
+        //   field: prompt (name) · tag (#hashtag) · drop (drop date/time) ·
+        //          open / close (submission window, UTC) · friday (post-on date)
+        //   format = PHP date() format (optional) · empty = text when nothing is queued
+        // Blank (or the empty= text) when the challenge tables don't exist here.
+        $content = preg_replace_callback('/\[pc_prompt\b([^\]]*)\]/i', function ($m) {
+            $attrs = [];
+            if (preg_match_all('/(\w+)=["\']([^"\']*)["\']/', $m[1], $am, PREG_SET_ORDER)) {
+                foreach ($am as $a) $attrs[strtolower($a[1])] = $a[2];
+            }
+            $which = strtolower($attrs['which'] ?? 'next') === 'current' ? 'current' : 'next';
+            $field = strtolower($attrs['field'] ?? 'prompt');
+            $empty = htmlspecialchars($attrs['empty'] ?? '');
+            static $cache = [];
+            if (!array_key_exists($which, $cache)) {
+                $cache[$which] = null;
+                try {
+                    $sql = $which === 'next'
+                        ? "SELECT * FROM pc_prompts WHERE status='queued' AND drop_at>UTC_TIMESTAMP() ORDER BY drop_at ASC LIMIT 1"
+                        : "SELECT * FROM pc_prompts WHERE status IN ('queued','live','done') AND submit_end>UTC_TIMESTAMP() ORDER BY submit_start ASC LIMIT 1";
+                    $row = $this->pdo->query($sql)->fetch(PDO::FETCH_ASSOC);
+                    if (is_array($row)) $cache[$which] = $row;
+                } catch (PDOException $e) { /* not a challenge site */ }
+            }
+            $row = $cache[$which];
+            if ($row === null) return $empty;
+            $utc = static function (string $sql, string $fmt): string {
+                if ($sql === '') return '';
+                try { return (new DateTime($sql, new DateTimeZone('UTC')))->format($fmt); }
+                catch (Throwable $e) { return ''; }
+            };
+            switch ($field) {
+                case 'prompt': $out = (string)$row['prompt']; break;
+                case 'tag':
+                    $tag = trim((string)($row['tag_display'] ?? '')) ?: trim((string)$row['tag']);
+                    $out = $tag === '' ? '' : '#' . ltrim($tag, '#'); break;
+                case 'drop':   $out = $utc((string)$row['drop_at'],      $attrs['format'] ?? 'l, F j, Y \a\t H:i \U\T\C'); break;
+                case 'open':   $out = $utc((string)$row['submit_start'], $attrs['format'] ?? 'l, F j, Y \a\t H:i \U\T\C'); break;
+                case 'close':  $out = $utc((string)$row['submit_end'],   $attrs['format'] ?? 'l, F j, Y \a\t H:i \U\T\C'); break;
+                case 'friday': $out = $utc((string)$row['friday'],       $attrs['format'] ?? 'l, F j, Y'); break;
+                default:       $out = '';
+            }
+            return $out === '' ? $empty : htmlspecialchars($out);
         }, $content);
 
         return $content;
