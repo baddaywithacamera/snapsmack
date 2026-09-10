@@ -26,8 +26,12 @@ from .widgets import hint
 
 class BodyEditor(QWidget):
     def __init__(self, *, allow_mosaic: bool = False, simple_height: int = 84,
-                 parent=None):
+                 rich: bool = True, parent=None):
+        """rich=False (COLD ONE / COLD STACK): the plain box and bar only, no
+        SIMPLE/BIGGIE pills, no canvas. Sean 2026-09-10: the advanced editor is
+        for long-form (COLD TAKE) only."""
         super().__init__(parent)
+        self.rich = bool(rich)
         col = QVBoxLayout(self)
         col.setContentsMargins(0, 0, 0, 0)
         col.setSpacing(4)
@@ -50,6 +54,9 @@ class BodyEditor(QWidget):
         row.addWidget(self.biggie_btn)
         row.addStretch(1)
         col.addLayout(row)
+        if not self.rich:
+            self.simple_btn.hide()
+            self.biggie_btn.hide()
 
         # -- SIMPLE face --------------------------------------------------------
         self._simple = QWidget()
@@ -79,6 +86,10 @@ class BodyEditor(QWidget):
 
         # Last-used face is a per-tool setting (spec §7: biggie_enabled).
         self._biggie_on = False
+        if not self.rich:
+            self._biggie_page.hide()
+            self._apply_face(False)
+            return
         try:
             remembered = bool((cfg_module.load() or {}).get("biggie_enabled"))
         except Exception:  # noqa: BLE001
@@ -94,6 +105,8 @@ class BodyEditor(QWidget):
         self._biggie_page.setVisible(on)
 
     def _set_biggie(self, on: bool):
+        if not self.rich:
+            on = False
         if on == self._biggie_on:
             self._apply_face(on)   # re-assert button states
             return
@@ -141,6 +154,10 @@ class BodyEditor(QWidget):
     def set_state(self, caption: str, blocks_json: str):
         """Restore a draft: blocks win when the draft has them."""
         blocks = biggie.blocks_from_json(blocks_json)
+        if blocks and not self.rich:
+            # A draft made when this box still had BIGGIE: keep every word as text.
+            self.setPlainText(biggie.serialize_blocks(blocks) or (caption or ""))
+            return
         if blocks:
             self.editor.setPlainText(caption or "")
             self.biggie.from_blocks(blocks)
