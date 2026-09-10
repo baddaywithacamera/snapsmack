@@ -126,6 +126,8 @@ pc_test(str_contains($admin, 'EXTEND UNTIL &mdash; close automatically')
 foreach (['pc_on_follow', 'pc_on_leave', 'pc_record_like', 'pc_record_boost', 'pc_remove_engagement'] as $hook) {
     pc_test(str_contains($sv, $hook), "FEDIVERSE is missing {$hook} integration");
 }
+pc_test(str_contains($sv, "rtrim((string)\$object, '/') !== rtrim(sv_actor_url(\$settings), '/')"),
+    'GoToSocial trailing-slash Follow objects are silently discarded');
 pc_test(str_contains($photo, 'SELECT id, week_key'), 'Hall of Fame rows omit the admin toggle id');
 pc_test(str_contains($photo, 'tags_json'), 'board does not require structured ActivityPub hashtags');
 pc_test(str_contains($photo, "if (\$handle === '')")
