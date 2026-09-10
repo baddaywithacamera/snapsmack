@@ -39,6 +39,8 @@ $_sp_initial       = strtoupper(substr($_sp_site_name, 0, 1));
 </head>
 <body class="go-static-page">
 
+<?php include __DIR__ . '/puzzle-field.php'; ?>
+
 <div class="go-content-wrap">
 
 <!-- ── Shared profile + sticky nav (identical across all Grid pages) ──────── -->
