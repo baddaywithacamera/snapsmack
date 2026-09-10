@@ -51,7 +51,12 @@ $extended = pc_window(['photochallenge_window_mode'=>'extended','photochallenge_
 pc_test($extended['open'] === true && $extended['end'] === '2026-09-06 12:00:00', 'fixed extension did not remain open through its deadline');
 $extended_closed = pc_window(['photochallenge_window_mode'=>'extended','photochallenge_open_since'=>'2026-09-03 10:00:00',
     'photochallenge_open_week_key'=>'2026-W36','photochallenge_extended_until'=>'2026-09-06 12:00:00'], strtotime('2026-09-06 12:00:00 UTC'));
-pc_test($extended_closed['open'] === false, 'fixed extension did not close automatically');
+pc_test($extended_closed['open'] === false && !str_contains($extended_closed['label'], 'Extended'),
+    'expired extension did not return control to the normal weekly schedule');
+$next_week_after_extension = pc_window(['photochallenge_window_mode'=>'extended','photochallenge_open_since'=>'2026-09-03 10:00:00',
+    'photochallenge_open_week_key'=>'2026-W36','photochallenge_extended_until'=>'2026-09-06 12:00:00'], strtotime('2026-09-10 12:00:00 UTC'));
+pc_test($next_week_after_extension['open'] === true && $next_week_after_extension['week_key'] === '2026-W37',
+    'last week extension keeps the next PhotoFriday window closed');
 
 // --- SCHEDULE A PROMPT: hashtag generation ---
 $h = pc_hashtag_from_prompt('Belonging');
@@ -225,8 +230,9 @@ pc_test(strpos($cron, "pc_activate_due_prompts(\$pdo, \$settings)") <
         strpos($cron, 'sv_sweep_new_posts(')
     && strpos($cron, 'sv_sweep_new_posts(') < strpos($cron, 'sv_process_deliveries('),
     'CLI cron must activate and sweep overdue prompt drafts before its first delivery drain');
-pc_test(str_contains($photo, "sv_set_setting(\$pdo, \$settings, 'photochallenge_tag', (string)\$p['tag'])"),
-    'dropping a prompt must switch the live qualifying hashtag');
+pc_test(str_contains($photo, "submit_start<=UTC_TIMESTAMP()")
+    && str_contains($photo, "sv_set_setting(\$pdo, \$settings, 'photochallenge_tag', \$active)"),
+    'dropping next week prompt must retain the prompt whose submission window is current');
 pc_test(str_contains($photo, "'status'      => 'draft'") && str_contains($photo, 'snap_ingest_image('),
     'the queued card must be ingested as a hidden draft, not published immediately');
 pc_test(str_contains($photo, 'INSERT INTO snap_posts') && str_contains($photo, 'INSERT INTO snap_post_images'),
