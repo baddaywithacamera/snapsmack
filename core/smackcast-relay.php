@@ -34,7 +34,7 @@ function sc_relay_ensure_ingest_jobs(PDO $pdo): void {
         UNIQUE KEY uq_relay_ingest (relay_actor_url(150),object_id(191)),
         KEY idx_relay_ingest_due (status,next_try_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-    // 680D: a retried Announce must land in the same tab as a first-try one.
+    // 681D: a retried Announce must land in the same tab as a first-try one.
     static $has_feed_col = null;
     if ($has_feed_col === null) {
         try {
@@ -156,7 +156,7 @@ function sc_relay_actor_is_source(PDO $pdo, string $actor_url): bool {
  * Which reader tab a relayed post belongs in on every member blog.
  * A relay MEMBER's post is network-local. A post from a curator-followed
  * outside photographer (fediverse.info consent directory) is GLOBAL.
- * Before 680D every relayed post was filed as 'local' and nothing anywhere
+ * Before 681D every relayed post was filed as 'local' and nothing anywhere
  * ever wrote 'global', so the GLOBAL tab stayed empty on every install.
  */
 function sc_relay_origin_feed(PDO $pdo, string $actor_url): string {
@@ -165,7 +165,7 @@ function sc_relay_origin_feed(PDO $pdo, string $actor_url): string {
     return $member->fetchColumn() ? 'local' : 'global';
 }
 
-/** Read the feed tag the hub put on a relay Announce. Untagged (pre-680D hub) = local. */
+/** Read the feed tag the hub put on a relay Announce. Untagged (pre-681D hub) = local. */
 function sc_relay_announce_feed(array $activity): string {
     return (($activity['feed'] ?? '') === 'global') ? 'global' : 'local';
 }
