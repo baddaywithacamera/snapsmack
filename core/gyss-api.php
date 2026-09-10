@@ -877,7 +877,7 @@ if ($resource === 'enrich-one' && $method === 'POST') {
         . "COLOR_MODE: (colour or bw)\nOCR:\nCONTENT_WARNING:\nSENSITIVE: (yes or no)\n"
         . "If SENSITIVE is yes, include #nsfw in TAGS. CONTENT_WARNING is a suggestion; "
         . "Fediverse delivery uses sensitive=true plus summary and must not rely on the hashtag alone.";
-    $effective_prompt = $prompt . $contract;
+    $effective_prompt = snap_ai_prompt_with_filename($prompt . $contract, (string)$image['img_file']);
     $image_hash = strtolower((string)($image['img_checksum'] ?? ''));
     if (!preg_match('/^[a-f0-9]{64}$/', $image_hash)) $image_hash = hash_file('sha256', $path);
     $domain = strtolower((string)(parse_url(BASE_URL, PHP_URL_HOST) ?: ''));
