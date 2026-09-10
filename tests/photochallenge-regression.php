@@ -164,6 +164,9 @@ pc_test(str_contains($photo, 'count($media) !== 1'), 'board does not enforce exa
 pc_test(str_contains($photo, 'sv_boost_remote(')
     && str_contains($sv, 'pc_maybe_boost_entry'),
     'qualified original entries are not automatically boosted');
+pc_test(str_contains($sv, "'to'        => ['https://www.w3.org/ns/activitystreams#Public']")
+    && str_contains($sv, "'cc'        => \$wl['actors']"),
+    'contained test boosts are not publicly addressed for Mastodon/GoToSocial interoperability');
 pc_test(str_contains($photo, 'pc_notice_closed_window')
     && str_contains($photo, "'outside_window','Held for review; no DM was sent.'")
     && !str_contains($photo, 'sv_send_dm('),

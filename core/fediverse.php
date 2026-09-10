@@ -4114,14 +4114,19 @@ function sv_boost_remote(PDO $pdo, array $settings, string $object_id): array {
         $wl = sv_test_whitelist_recipients($pdo, $settings);
         if (!$wl['inboxes']) return [false, 'Test mode: no whitelisted account follows this blog yet — have your test account follow first.'];
         $targets = $wl['inboxes'];
+        // Mastodon and GoToSocial discard an Announce that is addressed only
+        // to an actor, even when it is POSTed directly to that actor's inbox.
+        // Keep transport contained to the allow-listed direct inboxes, while
+        // describing the boost itself as Public so interoperable servers admit
+        // it to the recipient's home timeline. `cc` names the exact recipients.
         $announce = [
             '@context'  => 'https://www.w3.org/ns/activitystreams',
             'id'        => sv_actor_url($settings) . '#boost-' . bin2hex(random_bytes(8)),
             'type'      => 'Announce',
             'actor'     => sv_actor_url($settings),
             'published' => gmdate('Y-m-d\TH:i:s\Z'),
-            'to'        => $wl['actors'],
-            'cc'        => [],
+            'to'        => ['https://www.w3.org/ns/activitystreams#Public'],
+            'cc'        => $wl['actors'],
             'object'    => $object_id,
         ];
         $json = json_encode($announce, JSON_UNESCAPED_SLASHES);
