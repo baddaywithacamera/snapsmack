@@ -28,11 +28,24 @@ function sc_relay_ensure_ingest_jobs(PDO $pdo): void {
         status enum('queued','shelved') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'queued',
         next_try_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
         last_error varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        feed varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'local',
         created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
         UNIQUE KEY uq_relay_ingest (relay_actor_url(150),object_id(191)),
         KEY idx_relay_ingest_due (status,next_try_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    // 680D: a retried Announce must land in the same tab as a first-try one.
+    static $has_feed_col = null;
+    if ($has_feed_col === null) {
+        try {
+            $has_feed_col = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_relay_ingest_jobs' AND COLUMN_NAME='feed' LIMIT 1")->fetchColumn();
+            if (!$has_feed_col) {
+                $pdo->exec("ALTER TABLE snap_relay_ingest_jobs ADD COLUMN feed varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'local'");
+                $has_feed_col = true;
+            }
+        } catch (Throwable $e) { $has_feed_col = false; }
+    }
 }
 
 function sc_relay_is_receiver(PDO $pdo, array $settings): bool {
@@ -139,6 +152,24 @@ function sc_relay_actor_is_source(PDO $pdo, string $actor_url): bool {
     } catch (Throwable $e) { return false; }
 }
 
+/**
+ * Which reader tab a relayed post belongs in on every member blog.
+ * A relay MEMBER's post is network-local. A post from a curator-followed
+ * outside photographer (fediverse.info consent directory) is GLOBAL.
+ * Before 680D every relayed post was filed as 'local' and nothing anywhere
+ * ever wrote 'global', so the GLOBAL tab stayed empty on every install.
+ */
+function sc_relay_origin_feed(PDO $pdo, string $actor_url): string {
+    $member = $pdo->prepare("SELECT 1 FROM snap_relay_subscribers WHERE actor_url=? AND state='active' LIMIT 1");
+    $member->execute([$actor_url]);
+    return $member->fetchColumn() ? 'local' : 'global';
+}
+
+/** Read the feed tag the hub put on a relay Announce. Untagged (pre-680D hub) = local. */
+function sc_relay_announce_feed(array $activity): string {
+    return (($activity['feed'] ?? '') === 'global') ? 'global' : 'local';
+}
+
 /** Queue exactly one Announce per destination/object; snap_relay_intake dedups intake. */
 function sc_relay_fanout(PDO $pdo, array $settings, array $activity, string $actor_url): int {
     if (!sc_relay_actor_is_source($pdo, $actor_url)) return 0;
@@ -158,10 +189,12 @@ function sc_relay_fanout(PDO $pdo, array $settings, array $activity, string $act
         if ((string)$e->getCode() !== '23000') throw $e;
     }
     $announce = json_encode([
-        '@context' => 'https://www.w3.org/ns/activitystreams',
+        '@context' => ['https://www.w3.org/ns/activitystreams',
+            ['photoblogs' => 'https://photoblogs.fyi/ns#', 'feed' => 'photoblogs:feed']],
         'id' => sv_actor_url($settings) . '#announce-' . hash('sha256', $object_id),
         'type' => 'Announce', 'actor' => sv_actor_url($settings),
         'object' => $object_id, 'to' => ['https://www.w3.org/ns/activitystreams#Public'],
+        'feed' => sc_relay_origin_feed($pdo, $actor_url),
     ], JSON_UNESCAPED_SLASHES);
     return sc_relay_queue_to_members($pdo, $actor_url, $announce,
         'relay-create:' . hash('sha256', $object_id));
@@ -259,22 +292,31 @@ function sc_relay_add_membership(PDO $pdo, string $object_id, string $feed, stri
     }
 }
 
-function sc_relay_queue_ingest(PDO $pdo, string $relay, string $object_id, string $error): void {
+function sc_relay_queue_ingest(PDO $pdo, string $relay, string $object_id, string $error, string $feed = 'local'): void {
     sc_relay_ensure_ingest_jobs($pdo);
-    $pdo->prepare("INSERT INTO snap_relay_ingest_jobs (relay_actor_url,object_id,last_error)
-        VALUES (?,?,?) ON DUPLICATE KEY UPDATE status='queued',last_error=VALUES(last_error)")
-        ->execute([$relay, $object_id, substr($error, 0, 500)]);
+    $feed = $feed === 'global' ? 'global' : 'local';
+    try {
+        $pdo->prepare("INSERT INTO snap_relay_ingest_jobs (relay_actor_url,object_id,last_error,feed)
+            VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE status='queued',last_error=VALUES(last_error),feed=VALUES(feed)")
+            ->execute([$relay, $object_id, substr($error, 0, 500), $feed]);
+    } catch (Throwable $e) {
+        // feed column could not be added (locked-down DB user): keep the old shape.
+        $pdo->prepare("INSERT INTO snap_relay_ingest_jobs (relay_actor_url,object_id,last_error)
+            VALUES (?,?,?) ON DUPLICATE KEY UPDATE status='queued',last_error=VALUES(last_error)")
+            ->execute([$relay, $object_id, substr($error, 0, 500)]);
+    }
 }
 
 /** Try one relay Announce. A transient fetch creates durable receiver work. */
-function sc_relay_receive_announce(PDO $pdo, array $settings, string $relay, string $object_id): bool {
+function sc_relay_receive_announce(PDO $pdo, array $settings, string $relay, string $object_id, string $feed = 'local'): bool {
     if ($relay !== sv_relay_actor_url($settings) || !sv_is_following($pdo, $relay)) return false;
+    $feed = $feed === 'global' ? 'global' : 'local';
     // Successful receipt also clears any earlier fetch-recovery row.  The
     // table therefore belongs to relay receivers, not only to the hub.
     sc_relay_ensure_ingest_jobs($pdo);
     $object = sv_fetch_ap($object_id, $settings);
     if (!is_array($object)) {
-        sc_relay_queue_ingest($pdo, $relay, $object_id, 'origin fetch failed');
+        sc_relay_queue_ingest($pdo, $relay, $object_id, 'origin fetch failed', $feed);
         return true;
     }
     if ((string)($object['id'] ?? '') !== $object_id) return true;
@@ -285,7 +327,7 @@ function sc_relay_receive_announce(PDO $pdo, array $settings, string $relay, str
         || !sc_relay_is_discoverable([], $object)) return true;
     $actor_doc = sv_fetch_ap($actor, $settings);
     if (!is_array($actor_doc) || (string)($actor_doc['id'] ?? '') !== $actor) return true;
-    sv_ingest_timeline($pdo, $object, $actor, '', false, null, 'local', $relay);
+    sv_ingest_timeline($pdo, $object, $actor, '', false, null, $feed, $relay);
     $pdo->prepare("DELETE FROM snap_relay_ingest_jobs WHERE relay_actor_url=? AND object_id=?")
         ->execute([$relay, $object_id]);
     return true;
@@ -302,7 +344,8 @@ function sc_relay_process_ingest_jobs(PDO $pdo, array $settings, int $limit = 20
     foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $job) {
         $before = $pdo->prepare("SELECT 1 FROM snap_ap_timeline WHERE object_id=? LIMIT 1");
         $before->execute([$job['object_id']]);
-        sc_relay_receive_announce($pdo, $settings, $job['relay_actor_url'], $job['object_id']);
+        sc_relay_receive_announce($pdo, $settings, $job['relay_actor_url'], $job['object_id'],
+            (string)($job['feed'] ?? 'local'));
         $after = $pdo->prepare("SELECT 1 FROM snap_ap_timeline WHERE object_id=? LIMIT 1");
         $after->execute([$job['object_id']]);
         if ($after->fetchColumn()) { $done++; continue; }
