@@ -189,6 +189,17 @@ check("v1 dropcap block migrates to paragraph option",
       biggie.blocks_from_json('[{"type":"dropcap","text":"W"}]'),
       [{"type": "para", "text": "W", "dropcap": True}])
 
+# --- COLD ONE / COLD STACK: basic only (Sean 2026-09-10) ---------------------
+basic = BodyEditor(allow_mosaic=False, rich=False)
+check("basic box has no BIGGIE pill", basic.biggie_btn.isHidden(), True)
+basic._set_biggie(True)
+check("basic box cannot switch to BIGGIE", basic.is_biggie(), False)
+basic.set_state("", biggie.blocks_to_json([{"type": "heading", "level": 2, "text": "Old"},
+                                          {"type": "para", "text": "draft"}]))
+check("old BIGGIE draft in a basic box keeps its words as text",
+      basic.toPlainText(), "<h2>Old</h2>\n\ndraft")
+check("basic box never stores blocks", basic.blocks_json(), "")
+
 # --- draft schema v2 ---------------------------------------------------------
 check("schema version bumped", O.SCHEMA_VERSION, 3)
 d = O.Draft.from_dict({"draft_id": "x", "kind": O.KIND_SMACKTALK,
