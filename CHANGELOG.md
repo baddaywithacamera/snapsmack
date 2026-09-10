@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.689D — 2026-09-10
+
+- **Photo Challenge cron now repairs a stale live hashtag even when the prompt queue is already empty.** The 688D repair selected the correct started submission window only while dropping a due prompt; after Numbers had already published under the earlier bug, every later cron pass returned before reconciling the tag. Each maintenance tick now selects the current/most-recent started prompt independently, preferring an unexpired window, so this week's VROOM round replaces next week's Numbers tag immediately after deployment and one cron run.
+
 ## 0.7.688D — 2026-09-10
 
 - Makes a fixed extension expire with the round it extended instead of freezing every future PhotoFriday board on the old closed deadline.
