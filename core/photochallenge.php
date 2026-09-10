@@ -718,13 +718,13 @@ function pc_cron_maintain(PDO $pdo, array &$settings, int $limit = 25): array {
     pc_ensure_tables($pdo);
     pc_activate_due_prompts($pdo, $settings);   // drop any scheduled prompt whose time has come
     $finalized = 0; $checked = 0; $withdrawn = 0;
-    $rounds = $pdo->query("SELECT * FROM pc_rounds WHERE finalized_at IS NULL AND window_end<=NOW() ORDER BY window_end LIMIT 4")
+    $rounds = $pdo->query("SELECT * FROM pc_rounds WHERE finalized_at IS NULL AND window_end<=UTC_TIMESTAMP() ORDER BY window_end LIMIT 4")
         ->fetchAll(PDO::FETCH_ASSOC);
     foreach ($rounds as $round) {
         $win = ['start'=>$round['window_start'],'end'=>$round['window_end'],'open'=>false,
             'week_key'=>$round['week_key'],'label'=>$round['week_key']];
         pc_finalize_week($pdo, $settings, $win, 3);
-        $pdo->prepare("UPDATE pc_rounds SET finalized_at=NOW() WHERE week_key=? AND finalized_at IS NULL")
+        $pdo->prepare("UPDATE pc_rounds SET finalized_at=UTC_TIMESTAMP() WHERE week_key=? AND finalized_at IS NULL")
             ->execute([$round['week_key']]);
         $finalized++;
     }
@@ -960,12 +960,14 @@ function pc_cancel_prompt(PDO $pdo, array &$settings, int $id): array {
  * The cron step: publish any queued prompt whose drop_at has arrived. Flips the
  * card post live (the delivery worker then federates it as a new Note), switches
  * the live qualifying hashtag to that week's tag, and advances the pointers.
- * Uses NOW() to match pc_rounds finalization (both treat the DB clock as UTC).
+ * Scheduler fields are UTC. UTC_TIMESTAMP() is deliberate: shared hosts may
+ * leave the MySQL session in local time, making NOW() delay a 10:00 UTC drop
+ * until 10:00 local time.
  *
  * @return int prompts dropped this pass
  */
 function pc_activate_due_prompts(PDO $pdo, array &$settings): int {
-    $due = $pdo->query("SELECT * FROM pc_prompts WHERE status='queued' AND drop_at<=NOW() ORDER BY drop_at LIMIT 5")
+    $due = $pdo->query("SELECT * FROM pc_prompts WHERE status='queued' AND drop_at<=UTC_TIMESTAMP() ORDER BY drop_at LIMIT 5")
         ->fetchAll(PDO::FETCH_ASSOC);
     if (!$due) return 0;
     $dropped = 0;
@@ -981,10 +983,10 @@ function pc_activate_due_prompts(PDO $pdo, array &$settings): int {
         // Publishing NOW = created_at NOW, exactly like every other post, so the very
         // next sweep in this same cron tick picks it up. updated_at NOW keeps the
         // "staged" hint (sv_staged_count) accurate until fedi_pushed_at lands.
-        if ($post_id > 0) $pdo->prepare("UPDATE snap_posts SET status='published', created_at=NOW(), updated_at=NOW() WHERE id=?")->execute([$post_id]);
-        if ($img_id  > 0) $pdo->prepare("UPDATE snap_images SET img_status='published', img_date=NOW() WHERE id=?")->execute([$img_id]);
+        if ($post_id > 0) $pdo->prepare("UPDATE snap_posts SET status='published', created_at=UTC_TIMESTAMP(), updated_at=UTC_TIMESTAMP() WHERE id=?")->execute([$post_id]);
+        if ($img_id  > 0) $pdo->prepare("UPDATE snap_images SET img_status='published', img_date=UTC_TIMESTAMP() WHERE id=?")->execute([$img_id]);
         sv_set_setting($pdo, $settings, 'photochallenge_tag', (string)$p['tag']);  // this week's qualifying tag goes live
-        $pdo->prepare("UPDATE pc_prompts SET status='live', dropped_at=NOW() WHERE id=?")->execute([(int)$p['id']]);
+        $pdo->prepare("UPDATE pc_prompts SET status='live', dropped_at=UTC_TIMESTAMP() WHERE id=?")->execute([(int)$p['id']]);
         $dropped++;
     }
     pc_refresh_prompt_pointers($pdo, $settings);
@@ -1002,7 +1004,7 @@ function pc_activate_due_prompts(PDO $pdo, array &$settings): int {
  * gates anything.
  */
 function pc_refresh_prompt_pointers(PDO $pdo, array &$settings): void {
-    $next = $pdo->query("SELECT drop_at, submit_start FROM pc_prompts WHERE status='queued' AND drop_at>NOW() ORDER BY drop_at LIMIT 1")
+    $next = $pdo->query("SELECT drop_at, submit_start FROM pc_prompts WHERE status='queued' AND drop_at>UTC_TIMESTAMP() ORDER BY drop_at LIMIT 1")
         ->fetch(PDO::FETCH_ASSOC);
     $iso = static fn(string $sql): string => $sql !== '' ? str_replace(' ', 'T', $sql) . 'Z' : '';
     sv_set_setting($pdo, $settings, 'photochallenge_next_prompt_at', $iso((string)($next['drop_at'] ?? '')));
