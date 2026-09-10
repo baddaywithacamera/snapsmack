@@ -662,9 +662,14 @@ class SmacktalkPoster:
     # A [mosaic] placeholder (optionally [mosaic:bucket]/[mosaic:new]/[mosaic:auto])
     # means "build an inline gallery from THIS essay's photos here." A numeric
     # [mosaic:123] the author typed points at an existing panel and is left alone.
+    # Every layout name smackpress/mosaics accepts. The old pattern only knew the
+    # four three-photo layouts, so a mosaic built as Columns / Rows / Square /
+    # Asymmetric never matched and went to the site as literal marker text.
+    _MOSAIC_LAYOUTS = ("asymmetric", "columns", "rows", "square",
+                       "one-left", "one-right", "three-across", "one-top")
     _MOSAIC_TOKEN = re.compile(
         r'\[mosaic(?:=\s*([0-9]+(?:\s*,\s*[0-9]+)*))?'
-        r'(?:\s+layout=(one-left|one-right|three-across|one-top))?'
+        r'(?:\s+layout=([a-z-]+))?'
         r'(?::\s*(?:bucket|new|auto)\s*)?\]', re.I)
 
     def create_mosaic(self, image_ids, title="Mosaic", gap=4,
@@ -700,6 +705,8 @@ class SmacktalkPoster:
         def build(match):
             selection = match.group(1)
             layout = (match.group(2) or 'asymmetric').lower()
+            if layout not in self._MOSAIC_LAYOUTS:
+                layout = 'asymmetric'
             chosen = list(image_ids)
             if selection:
                 positions = [int(value.strip()) for value in selection.split(',')]

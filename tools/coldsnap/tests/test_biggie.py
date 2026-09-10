@@ -70,6 +70,12 @@ check("asymmetric columns", S({"type": "columns", "ratio": "1-2", "cols": [
 check("spacer", S({"type": "spacer", "px": 30}), "[spacer:30]")
 check("spacer clamps", S({"type": "spacer", "px": 900}), "[spacer:100]")
 check("mosaic", S({"type": "mosaic"}), "[mosaic]")
+check("composed mosaic keeps photos + layout",
+      S({"type": "mosaic", "order": [2, 1, 3], "layout": "one-left"}),
+      "[mosaic=2,1,3 layout=one-left]")
+check("composed mosaic parses back",
+      biggie.parse_body("[mosaic=2,1,3 layout=one-left]"),
+      [{"type": "mosaic", "order": [2, 1, 3], "layout": "one-left"}])
 check("para verbatim", S({"type": "para", "text": "hello <em>there</em>"}),
       "hello <em>there</em>")
 
@@ -128,6 +134,57 @@ outer = biggie.BiggieEditor()
 outer.add_block({"type": "columns", "cols": [[{"type": "para", "text": "cell"}]]})
 cell_editor = outer._rows[0]._col_editors[0]
 check("column editor forbids nested columns", cell_editor.allow_columns, False)
+# --- BIGGIE canvas (WYSIWYG): the document round-trips byte-for-byte ------
+# Sean 2026-09-09: one surface, Enter = paragraph, the mosaic is the photos.
+from PySide6.QtGui import QKeyEvent, QImage, QColor  # noqa: E402
+from PySide6.QtCore import Qt, QEvent  # noqa: E402
+from coldsnap_qt.canvas import BiggieCanvas  # noqa: E402
+
+full = body + "\n\n[mosaic=2,1,3 layout=one-left]\n\n<ol>\n  <li>x</li>\n</ol>"
+cv = BiggieCanvas(allow_mosaic=True)
+cv.resize(900, 700)
+cv.from_blocks(biggie.parse_body(full))
+check("canvas round trip is byte-identical", biggie.serialize_blocks(cv.to_blocks()), full)
+check("canvas shows no shortcode text for a mosaic",
+      "[mosaic" in cv.toPlainText(), False)
+
+cv2 = BiggieCanvas()
+cv2.resize(800, 600)
+cv2.show()
+cv2.set_kind("h2")
+cv2.insertPlainText("Head")
+app.sendEvent(cv2, QKeyEvent(QEvent.KeyPress, Qt.Key_Return, Qt.NoModifier))
+cv2.insertPlainText("Body one")
+app.sendEvent(cv2, QKeyEvent(QEvent.KeyPress, Qt.Key_Return, Qt.NoModifier))
+cv2.insertPlainText("Body two")
+cv2.insert_mosaic([1, 2], "columns")
+cv2.insertPlainText("After")
+check("Enter after a heading makes a plain paragraph; mosaic is its own block",
+      biggie.serialize_blocks(cv2.to_blocks()),
+      "<h2>Head</h2>\n\nBody one\n\nBody two\n\n[mosaic=1,2 layout=columns]\n\nAfter")
+cv2.undo()
+cv2.undo()
+check("Ctrl+Z removes the mosaic", biggie.serialize_blocks(cv2.to_blocks()),
+      "<h2>Head</h2>\n\nBody one\n\nBody two")
+
+_d = tempfile.mkdtemp()
+_paths = []
+for _i, _col in enumerate(("#ff0000", "#00ff00", "#0000ff")):
+    _img = QImage(400, 300, QImage.Format_RGB32)
+    _img.fill(QColor(_col))
+    _p = os.path.join(_d, f"p{_i}.png")
+    _img.save(_p)
+    _paths.append(_p)
+cv3 = BiggieCanvas()
+cv3.resize(900, 700)
+cv3.show()
+cv3.set_bucket(_paths)
+cv3.insert_mosaic([1, 2, 3], "one-left")
+shot = cv3.grab().toImage()
+# the hero tile (one-left) is the red photo: sample well inside it
+check("mosaic paints the real photos", shot.pixelColor(200, 200).red() > 200)
+check("second photo painted in its tile", shot.pixelColor(720, 120).green() > 200)
+
 check("v1 dropcap block migrates to paragraph option",
       biggie.blocks_from_json('[{"type":"dropcap","text":"W"}]'),
       [{"type": "para", "text": "W", "dropcap": True}])
