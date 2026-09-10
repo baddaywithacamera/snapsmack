@@ -40,7 +40,9 @@ $_gn_script      = basename($_SERVER['SCRIPT_NAME'] ?? '');
 $_gn_active_slug = $_GET['slug'] ?? null;
 $_gn_on_blogroll = ($_gn_script === 'blogroll.php');
 $_gn_on_home     = ($_gn_script === 'index.php' && !isset($_GET['s']) && $_gn_active_slug === null);
-$_gn_archive_off = (($settings['archive_layout'] ?? 'square') === 'none');
+// GRAMOFSMACK has one continuous landing scroll; it has no separate archive.
+$_gn_archive_off = (($settings['site_mode'] ?? 'photoblog') === 'carousel')
+    || (($settings['archive_layout'] ?? 'square') === 'none');
 
 // URL for a nav item by type (guarded — may already exist from core/header.php).
 if (!function_exists('_snap_gram_nav_url')) {
