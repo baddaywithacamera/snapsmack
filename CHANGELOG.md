@@ -9,13 +9,17 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.678 / GAME ON Skin 0.1.15 — 2026-09-09
+## 0.7.679 / GAME ON Skin 0.1.16 — 2026-09-09
 
 - Gives an open GAME ON puzzle exclusive control of the arrow keys and WASD, preventing the global post navigator from leaving the game on the same keystroke. High-score initials remain safe to type.
 - Replaces the GAME ON-only score storage path with a reusable CMS game-score ledger. Named metrics let future skins store their own kinds of scores without inventing another database subsystem.
 - Adds Today, This Week, This Month and All Time views while preserving every result rather than resetting leaderboards at calendar boundaries.
 - Adds the `[game_scores]` static-page shortcode for a permanent, responsive score-history page under the site's own skin and navigation.
 - Adds a How to play link to the puzzle controls for the new 15 Puzzle guide and score-history page.
+- Restores the living GAME ON puzzle field behind static pages, using the same image eligibility, motion, density, palette and modal settings as the landing page.
+- Makes Static Page Appearance width and side-gutter controls govern GAME ON pages, and gives the page title a clear H1 hierarchy above section headings.
+- Removes Archive from GRAMOFSMACK's Menu Manager defaults, available-item pool, saved menus and public renderer; the continuous landing scroll is the mode's archive.
+- Replaces the puzzle modal's browser-drawn boxed close control with a plain ×, while retaining a large hit target and visible keyboard focus feedback.
 
 ## 0.7.677D / GAME ON Skin 0.1.14 — 2026-09-09
 

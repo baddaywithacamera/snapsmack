@@ -9,6 +9,8 @@ $engine = file_get_contents($root . '/assets/js/ss-engine-game-on.js');
 $style = file_get_contents($root . '/skins/game-on/style.css');
 $manifest = file_get_contents($root . '/skins/game-on/manifest.json');
 $landing = file_get_contents($root . '/skins/game-on/landing.php');
+$staticPage = file_get_contents($root . '/skins/game-on/skin-page.php');
+$puzzleField = file_get_contents($root . '/skins/game-on/puzzle-field.php');
 
 $checks = [
     'visible viewport height is used' => str_contains($engine, 'var viewportHeight = window.innerHeight;'),
@@ -45,6 +47,11 @@ $checks = [
     'short modal has a scroll fallback' => str_contains($style, 'overflow-y: auto;'),
     'solved puzzle reveals complete image' => str_contains($engine, "board.el.classList.add('is-complete');"),
     'complete image hides puzzle lines' => str_contains($style, '.go-game-board.is-complete .go-puzzle-piece { opacity: 0; }'),
+    'static pages render the living puzzle field' => str_contains($staticPage, "include __DIR__ . '/puzzle-field.php'"),
+    'static puzzle field uses the same engine contract' => str_contains($puzzleField, 'data-game-on'),
+    'static page width obeys the global layout variable' => str_contains($style, 'max-width: var(--static-content-width, 850px);'),
+    'static page gutters obey the global layout variable' => str_contains($style, 'var(--static-content-gutter, 40px)'),
+    'puzzle close control suppresses browser box styling' => str_contains($style, '.go-game-close:focus-visible') && str_contains($style, 'appearance: none;'),
 ];
 
 $failed = false;

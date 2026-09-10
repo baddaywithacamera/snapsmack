@@ -60,7 +60,7 @@ $current_gutter = (int)($settings['static_content_gutter'] ?? 40);
                     <div class="flex-mid gap-12">
                         <input type="range"
                                name="settings[static_content_width]"
-                               min="400" max="1400" step="10"
+                               min="400" max="1400" step="5"
                                value="<?php echo $current_width; ?>"
                                class="flex-1"
                                oninput="this.nextElementSibling.textContent = this.value + 'px'">
