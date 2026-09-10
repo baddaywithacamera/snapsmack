@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.685D — 2026-09-10
+
+- Records the exact reason a verified Follow is rejected or ignored before follower creation, exposing GoToSocial actor, target, and inbox compatibility failures in the existing Fediverse inbox diagnostic instead of silently returning an empty success.
+
 ## 0.7.684D — 2026-09-10
 
 - Accepts a Follow addressed to the blog's equivalent public profile URL, which GoToSocial uses when its Mastodon-compatible account record has no canonical `uri`; Photo Challenge joins now reach participant creation instead of being silently acknowledged and discarded.
