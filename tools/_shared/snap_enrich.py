@@ -153,6 +153,36 @@ Rules:
 
 
 # ── Parser (verbatim behaviour from sybu/gemini.py) ──────────────────────────
+# ── the filename, so a prompt can USE it ────────────────────────────────────
+# Gemini only ever received the prompt + the pixels.  A prompt saying "the title
+# is the filename" therefore produced invented titles (Sean, 2026-09-10).  Every
+# per-image request now carries the file's name (extension dropped): a prompt
+# may place it with {filename}, or simply refer to "the filename" — the line is
+# prepended when no token is present.
+FILENAME_TOKENS = ("{filename}", "{FILENAME}", "{file}", "{FILE}")
+
+
+def filename_stem(file_name: str) -> str:
+    """'496, Car Show, 2026-07-11.jpg' -> '496, Car Show, 2026-07-11'."""
+    base = os.path.basename(str(file_name or ""))
+    stem, _ext = os.path.splitext(base)
+    return stem.strip()
+
+
+def prompt_with_filename(prompt: str, file_name: str) -> str:
+    """Bind one image's name into the prompt text sent with that image."""
+    stem = filename_stem(file_name)
+    if not stem:
+        return prompt
+    if any(t in prompt for t in FILENAME_TOKENS):
+        for t in FILENAME_TOKENS:
+            prompt = prompt.replace(t, stem)
+        return prompt
+    return (f"FILENAME: {stem}\n"
+            f"(That is this image's file name with the extension removed. Wherever the "
+            f"instructions below refer to the filename, use exactly that text.)\n\n" + prompt)
+
+
 def parse_response(text: str) -> dict:
     """Extract TITLE/CAPTION/ALT/TAGS/CATEGORY/ALBUM/COLORS from a model reply."""
     result = {"title": "", "caption": "", "alt": "", "tags": "",
@@ -241,6 +271,7 @@ def enrich_image(
     # survives.  Always append the canonical complete contract so every call asks
     # for every field even when the custom prompt mentions only a subset.
     prompt = ((custom_prompt.strip() + "\n\n") if custom_prompt.strip() else "") + contract
+    prompt = prompt_with_filename(prompt, image_path)
 
     domain = (urlparse(site_url).hostname or site_url or "global").lower().strip()
     try:

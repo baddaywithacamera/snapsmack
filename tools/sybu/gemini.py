@@ -129,6 +129,36 @@ Rules:
 - Do not add any explanation, preamble, or extra lines"""
 
 
+# ── the filename, so a prompt can USE it ────────────────────────────────────
+# Gemini only ever received the prompt + the pixels.  A prompt saying "the title
+# is the filename" therefore produced invented titles (Sean, 2026-09-10).  Every
+# per-image request now carries the file's name (extension dropped): a prompt
+# may place it with {filename}, or simply refer to "the filename" — the line is
+# prepended when no token is present.
+FILENAME_TOKENS = ("{filename}", "{FILENAME}", "{file}", "{FILE}")
+
+
+def filename_stem(file_name: str) -> str:
+    """'496, Car Show, 2026-07-11.jpg' -> '496, Car Show, 2026-07-11'."""
+    base = os.path.basename(str(file_name or ""))
+    stem, _ext = os.path.splitext(base)
+    return stem.strip()
+
+
+def prompt_with_filename(prompt: str, file_name: str) -> str:
+    """Bind one image's name into the prompt text sent with that image."""
+    stem = filename_stem(file_name)
+    if not stem:
+        return prompt
+    if any(t in prompt for t in FILENAME_TOKENS):
+        for t in FILENAME_TOKENS:
+            prompt = prompt.replace(t, stem)
+        return prompt
+    return (f"FILENAME: {stem}\n"
+            f"(That is this image's file name with the extension removed. Wherever the "
+            f"instructions below refer to the filename, use exactly that text.)\n\n" + prompt)
+
+
 def _parse_response(text: str) -> dict:
     """Extract every supported metadata field from the model response."""
     result = {'title': '', 'caption': '', 'alt': '', 'tags': '', 'category': '',
@@ -271,16 +301,17 @@ def enrich_batch(
             img_part   = _load_image_part(genai, img_path)
             last_error = None
 
+            image_prompt = prompt_with_filename(prompt, entry.file)
             for attempt in range(1, MAX_TITLE_RETRIES + 1):
                 # On retries, prepend a note telling Gemini which title to avoid.
                 if attempt == 1:
-                    run_prompt = prompt
+                    run_prompt = image_prompt
                 else:
                     run_prompt = (
                         f"The title you previously generated — \"{entry.title}\" — is already "
                         f"in use. Generate a DIFFERENT haiku-style title for this image. "
                         f"The new title must be unique and must not match any previously used title.\n\n"
-                        + prompt
+                        + image_prompt
                     )
 
                 log.info("GEMINI REQUEST %s (attempt %d) — prompt:\n%s",
@@ -310,6 +341,13 @@ def enrich_batch(
                 # a caption with no title (gram). Title-uniqueness only matters when a
                 # title actually exists.
                 title_ok = bool(title) and title.lower() not in used_titles
+                # A prompt that names the file as the title is obeyed as written:
+                # the filename IS the title even if the site already has that
+                # title (that is a re-post to sort out, not a reason to invent).
+                if title and not title_ok and title.strip().lower() == filename_stem(entry.file).lower():
+                    log.warning("ENRICH %s — title equals the filename but the site already "
+                                "uses it; keeping the filename as instructed", entry.file)
+                    title_ok = True
                 gram_ok  = (not title) and bool(caption)
 
                 if title_ok or gram_ok:

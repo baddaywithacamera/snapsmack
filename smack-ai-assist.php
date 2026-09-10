@@ -218,7 +218,15 @@ if ($mode === 'vision') {
         $existing_tags[] = $r['tag'];
     }
 
-    $prompt = snap_ai_vision_prompt($categories, $albums, $cat_desc, $album_desc, $existing_tags);
+    // Same recipe as the desktop tools (tools/_shared/snap_enrich.py): the
+    // site's SAVED prompt sets voice and site rules (blank when it is still the
+    // built-in default), the canonical contract below asks for every field, and
+    // the image's file name rides on top so "the title is the filename" works.
+    $contract = snap_ai_vision_prompt($categories, $albums, $cat_desc, $album_desc, $existing_tags);
+    $site_prompt = snap_ai_post_enrichment_prompt($pdo);
+    $custom = ($site_prompt !== snap_ai_post_enrichment_default_prompt()) ? trim($site_prompt) : '';
+    $prompt = ($custom !== '' ? $custom . "\n\n" : '') . $contract;
+    $prompt = snap_ai_prompt_with_filename($prompt, mb_substr((string)($_POST['filename'] ?? ''), 0, 500));
     $result = snap_ai_vision('', $prompt, [['mime' => $mime, 'data' => $b64]], 800);
     if (!$result['ok']) {
         echo json_encode(['ok' => false, 'error' => $result['error'] ?: 'The vision request failed.']);
