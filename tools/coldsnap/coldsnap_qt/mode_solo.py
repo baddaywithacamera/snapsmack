@@ -91,7 +91,7 @@ class SoloMode(QWidget):
         card.body.addWidget(field_label("Caption / description"))
         # The CMS solo poster has the shortcode toolbar on this exact field —
         # SIMPLE face = same controls; BIGGIE face = the same body as blocks.
-        self.caption_edit = BodyEditor(allow_mosaic=False, simple_height=84)
+        self.caption_edit = BodyEditor(allow_mosaic=False, simple_height=84, rich=False)
         card.body.addWidget(self.caption_edit)
 
         card.body.addWidget(field_label("ALT text — one plain sentence for screen readers"))
