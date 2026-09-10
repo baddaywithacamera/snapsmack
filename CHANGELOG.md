@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.683D — 2026-09-09
+
+- Accepts GoToSocial Follow activities whose object uses the equivalent trailing-slash form of the Photo Challenge actor URL, allowing those accounts to join instead of remaining pending.
+
 ## 0.7.682D — 2026-09-09
 
 - Makes Photo Challenge test-mode boosts interoperable with Mastodon and GoToSocial by publicly addressing each Announce while still delivering it only to the whitelisted test accounts' direct inboxes.
