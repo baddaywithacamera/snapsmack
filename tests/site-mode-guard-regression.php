@@ -66,7 +66,7 @@ m_ok(str_contains($skin, 'No skin or mode setting was changed.'),
 // pretending the shared post/pivot shape proves which authoring mode made it.
 m_ok(str_contains($guard, "setting_key = 'site_mode'"),
      'mode guard no longer reads the established install mode');
-m_ok(str_contains($guard, "in_array(\$saved_mode, ['photoblog', 'carousel', 'smacktalk'], true)"),
+m_ok(str_contains($guard, "in_array(\$saved_mode, ['photoblog', 'carousel', 'smacktalk', 'smackthemup'], true)"),
      'mode guard no longer validates the saved mode before trusting it');
 m_ok(str_contains($guard, 'unified post tables cannot safely infer'),
      'mode guard again claims ambiguous single-image rows reveal their authoring mode');
