@@ -174,9 +174,10 @@ class _Objects(QPyTextObject):
                                      scaled.width(), scaled.height()), scaled)
         else:
             painter.setPen(QColor(theme.DIM))
-            painter.drawText(box, Qt.AlignCenter,
-                             f"IMG #{data.get('img_id', '?')} from the site's Media Gallery\n"
-                             f"(not in COLD STORAGE yet)  {size} · {align}")
+            sid = str(data.get('img_id', '?'))
+            what = (f"this post's photo {sid[7:]} (removed from the bucket?)" if sid.lower().startswith('bucket:')
+                    else f"IMG #{sid} from the site's Media Gallery\n(not in COLD STORAGE yet)")
+            painter.drawText(box, Qt.AlignCenter, f"{what}  {size} · {align}")
         painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
         painter.drawRect(box.adjusted(0, 0, -1, -1))
 
@@ -262,6 +263,13 @@ class BiggieCanvas(QTextEdit):
 
     def image_pixmap(self, img_id: str, width: int):
         try:
+            sid = str(img_id).strip().lower()
+            if sid.startswith("bucket:") and sid[7:].isdigit():
+                n = int(sid[7:])
+                if 1 <= n <= len(self.bucket):
+                    from .widgets import load_pixmap
+                    return load_pixmap(self.bucket[n - 1], max(64, int(width)))
+                return None
             if self._image_resolver is not None:
                 return self._image_resolver(img_id, width)
             site = self._site()
@@ -563,9 +571,9 @@ class BiggieCanvas(QTextEdit):
     def _edit_image(self, hit=None):
         data = hit[1] if hit else {}
         site = self._site()
-        if site:
+        if site or self.bucket:
             from .gallery_picker import GalleryPicker
-            dlg = GalleryPicker(self, site, data)
+            dlg = GalleryPicker(self, site, data, bucket=self.bucket)
         else:
             dlg = _ImageDialog(self, data)
         if dlg.exec() == QDialog.Accepted:

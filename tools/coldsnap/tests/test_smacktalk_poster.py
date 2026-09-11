@@ -146,6 +146,16 @@ def _checks():
     return n
 
 
+def _bucket_img_checks():
+    """[img:bucket:N] becomes the uploaded site id at send; a gone photo drops the tag."""
+    from sumna_post import SmacktalkPoster
+    p = SmacktalkPoster.__new__(SmacktalkPoster)
+    out = p._resolve_bucket_images("a [img:bucket:2|wall|left] b [img:bucket:9] c [img:77|full|center]", [101, 102, 103])
+    assert out == "a [img:102|wall|left] b  c [img:77|full|center]", out
+    assert p._resolve_bucket_images("plain", []) == "plain"
+    return 2
+
+
 def _mosaic_token_checks():
     """Every layout the site accepts must resolve — Columns/Rows used to go out as text."""
     from sumna_post import SmacktalkPoster
@@ -159,6 +169,6 @@ def _mosaic_token_checks():
 
 
 if __name__ == "__main__":
-    passed = _checks() + _mosaic_token_checks()
+    passed = _checks() + _mosaic_token_checks() + _bucket_img_checks()
     print(f"OK - {passed} checks passed")
 # ===== SNAPSMACK EOF =====
