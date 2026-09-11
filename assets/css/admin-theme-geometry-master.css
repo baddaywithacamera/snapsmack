@@ -7588,12 +7588,38 @@ input[type="range"]:active::-webkit-slider-thumb {
     flex-wrap: wrap;
     align-items: center;
 }
+.sb-stepup-row label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0.85;
+}
+.sb-stepup-field { flex: 1 1 200px; min-width: 160px; }
+.sb-stepup-field--code { flex: 0 0 140px; }
+.sb-stepup-row input[type="password"],
+.sb-stepup-row input[type="text"] {
+    width: 100%;
+    margin: 0;
+    /* The breach panel floods the page with the danger colour, and on several
+       admin themes an unstyled field then has no edge at all — the operator
+       could not see where to type the password (Sean, 2026-09-11). Translucent
+       black + a light hairline reads on every theme, so this lives here with
+       the geometry rather than being repeated in each theme file. */
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: #fff;
+}
+.sb-stepup-row input::placeholder { color: rgba(255, 255, 255, 0.55); }
 .sb-stepup-row .btn-smack {
     width: auto;
     height: 52px;          /* matches the password / 2FA fields beside it */
     margin-top: 0;
     padding: 0 26px;
     flex: 0 0 auto;
+    align-self: flex-end;  /* sits on the field baseline, under the labels */
 }
 .sb-file-actions {
     display: flex;
