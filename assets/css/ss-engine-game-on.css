@@ -1,0 +1,355 @@
+/* ==========================================================================
+   GAME ON engine styles — the living fifteen-puzzle field, the playable
+   modal, and the scoreboard. Loaded for ANY skin that requires the
+   smack-game-on script (core/manifest-inventory.php maps script -> css).
+   Lived inside skins/game-on/style.css until PARADE wanted the same field
+   behind its flag (Sean, 2026-09-11). A host skin may override:
+     --go-field-bg    field background (GAME ON: white; PARADE: transparent)
+     --go-edge-color  the 10px edge clearance colour
+     --go-modal-backdrop-color / --go-modal-backdrop-opacity
+   SNAPSMACK_EOF_HEADER
+   ===== SNAPSMACK EOF =====
+   ========================================================================== */
+
+/* ── GAME ON: living puzzle field ─────────────────────────────────────── */
+.go-puzzle-field {
+    --go-c1: #b7ff00;
+    --go-c2: #ff2b9d;
+    --go-c3: #00d9ff;
+    --go-c4: #5a25b5;
+    --go-board-gap: 10px;
+    --go-board: 120px;
+    position: fixed;
+    z-index: 0;
+    left: 50%;
+    top: 50%;
+    width: 100vw;
+    height: 100vh;
+    transform: translate(-50%, -50%);
+    box-sizing: content-box;
+    padding: calc(var(--go-board-gap) / 2);
+    display: grid;
+    grid-template-columns: repeat(16, var(--go-board));
+    grid-template-rows: repeat(9, var(--go-board));
+    gap: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: var(--go-field-bg, #fff);   /* a skin with its own backdrop sets transparent */
+}
+.go-puzzle-field.is-game-ready { pointer-events: auto; }
+.go-puzzle-edge-mask {
+    position: fixed;
+    z-index: 1;
+    inset: 0;
+    pointer-events: none;
+    box-shadow: inset 10px 0 var(--go-edge-color, #fff), inset -10px 0 var(--go-edge-color, #fff);
+}
+.go-puzzle-tone {
+    position: fixed;
+    z-index: 1;
+    inset: 0;
+    pointer-events: none;
+}
+.go-puzzle {
+    position: relative;
+    display: block;
+    width: calc(var(--go-board) - var(--go-board-gap));
+    height: calc(var(--go-board) - var(--go-board-gap));
+    border: 0;
+    padding: 0;
+    margin: calc(var(--go-board-gap) / 2);
+    overflow: hidden;
+    background: rgba(0,0,0,.82);
+    border-radius: 5px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.52);
+    cursor: pointer;
+    isolation: isolate;
+}
+.go-puzzle::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    background: rgba(0,0,0,.18);
+    opacity: 0;
+    transition: opacity .2s ease;
+}
+.go-puzzle:hover::after { opacity: 1; }
+.go-puzzle.is-changing { opacity: 0; transition: opacity .65s ease; }
+.go-puzzle.is-solved-pulse { animation: he-screen-pulse .9s ease-in-out 2; }
+.go-puzzle-piece {
+    position: absolute;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 25%;
+    height: 25%;
+    box-sizing: border-box;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    background-clip: padding-box;
+    background-repeat: no-repeat;
+    /* No standing will-change here: 144 boards x 15 pieces = 2,160 permanent
+       compositor layers, which is exactly what crashed Firefox on older GPUs.
+       The engine adds .is-moving to a board only for the duration of a slide. */
+    transition-property: transform;
+    transition-timing-function: cubic-bezier(.2,.75,.25,1);
+    box-shadow:
+        inset 1px 1px 0 rgba(255,255,255,.34),
+        inset -2px -2px 2px rgba(0,0,0,.38),
+        1px 2px 3px rgba(0,0,0,.45);
+}
+.go-puzzle.is-moving .go-puzzle-piece { will-change: transform; }
+
+/* ── Foreground game ──────────────────────────────────────────────────── */
+.go-game-open { overflow: hidden; }
+.go-game-modal[hidden] { display: none !important; }
+.go-game-modal {
+    position: fixed;
+    z-index: 100000;
+    inset: 0;
+    display: grid;
+    place-items: center;
+}
+.go-game-backdrop {
+    position: absolute;
+    inset: 0;
+    background: color-mix(
+        in srgb,
+        var(--go-modal-backdrop-color, #000000) var(--go-modal-backdrop-opacity, 84%),
+        transparent
+    );
+    backdrop-filter: blur(8px);
+}
+.go-game-dialog {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    width: min(92vw, 980px);
+    max-width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 16px 22px 18px;
+    color: #25231f;
+    background: #f4f1e8;
+    border: 1px solid #c9c3b6;
+    box-shadow: 0 26px 90px rgba(0,0,0,.75);
+    transition: opacity .65s ease;
+}
+.go-game-modal[data-theme="dark"] .go-game-dialog {
+    color: #f2f0e9;
+    background: #151515;
+    border-color: #555;
+}
+.go-game-modal[data-theme="dark"] .go-game-close,
+.go-game-modal[data-theme="dark"] .go-game-stats b { color: #f2f0e9; }
+.go-game-modal[data-theme="dark"] .go-game-stats,
+.go-game-modal[data-theme="dark"] .go-game-actions a { color: #bbb; }
+.go-game-modal[data-theme="dark"] .go-game-actions button {
+    color: #f2f0e9;
+    background: #292929;
+    border-color: #666;
+}
+.go-game-dialog.is-changing { opacity: 0; }
+.go-game-close {
+    position: absolute;
+    z-index: 5;
+    right: 9px;
+    top: 6px;
+    border: 0;
+    background: transparent;
+    color: #25231f;
+    font-size: 30px;
+    line-height: 1;
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    appearance: none;
+    outline: none;
+    box-shadow: none;
+    opacity: .82;
+    transition: opacity .15s ease, transform .15s ease, text-shadow .15s ease;
+}
+.go-game-close:hover,
+.go-game-close:focus-visible {
+    opacity: 1;
+    transform: scale(1.08);
+    text-shadow: 0 0 2px currentColor;
+}
+.go-game-invite {
+    width: 100%;
+    margin: 0;
+    padding: 0 28px;
+    text-align: center;
+    font-family: Georgia, serif;
+    font-size: clamp(14px, 1.6vw, 22px);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: .08em;
+}
+.go-game-help {
+    margin: -5px 0 0;
+    color: #69645b;
+    font-size: 12px;
+    line-height: 1.35;
+    text-align: center;
+}
+.go-game-modal[data-theme="dark"] .go-game-help { color: #bbb; }
+.go-game-board {
+    position: relative;
+    width: min(80vw, calc(100dvh - 260px), 760px);
+    height: auto;
+    aspect-ratio: 1 / 1;
+    min-width: 240px;
+    flex: 0 0 auto;
+    overflow: hidden;
+    background: #030303;
+    box-shadow: 0 0 0 2px #555, 0 14px 50px rgba(0,0,0,.7);
+    touch-action: none;
+    cursor: pointer;
+}
+.go-game-board .go-puzzle-piece {
+    border-width: 3px;
+    border-radius: 8px;
+    box-shadow:
+        inset 2px 2px 1px rgba(255,255,255,.3),
+        inset -3px -3px 3px rgba(0,0,0,.42),
+        2px 3px 5px rgba(0,0,0,.55);
+    transition-property: transform, opacity;
+}
+.go-game-board .go-puzzle-piece.is-movable { cursor: pointer; }
+.go-game-board .go-puzzle-piece.is-movable:hover {
+    filter: brightness(1.12);
+    box-shadow:
+        inset 2px 2px 1px rgba(255,255,255,.45),
+        inset -3px -3px 3px rgba(0,0,0,.36),
+        0 0 0 2px rgba(255,255,255,.8),
+        2px 4px 7px rgba(0,0,0,.6);
+}
+@media (hover: none), (pointer: coarse) {
+    .go-game-help::first-line { font-weight: 700; }
+    .go-game-board .go-puzzle-piece.is-movable {
+        filter: brightness(1.08);
+        box-shadow:
+            inset 2px 2px 1px rgba(255,255,255,.42),
+            inset -3px -3px 3px rgba(0,0,0,.36),
+            0 0 0 2px rgba(255,255,255,.72),
+            2px 3px 5px rgba(0,0,0,.55);
+    }
+    .go-game-actions { gap: 10px; }
+    .go-game-actions button { min-height: 40px; padding: 8px 13px; }
+}
+.go-puzzle-complete {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border: 0;
+    border-radius: 8px;
+    background-repeat: no-repeat;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease;
+}
+.go-game-board.is-previewing .go-puzzle-piece,
+.go-game-board.is-complete .go-puzzle-piece { opacity: 0; }
+.go-game-board.is-previewing .go-puzzle-complete,
+.go-game-board.is-complete .go-puzzle-complete { opacity: 1; }
+.go-game-board.is-previewing { cursor: default; }
+.go-game-board.is-solved-pulse {
+    animation: he-screen-pulse .9s ease-in-out 2;
+}
+@keyframes he-screen-pulse {
+    0%, 100% { opacity: 1; filter: brightness(1); }
+    50% { opacity: .68; filter: brightness(.82); }
+}
+.go-game-stats {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 18px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #69645b;
+}
+.go-game-stats b { color: #25231f; font-variant-numeric: tabular-nums; }
+.go-game-actions { display: flex; gap: 18px; align-items: center; font-size: 12px; }
+.go-game-actions a { color: #4c4840; }
+.go-game-actions button {
+    border: 1px solid #aaa397;
+    padding: 6px 11px;
+    background: #e7e2d7;
+    color: #25231f;
+    cursor: pointer;
+}
+
+.go-play-as-puzzle {
+    position: static;
+    transform: none;
+    padding: 6px 10px;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--go-content-bg, #fff) 88%, transparent);
+    color: var(--text-primary, #262626);
+    font: 700 12px/1 var(--font-body, sans-serif);
+    letter-spacing: .08em;
+    cursor: pointer;
+}
+@media (max-width: 700px) {
+    #system-footer .footer-metadata-bar p {
+        white-space: normal;
+        line-height: 1.45;
+    }
+}
+@media (max-height: 760px) {
+    .go-game-dialog { gap: 7px; padding: 10px 16px 12px; }
+    .go-game-invite { font-size: 16px; }
+    .go-game-help { font-size: 11px; }
+    .go-game-board { width: min(82vw, calc(100dvh - 205px), 560px); min-width: 180px; }
+    .go-game-actions button { min-height: 32px; padding: 5px 9px; }
+}
+.go-scoreboard {
+    position: absolute;
+    inset: 54px 5% 52px;
+    z-index: 5;
+    overflow: auto;
+    padding: 20px;
+    border: 1px solid rgba(128,128,128,.45);
+    background: #f7f5ef;
+    color: #25231f;
+    box-shadow: 0 12px 40px rgba(0,0,0,.3);
+}
+.go-game-modal[data-theme="dark"] .go-scoreboard { background: #171717; color: #f2f0e9; }
+.go-scoreboard-head { display:flex; align-items:center; justify-content:space-between; letter-spacing:.14em; }
+.go-scoreboard-head button { border:0; background:transparent; color:inherit; font-size:25px; cursor:pointer; }
+.go-score-periods { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+.go-score-periods button { border:1px solid currentColor; background:transparent; color:inherit; padding:5px 9px; cursor:pointer; opacity:.65; }
+.go-score-periods button.is-active { background:#262626; color:#fff; opacity:1; }
+.go-game-modal[data-theme="dark"] .go-score-periods button.is-active { background:#f2f0e9; color:#171717; }
+.go-score-lists { display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+.go-score-lists h3 { margin:18px 0 8px; font-size:12px; letter-spacing:.12em; }
+.go-score-lists ol { margin:0; padding-left:25px; }
+.go-score-lists li { display:grid; grid-template-columns:42px 1fr auto; gap:10px; padding:5px 0; font-variant-numeric:tabular-nums; }
+.go-score-lists time { opacity:.65; }
+.go-score-empty { display:list-item !important; opacity:.65; }
+.go-score-entry { display:flex; gap:10px; align-items:end; margin-top:20px; padding-top:16px; border-top:1px solid rgba(128,128,128,.35); }
+.go-score-entry label { display:grid; gap:5px; font-size:10px; letter-spacing:.1em; }
+.go-score-entry input { width:62px; padding:7px; text-align:center; text-transform:uppercase; font:bold 18px/1 monospace; }
+.go-score-entry button { padding:9px 12px; }
+.go-score-entry span { min-width:80px; font-size:12px; }
+@media (max-width: 700px) { .go-score-lists { grid-template-columns:1fr; } }
+
+@media (max-width: 900px) {
+    .go-puzzle-field { --go-board-gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .go-tile--framed img { transition: none !important; }
+    .go-puzzle-piece { transition: none !important; }
+    .go-game-board.is-solved-pulse { animation: none; outline: 3px solid #f2f0e9; }
+}
+
+/* ===== SNAPSMACK EOF ===== */

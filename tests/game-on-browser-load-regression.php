@@ -6,7 +6,8 @@
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  */
-$css = preg_replace('~/\*.*?\*/~s', '', file_get_contents(__DIR__ . '/../skins/game-on/style.css'));   // comments explain, they don't style
+$css = preg_replace('~/\*.*?\*/~s', '', (file_get_contents(__DIR__ . '/../skins/game-on/style.css') . "
+" . file_get_contents(__DIR__ . '/../assets/css/ss-engine-game-on.css')));   // comments explain, they don't style
 $js  = file_get_contents(__DIR__ . '/../assets/js/ss-engine-game-on.js');
 $php = file_get_contents(__DIR__ . '/../skins/game-on/landing.php');
 
