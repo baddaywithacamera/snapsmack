@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.696D — 2026-09-11
+
+- **A targeted one-follower resend now jumps ahead of catalogue backfills.** Re-queueing an already-waiting delivery also promotes and resets that existing job instead of silently leaving it buried at its old priority.
+
 ## 0.7.695D "PLAY THROUGH" — 2026-09-11
 - **GAME ON's puzzle field, playable window and scoreboard styles are a shared engine stylesheet** (`assets/css/ss-engine-game-on.css`, attached to the `smack-game-on` script in the inventory). GAME ON looks the same. See GAME ON 0.1.19. (`core/manifest-inventory.php`.)
 
