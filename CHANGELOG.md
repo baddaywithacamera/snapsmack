@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.700D "LAST WEEK" — 2026-09-11
+- **Feed and Board are no longer two links to the same live contest.** Board remains the current challenge; Feed now shows the most recently completed challenge using that round's own hashtag and entries.
+
 ## 0.7.699D "SAME CLOCK" — 2026-09-11
 - **Due outbound deliveries can no longer be skipped because PHP and MySQL disagree about the time zone.** Queue eligibility now uses the same database clock that writes `next_try_at`; boosts and new posts remain ahead of backfills.
 - **Cron repairs itself instead of waiting for another admin intervention.** The authenticated fleet tick replaces a missing or obsolete registered command, and takes over after one missed ten-minute interval. Event kicks now use the same durable detached launcher as the Cron & Jobs page.
