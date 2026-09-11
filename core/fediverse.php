@@ -1857,8 +1857,12 @@ function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json, ?
             : ($type === 'Announce' ? 5 : 10);
     }
     $priority = max(0, min(255, $priority));
-    $pdo->prepare("INSERT IGNORE INTO snap_ap_deliveries
-        (inbox_url, activity_json, dedupe_key, actor_role, priority) VALUES (?, ?, ?, ?, ?)")
+    $pdo->prepare("INSERT INTO snap_ap_deliveries
+        (inbox_url, activity_json, dedupe_key, actor_role, priority) VALUES (?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            priority = LEAST(priority, VALUES(priority)),
+            next_try_at = LEAST(next_try_at, NOW()),
+            status = 'pending', attempts = 0, last_error = NULL")
         ->execute([$inbox_url, $activity_json, $dedupe_key, $actor_role, $priority]);
     return (int)$pdo->lastInsertId();
 }
@@ -5752,7 +5756,10 @@ function sv_push_to_follower(PDO $pdo, array $settings, string $actor_url,
             if (!is_array($note) || empty($note['id'])) continue;
             $payload = json_encode(sv_update_for_note($note, $settings), JSON_UNESCAPED_SLASHES);
         }
-        sv_queue_delivery($pdo, $inbox, $payload, null, 100);
+        // A one-follower repair is an explicit resend of a current post, not a
+        // catalogue backfill. Keep it with ordinary new posts so it cannot be
+        // stranded behind hundreds of historical seed jobs.
+        sv_queue_delivery($pdo, $inbox, $payload, null, 10);
         $queued++;
     }
     return [count($creates), $queued, (string)($follower['actor_handle'] ?? '')];
