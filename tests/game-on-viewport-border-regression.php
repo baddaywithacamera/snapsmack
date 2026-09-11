@@ -6,7 +6,8 @@
 /** Static contracts for GAME ON viewport sizing and travelling frame borders. */
 $root = dirname(__DIR__);
 $engine = file_get_contents($root . '/assets/js/ss-engine-game-on.js');
-$style = file_get_contents($root . '/skins/game-on/style.css');
+$style = file_get_contents($root . '/skins/game-on/style.css') . "
+" . file_get_contents($root . '/assets/css/ss-engine-game-on.css');   // field/modal styles are shared now
 $manifest = file_get_contents($root . '/skins/game-on/manifest.json');
 $landing = file_get_contents($root . '/skins/game-on/landing.php');
 $staticPage = file_get_contents($root . '/skins/game-on/skin-page.php');
