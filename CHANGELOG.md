@@ -9,13 +9,15 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.698D "SAME NUMBERS" — 2026-09-11
+- **`stats.php` now reports the same numbers the site's own masthead shows.** On a site with an imported Flickr baseline, all-time views are that baseline plus native photo views (the SLICKR headline), not the daily-log total; "active since" ignores post dates before 1990 (a scanned 1980 negative is not a launch date). The response is cacheable for five minutes instead of an hour. This is what the skin cards on snapsmack.ca read. (`stats.php`.)
+
 ## 0.7.697D — 2026-09-11
 
 - **Targeted follower repair no longer raises HTTP 500 while promoting an existing delivery.** The promotion now restores the queue's actual `queued` state instead of writing a nonexistent status value.
 
 ## 0.7.696D — 2026-09-11
 
-- **`stats.php` now reports the same numbers the site's own masthead shows.** On a site with an imported Flickr baseline, all-time views are that baseline plus native photo views (the SLICKR headline), not the daily-log total; "active since" ignores post dates before 1990 (a scanned 1980 negative is not a launch date). The response is cacheable for five minutes instead of an hour. This is what the skin cards on snapsmack.ca read. (`stats.php`.)
 - **Every gram skin now has Post Viewer Backdrop Colour and Opacity controls.** Aurora, Heuristic, Instant Camera, Sliders, Sudden Impact, The Grid and Photogram join GAME ON, PARADE and Jive Turkey (Scrim). A high-key white viewer is now one setting on any of them. See the skin entries below.
 - **A targeted one-follower resend now jumps ahead of catalogue backfills.** Re-queueing an already-waiting delivery also promotes and resets that existing job instead of silently leaving it buried at its old priority.
 
