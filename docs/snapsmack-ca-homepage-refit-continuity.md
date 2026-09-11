@@ -136,6 +136,13 @@ beta story or onto clearly linked supporting pages.
 
 ## Refit constraints
 
+### Deferred site rebuild — protect THE GOODS
+
+- Rebuild the snapsmack.ca site later; do not change `projects/snapsmack-ca/features.php` during the current federation/cron repair.
+- `features.php` is **THE GOODS**: the concise “Everything it does / Without the wall of text” product overview.
+- The Pixelpost/Jay Williams history belongs in `projects/snapsmack-ca/hows-yer-father.php`, not THE GOODS.
+- Before any package or site deployment, verify it does not restore an older `features.php` over the repository version. Treat that file as site content, not a generated release artifact.
+
 - Do not change shared header or footer behavior while restructuring homepage content.
 - Do not move a pending feature into `Working Right Now` merely to improve the pitch.
 - Do not describe the desktop suite as an optional afterthought; it is a primary product
