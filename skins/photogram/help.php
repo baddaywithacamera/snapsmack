@@ -41,6 +41,7 @@ Works on every device — desktop shows a centred phone column, mobile fills the
     <li><strong>Accent Colour</strong> — used for links, active tab indicator, and interactive elements.</li>
     <li><strong>Sheet Speed</strong> — how fast the comment sheet slides in.</li>
     <li><strong>Show Discover Tab</strong> — toggle the Discover tab on or off from Skin Admin.</li>
+    <li><strong>Post Viewer Backdrop Colour / Opacity</strong> — the full-screen layer behind an opened photo. Black at 90% is the default; white at 100% gives a high-key viewer.</li>
 </ul>
 HTML
     ],

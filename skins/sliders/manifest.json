@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "SLIDERS",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "Sean McCormick, OpenAI Codex",
   "support": "sean@baddaywithacamera.ca",
   "description": "A GRAMOFSMACK grid with normal square tiles over GLIDE's moving wall of your own photographs. A configurable opacity layer keeps the foreground readable.",
@@ -30,6 +30,28 @@
   "community_likes": true,
   "community_reactions": false,
   "options": {
+        "sl_post_viewer_backdrop_color": {
+            "section": "POST VIEWER",
+            "type": "color",
+            "label": "Post Viewer Backdrop Colour",
+            "default": "#000000",
+            "selector": ":root",
+            "property": "--sl-post-viewer-backdrop-color",
+            "hint": "The full-screen layer behind the post viewer window."
+        },
+        "sl_post_viewer_backdrop_opacity": {
+            "section": "POST VIEWER",
+            "type": "range_numeric",
+            "label": "Post Viewer Backdrop Opacity",
+            "default": "80",
+            "min": "0",
+            "max": "100",
+            "step": "1",
+            "unit": "%",
+            "selector": ":root",
+            "property": "--sl-post-viewer-backdrop-opacity",
+            "hint": "0 is transparent; 100 completely covers the page behind the post."
+        },
     "sl_opacity": {
       "section": "SLIDERS BACKGROUND", "type": "range_numeric", "label": "Opacity Layer",
       "default": "68", "min": "0", "max": "95", "step": "5", "unit": "%",

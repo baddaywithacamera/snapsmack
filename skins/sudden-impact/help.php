@@ -23,6 +23,10 @@ return [
     'skin_name' => 'Sudden Impact',
     'topics' => [
         [
+            'title' => 'Post Viewer Backdrop',
+            'body'  => 'When a post opens in the viewer, a full-screen layer sits between it and the page. Under POST VIEWER you choose the colour of that layer and how solid it is. Black at 80% is the default; white at 100% gives a high-key viewer, and a lower opacity lets the page show through behind the photograph.',
+        ],
+        [
             'title' => 'Instagram in Dot Matrix',
             'body'  => 'Sudden Impact is The Grid\'s 3-column carousel feed rendered as a 1985 Okidata 192 thermal printout — DotMatrix type throughout, dithered halftone photographs on plain continuous-feed paper, and dashed dot-matrix double-rule nav and footer. It is an abomination, on purpose. It runs in GramOfSmack mode: every post occupies one tile on the landing page regardless of how many images it holds. Tap or click any tile to view the full post.',
         ],
