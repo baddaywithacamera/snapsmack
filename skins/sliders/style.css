@@ -829,7 +829,8 @@ body.tg-modal-open { overflow: hidden; }
 .tg-modal-backdrop {
     position:   absolute;
     inset:      0;
-    background: rgba(0, 0, 0, 0.8);
+    /* POST VIEWER controls (colour + opacity); was hard-coded black 80%. */
+    background: color-mix(in srgb, var(--sl-post-viewer-backdrop-color, #000000) var(--sl-post-viewer-backdrop-opacity, 80%), transparent);
 }
 
 .tg-modal-frame {

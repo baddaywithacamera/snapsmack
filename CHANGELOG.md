@@ -14,7 +14,29 @@
 - **A targeted one-follower resend now jumps ahead of catalogue backfills.** Re-queueing an already-waiting delivery also promotes and resets that existing job instead of silently leaving it buried at its old priority.
 
 ## 0.7.695D "PLAY THROUGH" — 2026-09-11
+- **Every gram skin now has Post Viewer Backdrop Colour and Opacity controls.** Aurora, Heuristic, Instant Camera, Sliders, Sudden Impact, The Grid and Photogram join GAME ON, PARADE and Jive Turkey (Scrim). A high-key white viewer is now one setting on any of them. See the skin entries below.
 - **GAME ON's puzzle field, playable window and scoreboard styles are a shared engine stylesheet** (`assets/css/ss-engine-game-on.css`, attached to the `smack-game-on` script in the inventory). GAME ON looks the same. See GAME ON 0.1.19. (`core/manifest-inventory.php`.)
+
+## PHOTOGRAM Skin 2.0.17 — 2026-09-11
+- **The photo viewer backdrop is no longer hard-coded black.** POST VIEWER controls: Post Viewer Backdrop Colour and Opacity (default black, 90%). Help updated.
+
+## AURORA Skin 1.0.41 — 2026-09-11
+- **The post viewer backdrop is no longer hard-coded black.** Two new POST VIEWER controls, Post Viewer Backdrop Colour and Post Viewer Backdrop Opacity (default black, 80%), the same pair GAME ON and PARADE have. Help topic added.
+
+## HEURISTIC Skin 0.1.3 — 2026-09-11
+- **The post viewer backdrop is no longer hard-coded black.** Two new POST VIEWER controls, Post Viewer Backdrop Colour and Post Viewer Backdrop Opacity (default black, 80%), the same pair GAME ON and PARADE have. Help topic added.
+
+## INSTANT CAMERA Skin 1.0.33 — 2026-09-11
+- **The post viewer backdrop is no longer hard-coded black.** Two new POST VIEWER controls, Post Viewer Backdrop Colour and Post Viewer Backdrop Opacity (default black, 80%), the same pair GAME ON and PARADE have. Help topic added.
+
+## SLIDERS Skin 0.1.2 — 2026-09-11
+- **The post viewer backdrop is no longer hard-coded black.** Two new POST VIEWER controls, Post Viewer Backdrop Colour and Post Viewer Backdrop Opacity (default black, 80%), the same pair GAME ON and PARADE have. Help topic added.
+
+## SUDDEN IMPACT Skin 1.0.8 — 2026-09-11
+- **The post viewer backdrop is no longer hard-coded black.** Two new POST VIEWER controls, Post Viewer Backdrop Colour and Post Viewer Backdrop Opacity (default black, 80%), the same pair GAME ON and PARADE have. Help topic added.
+
+## THE GRID Skin 1.3.43 — 2026-09-11
+- **The post viewer backdrop is no longer hard-coded black.** Two new POST VIEWER controls, Post Viewer Backdrop Colour and Post Viewer Backdrop Opacity (default black, 80%), the same pair GAME ON and PARADE have. Help topic added.
 
 ## 0.7.694D — 2026-09-10
 

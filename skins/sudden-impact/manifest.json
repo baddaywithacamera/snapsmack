@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SUDDEN IMPACT",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Instagram in dot matrix. The Grid's 3-column carousel feed rendered as a 1985 Okidata 192 thermal printout — DotMatrix type throughout, dithered halftone photos on plain continuous-feed paper, dashed dot-matrix double-rule nav and footer. An abomination, on purpose. GramOfSmack mode.",
@@ -47,6 +47,28 @@
     "community_likes": true,
     "community_reactions": false,
     "options": {
+        "tg_post_viewer_backdrop_color": {
+            "section": "POST VIEWER",
+            "type": "color",
+            "label": "Post Viewer Backdrop Colour",
+            "default": "#000000",
+            "selector": ":root",
+            "property": "--tg-post-viewer-backdrop-color",
+            "hint": "The full-screen layer behind the post viewer window."
+        },
+        "tg_post_viewer_backdrop_opacity": {
+            "section": "POST VIEWER",
+            "type": "range_numeric",
+            "label": "Post Viewer Backdrop Opacity",
+            "default": "80",
+            "min": "0",
+            "max": "100",
+            "step": "1",
+            "unit": "%",
+            "selector": ":root",
+            "property": "--tg-post-viewer-backdrop-opacity",
+            "hint": "0 is transparent; 100 completely covers the page behind the post."
+        },
         "tg_carousel_indicator": {
             "section": "GRID",
             "type": "select",

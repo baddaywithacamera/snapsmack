@@ -915,7 +915,8 @@ body.au-modal-open { overflow: hidden; }
 .au-modal-backdrop {
     position:   absolute;
     inset:      0;
-    background: rgba(0, 0, 0, 0.8);
+    /* POST VIEWER controls (colour + opacity); was hard-coded black 80%. */
+    background: color-mix(in srgb, var(--au-post-viewer-backdrop-color, #000000) var(--au-post-viewer-backdrop-opacity, 80%), transparent);
 }
 
 .au-modal-frame {
