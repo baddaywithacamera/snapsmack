@@ -114,16 +114,10 @@ foreach ($rows as $r) {
     $plan[] = ['id' => (int)$r['id'], 'file' => $rel, 'from' => $r['img_date'], 'to' => $date, 'how' => $how];
 }
 
-printf("%s — %d row(s) in window%s; %d to change (%d from EXIF, %d from the title), %d with no date anywhere, %d file(s) missing.
-
-",
+printf("%s — %d row(s) in window%s; %d to change (%d from EXIF, %d from the title), %d with no date anywhere, %d file(s) missing.\n\n",
     $apply ? 'APPLY' : 'DRY RUN', count($rows), $source !== '' ? " (source $source)" : '', count($plan), count($plan) - $via_title, $via_title, count($no_exif), count($missing));
-foreach ($plan as $p) printf("  #%-6d %s  %s  ->  %s  (%s)
-", $p['id'], substr($p['from'], 0, 16), str_pad(basename($p['file']), 42), $p['to'], $p['how']);
-if ($no_exif) { echo "
-No date anywhere" . ($from_title ? '' : ' in EXIF (add --from-title to read the file name)') . " (left alone):
-"; foreach ($no_exif as $r) printf("  #%-6d %s
-", $r['id'], basename((string)$r['img_file'])); }
+foreach ($plan as $p) printf("  #%-6d %s  %s  ->  %s  (%s)\n", $p['id'], substr($p['from'], 0, 16), str_pad(basename($p['file']), 42), $p['to'], $p['how']);
+if ($no_exif) { echo "\nNo date anywhere" . ($from_title ? '' : ' in EXIF (add --from-title to read the file name)') . " (left alone):\n"; foreach ($no_exif as $r) printf("  #%-6d %s\n", $r['id'], basename((string)$r['img_file'])); }
 if ($missing) { echo "\nFile missing on disk (left alone):\n"; foreach ($missing as $r) printf("  #%-6d %s\n", $r['id'], $r['img_file']); }
 
 if (!$apply) {
