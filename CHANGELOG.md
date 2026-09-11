@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.704D "STAND DOWN" — 2026-09-11
+- **SMACKBACK no longer treats an operator repair script as a breach.** A root `repair-*.php` ships with a release, gets replaced by hand when it is improved, and is deleted once it has done its job. Baselining it turned each of those ordinary actions into a TAMPERED or MISSING breach and a site lockout (foreverphotograph.ing, straight after updating `repair-image-dates.php`). Those scripts are now excluded from monitoring, the same as the installer files. Nested files of the same name are still monitored. (`core/smackback.php`, `tests/smackback-repair-script-regression.php`.)
+- **The SMACKBACK breach panel stops stacking full-width buttons.** A bare button on that page is the one loud full-width submit; the panel used it four times, so the authorize gate, both closing actions and the per-file actions each became a slab. The gate is now inline beside its password and 2FA fields, the per-file RESTORE / RE-BLESS are compact row actions, and the two closing actions sit side by side. Geometry lives in the master CSS; colour stays with the admin theme. (`assets/css/admin-theme-geometry-master.css`, `smack-back.php`.)
+
 ## 0.7.703D "DATE STAMP" — 2026-09-11
 - **An import that arrives without a date now gets the photograph's own EXIF date, not the import time.** The FLKR FCKR import API stamped "now" when no usable date came with the file; on a newest-first stream that puts a batch of decades-old scans on top (foreverphotograph.ing). DateTimeOriginal, then DateTimeDigitized, then DateTime; "now" only when the file carries none. (`core/flkrfckr-api.php`.)
 - **New one-off CLI: `repair-image-dates.php`.** Puts EXIF dates back on rows whose date is the import time. Dry run by default, `--since`/`--until` window, `--source=flickr` scope, `--apply` to write; never touches manual sort order; purges the page cache after writing. Run on ONE site's box, from its root. (`repair-image-dates.php`, `tests/import-date-regression.php`.)

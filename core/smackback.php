@@ -505,6 +505,16 @@ function smackback_should_monitor(string $abs_path): bool {
         return false;
     }
 
+    // Operator one-off repair scripts (repair-*.php at the site root). These ship
+    // with a release, get replaced by hand when they are improved, and are deleted
+    // once they have done their job — so baselining them turns an ordinary
+    // maintenance action into a TAMPERED breach and a deletion into a MISSING one.
+    // (foreverphotograph.ing, 2026-09-11: repair-image-dates.php tripped a lockout
+    // straight after the operator updated it.) Never monitor them.
+    if (preg_match('/^repair-[a-z0-9-]+\.php$/', $basename) && $basename === $rel) {
+        return false;
+    }
+
     // Minified files
     if (str_ends_with($basename, '.min.js') || str_ends_with($basename, '.min.css')) {
         return false;
