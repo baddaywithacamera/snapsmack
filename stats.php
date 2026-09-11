@@ -23,7 +23,7 @@
 // CORS — allow snapsmack.ca to fetch this cross-domain
 header('Access-Control-Allow-Origin: https://snapsmack.ca');
 header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: public, max-age=3600'); // 1-hour browser cache
+header('Cache-Control: public, max-age=300'); // 5-minute cache: the numbers change all day
 
 // Bootstrap: constants + DB only, no session, no auth
 define('SNAPSMACK_STATS_REQUEST', true);
@@ -82,14 +82,34 @@ try {
         ")->fetchColumn();
     } catch (Throwable $e) { /* img_view_seed absent — no seed */ }
 
-    // Active since — an explicit 'active_since' setting wins; else the earliest post date.
+    // Active since — an explicit 'active_since' setting wins; else the earliest post
+    // date from 1990 on. A scanned 1980 negative carries its capture date as its
+    // post date, and that is not when the blog went live (foreverphotograph.ing
+    // showed "Since 1980" on snapsmack.ca while its own masthead said 2003 — the
+    // SLICKR masthead already ignores pre-1990 dates; this now matches it).
     $since = (string)($settings['active_since'] ?? '');
     if (!preg_match('/^\d{4}-\d{2}-\d{2}/', $since)) {
         try {
             $since = (string)$pdo->query("
-                SELECT DATE(MIN(img_date)) FROM snap_images WHERE img_status = 'published'
+                SELECT DATE(MIN(img_date)) FROM snap_images
+                WHERE img_status = 'published' AND img_date >= '1990-01-01'
             ")->fetchColumn();
         } catch (Throwable $e) { $since = ''; }
+    }
+
+    // Views — when the site carries an imported Flickr baseline
+    // (flickr_seed_photo_views), report the SAME headline the SLICKR masthead
+    // shows: that baseline + native photo views. Otherwise the daily totals
+    // plus per-image seeds, as before. Two numbers for one site is a bug.
+    $views_all = (int)($stats_all['views_all'] ?? 0) + $seed_views;
+    $flickr_photo_seed = (string)($settings['flickr_seed_photo_views'] ?? '');
+    if ($flickr_photo_seed !== '' && ctype_digit($flickr_photo_seed)) {
+        try {
+            $native_image = (int)$pdo->query("
+                SELECT COUNT(*) FROM snap_stats WHERE is_bot = 0 AND image_id IS NOT NULL
+            ")->fetchColumn();
+            $views_all = (int)$flickr_photo_seed + $native_image;
+        } catch (Throwable $e) { /* snap_stats absent — keep the daily-based total */ }
     }
 
     echo json_encode([
@@ -97,7 +117,7 @@ try {
         'posts'        => $posts,
         'views_30d'    => (int)($stats['views_30d']       ?? 0),
         'unique_30d'   => (int)($stats['unique_30d']      ?? 0),
-        'views_all'    => (int)($stats_all['views_all']   ?? 0) + $seed_views,
+        'views_all'    => $views_all,
         'unique_all'   => (int)($stats_all['unique_all']  ?? 0),
         'active_since' => $since ?: null,
         'version'      => SNAPSMACK_VERSION_SHORT,

@@ -42,7 +42,7 @@ if ((empty($_skin_demo_stats) || !empty($_skin_missing_stats)) && function_exist
     $_skin_handles = [];
 
     foreach ($_skin_demo_sites as $_skin_domain => $_skin_base_url) {
-        $_skin_handle = curl_init($_skin_base_url . '/stats.php');
+        $_skin_handle = curl_init($_skin_base_url . '/stats.php?t=' . (int)floor(time() / 900));   // defeat any edge cache: fresh at most every 15 min
         curl_setopt_array($_skin_handle, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 3,
