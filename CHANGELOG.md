@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.695D "PLAY THROUGH" — 2026-09-11
+- **The GAME ON puzzle field is now a shared engine any skin can host, and PARADE is the first to host it.** Field, playable window and scoreboard styles live in `assets/css/ss-engine-game-on.css`, attached to the `smack-game-on` script in the inventory. See PARADE 1.2.38 (Background Puzzles behind the flag) and GAME ON 0.1.19 below. (`core/manifest-inventory.php`, `assets/css/ss-engine-game-on.css`.)
+
 ## 0.7.694D — 2026-09-10
 
 - **Backfills are now truly dead last across the entire outbound worker.** The paced worker initially sorted jobs correctly, but its per-server scheduler then selected the oldest row ID across servers, allowing an old backfill for one server to jump ahead of a boost or fresh post for another. Selection now preserves service class globally: handshakes, boosts, new posts, then backfills.
