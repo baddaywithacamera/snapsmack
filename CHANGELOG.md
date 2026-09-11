@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.692D — 2026-09-10
+
+- **Fleet deployments now repair enabled cron registrations after every update.** The interactive updater already refreshed tagged crontab commands after extraction, but the multisite fleet-update endpoint bypassed that finalization step. When an install path or packaged command changed, the fleet left the old absolute command behind and federation stopped until an administrator manually registered it again. The fleet path now runs the same idempotent refresh after migrations, preserves deliberately disabled jobs, and reports refresh failures to the hub response.
+
 ## 0.7.691D "SAY MY NAME" — 2026-09-10
 - **VISION FILL and the GYSS server-side enrichment now know the image's file name, and VISION FILL finally uses the site's saved prompt.** The browser sends the chosen file's name (or the stored upload's name on the edit page); the server prepends a `FILENAME:` line (or substitutes `{filename}`), so "the title is the filename" works in the CMS too. VISION FILL was also ignoring the prompt saved under Configuration → AI and always using the built-in SYBU text; it now layers the saved prompt over the field contract exactly as the desktop tools do. Help updated. (`smack-ai-assist.php`, `core/ai-enrichment-prompts.php`, `core/gyss-api.php`, `assets/js/ss-engine-ai-enrichment.js`, `smack-help.php`.)
 - **Gemini enrichment now knows each image's file name (SYBU 0.7.60, and the shared client used by COLD SNAP / GYSS / SNAP SLAPPER).** The request only ever carried the prompt and the pixels, so a prompt saying "the title is the filename" got invented titles. Every per-image request now carries a `FILENAME:` line (extension removed), or substitutes `{filename}` where a prompt places it. A title that equals the filename is kept even if the site already has that title. SYBU help updated. (`tools/sybu/gemini.py`, `tools/_shared/snap_enrich.py`, `tools/sybu/main.py`.)
