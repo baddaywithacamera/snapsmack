@@ -234,6 +234,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-fediverse-rename.sql',
     'migrate-curator-directory.sql',
     'migrate-curator-secondary-actor.sql',
+    'migrate-curator-outbox-recovery.sql',
     'migrate-relay-ingest-jobs.sql',
     'migrate-game-scores-ledger.sql',
 ];
