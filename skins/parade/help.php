@@ -36,7 +36,7 @@ return [
         ],
         [
             'title' => 'Post Viewer Backdrop',
-            'body'  => 'When a post opens in the viewer, a full-screen layer sits between it and the flag. Under POST VIEWER you choose that layer's colour and how solid it is. Black at 80% is the default; a lighter colour or a lower opacity lets more of the waving flag show through behind the photograph.',
+            'body'  => 'When a post opens in the viewer, a full-screen layer sits between it and the flag. Under POST VIEWER you choose the colour of that layer and how solid it is. Black at 80% is the default; a lighter colour or a lower opacity lets more of the waving flag show through behind the photograph.',
         ],
         [
             'title' => 'Motion & Accessibility',
