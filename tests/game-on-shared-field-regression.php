@@ -21,6 +21,6 @@ gs_check('GAME ON stylesheet no longer duplicates the field', strpos($go_css, '.
 gs_check('GAME ON keeps its own page rules', strpos($go_css, 'body:has(.go-puzzle-field)') !== false && strpos($go_css, '.go-content-wrap {') !== false);
 gs_check('script inventory attaches the stylesheet', strpos($inv, "'css'          => 'assets/css/ss-engine-game-on.css'") !== false);
 gs_check('host-overridable field colours', strpos($shared, 'var(--go-field-bg, #fff)') !== false && strpos($shared, 'var(--go-edge-color, #fff)') !== false);
-gs_check('GAME ON requires the engine script', in_array('smack-game-on', \$go_man['require_scripts'], true));
+gs_check('GAME ON requires the engine script', in_array('smack-game-on', $go_man['require_scripts'], true));
 echo "PASS: GAME ON shared field regression\n";
 // ===== SNAPSMACK EOF =====
