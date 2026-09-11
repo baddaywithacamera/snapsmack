@@ -12,7 +12,8 @@ $checks = [
     'queue display includes priority' => str_contains($source, 'created_at, priority'),
     'queue totals are not derived from capped rows' => str_contains($source, "SUM(status = 'queued') AS queued_count")
         && !str_contains($source, "foreach (\$queue as \$q) { (\$q['status'] === 'failed')"),
-    'priority classes make backfills explicit' => str_contains($source, "return 'backfill';")
+    'priority classes make backfills explicit' => str_contains($source, "return 'routine update';")
+        && str_contains($source, "return 'backfill';")
         && str_contains($source, 'backfills dead last'),
 ];
 
