@@ -93,11 +93,34 @@
     // Machines that report little memory or few cores get at most half the
     // boards, whatever the site setting says. A backdrop must never take the
     // browser down; the owner's density control still applies below this cap.
+    var lite = false;
     function lowEndCap() {
         var mem = Number(navigator.deviceMemory || 0);        // GB, Chrome/Edge only
         var cores = Number(navigator.hardwareConcurrency || 0);
-        if ((mem && mem <= 2) || (cores && cores <= 2)) return 0.5;
+        if (lite || (mem && mem <= 2) || (cores && cores <= 2)) return 0.5;
         return 1;
+    }
+    function goLite(reason) {
+        if (lite) return;
+        lite = true;
+        root.classList.add('is-lite');
+        root.dataset.activity = '1';   // one board at a time, long pauses
+        root.dataset.liteReason = reason;
+        layoutField();
+    }
+    // Firefox never reports deviceMemory, so hardware hints miss most old
+    // machines. Measure instead: sample frame times for the first three seconds
+    // of motion and, if the page cannot hold ~25 fps, switch to LITE.
+    function watchFrameTime() {
+        if (reduced.matches) return;
+        var frames = 0, slow = 0, last = performance.now(), start = last;
+        function tick(now) {
+            var dt = now - last; last = now;
+            if (dt > 0 && dt < 1000) { frames++; if (dt > 40) slow++; }
+            if (now - start < 3000) { window.requestAnimationFrame(tick); return; }
+            if (frames >= 20 && slow / frames > 0.35) goLite('frame-time');
+        }
+        window.requestAnimationFrame(tick);
     }
 
     function layoutField() {
@@ -803,8 +826,10 @@
         el.addEventListener('click', function () { openModal(board); });
     });
     layoutField();
+    if (lowEndCap() < 1) goLite('hardware');
     window.requestAnimationFrame(layoutField);
     scheduleMotion();
+    window.setTimeout(watchFrameTime, 1500);   // after first paint settles
     // The puzzle field and the content grid are siblings. Scoping this lookup to
     // `root` (the puzzle field) returned zero frames, so Border Travel could be
     // enabled yet never animate a photograph border.
