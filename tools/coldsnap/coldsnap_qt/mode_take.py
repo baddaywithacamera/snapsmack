@@ -150,6 +150,9 @@ class TakeMode(QWidget):
             "in the page as you write",
             self._insert_mosaic)
         self.body.canvas.mosaicEditRequested.connect(self._canvas_mosaic)
+        # IMG picks from THIS site's cached Media Gallery (COLD STORAGE), by picture.
+        self.body.canvas.set_site_provider(
+            lambda: ((self.app_config() or {}).get("url") or "").strip())
         card.body.addWidget(self.body, 1)   # the write-up is the main event — it grows
         card.body.addWidget(hint(
             "MOSAIC = a tiled grid of this post's photos at the marker. For a "

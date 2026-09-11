@@ -175,8 +175,8 @@ class _Objects(QPyTextObject):
         else:
             painter.setPen(QColor(theme.DIM))
             painter.drawText(box, Qt.AlignCenter,
-                             f"IMG #{data.get('img_id', '?')} from the site's Media Library\n"
-                             f"{size} · {align}")
+                             f"IMG #{data.get('img_id', '?')} from the site's Media Gallery\n"
+                             f"(not in COLD STORAGE yet)  {size} · {align}")
         painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
         painter.drawRect(box.adjusted(0, 0, -1, -1))
 
@@ -217,6 +217,7 @@ class BiggieCanvas(QTextEdit):
         self.allow_mosaic = allow_mosaic
         self.bucket = []                 # ordered local paths of the post's photos
         self._image_resolver = None      # callable(img_id, width) -> QPixmap|None
+        self._site_provider = None       # callable() -> site url; unlocks the gallery picker
         self._pending_obj_pos = None     # document position of a mosaic being edited
         self._guard = False
         self.setAcceptRichText(False)    # typed/pasted text stays plain — the site parses it
@@ -248,13 +249,30 @@ class BiggieCanvas(QTextEdit):
     def set_image_resolver(self, fn):
         self._image_resolver = fn
 
-    def image_pixmap(self, img_id: str, width: int):
-        if self._image_resolver is None:
-            return None
+    def set_site_provider(self, fn):
+        """Tell the canvas which site it writes for: IMG becomes a picture picker
+        from that site's cached Media Gallery, and inline images paint for real."""
+        self._site_provider = fn
+
+    def _site(self) -> str:
         try:
-            return self._image_resolver(img_id, width)
+            return str(self._site_provider() or "") if self._site_provider else ""
+        except Exception:  # noqa: BLE001
+            return ""
+
+    def image_pixmap(self, img_id: str, width: int):
+        try:
+            if self._image_resolver is not None:
+                return self._image_resolver(img_id, width)
+            site = self._site()
+            if site:
+                from .gallery_picker import gallery_thumb_path
+                from .widgets import load_pixmap
+                path = gallery_thumb_path(site, img_id)
+                return load_pixmap(path, max(64, int(width))) if path else None
         except Exception:  # noqa: BLE001 — a preview must never break typing
             return None
+        return None
 
     # -- block kinds ----------------------------------------------------------
     def _char_format_for(self, kind: str) -> QTextCharFormat:
@@ -544,7 +562,12 @@ class BiggieCanvas(QTextEdit):
 
     def _edit_image(self, hit=None):
         data = hit[1] if hit else {}
-        dlg = _ImageDialog(self, data)
+        site = self._site()
+        if site:
+            from .gallery_picker import GalleryPicker
+            dlg = GalleryPicker(self, site, data)
+        else:
+            dlg = _ImageDialog(self, data)
         if dlg.exec() == QDialog.Accepted:
             d = dlg.values()
             if not d["img_id"]:
@@ -852,9 +875,9 @@ def _export_block(block, nested: bool = False) -> list:
 class _ImageDialog(QDialog):
     def __init__(self, parent, data: dict):
         super().__init__(parent)
-        self.setWindowTitle("Image from the site's Media Library")
+        self.setWindowTitle("Image from the site's Media Gallery")
         col = QVBoxLayout(self)
-        col.addWidget(QLabel("Media Library image ID (from the site's Media Library page):"))
+        col.addWidget(QLabel("No site selected, so no pictures to show. Media Gallery image id:"))
         self.img_id = QLineEdit(str(data.get("img_id", "")))
         col.addWidget(self.img_id)
         row = QHBoxLayout()
@@ -899,7 +922,7 @@ class CanvasBar(QWidget):
         self._btn(row, "UL", "Bullet list", lambda: canvas.set_list(False))
         self._btn(row, "OL", "Numbered list", lambda: canvas.set_list(True))
         self._sep(row)
-        self._btn(row, "IMG", "One image from the site's Media Library", canvas._edit_image)
+        self._btn(row, "IMG", "One image from this site's Media Gallery — pick it by picture", canvas._edit_image)
         self._btn(row, "COL 2", "Two columns side by side", lambda: canvas.insert_columns(2))
         self._btn(row, "COL 3", "Three columns", lambda: canvas.insert_columns(3))
         self._btn(row, "HR", "A divider line", canvas.insert_hr)
