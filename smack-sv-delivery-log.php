@@ -32,6 +32,8 @@ try {
 $fedi_on   = ($settings['fediverse_enabled'] ?? '0') === '1';
 $push_mode = ($settings['fediverse_push_mode'] ?? 'auto') === 'manual' ? 'manual' : 'auto';
 $cron_last = (string)($settings['fediverse_cron_last_run'] ?? '');
+$cron_status = (string)($settings['fediverse_cron_last_status'] ?? '');
+$cron_completed = (string)($settings['fediverse_cron_last_completed'] ?? '');
 /* How many the LAST cron run actually delivered. Null on installs older than the
    build that started recording it — successful sends are deleted, so without this
    the page can only ever show the waiting line, never the wins. */
@@ -164,8 +166,10 @@ if (!$fedi_on) {
 } else {
     $verdict = 'All caught up — nothing waiting, nothing failing.';
 }
-if ($cron_sent !== null && $cron_sent > 0) {
-    $verdict .= ' Last run delivered ' . $cron_sent . '.';
+if ($cron_status === 'running') {
+    $verdict .= ' A worker is running now; the completed-run totals below belong to the previous run.';
+} elseif ($cron_sent !== null && $cron_sent > 0) {
+    $verdict .= ' Last completed run delivered ' . $cron_sent . '.';
 }
 
 /* Recent posts and whether they went out. fedi_pushed_at is stamped when the sweep
@@ -250,20 +254,26 @@ include 'core/sidebar.php';
                     <td><?php echo (int)$follower_count; ?></td>
                 </tr>
                 <tr>
-                    <th>Delivery cron last ran</th>
+                    <th>Worker activity</th>
                     <td>
-                        <?php echo $cron_last !== ''
-                            ? htmlspecialchars(dlog_age($cron_last)) . ' <span class="dim">(' . htmlspecialchars($cron_last) . ')</span>'
-                            : '&#10007; never'; ?>
+                        <?php if ($cron_status === 'running'): ?>
+                            running now; started <?php echo htmlspecialchars(dlog_age($cron_last)); ?>
+                            <span class="dim">(<?php echo htmlspecialchars($cron_last); ?>)</span>
+                        <?php else: ?>
+                            <?php echo $cron_last !== ''
+                                ? htmlspecialchars(dlog_age($cron_last)) . ' <span class="dim">(' . htmlspecialchars($cron_last) . ')</span>'
+                                : '&#10007; never'; ?>
+                        <?php endif; ?>
                     </td>
                 </tr>
                 <tr>
-                    <th>Last run delivered</th>
+                    <th>Last completed run</th>
                     <td>
                         <?php if ($cron_sent === null): ?>
                             <span class="dim">not recorded yet</span>
                         <?php else: ?>
                             <?php echo (int)$cron_sent; ?> sent<?php if ((int)$cron_failed > 0): ?>, <?php echo (int)$cron_failed; ?> failed<?php endif; ?>
+                            <?php if ($cron_completed !== ''): ?><span class="dim">(<?php echo htmlspecialchars($cron_completed); ?>)</span><?php endif; ?>
                         <?php endif; ?>
                     </td>
                 </tr>

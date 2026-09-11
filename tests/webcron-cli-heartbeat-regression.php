@@ -7,7 +7,8 @@ $fedi = file_get_contents($root . '/cron-fediverse.php');
 $rss = file_get_contents($root . '/cron-rss-fetch.php');
 $checks = [
     [str_contains($fedi, "'fediverse_cli_cron_last_run'"), 'federation CLI writes its own heartbeat'],
-    [str_contains($web, "['fediverse_cli_cron_last_run']") && str_contains($web, '< 1500'), 'fresh federation CLI heartbeat suppresses web fallback'],
+    [!str_contains($web, "['fediverse_cli_cron_last_run']"), 'web fallback is not suppressed for 25 minutes by a stale CLI heartbeat'],
+    [str_contains($web, "cron_job_inspect('# snapsmack-fediverse'") && str_contains($web, "cron_register_job('*/10 * * * *'"), 'authenticated fleet tick repairs a missing or invalid federation cron'],
     [str_contains($rss, "'rss_cli_cron_last_run'") && str_contains($rss, "php_sapi_name() === 'cli'"), 'RSS CLI writes its own heartbeat only from CLI'],
     [str_contains($web, "['rss_cli_cron_last_run']") && str_contains($web, '< 5400'), 'fresh RSS CLI heartbeat suppresses web fallback'],
     [!str_contains($index, 'fediverse-webcron.php') && !str_contains($index, 'sv_web_cron_tick'), 'public index never invokes background cron work'],
