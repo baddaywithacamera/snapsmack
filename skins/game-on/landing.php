@@ -152,6 +152,19 @@ $grid_posts = $grid_stmt->fetchAll();
 require_once dirname(__DIR__, 2) . '/core/trigram.php';
 if (function_exists('trigram_align_backfill')) $grid_posts = trigram_align_backfill($grid_posts);
 
+// ── Feed paging, server side ────────────────────────────────────────────────
+// The landing used to send EVERY post's tile in the HTML (thousands of tiles,
+// megabytes of markup) and rely on the browser to hide most of it. Now a page
+// carries one batch; ?p=N carries the next, and ss-engine-tag-infinite.js
+// appends it as the reader nears the bottom (the same mechanism hashtag pages
+// have used all along). The query above stays whole so trigram alignment and
+// the post count are computed over the full archive; only the HTML is sliced.
+$_feed_per   = 120;                                   // == GRID_BATCH in the reveal engine
+$_feed_page  = max(1, (int)($_GET['p'] ?? 1));
+$_feed_total = count($grid_posts);
+$grid_posts  = array_slice($grid_posts, ($_feed_page - 1) * $_feed_per, $_feed_per);
+$_feed_more  = $_feed_total > $_feed_page * $_feed_per;
+
 include dirname(__DIR__, 2) . '/core/meta.php';
 
 // GAME ON's living background has a deliberately different image pool from the
@@ -277,14 +290,6 @@ $_go_candidate_sample = array_slice($_go_puzzle_pool, 0, 288);   // pool is alre
 
         $col = 0; // track current column position (0, 1, 2)
 
-        // Server-side fold. The reveal engine (ss-engine-progressive-reveal.js)
-        // shows the first GRID_BATCH tiles and folds the rest with .go-fold. Doing
-        // that here too means a 4,000-post landing is parsed but never laid out or
-        // painted beyond the first batch until the reader scrolls — the reveal
-        // script then unfolds exactly the same tiles it always did. Counts every
-        // .go-tile in order, phantoms included, because the engine does.
-        $_go_fold_after = 120;   // == GRID_BATCH in the reveal engine
-        $_go_emitted = 0;
         foreach ($grid_posts as $post):
             $go_slot   = (int)($post['trigram_slot'] ?? 0);
             $go_orient = $post['trigram_orientation'] ?? 'h';
@@ -298,7 +303,7 @@ $_go_candidate_sample = array_slice($_go_puzzle_pool, 0, 288);   // pool is alre
                 $phantoms = 3 - $col;
                 for ($ph = 0; $ph < $phantoms; $ph++):
         ?>
-        <div class="go-tile go-tile--phantom<?php echo (++$_go_emitted > $_go_fold_after) ? ' go-fold' : ''; ?>" aria-hidden="true"></div>
+        <div class="go-tile go-tile--phantom" aria-hidden="true"></div>
         <?php
                     $col = ($col + 1) % 3;
                 endfor;
@@ -376,7 +381,7 @@ $_go_candidate_sample = array_slice($_go_puzzle_pool, 0, 288);   // pool is alre
                 );
             }
         ?>
-        <div class="<?php echo $tile_class; ?><?php echo (++$_go_emitted > $_go_fold_after) ? ' go-fold' : ''; ?>"
+        <div class="<?php echo $tile_class; ?>"
              data-trigram-id="<?php echo $go_id; ?>"
              data-trigram-slot="<?php echo $go_slot; ?>"
              <?php if ($tile_css_vars): ?>style="<?php echo $tile_css_vars; ?>"<?php endif; ?>>
@@ -414,7 +419,11 @@ $_go_candidate_sample = array_slice($_go_puzzle_pool, 0, 288);   // pool is alre
             $col = ($col + 1) % 3;
         endforeach; ?>
 
-        <?php if (empty($grid_posts)): ?>
+        <?php if ($_feed_more): ?>
+        <div id="go-sentinel" class="ss-feed-sentinel" data-feed data-next="<?php echo $_feed_page + 1; ?>" data-base="<?php echo htmlspecialchars(BASE_URL); ?>" aria-hidden="true"></div>
+        <?php endif; ?>
+
+        <?php if (empty($grid_posts) && $_feed_page === 1): ?>
         <div style="grid-column: 1/-1; padding: 60px 20px; text-align: center; color: var(--text-secondary);">
             <p>No posts yet. Start by uploading your first photograph.</p>
         </div>

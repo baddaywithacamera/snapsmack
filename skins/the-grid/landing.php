@@ -149,6 +149,19 @@ $grid_posts = $grid_stmt->fetchAll();
 require_once dirname(__DIR__, 2) . '/core/trigram.php';
 if (function_exists('trigram_align_backfill')) $grid_posts = trigram_align_backfill($grid_posts);
 
+// ── Feed paging, server side ────────────────────────────────────────────────
+// The landing used to send EVERY post's tile in the HTML (thousands of tiles,
+// megabytes of markup) and rely on the browser to hide most of it. Now a page
+// carries one batch; ?p=N carries the next, and ss-engine-tag-infinite.js
+// appends it as the reader nears the bottom (the same mechanism hashtag pages
+// have used all along). The query above stays whole so trigram alignment and
+// the post count are computed over the full archive; only the HTML is sliced.
+$_feed_per   = 120;                                   // == GRID_BATCH in the reveal engine
+$_feed_page  = max(1, (int)($_GET['p'] ?? 1));
+$_feed_total = count($grid_posts);
+$grid_posts  = array_slice($grid_posts, ($_feed_page - 1) * $_feed_per, $_feed_per);
+$_feed_more  = $_feed_total > $_feed_page * $_feed_per;
+
 include dirname(__DIR__, 2) . '/core/meta.php';
 ?>
 <div class="tg-content-wrap">
@@ -291,7 +304,11 @@ include dirname(__DIR__, 2) . '/core/meta.php';
             $col = ($col + 1) % 3;
         endforeach; ?>
 
-        <?php if (empty($grid_posts)): ?>
+        <?php if ($_feed_more): ?>
+        <div id="tg-sentinel" class="ss-feed-sentinel" data-feed data-next="<?php echo $_feed_page + 1; ?>" data-base="<?php echo htmlspecialchars(BASE_URL); ?>" aria-hidden="true"></div>
+        <?php endif; ?>
+
+        <?php if (empty($grid_posts) && $_feed_page === 1): ?>
         <div style="grid-column: 1/-1; padding: 60px 20px; text-align: center; color: var(--text-secondary);">
             <p>No posts yet. Start by uploading your first photograph.</p>
         </div>

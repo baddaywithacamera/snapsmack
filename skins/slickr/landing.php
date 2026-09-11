@@ -140,6 +140,17 @@ include dirname(__DIR__, 2) . '/core/meta.php';
             }
         }
         if ($last_full_ar_sum <= 0) $last_full_ar_sum = $ref_w / $target_row_h;
+
+        // ── Feed paging, server side ──────────────────────────────────────────
+        // Rows are packed over the WHOLE photostream (cheap: aspect ratios only),
+        // then only one page of rows is rendered. foreverphotograph.ing was
+        // sending 9,980 items / 7.5 MB of HTML on every landing; now it sends 25
+        // rows and ss-engine-tag-infinite.js fetches ?p=N for the rest.
+        $_feed_per_rows = 25;                              // == ROW_BATCH in the reveal engine
+        $_feed_page     = max(1, (int)($_GET['p'] ?? 1));
+        $_rows_total    = count($rows);
+        $rows           = array_slice($rows, ($_feed_page - 1) * $_feed_per_rows, $_feed_per_rows);
+        $_feed_more     = $_rows_total > $_feed_page * $_feed_per_rows;
         ?>
         <div id="justified-grid" style="--justified-gap: <?php echo $gap; ?>px; --justified-row-height: <?php echo $target_row_h; ?>px; --last-row-ar-sum: <?php echo round($last_full_ar_sum, 4); ?>;">
             <?php if (!empty($images)): ?>
@@ -172,6 +183,9 @@ include dirname(__DIR__, 2) . '/core/meta.php';
                 </div>
             <?php endif; ?>
         </div>
+        <?php if ($_feed_more): ?>
+        <div id="justified-sentinel" class="ss-feed-sentinel" data-feed data-next="<?php echo $_feed_page + 1; ?>" data-base="<?php echo htmlspecialchars(BASE_URL); ?>" aria-hidden="true"></div>
+        <?php endif; ?>
     </main>
 
 </div><!-- /.sl-landing -->

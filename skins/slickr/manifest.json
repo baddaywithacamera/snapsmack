@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SLICKR",
-    "version": "1.0.22",
+    "version": "1.0.23",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "Flickr, the way it was. Justified masonry archive, classic solo view with EXIF sidebar, albums directory. Built for migrated Flickr archives — includes an optional Flickr provenance badge on imported images.",
@@ -29,6 +29,7 @@
         "smack-image-fade-load",
         "smack-lazyload",
         "smack-progressive-reveal",
+        "smack-tag-infinite",
         "smack-justified-lib",
         "smack-justified",
         "smack-community",
