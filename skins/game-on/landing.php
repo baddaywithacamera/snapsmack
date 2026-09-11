@@ -277,6 +277,14 @@ $_go_candidate_sample = array_slice($_go_puzzle_pool, 0, 288);   // pool is alre
 
         $col = 0; // track current column position (0, 1, 2)
 
+        // Server-side fold. The reveal engine (ss-engine-progressive-reveal.js)
+        // shows the first GRID_BATCH tiles and folds the rest with .go-fold. Doing
+        // that here too means a 4,000-post landing is parsed but never laid out or
+        // painted beyond the first batch until the reader scrolls — the reveal
+        // script then unfolds exactly the same tiles it always did. Counts every
+        // .go-tile in order, phantoms included, because the engine does.
+        $_go_fold_after = 120;   // == GRID_BATCH in the reveal engine
+        $_go_emitted = 0;
         foreach ($grid_posts as $post):
             $go_slot   = (int)($post['trigram_slot'] ?? 0);
             $go_orient = $post['trigram_orientation'] ?? 'h';
@@ -290,7 +298,7 @@ $_go_candidate_sample = array_slice($_go_puzzle_pool, 0, 288);   // pool is alre
                 $phantoms = 3 - $col;
                 for ($ph = 0; $ph < $phantoms; $ph++):
         ?>
-        <div class="go-tile go-tile--phantom" aria-hidden="true"></div>
+        <div class="go-tile go-tile--phantom<?php echo (++$_go_emitted > $_go_fold_after) ? ' go-fold' : ''; ?>" aria-hidden="true"></div>
         <?php
                     $col = ($col + 1) % 3;
                 endfor;
@@ -368,7 +376,7 @@ $_go_candidate_sample = array_slice($_go_puzzle_pool, 0, 288);   // pool is alre
                 );
             }
         ?>
-        <div class="<?php echo $tile_class; ?>"
+        <div class="<?php echo $tile_class; ?><?php echo (++$_go_emitted > $_go_fold_after) ? ' go-fold' : ''; ?>"
              data-trigram-id="<?php echo $go_id; ?>"
              data-trigram-slot="<?php echo $go_slot; ?>"
              <?php if ($tile_css_vars): ?>style="<?php echo $tile_css_vars; ?>"<?php endif; ?>>
