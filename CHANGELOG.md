@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.702D "CLEAR THE ROAD" — 2026-09-11
+- **Fresh posts can no longer be buried behind routine profile updates.** Delivery order is now handshakes, boosts, new posts, routine updates, and finally catalogue backfills. Existing queued actor-profile updates are repaired into the routine-update band during table maintenance.
+- **The human challenge Feed no longer collides with the existing `/feed` RSS endpoint.** The previous-week gallery now uses `/challenge-feed`; `/feed` remains machine-readable RSS and is no longer exposed as the navigation destination.
+
 ## 0.7.700D "LAST WEEK" — 2026-09-11
 - **Feed and Board are no longer two links to the same live contest.** Board remains the current challenge; Feed now shows the most recently completed challenge using that round's own hashtag and entries.
 
