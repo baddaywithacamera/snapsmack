@@ -90,8 +90,19 @@
         });
     }
 
+    // Machines that report little memory or few cores get at most half the
+    // boards, whatever the site setting says. A backdrop must never take the
+    // browser down; the owner's density control still applies below this cap.
+    function lowEndCap() {
+        var mem = Number(navigator.deviceMemory || 0);        // GB, Chrome/Edge only
+        var cores = Number(navigator.hardwareConcurrency || 0);
+        if ((mem && mem <= 2) || (cores && cores <= 2)) return 0.5;
+        return 1;
+    }
+
     function layoutField() {
         var amount = Math.max(0, Math.min(100, Number(root.dataset.puzzleDensity || 100))) / 100;
+        amount = Math.min(amount, lowEndCap());
         var viewportWidth = document.documentElement.clientWidth;
         // In quirks-mode documents documentElement.clientHeight can be the
         // entire page height (thousands of pixels), not the visible window.
@@ -126,8 +137,19 @@
         }
     }
 
+    // A board gets its GPU layers only while it slides (see .is-moving in the
+    // skin CSS). Standing will-change on every piece was ~2,160 layers at rest.
+    function markMoving(board, dur) {
+        board.el.classList.add('is-moving');
+        window.clearTimeout(board.movingTimer);
+        board.movingTimer = window.setTimeout(function () {
+            board.el.classList.remove('is-moving');
+        }, dur + 80);
+    }
+
     function positionTiles(board, animate) {
         var dur = animate ? durationFor(board) : 0;
+        if (animate) markMoving(board, dur);
         var movable = legal(board.empty);
         board.tiles.forEach(function (tile) {
             var slot = board.slots.indexOf(tile._piece);
