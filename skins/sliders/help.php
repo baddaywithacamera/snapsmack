@@ -11,6 +11,10 @@
 // supports. The HTML body is unchanged.
 return [
   [
+      'title' => 'Post Viewer Backdrop',
+      'body'  => 'When a post opens in the viewer, a full-screen layer sits between it and the page. Under POST VIEWER you choose the colour of that layer and how solid it is. Black at 80% is the default; white at 100% gives a high-key viewer, and a lower opacity lets the page show through behind the photograph.',
+  ],
+  [
     'title' => 'Sliders',
     'body'  => <<<'HTML'
 <p>SLIDERS keeps the normal GRAMOFSMACK three-across grid, carousels and post pages. Behind them, GLIDE moves a second wall made from your published photographs.</p>
