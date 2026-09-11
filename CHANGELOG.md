@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.693D — 2026-09-10
+
+- Curator relay recovery now seeds each newly accepted photographer's recent public outbox into the GLOBAL feed. ActivityPub follows do not replay history by themselves, which previously left GLOBAL blank until a followed photographer happened to publish again.
+- The curator ledger now separates directory state from the real federation follow state and reports accepted follows explicitly; queued/pending follows are no longer presented as if they were already active.
+
 ## 0.7.692D — 2026-09-10
 
 - **Fleet deployments now repair enabled cron registrations after every update.** The interactive updater already refreshed tagged crontab commands after extraction, but the multisite fleet-update endpoint bypassed that finalization step. When an install path or packaged command changed, the fleet left the old absolute command behind and federation stopped until an administrator manually registered it again. The fleet path now runs the same idempotent refresh after migrations, preserves deliberately disabled jobs, and reports refresh failures to the hub response.

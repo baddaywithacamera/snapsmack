@@ -57,6 +57,7 @@ function sc_curator_ensure_tables(PDO $pdo): void {
         last_seen_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
         missing_since datetime DEFAULT NULL,
         last_checked_at datetime DEFAULT NULL,
+        last_outbox_check_at datetime DEFAULT NULL,
         next_check_at datetime DEFAULT NULL,
         failure_count int unsigned NOT NULL DEFAULT 0,
         last_error varchar(500) DEFAULT NULL,
@@ -65,6 +66,14 @@ function sc_curator_ensure_tables(PDO $pdo): void {
         KEY idx_curator_work (state, next_check_at),
         KEY idx_curator_generation (source, seen_generation)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    try {
+        $has = (int)$pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_curator_directory'
+              AND COLUMN_NAME='last_outbox_check_at'")->fetchColumn();
+        if ($has === 0) {
+            $pdo->exec("ALTER TABLE snap_curator_directory ADD COLUMN last_outbox_check_at datetime DEFAULT NULL AFTER last_checked_at");
+        }
+    } catch (Throwable $e) {}
 }
 
 function sc_curator_json_page(?string $cursor): array {
