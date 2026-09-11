@@ -35,6 +35,10 @@ return [
             'body'  => 'Every grid tile carries a soft dark glow just outside its animated ring, so a white ring still stands out when it lands on the white stripe of the flag. Under BORDER WAVE, Tile Outer Glow Size sets how far it spreads (0 turns it off) and Tile Outer Glow Strength sets how dark it is. The glow is always dark on purpose: it is there for contrast, not colour.',
         ],
         [
+            'title' => 'Post Viewer Backdrop',
+            'body'  => 'When a post opens in the viewer, a full-screen layer sits between it and the flag. Under POST VIEWER you choose that layer's colour and how solid it is. Black at 80% is the default; a lighter colour or a lower opacity lets more of the waving flag show through behind the photograph.',
+        ],
+        [
             'title' => 'Motion & Accessibility',
             'body'  => 'The waving flag and animated tile borders respect your operating system\'s "reduce motion" setting. When reduced motion is enabled, PARADE paints a still flag and a static border state. Animation also pauses whenever the browser tab is hidden.',
         ],

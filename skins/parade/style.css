@@ -62,6 +62,8 @@
     --tile-glow-op: 0.35;  /* outer glow strength */
     --tile-glow-color: 0, 0, 0;   /* the glow is always DARK: it exists so a white
                                      ring still reads on the flag's white stripe */
+    --pa-modal-backdrop-color:   #000000;   /* POST VIEWER backdrop; Skin Admin overrides */
+    --pa-modal-backdrop-opacity: 80%;
     --tile-radius:  4px;   /* tile corner radius    */
     --ring-op:      1;     /* border ring opacity   */
 }
@@ -907,7 +909,9 @@ body.pa-modal-open { overflow: hidden; }
 .pa-modal-backdrop {
     position:   absolute;
     inset:      0;
-    background: rgba(0, 0, 0, 0.8);
+    /* Colour + opacity are POST VIEWER controls (same pattern as GAME ON's
+       puzzle backdrop). Was hard-coded black at 80%. */
+    background: color-mix(in srgb, var(--pa-modal-backdrop-color, #000000) var(--pa-modal-backdrop-opacity, 80%), transparent);
 }
 
 .pa-modal-frame {
