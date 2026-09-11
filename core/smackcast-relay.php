@@ -397,4 +397,50 @@ function sc_relay_recover_member_outboxes(PDO $pdo, array $settings, int $member
     return [$checked, $recovered];
 }
 
+/**
+ * Seed GLOBAL from newly accepted curator follows. ActivityPub Follow does not
+ * replay history, so without this bounded seven-day pass a healthy curator can
+ * still leave every spoke's Global tab blank until somebody posts again.
+ */
+function sc_relay_recover_curator_outboxes(PDO $pdo, array $settings, int $actors = 2, int $items = 10): array {
+    if (!sc_relay_is_hub($settings)
+        || ($settings['smackcast_outbox_recovery_enabled'] ?? '0') !== '1') return [0, 0];
+    if (function_exists('sc_curator_ensure_tables')) sc_curator_ensure_tables($pdo);
+    $actors = max(1, min(10, $actors));
+    $items = max(1, min(30, $items));
+    try {
+        $q = $pdo->query("SELECT c.id,c.actor_url FROM snap_curator_directory c
+            JOIN snap_ap_following f ON f.id=c.follow_row_id
+            WHERE c.state IN ('following','followed') AND f.state='accepted'
+              AND c.actor_url IS NOT NULL AND c.actor_url<>''
+            ORDER BY COALESCE(c.last_outbox_check_at,'1970-01-01') ASC,c.id ASC LIMIT {$actors}");
+    } catch (Throwable $e) { return [0, 0]; }
+    $checked = 0; $recovered = 0; $cutoff = time() - 604800;
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $actor_url = (string)$row['actor_url'];
+        $actor = sv_fetch_ap($actor_url, $settings);
+        $outbox_url = is_array($actor) ? (string)($actor['outbox'] ?? '') : '';
+        $collection = $outbox_url !== '' ? sv_fetch_ap($outbox_url, $settings) : null;
+        if (is_array($collection) && isset($collection['first']) && is_string($collection['first'])) {
+            $first = sv_fetch_ap($collection['first'], $settings);
+            if (is_array($first)) $collection = $first;
+        }
+        $activities = is_array($collection)
+            ? ($collection['orderedItems'] ?? $collection['items'] ?? []) : [];
+        if (!is_array($activities)) $activities = [];
+        foreach (array_slice($activities, 0, $items) as $activity) {
+            if (!is_array($activity) || ($activity['type'] ?? '') !== 'Create') continue;
+            $object = $activity['object'] ?? [];
+            if (!is_array($object)) continue;
+            $published = strtotime((string)($object['published'] ?? $activity['published'] ?? ''));
+            if ($published !== false && $published < $cutoff) continue;
+            $recovered += sc_relay_fanout($pdo, $settings, $activity, $actor_url) > 0 ? 1 : 0;
+        }
+        $pdo->prepare("UPDATE snap_curator_directory SET last_outbox_check_at=NOW() WHERE id=?")
+            ->execute([(int)$row['id']]);
+        $checked++;
+    }
+    return [$checked, $recovered];
+}
+
 // ===== SNAPSMACK EOF =====
