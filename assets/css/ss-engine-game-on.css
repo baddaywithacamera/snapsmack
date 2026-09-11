@@ -64,7 +64,16 @@
     box-shadow: 0 4px 14px rgba(0,0,0,.52);
     cursor: pointer;
     isolation: isolate;
+    /* Each board is a fixed-size box: tell the browser its layout and paint
+       never leak out, so one board's slide never re-lays-out the field. */
+    contain: layout paint style;
 }
+/* LITE mode — the engine adds .is-lite when a machine is struggling (measured
+   frame time) or reports little memory / few cores. Shadows are the costliest
+   paint on old GPUs; the boards still slide, they just stop glowing. */
+.go-puzzle-field.is-lite .go-puzzle { box-shadow: none; }
+.go-puzzle-field.is-lite .go-puzzle::after { display: none; }
+.go-puzzle-field.is-lite .go-puzzle-piece { box-shadow: none; border-radius: 0; }
 .go-puzzle::after {
     content: "";
     position: absolute;
