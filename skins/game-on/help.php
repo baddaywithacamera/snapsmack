@@ -32,7 +32,7 @@ return [
         ],
         [
             'title' => 'Older Computers and Browser Load',
-            'body'  => 'The background is 144 live sliding puzzles. The page keeps that cheap: only a board that is actually sliding asks the graphics card for layers, the hidden photo list the browser re-samples from is a few hundred pictures rather than the whole archive, and a machine that reports little memory or few processor cores automatically gets at most half the boards. If a visitor still reports trouble, lower Background Puzzle Amount under GAME ON, or set Background Activity to 1. Reduce-motion settings in the operating system stop the sliding entirely.',
+            'body'  => 'The background is 144 live sliding puzzles. The page keeps that cheap: only a board that is actually sliding asks the graphics card for layers; the hidden photo list the browser re-samples from is a few hundred pictures rather than the whole archive; the feed arrives with everything past the first 120 tiles already folded, so a big archive is never laid out at once; and each board is sealed off so one slide never re-lays-out the field. A machine that reports little memory or few cores, or that cannot hold about 25 frames a second in the first seconds, drops into LITE automatically: half the boards, one moving at a time, no shadows. If a visitor still reports trouble, lower Background Puzzle Amount under GAME ON, or set Background Activity to 1. Reduce-motion settings in the operating system stop the sliding entirely.',
         ],
         [
             'title' => 'Background Motion and Colour',
