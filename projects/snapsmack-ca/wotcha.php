@@ -390,10 +390,10 @@ require_once __DIR__ . '/includes/header.php';
                 <h3>Work you can reuse and keep</h3>
                 <ul class="feature-list">
                     <li><strong>LEWKS:</strong> preview reusable treatments on the photograph actually being edited, adjust their strength, and keep the resulting controls editable.</li>
-                    <li><strong>TEACH ME:</strong> inspect how a built-in LEWK works step by step instead of accepting a mystery preset.</li>
+                    <li><strong>TEACH ME:</strong> pick any built-in LEWK and press TEACH ME. The editor plays the recipe back one adjustment at a time, on your own photograph, with the real values, so you watch the look build instead of accepting a mystery preset. Then change any step you like. Every LEWK is a lesson.</li>
                     <li><strong>Recipes and batch work:</strong> save repeatable operations and apply them to more than one photograph.</li>
                     <li><strong>Open projects:</strong> a <code>.slapper</code> file is an inspectable ZIP containing human-readable instructions and standard assets.</li>
-                    <li><strong>Practical exits:</strong> layered PSD plus finished JPEG, PNG and TIFF exports.</li>
+                    <li><strong>Practical exits:</strong> finished JPEG, PNG and TIFF, plus two layered formats: PSD for Photoshop-class tools and OpenRaster (<code>.ora</code>) for GIMP, Krita and friends. Both carry a full-resolution visible composite and a named checkpoint for the base and every layer, so another editor can pick up where you left off. No lock-in to SNAP SLAPPER.</li>
                 </ul>
 
                 <div class="status-note"><strong>What BLOG COPY does today:</strong> it prepares a local, collision-safe copy for the selected SnapSmack profile and records what it staged. It does not yet upload or publish the photograph. The planned fleet publishing workflow will be announced only after it exists and survives real use.</div>
