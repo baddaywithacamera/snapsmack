@@ -360,7 +360,7 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <h2><a href="#snap-slapper-editor">SNAP SLAPPER Is Ready for the Box O&rsquo; Tricks</a></h2>
                 <p>There is a point in every experiment where the creature stops being an interesting collection of organs and gets up off the table. SNAP SLAPPER just reached it.</p>
-                <p>It is now good enough to join <a href="tools.php#snap-slapper"><strong>BOX O&rsquo; TRICKS!</strong></a>: a local photo manager and non-destructive editor for photographers who want their archive and image processing on their own computer.</p>
+                <p>It is now good enough to join <a href="tools.php#snap-slapper"><strong>BOX O&rsquo; TRICKS!</strong></a>: a local photo manager and non-destructive photo editor for photographers who want their archive and image processing on their own computer. Non-destructive means the original file is never altered: every adjustment is a layer you can change or remove, and an export is a new file.</p>
 
                 <h3>The photo manager</h3>
                 <ul class="feature-list">
@@ -430,7 +430,7 @@ require_once __DIR__ . '/includes/header.php';
                     <span class="post-tag">Desktop</span>
                 </div>
                 <h2><a href="#snap-slapper-lab">SNAP SLAPPER Has Escaped the Lab</a></h2>
-                <p>The framework is built. SNAP SLAPPER is alive: a fast, private desktop photo library for browsing, rating, tagging, organizing, editing, and exporting your photographs without feeding the whole bloody collection to somebody else&rsquo;s cloud.</p>
+                <p>The framework is built. SNAP SLAPPER is alive: a fast, private desktop photo library and non-destructive photo editor for browsing, rating, tagging, organizing, editing, and exporting your photographs without feeding the whole bloody collection to somebody else&rsquo;s cloud.</p>
                 <p>Now we&rsquo;re armouring it for the closed beta&mdash;hardening the library, sharpening the workflow, and making sure it can survive photographers doing unspeakable things to years of accumulated work.</p>
                 <p>And the mutation isn&rsquo;t finished.</p>
                 <p><strong>LEWK AGAIN</strong> was stirring inside it. It has since escaped too: <a href="#lewk-again">see what crawled out of the lab</a>.</p>
