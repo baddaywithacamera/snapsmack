@@ -67,21 +67,28 @@ class EffectiveBackupKey(unittest.TestCase):
             lambda site, key, shared: calls.append(("hub", site, key, shared)) or shared)
         stub._provision_spoke_key = (
             lambda *args, **kwargs: calls.append(("spoke", args, kwargs)) or "wrong")
+        creds = types.ModuleType("snap_creds")
+        creds.get_site = lambda site, key: "HUB-AUTH" if key == "api_key_local" else ""
         old = sys.modules.get("snap_discovery")
+        old_creds = sys.modules.get("snap_creds")
         sys.modules["snap_discovery"] = stub
+        sys.modules["snap_creds"] = creds
         values = {"hub_url": "https://hub.example/", "backup_hub_key": "FLEET"}
         config.shared_cred = lambda key, default="": values.get(key, default)
         try:
             result = config.effective_backup_key({
                 "site_url": "https://hub.example",
                 "api_key": "old",
-                "extras": {"api_key_local": "HUB-AUTH"},
             })
         finally:
             if old is None:
                 sys.modules.pop("snap_discovery", None)
             else:
                 sys.modules["snap_discovery"] = old
+            if old_creds is None:
+                sys.modules.pop("snap_creds", None)
+            else:
+                sys.modules["snap_creds"] = old_creds
         self.assertEqual(result, "FLEET")
         self.assertEqual(calls, [("hub", "https://hub.example", "HUB-AUTH", "FLEET")])
 

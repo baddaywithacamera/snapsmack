@@ -19,6 +19,23 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.30 — 2026-09-11
+
+### Rebuilt — modern Qt desktop interface
+
+SUYB now opens as a focused Qt backup cockpit instead of the sprawling legacy
+tkinter control panel. The selected site, database/media/verification coverage,
+backup progress, activity, local recovery packages, restore flow, and connection
+settings have a consistent dark interface with clear hierarchy and ordinary
+language. The established backup and restore engines remain unchanged underneath.
+
+Connection testing now resolves the exact same effective backup key as a real
+backup, closing the split-brain path where Test Connection rejected a stale
+per-profile key while the engine used the shared/self-healing credential. The
+green SUYB icon from SNAP HQ is now the executable, window, and taskbar icon.
+
+---
+
 ## 0.7.29 — 2026-08-28
 
 ### Fixed — foundtextures hub backup authentication
