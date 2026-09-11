@@ -84,11 +84,14 @@ if ($cover_url === '') {
 }
 
 // ── Photostream images for the justified grid ─────────────────────────────
+// Ordered by the PHOTO'S date, newest first, like a photostream. It was id
+// DESC: a Flickr import hands out ids newest-first, which put the oldest
+// pictures at the top of foreverphotograph.ing (Sean, 2026-09-11).
 $grid_stmt = $pdo->prepare(
     "SELECT id, img_title, img_slug, img_file, img_thumb_aspect, img_width, img_height
      FROM snap_images
      WHERE img_status = 'published' AND img_date <= ?
-     ORDER BY sort_order ASC, id DESC"
+     ORDER BY img_date DESC, id DESC"
 );
 $grid_stmt->execute([$now_local]);
 $images = $grid_stmt->fetchAll();
