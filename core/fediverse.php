@@ -1862,7 +1862,7 @@ function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json, ?
         ON DUPLICATE KEY UPDATE
             priority = LEAST(priority, VALUES(priority)),
             next_try_at = LEAST(next_try_at, NOW()),
-            status = 'pending', attempts = 0, last_error = NULL")
+            status = 'queued', attempts = 0, last_error = NULL")
         ->execute([$inbox_url, $activity_json, $dedupe_key, $actor_role, $priority]);
     return (int)$pdo->lastInsertId();
 }

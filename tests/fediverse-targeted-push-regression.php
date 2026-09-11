@@ -29,6 +29,7 @@ $ok(str_contains($core, '$type === \'Announce\' ? 5 : 10'), 'boosts are not prio
 $ok(substr_count($core, 'null, 100)') >= 5, 'bulk backfill writers are not demoted behind live posts');
 $ok(str_contains($core, 'sv_queue_delivery($pdo, $inbox, $payload, null, 10)'), 'one-follower repair is not promoted with live posts');
 $ok(str_contains($core, 'priority = LEAST(priority, VALUES(priority))'), 're-queueing cannot promote an existing duplicate');
+$ok(str_contains($core, "status = 'queued', attempts = 0"), 'duplicate promotion does not restore the queue schema status');
 $ok(str_contains($admin, "=== 'push_follower'"), 'targeted push POST handler missing');
 $ok(str_contains($admin, "fediverse-kick.php"), 'delivery kick must use the renamed kick module');
 $ok(str_contains($page, 'name="follower_actor"'), 'per-follower control missing');
