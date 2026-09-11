@@ -60,10 +60,18 @@ if (!function_exists('pc_enabled') || !pc_enabled($settings) || !pc_feed_enabled
 }
 
 $esc        = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
-$win        = pc_window($settings);
+$is_archive_feed = (string)($_GET['view'] ?? '') === 'previous';
+$win        = $is_archive_feed ? pc_previous_window($pdo, $settings) : pc_window($settings);
 $tag        = pc_tag($settings);
+try {
+    $tag_q = $pdo->prepare("SELECT tag FROM pc_prompts WHERE week_key=? LIMIT 1");
+    $tag_q->execute([(string)$win['week_key']]);
+    $round_tag = strtolower(trim((string)($tag_q->fetchColumn() ?: '')));
+    if ($round_tag !== '') $tag = $round_tag;
+} catch (Throwable $e) {
+}
 $state      = $win['open'] ? 'OPEN' : 'CLOSED';
-$page_title = 'The Board';
+$page_title = $is_archive_feed ? 'Previous Challenge' : 'The Board';
 $skin_path  = 'skins/' . $active_skin;
 
 if (function_exists('snapsmack_log_hit')) {
@@ -96,7 +104,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
                         <strong><?php echo $esc($state); ?></strong> &middot; <?php echo $esc($win['label']); ?>
                         &mdash; post a photo tagged <code>#<?php echo $esc($tag); ?></code> and follow to join.
                     </p>
-                    <?php echo pc_board_embed_html($pdo, $settings); ?>
+                    <?php echo pc_board_embed_html($pdo, $settings, $win); ?>
                 </div>
             </div>
 

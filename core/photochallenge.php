@@ -228,6 +228,29 @@ function pc_window(array $settings, ?int $now_ts = null): array {
     ];
 }
 
+/** Most recently completed challenge window, for the public Feed archive. */
+function pc_previous_window(PDO $pdo, array $settings): array {
+    try {
+        $row = $pdo->query(
+            "SELECT week_key,friday,submit_start,submit_end FROM pc_prompts
+             WHERE status IN ('live','done') AND submit_end<=UTC_TIMESTAMP()
+             ORDER BY submit_end DESC LIMIT 1"
+        )->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            return [
+                'start' => (string)$row['submit_start'], 'end' => (string)$row['submit_end'],
+                'open' => false, 'week_key' => (string)$row['week_key'],
+                'label' => (new DateTimeImmutable((string)$row['friday'], new DateTimeZone('UTC')))->format('M j, Y'),
+            ];
+        }
+    } catch (Throwable $e) {
+    }
+    $current = pc_window($settings);
+    $anchor = new DateTimeImmutable((string)$current['start'], new DateTimeZone('UTC'));
+    $fallback = pc_window_for_friday($anchor->modify('-7 days')->format('Y-m-d'));
+    return $fallback ? $fallback + ['open' => false] : $current;
+}
+
 /**
  * Turn a plain-language prompt into its hashtag pair. One word is the norm
  * ("Belonging"); multiple words CamelCase ("Golden Hour" -> GoldenHour).
@@ -1063,6 +1086,15 @@ function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit =
     if (!pc_enabled($settings)) return [];
     $win = $window ?? pc_window($settings);
     $tag = pc_tag($settings);
+    // Historical feeds must validate against that round's hashtag, not the
+    // currently-live prompt. Otherwise last week's valid entries all vanish.
+    try {
+        $tag_q = $pdo->prepare("SELECT tag FROM pc_prompts WHERE week_key=? LIMIT 1");
+        $tag_q->execute([(string)$win['week_key']]);
+        $round_tag = strtolower(trim((string)($tag_q->fetchColumn() ?: '')));
+        if ($round_tag !== '') $tag = $round_tag;
+    } catch (Throwable $e) {
+    }
     $rows = [];
     try {
         $st = $pdo->prepare(
@@ -1800,13 +1832,20 @@ function pc_participant_counts(PDO $pdo): array {
  * appearance in assets/css/photochallenge-board-embed.css (scoped under
  * .pc-board) — no inline CSS either way.
  */
-function pc_board_embed_html(PDO $pdo, array $settings): string {
+function pc_board_embed_html(PDO $pdo, array $settings, ?array $window = null): string {
     if (!pc_enabled($settings) || !pc_feed_enabled($settings)) return '';
     $esc    = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
     $base   = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : '/';
     $ver    = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';
-    $win    = pc_window($settings);
+    $win    = $window ?? pc_window($settings);
     $tag    = pc_tag($settings);
+    try {
+        $tag_q = $pdo->prepare("SELECT tag FROM pc_prompts WHERE week_key=? LIMIT 1");
+        $tag_q->execute([(string)$win['week_key']]);
+        $round_tag = strtolower(trim((string)($tag_q->fetchColumn() ?: '')));
+        if ($round_tag !== '') $tag = $round_tag;
+    } catch (Throwable $e) {
+    }
     $layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonry') ? 'masonry' : 'three';
     $rows   = pc_board_ranked($pdo, $settings, $win, 200);
 
