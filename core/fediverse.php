@@ -2093,16 +2093,20 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
     // is pulled per row at send time, not held for the whole plan (memory). The
     // 5000 ceiling is a runaway guard, not the governor — the deadline is.
     $plan = $pdo->prepare(
-        "SELECT id, inbox_url FROM snap_ap_deliveries WHERE {$where}
+        "SELECT id, inbox_url, priority FROM snap_ap_deliveries WHERE {$where}
          ORDER BY {$order_by} LIMIT 5000"
     );
     $plan->execute($args);
 
-    // Per-host FIFO queue of row ids, oldest-first within each host (§3.1/§3.2):
-    // strict oldest-first per host, free interleave across hosts.
+    // Per-host service queue. Keep priority beside the id: after splitting the
+    // globally ordered plan by host, choosing by id alone would let an ancient
+    // backfill on one host jump ahead of a new post or boost on another host.
     $by_host = [];
     foreach ($plan->fetchAll(PDO::FETCH_ASSOC) as $p) {
-        $by_host[sv_normalize_delivery_host((string)$p['inbox_url'])][] = (int)$p['id'];
+        $by_host[sv_normalize_delivery_host((string)$p['inbox_url'])][] = [
+            'id' => (int)$p['id'],
+            'priority' => (int)$p['priority'],
+        ];
     }
 
     $next_allowed = [];   // host => unix ts (microtime) the host may next receive
@@ -2135,11 +2139,19 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
             continue;
         }
 
-        // Among ready hosts, serve the one whose oldest row is oldest overall —
-        // keeps a global oldest-first bias while interleaving across hosts.
+        // Among ready hosts, preserve the global service classes first, then
+        // FIFO by id. Backfills therefore remain dead last across every host.
         $pick = $ready[0];
-        foreach ($ready as $h) { if ($by_host[$h][0] < $by_host[$pick][0]) $pick = $h; }
-        $id = array_shift($by_host[$pick]);
+        foreach ($ready as $h) {
+            $candidate = $by_host[$h][0];
+            $current = $by_host[$pick][0];
+            if ($candidate['priority'] < $current['priority']
+                || ($candidate['priority'] === $current['priority'] && $candidate['id'] < $current['id'])) {
+                $pick = $h;
+            }
+        }
+        $next = array_shift($by_host[$pick]);
+        $id = $next['id'];
 
         $row_stmt->execute([$id]);
         $row = $row_stmt->fetch(PDO::FETCH_ASSOC);

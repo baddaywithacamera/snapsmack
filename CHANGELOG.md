@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.694D — 2026-09-10
+
+- **Backfills are now truly dead last across the entire outbound worker.** The paced worker initially sorted jobs correctly, but its per-server scheduler then selected the oldest row ID across servers, allowing an old backfill for one server to jump ahead of a boost or fresh post for another. Selection now preserves service class globally: handshakes, boosts, new posts, then backfills.
+- The Delivery Log now mirrors the worker's actual service order, labels every row as handshake/boost/new post/backfill, and reports full queue totals instead of presenting its capped 200-row display as the entire queue.
+
 ## 0.7.693D — 2026-09-10
 
 - Curator relay recovery now seeds each newly accepted photographer's recent public outbox into the GLOBAL feed. ActivityPub follows do not replay history by themselves, which previously left GLOBAL blank until a followed photographer happened to publish again.
