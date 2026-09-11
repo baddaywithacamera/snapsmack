@@ -10,6 +10,8 @@
 
 # SnapSmack Changelog
 ## 0.7.702D "NEWEST FIRST" — 2026-09-11
+- **Fresh posts can no longer be buried behind routine profile updates.** Delivery order is now handshakes, boosts, new posts, routine updates, and finally catalogue backfills. (Codex, "CLEAR THE ROAD".)
+- **The human challenge Feed no longer collides with the existing `/feed` RSS endpoint.** The previous-week gallery now uses `/challenge-feed`; `/feed` remains machine-readable RSS. (Codex.)
 - **SLICKR 1.0.24: the photostream is ordered by the photo's date, newest first.** It sorted by database id; a Flickr import hands out ids newest-first, so foreverphotograph.ing showed its oldest imports at the top. Now newest at the top, oldest at the bottom, scans from the 1980s at the very end. The archive page keeps its own ordering. (`skins/slickr/landing.php`.)
 
 ## 0.7.701D "ONE BATCH" — 2026-09-11
