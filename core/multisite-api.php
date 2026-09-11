@@ -1812,6 +1812,18 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
     updater_release_lock();
     updater_cleanup();
 
+    // Fleet updates bypass smack-update.php, so they must perform the same
+    // post-extract cron repair here. Versioned/symlinked deploys can change the
+    // absolute script path while the tagged crontab entry still points at the
+    // previous release. Refresh only jobs the operator already enabled; absent
+    // jobs remain absent.
+    require_once __DIR__ . '/cron-register.php';
+    $cron_refresh = cron_refresh_enabled_jobs(dirname(__DIR__));
+    $cron_failures = array_values(array_filter(
+        $cron_refresh,
+        static fn(array $row): bool => empty($row['ok'])
+    ));
+
     // 10. Phone home — now running with newly-extracted code, so ping fires even on
     //     the first update that introduces _updater_ping_home (bootstraps the counter).
     try {
@@ -1829,6 +1841,11 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
         'files_updated' => $extract['files_updated'],
         'files_skipped' => $extract['files_skipped'],
         'migrations'    => $mig_count,
+        'cron_refreshed'=> count($cron_refresh) - count($cron_failures),
+        'cron_errors'   => array_values(array_map(
+            static fn(array $row): string => (string)($row['tag'] ?? 'cron') . ': ' . (string)($row['message'] ?? 'refresh failed'),
+            $cron_failures
+        )),
         'errors'        => $extract['errors'],
     ]);
 }

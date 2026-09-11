@@ -3,6 +3,7 @@
 $root = dirname(__DIR__);
 $helper = file_get_contents($root . '/core/cron-register.php');
 $update = file_get_contents($root . '/smack-update.php');
+$fleet  = file_get_contents($root . '/core/multisite-api.php');
 
 $checks = [
     'shared refresh helper exists' => str_contains($helper, 'function cron_refresh_enabled_jobs'),
@@ -12,6 +13,8 @@ $checks = [
     'version job is covered'       => str_contains($helper, "'# snapsmack-version-check'"),
     'automatic update refreshes'   => substr_count($update, 'cron_refresh_enabled_jobs(__DIR__)') >= 2,
     'update log names the repair'  => substr_count($update, "'label'  => 'Cron command paths'") >= 2,
+    'fleet update refreshes'       => str_contains($fleet, 'cron_refresh_enabled_jobs(dirname(__DIR__))'),
+    'fleet reports repair result'  => str_contains($fleet, "'cron_refreshed'=>") && str_contains($fleet, "'cron_errors'"),
 ];
 
 $failed = false;
