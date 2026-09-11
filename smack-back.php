@@ -513,7 +513,7 @@ include 'core/sidebar.php';
         <form method="post" action="smack-back.php" style="background:rgba(0,0,0,0.25);padding:14px;border-radius:4px;margin-bottom:16px;">
             <input type="hidden" name="smackback_stepup" value="1">
             <p class="dim" style="margin:0 0 10px;font-size:0.85rem;">Authorize file actions (Re-bless / Remove) with your password and 2FA — valid 10 minutes.</p>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <div class="sb-stepup-row">
                 <input type="password" name="reauth_password" placeholder="Password" autocomplete="off" style="flex:1;min-width:160px;">
                 <input type="text" name="reauth_totp" placeholder="2FA code" inputmode="numeric" autocomplete="off" style="width:120px;">
                 <button type="submit" class="btn-smack">AUTHORIZE</button>
@@ -540,7 +540,7 @@ include 'core/sidebar.php';
         <div class="stat-row" style="display:grid;grid-template-columns:1fr 90px auto;align-items:center;gap:12px;padding:10px 0;">
             <span style="font-family:monospace;font-size:0.88rem;"><?php echo $bp; ?></span>
             <span style="color:<?php echo $bcol; ?>;font-weight:700;"><?php echo $bst; ?></span>
-            <div style="display:flex;gap:6px;justify-content:flex-end;">
+            <div class="sb-file-actions">
                 <?php if (!$is_unexpected): ?>
                 <a href="smack-back.php?action=restore&restore=<?php echo urlencode($entry['path'] ?? ''); ?>&t=<?php echo urlencode(csrf_token()); ?>"
                    class="btn-smack btn-warning mt-0"
@@ -562,7 +562,7 @@ include 'core/sidebar.php';
         </div>
         <?php endforeach; ?>
 
-        <div class="form-action-row mt-16">
+        <div class="sb-action-row">
             <a href="smack-back.php?restore_all=1&t=<?php echo urlencode(csrf_token()); ?>"
                class="btn-smack btn-danger"
                onclick="return confirm('Restore all tampered files from the update server?');">
