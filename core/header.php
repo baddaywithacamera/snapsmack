@@ -112,7 +112,7 @@ if (!function_exists('_snap_nav_resolve_url')) {
             case 'albums':     return $base . 'albums.php';
             case 'wall':       return $base . 'gallery-wall.php';
             case 'blogroll':   return $base . 'blogroll.php';
-            case 'challenge_feed': return (($settings['photochallenge_feed_enabled'] ?? '0') === '1') ? $base . 'feed' : '';
+            case 'challenge_feed': return (($settings['photochallenge_feed_enabled'] ?? '0') === '1') ? $base . 'challenge-feed' : '';
             case 'blog':       return $base . 'blog.php';
             case 'page':
                 if (!empty($item['target_id'])) {
@@ -221,7 +221,7 @@ $_use_json_nav = is_array($_nav_items) && count($_nav_items) > 0;
 
         <?php if (($settings['photochallenge_feed_enabled'] ?? '0') === '1'): ?>
             <?php echo $sep; ?>
-            <a href="<?php echo BASE_URL; ?>feed">FEED</a>
+            <a href="<?php echo BASE_URL; ?>challenge-feed">FEED</a>
         <?php endif; ?>
 
         <?php if (!empty($dynamic_pages)): ?>

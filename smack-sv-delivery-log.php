@@ -110,6 +110,7 @@ function dlog_priority_class(int $priority): string {
     if ($priority <= 0) return 'handshake';
     if ($priority <= 5) return 'boost';
     if ($priority <= 10) return 'new post';
+    if ($priority <= 20) return 'routine update';
     return 'backfill';
 }
 
@@ -296,7 +297,7 @@ include 'core/sidebar.php';
             per-post panel below for what has been pushed.)</p>
         <?php else: ?>
         <p class="dim mb-10">Showing the first <?php echo count($queue); ?> of <?php echo (int)($queued_count + $failed_count); ?> jobs in actual sending order:
-        handshakes first, then boosts, new posts, and backfills dead last. The queue sends a batch each cron run
+        handshakes first, then boosts, new posts, routine updates, and backfills dead last. The queue sends a batch each cron run
         and shrinks each time, so a long list here is normal, not broken. A row is only a problem when its
         <strong>Status</strong> reads <strong>failing/retrying</strong>; then <strong>ERROR</strong> is the exact
         reason the remote gave &mdash; that is what to read when a post won't go out.</p>
