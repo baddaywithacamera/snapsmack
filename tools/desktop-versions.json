@@ -4,7 +4,7 @@
   "oh-snap":                 { "version": "0.2.0" },
   "coldsnap":                { "version": "0.7.15", "version_file": "coldsnap/_version.py" },
   "sybu":                    { "version": "0.7.59", "version_file": "sybu/main.py" },
-  "smack-up-your-backup":    { "version": "0.7.29", "version_file": "smack-up-your-backup/main.py" },
+  "smack-up-your-backup":    { "version": "0.7.30", "version_file": "smack-up-your-backup/_version.py" },
   "flkr-fckr":               { "version": "0.7.25", "version_file": "flkr-fckr/main.py" },
   "unzucker":                { "version": "0.7.40", "version_file": "unzucker/main.py" },
   "cronometer":              { "version": "0.7.6",  "version_file": "cronometer/cronometer.py" },
