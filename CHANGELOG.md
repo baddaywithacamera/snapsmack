@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.702D "NEWEST FIRST" — 2026-09-11
+- **SLICKR 1.0.24: the photostream is ordered by the photo's date, newest first.** It sorted by database id; a Flickr import hands out ids newest-first, so foreverphotograph.ing showed its oldest imports at the top. Now newest at the top, oldest at the bottom, scans from the 1980s at the very end. The archive page keeps its own ordering. (`skins/slickr/landing.php`.)
+
 ## 0.7.701D "ONE BATCH" — 2026-09-11
 - **Six skins no longer send the entire archive on every landing.** GAME ON, SLICKR, Instant Camera, Sliders, Sudden Impact and The Grid shipped every post's tile in the HTML (hard nocks: 4,222 tiles, 3 MB; foreverphotograph.ing: 9,980 items, 7.5 MB) and relied on the browser to hide most of it. Sean asked for months whether the whole page was loading and was told no; it was. Now a landing carries one batch (120 tiles, or 25 justified rows), and the next batch is fetched as the reader nears the bottom, using the same infinite-scroll engine hashtag pages have used all along. Trigram alignment and post counts are still computed over the whole archive; only the HTML is paged. Pages with a `?p=` query bypass the page cache by design. Skins: GAME ON 0.1.21, SLICKR 1.0.23, INSTANT CAMERA 1.0.34, SLIDERS 0.1.3, SUDDEN IMPACT 1.0.9, THE GRID 1.3.44. (`skins/*/landing.php`, `assets/js/ss-engine-tag-infinite.js`, `assets/css/public-base.css`.)
 
