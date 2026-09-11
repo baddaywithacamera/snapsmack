@@ -25,7 +25,10 @@ $ok(str_contains($core, "fediverse_backfill_count"), 'default count must read th
 $ok(str_contains($core, '$order_by = "priority ASC, id ASC"'), 'delivery drain is not ordered by explicit priority');
 $ok(str_contains($core, 'SELECT id, inbox_url, priority FROM snap_ap_deliveries'), 'paced delivery plan does not retain priority');
 $ok(str_contains($core, '$candidate[\'priority\'] < $current[\'priority\']'), 'paced cross-host picker can put backfills ahead of live work');
-$ok(str_contains($core, '$type === \'Announce\' ? 5 : 10'), 'boosts are not prioritized ahead of live posts');
+$ok(str_contains($core, '$type === \'Announce\' ? 5 : ($type === \'Update\' ? 20 : 10)'),
+    'priority bands must be handshake 0, boost 5, new Create 10, routine Update 20');
+$ok(str_contains($core, 'UPDATE snap_ap_deliveries SET priority=20'),
+    'existing routine actor updates are not demoted behind fresh posts');
 $ok(substr_count($core, 'null, 100)') >= 5, 'bulk backfill writers are not demoted behind live posts');
 $ok(str_contains($core, 'sv_queue_delivery($pdo, $inbox, $payload, null, 10)'), 'one-follower repair is not promoted with live posts');
 $ok(str_contains($core, 'priority = LEAST(priority, VALUES(priority))'), 're-queueing cannot promote an existing duplicate');

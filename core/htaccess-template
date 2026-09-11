@@ -73,7 +73,7 @@ RewriteRule ^nodeinfo/2\.0$ fediverse.php?ap=nodeinfo2 [L,QSA]
 # object URLs, so ?a=1&b=2 ids 404 on their side. Harmless while off.
 RewriteRule ^ap/(.+)$ fediverse.php?appath=$1 [L,QSA]
 RewriteRule ^board/?$ photochallenge-board.php [L,QSA]
-RewriteRule ^feed/?$ photochallenge-board.php?view=previous [L,QSA]
+RewriteRule ^challenge-feed/?$ photochallenge-board.php?view=previous [L,QSA]
 RewriteRule ^hall-of-fame/?$ photochallenge-hof.php [L,QSA]
 
 # Everything else → index.php (image slugs, static pages)
