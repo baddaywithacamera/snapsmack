@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "PHOTOGRAM",
-    "version": "2.0.16",
+    "version": "2.0.17",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "A shadow of what a photo-sharing app used to be. Phone-native layout: 3-column archive grid, full-aspect post view, inline likes, bottom-sheet comments. Reproduces the Pixelfed / classic Instagram experience in a self-hosted blog.",
@@ -34,6 +34,28 @@
         "smack-slider"
     ],
     "options": {
+        "pg_post_viewer_backdrop_color": {
+            "section": "POST VIEWER",
+            "type": "color",
+            "label": "Post Viewer Backdrop Colour",
+            "default": "#000000",
+            "selector": ":root",
+            "property": "--pg-post-viewer-backdrop-color",
+            "hint": "The full-screen layer behind the opened photo."
+        },
+        "pg_post_viewer_backdrop_opacity": {
+            "section": "POST VIEWER",
+            "type": "range_numeric",
+            "label": "Post Viewer Backdrop Opacity",
+            "default": "90",
+            "min": "0",
+            "max": "100",
+            "step": "1",
+            "unit": "%",
+            "selector": ":root",
+            "property": "--pg-post-viewer-backdrop-opacity",
+            "hint": "0 is transparent; 100 completely covers the page behind the photo."
+        },
         "pg_column_width": {
             "section": "LAYOUT",
             "type": "select",

@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "AURORA",
-    "version": "1.0.40",
+    "version": "1.0.41",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.",
@@ -54,6 +54,28 @@
     "community_likes": true,
     "community_reactions": false,
     "options": {
+        "au_post_viewer_backdrop_color": {
+            "section": "POST VIEWER",
+            "type": "color",
+            "label": "Post Viewer Backdrop Colour",
+            "default": "#000000",
+            "selector": ":root",
+            "property": "--au-post-viewer-backdrop-color",
+            "hint": "The full-screen layer behind the post viewer window."
+        },
+        "au_post_viewer_backdrop_opacity": {
+            "section": "POST VIEWER",
+            "type": "range_numeric",
+            "label": "Post Viewer Backdrop Opacity",
+            "default": "80",
+            "min": "0",
+            "max": "100",
+            "step": "1",
+            "unit": "%",
+            "selector": ":root",
+            "property": "--au-post-viewer-backdrop-opacity",
+            "hint": "0 is transparent; 100 completely covers the page behind the post."
+        },
         "au_palette": {
             "section": "AURORA",
             "type": "select",
