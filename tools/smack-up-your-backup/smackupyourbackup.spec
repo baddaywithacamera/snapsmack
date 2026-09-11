@@ -21,12 +21,12 @@ _shared_data  = [(f, '.') for f in _shared_files]
 _shared_mods  = [os.path.splitext(os.path.basename(f))[0] for f in _shared_files]
 
 a = Analysis(
-    ['main.py'],
+    ['suyb_launcher.py'],
     pathex=[_src, _shared_dir],
     binaries=[],
     # Explicitly bundle every local .py file so PyInstaller cannot miss them.
     datas=[
-        (os.path.join(_src, 'assets'),                'assets'),
+        (os.path.join(_src, '..', 'hub', 'icons', 'suyb.ico'), 'assets'),
         (os.path.join(_src, 'audit_engine.py'),       '.'),
         (os.path.join(_src, 'backup_engine.py'),      '.'),
         (os.path.join(_src, 'b2_integrity.py'),       '.'),
@@ -55,7 +55,7 @@ a = Analysis(
     ] + _shared_data,
     hiddenimports=_shared_mods + [
         # UI
-        'tkinter', 'tkinter.ttk', 'tkinter.filedialog', 'tkinter.messagebox',
+        'PySide6', 'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
         # Network
         'requests',
         # HTTP media transport (lazy-imported inside backup_engine Stage 3)
@@ -144,5 +144,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=os.path.join(_src, 'assets', 'suyb.ico'),
+    icon=os.path.join(_src, '..', 'hub', 'icons', 'suyb.ico'),
 )

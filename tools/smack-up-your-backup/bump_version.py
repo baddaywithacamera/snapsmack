@@ -1,10 +1,10 @@
 """
 Smack Up Your Backup — bump_version.py
-Auto-increment BUILD_VERSION in main.py by one patch and print the new value.
+Auto-increment BUILD_VERSION in _version.py by one patch and print the new value.
 Single source of truth for the per-build version bump; called by build.bat and
 build.sh so the increment logic lives in exactly one place.
 
-Edits main.py in BINARY mode and rewrites only the version literal, so existing
+Edits _version.py in BINARY mode and rewrites only the version literal, so existing
 line endings (CRLF/LF) are left untouched — never trip the repo's EOL guard.
 """
 
@@ -17,7 +17,7 @@ import os
 import re
 import sys
 
-MAIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "main.py")
+VERSION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_version.py")
 
 
 def bump(version: str) -> str:
@@ -32,14 +32,14 @@ def bump(version: str) -> str:
 
 def main() -> int:
     try:
-        data = open(MAIN, "rb").read()
+        data = open(VERSION_FILE, "rb").read()
     except OSError as e:
-        sys.stderr.write(f"bump_version: cannot read main.py: {e}\n")
+        sys.stderr.write(f"bump_version: cannot read _version.py: {e}\n")
         return 1
 
     m = re.search(rb'BUILD_VERSION\s*=\s*"([^"]+)"', data)
     if not m:
-        sys.stderr.write("bump_version: BUILD_VERSION not found in main.py\n")
+        sys.stderr.write("bump_version: BUILD_VERSION not found in _version.py\n")
         return 1
 
     old = m.group(1).decode()
@@ -51,9 +51,9 @@ def main() -> int:
 
     data = data[: m.start(1)] + new.encode() + data[m.end(1):]
     try:
-        open(MAIN, "wb").write(data)
+        open(VERSION_FILE, "wb").write(data)
     except OSError as e:
-        sys.stderr.write(f"bump_version: cannot write main.py: {e}\n")
+        sys.stderr.write(f"bump_version: cannot write _version.py: {e}\n")
         return 1
 
     # stdout carries ONLY the new version — build scripts capture it directly.
