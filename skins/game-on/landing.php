@@ -240,8 +240,15 @@ $_go_asset_url = static function (string $path): string {
             data-zoom="<?php echo (int)($_go_image['img_zoom'] ?? 100); ?>"></button>
     <?php endforeach; ?>
 </div>
+<?php
+// The browser re-samples the 144 boards from this list so cached reloads still
+// change the photographs. It only needs a few hundred choices, not every post:
+// on a 4,000-post blog the full list was 1.7 MB of HTML and 4,000 DOM nodes on
+// every landing, which is what pushed older machines' Firefox over the edge.
+$_go_candidate_sample = array_slice($_go_puzzle_pool, 0, 288);   // pool is already shuffled
+?>
 <div id="go-puzzle-candidates" hidden aria-hidden="true">
-<?php foreach ($_go_puzzle_pool as $_go_candidate): ?>
+<?php foreach ($_go_candidate_sample as $_go_candidate): ?>
     <i data-thumb="<?php echo htmlspecialchars($_go_asset_url((string)$_go_candidate['img_thumb_square'])); ?>"
        data-full="<?php echo htmlspecialchars($_go_asset_url((string)$_go_candidate['img_file'])); ?>"
        data-post-url="<?php echo htmlspecialchars(BASE_URL . '?s=' . urlencode((string)$_go_candidate['post_img_slug'])); ?>"
