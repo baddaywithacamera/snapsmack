@@ -12,7 +12,7 @@ drawn, not typed. Ctrl+Z undoes everything, mosaics included.
 
 Shortcodes are an EXPORT format only: to_blocks() walks the document into the
 same block list biggie.py has always serialized, so the site receives exactly
-the strings the SIMPLE bar makes. from_blocks() rebuilds the canvas from a
+the strings the TWIGGY bar makes. from_blocks() rebuilds the canvas from a
 saved draft. Round trip is lossless (tests/test_biggie.py pins it).
 
 Spec, in Sean's words: _spec/SPEC-biggie-wysiwyg-in-seans-words-2026-09-09.md

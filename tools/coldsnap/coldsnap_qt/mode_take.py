@@ -269,7 +269,7 @@ class TakeMode(QWidget):
 
     def _insert_mosaic(self):
         """MOSAIC button. BIGGIE face: the canvas decides new-vs-edit and asks
-        via mosaicEditRequested. SIMPLE face: the text marker, as always."""
+        via mosaicEditRequested. TWIGGY face: the text marker, as always."""
         if self.body.is_biggie():
             if not self._bucket:
                 QMessageBox.warning(self, "No photos", "Add photos before building a mosaic.")
