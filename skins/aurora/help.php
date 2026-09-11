@@ -19,6 +19,10 @@ return [
     'skin_name' => 'AURORA',
     'topics' => [
         [
+            'title' => 'Post Viewer Backdrop',
+            'body'  => 'When a post opens in the viewer, a full-screen layer sits between it and the page. Under POST VIEWER you choose the colour of that layer and how solid it is. Black at 80% is the default; white at 100% gives a high-key viewer, and a lower opacity lets the page show through behind the photograph.',
+        ],
+        [
             'title' => 'Three-Column Grid Layout',
             'body'  => 'AURORA presents your photographs in a clean, square-tile 3-column layout — the same format that made Instagram the de-facto portfolio platform for photographers. Every post occupies one tile on the landing page, regardless of how many images it contains. Tap or click any tile to view the full post.',
         ],

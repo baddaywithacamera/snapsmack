@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "HEURISTIC",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "author": "Sean McCormick with Claude and OpenAI Codex",
     "support": "sean@baddaywithacamera.ca",
     "description": "A GRAMOFSMACK skin inspired by the logical memory and infomatic displays of serious old science fiction. Photographs remain photographs until HAL requires the screen.",
@@ -41,6 +41,28 @@
     "community_likes": true,
     "community_reactions": false,
     "options": {
+        "he_post_viewer_backdrop_color": {
+            "section": "POST VIEWER",
+            "type": "color",
+            "label": "Post Viewer Backdrop Colour",
+            "default": "#000000",
+            "selector": ":root",
+            "property": "--he-post-viewer-backdrop-color",
+            "hint": "The full-screen layer behind the post viewer window."
+        },
+        "he_post_viewer_backdrop_opacity": {
+            "section": "POST VIEWER",
+            "type": "range_numeric",
+            "label": "Post Viewer Backdrop Opacity",
+            "default": "80",
+            "min": "0",
+            "max": "100",
+            "step": "1",
+            "unit": "%",
+            "selector": ":root",
+            "property": "--he-post-viewer-backdrop-opacity",
+            "hint": "0 is transparent; 100 completely covers the page behind the post."
+        },
         "he_system_mode": {
             "section": "LOGIC MEMORY CENTRE",
             "type": "select",

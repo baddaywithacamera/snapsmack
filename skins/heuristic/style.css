@@ -899,7 +899,8 @@ body.he-modal-open { overflow: hidden; }
 .he-modal-backdrop {
     position:   absolute;
     inset:      0;
-    background: rgba(0, 0, 0, 0.8);
+    /* POST VIEWER controls (colour + opacity); was hard-coded black 80%. */
+    background: color-mix(in srgb, var(--he-post-viewer-backdrop-color, #000000) var(--he-post-viewer-backdrop-opacity, 80%), transparent);
 }
 
 .he-modal-frame {
