@@ -26,7 +26,9 @@ $ok(str_contains($core, '$order_by = "priority ASC, id ASC"'), 'delivery drain i
 $ok(str_contains($core, 'SELECT id, inbox_url, priority FROM snap_ap_deliveries'), 'paced delivery plan does not retain priority');
 $ok(str_contains($core, '$candidate[\'priority\'] < $current[\'priority\']'), 'paced cross-host picker can put backfills ahead of live work');
 $ok(str_contains($core, '$type === \'Announce\' ? 5 : 10'), 'boosts are not prioritized ahead of live posts');
-$ok(substr_count($core, 'null, 100)') >= 6, 'bulk backfill writers are not demoted behind live posts');
+$ok(substr_count($core, 'null, 100)') >= 5, 'bulk backfill writers are not demoted behind live posts');
+$ok(str_contains($core, 'sv_queue_delivery($pdo, $inbox, $payload, null, 10)'), 'one-follower repair is not promoted with live posts');
+$ok(str_contains($core, 'priority = LEAST(priority, VALUES(priority))'), 're-queueing cannot promote an existing duplicate');
 $ok(str_contains($admin, "=== 'push_follower'"), 'targeted push POST handler missing');
 $ok(str_contains($admin, "fediverse-kick.php"), 'delivery kick must use the renamed kick module');
 $ok(str_contains($page, 'name="follower_actor"'), 'per-follower control missing');
