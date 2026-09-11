@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.697D — 2026-09-11
+
+- **Targeted follower repair no longer raises HTTP 500 while promoting an existing delivery.** The promotion now restores the queue's actual `queued` state instead of writing a nonexistent status value.
+
 ## 0.7.696D — 2026-09-11
 
 - **Every gram skin now has Post Viewer Backdrop Colour and Opacity controls.** Aurora, Heuristic, Instant Camera, Sliders, Sudden Impact, The Grid and Photogram join GAME ON, PARADE and Jive Turkey (Scrim). A high-key white viewer is now one setting on any of them. See the skin entries below.
