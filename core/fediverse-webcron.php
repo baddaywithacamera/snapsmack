@@ -81,10 +81,19 @@ if (!function_exists('sv_web_cron_tick')) {
 
         if (($settings['fediverse_enabled'] ?? '0') !== '1') return;
 
-        // Due? Reuse the exact stamp the CLI cron / RUN NOW button write. A blank
-        // or "never" value parses to 0 and is treated as due right away.
-        $cli_last = strtotime((string)($settings['fediverse_cli_cron_last_run'] ?? '')) ?: 0;
-        if ($cli_last && (time() - $cli_last) < 1500) return;
+        // The authenticated fleet tick is also the cron watchdog. Federation
+        // cannot remain enabled with an absent or stale command: verify the
+        // live script path and repair it without waiting for an admin visit.
+        require_once __DIR__ . '/cron-register.php';
+        $cron_script = dirname(__DIR__) . '/cron-fediverse.php';
+        $inspection = cron_job_inspect('# snapsmack-fediverse', '*/10 * * * *', $cron_script);
+        if (empty($inspection['valid'])) {
+            cron_register_job('*/10 * * * *', $cron_script, '# snapsmack-fediverse');
+        }
+
+        // One worker heartbeat is enough. The former CLI grace period blocked
+        // this fallback for 25 minutes after a ten-minute job stopped. Take
+        // over after one missed interval; sv_run_sweep's lock prevents overlap.
         $last = strtotime((string)($settings['fediverse_cron_last_run'] ?? '')) ?: 0;
         if ($last && (time() - $last) < 600) return;
 

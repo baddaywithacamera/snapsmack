@@ -2040,9 +2040,11 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
         $primary_settings = $pdo->query("SELECT setting_key,setting_val FROM snap_settings")
             ->fetchAll(PDO::FETCH_KEY_PAIR);
     }
-    $now  = date('Y-m-d H:i:s');
-    $where = "status = 'queued' AND next_try_at <= ?";
-    $args  = [$now];
+    // next_try_at is a database DATETIME (normally written with NOW()).  Compare
+    // it with the database clock too.  Comparing it with PHP's date() made due
+    // work disappear whenever PHP and MySQL used different time zones.
+    $where = "status = 'queued' AND next_try_at <= NOW()";
+    $args  = [];
     if ($first_id !== null) {
         $where .= " AND id >= ?";
         $args[] = $first_id;
@@ -6824,6 +6826,7 @@ function sv_run_sweep(PDO $pdo, array &$settings): array
         }
 
         sv_set_setting($pdo, $settings, 'fediverse_cron_last_run', date('Y-m-d H:i:s'));
+        sv_set_setting($pdo, $settings, 'fediverse_cron_last_completed', date('Y-m-d H:i:s'));
         sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'ok');
         // Record what this run delivered so the delivery-log page can SHOW
         // success (sent rows are deleted, so they vanish otherwise).
