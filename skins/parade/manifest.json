@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "PARADE",
-    "version": "1.2.37",
+    "version": "1.2.38",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "High-key desktop skin — AURORA's daylight twin. A classic 3-across square grid over a full-screen waving identity flag with animated flag-coloured tile borders. A real show of support, built so the photos are still why you came.",
@@ -35,6 +35,7 @@
         ]
     },
     "require_scripts": [
+        "smack-game-on",
         "smack-keyboard",
         "smack-community",
         "smack-slider",
@@ -190,6 +191,59 @@
             "max": "100",
             "step": "5",
             "unit": "%"
+        },
+        "pa_puzzles": {
+            "section": "GAME ON",
+            "type": "select",
+            "label": "Background Puzzles",
+            "default": "off",
+            "options": {
+                "off": "Off",
+                "still": "Still",
+                "moving": "Moving"
+            },
+            "hint": "GAME ON's living field of sliding photo puzzles, between the waving flag and the feed. Click a board to play it. Same engine as the GAME ON skin."
+        },
+        "pa_go_density": {
+            "section": "GAME ON",
+            "type": "range_numeric",
+            "label": "Background Puzzle Amount",
+            "default": "100",
+            "min": "0",
+            "max": "100",
+            "step": "5",
+            "unit": "%"
+        },
+        "pa_go_activity": {
+            "section": "GAME ON",
+            "type": "range_numeric",
+            "label": "Background Activity",
+            "default": "3",
+            "min": "1",
+            "max": "5",
+            "step": "1",
+            "unit": ""
+        },
+        "pa_go_speed": {
+            "section": "GAME ON",
+            "type": "range_numeric",
+            "label": "Puzzle Movement Speed",
+            "default": "3",
+            "min": "1",
+            "max": "5",
+            "step": "1",
+            "unit": ""
+        },
+        "pa_go_modal_theme": {
+            "section": "GAME ON",
+            "type": "select",
+            "label": "Puzzle Window Theme",
+            "default": "light",
+            "options": {
+                "light": "Light",
+                "dark": "Dark"
+            },
+            "hint": "The playable window only. Its backdrop colour and opacity are the POST VIEWER settings."
         },
         "pa_modal_backdrop_color": {
             "section": "POST VIEWER",

@@ -158,6 +158,12 @@
 - **GAME ON now has the agreed content backing controls.** Content Background Colour defaults white and Content Background Opacity defaults 50%, replacing the inaccessible hard-coded 90% white veil. The skin now declares CMS 0.7.672D as its minimum because Border Travel depends on the repaired shared engine shipped there.
 - **The GAME ON modal action now says “View image.”** It no longer exposes missing metadata as “View untitled image.”
 
+## PARADE Skin 1.2.38 — 2026-09-11
+- **GAME ON's living puzzle field can run behind the flag.** New GAME ON section: Background Puzzles (Off / Still / Moving, default Off), Background Puzzle Amount, Background Activity, Puzzle Movement Speed, Puzzle Window Theme. Same engine and the same playable window with clock, moves and site high scores as the GAME ON skin; the field and its edges are transparent so the flag waves through the gaps. Help topic added. (`skins/parade/landing.php`, `manifest.json`, `style.css`, `help.php`.)
+
+## GAME ON Skin 0.1.19 — 2026-09-11
+- **The puzzle field, playable window and scoreboard styles moved to a shared engine stylesheet** (`assets/css/ss-engine-game-on.css`), loaded automatically with the `smack-game-on` script, so PARADE can host the same field. No change to how GAME ON looks; two colours became host-overridable variables (field background, edge clearance). (`core/manifest-inventory.php`, `skins/game-on/style.css`.)
+
 ## PARADE Skin 1.2.37 — 2026-09-11
 - **The post viewer backdrop is no longer hard-coded black.** Two new POST VIEWER controls, Post Viewer Backdrop Colour and Post Viewer Backdrop Opacity (default black, 80%), the same pair GAME ON has for its puzzle window. Help topic added. (`skins/parade/style.css`, `manifest.json`, `help.php`.)
 
