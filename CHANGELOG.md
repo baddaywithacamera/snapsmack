@@ -10,7 +10,7 @@
 
 # SnapSmack Changelog
 ## 0.7.695D "PLAY THROUGH" — 2026-09-11
-- **The GAME ON puzzle field is now a shared engine any skin can host, and PARADE is the first to host it.** Field, playable window and scoreboard styles live in `assets/css/ss-engine-game-on.css`, attached to the `smack-game-on` script in the inventory. See PARADE 1.2.38 (Background Puzzles behind the flag) and GAME ON 0.1.19 below. (`core/manifest-inventory.php`, `assets/css/ss-engine-game-on.css`.)
+- **GAME ON's puzzle field, playable window and scoreboard styles are a shared engine stylesheet** (`assets/css/ss-engine-game-on.css`, attached to the `smack-game-on` script in the inventory). GAME ON looks the same. See GAME ON 0.1.19. (`core/manifest-inventory.php`.)
 
 ## 0.7.694D — 2026-09-10
 
@@ -160,6 +160,9 @@
 - **GAME ON navigation is back to the standard grid UI font.** The mistakenly added decorative menu-font picker is removed and stale generated font choices can no longer override the menu.
 - **GAME ON now has the agreed content backing controls.** Content Background Colour defaults white and Content Background Opacity defaults 50%, replacing the inaccessible hard-coded 90% white veil. The skin now declares CMS 0.7.672D as its minimum because Border Travel depends on the repaired shared engine shipped there.
 - **The GAME ON modal action now says “View image.”** It no longer exposes missing metadata as “View untitled image.”
+
+## PARADE Skin 1.2.39 — 2026-09-11
+- **Background Puzzles removed.** The 1.2.38 option to run GAME ON's puzzle field behind the flag was built on a misread request and is withdrawn; nothing else changes. The POST VIEWER backdrop controls from 1.2.37 stay.
 
 ## PARADE Skin 1.2.38 — 2026-09-11
 - **GAME ON's living puzzle field can run behind the flag.** New GAME ON section: Background Puzzles (Off / Still / Moving, default Off), Background Puzzle Amount, Background Activity, Puzzle Movement Speed, Puzzle Window Theme. Same engine and the same playable window with clock, moves and site high scores as the GAME ON skin; the field and its edges are transparent so the flag waves through the gaps. Help topic added. (`skins/parade/landing.php`, `manifest.json`, `style.css`, `help.php`.)
