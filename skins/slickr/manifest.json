@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "SLICKR",
-    "version": "1.0.25",
+    "version": "1.0.26",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "Flickr, the way it was. Justified masonry archive, classic solo view with EXIF sidebar, albums directory. Built for migrated Flickr archives — includes an optional Flickr provenance badge on imported images.",
@@ -74,6 +74,25 @@
                 "justified": "Justified Masonry (Flickr-style)",
                 "cropped": "Cropped Grid"
             }
+        },
+        "solo_small_photos": {
+            "section": "SINGLE IMAGE",
+            "type": "select",
+            "label": "Small Photos",
+            "default": "fill",
+            "selector": ".sl-image.post-image",
+            "property": "custom-solo-fit",
+            "options": {
+                "fill": {
+                    "label": "Enlarge to fill the stage",
+                    "css": "{ height: min(80vh, calc(100cqw / var(--sl-ar, 1.5))); }"
+                },
+                "native": {
+                    "label": "Show at their own size, never enlarged",
+                    "css": "{ height: auto; }"
+                }
+            },
+            "hint": "A photo smaller than the stage is enlarged to fill it (soft on very small scans). Choose never-enlarged to show small photos at their own pixel size."
         },
         "solo_bg_color": {
             "section": "SINGLE IMAGE",
