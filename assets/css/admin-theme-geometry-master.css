@@ -7575,4 +7575,51 @@ input[type="range"]:active::-webkit-slider-thumb {
 }
 .dup-reauth input[type="password"] { width: 220px; }
 .dup-reauth input[type="text"] { width: 120px; }
+/* ── SMACKBACK breach panel ──────────────────────────────────────────────────
+   A bare .btn-smack is the page's ONE loud full-width submit. This panel used
+   it four times, so the step-up gate, both closing actions and the per-file
+   actions all rendered as full-width slabs, stacked (Sean, 2026-09-11: "the
+   buttons are large and the top one doesn't quite match"). Geometry only —
+   colour stays with the admin theme.
+   ------------------------------------------------------------------------- */
+.sb-stepup-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.sb-stepup-row .btn-smack {
+    width: auto;
+    height: 52px;          /* matches the password / 2FA fields beside it */
+    margin-top: 0;
+    padding: 0 26px;
+    flex: 0 0 auto;
+}
+.sb-file-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+.sb-file-actions .btn-smack {
+    width: auto;
+    height: 34px;
+    margin-top: 0;
+    padding: 0 16px;
+    font-size: 0.78rem;
+    flex: 0 0 auto;
+}
+.sb-action-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 22px;
+}
+.sb-action-row .btn-smack {
+    width: auto;
+    height: 46px;
+    margin-top: 0;
+    padding: 0 26px;
+    flex: 0 0 auto;
+}
+
 /* ===== SNAPSMACK EOF ===== */
