@@ -55,8 +55,8 @@ TOPICS = [
      "folds the rail away to give the composer the full width."),
     ("BIGGIE — the WYSIWYG editor",
      "COLD TAKE's write-up has two faces (COLD ONE and COLD STACK are "
-     "deliberately basic: the plain box and bar only), switched by the SIMPLE / BIGGIE — "
-     "BLOCKS pills above it. SIMPLE is the plain text box with the shortcode "
+     "deliberately basic: the plain box and bar only), switched by the TWIGGY / BIGGIE — "
+     "BLOCKS pills above it. TWIGGY is the plain text box with the shortcode "
      "bar, exactly like the site editor. BIGGIE is one writing surface: click "
      "in it and type. Enter makes a new paragraph. Headings, quotes and pull "
      "quotes look like headings, quotes and pull quotes. The bar above it sets "
@@ -73,7 +73,7 @@ TOPICS = [
      "undoes anything, mosaics included.\n\n"
      "Switching faces never loses anything: BIGGIE reads your text and draws it "
      "(anything it doesn't recognise is kept byte-for-byte as RAW), and what you "
-     "see always sends as the exact same shortcodes and HTML the SIMPLE bar "
+     "see always sends as the exact same shortcodes and HTML the TWIGGY bar "
      "makes — the site renders both identically. Columns inside columns are "
      "deliberately unavailable. The face you used last is remembered. "
      "Desktop-only: BIGGIE never appears in the web admin."),
