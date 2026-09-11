@@ -35,10 +35,6 @@ return [
             'body'  => 'Every grid tile carries a soft dark glow just outside its animated ring, so a white ring still stands out when it lands on the white stripe of the flag. Under BORDER WAVE, Tile Outer Glow Size sets how far it spreads (0 turns it off) and Tile Outer Glow Strength sets how dark it is. The glow is always dark on purpose: it is there for contrast, not colour.',
         ],
         [
-            'title' => 'GAME ON Background Puzzles',
-            'body'  => 'Under GAME ON, Background Puzzles puts a field of 144 live sliding photo puzzles between the waving flag and your feed, the same engine the GAME ON skin uses. Still leaves them scrambled and quiet; Moving lets them shuffle and solve themselves. Click any board to play it full screen, with a clock, move counter, and the site high-score table. Background Puzzle Amount, Background Activity and Puzzle Movement Speed tune the field; Puzzle Window Theme picks the light or dark playable window. The window backdrop uses the POST VIEWER colour and opacity. Off by default.',
-        ],
-        [
             'title' => 'Post Viewer Backdrop',
             'body'  => 'When a post opens in the viewer, a full-screen layer sits between it and the flag. Under POST VIEWER you choose the colour of that layer and how solid it is. Black at 80% is the default; a lighter colour or a lower opacity lets more of the waving flag show through behind the photograph.',
         ],
