@@ -68,11 +68,20 @@ try {
 /* The outbound queue. Only pending/failed jobs live here — successful sends are
    deleted on delivery, so a short (or empty) list is the healthy state. */
 $queue = [];
+$failed_count = 0;
+$queued_count = 0;
 try {
+    $counts = $pdo->query(
+        "SELECT SUM(status = 'queued') AS queued_count,
+                SUM(status = 'failed') AS failed_count
+           FROM snap_ap_deliveries"
+    )->fetch(PDO::FETCH_ASSOC) ?: [];
+    $queued_count = (int)($counts['queued_count'] ?? 0);
+    $failed_count = (int)($counts['failed_count'] ?? 0);
     $queue = $pdo->query(
-        "SELECT id, inbox_url, activity_json, attempts, next_try_at, status, last_error, created_at
+        "SELECT id, inbox_url, activity_json, attempts, next_try_at, status, last_error, created_at, priority
            FROM snap_ap_deliveries
-       ORDER BY (status='failed') DESC, attempts DESC, next_try_at ASC
+       ORDER BY priority ASC, id ASC
           LIMIT 200"
     )->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) { $queue = []; }
@@ -92,6 +101,14 @@ function dlog_describe(string $json): array {
         $kind = $m[1]; $ref_id = (int)$m[2];
     }
     return ['type' => $type, 'kind' => $kind, 'ref_id' => $ref_id];
+}
+
+/* These are the same priority bands used by sv_process_deliveries(). */
+function dlog_priority_class(int $priority): string {
+    if ($priority <= 0) return 'handshake';
+    if ($priority <= 5) return 'boost';
+    if ($priority <= 10) return 'new post';
+    return 'backfill';
 }
 
 /* Resolve a note kind+id to a human title, cached so a busy queue is one query
@@ -117,9 +134,6 @@ function dlog_title(PDO $pdo, array &$cache, string $kind, int $ref_id): string 
     } catch (Throwable $e) { $title = ''; }
     return $cache[$key] = $title;
 }
-
-$failed_count = 0; $queued_count = 0;
-foreach ($queue as $q) { ($q['status'] === 'failed') ? $failed_count++ : $queued_count++; }
 
 /* Plain-English verdict for the top of the page. The whole point: tell the owner
    at a glance whether this is HEALTHY (a normal waiting line that drains a batch
@@ -271,7 +285,8 @@ include 'core/sidebar.php';
             was tried has landed. (This does not prove a specific post reached a specific follower; check the
             per-post panel below for what has been pushed.)</p>
         <?php else: ?>
-        <p class="dim mb-10">Posts lined up to send, oldest first &mdash; the queue sends a batch each cron run
+        <p class="dim mb-10">Showing the first <?php echo count($queue); ?> of <?php echo (int)($queued_count + $failed_count); ?> jobs in actual sending order:
+        handshakes first, then boosts, new posts, and backfills dead last. The queue sends a batch each cron run
         and shrinks each time, so a long list here is normal, not broken. A row is only a problem when its
         <strong>Status</strong> reads <strong>failing/retrying</strong>; then <strong>ERROR</strong> is the exact
         reason the remote gave &mdash; that is what to read when a post won't go out.</p>
@@ -280,6 +295,7 @@ include 'core/sidebar.php';
             <thead>
                 <tr>
                     <th>Target follower</th>
+                    <th>Class</th>
                     <th>Activity</th>
                     <th>Post</th>
                     <th>Attempts</th>
@@ -300,6 +316,7 @@ include 'core/sidebar.php';
                 ?>
                 <tr>
                     <td><?php echo htmlspecialchars($target); ?></td>
+                    <td><?php echo htmlspecialchars(dlog_priority_class((int)$q['priority'])); ?></td>
                     <td><?php echo htmlspecialchars($d['type']); ?></td>
                     <td><?php echo $post_label; ?></td>
                     <td><?php echo (int)$q['attempts']; ?></td>
