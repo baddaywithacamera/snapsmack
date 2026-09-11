@@ -43,7 +43,7 @@ $page_css = <<<'CSS'
 .skin-meta { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 14px; }
 .skin-meta span { padding: 6px 9px; border: 1px solid var(--black); color: var(--black); font: 800 .66rem/1.15 'Courier New', monospace; text-transform: uppercase; }
 .skin-entry p { margin-bottom: 10px; }
-.skin-entry .live { display: inline-block; margin-top: 6px; font: 700 1.6rem/1.2 Arial, Helvetica, sans-serif; text-transform: uppercase; color: var(--red, #c00); }
+.skin-entry .live { display: inline-block; margin-top: 6px; font: 700 1.1rem/1.2 Arial, Helvetica, sans-serif; text-transform: uppercase; color: var(--red, #c00); }
 @media (max-width: 760px) {
     .skin-gallery { grid-template-columns: 1fr; grid-template-rows: none; }
     .skin-entry a.shot:first-child { grid-row: auto; }
