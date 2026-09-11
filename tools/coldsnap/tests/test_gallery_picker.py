@@ -1,5 +1,11 @@
 """IMG in BIGGIE is a picture picker from the site's cached Media Gallery,
-and the chosen image paints in the canvas. Headless (offscreen Qt, sandbox)."""
+and the chosen image paints in the canvas. Headless (offscreen Qt, sandbox).
+
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+"""
 
 import os
 import sys
