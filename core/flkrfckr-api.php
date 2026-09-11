@@ -46,6 +46,24 @@ function flkrfckr_ensure_key_user(PDO $pdo): void {
     }
 }
 
+
+/**
+ * The photograph's own date from EXIF (DateTimeOriginal, then DateTimeDigitized,
+ * then DateTime) as 'Y-m-d H:i:s', or null when the file has none. JPEG only.
+ */
+function flkrfckr_exif_date(string $path): ?string {
+    if (!function_exists('exif_read_data') || !is_file($path) || !preg_match('/\.jpe?g$/i', $path)) return null;
+    $exif = @exif_read_data($path, 'EXIF,IFD0', true);
+    if (!$exif) return null;
+    foreach ([['EXIF', 'DateTimeOriginal'], ['EXIF', 'DateTimeDigitized'], ['IFD0', 'DateTime']] as [$sec, $key]) {
+        $v = trim((string)($exif[$sec][$key] ?? ''));
+        if (preg_match('/^(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})$/', $v, $m) && (int)$m[1] >= 1900) {
+            return "{$m[1]}-{$m[2]}-{$m[3]} {$m[4]}";
+        }
+    }
+    return null;
+}
+
 /**
  * Validate the Bearer key. Returns the key row ['id','user_id'] on success,
  * or false if the key is missing/invalid. NOTE: user_id may be NULL on a
@@ -477,9 +495,12 @@ if ($sub === 'images' && $method === 'POST') {
     // Generate slug
     $slug = flkrfckr_unique_slug($pdo, $img_title);
 
-    // Validate/sanitise img_date
+    // Validate/sanitise img_date. When the importer sends no usable date, read
+    // the photograph's own EXIF date from the uploaded file BEFORE falling back
+    // to "now": stamping import time put a batch of 1980s–2000s scans at the top
+    // of foreverphotograph.ing's newest-first stream (2026-09-11).
     if (!preg_match('/^\d{4}-\d{2}-\d{2}/', $img_date)) {
-        $img_date = date('Y-m-d H:i:s');
+        $img_date = flkrfckr_exif_date(dirname(__DIR__) . '/' . ltrim($img_file, '/')) ?: date('Y-m-d H:i:s');
     }
 
     // Validate img_exif is JSON or empty
