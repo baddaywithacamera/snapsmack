@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## SLICKR Skin 1.0.26 — 2026-09-11
+- **The solo photo fills the stage; small photos are enlarged to fit.** The image rule only ever shrank (max-width / max-height), so a 1050px scan sat at its own size in the middle of a 1920px stage. It now takes the stage height, or the stage width, whichever it meets first, using the photo's own aspect ratio from the template. New SINGLE IMAGE control, Small Photos: enlarge to fill (default) or never enlarge. Help updated. (`skins/slickr/style.css`, `layout.php`, `manifest.json`, `help.php`.)
+
 ## 0.7.704D "STAND DOWN" — 2026-09-11
 - **SMACKBACK no longer treats an operator repair script as a breach.** A root `repair-*.php` ships with a release, gets replaced by hand when it is improved, and is deleted once it has done its job. Baselining it turned each of those ordinary actions into a TAMPERED or MISSING breach and a site lockout (foreverphotograph.ing, straight after updating `repair-image-dates.php`). Those scripts are now excluded from monitoring, the same as the installer files. Nested files of the same name are still monitored. (`core/smackback.php`, `tests/smackback-repair-script-regression.php`.)
 - **The breach panel's password and 2FA fields are visible again.** On a colour-flooded breach page an unstyled field had no edge, so the operator could not see where to type and could not authorise a re-bless at all. Both fields now carry a real label and an edge that reads on every admin theme. (`smack-back.php`, `assets/css/admin-theme-geometry-master.css`.)

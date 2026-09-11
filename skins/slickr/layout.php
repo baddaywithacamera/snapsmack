@@ -48,9 +48,18 @@ $exif_labels = [
     <div id="sl-photobox" style="background-color: <?php echo htmlspecialchars($settings['solo_bg_color'] ?? '#1a1a1a'); ?>;">
         <div class="sl-photo-wrap">
             <?php include dirname(__DIR__, 2) . '/core/download-overlay.php'; ?>
+            <?php
+            // Aspect ratio for the fill-the-stage rule in style.css. Only when the
+            // stored dimensions are real; a 0×0 row just gets the CSS fallback.
+            $_sl_w = (int)($img['img_width'] ?? 0);
+            $_sl_h = (int)($img['img_height'] ?? 0);
+            $_sl_ar = ($_sl_w > 0 && $_sl_h > 0) ? round($_sl_w / $_sl_h, 4) : 0;
+            ?>
             <img class="sl-image post-image"
                  src="<?php echo BASE_URL . ltrim($img['img_file'], '/'); ?>"
-                 alt="<?php echo htmlspecialchars($img['img_title']); ?>">
+                 alt="<?php echo htmlspecialchars($img['img_title']); ?>"<?php if ($_sl_ar > 0): ?>
+                 width="<?php echo $_sl_w; ?>" height="<?php echo $_sl_h; ?>"
+                 style="--sl-ar: <?php echo $_sl_ar; ?>;"<?php endif; ?>>
             <?php echo $download_button; ?>
         </div>
     </div>
