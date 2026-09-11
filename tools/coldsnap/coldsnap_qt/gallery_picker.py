@@ -5,14 +5,19 @@ COLD STORAGE already syncs that gallery to the shared library with thumbnails,
 so the picker is a grid of pictures that works offline. Sean, 2026-09-10:
 "Wow. Really. Not an image picker?" — this is the image picker.
 
-Anything the cache doesn't know yet (not synced, or a Library image on a
-static page) can still be typed as an ID in the small box at the bottom.
+THIS POST'S PHOTOS (the bucket) come first: they have no site id yet, so the
+picker writes bucket:N and the poster swaps in the real id at send time, after
+the upload. Anything the cache doesn't know yet can still be typed as an ID in
+the small box at the bottom. The gallery half needs COLD STORAGE to have synced
+this site at least once.
 
 # SNAPSMACK_EOF_HEADER
 #     # ===== SNAPSMACK EOF =====
 # Last non-empty line of this file MUST match the line above.
 # Missing or different = truncated/corrupted. Restore before saving.
 """
+
+import os
 
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon
@@ -63,12 +68,17 @@ def gallery_thumb_path(site: str, img_id: str) -> str:
 class GalleryPicker(QDialog):
     """Grid of the site's gallery pictures; click one, choose size and alignment."""
 
-    def __init__(self, parent, site: str, data: dict | None = None):
+    def __init__(self, parent, site: str, data: dict | None = None, bucket=None):
         super().__init__(parent)
         data = data or {}
-        self.setWindowTitle("Image from this site's Media Gallery")
+        self.setWindowTitle("Put a picture in the page")
         self.resize(760, 560)
-        self._images = gallery_images(site)
+        try:
+            self._synced = bool(site) and bool(snap_library.is_synced(site))
+        except Exception:  # noqa: BLE001
+            self._synced = False
+        self._bucket = [str(p) for p in (bucket or [])]
+        self._images = gallery_images(site) if self._synced else []
         col = QVBoxLayout(self)
 
         top = QHBoxLayout()
@@ -88,10 +98,13 @@ class GalleryPicker(QDialog):
         self.grid.itemDoubleClicked.connect(lambda _i: self.accept())
         self.grid.currentItemChanged.connect(self._picked)
         col.addWidget(self.grid, 1)
-        if not self._images:
-            col.addWidget(hint("Nothing cached for this site yet. Open COLD STORAGE and "
-                               "SYNC FROM SITE, then this becomes a grid of your pictures. "
-                               "You can still type an image id below."))
+        if not self._synced:
+            col.addWidget(hint("Only this post's photos are shown: COLD STORAGE hasn't synced "
+                               "this site yet. SYNC FROM SITE once and the site's Media Gallery "
+                               "appears here too. An image id can still be typed below."))
+        elif not self._images:
+            col.addWidget(hint("This post's photos are above. The site's gallery cache is empty; "
+                               "SYNC FROM SITE in COLD STORAGE to see it here."))
 
         row = QHBoxLayout()
         row.addWidget(field_label("Size"))
@@ -128,6 +141,17 @@ class GalleryPicker(QDialog):
     def _fill(self):
         needle = self.search.text().strip().lower()
         self.grid.clear()
+        for n, path in enumerate(self._bucket, 1):
+            label = f"this post · photo {n}"
+            if needle and needle not in label.lower() and needle not in os.path.basename(path).lower():
+                continue
+            item = QListWidgetItem(label)
+            pm = load_pixmap(path, 120)
+            if pm:
+                item.setIcon(QIcon(pm))
+            item.setData(Qt.UserRole, f"bucket:{n}")
+            item.setToolTip(f"{os.path.basename(path)} — gets its site id when the post is sent")
+            self.grid.addItem(item)
         for im in self._images:
             label = im["title"] or f"image {im['img_id']}"
             if needle and needle not in label.lower():

@@ -691,6 +691,30 @@ class SmacktalkPoster:
             raise RuntimeError("mosaics endpoint did not return a mosaic_id")
         return mid, data.get("shortcode") or ("[mosaic:%d]" % mid)
 
+    # A photo from THIS post's bucket placed inline in the text. The canvas
+    # writes [img:bucket:N|size|align] (N = 1-based position in THE PHOTOS,
+    # the same numbering [mosaic=1,2,3] uses) because an unposted photo has no
+    # site id yet. At send time the bucket has just been uploaded, so N maps to
+    # the new site id and the tag becomes the ordinary [img:ID|size|align].
+    # (Sean, 2026-09-10: temp id locally, permanent id on sync.) An N that no
+    # longer exists — photo removed after writing — drops the tag rather than
+    # sending the site a broken one.
+    _BUCKET_IMG_TOKEN = re.compile(r'\[img:bucket:(\d+)((?:\|[^\]]*)?)\]', re.I)
+
+    def _resolve_bucket_images(self, content, image_ids) -> str:
+        content = content or ""
+        if not self._BUCKET_IMG_TOKEN.search(content):
+            return content
+        ids = list(image_ids or [])
+
+        def swap(match):
+            pos = int(match.group(1))
+            if 1 <= pos <= len(ids):
+                return "[img:%d%s]" % (int(ids[pos - 1]), match.group(2) or "")
+            return ""
+
+        return self._BUCKET_IMG_TOKEN.sub(swap, content)
+
     def _resolve_mosaics(self, content, image_ids, draft) -> Tuple[str, list]:
         """Turn a [mosaic] placeholder in the body into a real [mosaic:ID] gallery of
         the essay's just-uploaded photos. One mosaic is created and reused for every
@@ -761,6 +785,7 @@ class SmacktalkPoster:
             # ids). The photographer writes text + [mosaic]; the render is a real
             # tiled gallery in place. No server change — smackpress/mosaics exists.
             content = self._resolve_mosaics(draft.caption or "", image_ids, draft)[0]
+            content = self._resolve_bucket_images(content, image_ids)
 
             r = self.session.post(self._route("smackpress/posts"),
                                   json=self.build_payload(draft, image_ids, cover_id, content=content),
