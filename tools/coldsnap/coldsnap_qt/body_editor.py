@@ -1,6 +1,6 @@
 """COLD SNAP Qt — BodyEditor: one body field, two faces.
 
-SIMPLE = the plain text box with the CMS shortcode bar (unchanged behaviour).
+TWIGGY (was SIMPLE) = the plain text box with the CMS shortcode bar (unchanged behaviour).
 BIGGIE = the WYSIWYG canvas (canvas.py): one writing surface where headings,
 quotes, photos and mosaics look like what they are. The toggle is lossless
 both ways: switching to BIGGIE parses the text into blocks (unrecognised bits
@@ -28,7 +28,7 @@ class BodyEditor(QWidget):
     def __init__(self, *, allow_mosaic: bool = False, simple_height: int = 84,
                  rich: bool = True, parent=None):
         """rich=False (COLD ONE / COLD STACK): the plain box and bar only, no
-        SIMPLE/BIGGIE pills, no canvas. Sean 2026-09-10: the advanced editor is
+        TWIGGY/BIGGIE pills, no canvas. Sean 2026-09-10: the advanced editor is
         for long-form (COLD TAKE) only."""
         super().__init__(parent)
         self.rich = bool(rich)
@@ -38,7 +38,7 @@ class BodyEditor(QWidget):
 
         # -- the toggle ---------------------------------------------------------
         row = QHBoxLayout()
-        self.simple_btn = QPushButton("SIMPLE")
+        self.simple_btn = QPushButton("TWIGGY")
         self.biggie_btn = QPushButton("BIGGIE — BLOCKS")
         for b in (self.simple_btn, self.biggie_btn):
             b.setObjectName("ScBtn")
@@ -81,7 +81,7 @@ class BodyEditor(QWidget):
         g.addWidget(self.canvas_bar)
         g.addWidget(self.canvas, 1)        # the canvas fills the space it is given
         g.addWidget(hint("What you see here sends as the same shortcodes/HTML the "
-                         "SIMPLE bar makes — the site renders it identically."))
+                         "TWIGGY bar makes — the site renders it identically."))
         col.addWidget(self._biggie_page, 1)
 
         # Last-used face is a per-tool setting (spec §7: biggie_enabled).
