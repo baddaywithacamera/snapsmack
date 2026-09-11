@@ -1433,6 +1433,19 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 /* Content sits above the fixed flag layer. */
 #page-wrapper,
 .pa-content-wrap { position: relative; z-index: 1; }
+/* GAME ON field (optional, Background Puzzles): between the flag (-2) and the
+   content (+1). Transparent field + edges so the flag waves through the gaps
+   between boards. Styles for the boards/modal come from the shared
+   assets/css/ss-engine-game-on.css. */
+.pa-puzzle-field {
+    --go-field-bg:  transparent;
+    --go-edge-color: transparent;
+    z-index: 0;
+}
+:root {
+    --go-modal-backdrop-color:   var(--pa-modal-backdrop-color, #000000);
+    --go-modal-backdrop-opacity: var(--pa-modal-backdrop-opacity, 80%);
+}
 /* Readability panel (ALL pages) — ONE centred translucent column behind the
    content, fixed + full viewport height so it reaches the top and runs behind
    the footer, on every page incl. blogroll. Width = content column + Panel

@@ -922,6 +922,7 @@ return [
         'smack-game-on' => [
             'label'        => 'GAME ON living fifteen-puzzle field and playable modal',
             'path'         => 'assets/js/ss-engine-game-on.js',
+            'css'          => 'assets/css/ss-engine-game-on.css',
             'has_settings' => false,
         ],
         'smack-racetrack' => [
