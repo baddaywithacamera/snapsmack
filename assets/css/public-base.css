@@ -134,4 +134,9 @@ img[data-lightbox-src] {
     font-size: 1.2rem;
     color: var(--text-dim, #999);
 }
+/* Feed paging sentinel (ss-engine-tag-infinite.js): an invisible full-width
+   row at the end of a paged landing grid. Fetching the next page starts when
+   it scrolls within reach. */
+.ss-feed-sentinel { grid-column: 1 / -1; height: 1px; margin: 0; padding: 0; }
+
 /* ===== SNAPSMACK EOF ===== */

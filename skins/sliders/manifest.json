@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "name": "SLIDERS",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "author": "Sean McCormick, OpenAI Codex",
   "support": "sean@baddaywithacamera.ca",
   "description": "A GRAMOFSMACK grid with normal square tiles over GLIDE's moving wall of your own photographs. A configurable opacity layer keeps the foreground readable.",

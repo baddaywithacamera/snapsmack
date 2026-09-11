@@ -15,6 +15,14 @@
  *
  * Pure client-side: the server endpoint is the same hashtag page (?tag=&p=N).
  *
+ * FEED PAGING (2026-09-11): the same engine now pages LANDING feeds. A skin that
+ * used to ship every post's tile emits one batch plus
+ *   <div id="<P>-sentinel" data-feed data-next="2" data-base="...">
+ * and this fetches ?p=N from the same landing and appends the tiles. For the
+ * justified skins the sentinel is #justified-sentinel and whole .justified-row
+ * elements are appended into #justified-grid. Six skins sent their entire
+ * archive on every visit before this; Sean asked for months whether they did.
+ *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
  * Last non-empty line of this file MUST match the line above.
@@ -24,14 +32,19 @@
     'use strict';
 
     function init() {
-        var sentinel = document.querySelector('[id$="-sentinel"][data-base][data-tag]');
+        var sentinel = document.querySelector('[id$="-sentinel"][data-base][data-tag], [id$="-sentinel"][data-base][data-feed]');
         if (!sentinel || !window.IntersectionObserver) return;
 
         var P = sentinel.id.replace(/-sentinel$/, '');
         if (!P) return;
 
-        var grid = document.querySelector('.' + P + '-grid');
+        var isFeed    = sentinel.hasAttribute('data-feed');
+        var justified = (P === 'justified');
+        var grid = justified ? document.getElementById('justified-grid')
+                             : document.querySelector('.' + P + '-grid');
         if (!grid) return;
+        var itemSel = justified ? '#justified-grid > .justified-row'
+                                : '.' + P + '-grid .' + P + '-tile';
 
         var loading = false;
         var nextPg  = parseInt(sentinel.dataset.next, 10);
@@ -42,16 +55,20 @@
             if (!entries[0].isIntersecting || loading) return;
             loading = true;
 
-            var url = base + '?tag=' + encodeURIComponent(tag) + '&p=' + nextPg;
-            fetch(url)
+            var url = isFeed
+                ? base + (base.indexOf('?') === -1 ? '?' : '&') + 'p=' + nextPg
+                : base + '?tag=' + encodeURIComponent(tag) + '&p=' + nextPg;
+            fetch(url, { credentials: 'same-origin' })
                 .then(function (r) { return r.text(); })
                 .then(function (html) {
                     var tmp = document.createElement('div');
                     tmp.innerHTML = html;
 
-                    // Append the tiles from the fetched page's grid.
-                    var newTiles = tmp.querySelectorAll('.' + P + '-grid .' + P + '-tile');
+                    // Append the tiles (or justified rows) from the fetched page.
+                    var newTiles = tmp.querySelectorAll(itemSel);
                     newTiles.forEach(function (t) { grid.appendChild(t); });
+                    // Other engines (border travel, fade-in, lightbox) re-scan on this.
+                    document.dispatchEvent(new CustomEvent(P + ':grid-updated'));
 
                     // Stop once the fetched page no longer carries a sentinel.
                     var newSentinel = tmp.querySelector('#' + P + '-sentinel');
@@ -64,7 +81,7 @@
                     }
                 })
                 .catch(function () { loading = false; });
-        }, { rootMargin: '400px' });
+        }, { rootMargin: isFeed ? '1200px' : '400px' });
 
         obs.observe(sentinel);
     }
