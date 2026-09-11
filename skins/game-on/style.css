@@ -1483,7 +1483,9 @@ body:has(.go-puzzle-field) {
     border-radius: 6px;
     background-clip: padding-box;
     background-repeat: no-repeat;
-    will-change: transform;
+    /* No standing will-change here: 144 boards x 15 pieces = 2,160 permanent
+       compositor layers, which is exactly what crashed Firefox on older GPUs.
+       The engine adds .is-moving to a board only for the duration of a slide. */
     transition-property: transform;
     transition-timing-function: cubic-bezier(.2,.75,.25,1);
     box-shadow:
@@ -1499,6 +1501,8 @@ body:has(.go-puzzle-field) {
 }
 .go-content-wrap a,
 .go-content-wrap button { pointer-events: auto; }
+
+.go-puzzle.is-moving .go-puzzle-piece { will-change: transform; }
 
 /* ── Foreground game ──────────────────────────────────────────────────── */
 .go-game-open { overflow: hidden; }
