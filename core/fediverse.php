@@ -211,6 +211,13 @@ function sv_ensure_tables(PDO $pdo): void {
             $pdo->exec("UPDATE snap_ap_deliveries SET priority=0 WHERE activity_json REGEXP
                 '\"type\"[[:space:]]*:[[:space:]]*\"(Accept|Reject|Follow|Undo)\"'");
         }
+        // Older builds queued routine profile Update(Actor) activities in the
+        // same band as fresh Create(Note) publications. Repair those existing
+        // rows so a profile refresh can never hold a new post behind it.
+        $pdo->exec("UPDATE snap_ap_deliveries SET priority=20
+            WHERE priority=10
+              AND activity_json REGEXP '\"type\"[[:space:]]*:[[:space:]]*\"Update\"'
+              AND activity_json REGEXP '\"object\"[[:space:]]*:[[:space:]]*\\{[^}]*\"type\"[[:space:]]*:[[:space:]]*\"(Person|Service|Application|Organization)\"'");
     } catch (Throwable $e) { /* canonical sync remains authoritative */ }
     // First-follow backfill jobs: a new/reactivated follower's catalogue backfill
     // is recorded here by the inbox Follow handler. A detached CLI worker builds
@@ -1854,7 +1861,7 @@ function sv_queue_delivery(PDO $pdo, string $inbox_url, string $activity_json, ?
     if ($priority === null) {
         $type = is_array($activity) ? (string)($activity['type'] ?? '') : '';
         $priority = in_array($type, ['Accept','Reject','Follow','Undo'], true) ? 0
-            : ($type === 'Announce' ? 5 : 10);
+            : ($type === 'Announce' ? 5 : ($type === 'Update' ? 20 : 10));
     }
     $priority = max(0, min(255, $priority));
     $pdo->prepare("INSERT INTO snap_ap_deliveries
