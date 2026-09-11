@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## SLICKR Skin 1.0.25 — 2026-09-11
+- **Photostream order keeps manual drag order first.** 1.0.24 sorted by photo date alone; manual order from Manage Posts (sort_order) now comes first exactly as in every other skin, then newest photo date, then id. (`skins/slickr/landing.php`.)
+
 ## 0.7.702D "NEWEST FIRST" — 2026-09-11
 - **Fresh posts can no longer be buried behind routine profile updates.** Delivery order is now handshakes, boosts, new posts, routine updates, and finally catalogue backfills. (Codex, "CLEAR THE ROAD".)
 - **The human challenge Feed no longer collides with the existing `/feed` RSS endpoint.** The previous-week gallery now uses `/challenge-feed`; `/feed` remains machine-readable RSS. (Codex.)
