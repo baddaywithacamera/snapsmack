@@ -22,7 +22,7 @@ return [
     ],
     [
         'title' => 'Solo Image View',
-        'body'  => 'Clicking any image opens the full solo view: large image on a dark background at the top, then title, date, and description in the left column, with tags, albums, and EXIF data in the right sidebar. Navigate between images with the arrow keys or the nav bar below the image.',
+        'body'  => 'Clicking any image opens the full solo view: large image on a dark background at the top, then title, date, and description in the left column, with tags, albums, and EXIF data in the right sidebar. Navigate between images with the arrow keys or the nav bar below the image. The photo fills the stage: as tall as the stage allows, or as wide, whichever it meets first. A photo smaller than the stage is enlarged to fill it; under SINGLE IMAGE, Small Photos can switch that off so small scans show at their own pixel size.',
     ],
     [
         'title' => 'EXIF & Technical Details',
