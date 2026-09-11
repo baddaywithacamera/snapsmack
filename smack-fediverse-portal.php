@@ -365,8 +365,14 @@ include 'core/sidebar.php';
                 sc_curator_ensure_tables($pdo);
                 $curator_counts = $pdo->query("SELECT state,COUNT(*) n FROM snap_curator_directory GROUP BY state")
                     ->fetchAll(PDO::FETCH_KEY_PAIR);
-                $curator_rows = $pdo->query("SELECT acct,actor_url,state,last_seen_at,last_checked_at,last_error
-                    FROM snap_curator_directory ORDER BY first_seen_at,id LIMIT 500")->fetchAll(PDO::FETCH_ASSOC);
+                $curator_rows = $pdo->query("SELECT c.acct,c.actor_url,c.state,c.last_seen_at,c.last_checked_at,c.last_error,
+                        COALESCE(f.state,'not queued') AS follow_state
+                    FROM snap_curator_directory c LEFT JOIN snap_ap_following f ON f.id=c.follow_row_id
+                    ORDER BY c.first_seen_at,c.id LIMIT 500")->fetchAll(PDO::FETCH_ASSOC);
+                $curator_accepted = 0;
+                foreach ($curator_rows as $curator_row) {
+                    if (($curator_row['follow_state'] ?? '') === 'accepted') $curator_accepted++;
+                }
             } catch (Throwable $e) {}
         }
     ?>
@@ -388,8 +394,8 @@ include 'core/sidebar.php';
         <?php else: ?>
             <p><strong><?php echo $curator_on ? 'RUNNING' : 'PAUSED'; ?></strong>
                 &middot; discovered <?php echo (int)($curator_counts['discovered'] ?? 0); ?>
-                &middot; following/pending <?php echo (int)($curator_counts['following'] ?? 0); ?>
-                &middot; healthy <?php echo (int)($curator_counts['followed'] ?? 0); ?>
+                &middot; follow jobs <?php echo (int)($curator_counts['following'] ?? 0); ?>
+                &middot; accepted <?php echo (int)($curator_accepted ?? 0); ?>
                 &middot; excluded hub members <?php echo (int)($curator_counts['excluded'] ?? 0); ?>
                 &middot; removed/invalid/rejected <?php echo (int)(($curator_counts['removed'] ?? 0) + ($curator_counts['invalid'] ?? 0) + ($curator_counts['rejected'] ?? 0)); ?></p>
             <p class="dim">Last complete directory scan:
@@ -415,10 +421,11 @@ include 'core/sidebar.php';
                 <summary>SHOW STORED ACCOUNTS (<?php echo count($curator_rows); ?>)</summary>
                 <div style="overflow:auto;max-height:430px;margin-top:12px;">
                 <table class="dim" style="width:100%;border-collapse:collapse;">
-                    <thead><tr><th style="text-align:left;">ACCOUNT</th><th style="text-align:left;">STATE</th><th style="text-align:left;">LAST SEEN</th><th style="text-align:left;">LAST CHECK</th><th style="text-align:left;">DETAIL</th></tr></thead>
+                    <thead><tr><th style="text-align:left;">ACCOUNT</th><th style="text-align:left;">DIRECTORY</th><th style="text-align:left;">FOLLOW</th><th style="text-align:left;">LAST SEEN</th><th style="text-align:left;">LAST CHECK</th><th style="text-align:left;">DETAIL</th></tr></thead>
                     <tbody><?php foreach ($curator_rows as $cr): ?><tr class="border-b">
                         <td class="p-8-6"><?php if (!empty($cr['actor_url'])): ?><a href="<?php echo htmlspecialchars($cr['actor_url']); ?>" target="_blank" rel="noopener nofollow"><?php echo htmlspecialchars($cr['acct']); ?></a><?php else: ?><?php echo htmlspecialchars($cr['acct']); ?><?php endif; ?></td>
                         <td class="p-8-6"><strong><?php echo htmlspecialchars($cr['state']); ?></strong></td>
+                        <td class="p-8-6"><strong><?php echo htmlspecialchars(($cr['follow_state'] ?? '') === 'accepted' ? 'accepted' : (($cr['state'] ?? '') === 'following' ? 'pending' : ($cr['follow_state'] ?? 'not queued'))); ?></strong></td>
                         <td class="p-8-6"><?php echo htmlspecialchars($cr['last_seen_at'] ?? ''); ?></td>
                         <td class="p-8-6"><?php echo htmlspecialchars($cr['last_checked_at'] ?? 'not yet'); ?></td>
                         <td class="p-8-6"><?php echo htmlspecialchars($cr['last_error'] ?? ''); ?></td>

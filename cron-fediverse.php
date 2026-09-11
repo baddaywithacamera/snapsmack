@@ -148,6 +148,11 @@ if ($is_fedistructure_hub && function_exists('sc_curator_cron')) {
     try { $curator = sc_curator_cron($pdo, $settings); }
     catch (Throwable $e) { fwrite(STDERR, "Optional curator maintenance failed; ordinary delivery will continue: " . $e->getMessage() . "\n"); }
 }
+$curator_recovery = [0, 0];
+if ($is_fedistructure_hub && function_exists('sc_relay_recover_curator_outboxes')) {
+    try { $curator_recovery = sc_relay_recover_curator_outboxes($pdo, $settings, 2, 10); }
+    catch (Throwable $e) { fwrite(STDERR, "Optional curator outbox recovery failed; ordinary delivery will continue: " . $e->getMessage() . "\n"); }
+}
 
 // RESYNC mode: php cron-fediverse.php resync [N]
 // Re-federates the N most recent posts (default: fediverse_backfill_count) to
