@@ -152,6 +152,7 @@ include 'core/sidebar.php';
         $last_epoch = $ever_ran ? (strtotime($last) ?: 0) : 0;
         $stale_after = $job['key'] === 'fediverse' ? 1200 : ($job['key'] === 'rss' ? 7200 : 46800);
         $stale = !$last_epoch || (time() - $last_epoch) > $stale_after;
+        $wedged = $job['key'] === 'fediverse' && $status === 'running' && $stale;
     ?>
     <div class="box mb-20">
         <h3><?php echo htmlspecialchars($job['label']); ?></h3>
@@ -174,10 +175,12 @@ include 'core/sidebar.php';
                     <td>
                         <?php if ($registered && $command_ok && !$stale): ?>
                             &#10003; registered, command verified, and running on schedule
+                        <?php elseif ($wedged): ?>
+                            &#10007; worker says RUNNING but its heartbeat is stale &mdash; it stopped or wedged; the authenticated fleet tick will take over
                         <?php elseif ($registered && $command_ok): ?>
                             &#10007; registered command is valid, but the job is stale and is not running on schedule
                         <?php elseif ($registered): ?>
-                            &#10007; tagged entry exists, but it is invalid: <?php echo htmlspecialchars((string)$inspection['problem']); ?>
+                            &#10007; tagged entry exists, but it is invalid: <?php echo htmlspecialchars((string)$inspection['problem']); ?>. The authenticated fleet tick will repair it automatically.
                         <?php else: ?>
                             &#10007; not registered &mdash; this job won't run on its own until you register it
                         <?php endif; ?>

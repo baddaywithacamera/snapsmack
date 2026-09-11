@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.699D "SAME CLOCK" — 2026-09-11
+- **Due outbound deliveries can no longer be skipped because PHP and MySQL disagree about the time zone.** Queue eligibility now uses the same database clock that writes `next_try_at`; boosts and new posts remain ahead of backfills.
+- **Cron repairs itself instead of waiting for another admin intervention.** The authenticated fleet tick replaces a missing or obsolete registered command, and takes over after one missed ten-minute interval. Event kicks now use the same durable detached launcher as the Cron & Jobs page.
+- **The delivery log no longer combines a worker's new start time with the previous run's totals.** Running and completed work are labelled separately, and PHP failures are recorded instead of leaving a permanent `running` state, making a wedged worker visible instead of reporting a false success.
+
 ## 0.7.698D "SAME NUMBERS" — 2026-09-11
 - **`stats.php` now reports the same numbers the site's own masthead shows.** On a site with an imported Flickr baseline, all-time views are that baseline plus native photo views (the SLICKR headline), not the daily-log total; "active since" ignores post dates before 1990 (a scanned 1980 negative is not a launch date). The response is cacheable for five minutes instead of an hour. This is what the skin cards on snapsmack.ca read. (`stats.php`.)
 

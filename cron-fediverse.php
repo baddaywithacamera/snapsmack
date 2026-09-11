@@ -97,6 +97,19 @@ sv_set_setting($pdo, $settings, 'fediverse_cli_cron_last_run', date('Y-m-d H:i:s
 // that never launched from one that is actively working through a slow queue.
 sv_set_setting($pdo, $settings, 'fediverse_cron_last_run', date('Y-m-d H:i:s'));
 sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'running');
+sv_set_setting($pdo, $settings, 'fediverse_cron_run_started', date('Y-m-d H:i:s'));
+$cron_finished_cleanly = false;
+register_shutdown_function(static function () use ($pdo, &$settings, &$cron_finished_cleanly): void {
+    if ($cron_finished_cleanly) return;
+    // An uncaught exception/fatal used to leave "running" behind forever. A
+    // hard process kill still has no shutdown hook, and is reported as wedged
+    // by Cron & Jobs; ordinary PHP failures are now explicit immediately.
+    try {
+        sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'failed');
+        sv_set_setting($pdo, $settings, 'fediverse_cron_last_run', date('Y-m-d H:i:s'));
+    } catch (Throwable $e) {
+    }
+});
 
 sv_ensure_tables($pdo);
 sv_ensure_keys($pdo, $settings);
@@ -204,8 +217,10 @@ if (is_file("{$root}/core/mesh-helpers.php")) {
 // only ever sees the waiting line.
 sv_set_setting($pdo, $settings, 'fediverse_cron_last_run', date('Y-m-d H:i:s'));
 sv_set_setting($pdo, $settings, 'fediverse_cron_last_status', 'ok');
+sv_set_setting($pdo, $settings, 'fediverse_cron_last_completed', date('Y-m-d H:i:s'));
 sv_set_setting($pdo, $settings, 'fediverse_cron_last_sent', (string)(int)$sent);
 sv_set_setting($pdo, $settings, 'fediverse_cron_last_failed', (string)(int)$failed);
+$cron_finished_cleanly = true;
 
 echo sprintf(
     "FEDIVERSE sweep: %d new unit(s), %d delivery(ies) queued; backfill: %d job(s), %d queued. Queue run: %d sent, %d retrying/failed; relay ingest: %d recovered, %d retrying/shelved; outbox recovery: %d members, %d recovered; PHOTOFRI: %d finalized, %d gardened, %d withdrawn; profile-update: %d follower(s); mesh-follow: %d%s.\n",
