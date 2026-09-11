@@ -11,9 +11,12 @@ $checks = [
     'historical round uses its own prompt tag' => str_contains($photo, 'SELECT tag FROM pc_prompts WHERE week_key=?'),
     'embed accepts an explicit window' => str_contains($photo, 'array $settings, ?array $window = null'),
     'feed selects previous while board stays current' => str_contains($board, "? pc_previous_window(\$pdo, \$settings) : pc_window(\$settings)"),
-    'ordinary navigation targets feed' => str_contains($header, "\$base . 'feed'"),
-    'gram navigation targets feed' => str_contains($gram, "\$base . 'feed'"),
-    'pretty feed route exists' => str_contains($ht, '^feed/?$'),
+    'human feed has its own route instead of colliding with RSS' =>
+        str_contains($ht, 'RewriteRule ^challenge-feed/?$ photochallenge-board.php?view=previous [L,QSA]')
+        && !str_contains($ht, 'RewriteRule ^feed/?$ photochallenge-board.php?view=previous [L,QSA]'),
+    'ordinary navigation targets human feed' => str_contains($header, "\$base . 'challenge-feed'"),
+    'gram navigation targets human feed' => str_contains($gram, "\$base . 'challenge-feed'"),
+    'pretty human feed route exists' => str_contains($ht, '^challenge-feed/?$'),
 ];
 $failed = 0;
 foreach ($checks as $label => $ok) {
