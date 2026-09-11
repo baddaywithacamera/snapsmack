@@ -514,8 +514,14 @@ include 'core/sidebar.php';
             <input type="hidden" name="smackback_stepup" value="1">
             <p class="dim" style="margin:0 0 10px;font-size:0.85rem;">Authorize file actions (Re-bless / Remove) with your password and 2FA — valid 10 minutes.</p>
             <div class="sb-stepup-row">
-                <input type="password" name="reauth_password" placeholder="Password" autocomplete="off" style="flex:1;min-width:160px;">
-                <input type="text" name="reauth_totp" placeholder="2FA code" inputmode="numeric" autocomplete="off" style="width:120px;">
+                <div class="sb-stepup-field">
+                    <label for="sb-reauth-password">Your password</label>
+                    <input type="password" id="sb-reauth-password" name="reauth_password" placeholder="Password" autocomplete="off">
+                </div>
+                <div class="sb-stepup-field sb-stepup-field--code">
+                    <label for="sb-reauth-totp">2FA code</label>
+                    <input type="text" id="sb-reauth-totp" name="reauth_totp" placeholder="123456" inputmode="numeric" autocomplete="off">
+                </div>
                 <button type="submit" class="btn-smack">AUTHORIZE</button>
             </div>
         </form>
