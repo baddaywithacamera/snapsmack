@@ -31,6 +31,10 @@ return [
             'body'  => 'Post Viewer Backdrop Colour and Opacity control the layer behind the large photograph-and-details viewer. These are deliberately separate from Puzzle Backdrop Colour and Opacity, which affect only the playable sliding-puzzle window.',
         ],
         [
+            'title' => 'Older Computers and Browser Load',
+            'body'  => 'The background is 144 live sliding puzzles. The page keeps that cheap: only a board that is actually sliding asks the graphics card for layers, the hidden photo list the browser re-samples from is a few hundred pictures rather than the whole archive, and a machine that reports little memory or few processor cores automatically gets at most half the boards. If a visitor still reports trouble, lower Background Puzzle Amount under GAME ON, or set Background Activity to 1. Reduce-motion settings in the operating system stop the sliding entirely.',
+        ],
+        [
             'title' => 'Background Motion and Colour',
             'body'  => 'Background Activity controls how often puzzles move and how many can move together; Puzzle Movement Speed controls how quickly each move travels. Image Border Activity independently controls how often the photograph-border colours hand off and whether one, two, or three can move together. A colour cannot return to a photograph it left during the previous five seconds. Choose Electric, Film Box, monochrome, or one automatic palette per visit. Visitors who request reduced motion receive a still puzzle field and the established safe completion treatment.',
         ],
