@@ -12,10 +12,10 @@
 require_once __DIR__ . '/includes/skin-stats.php';
 
 $page_title       = 'SnapSmack - Self-Hosted Photo Publishing and Instagram Alternative';
-$page_description = 'Free, self-hosted photo blogging that brings back the gallery, the grid, and the photoblog. Your photos, your domain, your archive. Your work is never our content.';
+$page_description = 'Free, self-hosted photo blogging that brings back the gallery, the grid, and the photoblog. Your photos. Your voice. Your style. Your dignity.';
 $page_og_url      = 'https://snapsmack.ca/';
-$page_social_title = 'SnapSmack - Your photos. Your voice. Your style. Your dignity.';
-$page_social_description = 'Self-hosted photo blogging that brings back the gallery, the grid, and the photoblog. Your work is never our content.';
+$page_social_title = 'SnapSmack - Retro Photo Blogging. Modern Technology.';
+$page_social_description = 'Self-hosted photo blogging that brings back the gallery, the grid, and the photoblog. Your photos. Your voice. Your style. Your dignity.';
 $nav_active       = 'index';
 
 $page_css = <<<'CSS'
@@ -30,7 +30,7 @@ $page_css = <<<'CSS'
 .door-hook { max-width: 980px; font-size: clamp(1.9rem, 4vw, 3.3rem); }
 .door-sub { max-width: 800px; margin-top: 8px; font-size: clamp(1.15rem, 2vw, 1.4rem); line-height: 1.5; color: #333; }
 .door-never { max-width: 800px; margin-top: 14px; color: var(--black); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
-.door-never em { color: var(--red); font-style: italic; text-transform: none; font-family: Georgia, serif; font-weight: 400; }
+.door-never em { color: var(--red); font-style: normal; }
 .door-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
 .btn { display: inline-block; padding: 14px 22px; border: 2px solid var(--black); color: var(--black); font: 900 .8rem/1 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: .03em; }
 .btn:hover { text-decoration: none; }
@@ -115,9 +115,9 @@ require_once __DIR__ . '/includes/header.php';
 <main>
     <section id="door">
         <div class="door-inner">
-            <h1 class="door-hook">Your photos. Your voice.<br>Your style. <span>Your dignity.</span></h1>
+            <h1 class="door-hook">Retro Photo Blogging.<br><span>Modern Technology.</span></h1>
             <p class="door-sub">Self-hosted photo blogging that brings back the gallery, the grid, and the photoblog &mdash; the ways photographers actually shared their work before the platforms ate everything.</p>
-            <p class="door-never">Your work is never <em>&ldquo;our content.&rdquo;</em></p>
+            <p class="door-never">Your photos. Your voice.<br>Your style. <em>Your dignity.</em></p>
             <div class="door-actions">
                 <a href="#beta" class="btn btn-primary">Try the Beta</a>
                 <a href="features.php" class="btn btn-secondary">What it does</a>
