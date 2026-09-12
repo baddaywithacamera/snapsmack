@@ -88,19 +88,19 @@ include __DIR__ . '/includes/header.php';
             </div>
 
             <h2>The Smack Public License (SPL)</h2>
-            <p>SnapSmack is released under the <a href="licenses/SNAPSMACK-LICENSE.txt">Smack Public License 2.2</a> — a copyleft license that means:</p>
+            <p>SnapSmack is released under the <a href="licenses/SNAPSMACK-LICENSE.txt">Smack Public License 2.2</a> — a copyleft licence that means:</p>
             <ul>
                 <li>SnapSmack is free to use, modify, and redistribute.</li>
                 <li>If you build something on top of SnapSmack and distribute it, your version must also be free and open-source under the same terms. You cannot take this codebase, change the logo, and sell it as a subscription SaaS. That path is closed.</li>
-                <li><a href="licenses/SNAPSMACK-LICENSE.txt">The full license text</a> is available here and in the repository. It includes an Ethical Provenance Summary that lays out the AI co-authorship and explains why we chose copyleft. It's actually readable, which is unusual for a license document.</li>
+                <li><a href="licenses/SNAPSMACK-LICENSE.txt">The full licence text</a> is available here and in the repository. It includes an Ethical Provenance Summary that lays out the AI co-authorship and explains why we chose copyleft. It's actually readable, which is unusual for a licence document.</li>
             </ul>
-            <p>We did not go with a standard open-source license like GPL or MIT because we wanted to say the quiet part loud — the AI provenance thing, the "vibe coded" disclosure, and the co-author credit for Claude and OpenAI Codex. Standard licenses don't have fields for that. So we wrote our own.</p>
+            <p>We did not go with a standard open-source licence like GPL or MIT because we wanted to say the quiet part loud — the AI provenance thing, the "vibe coded" disclosure, and the co-author credit for Claude and OpenAI Codex. Standard licences don't have fields for that. So we wrote our own.</p>
             <p>The SPL is not anti-commercial. Run SnapSmack for your own business if it does the job. Sell services around it — fold it into a hosting plan, or charge a fee to install and run it for someone who can't do that themselves. Make a living off the work you do with it; that is the whole point of owning your tools. What you cannot do is sell the software itself, or take the code and turn it into a closed, proprietary product. The code stays open and the software stays free for whoever ends up with it. Everything else is up to you.</p>
             <p>Hosting providers are welcome to include a SnapSmack installer in their cPanel or hosting control panel once SnapSmack reaches public release (planned for 2027). We appreciate the support. The same terms apply — the software stays free and open for whoever installs it.</p>
 
             <h2>The full meal deal</h2>
             <p>Plenty of open-source projects open the core and keep the good bits back. The reference engine is free; the polished themes are a paid add-on. The CMS is GPL, but the deploy tooling and the import scripts and the admin niceties stay in a private repo. You can have the motor — the bodywork, the trim, and the keys cost extra. That is a normal and respectable way to run an open-source project. It is not how we run this one.</p>
-            <p>Everything SnapSmack is, is in the open. Not just the core CMS — <em>every</em> skin we have built, including the ones that don't ship in the default install and the ones we keep on a tight leash internally for our own reasons. And every desktop app built so far: the Instagram archive importer, the backup tool, the batch poster, the skin designer, the lot. If we wrote it for SnapSmack, it is in the repository under the same copyleft license as the core. There is no inner circle, no pro tier, no "source-available" sleight of hand where the license technically lets you look but practically lets you do nothing.</p>
+            <p>Everything SnapSmack is, is in the open. Not just the core CMS — <em>every</em> skin we have built, including the ones that don't ship in the default install and the ones we keep on a tight leash internally for our own reasons. And every desktop app built so far: the Instagram archive importer, the backup tool, the batch poster, the skin designer, the lot. If we wrote it for SnapSmack, it is in the repository under the same copyleft licence as the core. There is no inner circle, no pro tier, no "source-available" sleight of hand where the licence technically lets you look but practically lets you do nothing.</p>
             <p>The reason is the same reason as everything else on this page. If the material that helped build this came from the commons, then all of it goes back — not a curated slice, not just the parts we don't mind parting with. All of it. Anyone who forks SnapSmack gets the whole working system on day one: the engine, every skin, and every tool we use to run our own sites. The full meal deal, right out of the gate. You can read this whole site top to bottom and you will not find a corner where we quietly held something back, because there isn't one. That's rather the point.</p>
 
             <h2>The Thomas Clause</h2>
@@ -116,7 +116,7 @@ include __DIR__ . '/includes/header.php';
             </div>
 
             <h2>The short version</h2>
-            <p>We built this with AI help. The training data that shaped those AI tools may include code from people who never consented to it. So we're giving the result back to the commons, a license that makes sure it stays there. We think that is the right call. You are welcome to disagree, but you cannot change it.</p>
+            <p>We built this with AI help. The training data that shaped those AI tools may include code from people who never consented to it. So we're giving the result back to the commons, a licence that makes sure it stays there. We think that is the right call. You are welcome to disagree, but you cannot change it.</p>
             <p>Also, Thomas the bear must stay in the code forever. Non-negotiable.</p>
             <p>Hairy muff.</p>
 
