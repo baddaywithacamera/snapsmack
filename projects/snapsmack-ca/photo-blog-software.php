@@ -14,7 +14,7 @@ $landing_eyebrow = 'Photo blog software';
 $landing_h1 = 'The photo blog,<br>reimagined. Not reheated.';
 $landing_opener = <<<'HTML'
             <p>Pixelpost is gone. Greymatter is a memory. WordPress is a hotel lobby with a photo plugin. The photoblog &mdash; one photograph, one post, a real archive behind it &mdash; deserved better than being a theme somebody stopped updating in 2014.</p>
-            <p>SnapSmack is three photoblogs in one engine: the single-image classic, the three-across grid, and long-form writing with photographs woven through it. Skins that don&rsquo;t look like templates. No plugin pile. And it knows who taught it the good bits &mdash; the people who built the originals get thanked by name.</p>
+            <p>SnapSmack is four photoblogs in one engine: the single-image classic, the three-across grid, long-form writing with photographs woven through it, and Picasa-style albums for friends and family. Skins that don&rsquo;t look like templates. No plugin pile. And it knows who taught it the good bits &mdash; the people who built the originals get thanked by name.</p>
 HTML;
 $landing_closer = <<<'HTML'
             <p class="seo-closer-lines"><span>One photograph.</span><span>One post.</span><span><em>Yours.</em></span></p>
