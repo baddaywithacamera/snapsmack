@@ -36,6 +36,8 @@ $page_css = <<<'CSS'
 .feat-card p { margin: 0; font-size: .88rem; line-height: 1.55; color: var(--mid-grey); }
 .feat--dark .feat-card p { color: #bbb; }
 .feat-card--wide { grid-column: 1 / -1; }
+.feat-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.layer-num { display: block; margin-bottom: 8px; color: #888; font: 700 .64rem/1.2 'Courier New', monospace; letter-spacing: .1em; text-transform: uppercase; }
 .feat-list { max-width: 820px; margin: 0 0 0 1.2em; columns: 2; column-gap: 40px; }
 .feat-list li { margin-bottom: .6em; break-inside: avoid; font-size: .95rem; }
 .mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
@@ -54,8 +56,8 @@ $page_css = <<<'CSS'
 .feat-link a { font: 900 .78rem/1 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .free-band { padding: 26px 30px; background: var(--red); color: var(--white); font: 900 clamp(1.1rem, 2.2vw, 1.5rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .free-band a { color: var(--white); text-decoration: underline; }
-@media (max-width: 900px) { .feat-grid, .mode-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 700px) { .feat-grid, .mode-grid, .fed-shots { grid-template-columns: 1fr; } .feat-list { columns: 1; } }
+@media (max-width: 900px) { .feat-grid, .feat-grid--4, .mode-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .feat-grid, .feat-grid--4, .mode-grid, .fed-shots { grid-template-columns: 1fr; } .feat-list { columns: 1; } }
 CSS;
 
 require_once __DIR__ . '/includes/header.php';
@@ -220,13 +222,15 @@ require_once __DIR__ . '/includes/header.php';
                 <h2>Security that admits the internet exists.</h2>
                 <p class="lede">Eight independent layers, from the comment box to the software supply chain. Public audits. Same-day disclosure. And no remote control &mdash; nobody but you can touch your site.</p>
             </div>
-            <div class="feat-grid">
-                <article class="feat-card"><h3>SMACKBACK</h3><p>File-integrity monitoring. A file changes that nobody signed, the site locks itself down and asks its owner to decide.</p></article>
-                <article class="feat-card"><h3>Network Alert</h3><p>Several sites tampered in a short window? Every owner is told the same hour: update, back up, rotate keys.</p></article>
-                <article class="feat-card"><h3>Break the Glass</h3><p>A signed, one-use recovery card for total account lockout. Yours, printed, offline.</p></article>
-                <article class="feat-card"><h3>Mandatory 2FA + IP SMACKER</h3><p>Private login route, scanner rejection, aggressive failed-login bans, and step-up authentication for anything that matters.</p></article>
-                <article class="feat-card"><h3>Trolls, handled in layers</h3><p>Fingerprint bans, fleet-wide propagation, community reputation, and stylometric detection of the ones who come back.</p></article>
-                <article class="feat-card"><h3>Signed everything</h3><p>Signed releases, published checksums, signed git tags, reviewed dependencies, cryptographically verified updates with rollback.</p></article>
+            <div class="feat-grid feat-grid--4">
+                <article class="feat-card"><span class="layer-num">1 &middot; Local</span><h3>Smack Dab</h3><p>Fingerprint bans, hashed identities, keyword rules and Akismet on every comment box. No tracking, no stored personal data.</p></article>
+                <article class="feat-card"><span class="layer-num">2 &middot; Your network</span><h3>Smack Down</h3><p>Ban a troll on one site and the hashed ban propagates across your whole fleet.</p></article>
+                <article class="feat-card"><span class="layer-num">3 &middot; The community</span><h3>Smack Up</h3><p>Opt-in reputation across participating blogs. Old incidents decay; the community can correct.</p></article>
+                <article class="feat-card"><span class="layer-num">4 &middot; The network</span><h3>Smackattack</h3><p>Central threat scores, but every blog keeps its own thresholds and its own ban decisions.</p></article>
+                <article class="feat-card"><span class="layer-num">5 &middot; Evasion</span><h3>Gobsmacked</h3><p>Stylometric detection of banned harassers who come back with a new device, address, and email.</p></article>
+                <article class="feat-card"><span class="layer-num">6 &middot; Your install</span><h3>Smackback</h3><p>File-integrity monitoring. A file changes that nobody signed, the site locks itself down and asks its owner. Fleet-wide alert if several sites are hit.</p></article>
+                <article class="feat-card"><span class="layer-num">7 &middot; The admin</span><h3>IP Smacker</h3><p>Private login route, scanner rejection, aggressive failed-login bans, mandatory 2FA, and a printed break-glass recovery card.</p></article>
+                <article class="feat-card"><span class="layer-num">8 &middot; The software</span><h3>Snap Decision</h3><p>Signed releases, published checksums, signed git tags, reviewed dependencies, verified updates with rollback.</p></article>
             </div>
             <p class="feat-link"><a href="security.php">How it works, and what happens when it goes wrong &rarr;</a></p>
         </div>
