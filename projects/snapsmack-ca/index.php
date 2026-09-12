@@ -12,7 +12,7 @@
 require_once __DIR__ . '/includes/skin-stats.php';
 
 $page_title       = 'SnapSmack - Self-Hosted Photo Publishing and Instagram Alternative';
-$page_description = 'Free, self-hosted photo blogging that brings back the gallery, the grid, and the photoblog. Your photos. Your voice. Your style. Your dignity.';
+$page_description = 'What is new is old again. Free, self-hosted photo blogging that gives back the single-photo blog, long-form posting, classic Insta and Picasa-style albums, on hardware you control. Your photos. Your voice. Your style. Your dignity.';
 $page_og_url      = 'https://snapsmack.ca/';
 $page_social_title = 'SnapSmack - Retro Photo Blogging. Modern Technology.';
 $page_social_description = 'Self-hosted photo blogging that brings back the gallery, the grid, and the photoblog. Your photos. Your voice. Your style. Your dignity.';
@@ -28,6 +28,7 @@ $page_css = <<<'CSS'
 #door { padding: 88px 0 72px; }
 .door-inner { max-width: var(--max); margin: 0 auto; padding: 0 32px; }
 .door-hook { max-width: 980px; font-size: clamp(1.9rem, 4vw, 3.3rem); }
+.door-kicker { margin-top: 6px; color: var(--red); font: 900 .82rem/1.3 'Courier New', monospace; letter-spacing: .12em; text-transform: uppercase; }
 .door-sub { max-width: 800px; margin-top: 8px; font-size: clamp(1.15rem, 2vw, 1.4rem); line-height: 1.5; color: #333; }
 .door-never { max-width: 800px; margin-top: 14px; color: var(--black); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
 .door-never em { color: var(--red); font-style: normal; }
@@ -116,7 +117,8 @@ require_once __DIR__ . '/includes/header.php';
     <section id="door">
         <div class="door-inner">
             <h1 class="door-hook">Retro Photo Blogging.<br><span>Modern Technology.</span></h1>
-            <p class="door-sub">Self-hosted photo blogging that brings back the gallery, the grid, and the photoblog &mdash; the ways photographers actually shared their work before the platforms ate everything.</p>
+            <p class="door-kicker">What&rsquo;s new is old again.</p>
+            <p class="door-sub">We&rsquo;re not offering you anything new. We&rsquo;re giving back what was taken: the single-photo blog, long-form posting that hasn&rsquo;t been enshittified, classic Insta, and pumping images straight out of a file manager. All of it used to belong to photographers. Now it lives on hardware you control, and nobody is taking it back from you.</p>
             <p class="door-never">Your photos. Your voice.<br>Your style. <em>Your dignity.</em></p>
             <div class="door-actions">
                 <a href="#beta" class="btn btn-primary">Try the Beta</a>
