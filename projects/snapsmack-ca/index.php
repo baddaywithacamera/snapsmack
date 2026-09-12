@@ -81,6 +81,9 @@ $page_css = <<<'CSS'
 .custodian-points p { margin: 0; font-size: .92rem; line-height: 1.55; }
 
 #respect, #whodat { border-top: 8px solid var(--black); }
+#respect { background: var(--black); color: #ddd; border-top-color: var(--red); }
+#respect a { color: var(--white); text-decoration: underline; }
+#respect a:hover { color: var(--red); }
 #whodat { padding-top: 46px; background: var(--light-grey); }
 .whodat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px; }
 .whodat-card { background: var(--white); border: 1px solid var(--border); padding: 22px; }
