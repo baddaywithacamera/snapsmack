@@ -110,6 +110,17 @@
 <!-- FOOTER -->
 <footer id="site-footer">
     <div class="wrap">
+        <nav class="footer-fine-print" aria-label="Fine print">
+            <a href="security.php">Security</a>
+            <a href="tnb.php">Privacy</a>
+            <a href="hairy-muff.php">Ethics &amp; licence</a>
+            <a href="buzzers.php">Security audits</a>
+            <a href="ding-dong-bell.php">Operability audits</a>
+            <a href="the-reckoning.php">By the numbers</a>
+            <a href="hows-yer-father.php">Architecture</a>
+            <a href="bugger.php">Emergency help</a>
+            <a href="coming-soon.php">Coming soon</a>
+        </nav>
         <p class="footer-copy">&copy; 2026 Sean McCormick &middot; Dedicated to Raymond A. Vanderwoning, photographer and friend. <a href="https://www.serenity.ca/obituaries/Raymond-Anthony-Vanderwoning?obId=30943370" target="_blank" rel="noopener noreferrer">He is missed.</a></p>
     </div>
 </footer>
