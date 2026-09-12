@@ -56,16 +56,16 @@ require_once __DIR__ . '/includes/header.php';
 <main>
     <section class="page-header">
         <div class="wrap">
-            <p class="site-discovery-kicker">THE GOODS! / GLAD RAGS!</p>
+            <p class="site-discovery-kicker">GLAD RAGS!</p>
             <h1>Same engine.<br><span>Entirely different attitude.</span></h1>
             <p class="lede">These are not mockups padded with stock photographs. Every skin below is running on a real site with a real archive.</p>
         </div>
     </section>
-    <div class="wrap" style="padding-top:32px;">
+    <div class="wrap goods-nav-wrap">
         <nav class="goods-nav" aria-label="The Goods">
             <a href="features.php"><strong>THE GOODS!</strong><span>What SnapSmack actually does.</span></a>
             <a class="active" href="skins.php"><strong>GLAD RAGS!</strong><span>Skins: different sites, same dependable engine.</span></a>
-            <a href="tools.php"><strong>BOX O' TRICKS!</strong><span>Companion apps for migration, posting, and backup.</span></a>
+            <a href="tools.php"><strong>BOX O' TRICKS!</strong><span>The free desktop suite.</span></a>
         </nav>
     </div>
     <section>

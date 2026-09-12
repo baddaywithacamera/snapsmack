@@ -112,7 +112,7 @@ require_once __DIR__ . '/includes/header.php';
             <p>Authentication, authorization, abuse prevention, signed distribution, integrity monitoring, breach containment, recovery, fleet intelligence, and public audit closure reinforce one another instead of operating as isolated checkboxes.</p>
             <p>That does not make any individual ingredient a SnapSmack invention. What is unusual is the coordination: putting all the fixings on the burger and bringing the architectural and security depth people expect from paid software to freeware built for a small community.</p>
             <div class="page-actions">
-                <a href="index.php#security">See the eight-layer stack &rarr;</a>
+                <a href="security.php#layers">See the eight-layer stack &rarr;</a>
                 <a href="buzzers.php">Read the closed audits &rarr;</a>
             </div>
         </div>
