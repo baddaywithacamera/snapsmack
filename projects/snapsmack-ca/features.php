@@ -113,7 +113,7 @@ require_once __DIR__ . '/includes/header.php';
                     <span class="mode-num">04 / THE ALBUM</span>
                     <h3>SMACKTHEMUP</h3>
                     <div class="mode-tagline">Remember Picasa Web Albums?</div>
-                    <p>We do, and we miss them. A simplified hybrid for sharing public photos with friends and family: a chronological classic-Insta feed, plus categories, albums, and collections, all managed from the Photo Library in <a href="tool-snap-slapper.php">SNAP SLAPPER</a> the way Picasa used to share. Runs GRAMOFSMACK skins. No fediverse &mdash; it&rsquo;s for the people you know. And yes, Thomas is there.</p>
+                    <p>We do, and we miss them. A simplified hybrid for sharing public photos with friends and family: a chronological classic-Insta feed, plus categories, albums, and collections, all published from the Photo Library in <a href="tool-snap-slapper.php">SNAP SLAPPER</a> the way Picasa used to share. Runs GRAMOFSMACK skins.</p>
                 </article>
             </div>
         </div>
