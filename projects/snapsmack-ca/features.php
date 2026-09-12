@@ -11,7 +11,7 @@
  */
 
 $page_title       = 'THE GOODS! - SnapSmack Features';
-$page_description = 'Everything SnapSmack does: three publishing modes, a real archive, import and export, the photographers\' network, skins, desktop tools, security, AI assistance, and what it takes to run it.';
+$page_description = 'Everything SnapSmack does: four publishing modes, a real archive, import and export, the photographers\' network, skins, desktop tools, security, AI assistance, and what it takes to run it.';
 $page_og_url      = 'https://snapsmack.ca/features.php';
 $nav_active       = 'goods';
 
@@ -38,7 +38,7 @@ $page_css = <<<'CSS'
 .feat-card--wide { grid-column: 1 / -1; }
 .feat-list { max-width: 820px; margin: 0 0 0 1.2em; columns: 2; column-gap: 40px; }
 .feat-list li { margin-bottom: .6em; break-inside: avoid; font-size: .95rem; }
-.mode-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+.mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
 .mode-card { padding: 30px; background: var(--white); }
 .mode-num { color: var(--red); font: 900 .72rem/1 Arial, sans-serif; }
 .mode-card h3 { margin: 10px 0 12px; font-size: 1.18rem; }
@@ -81,9 +81,9 @@ require_once __DIR__ . '/includes/header.php';
     <section class="feat" id="modes">
         <div class="wrap">
             <div class="feat-head">
-                <p class="site-discovery-kicker">Three ways to play</p>
+                <p class="site-discovery-kicker">Four ways to play</p>
                 <h2>Pick the way you always shared.</h2>
-                <p class="lede">Three install modes, three personalities: the three most common ways photographers have shared images over the past quarter century. You choose one at install and you can&rsquo;t toggle between them, because they are very different animals. Choose wisely.</p>
+                <p class="lede">Four install modes, four personalities: the ways photographers have actually shared images over the past quarter century. You choose one at install and you can&rsquo;t toggle between them, because they are very different animals. Choose wisely.</p>
             </div>
             <div class="mode-grid">
                 <article class="mode-card">
@@ -103,6 +103,12 @@ require_once __DIR__ . '/includes/header.php';
                     <h3>SMACKTALK</h3>
                     <div class="mode-tagline">For photographers who write.</div>
                     <p>Writing with photographs inside it. Essays, field notes, journals, and stories that need more than a caption and seventeen hashtags. Headings, inline gallery images, covers, captions, and justified MOSAIC panels woven through the text.</p>
+                </article>
+                <article class="mode-card">
+                    <span class="mode-num">04 / THE ALBUM</span>
+                    <h3>SMACKTHEMOUT</h3>
+                    <div class="mode-tagline">Remember Picasa Web Albums?</div>
+                    <p>We do, and we miss them. A simplified hybrid for sharing public photos with friends and family: a chronological classic-Insta feed, plus categories, albums, and collections, all managed from the Photo Library in <a href="tool-snap-slapper.php">SNAP SLAPPER</a> the way Picasa used to share. Runs GRAMOFSMACK skins. No fediverse &mdash; it&rsquo;s for the people you know. And yes, Thomas is there.</p>
                 </article>
             </div>
         </div>
