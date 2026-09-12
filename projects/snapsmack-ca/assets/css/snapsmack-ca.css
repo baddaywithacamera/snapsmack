@@ -286,15 +286,16 @@ nav a.active::after { width: 100%; }
 #strip { padding: 0 0 72px; border-top: 0; }
 .strip-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; padding: 0; list-style: none; background: var(--border); border: 1px solid var(--border); }
 .strip-list li { display: grid; margin: 0; }
-.strip-list a { display: grid; grid-template-columns: 150px 1fr; gap: 18px; align-items: baseline; padding: 20px 24px; background: var(--white); color: var(--dark-grey); font-size: .98rem; line-height: 1.5; }
-.strip-list a strong { color: var(--black); font: 900 .86rem/1.3 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: .02em; }
-.strip-list a strong::after { content: " \2192"; color: var(--red); }
+.strip-title { margin-bottom: 18px; }
+/* Label stacked over its line - a side column made long labels wrap and orphan the arrow. */
+.strip-list a { display: block; padding: 20px 24px; background: var(--white); color: var(--dark-grey); font-size: .98rem; line-height: 1.5; }
+.strip-list a strong { display: block; margin-bottom: 6px; color: var(--black); font: 900 .86rem/1.3 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: .02em; }
+.strip-list a strong::after { content: " \2192"; color: var(--red); white-space: nowrap; }
 .strip-list a:hover, .strip-list a:focus-visible { background: #fff5f3; color: var(--black); text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
 .strip-skins { display: flex; gap: 8px; margin-top: 10px; }
-.strip-skins img { width: 25%; aspect-ratio: 16 / 10; object-fit: cover; border: 2px solid var(--border); }
+.strip-skins img { flex: 1 1 0; min-width: 0; aspect-ratio: 16 / 10; object-fit: cover; border: 2px solid var(--border); }
 @media (max-width: 700px) {
     .strip-list { grid-template-columns: 1fr; }
-    .strip-list a { grid-template-columns: 1fr; gap: 6px; }
 }
 
 /* --- FOOTER --- */
