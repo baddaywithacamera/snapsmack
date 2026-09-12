@@ -2,7 +2,7 @@
 REM ─────────────────────────────────────────────────────────────────────────
 REM  Unzucker — build script
 REM  Requires: Python 3.11+, pip install -r requirements.txt
-REM  Output:   C:\tools\unzucker-{version}.exe
+REM  Output:   C:\snapsmack\unzucker\unzucker.exe
 REM  Auto-increments the patch version in main.py on every build.
 REM ─────────────────────────────────────────────────────────────────────────
 
@@ -56,9 +56,12 @@ echo.
 if exist dist\%EXE_NAME% (
     echo Build successful: dist\%EXE_NAME%
     echo.
-    echo Deploying to C:\tools...
-    copy /Y dist\%EXE_NAME% C:\tools\%EXE_NAME%
-    echo Done. Launch: C:\tools\%EXE_NAME%
+    echo Deploying to C:\snapsmack\unzucker...
+    if not exist C:\snapsmack\unzucker mkdir C:\snapsmack\unzucker
+    copy /Y dist\%EXE_NAME% C:\snapsmack\unzucker\%EXE_NAME%
+    copy /Y dist\%EXE_NAME% C:\snapsmack\unzucker\unzucker.exe
+    C:\dev\snapsmack\.python-build\python.exe ..\hub\trust-installed-exe.py C:\snapsmack\unzucker\unzucker.exe
+    echo Done. Launch: C:\snapsmack\unzucker\unzucker.exe
 ) else (
     echo Build FAILED. Check output above for errors.
 )

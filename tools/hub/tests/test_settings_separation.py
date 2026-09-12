@@ -57,7 +57,7 @@ def test_settings_owns_every_configuration_surface():
 
 def test_repair_has_packaged_layout_proof():
     source = SOURCE.read_text(encoding="utf-8")
-    assert 'BUILD_VERSION = "0.7.41"' in source
+    assert 'BUILD_VERSION = "0.7.43"' in source
     assert 'SNAP_HQ_LAYOUT_QA_MARKER' in source
     assert 'Settings content leaked into the SNAP HQ launcher' in source
     assert 'SNAP HQ Settings is missing a configuration section' in source
@@ -84,5 +84,18 @@ def test_dashboard_scrollbar_is_content_driven():
     source = SOURCE.read_text(encoding="utf-8")
     assert "self._install_auto_scroll(\n            self._body_canvas" in source
     assert "body_scroll.pack(" not in source
+
+
+def test_dashboard_opens_compact_and_centred_instead_of_maximized():
+    source = SOURCE.read_text(encoding="utf-8")
+    assert 'self.geometry("980x480")' in source
+    assert "self.after_idle(self._centre_opening_window)" in source
+    assert "self.after_idle(self._open_maximized)" not in source
+
+
+def test_launcher_centres_icon_and_real_title_as_one_unit():
+    source = SOURCE.read_text(encoding="utf-8")
+    assert 'content.place(relx=.5, rely=.5, anchor="center")' in source
+    assert 'content = tk.Frame(launch, bg=button_bg, width=300' not in source
 
 # ===== SNAPSMACK EOF =====

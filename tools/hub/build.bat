@@ -87,6 +87,8 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+"%BUILD_PYTHON%" trust-installed-exe.py "C:\snapsmack\snap_slapper\SNAP SLAPPER.exe"
+if errorlevel 1 exit /b 1
 
 echo.
 if exist "C:\snapsmack\hub\SNAP HQ.exe" if exist "C:\snapsmack\snap_slapper\SNAP SLAPPER.exe" (

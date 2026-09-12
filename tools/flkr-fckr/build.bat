@@ -42,6 +42,11 @@ REM exe silently reports "no keychain" — which would quietly disable the
 REM remember-on-this-machine option rather than failing loudly.
 pyinstaller --onefile --windowed --name flkrfckr --icon assets\icon.ico --version-file version_info.txt --collect-all PIL --hidden-import PIL._tkinter_finder --paths ..\_shared --hidden-import snap_thumbs --hidden-import snap_stepup --hidden-import snap_vault --hidden-import snap_connections --hidden-import snap_profiles --hidden-import snap_creds --hidden-import snap_home --hidden-import snap_site_settings --collect-submodules keyring.backends main.py
 
+if not exist C:\snapsmack\flkr-fckr mkdir C:\snapsmack\flkr-fckr
+copy /Y dist\flkrfckr.exe C:\snapsmack\flkr-fckr\flkr-fckr.exe
+C:\dev\snapsmack\.python-build\python.exe ..\hub\trust-installed-exe.py C:\snapsmack\flkr-fckr\flkr-fckr.exe
+if errorlevel 1 exit /b 1
+
 echo.
 echo Done. Exe is in dist\flkrfckr.exe
 pause

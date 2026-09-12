@@ -45,6 +45,12 @@ if exist dist\%EXE_NAME% (
     echo Deploying to C:\snapsmack\suyb...
     if not exist C:\snapsmack\suyb mkdir C:\snapsmack\suyb
     copy /Y dist\%EXE_NAME% C:\snapsmack\suyb\%EXE_NAME%
+    copy /B /Y dist\%EXE_NAME% C:\snapsmack\suyb\suyb.exe.new >nul
+    if errorlevel 1 exit /b 1
+    move /Y C:\snapsmack\suyb\suyb.exe.new C:\snapsmack\suyb\suyb.exe >nul
+    if errorlevel 1 exit /b 1
+    C:\dev\snapsmack\.python-build\python.exe ..\hub\trust-installed-exe.py C:\snapsmack\suyb\suyb.exe
+    if errorlevel 1 exit /b 1
     echo Done. Launch: C:\snapsmack\suyb\%EXE_NAME%
 ) else (
     echo Build FAILED. Check output above for errors.

@@ -88,7 +88,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 // ── Load settings ────────────────────────────────────────────────────────────
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                 ->fetchAll(PDO::FETCH_KEY_PAIR);
-$portable_sites = snap_load_portable_rows($pdo);
+// Portable-site discovery is optional.  Older installs do not ship a portable
+// registry helper/table, so the fleet endpoint must not fatally fail merely
+// because that optional feature is absent.
+$portable_sites = [];
+if (function_exists('snap_load_portable_rows')) {
+    try {
+        $portable_sites = snap_load_portable_rows($pdo);
+        if (!is_array($portable_sites)) $portable_sites = [];
+    } catch (Throwable $e) {
+        $portable_sites = [];
+    }
+}
 
 // ── Cloud configuration ──────────────────────────────────────────────────────
 // Only expose whether cloud is configured and which provider — never send
