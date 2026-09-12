@@ -111,10 +111,11 @@ p:last-child { margin-bottom: 0; }
 
 /* --- NAVIGATION --- */
 nav {
-    display: grid; grid-template-columns: repeat(10, auto);
-    column-gap: 18px; row-gap: 8px;
-    margin-left: auto; text-align: right;
-    align-items: start; justify-items: end;
+    /* Two rows of five on desktop: room to breathe instead of ten items crammed on one line. */
+    display: grid; grid-template-columns: repeat(5, auto);
+    column-gap: 30px; row-gap: 10px;
+    margin-left: auto; text-align: left;
+    align-items: start; justify-items: start;
 }
 nav a {
     font-family: Arial Black, Arial, sans-serif;
@@ -213,10 +214,6 @@ nav a.active::after { width: 100%; }
     .logo-lockup img { width: 68px; }
     .logo-text .snap { font-size: clamp(2rem, 3.5vw, 2.65rem); }
     .logo-text .tagline { font-size: .68rem; }
-    nav { column-gap: 13px; }
-    nav a,
-    #site-header nav .nav-group > summary,
-    #mini-header nav .nav-group > summary { font-size: .67rem; }
     #site-header nav > a,
     #site-header nav > .nav-group,
     #mini-header nav > a,
