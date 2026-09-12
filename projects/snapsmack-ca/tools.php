@@ -129,7 +129,7 @@ function ss_tool_card(string $href, string $name, string $platform, string $stat
             </div>
             <div class="tool-cards">
                 <?php echo ss_tool_card('tool-suyb.php', 'SMACK UP YOUR BACKUP', 'Windows / Linux', 'Shipping', 'Back up one site or a fleet to local storage and cloud providers, audit what exists where, and recover from nothing. Long transfers checkpoint and resume.', 'suyb-backupinprogress-01.png', 'Smack Up Your Backup transferring a photography site backup'); ?>
-                <?php echo ss_tool_card('tool-snap-hq.php', 'SNAP HQ', 'Windows', 'Closed beta', 'Local headquarters for the suite. Launch every tool from one place, discover the sites in your fleet, and share protected profiles, libraries, and prompts between the tools that need them.', 'snap-hq.png', 'SNAP HQ launcher and shared setup'); ?>
+                <?php echo ss_tool_card('tool-snap-hq.php', 'SNAP HQ', 'Windows', 'Closed beta', 'Local headquarters for the suite. Launch every tool from one place, discover the sites in your fleet, and share protected profiles, libraries, and prompts between the tools that need them.', 'snap-hq-new.png', 'SNAP HQ launcher and shared setup'); ?>
             </div>
             <p class="suite-band">One rule across the whole suite: the local store is a cache of your <em>site</em>, never a second copy of your originals. You archive your own files. The tools never quietly shadow-copy them anywhere.</p>
         </div>
