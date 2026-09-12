@@ -1,44 +1,24 @@
 <?php
 /**
+ * SNAPSMACK.CA - SEO landing: Flickr alternative
+ * Layout + the shared strip: includes/seo-landing.php. Only the opener and closer are per-page.
+ *
  * SNAPSMACK_EOF_HEADER
  *     <?php // ===== SNAPSMACK EOF =====
- * Last non-empty line of this file MUST match the line above.
  */
 
 $page_title = 'Self-Hosted Flickr Alternative for Photographers - SnapSmack';
-$page_description = 'Move your photography archive to your own domain with SnapSmack, a free self-hosted Flickr alternative with albums, metadata, and chronological publishing.';
+$page_description = 'A Flickr alternative on your own domain: bring twenty years of photographs, titles, tags, dates, views, comments and faves to a site you own. Free, self-hosted, no subscription, no sunset.';
 $page_og_url = 'https://snapsmack.ca/flickr-alternative.php';
-$landing_eyebrow = 'Bring the archive home';
-$landing_h1 = 'A Flickr Alternative on Your Own Domain';
-$landing_lede = 'Your Flickr archive should feel like a body of work, not a hostage negotiation. SnapSmack gives photographs, albums, metadata, and writing a home you control.';
-$landing_sections = [
-    [
-        'heading' => 'Keep the archive, lose the landlord',
-        'body' => [
-            'SnapSmack is <strong>self-hosted photo publishing software</strong>. The files sit on your server and the public URLs use your domain. Albums, categories, collections, captions, tags, EXIF details, and dates remain part of the archive.',
-            'SLICKR offers a familiar photostream and album presentation without pretending Flickr itself is still the only shape a large photography archive can take.',
-        ],
-    ],
-    [
-        'heading' => 'Migration built for real collections',
-        'body' => [
-            'FLKR FCKR is the companion migration path for Flickr exports. It is designed to move images and their useful context into SnapSmack at a rate your server can handle.',
-            'No migration is magic and no two exports are identical. The point is a documented path home, not a promise that every historical oddity from every Flickr era will transform perfectly.',
-        ],
-        'list' => [
-            'Original images and available titles, descriptions, tags, and dates',
-            'Rate-controlled posting for shared hosting',
-            'Albums and archive views on your own website',
-            'Backups and structured exports after the move',
-        ],
-    ],
-    [
-        'heading' => 'Retro photo blogging, modern technology',
-        'body' => [
-            'The old web got one thing profoundly right: a site could belong to a person. SnapSmack keeps that and replaces the brittle old machinery with signed updates, modern PHP, database backups, responsive skins, and optional federation.',
-            'See the broader <a href="self-hosted-photography.php">self-hosted photography platform</a> or read the <a href="brass-tacks.php">honest technical FAQ</a>.',
-        ],
-    ],
-];
+$landing_eyebrow = 'Flickr alternative';
+$landing_h1 = 'A Flickr alternative<br>on your own domain.';
+$landing_opener = <<<'HTML'
+            <p>Flickr was <em>the</em> place. Some of us have a decade or two there, and every couple of years somebody new buys it and we all hold our breath. You are tired of holding your breath. We know; we were too.</p>
+            <p>SnapSmack moves the whole archive &mdash; titles, descriptions, tags, upload dates, the views you earned, the comments people left, the faves &mdash; onto a site you own, on a domain you own, and it doesn&rsquo;t reset the clock. Twenty years still reads as twenty years. There&rsquo;s even a skin called SLICKR for when familiarity is part of the plan. Subtle, we are not.</p>
+HTML;
+$landing_closer = <<<'HTML'
+            <p class="seo-closer-lines"><span>Nobody&rsquo;s buying it.</span><span>Nobody&rsquo;s sunsetting it.</span><span>It&rsquo;s <em>yours.</em></span></p>
+            <p class="seo-tail">Request your Flickr download, point <a href="tool-flkr-fckr.php">FLKR FCKR</a> at it, and go make a cup of tea. A two-day transfer that dies on hour nineteen resumes at hour nineteen.</p>
+HTML;
 require_once __DIR__ . '/includes/seo-landing.php';
 // ===== SNAPSMACK EOF =====
