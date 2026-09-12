@@ -31,7 +31,7 @@ $page_css = <<<'CSS'
 .seo-hook em { color: var(--red); font-style: normal; }
 .seo-sub { max-width: 760px; margin-top: 14px; color: #ccc; font-size: clamp(1.02rem, 1.8vw, 1.25rem); line-height: 1.6; }
 .seo-never { max-width: 760px; margin-top: 12px; color: var(--white); font: 900 1rem/1.4 Arial Black, Arial, sans-serif; text-transform: uppercase; }
-.seo-never em { color: var(--red); font-style: italic; text-transform: none; font-family: Georgia, serif; font-weight: 400; }
+.seo-never em { color: var(--red); font-style: normal; }
 .seo-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
 .seo-actions a { display: inline-block; padding: 13px 20px; border: 2px solid var(--red); color: var(--white); font: 900 .8rem/1 Arial Black, Arial, sans-serif; letter-spacing: .04em; text-transform: uppercase; text-decoration: none; }
 .seo-actions a:first-child { background: var(--red); }
@@ -61,9 +61,9 @@ require_once __DIR__ . '/header.php';
         <div class="wrap">
             <p class="eyebrow"><?php echo htmlspecialchars($landing_eyebrow); ?></p>
             <h1><?php echo $landing_h1; ?></h1>
-            <p class="seo-hook">Your photos. Your voice. Your style. <em>Your dignity.</em></p>
+            <p class="seo-hook">Retro Photo Blogging. <em>Modern Technology.</em></p>
             <p class="seo-sub">Self-hosted photo blogging that brings back the gallery, the grid, and the photoblog &mdash; the ways photographers actually shared their work before the platforms ate everything.</p>
-            <p class="seo-never">Your work is never <em>&ldquo;our content.&rdquo;</em></p>
+            <p class="seo-never">Your photos. Your voice. Your style. <em>Your dignity.</em></p>
             <div class="seo-actions">
                 <a href="index.php#beta">Try the Beta</a>
                 <a href="features.php">What it does</a>
