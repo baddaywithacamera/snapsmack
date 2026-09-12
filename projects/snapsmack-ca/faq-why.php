@@ -52,14 +52,14 @@ $faq_qas = <<<'HTML'
                 <h3>AI? AIIIIIIEEEEE!!!</h3>
                 <p>Yes. Almost all of the code in SnapSmack is AI-produced. ETHICS.md in the repo names the AI systems involved and the role each one played. I am not a coder and have never claimed to be.</p>
                 <p>My hands are on the keyboard for CSS. I am decent with it. The visual design of the skins is shaped by me at the stylesheet level. Everything else — the architecture, the spec, the security posture, the decisions about what ships — is the curation job.</p>
-                <p>The code is AI. Said up front, in the FAQ, in the license, in the repo. I'd rather be honest.</p>
+                <p>The code is AI. Said up front, in the FAQ, in the licence, in the repo. I'd rather be honest.</p>
             </div>
 
             <div class="qa" id="q-catch">
                 <h3>What's the catch?</h3>
                 <p>Why is SnapSmack free? Because nothing else is anymore. In my last year of running my blogs on WordPress, I had to pay for my sticky header plugin. I had to pay for themes. I had to pay for my SEO plugin. I paid for Softaculous' rubbish backup plugin for WP for a year, that never worked once in that year. I paid for an OpenGraph plugin. I paid, I paid, I paid.</p>
                 <p>SnapSmack is what I need to stop paying everyone else to be able to share my photography in a way that works for me. I'm a prolific photographer and a power user who can flatten a shared hosting environment in ten seconds flat, so I needed something better and affordable. The arrival of AI and vibe coding let me build bespoke software that suits me. The truth is, if it works for me it will probably work for nearly everyone else because I'm a literal worst-case scenario as photographers who publish their work to the web go.</p>
-                <p>This software is a gift from one photographer to others. I know you're all sick of paying the photography tax like I am. SnapSmack is free now, and forever. I have no plans to turn it into a paid product. Further to that, it's open source and under a copyleft license so I can't. Neither can anyone else. They can fork it, build off it, but not charge for it. It's free and staying that way.</p>
+                <p>This software is a gift from one photographer to others. I know you're all sick of paying the photography tax like I am. SnapSmack is free now, and forever. I have no plans to turn it into a paid product. Further to that, it's open source and under a copyleft licence so I can't. Neither can anyone else. They can fork it, build off it, but not charge for it. It's free and staying that way.</p>
                 <p>If you want to support me, hit my tip jar, buy gear from my affiliate links, watch a few of my videos which I have monetized — hey, lenses ain't free bro. You can support me, but you don't have to in order to use the product. That's the point.</p>
                 <p>The only catch is there is no catch. Word to your mother.</p>
             </div>
@@ -72,7 +72,7 @@ $faq_qas = <<<'HTML'
             <div class="qa" id="q-reimagining">
                 <h3>A re-imagining of Pixelpost?</h3>
                 <p>Yes. The admin panel says so.</p>
-                <p>The honest origin: I asked Gemini whether Pixelpost could be modernized. The answer was no. So I started over. SnapSmack was built independently from scratch. It doesn't use any Pixelpost code &mdash; nothing was copied, adapted, or carried over. Pixelpost inspired how SnapSmack should feel, but not how it was built. That also means SnapSmack has its own license; it doesn't inherit Pixelpost's.</p>
+                <p>The honest origin: I asked Gemini whether Pixelpost could be modernized. The answer was no. So I started over. SnapSmack was built independently from scratch. It doesn't use any Pixelpost code &mdash; nothing was copied, adapted, or carried over. Pixelpost inspired how SnapSmack should feel, but not how it was built. That also means SnapSmack has its own licence; it doesn't inherit Pixelpost's.</p>
                 <p>The original Gemini-built implementation was already better suited to the modern web than Pixelpost had been. Then I realised something: I blog much harder now than I did when Pixelpost was current. More sites, more workflows, more files, more reasons to want serious tooling. Pixelpost's one-photo-a-day shape was beautiful and sufficient for what blogging used to be. It is not sufficient for what blogging is now, at least not for me.</p>
                 <p>So the new product kept growing. Multisite. Companion apps. Security stack. Four install personalities for four different use shapes.</p>
                 <p>SnapSmack isn't mission creep. It's mission accomplished.</p>
@@ -83,7 +83,7 @@ $faq_qas = <<<'HTML'
                 <h3>Who is Noah Grey?</h3>
                 <p>Noah Grey wrote Greymatter in the year 2000. Greymatter was the first widely used personal blogging engine — predating Movable Type, predating WordPress, predating the entire industry that grew up around the idea that anyone could publish on the web.</p>
                 <p>Noah also consulted on Picasa, which mattered to a generation of photographers in ways the current state of photo software cannot replicate.</p>
-                <p>SnapSmack stands in Greymatter's lineage. Deliberately. The 50 Shades of Noah Grey skin is named for him. The admin uses a Greymatter-derived colour theme. The admin panel of every install carries an attribution. There is a Thomas the Bear Easter egg. There is a clause in the license named for Thomas.</p>
+                <p>SnapSmack stands in Greymatter's lineage. Deliberately. The 50 Shades of Noah Grey skin is named for him. The admin uses a Greymatter-derived colour theme. The admin panel of every install carries an attribution. There is a Thomas the Bear Easter egg. There is a clause in the licence named for Thomas.</p>
                 <p>None of this is fan tribute. It is lineage claim. SnapSmack is what someone who learned to blog on Greymatter and never quite got over how good it was builds when given the means to build it.</p>
                 <p>Noah is the senpai. SnapSmack is the kohai's offering.</p>
             </div>
