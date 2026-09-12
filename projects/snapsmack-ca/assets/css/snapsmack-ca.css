@@ -242,6 +242,7 @@ nav a.active::after { width: 100%; }
 }
 
 /* --- THE GOODS: shared product subnavigation --- */
+.goods-nav-wrap { padding-top: 32px; }
 .goods-nav {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -282,6 +283,21 @@ nav a.active::after { width: 100%; }
 .goods-nav a::after { display: none; }
 @media (max-width: 700px) {
     .goods-nav { grid-template-columns: 1fr; }
+}
+
+/* --- THE STRIP (home + SEO landing pages; markup in includes/strip.php) --- */
+#strip { padding: 0 0 72px; border-top: 0; }
+.strip-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; padding: 0; list-style: none; background: var(--border); border: 1px solid var(--border); }
+.strip-list li { display: grid; margin: 0; }
+.strip-list a { display: grid; grid-template-columns: 150px 1fr; gap: 18px; align-items: baseline; padding: 20px 24px; background: var(--white); color: var(--dark-grey); font-size: .98rem; line-height: 1.5; }
+.strip-list a strong { color: var(--black); font: 900 .86rem/1.3 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: .02em; }
+.strip-list a strong::after { content: " \2192"; color: var(--red); }
+.strip-list a:hover, .strip-list a:focus-visible { background: #fff5f3; color: var(--black); text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
+.strip-skins { display: flex; gap: 8px; margin-top: 10px; }
+.strip-skins img { width: 25%; aspect-ratio: 16 / 10; object-fit: cover; border: 2px solid var(--border); }
+@media (max-width: 700px) {
+    .strip-list { grid-template-columns: 1fr; }
+    .strip-list a { grid-template-columns: 1fr; gap: 6px; }
 }
 
 /* --- FOOTER --- */
@@ -342,6 +358,15 @@ nav a.active::after { width: 100%; }
 .footer-discovery a:hover span,
 .footer-discovery a:focus-visible span { color: #555; }
 #site-footer { background: var(--black); padding: 26px 0; }
+.footer-fine-print {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px;
+    margin: 0 0 14px; text-align: center;
+}
+.footer-fine-print a {
+    color: #bbb; font: 700 0.66rem/1.4 Arial, sans-serif;
+    letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none;
+}
+.footer-fine-print a:hover, .footer-fine-print a:focus-visible { color: var(--white); text-decoration: underline; text-decoration-color: var(--red); }
 .footer-copy {
     font-family: 'Courier New', monospace; font-size: 0.68rem; color: #aaa;
     letter-spacing: 0.04em; line-height: 1.5; margin: 0; text-align: center;

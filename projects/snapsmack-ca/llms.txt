@@ -7,6 +7,10 @@ and optional Fediverse technology.
 
 Canonical project: https://snapsmack.ca/
 FAQ and installation requirements: https://snapsmack.ca/brass-tacks.php
+Features: https://snapsmack.ca/features.php
+Security doctrine (no remote control, same-day disclosure): https://snapsmack.ca/security.php
+Desktop tools: https://snapsmack.ca/tools.php
+Roadmap: https://snapsmack.ca/coming-soon.php
 Privacy: https://snapsmack.ca/tnb.php
 Licence and AI provenance: https://snapsmack.ca/hairy-muff.php
 Security audits: https://snapsmack.ca/buzzers.php
