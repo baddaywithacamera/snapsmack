@@ -26,7 +26,16 @@ $page_css = <<<'CSS'
 
 /* --- THE DOOR: one thing wins --- */
 #door { padding: 88px 0 72px; }
-.door-inner { max-width: var(--max); margin: 0 auto; padding: 0 32px; }
+.door-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 40%); gap: 48px; align-items: center; max-width: var(--max); margin: 0 auto; padding: 0 32px; }
+.door-shot { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; text-align: left; font: inherit; }
+.door-shot img { display: block; width: 100%; height: auto; border: 3px solid var(--black); box-shadow: 8px 8px 0 var(--red); }
+.door-shot:hover img, .door-shot:focus-visible img { box-shadow: 8px 8px 0 var(--black); border-color: var(--red); }
+.door-shot-cap { display: block; margin-top: 14px; color: #666; font: 900 .72rem/1.3 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; }
+.ss-lightbox { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.88); cursor: zoom-out; }
+.ss-lightbox[hidden] { display: none; }
+.ss-lightbox img { width: 80vw; height: 80vh; object-fit: contain; }
+.ss-lightbox-close { position: absolute; top: 16px; right: 24px; width: 56px; height: 56px; border: 0; background: var(--red); color: var(--white); font: 900 2rem/1 Arial Black, Arial, sans-serif; cursor: pointer; }
+.ss-lightbox-open { overflow: hidden; }
 .door-hook { max-width: 980px; font-size: clamp(1.9rem, 4vw, 3.3rem); }
 .door-kicker { margin-top: 6px; color: var(--red); font: 900 .82rem/1.3 'Courier New', monospace; letter-spacing: .12em; text-transform: uppercase; }
 .door-sub { max-width: 800px; margin-top: 8px; font-size: clamp(1.15rem, 2vw, 1.4rem); line-height: 1.5; color: #333; }
@@ -98,6 +107,7 @@ $page_css = <<<'CSS'
     .beta-banner { grid-template-columns: 1fr auto; }
     .beta-banner-text { display: none; }
     #door { padding: 56px 0 44px; }
+    .door-inner { grid-template-columns: 1fr; gap: 32px; }
     .featured-skin-grid { grid-template-columns: 1fr; }
     .whodat-card { display: block; }
     .whodat-portrait { margin: -22px -22px 20px; }
@@ -116,14 +126,20 @@ require_once __DIR__ . '/includes/header.php';
 <main>
     <section id="door">
         <div class="door-inner">
+            <div class="door-copy">
             <h1 class="door-hook">Retro Photo Blogging.<br><span>Modern Technology.</span></h1>
             <p class="door-kicker">What&rsquo;s new is old again.</p>
-            <p class="door-sub">We&rsquo;re not offering you anything new. We&rsquo;re giving back what was taken: the single-photo blog, long-form posting that hasn&rsquo;t been enshittified, classic Insta, and pumping images straight out of a file manager. All of it used to belong to photographers. Now it lives on hardware you control, and nobody is taking it back from you.</p>
+            <p class="door-sub">We&rsquo;re not offering you anything new. We&rsquo;re giving back what was taken: the single-photo blog, long-form posting that hasn&rsquo;t been enshittified, classic Insta styling, and pumping images straight out of a file manager. All of it used to belong to photographers. Now it lives on hardware you control, and nobody is taking it back from you. Oh, and we&rsquo;ve thrown in a free and powerful photo editor too because we remember when you didn&rsquo;t have to rent your software.</p>
             <p class="door-never">Your photos. Your voice.<br>Your style. <em>Your dignity.</em></p>
             <div class="door-actions">
                 <a href="#beta" class="btn btn-primary">Try the Beta</a>
                 <a href="features.php" class="btn btn-secondary">What it does</a>
             </div>
+            </div>
+            <button type="button" class="door-shot" data-lightbox="img/snapslapper-editor-adv.png" aria-label="Open a full-size screenshot of the SNAP SLAPPER photo editor">
+                <img src="img/snapslapper-editor-adv.png" alt="SNAP SLAPPER photo editor, advanced mode, editing a Banff landscape" width="1920" height="1032" loading="lazy">
+                <span class="door-shot-cap">SNAP SLAPPER &mdash; the free photo editor. Click to enlarge.</span>
+            </button>
         </div>
     </section>
 
@@ -240,11 +256,36 @@ require_once __DIR__ . '/includes/header.php';
     </section>
 </main>
 
+<div class="ss-lightbox" id="ss-lightbox" hidden role="dialog" aria-modal="true" aria-label="Enlarged screenshot">
+    <button type="button" class="ss-lightbox-close" aria-label="Close">&times;</button>
+    <img src="" alt="">
+</div>
+
 <script>
 (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[]).push(arguments);},l=d.createElement(e),l.async=1,l.src=u,n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})(window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
 ml('account', '2243616');
 </script>
 <link rel="stylesheet" href="assets/css/ss-engine-thomas.css">
 <script src="assets/js/ss-engine-thomas.js"></script>
+<script>
+// Screenshot lightbox: any [data-lightbox] opens its image at 80% of the
+// screen. Click anywhere, the X, or Escape closes it. One big target on
+// purpose - no fiddly close corner.
+(function () {
+    var box = document.getElementById('ss-lightbox');
+    if (!box) return;
+    var img = box.querySelector('img');
+    function open(src, alt) { img.src = src; img.alt = alt || ''; box.hidden = false; document.body.classList.add('ss-lightbox-open'); }
+    function close() { box.hidden = true; img.src = ''; document.body.classList.remove('ss-lightbox-open'); }
+    document.querySelectorAll('[data-lightbox]').forEach(function (el) {
+        el.addEventListener('click', function () {
+            var thumb = el.querySelector('img');
+            open(el.getAttribute('data-lightbox'), thumb ? thumb.alt : '');
+        });
+    });
+    box.addEventListener('click', close);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !box.hidden) close(); });
+})();
+</script>
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====
