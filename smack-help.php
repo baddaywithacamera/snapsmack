@@ -1085,6 +1085,8 @@ type for the tool you are setting up:</p>
     your backups, so it is safe to keep on the machine that launches your tools.</li>
     <li><strong>Oh Snap!</strong> — for the Oh Snap! skin designer desktop app</li>
     <li><strong>SMACKPRESS</strong> — for the SMACKPRESS WordPress migration workbench</li>
+    <li><strong>BLOGGER FLOGGER</strong> — for importing a Blogger Takeout archive into SMACKTALK</li>
+    <li><strong>BLOGGER FLOGGER</strong> — for importing a Blogger Takeout archive into SMACKTALK</li>
     <li><strong>FLKR FCKR Import</strong> — for the FLKR FCKR Flickr import tool. Revoke
     this key when your import is complete — it only needs to exist long enough to run the
     migration.</li>
@@ -3282,6 +3284,72 @@ is not a realistic option on any normal hosting setup. FLKR FCKR was built speci
 because there is no server-side solution that scales to a real Flickr archive. The desktop
 tool approach also gives you live progress, pause/resume control, and the ability to exclude
 specific photos or albums before the import starts.</p>
+HTML
+];
+
+$help_topics['blogger-flogger'] = [
+    'section'  => 'Desktop Tools',
+    'title'    => 'BLOGGER FLOGGER — Blogger Import',
+    'icon'     => '&#x2328;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>BLOGGER FLOGGER — Blogger &rarr; SMACKTALK</h3>
+<p>BLOGGER FLOGGER is the local, resumable way to move a Blogger writing archive into
+SMACKTALK. It reads a Google Takeout ZIP, an extracted Takeout folder, <code>feed.atom</code>,
+or an older Blogger backup XML. It imports selected posts, pages, comments, labels, original
+dates, draft state, and referenced photographs. It never needs your Google password.</p>
+
+<h4>Before You Start</h4>
+<ol>
+  <li>Export Blogger with Google Takeout and keep the ZIP, or extract it.</li>
+  <li>On the destination site, open Admin &rarr; API Access and generate a key of type
+      <strong>BLOGGER FLOGGER</strong>.</li>
+  <li>Open the desktop app, choose the archive, review the inventory, select a SMACKTALK
+      profile, paste the key, and click <strong>TEST DESTINATION</strong>.</li>
+  <li>Leave imported writing as drafts for the safest first pass, or deliberately choose
+      to preserve Blogger's published state.</li>
+</ol>
+
+<p>A populated site requires the site's temporary import authorization. Every source item
+gets a destination-side receipt, so a stopped or repeated run resumes without duplicating
+writing. Photographs are downloaded over validated public HTTPS links and Blogger thumbnail
+links are upgraded to the original-quality asset where Blogger's CDN permits it. The app
+writes a readable reconciliation report when the run finishes.</p>
+
+<p>BLOGGER FLOGGER is inbound only. TAKE YOUR SHIT WITH YOU owns exports from SnapSmack.</p>
+HTML
+];
+
+$help_topics['blogger-flogger'] = [
+    'section'  => 'Desktop Tools',
+    'title'    => 'BLOGGER FLOGGER — Blogger Import',
+    'icon'     => '&#x2328;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>BLOGGER FLOGGER — Blogger &rarr; SMACKTALK</h3>
+<p>BLOGGER FLOGGER is the local, resumable way to move a Blogger writing archive into
+SMACKTALK. It reads a Google Takeout ZIP, an extracted Takeout folder, <code>feed.atom</code>,
+or an older Blogger backup XML. It imports selected posts, pages, comments, labels, original
+dates, draft state, and referenced photographs. It never needs your Google password.</p>
+
+<h4>Before You Start</h4>
+<ol>
+  <li>Export Blogger with Google Takeout and keep the ZIP, or extract it.</li>
+  <li>On the destination site, open Admin &rarr; API Access and generate a key of type
+      <strong>BLOGGER FLOGGER</strong>.</li>
+  <li>Open the desktop app, choose the archive, review the inventory, select a SMACKTALK
+      profile, paste the key, and click <strong>TEST DESTINATION</strong>.</li>
+  <li>Leave imported writing as drafts for the safest first pass, or deliberately choose
+      to preserve Blogger's published state.</li>
+</ol>
+
+<p>A populated site requires the site's temporary import authorization. Every source item
+gets a destination-side receipt, so a stopped or repeated run resumes without duplicating
+writing. Photographs are downloaded over validated public HTTPS links and Blogger thumbnail
+links are upgraded to the original-quality asset where Blogger's CDN permits it. The app
+writes a readable reconciliation report when the run finishes.</p>
+
+<p>BLOGGER FLOGGER is inbound only. TAKE YOUR SHIT WITH YOU owns exports from SnapSmack.</p>
 HTML
 ];
 

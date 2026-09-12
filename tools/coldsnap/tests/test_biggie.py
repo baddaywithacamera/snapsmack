@@ -185,6 +185,21 @@ shot = cv3.grab().toImage()
 check("mosaic paints the real photos", shot.pixelColor(200, 200).red() > 200)
 check("second photo painted in its tile", shot.pixelColor(720, 120).green() > 200)
 
+# Stable local identities: rail order never changes a placed photograph.
+cv4 = BiggieCanvas()
+cv4.resize(900, 700)
+cv4.show()
+cv4.set_assets({"red-uuid": _paths[0], "blue-uuid": _paths[2]})
+cv4.insert_image("asset:red-uuid", width_ratio=.5, alt="Red field")
+stable = cv4.to_blocks()[0]
+check("local image stores immutable asset UUID", stable["asset_uuid"], "red-uuid")
+check("local image stores responsive ratio", stable["width_ratio"], .5)
+cv4.set_bucket(list(reversed(_paths)))
+check("filmstrip reorder does not change inline identity",
+      cv4.to_blocks()[0]["asset_uuid"], "red-uuid")
+cv4.undo()
+check("local image insertion is undoable", cv4.to_blocks(), [])
+
 check("v1 dropcap block migrates to paragraph option",
       biggie.blocks_from_json('[{"type":"dropcap","text":"W"}]'),
       [{"type": "para", "text": "W", "dropcap": True}])

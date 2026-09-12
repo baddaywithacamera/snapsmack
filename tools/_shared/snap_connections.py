@@ -25,6 +25,7 @@ _FIELDS = {
     "unzucker": ("api_key_unzucker",),
     "flkrfckr": ("api_key_flkrfckr",),
     "smackpress": ("api_key_smackpress",),
+    "bloggerflogger": ("api_key_bloggerflogger",),
 }
 
 
