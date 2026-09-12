@@ -81,9 +81,9 @@ require_once __DIR__ . '/includes/header.php';
     <section class="feat" id="modes">
         <div class="wrap">
             <div class="feat-head">
-                <p class="site-discovery-kicker">Four ways to play</p>
-                <h2>Pick the way you always shared.</h2>
-                <p class="lede">Four install modes, four personalities: the ways photographers have actually shared images over the past quarter century. You choose one at install and you can&rsquo;t toggle between them, because they are very different animals. Choose wisely.</p>
+                <p class="site-discovery-kicker">Four ways to play &middot; what&rsquo;s new is old again</p>
+                <h2>Take it. It&rsquo;s yours. It always was.</h2>
+                <p class="lede">None of these are new. They&rsquo;re the four ways photographers shared work over the last quarter century before each one was taken away, enshittified, or shut down. We put them back on one shelf. You pick the one you lost. You choose at install and you can&rsquo;t toggle between them &mdash; they are very different animals &mdash; so choose wisely. The box opens for whoever wants it badly enough.</p>
             </div>
             <div class="mode-grid">
                 <article class="mode-card">
