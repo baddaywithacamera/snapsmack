@@ -15,7 +15,7 @@ import re
 import tempfile
 import uuid
 
-from PySide6.QtCore import Qt, QRect, Signal
+from PySide6.QtCore import Qt, QRect, Signal, QTimer
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
@@ -24,9 +24,10 @@ from PySide6.QtWidgets import (
 )
 
 import sumna_offline as O
+import snap_library
 from sumna_post import SmacktalkPoster
 
-from . import theme
+from . import theme, biggie
 from .widgets import (Accordion, Card, build_rail, hint, field_label,
                       big_button, thumb_label)
 from .body_editor import BodyEditor
@@ -112,6 +113,7 @@ class TakeMode(QWidget):
         self._editing_id = None
         self._bucket = []          # list[O.DraftImage]
         self._cover_idx = 0
+        self._loading = False
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(10, 10, 0, 0)
@@ -150,10 +152,18 @@ class TakeMode(QWidget):
             "in the page as you write",
             self._insert_mosaic)
         self.body.canvas.mosaicEditRequested.connect(self._canvas_mosaic)
+        self.body.canvas.photographsDropped.connect(
+            lambda paths: self._add_photo_paths(paths, insert=True))
+        self.body.canvas.photographPasted.connect(self._paste_photo)
+        self.body.canvas_bar.add_button(
+            "ADD PHOTOGRAPH", "Choose a local photograph and place it at the caret",
+            self._add_and_insert_photo)
         # IMG picks from THIS site's cached Media Gallery (COLD STORAGE), by picture.
         self.body.canvas.set_site_provider(
             lambda: ((self.app_config() or {}).get("url") or "").strip())
         card.body.addWidget(self.body, 1)   # the write-up is the main event — it grows
+        self.save_state = hint("Begin the story… changes will be safe on this computer.")
+        card.body.addWidget(self.save_state)
         card.body.addWidget(hint(
             "MOSAIC = a tiled grid of this post's photos at the marker. For a "
             "text grid with no photos, use COL 2 / COL 3. For one inline image "
@@ -226,6 +236,26 @@ class TakeMode(QWidget):
             [self.photos_sec, self.rail.section],
             [self.rail.send_box]))
         self._refresh_bucket()
+        self._autosave = QTimer(self)
+        self._autosave.setSingleShot(True)
+        self._autosave.setInterval(900)
+        self._autosave.timeout.connect(self._autosave_now)
+        self.body.changed.connect(self._changed)
+        self.title_edit.textChanged.connect(self._changed)
+        self.tags_edit.textChanged.connect(self._changed)
+        QTimer.singleShot(0, self._recover_last_draft)
+
+    def _recover_last_draft(self):
+        """Reopen the newest safe, unfinished essay after a restart."""
+        session = self.rail.session
+        if session is None or self._editing_id:
+            return
+        candidates = [d for d in session.list_drafts() if d.status == O.ST_DRAFT]
+        if not candidates:
+            return
+        latest = max(candidates, key=lambda d: (d.updated_at, d.draft_id))
+        self._edit(latest)
+        self.save_state.setText("Recovered your last safe draft from this computer")
 
     # -- rail rows -----------------------------------------------------------
     def _rows(self, session, refresh_cb):
@@ -322,17 +352,23 @@ class TakeMode(QWidget):
         if not self._bucket:
             QMessageBox.warning(self, "No photos", "Add photos before building a mosaic.")
             return
-        existing_order = [int(i) - 1 for i in (order or [])
-                          if 1 <= int(i) <= len(self._bucket)]
+        uuid_to_index = {str(im.asset_uuid): i for i, im in enumerate(self._bucket)}
+        existing_order = []
+        for identity in (order or []):
+            if str(identity) in uuid_to_index:
+                existing_order.append(uuid_to_index[str(identity)])
+            elif str(identity).isdigit() and 1 <= int(identity) <= len(self._bucket):
+                existing_order.append(int(identity) - 1)
         result = self._mosaic_dialog(existing_order, (layout or "").lower() or None)
         if not result:
             self.body.canvas._pending_obj_pos = None
             return
         chosen, layout_name = result
+        stable = [self._bucket[i - 1].asset_uuid for i in chosen]
         if order:
-            self.body.canvas.replace_mosaic(chosen, layout_name)
+            self.body.canvas.replace_mosaic(stable, layout_name)
         else:
-            self.body.canvas.insert_mosaic(chosen, layout_name)
+            self.body.canvas.insert_mosaic(stable, layout_name)
 
     def _mosaic_dialog(self, existing_order, existing_layout):
         """The one mosaic builder (live preview, tick photos, drag order, layout,
@@ -550,16 +586,40 @@ class TakeMode(QWidget):
     def _add_photos(self):
         from .pickers import pick_images
         paths = pick_images(self, (self.app_config() or {}).get("url", ""))
+        self._add_photo_paths(paths, insert=False)
+
+    def _add_photo_paths(self, paths, *, insert=False):
+        added = []
         for p in paths:
             if len(self._bucket) >= O.SMACKTALK_BUCKET_MAX:
                 QMessageBox.information(
                     self, "That's the lot",
                     f"An essay holds up to {O.SMACKTALK_BUCKET_MAX} photos.")
                 break
-            self._bucket.append(O.DraftImage(local_path=p, filename=os.path.basename(p)))
+            image = O.DraftImage(local_path=p, filename=os.path.basename(p))
+            self._bucket.append(image)
+            added.append(image)
         if paths and not self.title_edit.text().strip():
             self.title_edit.setText(os.path.splitext(os.path.basename(paths[0]))[0])
         self._refresh_bucket()
+        if insert:
+            for image in added:
+                self.body.canvas.insert_image("asset:" + image.asset_uuid,
+                                              alt=image.alt, caption=image.caption)
+        if added:
+            self._changed()
+
+    def _add_and_insert_photo(self):
+        from .pickers import pick_images
+        paths = pick_images(self, (self.app_config() or {}).get("url", ""))
+        self._add_photo_paths(paths, insert=True)
+
+    def _paste_photo(self, image):
+        if image is None or image.isNull():
+            return
+        target = os.path.join(tempfile.gettempdir(), "coldsnap-pasted-" + uuid.uuid4().hex + ".png")
+        if image.save(target, "PNG"):
+            self._add_photo_paths([target], insert=True)
 
     def _move(self, idx: int, delta: int):
         j = idx + delta
@@ -570,16 +630,19 @@ class TakeMode(QWidget):
             elif self._cover_idx == j:
                 self._cover_idx = idx
             self._refresh_bucket()
+            self._changed()
 
     def _remove(self, idx: int):
         del self._bucket[idx]
         if self._cover_idx >= len(self._bucket):
             self._cover_idx = max(0, len(self._bucket) - 1)
         self._refresh_bucket()
+        self._changed()
 
     def _set_cover(self, idx: int):
         self._cover_idx = idx
         self._refresh_bucket()
+        self._changed()
 
     def _refresh_bucket(self):
         while self.bucket_col.count():
@@ -589,6 +652,7 @@ class TakeMode(QWidget):
                 w.deleteLater()
         n = len(self._bucket)
         self.body.set_bucket([im.local_path for im in self._bucket])   # mosaics repaint
+        self.body.canvas.set_assets({im.asset_uuid: im.local_path for im in self._bucket})
         self.bucket_count.setText("")   # count lives in the header; this line = AI progress only
         self.photos_sec.header.setText(
             f"THE PHOTOS — {n} in the bucket" if n else "THE PHOTOS — none yet")
@@ -625,7 +689,8 @@ class TakeMode(QWidget):
             # Per-photo ALT — saved with the image on the site (img_alt).
             alt = QLineEdit(getattr(im, "alt", "") or "")
             alt.setPlaceholderText("ALT — one plain sentence describing this photo")
-            alt.textChanged.connect(lambda text, im=im: setattr(im, "alt", text.strip()))
+            alt.textChanged.connect(lambda text, im=im: (setattr(im, "alt", text.strip()),
+                                                         self._changed()))
             col.addWidget(alt)
             self.bucket_col.addWidget(row)
 
@@ -664,6 +729,7 @@ class TakeMode(QWidget):
         self._ai_worker.start([im.local_path for im in imgs])
 
     def _edit(self, draft: O.Draft):
+        self._loading = True
         self._editing_id = draft.draft_id
         self.title_edit.setText(draft.title)
         self.tags_edit.setText(draft.tags)
@@ -686,8 +752,11 @@ class TakeMode(QWidget):
             "colors": getattr(draft, "ai_colors", ""),
         }
         self._refresh_bucket()
+        self._loading = False
+        self.save_state.setText("Safe on this computer")
 
     def _clear(self):
+        self._loading = True
         self._editing_id = None
         self.title_edit.clear()
         self.tags_edit.clear()
@@ -697,38 +766,100 @@ class TakeMode(QWidget):
         self._cover_idx = 0
         self._ai_post_meta = {}
         self._refresh_bucket()
+        self._loading = False
+        self.save_state.setText("Begin the story… changes will be safe on this computer.")
+
+    def _changed(self):
+        if self._loading:
+            return
+        self.save_state.setText("Saving…")
+        self._autosave.start()
+
+    def _wire_blocks(self, blocks):
+        """Translate stable local UUIDs to today's server bucket positions."""
+        positions = {str(im.asset_uuid): i + 1 for i, im in enumerate(self._bucket)}
+        def convert(block):
+            out = dict(block)
+            if out.get("type") == "image" and out.get("asset_uuid"):
+                pos = positions.get(str(out["asset_uuid"]))
+                if pos:
+                    out["img_id"] = f"bucket:{pos}"
+                for key in ("asset_uuid", "placement", "width_ratio", "crop", "alt", "caption", "link"):
+                    out.pop(key, None)
+            if out.get("type") == "mosaic" and out.get("order"):
+                out["order"] = [positions.get(str(value), value) for value in out["order"]]
+            if out.get("type") == "columns":
+                out["cols"] = [[convert(child) for child in col] for col in out.get("cols", [])]
+            return out
+        return [convert(block) for block in blocks]
+
+    def _build_draft(self, session):
+        draft = (session.load_draft(self._editing_id) if self._editing_id else None) \
+            or O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK, mode=self.SUITE_MODE)
+        self._editing_id = draft.draft_id
+        draft.title = self.title_edit.text().strip()
+        draft.tags = self.tags_edit.text().strip()
+        authored = self.body.authoring_blocks()
+        draft.body_blocks = biggie.blocks_to_json(authored)
+        draft.caption = biggie.serialize_blocks(self._wire_blocks(authored)).strip()
+        draft.img_status = self.status_combo.currentText()
+        meta = getattr(self, "_ai_post_meta", {}) or {}
+        for attr, key, default in (("category", "category", ""), ("album", "album", ""),
+                                   ("orientation", "orientation", "auto"),
+                                   ("color_mode", "color_mode", ""), ("ai_colors", "colors", "")):
+            setattr(draft, attr, meta.get(key, default) or default)
+        draft.images = []
+        for i, im in enumerate(self._bucket):
+            saved = O.DraftImage.from_dict(im.to_dict())
+            saved.filename = im.filename or os.path.basename(im.local_path)
+            saved.sort_position, saved.is_cover = i, (i == self._cover_idx)
+            draft.images.append(saved)
+        return draft
+
+    def _autosave_now(self):
+        if not (self.title_edit.text().strip() or self.body.toPlainText().strip() or self._bucket):
+            self.save_state.setText("Begin the story… changes will be safe on this computer.")
+            return
+        try:
+            session = self.rail.ensure_session()
+            draft = self._build_draft(session)
+            O.generate_draft_thumbs(draft)
+            session.add_draft(draft)
+            self._mirror_sqlite(draft)
+            self.save_state.setText("Safe on this computer")
+        except Exception as exc:  # noqa: BLE001
+            self.save_state.setText(f"Needs attention — could not save: {exc}")
+
+    def _mirror_sqlite(self, draft):
+        site = ((self.app_config() or {}).get("url") or "").strip()
+        if not site:
+            return
+        stored = snap_library.draft(site, draft.draft_id)
+        if stored is None:
+            snap_library.create_draft(site, title=draft.title, draft_uuid=draft.draft_id)
+            stored = snap_library.draft(site, draft.draft_id)
+        known = {a["asset_uuid"] for a in stored["assets"]}
+        for image in draft.images:
+            if image.asset_uuid not in known:
+                snap_library.absorb_draft_asset(
+                    site, draft.draft_id, image.local_path, alt_text=image.alt,
+                    caption=image.caption, asset_uuid=image.asset_uuid)
+        snap_library.save_draft(site, draft.draft_id, title=draft.title,
+                                status=draft.status, blocks=self.body.authoring_blocks())
 
     def _save(self, ready: bool):
         session = self.rail.ensure_session()
         if not self._bucket:
             QMessageBox.warning(self, "No photos", "Add at least one photo first.")
             return
-        draft = (session.load_draft(self._editing_id) if self._editing_id else None) \
-            or O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK, mode=self.SUITE_MODE)
-        draft.title = self.title_edit.text().strip()
-        draft.tags = self.tags_edit.text().strip()
-        draft.caption = self.body.toPlainText().strip()
-        draft.body_blocks = self.body.blocks_json()
-        draft.img_status = self.status_combo.currentText()
-        meta = getattr(self, "_ai_post_meta", {}) or {}
-        draft.category = meta.get("category", "")
-        draft.album = meta.get("album", "")
-        draft.orientation = meta.get("orientation", "auto") or "auto"
-        draft.color_mode = meta.get("color_mode", "")
-        draft.ai_colors = meta.get("colors", "")
-        draft.images = []
-        for i, im in enumerate(self._bucket):
-            saved = O.DraftImage.from_dict(im.to_dict())
-            saved.filename = im.filename or os.path.basename(im.local_path)
-            saved.sort_position = i
-            saved.is_cover = (i == self._cover_idx)
-            draft.images.append(saved)
+        draft = self._build_draft(session)
         O.generate_draft_thumbs(draft)
         problems = draft.validate()
         if ready and problems:
             QMessageBox.warning(self, "Not ready", "\n".join(problems))
         draft.status = O.ST_READY if (ready and not problems) else O.ST_DRAFT
         session.add_draft(draft)
+        self._mirror_sqlite(draft)
         self._clear()
         self.rail.refresh_batches()
 

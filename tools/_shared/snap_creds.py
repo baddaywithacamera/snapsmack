@@ -48,6 +48,8 @@ import json
 import os
 import re
 import secrets
+import shutil
+from datetime import datetime
 
 import snap_vault
 import snap_home
@@ -77,7 +79,13 @@ def init() -> None:
 
     if snap_vault.is_enabled():
         snap_vault.unlock_with_machine_key()
-    elif snap_vault.crypto_available() and snap_vault.keychain_available():
+        if not snap_vault.is_unlocked():
+            stored = _read()
+            if not any(snap_vault.is_encrypted(blob) for blob in stored.values()):
+                snap_vault.discard_locked_metadata()
+
+    if (not snap_vault.is_enabled()
+            and snap_vault.crypto_available() and snap_vault.keychain_available()):
         # First secure launch: create a random vault key and bind it to this
         # machine's protected credential service. Nothing recoverable is written
         # beside the executables.
@@ -159,6 +167,50 @@ def _migrate_legacy_values() -> None:
         changed = True
     if changed:
         _write(migrated)
+
+
+def _recover_orphaned_vault_for_save() -> None:
+    """Archive an unrecoverable mixed vault before creating a replacement."""
+    if not snap_vault.is_enabled() or snap_vault.is_unlocked():
+        return
+    data = _read()
+    if not any(snap_vault.is_encrypted(blob) for blob in data.values()):
+        return
+    if not (snap_vault.crypto_available() and snap_vault.keychain_available()):
+        raise RuntimeError(
+            "The credential vault is locked and Windows protected storage is unavailable.")
+
+    auth = os.path.abspath(snap_home.auth_dir())
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    recovery = os.path.join(auth, "recovery", "orphaned-vault-" + stamp)
+    os.makedirs(recovery, exist_ok=False)
+    for name in (_STORE_NAME, "vault.meta", "vault.machine"):
+        source = os.path.join(auth, name)
+        if os.path.isfile(source):
+            shutil.copy2(source, os.path.join(recovery, name))
+
+    readable = {key: blob for key, blob in data.items()
+                if not snap_vault.is_encrypted(blob)}
+    try:
+        _write(readable)
+        snap_vault.discard_locked_metadata()
+        snap_vault.enable(secrets.token_urlsafe(48), store_machine_key=False)
+        if not snap_vault.store_machine_key_now():
+            raise RuntimeError("Windows protected storage refused the new vault key.")
+        _migrate_legacy_values()
+    except Exception:
+        snap_vault.lock()
+        for name in (_STORE_NAME, "vault.meta", "vault.machine"):
+            archived = os.path.join(recovery, name)
+            active = os.path.join(auth, name)
+            if os.path.isfile(archived):
+                shutil.copy2(archived, active)
+            else:
+                try:
+                    os.remove(active)
+                except FileNotFoundError:
+                    pass
+        raise
 
 
 # ── Public API ───────────────────────────────────────────────────────────────

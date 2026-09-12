@@ -18,8 +18,8 @@ from PySide6.QtGui import QIcon, QFont
 from PySide6.QtWidgets import (
     QApplication, QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFrame,
     QHBoxLayout, QLabel, QLineEdit, QListWidget, QMainWindow, QMessageBox,
-    QProgressBar, QPushButton, QScrollArea, QStackedWidget, QTextEdit,
-    QVBoxLayout, QWidget,
+    QProgressBar, QPushButton, QScrollArea, QSizePolicy, QStackedWidget,
+    QTextEdit, QVBoxLayout, QWidget,
 )
 
 import backup_engine
@@ -100,6 +100,24 @@ class Bridge(QObject):
     restoreFinished = Signal(object)
 
 
+class FitScrollArea(QScrollArea):
+    """Fill the viewport until the page reaches its genuine minimum height."""
+    def __init__(self):
+        super().__init__(); self.setWidgetResizable(False)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+    def setWidget(self, widget):
+        super().setWidget(widget); self._fit_widget()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event); self._fit_widget()
+
+    def _fit_widget(self):
+        widget = self.widget()
+        if widget:
+            widget.resize(self.viewport().width(), max(self.viewport().height(), widget.minimumSizeHint().height()))
+
+
 class SuybWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -146,15 +164,18 @@ class SuybWindow(QMainWindow):
         hl.addWidget(_label("SITE", "Eyebrow"))
         self.profile_combo = QComboBox(); self.profile_combo.setMinimumWidth(300)
         self.profile_combo.currentTextChanged.connect(self._profile_changed); hl.addWidget(self.profile_combo)
-        self.connection = _label("Choose a site", "StatusWarn"); hl.addWidget(self.connection)
         hl.addStretch(1)
+        self.connection = _label("Choose a site", "StatusWarn")
+        self.connection.setWordWrap(False)
+        hl.addWidget(self.connection)
         test = QPushButton("Test connection"); test.clicked.connect(self._test_connection); hl.addWidget(test)
         ml.addWidget(header); ml.addWidget(self.pages, 1); shell.addWidget(main, 1)
         self.setCentralWidget(root)
 
     def _page(self, title, subtitle):
-        scroll = QScrollArea(); scroll.setWidgetResizable(True)
-        host = QWidget(); layout = QVBoxLayout(host); layout.setContentsMargins(28, 25, 28, 28); layout.setSpacing(16)
+        scroll = FitScrollArea()
+        host = QWidget(); host.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Ignored)
+        layout = QVBoxLayout(host); layout.setContentsMargins(28, 25, 28, 28); layout.setSpacing(16)
         layout.addWidget(_label(title, "PageTitle")); layout.addWidget(_label(subtitle, "Muted")); scroll.setWidget(host)
         return scroll, layout
 
@@ -172,9 +193,11 @@ class SuybWindow(QMainWindow):
         self.run_btn = QPushButton("BACK UP THIS SITE"); self.run_btn.setObjectName("Primary"); self.run_btn.clicked.connect(self._run_backup); opts.addWidget(self.run_btn)
         rl.addLayout(opts); self.progress = QProgressBar(); self.progress.setRange(0, 100); rl.addWidget(self.progress)
         self.progress_text = _label("Ready when you are.", "Muted"); rl.addWidget(self.progress_text); layout.addWidget(run)
-        activity, al = _card("Activity")
-        self.log = QTextEdit(); self.log.setReadOnly(True); self.log.setMinimumHeight(210); self.log.setPlaceholderText("Backup activity will appear here in plain language.")
-        al.addWidget(self.log); layout.addWidget(activity); layout.addStretch(1)
+        activity, al = _card("Activity"); self.activity_card = activity
+        self.log = QTextEdit(); self.log.setReadOnly(True); self.log.setMinimumHeight(72); self.log.setPlaceholderText("Backup activity will appear here in plain language.")
+        # Activity owns the remaining page height. A stretch item after the card
+        # created a dead band at the bottom while the useful log stayed short.
+        al.addWidget(self.log); layout.addWidget(activity, 1)
         return page
 
     def _restore_page(self):

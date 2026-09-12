@@ -102,10 +102,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
 // --- GENERATE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate') {
     $label    = trim($_POST['label'] ?? '');
-    $key_type = in_array($_POST['key_type'] ?? '', ['hub','ohsnap','smackpress','flkrfckr','gyss','unzucker','suyb','sybu','tyswy']) ? $_POST['key_type'] : 'ohsnap';
+    $key_type = in_array($_POST['key_type'] ?? '', ['hub','ohsnap','smackpress','bloggerflogger','flkrfckr','gyss','unzucker','suyb','sybu','tyswy']) ? $_POST['key_type'] : 'ohsnap';
     if (!$label) $label = match($key_type) {
         'hub'        => 'THE HUB — Fleet Setup',
         'smackpress' => 'SmackPress Key',
+        'bloggerflogger' => 'BLOGGER FLOGGER Import',
         'flkrfckr'   => 'FLKR FCKR Import',
         'gyss'       => 'GET YOUR SHIT SORTED',
         'unzucker'   => 'Unzucker Import',
@@ -119,8 +120,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
     $key_hash   = hash('sha256', $raw_key);
     $key_prefix = substr($raw_key, 0, 8);
 
-    // Mandatory expiry — no "never" option. Import keys (flkrfckr/unzucker/gyss/
-    // ohsnap/smackpress) are one-shot migrations and stay capped at 4 weeks (0.7.263).
+    // Mandatory expiry — no "never" option. Import keys (BLOGGER FLOGGER,
+    // flkrfckr/unzucker/gyss/ohsnap/smackpress) are one-shot migrations and stay
+    // capped at 4 weeks (0.7.263).
     // Backup keys (suyb/sybu) + the hub fleet-setup key are standing infrastructure, not a migration: a 4-week
     // fuse meant every key in a fleet expired on the same day and backups stopped
     // silently. Those get 3 months and default to it. Server-side is authoritative —
@@ -456,6 +458,7 @@ include 'core/sidebar.php';
                             <option value="hub">THE HUB (FLEET SETUP &mdash; SETS UP EVERY TOOL)</option>
                             <option value="ohsnap">OH SNAP! (SKIN DESIGNER)</option>
                             <option value="smackpress">SMACKPRESS (WP MIGRATION)</option>
+                            <option value="bloggerflogger">BLOGGER FLOGGER (BLOGGER MIGRATION)</option>
                             <option value="flkrfckr">FLKR FCKR (FLICKR IMPORT)</option>
                             <option value="gyss">GET YOUR SHIT SORTED (PHOTO SORTER)</option>
                             <option value="unzucker">UNZUCKER (INSTAGRAM IMPORT)</option>

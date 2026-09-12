@@ -97,7 +97,8 @@ def serialize_block(b: dict) -> str:
     if t == "spacer":
         return f"[spacer:{max(1, min(100, int(b.get('px', 20) or 20)))}]"
     if t == "mosaic":
-        order = [int(i) for i in (b.get("order") or []) if str(i).strip().isdigit() and int(i) >= 1]
+        order = [int(i) for i in (b.get("order") or [])
+                 if str(i).strip().isdigit() and int(i) >= 1]
         if not order:
             return "[mosaic]"
         layout = str(b.get("layout") or "asymmetric").lower()

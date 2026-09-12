@@ -117,6 +117,7 @@ def _new_id() -> str:
 
 @dataclass
 class DraftImage:
+    asset_uuid:  str = field(default_factory=lambda: str(uuid.uuid4()))
     local_path:   str = ""    # absolute local path to the full-res image
     original_path: str = ""   # source before the session makes its safe working copy
     filename:     str = ""    # basename used on upload
@@ -164,7 +165,10 @@ class DraftImage:
 
     @classmethod
     def from_dict(cls, d: dict) -> "DraftImage":
-        return cls(**{k: d.get(k, getattr(cls, k, "")) for k in cls.__dataclass_fields__})
+        values = {k: d[k] for k in cls.__dataclass_fields__ if k in d}
+        if not values.get("asset_uuid"):
+            values["asset_uuid"] = str(uuid.uuid4())
+        return cls(**values)
 
     def apply_enrichment(self, meta: dict) -> None:
         """Retain the full normalized AI result on this image, regardless of UI."""
