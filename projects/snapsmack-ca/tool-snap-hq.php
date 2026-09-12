@@ -39,7 +39,7 @@ $tool_body = <<<'HTML'
             </ul>
 HTML;
 $tool_shots = [
-    ['snap-hq.png', 'SNAP HQ launcher and shared setup', 'The launcher: every tool, every site, one window.'],
+    ['snap-hq-new.png', 'SNAP HQ launcher and shared setup', 'The launcher: every tool, every site, one window.'],
     ['the-hub.png', 'SNAP HQ fleet view', 'The fleet as SNAP HQ sees it.']
 ];
 require_once __DIR__ . '/includes/tool-page.php';
