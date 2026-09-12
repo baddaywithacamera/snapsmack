@@ -6,7 +6,7 @@
  *   $page_title       — <title> content
  *   $page_description — meta description
  *   $page_og_url      — canonical og:url for this page
- *   $nav_active       — key matching a nav link: index|wotcha|bugger|tnb|hairy-muff|brass-tacks|reckoning|buzzers|ding-dong|oi
+ *   $nav_active       — key matching a nav link: index|goods|goods-skins|goods-tools|tool-*|security|wotcha|brass-tacks|faq-*|coming|oi|tnb|hairy-muff|buzzers|ding-dong|reckoning|hows-yer-father|bugger
  *   $page_css         — (optional) additional CSS string for page-specific styles
  */
 
@@ -25,24 +25,36 @@ function ss_nav_link(string $href, string $label, string $key, string $active): 
 }
 
 $_nav = function(string $active): string {
-    $goods_open = str_starts_with($active, 'goods') ? ' active' : '';
-    $rest_open  = in_array($active, ['bugger', 'tnb', 'hairy-muff', 'reckoning', 'buzzers', 'ding-dong', 'oi'], true) ? ' active' : '';
-    return ss_nav_link('index.php',      'GAFF!',        'index',       $active) . "\n" .
-           '            <details class="nav-group' . $goods_open . '"><summary>THE GOODS!</summary><div class="nav-flyout">' .
-           ss_nav_link('features.php',   'THE GOODS!',   'goods',       $active) .
-           ss_nav_link('skins.php',      'GLAD RAGS!',   'goods-skins', $active) .
-           ss_nav_link('tools.php',      'BOX O\' TRICKS!', 'goods-tools', $active) .
-           '</div></details>' . "\n" .
-           ss_nav_link('wotcha.php',     'WOTCHA!',      'wotcha',      $active) . "\n" .
-           ss_nav_link('brass-tacks.php','BRASS TACKS!', 'brass-tacks', $active) . "\n" .
-           '            <details class="nav-group' . $rest_open . '"><summary>MORE BOLLOCKS!</summary><div class="nav-flyout">' .
-           ss_nav_link('bugger.php',     'BUGGER!',         'bugger',    $active) .
-           ss_nav_link('tnb.php',        'TWIG N BERRIES!', 'tnb',       $active) .
-           ss_nav_link('hairy-muff.php', 'HAIRY MUFF!',     'hairy-muff',$active) .
-           ss_nav_link('buzzers.php',    'BUZZERS!',        'buzzers',   $active) .
-           ss_nav_link('ding-dong-bell.php', 'DING DONG BELL!', 'ding-dong', $active) .
-           ss_nav_link('the-reckoning.php', 'THE RECKONING!', 'reckoning', $active) .
-           ss_nav_link('oi.php',         'OI THERE MATE!',  'oi',        $active) .
+    // Plain words in the nav; the joke name is the page header once you arrive.
+    // (Rework 2026-09-12: 13 joke tabs nobody could decode -> 9 plain tabs + FINE PRINT.)
+    $fine_open = in_array($active, ['tnb', 'hairy-muff', 'buzzers', 'ding-dong', 'reckoning', 'bugger', 'hows-yer-father'], true) ? ' active' : '';
+    $faq_key   = str_starts_with($active, 'faq') ? 'brass-tacks' : $active;
+    return ss_nav_link('index.php',       'Home',        'index',       $active) . "
+" .
+           ss_nav_link('features.php',    'Features',    'goods',       $active) . "
+" .
+           ss_nav_link('skins.php',       'Skins',       'goods-skins', $active) . "
+" .
+           ss_nav_link('tools.php',       'Desktop Tools', 'goods-tools', str_starts_with($active, 'tool-') ? 'goods-tools' : $active) . "
+" .
+           ss_nav_link('security.php',    'Security',    'security',    $active) . "
+" .
+           ss_nav_link('wotcha.php',      'News',        'wotcha',      $active) . "
+" .
+           ss_nav_link('brass-tacks.php', 'FAQ',         'brass-tacks', $faq_key) . "
+" .
+           ss_nav_link('coming-soon.php', 'Coming Soon', 'coming',      $active) . "
+" .
+           ss_nav_link('oi.php',          'Contact',     'oi',          $active) . "
+" .
+           '            <details class="nav-group' . $fine_open . '"><summary>Fine Print</summary><div class="nav-flyout">' .
+           ss_nav_link('tnb.php',            'Privacy &middot; TWIG N BERRIES!',        'tnb',        $active) .
+           ss_nav_link('hairy-muff.php',     'Ethics &amp; licence &middot; HAIRY MUFF!', 'hairy-muff', $active) .
+           ss_nav_link('buzzers.php',        'Security audits &middot; BUZZERS!',        'buzzers',    $active) .
+           ss_nav_link('ding-dong-bell.php', 'Operability audits &middot; DING DONG BELL!', 'ding-dong', $active) .
+           ss_nav_link('the-reckoning.php',  'By the numbers &middot; THE RECKONING!',   'reckoning',  $active) .
+           ss_nav_link('hows-yer-father.php','Architecture &middot; HOW&rsquo;S YER FATHER?', 'hows-yer-father', $active) .
+           ss_nav_link('bugger.php',         'Emergency help &middot; BUGGER!',          'bugger',     $active) .
            '</div></details>';
 };
 
