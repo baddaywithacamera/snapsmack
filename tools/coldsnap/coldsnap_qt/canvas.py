@@ -121,11 +121,16 @@ class _Objects(QPyTextObject):
 
     def _draw_mosaic(self, painter, r, data):
         layout = data.get("layout", "asymmetric")
-        order = [int(i) for i in (data.get("order") or [])]
+        order = list(data.get("order") or [])
         bucket = self.canvas.bucket
         if not order:
             order = list(range(1, len(bucket) + 1))
-        paths = [bucket[i - 1] for i in order if 1 <= i <= len(bucket)]
+        paths = []
+        for identity in order:
+            if str(identity).isdigit() and 1 <= int(identity) <= len(bucket):
+                paths.append(bucket[int(identity) - 1])
+            elif str(identity) in self.canvas.assets:
+                paths.append(self.canvas.assets[str(identity)])
         painter.fillRect(r, QColor("#090b0a"))
         inner = r.adjusted(0, 0, 0, -22)
         cells = tile_rects(inner.width(), inner.height(), len(paths), layout)
@@ -158,14 +163,19 @@ class _Objects(QPyTextObject):
 
     def _draw_image(self, painter, r, data):
         size = data.get("size", "full")
-        align = data.get("align", "center")
-        iw = r.width() if size == "full" else (int(r.width() * 0.6) if size == "wall" else int(r.width() * 0.36))
+        placement = data.get("placement", "")
+        align = {"wrap-left": "left", "wrap-right": "right"}.get(
+            placement, data.get("align", "center"))
+        ratio = max(0.25, min(1.0, float(data.get("width_ratio", 0) or 0)))
+        iw = int(r.width() * ratio) if data.get("asset_uuid") else (
+            r.width() if size == "full" else (int(r.width() * 0.6) if size == "wall" else int(r.width() * 0.36)))
         if align in ("left", "right") and size != "full":
             iw = int(r.width() * 0.36)
         x = r.left() if align == "left" else (r.right() - iw if align == "right"
                                               else r.left() + (r.width() - iw) // 2)
         box = QRect(x, r.top() + 2, iw, r.height() - 4)
-        pix = self.canvas.image_pixmap(str(data.get("img_id", "")), iw)
+        identity = "asset:" + str(data["asset_uuid"]) if data.get("asset_uuid") else str(data.get("img_id", ""))
+        pix = self.canvas.image_pixmap(identity, iw)
         painter.fillRect(box, QColor("#141714"))
         if pix is not None and not pix.isNull():
             scaled = pix.scaled(box.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -212,11 +222,14 @@ class BiggieCanvas(QTextEdit):
     #: or [] / "" for a fresh one). The host owns the bucket + dialog and
     #: answers with insert_mosaic()/replace_mosaic().
     mosaicEditRequested = Signal(list, str)
+    photographsDropped = Signal(list)
+    photographPasted = Signal(object)
 
     def __init__(self, parent=None, *, allow_mosaic: bool = True):
         super().__init__(parent)
         self.allow_mosaic = allow_mosaic
         self.bucket = []                 # ordered local paths of the post's photos
+        self.assets = {}                 # immutable asset UUID -> local preview path
         self._image_resolver = None      # callable(img_id, width) -> QPixmap|None
         self._site_provider = None       # callable() -> site url; unlocks the gallery picker
         self._pending_obj_pos = None     # document position of a mosaic being edited
@@ -247,6 +260,12 @@ class BiggieCanvas(QTextEdit):
         self.document().markContentsDirty(0, self.document().characterCount())
         self.viewport().update()
 
+    def set_assets(self, assets):
+        """Provide stable local identities independently of filmstrip order."""
+        self.assets = {str(key): str(path) for key, path in dict(assets or {}).items()}
+        self.document().markContentsDirty(0, self.document().characterCount())
+        self.viewport().update()
+
     def set_image_resolver(self, fn):
         self._image_resolver = fn
 
@@ -264,6 +283,10 @@ class BiggieCanvas(QTextEdit):
     def image_pixmap(self, img_id: str, width: int):
         try:
             sid = str(img_id).strip().lower()
+            if sid.startswith("asset:"):
+                from .widgets import load_pixmap
+                path = self.assets.get(sid[6:])
+                return load_pixmap(path, max(64, int(width))) if path else None
             if sid.startswith("bucket:") and sid[7:].isdigit():
                 n = int(sid[7:])
                 if 1 <= n <= len(self.bucket):
@@ -434,18 +457,40 @@ class BiggieCanvas(QTextEdit):
         self.setFocus()
 
     def insert_mosaic(self, order, layout: str):
-        self._insert_object("mosaic", {"order": [int(i) for i in order], "layout": str(layout)})
+        self._insert_object("mosaic", {"order": list(order), "layout": str(layout)})
 
     def replace_mosaic(self, order, layout: str):
         pos = self._pending_obj_pos
         self._pending_obj_pos = None
         if pos is None:
             return self.insert_mosaic(order, layout)
-        self._insert_object("mosaic", {"order": [int(i) for i in order], "layout": str(layout)},
+        self._insert_object("mosaic", {"order": list(order), "layout": str(layout)},
                             replace_at=pos)
 
-    def insert_image(self, img_id: str, size: str = "full", align: str = "center"):
-        self._insert_object("image", {"img_id": str(img_id).strip(), "size": size, "align": align})
+    def insert_image(self, img_id: str, size: str = "full", align: str = "center",
+                     *, width_ratio=None, alt="", caption=""):
+        data = {"img_id": str(img_id).strip(), "size": size, "align": align}
+        if str(img_id).startswith("asset:"):
+            data.update({"asset_uuid": str(img_id)[6:],
+                         "width_ratio": float(width_ratio or 1.0),
+                         "placement": "block" if align == "center" else f"wrap-{align}",
+                         "alt": str(alt or ""), "caption": str(caption or "")})
+        self._insert_object("image", data)
+
+    # -- local photograph input -----------------------------------------------
+    def canInsertFromMimeData(self, source):
+        return bool(source.hasImage() or any(url.isLocalFile() for url in source.urls())) \
+            or super().canInsertFromMimeData(source)
+
+    def insertFromMimeData(self, source):
+        paths = [url.toLocalFile() for url in source.urls() if url.isLocalFile()]
+        if paths:
+            self.photographsDropped.emit(paths)
+            return
+        if source.hasImage():
+            self.photographPasted.emit(source.imageData())
+            return
+        super().insertFromMimeData(source)
 
     def insert_spacer(self, px: int = 20):
         self._insert_object("spacer", {"px": max(1, min(100, int(px)))})
@@ -540,6 +585,12 @@ class BiggieCanvas(QTextEdit):
                 menu.addAction("Change this image…", lambda: self._edit_image(hit))
             elif kind == "spacer":
                 menu.addAction("Change the gap…", lambda: self._edit_spacer(hit))
+            if kind in ("image", "mosaic"):
+                menu.addAction("Move earlier", lambda: self._move_object(pos, -1))
+                menu.addAction("Move later", lambda: self._move_object(pos, 1))
+            if kind == "image":
+                menu.addAction("Make narrower", lambda: self._nudge_image(pos, -.17))
+                menu.addAction("Make wider", lambda: self._nudge_image(pos, .17))
             menu.addAction(f"Remove this {KIND_OBJ.get(kind, kind)}", lambda: self._remove_object(pos))
         menu.exec(event.globalPos())
 
@@ -553,10 +604,46 @@ class BiggieCanvas(QTextEdit):
             c.deletePreviousChar()      # drop the now-empty paragraph
         c.endEditBlock()
 
+    def _move_object(self, pos, delta):
+        hit = self._object_at(pos)
+        if not hit:
+            return
+        block = self.document().findBlock(pos)
+        target = block.previous() if delta < 0 else block.next()
+        if not target.isValid():
+            return
+        model = {"type": hit[0], **hit[1]}
+        c = QTextCursor(block)
+        c.beginEditBlock()
+        c.select(QTextCursor.BlockUnderCursor)
+        c.removeSelectedText()
+        c.deleteChar()
+        c.setPosition(target.position() if delta < 0 else target.position() + target.length() - 1)
+        self.setTextCursor(c)
+        self._insert_object(model.pop("type"), model)
+        c.endEditBlock()
+
+    def _nudge_image(self, pos, delta):
+        hit = self._object_at(pos)
+        if not hit or hit[0] != "image":
+            return
+        data = dict(hit[1])
+        presets = (.25, .33, .5, .67, 1.0)
+        current = float(data.get("width_ratio", 1.0) or 1.0)
+        index = min(range(len(presets)), key=lambda i: abs(presets[i] - current))
+        index = max(0, min(len(presets) - 1, index + (1 if delta > 0 else -1)))
+        data["width_ratio"] = presets[index]
+        self._insert_object("image", data, replace_at=hit[2])
+
+    def set_preview_width(self, width):
+        """Change only the composition viewport; stored responsive ratios remain unchanged."""
+        self.document().setTextWidth(float(width) if width else -1)
+        self.viewport().update()
+
     def _edit_mosaic(self, hit):
         _kind, data, pos = hit
         self._pending_obj_pos = pos
-        self.mosaicEditRequested.emit([int(i) for i in data.get("order", [])],
+        self.mosaicEditRequested.emit(list(data.get("order", [])),
                                       str(data.get("layout", "")))
 
     def request_mosaic(self):
@@ -570,6 +657,11 @@ class BiggieCanvas(QTextEdit):
 
     def _edit_image(self, hit=None):
         data = hit[1] if hit else {}
+        if data.get("asset_uuid"):
+            dlg = _LocalImageDialog(self, data)
+            if dlg.exec() == QDialog.Accepted and hit:
+                self._insert_object("image", dlg.values(), replace_at=hit[2])
+            return
         site = self._site()
         if site or self.bucket:
             from .gallery_picker import GalleryPicker
@@ -861,13 +953,18 @@ def _export_block(block, nested: bool = False) -> list:
                 if okind == "mosaic":
                     blk = {"type": "mosaic"}
                     if data.get("order"):
-                        blk["order"] = [int(i) for i in data["order"]]
+                        blk["order"] = list(data["order"])
                         blk["layout"] = str(data.get("layout") or "asymmetric")
                     out.append(blk)
                 elif okind == "image":
-                    out.append({"type": "image", "img_id": str(data.get("img_id", "")),
-                                "size": data.get("size") or "full",
-                                "align": data.get("align") or "center"})
+                    image = {"type": "image", "img_id": str(data.get("img_id", "")),
+                             "size": data.get("size") or "full",
+                             "align": data.get("align") or "center"}
+                    for key in ("asset_uuid", "placement", "width_ratio", "crop",
+                                "alt", "caption", "link"):
+                        if key in data:
+                            image[key] = data[key]
+                    out.append(image)
                 elif okind == "spacer":
                     out.append({"type": "spacer", "px": int(data.get("px", 20))})
                 elif okind == "hr":
@@ -910,6 +1007,60 @@ class _ImageDialog(QDialog):
                 "align": self.align.currentText()}
 
 
+class _LocalImageDialog(QDialog):
+    """Plain-language contextual controls for a photograph already in the essay."""
+    def __init__(self, parent, data):
+        super().__init__(parent)
+        self._asset_uuid = str(data.get("asset_uuid", ""))
+        self.setWindowTitle("Photograph in this story")
+        col = QVBoxLayout(self)
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Placement"))
+        self.placement = QComboBox()
+        for label, value in (("Block", "block"), ("Wrap left", "wrap-left"),
+                             ("Wrap right", "wrap-right"), ("Wide", "wide"),
+                             ("Full bleed", "full-bleed")):
+            self.placement.addItem(label, value)
+        found = self.placement.findData(data.get("placement", "block"))
+        self.placement.setCurrentIndex(max(0, found))
+        row.addWidget(self.placement, 1)
+        row.addWidget(QLabel("Width"))
+        self.width = QComboBox()
+        for label, value in (("Quarter page", .25), ("Third page", .33),
+                             ("Half page", .5), ("Two-thirds page", .67),
+                             ("Page width", 1.0)):
+            self.width.addItem(label, value)
+        wanted = float(data.get("width_ratio", 1.0) or 1.0)
+        self.width.setCurrentIndex(min(range(self.width.count()),
+                                       key=lambda i: abs(float(self.width.itemData(i)) - wanted)))
+        row.addWidget(self.width, 1)
+        col.addLayout(row)
+        col.addWidget(QLabel("ALT text"))
+        self.alt = QLineEdit(str(data.get("alt", "")))
+        col.addWidget(self.alt)
+        col.addWidget(QLabel("Caption"))
+        self.caption = QLineEdit(str(data.get("caption", "")))
+        col.addWidget(self.caption)
+        col.addWidget(QLabel("Link (optional)"))
+        self.link = QLineEdit(str(data.get("link", "")))
+        col.addWidget(self.link)
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        col.addWidget(buttons)
+
+    def values(self):
+        placement = str(self.placement.currentData())
+        align = "left" if placement == "wrap-left" else ("right" if placement == "wrap-right" else "center")
+        ratio = float(self.width.currentData())
+        return {"asset_uuid": self._asset_uuid, "img_id": "asset:" + self._asset_uuid,
+                "placement": placement, "width_ratio": ratio,
+                "size": "full" if ratio >= 1 else ("wall" if ratio >= .5 else "small"),
+                "align": align, "crop": {"mode": "none", "focal_x": .5, "focal_y": .5},
+                "alt": self.alt.text().strip(), "caption": self.caption.text().strip(),
+                "link": self.link.text().strip()}
+
+
 # ── toolbar ──────────────────────────────────────────────────────────────────
 class CanvasBar(QWidget):
     """What you can make: paragraph kinds, lists, drop cap, and the drawn things."""
@@ -937,6 +1088,9 @@ class CanvasBar(QWidget):
         self._btn(row, "GAP", "A vertical gap", canvas._edit_spacer)
         self._sep(row)
         self._btn(row, "RAW", "Raw — shortcodes/HTML kept exactly as typed", lambda: canvas.set_kind("raw"))
+        self._sep(row)
+        self._btn(row, "DESKTOP", "Preview at desktop essay width", lambda: canvas.set_preview_width(760))
+        self._btn(row, "PHONE", "Preview responsive wrapping at phone width", lambda: canvas.set_preview_width(360))
         row.addStretch(1)
 
     def _sep(self, row):

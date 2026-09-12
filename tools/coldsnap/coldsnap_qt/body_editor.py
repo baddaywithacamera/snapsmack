@@ -14,6 +14,7 @@ toPlainText / setPlainText / clear so the modes barely change.
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPlainTextEdit, QPushButton
 
 import config as cfg_module
@@ -25,6 +26,7 @@ from .widgets import hint
 
 
 class BodyEditor(QWidget):
+    changed = Signal()
     def __init__(self, *, allow_mosaic: bool = False, simple_height: int = 84,
                  rich: bool = True, parent=None):
         """rich=False (COLD ONE / COLD STACK): the plain box and bar only, no
@@ -83,6 +85,8 @@ class BodyEditor(QWidget):
         g.addWidget(hint("What you see here sends as the same shortcodes/HTML the "
                          "TWIGGY bar makes — the site renders it identically."))
         col.addWidget(self._biggie_page, 1)
+        self.editor.textChanged.connect(self.changed)
+        self.canvas.textChanged.connect(self.changed)
 
         # Last-used face is a per-tool setting (spec §7: biggie_enabled).
         self._biggie_on = False
@@ -90,11 +94,11 @@ class BodyEditor(QWidget):
             self._biggie_page.hide()
             self._apply_face(False)
             return
-        try:
-            remembered = bool((cfg_module.load() or {}).get("biggie_enabled"))
-        except Exception:  # noqa: BLE001
-            remembered = False
-        self._apply_face(remembered)
+        # COLD TAKE is the visual essay editor. TWIGGY remains callable as a
+        # compatibility escape hatch, but is not presented as a competing mode.
+        self.simple_btn.hide()
+        self.biggie_btn.hide()
+        self._apply_face(True)
 
     # -- face switching ---------------------------------------------------------
     def _apply_face(self, on: bool):
@@ -150,6 +154,11 @@ class BodyEditor(QWidget):
         if self._biggie_on:
             return biggie.blocks_to_json(self.biggie.to_blocks())
         return ""
+
+    def authoring_blocks(self) -> list:
+        """Canonical local model. Unlike the wire string, this retains UUIDs."""
+        return self.biggie.to_blocks() if self._biggie_on else biggie.parse_body(
+            self.editor.toPlainText())
 
     def set_state(self, caption: str, blocks_json: str):
         """Restore a draft: blocks win when the draft has them."""
