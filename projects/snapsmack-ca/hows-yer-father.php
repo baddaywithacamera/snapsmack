@@ -98,7 +98,7 @@ require_once __DIR__ . '/includes/header.php';
             <h2>One engine, declared capabilities, fewer nasty surprises.</h2>
             <div class="inheritance-grid">
                 <article class="inheritance-card"><h3>Skins declare</h3><p>Presentation says what approved capabilities it needs. It does not bring executable machinery along for the ride.</p></article>
-                <article class="inheritance-card"><h3>The CMS delivers</h3><p>Shared, reviewed engines provide layouts, effects, controls, and behavior consistently across every compatible skin.</p></article>
+                <article class="inheritance-card"><h3>The CMS delivers</h3><p>Shared, reviewed engines provide layouts, effects, controls, and behaviour consistently across every compatible skin.</p></article>
                 <article class="inheritance-card"><h3>Repairs propagate</h3><p>Fix the shared engine once and every skin using it receives the correction instead of maintaining its own forgotten copy.</p></article>
                 <article class="inheritance-card"><h3>Removal means removal</h3><p>Taking away a skin removes its presentation. It does not leave a midden of abandoned plugin code and database debris.</p></article>
             </div>

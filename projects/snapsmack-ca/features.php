@@ -40,8 +40,11 @@ $page_css = <<<'CSS'
 .layer-num { display: block; margin-bottom: 8px; color: #888; font: 700 .64rem/1.2 'Courier New', monospace; letter-spacing: .1em; text-transform: uppercase; }
 .feat-list { max-width: 820px; margin: 0 0 0 1.2em; columns: 2; column-gap: 40px; }
 .feat-list li { margin-bottom: .6em; break-inside: avoid; font-size: .95rem; }
-.mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
-.mode-card { padding: 30px; background: var(--white); }
+.feat.feat--modes { background: #9a9a9a; border-top: 8px solid var(--black); }
+.feat--modes h2 { color: var(--black); }
+.feat--modes .lede { color: #222; }
+.mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #7a7a7a; border: 1px solid #7a7a7a; }
+.mode-card { padding: 30px; background: #dcdcdc; }
 .mode-num { color: var(--red); font: 900 .72rem/1 Arial, sans-serif; }
 .mode-card h3 { margin: 10px 0 12px; font-size: 1.18rem; }
 .mode-tagline { margin: -5px 0 14px; color: var(--red); font: 900 .76rem/1.25 Arial Black, Arial, sans-serif; text-transform: uppercase; }
@@ -80,7 +83,7 @@ require_once __DIR__ . '/includes/header.php';
         </nav>
     </div>
 
-    <section class="feat" id="modes">
+    <section class="feat feat--modes" id="modes">
         <div class="wrap">
             <div class="feat-head">
                 <p class="site-discovery-kicker">Four ways to play &middot; what&rsquo;s new is old again</p>
