@@ -74,7 +74,7 @@ $faq_qas = <<<'HTML'
                 <p>Yes. The admin panel says so.</p>
                 <p>The honest origin: I asked Gemini whether Pixelpost could be modernized. The answer was no. So I started over. SnapSmack was built independently from scratch. It doesn't use any Pixelpost code &mdash; nothing was copied, adapted, or carried over. Pixelpost inspired how SnapSmack should feel, but not how it was built. That also means SnapSmack has its own license; it doesn't inherit Pixelpost's.</p>
                 <p>The original Gemini-built implementation was already better suited to the modern web than Pixelpost had been. Then I realised something: I blog much harder now than I did when Pixelpost was current. More sites, more workflows, more files, more reasons to want serious tooling. Pixelpost's one-photo-a-day shape was beautiful and sufficient for what blogging used to be. It is not sufficient for what blogging is now, at least not for me.</p>
-                <p>So the new product kept growing. Multisite. Companion apps. Security stack. Three install personalities for three different use shapes.</p>
+                <p>So the new product kept growing. Multisite. Companion apps. Security stack. Four install personalities for four different use shapes.</p>
                 <p>SnapSmack isn't mission creep. It's mission accomplished.</p>
                 <p>See "SnapSmack vs Pixelpost" below for the operational comparison.</p>
             </div>
@@ -98,7 +98,7 @@ $faq_qas = <<<'HTML'
             <div class="qa" id="q-vs-pixelpost">
                 <h3>SnapSmack vs Pixelpost — what's the difference?</h3>
                 <p>Pixelpost was a gunship. Light, fast, one job: show one photo a day, well, with comments and a small archive. It was beautiful at it. Past tense, though — the last real release was 2009, the project was officially abandoned and archived in 2019, and what survives runs on ancient PHP with unpatched cross-site-scripting and SQL-injection holes. A lovely ghost, but not something you should hang on the public internet in 2026.</p>
-                <p>SnapSmack is a dreadnought. Multisite hub-and-spoke architecture. Three install personalities (single photos, Classic IG, or longform essays — pick one at install). Companion desktop apps for backup, sync, sorting, importing. Integrated security stack. Anti-spam layer. Multi-skin engine. Shortcode system.</p>
+                <p>SnapSmack is a dreadnought. Multisite hub-and-spoke architecture. Four install personalities (single photos, Classic IG, longform essays, or Picasa-style albums — pick one at install). Companion desktop apps for backup, sync, sorting, importing. Integrated security stack. Anti-spam layer. Multi-skin engine. Shortcode system.</p>
                 <p>If you want one photo a day and nothing else, that stripped-down minimalism was Pixelpost's whole soul — and it's exactly what SnapSmack's SMACKONEOUT mode gives you, minus the decade of rot. We didn't build SnapSmack to compete with Pixelpost. We built it to carry on after it, because nobody else did.</p>
                 <p>Pixelpost showed what a photoblog should feel like, then quietly died. SnapSmack is the heir, not the rival — as far as we can tell, the only dedicated, still-actively-built photoblog CMS left standing. Know of another living one? Point us at it. We'd like to know.</p>
             </div>
