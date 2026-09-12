@@ -21,16 +21,15 @@
     --light-grey:#f4f4f4;
     --border:    #ddd;
     --white:     #ffffff;
-    --max:       1100px;
+    --max:       1375px;
 }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; font-size: 20px; }
 
 body {
     font-family: Georgia, 'Times New Roman', serif;
-    font-size: 17px;
+    font-size: 1.0625rem;
     line-height: 1.7;
-    zoom: 1.25;
     color: var(--dark-grey);
     background: var(--white);
 }
@@ -112,7 +111,7 @@ p:last-child { margin-bottom: 0; }
 
 /* --- NAVIGATION --- */
 nav {
-    display: grid; grid-template-columns: repeat(6, auto);
+    display: grid; grid-template-columns: repeat(10, auto);
     column-gap: 18px; row-gap: 8px;
     margin-left: auto; text-align: right;
     align-items: start; justify-items: end;
@@ -122,6 +121,7 @@ nav a {
     font-size: 0.74rem; font-weight: 900; text-transform: uppercase;
     letter-spacing: 0.03em; color: var(--dark-grey);
     text-decoration: none; position: relative; padding-bottom: 4px;
+    white-space: nowrap;
     transition: color 0.15s;
 }
 nav a::after {
@@ -206,7 +206,7 @@ nav a.active::after { width: 100%; }
 .stt-since, .stt-unavailable { margin-top: 12px; color: #888; font: .65rem/1.3 'Courier New', monospace; letter-spacing: .05em; }
 .skin-entry[data-stats]:focus-visible { outline: 3px solid var(--red); outline-offset: 5px; }
 
-@media (min-width: 801px) {
+@media (min-width: 1361px) {
     #site-header { padding: 18px 0 16px; }
     .header-inner { gap: 24px; padding-left: 22px; padding-right: 22px; }
     .logo-lockup { gap: 14px; }
@@ -414,7 +414,8 @@ nav a.active::after { width: 100%; }
 .nav-burger { display: none; }
 .mobile-shame { display: none; }
 
-@media (max-width: 800px) {
+@media (max-width: 1360px) {
+    html { font-size: 16px; }
     /* The header stays one row — logo left, ☰ right — and the 8-item nav drops
        down when the burger is toggled. Replaces the old wide 4-col nav that
        forced horizontal overflow. Applies to every page via the shared header. */
