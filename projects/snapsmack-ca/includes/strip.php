@@ -11,7 +11,7 @@
 ?>
             <ul class="strip-list">
                 <li><a href="features.php#yours"><strong>Yours</strong><span>You host it. You own the art. No company, no tiers, no upsell, no &ldquo;we&rsquo;ve updated our terms.&rdquo;</span></a></li>
-                <li><a href="features.php#modes"><strong>Three ways</strong><span>One photo at a time, the classic grid, or writing with photographs in it. Pick the way you always shared.</span></a></li>
+                <li><a href="features.php#modes"><strong>Four ways</strong><span>One photo at a time, the classic grid, writing with photographs in it, or Picasa-style albums for the people you know. Pick the way you always shared.</span></a></li>
                 <li><a href="tools.php#get-in"><strong>Get in, get out</strong><span>Import Instagram, Flickr and Blogger with dates and captions intact. Leave any time with everything, in a form other software reads.</span></a></li>
                 <li><a href="skins.php"><strong>Skins</strong><span>Real sites, real archives, and nothing that looks like a template. <span class="strip-skins"><img src="img/galleria-landing.png" alt="" width="1920" height="1080" loading="lazy"><img src="img/truegrit-landing.png" alt="" width="1920" height="1080" loading="lazy"><img src="img/instantcam-landing.png" alt="" width="1920" height="1080" loading="lazy"><img src="img/gameon-landing.png" alt="" width="1920" height="1080" loading="lazy"></span></span></a></li>
                 <li><a href="features.php#network"><strong>Not alone</strong><span>A directory of photoblogs worth browsing, a weekly challenge, and readers who can follow you from wherever they already are.</span></a></li>
