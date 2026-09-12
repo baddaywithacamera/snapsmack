@@ -50,21 +50,16 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <p class="site-discovery-kicker">COMING UP THE REAR!</p>
             <h1>What&rsquo;s next.<br><span>Sorted by how real it is.</span></h1>
-            <p class="lede coming-intro">No roadmap theatre, no investor promises, no dates. Three honest piles: running on live sites in beta, built but not released, and still on the drawing board. It ships when it works.</p>
+            <p class="lede coming-intro">No roadmap theatre, no investor promises, no dates. Three honest piles: in beta, built but not released, and still on the drawing board. It ships when it works.</p>
         </div>
     </section>
 
     <section class="tier tier--beta">
         <div class="wrap">
             <p class="tier-kicker">Pile one</p>
-            <h2>In beta on live sites</h2>
-            <p class="lede">Real people are using these on real sites. Rough edges are being found the honest way: by hitting them.</p>
+            <h2>In beta</h2>
+            <p class="lede">Real people are using these. Rough edges are being found the honest way: by hitting them.</p>
             <div class="coming-grid">
-                <article class="coming-item">
-                    <span class="tag">Skin</span>
-                    <h3>GAME ON</h3>
-                    <p>A living field of always-solvable sliding-puzzle photographs behind a clean grid, with a playable full-screen modal. A photoblog you can play. Yes, really.</p>
-                </article>
                 <article class="coming-item">
                     <span class="tag">Skin</span>
                     <h3>52 Card Pickup</h3>
@@ -73,7 +68,7 @@ require_once __DIR__ . '/includes/header.php';
                 <article class="coming-item">
                     <span class="tag">Desktop &middot; Editor</span>
                     <h3>SNAP SLAPPER</h3>
-                    <p>The non-destructive photo editor and library. In closed beta and used daily on every photograph Sean publishes. <a href="tool-snap-slapper.php">Full tour &rarr;</a></p>
+                    <p>The non-destructive photo editor and library. Desktop only: it never runs on a site. In closed beta and used daily on every photograph Sean publishes. <a href="tool-snap-slapper.php">Full tour &rarr;</a></p>
                 </article>
             </div>
         </div>
@@ -168,6 +163,7 @@ require_once __DIR__ . '/includes/header.php';
                 <a href="tool-cold-snap.php"><strong>COLD SNAP</strong><span>Offline post composer with BIGGIE blocks and a local cold-storage library. Shipped.</span></a>
                 <a href="tool-snap-slapper.php#lewks"><strong>LEWK AGAIN</strong><span>AI-assisted look builder inside SNAP SLAPPER, all five providers. Shipped.</span></a>
                 <a href="features.php#network"><strong>photoblogs.fyi + the challenge network</strong><span>The directory, the reader, and the weekly #photofri challenge. Live.</span></a>
+                <a href="skins.php"><strong>GAME ON</strong><span>The sliding-puzzle photoblog skin. In production on theschoolofhardnocks.ca.</span></a>
                 <a href="skins.php"><strong>PARADE, TILEZ, TRUE GRIT, SLICKR&hellip;</strong><span>The skin roster keeps growing. See what&rsquo;s in production.</span></a>
             </div>
         </div>
