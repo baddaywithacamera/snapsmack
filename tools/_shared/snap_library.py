@@ -43,6 +43,7 @@ import os
 import shutil
 import sqlite3
 import time
+import uuid
 
 import snap_home
 from snap_paths import contained_local_path
@@ -107,6 +108,63 @@ CREATE TABLE IF NOT EXISTS post_assets (
 );
 CREATE INDEX IF NOT EXISTS post_assets_asset ON post_assets(asset_id);
 
+-- BIGGIE / COLD TAKE transactional authoring store.  These tables deliberately
+-- live in the existing per-site catalogue: an essay and its offline library
+-- must remain one recoverable unit, not two databases that can drift apart.
+CREATE TABLE IF NOT EXISTS draft_documents (
+    draft_uuid     TEXT PRIMARY KEY,
+    site_key       TEXT NOT NULL,
+    title          TEXT DEFAULT '',
+    status         TEXT NOT NULL DEFAULT 'draft',
+    created_at     TEXT NOT NULL,
+    updated_at     TEXT NOT NULL,
+    autosaved_at   TEXT NOT NULL,
+    remote_post_id INTEGER,
+    published_at   TEXT,
+    revision       INTEGER NOT NULL DEFAULT 1,
+    schema_version INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS draft_documents_status
+    ON draft_documents(status, updated_at);
+CREATE TABLE IF NOT EXISTS draft_assets (
+    asset_uuid      TEXT PRIMARY KEY,
+    draft_uuid      TEXT NOT NULL REFERENCES draft_documents(draft_uuid) ON DELETE CASCADE,
+    local_path      TEXT NOT NULL,
+    original_path   TEXT DEFAULT '',
+    content_hash    TEXT DEFAULT '',
+    filename        TEXT DEFAULT '',
+    mime_type       TEXT DEFAULT '',
+    width           INTEGER DEFAULT 0,
+    height          INTEGER DEFAULT 0,
+    thumb_path      TEXT DEFAULT '',
+    alt_text        TEXT DEFAULT '',
+    caption         TEXT DEFAULT '',
+    sync_state      TEXT NOT NULL DEFAULT 'local',
+    remote_image_id INTEGER,
+    remote_path     TEXT,
+    last_error      TEXT DEFAULT '',
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL,
+    synced_at       TEXT,
+    in_story        INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS draft_assets_draft ON draft_assets(draft_uuid);
+CREATE INDEX IF NOT EXISTS draft_assets_sync ON draft_assets(sync_state);
+CREATE INDEX IF NOT EXISTS draft_assets_hash ON draft_assets(content_hash);
+CREATE TABLE IF NOT EXISTS draft_blocks (
+    block_uuid  TEXT PRIMARY KEY,
+    draft_uuid  TEXT NOT NULL REFERENCES draft_documents(draft_uuid) ON DELETE CASCADE,
+    parent_uuid TEXT,
+    position    INTEGER NOT NULL,
+    block_type  TEXT NOT NULL,
+    content_json TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS draft_blocks_position
+    ON draft_blocks(draft_uuid, parent_uuid, position);
+CREATE INDEX IF NOT EXISTS draft_blocks_draft ON draft_blocks(draft_uuid);
+
 -- Self-healing migration: fold any legacy single-post link into the join
 -- table, then CONSUME it (null it out). Runs on every open — that catches a
 -- stale writer that still only sets assets.post_id — and consuming the value
@@ -135,6 +193,7 @@ _ASSET_COLUMN_MIGRATIONS = (
 
 def _connect(site: str) -> sqlite3.Connection:
     conn = sqlite3.connect(_db_path(site))
+    conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(_SCHEMA)
     for stmt in _ASSET_COLUMN_MIGRATIONS:
         try:
@@ -624,4 +683,228 @@ def asset_file(site, asset_id):
         return None
     path = os.path.join(snap_home.site_media_dir(site), row[0])
     return path if os.path.isfile(path) else None
+
+
+# ── BIGGIE drafts: transactional local authoring ────────────────────────────
+DRAFT_SCHEMA_VERSION = 1
+_DRAFT_ASSET_STATES = {
+    "local", "ready", "uploading", "uploaded", "attached", "verified", "failed",
+}
+
+
+def _stamp() -> str:
+    return time.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def create_draft(site, *, title="", draft_uuid=None) -> dict:
+    """Create a COLD TAKE draft in the site's existing library database."""
+    draft_uuid = str(draft_uuid or uuid.uuid4())
+    now = _stamp()
+    conn = _connect(site)
+    try:
+        with conn:
+            conn.execute(
+                """INSERT INTO draft_documents
+                   (draft_uuid, site_key, title, status, created_at, updated_at,
+                    autosaved_at, revision, schema_version)
+                   VALUES (?, ?, ?, 'draft', ?, ?, ?, 1, ?)""",
+                (draft_uuid, snap_home.site_key(site), str(title or ""), now, now,
+                 now, DRAFT_SCHEMA_VERSION),
+            )
+    finally:
+        conn.close()
+    return draft(site, draft_uuid)
+
+
+def draft(site, draft_uuid):
+    """Return one complete draft with ordered blocks and all recoverable assets."""
+    if not os.path.isfile(_db_path(site)):
+        return None
+    conn = _connect(site)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT * FROM draft_documents WHERE draft_uuid = ?", (str(draft_uuid),)
+        ).fetchone()
+        if not row:
+            return None
+        result = dict(row)
+        result["blocks"] = [dict(r) for r in conn.execute(
+            """SELECT * FROM draft_blocks WHERE draft_uuid = ?
+               ORDER BY CASE WHEN parent_uuid IS NULL THEN 0 ELSE 1 END,
+                        parent_uuid, position""", (str(draft_uuid),)
+        ).fetchall()]
+        result["assets"] = [dict(r) for r in conn.execute(
+            """SELECT * FROM draft_assets WHERE draft_uuid = ?
+               ORDER BY created_at, asset_uuid""", (str(draft_uuid),)
+        ).fetchall()]
+        for block in result["blocks"]:
+            block["content"] = json.loads(block.pop("content_json") or "{}")
+        return result
+    finally:
+        conn.close()
+
+
+def drafts(site, *, status=None) -> list:
+    """List draft summaries newest-first; content is loaded only by draft()."""
+    if not os.path.isfile(_db_path(site)):
+        return []
+    conn = _connect(site)
+    conn.row_factory = sqlite3.Row
+    try:
+        sql = "SELECT * FROM draft_documents"
+        args = []
+        if status is not None:
+            sql += " WHERE status = ?"
+            args.append(str(status))
+        sql += " ORDER BY updated_at DESC, draft_uuid"
+        return [dict(r) for r in conn.execute(sql, args).fetchall()]
+    finally:
+        conn.close()
+
+
+def save_draft(site, draft_uuid, *, title=None, status=None, blocks=None) -> dict:
+    """Atomically autosave document metadata and, when supplied, its block tree.
+
+    Existing block UUIDs are retained. New blocks receive UUIDs. Callers may use
+    asset_uuid freely inside content: synchronization never rewrites that JSON.
+    """
+    draft_uuid = str(draft_uuid)
+    now = _stamp()
+    conn = _connect(site)
+    try:
+        with conn:
+            current = conn.execute(
+                "SELECT revision FROM draft_documents WHERE draft_uuid = ?", (draft_uuid,)
+            ).fetchone()
+            if not current:
+                raise KeyError(f"unknown draft: {draft_uuid}")
+            changes, args = ["updated_at = ?", "autosaved_at = ?", "revision = revision + 1"], [now, now]
+            if title is not None:
+                changes.append("title = ?"); args.append(str(title))
+            if status is not None:
+                changes.append("status = ?"); args.append(str(status))
+            args.append(draft_uuid)
+            conn.execute(f"UPDATE draft_documents SET {', '.join(changes)} WHERE draft_uuid = ?", args)
+            if blocks is not None:
+                conn.execute("DELETE FROM draft_blocks WHERE draft_uuid = ?", (draft_uuid,))
+                for position, supplied in enumerate(blocks):
+                    item = dict(supplied or {})
+                    block_uuid = str(item.pop("block_uuid", "") or uuid.uuid4())
+                    block_type = str(item.pop("type", "para") or "para")
+                    parent_uuid = item.pop("parent_uuid", None)
+                    conn.execute(
+                        """INSERT INTO draft_blocks
+                           (block_uuid, draft_uuid, parent_uuid, position, block_type,
+                            content_json, created_at, updated_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (block_uuid, draft_uuid, parent_uuid, position, block_type,
+                         json.dumps(item, ensure_ascii=False, separators=(",", ":")), now, now),
+                    )
+    finally:
+        conn.close()
+    return draft(site, draft_uuid)
+
+
+def absorb_draft_asset(site, draft_uuid, source_path, *, alt_text="", caption="",
+                       asset_uuid=None) -> dict:
+    """Copy a photograph into managed draft storage and record its stable UUID.
+
+    Originals are never modified. The content-addressed filename makes a repeated
+    import cheap while each placement still gets its own immutable asset UUID.
+    """
+    source_path = os.path.abspath(str(source_path))
+    if not os.path.isfile(source_path):
+        raise FileNotFoundError(source_path)
+    if draft(site, draft_uuid) is None:
+        raise KeyError(f"unknown draft: {draft_uuid}")
+    content_hash = _sha256_file(source_path)
+    ext = os.path.splitext(source_path)[1].lower()
+    if ext not in _EXT_MIME:
+        raise ValueError("draft asset must be a supported image")
+    asset_uuid = str(asset_uuid or uuid.uuid4())
+    base_dir = os.path.join(snap_home.site_dir(site), "drafts", str(draft_uuid))
+    asset_dir, thumb_dir = os.path.join(base_dir, "assets"), os.path.join(base_dir, "thumbs")
+    os.makedirs(asset_dir, exist_ok=True)
+    os.makedirs(thumb_dir, exist_ok=True)
+    local_path = contained_local_path(asset_dir, content_hash + ext)
+    if not os.path.isfile(local_path):
+        shutil.copy2(source_path, local_path)
+    width = height = 0
+    thumb_path = ""
+    try:
+        from PIL import Image
+        with Image.open(local_path) as image:
+            width, height = image.size
+            preview = image.convert("RGB")
+            preview.thumbnail((640, 640))
+            thumb_path = contained_local_path(thumb_dir, content_hash + ".jpg")
+            if not os.path.isfile(thumb_path):
+                preview.save(thumb_path, "JPEG", quality=85)
+    except Exception:
+        # The managed original is still valuable if an optional decoder cannot
+        # produce a preview. The UI can explain that the preview needs attention.
+        thumb_path = ""
+    now = _stamp()
+    conn = _connect(site)
+    try:
+        with conn:
+            conn.execute(
+                """INSERT INTO draft_assets
+                   (asset_uuid, draft_uuid, local_path, original_path, content_hash,
+                    filename, mime_type, width, height, thumb_path, alt_text,
+                    caption, sync_state, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'local', ?, ?)""",
+                (asset_uuid, str(draft_uuid), local_path, source_path, content_hash,
+                 os.path.basename(source_path), _EXT_MIME[ext], width, height,
+                 thumb_path, str(alt_text or ""), str(caption or ""), now, now),
+            )
+    finally:
+        conn.close()
+    return next(a for a in draft(site, draft_uuid)["assets"] if a["asset_uuid"] == asset_uuid)
+
+
+def set_draft_asset_state(site, asset_uuid, state, *, remote_image_id=None,
+                          remote_path=None, last_error="") -> dict:
+    """Advance/recover one asset's sync mapping without changing editor identity."""
+    state = str(state)
+    if state not in _DRAFT_ASSET_STATES:
+        raise ValueError(f"invalid draft asset state: {state}")
+    now = _stamp()
+    conn = _connect(site)
+    conn.row_factory = sqlite3.Row
+    try:
+        with conn:
+            row = conn.execute("SELECT * FROM draft_assets WHERE asset_uuid = ?", (str(asset_uuid),)).fetchone()
+            if not row:
+                raise KeyError(f"unknown draft asset: {asset_uuid}")
+            rid = row["remote_image_id"] if remote_image_id is None else int(remote_image_id)
+            rpath = row["remote_path"] if remote_path is None else str(remote_path)
+            synced_at = now if state in {"uploaded", "attached", "verified"} else row["synced_at"]
+            conn.execute(
+                """UPDATE draft_assets SET sync_state = ?, remote_image_id = ?,
+                   remote_path = ?, last_error = ?, updated_at = ?, synced_at = ?
+                   WHERE asset_uuid = ?""",
+                (state, rid, rpath, str(last_error or ""), now, synced_at, str(asset_uuid)),
+            )
+            out = conn.execute("SELECT * FROM draft_assets WHERE asset_uuid = ?", (str(asset_uuid),)).fetchone()
+            return dict(out)
+    finally:
+        conn.close()
+
+
+def remove_draft_asset_from_story(site, asset_uuid) -> dict:
+    """Move an asset to the recoverable draft bin; never delete its local file."""
+    conn = _connect(site)
+    conn.row_factory = sqlite3.Row
+    try:
+        with conn:
+            conn.execute("UPDATE draft_assets SET in_story = 0, updated_at = ? WHERE asset_uuid = ?",
+                         (_stamp(), str(asset_uuid)))
+            row = conn.execute("SELECT * FROM draft_assets WHERE asset_uuid = ?", (str(asset_uuid),)).fetchone()
+            if not row:
+                raise KeyError(f"unknown draft asset: {asset_uuid}")
+            return dict(row)
+    finally:
+        conn.close()
 # ===== SNAPSMACK EOF =====

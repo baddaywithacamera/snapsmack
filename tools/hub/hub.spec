@@ -8,7 +8,7 @@ sys.setrecursionlimit(sys.getrecursionlimit() * 5)
 
 _src = SPECPATH
 
-_py_files   = [os.path.join(_src, 'main.py')]
+_py_files   = [os.path.join(_src, 'main.py'), os.path.join(_src, 'qt_main.py')]
 _local_data = [(f, '.') for f in _py_files]
 _local_mods = [os.path.splitext(os.path.basename(f))[0]
                for f in _py_files
@@ -24,13 +24,23 @@ _ui_icons     = glob.glob(os.path.join(_icon_dir, '*-simple.png')) + [
     os.path.join(_icon_dir, 'sybu-taskbar.png'),
 ]
 _icon_data    = [(f, 'icons') for f in _ui_icons]
+# PyInstaller 6.22 can discover Tcl's timezone/message files while omitting the
+# two root scripts that actually boot Tcl/Tk from this portable build runtime.
+# Bundle both trees explicitly; duplicate entries are harmless and a frozen HQ
+# without init.tcl is not an application.
+_tcl_root = os.path.join(sys.base_prefix, 'tcl')
+_tk_data = [
+    (os.path.join(_tcl_root, 'tcl8.6'), '_tcl_data'),
+    (os.path.join(_tcl_root, 'tk8.6'), '_tk_data'),
+]
 
 a = Analysis(
-    ['main.py'],
+    ['qt_main.py'],
     pathex=[_src, _shared_dir],
     binaries=[],
-    datas=_local_data + _shared_data + _icon_data,
+    datas=_local_data + _shared_data + _icon_data + _tk_data,
     hiddenimports=_local_mods + _shared_mods + [
+        'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
         'tkinter', 'tkinter.ttk', 'tkinter.filedialog', 'tkinter.messagebox',
         'requests',
     ],

@@ -243,7 +243,7 @@ def save_to_shared(hub_info, spokes, hub_api_key="") -> dict:
         provisioner_key = akl or ((hub_api_key or "").strip() if node is hub_node else "")
         if provisioner_key:
             for key_type in ("sybu", "gyss", "ohsnap", "tyswy", "unzucker",
-                             "flkrfckr", "smackpress"):
+                             "flkrfckr", "smackpress", "bloggerflogger"):
                 minted = (_provision_spoke_key(prof["site_url"], provisioner_key, key_type)
                           if akl else _provision_hub_tool_key(
                               prof["site_url"], provisioner_key, key_type))

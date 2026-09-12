@@ -36,8 +36,9 @@ function smackpress_ensure_key_type(PDO $pdo): void {
     }
 }
 
-function smackpress_auth(PDO $pdo): bool {
+function smackpress_auth(PDO $pdo, string $key_type = 'smackpress'): bool {
     smackpress_ensure_key_type($pdo);
+    if (!in_array($key_type, ['smackpress', 'bloggerflogger'], true)) return false;
     $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     if (!preg_match('/^Bearer\s+([a-f0-9]{64})$/i', $header, $m)) {
         return false;
@@ -49,7 +50,7 @@ function smackpress_auth(PDO $pdo): bool {
     try {
         $stmt = $pdo->prepare("
             SELECT id FROM snap_ohsnap_keys
-            WHERE key_hash = ? AND is_active = 1 AND key_type = 'smackpress'
+            WHERE key_hash = ? AND is_active = 1 AND key_type = '{$key_type}'
               AND (expires_at IS NULL OR expires_at > NOW())
             LIMIT 1
         ");
@@ -57,7 +58,7 @@ function smackpress_auth(PDO $pdo): bool {
     } catch (Exception $e) {
         $stmt = $pdo->prepare("
             SELECT id FROM snap_ohsnap_keys
-            WHERE key_hash = ? AND is_active = 1 AND key_type = 'smackpress'
+            WHERE key_hash = ? AND is_active = 1 AND key_type = '{$key_type}'
             LIMIT 1
         ");
         $stmt->execute([$hash]);
@@ -80,14 +81,18 @@ function smackpress_ok(array $data): void {
     exit;
 }
 
-if (!smackpress_auth($pdo)) {
+$route = $_GET['route'] ?? '';
+$blogger_flogger = str_starts_with($route, 'bloggerflogger');
+$key_type = $blogger_flogger ? 'bloggerflogger' : 'smackpress';
+
+if (!smackpress_auth($pdo, $key_type)) {
     smackpress_error(401, 'Invalid or missing API key.');
 }
 
 // --- ROUTE PARSING ---
-$route = $_GET['route'] ?? '';
-// strip leading 'smackpress/'
-$sub = preg_replace('#^smackpress/?#', '', $route);
+// Strip the authenticated tool prefix. The route implementations below are a
+// shared destination-domain surface, not shared authorization.
+$sub = preg_replace('#^(smackpress|bloggerflogger)/?#', '', $route);
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Require the longform helper functions from smack-post-long.php without
@@ -245,6 +250,99 @@ $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
     ->fetchAll(PDO::FETCH_KEY_PAIR);
 $base_url = rtrim($settings['site_url'] ?? '', '/') . '/';
 
+// BLOGGER FLOGGER is additive, resumable, and independently authenticated. Its
+// destination receipts live on the site so losing a desktop checkpoint cannot
+// duplicate an archive on the next run.
+if ($blogger_flogger) {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS snap_import_map (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      tool_type VARCHAR(32) NOT NULL,
+      source_site_id VARCHAR(255) NOT NULL,
+      source_type VARCHAR(32) NOT NULL,
+      source_id VARCHAR(500) NOT NULL,
+      source_checksum CHAR(64) DEFAULT NULL,
+      destination_type VARCHAR(32) NOT NULL,
+      destination_id BIGINT UNSIGNED NOT NULL,
+      imported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      verified_at DATETIME DEFAULT NULL,
+      PRIMARY KEY (id),
+      UNIQUE KEY uq_import_source (tool_type,source_site_id(100),source_type,source_id(191)),
+      KEY idx_import_destination (destination_type,destination_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
+function bloggerflogger_source(array $body): array {
+    return [trim((string)($body['source_site_id'] ?? '')),
+            trim((string)($body['source_type'] ?? '')),
+            trim((string)($body['source_id'] ?? '')),
+            preg_match('/^[a-f0-9]{64}$/i', (string)($body['source_checksum'] ?? ''))
+                ? strtolower((string)$body['source_checksum']) : null];
+}
+
+function bloggerflogger_lookup(PDO $pdo, string $site, string $type, string $id): ?array {
+    if ($site === '' || $type === '' || $id === '') return null;
+    $q = $pdo->prepare("SELECT destination_type,destination_id,source_checksum,verified_at
+                        FROM snap_import_map WHERE tool_type='bloggerflogger'
+                          AND source_site_id=? AND source_type=? AND source_id=? LIMIT 1");
+    $q->execute([$site, $type, $id]);
+    $row = $q->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
+function bloggerflogger_record(PDO $pdo, string $site, string $type, string $id,
+                               ?string $checksum, string $dest_type, int $dest_id): void {
+    if ($site === '' || $type === '' || $id === '' || $dest_id <= 0) {
+        smackpress_error(422, 'Source identity is required for a resumable import.');
+    }
+    $q = $pdo->prepare("INSERT INTO snap_import_map
+        (tool_type,source_site_id,source_type,source_id,source_checksum,destination_type,destination_id,verified_at)
+        VALUES ('bloggerflogger',?,?,?,?,?,?,NOW())
+        ON DUPLICATE KEY UPDATE verified_at=NOW()");
+    $q->execute([$site, $type, $id, $checksum, $dest_type, $dest_id]);
+}
+
+function bloggerflogger_begin(PDO $pdo, array $source): void {
+    if ($source[0] === '' || $source[1] === '' || $source[2] === '') {
+        smackpress_error(422, 'Source identity is required for a resumable import.');
+    }
+    // Serialize one source record across clients, then make the destination write
+    // and its receipt atomic. Connection loss releases the advisory lock.
+    $lock_name = 'bf:' . hash('sha256', $source[0] . "\n" . $source[1] . "\n" . $source[2]);
+    $q = $pdo->prepare('SELECT GET_LOCK(?, 15)');
+    $q->execute([$lock_name]);
+    if ((int)$q->fetchColumn() !== 1) smackpress_error(409, 'This source item is already being imported. Retry shortly.');
+    $pdo->beginTransaction();
+}
+
+function bloggerflogger_finish(PDO $pdo): void {
+    if ($pdo->inTransaction()) $pdo->commit();
+}
+
+if ($blogger_flogger) {
+    $mode = (string)($settings['site_mode'] ?? '');
+    $post_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts")->fetchColumn();
+    $image_count = (int)$pdo->query("SELECT COUNT(*) FROM snap_images")->fetchColumn();
+    $content_count = max($post_count, $image_count);
+    $authorized_until = (int)($settings['import_authorized_until'] ?? 0);
+    $authorized = $content_count <= 5 || $authorized_until > time();
+    if ($sub === 'preflight' && $method === 'GET') {
+        smackpress_ok(['site_mode' => $mode, 'compatible' => $mode === 'smacktalk',
+            'content_count' => $content_count, 'import_authorized' => $authorized,
+            'import_authorized_until' => $authorized_until]);
+    }
+    if ($mode !== 'smacktalk') {
+        smackpress_error(409, 'BLOGGER FLOGGER imports into SMACKTALK sites only.');
+    }
+    if ($method === 'POST' && !$authorized) {
+        smackpress_error(403, 'This populated site needs a one-hour import authorization from API Keys.');
+    }
+    if ($sub === 'import-map' && $method === 'GET') {
+        $found = bloggerflogger_lookup($pdo, trim((string)($_GET['source_site_id'] ?? '')),
+            trim((string)($_GET['source_type'] ?? '')), trim((string)($_GET['source_id'] ?? '')));
+        smackpress_ok(['found' => (bool)$found, 'mapping' => $found]);
+    }
+}
+
 // SMACKTHEMUP fail-closed (spec §5.2): it publishes only through SNAP SLAPPER's
 // scoped publishing path, never the SMACKPRESS / COLD SNAP longform API. Refuse
 // this whole API on a smackthemup site so no other tool's key can create or
@@ -257,7 +355,7 @@ if (($settings['site_mode'] ?? '') === 'smackthemup') {
 // =====================================================================
 // ROUTE: POST smackpress/media/upload
 // =====================================================================
-if ($sub === 'media/upload' && $method === 'POST') {
+if (in_array($sub, ['media/upload', 'media'], true) && $method === 'POST') {
     if (empty($_FILES['file'])) {
         smackpress_error(400, 'No file uploaded.');
     }
@@ -279,11 +377,22 @@ if ($sub === 'media/upload' && $method === 'POST') {
     if (isset($_POST['alt'])) {
         $upload_opts['alt'] = (string)$_POST['alt'];
     }
+    $source = $blogger_flogger ? bloggerflogger_source($_POST) : ['', '', '', null];
+    if ($blogger_flogger) bloggerflogger_begin($pdo, $source);
+    if ($blogger_flogger && ($prior = bloggerflogger_lookup($pdo, $source[0], $source[1], $source[2]))) {
+        bloggerflogger_finish($pdo);
+        smackpress_ok(['image_id' => (int)$prior['destination_id'], 'asset_id' => (int)$prior['destination_id'],
+            'already_imported' => true]);
+    }
     $ingest = snap_ingest_image($pdo, $settings, $_FILES['file'], $upload_opts);
     if (empty($ingest['ok'])) {
         smackpress_error(500, $ingest['error'] ?? 'Image ingest failed.');
     }
     $image_id = (int) $ingest['id'];
+    if ($blogger_flogger) {
+        bloggerflogger_record($pdo, $source[0], $source[1], $source[2], $source[3], 'media', $image_id);
+        bloggerflogger_finish($pdo);
+    }
     smackpress_ok([
         'image_id' => $image_id,
         'asset_id' => $image_id,   // back-compat alias for older callers
@@ -349,6 +458,16 @@ function smackpress_save_bucket(PDO $pdo, int $post_id, array $body, string $con
 if ($sub === 'posts' && $method === 'POST') {
     $body = json_decode(file_get_contents('php://input'), true);
     if (!$body) smackpress_error(400, 'Invalid JSON body.');
+
+    $source = $blogger_flogger ? bloggerflogger_source($body) : ['', '', '', null];
+    if ($blogger_flogger && !empty($body['post_id'])) {
+        smackpress_error(403, 'BLOGGER FLOGGER is additive and cannot update an existing post.');
+    }
+    if ($blogger_flogger) bloggerflogger_begin($pdo, $source);
+    if ($blogger_flogger && ($prior = bloggerflogger_lookup($pdo, $source[0], $source[1], $source[2]))) {
+        bloggerflogger_finish($pdo);
+        smackpress_ok(['post_id' => (int)$prior['destination_id'], 'already_imported' => true]);
+    }
 
     $post_id        = !empty($body['post_id']) ? (int)$body['post_id'] : null;
     $title          = trim($body['title'] ?? '');
@@ -424,6 +543,11 @@ if ($sub === 'posts' && $method === 'POST') {
         snap_sync_tags($pdo, $new_id, $title . ' ' . $manual_tags);
         smackpress_save_bucket($pdo, $new_id, $body, $content_html, $featured_image);
 
+        if ($blogger_flogger) {
+            bloggerflogger_record($pdo, $source[0], $source[1], $source[2], $source[3], 'post', $new_id);
+            bloggerflogger_finish($pdo);
+        }
+
         $post_url = $base_url . 'post/' . $slug;
         smackpress_ok(['post_id' => $new_id, 'slug' => $slug, 'url' => $post_url]);
     }
@@ -480,6 +604,16 @@ if ($sub === 'mosaics' && $method === 'POST') {
 if ($sub === 'pages' && $method === 'POST') {
     $body = json_decode(file_get_contents('php://input'), true);
     if (!$body) smackpress_error(400, 'Invalid JSON body.');
+
+    $source = $blogger_flogger ? bloggerflogger_source($body) : ['', '', '', null];
+    if ($blogger_flogger && !empty($body['page_id'])) {
+        smackpress_error(403, 'BLOGGER FLOGGER is additive and cannot update an existing page.');
+    }
+    if ($blogger_flogger) bloggerflogger_begin($pdo, $source);
+    if ($blogger_flogger && ($prior = bloggerflogger_lookup($pdo, $source[0], $source[1], $source[2]))) {
+        bloggerflogger_finish($pdo);
+        smackpress_ok(['page_id' => (int)$prior['destination_id'], 'already_imported' => true]);
+    }
 
     $page_id     = !empty($body['page_id']) ? (int)$body['page_id'] : null;
     $title       = trim($body['title'] ?? '');
@@ -538,8 +672,68 @@ if ($sub === 'pages' && $method === 'POST') {
         $pid = (int)$pdo->lastInsertId();
     }
 
+    if ($blogger_flogger) {
+        bloggerflogger_record($pdo, $source[0], $source[1], $source[2], $source[3], 'page', $pid);
+        bloggerflogger_finish($pdo);
+    }
+
     $page_url = $base_url . 'page.php?slug=' . rawurlencode($slug);
     smackpress_ok(['page_id' => $pid, 'slug' => $slug, 'url' => $page_url, 'is_active' => $is_active]);
+}
+
+// =====================================================================
+// ROUTE: POST bloggerflogger/comments — additive imported comments
+// =====================================================================
+if ($blogger_flogger && $sub === 'comments' && $method === 'POST') {
+    $body = json_decode(file_get_contents('php://input'), true);
+    if (!$body) smackpress_error(400, 'Invalid JSON body.');
+    $source = bloggerflogger_source($body);
+    bloggerflogger_begin($pdo, $source);
+    if ($prior = bloggerflogger_lookup($pdo, $source[0], $source[1], $source[2])) {
+        bloggerflogger_finish($pdo);
+        smackpress_ok(['comment_id' => (int)$prior['destination_id'], 'already_imported' => true]);
+    }
+    $post_id = (int)($body['post_id'] ?? 0);
+    $author = trim((string)($body['author_name'] ?? '')) ?: 'Anonymous';
+    $text = trim((string)($body['content'] ?? ''));
+    $date = trim((string)($body['created_at'] ?? ''));
+    $approved = !empty($body['is_approved']) ? 1 : 0;
+    $spam = !empty($body['is_spam']) ? 1 : 0;
+    if ($post_id <= 0 || $text === '') smackpress_error(422, 'A destination post and comment text are required.');
+    $check = $pdo->prepare("SELECT id FROM snap_posts WHERE id=? AND post_type='longform'");
+    $check->execute([$post_id]);
+    if (!$check->fetch()) smackpress_error(404, 'Destination post not found.');
+    $stmt = $pdo->prepare("INSERT INTO snap_comments
+        (post_id,comment_author,comment_url,comment_email,comment_text,comment_date,is_approved,is_spam)
+        VALUES (?,?,?,?,?,?,?,?)");
+    $stmt->execute([$post_id, $author, trim((string)($body['author_url'] ?? '')) ?: null,
+        trim((string)($body['author_email'] ?? '')) ?: null, $text,
+        $date !== '' ? $date : date('Y-m-d H:i:s'), $approved, $spam]);
+    $comment_id = (int)$pdo->lastInsertId();
+    bloggerflogger_record($pdo, $source[0], $source[1], $source[2], $source[3], 'comment', $comment_id);
+    bloggerflogger_finish($pdo);
+    smackpress_ok(['comment_id' => $comment_id]);
+}
+
+// =====================================================================
+// ROUTE: GET bloggerflogger/verify/{type}/{id}
+// =====================================================================
+if ($blogger_flogger && preg_match('#^verify/(post|page|comment|media)/(\d+)$#', $sub, $m)
+    && $method === 'GET') {
+    $type = $m[1]; $id = (int)$m[2];
+    $queries = [
+        'post' => "SELECT id,title,slug,status,created_at FROM snap_posts WHERE id=? AND post_type='longform'",
+        'page' => "SELECT id,title,slug,is_active FROM snap_pages WHERE id=?",
+        'comment' => "SELECT id,post_id,comment_author,comment_date,is_approved,is_spam FROM snap_comments WHERE id=?",
+        'media' => "SELECT id,img_title,img_alt,img_original FROM snap_images WHERE id=?",
+    ];
+    $q = $pdo->prepare($queries[$type]); $q->execute([$id]);
+    $record = $q->fetch(PDO::FETCH_ASSOC);
+    if (!$record) smackpress_error(404, 'Imported destination record not found.');
+    $pdo->prepare("UPDATE snap_import_map SET verified_at=NOW()
+                   WHERE tool_type='bloggerflogger' AND destination_type=? AND destination_id=?")
+        ->execute([$type, $id]);
+    smackpress_ok(['destination_type' => $type, 'record' => $record]);
 }
 
 // =====================================================================

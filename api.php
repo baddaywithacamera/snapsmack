@@ -57,6 +57,14 @@ if (strpos($route, 'smackpress') === 0) {
     exit;
 }
 
+// --- BLOGGER FLOGGER ROUTES ---
+// Blogger Takeout -> SMACKTALK. Shares the proven longform ingest implementation
+// with SMACKPRESS, but authenticates as its own narrowly-scoped key type.
+if (strpos($route, 'bloggerflogger') === 0) {
+    require_once 'core/smackpress-api.php';
+    exit;
+}
+
 // --- FLKR FCKR ROUTES ---
 // Route all /api/flkrfckr/* requests to the FLKR FCKR migration API handler
 if (strpos($route, 'flkrfckr') === 0) {

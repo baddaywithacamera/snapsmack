@@ -57,6 +57,7 @@ _SECRET_EXTRA_KEYS = {
     "api_key", "api_key_local", "api_key_remote", "api_key_backup",
     "api_key_gyss", "api_key_sybu", "api_key_ohsnap", "api_key_tyswy",
     "api_key_unzucker", "api_key_flkrfckr", "api_key_smackpress",
+    "api_key_bloggerflogger",
     "heartbeat_key", "backup_key",
 }
 

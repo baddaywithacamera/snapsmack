@@ -52,7 +52,10 @@ Output: `sybu.exe` — single file, no install required. `build.bat` auto-bumps
 
 | File | Purpose |
 |---|---|
-| `main.py` | tkinter UI, entry point |
+| `sybu_qt.py` | responsive Qt desktop cockpit |
+| `sybu_launcher.py` | packaged desktop entry point |
+| `sybu_core.py` | headless posting, queue, audit and repair engine |
+| `main.py` | retained legacy Tk implementation and build version source |
 | `poster.py` | SnapSmack login, category/album lookup, image posting |
 | `gemini.py` | Gemini vision enrichment (titles, tags, categories, albums) |
 | `drive.py` | optional Google Drive upload for hosted originals |

@@ -14,6 +14,25 @@ CREATE TABLE IF NOT EXISTS `snap_oauth_apps` (
   PRIMARY KEY (`id`), UNIQUE KEY `uq_client_id` (`client_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Durable importer idempotency. The desktop checkpoint is convenient; this
+-- destination-side receipt is what prevents duplicates after a workstation or
+-- job database is lost.
+CREATE TABLE IF NOT EXISTS `snap_import_map` (
+  `id`               bigint unsigned NOT NULL AUTO_INCREMENT,
+  `tool_type`        varchar(32)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_site_id`   varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_type`      varchar(32)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_id`        varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_checksum`  char(64)     COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `destination_type` varchar(32)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `destination_id`   bigint unsigned NOT NULL,
+  `imported_at`      datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `verified_at`      datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_import_source` (`tool_type`,`source_site_id`(100),`source_type`,`source_id`(191)),
+  KEY `idx_import_destination` (`destination_type`,`destination_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `snap_oauth_tokens` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `app_id` int unsigned NOT NULL,

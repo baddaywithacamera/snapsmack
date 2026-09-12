@@ -25,7 +25,7 @@ from datetime import datetime
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
-BUILD_VERSION = "0.7.41"
+BUILD_VERSION = "0.7.43"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -302,7 +302,7 @@ class Hub(tk.Tk):
         super().__init__()
         self.title(f"SNAP HQ — local desktop headquarters   (build {BUILD_VERSION})")
         self.configure(bg=BG)
-        self.geometry("980x720")
+        self.geometry("980x480")
         self.minsize(700, 480)
 
         self._ui_images = {}
@@ -343,18 +343,17 @@ class Hub(tk.Tk):
             lambda e: self._body_canvas.yview_scroll(int(-e.delta / 120), "units"))
         self._gyss_keys = {}          # site_url -> minted gyss key (cached per run)
         self._build_launcher(body)
-        # A dashboard benefits from the available desktop.  Defer this until
-        # Tk has created the native window so Windows honours the request.
-        self.after_idle(self._open_maximized)
+        # Open as a compact dashboard, centred on the usable screen. Users can
+        # still resize/maximise it; the launcher reflows from the live width.
+        self.after_idle(self._centre_opening_window)
 
-    def _open_maximized(self):
-        try:
-            self.state("zoomed")
-        except tk.TclError:                 # non-Windows Tk fallback
-            try:
-                self.attributes("-zoomed", True)
-            except tk.TclError:
-                pass
+    def _centre_opening_window(self):
+        self.update_idletasks()
+        width = min(980, max(700, self.winfo_screenwidth() - 64))
+        height = min(480, max(480, self.winfo_screenheight() - 96))
+        x = max(0, (self.winfo_screenwidth() - width) // 2)
+        y = max(0, (self.winfo_screenheight() - height) // 2)
+        self.geometry(f"{width}x{height}+{x}+{y}")
 
     def _update_body_scroll_region(self, _event=None):
         bounds = self._body_canvas.bbox("all")
@@ -531,19 +530,16 @@ class Hub(tk.Tk):
             launch.pack(fill="x")
             launch.pack_propagate(False)
 
-            # A fixed-width holder is centred in the full button. Within it,
-            # icons occupy one column and names occupy one left-aligned column.
-            content = tk.Frame(launch, bg=button_bg, width=300, height=52)
+            # Centre the icon + actual title as one unit. A fixed 300px holder
+            # made short names visibly off-centre and clipped narrow layouts.
+            content = tk.Frame(launch, bg=button_bg)
             content.place(relx=.5, rely=.5, anchor="center")
-            content.grid_propagate(False)
-            content.grid_rowconfigure(0, weight=1)
-            content.grid_columnconfigure(0, minsize=60)
             icon = tk.Label(content, image=tool_image, bg=button_bg, bd=0)
-            icon.grid(row=0, column=0, sticky="w")
+            icon.pack(side="left", padx=(0, 14))
             title = tk.Label(content, text=name, bg=button_bg, fg=button_fg,
                              anchor="w", justify="left", bd=0,
                              font=("Segoe UI", 10, "bold"))
-            title.grid(row=0, column=1, sticky="w")
+            title.pack(side="left")
 
             launch_parts = (launch, content, icon, title)
             def paint(bg, fg, parts=launch_parts):
