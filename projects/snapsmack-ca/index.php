@@ -30,7 +30,7 @@ $page_css = <<<'CSS'
 .door-shot { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; text-align: left; font: inherit; }
 .door-shot img { display: block; width: 100%; height: auto; border: 3px solid var(--black); box-shadow: 8px 8px 0 var(--red); }
 .door-shot:hover img, .door-shot:focus-visible img { box-shadow: 8px 8px 0 var(--black); border-color: var(--red); }
-.door-shot-cap { display: block; margin-top: 14px; color: #666; font: 900 .72rem/1.3 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; }
+.door-shot-cap { display: block; margin-top: 14px; color: #666; font: 900 .7rem/1.3 Arial Black, Arial, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
 .ss-lightbox { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.88); cursor: zoom-out; }
 .ss-lightbox[hidden] { display: none; }
 .ss-lightbox img { width: 80vw; height: 80vh; object-fit: contain; }
@@ -55,23 +55,26 @@ $page_css = <<<'CSS'
 #was { padding: 64px 0; background: #2a2a2a; color: #ddd; border-top: 8px solid var(--red); }
 #was h2 { margin-bottom: 26px; color: var(--white); }
 #strip { padding-top: 56px; }
-/* --- NOT ALONE: outcome first, protocol last --- */
-#alone { padding: 64px 0 24px; }
-#alone .lede { max-width: 760px; }
-.alone-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin: 32px 0 0; padding: 0; list-style: none; }
-.alone-list li { margin: 0; padding-top: 14px; border-top: 3px solid var(--black); }
-.alone-list strong { display: block; color: var(--black); font: 900 .95rem/1.3 Arial Black, Arial, sans-serif; text-transform: uppercase; }
-.alone-list span { display: block; margin-top: 10px; color: #333; font-size: .95rem; line-height: 1.5; }
-.alone-close { max-width: 800px; margin-top: 34px; color: var(--black); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
-.alone-how { max-width: 800px; margin-top: 18px; color: #666; font: .8rem/1.5 'Courier New', monospace; letter-spacing: .04em; }
 .was-list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; margin: 0; padding: 0; list-style: none; }
 .was-list li { display: flex; flex-direction: column; margin: 0; padding-top: 14px; border-top: 3px solid var(--red); }
 .was-list strong { color: var(--white); font: 900 .95rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .was-list span { margin-top: 10px; color: #ddd; font-size: .9rem; line-height: 1.5; }
-.was-list em { margin-top: auto; padding-top: 14px; color: #aaa; font: 900 .72rem/1.3 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; font-style: normal; }
+.was-list em { margin-top: auto; padding-top: 14px; color: #aaa; font: 900 .7rem/1.3 Arial Black, Arial, sans-serif; letter-spacing: .06em; text-transform: uppercase; font-style: normal; }
 .was-list em a { color: var(--white); text-decoration: underline; }
 .was-list em a:hover { color: var(--red); }
 .was-closer { max-width: 800px; margin-top: 34px; color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
+
+/* --- NOT ALONE: outcome, then the triptych as proof, plumbing last --- */
+#alone { padding: 64px 0 24px; }
+#alone h2 { max-width: 900px; }
+#alone .lede { max-width: 760px; }
+.alone-payoff { max-width: 800px; margin-top: 18px; color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
+.fed-shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 30px 0 0; }
+.fed-shots figure { margin: 0; background: var(--white); border: 1px solid var(--border); }
+.fed-shots button { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.fed-shots img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; }
+.fed-shots figcaption { padding: 9px 12px; color: var(--black); font: 900 .72rem/1.3 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.alone-how { max-width: 900px; margin-top: 22px; color: #666; font-size: .82rem; line-height: 1.5; }
 
 /* --- SKINS BAND --- */
 #featured-skins { background: var(--black); color: #ddd; border-top: 8px solid var(--red); }
@@ -128,7 +131,7 @@ $page_css = <<<'CSS'
 @media (max-width: 850px) {
     .featured-skin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .was-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .alone-list { grid-template-columns: 1fr; }
+    .fed-shots { grid-template-columns: 1fr; }
     .custodian-points { grid-template-columns: 1fr; }
     .whodat-grid { grid-template-columns: 1fr; }
     .whodat-card { display: grid; grid-template-columns: 150px 1fr; gap: 22px; }
@@ -195,15 +198,15 @@ require_once __DIR__ . '/includes/header.php';
     <section id="alone" aria-label="You don't have to do it alone">
         <div class="wrap">
             <p class="site-discovery-kicker">Not alone</p>
-            <h2>You don&rsquo;t have to do it alone.</h2>
-            <p class="lede">This is early days for a kind of technology no company owns &mdash; where the future gets shaped by the people who show up and build, not by a boardroom.</p>
-            <ul class="alone-list">
-                <li><strong>A directory of photoblogs worth browsing.</strong><span><a href="https://photoblogs.fyi" target="_blank" rel="noopener">photoblogs.fyi</a> &mdash; a shared front door and a reader, without making any site depend on it.</span></li>
-                <li><strong>A weekly photo challenge.</strong><span><a href="https://photofri.day" target="_blank" rel="noopener">PHOTOFRI.DAY</a> &mdash; one word, shoot it wherever you already publish, tag it, see everyone else&rsquo;s.</span></li>
-                <li><strong>Readers who can follow your work without an account on anyone&rsquo;s platform.</strong><span>They follow, like, and reply from where they already are. The photographs stay on your server.</span></li>
-            </ul>
-            <p class="alone-close">A photographers&rsquo; corner of something bigger, built while it&rsquo;s still being built. We&rsquo;re pitching in to fix up a small corner, on purpose.</p>
-            <p class="alone-how">The how, for those who care: your site speaks ActivityPub &mdash; the fediverse. People on Pixelfed, Mastodon, and the rest can follow it directly. <a href="features.php#network">Details &rarr;</a></p>
+            <h2>Decentralized social where you hang onto your own files.</h2>
+            <p class="lede">Comments on your blog flow out to the network. Replies from out there flow back onto your blog. One conversation. You don&rsquo;t go to the social network; its replies come to you.</p>
+            <p class="alone-payoff">Reach more people without leaving your home.</p>
+            <div class="fed-shots">
+                <figure><button type="button" data-lightbox="img/fediverse-blog-view.png"><img src="img/fediverse-blog-view.png?v=20260814" alt="The unzucked photoblog on its own SnapSmack site" width="1920" height="1080" loading="lazy"></button><figcaption>Your blog. Your skin, your domain.</figcaption></figure>
+                <figure><button type="button" data-lightbox="img/fediverse-home-view.png"><img src="img/fediverse-home-view.png?v=20260814" alt="The same account in the SMACKVERSE network reader" width="1920" height="1080" loading="lazy"></button><figcaption>The same account in the network reader.</figcaption></figure>
+                <figure><button type="button" data-lightbox="img/fediverse-pixelfed-ca-view.png"><img src="img/fediverse-pixelfed-ca-view.png?v=20260814" alt="The same photographs seen from Pixelfed, with a follower" width="1920" height="1080" loading="lazy"></button><figcaption>The same photographs on Pixelfed. Someone else&rsquo;s software, following you.</figcaption></figure>
+            </div>
+            <p class="alone-how">How it works, for those who care: your site speaks ActivityPub &mdash; the fediverse &mdash; so people on Pixelfed, Mastodon, and the rest can follow it directly. photoblogs.fyi is the shared directory and reader. <a href="features.php#network">Details &rarr;</a></p>
         </div>
     </section>
 
