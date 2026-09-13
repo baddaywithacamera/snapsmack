@@ -4,10 +4,20 @@ import base64
 import io
 
 import requests
-from PIL import Image
+from PIL import Image, ImageFilter
 
 
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+
+def blend_mask(mask):
+    """Give a generated repair enough overlap to hide its local mask boundary."""
+    mask = mask.convert("L")
+    short_edge = min(mask.size)
+    expansion = max(2, min(14, round(short_edge / 350)))
+    expanded = mask.filter(ImageFilter.MaxFilter(expansion * 2 + 1))
+    feather = max(3, min(24, short_edge / 240))
+    return expanded.filter(ImageFilter.GaussianBlur(feather))
 
 
 def _png_data(image):

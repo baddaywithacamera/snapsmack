@@ -4,7 +4,7 @@ import os
 import threading
 import time
 
-from PIL import Image, ImageFilter
+from PIL import Image
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import (
     QDialog, QDialogButtonBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
@@ -87,9 +87,9 @@ class AIHealDialog(QDialog):
     def _received(self, payload):
         result, mask, model = payload
         result = result.resize(self.photo.size, Image.Resampling.LANCZOS)
-        # A small feather prevents a hard generated/original boundary. The mask
-        # is still the final authority; Gemini never gets to replace outside it.
-        feathered = mask.filter(ImageFilter.GaussianBlur(max(1, min(self.photo.size) / 700)))
+        # The mask remains the final authority; Gemini never gets to replace the
+        # rest of the frame. A scaled overlap avoids a visible pasted boundary.
+        feathered = gemini_image_edit.blend_mask(mask)
         folder = os.path.join(snap_home.shared_library(), "snap_slapper", "generative")
         os.makedirs(folder, exist_ok=True)
         path = os.path.join(folder, f"ai-heal-{int(time.time() * 1000)}.png")
