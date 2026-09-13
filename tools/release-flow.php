@@ -37,8 +37,19 @@ function rf_branch(): string {
     return rf_git(['branch', '--show-current']);
 }
 
+function rf_worktree_status(): string {
+    // Pytest can leave Windows cache directories with ACLs that Git cannot
+    // traverse. They are disposable and never release inputs, so exclude them
+    // rather than mistaking Git's access warning for a dirty working tree.
+    return rf_git([
+        'status', '--porcelain', '--untracked-files=all', '--', '.',
+        ':(exclude).pytest_cache',
+        ':(exclude)tools/hub/.pytest_cache',
+    ]);
+}
+
 function rf_require_clean(): void {
-    if (rf_git(['status', '--porcelain']) !== '') {
+    if (rf_worktree_status() !== '') {
         rf_fail('working tree is not clean; commit or deliberately set aside every change first');
     }
 }
@@ -92,7 +103,7 @@ if ($command === 'status') {
     echo "Branch: " . rf_branch() . "\n";
     echo "Commit: " . rf_git(['rev-parse', '--short', 'HEAD']) . "\n";
     echo "Source version: " . rf_source_version() . "\n";
-    echo "Working tree: " . (rf_git(['status', '--porcelain']) === '' ? 'clean' : 'dirty') . "\n";
+    echo "Working tree: " . (rf_worktree_status() === '' ? 'clean' : 'dirty') . "\n";
     exit(0);
 }
 
