@@ -614,7 +614,7 @@ body {
 #justified-grid {
     max-width: 95%;
     margin: 0 auto;
-    padding: 30px 0;
+    padding: 45px 0 30px;   /* 1.4.7: breathing room under the filter bar */
     box-sizing: border-box;
     flex: 1 0 auto;
 }
