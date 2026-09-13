@@ -25,6 +25,22 @@ foreach ($checks as $name => $needle) {
         exit(1);
     }
 }
+// Outbound: a comment typed on the public form must be mirrored into
+// snap_comments and handed to sv_federate_comment, or it never leaves the blog.
+$pcc = file_get_contents($root . '/process-community-comment.php');
+foreach ([
+    'mirror insert'      => "INSERT INTO snap_comments",
+    'mirror is local'    => "is_approved, ap_source)
+             VALUES (?, ?, ?, ?, NOW(), 1, 'local')",
+    'federates mirror'   => 'sv_federate_comment($pdo, $mirror_id, $settings)',
+    'post-keyed resolve' => 'SELECT id FROM snap_images WHERE post_id = ? ORDER BY id ASC LIMIT 1',
+] as $name => $needle) {
+    if (strpos($pcc, $needle) === false) {
+        fwrite(STDERR, "Missing outbound: {$name}
+");
+        exit(1);
+    }
+}
 if (strpos($css, '.ss-comment-source') === false) {
     fwrite(STDERR, "Missing badge CSS (.ss-comment-source)\n");
     exit(1);
