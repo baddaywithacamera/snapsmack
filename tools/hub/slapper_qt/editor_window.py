@@ -22,7 +22,7 @@ from PySide6.QtGui import QColor
 
 from PIL import Image, ImageDraw, ImageFilter, ImageOps, ImageStat, ImageChops
 
-from . import masks
+from . import masks, BUILD_VERSION
 
 import editor_engine
 import photo_manager
@@ -3322,12 +3322,12 @@ class EditorWindow(QMainWindow):
 
     def _update_title(self):
         if not self.doc:
-            self.setWindowTitle("")
+            self.setWindowTitle(BUILD_VERSION)
             self._refresh_history()
             return
         name = os.path.basename(self.doc.source_path)
         dirty = " ●" if self.doc.is_dirty() else ""
-        self.setWindowTitle(f"{name}{dirty}")
+        self.setWindowTitle(f"{name}{dirty} — {BUILD_VERSION}")
         self._refresh_history()
         self._refresh_actions()
 
