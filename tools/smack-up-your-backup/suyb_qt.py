@@ -653,6 +653,7 @@ class SuybWindow(QMainWindow):
         if self.tray:
             self.tray.hide()
         event.accept()
+        QApplication.instance().quit()
 
 
 def run():

@@ -19,6 +19,13 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.41 — 2026-09-13
+
+### Fixed — closing an idle window really exits
+
+- Clicking the red X when no backup is running now exits SUYB completely,
+  releasing the single-instance lock so it can be opened again normally.
+
 ## 0.7.40 — 2026-09-13
 
 ### Fixed — closing cannot strand an active backup
