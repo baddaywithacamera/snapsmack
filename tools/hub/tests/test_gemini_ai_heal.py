@@ -18,7 +18,7 @@ def _encoded_png(colour):
     return base64.b64encode(stream.getvalue()).decode("ascii")
 
 
-def test_heal_sends_photo_mask_and_extracts_image(monkeypatch):
+def test_heal_sends_photo_marked_target_mask_and_extracts_image(monkeypatch):
     seen = {}
 
     class Response:
@@ -42,10 +42,21 @@ def test_heal_sends_photo_mask_and_extracts_image(monkeypatch):
     assert result.size == photo.size
     assert result.getpixel((0, 0)) == (0, 0, 255)
     parts = seen["json"]["contents"][0]["parts"]
-    assert len([part for part in parts if "inlineData" in part]) == 2
+    images = [part for part in parts if "inlineData" in part]
+    assert len(images) == 3
     assert "remove dust" in parts[0]["text"]
+    assert "marks the repair target in RED" in parts[0]["text"]
     assert "secret" not in str(seen["json"])
     assert seen["params"] == {"key": "secret"}
+
+
+def test_marked_selection_only_tints_the_masked_area():
+    photo = Image.new("RGB", (20, 20), (40, 50, 60))
+    mask = Image.new("L", photo.size, 0)
+    mask.putpixel((10, 10), 255)
+    marked = gemini_image_edit.marked_selection(photo, mask)
+    assert marked.getpixel((0, 0)) == photo.getpixel((0, 0))
+    assert marked.getpixel((10, 10))[0] > photo.getpixel((10, 10))[0]
 
 
 def test_small_defect_is_enlarged_with_surrounding_context():
@@ -79,6 +90,7 @@ def test_editor_wires_ai_heal_as_a_masked_layer():
     assert 'layer["mask"] = editor_engine._mask_to_text(mask)' in source
     assert '"kind": "generative-repair"' in source
     assert '"retouch": (self.act_heal, self.act_redeye, self.act_ai_heal,' in source
+    assert 'f"{name}{dirty} — {BUILD_VERSION}"' in source
 
 
 def test_ai_heal_blend_mask_expands_and_feathers_without_leaking_across_frame():
