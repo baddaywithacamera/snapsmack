@@ -14,7 +14,7 @@ require_once __DIR__ . '/includes/skin-stats.php';
 $page_title       = 'SnapSmack - Self-Hosted Photo Publishing and Instagram Alternative';
 $page_description = 'What is new is old again. Free, self-hosted photo blogging that gives back the single-photo blog, long-form posting, classic Insta and Picasa-style albums, on hardware you control. Your photos. Your voice. Your style. Your dignity.';
 $page_og_url      = 'https://snapsmack.ca/';
-$page_social_title = 'SnapSmack - Retro Photo Blogging. Modern Technology.';
+$page_social_title = 'SnapSmack - Retro Photo Blogging. No Algorithm.';
 $page_social_description = 'Self-hosted photo blogging that brings back the gallery, the grid, and the photoblog. Your photos. Your voice. Your style. Your dignity.';
 $nav_active       = 'index';
 
@@ -39,6 +39,8 @@ $page_css = <<<'CSS'
 .door-hook { max-width: 980px; font-size: clamp(1.9rem, 4vw, 3.3rem); }
 .door-kicker { margin-top: 6px; color: var(--red); font: 900 .82rem/1.3 'Courier New', monospace; letter-spacing: .12em; text-transform: uppercase; }
 .door-sub { max-width: 800px; margin-top: 8px; font-size: clamp(1.15rem, 2vw, 1.4rem); line-height: 1.5; color: #333; }
+.door-editor { max-width: 800px; margin-top: 18px; font-size: clamp(1.05rem, 1.6vw, 1.2rem); line-height: 1.5; color: #333; }
+.door-editor a { color: var(--red); text-decoration: underline; }
 .door-never { max-width: 800px; margin-top: 14px; color: var(--black); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
 .door-never em { color: var(--red); font-style: normal; }
 .door-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
@@ -53,6 +55,15 @@ $page_css = <<<'CSS'
 #was { padding: 64px 0; background: #2a2a2a; color: #ddd; border-top: 8px solid var(--red); }
 #was h2 { margin-bottom: 26px; color: var(--white); }
 #strip { padding-top: 56px; }
+/* --- NOT ALONE: outcome first, protocol last --- */
+#alone { padding: 64px 0 24px; }
+#alone .lede { max-width: 760px; }
+.alone-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin: 32px 0 0; padding: 0; list-style: none; }
+.alone-list li { margin: 0; padding-top: 14px; border-top: 3px solid var(--black); }
+.alone-list strong { display: block; color: var(--black); font: 900 .95rem/1.3 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.alone-list span { display: block; margin-top: 10px; color: #333; font-size: .95rem; line-height: 1.5; }
+.alone-close { max-width: 800px; margin-top: 34px; color: var(--black); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
+.alone-how { max-width: 800px; margin-top: 18px; color: #666; font: .8rem/1.5 'Courier New', monospace; letter-spacing: .04em; }
 .was-list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; margin: 0; padding: 0; list-style: none; }
 .was-list li { display: flex; flex-direction: column; margin: 0; padding-top: 14px; border-top: 3px solid var(--red); }
 .was-list strong { color: var(--white); font: 900 .95rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
@@ -117,6 +128,7 @@ $page_css = <<<'CSS'
 @media (max-width: 850px) {
     .featured-skin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .was-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .alone-list { grid-template-columns: 1fr; }
     .custodian-points { grid-template-columns: 1fr; }
     .whodat-grid { grid-template-columns: 1fr; }
     .whodat-card { display: grid; grid-template-columns: 150px 1fr; gap: 22px; }
@@ -148,9 +160,10 @@ require_once __DIR__ . '/includes/header.php';
     <section id="door">
         <div class="door-inner">
             <div class="door-copy">
-            <h1 class="door-hook">Retro Photo Blogging.<br><span>Modern Technology.</span></h1>
+            <h1 class="door-hook">Retro Photo Blogging.<br><span>No Algorithm.</span></h1>
             <p class="door-kicker">What&rsquo;s new is old again.</p>
-            <p class="door-sub">We&rsquo;re not offering you anything new. We&rsquo;re giving back what was taken: the single-photo blog, long-form posting that hasn&rsquo;t been enshittified, classic Insta styling, and pumping images straight out of a file manager. All of it used to belong to photographers. Now it lives on hardware you control, and nobody is taking it back from you. Oh, and we&rsquo;ve thrown in a free and powerful photo editor too because we remember when you didn&rsquo;t have to rent your software.</p>
+            <p class="door-sub">We&rsquo;re not offering you anything new. We&rsquo;re giving back what was taken: the single-photo blog, long-form posting that hasn&rsquo;t been enshittified, classic Insta styling, and pumping images straight out of a file manager. All of it used to belong to photographers. Now it lives on hardware you control, and nobody is taking it back from you.</p>
+            <p class="door-editor">And a free, powerful <a href="tool-snap-slapper.php">photo editor</a>. Non-destructive &mdash; your originals are never touched, ever. And it doesn&rsquo;t expire when you stop paying, because we remember when you didn&rsquo;t have to rent your software.</p>
             <p class="door-never">Your photos. Your voice.<br>Your style. <em>Your dignity.</em></p>
             <div class="door-actions">
                 <a href="#beta" class="btn btn-primary">Try the Beta</a>
@@ -173,9 +186,24 @@ require_once __DIR__ . '/includes/header.php';
                 <li><strong>Classic Instagram</strong><span>2010 to 2016. A square grid, three across, in the order you posted it, seen by the people who chose to follow you. Likes were a count, not a currency. No algorithm, no ads, no Reels, no shop tab, no video autoplaying between your photographs because a spreadsheet said it should.</span><em>Again as <a href="features.php#modes">GRAMOFSMACK</a></em></li>
                 <li><strong>Early blogging</strong><span>1999 onward. Blogger, then Greymatter in 2000 &mdash; Noah Grey was publishing his photographs with it from day one &mdash; then WordPress before it became a page builder. Writing with photographs in it, as long as you wanted, nobody&rsquo;s feed deciding whether it got read.</span><em>Again as <a href="features.php#modes">SMACKTALK</a></em></li>
                 <li><strong>Picasa Web Albums</strong><span>2006 to 2016. A free, friendly photo organizer that pushed your folders to the web as albums for friends and family. Send the link, no account needed to look, no &ldquo;suggested for you&rdquo; underneath. Friends and family, not followers: SMACKTHEMUP has no fediverse on purpose and is a separate install. It does not turn into GRAMOFSMACK later.</span><em>Again as <a href="features.php#modes">SMACKTHEMUP</a></em></li>
-                <li><strong>Flickr</strong><span>2004 to 2012. The photostream, the groups, comments from people who could read your EXIF, Explore before it was a slot machine. Not a way of publishing &mdash; the place everyone who published photos online met. Then Yahoo bought it and the community never recovered. The files are still there. The people aren&rsquo;t.</span><em>Again as <a href="features.php#network">photoblogs.fyi, PHOTOFRI.DAY, and the fediverse</a></em></li>
+                <li><strong>Flickr</strong><span>2004 to 2012. The photostream, the groups, comments from people who could read your EXIF, Explore before it was a slot machine. Not a way of publishing &mdash; the place everyone who published photos online met. Then Yahoo bought it and the community never recovered. The files are still there. The people aren&rsquo;t.</span><em>Again as <a href="features.php#modes">SMACKONEOUT</a></em></li>
             </ul>
             <p class="was-closer">Everything was killed off, died off, or was walled off to prioritize profits over people.</p>
+        </div>
+    </section>
+
+    <section id="alone" aria-label="You don't have to do it alone">
+        <div class="wrap">
+            <p class="site-discovery-kicker">Not alone</p>
+            <h2>You don&rsquo;t have to do it alone.</h2>
+            <p class="lede">This is early days for a kind of technology no company owns &mdash; where the future gets shaped by the people who show up and build, not by a boardroom.</p>
+            <ul class="alone-list">
+                <li><strong>A directory of photoblogs worth browsing.</strong><span><a href="https://photoblogs.fyi" target="_blank" rel="noopener">photoblogs.fyi</a> &mdash; a shared front door and a reader, without making any site depend on it.</span></li>
+                <li><strong>A weekly photo challenge.</strong><span><a href="https://photofri.day" target="_blank" rel="noopener">PHOTOFRI.DAY</a> &mdash; one word, shoot it wherever you already publish, tag it, see everyone else&rsquo;s.</span></li>
+                <li><strong>Readers who can follow your work without an account on anyone&rsquo;s platform.</strong><span>They follow, like, and reply from where they already are. The photographs stay on your server.</span></li>
+            </ul>
+            <p class="alone-close">A photographers&rsquo; corner of something bigger, built while it&rsquo;s still being built. We&rsquo;re pitching in to fix up a small corner, on purpose.</p>
+            <p class="alone-how">The how, for those who care: your site speaks ActivityPub &mdash; the fediverse. People on Pixelfed, Mastodon, and the rest can follow it directly. <a href="features.php#network">Details &rarr;</a></p>
         </div>
     </section>
 
