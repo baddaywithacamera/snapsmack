@@ -27,7 +27,13 @@
         function applyLayout(layout) {
             if (layout === 'masonry') {
                 browseGrid.style.display    = 'none';
-                justifiedGrid.style.display = 'block';
+                // Clear the inline display rather than forcing 'block': the M pane
+                // may be a CSS grid (Square layout) — the stylesheet knows, we don't.
+                justifiedGrid.style.display = '';
+                // The pane was display:none at load, so the wall engines measured a
+                // 0px width and skipped it. Now that it is visible, lay it out.
+                if (window.SSRows    && justifiedGrid.classList.contains('ss-scroll-wall')) window.SSRows.relayout(justifiedGrid);
+                if (window.SSColumns && justifiedGrid.classList.contains('ss-masonry'))     window.SSColumns.relayout(justifiedGrid);
             } else { // 'thumbs' or anything else falls through to thumbs
                 browseGrid.style.display    = 'grid';
                 justifiedGrid.style.display = 'none';

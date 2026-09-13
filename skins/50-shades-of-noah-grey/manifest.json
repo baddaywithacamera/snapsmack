@@ -39,7 +39,7 @@
         "smack-footer",
         "smack-image-fade-load",
         "smack-lightbox",
-        "smack-rows",
+        "smack-rows", "smack-columns",
         "smack-community",
         "smack-keyboard",
         "smack-calendar",
@@ -907,6 +907,18 @@
             "options": {
                 "block": "Yes — Show URL",
                 "none": "No — Hide URL"
+            }
+        },
+        "masonry_layout": {
+            "section": "ARCHIVE",
+            "type": "select",
+            "label": "Masonry Layout",
+            "hint": "All three are the same SCROLL wall engine. Rows favours landscapes, Columns favours portraits, Square makes an even cropped grid. Tile Size applies to all three.",
+            "default": "rows",
+            "options": {
+                "rows": "Rows (landscapes lead)",
+                "columns": "Columns (portraits stand tallest)",
+                "square": "Square (even cropped grid)"
             }
         },
         "masonry_cols": {
