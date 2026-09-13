@@ -16,8 +16,10 @@ TOPICS = [
     ("Quick start",
      "Choose Folder in the Library, then double-click a photograph to open the "
      "editor. Every adjustment is non-destructive — your original file is never "
-     "changed. Save a .slapper project to keep the editing steps, and Export to "
-     "write a new image file."),
+     "changed. Editing history is remembered with each photograph and in saved "
+     ".slapper projects, so Undo and Redo still work after reopening. At 100 steps, "
+     "SNAP SLAPPER requires a project checkpoint before accepting another edit. "
+     "Export writes a new image file."),
     ("Your originals are safe",
      "SNAP SLAPPER never overwrites the photograph you opened. Editing, cropping, "
      "rotating, applying LEWKS or textures, and exporting all create new results "

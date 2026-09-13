@@ -83,6 +83,7 @@ MAX_PROJECT_LAYERS = 500
 MAX_RETOUCH_POINTS = 100000
 MAX_ENCODED_MASK_BYTES = 128 * 1024 * 1024
 MAX_TEXT_LAYER_CHARS = 1_000_000
+MAX_HISTORY_STEPS = 100
 PROJECT_DOCUMENT_NAME = "project.json"
 PROJECT_README_NAME = "README.txt"
 DEFAULT_ADJUSTMENTS = {
@@ -1164,6 +1165,9 @@ class EditorDocument:
         self.history_index = -1
         self.project_path = None
         self.on_change = None
+        # The Qt shell supplies this callback.  It is deliberately optional so
+        # the editing engine remains usable by tests and non-interactive tools.
+        self.history_limit_handler = None
         self.record("Open image")
         self.saved_snapshot = self.snapshot()
 
@@ -1185,12 +1189,27 @@ class EditorDocument:
     def record(self, label):
         state = self.snapshot()
         self.history = self.history[:self.history_index + 1]
+        if len(self.history) >= MAX_HISTORY_STEPS:
+            # Mutating commands call record immediately after changing the
+            # document.  Temporarily put the document back at the last accepted
+            # state so the checkpoint contains the first 100 steps, not the
+            # as-yet-unaccepted 101st edit.
+            previous = copy.deepcopy(self.history[self.history_index]["state"])
+            self.restore(previous)
+            accepted = False
+            if self.history_limit_handler:
+                accepted = bool(self.history_limit_handler(self))
+            if not accepted:
+                self.notify_change()
+                return False
+            self.history = [{"label": "Saved checkpoint", "state": previous,
+                             "time": time.time()}]
+            self.history_index = 0
+            self.restore(state)
         self.history.append({"label": label, "state": state, "time": time.time()})
         self.history_index = len(self.history) - 1
-        if len(self.history) > 100:
-            self.history.pop(0)
-            self.history_index -= 1
         self.notify_change()
+        return True
 
     def undo(self):
         if self.history_index <= 0:
@@ -1580,7 +1599,9 @@ class EditorDocument:
     def project_value(self, recovery=False):
         value = {"version": PROJECT_VERSION, "source_path": self.source_path,
                  "adjustments": self.adjustments, "geometry": self.geometry,
-                 "layers": self.layers, "retouched": self.retouched}
+                 "layers": self.layers, "retouched": self.retouched,
+                 "history": self.history[-MAX_HISTORY_STEPS:],
+                 "history_index": min(self.history_index, MAX_HISTORY_STEPS - 1)}
         if recovery:
             value["recovery"] = True
             value["project_path"] = self.project_path
@@ -1623,10 +1644,23 @@ class EditorDocument:
                 raise ValueError(f"Invalid SNAP SLAPPER project: {field} has the wrong type")
         layers = value.get("layers", [])
         retouched = value.get("retouched", [])
+        history = value.get("history", [])
         if len(layers) > MAX_PROJECT_LAYERS:
             raise ValueError("Invalid SNAP SLAPPER project: too many layers")
         if len(retouched) > MAX_RETOUCH_POINTS:
             raise ValueError("Invalid SNAP SLAPPER project: too many retouch points")
+        if not isinstance(history, list) or len(history) > MAX_HISTORY_STEPS:
+            raise ValueError("Invalid SNAP SLAPPER project: editing history is invalid")
+        for entry in history:
+            if not isinstance(entry, dict) or not isinstance(entry.get("label"), str):
+                raise ValueError("Invalid SNAP SLAPPER project: editing history entry is invalid")
+            state = entry.get("state")
+            if not isinstance(state, dict):
+                raise ValueError("Invalid SNAP SLAPPER project: editing history state is invalid")
+            for field, expected in expected_types.items():
+                if not isinstance(state.get(field), expected):
+                    raise ValueError(
+                        f"Invalid SNAP SLAPPER project: history {field} has the wrong type")
         for index, layer in enumerate(layers):
             if not isinstance(layer, dict):
                 raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} is not an object")
@@ -1651,15 +1685,18 @@ class EditorDocument:
         document.geometry = value.get("geometry", document.geometry)
         document.layers = layers
         document.retouched = retouched
-        document.history = []
-        document.history_index = -1
+        document.history = copy.deepcopy(history)
+        stored_index = value.get("history_index", len(history) - 1)
+        document.history_index = (max(0, min(int(stored_index), len(history) - 1))
+                                  if history else -1)
         if value.get("recovery"):
             project_path = value.get("project_path")
             document.project_path = project_path if isinstance(project_path, str) else None
             document.saved_snapshot = None
         else:
             document.project_path = path
-        document.record("Open project")
+        if not document.history:
+            document.record("Open project")
         if not value.get("recovery"):
             document.mark_saved()
         return document
