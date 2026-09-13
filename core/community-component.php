@@ -197,6 +197,52 @@ if ($show_comments) {
     ");
     $cc_stmt->execute([$post_id]);
     $community_comments = $cc_stmt->fetchAll();
+
+    // FEDIVERSE REPLIES (0.7.707D). Inbound replies from Pixelfed/Mastodon/other
+    // SnapSmack sites land in the classic snap_comments table (see
+    // core/fediverse.php, "reply routed to image N"), keyed by img_id. Every
+    // skin renders THIS component, and this component only read
+    // snap_community_comments — so a federated reply was stored, approved,
+    // and never shown on any skin. Merge them in as read-only guest rows.
+    // Post-keyed mode: replies may target any image of the post, so gather
+    // every image id in the post; image-keyed: just this image.
+    try {
+        $fc_ids = [$image_id];
+        if ($comments_post_keyed) {
+            $fi = $pdo->prepare("SELECT id FROM snap_images WHERE post_id = ?");
+            $fi->execute([(int)$img['post_id']]);
+            $fc_ids = array_map('intval', $fi->fetchAll(PDO::FETCH_COLUMN)) ?: [$image_id];
+        }
+        $fc_in   = implode(',', array_map('intval', $fc_ids));
+        $fc_rows = $pdo->query(
+            "SELECT id, comment_author, comment_url, ap_actor_url, comment_text, comment_date
+               FROM snap_comments
+              WHERE img_id IN ($fc_in) AND is_approved = 1 AND is_spam = 0
+                AND ap_source = 'fediverse'
+              ORDER BY comment_date ASC"
+        )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($fc_rows as $fr) {
+            $community_comments[] = [
+                'id'           => 0,   // not a community row: no edit/delete affordances
+                'comment_text' => (string)$fr['comment_text'],
+                'created_at'   => (string)$fr['comment_date'],
+                'edited_at'    => null,
+                'username'     => null,
+                'display_name' => null,
+                'avatar_url'   => null,
+                'guest_name'   => (string)$fr['comment_author'],
+                'guest_email'  => null,
+                'guest_url'    => (string)($fr['ap_actor_url'] ?: $fr['comment_url'] ?: ''),
+                'is_guest'     => 1,
+                'is_fedi'      => 1,
+            ];
+        }
+        if ($fc_rows) {
+            usort($community_comments, function ($a, $b) {
+                return strcmp((string)$a['created_at'], (string)$b['created_at']);
+            });
+        }
+    } catch (Throwable $e) { /* snap_comments absent or pre-AP schema: community thread still renders */ }
 }
 
 // --- REACTION SET ---
@@ -334,6 +380,9 @@ if (empty($GLOBALS['snapsmack_engine_css_emitted']['assets/css/ss-community.css'
                     <span class="ss-commenter"><?php echo $display; ?></span>
                     <?php endif; ?>
                     <span class="ss-comment-date"><?php echo $date; ?></span>
+                    <?php if (!empty($c['is_fedi'])): ?>
+                    <span class="ss-comment-source" title="Reply received from the fediverse">fediverse</span>
+                    <?php endif; ?>
                     <?php if ($is_own): ?>
                     <button class="ss-comment-delete" data-comment-id="<?php echo (int)$c['id']; ?>"
                             aria-label="Delete comment">✕</button>

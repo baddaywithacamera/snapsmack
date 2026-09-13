@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.707D "LOUD AND CLEAR" — 2026-09-13
+- **Fediverse replies finally show up on your posts.** A reply from Pixelfed, Mastodon, or another SnapSmack site was delivered, matched to the right photograph, and auto-approved — and then never displayed, on any skin. Every skin renders the community thread, and that thread only read its own table; federated replies were stored in the classic comments table beside it. The thread now merges approved federated replies in date order, read-only, with a small "fediverse" tag and the commenter's handle linked to their profile. Verified on allinthewrist.photoblogs.fyi with replies from unzucked.ca and pixelfed.social. (`core/community-component.php`, `assets/css/ss-community.css`.)
+
 ## 0.7.706 "THE WHOLE PICTURE" — 2026-09-13
 - **SMACKTHEMUP joins the four permanent install personalities.** The Picasa-style hybrid publishes public albums from SNAP SLAPPER, shares GRAMOFSMACK skins without sharing its publishing path, cannot be flipped into another mode after installation, and deliberately has no fediverse path.
 - **The curator can populate GLOBAL from real Pixelfed accounts and show its work.** Recovery now uses the public Pixelfed/Mastodon gallery API before the ActivityPub fallback, while the portal exposes accounts found, queued, accepted, checked, and admitted posts plus the next scheduled action.
