@@ -84,6 +84,7 @@ def test_qt_background_backup_has_a_real_tray_contract():
     assert 'remains available on the taskbar' in source
     assert 'self.tray_pause_action.triggered.connect(self._toggle_pause)' in source
     assert 'app.setQuitOnLastWindowClosed(False)' in source
+    assert 'QApplication.instance().quit()' in source
 
 if __name__ == "__main__":
     test_resume_does_not_require_final_kit()
