@@ -644,19 +644,11 @@ class SuybWindow(QMainWindow):
 
     def closeEvent(self, event):
         if self.engine:
-            if self.tray and self.tray.isVisible():
-                event.ignore()
-                self.hide()
-                self._tray_message(
-                    "Backup still running",
-                    "SMACK UP YOUR BACKUP is continuing in the notification area. "
-                    "Double-click its icon to reopen it.")
-                return
-            QMessageBox.information(
-                self, "Keep this window open",
-                "The backup is still running and the system notification area is unavailable. "
-                "Pause it or wait for it to finish before closing.")
             event.ignore()
+            self.showMinimized()
+            self._tray_message(
+                "Backup still running",
+                "SMACK UP YOUR BACKUP was minimized and remains available on the taskbar.")
             return
         if self.tray:
             self.tray.hide()
