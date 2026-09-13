@@ -34,7 +34,8 @@ $ratio_max = 3 / 2;
 // Justified rows are laid out CLIENT-SIDE by our own ss-engine-rows.js from each
 // tile's data-w/data-h — no server-side row pre-build, and NO third-party library
 // (this replaces the MIT-licensed fjGallery so the whole gallery stays SnapSmack).
-$gap = 4;
+// Tile size and gap come from the manifest (--ss-cols / --ss-gap on #justified-grid
+// in style.css) — nothing is set inline here, or it would override the controls.
 ?>
 
 <?php
@@ -90,7 +91,7 @@ $_fsog_initial_thumbs = ($_fsog_cur === 'thumbs');
      load the aspect THUMBNAIL (a_), not the full image, which is what kills the
      downscale "sparkle" the old full-image grid produced. Shape comes from
      data-w/data-h so lazy-load never has to read naturalWidth. -->
-<div id="justified-grid" class="ss-scroll-wall" style="--ss-gap: <?php echo $gap; ?>px; <?php echo $_fsog_initial_thumbs ? 'display:none;' : ''; ?>">
+<div id="justified-grid" class="ss-scroll-wall"<?php echo $_fsog_initial_thumbs ? ' style="display:none;"' : ''; ?>>
     <?php if (!empty($images)): ?>
         <?php foreach ($images as $img):
             $link = BASE_URL . htmlspecialchars($img['img_slug']);
