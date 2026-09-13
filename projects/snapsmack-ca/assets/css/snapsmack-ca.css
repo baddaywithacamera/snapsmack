@@ -221,7 +221,9 @@ nav a.active::after { width: 100%; }
 }
 
 /* --- SUBPAGE SHARED --- */
-.page-header { padding: 80px 0 64px; border-bottom: 1px solid var(--border); }
+.page-header { padding: 64px 0 8px; }
+/* First block after a page header: don't stack a second 72px on top of the header's own space. */
+.page-header + section { padding-top: 24px; }
 .page-header h1 { margin-bottom: 12px; }
 .page-body { max-width: 820px; padding: 64px 0 96px; }
 .page-body ul { margin: 0 0 1.4em 1.5em; }
