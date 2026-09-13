@@ -86,9 +86,10 @@ def test_heal_refuses_empty_selection():
 def test_editor_wires_ai_heal_as_a_masked_layer():
     source = (HUB / "slapper_qt" / "editor_window.py").read_text(encoding="utf-8")
     assert 'QAction("AI Heal…"' in source
-    assert 'add_image_layer(path, name="AI Heal", record=False)' in source
+    assert 'self.act_ai_fill = QAction("Generative Fill…", self)' in source
+    assert 'def apply_ai_generation(' in source
     assert 'layer["ai_heal_source_mask"] = editor_engine._mask_to_text(mask)' in source
-    assert '"kind": "generative-repair"' in source
+    assert '"kind": "generative-fill" if is_fill else "generative-repair"' in source
     assert '"retouch": (self.act_heal, self.act_redeye, self.act_ai_heal,' in source
     assert 'f"{name}{dirty} — {BUILD_VERSION}"' in source
     assert 'QTimer.singleShot(0, self._scroll_rail_to_layers)' in source
@@ -98,6 +99,30 @@ def test_editor_wires_ai_heal_as_a_masked_layer():
     assert 'self._apply_pending_ai_heal_feather()' in panel
     assert 'self.doc.record("AI Heal feather")' in panel
     assert 'legacy_mask.point(lambda value: 255 if value >= 128 else 0)' in panel
+
+
+def test_generative_fill_can_infer_content_without_a_description(monkeypatch):
+    seen = {}
+
+    class Response:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"candidates": [{"content": {"parts": [
+                {"inlineData": {"mimeType": "image/png", "data": _encoded_png("blue")}}
+            ]}}]}
+
+    def fake_post(_url, **kwargs):
+        seen.update(kwargs)
+        return Response()
+
+    monkeypatch.setattr(gemini_image_edit.requests, "post", fake_post)
+    photo = Image.new("RGB", (20, 20), "white")
+    mask = Image.new("L", photo.size, 255)
+    gemini_image_edit.fill(photo, mask, "", "secret")
+    instruction = seen["json"]["contents"][0]["parts"][0]["text"]
+    assert "natural matching content inferred" in instruction
 
 
 def test_ai_heal_blend_mask_expands_and_feathers_without_leaking_across_frame():
