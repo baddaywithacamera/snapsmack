@@ -309,6 +309,14 @@
     opacity: 0.4;
 }
 
+/* Reply that arrived over ActivityPub (merged from snap_comments). */
+.ss-comment-source {
+    font-size: 10px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    opacity: 0.5;
+}
+
 .ss-comment-delete {
     background: none;
     border: none;
