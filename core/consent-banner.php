@@ -8,9 +8,8 @@
  * Include this once per page, typically from core/footer-scripts.php.
  * The companion ss-engine-consent.js handles accept/decline actions.
  *
- * Privacy policy link points to the site's "privacy" static page if it
- * exists, otherwise omitted. Blog owners create the page through the
- * static pages system (smack-pages.php).
+ * Privacy policy link prefers SnapSmack's built-in policy page, then falls
+ * back to an active privacy static page.
  */
 
 /**
@@ -29,23 +28,35 @@ if (isset($_COOKIE['snap_consent'])) {
 // Check if a privacy policy page exists
 $privacy_url = '';
 if (isset($pdo)) {
-    $pp_stmt = $pdo->prepare("SELECT slug FROM snap_pages WHERE slug IN ('privacy', 'privacy-policy', 'cookies') AND is_active = 1 LIMIT 1");
-    $pp_stmt->execute();
-    $pp_slug = $pp_stmt->fetchColumn();
-    if ($pp_slug) {
-        $privacy_url = (defined('BASE_URL') ? BASE_URL : '/') . 'page/' . $pp_slug;
+    $base = defined('BASE_URL') ? BASE_URL : '/';
+    try {
+        $policy = $pdo->query("SELECT setting_key, setting_val FROM snap_settings WHERE setting_key IN ('privacy_policy_enabled', 'privacy_policy_content')")
+            ->fetchAll(PDO::FETCH_KEY_PAIR);
+        if (($policy['privacy_policy_enabled'] ?? '0') === '1' && trim($policy['privacy_policy_content'] ?? '') !== '') {
+            $privacy_url = $base . 'privacy-policy.php';
+        }
+    } catch (PDOException $e) { /* optional on older installs */ }
+
+    if ($privacy_url === '') {
+        try {
+            $pp_stmt = $pdo->prepare("SELECT slug FROM snap_pages WHERE slug IN ('privacy', 'privacy-policy', 'cookies') AND is_active = 1 LIMIT 1");
+            $pp_stmt->execute();
+            $pp_slug = $pp_stmt->fetchColumn();
+            if ($pp_slug) $privacy_url = $base . 'page/' . $pp_slug;
+        } catch (PDOException $e) { /* optional on very fresh installs */ }
     }
 }
 ?>
-<div id="snap-consent-banner" role="dialog" aria-label="Storage consent">
+<div id="snap-consent-banner" role="dialog" aria-label="Privacy choice">
     <span class="consent-text">
-        This site uses browser storage for functional features (remembering preferences).
-        No tracking or analytics.<?php if ($privacy_url): ?>
+        This site can remember display and navigation preferences on this device.
+        Limited first-party usage information is recorded whether or not preferences are allowed, for troubleshooting and to understand which content is viewed.
+        Raw IP addresses are not stored. There are no advertising trackers, no cross-site tracking, and no third-party analytics.<?php if ($privacy_url): ?>
         <a href="<?php echo htmlspecialchars($privacy_url); ?>">Privacy policy</a>.<?php endif; ?>
     </span>
     <span class="consent-buttons">
-        <button id="snap-consent-accept" type="button">Accept</button>
-        <button id="snap-consent-decline" type="button">Decline</button>
+        <button id="snap-consent-accept" type="button">Allow preferences</button>
+        <button id="snap-consent-decline" type="button">Continue without</button>
     </span>
 </div>
 <?php // ===== SNAPSMACK EOF =====

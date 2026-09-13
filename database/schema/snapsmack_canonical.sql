@@ -988,6 +988,28 @@ CREATE TABLE IF NOT EXISTS `snap_collection_items` (
       ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- SMACKTHEMUP: GYSS may delete one photograph only after password + TOTP.
+-- The authorization window and audit trail are administrative state, not a
+-- second content model.
+CREATE TABLE IF NOT EXISTS `snap_gyss_delete_windows` (
+  `key_id`     INT UNSIGNED NOT NULL,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `opened_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`key_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `snap_gyss_delete_audit` (
+  `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `key_id`     INT UNSIGNED NOT NULL,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `image_id`   INT UNSIGNED NOT NULL,
+  `deleted_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_gyss_delete_image` (`image_id`),
+  KEY `idx_gyss_delete_when` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 -- ─── BUCKETS ──────────────────────────────────────────────────────────────────
 -- A post's working set of Gallery photos: "these are the photos I am writing

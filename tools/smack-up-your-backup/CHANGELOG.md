@@ -19,6 +19,33 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.37 — 2026-09-12
+
+### Restored — live backup ETA and totals
+
+- The Qt cockpit again shows completed, remaining, and total file counts.
+- It shows data checked versus remaining and total media size.
+- Elapsed time, estimated time remaining, and the current processing rate stay
+  visible throughout a run, including large libraries.
+
+## 0.7.36 — 2026-09-12
+
+### Fixed — the backup list follows Discover Fleet
+
+- Newly discovered sites now appear automatically with safe HTTP backup defaults.
+- Existing SUYB profiles and all their per-site backup settings remain untouched.
+
+## 0.7.35 — 2026-09-12
+
+### Added — open backup folder and choose several sites
+
+The Backups page now opens the selected site's working folder directly in the
+system file manager. The backup cockpit also supports choosing any subset of
+configured sites for one run. Sites back up sequentially, verify independently,
+and a failed site does not prevent the remaining selected sites from running.
+
+---
+
 ## 0.7.30 — 2026-09-11
 
 ### Rebuilt — modern Qt desktop interface

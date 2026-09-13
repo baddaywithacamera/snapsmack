@@ -54,6 +54,7 @@ require_once __DIR__ . '/ai-provider.php';
 require_once __DIR__ . '/ai-enrichment-prompts.php';
 require_once __DIR__ . '/snap-tags.php';
 require_once __DIR__ . '/alt-text.php';
+require_once __DIR__ . '/api-input-safety.php';
 
 // --- CORS: allow GYSS desktop app origins only ---
 // Tauri 1 used tauri://localhost; Tauri 2 uses http://tauri.localhost on
@@ -186,7 +187,7 @@ $key_hash = hash('sha256', $raw_key);
 // site mid-migration keeps working.
 try {
     $key_stmt = $pdo->prepare("
-        SELECT id, key_type FROM snap_ohsnap_keys
+        SELECT id, key_type, user_id FROM snap_ohsnap_keys
         WHERE key_hash = ? AND key_type IN ($allowed_key_types) AND is_active = 1
           AND (expires_at IS NULL OR expires_at > NOW())
         LIMIT 1
@@ -196,7 +197,7 @@ try {
 } catch (Exception $e) {
     try {
         $key_stmt = $pdo->prepare("
-            SELECT id, key_type FROM snap_ohsnap_keys
+            SELECT id, key_type, user_id FROM snap_ohsnap_keys
             WHERE key_hash = ? AND key_type IN ($allowed_key_types) AND is_active = 1
             LIMIT 1
         ");
@@ -279,6 +280,9 @@ if ($resource === 'ping' && $method === 'GET') {
         // site_mode drives which GYSS mode the client offers: 'photoblog' =
         // SMACKONEOUT (photo sorter), 'carousel' = GRAMOFSMACK (grid/carousel).
         'site_mode' => $settings['site_mode'] ?? 'photoblog',
+        'scope'     => (($settings['site_mode'] ?? '') === 'smackthemup') ? 'smackthemup.organize' : 'gyss',
+        'can_upload'=> false,
+        'can_delete_single' => (($settings['site_mode'] ?? '') === 'smackthemup'),
     ]);
 }
 
@@ -440,17 +444,16 @@ if ($resource === 'photos' && $method === 'GET') {
                 i.img_slug,
                 i.download_url,
                 i.img_date        AS posted_date,
-                i.modified_at,
-                i.img_license,
+                $modified_select,
+                " . (gy_has_column($pdo, 'snap_images', 'img_license')
+                    ? 'i.img_license' : "'' AS img_license") . ",
                 CASE
                     WHEN EXISTS (SELECT 1 FROM snap_image_tags rit JOIN snap_tags rt ON rt.id = rit.tag_id WHERE rit.image_id = i.id AND rt.slug = 'unclearrights') THEN 'unclear'
                     WHEN EXISTS (SELECT 1 FROM snap_image_tags rit JOIN snap_tags rt ON rt.id = rit.tag_id WHERE rit.image_id = i.id AND rt.slug = 'certifiedrights') THEN 'clear'
                     ELSE 'unknown'
                 END AS rights_status,
-                (SELECT c2.id       FROM snap_image_cat_map cm2 JOIN snap_categories c2 ON c2.id = cm2.cat_id WHERE cm2.image_id = i.id LIMIT 1) AS category_id,
-                (SELECT c2.cat_name FROM snap_image_cat_map cm2 JOIN snap_categories c2 ON c2.id = cm2.cat_id WHERE cm2.image_id = i.id LIMIT 1) AS category_name,
-                (SELECT a2.id         FROM snap_image_album_map am2 JOIN snap_albums a2 ON a2.id = am2.album_id WHERE am2.image_id = i.id LIMIT 1) AS album_id,
-                (SELECT a2.album_name FROM snap_image_album_map am2 JOIN snap_albums a2 ON a2.id = am2.album_id WHERE am2.image_id = i.id LIMIT 1) AS album_name
+                $category_select,
+                $album_select
             FROM snap_images i
             WHERE $where_sql
             ORDER BY $sort_order
@@ -656,6 +659,15 @@ if ($resource === 'library' && $method === 'GET') {
             ? $pdo->query("SELECT id, album_name AS name FROM snap_albums ORDER BY album_name ASC")->fetchAll(PDO::FETCH_ASSOC)
             : [];
         foreach ($albums as &$a) { $a['id'] = (int)$a['id']; } unset($a);
+        $has_collections = gy_has_table($pdo, 'snap_collections') && gy_has_table($pdo, 'snap_collection_items');
+        $collections = $has_collections
+            ? $pdo->query("SELECT id, title AS name, description, cover_image_id, sort_order FROM snap_collections WHERE published=1 ORDER BY sort_order,id")->fetchAll(PDO::FETCH_ASSOC)
+            : [];
+        foreach ($collections as &$c) {
+            $c['id']=(int)$c['id'];
+            $c['cover_image_id']=$c['cover_image_id']!==null?(int)$c['cover_image_id']:null;
+            $c['sort_order']=(int)$c['sort_order'];
+        } unset($c);
 
         // --- MEMBERSHIP MAPS (whole int pairs — catches re-tags on unchanged images) ---
         $cat_map = [];
@@ -666,6 +678,12 @@ if ($resource === 'library' && $method === 'GET') {
         if ($has_albums) {
             foreach ($pdo->query("SELECT image_id, album_id FROM snap_image_album_map")->fetchAll(PDO::FETCH_NUM) as $p) {
                 $album_map[] = [(int)$p[0], (int)$p[1]];
+            }
+        }
+        $collection_map = [];
+        if ($has_collections) {
+            foreach ($pdo->query("SELECT item_id, collection_id FROM snap_collection_items WHERE item_type='image'")->fetchAll(PDO::FETCH_NUM) as $p) {
+                $collection_map[] = [(int)$p[0], (int)$p[1]];
             }
         }
 
@@ -684,8 +702,10 @@ if ($resource === 'library' && $method === 'GET') {
         'base_url'    => BASE_URL,
         'categories'  => $categories,
         'albums'      => $albums,
+        'collections' => $collections,
         'cat_map'     => $cat_map,
         'album_map'   => $album_map,
+        'collection_map' => $collection_map,
         'current_ids' => $current_ids,
         'images'      => $images,
     ]);
@@ -1210,6 +1230,27 @@ if ($resource === 'batch-update' && $method === 'POST') {
             }
         }
 
+        // SMACKTHEMUP organization is many-to-many. Array fields replace the
+        // complete membership deliberately; legacy category_id remains below.
+        if (isset($upd['category_ids']) && is_array($upd['category_ids'])) {
+            $ids=array_values(array_unique(array_filter(array_map('intval',$upd['category_ids']))));
+            $pdo->prepare('DELETE FROM snap_image_cat_map WHERE image_id=?')->execute([$id]);
+            $ins=$pdo->prepare('INSERT IGNORE INTO snap_image_cat_map(image_id,cat_id) SELECT ?,id FROM snap_categories WHERE id=?');
+            foreach($ids as $v)$ins->execute([$id,$v]);
+        }
+        if (isset($upd['album_ids']) && is_array($upd['album_ids'])) {
+            $ids=array_values(array_unique(array_filter(array_map('intval',$upd['album_ids']))));
+            $pdo->prepare('DELETE FROM snap_image_album_map WHERE image_id=?')->execute([$id]);
+            $ins=$pdo->prepare('INSERT IGNORE INTO snap_image_album_map(image_id,album_id) SELECT ?,id FROM snap_albums WHERE id=?');
+            foreach($ids as $v)$ins->execute([$id,$v]);
+        }
+        if (isset($upd['collection_ids']) && is_array($upd['collection_ids']) && gy_has_table($pdo,'snap_collection_items')) {
+            $ids=array_values(array_unique(array_filter(array_map('intval',$upd['collection_ids']))));
+            $pdo->prepare("DELETE FROM snap_collection_items WHERE item_type='image' AND item_id=?")->execute([$id]);
+            $ins=$pdo->prepare("INSERT IGNORE INTO snap_collection_items(collection_id,item_type,item_id,image_id) SELECT id,'image',?,? FROM snap_collections WHERE id=? AND published=1");
+            foreach($ids as $v)$ins->execute([$id,$id,$v]);
+        }
+
         // Category reassignment: replace all image categories with the new one
         if (isset($upd['category_id'])) {
             $new_cat = (int)$upd['category_id'];
@@ -1523,6 +1564,86 @@ if ($resource === 'gram-carousel' && $method === 'POST') {
     gy_ok(['post_id' => $new_pid, 'message' => $msg]);
 }
 
+
+// SMACKTHEMUP public-group curation: descriptions, covers and collection order.
+// It edits existing groups only; it never creates or uploads a photograph.
+if ($resource === 'organize-group' && $method === 'POST') {
+    if (($settings['site_mode'] ?? '') !== 'smackthemup') gy_err('This operation belongs to SMACKTHEMUP only.',409);
+    $data=json_decode((string)file_get_contents('php://input'),true);
+    $type=(string)($data['type']??''); $id=(int)($data['id']??0);
+    $map=[
+        'album'=>['snap_albums','album_description'],
+        'category'=>['snap_categories','cat_description'],
+        'collection'=>['snap_collections','description'],
+    ];
+    if(!isset($map[$type])||$id<=0)gy_err('Choose one existing album, category, or collection.',400);
+    [$table,$desc_col]=$map[$type];
+    $exists=$pdo->prepare("SELECT id FROM {$table} WHERE id=? LIMIT 1"); $exists->execute([$id]);
+    if(!$exists->fetchColumn())gy_err('That group no longer exists.',404);
+    $sets=[];$params=[];
+    if(array_key_exists('description',$data)){ $sets[]="{$desc_col}=?";$params[]=mb_substr(trim(strip_tags((string)$data['description'])),0,20000); }
+    if(array_key_exists('cover_image_id',$data)){
+        $cover=(int)$data['cover_image_id'];
+        if($cover>0){$q=$pdo->prepare("SELECT id FROM snap_images WHERE id=? AND img_status='published'");$q->execute([$cover]);if(!$q->fetchColumn())gy_err('Cover photograph not found.',400);}
+        $sets[]='cover_image_id=?';$params[]=$cover>0?$cover:null;
+    }
+    if($type==='collection'&&array_key_exists('sort_order',$data)){ $sets[]='sort_order=?';$params[]=(int)$data['sort_order']; }
+    if(!$sets)gy_err('Nothing to change.',400);
+    $params[]=$id;$pdo->prepare("UPDATE {$table} SET ".implode(',',$sets).' WHERE id=?')->execute($params);
+    gy_ok(['type'=>$type,'id'=>$id,'updated'=>true]);
+}
+
+// SMACKTHEMUP single-photo delete. A GYSS key alone is insufficient: the owner
+// opens a server-side 15-minute window with username + password + TOTP first.
+if (in_array($resource, ['delete-stepup','delete-image'], true)) {
+    if (($settings['site_mode'] ?? '') !== 'smackthemup') gy_err('This operation belongs to SMACKTHEMUP only.',409);
+    if ($method !== 'POST') gy_err('Method not allowed',405);
+    require_once __DIR__ . '/totp.php';
+    $pdo->exec("CREATE TABLE IF NOT EXISTS snap_gyss_delete_windows (key_id INT UNSIGNED NOT NULL PRIMARY KEY,user_id INT UNSIGNED NOT NULL,expires_at DATETIME NOT NULL,opened_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS snap_gyss_delete_audit (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,key_id INT UNSIGNED NOT NULL,user_id INT UNSIGNED NOT NULL,image_id INT UNSIGNED NOT NULL,deleted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $data=json_decode((string)file_get_contents('php://input'),true);
+    if (!is_array($data)) gy_err('JSON request body required',400);
+    $key_id=(int)$api_key_row['id'];
+    if ($resource==='delete-stepup') {
+        $username=trim((string)($data['username']??''));
+        $password=(string)($data['password']??'');
+        $totp=preg_replace('/\s+/','',(string)($data['totp']??''));
+        $q=$pdo->prepare('SELECT id,password_hash,totp_enabled,totp_secret FROM snap_users WHERE username=? LIMIT 1');
+        $q->execute([$username]); $u=$q->fetch(PDO::FETCH_ASSOC);
+        if (!$u || !password_verify($password,(string)$u['password_hash']) || empty($u['totp_enabled']) || empty($u['totp_secret']) || !totp_verify((string)$u['totp_secret'],$totp)) {
+            gy_err('Username, password, and current 2FA code did not verify.',403);
+        }
+        if (!empty($api_key_row['user_id']) && (int)$api_key_row['user_id']!==(int)$u['id']) gy_err('This GYSS key belongs to a different user.',403);
+        $pdo->prepare("INSERT INTO snap_gyss_delete_windows(key_id,user_id,expires_at) VALUES(?,?,DATE_ADD(NOW(),INTERVAL 15 MINUTE)) ON DUPLICATE KEY UPDATE user_id=VALUES(user_id),expires_at=VALUES(expires_at),opened_at=NOW()")
+            ->execute([$key_id,(int)$u['id']]);
+        gy_ok(['delete_window_seconds'=>900]);
+    }
+    if (isset($data['ids']) || is_array($data['id']??null)) gy_err('Delete accepts exactly one image id; bulk delete is not available.',400);
+    $id=(int)($data['id']??0); if($id<=0)gy_err('Exactly one valid image id is required.',400);
+    $w=$pdo->prepare('SELECT user_id FROM snap_gyss_delete_windows WHERE key_id=? AND expires_at>NOW() LIMIT 1');
+    $w->execute([$key_id]); $user_id=(int)($w->fetchColumn()?:0);
+    if(!$user_id)gy_err('The delete window is closed. Verify username, password, and 2FA again.',403);
+    $q=$pdo->prepare('SELECT img_file,post_id FROM snap_images WHERE id=? LIMIT 1'); $q->execute([$id]); $img=$q->fetch(PDO::FETCH_ASSOC);
+    if(!$img)gy_err('Photograph not found.',404);
+    if(!empty($img['post_id']))gy_err('Only an individual SMACKTHEMUP photograph can be deleted here.',409);
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare('DELETE FROM snap_image_cat_map WHERE image_id=?')->execute([$id]);
+        $pdo->prepare('DELETE FROM snap_image_album_map WHERE image_id=?')->execute([$id]);
+        $pdo->prepare("DELETE FROM snap_collection_items WHERE item_type='image' AND item_id=?")->execute([$id]);
+        $pdo->prepare('DELETE FROM snap_comments WHERE img_id=?')->execute([$id]);
+        $pdo->prepare('DELETE FROM snap_images WHERE id=?')->execute([$id]);
+        $pdo->prepare('INSERT INTO snap_gyss_delete_audit(key_id,user_id,image_id) VALUES(?,?,?)')->execute([$key_id,$user_id,$id]);
+        $pdo->commit();
+    } catch(Throwable $e) { if($pdo->inTransaction())$pdo->rollBack(); gy_err('The photograph was not deleted.',500); }
+    $path=(string)$img['img_file'];
+    if (snap_api_safe_upload_path($path)) {
+        $full=dirname(__DIR__).'/'.$path; $dir=dirname($full).'/thumbs';
+        @unlink($dir.'/t_'.basename($full)); @unlink($dir.'/a_'.basename($full)); @unlink($full);
+    }
+    error_log("GYSS SMACKTHEMUP delete: user={$user_id} key={$key_id} image={$id}");
+    gy_ok(['deleted_image_id'=>$id]);
+}
 
 // --- FALLTHROUGH ---
 gy_err('Unknown GYSS endpoint', 404);

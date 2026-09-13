@@ -94,10 +94,9 @@ class BodyEditor(QWidget):
             self._biggie_page.hide()
             self._apply_face(False)
             return
-        # COLD TAKE is the visual essay editor. TWIGGY remains callable as a
-        # compatibility escape hatch, but is not presented as a competing mode.
-        self.simple_btn.hide()
-        self.biggie_btn.hide()
+        # COLD TAKE offers both named faces.  They are two lossless views of the
+        # same body, not install modes; keeping the switch visible is essential
+        # to making the editor understandable and matches the bundled Help.
         self._apply_face(True)
 
     # -- face switching ---------------------------------------------------------

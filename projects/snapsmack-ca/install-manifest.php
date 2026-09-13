@@ -8,7 +8,7 @@
  * needed to update what the installer fetches.
  *
  * Request (GET):
- *   mode    — photoblog | carousel | smacktalk
+ *   mode    — photoblog | carousel | smacktalk | smackthemup
  *   profile — optional FEDISTRUCTURE service profile (photo-challenge | ...)
  *
  * WHY PROFILE EXISTS. Every FEDISTRUCTURE service runs on site_mode 'photoblog',
@@ -29,7 +29,7 @@ header('Cache-Control: public, max-age=300');
 header('Access-Control-Allow-Origin: *');
 
 $mode = trim($_GET['mode'] ?? 'photoblog');
-if (!in_array($mode, ['photoblog', 'carousel', 'smacktalk'], true)) {
+if (!in_array($mode, ['photoblog', 'carousel', 'smacktalk', 'smackthemup'], true)) {
     $mode = 'photoblog';
 }
 
@@ -44,6 +44,7 @@ $mode_defaults = [
     'photoblog' => 'new-horizon',
     'carousel'  => 'the-grid',
     'smacktalk' => 'alfred',
+    'smackthemup' => 'the-grid',
 ];
 
 // A FEDISTRUCTURE service profile overrides the mode default: these installs are
