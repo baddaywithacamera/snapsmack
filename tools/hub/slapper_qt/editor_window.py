@@ -2026,11 +2026,19 @@ class EditorWindow(QMainWindow):
             self.view.set_gradient_mode(False)
             self.view.set_colour_range_mode(False)
             self.view.set_mask_paint_mode(False)
-            # Selecting Base hides the mask controls and radically shortens
-            # the rail. Return to the layer stack instead of leaving the
-            # scrollbar stranded below it, which made other layers appear gone.
-            QTimer.singleShot(0, lambda: self.rail_scroll.verticalScrollBar().setValue(0))
+            # Selecting Base hides the selected-layer controls and changes the
+            # rail height. Keep the layer stack in view; jumping to the top made
+            # every delete require a long scroll back down.
+            QTimer.singleShot(0, self._scroll_rail_to_layers)
         self._sync_canvas_layer_mode()
+
+    def _scroll_rail_to_layers(self):
+        """Keep structural layer work visible after the rail reflows itself."""
+        section = self._sections.get("LAYERS")
+        if section is None:
+            return
+        bar = self.rail_scroll.verticalScrollBar()
+        bar.setValue(max(bar.minimum(), min(section.y(), bar.maximum())))
 
     def _active_layer(self):
         if not self.doc or self.active_target == BASE:
@@ -2247,7 +2255,11 @@ class EditorWindow(QMainWindow):
         # in History exposed Gemini's entire returned frame.
         layer = self.doc.add_image_layer(path, name="AI Heal", record=False)
         layer["fit"] = "stretch"
-        layer["mask"] = editor_engine._mask_to_text(mask)
+        import gemini_image_edit
+        layer["ai_heal_source_mask"] = editor_engine._mask_to_text(mask)
+        layer["ai_heal_feather"] = 100
+        layer["mask"] = editor_engine._mask_to_text(
+            gemini_image_edit.blend_mask(mask, 1.0))
         layer["mask_enabled"] = True
         layer["mask_linked"] = True
         layer["mask_kind"] = "ai-heal-selection"

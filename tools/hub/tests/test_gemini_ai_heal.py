@@ -87,10 +87,14 @@ def test_editor_wires_ai_heal_as_a_masked_layer():
     source = (HUB / "slapper_qt" / "editor_window.py").read_text(encoding="utf-8")
     assert 'QAction("AI Heal…"' in source
     assert 'add_image_layer(path, name="AI Heal", record=False)' in source
-    assert 'layer["mask"] = editor_engine._mask_to_text(mask)' in source
+    assert 'layer["ai_heal_source_mask"] = editor_engine._mask_to_text(mask)' in source
     assert '"kind": "generative-repair"' in source
     assert '"retouch": (self.act_heal, self.act_redeye, self.act_ai_heal,' in source
     assert 'f"{name}{dirty} — {BUILD_VERSION}"' in source
+    assert 'QTimer.singleShot(0, self._scroll_rail_to_layers)' in source
+    panel = (HUB / "slapper_qt" / "layers_panel.py").read_text(encoding="utf-8")
+    assert 'self.feather.setRange(0, 200)' in panel
+    assert 'self.doc.record("AI Heal feather")' in panel
 
 
 def test_ai_heal_blend_mask_expands_and_feathers_without_leaking_across_frame():
@@ -100,7 +104,8 @@ def test_ai_heal_blend_mask_expands_and_feathers_without_leaking_across_frame():
             mask.putpixel((x, y), 255)
     blended = gemini_image_edit.blend_mask(mask)
     assert blended.getpixel((600, 400)) > 240
-    assert 0 < blended.getpixel((580, 400)) < 255
+    assert 0 < blended.getpixel((560, 400)) < 255
     assert blended.getpixel((0, 0)) == 0
+    assert gemini_image_edit.blend_mask(mask, 0).tobytes() == mask.tobytes()
 
 # ===== SNAPSMACK EOF =====
