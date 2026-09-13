@@ -37,10 +37,11 @@ h3 { font-size: 1rem; }
 .intro-body { max-width: 820px; padding: 0 0 8px; }
 .intro-body p { margin-bottom: 1.4em; max-width: 72ch; }
 .slang {
+    max-width: 820px;
     background: var(--light-grey);
     border-left: 4px solid var(--black);
     padding: 20px 24px;
-    margin: 8px 0 0;
+    margin: 24px 0 0;
     font-size: 0.97rem;
 }
 .slang p { margin-bottom: 0; }
@@ -157,6 +158,9 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h1>DING DONG BELL!</h1>
             <p class="lede">Where SnapSmack fell down, what we did about it &mdash; and, honestly, what we haven&rsquo;t yet watched work.</p>
+            <div class="slang">
+                <p><strong>&ldquo;Ding Dong Bell&rdquo;?</strong> Cockney rhyming slang for <em>hell</em>. This is the page that records every operational hell SnapSmack went through &mdash; the stuff we tripped over on the way to something that holds when you lean on it.</p>
+            </div>
         </div>
     </div>
 
@@ -166,9 +170,6 @@ require_once __DIR__ . '/includes/header.php';
                 <p><a href="buzzers.php">BUZZERS!</a> is where we show our work on security &mdash; whether the software can be <em>abused</em>. This is the other question, the one that&rsquo;s actually bitten us far more often: does a thing <em>do its job, end to end, watched on a real machine</em>. Almost nothing that hurt this project in the last several months was a break-in. It was plumbing that looked done and wasn&rsquo;t &mdash; a delivery that said &ldquo;sent&rdquo; and vanished, a fix written but never watched, a feature declared ready before it was built.</p>
                 <p><strong>This page is different from BUZZERS! in one important way: it never closes.</strong> A security audit gets fixed, verified, and filed. This is a living record. Entries get more accurate over time; they&rsquo;re never quietly rewritten. And to be clear about the tone: a lot of what&rsquo;s below is <em>&ldquo;fixed, and we&rsquo;re confirming it&rdquo;</em> &mdash; not &ldquo;broken.&rdquo; We separate what we&rsquo;ve genuinely watched work from what we&rsquo;ve merely fixed, because those are two different claims and running them together is what kept biting us. Saying &ldquo;we&rsquo;re still confirming this&rdquo; out loud isn&rsquo;t an admission that it&rsquo;s broken; it&rsquo;s the honest version of done.</p>
                 <p><strong>Why publish where we tripped?</strong> Because &ldquo;fixed&rdquo; in a changelog is the same word that&rsquo;s fooled us before, and the only cure is to say out loud what&rsquo;s been watched working versus what we&rsquo;ve merely been told is done. If you&rsquo;re running SnapSmack, or building something like it, this is the honest version of the story &mdash; not a highlight reel. The one thing you won&rsquo;t find here is a live, unfixed security hole; those stay in <a href="buzzers.php">BUZZERS!</a> until they&rsquo;re closed, then they&rsquo;re fair game to talk about.</p>
-                <div class="slang">
-                    <p><strong>&ldquo;Ding Dong Bell&rdquo;?</strong> Cockney rhyming slang for <em>hell</em>. This is the page that records every operational hell SnapSmack went through &mdash; the stuff we tripped over on the way to something that holds when you lean on it.</p>
-                </div>
             </div>
         </div>
     </section>
