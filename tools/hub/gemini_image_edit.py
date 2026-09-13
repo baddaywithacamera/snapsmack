@@ -61,7 +61,8 @@ def focus_region(image, mask, target=1536):
         work_size, Image.Resampling.LANCZOS)
 
 
-def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=300):
+def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=300,
+         operation="heal"):
     """Return Gemini's edited full frame. The caller owns local mask enforcement."""
     if not api_key:
         raise ValueError("Add a Gemini API key in SNAP HQ Settings first.")
@@ -69,18 +70,34 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
     mask = mask.convert("L").resize(image.size, Image.Resampling.LANCZOS)
     box, work_image, work_mask = focus_region(image, mask)
     marked = marked_selection(work_image, work_mask)
+    if operation == "fill":
+        if prompt.strip():
+            task = (
+                "Replace the marked area with this requested content: " + prompt.strip() +
+                ". Build it naturally into the photograph using the surrounding "
+                "perspective, lighting, grain, focus, colour and texture."
+            )
+        else:
+            task = (
+                "Replace the marked area with natural matching content inferred from "
+                "the surrounding photograph. Continue nearby shapes, surfaces, texture, "
+                "perspective, lighting, grain, focus and colour into the selection."
+            )
+    else:
+        task = (
+            "Remove the scratch, scuff, wire, dust, blemish, or other defect underneath "
+            "the mark, then reconstruct natural matching content from the surrounding "
+            "photograph."
+        )
     instruction = (
         "Edit the FIRST image and return the repaired photograph, not an explanation. "
         "The SECOND image marks the repair target in RED. The THIRD image is the "
         "same selection as a black-and-white mask; WHITE is the repair target. "
-        "The red paint is an annotation, not part of the photograph. Remove the "
-        "scratch, scuff, wire, dust, blemish, or other defect underneath that mark, "
-        "then reconstruct natural matching content from "
-        "the surrounding photograph. Preserve perspective, lighting, grain, focus, "
-        "colour and texture. Do not merely return the original image. Do not alter "
-        "anything outside the white selection."
+        "The red paint is an annotation, not part of the photograph. " + task + " "
+        "Do not merely return the original image. Do not alter anything outside the "
+        "white selection."
     )
-    if prompt.strip():
+    if operation != "fill" and prompt.strip():
         instruction += " Additional instruction: " + prompt.strip()
     payload = {
         "contents": [{"role": "user", "parts": [
@@ -113,5 +130,11 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
                                              Image.Resampling.LANCZOS), box[:2])
                 return repaired
     raise RuntimeError("Gemini returned no edited image.")
+
+
+def fill(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=300):
+    """Generate requested content inside a locally enforced selection."""
+    return heal(image, mask, prompt, api_key, model=model, timeout=timeout,
+                operation="fill")
 
 # ===== SNAPSMACK EOF =====
