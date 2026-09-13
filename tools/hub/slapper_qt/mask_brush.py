@@ -45,7 +45,7 @@ class MaskBrushCanvas(QWidget):
 
     mask_changed = Signal()   # emitted when a stroke finishes
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, box_size=(BOX_W, BOX_H), tint_white=False):
         super().__init__(parent)
         self.setObjectName("MaskBrushCanvas")
         self._photo = None        # QPixmap scaled to the display box
@@ -58,8 +58,10 @@ class MaskBrushCanvas(QWidget):
         self._flow = 100
         self._last = None
         self._hover = None
+        self._box_size = tuple(box_size)
+        self._tint_white = bool(tint_white)
         self.setMinimumSize(QSize(120, 90))
-        self.setMaximumHeight(BOX_H)
+        self.setMaximumHeight(self._box_size[1])
         self.setMouseTracking(True)
         self.setCursor(Qt.BlankCursor)
 
@@ -69,7 +71,7 @@ class MaskBrushCanvas(QWidget):
         With no mask, start fully white — the layer shows everywhere until the
         photographer paints black to hide part of it."""
         photo = pil_photo.convert("RGB")
-        photo.thumbnail((BOX_W, BOX_H), Image.Resampling.LANCZOS)
+        photo.thumbnail(self._box_size, Image.Resampling.LANCZOS)
         width, height = photo.size
         data = photo.tobytes("raw", "RGB")
         qphoto = QImage(data, width, height, width * 3,
@@ -154,7 +156,9 @@ class MaskBrushCanvas(QWidget):
             self._overlay = None
             return
         mask_pil = qimage_l_to_pil(self._mask)
-        alpha = mask_pil.point(lambda v: int((255 - v) * 0.45))
+        alpha = mask_pil.point(
+            (lambda v: int(v * 0.45)) if self._tint_white
+            else (lambda v: int((255 - v) * 0.45)))
         red = Image.new("RGBA", mask_pil.size, (220, 40, 40, 0))
         red.putalpha(alpha)
         data = red.tobytes("raw", "RGBA")
