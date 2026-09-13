@@ -773,7 +773,9 @@ class EditorWindow(QMainWindow):
         self._bw_mixer_widgets = []  # the 8 colour sliders + hint (advanced only)
         rail = QWidget()
         rail.setObjectName("Rail")
-        rail.setFixedWidth(288)
+        # Give the readable label column and sliders room without relying on
+        # Qt to elide control names at ordinary desktop scaling.
+        rail.setFixedWidth(320)
         layout = QVBoxLayout(rail)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -1309,7 +1311,7 @@ class EditorWindow(QMainWindow):
         dir_row.setSpacing(8)
         dlabel = QLabel("Direction")
         dlabel.setObjectName("ControlName")
-        dlabel.setFixedWidth(74)
+        dlabel.setFixedWidth(SliderRow.LABEL_WIDTH)
         dir_row.addWidget(dlabel)
         self.mask_dir = QComboBox()
         self.mask_dir.addItems(["Top", "Bottom", "Left", "Right"])
