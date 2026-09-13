@@ -110,14 +110,16 @@ p:last-child { margin-bottom: 0; }
 .logo-text .tagline em { color: var(--red); font-style: normal; }
 
 /* --- NAVIGATION --- */
-nav {
+/* HEADER NAV ONLY. These used to be bare `nav`/`nav a` and leaked into every
+   <nav> on the site (FAQ section cards, FAQ sub-nav, GOODS tabs, footer). */
+#site-header nav, #mini-header nav {
     /* Two rows of five on desktop: room to breathe instead of ten items crammed on one line. */
     display: grid; grid-template-columns: repeat(5, auto);
     column-gap: 30px; row-gap: 10px;
     margin-left: auto; text-align: left;
     align-items: start; justify-items: start;
 }
-nav a {
+#site-header nav a, #mini-header nav a {
     font-family: Arial Black, Arial, sans-serif;
     font-size: 0.74rem; font-weight: 900; text-transform: uppercase;
     letter-spacing: 0.03em; color: var(--dark-grey);
@@ -125,14 +127,14 @@ nav a {
     white-space: nowrap;
     transition: color 0.15s;
 }
-nav a::after {
+#site-header nav a::after, #mini-header nav a::after {
     content: ''; position: absolute; bottom: 0; left: 0;
     width: 0; height: 2px; background: var(--red); transition: width 0.3s ease;
 }
-nav a:hover { color: var(--black); text-decoration: none; }
-nav a:hover::after { width: 100%; }
-nav a.active { color: var(--black); }
-nav a.active::after { width: 100%; }
+#site-header nav a:hover, #mini-header nav a:hover { color: var(--black); text-decoration: none; }
+#site-header nav a:hover::after, #mini-header nav a:hover::after { width: 100%; }
+#site-header nav a.active, #mini-header nav a.active { color: var(--black); }
+#site-header nav a.active::after, #mini-header nav a.active::after { width: 100%; }
 .nav-group { position: relative; }
 .nav-group summary {
     list-style: none;
