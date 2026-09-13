@@ -161,7 +161,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="feat-head">
                 <p class="site-discovery-kicker">Not alone</p>
                 <h2>The ship has sailed on the lonely blog.</h2>
-                <p class="lede">Discoverability isn&rsquo;t optional anymore. You need social &mdash; the <em>right</em> social, where you own your art and set the terms. So SnapSmack comes with a small, quiet network of photographers built in, and the wider fediverse one switch away.</p>
+                <p class="lede">Discoverability isn&rsquo;t optional anymore. You need social &mdash; the <em>right</em> social, where you own your art and set the terms. So SnapSmack comes with a small, quiet network of photographers built in, and the wider fediverse one switch away: the part of Flickr that mattered, without the landlord.</p>
             </div>
             <div class="feat-grid">
                 <article class="feat-card"><h3>photoblogs.fyi</h3><p>A shared front door for finding independent photography sites, and a reader for following them, without making any of those sites depend on it.</p></article>
