@@ -158,6 +158,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>All Posts</h3>
             <ol>
+                <li><span class="idx-date">Sep 13</span><a href="#ai-heal-free-tier">We Accidentally Replaced Half a Canva Subscription</a></li>
                 <li><span class="idx-date">Aug 30</span><a href="#snap-slapper-editor">SNAP SLAPPER Is Ready for the Box O&rsquo; Tricks</a></li>
                 <li>
                     <span class="idx-date">Aug 30</span>
@@ -337,6 +338,22 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="ai-heal-free-tier">
+                <div class="post-meta">
+                    <span class="post-date">September 13, 2026</span>
+                    <span class="post-tag">Desktop</span>
+                </div>
+                <h2><a href="#ai-heal-free-tier">We Accidentally Replaced Half a Canva Subscription</a></h2>
+                <p>It started with a scratch in the paint of a black El Camino. SNAP SLAPPER already had an ordinary healing brush. What it did not have was the expensive-button version: paint over a defect, ask an image model to understand the surrounding photograph, and have it rebuild the missing content.</p>
+                <p>Now it does. <strong>AI HEAL</strong> sends a working-resolution crop, a visibly marked reference, and the exact selection mask to Google Gemini. Gemini reconstructs the selected area. SNAP SLAPPER then brings the result home as an ordinary non-destructive image layer, locks it behind the photographer&rsquo;s mask, and preserves the original photograph underneath.</p>
+                <p>The first result worked and blended badly. The second nearly worked but left a faint boundary. The fixed feather was improved, then the obvious answer arrived five minutes late: photographs are different, so feathering should be a control. Each AI repair layer now has its own live <strong>FEATHER</strong> slider, plus the layer opacity, blend mode, editable mask, visibility switch, history, and Remove button that were already part of the editor. Changing any of those is local and does not call Gemini again.</p>
+                <p>The entire real-world test&mdash;multiple repairs while we found the crop, mask, and blending problems&mdash;ran through Gemini&rsquo;s free tier on Sean&rsquo;s account. <strong>No billing information had been entered.</strong> That is an observation from September 13, 2026, not a promise from us that Google will preserve the same models, quotas, eligibility, or pricing. SNAP SLAPPER uses the photographer&rsquo;s own API key and asks before each paid-or-metered request.</p>
+                <p>The useful division is easy to miss. Gemini generated the pixels inside the requested repair. SNAP SLAPPER supplied the photographic workflow around them: focused context, explicit selection, local enforcement, adjustable blending, reversibility, project history, and an exit that does not require keeping a subscription alive. The cloud performed one bounded job. The desktop editor remained in charge of the photograph.</p>
+                <p><strong>GENERATIVE FILL</strong> is the next step. It uses the same containment model, but instead of asking Gemini to remove a defect, the photographer paints an area. Leave the description blank and it infers matching content from the surroundings; add a description only when something specific should appear there. It remains a separate named layer with the same mask and feather controls. AI proposes pixels. You decide where they are allowed to exist.</p>
+                <p>This is how the feature actually arrived: dogfooding, visible seams, a sluggish slider, several rebuilds, and a photographer saying &ldquo;You need an adjust feathering option. LOL.&rdquo; The embarrassing middle is not being edited out. It is the evidence that somebody cared whether the button worked after the demo.</p>
+                <p><strong>One API call. Your mask. Your layer. Your original.</strong></p>
+            </article>
 
             <article class="post" id="lewk-again">
                 <div class="post-meta">
