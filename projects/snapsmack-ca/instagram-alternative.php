@@ -15,6 +15,7 @@ $landing_h1 = 'An Instagram alternative<br>you actually own.';
 $landing_opener = <<<'HTML'
             <p>Remember when you posted a photograph and it just&hellip; stayed there? Nobody cropped it into a square, buried it under a dance video, or sold the space next to it to a mattress company. Nobody &ldquo;updated the terms.&rdquo; That&rsquo;s this.</p>
             <p>It&rsquo;s software. You put it on a cheap web host. It&rsquo;s yours the way your camera is yours. The three-across grid is back, your captions and dates come with you, and the only algorithm is the one where newer things are at the top.</p>
+            <p>And yes, people can still follow you. Your site is on the fediverse: anyone on Pixelfed, Mastodon, or the rest can follow, like, boost, and comment on your photographs from where they already are, while every one of them stays on your server. Followers without a landlord.</p>
 HTML;
 $landing_closer = <<<'HTML'
             <p class="seo-closer-lines"><span>No algorithm.</span><span>No ads.</span><span>No <em>Zuck.</em></span></p>
