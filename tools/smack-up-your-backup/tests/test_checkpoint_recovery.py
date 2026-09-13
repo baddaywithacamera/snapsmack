@@ -85,6 +85,9 @@ def test_qt_background_backup_has_a_real_tray_contract():
     assert 'self.tray_pause_action.triggered.connect(self._toggle_pause)' in source
     assert 'app.setQuitOnLastWindowClosed(False)' in source
     assert 'QApplication.instance().quit()' in source
+    assert 'QKeySequence.HelpContents' in source
+    assert 'HELP · F1' in source
+    assert 'Pause, close, and resume' in source
 
 if __name__ == "__main__":
     test_resume_does_not_require_final_kit()
