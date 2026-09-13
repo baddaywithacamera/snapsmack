@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 013 — Fediverse replies were stored, approved, and never shown on any skin</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 013 — Fediverse replies were stored, approved, and never shown on any skin</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-13-013</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-13</td></tr>
+        <tr><td class="k">First observed</td><td>2026-09-13, during a deliberate end-to-end comment test on allinthewrist.photoblogs.fyi (0.7.706D). Prompted by the snapsmack.ca home page claiming two-way comments and the co-author asking whether that claim had ever been checked.</td></tr>
+        <tr><td class="k">Theme</td><td>&ldquo;Works&rdquo; was true of the database and false of the web page. Two comment tables, two one-way pipes, and nobody had ever looked at a public post as a reader.</td></tr>
+        <tr><td class="k">Surfaces</td><td>Every skin&rsquo;s public comment thread (all 24 render the same component); the public comment form; inbound and outbound comment federation.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-watched">Watched working</span> &nbsp; for the inbound half (0.7.707D, deployed and seen). The outbound half (a comment typed on the blog reaching Pixelfed/Mastodon) is fixed in 0.7.708D and is <span class="state-chip chip-confirm">Confirming</span> &mdash; listed separately on the ledger.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes, inbound</strong> &mdash; two federated replies and one local comment, all three visible under the test post on allinthewrist.photoblogs.fyi after 707D (see §6). <strong>Not yet, outbound</strong> &mdash; pixelfed.social was returning 502 during the test window.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean (ran the test from three accounts, deployed, watched) + Claude (traced both tables, wrote both fixes).</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 005 (inbound activity arrived, passed checks, then vanished &mdash; this is the next link in that chain: it arrived, passed, was stored, and vanished on the page); OPAUDIT 009 (Pixelfed likes).</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No exploitable detail.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>A reply sent from Pixelfed, Mastodon, or another SnapSmack site to a photograph on a SnapSmack
+    blog was delivered, verified, matched to the right photograph, and approved &mdash; and then never
+    appeared on the public page. Not on one skin: on all twenty-four. The owner could see it in the
+    moderation screen, which is why it looked fine from the inside. Separately, a comment typed on
+    the blog&rsquo;s own form never left the blog. Both halves of &ldquo;comments federate&rdquo; were
+    broken in the same way: two tables, and each pipe only knew about one of them.</p>
+
+    <h2>2. What a human saw</h2>
+    <p>Sean replied to a post on allinthewrist.photoblogs.fyi from two places: the fediverse page on
+    unzucked.ca (a SnapSmack site that follows it), and pixelfed.social. Both replies showed as sent
+    on the sending side. Two likes arrived and were counted correctly (the heart showed 2). Neither
+    reply appeared under the post. He then typed a comment directly into the post&rsquo;s own form;
+    it appeared on the page (after a cache refresh) but never reached the fediverse.</p>
+
+    <h2>3. Root cause</h2>
+    <p>SnapSmack has two comment tables. <code>snap_comments</code> is the classic table: the
+    fediverse inbox writes inbound replies there (keyed to the image), and the moderation screen and
+    the outbound federation code (<code>sv_federate_comment</code>) read from it.
+    <code>snap_community_comments</code> is the community engine&rsquo;s table: the public form on
+    every skin writes there, and the comment thread every skin renders
+    (<code>core/community-component.php</code>) reads <em>only</em> from there.</p>
+    <p>So: inbound replies landed in a table the page never read. Local comments landed in a table
+    the fediverse never read. Neither was a delivery failure, a signature failure, or a moderation
+    hold. The plumbing on each side was correct and complete; the two sides had simply never been
+    joined. This is the same shape as OPAUDIT 012 &mdash; an assumed invariant (&ldquo;a comment is a
+    comment&rdquo;) that nothing ever implemented.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>On the site&rsquo;s database (<code>allinthe</code>), the inbox receipt log showed both replies
+    received and routed:</p>
+    <pre>2026-09-13 15:17:48  Create  pixelfed.social/users/mccormickphoto  received — reply routed to image 37
+2026-09-13 15:17:32  Like    pixelfed.social/users/mccormickphoto  resolved post:35 — recorded
+2026-09-13 15:15:02  Like    unzucked.ca/ap/actor                  resolved post:35 — recorded
+2026-09-13 15:15:01  Create  unzucked.ca/ap/actor                  received — reply routed to image 37</pre>
+    <p>Both rows existed in <code>snap_comments</code> with <code>img_id = 37</code>,
+    <code>is_approved = 1</code>, <code>is_spam = 0</code>, <code>ap_source = 'fediverse'</code>.
+    Image 37 belongs to post 35 &mdash; the post the likes resolved to. The setting
+    <code>fedi_auto_approve_replies</code> was unset (defaults to on). The typed comment existed in
+    <code>snap_community_comments</code> with <code>post_id = 37</code>, <code>status = 'visible'</code>.
+    A fetch of the post&rsquo;s rendered fragment contained the local comment and neither federated
+    one. A search of every skin&rsquo;s layout found zero skins rendering <code>snap_comments</code>
+    and all 24 including the community component.</p>
+
+    <h2>5. What we did</h2>
+    <p><strong>Inbound (0.7.707D &ldquo;Loud and Clear&rdquo;):</strong> the community component now
+    also reads approved, non-spam <code>snap_comments</code> rows with
+    <code>ap_source = 'fediverse'</code> for the photograph (or every photograph in the post, in
+    post-keyed mode), merges them into the thread in date order, read-only, with a small
+    &ldquo;fediverse&rdquo; tag and the commenter&rsquo;s handle linked to their profile. No
+    migration; the existing rows simply become visible.</p>
+    <p><strong>Outbound (0.7.708D &ldquo;Both Ways&rdquo;):</strong> every comment posted through the
+    public form is now also written to <code>snap_comments</code> as an approved local row and handed
+    to the same outbound pipe the moderation screen&rsquo;s owner-replies already used &mdash;
+    threaded under the photograph&rsquo;s Note so it arrives as a reply on Pixelfed and Mastodon. The
+    mirror row is marked local, so the thread never shows it twice.</p>
+    <p>A regression test (<code>tests/fediverse-replies-render-regression.php</code>) guards both
+    joins. Known gap, stated in the changelog: hiding or deleting a community comment does not yet
+    send a Delete to the fediverse.</p>
+
+    <h2>6. Verified live — and what remains</h2>
+    <p>707D was packaged and deployed to allinthewrist.photoblogs.fyi the same afternoon. Opening the
+    post showed all three comments in order: the unzucked reply, the pixelfed.social reply (both
+    tagged FEDIVERSE), and the typed local comment &mdash; without re-sending anything. That is the
+    inbound half, watched.</p>
+    <p>What remains: the outbound half. 708D is tagged but not yet deployed. The test is: deploy,
+    type a fresh comment on the post, and watch it appear under the same post on unzucked.ca&rsquo;s
+    fediverse page (a full SnapSmack-to-SnapSmack round trip) and on pixelfed.social. During this
+    audit pixelfed.social was returning 502 for everyone; the delivery queue retries with backoff, so
+    the Pixelfed copy should land on its own when that server returns. Until someone watches it, the
+    outbound entry on the ledger stays <em>Confirming</em>.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>Whether the moderation screen should show community-form comments alongside classic ones,
+    now that they are mirrored (today they appear under different tabs). Whether hiding a community
+    comment should retract the federated copy. And the older question this reopens: 1,904 comments on
+    foreverphotograph.ing are still keyed to images rather than posts &mdash; the same two-shapes
+    problem, on a larger archive.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>A feature is not working until someone has seen it on the public page the way a reader
+        sees it. &ldquo;It&rsquo;s in the database&rdquo; and &ldquo;the admin screen shows it&rdquo;
+        are not that. Every link in a chain can be individually correct and the chain still deliver
+        nothing; the only test that counts is the one that starts where a stranger starts.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
