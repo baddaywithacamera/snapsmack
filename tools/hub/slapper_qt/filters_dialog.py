@@ -132,6 +132,8 @@ class FiltersDialog(QDialog):
                 slider.valueChanged.connect(
                     lambda number, k=key, label=readout:
                     (label.setText(str(number)), self._set(k, number)))
+                slider.sliderPressed.connect(self.host.begin_interactive_render)
+                slider.sliderReleased.connect(self.host.finish_interactive_render)
                 control_row.addWidget(slider, 1); control_row.addWidget(readout)
             elif key in {"primary", "secondary", "tint"} and isinstance(value, list):
                 control = QPushButton("Choose…")
@@ -159,7 +161,9 @@ class FiltersDialog(QDialog):
 
     def _set(self, key, value):
         self.layer["settings"][key] = value
-        self.host.request_render()
+        sender = self.sender()
+        self.host.request_render(
+            interactive=isinstance(sender, QSlider) and sender.isSliderDown())
 
     @staticmethod
     def _show_colour(button, value):

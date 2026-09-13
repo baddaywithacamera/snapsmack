@@ -342,9 +342,6 @@ class ImageView(QGraphicsView):
         self._update_crop_overlay()
 
     def _update_crop_overlay(self):
-        for item in self._crop_shades + self._crop_grid + self._crop_handles:
-            self._scene.removeItem(item)
-        self._crop_shades, self._crop_grid, self._crop_handles = [], [], []
         if not self._crop_rect_item:
             return
         scene, rect = self._scene.sceneRect(), self._crop_rect_item.rect()
@@ -353,26 +350,46 @@ class ImageView(QGraphicsView):
             QRectF(scene.left(), rect.bottom(), scene.width(), scene.bottom() - rect.bottom()),
             QRectF(scene.left(), rect.top(), rect.left() - scene.left(), rect.height()),
             QRectF(rect.right(), rect.top(), scene.right() - rect.right(), rect.height()))
-        for bounds in shade_rects:
-            item = QGraphicsRectItem(bounds)
-            item.setPen(QPen(Qt.NoPen)); item.setBrush(QColor(0, 0, 0, 145)); item.setZValue(18)
-            self._scene.addItem(item); self._crop_shades.append(item)
+        # Crop handles move on every mouse event. Keep the graphics items alive
+        # and update their geometry; deleting and recreating sixteen scene
+        # objects per event made the frame visibly trail the pointer.
+        while len(self._crop_shades) < 4:
+            item = QGraphicsRectItem()
+            item.setPen(QPen(Qt.NoPen))
+            item.setBrush(QColor(0, 0, 0, 145))
+            item.setZValue(18)
+            self._scene.addItem(item)
+            self._crop_shades.append(item)
+        for item, bounds in zip(self._crop_shades, shade_rects):
+            item.setRect(bounds.normalized())
         grid_pen = QPen(QColor(255, 255, 255, 150), 0)
+        grid_lines = []
         for fraction in (1 / 3, 2 / 3):
-            for x1, y1, x2, y2 in (
+            grid_lines.extend((
                     (rect.left() + rect.width() * fraction, rect.top(),
                      rect.left() + rect.width() * fraction, rect.bottom()),
                     (rect.left(), rect.top() + rect.height() * fraction,
-                     rect.right(), rect.top() + rect.height() * fraction)):
-                line = QGraphicsLineItem(x1, y1, x2, y2)
-                line.setPen(grid_pen); line.setZValue(21)
-                self._scene.addItem(line); self._crop_grid.append(line)
+                     rect.right(), rect.top() + rect.height() * fraction)))
+        while len(self._crop_grid) < 4:
+            line = QGraphicsLineItem()
+            line.setPen(grid_pen)
+            line.setZValue(21)
+            self._scene.addItem(line)
+            self._crop_grid.append(line)
+        for line, (x1, y1, x2, y2) in zip(self._crop_grid, grid_lines):
+            line.setLine(x1, y1, x2, y2)
         radius = max(4.0, min(scene.width(), scene.height()) / 120.0)
-        for point in self._crop_handle_points(rect).values():
-            handle = QGraphicsRectItem(point.x() - radius, point.y() - radius,
-                                       radius * 2, radius * 2)
-            handle.setPen(QPen(QColor("#ffffff"), 0)); handle.setBrush(QColor(theme.ACCENT))
-            handle.setZValue(22); self._scene.addItem(handle); self._crop_handles.append(handle)
+        while len(self._crop_handles) < 8:
+            handle = QGraphicsRectItem()
+            handle.setPen(QPen(QColor("#ffffff"), 0))
+            handle.setBrush(QColor(theme.ACCENT))
+            handle.setZValue(22)
+            self._scene.addItem(handle)
+            self._crop_handles.append(handle)
+        for handle, point in zip(self._crop_handles,
+                                 self._crop_handle_points(rect).values()):
+            handle.setRect(point.x() - radius, point.y() - radius,
+                           radius * 2, radius * 2)
 
     @staticmethod
     def _crop_handle_points(rect):

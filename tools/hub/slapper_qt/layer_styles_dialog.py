@@ -78,6 +78,9 @@ class LayerStylesDialog(QDialog):
                         self.stroke, self.glow, self.overlay):
             signal = control.toggled if isinstance(control, QCheckBox) else control.valueChanged
             signal.connect(self._preview)
+            if isinstance(control, QSlider):
+                control.sliderPressed.connect(self.host.begin_interactive_render)
+                control.sliderReleased.connect(self.host.finish_interactive_render)
         self.overlay_opacity.valueChanged.connect(self._overlay_changed)
         self._sync_enabled()
 
@@ -150,7 +153,10 @@ class LayerStylesDialog(QDialog):
             "overlay_color": list(self._colours["overlay_color"]),
             "overlay_opacity": self.overlay_opacity.value() / 100.0,
         })
-        self.host.request_render()
+        dragging = any(control.isSliderDown() for control in (
+            self.shadow_blur, self.shadow_offset, self.inner_shadow_blur,
+            self.stroke, self.glow, self.overlay_opacity))
+        self.host.request_render(interactive=dragging)
 
     def accept(self):
         self._preview()
