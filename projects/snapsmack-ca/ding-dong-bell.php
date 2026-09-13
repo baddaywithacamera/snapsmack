@@ -254,6 +254,25 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="entry">
                 <div class="entry-top">
+                    <h3>Fediverse replies were stored, approved, and never shown on any skin</h3>
+                    <span class="date">&ldquo;Loud and Clear&rdquo; &middot; 2026-09-13</span>
+                    <span class="state notwatch">Fixed &mdash; confirming</span>
+                </div>
+                <p>A reply from Pixelfed, Mastodon, or another SnapSmack site arrived, passed its signature check, was matched to the right photograph, was auto-approved, and sat in the database &mdash; where the owner could see it in the moderation screen. The public page never showed it. Not on one skin: on all twenty-four. Federated replies were written to the classic comments table; the comment thread every skin renders had moved to the community engine and read only its own table. Nobody wired the old one in. Which means &ldquo;comments federate&rdquo; was true of the database and false of the website, for as long as the community engine has existed.</p>
+                <p>Found the plain way: two test replies sent to a live post, both present in the database with the right photo and approved, neither on the page. The thread now merges approved federated replies into the same list, in date order, tagged so you can see where they came from, with the commenter&rsquo;s handle linked to their profile. Ships in 0.7.707D. Confirming means: deploy it, open the post, see the two replies that were already there. The other direction &mdash; a reply typed on the site reaching Pixelfed &mdash; is not yet watched, and is listed on its own below.</p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top">
+                    <h3>A reply typed on the site reaching the fediverse</h3>
+                    <span class="date">2026-09-13</span>
+                    <span class="state nottested">Confirming</span>
+                </div>
+                <p>The code to send a blog comment out as a federated reply exists and runs on approve or reply. Nobody has yet watched one land under the original on Pixelfed or Mastodon and named what they saw. Until someone does, it is listed here as untested, not as working.</p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top">
                     <h3>The default network relay pointed at a machine that no longer existed</h3>
                     <span class="date">retired box</span>
                     <span class="state notwatch">Fixed &mdash; confirming</span>
