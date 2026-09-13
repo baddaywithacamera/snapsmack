@@ -163,7 +163,7 @@ require_once __DIR__ . '/includes/header.php';
             <h1 class="door-hook">Retro Photo Blogging.<br><span>No Algorithm.</span></h1>
             <p class="door-kicker">What&rsquo;s new is old again.</p>
             <p class="door-sub">We&rsquo;re not offering you anything new. We&rsquo;re giving back what was taken: the single-photo blog, long-form posting that hasn&rsquo;t been enshittified, classic Insta styling, and pumping images straight out of a file manager. All of it used to belong to photographers. Now it lives on hardware you control, and nobody is taking it back from you.</p>
-            <p class="door-editor">And a free, powerful <a href="tool-snap-slapper.php">photo editor</a>. Non-destructive &mdash; your originals are never touched, ever. And it doesn&rsquo;t expire when you stop paying, because we remember when you didn&rsquo;t have to rent your software.</p>
+            <p class="door-editor">And a free, powerful <a href="tool-snap-slapper.php">photo editor</a>. Non-destructive; your originals are never touched, ever. And it doesn&rsquo;t expire when you stop paying, because we remember when you didn&rsquo;t have to rent your software.</p>
             <p class="door-never">Your photos. Your voice.<br>Your style. <em>Your dignity.</em></p>
             <div class="door-actions">
                 <a href="#beta" class="btn btn-primary">Try the Beta</a>
