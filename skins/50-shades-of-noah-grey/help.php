@@ -34,6 +34,10 @@ chromatic element on the page.</p>
     <li><strong>Floating Gallery support</strong> — with greyscale-appropriate shadow and text
     defaults.</li>
     <li><strong>Three archive layouts</strong> — Square, Cropped, and Masonry (justified).</li>
+    <li><strong>Masonry controls (1.5.0)</strong> — the justified archive is laid out by
+    SnapSmack&rsquo;s own SCROLL wall engine, so its controls are the engine&rsquo;s: <em>Tile Size</em>
+    (fewer across = bigger photographs), <em>Space Between Tiles</em>, <em>Wall Width</em>, and a
+    tile border. All in the ARCHIVE section of Smooth Your Skin.</li>
     <li><strong>Frame styles</strong> — six options: Thin Border, Medium Border, Heavy Border,
     Soft Shadow, Heavy Shadow, and None.</li>
     <li><strong>Typography controls</strong> — includes text-transform options
