@@ -272,7 +272,7 @@ if ($is_guest) {
 $comment_id = (int)$pdo->lastInsertId();
 $created_at = date('Y-m-d H:i:s');
 
-// --- FEDERATE OUT (0.7.707D) ---
+// --- FEDERATE OUT (0.7.708D) ---
 // The public form writes to snap_community_comments; the fediverse only ever
 // spoke snap_comments (sv_federate_comment). So a comment typed on the blog
 // never left the blog. Mirror it into snap_comments as an approved LOCAL row
