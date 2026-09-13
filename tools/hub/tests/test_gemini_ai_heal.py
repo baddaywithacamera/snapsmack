@@ -48,6 +48,19 @@ def test_heal_sends_photo_mask_and_extracts_image(monkeypatch):
     assert seen["params"] == {"key": "secret"}
 
 
+def test_small_defect_is_enlarged_with_surrounding_context():
+    photo = Image.new("RGB", (2400, 1600), "gray")
+    mask = Image.new("L", photo.size, 0)
+    for y in range(50, 90):
+        for x in range(1100, 1120):
+            mask.putpixel((x, y), 255)
+    box, working_photo, working_mask = gemini_image_edit.focus_region(photo, mask)
+    assert box[0] < 1100 and box[2] > 1120
+    assert box[1] == 0  # clipped safely at the top edge
+    assert max(working_photo.size) > max(box[2] - box[0], box[3] - box[1])
+    assert working_photo.size == working_mask.size
+
+
 def test_heal_refuses_empty_selection():
     photo = Image.new("RGB", (20, 20), "white")
     mask = Image.new("L", photo.size, 0)
@@ -62,6 +75,7 @@ def test_heal_refuses_empty_selection():
 def test_editor_wires_ai_heal_as_a_masked_layer():
     source = (HUB / "slapper_qt" / "editor_window.py").read_text(encoding="utf-8")
     assert 'QAction("AI Heal…"' in source
+    assert 'add_image_layer(path, name="AI Heal", record=False)' in source
     assert 'layer["mask"] = editor_engine._mask_to_text(mask)' in source
     assert '"kind": "generative-repair"' in source
     assert '"retouch": (self.act_heal, self.act_redeye, self.act_ai_heal,' in source
