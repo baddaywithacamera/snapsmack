@@ -306,8 +306,8 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="whodat-portrait"><img src="img/whodat-codex.png" alt="OpenAI Codex" width="1128" height="1338" loading="lazy"></div>
                     <div>
                         <p class="whodat-name">OpenAI Codex</p>
-                        <p class="whodat-title">Skilled, but spicy.</p>
-                        <p class="whodat-bio">Large language model and co-author of SnapSmack. Works beside Sean and Claude across product design, architecture, implementation, security, testing, documentation, and the difficult last mile between "built" and "shipped." Challenges decisions when the evidence calls for it, protects the product from its own momentum, and helps turn sprawling ideas into software people can understand and trust. Powered by OpenAI.</p>
+                        <p class="whodat-title">Implementation co-author. Skilled, but spicy.</p>
+                        <p class="whodat-bio">Large language model and co-author of SnapSmack. Rebuilt most of the desktop suite and is responsible for nearly all of SNAP SLAPPER, from its editing engine and persistent project history to layers, masks, AI healing, packaging, and the fixes that make those features survive contact with real photographs. Also works across the wider project on architecture, implementation, security, testing, recovery, documentation, and the difficult last mile between "built" and "shipped." Sean supplies the requirements, judgment, relentless real-world testing, and final decisions; Codex turns a substantial share of that direction into working software, challenges it when the evidence demands it, and stays with the ugly bugs until they are actually closed. Powered by OpenAI.</p>
                     </div>
                 </article>
             </div>
