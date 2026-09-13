@@ -88,14 +88,11 @@ class AIHealDialog(QDialog):
     def _received(self, payload):
         result, mask, model = payload
         result = result.resize(self.photo.size, Image.Resampling.LANCZOS)
-        # The mask remains the final authority; Gemini never gets to replace the
-        # rest of the frame. A scaled overlap avoids a visible pasted boundary.
-        feathered = gemini_image_edit.blend_mask(mask)
         folder = os.path.join(snap_home.shared_library(), "snap_slapper", "generative")
         os.makedirs(folder, exist_ok=True)
         path = os.path.join(folder, f"ai-heal-{int(time.time() * 1000)}.png")
         result.save(path, "PNG")
-        self.host.apply_ai_heal(path, feathered, model, self.prompt.text().strip())
+        self.host.apply_ai_heal(path, mask, model, self.prompt.text().strip())
         self.accept()
 
     def _failed(self, message):

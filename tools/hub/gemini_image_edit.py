@@ -4,20 +4,27 @@ import base64
 import io
 
 import requests
-from PIL import Image, ImageFilter
+from PIL import Image, ImageChops, ImageFilter
 
 
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 
-def blend_mask(mask):
+def blend_mask(mask, strength=1.0):
     """Give a generated repair enough overlap to hide its local mask boundary."""
     mask = mask.convert("L")
+    strength = max(0.0, min(2.0, float(strength)))
+    if strength == 0:
+        return mask
     short_edge = min(mask.size)
-    expansion = max(2, min(14, round(short_edge / 350)))
+    # Gemini's reconstructed patch can be fractionally lighter or darker than
+    # smooth surrounding paint. A broad, soft transition hides that low-frequency
+    # seam without granting the model control over a meaningfully larger region.
+    expansion = max(1, round(max(3, min(18, short_edge / 180)) * strength))
     expanded = mask.filter(ImageFilter.MaxFilter(expansion * 2 + 1))
-    feather = max(3, min(24, short_edge / 240))
-    return expanded.filter(ImageFilter.GaussianBlur(feather))
+    feather = max(1, max(8, min(42, short_edge / 60)) * strength)
+    softened = expanded.filter(ImageFilter.GaussianBlur(feather))
+    return ImageChops.lighter(mask, softened)
 
 
 def _png_data(image):

@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 import editor_engine
+import gemini_image_edit
 from .engine_bridge import pil_to_qpixmap
 
 from . import theme
@@ -117,6 +118,29 @@ class LayersPanel(QWidget):
         self.blend.currentIndexChanged.connect(self._on_blend)
         blend_row.addWidget(self.blend, 1)
         detail_layout.addLayout(blend_row)
+
+        self.feather_row = QWidget()
+        feather_layout = QHBoxLayout(self.feather_row)
+        feather_layout.setContentsMargins(0, 0, 0, 0)
+        feather_layout.setSpacing(8)
+        feather_label = QLabel("Feather")
+        feather_label.setObjectName("ControlName")
+        feather_label.setFixedWidth(52)
+        feather_layout.addWidget(feather_label)
+        self.feather = QSlider(Qt.Horizontal)
+        self.feather.setRange(0, 200)
+        self.feather.setValue(100)
+        self.feather.setToolTip(
+            "Soften the AI repair boundary. This does not contact Gemini again.")
+        self.feather.valueChanged.connect(self._on_ai_heal_feather)
+        self.feather.sliderReleased.connect(self._commit_ai_heal_feather)
+        feather_layout.addWidget(self.feather, 1)
+        self.feather_value = QLabel("100")
+        self.feather_value.setObjectName("ControlValue")
+        self.feather_value.setFixedWidth(30)
+        self.feather_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        feather_layout.addWidget(self.feather_value)
+        detail_layout.addWidget(self.feather_row)
 
         self.fill_colour_btn = QPushButton("Fill blank layer…")
         self.fill_colour_btn.setObjectName("LayerAddBtn")
@@ -320,6 +344,15 @@ class LayersPanel(QWidget):
         self.mask_linked.blockSignals(False)
         self.edit_mask_btn.setEnabled(True)
         self.fill_colour_btn.setVisible(layer.get("type") == "paint")
+        adjustable_feather = bool(
+            layer.get("mask_kind") == "ai-heal-selection" and
+            layer.get("ai_heal_source_mask"))
+        self.feather_row.setVisible(adjustable_feather)
+        if adjustable_feather:
+            self.feather.blockSignals(True)
+            self.feather.setValue(int(layer.get("ai_heal_feather", 100)))
+            self.feather.blockSignals(False)
+            self.feather_value.setText(str(self.feather.value()))
         if layer.get("type") == "paint":
             fill = list(layer.get("fill", [0, 0, 0, 0]))
             colour = QColor(*((fill + [0, 0, 0])[:3]))
@@ -458,6 +491,24 @@ class LayersPanel(QWidget):
     def _commit_opacity(self):
         if self._selected_layer() is not None:
             self.doc.record("Layer opacity")
+            self.host.update_title()
+
+    def _on_ai_heal_feather(self, value):
+        self.feather_value.setText(str(value))
+        layer = self._selected_layer()
+        if not layer or not layer.get("ai_heal_source_mask"):
+            return
+        source = editor_engine._mask_from_text(layer["ai_heal_source_mask"])
+        layer["ai_heal_feather"] = int(value)
+        layer["mask"] = editor_engine._mask_to_text(
+            gemini_image_edit.blend_mask(source, value / 100.0))
+        self.update_mask_thumbnail(layer)
+        self.host.request_render()
+
+    def _commit_ai_heal_feather(self):
+        layer = self._selected_layer()
+        if layer and layer.get("ai_heal_source_mask"):
+            self.doc.record("AI Heal feather")
             self.host.update_title()
 
     def _on_blend(self, index):
