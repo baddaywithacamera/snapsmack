@@ -98,6 +98,7 @@ class LayersPanel(QWidget):
         self.opacity.setRange(0, 100)
         self.opacity.setValue(100)
         self.opacity.valueChanged.connect(self._on_opacity)
+        self.opacity.sliderPressed.connect(self.host.begin_interactive_render)
         self.opacity.sliderReleased.connect(self._commit_opacity)
         op_row.addWidget(self.opacity, 1)
         self.opacity_value = QLabel("100")
@@ -502,12 +503,13 @@ class LayersPanel(QWidget):
         layer = self._selected_layer()
         if layer is not None:
             layer["opacity"] = value / 100.0
-            self.host.request_render()
+            self.host.request_render(interactive=self.opacity.isSliderDown())
 
     def _commit_opacity(self):
         if self._selected_layer() is not None:
             self.doc.record("Layer opacity")
             self.host.update_title()
+            self.host.finish_interactive_render()
 
     def _on_ai_heal_feather(self, value):
         self.feather_value.setText(str(value))
