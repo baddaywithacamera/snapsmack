@@ -84,11 +84,11 @@ function ss_tool_card(string $href, string $name, string $platform, string $stat
     <section class="why-desktop" id="why-desktop">
         <div class="wrap">
             <p class="site-discovery-kicker">Why desktop</p>
-            <h2>The one thing here that is actually new.</h2>
+            <h2>We said nothing here is new. This is the exception.</h2>
             <div class="why-desktop-cols">
-                <p>Content management systems are nothing new. Neither are desktop applications. Using the second to drive the first &mdash; that is new, or unusual at the very least. For two decades developers have pretended a browser tab was all you needed to publish a website. That was tolerable in the early days of Web 2.0. A couple of decades on, it no longer works.</p>
-                <p>Consolidation in web hosting and the rising cost of RAM, storage, and processing mean you pay a lot more for a lot less. That is why your host kills your processes before they finish, why you never get the memory you need or the storage you want, and why your large backup job never completes. Running a site on budget hosting is becoming impossible under the bloat of most current publishing systems.</p>
-                <p>So the server side of SnapSmack is optimized to use as few resources as possible, and the load is shifted to your desktop or laptop &mdash; even an older machine is orders of magnitude more capable than the hosted software. The desktop tools are powerful, work offline in many cases, and are always free. No hidden tiers, no upsells. If there is one thing SnapSmack does that is genuinely new, this is it. It just made sense.</p>
+                <p>For twenty years developers have pretended a browser tab was all you needed to publish a website. It was tolerable in the early days of Web 2.0. It is not workable now. Hosting has consolidated, and you pay more every year for less: your host kills your processes before they finish, you never get the memory you need or the storage you want, and your large backup job never completes. Running a real archive on budget hosting under most current publishing systems is becoming impossible.</p>
+                <p>So SnapSmack does it the other way round. The server side is built to use as little as possible, and the heavy work moves to your desktop or laptop &mdash; a ten-year-old machine still beats a shared host. The desktop tools are powerful, work offline in many cases, and are always free. No hidden tiers, no upsells.</p>
+                <p>Content management systems are old. Desktop applications are old. Using the second to drive the first is the one thing SnapSmack does that nobody else does. It just made sense.</p>
             </div>
         </div>
     </section>
