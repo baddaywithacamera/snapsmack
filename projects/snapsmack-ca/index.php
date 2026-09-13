@@ -71,7 +71,7 @@ $page_css = <<<'CSS'
 .was-list em { margin-top: auto; padding-top: 14px; color: #aaa; font: 900 .72rem/1.3 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; font-style: normal; }
 .was-list em a { color: var(--white); text-decoration: underline; }
 .was-list em a:hover { color: var(--red); }
-.was-closer { max-width: 800px; margin-top: 34px; color: var(--white); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
+.was-closer { max-width: 800px; margin-top: 34px; color: var(--red); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
 
 /* --- SKINS BAND --- */
 #featured-skins { background: var(--black); color: #ddd; border-top: 8px solid var(--red); }
