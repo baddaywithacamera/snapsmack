@@ -50,15 +50,17 @@ $page_css = <<<'CSS'
 
 
 /* --- WHAT WAS: the four things taken, and their names here --- */
-#was { padding: 0 0 64px; }
-#was h2 { margin-bottom: 26px; }
+#was { padding: 64px 0; background: #2a2a2a; color: #ddd; border-top: 8px solid var(--red); }
+#was h2 { margin-bottom: 26px; color: var(--white); }
+#strip { padding-top: 56px; }
 .was-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; margin: 0; padding: 0; list-style: none; }
-.was-list li { display: flex; flex-direction: column; margin: 0; padding-top: 14px; border-top: 3px solid var(--black); }
-.was-list strong { color: var(--black); font: 900 .95rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
-.was-list span { margin-top: 10px; color: #333; font-size: .95rem; line-height: 1.5; }
-.was-list em { margin-top: auto; padding-top: 14px; color: var(--red); font: 900 .72rem/1.3 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; font-style: normal; }
-.was-list em a { color: var(--red); text-decoration: underline; }
-.was-closer { max-width: 800px; margin-top: 34px; color: var(--black); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
+.was-list li { display: flex; flex-direction: column; margin: 0; padding-top: 14px; border-top: 3px solid var(--red); }
+.was-list strong { color: var(--white); font: 900 .95rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.was-list span { margin-top: 10px; color: #ddd; font-size: .95rem; line-height: 1.5; }
+.was-list em { margin-top: auto; padding-top: 14px; color: #aaa; font: 900 .72rem/1.3 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; font-style: normal; }
+.was-list em a { color: var(--white); text-decoration: underline; }
+.was-list em a:hover { color: var(--red); }
+.was-closer { max-width: 800px; margin-top: 34px; color: var(--white); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
 
 /* --- SKINS BAND --- */
 #featured-skins { background: var(--black); color: #ddd; border-top: 8px solid var(--red); }
