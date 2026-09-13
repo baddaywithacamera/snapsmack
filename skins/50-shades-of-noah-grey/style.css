@@ -626,6 +626,32 @@ body {
     flex: 1 0 auto;
 }
 
+/* 1.5.0 — the three M layouts share #justified-grid; the class picks the engine.
+   Container rules copied from skins/scroll/style.css (.ss-masonry / .ss-square-wall). */
+#justified-grid.ss-masonry {
+    position: relative;
+    display: block;
+    width: auto;
+}
+#justified-grid.ss-square-wall {
+    display: grid;
+    grid-template-columns: repeat(var(--ss-cols, 4), minmax(0, 1fr));
+    gap: var(--ss-gap, 4px);
+}
+#justified-grid.ss-square-wall .ss-masonry-item {
+    box-sizing: border-box;
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+    margin: 0;
+    border: var(--scroll-border-width) solid var(--scroll-border-color);
+    overflow: hidden;
+}
+#justified-grid.ss-square-wall .ss-masonry-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 #justified-grid .ss-masonry-item img {
     transition: opacity 0.3s ease;
 }

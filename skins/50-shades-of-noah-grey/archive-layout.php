@@ -36,6 +36,16 @@ $ratio_max = 3 / 2;
 // (this replaces the MIT-licensed fjGallery so the whole gallery stays SnapSmack).
 // Tile size and gap come from the manifest (--ss-cols / --ss-gap on #justified-grid
 // in style.css) — nothing is set inline here, or it would override the controls.
+// 1.5.0: the M layout is a stored-value select (rows / columns / square). Same tiles,
+// same controls; the container class picks which SCROLL wall engine binds to it:
+//   rows    → .ss-scroll-wall  (ss-engine-rows.js)
+//   columns → .ss-masonry      (ss-engine-columns.js)
+//   square  → .ss-square-wall  (pure CSS grid, style.css)
+// Copied from skins/scroll/wall.php, which has run all three in production.
+$_fsog_m_layout = (string)($settings['masonry_layout'] ?? 'rows');
+if (!in_array($_fsog_m_layout, ['rows', 'columns', 'square'], true)) $_fsog_m_layout = 'rows';
+$_fsog_m_class  = $_fsog_m_layout === 'columns' ? 'ss-masonry'
+                : ($_fsog_m_layout === 'square' ? 'ss-square-wall' : 'ss-scroll-wall');
 ?>
 
 <?php
@@ -91,7 +101,7 @@ $_fsog_initial_thumbs = ($_fsog_cur === 'thumbs');
      load the aspect THUMBNAIL (a_), not the full image, which is what kills the
      downscale "sparkle" the old full-image grid produced. Shape comes from
      data-w/data-h so lazy-load never has to read naturalWidth. -->
-<div id="justified-grid" class="ss-scroll-wall"<?php echo $_fsog_initial_thumbs ? ' style="display:none;"' : ''; ?>>
+<div id="justified-grid" class="<?php echo $_fsog_m_class; ?>" data-masonry-layout="<?php echo $_fsog_m_layout; ?>"<?php echo $_fsog_initial_thumbs ? ' style="display:none;"' : ''; ?>>
     <?php if (!empty($images)): ?>
         <?php foreach ($images as $img):
             $link = BASE_URL . htmlspecialchars($img['img_slug']);
