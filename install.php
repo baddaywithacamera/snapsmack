@@ -1372,6 +1372,9 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'privacy_policy_enabled'    => '0',
                 'privacy_policy_title'      => 'Privacy Policy',
                 'privacy_policy_content'    => '',
+                // Visit-level traffic records expire automatically. Aggregate
+                // daily counts may remain; the product ceiling is one year.
+                'stats_retention_days'      => '365',
                 // (The legacy shared tool_api_key was retired in 0.7.261 — tools
                 //  now use per-tool scoped keys minted on smack-api-keys.php.)
                 // --- SECURITY OPT-IN (installer Step 6) ---

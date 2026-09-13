@@ -829,9 +829,12 @@ class BackupEngine:
         total_files     = len(media_files)
         bytes_total     = sum(r.size for r in media_files.values() if r.size)
         bytes_done      = 0
+        bytes_processed = 0
         bytes_failed    = 0
         done            = 0
         consec_failures = 0   # counts up to FAILURE_PROMPT_THRESHOLD then triggers prompt
+
+        self.on_stats(0, total_files, 0, 0, bytes_total, 0)
 
         for key, record in media_files.items():
             if self._cancelled:
@@ -841,15 +844,21 @@ class BackupEngine:
 
             # Skip files already confirmed downloaded in a previous run
             if key in already_done:
+                bytes_processed += record.size or 0
                 done += 1
                 self._progress("stage3", f"Resume skip: {record.restores_to}", pct)
+                self.on_stats(done, total_files, result["files_failed"],
+                              bytes_processed, bytes_total, bytes_failed)
                 continue
 
             if not needs_download(record, prev_state):
                 result["files_skipped"] += 1
+                bytes_processed += record.size or 0
                 done += 1
                 cp.record(key, skipped=True)
                 self._progress("stage3", f"Skip (unchanged): {record.restores_to}", pct)
+                self.on_stats(done, total_files, result["files_failed"],
+                              bytes_processed, bytes_total, bytes_failed)
                 continue
 
             try:
@@ -931,11 +940,12 @@ class BackupEngine:
                         break
                     consec_failures = 0   # user said continue — reset streak
 
+            bytes_processed += record.size or 0
             self.on_stats(
-                result["files_downloaded"] + result["files_failed"],
+                done + 1,
                 total_files,
                 result["files_failed"],
-                bytes_done,
+                bytes_processed,
                 bytes_total,
                 bytes_failed,
             )

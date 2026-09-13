@@ -5,6 +5,6 @@
 # Last non-empty line of this file MUST match the line above.
 """
 
-BUILD_VERSION = "0.7.34"
+BUILD_VERSION = "0.7.37"
 
 # ===== SNAPSMACK EOF =====
