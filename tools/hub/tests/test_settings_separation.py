@@ -57,7 +57,7 @@ def test_settings_owns_every_configuration_surface():
 
 def test_repair_has_packaged_layout_proof():
     source = SOURCE.read_text(encoding="utf-8")
-    assert 'BUILD_VERSION = "0.7.43"' in source
+    assert 'BUILD_VERSION = "0.7.44"' in source
     assert 'SNAP_HQ_LAYOUT_QA_MARKER' in source
     assert 'Settings content leaked into the SNAP HQ launcher' in source
     assert 'SNAP HQ Settings is missing a configuration section' in source

@@ -23,7 +23,7 @@
 ?>
 <footer id="admin-universal-footer">
     <div class="footer-left">
-        <?php if (($settings['site_mode'] ?? 'photoblog') === 'carousel'): ?>
+        <?php if (in_array(($settings['site_mode'] ?? 'photoblog'), ['carousel','smackthemup'], true)): ?>
         THE GRID WAS CREATED JUST FOR TORONTO PHOTOGRAPHER <a href="https://rickmcginnis.com/" target="_blank" rel="noopener">RICK MCGINNIS</a>. VISIT HIM AND LOVE HIS WORK LIKE WE DO.
         <?php else: ?>
         A RE-IMAGINING OF <a href="https://en.wikipedia.org/wiki/Pixelpost" target="_blank">PIXELPOST</a>,

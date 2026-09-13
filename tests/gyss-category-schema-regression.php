@@ -32,6 +32,9 @@ $required = [
     'c2.id = cm2.cat_id',
     'SELECT image_id, cat_id FROM snap_image_cat_map',
     'snap_image_cat_map (image_id, cat_id)',
+    '$category_select,',
+    '$album_select',
+    '$modified_select,',
 ];
 
 foreach ($required as $needle) {

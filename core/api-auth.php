@@ -96,6 +96,7 @@ if (!function_exists('snap_api_enforce_mode')) {
             'photoblog' => 'activate a photoblog skin (50 Shades of Noah Grey, New Horizon)',
             'carousel'  => 'activate a gram skin (The Grid, Instant Camera)',
             'smacktalk' => 'activate a SmackTalk skin (Alfred)',
+            'smackthemup' => 'use the SMACKTHEMUP installation chosen at install time',
         ];
         $fix = [];
         foreach ($allowed as $a) { if (isset($how[$a])) $fix[] = $how[$a]; }
