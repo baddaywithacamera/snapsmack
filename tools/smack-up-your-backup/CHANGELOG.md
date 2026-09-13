@@ -19,6 +19,17 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.39 — 2026-09-13
+
+### Fixed — a background backup remains visible and controllable
+
+- Closing the Qt window during a backup now keeps the job running in the
+  Windows notification area instead of cancelling it and making it disappear.
+- The tray icon reports live percentage/current work, restores the window on
+  click, and offers Pause/Resume and an explicit Quit action.
+- Completion and failure produce tray notifications. If Windows has no usable
+  notification area, SUYB refuses to vanish while a backup is running.
+
 ## 0.7.38 — 2026-09-13
 
 ### Fixed — crash recovery now actually resumes
