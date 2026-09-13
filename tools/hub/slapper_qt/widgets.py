@@ -830,6 +830,11 @@ class SliderRow(QWidget):
     # emitted when the user finishes a drag — the moment to record undo history
     committed = Signal(str)
 
+    # Long controls such as "Horizontal perspective" and
+    # "Distortion centre X" must remain readable. The previous 74 px column
+    # clipped nearly every Geometry label on a normal Windows display.
+    LABEL_WIDTH = 116
+
     def __init__(self, key, label, start, end, resolution, default=0.0, parent=None):
         super().__init__(parent)
         self.key = key
@@ -845,7 +850,7 @@ class SliderRow(QWidget):
 
         name = QLabel(label)
         name.setObjectName("ControlName")
-        name.setFixedWidth(74)
+        name.setFixedWidth(self.LABEL_WIDTH)
         row.addWidget(name)
 
         self.slider = _ScrollSafeSlider(Qt.Horizontal)

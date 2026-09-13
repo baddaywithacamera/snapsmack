@@ -793,7 +793,7 @@ if ($resource === 'enrichment-audit' && $method === 'GET') {
         ? "(SELECT COUNT(*) FROM snap_collection_items ci WHERE ci.item_type='image' AND ci.item_id=i.id)"
         : "0";
     $rows = $pdo->query("
-        SELECT i.id, i.img_title, i.img_description, i.img_alt, i.img_file, i.img_display_options,
+        SELECT i.id, i.img_title, i.img_description, i.img_alt, i.img_file, i.img_date, i.img_display_options,
                i.img_color_mode, i.content_warning, i.is_sensitive,
                (SELECT COUNT(*) FROM snap_image_tags it WHERE it.image_id = i.id) AS tag_count,
                (SELECT COUNT(*) FROM snap_image_cat_map cm WHERE cm.image_id = i.id) AS cat_count,
@@ -825,6 +825,8 @@ if ($resource === 'enrichment-audit' && $method === 'GET') {
         $items[] = [
             'id'        => (int)$row['id'],
             'title'     => (string)$row['img_title'],
+            'filename'  => basename((string)$row['img_file']),
+            'posted_date' => (string)$row['img_date'],
             'thumb_url' => gy_thumb_url((string)$row['img_file']),
             'missing'   => $missing,
         ];
