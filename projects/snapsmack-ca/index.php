@@ -49,6 +49,17 @@ $page_css = <<<'CSS'
 .btn-secondary:hover { color: var(--white); background: var(--black); }
 
 
+/* --- WHAT WAS: the four things taken, and their names here --- */
+#was { padding: 0 0 64px; }
+#was h2 { margin-bottom: 26px; }
+.was-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; margin: 0; padding: 0; list-style: none; }
+.was-list li { display: flex; flex-direction: column; margin: 0; padding-top: 14px; border-top: 3px solid var(--black); }
+.was-list strong { color: var(--black); font: 900 .95rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
+.was-list span { margin-top: 10px; color: #333; font-size: .95rem; line-height: 1.5; }
+.was-list em { margin-top: auto; padding-top: 14px; color: var(--red); font: 900 .72rem/1.3 'Courier New', monospace; letter-spacing: .08em; text-transform: uppercase; font-style: normal; }
+.was-list em a { color: var(--red); text-decoration: underline; }
+.was-closer { max-width: 800px; margin-top: 34px; color: var(--black); font: 900 clamp(1.05rem, 1.8vw, 1.3rem)/1.35 Arial Black, Arial, sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
+
 /* --- SKINS BAND --- */
 #featured-skins { background: var(--black); color: #ddd; border-top: 8px solid var(--red); }
 #featured-skins h2 { color: var(--white); }
@@ -100,6 +111,7 @@ $page_css = <<<'CSS'
 
 @media (max-width: 850px) {
     .featured-skin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .was-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .custodian-points { grid-template-columns: 1fr; }
     .whodat-grid { grid-template-columns: 1fr; }
     .whodat-card { display: grid; grid-template-columns: 150px 1fr; gap: 22px; }
@@ -112,6 +124,7 @@ $page_css = <<<'CSS'
     #door { padding: 56px 0 44px; }
     .door-inner { grid-template-columns: 1fr; gap: 32px; }
     .featured-skin-grid { grid-template-columns: 1fr; }
+    .was-list { grid-template-columns: 1fr; }
     .whodat-card { display: block; }
     .whodat-portrait { margin: -22px -22px 20px; }
 }
@@ -143,6 +156,20 @@ require_once __DIR__ . '/includes/header.php';
                 <img src="img/snapslapper-editor-adv.png" alt="SNAP SLAPPER photo editor, advanced mode, editing a Banff landscape" width="1920" height="1032" loading="lazy">
                 <span class="door-shot-cap">SNAP SLAPPER &mdash; the free photo editor. Click to enlarge.</span>
             </button>
+        </div>
+    </section>
+
+    <section id="was" aria-label="What was, and what can be again">
+        <div class="wrap">
+            <p class="site-discovery-kicker">What was taken</p>
+            <h2>What was. What can be again.</h2>
+            <ul class="was-list">
+                <li><strong>The photoblog</strong><span>2003 to 2010. One photograph a day on one page, comments underneath, on your own domain. Pixelpost, Photoblogs.org, a ring of people who looked at each other&rsquo;s work every morning.</span><em>Again as <a href="features.php#modes">SMACKONEOUT</a></em></li>
+                <li><strong>Classic Instagram</strong><span>2010 to 2016. A square grid, in the order you posted it, seen by the people who chose to follow you. No algorithm, no ads, no Reels.</span><em>Again as <a href="features.php#modes">GRAMOFSMACK</a></em></li>
+                <li><strong>Early blogging</strong><span>Blogger, Greymatter, WordPress before it became a page builder. Writing with photographs in it, as long as you wanted, nobody&rsquo;s feed deciding whether it got read.</span><em>Again as <a href="features.php#modes">SMACKTALK</a></em></li>
+                <li><strong>Picasa Web Albums</strong><span>A folder of pictures for the people you know. Send the link, no account needed to look, no &ldquo;suggested for you&rdquo; underneath.</span><em>Again as <a href="features.php#modes">SMACKTHEMUP</a></em></li>
+            </ul>
+            <p class="was-closer">Everything was killed off, died off, or was walled off to prioritize profits over people.</p>
         </div>
     </section>
 
