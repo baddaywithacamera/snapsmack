@@ -51,7 +51,8 @@ def describe(profile):
     return (
         f"Blog: {profile.get('name') or profile.get('site_url')}\n"
         f"Destination: {policy['staging_dir'] or '(not configured in THE HUB)'}\n"
-        f"Copy: {policy['max_width']} × {policy['max_height']} maximum, "
+        f"Copy: fits inside {policy['max_width']} × {policy['max_height']} px, "
+        f"aspect ratio kept (no crop), "
         f"{policy['extension'].lstrip('.').upper()}, quality {policy['quality']}\n"
         f"Colour: {policy['colour_space']}\n"
         f"Metadata: preserve embedded metadata; GPS "
