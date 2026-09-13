@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+import base64
 import os
 import sys
 import threading
 
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
-    QFrame, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMainWindow,
+    QDialog, QFrame, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMainWindow,
     QMessageBox, QProgressBar, QPushButton, QScrollArea, QSizePolicy, QStackedWidget,
     QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget)
 
@@ -17,7 +18,7 @@ import sybu_core
 
 # Kept explicit so the Qt shell never imports the legacy Tk entry point (which
 # redirects stdout/stderr and initializes Tk-only services at import time).
-BUILD_VERSION = "0.7.62"
+BUILD_VERSION = "0.7.63"
 
 GREEN = "#73f04b"; BASE = "#0d120f"; VOID = "#090c0a"; PANEL = "#121a15"
 CARD = "#18231c"; BORDER = "#28372d"; INK = "#f4f7f2"; DIM = "#829087"
@@ -113,7 +114,7 @@ class Window(QMainWindow):
         r=QHBoxLayout(); self.folder=QLineEdit(); self.folder.setPlaceholderText("Image folder…"); r.addWidget(self.folder,1); b=QPushButton("Choose folder"); b.clicked.connect(self._choose_folder); r.addWidget(b); self.manifest=QLineEdit(); self.manifest.setPlaceholderText("Optional manifest .txt…"); r.addWidget(self.manifest,1); m=QPushButton("Choose manifest"); m.clicked.connect(self._choose_manifest); r.addWidget(m); cl.addLayout(r)
         r=QHBoxLayout(); self.cat=QComboBox(); self.cat.setEditable(True); self.cat.setPlaceholderText("Default category"); self.album=QComboBox(); self.album.setEditable(True); self.album.setPlaceholderText("Default album"); self.orient=QComboBox(); self.orient.addItems(["Auto","Landscape","Portrait","Square"]); r.addWidget(self.cat); r.addWidget(self.album); r.addWidget(self.orient); r.addStretch(1); scan=QPushButton("LOAD QUEUE"); scan.setObjectName("Primary"); scan.clicked.connect(self._scan); r.addWidget(scan); cl.addLayout(r); l.addWidget(source)
         ai,al=card("2 · Enrich","Generate titles, tags, captions and alt text for selected images. Existing work is preserved.")
-        r=QHBoxLayout(); self.prompt=QLineEdit(); self.prompt.setPlaceholderText("Optional custom prompt…"); r.addWidget(self.prompt,1); enrich=QPushButton("ENRICH SELECTED"); enrich.clicked.connect(self._enrich); r.addWidget(enrich); al.addLayout(r); l.addWidget(ai)
+        r=QHBoxLayout(); self.prompt=QLineEdit(); self.prompt.setReadOnly(True); self.prompt.setPlaceholderText("Built-in enrichment prompt"); r.addWidget(self.prompt,1); review=QPushButton("REVIEW PROMPT…"); review.clicked.connect(self._review_prompt); r.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.clicked.connect(self._enrich); r.addWidget(enrich); al.addLayout(r); l.addWidget(ai)
         send,pl=card("3 · Publish","SOLO posts individual photographs. GRAM creates carousel posts. The site mode is checked before anything is sent.")
         r=QHBoxLayout(); self.drive=QCheckBox("Attach Google Drive originals"); r.addWidget(self.drive); r.addStretch(1); validate=QPushButton("Validate"); validate.clicked.connect(self._validate); r.addWidget(validate); solo=QPushButton("POST SOLO"); solo.clicked.connect(lambda:self._post(False)); r.addWidget(solo); gram=QPushButton("POST GRAM"); gram.setObjectName("Primary"); gram.clicked.connect(lambda:self._post(True)); r.addWidget(gram); pl.addLayout(r)
         self.progress=QProgressBar(); self.progress.setRange(0,100); pl.addWidget(self.progress); self.progress_text=label("Ready when you are.","Muted"); pl.addWidget(self.progress_text); l.addWidget(send)
@@ -122,7 +123,7 @@ class Window(QMainWindow):
     def _queue_page(self):
         page,l=self._page("Your posting queue","Edit the fields that matter. Selection, enrichment and posting all operate on this table.")
         tools=QHBoxLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); tools.addStretch(1); self.queue_count=label("0 images","Muted"); tools.addWidget(self.queue_count); l.addLayout(tools)
-        self.table=QTableWidget(0,7); self.table.setHorizontalHeaderLabels(["USE","FILE","TITLE","TAGS","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents); self.table.horizontalHeader().setSectionResizeMode(2,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(3,QHeaderView.Stretch); self.table.setMinimumHeight(500); l.addWidget(self.table,1); return page
+        self.table=QTableWidget(0,12); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents); self.table.horizontalHeader().setSectionResizeMode(3,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(5,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(6,QHeaderView.Stretch); self.table.setMinimumHeight(500); l.addWidget(self.table,1); return page
 
     def _settings_page(self):
         page,l=self._page("Connection and services","Profiles come from SNAP HQ's shared library. Secrets stay in the protected shared store.")
@@ -188,13 +189,47 @@ class Window(QMainWindow):
         data=data or self.engine.serialize_queue(); rows=data['rows']; self.table.setRowCount(len(rows))
         for r,row in enumerate(rows):
             use=QTableWidgetItem(); use.setFlags(Qt.ItemIsEnabled|Qt.ItemIsUserCheckable); use.setCheckState(Qt.Checked if row['selected'] else Qt.Unchecked); self.table.setItem(r,0,use)
-            for c,k in enumerate(("file","title","tags","category","album","status"),1): self.table.setItem(r,c,QTableWidgetItem(str(row.get(k,""))))
+            preview=QLabel(); preview.setAlignment(Qt.AlignCenter)
+            try:
+                encoded=self.engine.thumb(r,88).partition(',')[2]
+                pix=QPixmap(); pix.loadFromData(base64.b64decode(encoded)); preview.setPixmap(pix)
+            except Exception:
+                preview.setText("No preview")
+            self.table.setCellWidget(r,1,preview); self.table.setRowHeight(r,96)
+            for c,k in ((2,'file'),(3,'title'),(4,'caption'),(5,'alt'),(6,'tags'),(9,'category'),(10,'album'),(11,'status')):
+                item=QTableWidgetItem(str(row.get(k,"")))
+                if k in ('file','status'): item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                self.table.setItem(r,c,item)
+            colour=QComboBox(); colour.addItem("—",""); colour.addItem("Colour","color"); colour.addItem("B&W","bw")
+            colour.setCurrentIndex(max(0,colour.findData(row.get('color_mode','')))); self.table.setCellWidget(r,7,colour)
+            orient=QComboBox()
+            for text,value in (("Auto","auto"),("Landscape","0"),("Portrait","1"),("Square","2")): orient.addItem(text,value)
+            orient.setCurrentIndex(max(0,orient.findData(row.get('orientation','auto')))); self.table.setCellWidget(r,8,orient)
         self.queue_count.setText(f"{data['selected']} selected · {data['count']} images")
 
     def _sync_queue(self):
         for r in range(self.table.rowCount()):
             self.engine.set_selected(r,self.table.item(r,0).checkState()==Qt.Checked)
-            self.engine.update_entry(r,{k:self.table.item(r,c).text() for c,k in ((2,'title'),(3,'tags'),(4,'category'),(5,'album'))})
+            patch={k:self.table.item(r,c).text() for c,k in ((3,'title'),(4,'caption'),(5,'alt'),(6,'tags'),(9,'category'),(10,'album'))}
+            patch['color_mode']=self.table.cellWidget(r,7).currentData() or ''
+            patch['orientation']=self.table.cellWidget(r,8).currentData() or 'auto'
+            self.engine.update_entry(r,patch)
+
+    def _review_prompt(self):
+        dialog=QDialog(self); dialog.setWindowTitle("Review enrichment prompt"); dialog.resize(820,620)
+        layout=QVBoxLayout(dialog)
+        layout.addWidget(label("REVIEW THE PROMPT", "Eyebrow"))
+        layout.addWidget(label("Use for this run leaves the shared site prompt unchanged. Save to SNAP HQ deliberately updates the selected site's shared profile.","Muted"))
+        editor=QTextEdit(); editor.setPlainText(self.prompt.text()); editor.setPlaceholderText("Leave blank to use SYBU's complete built-in enrichment prompt."); layout.addWidget(editor,1)
+        buttons=QHBoxLayout(); cancel=QPushButton("CANCEL"); cancel.clicked.connect(dialog.reject); buttons.addWidget(cancel); buttons.addStretch(1)
+        use=QPushButton("USE FOR THIS RUN"); buttons.addWidget(use)
+        save=QPushButton("SAVE TO SNAP HQ"); save.setObjectName("Primary"); buttons.addWidget(save); layout.addLayout(buttons)
+        def use_text(): self.prompt.setText(editor.toPlainText().strip()); dialog.accept()
+        def save_text():
+            try:
+                result=self.engine.profile_save_prompt(self.profile.currentText(),editor.toPlainText()); self.prompt.setText(result['prompt']); self._say(f"Prompt saved to SNAP HQ for {result['name']}."); dialog.accept()
+            except Exception as error: self._error(str(error))
+        use.clicked.connect(use_text); save.clicked.connect(save_text); dialog.exec()
 
     def _select_all(self,on):
         for r in range(self.table.rowCount()):self.table.item(r,0).setCheckState(Qt.Checked if on else Qt.Unchecked)
