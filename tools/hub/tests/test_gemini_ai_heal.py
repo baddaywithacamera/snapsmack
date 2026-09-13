@@ -1,0 +1,69 @@
+import base64
+import io
+import sys
+from pathlib import Path
+
+from PIL import Image
+
+
+HUB = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(HUB))
+
+import gemini_image_edit
+
+
+def _encoded_png(colour):
+    stream = io.BytesIO()
+    Image.new("RGB", (32, 24), colour).save(stream, "PNG")
+    return base64.b64encode(stream.getvalue()).decode("ascii")
+
+
+def test_heal_sends_photo_mask_and_extracts_image(monkeypatch):
+    seen = {}
+
+    class Response:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"candidates": [{"content": {"parts": [
+                {"inlineData": {"mimeType": "image/png", "data": _encoded_png("blue")}}
+            ]}}]}
+
+    def fake_post(url, **kwargs):
+        seen["url"] = url
+        seen.update(kwargs)
+        return Response()
+
+    monkeypatch.setattr(gemini_image_edit.requests, "post", fake_post)
+    photo = Image.new("RGB", (32, 24), "red")
+    mask = Image.new("L", (32, 24), 0); mask.putpixel((10, 10), 255)
+    result = gemini_image_edit.heal(photo, mask, "remove dust", "secret")
+    assert result.size == photo.size
+    assert result.getpixel((0, 0)) == (0, 0, 255)
+    parts = seen["json"]["contents"][0]["parts"]
+    assert len([part for part in parts if "inlineData" in part]) == 2
+    assert "remove dust" in parts[0]["text"]
+    assert "secret" not in str(seen["json"])
+    assert seen["params"] == {"key": "secret"}
+
+
+def test_heal_refuses_empty_selection():
+    photo = Image.new("RGB", (20, 20), "white")
+    mask = Image.new("L", photo.size, 0)
+    try:
+        gemini_image_edit.heal(photo, mask, "", "secret")
+    except ValueError as error:
+        assert "Paint over the defect" in str(error)
+    else:
+        raise AssertionError("empty selection was sent")
+
+
+def test_editor_wires_ai_heal_as_a_masked_layer():
+    source = (HUB / "slapper_qt" / "editor_window.py").read_text(encoding="utf-8")
+    assert 'QAction("AI Heal…"' in source
+    assert 'layer["mask"] = editor_engine._mask_to_text(mask)' in source
+    assert '"kind": "generative-repair"' in source
+    assert '"retouch": (self.act_heal, self.act_redeye, self.act_ai_heal,' in source
+
+# ===== SNAPSMACK EOF =====
