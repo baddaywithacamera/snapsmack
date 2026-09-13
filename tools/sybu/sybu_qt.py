@@ -9,16 +9,17 @@ import threading
 
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
-    QDialog, QFrame, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMainWindow,
-    QMessageBox, QProgressBar, QPushButton, QScrollArea, QSizePolicy, QStackedWidget,
-    QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox,
+    QComboBox, QDialog, QFileDialog, QFrame, QHBoxLayout, QHeaderView, QLabel,
+    QLineEdit, QMainWindow, QMessageBox, QProgressBar, QPushButton, QScrollArea,
+    QSizePolicy, QStackedWidget, QTableWidget, QTableWidgetItem, QTextEdit,
+    QVBoxLayout, QWidget)
 
 import sybu_core
 
 # Kept explicit so the Qt shell never imports the legacy Tk entry point (which
 # redirects stdout/stderr and initializes Tk-only services at import time).
-BUILD_VERSION = "0.7.63"
+BUILD_VERSION = "0.7.64"
 
 GREEN = "#73f04b"; BASE = "#0d120f"; VOID = "#090c0a"; PANEL = "#121a15"
 CARD = "#18231c"; BORDER = "#28372d"; INK = "#f4f7f2"; DIM = "#829087"
@@ -43,7 +44,10 @@ QPushButton#Nav:checked {{ color:{GREEN}; background:#152219; border-left:3px so
 QLineEdit,QComboBox,QTextEdit,QTableWidget {{ background:#0c110e; border:1px solid {BORDER}; border-radius:7px; padding:7px; selection-background-color:#3ba525; }}
 QLineEdit:focus,QComboBox:focus,QTextEdit:focus,QTableWidget:focus {{ border-color:{GREEN}; }}
 QHeaderView::section {{ background:#121a15; color:#bac3b8; border:0; border-bottom:1px solid {BORDER}; padding:8px; font-weight:700; }}
-QTableWidget {{ gridline-color:#202b24; }}
+QTableWidget {{ background:{BASE}; border:0; gridline-color:transparent; alternate-background-color:#111a14; outline:0; }}
+QTableWidget::item {{ border-bottom:1px solid {BORDER}; padding:9px 7px; }}
+QTableWidget::item:selected {{ background:#253a2b; color:{INK}; }}
+QTableWidget QComboBox {{ margin:8px 3px; padding:7px; }}
 QProgressBar {{ background:#0b100d; border:1px solid {BORDER}; border-radius:7px; height:13px; text-align:center; }}
 QProgressBar::chunk {{ background:{GREEN}; border-radius:6px; }} QScrollArea {{ border:0; }}
 """
@@ -122,8 +126,8 @@ class Window(QMainWindow):
 
     def _queue_page(self):
         page,l=self._page("Your posting queue","Edit the fields that matter. Selection, enrichment and posting all operate on this table.")
-        tools=QHBoxLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); tools.addStretch(1); self.queue_count=label("0 images","Muted"); tools.addWidget(self.queue_count); l.addLayout(tools)
-        self.table=QTableWidget(0,12); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents); self.table.horizontalHeader().setSectionResizeMode(3,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(5,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(6,QHeaderView.Stretch); self.table.setMinimumHeight(500); l.addWidget(self.table,1); return page
+        tools=QHBoxLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); tools.addStretch(1); self.queue_count=label("0 images","Muted"); tools.addWidget(self.queue_count); l.addLayout(tools)
+        self.table=QTableWidget(0,12); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents); self.table.horizontalHeader().setSectionResizeMode(3,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(5,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(6,QHeaderView.Stretch); self.table.setMinimumHeight(500); l.addWidget(self.table,1); return page
 
     def _settings_page(self):
         page,l=self._page("Connection and services","Profiles come from SNAP HQ's shared library. Secrets stay in the protected shared store.")
@@ -191,11 +195,11 @@ class Window(QMainWindow):
             use=QTableWidgetItem(); use.setFlags(Qt.ItemIsEnabled|Qt.ItemIsUserCheckable); use.setCheckState(Qt.Checked if row['selected'] else Qt.Unchecked); self.table.setItem(r,0,use)
             preview=QLabel(); preview.setAlignment(Qt.AlignCenter)
             try:
-                encoded=self.engine.thumb(r,88).partition(',')[2]
+                encoded=self.engine.thumb(r,108).partition(',')[2]
                 pix=QPixmap(); pix.loadFromData(base64.b64decode(encoded)); preview.setPixmap(pix)
             except Exception:
                 preview.setText("No preview")
-            self.table.setCellWidget(r,1,preview); self.table.setRowHeight(r,96)
+            self.table.setCellWidget(r,1,preview); self.table.setRowHeight(r,118)
             for c,k in ((2,'file'),(3,'title'),(4,'caption'),(5,'alt'),(6,'tags'),(9,'category'),(10,'album'),(11,'status')):
                 item=QTableWidgetItem(str(row.get(k,"")))
                 if k in ('file','status'): item.setFlags(item.flags() & ~Qt.ItemIsEditable)
@@ -234,6 +238,11 @@ class Window(QMainWindow):
     def _select_all(self,on):
         for r in range(self.table.rowCount()):self.table.item(r,0).setCheckState(Qt.Checked if on else Qt.Unchecked)
         self.engine.set_all_selected(on); self._fill_queue()
+
+    def _clear_queue(self):
+        if not self.table.rowCount(): return
+        if QMessageBox.question(self,"Clear posting queue","Remove the images from this posting queue?\n\nThe image files themselves will not be deleted. Failed rows are retained so an upload problem cannot be lost.",QMessageBox.Yes|QMessageBox.Cancel,QMessageBox.Cancel)!=QMessageBox.Yes:return
+        self._fill_queue(self.engine.clear_queue()); self._say("Posting queue cleared.")
 
     def _enrich(self):
         try:self._sync_queue(); self.engine.enrich_start(self.gemini.text(),self.prompt.text()); self.poll_seen['enrich']=0; self.progress_text.setText("Enriching selected images…"); self._show(0)
