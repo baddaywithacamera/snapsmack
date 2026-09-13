@@ -15,13 +15,13 @@ import time
 from datetime import datetime
 
 from PySide6.QtCore import QObject, Qt, Signal, QTimer, QUrl
-from PySide6.QtGui import QDesktopServices, QIcon, QFont
+from PySide6.QtGui import QAction, QDesktopServices, QIcon, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QButtonGroup, QCheckBox, QComboBox,
     QDialog, QDialogButtonBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
-    QLineEdit, QListWidget, QMainWindow, QMessageBox, QProgressBar,
+    QLineEdit, QListWidget, QMainWindow, QMenu, QMessageBox, QProgressBar,
     QPushButton, QScrollArea, QSizePolicy, QStackedWidget, QTextEdit,
-    QVBoxLayout, QWidget,
+    QSystemTrayIcon, QVBoxLayout, QWidget,
 )
 
 import backup_engine
@@ -147,7 +147,59 @@ class SuybWindow(QMainWindow):
         self.current_profile = None
         self.selected_profile_names = []
         self._build()
+        self._build_tray()
         self._load_profiles()
+
+    def _build_tray(self):
+        self.tray = None
+        self.tray_pause_action = None
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+        self.tray = QSystemTrayIcon(QIcon(_icon_path()), self)
+        self.tray.setToolTip("SMACK UP YOUR BACKUP — ready")
+        menu = QMenu(self)
+        open_action = QAction("Open SMACK UP YOUR BACKUP", self)
+        open_action.triggered.connect(self._show_window)
+        menu.addAction(open_action)
+        self.tray_pause_action = QAction("Pause backup", self)
+        self.tray_pause_action.setEnabled(False)
+        self.tray_pause_action.triggered.connect(self._toggle_pause)
+        menu.addAction(self.tray_pause_action)
+        menu.addSeparator()
+        quit_action = QAction("Quit", self)
+        quit_action.triggered.connect(self._quit_from_tray)
+        menu.addAction(quit_action)
+        self.tray.setContextMenu(menu)
+        self.tray.activated.connect(self._tray_activated)
+        self.tray.show()
+
+    def _tray_activated(self, reason):
+        if reason in (QSystemTrayIcon.DoubleClick, QSystemTrayIcon.Trigger):
+            self._show_window()
+
+    def _show_window(self):
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def _tray_message(self, title, message, critical=False):
+        if self.tray:
+            icon = QSystemTrayIcon.Critical if critical else QSystemTrayIcon.Information
+            self.tray.showMessage(title, message, icon, 8000)
+
+    def _quit_from_tray(self):
+        self._show_window()
+        if self.engine and QMessageBox.question(
+                self, "Quit during backup?",
+                "Quit now? The current run will stop, but its verified progress "
+                "will remain available to resume next time.",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+            return
+        if self.engine:
+            self.engine.cancel()
+        if self.tray:
+            self.tray.hide()
+        QApplication.instance().quit()
 
     def _build(self):
         root = QWidget(); shell = QHBoxLayout(root); shell.setContentsMargins(0, 0, 0, 0); shell.setSpacing(0)
@@ -386,6 +438,11 @@ class SuybWindow(QMainWindow):
         global_cloud = self._global_cloud()
         self.log.clear(); self.run_btn.setEnabled(False); self.choose_sites_btn.setEnabled(False)
         self.pause_btn.setEnabled(True); self.pause_btn.setText("PAUSE")
+        if self.tray_pause_action:
+            self.tray_pause_action.setEnabled(True)
+            self.tray_pause_action.setText("Pause backup")
+        if self.tray:
+            self.tray.setToolTip("SMACK UP YOUR BACKUP — backup running")
         self._pause_requested = False
         self.run_btn.setText("BACKUP IN PROGRESS…")
         self._backup_started = time.monotonic(); self._site_started = self._backup_started
@@ -427,6 +484,9 @@ class SuybWindow(QMainWindow):
     def _on_progress(self, _stage, message, pct):
         self._last_pct = max(0.0, min(1.0, float(pct)))
         self.progress.setValue(int(self._last_pct * 100)); self.progress_text.setText(message)
+        if self.tray:
+            self.tray.setToolTip(
+                f"SMACK UP YOUR BACKUP — {int(self._last_pct * 100)}% — {message[:80]}")
 
     @staticmethod
     def _fmt_bytes(value):
@@ -472,6 +532,8 @@ class SuybWindow(QMainWindow):
             self._pause_requested = False
             self.engine.resume()
             self.pause_btn.setText("PAUSE")
+            if self.tray_pause_action:
+                self.tray_pause_action.setText("Pause backup")
             self.progress_text.setText("Backup resumed.")
             self._clock.start()
             self._on_log("Backup resumed.")
@@ -479,6 +541,8 @@ class SuybWindow(QMainWindow):
             self._pause_requested = True
             self.engine.pause()
             self.pause_btn.setText("RESUME")
+            if self.tray_pause_action:
+                self.tray_pause_action.setText("Resume backup")
             self.progress_text.setText("Pausing safely after the current file…")
             self._clock.stop()
             self._on_log("Pause requested — the current file will finish safely, then backup will wait.")
@@ -487,6 +551,13 @@ class SuybWindow(QMainWindow):
         self._clock.stop()
         self.engine = None; self._pause_requested = False
         self.pause_btn.setEnabled(False); self.pause_btn.setText("PAUSE")
+        if self.tray_pause_action:
+            self.tray_pause_action.setEnabled(False)
+            self.tray_pause_action.setText("Pause backup")
+        if self.tray:
+            self.tray.setToolTip(
+                "SMACK UP YOUR BACKUP — backup complete" if ok
+                else "SMACK UP YOUR BACKUP — backup needs attention")
         self.run_btn.setEnabled(True); self.choose_sites_btn.setEnabled(True)
         ok = bool((result or {}).get("success")); self.progress.setValue(100 if ok else self.progress.value())
         self.progress_text.setText("Backup completed and verified." if ok else "Backup needs attention. Details are above.")
@@ -503,7 +574,11 @@ class SuybWindow(QMainWindow):
         self._update_backup_selection()
         if not ok:
             errors = "\n".join((result or {}).get("errors", [])) or "The backup did not complete."
-            QMessageBox.warning(self, "Backup needs attention", errors[:1800])
+            if self.isVisible():
+                QMessageBox.warning(self, "Backup needs attention", errors[:1800])
+            self._tray_message("Backup needs attention", errors[:500], critical=True)
+        else:
+            self._tray_message("Backup complete", "The backup completed and verified successfully.")
 
     def _choose_restore(self):
         path, _ = QFileDialog.getOpenFileName(self, "Choose SUYB backup", self.dir_edit.text(), "SUYB backup (*.zip)")
@@ -569,14 +644,28 @@ class SuybWindow(QMainWindow):
 
     def closeEvent(self, event):
         if self.engine:
-            if QMessageBox.question(self, "Backup is running", "Stop the running backup and close?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
-                event.ignore(); return
-            self.engine.cancel()
+            if self.tray and self.tray.isVisible():
+                event.ignore()
+                self.hide()
+                self._tray_message(
+                    "Backup still running",
+                    "SMACK UP YOUR BACKUP is continuing in the notification area. "
+                    "Double-click its icon to reopen it.")
+                return
+            QMessageBox.information(
+                self, "Keep this window open",
+                "The backup is still running and the system notification area is unavailable. "
+                "Pause it or wait for it to finish before closing.")
+            event.ignore()
+            return
+        if self.tray:
+            self.tray.hide()
         event.accept()
 
 
 def run():
     app = QApplication.instance() or QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
     app.setApplicationName("SMACK UP YOUR BACKUP")
     app.setWindowIcon(QIcon(_icon_path()))
     app.setStyle("Fusion"); app.setStyleSheet(STYLE)
