@@ -19,6 +19,14 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.42 — 2026-09-13
+
+### Added — in-app help
+
+- Added a plain-language Help window available from the header or F1.
+- Help opens on the topic relevant to the current page and explains backup,
+  pause/close/resume safety, recovery, restore, local packages, and connections.
+
 ## 0.7.41 — 2026-09-13
 
 ### Fixed — closing an idle window really exits

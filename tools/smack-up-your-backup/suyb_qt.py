@@ -15,7 +15,7 @@ import time
 from datetime import datetime
 
 from PySide6.QtCore import QObject, Qt, Signal, QTimer, QUrl
-from PySide6.QtGui import QAction, QDesktopServices, QIcon, QFont
+from PySide6.QtGui import QAction, QDesktopServices, QIcon, QFont, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QButtonGroup, QCheckBox, QComboBox,
     QDialog, QDialogButtonBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
@@ -149,6 +149,10 @@ class SuybWindow(QMainWindow):
         self._build()
         self._build_tray()
         self._load_profiles()
+        help_action = QAction("Help", self)
+        help_action.setShortcut(QKeySequence.HelpContents)
+        help_action.triggered.connect(self._show_help)
+        self.addAction(help_action)
 
     def _build_tray(self):
         self.tray = None
@@ -235,6 +239,7 @@ class SuybWindow(QMainWindow):
         self.connection = _label("Choose a site", "StatusWarn")
         self.connection.setWordWrap(False)
         hl.addWidget(self.connection)
+        help_btn = QPushButton("HELP · F1"); help_btn.clicked.connect(self._show_help); hl.addWidget(help_btn)
         test = QPushButton("Test connection"); test.clicked.connect(self._test_connection); hl.addWidget(test)
         ml.addWidget(header); ml.addWidget(self.pages, 1); shell.addWidget(main, 1)
         self.setCentralWidget(root)
@@ -311,6 +316,39 @@ class SuybWindow(QMainWindow):
     def _show_page(self, index):
         self.pages.setCurrentIndex(index)
         if index == 2: self._refresh_backups()
+
+    def _show_help(self):
+        topics = [
+            ("Making a backup",
+             "Choose one site above, or use Choose sites… to select several.\n\n"
+             "Differential downloads only files that are new or changed. Full backup rechecks and downloads the complete site. Each site is packaged and verified separately. A backup is not reported as successful until its files and package pass verification."),
+            ("Pause, close, and resume",
+             "PAUSE stops safely between files; the current file is allowed to finish. Choose RESUME to continue.\n\n"
+             "While a backup is running, the red X minimizes SUYB and the backup continues. Keep SUYB available from the taskbar; the Windows notification icon is only an optional convenience.\n\n"
+             "If Windows restarts or the computer crashes, open SUYB again and choose RESUME when offered. Already downloaded and verified files are not downloaded again. START FRESH deliberately discards that run's saved progress."),
+            ("Restoring a site",
+             "Open Restore, choose a verified SUYB .zip package, then choose REVIEW RESTORE. SUYB shows what will happen before anything is uploaded. Restoring writes to the selected site, so check the site name and URL before confirming."),
+            ("Finding your backups",
+             "Open Backups to see packages in the selected site's working folder. Open backup folder shows the same files in Windows so you can copy or manage them there. Refresh rereads the folder."),
+            ("Connections",
+             "The Connection page stores the site name, URL, backup key, and local working folder. Test connection confirms that the selected site can provide a database export. Save connection after making changes."),
+            ("What a complete backup contains",
+             "A complete package contains the full database SQL, schema SQL, recovery manifest, original media and site assets. Downloads are checked against the site's manifest before the package is marked successful."),
+        ]
+        dialog = QDialog(self); dialog.setWindowTitle(f"SMACK UP YOUR BACKUP — Help · {BUILD_VERSION}")
+        dialog.resize(850, 570)
+        shell = QHBoxLayout(dialog)
+        topic_list = QListWidget(); topic_list.setFixedWidth(235)
+        body = QTextEdit(); body.setReadOnly(True)
+        for title, _text in topics: topic_list.addItem(title)
+        def show_topic(row):
+            title, text = topics[max(0, row)]
+            body.setHtml(f"<h2>{title}</h2><p>{text.replace(chr(10) + chr(10), '</p><p>').replace(chr(10), '<br>')}</p>")
+        topic_list.currentRowChanged.connect(show_topic)
+        shell.addWidget(topic_list); shell.addWidget(body, 1)
+        current_topic = {0: 0, 1: 2, 2: 3, 3: 4}.get(self.pages.currentIndex(), 0)
+        topic_list.setCurrentRow(current_topic)
+        dialog.exec()
 
     def _load_profiles(self):
         self.profile_combo.blockSignals(True); self.profile_combo.clear()
