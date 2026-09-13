@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.706 "THE WHOLE PICTURE" — 2026-09-13
+- **SMACKTHEMUP joins the four permanent install personalities.** The Picasa-style hybrid publishes public albums from SNAP SLAPPER, shares GRAMOFSMACK skins without sharing its publishing path, cannot be flipped into another mode after installation, and deliberately has no fediverse path.
+- **The curator can populate GLOBAL from real Pixelfed accounts and show its work.** Recovery now uses the public Pixelfed/Mastodon gallery API before the ActivityPub fallback, while the portal exposes accounts found, queued, accepted, checked, and admitted posts plus the next scheduled action.
+- **The desktop suite is substantially easier to operate.** Qt cockpits, responsive SNAP HQ layout, multi-site backup selection, clearer backup progress, GYSS recovery and photograph-based enrichment selection, COLD SNAP composition work, and readable SNAP SLAPPER adjustment labels land together.
+- **The privacy promise and stored statistics now agree.** First-party diagnostics retain only minimized, non-identifying visit details, scrub legacy detailed fields, expire visit rows within a maximum year, and explain the optional browser preference choice in PIPEDA-oriented language.
+- **The public SnapSmack front door now explains the actual product.** The rebuilt site connects the four things photographers lost to the four install personalities, clearly separates the blog, reader, and Pixelfed/fediverse surfaces, and accurately describes the desktop-led workflow.
+
 ## 0.7.705D "OPEN THE FLEET" — 2026-09-12
 - **The curator now turns accepted Pixelfed accounts into an observable GLOBAL feed.** Historical recovery uses the public Pixelfed/Mastodon gallery API before falling back to ActivityPub outboxes, because Pixelfed commonly advertises only an empty outbox shell. The hub portal now reports accounts scooped, waiting, accepted, checked for posts, posts admitted to GLOBAL, and the next directory/account steps instead of leaving progress implicit. (`core/smackcast-relay.php`, `smack-fediverse-portal.php`.)
 - **GYSS enrichment results are photographs instead of anonymous “Untitled” rows.** Audit scans download thumbnail cards showing filename/title, photo number, date, and missing fields; explicit checkboxes replace ambiguous selection, the saved prompt starts collapsed, and the screen states how many paid AI calls the checked set can require. Build 0.7.17. (`core/gyss-api.php`, `tools/gyss/gyss_qt.py`.)
