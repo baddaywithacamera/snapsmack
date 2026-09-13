@@ -40,6 +40,8 @@ curator_test(str_contains($portal, 'SHOW STORED ACCOUNTS'), 'portal exposes the 
 curator_test(str_contains($portal, "COALESCE(f.state,'not queued') AS follow_state") && str_contains($portal, '&middot; accepted'), 'portal distinguishes queued curator work from accepted follows');
 curator_test(str_contains($relay, 'function sc_relay_recover_curator_outboxes') && str_contains($relay, "f.state='accepted'"), 'accepted curator sources receive bounded GLOBAL outbox seeding');
 curator_test(str_contains($cron, 'sc_relay_recover_curator_outboxes($pdo, $settings, 2, 10)'), 'cron advances curator GLOBAL outbox recovery');
+curator_test(str_contains($relay, 'sv_fetch_gallery($actor, $items)'), 'curator recovery supports Pixelfed REST when ActivityPub outboxes are empty');
+curator_test(str_contains($portal, 'posts scooped into GLOBAL') && str_contains($portal, 'accounts scooped'), 'portal exposes useful curator progress totals');
 curator_test(str_contains($cron, "\$settings['site_mode']") && str_contains($cron, "=== 'fedistructure'"), 'cron gates curator work to FEDISTRUCTURE');
 curator_test(str_contains($cron, "\$settings['node_role']") && str_contains($cron, "=== 'hub'"), 'cron gates curator work to the hub role');
 curator_test(str_contains($cron, '$is_fedistructure_hub && function_exists') && str_contains($cron, 'sc_curator_cron($pdo, $settings)'), 'only a FEDISTRUCTURE hub advances the curator');
