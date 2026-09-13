@@ -11,15 +11,17 @@ presentation, user intent, progress, and plain-language error reporting.
 import os
 import sys
 import threading
+import time
 from datetime import datetime
 
-from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtGui import QIcon, QFont
+from PySide6.QtCore import QObject, Qt, Signal, QTimer, QUrl
+from PySide6.QtGui import QDesktopServices, QIcon, QFont
 from PySide6.QtWidgets import (
-    QApplication, QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFrame,
-    QHBoxLayout, QLabel, QLineEdit, QListWidget, QMainWindow, QMessageBox,
-    QProgressBar, QPushButton, QScrollArea, QSizePolicy, QStackedWidget,
-    QTextEdit, QVBoxLayout, QWidget,
+    QAbstractItemView, QApplication, QButtonGroup, QCheckBox, QComboBox,
+    QDialog, QDialogButtonBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
+    QLineEdit, QListWidget, QMainWindow, QMessageBox, QProgressBar,
+    QPushButton, QScrollArea, QSizePolicy, QStackedWidget, QTextEdit,
+    QVBoxLayout, QWidget,
 )
 
 import backup_engine
@@ -94,6 +96,7 @@ def _card(title, body=""):
 
 class Bridge(QObject):
     progress = Signal(str, str, float)
+    stats = Signal(str, int, int, int, int, int, int)
     log = Signal(str)
     finished = Signal(object)
     tested = Signal(bool, str)
@@ -127,12 +130,20 @@ class SuybWindow(QMainWindow):
         self.setMinimumSize(1020, 680)
         self.bridge = Bridge()
         self.bridge.progress.connect(self._on_progress)
+        self.bridge.stats.connect(self._on_stats)
         self.bridge.log.connect(self._on_log)
         self.bridge.finished.connect(self._backup_done)
         self.bridge.tested.connect(self._test_done)
         self.bridge.restoreFinished.connect(self._restore_done)
         self.engine = None
+        self._backup_started = None
+        self._site_started = None
+        self._stats_site = ""
+        self._last_pct = 0.0
+        self._last_stats = None
+        self._clock = QTimer(self); self._clock.setInterval(1000); self._clock.timeout.connect(self._refresh_stats)
         self.current_profile = None
+        self.selected_profile_names = []
         self._build()
         self._load_profiles()
 
@@ -164,6 +175,8 @@ class SuybWindow(QMainWindow):
         hl.addWidget(_label("SITE", "Eyebrow"))
         self.profile_combo = QComboBox(); self.profile_combo.setMinimumWidth(300)
         self.profile_combo.currentTextChanged.connect(self._profile_changed); hl.addWidget(self.profile_combo)
+        self.choose_sites_btn = QPushButton("Choose sites…")
+        self.choose_sites_btn.clicked.connect(self._choose_sites); hl.addWidget(self.choose_sites_btn)
         hl.addStretch(1)
         self.connection = _label("Choose a site", "StatusWarn")
         self.connection.setWordWrap(False)
@@ -192,6 +205,12 @@ class SuybWindow(QMainWindow):
         opts = QHBoxLayout(); self.full_check = QCheckBox("Full backup"); opts.addWidget(self.full_check); opts.addStretch(1)
         self.run_btn = QPushButton("BACK UP THIS SITE"); self.run_btn.setObjectName("Primary"); self.run_btn.clicked.connect(self._run_backup); opts.addWidget(self.run_btn)
         rl.addLayout(opts); self.progress = QProgressBar(); self.progress.setRange(0, 100); rl.addWidget(self.progress)
+        stats = QHBoxLayout()
+        self.files_stats = _label("FILES\nWaiting for inventory", "Muted")
+        self.data_stats = _label("DATA\nWaiting for inventory", "Muted")
+        self.time_stats = _label("TIME\nNot started", "Muted")
+        stats.addWidget(self.files_stats, 1); stats.addWidget(self.data_stats, 1); stats.addWidget(self.time_stats, 1)
+        rl.addLayout(stats)
         self.progress_text = _label("Ready when you are.", "Muted"); rl.addWidget(self.progress_text); layout.addWidget(run)
         activity, al = _card("Activity"); self.activity_card = activity
         self.log = QTextEdit(); self.log.setReadOnly(True); self.log.setMinimumHeight(72); self.log.setPlaceholderText("Backup activity will appear here in plain language.")
@@ -212,7 +231,11 @@ class SuybWindow(QMainWindow):
         page, layout = self._page("Backups on this computer", "Recent packages in the selected site's working folder.")
         card, col = _card("Recovery packages")
         self.backup_list = QListWidget(); self.backup_list.setMinimumHeight(380); col.addWidget(self.backup_list)
-        refresh = QPushButton("Refresh"); refresh.clicked.connect(self._refresh_backups); col.addWidget(refresh, 0, Qt.AlignRight)
+        buttons = QHBoxLayout(); buttons.addStretch(1)
+        self.open_backup_folder_btn = QPushButton("Open backup folder")
+        self.open_backup_folder_btn.clicked.connect(self._open_backup_folder); buttons.addWidget(self.open_backup_folder_btn)
+        refresh = QPushButton("Refresh"); refresh.clicked.connect(self._refresh_backups); buttons.addWidget(refresh)
+        col.addLayout(buttons)
         layout.addWidget(card); layout.addStretch(1); return page
 
     def _settings_page(self):
@@ -242,6 +265,7 @@ class SuybWindow(QMainWindow):
 
     def _profile_changed(self, name):
         self.current_profile = profile_manager.load_profile(name) if name else None
+        self.selected_profile_names = [name] if name else []
         p = self.current_profile or {}
         self.name_edit.setText(str(p.get("name", ""))); self.url_edit.setText(str(p.get("site_url", "")))
         self.key_edit.setText(str(p.get("api_key", ""))); self.dir_edit.setText(str(p.get("backup_dir", "")))
@@ -249,7 +273,47 @@ class SuybWindow(QMainWindow):
         self.site_summary.setText(f"{p.get('name', 'No site')}\n{shown or 'No URL'}\nLast successful run: {p.get('last_backup_date') or 'Not yet recorded'}")
         self.connection.setText("● Ready to verify" if p else "Choose a site")
         self.connection.setObjectName("StatusGood" if p else "StatusWarn"); self.connection.style().unpolish(self.connection); self.connection.style().polish(self.connection)
-        self.run_btn.setEnabled(bool(p)); self._refresh_backups()
+        self.run_btn.setEnabled(bool(p)); self._update_backup_selection(); self._refresh_backups()
+
+    def _choose_sites(self):
+        names = profile_manager.list_profiles()
+        if not names:
+            QMessageBox.information(self, "No sites yet", "Add a site connection first.")
+            return
+        dialog = QDialog(self); dialog.setWindowTitle("Choose sites to back up")
+        dialog.resize(470, 520)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(_label("Select one or more sites. Each backup runs and verifies separately.", "Muted"))
+        site_list = QListWidget(); site_list.setSelectionMode(QAbstractItemView.MultiSelection)
+        site_list.addItems(names); layout.addWidget(site_list, 1)
+        chosen = set(self.selected_profile_names or ([self.profile_combo.currentText()] if self.profile_combo.currentText() else []))
+        for index in range(site_list.count()):
+            site_list.item(index).setSelected(site_list.item(index).text() in chosen)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept); buttons.rejected.connect(dialog.reject); layout.addWidget(buttons)
+        if dialog.exec() != QDialog.Accepted:
+            return
+        selected = [item.text() for item in site_list.selectedItems()]
+        if not selected:
+            QMessageBox.information(self, "Choose a site", "Select at least one site to back up.")
+            return
+        self.selected_profile_names = selected
+        self._update_backup_selection()
+
+    def _update_backup_selection(self):
+        names = list(self.selected_profile_names)
+        if len(names) <= 1:
+            self.choose_sites_btn.setText("Choose sites…")
+            self.run_btn.setText("BACK UP THIS SITE")
+            return
+        self.choose_sites_btn.setText(f"{len(names)} sites selected")
+        self.run_btn.setText(f"BACK UP {len(names)} SITES")
+        summaries = []
+        for name in names:
+            profile = profile_manager.load_profile(name) or {}
+            shown = str(profile.get("site_url", "")).replace("https://", "").rstrip("/")
+            summaries.append(f"{name}  ·  {shown or 'No URL'}")
+        self.site_summary.setText("Selected sites\n" + "\n".join(summaries))
 
     def _resolved_key(self, profile):
         return config_module.effective_backup_key(profile)
@@ -283,28 +347,102 @@ class SuybWindow(QMainWindow):
 
     def _run_backup(self):
         if not self.current_profile or self.engine: return
-        p = dict(self.current_profile); p["api_key"] = self._resolved_key(p)
-        self.log.clear(); self.run_btn.setEnabled(False); self.run_btn.setText("BACKUP IN PROGRESS…")
-        self.engine = backup_engine.BackupEngine(p, force_full=self.full_check.isChecked(), global_cloud=self._global_cloud(),
-            on_progress=lambda stage, msg, pct: self.bridge.progress.emit(stage, msg, pct),
-            on_log=lambda msg: self.bridge.log.emit(str(msg)))
-        engine = self.engine
-        threading.Thread(target=lambda: self.bridge.finished.emit(engine.run()), daemon=True).start()
+        names = list(self.selected_profile_names or [self.current_profile["name"]])
+        force_full = self.full_check.isChecked()
+        global_cloud = self._global_cloud()
+        self.log.clear(); self.run_btn.setEnabled(False); self.choose_sites_btn.setEnabled(False)
+        self.run_btn.setText("BACKUP IN PROGRESS…")
+        self._backup_started = time.monotonic(); self._site_started = self._backup_started
+        self._stats_site = ""; self._last_pct = 0.0; self._last_stats = None
+        self.files_stats.setText("FILES\nReading inventory…"); self.data_stats.setText("DATA\nCalculating total…")
+        self.time_stats.setText("TIME\nElapsed 0:00 · ETA calculating…"); self._clock.start()
+        threading.Thread(target=self._run_backup_batch, args=(names, force_full, global_cloud), daemon=True).start()
+
+    def _run_backup_batch(self, names, force_full, global_cloud):
+        results = []
+        total = len(names)
+        for index, name in enumerate(names):
+            profile = profile_manager.load_profile(name)
+            if not profile:
+                results.append({"name": name, "success": False, "errors": ["Profile could not be loaded"]})
+                continue
+            profile = dict(profile); profile["api_key"] = self._resolved_key(profile)
+            self.bridge.log.emit(f"{name}: starting backup")
+            self.engine = backup_engine.BackupEngine(
+                profile, force_full=force_full, global_cloud=global_cloud,
+                on_progress=lambda stage, msg, pct, i=index, n=total, site=name:
+                    self.bridge.progress.emit(stage, f"{site}: {msg}", (i + float(pct)) / n),
+                on_stats=lambda fd, ft, ff, bd, bt, bf, site=name:
+                    self.bridge.stats.emit(site, fd, ft, ff, bd, bt, bf),
+                on_log=lambda msg, site=name: self.bridge.log.emit(f"{site}: {msg}"))
+            result = self.engine.run() or {}
+            results.append({"name": name, **result})
+            if not result.get("success"):
+                self.bridge.log.emit(f"{name}: backup needs attention; continuing with the remaining sites")
+        self.bridge.finished.emit({
+            "success": bool(results) and all(item.get("success") for item in results),
+            "profiles": results,
+            "errors": [f"{item['name']}: {error}" for item in results for error in item.get("errors", [])],
+        })
 
     def _on_progress(self, _stage, message, pct):
-        self.progress.setValue(max(0, min(100, int(float(pct) * 100)))); self.progress_text.setText(message)
+        self._last_pct = max(0.0, min(1.0, float(pct)))
+        self.progress.setValue(int(self._last_pct * 100)); self.progress_text.setText(message)
+
+    @staticmethod
+    def _fmt_bytes(value):
+        value = float(value or 0)
+        for unit in ("B", "KB", "MB", "GB", "TB"):
+            if value < 1024 or unit == "TB": return f"{value:.0f} {unit}" if unit in ("B", "KB") else f"{value:.1f} {unit}"
+            value /= 1024
+
+    @staticmethod
+    def _fmt_time(seconds):
+        seconds = max(0, int(seconds or 0)); hours, rem = divmod(seconds, 3600); mins, secs = divmod(rem, 60)
+        return f"{hours}:{mins:02d}:{secs:02d}" if hours else f"{mins}:{secs:02d}"
+
+    def _on_stats(self, site, files_done, files_total, files_failed, bytes_done, bytes_total, bytes_failed):
+        if site != self._stats_site:
+            self._stats_site = site; self._site_started = time.monotonic()
+        self._last_stats = (site, files_done, files_total, files_failed, bytes_done, bytes_total, bytes_failed)
+        remaining_files = max(0, files_total - files_done)
+        self.files_stats.setText(f"FILES · {site}\n{files_done:,} complete · {remaining_files:,} remaining · {files_total:,} total" + (f" · {files_failed:,} failed" if files_failed else ""))
+        remaining_bytes = max(0, bytes_total - bytes_done)
+        self.data_stats.setText(f"DATA CHECKED\n{self._fmt_bytes(bytes_done)} complete · {self._fmt_bytes(remaining_bytes)} remaining · {self._fmt_bytes(bytes_total)} total")
+        self._refresh_stats()
+
+    def _refresh_stats(self):
+        if self._backup_started is None: return
+        elapsed = time.monotonic() - self._backup_started
+        eta = (elapsed / self._last_pct * (1.0 - self._last_pct)) if self._last_pct > .01 else None
+        detail = f"Elapsed {self._fmt_time(elapsed)}"
+        detail += f" · ETA {self._fmt_time(eta)}" if eta is not None else " · ETA calculating…"
+        if self._last_stats and self._site_started:
+            _site, _fd, _ft, _ff, bd, _bt, _bf = self._last_stats
+            rate = bd / max(1.0, time.monotonic() - self._site_started)
+            if rate > 0: detail += f" · {self._fmt_bytes(rate)}/s checked"
+        self.time_stats.setText("TIME\n" + detail)
 
     def _on_log(self, message):
         self.log.append(message)
 
     def _backup_done(self, result):
-        self.engine = None; self.run_btn.setEnabled(True); self.run_btn.setText("BACK UP THIS SITE")
+        self._clock.stop()
+        self.engine = None; self.run_btn.setEnabled(True); self.choose_sites_btn.setEnabled(True)
         ok = bool((result or {}).get("success")); self.progress.setValue(100 if ok else self.progress.value())
         self.progress_text.setText("Backup completed and verified." if ok else "Backup needs attention. Details are above.")
-        if ok:
-            self.current_profile["last_backup_date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-            profile_manager.save_profile(self.current_profile); self._profile_changed(self.current_profile["name"])
-        else:
+        self._refresh_stats()
+        for item in (result or {}).get("profiles", []):
+            if item.get("success"):
+                profile = profile_manager.load_profile(item.get("name"))
+                if profile:
+                    profile["last_backup_date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+                    profile_manager.save_profile(profile)
+        if self.current_profile:
+            refreshed = profile_manager.load_profile(self.current_profile["name"])
+            if refreshed: self.current_profile = refreshed
+        self._update_backup_selection()
+        if not ok:
             errors = "\n".join((result or {}).get("errors", [])) or "The backup did not complete."
             QMessageBox.warning(self, "Backup needs attention", errors[:1800])
 
@@ -346,6 +484,14 @@ class SuybWindow(QMainWindow):
             stamp = datetime.fromtimestamp(os.path.getmtime(path)).strftime("%Y-%m-%d  %H:%M")
             self.backup_list.addItem(f"{stamp}    {os.path.getsize(path) / 1048576:.1f} MB    {os.path.basename(path)}")
         if not files: self.backup_list.addItem("No local recovery packages yet.")
+
+    def _open_backup_folder(self):
+        folder = os.path.abspath(str((self.current_profile or {}).get("backup_dir", "")))
+        if not os.path.isdir(folder):
+            QMessageBox.information(self, "No backup folder yet", "Choose an existing working folder in Connection first.")
+            return
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(folder)):
+            QMessageBox.warning(self, "Could not open folder", f"The backup folder could not be opened:\n{folder}")
 
     def _choose_folder(self):
         path = QFileDialog.getExistingDirectory(self, "Choose backup working folder", self.dir_edit.text())

@@ -86,6 +86,55 @@ def _app_dir() -> str:
 PROFILES_DIR = config.resolve_dir("profiles")
 
 
+def sync_shared_profiles() -> int:
+    """Add sites discovered by The Hub without touching existing backup settings."""
+    try:
+        shared_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "_shared"))
+        if shared_dir not in sys.path:
+            sys.path.insert(0, shared_dir)
+        import snap_profiles
+        shared = snap_profiles.list_profiles()
+    except Exception:
+        return 0
+
+    os.makedirs(PROFILES_DIR, exist_ok=True)
+    existing_sites, existing_names = set(), set()
+    for fname in os.listdir(PROFILES_DIR):
+        if not fname.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(PROFILES_DIR, fname), encoding="utf-8") as handle:
+                row = json.load(handle)
+        except Exception:
+            continue
+        if isinstance(row, dict):
+            existing_names.add(str(row.get("name", "")).strip().lower())
+            existing_sites.add(str(row.get("site_url", "")).strip().rstrip("/").lower())
+
+    added = 0
+    for shared_profile in shared:
+        site = str(shared_profile.get("site_url", "")).strip()
+        if not site or site.rstrip("/").lower() in existing_sites:
+            continue
+        profile = new_profile_template()
+        name = str(shared_profile.get("name", "")).strip() or site
+        if name.lower() in existing_names:
+            try:
+                from urllib.parse import urlparse
+                name = urlparse(site).hostname or site
+            except Exception:
+                name = site
+        profile.update({"name": name, "site_url": site})
+        try:
+            save_profile(profile)
+        except Exception:
+            continue
+        existing_names.add(name.lower())
+        existing_sites.add(site.rstrip("/").lower())
+        added += 1
+    return added
+
+
 def _obfuscate(plain: str) -> str:
     return base64.b64encode(plain.encode()).decode()
 
@@ -111,6 +160,7 @@ def list_profiles() -> List[str]:
     crash the loader downstream.
     """
     os.makedirs(PROFILES_DIR, exist_ok=True)
+    sync_shared_profiles()
     names = []
     for fname in os.listdir(PROFILES_DIR):
         if not fname.endswith(".json"):

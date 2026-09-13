@@ -5,7 +5,8 @@
  * Lightweight hit tracker included at the top of public-facing controllers
  * (index.php, archive.php, page.php, blog.php). Logs one row per page view
  * to snap_stats. Excludes bots by default. Hashes IPs with a daily rotating
- * salt for unique visitor counting without storing PII.
+ * salt for same-day unique visitor counting without storing the raw address
+ * or creating a persistent visitor identifier.
  *
  * Usage:  require_once __DIR__ . '/core/stats-logger.php';
  *         snapsmack_log_hit($pdo, $settings, [
@@ -28,11 +29,24 @@ function snapsmack_maybe_rollup($pdo) {
     $yesterday = date('Y-m-d', strtotime('-1 day'));
     try {
         $last = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'stats_last_rollup' LIMIT 1")->fetchColumn();
-        if ($last >= $yesterday) return; // already done
-        snapsmack_rollup_daily($pdo, $yesterday);
-        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('stats_last_rollup', ?)
-                       ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
-            ->execute([$yesterday]);
+        if ($last < $yesterday) {
+            snapsmack_rollup_daily($pdo, $yesterday);
+            $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('stats_last_rollup', ?)
+                           ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+                ->execute([$yesterday]);
+        }
+
+        // Once daily, enforce the detailed-record retention window. Daily
+        // aggregate counts remain available without retaining visit-level data.
+        $today = date('Y-m-d');
+        $purge = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'stats_last_purge' LIMIT 1")->fetchColumn();
+        if ($purge < $today) {
+            $days = (int)$pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'stats_retention_days' LIMIT 1")->fetchColumn();
+            snapsmack_purge_old_stats($pdo, $days ?: 365);
+            $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('stats_last_purge', ?)
+                           ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")
+                ->execute([$today]);
+        }
     } catch (PDOException $e) {
         // Silently fail — stats are non-critical
     }
@@ -146,7 +160,8 @@ function snapsmack_referrer_host($ref) {
 }
 
 /**
- * Extract search term from referrer if it came from a search engine.
+ * Legacy helper retained for compatibility. New hits do not retain search
+ * phrases because a query can contain personal or sensitive information.
  * Works with Google, Bing, DuckDuckGo, Yahoo, Yandex.
  *
  * @param  string|null $ref
@@ -184,7 +199,7 @@ function snapsmack_hash_ip($ip) {
  *
  * PRIVACY: SnapSmack stats are local-only — we never send a visitor IP to a
  * third-party geolocation API (that would contradict the "visits only, no
- * tracking" promise). Instead we read a country code the WEBSERVER already
+ * cross-site tracking" promise). Instead we read a country code the WEBSERVER already
  * resolved locally and exposed as an environment variable / request header.
  *
  * Supported sources, in priority order:
@@ -363,15 +378,15 @@ function snapsmack_log_hit($pdo, $settings, $meta = []) {
             $meta['page_type'] ?? 'unknown',
             $meta['page_slug'] ?? null,
             $meta['image_id']  ?? null,
-            $referrer ?: null,
+            null, // never retain the full referring URL; hostname is sufficient
             snapsmack_referrer_host($referrer),
-            substr($ua, 0, 500),
+            null, // parse broad browser/OS, but do not retain the fingerprintable UA
             $parsed['browser'],
             $parsed['os'],
             snapsmack_geoip_country(), // local webserver GeoIP env var; null if unconfigured
             snapsmack_hash_ip($ip),
             $is_bot,
-            $meta['search_term'] ?? snapsmack_extract_search_term($referrer),
+            null, // search phrases are not necessary for first-party traffic stats
         ]);
         $hit_id = (int)$pdo->lastInsertId();
         $GLOBALS['snapsmack_hit'] = ['id' => $hit_id, 'page_type' => $meta['page_type'] ?? 'unknown'];
@@ -534,9 +549,15 @@ function snapsmack_rollup_daily($pdo, $date = null) {
  * @return int        Number of rows deleted
  */
 function snapsmack_purge_old_stats($pdo, $days = 365) {
+    // PIPEDA-aligned product ceiling: visit-level records never outlive a year.
+    $days = max(1, min(365, (int)$days));
     try {
-        $stmt = $pdo->prepare("DELETE FROM snap_stats WHERE hit_at < DATE_SUB(NOW(), INTERVAL ? DAY)");
-        $stmt->execute([$days]);
+        // Remove legacy high-detail fields immediately. Current releases write
+        // these columns as NULL, but older rows may still contain them.
+        $pdo->exec("UPDATE snap_stats SET referrer = NULL, user_agent = NULL, search_term = NULL
+                    WHERE referrer IS NOT NULL OR user_agent IS NOT NULL OR search_term IS NOT NULL");
+        $stmt = $pdo->prepare("DELETE FROM snap_stats WHERE hit_at < DATE_SUB(NOW(), INTERVAL {$days} DAY)");
+        $stmt->execute();
         return $stmt->rowCount();
     } catch (PDOException $e) {
         return 0;

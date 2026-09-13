@@ -109,6 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
                 $_current_mode = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog');
                 $_candidate_mode = count($_candidate_modes) === 1 && in_array($_candidate_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)
                     ? $_candidate_modes[0] : null;
+                if ($_current_mode === 'smackthemup' && $_candidate_mode === 'carousel') $_candidate_mode = null;
                 $_activation_conflict = $_candidate_mode !== null && $_candidate_mode !== $_current_mode
                     ? snap_mode_conflict($pdo, $_candidate_mode) : null;
                 if ($_activation_conflict !== null) {
@@ -126,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
                           ? array_values($_man['modes']) : [];
                 if (count($_modes) === 1 && in_array($_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)) {
                     $_cur = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog');
-                    if ($_modes[0] !== $_cur) {
+                    if ($_modes[0] !== $_cur && $_cur !== 'smackthemup') {
                         $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('site_mode', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
                             ->execute([$_modes[0], $_modes[0]]);
                         $_lbl = ['photoblog' => 'SmackOneOut', 'carousel' => 'GramOfSmack', 'smacktalk' => 'SmackTalk'];
@@ -175,7 +176,7 @@ $global_inventory = (function() { return include 'core/manifest-inventory.php'; 
 //   SMACKTALK                → skins with 'smacktalk' in manifest modes[]  (e.g. Alfred)
 //   Mobile (Photogram)       → excluded entirely; forced automatically on phones
 $site_mode        = $settings['site_mode'] ?? 'photoblog';
-$is_carousel      = ($site_mode === 'carousel');
+$is_carousel      = in_array($site_mode, ['carousel', 'smackthemup'], true);
 $is_smacktalk     = ($site_mode === 'smacktalk');
 
 $skin_dirs       = array_filter(glob('skins/*'), 'is_dir');
@@ -394,7 +395,8 @@ if (isset($_POST['save_skin_settings'])) {
         $_requested_modes = is_array($_requested_data['modes'] ?? null) ? array_values($_requested_data['modes']) : [];
         $_current_mode = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog');
         if (count($_requested_modes) === 1 && in_array($_requested_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)
-            && $_requested_modes[0] !== $_current_mode) {
+            && $_requested_modes[0] !== $_current_mode
+            && !($_current_mode === 'smackthemup' && $_requested_modes[0] === 'carousel')) {
             $_save_conflict = snap_mode_conflict($pdo, $_requested_modes[0]);
             if ($_save_conflict !== null) {
                 $_SESSION['gallery_flash'] = $_save_conflict['message'] . ' No skin or mode setting was changed.';
@@ -504,7 +506,7 @@ if (isset($_POST['save_skin_settings'])) {
                      ? array_values($_sk_man['modes']) : [];
         if (count($_sk_modes) === 1 && in_array($_sk_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)) {
             $_cur_mode = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog');
-            if ($_sk_modes[0] !== $_cur_mode) {
+            if ($_sk_modes[0] !== $_cur_mode && $_cur_mode !== 'smackthemup') {
                 $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('site_mode', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
                     ->execute([$_sk_modes[0], $_sk_modes[0]]);
                 $_mode_labels = ['photoblog' => 'SmackOneOut', 'carousel' => 'GramOfSmack', 'smacktalk' => 'SmackTalk'];
