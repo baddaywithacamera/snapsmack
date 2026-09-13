@@ -2088,8 +2088,25 @@ class EditorWindow(QMainWindow):
             self.doc.record("Move layer")
             self._update_title()
 
-    def request_render(self):
-        self._render_preview()
+    def begin_interactive_render(self):
+        """Use cancellable viewport proxies while a continuous control moves."""
+        self._interactive_render = True
+
+    def request_render(self, interactive=False):
+        if interactive:
+            self._interactive_render = True
+            self._schedule_render()
+        else:
+            self._render_preview()
+
+    def finish_interactive_render(self):
+        """Replace the last quick proxy with one definitive quality render."""
+        if not self.doc:
+            return
+        self._render_timer.stop()
+        self._preview_generation += 1
+        self._interactive_render = False
+        self._render_preview(keep_view=True)
 
     def update_title(self):
         self._update_title()
