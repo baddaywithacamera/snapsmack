@@ -144,7 +144,11 @@ TOPICS = [
      "edges; Transparent Edges preserves the full canvas for PNG, TIFF, or PSD. "
      "Perspective is saved in projects and recipes. RETOUCH "
      "has Heal and Red-Eye: turn one on and click blemishes; adjust Spot size or "
-     "Clear all."),
+     "Clear all. AI Heal opens a larger brush view: paint red over a defect and "
+     "Gemini rebuilds matching content using the surrounding photograph. Before "
+     "the paid request, SNAP SLAPPER asks permission to send a working-resolution "
+     "photo and mask to Google. The repair returns as a masked layer; pixels "
+     "outside the selection and the original photograph remain unchanged."),
     ("Projects, recipes, and export",
      "Save Project writes a .slapper file with all your editing steps. External "
      "textures are recorded by name, source, rights status, and restore link; "
