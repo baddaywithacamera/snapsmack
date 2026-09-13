@@ -26,6 +26,15 @@ def _png_data(image):
     return base64.b64encode(stream.getvalue()).decode("ascii")
 
 
+def marked_selection(image, mask):
+    """Return an unmistakable red overlay showing Gemini the repair target."""
+    image = image.convert("RGB")
+    mask = mask.convert("L").resize(image.size, Image.Resampling.LANCZOS)
+    red = Image.new("RGB", image.size, (255, 24, 24))
+    tint = Image.blend(image, red, 0.68)
+    return Image.composite(tint, image, mask)
+
+
 def focus_region(image, mask, target=1536):
     """Crop generous context around a small defect and enlarge it for the model."""
     bbox = mask.getbbox()
@@ -52,12 +61,17 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
     image = image.convert("RGB")
     mask = mask.convert("L").resize(image.size, Image.Resampling.LANCZOS)
     box, work_image, work_mask = focus_region(image, mask)
+    marked = marked_selection(work_image, work_mask)
     instruction = (
-        "The FIRST image is a crop of the photograph. The SECOND image is its "
-        "black-and-white selection mask. Repair only the area painted WHITE. "
-        "Remove the selected defect and reconstruct natural matching content from "
+        "Edit the FIRST image and return the repaired photograph, not an explanation. "
+        "The SECOND image marks the repair target in RED. The THIRD image is the "
+        "same selection as a black-and-white mask; WHITE is the repair target. "
+        "The red paint is an annotation, not part of the photograph. Remove the "
+        "scratch, scuff, wire, dust, blemish, or other defect underneath that mark, "
+        "then reconstruct natural matching content from "
         "the surrounding photograph. Preserve perspective, lighting, grain, focus, "
-        "colour and texture. Do not alter anything outside the white selection."
+        "colour and texture. Do not merely return the original image. Do not alter "
+        "anything outside the white selection."
     )
     if prompt.strip():
         instruction += " Additional instruction: " + prompt.strip()
@@ -65,6 +79,7 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
         "contents": [{"role": "user", "parts": [
             {"text": instruction},
             {"inlineData": {"mimeType": "image/png", "data": _png_data(work_image)}},
+            {"inlineData": {"mimeType": "image/png", "data": _png_data(marked)}},
             {"inlineData": {"mimeType": "image/png", "data": _png_data(work_mask)}},
         ]}],
         "generationConfig": {"responseModalities": ["IMAGE"]},
