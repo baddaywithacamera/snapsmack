@@ -418,22 +418,40 @@ function sc_relay_recover_curator_outboxes(PDO $pdo, array $settings, int $actor
     $checked = 0; $recovered = 0; $cutoff = time() - 604800;
     foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) {
         $actor_url = (string)$row['actor_url'];
-        $actor = sv_fetch_ap($actor_url, $settings);
-        $outbox_url = is_array($actor) ? (string)($actor['outbox'] ?? '') : '';
-        $collection = $outbox_url !== '' ? sv_fetch_ap($outbox_url, $settings) : null;
-        if (is_array($collection) && isset($collection['first']) && is_string($collection['first'])) {
-            $first = sv_fetch_ap($collection['first'], $settings);
-            if (is_array($first)) $collection = $first;
-        }
-        $activities = is_array($collection)
-            ? ($collection['orderedItems'] ?? $collection['items'] ?? []) : [];
-        if (!is_array($activities)) $activities = [];
-        foreach (array_slice($activities, 0, $items) as $activity) {
-            if (!is_array($activity) || ($activity['type'] ?? '') !== 'Create') continue;
-            $object = $activity['object'] ?? [];
-            if (!is_array($object)) continue;
-            $published = strtotime((string)($object['published'] ?? $activity['published'] ?? ''));
+        // Pixelfed commonly exposes an AP outbox shell with totalItems but no
+        // pages. Use the same universal gallery reader as the public client:
+        // Mastodon REST, Pixelfed's public REST route, then a paginated AP
+        // outbox. The previous AP-only path is why 18 accepted accounts yielded
+        // one lonely post in GLOBAL.
+        $actor = function_exists('sv_crawl_actor') ? sv_crawl_actor($actor_url) : null;
+        $posts = is_array($actor) && function_exists('sv_fetch_gallery')
+            ? sv_fetch_gallery($actor, $items) : [];
+        foreach ($posts as $post) {
+            if (!is_array($post)) continue;
+            $object_id = trim((string)($post['id'] ?? ''));
+            if ($object_id === '') continue;
+            $published = strtotime((string)($post['published'] ?? ''));
             if ($published !== false && $published < $cutoff) continue;
+            $attachments = [];
+            foreach ((array)($post['images'] ?? []) as $image_url) {
+                if (is_string($image_url) && $image_url !== '') {
+                    $attachments[] = ['type'=>'Image','url'=>$image_url];
+                }
+            }
+            if (!$attachments) continue;
+            $object = [
+                'id'=>$object_id, 'type'=>'Note', 'attributedTo'=>$actor_url,
+                'url'=>(string)($post['url'] ?? $object_id),
+                'published'=>(string)($post['published'] ?? ''),
+                'content'=>nl2br(htmlspecialchars((string)($post['text'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')),
+                'attachment'=>$attachments,
+                'to'=>['https://www.w3.org/ns/activitystreams#Public'],
+            ];
+            $activity = [
+                'id'=>$object_id . '#curator-recovery', 'type'=>'Create',
+                'actor'=>$actor_url, 'object'=>$object,
+                'to'=>['https://www.w3.org/ns/activitystreams#Public'],
+            ];
             $recovered += sc_relay_fanout($pdo, $settings, $activity, $actor_url) > 0 ? 1 : 0;
         }
         $pdo->prepare("UPDATE snap_curator_directory SET last_outbox_check_at=NOW() WHERE id=?")

@@ -110,10 +110,15 @@ class Window(QMainWindow):
     def grid_page(self):
         p,l=self.page("GRAMOFSMACK grid","Drag posts into order. Select two or more singles to make a carousel. Nothing changes online until you confirm."); self.gram=QListWidget(); self.gram.setViewMode(QListWidget.IconMode); self.gram.setIconSize(QSize(170,170)); self.gram.setGridSize(QSize(195,215)); self.gram.setResizeMode(QListWidget.Adjust); self.gram.setDragDropMode(QAbstractItemView.InternalMove); self.gram.setSelectionMode(QAbstractItemView.ExtendedSelection); l.addWidget(self.gram,1); r=QHBoxLayout(); refresh=QPushButton("REFRESH GRID"); refresh.clicked.connect(self.load_grid); r.addWidget(refresh); r.addStretch(); car=QPushButton("MAKE SELECTED A CAROUSEL"); car.clicked.connect(self.carousel); r.addWidget(car); order=QPushButton("PUBLISH ORDER"); order.setObjectName("Primary"); order.clicked.connect(self.push_grid); r.addWidget(order); l.addLayout(r); return p
     def images_page(self):
-        p,l=self.page("Find and fill missing details","1. Choose the missing fields to find.  2. Scan the site.  3. Select photographs.  4. Enrich the selected photographs."); o,ol=card("Show photographs missing…","Choose one or more fields. The scan results below will be filtered to match."); r=QHBoxLayout(); self.fields={}
+        p,l=self.page("Find and fill missing details","1. Choose the missing fields to find.  2. Scan the site.  3. Check photographs.  4. Enrich the checked photographs."); o,ol=card("Show photographs missing…","Choose one or more fields. Results must be missing every field you check."); r=QHBoxLayout(); self.fields={}
         for key,text,on in (("title","Title",1),("caption","Caption",1),("alt","ALT text",1),("tags","Tags",1),("colors","AI colours",1),("color_mode","Colour/B&W",1),("ocr","OCR",0),("content_warning","Safety review",0)):
             w=QCheckBox(text); w.setChecked(on); self.fields[key]=w; r.addWidget(w)
-        ol.addLayout(r); ol.addWidget(lbl("Every enrichment generates and saves the complete metadata bundle. These boxes control only which missing values are applied online now.","Muted")); preset=QPushButton("TITLE + CAPTION + HASHTAGS"); preset.clicked.connect(lambda:self.set_missing_fields({"title","caption","tags"})); ol.addWidget(preset,0,Qt.AlignLeft); self.overwrite=QCheckBox("Replace existing values"); self.force=QCheckBox("Ignore saved bundle and pay for a fresh AI result"); ol.addWidget(self.overwrite); ol.addWidget(self.force); l.addWidget(o); self.prompt=QTextEdit(); self.prompt.setPlaceholderText("The site’s saved enrichment prompt appears after scanning."); self.prompt.setMaximumHeight(180); l.addWidget(self.prompt); self.audit=QListWidget(); self.audit.setSelectionMode(QAbstractItemView.ExtendedSelection); l.addWidget(self.audit,1); r=QHBoxLayout(); scan=QPushButton("SCAN SITE"); scan.clicked.connect(self.scan); r.addWidget(scan); select_all=QPushButton("SELECT ALL RESULTS"); select_all.clicked.connect(self.audit.selectAll); r.addWidget(select_all); self.stop=QPushButton("STOP AFTER THIS IMAGE"); self.stop.setObjectName("Danger"); self.stop.setEnabled(False); self.stop.clicked.connect(lambda:setattr(self,"cancel",True)); r.addWidget(self.stop); r.addStretch(); en=QPushButton("ENRICH SELECTED"); en.setObjectName("Primary"); en.clicked.connect(self.enrich); r.addWidget(en); l.addLayout(r); return p
+        ol.addLayout(r); ol.addWidget(lbl("Every enrichment generates and saves the complete metadata bundle. These boxes control only which missing values are applied online now.","Muted")); preset=QPushButton("TITLE + CAPTION + HASHTAGS"); preset.clicked.connect(lambda:self.set_missing_fields({"title","caption","tags"})); ol.addWidget(preset,0,Qt.AlignLeft); self.overwrite=QCheckBox("Replace existing values"); self.force=QCheckBox("Ignore saved bundle and pay for a fresh AI result"); ol.addWidget(self.overwrite); ol.addWidget(self.force); l.addWidget(o)
+        self.prompt_toggle=QPushButton("SHOW ENRICHMENT INSTRUCTIONS"); self.prompt_toggle.setCheckable(True); self.prompt_toggle.toggled.connect(self.toggle_prompt); l.addWidget(self.prompt_toggle,0,Qt.AlignLeft)
+        self.prompt=QTextEdit(); self.prompt.setPlaceholderText("The site’s saved enrichment prompt appears after scanning."); self.prompt.setMaximumHeight(180); self.prompt.hide(); l.addWidget(self.prompt)
+        self.audit=QListWidget(); self.audit.setViewMode(QListWidget.IconMode); self.audit.setIconSize(QSize(180,125)); self.audit.setGridSize(QSize(225,215)); self.audit.setResizeMode(QListWidget.Adjust); self.audit.setSelectionMode(QAbstractItemView.NoSelection); self.audit.itemChanged.connect(self.audit_count); self.audit.itemDoubleClicked.connect(self.open_audit_photo); l.addWidget(self.audit,1)
+        self.audit_summary=lbl("Scan the site to see recognizable photographs.","Muted"); l.addWidget(self.audit_summary)
+        r=QHBoxLayout(); scan=QPushButton("SCAN SITE"); scan.clicked.connect(self.scan); r.addWidget(scan); select_all=QPushButton("CHECK ALL RESULTS"); select_all.clicked.connect(lambda:self.check_audit(True)); r.addWidget(select_all); clear=QPushButton("CLEAR CHECKS"); clear.clicked.connect(lambda:self.check_audit(False)); r.addWidget(clear); self.stop=QPushButton("STOP AFTER THIS IMAGE"); self.stop.setObjectName("Danger"); self.stop.setEnabled(False); self.stop.clicked.connect(lambda:setattr(self,"cancel",True)); r.addWidget(self.stop); r.addStretch(); en=QPushButton("ENRICH CHECKED"); en.setObjectName("Primary"); en.clicked.connect(self.enrich); r.addWidget(en); l.addLayout(r); return p
     def sites_page(self):
         p,l=self.page("Site connections","Most days you should not need this page. Editing a connection affects every SnapSmack desktop tool."); c,cl=card("Selected connection"); form=QFormLayout(); self.name=QLineEdit(); self.url=QLineEdit(); self.key=QLineEdit(); self.key.setEchoMode(QLineEdit.Password); form.addRow("Friendly name",self.name); form.addRow("Site URL",self.url); form.addRow("GYSS API key",self.key); cl.addLayout(form); r=QHBoxLayout(); new=QPushButton("NEW CONNECTION"); new.clicked.connect(self.new_site); r.addWidget(new); delete=QPushButton("DELETE SELECTED CONNECTION"); delete.setObjectName("Danger"); delete.clicked.connect(self.delete_site); r.addWidget(delete); r.addStretch(); save=QPushButton("SAVE CONNECTION"); save.setObjectName("Primary"); save.clicked.connect(self.save_site); r.addWidget(save); cl.addLayout(r); l.addWidget(c); l.addStretch(); return p
     def show_page(self,n):
@@ -127,6 +132,18 @@ class Window(QMainWindow):
             "Nothing changes online until you choose PUBLISH CHANGES and confirm.")
     def set_missing_fields(self,wanted):
         for key,box in self.fields.items():box.setChecked(key in wanted)
+    def toggle_prompt(self,shown):
+        self.prompt.setVisible(shown); self.prompt_toggle.setText("HIDE ENRICHMENT INSTRUCTIONS" if shown else "SHOW ENRICHMENT INSTRUCTIONS")
+    def check_audit(self,checked):
+        state=Qt.Checked if checked else Qt.Unchecked
+        for i in range(self.audit.count()):self.audit.item(i).setCheckState(state)
+        self.audit_count()
+    def audit_count(self,*_):
+        checked=sum(self.audit.item(i).checkState()==Qt.Checked for i in range(self.audit.count()))
+        self.audit_summary.setText(f"{self.audit.count():,} matching photographs · {checked:,} checked · up to {checked:,} paid AI calls")
+    def open_audit_photo(self,item):
+        row=item.data(Qt.UserRole) or {}; url=row.get("thumb_url","")
+        if url:QDesktopServices.openUrl(QUrl(url))
     def save_enrichment_local(self,image_id,result,audit_row=None):
         index,_meta=self.local(); images=index.setdefault("images",{}); key=str(image_id)
         base=dict(images.get(key) or audit_row or {"id":image_id})
@@ -297,17 +314,34 @@ class Window(QMainWindow):
         ids=[x.data(Qt.UserRole)["id"] for x in self.gram.selectedItems()]
         if len(ids)<2:QMessageBox.information(self,"Select more posts","Select at least two single posts. The first selected becomes the cover.");return
         if QMessageBox.question(self,"Make carousel?",f"Combine {len(ids)} posts? The first selected will be the cover.",QMessageBox.Yes|QMessageBox.No,QMessageBox.No)==QMessageBox.Yes:self.run(lambda:self.api.gram_carousel(ids,ids[0]),lambda _:(QMessageBox.information(self,"Carousel made","The selected posts are now one carousel."),self.load_grid()))
+    def _audit_with_thumbs(self):
+        response=self.api.audit(); rows=response.get("images",response.get("items",[])); tdir=snap_home.site_thumbs_dir(self.profile["site_url"])
+        for n,row in enumerate(rows,1):
+            url=row.get("thumb_url","")
+            if url:
+                ext=os.path.splitext(urllib.parse.urlparse(url).path)[1] or ".jpg"; target=os.path.join(tdir,"audit-"+str(row["id"])+ext)
+                try:
+                    if not os.path.isfile(target):
+                        rr=requests.get(url,timeout=45); rr.raise_for_status()
+                        with open(target,"wb") as handle:handle.write(rr.content)
+                    row["thumb_file"]=target
+                except Exception:pass
+            self.worker.progress.emit("Loading audit photographs",n,max(len(rows),1))
+        return response
     def scan(self):
         if not self.require_api():return
         def after(r):
             self.prompt.setPlainText(r.get("prompt",self.prompt.toPlainText()));self.audit.clear(); wanted={k for k,w in self.fields.items() if w.isChecked()}
             rows=[x for x in r.get("images",r.get("items",[])) if not wanted or wanted.issubset(set(x.get("missing",[])))]
             for x in rows:
-                it=QListWidgetItem(f"{x.get('title') or x.get('filename') or 'Untitled'}  ·  missing: {', '.join(x.get('missing',[]))}");it.setData(Qt.UserRole,x);self.audit.addItem(it)
+                identity=x.get('title') or x.get('filename') or f"Photo #{x['id']}"; date=str(x.get('posted_date') or '')[:10]
+                detail=f"{identity}\nPhoto #{x['id']}"+(f" · {date}" if date else "")+f"\nMissing: {', '.join(x.get('missing',[]))}"
+                pix=QPixmap(x.get("thumb_file", "")); icon=QIcon(pix) if not pix.isNull() else QIcon(); it=QListWidgetItem(icon,detail); it.setToolTip("Double-click to preview"); it.setFlags(it.flags()|Qt.ItemIsUserCheckable); it.setCheckState(Qt.Unchecked); it.setData(Qt.UserRole,x); self.audit.addItem(it)
+            self.audit_count()
             if not rows:QMessageBox.information(self,"Nothing matched","No photographs are missing all of the selected fields.")
-        self.run(self.api.audit,after)
+        self.run(self._audit_with_thumbs,after)
     def enrich(self):
-        selected=[x.data(Qt.UserRole) for x in self.audit.selectedItems()];ids=[x["id"] for x in selected];fields=[k for k,w in self.fields.items() if w.isChecked()]
+        selected=[self.audit.item(i).data(Qt.UserRole) for i in range(self.audit.count()) if self.audit.item(i).checkState()==Qt.Checked];ids=[x["id"] for x in selected];fields=[k for k,w in self.fields.items() if w.isChecked()]
         if not ids or not fields:return
         prompt=self.prompt.toPlainText().strip()
         if not prompt:QMessageBox.information(self,"Prompt needed","Scan the site and provide an image-enrichment prompt first.");return

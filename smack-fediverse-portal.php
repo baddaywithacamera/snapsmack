@@ -360,19 +360,20 @@ include 'core/sidebar.php';
         $curator_identity_ok = function_exists('sc_curator_is_hub') && sc_curator_is_hub($sv_settings);
         $curator_counts = [];
         $curator_rows = [];
+        $curator_total = $curator_accepted = $curator_checked = $curator_posts = 0;
         if (function_exists('sc_curator_ensure_tables')) {
             try {
                 sc_curator_ensure_tables($pdo);
                 $curator_counts = $pdo->query("SELECT state,COUNT(*) n FROM snap_curator_directory GROUP BY state")
                     ->fetchAll(PDO::FETCH_KEY_PAIR);
+                $curator_total = (int)$pdo->query("SELECT COUNT(*) FROM snap_curator_directory")->fetchColumn();
+                $curator_accepted = (int)$pdo->query("SELECT COUNT(*) FROM snap_curator_directory c JOIN snap_ap_following f ON f.id=c.follow_row_id WHERE f.state='accepted'")->fetchColumn();
+                $curator_checked = (int)$pdo->query("SELECT COUNT(*) FROM snap_curator_directory WHERE last_outbox_check_at IS NOT NULL")->fetchColumn();
+                $curator_posts = (int)$pdo->query("SELECT COUNT(*) FROM snap_relay_intake r JOIN snap_curator_directory c ON c.actor_url=r.origin_actor_url")->fetchColumn();
                 $curator_rows = $pdo->query("SELECT c.acct,c.actor_url,c.state,c.last_seen_at,c.last_checked_at,c.last_error,
                         COALESCE(f.state,'not queued') AS follow_state
                     FROM snap_curator_directory c LEFT JOIN snap_ap_following f ON f.id=c.follow_row_id
                     ORDER BY c.first_seen_at,c.id LIMIT 500")->fetchAll(PDO::FETCH_ASSOC);
-                $curator_accepted = 0;
-                foreach ($curator_rows as $curator_row) {
-                    if (($curator_row['follow_state'] ?? '') === 'accepted') $curator_accepted++;
-                }
             } catch (Throwable $e) {}
         }
     ?>
@@ -393,13 +394,18 @@ include 'core/sidebar.php';
             <div class="alert alert-warn">BLOCKED — the secondary curator identity is available only on the photoblogs.fyi hub.</div>
         <?php else: ?>
             <p><strong><?php echo $curator_on ? 'RUNNING' : 'PAUSED'; ?></strong>
-                &middot; discovered <?php echo (int)($curator_counts['discovered'] ?? 0); ?>
-                &middot; follow jobs <?php echo (int)($curator_counts['following'] ?? 0); ?>
-                &middot; accepted <?php echo (int)($curator_accepted ?? 0); ?>
+                &middot; accounts scooped <?php echo number_format($curator_total); ?>
+                &middot; waiting to process <?php echo number_format((int)($curator_counts['discovered'] ?? 0)); ?>
+                &middot; follow jobs <?php echo number_format((int)($curator_counts['following'] ?? 0)); ?>
+                &middot; accepted accounts <?php echo number_format($curator_accepted); ?>
+                &middot; accounts checked for posts <?php echo number_format($curator_checked); ?>
+                &middot; posts scooped into GLOBAL <?php echo number_format($curator_posts); ?>
                 &middot; excluded hub members <?php echo (int)($curator_counts['excluded'] ?? 0); ?>
                 &middot; removed/invalid/rejected <?php echo (int)(($curator_counts['removed'] ?? 0) + ($curator_counts['invalid'] ?? 0) + ($curator_counts['rejected'] ?? 0)); ?></p>
             <p class="dim">Last complete directory scan:
                 <strong><?php echo htmlspecialchars((string)($sv_settings['curator_scan_completed_at'] ?? 'never')); ?></strong>
+                &middot; Next directory page: <strong><?php echo htmlspecialchars((string)($sv_settings['curator_next_scan_at'] ?? 'now')); ?></strong>
+                &middot; Next account action: <strong><?php echo htmlspecialchars((string)($sv_settings['curator_next_action_at'] ?? 'now')); ?></strong>
                 <?php if (!empty($sv_settings['curator_last_error'])): ?>&middot; Last error:
                     <?php echo htmlspecialchars((string)$sv_settings['curator_last_error']); ?><?php endif; ?></p>
             <form method="POST" style="display:inline-block;margin-right:12px;">
