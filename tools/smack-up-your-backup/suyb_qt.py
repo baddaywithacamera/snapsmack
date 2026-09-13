@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 import backup_engine
+from checkpoint import BackupCheckpoint
 import config as config_module
 import profile_manager
 import restore_engine
@@ -136,6 +137,7 @@ class SuybWindow(QMainWindow):
         self.bridge.tested.connect(self._test_done)
         self.bridge.restoreFinished.connect(self._restore_done)
         self.engine = None
+        self._pause_requested = False
         self._backup_started = None
         self._site_started = None
         self._stats_site = ""
@@ -203,6 +205,10 @@ class SuybWindow(QMainWindow):
         layout.addLayout(actions)
         run, rl = _card("Make a fresh backup", "Differential is fast and downloads only changed files. Full rechecks the complete site.")
         opts = QHBoxLayout(); self.full_check = QCheckBox("Full backup"); opts.addWidget(self.full_check); opts.addStretch(1)
+        self.pause_btn = QPushButton("PAUSE")
+        self.pause_btn.setEnabled(False)
+        self.pause_btn.clicked.connect(self._toggle_pause)
+        opts.addWidget(self.pause_btn)
         self.run_btn = QPushButton("BACK UP THIS SITE"); self.run_btn.setObjectName("Primary"); self.run_btn.clicked.connect(self._run_backup); opts.addWidget(self.run_btn)
         rl.addLayout(opts); self.progress = QProgressBar(); self.progress.setRange(0, 100); rl.addWidget(self.progress)
         stats = QHBoxLayout()
@@ -348,17 +354,47 @@ class SuybWindow(QMainWindow):
     def _run_backup(self):
         if not self.current_profile or self.engine: return
         names = list(self.selected_profile_names or [self.current_profile["name"]])
+        resume_points = {}
+        for name in names:
+            profile = profile_manager.load_profile(name) or {}
+            cp = BackupCheckpoint.load(
+                profile.get("backup_dir", ""), profile.get("name", name))
+            if not cp:
+                continue
+            box = QMessageBox(self)
+            box.setWindowTitle("Interrupted backup found")
+            box.setIcon(QMessageBox.Information)
+            box.setText(f"Resume the interrupted backup for {name}?")
+            box.setInformativeText(
+                f"It began {cp.data.get('created_at', 'at an unknown time')[:16].replace('T', ' ')}.\n"
+                f"{cp.data.get('files_downloaded', 0):,} files were already downloaded and verified; "
+                f"{cp.data.get('files_skipped', 0):,} unchanged files were recorded."
+            )
+            resume_button = box.addButton("RESUME", QMessageBox.AcceptRole)
+            fresh_button = box.addButton("START FRESH", QMessageBox.DestructiveRole)
+            box.addButton(QMessageBox.Cancel)
+            box.setDefaultButton(resume_button)
+            box.exec()
+            chosen = box.clickedButton()
+            if chosen is resume_button:
+                resume_points[name] = cp
+            elif chosen is fresh_button:
+                cp.delete()
+            else:
+                return
         force_full = self.full_check.isChecked()
         global_cloud = self._global_cloud()
         self.log.clear(); self.run_btn.setEnabled(False); self.choose_sites_btn.setEnabled(False)
+        self.pause_btn.setEnabled(True); self.pause_btn.setText("PAUSE")
+        self._pause_requested = False
         self.run_btn.setText("BACKUP IN PROGRESS…")
         self._backup_started = time.monotonic(); self._site_started = self._backup_started
         self._stats_site = ""; self._last_pct = 0.0; self._last_stats = None
         self.files_stats.setText("FILES\nReading inventory…"); self.data_stats.setText("DATA\nCalculating total…")
         self.time_stats.setText("TIME\nElapsed 0:00 · ETA calculating…"); self._clock.start()
-        threading.Thread(target=self._run_backup_batch, args=(names, force_full, global_cloud), daemon=True).start()
+        threading.Thread(target=self._run_backup_batch, args=(names, force_full, global_cloud, resume_points), daemon=True).start()
 
-    def _run_backup_batch(self, names, force_full, global_cloud):
+    def _run_backup_batch(self, names, force_full, global_cloud, resume_points):
         results = []
         total = len(names)
         for index, name in enumerate(names):
@@ -374,7 +410,10 @@ class SuybWindow(QMainWindow):
                     self.bridge.progress.emit(stage, f"{site}: {msg}", (i + float(pct)) / n),
                 on_stats=lambda fd, ft, ff, bd, bt, bf, site=name:
                     self.bridge.stats.emit(site, fd, ft, ff, bd, bt, bf),
-                on_log=lambda msg, site=name: self.bridge.log.emit(f"{site}: {msg}"))
+                on_log=lambda msg, site=name: self.bridge.log.emit(f"{site}: {msg}"),
+                resume_checkpoint=resume_points.get(name))
+            if self._pause_requested:
+                self.engine.pause()
             result = self.engine.run() or {}
             results.append({"name": name, **result})
             if not result.get("success"):
@@ -426,9 +465,29 @@ class SuybWindow(QMainWindow):
     def _on_log(self, message):
         self.log.append(message)
 
+    def _toggle_pause(self):
+        if not self.engine:
+            return
+        if self._pause_requested:
+            self._pause_requested = False
+            self.engine.resume()
+            self.pause_btn.setText("PAUSE")
+            self.progress_text.setText("Backup resumed.")
+            self._clock.start()
+            self._on_log("Backup resumed.")
+        else:
+            self._pause_requested = True
+            self.engine.pause()
+            self.pause_btn.setText("RESUME")
+            self.progress_text.setText("Pausing safely after the current file…")
+            self._clock.stop()
+            self._on_log("Pause requested — the current file will finish safely, then backup will wait.")
+
     def _backup_done(self, result):
         self._clock.stop()
-        self.engine = None; self.run_btn.setEnabled(True); self.choose_sites_btn.setEnabled(True)
+        self.engine = None; self._pause_requested = False
+        self.pause_btn.setEnabled(False); self.pause_btn.setText("PAUSE")
+        self.run_btn.setEnabled(True); self.choose_sites_btn.setEnabled(True)
         ok = bool((result or {}).get("success")); self.progress.setValue(100 if ok else self.progress.value())
         self.progress_text.setText("Backup completed and verified." if ok else "Backup needs attention. Details are above.")
         self._refresh_stats()
