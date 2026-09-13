@@ -19,7 +19,7 @@ import sybu_core
 
 # Kept explicit so the Qt shell never imports the legacy Tk entry point (which
 # redirects stdout/stderr and initializes Tk-only services at import time).
-BUILD_VERSION = "0.7.64"
+BUILD_VERSION = "0.7.65"
 
 GREEN = "#73f04b"; BASE = "#0d120f"; VOID = "#090c0a"; PANEL = "#121a15"
 CARD = "#18231c"; BORDER = "#28372d"; INK = "#f4f7f2"; DIM = "#829087"
@@ -126,7 +126,7 @@ class Window(QMainWindow):
 
     def _queue_page(self):
         page,l=self._page("Your posting queue","Edit the fields that matter. Selection, enrichment and posting all operate on this table.")
-        tools=QHBoxLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); tools.addStretch(1); self.queue_count=label("0 images","Muted"); tools.addWidget(self.queue_count); l.addLayout(tools)
+        tools=QHBoxLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); tools.addStretch(1); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); self.queue_count=label("0 images","Muted"); tools.addWidget(self.queue_count); l.addLayout(tools)
         self.table=QTableWidget(0,12); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents); self.table.horizontalHeader().setSectionResizeMode(3,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(5,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(6,QHeaderView.Stretch); self.table.setMinimumHeight(500); l.addWidget(self.table,1); return page
 
     def _settings_page(self):
@@ -204,19 +204,24 @@ class Window(QMainWindow):
                 item=QTableWidgetItem(str(row.get(k,"")))
                 if k in ('file','status'): item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                 self.table.setItem(r,c,item)
-            colour=QComboBox(); colour.addItem("—",""); colour.addItem("Colour","color"); colour.addItem("B&W","bw")
-            colour.setCurrentIndex(max(0,colour.findData(row.get('color_mode','')))); self.table.setCellWidget(r,7,colour)
+            colour=QComboBox(); colour.addItem("—",""); colour.addItem("Colour","color"); colour.addItem("B&W","bw"); colour.setFixedHeight(36)
+            colour.setCurrentIndex(max(0,colour.findData(row.get('color_mode','')))); self.table.setCellWidget(r,7,self._centred_control(colour))
             orient=QComboBox()
             for text,value in (("Auto","auto"),("Landscape","0"),("Portrait","1"),("Square","2")): orient.addItem(text,value)
-            orient.setCurrentIndex(max(0,orient.findData(row.get('orientation','auto')))); self.table.setCellWidget(r,8,orient)
+            orient.setFixedHeight(36); orient.setCurrentIndex(max(0,orient.findData(row.get('orientation','auto')))); self.table.setCellWidget(r,8,self._centred_control(orient))
         self.queue_count.setText(f"{data['selected']} selected · {data['count']} images")
+
+    def _centred_control(self, control):
+        host=QWidget(); host._control=control
+        layout=QVBoxLayout(host); layout.setContentsMargins(3,3,3,3); layout.addStretch(1); layout.addWidget(control); layout.addStretch(1)
+        return host
 
     def _sync_queue(self):
         for r in range(self.table.rowCount()):
             self.engine.set_selected(r,self.table.item(r,0).checkState()==Qt.Checked)
             patch={k:self.table.item(r,c).text() for c,k in ((3,'title'),(4,'caption'),(5,'alt'),(6,'tags'),(9,'category'),(10,'album'))}
-            patch['color_mode']=self.table.cellWidget(r,7).currentData() or ''
-            patch['orientation']=self.table.cellWidget(r,8).currentData() or 'auto'
+            patch['color_mode']=self.table.cellWidget(r,7)._control.currentData() or ''
+            patch['orientation']=self.table.cellWidget(r,8)._control.currentData() or 'auto'
             self.engine.update_entry(r,patch)
 
     def _review_prompt(self):
