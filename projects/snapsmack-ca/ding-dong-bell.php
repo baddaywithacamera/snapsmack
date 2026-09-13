@@ -256,10 +256,10 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="entry-top">
                     <h3>Fediverse replies were stored, approved, and never shown on any skin</h3>
                     <span class="date">&ldquo;Loud and Clear&rdquo; &middot; 2026-09-13</span>
-                    <span class="state notwatch">Fixed &mdash; confirming</span>
+                    <span class="state watched">Watched working</span>
                 </div>
                 <p>A reply from Pixelfed, Mastodon, or another SnapSmack site arrived, passed its signature check, was matched to the right photograph, was auto-approved, and sat in the database &mdash; where the owner could see it in the moderation screen. The public page never showed it. Not on one skin: on all twenty-four. Federated replies were written to the classic comments table; the comment thread every skin renders had moved to the community engine and read only its own table. Nobody wired the old one in. Which means &ldquo;comments federate&rdquo; was true of the database and false of the website, for as long as the community engine has existed.</p>
-                <p>Found the plain way: two test replies sent to a live post, both present in the database with the right photo and approved, neither on the page. The thread now merges approved federated replies into the same list, in date order, tagged so you can see where they came from, with the commenter&rsquo;s handle linked to their profile. Ships in 0.7.707D. Confirming means: deploy it, open the post, see the two replies that were already there. The other direction &mdash; a reply typed on the site reaching Pixelfed &mdash; is not yet watched, and is listed on its own below.</p>
+                <p>Found the plain way: two test replies sent to a live post, both present in the database with the right photo and approved, neither on the page. The thread now merges approved federated replies into the same list, in date order, tagged so you can see where they came from, with the commenter&rsquo;s handle linked to their profile. Shipped in 0.7.707D and watched the same day: deployed to allinthewrist.photoblogs.fyi, opened the post, both replies that were already in the database appeared under it &mdash; handle, date, tagged fediverse. The other direction &mdash; a reply typed on the site reaching Pixelfed &mdash; is not yet watched, and is listed on its own below.</p>
             </div>
 
             <div class="entry">
