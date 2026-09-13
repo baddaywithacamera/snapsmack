@@ -76,21 +76,30 @@ class ToolCard(QFrame):
     def __init__(self, name, description, paths, parent=None):
         super().__init__(parent); self.setObjectName("tool"); self.setFixedHeight(82); self.setMinimumWidth(0)
         self.exe = core._find_exe(paths); self.name = name
-        row = QHBoxLayout(self); row.setContentsMargins(16, 13, 13, 13); row.setSpacing(13)
-        icon = QLabel(); icon.setFixedSize(42, 42); icon.setAlignment(Qt.AlignCenter)
-        path = _icon_path(name)
-        if path:
-            icon.setPixmap(QPixmap(path).scaled(38, 38, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.row = QHBoxLayout(self); self.row.setContentsMargins(16, 13, 13, 13); self.row.setSpacing(13)
+        self.icon = QLabel(); self.icon.setFixedSize(42, 42); self.icon.setAlignment(Qt.AlignCenter)
+        self.icon_path = _icon_path(name)
+        if self.icon_path:
+            self.icon.setPixmap(QPixmap(self.icon_path).scaled(38, 38, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
-            icon.setText("".join(word[0] for word in name.split()[:2]))
-            icon.setStyleSheet("color:#63ef3d;font-size:17px;font-weight:900;border:1px solid #3a513f;border-radius:9px")
-        row.addWidget(icon)
-        words = QVBoxLayout(); words.setSpacing(3)
-        title = QLabel(name); title.setObjectName("toolTitle"); title.setWordWrap(True); words.addWidget(title)
-        sub = QLabel(description if self.exe else description + " · not installed"); sub.setObjectName("muted"); sub.setWordWrap(True); words.addWidget(sub)
-        row.addLayout(words, 1)
-        launch = QPushButton("OPEN" if self.exe else "MISSING"); launch.setEnabled(bool(self.exe))
-        launch.clicked.connect(self._launch); row.addWidget(launch)
+            self.icon.setText("".join(word[0] for word in name.split()[:2]))
+        self.row.addWidget(self.icon)
+        self.words = QVBoxLayout(); self.words.setSpacing(3)
+        self.title = QLabel(name); self.title.setObjectName("toolTitle"); self.title.setWordWrap(True); self.words.addWidget(self.title)
+        self.sub = QLabel(description if self.exe else description + " · not installed"); self.sub.setObjectName("muted"); self.sub.setWordWrap(True); self.words.addWidget(self.sub)
+        self.row.addLayout(self.words, 1)
+        self.launch = QPushButton("OPEN" if self.exe else "MISSING"); self.launch.setEnabled(bool(self.exe))
+        self.launch.clicked.connect(self._launch); self.row.addWidget(self.launch)
+
+    def apply_scale(self, scale):
+        px = lambda value: max(1, round(value * scale))
+        self.setFixedHeight(px(82)); self.row.setContentsMargins(px(16), px(13), px(13), px(13)); self.row.setSpacing(px(13)); self.words.setSpacing(px(3))
+        self.icon.setFixedSize(px(42), px(42))
+        if self.icon_path:
+            self.icon.setPixmap(QPixmap(self.icon_path).scaled(px(38), px(38), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        else:
+            self.icon.setStyleSheet(f"color:#63ef3d;font-size:{px(17)}px;font-weight:900;border:1px solid #3a513f;border-radius:{px(9)}px")
+        self.launch.setMinimumHeight(px(36)); self.launch.setMinimumWidth(px(64))
 
     def _launch(self):
         ok, error = core._launch(self.exe, parent=None)
@@ -100,10 +109,10 @@ class ToolCard(QFrame):
 class ToolSection(QFrame):
     def __init__(self, title, roster, parent=None):
         super().__init__(parent); self.setObjectName("section"); self.cards = []
-        outer = QVBoxLayout(self); outer.setContentsMargins(15, 13, 15, 15); outer.setSpacing(10)
-        label = QLabel(title); label.setObjectName("sectionTitle"); outer.addWidget(label)
+        self.outer = QVBoxLayout(self); self.outer.setContentsMargins(15, 13, 15, 15); self.outer.setSpacing(10)
+        label = QLabel(title); label.setObjectName("sectionTitle"); self.outer.addWidget(label)
         self.grid_host = QWidget(); self.grid = QGridLayout(self.grid_host)
-        self.grid.setContentsMargins(0, 0, 0, 0); self.grid.setSpacing(10); outer.addWidget(self.grid_host)
+        self.grid.setContentsMargins(0, 0, 0, 0); self.grid.setSpacing(10); self.outer.addWidget(self.grid_host)
         for row in roster: self.cards.append(ToolCard(*row))
         self.reflow(3)
 
@@ -115,6 +124,11 @@ class ToolSection(QFrame):
                 column = 1
             self.grid.addWidget(card, row, column)
         for column in range(3): self.grid.setColumnStretch(column, 1 if column < columns else 0)
+
+    def apply_scale(self, scale):
+        px = lambda value: max(1, round(value * scale))
+        self.outer.setContentsMargins(px(15), px(13), px(15), px(15)); self.outer.setSpacing(px(10)); self.grid.setSpacing(px(10))
+        for card in self.cards: card.apply_scale(scale)
 
 
 class SettingsDialog(QDialog):
@@ -211,10 +225,10 @@ class Window(QMainWindow):
         if path: self.setWindowIcon(QIcon(path))
         self.setMinimumSize(680, 460)
         root = QWidget(); shell = QVBoxLayout(root); shell.setContentsMargins(0, 0, 0, 0); shell.setSpacing(0)
-        header = QFrame(); self.header = header; header.setObjectName("header"); line = QHBoxLayout(header); line.setContentsMargins(24, 16, 24, 16)
-        brand = QLabel("SNAP HQ"); brand.setObjectName("brand"); line.addWidget(brand)
-        tagline = QLabel("local desktop headquarters"); tagline.setObjectName("muted"); line.addWidget(tagline); line.addStretch(1)
-        settings = QPushButton("SETTINGS"); settings.setObjectName("primary"); settings.clicked.connect(self._settings); line.addWidget(settings)
+        header = QFrame(); self.header = header; header.setObjectName("header"); self.header_line = QHBoxLayout(header); self.header_line.setContentsMargins(24, 16, 24, 16)
+        brand = QLabel("SNAP HQ"); brand.setObjectName("brand"); self.header_line.addWidget(brand)
+        tagline = QLabel("local desktop headquarters"); tagline.setObjectName("muted"); self.header_line.addWidget(tagline); self.header_line.addStretch(1)
+        settings = QPushButton("SETTINGS"); settings.setObjectName("primary"); settings.clicked.connect(self._settings); self.header_line.addWidget(settings)
         shell.addWidget(header)
         scroll = QScrollArea(); self.scroll = scroll; scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -223,7 +237,7 @@ class Window(QMainWindow):
         self.launch = ToolSection("LAUNCH", core.ROSTER); self.body.addWidget(self.launch)
         self.migration = ToolSection("MIGRATION CENTRE", MIGRATION_ROSTER); self.body.addWidget(self.migration)
         self.body.setAlignment(Qt.AlignTop); scroll.setWidget(content); shell.addWidget(scroll, 1); self.setCentralWidget(root)
-        self._apply_settings(); self._fit_to_screen()
+        self._scale = 1.0; self._apply_settings(); self._fit_to_screen()
 
     def _fit_to_screen(self):
         available = QGuiApplication.primaryScreen().availableGeometry()
@@ -258,8 +272,26 @@ class Window(QMainWindow):
         columns = 3 if width >= 1180 else 2 if width >= 760 else 1
         self.launch.reflow(columns); self.migration.reflow(columns)
 
+    def _apply_scale(self):
+        width = max(680, self.centralWidget().width())
+        height = max(460, self.centralWidget().height())
+        # The normal 1320×704 window is 1:1. Maximising to a larger display grows
+        # the complete composition by the smaller axis, preserving its proportions
+        # instead of merely creating wider empty panels.
+        scale = max(1.0, min(1.5, min(width / 1320.0, height / 704.0)))
+        if abs(scale - self._scale) < .025: return
+        self._scale = scale; px = lambda value: max(1, round(value * scale))
+        app = QApplication.instance()
+        if app:
+            dynamic = STYLE.replace("font-size:13px", f"font-size:{px(13)}px").replace("font-size:27px", f"font-size:{px(27)}px").replace("font-size:12px", f"font-size:{px(12)}px")
+            dynamic = dynamic.replace("padding:8px 13px", f"padding:{px(8)}px {px(13)}px").replace("padding:9px", f"padding:{px(9)}px")
+            app.setStyleSheet(dynamic)
+        self.header_line.setContentsMargins(px(24), px(16), px(24), px(16))
+        self.body.setContentsMargins(px(20), px(18), px(20), px(20)); self.body.setSpacing(px(14))
+        self.launch.apply_scale(scale); self.migration.apply_scale(scale)
+
     def resizeEvent(self, event):
-        super().resizeEvent(event); self._reflow()
+        super().resizeEvent(event); self._reflow(); self._apply_scale()
 
 
 def run():

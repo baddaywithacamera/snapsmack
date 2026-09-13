@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
 // --- GENERATE ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'generate') {
     $label    = trim($_POST['label'] ?? '');
-    $key_type = in_array($_POST['key_type'] ?? '', ['hub','ohsnap','smackpress','bloggerflogger','flkrfckr','gyss','unzucker','suyb','sybu','tyswy']) ? $_POST['key_type'] : 'ohsnap';
+    $key_type = in_array($_POST['key_type'] ?? '', ['hub','ohsnap','smackpress','bloggerflogger','flkrfckr','gyss','unzucker','suyb','sybu','tyswy','smackthemup_publish']) ? $_POST['key_type'] : 'ohsnap';
     if (!$label) $label = match($key_type) {
         'hub'        => 'THE HUB — Fleet Setup',
         'smackpress' => 'SmackPress Key',
@@ -113,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'gener
         'suyb'       => 'Smack Up Your Backup',
         'sybu'       => 'SMACK YOUR BATCH UP',
         'tyswy'      => 'TAKE YOUR SHIT WITH YOU',
+        'smackthemup_publish' => 'SNAP SLAPPER — SMACKTHEMUP publishing',
         default      => 'Oh Snap! Key',
     };
 
@@ -465,6 +466,9 @@ include 'core/sidebar.php';
                             <option value="suyb">SUYB (SMACK UP YOUR BACKUP)</option>
                             <option value="sybu">SYBU (SMACK YOUR BATCH UP)</option>
                             <option value="tyswy">TYSWY (TAKE YOUR SHIT WITH YOU &mdash; READ-ONLY EXPORT)</option>
+                            <?php if (($settings['site_mode'] ?? '') === 'smackthemup'): ?>
+                            <option value="smackthemup_publish">SNAP SLAPPER (SMACKTHEMUP &mdash; PUBLISH ONLY)</option>
+                            <?php endif; ?>
                         </select>
                     </div>
 

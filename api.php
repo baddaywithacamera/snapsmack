@@ -79,6 +79,14 @@ if (strpos($route, 'gyss') === 0) {
     exit;
 }
 
+// --- SMACKTHEMUP PUBLISHING ROUTES ---
+// Dedicated, mode-bound surface for SNAP SLAPPER. It is intentionally separate
+// from the carousel and longform writers: no other desktop key opens this door.
+if (strpos($route, 'smackthemup') === 0) {
+    require_once 'core/smackthemup-api.php';
+    exit;
+}
+
 // --- THREE-ACROSS ROUTES (GRAMOFSMACK carousel write API) ---
 // Shared carousel/trigram write API used by BOTH the Unzucker IG importer and
 // the SMACK YOUR BATCH UP offline poster. The legacy 'unzucker/*' prefix is kept as a

@@ -1,0 +1,2 @@
+BUILD_VERSION = "0.7.16"
+# ===== SNAPSMACK EOF =====

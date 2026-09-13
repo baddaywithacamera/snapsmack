@@ -41,7 +41,8 @@ $_gn_active_slug = $_GET['slug'] ?? null;
 $_gn_on_blogroll = ($_gn_script === 'blogroll.php');
 $_gn_on_home     = ($_gn_script === 'index.php' && !isset($_GET['s']) && $_gn_active_slug === null);
 // GRAMOFSMACK has one continuous landing scroll; it has no separate archive.
-$_gn_archive_off = (($settings['site_mode'] ?? 'photoblog') === 'carousel')
+$_gn_mode = ($settings['site_mode'] ?? 'photoblog');
+$_gn_archive_off = ($_gn_mode === 'carousel')
     || (($settings['archive_layout'] ?? 'square') === 'none');
 
 // URL for a nav item by type (guarded — may already exist from core/header.php).
@@ -116,10 +117,12 @@ if (!function_exists('_snap_gram_nav_label')) {
 $_gn_items = json_decode($settings['nav_menu_json'] ?? '[]', true);
 
 if (is_array($_gn_items) && count($_gn_items) > 0) {
+    $_gn_seen_required = [];
     foreach ($_gn_items as $_gn_item) {
         if (!is_array($_gn_item)) continue;
         if (isset($_gn_item['active']) && !$_gn_item['active']) continue;
         $_gn_type = $_gn_item['type'] ?? 'custom';
+        $_gn_seen_required[$_gn_type] = true;
         if ($_gn_type === 'archive' && $_gn_archive_off) continue;   // archive disabled
 
         $_gn_url   = _snap_gram_nav_url($_gn_item, $pdo, $_gn_base);
@@ -139,10 +142,26 @@ if (is_array($_gn_items) && count($_gn_items) > 0) {
                . htmlspecialchars($_gn_label) . '</a></li>' . "\n";
         }
     }
+    // A custom menu may choose position and wording, but cannot make the mode's
+    // required public destinations disappear.
+    if ($_gn_mode === 'smackthemup') {
+        if (empty($_gn_seen_required['albums'])) echo '<li><a href="' . htmlspecialchars($_gn_base . 'albums.php') . '">Albums</a></li>' . "\n";
+        if (empty($_gn_seen_required['archive']) && empty($_gn_seen_required['category'])) echo '<li><a href="' . htmlspecialchars($_gn_base . 'archive.php') . '">Categories</a></li>' . "\n";
+        if (empty($_gn_seen_required['collection'])) echo '<li><a href="' . htmlspecialchars($_gn_base . 'collections.php') . '">Collections</a></li>' . "\n";
+    }
 } else {
     // ── Legacy fallback: Home + Blogroll + pages by menu_order ─────────────
     echo '<li><a href="' . htmlspecialchars($_gn_base) . '"'
        . ($_gn_on_home ? ' class="active"' : '') . '>Home</a></li>' . "\n";
+
+    // SMACKTHEMUP's public information architecture is part of the mode, not a
+    // menu preference. Untouched gram skins therefore receive the two required
+    // destinations automatically; a custom menu may place equivalent links.
+    if ($_gn_mode === 'smackthemup') {
+        echo '<li><a href="' . htmlspecialchars($_gn_base . 'albums.php') . '">Albums</a></li>' . "\n";
+        echo '<li><a href="' . htmlspecialchars($_gn_base . 'archive.php') . '">Categories</a></li>' . "\n";
+        echo '<li><a href="' . htmlspecialchars($_gn_base . 'collections.php') . '">Collections</a></li>' . "\n";
+    }
 
     if (($settings['blogroll_enabled'] ?? '1') == '1') {
         echo '<li><a href="' . htmlspecialchars($_gn_base . 'blogroll.php') . '"'

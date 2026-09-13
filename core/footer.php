@@ -113,6 +113,24 @@ if (!empty($settings['privacy_policy_enabled']) && $settings['privacy_policy_ena
 }
 
 // --- SLOT 6: RSS (ALWAYS ON) ---
+// SMACKTHEMUP shares public work through the visitor's own mail application.
+// No address, message, or tracking data is sent to SnapSmack.
+if (($settings['site_mode'] ?? '') === 'smackthemup') {
+    $_stu_script = basename($_SERVER['SCRIPT_NAME'] ?? '');
+    $_stu_shareable = ($_stu_script === 'index.php' && !empty($requested_slug ?? ''))
+        || ($_stu_script === 'archive.php' && (!empty($_GET['album']) || !empty($_GET['category'])))
+        || $_stu_script === 'collection.php';
+    if ($_stu_shareable) {
+        $_stu_title = trim(strip_tags((string)($page_title ?? $site_name ?? 'Photograph')));
+        $_stu_scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $_stu_url = $_stu_scheme . '://' . ($_SERVER['HTTP_HOST'] ?? parse_url((string)BASE_URL, PHP_URL_HOST)) . ($_SERVER['REQUEST_URI'] ?? '/');
+        $_stu_mailto = 'mailto:?subject=' . rawurlencode($_stu_title) . '&body=' . rawurlencode($_stu_title . "\n" . $_stu_url);
+        $slots[] = '<a href="' . htmlspecialchars($_stu_mailto, ENT_QUOTES) . '" class="footer-link stu-email-this">EMAIL THIS</a>';
+    }
+    unset($_stu_script,$_stu_shareable,$_stu_title,$_stu_scheme,$_stu_url,$_stu_mailto);
+}
+
+// --- SLOT 7: RSS (ALWAYS ON) ---
 // RSS feed link is always visible and cannot be disabled
 $rss_url = (defined('BASE_URL') ? BASE_URL : '/') . 'feed';
 $slots[] = '<a href="' . $rss_url . '" class="footer-link rss-tag" title="RSS Feed">RSS</a>';
