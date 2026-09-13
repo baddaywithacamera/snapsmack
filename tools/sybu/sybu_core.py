@@ -1281,6 +1281,29 @@ class Engine:
             'prompt': p.get('prompt', ''),
         }
 
+    def profile_save_prompt(self, name: str, text: str) -> dict:
+        """Save a deliberate prompt edit into the selected shared SNAP HQ profile."""
+        profile = profile_manager.load_profile(name) or {}
+        if not profile:
+            raise RuntimeError("Select a site before saving its prompt.")
+        prompt = str(text or '').strip()
+        portable = dict(profile.get('portable') or {})
+        portable['prompt'] = prompt
+        profile['portable'] = portable
+        profile['prompt'] = prompt
+        profile_manager.save_profile(profile)
+        # Mirror the site-keyed value into the common prompt pool used by other
+        # Gemini tools.  The profile remains the authoritative SNAP HQ record.
+        try:
+            import snap_home
+            import snap_prompts
+            prompts = snap_prompts.load()
+            prompts[snap_home.site_key(profile.get('url', ''))] = prompt
+            snap_prompts.save(prompts)
+        except Exception:
+            pass
+        return {'saved': True, 'name': name, 'prompt': prompt}
+
     def sp_test(self, url: str, api_key: str, ack_insecure: bool = False) -> dict:
         url = (url or '').strip()
         api_key = (api_key or '').strip()
