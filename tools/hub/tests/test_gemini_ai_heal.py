@@ -80,4 +80,15 @@ def test_editor_wires_ai_heal_as_a_masked_layer():
     assert '"kind": "generative-repair"' in source
     assert '"retouch": (self.act_heal, self.act_redeye, self.act_ai_heal,' in source
 
+
+def test_ai_heal_blend_mask_expands_and_feathers_without_leaking_across_frame():
+    mask = Image.new("L", (1200, 800), 0)
+    for y in range(390, 410):
+        for x in range(590, 610):
+            mask.putpixel((x, y), 255)
+    blended = gemini_image_edit.blend_mask(mask)
+    assert blended.getpixel((600, 400)) > 240
+    assert 0 < blended.getpixel((580, 400)) < 255
+    assert blended.getpixel((0, 0)) == 0
+
 # ===== SNAPSMACK EOF =====
