@@ -9,7 +9,7 @@ that layer's own adjustments.
 
 import os
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
@@ -131,9 +131,16 @@ class LayersPanel(QWidget):
         self.feather.setRange(0, 200)
         self.feather.setValue(100)
         self.feather.setToolTip(
-            "Soften the AI repair boundary. This does not contact Gemini again.")
+            "Soften the AI repair boundary. The preview updates when you pause or "
+            "release the slider; this does not contact Gemini again.")
         self.feather.valueChanged.connect(self._on_ai_heal_feather)
         self.feather.sliderReleased.connect(self._commit_ai_heal_feather)
+        self._pending_feather = None
+        self._feather_changed = False
+        self._feather_timer = QTimer(self)
+        self._feather_timer.setSingleShot(True)
+        self._feather_timer.setInterval(300)
+        self._feather_timer.timeout.connect(self._apply_pending_ai_heal_feather)
         feather_layout.addWidget(self.feather, 1)
         self.feather_value = QLabel("100")
         self.feather_value.setObjectName("ControlValue")
@@ -507,16 +514,34 @@ class LayersPanel(QWidget):
         layer = self._selected_layer()
         if not layer or not layer.get("ai_heal_source_mask"):
             return
+        self._pending_feather = (layer.get("id"), int(value))
+        self._feather_changed = True
+        self._feather_timer.start()
+
+    def _apply_pending_ai_heal_feather(self):
+        pending = self._pending_feather
+        self._pending_feather = None
+        if not pending or not self.doc:
+            return
+        layer_id, value = pending
+        layer = next((candidate for candidate in self.doc.layers
+                      if candidate.get("id") == layer_id), None)
+        if not layer or not layer.get("ai_heal_source_mask"):
+            return
         source = editor_engine._mask_from_text(layer["ai_heal_source_mask"])
         layer["ai_heal_feather"] = int(value)
         layer["mask"] = editor_engine._mask_to_text(
             gemini_image_edit.blend_mask(source, value / 100.0))
-        self.update_mask_thumbnail(layer)
+        if self.host.active_target == layer_id:
+            self.update_mask_thumbnail(layer)
         self.host.request_render()
 
     def _commit_ai_heal_feather(self):
+        self._feather_timer.stop()
+        self._apply_pending_ai_heal_feather()
         layer = self._selected_layer()
-        if layer and layer.get("ai_heal_source_mask"):
+        if layer and layer.get("ai_heal_source_mask") and self._feather_changed:
+            self._feather_changed = False
             self.doc.record("AI Heal feather")
             self.host.update_title()
 
