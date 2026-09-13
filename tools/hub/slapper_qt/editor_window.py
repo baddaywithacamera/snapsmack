@@ -404,6 +404,12 @@ class EditorWindow(QMainWindow):
         self.act_ai_heal.triggered.connect(self.open_ai_heal)
         bar.addAction(self.act_ai_heal)
 
+        self.act_ai_fill = QAction("Generative Fill…", self)
+        self.act_ai_fill.setToolTip(
+            "Paint an area, describe what belongs there, and let Gemini build it")
+        self.act_ai_fill.triggered.connect(self.open_ai_fill)
+        bar.addAction(self.act_ai_fill)
+
         self.act_mask_brush = QAction("Mask Brush", self)
         self.act_mask_brush.setToolTip("Paint the selected layer mask directly on the photo")
         self.act_mask_brush.triggered.connect(lambda: self._activate_canvas_mask_tool("brush"))
@@ -536,6 +542,7 @@ class EditorWindow(QMainWindow):
                 self.act_reset, self.act_auto, self.act_fit, self.act_full,
                 self.act_zoom_out, self.act_zoom_in,
                 self.act_crop, self.act_heal, self.act_redeye, self.act_ai_heal,
+                self.act_ai_fill,
                 self.act_mask_brush, self.act_mask_gradient, self.act_colour_range,
                 self.act_compare, self.act_filmstrip,
                 self.act_recipe_save, self.act_recipe_apply,
@@ -567,6 +574,7 @@ class EditorWindow(QMainWindow):
             "edit": (self.act_crop, self.act_auto, self.act_reset,
                      self.act_compare),
             "retouch": (self.act_heal, self.act_redeye, self.act_ai_heal,
+                        self.act_ai_fill,
                         self.act_mask_brush,
                         self.act_mask_gradient, self.act_colour_range),
             "looks": (self.act_lewks, self.act_lewk_again, self.act_filters, self.act_textures,
@@ -2248,12 +2256,21 @@ class EditorWindow(QMainWindow):
         from .ai_heal_dialog import AIHealDialog
         AIHealDialog(self).exec()
 
-    def apply_ai_heal(self, path, mask, model, instruction=""):
+    def open_ai_fill(self):
+        if not self.doc:
+            QMessageBox.information(self, "Open a photograph", "Open a photograph first.")
+            return
+        from .ai_heal_dialog import AIHealDialog
+        AIHealDialog(self, operation="fill").exec()
+
+    def apply_ai_generation(self, path, mask, model, instruction="", operation="heal"):
         """Add the generated frame as a locally enforced masked image layer."""
         # Build the generated layer completely before recording history. An
         # earlier version recorded an unmasked halfway state, so stepping back
         # in History exposed Gemini's entire returned frame.
-        layer = self.doc.add_image_layer(path, name="AI Heal", record=False)
+        is_fill = operation == "fill"
+        layer_name = "Generative Fill" if is_fill else "AI Heal"
+        layer = self.doc.add_image_layer(path, name=layer_name, record=False)
         layer["fit"] = "stretch"
         import gemini_image_edit
         layer["ai_heal_source_mask"] = editor_engine._mask_to_text(mask)
@@ -2262,18 +2279,19 @@ class EditorWindow(QMainWindow):
             gemini_image_edit.blend_mask(mask, 1.0))
         layer["mask_enabled"] = True
         layer["mask_linked"] = True
-        layer["mask_kind"] = "ai-heal-selection"
+        layer["mask_kind"] = "ai-fill-selection" if is_fill else "ai-heal-selection"
         layer["provenance"] = {
-            "kind": "generative-repair", "provider": "Gemini",
+            "kind": "generative-fill" if is_fill else "generative-repair",
+            "provider": "Gemini",
             "model": model, "instruction": instruction,
         }
-        self.doc.record("AI Heal")
+        self.doc.record(layer_name)
         self.active_target = layer["id"]
         self.layers_panel.rebuild()
         self.request_render()
         self._update_title()
         self.status.showMessage(
-            "AI repair added as a masked layer — the original remains unchanged.")
+            f"{layer_name} added as a masked layer — the original remains unchanged.")
 
     # --- Normal / Advanced mode ---------------------------------------------
     def _init_mode(self):
