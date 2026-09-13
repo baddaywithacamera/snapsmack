@@ -169,7 +169,7 @@ require_once __DIR__ . '/includes/header.php';
                 <li><strong>The photoblog</strong><span>2003 to 2010. One photograph a day on one page, comments underneath, on your own domain. Pixelpost, Photoblogs.org, a ring of people who looked at each other&rsquo;s work every morning.</span><em>Again as <a href="features.php#modes">SMACKONEOUT</a></em></li>
                 <li><strong>Classic Instagram</strong><span>2010 to 2016. A square grid, in the order you posted it, seen by the people who chose to follow you. No algorithm, no ads, no Reels.</span><em>Again as <a href="features.php#modes">GRAMOFSMACK</a></em></li>
                 <li><strong>Early blogging</strong><span>Blogger, Greymatter, WordPress before it became a page builder. Writing with photographs in it, as long as you wanted, nobody&rsquo;s feed deciding whether it got read.</span><em>Again as <a href="features.php#modes">SMACKTALK</a></em></li>
-                <li><strong>Picasa Web Albums</strong><span>A folder of pictures for the people you know. Send the link, no account needed to look, no &ldquo;suggested for you&rdquo; underneath.</span><em>Again as <a href="features.php#modes">SMACKTHEMUP</a></em></li>
+                <li><strong>Picasa Web Albums</strong><span>A free, friendly photo editor and photo organizer that let you push your folders of photos as albums to the web to share publicly with friends and family. Send the link, no account needed to look, no &ldquo;suggested for you&rdquo; underneath.</span><em>Again as <a href="features.php#modes">SMACKTHEMUP</a></em></li>
             </ul>
             <p class="was-closer">Everything was killed off, died off, or was walled off to prioritize profits over people.</p>
         </div>
