@@ -16,6 +16,7 @@ import gemini_image_edit
 import snap_creds
 import snap_home
 from .mask_brush import MaskBrushCanvas
+from . import BUILD_VERSION
 
 
 class _Signals(QObject):
@@ -31,7 +32,7 @@ class AIHealDialog(QDialog):
         self.signals = _Signals()
         self.signals.finished.connect(self._received)
         self.signals.failed.connect(self._failed)
-        self.setWindowTitle("AI Heal — Gemini")
+        self.setWindowTitle(f"AI Heal — Gemini — {BUILD_VERSION}")
         self.resize(900, 720)
         layout = QVBoxLayout(self)
         title = QLabel("PAINT OVER THE DEFECT")
