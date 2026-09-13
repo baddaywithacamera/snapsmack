@@ -344,6 +344,15 @@ class LayersPanel(QWidget):
         self.mask_linked.blockSignals(False)
         self.edit_mask_btn.setEnabled(True)
         self.fill_colour_btn.setVisible(layer.get("type") == "paint")
+        if (layer.get("mask_kind") == "ai-heal-selection" and
+                layer.get("mask") and not layer.get("ai_heal_source_mask")):
+            # Repairs made before 0.7.38 stored only the final feathered mask.
+            # Recover its solid centre so the user can tune those existing
+            # repairs instead of paying Gemini to generate them again.
+            legacy_mask = editor_engine._mask_from_text(layer["mask"])
+            recovered = legacy_mask.point(lambda value: 255 if value >= 128 else 0)
+            layer["ai_heal_source_mask"] = editor_engine._mask_to_text(recovered)
+            layer["ai_heal_feather"] = 100
         adjustable_feather = bool(
             layer.get("mask_kind") == "ai-heal-selection" and
             layer.get("ai_heal_source_mask"))
