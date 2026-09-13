@@ -61,7 +61,7 @@ require_once __DIR__ . '/header.php';
         <div class="wrap">
             <p class="eyebrow"><?php echo htmlspecialchars($landing_eyebrow); ?></p>
             <h1><?php echo $landing_h1; ?></h1>
-            <p class="seo-hook">Retro Photo Blogging. <em>Modern Technology.</em></p>
+            <p class="seo-hook">Retro Photo Blogging. <em>No Algorithm.</em></p>
             <p class="seo-sub">What&rsquo;s new is old again. Nothing here is an invention: the single-photo blog, long-form posting, classic Insta, Picasa-style albums &mdash; all of it used to belong to photographers. We&rsquo;re giving it back, on hardware you control, where nobody can take it again.</p>
             <p class="seo-never">Your photos. Your voice. Your style. <em>Your dignity.</em></p>
             <div class="seo-actions">
