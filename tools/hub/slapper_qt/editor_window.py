@@ -2112,6 +2112,7 @@ class EditorWindow(QMainWindow):
                 "This source has no embedded ICC profile. It is being interpreted as sRGB. "
                 "Current processing: 8-bit sRGB legacy engine.")
         self.doc.on_change = self._on_doc_change
+        self.doc.history_limit_handler = self._history_checkpoint
         self.active_target = BASE
         self._zoom_actual = False   # a freshly opened photo starts fitted
         self.layers_panel.rebuild()
@@ -2169,6 +2170,7 @@ class EditorWindow(QMainWindow):
                 "This source has no embedded ICC profile. It is being interpreted as sRGB. "
                 "Current processing: 8-bit sRGB legacy engine.")
         self.doc.on_change = self._on_doc_change
+        self.doc.history_limit_handler = self._history_checkpoint
         self.active_target = BASE
         self._zoom_actual = False   # a freshly opened project starts fitted
         self.layers_panel.rebuild()
@@ -2183,27 +2185,45 @@ class EditorWindow(QMainWindow):
         return True
 
     def save_project(self):
+        self._save_project_interactive(force_dialog=True)
+
+    def _save_project_interactive(self, force_dialog=False):
         if not self.doc:
-            return
+            return False
         base = os.path.splitext(os.path.basename(self.doc.source_path))[0]
-        from . import prefs
-        project_dir = prefs.load().get("projects_folder", "")
-        suggested = (os.path.join(project_dir, f"{base}.slapper")
-                     if project_dir else f"{base}.slapper")
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Save project", suggested, PROJECT_FILTER)
+        path = self.doc.project_path if not force_dialog else ""
         if not path:
-            return
+            from . import prefs
+            project_dir = prefs.load().get("projects_folder", "")
+            suggested = (os.path.join(project_dir, f"{base}.slapper")
+                         if project_dir else f"{base}.slapper")
+            path, _ = QFileDialog.getSaveFileName(
+                self, "Save project", suggested, PROJECT_FILTER)
+            if not path:
+                return False
         try:
             self.doc.save_project(path)
         except Exception as error:  # noqa: BLE001
             self._error("Save failed", str(error))
-            return
+            return False
         # A named project is an additional copy, not a reason to forget how the
         # original photograph was last being edited.
         self._write_recovery(force=True)
         self._update_title()
         self.status.showMessage(f"Saved {os.path.basename(path)}")
+        return True
+
+    def _history_checkpoint(self, _document):
+        answer = QMessageBox.question(
+            self, "Save before continuing",
+            "This photograph has reached 100 editing steps. SNAP SLAPPER will not "
+            "discard the oldest history.\n\nSave the project and continue with a new "
+            "history segment?",
+            QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Yes)
+        if answer != QMessageBox.Yes:
+            self.status.showMessage("Edit cancelled — history was not discarded", 7000)
+            return False
+        return self._save_project_interactive(force_dialog=False)
 
     def open_help(self):
         from .help_dialog import HelpDialog
