@@ -94,6 +94,8 @@ def test_editor_wires_ai_heal_as_a_masked_layer():
     assert 'QTimer.singleShot(0, self._scroll_rail_to_layers)' in source
     panel = (HUB / "slapper_qt" / "layers_panel.py").read_text(encoding="utf-8")
     assert 'self.feather.setRange(0, 200)' in panel
+    assert 'self._feather_timer.setInterval(300)' in panel
+    assert 'self._apply_pending_ai_heal_feather()' in panel
     assert 'self.doc.record("AI Heal feather")' in panel
     assert 'legacy_mask.point(lambda value: 255 if value >= 128 else 0)' in panel
 
