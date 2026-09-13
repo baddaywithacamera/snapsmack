@@ -95,6 +95,7 @@ def test_editor_wires_ai_heal_as_a_masked_layer():
     panel = (HUB / "slapper_qt" / "layers_panel.py").read_text(encoding="utf-8")
     assert 'self.feather.setRange(0, 200)' in panel
     assert 'self.doc.record("AI Heal feather")' in panel
+    assert 'legacy_mask.point(lambda value: 255 if value >= 128 else 0)' in panel
 
 
 def test_ai_heal_blend_mask_expands_and_feathers_without_leaking_across_frame():
