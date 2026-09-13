@@ -182,6 +182,7 @@ if (!$is_guest && $user && !$user['email_verified']) {
 $post_stmt = $pdo->prepare("SELECT id, allow_comments FROM snap_images WHERE id = ? LIMIT 1");
 $post_stmt->execute([$post_id]);
 $post_row = $post_stmt->fetch();
+$key_is_image = (bool)$post_row;
 
 if (!$post_row) {
     $post_stmt = $pdo->prepare("SELECT id, allow_comments FROM snap_posts WHERE id = ? LIMIT 1");
@@ -270,6 +271,45 @@ if ($is_guest) {
 
 $comment_id = (int)$pdo->lastInsertId();
 $created_at = date('Y-m-d H:i:s');
+
+// --- FEDERATE OUT (0.7.707D) ---
+// The public form writes to snap_community_comments; the fediverse only ever
+// spoke snap_comments (sv_federate_comment). So a comment typed on the blog
+// never left the blog. Mirror it into snap_comments as an approved LOCAL row
+// (the same shape SMACK YOUR MOUTH's owner-reply uses) and fan it out through
+// the existing pipe. The mirror is ap_source='local', so the thread renderer
+// (which merges only ap_source='fediverse') never shows it twice.
+if ($comment_id > 0 && ($settings['fediverse_enabled'] ?? '0') === '1'
+    && is_file(__DIR__ . '/core/fediverse.php')) {
+    try {
+        // Resolve the image the comment sits on: image-keyed = the key itself;
+        // post-keyed = the post's first image (longform without images: post_id only).
+        $fed_img  = null;
+        $fed_post = null;
+        if ($key_is_image) {
+            $fed_img = (int)$post_id;
+        } else {
+            $fed_post = (int)$post_id;
+            $fi = $pdo->prepare("SELECT id FROM snap_images WHERE post_id = ? ORDER BY id ASC LIMIT 1");
+            $fi->execute([$fed_post]);
+            $fed_img = (int)$fi->fetchColumn() ?: null;
+        }
+        $fed_author = $is_guest
+            ? (string)$guest_name
+            : (string)(($user['display_name'] ?? '') ?: ($user['username'] ?? 'Someone'));
+        $mir = $pdo->prepare(
+            "INSERT INTO snap_comments
+                (img_id, post_id, comment_author, comment_text, comment_date, is_approved, ap_source)
+             VALUES (?, ?, ?, ?, NOW(), 1, 'local')");
+        $mir->execute([$fed_img, $fed_post, $fed_author, $comment_text]);
+        $mirror_id = (int)$pdo->lastInsertId();
+        if ($mirror_id > 0) {
+            require_once __DIR__ . '/core/fediverse.php';
+            try { sv_federate_comment($pdo, $mirror_id, $settings); }
+            catch (\Throwable $e) { /* federation non-fatal */ }
+        }
+    } catch (\Throwable $e) { /* mirror non-fatal: the community comment already saved */ }
+}
 
 // --- SEMANTIC ANALYSIS STORAGE ---
 // Store comment text and TF-IDF vector for semantic duplicate detection
