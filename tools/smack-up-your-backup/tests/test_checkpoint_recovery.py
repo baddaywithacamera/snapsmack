@@ -79,8 +79,9 @@ def test_qt_background_backup_has_a_real_tray_contract():
     with open(os.path.join(HERE, "suyb_qt.py"), encoding="utf-8") as handle:
         source = handle.read()
     assert "QSystemTrayIcon" in source
-    assert 'self.hide()' in source
+    assert 'self.showMinimized()' in source
     assert '"Backup still running"' in source
+    assert 'remains available on the taskbar' in source
     assert 'self.tray_pause_action.triggered.connect(self._toggle_pause)' in source
     assert 'app.setQuitOnLastWindowClosed(False)' in source
 
