@@ -1,6 +1,6 @@
 {
   "_comment": "Version floor for desktop apps. tools/check-desktop-integrity.php FAILS if a tool's version drops below its floor here — catching merges/folds that silently revert a desktop tool to an older build (e.g. GYSS 0.7.9 -> 0.1.5-alpha, or COLD SNAP dragged from the Qt build back to the previous one). Tauri apps are read from src-tauri/tauri.conf.json automatically; the others declare version_file (relative to the tool dir) holding a BUILD_VERSION/__version__ literal. When you INTENTIONALLY bump a version, raise its floor here in the SAME commit. Never lower a floor to get past a failure — restore the reverted version instead.",
-  "gyss":                    { "version": "0.7.16" },
+  "gyss":                    { "version": "0.7.17" },
   "oh-snap":                 { "version": "0.2.0" },
   "coldsnap":                { "version": "0.7.23", "version_file": "coldsnap/_version.py" },
   "sybu":                    { "version": "0.7.59", "version_file": "sybu/main.py" },
