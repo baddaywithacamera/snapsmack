@@ -16,6 +16,11 @@ $nav_active       = 'goods-tools';
 
 $page_css = <<<'CSS'
 .tools-intro { max-width: 780px; }
+.why-desktop { padding: 0 0 56px; }
+.why-desktop h2 { margin-bottom: 20px; }
+.why-desktop-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+.why-desktop-cols p { margin: 0; font-size: .98rem; line-height: 1.55; color: var(--dark-grey); }
+@media (max-width: 850px) { .why-desktop-cols { grid-template-columns: 1fr; gap: 16px; } }
 .tool-group { scroll-margin-top: 80px; }
 .tool-group + .tool-group { border-top: 1px solid var(--border); }
 .tool-group-head { max-width: 780px; margin-bottom: 28px; }
@@ -75,6 +80,18 @@ function ss_tool_card(string $href, string $name, string $platform, string $stat
             <a class="active" href="tools.php"><strong>BOX O' TRICKS!</strong><span>The free desktop suite.</span></a>
         </nav>
     </div>
+
+    <section class="why-desktop" id="why-desktop">
+        <div class="wrap">
+            <p class="site-discovery-kicker">Why desktop</p>
+            <h2>The one thing here that is actually new.</h2>
+            <div class="why-desktop-cols">
+                <p>Content management systems are nothing new. Neither are desktop applications. Using the second to drive the first &mdash; that is new, or unusual at the very least. For two decades developers have pretended a browser tab was all you needed to publish a website. That was tolerable in the early days of Web 2.0. A couple of decades on, it no longer works.</p>
+                <p>Consolidation in web hosting and the rising cost of RAM, storage, and processing mean you pay a lot more for a lot less. That is why your host kills your processes before they finish, why you never get the memory you need or the storage you want, and why your large backup job never completes. Running a site on budget hosting is becoming impossible under the bloat of most current publishing systems.</p>
+                <p>So the server side of SnapSmack is optimized to use as few resources as possible, and the load is shifted to your desktop or laptop &mdash; even an older machine is orders of magnitude more capable than the hosted software. The desktop tools are powerful, work offline in many cases, and are always free. No hidden tiers, no upsells. If there is one thing SnapSmack does that is genuinely new, this is it. It just made sense.</p>
+            </div>
+        </div>
+    </section>
 
     <section class="tool-group" id="make">
         <div class="wrap">
