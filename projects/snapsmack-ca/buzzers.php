@@ -31,7 +31,7 @@ h3 { font-size: 1rem; }
 .lede { margin-bottom: 0; }
 
 /* ─── INTRO ───────────────────────────────────────────────────────────────── */
-.intro-body { max-width: 820px; padding: 56px 0 8px; }
+.intro-body { max-width: 820px; padding: 0 0 8px; }
 .intro-body p { margin-bottom: 1.4em; max-width: 72ch; }
 .slang {
     background: var(--light-grey);
