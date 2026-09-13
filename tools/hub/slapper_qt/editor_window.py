@@ -2222,7 +2222,10 @@ class EditorWindow(QMainWindow):
 
     def apply_ai_heal(self, path, mask, model, instruction=""):
         """Add the generated frame as a locally enforced masked image layer."""
-        layer = self.doc.add_image_layer(path, name="AI Heal")
+        # Build the generated layer completely before recording history. An
+        # earlier version recorded an unmasked halfway state, so stepping back
+        # in History exposed Gemini's entire returned frame.
+        layer = self.doc.add_image_layer(path, name="AI Heal", record=False)
         layer["fit"] = "stretch"
         layer["mask"] = editor_engine._mask_to_text(mask)
         layer["mask_enabled"] = True
