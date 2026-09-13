@@ -17,7 +17,7 @@
 - **SYBU’s Qt queue is a complete image-review surface again.** Every row shows a thumbnail and editable title, caption, ALT text, tags, category, album, Colour/B&W and orientation before publishing. The enrichment prompt now opens in a proper multiline reviewer with separate “Use for this run” and deliberate “Save to SNAP HQ” actions. Build 0.7.63. (`tools/sybu/sybu_qt.py`.)
 - **SYBU’s queue has an explicit, guarded Clear button.** It removes queued references without deleting the photographs and deliberately retains failed rows so an upload failure cannot disappear unnoticed. Build 0.7.64. (`tools/sybu/sybu_qt.py`.)
 - **SYBU can enrich without leaving the review queue.** Review Prompt and Enrich Selected now sit beside the queue controls, and the Colour/B&W and Orientation pickers are normal one-line controls centred in the taller thumbnail row instead of stretching to its full height. Build 0.7.65. (`tools/sybu/sybu_qt.py`.)
-- **50 SHADES OF NOAH GREY 1.4.7 (skin registry, not the core zip):** the masonry archive gets 15px more room under the filter bar. (`skins/50-shades-of-noah-grey/style.css`.)
+- **50 SHADES OF NOAH GREY 1.5.0 (skin registry, not the core zip):** the masonry archive gets the SCROLL wall engine’s real controls — Tile Size (fewer across = bigger), Space Between Tiles, Wall Width — and the two border controls that had been sitting in the manifest doing nothing are now wired to the engine. The old hard-coded 4px gap that would have overridden any control is gone. Also 15px more room under the filter bar. Measured in an offline harness: 2 across → 404px tiles; 5 across → 172px tiles. (`skins/50-shades-of-noah-grey/`.)
 
 
 ## 0.7.707D "LOUD AND CLEAR" — 2026-09-13

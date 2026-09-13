@@ -612,7 +612,14 @@ body {
    block only sets the container width and the hover behaviour. --- */
 
 #justified-grid {
-    max-width: 95%;
+    /* 1.5.0: the engine reads --ss-cols / --ss-gap from this container; the
+       manifest's Masonry Tile Size / Space Between Tiles set them here.
+       Border controls feed the engine's own tile-border variables. */
+    --ss-cols: 4;
+    --ss-gap: 4px;
+    --scroll-border-width: var(--masonry-border-width, 0px);
+    --scroll-border-color: var(--masonry-border-color, #ffffff);
+    max-width: var(--masonry-width, 95%);
     margin: 0 auto;
     padding: 45px 0 30px;   /* 1.4.7: breathing room under the filter bar */
     box-sizing: border-box;

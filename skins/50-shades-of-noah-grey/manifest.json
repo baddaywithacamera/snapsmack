@@ -2,7 +2,7 @@
     "schema_version": 1,
     "name": "50 SHADES OF NOAH GREY",
     "oh_snap_ready": true,
-    "version": "1.4.7",
+    "version": "1.5.0",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Pure greyscale photography skin. Three monochrome variants with zero colour accents.",
@@ -908,6 +908,41 @@
                 "block": "Yes — Show URL",
                 "none": "No — Hide URL"
             }
+        },
+        "masonry_cols": {
+            "section": "ARCHIVE",
+            "type": "range",
+            "label": "Masonry Tile Size (fewer across = bigger)",
+            "hint": "How many landscape-shaped tiles fit across one row. Move left for larger photographs; right for more photographs across.",
+            "default": "4",
+            "min": "2",
+            "max": "6",
+            "step": "1",
+            "unit": "",
+            "selector": "#justified-grid",
+            "property": "--ss-cols"
+        },
+        "masonry_gap": {
+            "section": "ARCHIVE",
+            "type": "range",
+            "label": "Masonry Space Between Tiles (px)",
+            "default": "4",
+            "min": "0",
+            "max": "25",
+            "unit": "px",
+            "selector": "#justified-grid",
+            "property": "--ss-gap"
+        },
+        "masonry_width_pct": {
+            "section": "ARCHIVE",
+            "type": "range",
+            "label": "Masonry Wall Width (% of page)",
+            "default": "95",
+            "min": "50",
+            "max": "100",
+            "unit": "%",
+            "selector": ":root",
+            "property": "--masonry-width"
         },
         "masonry_border_width": {
             "section": "ARCHIVE",
