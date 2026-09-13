@@ -514,13 +514,33 @@ class BackupEngine:
         self.global_cloud      = global_cloud or {}
         self._cancelled        = False
         self._resume_cp        = resume_checkpoint
+        self._run_gate         = threading.Event()
+        self._run_gate.set()
+        self._paused           = False
         self._prompt_event     = threading.Event()
         self._prompt_continue  = False
         self._asked_once       = False    # only prompt the user once per run
 
     def cancel(self) -> None:
         self._cancelled = True
+        self._run_gate.set()
         self._prompt_event.set()   # unblock engine if it's waiting for a prompt response
+
+    def pause(self) -> None:
+        """Pause at the next safe file boundary; never strand a partial record."""
+        self._paused = True
+        self._run_gate.clear()
+
+    def resume(self) -> None:
+        self._paused = False
+        self._run_gate.set()
+
+    def is_paused(self) -> bool:
+        return self._paused
+
+    def _wait_if_paused(self) -> None:
+        while self._paused and not self._cancelled:
+            self._run_gate.wait(0.25)
 
     def prompt_continue(self) -> None:
         """Called by the UI when the user chooses to continue after a failure prompt."""
@@ -639,12 +659,14 @@ class BackupEngine:
             local_media_dir = cp.data["local_media_dir"]
             zip_name        = cp.data["zip_name"]
             prev_state      = cp.data.get("prev_state", {})
-            already_done    = cp.already_downloaded()
+            already_done    = cp.already_processed()
             result["files_downloaded"] = cp.data.get("files_downloaded", 0)
             result["files_skipped"]    = cp.data.get("files_skipped", 0)
             result["files_failed"]     = cp.data.get("files_failed", 0)
+            result["sql_full_path"]    = sql_full_path
+            result["sql_schema_path"]  = sql_schema_path
             self._log(f"Resuming interrupted backup from {cp.data.get('created_at', 'unknown time')}.")
-            self._log(f"Already downloaded: {len(already_done)} files — skipping those.")
+            self._log(f"Already safely processed: {len(already_done)} files — skipping those.")
         else:
             timestamp       = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             kit_path        = os.path.join(backup_dir, f"{file_token}_recovery_kit_{timestamp}.tar.gz")
@@ -779,6 +801,16 @@ class BackupEngine:
                 # using the SAME authenticated session as the DB/kit stages. No FTP
                 # credentials — the friction remover on a large fleet.
                 from http_file_client import HttpFileClient
+                if resuming:
+                    http = SnapSmackSession(
+                        self.profile["site_url"],
+                        config_module.effective_backup_key(self.profile),
+                        self.profile.get("login_slug", "snap-in"),
+                    )
+                    http.login(
+                        self.profile.get("snap_admin_user", ""),
+                        self.profile.get("snap_admin_pass", ""),
+                    )
                 ftp = HttpFileClient(
                     self.profile["site_url"], http,
                     transfer_delay = float(self.profile.get("pacing_delay") or 0),
@@ -837,6 +869,7 @@ class BackupEngine:
         self.on_stats(0, total_files, 0, 0, bytes_total, 0)
 
         for key, record in media_files.items():
+            self._wait_if_paused()
             if self._cancelled:
                 break
 

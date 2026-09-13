@@ -13,11 +13,27 @@
 
 ## Versioning
 
-SUYB uses `0.7.x` where the third number is SUYB's own build count within the SnapSmack milestone era. When SnapSmack moves to 0.8.x (Closed Beta), SUYB resets to `0.8.1`. `BUILD_VERSION` in `main.py` must always match the latest entry in this file.
+SUYB uses `0.7.x` where the third number is SUYB's own build count within the SnapSmack milestone era. When SnapSmack moves to 0.8.x (Closed Beta), SUYB resets to `0.8.1`. `BUILD_VERSION` in `_version.py` must always match the latest entry in this file.
 
 Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired. Rapid same-day debug iterations (0.7.9e–h) are not counted as separate builds — only meaningful releases count. Entries are preserved as-is for history.
 
 ---
+
+## 0.7.38 — 2026-09-13
+
+### Fixed — crash recovery now actually resumes
+
+- The Qt cockpit detects an interrupted checkpoint and offers RESUME, START
+  FRESH, or Cancel before beginning a site.
+- Mid-download checkpoints no longer require the final recovery kit, which is
+  not assembled until after downloading. That impossible requirement made the
+  advertised recovery path reject every real interrupted run.
+- Resuming restores the saved SQL paths, reconnects the HTTP transport, and
+  skips both downloaded and previously confirmed-unchanged files.
+- New backups use a durable append-only journal instead of rewriting an
+  ever-growing multi-megabyte JSON checkpoint after every photograph.
+- PAUSE finishes the current file, records it durably, and waits at the next
+  safe boundary. RESUME continues the same run; closing retains its checkpoint.
 
 ## 0.7.37 — 2026-09-12
 
