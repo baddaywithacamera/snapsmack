@@ -19,6 +19,14 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.40 — 2026-09-13
+
+### Fixed — closing cannot strand an active backup
+
+- Clicking the red X during a backup now minimizes SUYB and keeps its window on
+  the taskbar. The notification-area icon remains a convenience, never the only
+  route back into a running job.
+
 ## 0.7.39 — 2026-09-13
 
 ### Fixed — a background backup remains visible and controllable
