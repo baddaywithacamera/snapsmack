@@ -16,16 +16,35 @@ def _png_data(image):
     return base64.b64encode(stream.getvalue()).decode("ascii")
 
 
+def focus_region(image, mask, target=1536):
+    """Crop generous context around a small defect and enlarge it for the model."""
+    bbox = mask.getbbox()
+    if bbox is None:
+        raise ValueError("Paint over the defect before asking Gemini to heal it.")
+    left, top, right, bottom = bbox
+    width, height = right - left, bottom - top
+    margin = max(96, round(max(width, height) * 2.5))
+    box = (max(0, left - margin), max(0, top - margin),
+           min(image.width, right + margin), min(image.height, bottom + margin))
+    crop = image.crop(box)
+    crop_mask = mask.crop(box)
+    scale = min(target / max(crop.size), 4.0)
+    work_size = (max(1, round(crop.width * scale)),
+                 max(1, round(crop.height * scale)))
+    return box, crop.resize(work_size, Image.Resampling.LANCZOS), crop_mask.resize(
+        work_size, Image.Resampling.LANCZOS)
+
+
 def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=300):
     """Return Gemini's edited full frame. The caller owns local mask enforcement."""
     if not api_key:
         raise ValueError("Add a Gemini API key in SNAP HQ Settings first.")
     image = image.convert("RGB")
     mask = mask.convert("L").resize(image.size, Image.Resampling.LANCZOS)
-    if mask.getbbox() is None:
-        raise ValueError("Paint over the defect before asking Gemini to heal it.")
+    box, work_image, work_mask = focus_region(image, mask)
     instruction = (
-        "Repair only the area painted WHITE in the supplied black-and-white mask. "
+        "The FIRST image is a crop of the photograph. The SECOND image is its "
+        "black-and-white selection mask. Repair only the area painted WHITE. "
         "Remove the selected defect and reconstruct natural matching content from "
         "the surrounding photograph. Preserve perspective, lighting, grain, focus, "
         "colour and texture. Do not alter anything outside the white selection."
@@ -35,8 +54,8 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
     payload = {
         "contents": [{"role": "user", "parts": [
             {"text": instruction},
-            {"inlineData": {"mimeType": "image/png", "data": _png_data(image)}},
-            {"inlineData": {"mimeType": "image/png", "data": _png_data(mask)}},
+            {"inlineData": {"mimeType": "image/png", "data": _png_data(work_image)}},
+            {"inlineData": {"mimeType": "image/png", "data": _png_data(work_mask)}},
         ]}],
         "generationConfig": {"responseModalities": ["IMAGE"]},
     }
@@ -56,7 +75,11 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
             if blob and blob.get("data"):
                 result = Image.open(io.BytesIO(base64.b64decode(blob["data"])))
                 result.load()
-                return result.convert("RGB")
+                result = result.convert("RGB").resize(work_image.size, Image.Resampling.LANCZOS)
+                repaired = image.copy()
+                repaired.paste(result.resize((box[2] - box[0], box[3] - box[1]),
+                                             Image.Resampling.LANCZOS), box[:2])
+                return repaired
     raise RuntimeError("Gemini returned no edited image.")
 
 # ===== SNAPSMACK EOF =====

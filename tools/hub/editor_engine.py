@@ -1235,7 +1235,7 @@ class EditorDocument:
         self.record(f"Add {self.layers[-1]['name']} filter")
         return self.layers[-1]
 
-    def add_image_layer(self, path, name=None):
+    def add_image_layer(self, path, name=None, *, record=True):
         self.layers.append({"id": _new_layer_id(), "name": name or os.path.basename(path),
                             "type": "image", "path": os.path.abspath(path), "visible": True,
                             "opacity": 1.0, "blend": "normal",
@@ -1243,7 +1243,8 @@ class EditorDocument:
                             "mask": "", "mask_linked": True,
                             "mask_transform": self.default_transform(), "styles": {},
                             "transform": self.default_transform()})
-        self.record("Add image layer")
+        if record:
+            self.record("Add image layer")
         return self.layers[-1]
 
     def add_paint_layer(self, name="Blank layer"):
