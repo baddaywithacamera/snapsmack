@@ -123,6 +123,7 @@ def test_generative_fill_can_infer_content_without_a_description(monkeypatch):
     mask = Image.new("L", photo.size, 255)
     gemini_image_edit.fill(photo, mask, "", "secret")
     instruction = seen["json"]["contents"][0]["parts"][0]["text"]
+    parts = seen["json"]["contents"][0]["parts"]
     assert "natural matching content inferred" in instruction
 
 
@@ -213,11 +214,14 @@ def test_expand_prompt_is_edge_specific_conservative_and_not_duplicated(monkeypa
         Image.new("RGB", (100, 50), "red"), {"left": 10},
         "continue the brick wall", "secret")
     instruction = seen["json"]["contents"][0]["parts"][0]["text"]
+    parts = seen["json"]["contents"][0]["parts"]
     assert "Outpaint only the WHITE masked border region" in instruction
     assert "Requested expansion edges: left." in instruction
     assert "Do not introduce a new focal subject" in instruction
     assert instruction.count("continue the brick wall") == 1
     assert "every white border area" not in instruction.lower()
+    assert len(parts) == 3  # instruction, canvas, red-marked reference; raw mask stays local
+    assert "not an explanation, mask, matte" in instruction
 
 
 def test_editor_exposes_generative_expand_with_class_c_provenance():
