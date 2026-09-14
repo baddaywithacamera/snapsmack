@@ -267,10 +267,20 @@ require_once __DIR__ . '/includes/header.php';
             <div class="entry">
                 <div class="entry-top">
                     <h3>A reply typed on the site reaching the fediverse</h3>
-                    <span class="date">2026-09-13</span>
-                    <span class="state nottested">Confirming</span>
+                    <span class="date">2026-09-13 &rarr; 14</span>
+                    <span class="state watched">Watched working</span>
                 </div>
-                <p>The code to send a blog comment out as a federated reply exists and runs on approve or reply. Nobody has yet watched one land under the original on Pixelfed or Mastodon and named what they saw. Until someone does, it is listed here as untested, not as working. Fixed in 0.7.708D; the test and what remains are in the report above (OPAUDIT 013, &sect;6).</p>
+                <p>The public comment form wrote to the community table; the outbound federation only ever read the classic one, so a comment typed on the blog never left the blog. 0.7.708D mirrors each new comment into the classic table and sends it through the same pipe the moderation screen&rsquo;s replies use. Watched on 2026-09-14: a comment typed on allinthewrist.photoblogs.fyi appeared under the same post on pixelfed.social, attributed to the blog with &ldquo;&lt;name&gt; wrote:&rdquo; in front, original time kept. It took a day to see because of the entry below.</p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top">
+                    <h3>The scheduled jobs were never installed for 36 of 37 sites</h3>
+                    <span class="date">2026-09-14</span>
+                    <span class="state notwatch">Fixed &mdash; confirming</span>
+                </div>
+                <p>Each SnapSmack site registers its own scheduled jobs &mdash; the queue that delivers posts, likes, and replies to other servers; the RSS fetch; the version check. On the fleet box that registration had happened for exactly one site. The other thirty-six had no scheduled job at all and were living on the fallback, which runs the queue when a visitor loads a page. So every site delivered fine while someone was looking at it and went silent the moment they weren&rsquo;t &mdash; which is why cron had been declared fixed more than once (OPAUDIT 011 among them) and never stayed fixed. Found because a comment typed on a blog sat in that blog&rsquo;s outbound queue for six hours with zero delivery attempts, timestamped to the minute the owner stopped browsing.</p>
+                <p>Fix, on the box: one fleet-wide scheduled job that reads the sites directory on every run, so a site is covered the minute its folder exists and there is no per-site registration to forget. Watched: ten minutes after it was installed, the stalled queue of 28 deliveries drained on its own and the comment appeared on Pixelfed. What remains, and why this is not yet <em>watched working</em>: the per-site registration inside the software still reports &ldquo;registered&rdquo; when it is not, the three stale lines from the old job name are still on the box, and the thing that should have caught thirty-six silent sites &mdash; the fleet cron monitor &mdash; did not. Those three are the next entries or they are this entry&rsquo;s update.</p>
             </div>
 
             <div class="entry">
