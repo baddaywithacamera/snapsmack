@@ -21,7 +21,7 @@ person wants is continuity, not navigation.
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
-BUILD_VERSION = "0.1.0"   # auto-incremented by bump_version.py on each build.bat run
+BUILD_VERSION = "0.2.0"   # auto-incremented by bump_version.py on each build.bat run
 
 import os
 import queue

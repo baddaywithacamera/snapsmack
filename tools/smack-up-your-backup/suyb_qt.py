@@ -261,7 +261,15 @@ class SuybWindow(QMainWindow):
             card, col = _card(title, body); col.addStretch(1); actions.addWidget(card)
         layout.addLayout(actions)
         run, rl = _card("Make a fresh backup", "Differential is fast and downloads only changed files. Full rechecks the complete site.")
-        opts = QHBoxLayout(); self.full_check = QCheckBox("Full backup"); opts.addWidget(self.full_check); opts.addStretch(1)
+        opts = QHBoxLayout(); self.full_check = QCheckBox("Full backup"); opts.addWidget(self.full_check)
+        # Exit package: TYSWY canonical archive + WordPress + Ghost, written into exit/
+        # and zipped with the backup. Off by default — it can double a backup's size.
+        self.exit_check = QCheckBox("Include exit package (WordPress + Ghost; larger)")
+        self.exit_check.setToolTip(
+            "Also writes TAKE YOUR SHIT WITH YOU's portable archive plus WordPress and Ghost import "
+            "packages into exit/ inside this backup. Every original is included once more, so the "
+            "backup can be roughly twice the size. Needs the site on 0.7.711D or newer.")
+        opts.addWidget(self.exit_check); opts.addStretch(1)
         self.pause_btn = QPushButton("PAUSE")
         self.pause_btn.setEnabled(False)
         self.pause_btn.clicked.connect(self._toggle_pause)
@@ -332,6 +340,15 @@ class SuybWindow(QMainWindow):
              "Open Backups to see packages in the selected site's working folder. Open backup folder shows the same files in Windows so you can copy or manage them there. Refresh rereads the folder."),
             ("Connections",
              "The Connection page stores the site name, URL, backup key, and local working folder. Test connection confirms that the selected site can provide a database export. Save connection after making changes."),
+            ("The exit package (WordPress + Ghost)",
+             "Tick Include exit package and each backup also carries an exit/ folder: TAKE YOUR SHIT WITH YOU's portable archive "
+             "(plain JSON and your media, hash-verified) plus a WordPress import file and a Ghost import zip built from it. "
+             "It is off by default because every original is included once more, so the backup can be about twice the size.\n\n"
+             "Each package lists, in its own CONVERSION-REPORT.html, everything that platform cannot hold: WordPress turns albums "
+             "into tags and skips collections; Ghost does the same and cannot import comments at all. Nothing is dropped silently, "
+             "and the portable archive beside them keeps all of it.\n\n"
+             "The site must be on 0.7.711D or newer for the backup key to read the export; older sites need TAKE YOUR SHIT WITH YOU "
+             "with its own key. A problem building the exit package never fails the backup itself."),
             ("What a complete backup contains",
              "A complete package contains the full database SQL, schema SQL, recovery manifest, original media and site assets. Downloads are checked against the site's manifest before the package is marked successful."),
         ]
@@ -473,6 +490,7 @@ class SuybWindow(QMainWindow):
             else:
                 return
         force_full = self.full_check.isChecked()
+        exit_package = self.exit_check.isChecked()
         global_cloud = self._global_cloud()
         self.log.clear(); self.run_btn.setEnabled(False); self.choose_sites_btn.setEnabled(False)
         self.pause_btn.setEnabled(True); self.pause_btn.setText("PAUSE")
@@ -487,9 +505,9 @@ class SuybWindow(QMainWindow):
         self._stats_site = ""; self._last_pct = 0.0; self._last_stats = None
         self.files_stats.setText("FILES\nReading inventory…"); self.data_stats.setText("DATA\nCalculating total…")
         self.time_stats.setText("TIME\nElapsed 0:00 · ETA calculating…"); self._clock.start()
-        threading.Thread(target=self._run_backup_batch, args=(names, force_full, global_cloud, resume_points), daemon=True).start()
+        threading.Thread(target=self._run_backup_batch, args=(names, force_full, global_cloud, resume_points, exit_package), daemon=True).start()
 
-    def _run_backup_batch(self, names, force_full, global_cloud, resume_points):
+    def _run_backup_batch(self, names, force_full, global_cloud, resume_points, exit_package=False):
         results = []
         total = len(names)
         for index, name in enumerate(names):
@@ -498,7 +516,8 @@ class SuybWindow(QMainWindow):
                 results.append({"name": name, "success": False, "errors": ["Profile could not be loaded"]})
                 continue
             profile = dict(profile); profile["api_key"] = self._resolved_key(profile)
-            self.bridge.log.emit(f"{name}: starting backup")
+            profile["exit_package"] = bool(exit_package or profile.get("exit_package"))
+            self.bridge.log.emit(f"{name}: starting backup" + (" (with exit package)" if profile["exit_package"] else ""))
             self.engine = backup_engine.BackupEngine(
                 profile, force_full=force_full, global_cloud=global_cloud,
                 on_progress=lambda stage, msg, pct, i=index, n=total, site=name:
