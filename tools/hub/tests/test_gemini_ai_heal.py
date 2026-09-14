@@ -161,6 +161,28 @@ def test_generative_expand_grows_canvas_and_restores_original_interior(monkeypat
     assert mask.getpixel((23, 5)) == 255
 
 
+def test_paid_only_gemini_image_quota_error_is_plain(monkeypatch):
+    class Response:
+        ok = False
+        status_code = 429
+
+        def json(self):
+            return {"error": {"message": (
+                "Quota exceeded for metric generate_content_free_tier_requests, "
+                "limit: 0, model: gemini-3.1-flash-image")}}
+
+    monkeypatch.setattr(gemini_image_edit.requests, "post", lambda *_a, **_k: Response())
+    try:
+        gemini_image_edit.expand(
+            Image.new("RGB", (100, 50), "red"), {"right": 10}, "", "valid-key")
+    except RuntimeError as error:
+        assert "no free API tier" in str(error)
+        assert "billing-enabled" in str(error)
+        assert "free_tier_requests" not in str(error)
+    else:
+        raise AssertionError("paid-only quota failure was not surfaced")
+
+
 def test_generative_expand_caps_total_generated_area_at_twenty_percent(monkeypatch):
     class Response:
         ok = True
