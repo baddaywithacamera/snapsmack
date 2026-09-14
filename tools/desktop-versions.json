@@ -27,7 +27,7 @@
     "version_file": "unzucker/main.py"
   },
   "cronometer": {
-    "version": "0.7.11",
+    "version": "0.7.12",
     "version_file": "cronometer/cronometer.py"
   },
   "shots-fired": {
