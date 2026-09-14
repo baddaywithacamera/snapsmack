@@ -153,9 +153,13 @@ function tyswy_require_https(): void {
 }
 
 /**
- * Validate the Bearer key. Read-only and scoped to key_type 'tyswy' - a key
- * minted for any other tool must not reach this surface, and a tyswy key must
- * not reach theirs. Expiry enforced (the SECAUDIT 039 sweep rule).
+ * Validate the Bearer key. Read-only and scoped to key_type 'tyswy' — plus
+ * 'suyb' as of 0.7.711D, so SMACK UP YOUR BACKUP can write an exit package
+ * (TAKE YOUR SHIT WITH YOU's archive + WordPress/Ghost packages) inside a
+ * backup without a second key. That is not a widening: a 'suyb' key already
+ * receives the full SQL dump, which is a strict superset of what this
+ * read-only surface returns. No other key type reaches here, and a tyswy key
+ * still cannot reach any other tool's surface. Expiry enforced (SECAUDIT 039).
  *
  * @return array{id:int,user_id:int}
  */
@@ -168,14 +172,14 @@ function tyswy_auth(PDO $pdo): array {
     try {
         $st = $pdo->prepare("
             SELECT id, user_id FROM snap_ohsnap_keys
-            WHERE key_hash = ? AND is_active = 1 AND key_type = 'tyswy'
+            WHERE key_hash = ? AND is_active = 1 AND key_type IN ('tyswy', 'suyb')
               AND (expires_at IS NULL OR expires_at > NOW())
             LIMIT 1");
         $st->execute([$hash]);
     } catch (Throwable $e) {
         $st = $pdo->prepare("
             SELECT id, user_id FROM snap_ohsnap_keys
-            WHERE key_hash = ? AND is_active = 1 AND key_type = 'tyswy' LIMIT 1");
+            WHERE key_hash = ? AND is_active = 1 AND key_type IN ('tyswy', 'suyb') LIMIT 1");
         $st->execute([$hash]);
     }
     $row = $st->fetch(PDO::FETCH_ASSOC);
