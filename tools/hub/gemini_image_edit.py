@@ -62,7 +62,7 @@ def focus_region(image, mask, target=1536):
 
 
 def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=300,
-         operation="heal"):
+         operation="heal", return_instruction=False):
     """Return Gemini's edited full frame. The caller owns local mask enforcement."""
     if not api_key:
         raise ValueError("Add a Gemini API key in SNAP HQ Settings first.")
@@ -72,16 +72,11 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
     marked = marked_selection(work_image, work_mask)
     if operation == "expand":
         task = (
-            "Complete the marked outer canvas so the result reads as one continuous "
-            "photograph of the same scene. Extend what is already visible naturally "
-            "outward, maintaining continuous illumination, colour, exposure, texture, "
-            "perspective, focus, grain and spatial geometry. Keep gradual tonal changes "
-            "gradual; do not introduce a tonal division, hard transition, border, band, "
-            "or change of material where none exists in the photograph. Preserve the "
-            "supplied photograph exactly. Add no new focal subject or large foreground "
-            "object unless the user's direction requests one. Return the complete canvas "
-            "at the supplied dimensions. " + prompt.strip()
+            "Extend the photograph naturally into the red area, as though the camera "
+            "captured a wider frame."
         )
+        if prompt.strip():
+            task += " " + prompt.strip()
     elif operation == "fill":
         if prompt.strip():
             task = (
@@ -152,7 +147,7 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
                 repaired = image.copy()
                 repaired.paste(result.resize((box[2] - box[0], box[3] - box[1]),
                                              Image.Resampling.LANCZOS), box[:2])
-                return repaired
+                return (repaired, instruction) if return_instruction else repaired
     raise RuntimeError("Gemini returned no edited image.")
 
 
@@ -223,17 +218,10 @@ def expand(image, edges, prompt, api_key, model="gemini-3.1-flash-image", timeou
     mask = Image.new("L", size, 255)
     ImageDraw.Draw(mask).rectangle(
         (box[0], box[1], box[2] - 1, box[3] - 1), fill=0)
-    direction = ", ".join(name for name, value in pads.items() if value)
-    request = (
-        "Extend the scene outward on the " + direction + ". Continue the existing view "
-        "as it would have appeared through a wider camera frame, with no invented change "
-        "in surface, lighting, colour or geometry."
-    )
-    if str(prompt or "").strip():
-        request += " User direction: " + str(prompt).strip()
-    generated = heal(canvas, mask, request, api_key, model=model, timeout=timeout,
-                     operation="expand")
+    generated, sent_instruction = heal(
+        canvas, mask, str(prompt or "").strip(), api_key, model=model,
+        timeout=timeout, operation="expand", return_instruction=True)
     generated.paste(image, box[:2])
-    return generated, mask, box
+    return generated, mask, box, sent_instruction
 
 # ===== SNAPSMACK EOF =====
