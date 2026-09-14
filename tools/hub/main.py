@@ -1,4 +1,4 @@
-﻿"""
+"""
 SNAP HQ â€” SnapSmack unified desktop front end & launcher.
 
 One door: launch every offline tool from here, and set the fleet up ONCE. Enter the
