@@ -59,6 +59,10 @@ $check('deploy 20 min ago, no fire since = not-since-deploy', $st === 'not-since
 $check('deploy 5 min ago: gate not yet armed', $st === 'firing');
 [$st] = cron_job_verdict(['fediverse_sched_last_fire' => $ts(60), 'deploy_finalized_at' => $ts(1200)], 'fediverse');
 $check('fired after the deploy = firing', $st === 'firing');
+[$st] = cron_job_verdict(['version_check_sched_last_fire' => $ts(3600), 'deploy_finalized_at' => $ts(1200)], 'version_check');
+$check('6-hourly job, deploy 20 min ago: gate waits one interval', $st === 'firing');
+[$st] = cron_job_verdict(['version_check_sched_last_fire' => $ts(30000), 'deploy_finalized_at' => $ts(22000)], 'version_check');
+$check('6-hourly job, deploy 6h+ ago, no fire since = not-since-deploy', $st === 'not-since-deploy');
 
 // 4. Manual launches are marked so the scripts skip the scheduler stamp.
 $src = file_get_contents(dirname(__DIR__) . '/core/cron-register.php');
