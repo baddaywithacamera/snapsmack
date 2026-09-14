@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(HUB), "_shared"))
 
 from PIL import Image, ImageChops                        # noqa: E402
 import editor_engine                                     # noqa: E402
-from PySide6.QtWidgets import QApplication, QPushButton, QMessageBox  # noqa: E402
+from PySide6.QtWidgets import QApplication, QPushButton, QMessageBox, QLineEdit  # noqa: E402
 from PySide6.QtCore import QDir, QThreadPool, Qt         # noqa: E402
 from PySide6.QtGui import QKeySequence                   # noqa: E402
 from PySide6.QtTest import QTest                         # noqa: E402
@@ -199,6 +199,24 @@ def test_layers_isolation_and_ops():
     assert win.active_target == BASE
     win.undo()
     assert len(win.doc.layers) == 1
+
+
+def test_delete_key_removes_selected_layer_but_not_base_or_typed_text():
+    win = _editor(_image("delete-layer-key.jpg"))
+    win.layers_panel._add_adjustment()
+    assert len(win.doc.layers) == 1
+    win._delete_layer_key()
+    assert len(win.doc.layers) == 0 and win.active_target == BASE
+    win.undo()
+    assert len(win.doc.layers) == 1
+    win.set_target(BASE)
+    win._delete_layer_key()
+    assert len(win.doc.layers) == 1
+    win.set_target(win.doc.layers[0]["id"])
+    field = QLineEdit(win); field.setText("keep me"); win.show(); field.show(); field.setFocus()
+    APP.processEvents(); win._delete_layer_key()
+    assert len(win.doc.layers) == 1 and field.text() == "keep me"
+    win.close()
 
 
 def test_adjustment_layer_reveals_masks_and_history_is_clickable():
