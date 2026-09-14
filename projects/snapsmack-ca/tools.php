@@ -101,7 +101,7 @@ function ss_tool_card(string $href, string $name, string $platform, string $stat
                 <p>The photograph and the words, finished on your machine before they go anywhere.</p>
             </div>
             <div class="tool-cards">
-                <?php echo ss_tool_card('tool-snap-slapper.php', 'SNAP SLAPPER', 'Windows / Linux', 'Closed beta', 'A private photo library and a real non-destructive editor. Normal mode for most photographs, Advanced mode when one needs the whole bench. LEWKS you can see, change, and keep.', 'snapslapper-editor-norm.png', 'SNAP SLAPPER editor in Normal mode'); ?>
+                <?php echo ss_tool_card('tool-snap-slapper.php', 'SNAP SLAPPER', 'Windows / Linux', 'Closed beta', 'A private photo library and a real non-destructive editor. Normal mode for most photographs, Advanced mode when one needs the whole bench. LEWKS you can see, change, and keep. Generative Fill and Expand &mdash; and every AI edit goes on the record in the export, no off switch.', 'snapslapper-editor-norm.png', 'SNAP SLAPPER editor in Normal mode'); ?>
                 <?php echo ss_tool_card('tool-cold-snap.php', 'COLD SNAP', 'Windows / Linux', 'Shipping', 'Write posts and build BIGGIE photo essays with no connection, from a local cold-storage copy of your site. Sync when the internet comes back.', null); ?>
             </div>
         </div>
