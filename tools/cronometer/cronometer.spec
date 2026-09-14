@@ -24,6 +24,8 @@ _shared_dir   = os.path.normpath(os.path.join(_src, '..', '_shared'))
 _shared_files = glob.glob(os.path.join(_shared_dir, '*.py'))
 _shared_data  = [(f, '.') for f in _shared_files]
 _shared_mods  = [os.path.splitext(os.path.basename(f))[0] for f in _shared_files]
+# App icon lives with the family's icons (tools/hub/icons); exe + window use it.
+_icon_ico     = os.path.normpath(os.path.join(_src, '..', 'hub', 'icons', 'cronometer.ico'))
 
 a = Analysis(
     ['cronometer.py'],
@@ -34,7 +36,8 @@ a = Analysis(
     # "Unable to find …\assets" on a clean build.
     datas=_local_data + _shared_data + (
         [(os.path.join(_src, 'assets'), 'assets')]
-        if os.path.isdir(os.path.join(_src, 'assets')) else []),
+        if os.path.isdir(os.path.join(_src, 'assets')) else [])
+        + [(_icon_ico, 'assets')],   # window icon at runtime (see cronometer.py)
     hiddenimports=_local_mods + _shared_mods + [
         # UI
         'tkinter', 'tkinter.ttk', 'tkinter.messagebox',
@@ -78,5 +81,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=_icon_ico,
 )
 # ===== SNAPSMACK EOF =====
