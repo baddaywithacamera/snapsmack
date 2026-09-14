@@ -8,6 +8,8 @@ from __future__ import annotations
 import os
 import sys
 
+import requests
+
 from PySide6.QtCore import QObject, QSettings, QThread, Qt, Signal, Slot
 from PySide6.QtGui import QGuiApplication, QIcon, QPixmap
 from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QFileDialog,
@@ -71,6 +73,51 @@ class DiscoveryWorker(QObject):
                 self.hub_url, api_key=self.hub_key))
         except Exception as exc:
             self.failed.emit(str(exc))
+
+
+class CredentialTestWorker(QObject):
+    finished = Signal(bool, str)
+
+    def __init__(self, provider: str, key: str):
+        super().__init__(); self.provider = provider; self.key = key
+
+    @Slot()
+    def run(self):
+        try:
+            if self.provider == "gemini":
+                response = requests.get(
+                    "https://generativelanguage.googleapis.com/v1beta/models",
+                    params={"key": self.key}, timeout=20)
+            elif self.provider == "claude":
+                response = requests.get("https://api.anthropic.com/v1/models", headers={
+                    "x-api-key": self.key, "anthropic-version": "2023-06-01"}, timeout=20)
+            elif self.provider == "stability":
+                response = requests.get("https://api.stability.ai/v1/user/balance", headers={
+                    "Authorization": f"Bearer {self.key}"}, timeout=20)
+            elif self.provider == "openai":
+                response = requests.get("https://api.openai.com/v1/models", headers={
+                    "Authorization": f"Bearer {self.key}"}, timeout=20)
+            elif self.provider == "kimi":
+                response = requests.get("https://api.moonshot.cn/v1/models", headers={
+                    "Authorization": f"Bearer {self.key}"}, timeout=20)
+            elif self.provider == "deepseek":
+                response = requests.get("https://api.deepseek.com/v1/models", headers={
+                    "Authorization": f"Bearer {self.key}"}, timeout=20)
+            else:
+                self.finished.emit(False, "Unknown provider."); return
+            if response.ok:
+                self.finished.emit(True, "Key accepted. No image or text was generated.")
+                return
+            detail = ""
+            try:
+                body = response.json()
+                detail = str((body.get("error") or {}).get("message") or body.get("message") or "")
+            except Exception:
+                pass
+            self.finished.emit(False, f"Rejected (HTTP {response.status_code})" +
+                               (f" — {detail[:120]}" if detail else "."))
+        except Exception as exc:
+            self.finished.emit(False, str(exc)[:160])
 
 
 class ToolCard(QFrame):
@@ -139,7 +186,12 @@ class SettingsDialog(QDialog):
         outer = QVBoxLayout(self); outer.setContentsMargins(22, 20, 22, 20); outer.setSpacing(13)
         title = QLabel("SETTINGS"); title.setObjectName("brand"); outer.addWidget(title)
         hint = QLabel("Set it once. Every desktop tool uses it."); hint.setObjectName("muted"); outer.addWidget(hint)
-        self.fields = {}
+        self.fields = {}; self.credential_test = None
+        testable = {
+            "gemini_api_key": "gemini", "claude_api_key": "claude",
+            "openai_api_key": "openai",
+            "kimi_api_key": "kimi", "deepseek_api_key": "deepseek",
+        }
         for label, key, secret in (
             ("Hub site URL", "hub_url", False), ("Hub API key", "hub_key", True),
             ("Gemini API key", "gemini_api_key", True), ("Claude API key", "claude_api_key", True),
@@ -152,6 +204,12 @@ class SettingsDialog(QDialog):
             except Exception: current = ""
             edit = QLineEdit(current); edit.setEchoMode(QLineEdit.Password if secret else QLineEdit.Normal)
             line.addWidget(edit, 1); self.fields[key] = edit
+            if key in testable:
+                test = QPushButton("TEST")
+                test.clicked.connect(
+                    lambda _=False, p=testable[key], k=key, b=test:
+                    self._test_credential(p, k, b))
+                line.addWidget(test)
             if key == "google_credentials":
                 choose = QPushButton("CHOOSE"); choose.clicked.connect(lambda _=False, e=edit: self._choose(e)); line.addWidget(choose)
             outer.addLayout(line)
@@ -178,6 +236,29 @@ class SettingsDialog(QDialog):
             elif snap_creds.get(key, ""): snap_creds.delete(key)
         self.settings.setValue("showMigrationCentre", self.migrations.isChecked())
         self.status.setText("Saved to the shared protected store.")
+
+    def _test_credential(self, provider, key_name, button):
+        if self.credential_test is not None:
+            self.status.setText("Another credential test is already running."); return
+        key = self.fields[key_name].text().strip()
+        if not key:
+            self.status.setText(f"{provider.title()}: enter a key first."); return
+        self.status.setText(
+            f"Testing the displayed {provider.title()} key without generating content…")
+        button.setEnabled(False); button.setText("TESTING…")
+        thread = QThread(self); worker = CredentialTestWorker(provider, key)
+        worker.moveToThread(thread); thread.started.connect(worker.run)
+        worker.finished.connect(
+            lambda ok, message, p=provider: self._credential_test_finished(p, ok, message))
+        worker.finished.connect(thread.quit); thread.finished.connect(worker.deleteLater)
+        thread.finished.connect(lambda b=button: self._credential_test_cleanup(b))
+        self.credential_test = (thread, worker); thread.start()
+
+    def _credential_test_finished(self, provider, ok, message):
+        self.status.setText(("✓ " if ok else "✗ ") + provider.title() + ": " + message)
+
+    def _credential_test_cleanup(self, button):
+        button.setEnabled(True); button.setText("TEST"); self.credential_test = None
 
     def _discover(self):
         if getattr(self, "discovery_thread", None):

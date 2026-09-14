@@ -115,6 +115,11 @@ class Filmstrip(QListWidget):
         in the same folder just moves the selection.
         """
         if not path:
+            self.clear()
+            self._items.clear()
+            self._queued.clear()
+            self._folder = None
+            self._current = None
             return
         current = os.path.abspath(path)
         folder = os.path.dirname(current)

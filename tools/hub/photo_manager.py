@@ -11,7 +11,8 @@ import shutil
 import tempfile
 import time
 
-from PIL import Image, ImageFilter, ImageOps, ImageStat, PngImagePlugin
+from PIL import (Image, ImageFilter, ImageOps, ImageStat, PngImagePlugin,
+                 TiffImagePlugin)
 
 EXIF_COPYRIGHT = 33432
 EXIF_GPS_INFO = 34853
@@ -37,7 +38,7 @@ def fsync_file(path):
 
 
 def save_with_metadata(output, target, source_path, copyright_text="", strip_gps=False,
-                       **options):
+                       provenance_records=None, **options):
     """Atomically save a derivative while retaining source metadata."""
     if same_file(target, source_path):
         raise ValueError("SNAP SLAPPER will not overwrite an original photograph.")
@@ -63,9 +64,16 @@ def save_with_metadata(output, target, source_path, copyright_text="", strip_gps
         image_format = Image.registered_extensions().get(os.path.splitext(target)[1].lower())
     if not image_format:
         image_format = source_format
+    if provenance_records:
+        import slapper_provenance
+        xmp = slapper_provenance.embed_xmp(xmp, provenance_records)
     if xmp:
         if image_format in {"JPEG", "WEBP"}:
             options["xmp"] = xmp
+        elif image_format == "TIFF":
+            tiffinfo = options.get("tiffinfo") or TiffImagePlugin.ImageFileDirectory_v2()
+            tiffinfo[700] = xmp
+            options["tiffinfo"] = tiffinfo
         elif image_format == "PNG" and "pnginfo" not in options:
             pnginfo = PngImagePlugin.PngInfo()
             pnginfo.add_itxt("XML:com.adobe.xmp", xmp.decode("utf-8", errors="replace"))
