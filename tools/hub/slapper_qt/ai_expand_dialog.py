@@ -44,7 +44,9 @@ class AIExpandDialog(QDialog):
         title = QLabel("EXPAND THE PHOTOGRAPH BEYOND ITS CAPTURED FRAME"); title.setObjectName("SectionTitle"); layout.addWidget(title)
         note = QLabel("Drag only the edge or corner you want. Generated area is measured against the original captured frame and is cumulatively limited to 20%.")
         note.setWordWrap(True); layout.addWidget(note)
-        self.canvas = ExpandCanvas(self.photo); self.canvas.edges_changed.connect(self._edges_changed); layout.addWidget(self.canvas)
+        self.canvas = ExpandCanvas(self.photo)
+        self.canvas.set_constraint(self._within_budget)
+        self.canvas.edges_changed.connect(self._edges_changed); layout.addWidget(self.canvas)
         self.measure = QLabel(); self.measure.setAlignment(Qt.AlignCenter); layout.addWidget(self.measure)
         self.prompt = QLineEdit(); self.prompt.setPlaceholderText("Optional direction: continue the prairie and evening sky…"); layout.addWidget(self.prompt)
         self.preview = QLabel(); self.preview.setAlignment(Qt.AlignCenter); self.preview.setVisible(False); layout.addWidget(self.preview, 1)
@@ -56,13 +58,17 @@ class AIExpandDialog(QDialog):
         layout.addLayout(actions); self.status = QLabel("Ready"); layout.addWidget(self.status)
         self._edges_changed(self.edges)
 
-    def _measurement(self):
+    def _measurement(self, edges=None):
+        edges = self.edges if edges is None else edges
         pads, _unused_size, _unused_area = gemini_image_edit.expansion_geometry(
-            self.original_size, self.edges)
+            self.original_size, edges)
         size = (self.current_size[0] + pads["left"] + pads["right"],
                 self.current_size[1] + pads["top"] + pads["bottom"])
         area = size[0] * size[1] - self.current_size[0] * self.current_size[1]
         return pads, size, area, area * 100 / self.original_area, (self.used_area + area) * 100 / self.original_area
+
+    def _within_budget(self, edges):
+        return self._measurement(edges)[2] <= self.remaining_area
 
     def _edges_changed(self, edges):
         self.edges = dict(edges)
