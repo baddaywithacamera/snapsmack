@@ -400,6 +400,31 @@ def test_normal_advanced_mode():
     assert "Generative Expand…" in advanced_retouch
 
 
+def test_generative_expand_uses_active_history_and_starts_with_no_border():
+    from slapper_qt.ai_expand_dialog import AIExpandDialog
+    win = _editor(_image("expand-budget.jpg", (100, 50)))
+    dialog = AIExpandDialog(win)
+    assert all(value == 0 for value in dialog.edges.values())
+    assert not dialog.go.isEnabled()
+    dialog._edges_changed({"left": 0, "top": 0, "right": 15, "bottom": 0})
+    assert dialog.go.isEnabled()
+    assert "15.0% of original this time" in dialog.measure.text()
+
+    win.doc.layers.append({
+        "id": "prior-expand", "name": "Generative Expand",
+        "type": "generative_expand", "generated_area_pixels": 750,
+        "expanded_edges": {"left": 0, "top": 0, "right": 15, "bottom": 0},
+        "visible": False,
+    })
+    win.doc.record("Generative Expand")
+    _original, _current, used, remaining = win.generative_expand_budget()
+    assert used == 750 and remaining == 250
+    win.doc.undo()
+    _original, _current, used, remaining = win.generative_expand_budget()
+    assert used == 0 and remaining == 1000
+    dialog.close(); win.close()
+
+
 def test_context_sensitive_toolbars():
     win = _editor(_image("context-bars.jpg", (300, 200)))
 

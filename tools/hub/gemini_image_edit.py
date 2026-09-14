@@ -145,21 +145,50 @@ def fill(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
                 operation="fill")
 
 
-def expand(image, percent, prompt, api_key, model="gemini-3.1-flash-image", timeout=300):
+def expansion_geometry(size, edges):
+    """Return pixel padding, output size and generated area for four edge percentages."""
+    width, height = size
+    if isinstance(edges, (int, float)):
+        edges = {name: edges for name in ("left", "top", "right", "bottom")}
+    values = {name: max(0.0, float((edges or {}).get(name, 0)))
+              for name in ("left", "top", "right", "bottom")}
+    pads = {
+        "left": round(width * min(20.0, values["left"]) / 100.0),
+        "right": round(width * min(20.0, values["right"]) / 100.0),
+        "top": round(height * min(20.0, values["top"]) / 100.0),
+        "bottom": round(height * min(20.0, values["bottom"]) / 100.0),
+    }
+    out_size = (width + pads["left"] + pads["right"],
+                height + pads["top"] + pads["bottom"])
+    generated_area = out_size[0] * out_size[1] - width * height
+    return pads, out_size, generated_area
+
+
+def expand(image, edges, prompt, api_key, model="gemini-3.1-flash-image", timeout=300,
+           max_generated_area=None):
     """Generate a larger frame while restoring the supplied photograph locally."""
     image = image.convert("RGB")
-    amount = max(1, min(20, int(percent))) / 100.0
-    x_pad = max(1, round(image.width * amount))
-    y_pad = max(1, round(image.height * amount))
-    size = (image.width + x_pad * 2, image.height + y_pad * 2)
-    box = (x_pad, y_pad, x_pad + image.width, y_pad + image.height)
+    pads, size, generated_area = expansion_geometry(image.size, edges)
+    if generated_area <= 0:
+        raise ValueError("Drag an edge or corner to choose an area to expand.")
+    limit = (image.width * image.height * .20 if max_generated_area is None
+             else max(0, int(max_generated_area)))
+    if generated_area > limit:
+        raise ValueError("Generative Expand is limited to 20% of the original frame area.")
+    box = (pads["left"], pads["top"], pads["left"] + image.width,
+           pads["top"] + image.height)
     mean = tuple(round(value) for value in ImageStat.Stat(image.resize((1, 1))).mean[:3])
     canvas = Image.new("RGB", size, mean)
     canvas.paste(image, box[:2])
     mask = Image.new("L", size, 255)
     ImageDraw.Draw(mask).rectangle(
         (box[0], box[1], box[2] - 1, box[3] - 1), fill=0)
-    generated = heal(canvas, mask, prompt, api_key, model=model, timeout=timeout,
+    direction = ", ".join(name for name, value in pads.items() if value)
+    continuity = ("Extend only the requested " + direction +
+                  " edge area. Continue perspective, geometry, lighting, colour, "
+                  "focus, grain and texture seamlessly across the original boundary. "
+                  "Do not alter the supplied interior photograph. ")
+    generated = heal(canvas, mask, continuity + (prompt or ""), api_key, model=model, timeout=timeout,
                      operation="expand")
     generated.paste(image, box[:2])
     return generated, mask, box

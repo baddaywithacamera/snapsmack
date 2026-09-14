@@ -29,6 +29,9 @@ DEFAULTS = {
     "exports_folder": "",          # initial location for rendered copies
     "panomerge_xpano_path": "", # separately installed XPANO executable
     "generative_notice_acknowledged": False,  # non-personal first-run UI state
+    "ai_heal_send_warning_hidden": False,
+    "ai_fill_send_warning_hidden": False,
+    "ai_expand_send_warning_hidden": False,
 }
 
 
