@@ -25,7 +25,7 @@ from datetime import datetime
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
-BUILD_VERSION = "0.7.46"
+BUILD_VERSION = "0.7.47"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -793,8 +793,6 @@ class Hub(tk.Tk):
         self._field(card, "CLAUDE API KEY", "claude_api_key", show="•",
                     test=lambda s: self._test_ai_provider(s, "claude", "claude_api_key"))
         self._field(card, "GEMINI API KEY", "gemini_api_key", show="•", test=self._test_gemini)
-        self._field(card, "STABILITY AI API KEY", "stability_api_key", show="•",
-                    test=lambda s: self._test_ai_provider(s, "stability", "stability_api_key"))
         self._field(card, "KIMI API KEY", "kimi_api_key", show="•", reveal=True)
         self._field(card, "DEEPSEEK API KEY", "deepseek_api_key", show="•", reveal=True)
         self._field(card, "CLAUDE API KEY", "claude_api_key", show="•", reveal=True)
