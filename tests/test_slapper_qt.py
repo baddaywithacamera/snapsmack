@@ -437,7 +437,7 @@ def test_context_sensitive_toolbars():
     win = _editor(_image("context-bars.jpg", (300, 200)))
 
     assert [action.text() for action in win._context_selectors.values()] == [
-        "EDIT", "RETOUCH", "LOOKS", "OUTPUT", "VIEW"]
+        "EDIT", "IMPROVE", "LOOKS", "OUTPUT", "VIEW"]
 
     def visible_tools():
         return [action.text() for action in win.context_toolbar.actions()

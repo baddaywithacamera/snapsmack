@@ -72,10 +72,15 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
     marked = marked_selection(work_image, work_mask)
     if operation == "expand":
         task = (
-            "Extend the photograph naturally into every white border area. "
-            "Continue the existing scene, perspective, lighting, focus, grain, colour "
-            "and texture beyond the captured frame. " +
-            (("Additional direction: " + prompt.strip() + ".") if prompt.strip() else "")
+            "Outpaint only the WHITE masked border region on the requested edge or "
+            "edges. Preserve the supplied interior photograph exactly. At the inner "
+            "mask boundary, continue every intersecting line, surface, object, texture, "
+            "lighting gradient, perspective, focus characteristic, grain and noise "
+            "pattern without a visible seam. Extend existing content conservatively. "
+            "Do not introduce a new focal subject or a large foreground object unless "
+            "the user's direction explicitly requests one. The outer canvas edge may "
+            "crop objects naturally. Return the complete expanded canvas at the supplied "
+            "dimensions. " + prompt.strip()
         )
     elif operation == "fill":
         if prompt.strip():
@@ -104,7 +109,7 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
         "Do not merely return the original image. Do not alter anything outside the "
         "white selection."
     )
-    if operation != "fill" and prompt.strip():
+    if operation == "heal" and prompt.strip():
         instruction += " Additional instruction: " + prompt.strip()
     payload = {
         "contents": [{"role": "user", "parts": [
@@ -184,11 +189,10 @@ def expand(image, edges, prompt, api_key, model="gemini-3.1-flash-image", timeou
     ImageDraw.Draw(mask).rectangle(
         (box[0], box[1], box[2] - 1, box[3] - 1), fill=0)
     direction = ", ".join(name for name, value in pads.items() if value)
-    continuity = ("Extend only the requested " + direction +
-                  " edge area. Continue perspective, geometry, lighting, colour, "
-                  "focus, grain and texture seamlessly across the original boundary. "
-                  "Do not alter the supplied interior photograph. ")
-    generated = heal(canvas, mask, continuity + (prompt or ""), api_key, model=model, timeout=timeout,
+    request = "Requested expansion edges: " + direction + "."
+    if str(prompt or "").strip():
+        request += " User direction: " + str(prompt).strip()
+    generated = heal(canvas, mask, request, api_key, model=model, timeout=timeout,
                      operation="expand")
     generated.paste(image, box[:2])
     return generated, mask, box
