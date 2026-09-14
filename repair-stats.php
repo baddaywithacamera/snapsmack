@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK — repair-stats.php (one-off CLI, 0.7.712D)
+ * SNAPSMACK — repair-stats.php (one-off CLI, 0.7.713D)
  *
  * Re-count every completed day still held in raw stats with the behavioural
  * bot rule (one page, no referrer, never seen again that day = a fetcher, not
@@ -19,7 +19,7 @@
  *   php repair-stats.php --apply      reclassify + rebuild
  *
  * Fleet, from the sites box (one line, every site dir under the web root):
- *   for d in /var/www/sites/SITE-DIR; do ... done   — see CHANGELOG 0.7.712D for the exact paste
+ *   for d in /var/www/sites/SITE-DIR; do ... done   — see CHANGELOG 0.7.713D for the exact paste
  *
  * Named repair-*.php on purpose: SMACKBACK never baselines operator repair
  * scripts (core/smackback.php), so shipping, replacing or deleting this file
