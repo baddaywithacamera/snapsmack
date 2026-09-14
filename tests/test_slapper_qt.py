@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(HUB), "_shared"))
 
 from PIL import Image, ImageChops                        # noqa: E402
 import editor_engine                                     # noqa: E402
-from PySide6.QtWidgets import QApplication, QPushButton, QMessageBox  # noqa: E402
+from PySide6.QtWidgets import QApplication, QPushButton, QMessageBox, QLineEdit  # noqa: E402
 from PySide6.QtCore import QDir, QThreadPool, Qt         # noqa: E402
 from PySide6.QtGui import QKeySequence                   # noqa: E402
 from PySide6.QtTest import QTest                         # noqa: E402
@@ -199,6 +199,24 @@ def test_layers_isolation_and_ops():
     assert win.active_target == BASE
     win.undo()
     assert len(win.doc.layers) == 1
+
+
+def test_delete_key_removes_selected_layer_but_not_base_or_typed_text():
+    win = _editor(_image("delete-layer-key.jpg"))
+    win.layers_panel._add_adjustment()
+    assert len(win.doc.layers) == 1
+    win._delete_layer_key()
+    assert len(win.doc.layers) == 0 and win.active_target == BASE
+    win.undo()
+    assert len(win.doc.layers) == 1
+    win.set_target(BASE)
+    win._delete_layer_key()
+    assert len(win.doc.layers) == 1
+    win.set_target(win.doc.layers[0]["id"])
+    field = QLineEdit(win); field.setText("keep me"); win.show(); field.show(); field.setFocus()
+    APP.processEvents(); win._delete_layer_key()
+    assert len(win.doc.layers) == 1 and field.text() == "keep me"
+    win.close()
 
 
 def test_adjustment_layer_reveals_masks_and_history_is_clickable():
@@ -381,19 +399,63 @@ def test_normal_advanced_mode():
     assert win.act_textures.isVisible() is False
     assert win.act_save_project.isVisible() is False
     assert win.act_lewks.isVisible() is True and win.act_auto.isVisible() is True
+    win._context_selectors["retouch"].trigger()
+    normal_retouch = [action.text() for action in win.context_toolbar.actions()
+                      if not action.isSeparator()]
+    assert "AI Heal…" in normal_retouch
+    assert "Generative Fill…" in normal_retouch
+    assert "Generative Expand…" in normal_retouch
     # back to advanced restores everything
     win.mode_combo.setCurrentIndex(win.mode_combo.findData("advanced"))
     assert win.mode == "advanced" and win.act_advanced.isChecked()
     assert not win._sections["LEVELS"].isHidden()
     assert not win.rows["exposure"].isHidden()
     assert win.act_textures.isVisible() is True
+    advanced_retouch = [action.text() for action in win.context_toolbar.actions()
+                        if not action.isSeparator()]
+    assert "AI Heal…" in advanced_retouch
+    assert "Generative Fill…" in advanced_retouch
+    assert "Generative Expand…" in advanced_retouch
+
+
+def test_generative_expand_uses_active_history_and_starts_with_no_border():
+    from slapper_qt.ai_expand_dialog import AIExpandDialog
+    win = _editor(_image("expand-budget.jpg", (100, 50)))
+    dialog = AIExpandDialog(win)
+    assert all(value == 0 for value in dialog.edges.values())
+    assert not dialog.go.isEnabled()
+    dialog._edges_changed({"left": 0, "top": 0, "right": 15, "bottom": 0})
+    assert dialog.go.isEnabled()
+    assert "15.0% of original this time" in dialog.measure.text()
+
+    win.doc.layers.append({
+        "id": "prior-expand", "name": "Generative Expand",
+        "type": "generative_expand", "generated_area_pixels": 750,
+        "expanded_edges": {"left": 0, "top": 0, "right": 15, "bottom": 0},
+        "visible": False,
+    })
+    win.doc.record("Generative Expand")
+    _original, _current, used, remaining = win.generative_expand_budget()
+    assert used == 750 and remaining == 250
+    win.doc.undo()
+    _original, _current, used, remaining = win.generative_expand_budget()
+    assert used == 0 and remaining == 1000
+    dialog.close(); win.close()
+
+
+def test_expand_corner_cursors_follow_the_drag_direction():
+    from slapper_qt.expand_canvas import ExpandCanvas
+    assert ExpandCanvas._cursor_for_edges(("left", "top")) == Qt.SizeFDiagCursor
+    assert ExpandCanvas._cursor_for_edges(("right", "bottom")) == Qt.SizeFDiagCursor
+    assert ExpandCanvas._cursor_for_edges(("right", "top")) == Qt.SizeBDiagCursor
+    assert ExpandCanvas._cursor_for_edges(("left", "bottom")) == Qt.SizeBDiagCursor
 
 
 def test_context_sensitive_toolbars():
     win = _editor(_image("context-bars.jpg", (300, 200)))
 
     assert [action.text() for action in win._context_selectors.values()] == [
-        "EDIT", "RETOUCH", "LOOKS", "OUTPUT", "VIEW"]
+        "EDIT", "IMPROVE", "LOOKS", "OUTPUT", "VIEW"]
 
     def visible_tools():
         return [action.text() for action in win.context_toolbar.actions()
@@ -401,8 +463,9 @@ def test_context_sensitive_toolbars():
 
     assert visible_tools() == ["Crop", "Auto", "Reset All", "Before/After"]
     win._context_selectors["retouch"].trigger()
-    assert visible_tools() == ["Heal", "Red-Eye", "Mask Brush",
-                               "Mask Gradient", "Colour Range"]
+    assert visible_tools() == ["Spot Heal", "Red-Eye", "AI Heal…",
+                               "Generative Fill…", "Generative Expand…",
+                               "Mask Brush", "Mask Gradient", "Colour Range"]
     win._context_selectors["looks"].trigger()
     assert visible_tools() == [
         "LEWKS…", "LEWK AGAIN…", "Filters…", "Textures…", "Save Recipe", "Apply Recipe"]

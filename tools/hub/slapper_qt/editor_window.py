@@ -281,7 +281,8 @@ class EditorWindow(QMainWindow):
     def _recovery_path(self):
         if not self._recovery_dir or not self.doc:
             return None
-        return photo_manager.recovery_path(self._recovery_dir, self.doc.source_path)
+        source = getattr(self.doc, "recorded_source_path", self.doc.source_path)
+        return photo_manager.recovery_path(self._recovery_dir, source)
 
     def _write_recovery(self, force=False):
         path = self._recovery_path()
@@ -388,7 +389,7 @@ class EditorWindow(QMainWindow):
         self.act_crop.toggled.connect(self._toggle_crop)
         bar.addAction(self.act_crop)
 
-        self.act_heal = QAction("Heal", self)
+        self.act_heal = QAction("Spot Heal", self)
         self.act_heal.setCheckable(True)
         self.act_heal.toggled.connect(lambda on: self._toggle_retouch("heal", on))
         bar.addAction(self.act_heal)
@@ -523,7 +524,7 @@ class EditorWindow(QMainWindow):
         context_group.setExclusive(True)
         for key, label, tip in (
                 ("edit", "EDIT", "Crop, automatic correction and comparison"),
-                ("retouch", "RETOUCH", "Healing and red-eye correction"),
+                ("retouch", "IMPROVE", "Healing, restoration and AI-assisted improvements"),
                 ("looks", "LOOKS", "LEWKS, filters, textures and recipes"),
                 ("output", "OUTPUT", "Projects, exports and blog copies"),
                 ("view", "VIEW", "Zoom, filmstrip, preferences and help")):
@@ -654,6 +655,11 @@ class EditorWindow(QMainWindow):
         self.act_zoom_in.setShortcuts(
             [QKeySequence("Ctrl++"), QKeySequence("Ctrl+=")])
         self._install_mask_shortcuts()
+        self.delete_layer_action = QAction("Delete selected layer", self)
+        self.delete_layer_action.setShortcut(QKeySequence(Qt.Key_Delete))
+        self.delete_layer_action.setShortcutContext(Qt.WindowShortcut)
+        self.delete_layer_action.triggered.connect(self._delete_layer_key)
+        self.addAction(self.delete_layer_action)
 
     def _install_mask_shortcuts(self):
         """Install Photoshop-like local-mask keys with a typing guard."""
@@ -686,6 +692,7 @@ class EditorWindow(QMainWindow):
             return
         if command == "edit":
             self.mask_section.header.setChecked(True)
+
         elif command == "invert":
             self.mask_invert.toggle()
         elif command in {"linear", "brush"}:
@@ -704,6 +711,14 @@ class EditorWindow(QMainWindow):
             delta = -10 if command == "softer" else 10
             self.brush_hardness.slider.setValue(
                 self.brush_hardness.slider.value() + delta)
+
+    def _delete_layer_key(self):
+        """Delete the selected non-base layer without stealing text-edit keys."""
+        if isinstance(QApplication.focusWidget(), QLineEdit):
+            return
+        if self._restricted or not self.doc or self.active_target == BASE:
+            return
+        self.layers_panel._delete()
 
     def _activate_canvas_mask_tool(self, kind):
         if self._mask_layer() is None:
@@ -2270,12 +2285,18 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             QMessageBox.information(self, "Open a photograph", "Open a photograph first.")
             return
+        from .generative_consent import confirm
+        if not confirm(self):
+            return
         from .ai_heal_dialog import AIHealDialog
         AIHealDialog(self).exec()
 
     def open_ai_fill(self):
         if not self.doc:
             QMessageBox.information(self, "Open a photograph", "Open a photograph first.")
+            return
+        from .generative_consent import confirm
+        if not confirm(self):
             return
         from .ai_heal_dialog import AIHealDialog
         AIHealDialog(self, operation="fill").exec()
@@ -2287,6 +2308,9 @@ class EditorWindow(QMainWindow):
         # in History exposed Gemini's entire returned frame.
         is_fill = operation == "fill"
         layer_name = "Generative Fill" if is_fill else "AI Heal"
+        input_image = self.render_preview_image((2048, 2048)).convert("RGB")
+        with Image.open(path) as generated:
+            output_image = generated.convert("RGB")
         layer = self.doc.add_image_layer(path, name=layer_name, record=False)
         layer["fit"] = "stretch"
         import gemini_image_edit
@@ -2297,11 +2321,21 @@ class EditorWindow(QMainWindow):
         layer["mask_enabled"] = True
         layer["mask_linked"] = True
         layer["mask_kind"] = "ai-fill-selection" if is_fill else "ai-heal-selection"
-        layer["provenance"] = {
-            "kind": "generative-fill" if is_fill else "generative-repair",
-            "provider": "Gemini",
-            "model": model, "instruction": instruction,
-        }
+        import slapper_provenance
+        operation_class = ("C" if is_fill else
+                           slapper_provenance.classify_heal_instruction(instruction))
+        layer["provenance"] = slapper_provenance.new_ai_operation(
+            operation_class=operation_class,
+            tool_name=layer_name,
+            purpose="creative fill" if is_fill else "localized restoration",
+            provider="Google Gemini", model=model, instruction=instruction,
+            sent_mask=mask, input_image=input_image, output_image=output_image,
+            app_version=BUILD_VERSION,
+            scene_invention=is_fill or operation_class == "C")
+        # Retain the pre-v0.2 project hint for older SNAP SLAPPER builds. The
+        # structured fields above are authoritative for new exports.
+        layer["provenance"].update({
+            "kind": "generative-fill" if is_fill else "generative-repair"})
         self.doc.record(layer_name)
         self.active_target = layer["id"]
         self.layers_panel.rebuild()
@@ -2541,7 +2575,8 @@ class EditorWindow(QMainWindow):
                             for layer in recipe.get("layers", []) if layer.get("type") == "filter"],
             }), recipe.get("provider", ""), recipe.get("model", ""),
             recipe.get("prompt", ""))
-        added = self.doc.stack_layers(safe["layers"])
+        added = self.doc.stack_layers(
+            safe["layers"], history_label=f"Apply LEWK — {safe['name']}")
         if added:
             self.set_target(added[-1]["id"])
         self.after_structure_change()
@@ -3078,10 +3113,27 @@ class EditorWindow(QMainWindow):
         copyright_text = (settings["copyright_text"]
                           if settings["add_copyright_if_missing"] else "")
         try:
-            if os.path.splitext(path)[1].lower() == ".ora":
+            export_extension = os.path.splitext(path)[1].lower()
+            import slapper_provenance
+            records = slapper_provenance.export_operations(
+                self.doc.layers, self.doc.render().size)
+            if records and export_extension in {".ora", ".psd"}:
+                raise ValueError(
+                    "This layered checkpoint format cannot carry the mandatory AI "
+                    "provenance record. Export a JPEG, PNG, or TIFF copy instead.")
+            if records:
+                summary = slapper_provenance.human_summary(records)
+                if QMessageBox.question(
+                        self, "Review export provenance",
+                        summary + "\n\nThis record will travel inside the exported "
+                        "photograph and cannot be switched off. Continue?",
+                        QMessageBox.Yes | QMessageBox.Cancel,
+                        QMessageBox.Yes) != QMessageBox.Yes:
+                    return
+            if export_extension == ".ora":
                 from .ora_export import export_openraster
                 export_openraster(self.doc, path)
-            elif os.path.splitext(path)[1].lower() == ".psd":
+            elif export_extension == ".psd":
                 from .psd_export import export_layered_psd
                 export_layered_psd(self.doc, path)
             else:
@@ -3260,7 +3312,7 @@ class EditorWindow(QMainWindow):
         self.filmstrip.setVisible(self._filmstrip_visible)
         self._sync_filmstrip_handle()
         if self._filmstrip_visible and self.doc:
-            self.filmstrip.show_for(self.doc.source_path)
+            self.filmstrip.show_for(getattr(self.doc, "browse_source_path", None))
         from . import prefs
         values = prefs.load()
         values["filmstrip_visible"] = self._filmstrip_visible
@@ -3275,7 +3327,7 @@ class EditorWindow(QMainWindow):
 
     def _refresh_filmstrip(self):
         if self._filmstrip_visible and self.doc:
-            self.filmstrip.show_for(self.doc.source_path)
+            self.filmstrip.show_for(getattr(self.doc, "browse_source_path", None))
 
     def _open_from_filmstrip(self, path):
         if not self._confirm_discard():
@@ -3324,6 +3376,8 @@ class EditorWindow(QMainWindow):
         self.act_crop.setEnabled(editing)
         self.act_heal.setEnabled(editing)
         self.act_redeye.setEnabled(editing)
+        self.act_ai_heal.setEnabled(editing)
+        self.act_ai_fill.setEnabled(editing)
         self.act_recipe_save.setEnabled(editing)
         self.act_recipe_apply.setEnabled(editing)
         self.act_save_project.setEnabled(editing)
@@ -3372,7 +3426,7 @@ class EditorWindow(QMainWindow):
             self.setWindowTitle(BUILD_VERSION)
             self._refresh_history()
             return
-        name = os.path.basename(self.doc.source_path)
+        name = getattr(self.doc, "original_filename", os.path.basename(self.doc.source_path))
         dirty = " ●" if self.doc.is_dirty() else ""
         self.setWindowTitle(f"{name}{dirty} — {BUILD_VERSION}")
         self._refresh_history()

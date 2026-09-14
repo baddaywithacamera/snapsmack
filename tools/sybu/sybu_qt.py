@@ -19,7 +19,7 @@ import sybu_core
 
 # Kept explicit so the Qt shell never imports the legacy Tk entry point (which
 # redirects stdout/stderr and initializes Tk-only services at import time).
-BUILD_VERSION = "0.7.65"
+BUILD_VERSION = "0.7.66"
 
 GREEN = "#73f04b"; BASE = "#0d120f"; VOID = "#090c0a"; PANEL = "#121a15"
 CARD = "#18231c"; BORDER = "#28372d"; INK = "#f4f7f2"; DIM = "#829087"
@@ -84,7 +84,7 @@ class FitScrollArea(QScrollArea):
 
 class Window(QMainWindow):
     def __init__(self):
-        super().__init__(); self.engine = sybu_core.Engine(); self.bridge = Bridge()
+        super().__init__(); self.engine = sybu_core.Engine(); self.bridge = Bridge(); self._gemini_manually_edited = False
         self.bridge.done.connect(self._task_done); self.pending = {}; self.poll_seen = {}
         self.setWindowTitle(f"SMACK YOUR BATCH UP — {BUILD_VERSION}")
         icon = os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(__file__)), "assets", "sybu-taskbar.ico")
@@ -134,7 +134,8 @@ class Window(QMainWindow):
         site,sl=card("Selected site")
         self.url=QLineEdit(); self.url.setPlaceholderText("https://your-site.example"); self.key=QLineEdit(); self.key.setEchoMode(QLineEdit.Password); self.key.setPlaceholderText("Scoped API key"); sl.addWidget(self.url); sl.addWidget(self.key); l.addWidget(site)
         svc,vl=card("AI and Google Drive")
-        self.gemini=QLineEdit(); self.gemini.setEchoMode(QLineEdit.Password); self.gemini.setPlaceholderText("Gemini API key"); self.gcreds=QLineEdit(); self.gcreds.setPlaceholderText("Google credentials JSON"); self.drive_folder=QLineEdit(); self.drive_folder.setPlaceholderText("Google Drive folder ID"); vl.addWidget(self.gemini); vl.addWidget(self.gcreds); vl.addWidget(self.drive_folder)
+        self.gemini=QLineEdit(); self.gemini.setEchoMode(QLineEdit.Password); self.gemini.setPlaceholderText("Gemini API key"); self.gemini.textEdited.connect(lambda _text:setattr(self,'_gemini_manually_edited',True)); self.gcreds=QLineEdit(); self.gcreds.setPlaceholderText("Google credentials JSON"); self.drive_folder=QLineEdit(); self.drive_folder.setPlaceholderText("Google Drive folder ID"); vl.addWidget(self.gemini); vl.addWidget(self.gcreds); vl.addWidget(self.drive_folder)
+        self.gemini_source=label("Gemini key source: SNAP HQ shared store", "Muted"); vl.addWidget(self.gemini_source)
         row=QHBoxLayout(); choose=QPushButton("Choose credentials"); choose.clicked.connect(self._choose_creds); row.addWidget(choose)
         drive_auth=QPushButton("Connect Drive"); drive_auth.clicked.connect(self._auth_drive); row.addWidget(drive_auth)
         gem_test=QPushButton("Test Gemini"); gem_test.clicked.connect(self._test_gemini); row.addWidget(gem_test)
@@ -146,12 +147,12 @@ class Window(QMainWindow):
 
     def _load(self):
         names=self.engine.profiles_list(); self.profile.blockSignals(True); self.profile.clear(); self.profile.addItems(names); self.profile.blockSignals(False)
-        c=self.engine.config_fields(); self.url.setText(c['url']); self.key.setText(c['api_key']); self.folder.setText(c['last_image_folder']); self.manifest.setText(c['last_manifest_file']); self.gemini.setText(c['gemini_api_key']); self.gcreds.setText(c['google_credentials']); self.drive_folder.setText(c['drive_folder_id']); self.drive.setChecked(c['drive_enabled']); self.prompt.setText(c['gemini_last_prompt'])
+        c=self.engine.config_fields(); self.url.setText(c['url']); self.key.setText(c['api_key']); self.folder.setText(c['last_image_folder']); self.manifest.setText(c['last_manifest_file']); self.gemini.setText(c['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(c['google_credentials']); self.drive_folder.setText(c['drive_folder_id']); self.drive.setChecked(c['drive_enabled']); self.prompt.setText(c['gemini_last_prompt'])
         if names: self._profile(names[0])
 
     def _profile(self,name):
         if not name:return
-        p=self.engine.profile_apply_to_post(name); self.url.setText(p['url']); self.key.setText(p['api_key']); self.gemini.setText(p['gemini_api_key']); self.gcreds.setText(p['google_credentials']); self.drive_folder.setText(p['drive_folder_id']); self.folder.setText(p['image_folder']); self.prompt.setText(p['prompt']); self.drive.setChecked(p['drive_enabled']); self._connect()
+        p=self.engine.profile_apply_to_post(name); self.url.setText(p['url']); self.key.setText(p['api_key']); self.gemini.setText(p['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(p['google_credentials']); self.drive_folder.setText(p['drive_folder_id']); self.folder.setText(p['image_folder']); self.prompt.setText(p['prompt']); self.drive.setChecked(p['drive_enabled']); self._connect()
 
     def _async(self,name,fn):
         self.pending[name]=True
@@ -273,7 +274,15 @@ class Window(QMainWindow):
         except Exception as e:self._error(str(e))
 
     def _test_gemini(self):
-        try:self.engine.gemini_test(self.gemini.text()); self.poll_seen['gemini_test']=0; self._say("Testing Gemini…")
+        try:
+            services=self.engine.shared_service_fields()
+            if self._gemini_manually_edited:
+                key=self.gemini.text().strip(); source="typed key (not yet saved)"
+            else:
+                key=services['gemini_api_key']; source="current key from SNAP HQ"; self.gemini.setText(key)
+            self.gcreds.setText(services['google_credentials']); self.drive_folder.setText(services['drive_folder_id'])
+            self.gemini_source.setText(f"Testing the {source}…")
+            self.engine.gemini_test(key); self.poll_seen['gemini_test']=0; self._say(f"Testing Gemini using the {source}…")
         except Exception as e:self._error(str(e))
 
     def _poll(self):
@@ -288,11 +297,14 @@ class Window(QMainWindow):
                 self.poll_seen.pop(key,None); self.progress.setValue(100); self.progress_text.setText(f"{key.replace('_',' ').title()} complete." if not out.get('error') else f"{key.replace('_',' ').title()} failed."); self._fill_queue()
                 result=out.get('result') or {}
                 if result.get('message'):self._say(result['message'])
+                if key=='gemini_test':
+                    ok=bool(result.get('ok')) and not out.get('error'); message=result.get('message') or out.get('error') or "No response."
+                    self.gemini_source.setText(("Gemini key accepted by Google: " if ok else "Gemini key rejected by Google: ")+message)
                 if key=='drive_auth' and not out.get('error'):self._say("Google Drive connected.")
                 if out.get('error'):self._error(out['error'])
 
     def _save(self):
-        self.engine.save_config({'url':self.url.text(),'api_key':self.key.text(),'last_image_folder':self.folder.text(),'last_manifest_file':self.manifest.text(),'google_credentials':self.gcreds.text(),'drive_folder_id':self.drive_folder.text(),'gemini_api_key':self.gemini.text(),'gemini_last_prompt':self.prompt.text()}); self.engine.drive_toggle(self.drive.isChecked()); self._say("Settings saved to the shared store.")
+        self.engine.save_config({'url':self.url.text(),'api_key':self.key.text(),'last_image_folder':self.folder.text(),'last_manifest_file':self.manifest.text(),'google_credentials':self.gcreds.text(),'drive_folder_id':self.drive_folder.text(),'gemini_api_key':self.gemini.text(),'gemini_last_prompt':self.prompt.text()}); self._gemini_manually_edited=False; self.engine.drive_toggle(self.drive.isChecked()); self.gemini_source.setText("Gemini key source: SNAP HQ shared store"); self._say("Settings saved to the shared store.")
     def _say(self,text): self.log.append(str(text))
     def _error(self,text): QMessageBox.critical(self,"SYBU needs attention",text); self._say("ERROR · "+text)
 
