@@ -660,6 +660,11 @@ class EditorWindow(QMainWindow):
         self.act_zoom_in.setShortcuts(
             [QKeySequence("Ctrl++"), QKeySequence("Ctrl+=")])
         self._install_mask_shortcuts()
+        self.delete_layer_action = QAction("Delete selected layer", self)
+        self.delete_layer_action.setShortcut(QKeySequence(Qt.Key_Delete))
+        self.delete_layer_action.setShortcutContext(Qt.WindowShortcut)
+        self.delete_layer_action.triggered.connect(self._delete_layer_key)
+        self.addAction(self.delete_layer_action)
 
     def _install_mask_shortcuts(self):
         """Install Photoshop-like local-mask keys with a typing guard."""
@@ -692,6 +697,7 @@ class EditorWindow(QMainWindow):
             return
         if command == "edit":
             self.mask_section.header.setChecked(True)
+
         elif command == "invert":
             self.mask_invert.toggle()
         elif command in {"linear", "brush"}:
@@ -710,6 +716,14 @@ class EditorWindow(QMainWindow):
             delta = -10 if command == "softer" else 10
             self.brush_hardness.slider.setValue(
                 self.brush_hardness.slider.value() + delta)
+
+    def _delete_layer_key(self):
+        """Delete the selected non-base layer without stealing text-edit keys."""
+        if isinstance(QApplication.focusWidget(), QLineEdit):
+            return
+        if self._restricted or not self.doc or self.active_target == BASE:
+            return
+        self.layers_panel._delete()
 
     def _activate_canvas_mask_tool(self, kind):
         if self._mask_layer() is None:
