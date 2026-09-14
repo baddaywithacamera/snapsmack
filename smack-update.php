@@ -1242,6 +1242,7 @@ if ($action === 'stage_migrate'
         // were already enabled so their tagged commands follow the live files.
         require_once __DIR__ . '/core/cron-register.php';
         $cron_refresh = cron_refresh_enabled_jobs(__DIR__);
+        cron_stamp_deploy_finalized($pdo);   // post-deploy gate: every job must fire again within 15 min
         if ($cron_refresh) {
             $cron_failures = array_values(array_filter($cron_refresh, static fn($row) => empty($row['ok'])));
             $_SESSION['update_state']['log'][] = [
@@ -1480,6 +1481,7 @@ if ($action === 'stage_migrate_upload' && !empty($_SESSION['upload_migrate_pendi
         // the signed automatic updater. Preserve disabled jobs as disabled.
         require_once __DIR__ . '/core/cron-register.php';
         $cron_refresh = cron_refresh_enabled_jobs(__DIR__);
+        cron_stamp_deploy_finalized($pdo);   // post-deploy gate: every job must fire again within 15 min
         if ($cron_refresh) {
             $cron_failures = array_values(array_filter($cron_refresh, static fn($row) => empty($row['ok'])));
             $upload_steps[] = [
@@ -1499,44 +1501,24 @@ if ($action === 'stage_migrate_upload' && !empty($_SESSION['upload_migrate_pendi
 }
 
 // ── ACTION: CRON REGISTRATION ─────────────────────────────────────────────────
+// One code path for every crontab write (core/cron-register.php): per-site
+// lines, so this site's REGISTER/REMOVE never touches another site's job on a
+// shared box (OPAUDIT 014).
+require_once __DIR__ . '/core/cron-register.php';
+$vc_cron_script = realpath(__DIR__ . '/cron-version-check.php') ?: (__DIR__ . '/cron-version-check.php');
 if (($action === 'cron_register' || $action === 'cron_remove') && $cron_supported) {
-    $script_path = realpath(__DIR__ . '/cron-version-check.php');
-    $cron_line   = "0 */6 * * * {$php_cli_path} {$script_path} >> /dev/null 2>&1";
-    $tag         = '# snapsmack-version-check';
-    $full_entry  = "{$cron_line} {$tag}";
-
-    exec('crontab -l 2>&1', $current_cron, $rc);
-    $current_cron_str = ($rc === 0) ? implode("\n", $current_cron) : '';
-
     if ($action === 'cron_register') {
-        if (strpos($current_cron_str, $tag) === false) {
-            $new_cron = trim($current_cron_str) . "\n" . $full_entry . "\n";
-            $tmp = tempnam(sys_get_temp_dir(), 'ssck');
-            file_put_contents($tmp, $new_cron);
-            exec("crontab {$tmp} 2>&1", $out, $ret);
-            unlink($tmp);
-            $flash_msg  = ($ret === 0) ? 'VERSION CHECK JOB REGISTERED. RUNS EVERY 6 HOURS.' : 'FAILED TO REGISTER: ' . implode(' ', $out);
-            $flash_type = ($ret === 0) ? 'success' : 'error';
-        } else {
-            $flash_msg  = 'JOB ALREADY REGISTERED.';
-            $flash_type = 'success';
-        }
-    } elseif ($action === 'cron_remove') {
-        $cleaned = preg_replace('/.*' . preg_quote($tag, '/') . '.*\n?/', '', $current_cron_str);
-        $tmp = tempnam(sys_get_temp_dir(), 'ssck');
-        file_put_contents($tmp, trim($cleaned) . "\n");
-        exec("crontab {$tmp} 2>&1", $out, $ret);
-        unlink($tmp);
-        $flash_msg  = ($ret === 0) ? 'VERSION CHECK JOB REMOVED.' : 'FAILED TO REMOVE: ' . implode(' ', $out);
-        $flash_type = ($ret === 0) ? 'success' : 'error';
+        [$ok, $msg] = cron_register_job('0 */6 * * *', $vc_cron_script, '# snapsmack-version-check');
+        $flash_msg  = $ok ? 'VERSION CHECK JOB REGISTERED. RUNS EVERY 6 HOURS. (Cron & Jobs shows when it actually fires.)' : 'FAILED TO REGISTER: ' . $msg;
+        $flash_type = $ok ? 'success' : 'error';
+    } else {
+        [$ok, $msg] = cron_remove_job('# snapsmack-version-check', $vc_cron_script);
+        $flash_msg  = $ok ? 'VERSION CHECK JOB REMOVED.' : 'FAILED TO REMOVE: ' . $msg;
+        $flash_type = $ok ? 'success' : 'error';
     }
 }
 
-$version_job_registered = false;
-if ($cron_supported) {
-    exec('crontab -l 2>&1', $vc_cron, $vc_rc);
-    $version_job_registered = ($vc_rc === 0 && strpos(implode("\n", $vc_cron), '# snapsmack-version-check') !== false);
-}
+$version_job_registered = $cron_supported && cron_job_registered('# snapsmack-version-check', $vc_cron_script);
 
 // ── ACTION: ROLLBACK ──────────────────────────────────────────────────────────
 if ($action === 'rollback' && !empty($_SESSION['update_backup_file'])) {
