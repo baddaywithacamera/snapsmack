@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 014 — One crontab per box, one winner per job: why "cron is fixed" never stayed fixed</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 014 — One crontab per box, one winner per job: why &ldquo;cron is fixed&rdquo; never stayed fixed</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-14-014</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-14</td></tr>
+        <tr><td class="k">First observed</td><td>2026-09-14 morning, on the box that hosts 37 sites: one site had a scheduled fediverse job, thirty-six did not. Afternoon, on the relay box: the relay had no scheduled job of its own either, and its last run was thirteen hours old.</td></tr>
+        <tr><td class="k">Theme</td><td>Every site on a box registers its jobs into the same crontab under the same tag. Registering site B silently replaces site A. The last site registered wins; everyone else runs only when a visitor happens to load a page.</td></tr>
+        <tr><td class="k">Surfaces</td><td>Fediverse delivery, RSS blogroll fetch, version/update check, the photography curator on the relay &mdash; every scheduled job, on every multi-site box.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-confirm">Running on the box &mdash; confirming</span> &nbsp; A box-level scheduler that loops every site directory is installed on both boxes and was watched firing on both. The code that caused this &mdash; the shared tag, the &ldquo;registered&rdquo; check that reads crontab text, the fleet board that stayed green &mdash; is not yet changed. By this ledger&rsquo;s own rule, cron is not called <em>fixed</em> until a deploy has been watched with every site&rsquo;s job firing afterwards.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes, twice.</strong> Sites box: the 15:20 UTC run drained one silent site&rsquo;s 28 queued deliveries and a reply appeared on pixelfed.social. Relay box: installed 16:26 UTC, the relay&rsquo;s own Cron &amp; Jobs page went from &ldquo;13h ago&rdquo; to &ldquo;16:50:01, running&rdquo; on the next tick.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean (read the crontabs on both boxes, installed both fixes, and said the words &ldquo;I keep being told this has been definitively fixed&rdquo;) + Claude (traced the register code to the shared tag; wrote this).</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 011 (jobs registered but pointing at old paths) &mdash; <strong>this audit corrects 011</strong>: the re-registration described there as done on all 24 spokes could never have held, for the reason in &sect;3. OPAUDIT 003 (background jobs must not run inside web requests) &mdash; the page-hit fallback is exactly that, and it is what kept the fleet looking alive.</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No exploitable detail.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>SnapSmack sites register their own scheduled jobs. Each site writes a line into the web
+    server user&rsquo;s crontab, marked with a tag so the site can find it again. The tag is the same
+    for every site: <code># snapsmack-fediverse</code>. On a box with one site, that works. On a box
+    with thirty-seven sites sharing one web user, there is one crontab and one tag &mdash; so there is
+    room for exactly one line. Whichever site registered last owns it. The other thirty-six see
+    &ldquo;a tagged line exists but the command isn&rsquo;t mine,&rdquo; report that, and never install
+    their own. They were never scheduled. They ran only when somebody loaded a page.</p>
+
+    <h2>2. What a human saw</h2>
+    <p>Cron &ldquo;fixed again.&rdquo; Posts federated while Sean was looking at the site and stopped
+    when he wasn&rsquo;t. A fleet cron board that showed green everywhere. A site with 28 deliveries
+    sitting in its queue for hours. On the relay, the curator frozen at 03:08 and the relay&rsquo;s own
+    delivery job thirteen hours stale, while its Cron &amp; Jobs page said the entry was
+    &ldquo;registered but invalid&rdquo; and that a fleet tick would repair it automatically. It had
+    said that for thirteen hours.</p>
+
+    <h2>3. Root cause</h2>
+    <p>Three things, one underneath the other.</p>
+    <p><strong>The shared tag.</strong> The register routine finds &ldquo;its&rdquo; job by looking for the
+    tag in <code>crontab -l</code> for the current user. Every site on the box runs as the same user
+    and uses the same tag. So registration is not per-site; it is per-box, and the box can hold one
+    site&rsquo;s job. This is why OPAUDIT 011&rsquo;s fleet-wide re-registration through each site&rsquo;s
+    Cron &amp; Jobs page undid itself as it went: each spoke&rsquo;s REGISTER replaced the previous
+    spoke&rsquo;s line. The last one through the door &mdash; wateronthebrain.ca &mdash; was the only
+    site with a job this morning.</p>
+    <p><strong>&ldquo;Registered&rdquo; reads text, not evidence.</strong> The status the page shows comes
+    from parsing crontab text. It cannot see jobs scheduled any other way (the fix below lives in
+    <code>/etc/cron.d</code>, invisible to <code>crontab -l</code>), and it says nothing about whether
+    the job has actually fired. OPAUDIT 011 added a command-level check; that was an improvement to the
+    wrong instrument.</p>
+    <p><strong>The fleet board could not go red.</strong> The fleet status API reports a
+    <code>last_run</code> timestamp per job. The page-hit fallback &mdash; the web request that drains
+    the queue when no cron has &mdash; writes the <em>same</em> timestamp. So every visitor kept the
+    number fresh, and CRONOMETER showed thirty-six unscheduled sites as healthy. There is a separate
+    timestamp written only by the real command-line run; nothing displays it.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>Sites box, 37 site directories: one self-registered <code>cron-fediverse.php</code> line
+    (wateronthebrain.ca); three stale lines still calling a script by its pre-rename name; version-check
+    lines for 13 sites; nothing at all for the rest. Relay box: the web user&rsquo;s crontab held three
+    tagged lines, all for photofri.day; nothing for photoblogs.fyi itself; the relay&rsquo;s page reported
+    &ldquo;tagged entry exists, but it is invalid: registered command does not match this job&rdquo; for all
+    three jobs, last runs 02:54 / 02:00 / 02:57 UTC, read at 16:24 UTC.</p>
+
+    <h2>5. What we did</h2>
+    <p><strong>On both boxes:</strong> installed <code>/etc/cron.d/snapsmack-fleet</code> &mdash; three
+    lines owned by root, one per job, each looping every site directory under the web root, skipping
+    directories without the script, and running each site&rsquo;s job under a per-site lock so runs
+    never overlap. This does not depend on any site registering anything, survives deploys, and adds
+    a new site the moment its directory exists. The old per-site crontab lines were left in place for
+    now; the delivery sweep&rsquo;s own database lock stops a double drain, and they are on the cleanup
+    list.</p>
+    <p><strong>In the code:</strong> nothing yet. Owed, in one build: (a) per-site tags so sites stop
+    overwriting each other; (b) the Cron &amp; Jobs page and the fleet API report the real
+    command-line heartbeat &mdash; <em>last fired X minutes ago</em>, in red past twice the interval
+    &mdash; and demote crontab text to a footnote; (c) CRONOMETER reads that heartbeat, not the one the
+    page-hit fallback pollutes; (d) a post-deploy check that fails loudly for any site whose job
+    hasn&rsquo;t fired within fifteen minutes of a deploy; (e) the cleanup paste for the stale and
+    duplicate lines.</p>
+
+    <h2>6. Verified live — and what remains</h2>
+    <p>Sites box: installed 14:55 UTC; the 15:20 run drained allinthewrist.photoblogs.fyi&rsquo;s 28
+    queued deliveries and the reply they carried appeared on pixelfed.social. Relay box: installed
+    16:26:55 UTC; on the next ten-minute tick the relay&rsquo;s own page went from &ldquo;13h ago&rdquo;
+    to &ldquo;3m ago (16:50:01, running)&rdquo;. Hourly and six-hourly jobs on the relay were not yet
+    due at the time of writing.</p>
+    <p>What remains is the code. Until (a)&ndash;(d) ship and a deploy is watched with every
+    site&rsquo;s heartbeat moving afterwards, this stays
+    <span class="state-chip chip-confirm">Running on the box &mdash; confirming</span>. The status pages
+    will keep saying &ldquo;registered but invalid&rdquo; until then; that message is now known to be
+    the instrument, not the patient.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>Relay: the 17:07 RSS tick and the 18:23 version tick. Sites box: the <code>cron-smackverse.php</code>
+    lines and duplicate per-site lines removed in one paste. Then the build: after it deploys, every
+    site&rsquo;s Cron &amp; Jobs page shows a heartbeat in minutes, CRONOMETER shows the same, and a
+    deliberately un-scheduled test site shows red within fifteen minutes.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>A job is running when its heartbeat moves, and for no other reason. Not because a line
+        exists, not because the line&rsquo;s command is right, not because a status page says so, and
+        not because the queue is empty &mdash; a visitor may have emptied it. Every scheduled job writes
+        its own heartbeat at the start of every run; every status surface reads that heartbeat and
+        nothing else. And anything a site registers for itself must carry the site&rsquo;s name, or on
+        a shared box it is registering for whoever comes last.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
