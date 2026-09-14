@@ -4,7 +4,7 @@ import base64
 import io
 
 import requests
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageStat
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
@@ -181,6 +181,31 @@ def expansion_geometry(size, edges):
     return pads, out_size, generated_area
 
 
+def edge_extended_canvas(image, pads):
+    """Seed each new border from the nearest captured edge pixels."""
+    image = image.convert("RGB")
+    left, right = pads["left"], pads["right"]
+    top, bottom = pads["top"], pads["bottom"]
+    width = image.width + left + right
+    horizontal = Image.new("RGB", (width, image.height))
+    horizontal.paste(image, (left, 0))
+    if left:
+        horizontal.paste(image.crop((0, 0, 1, image.height)).resize(
+            (left, image.height), Image.Resampling.NEAREST), (0, 0))
+    if right:
+        horizontal.paste(image.crop((image.width - 1, 0, image.width, image.height)).resize(
+            (right, image.height), Image.Resampling.NEAREST), (left + image.width, 0))
+    canvas = Image.new("RGB", (width, image.height + top + bottom))
+    canvas.paste(horizontal, (0, top))
+    if top:
+        canvas.paste(horizontal.crop((0, 0, width, 1)).resize(
+            (width, top), Image.Resampling.NEAREST), (0, 0))
+    if bottom:
+        canvas.paste(horizontal.crop((0, image.height - 1, width, image.height)).resize(
+            (width, bottom), Image.Resampling.NEAREST), (0, top + image.height))
+    return canvas
+
+
 def expand(image, edges, prompt, api_key, model="gemini-3.1-flash-image", timeout=300,
            max_generated_area=None):
     """Generate a larger frame while restoring the supplied photograph locally."""
@@ -194,14 +219,18 @@ def expand(image, edges, prompt, api_key, model="gemini-3.1-flash-image", timeou
         raise ValueError("Generative Expand is limited to 20% of the original frame area.")
     box = (pads["left"], pads["top"], pads["left"] + image.width,
            pads["top"] + image.height)
-    mean = tuple(round(value) for value in ImageStat.Stat(image.resize((1, 1))).mean[:3])
-    canvas = Image.new("RGB", size, mean)
-    canvas.paste(image, box[:2])
+    canvas = edge_extended_canvas(image, pads)
     mask = Image.new("L", size, 255)
     ImageDraw.Draw(mask).rectangle(
         (box[0], box[1], box[2] - 1, box[3] - 1), fill=0)
     direction = ", ".join(name for name, value in pads.items() if value)
-    request = "Requested expansion edges: " + direction + "."
+    request = (
+        "Requested expansion edges: " + direction + ". Preserve all structures that "
+        "cross the boundary. Continue curbs, sidewalks, road edges, lane markings, "
+        "rooflines, fences and horizon lines at exactly the same position, angle, width, "
+        "perspective and material. Do not create a second or replacement curb, sidewalk, "
+        "road edge, roofline or fence."
+    )
     if str(prompt or "").strip():
         request += " User direction: " + str(prompt).strip()
     generated = heal(canvas, mask, request, api_key, model=model, timeout=timeout,

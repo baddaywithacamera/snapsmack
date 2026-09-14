@@ -193,6 +193,18 @@ def test_expand_geometry_starts_at_zero_and_reports_actual_area():
     assert area == 750
 
 
+def test_expand_canvas_seeds_bottom_from_the_actual_bottom_edge():
+    photo = Image.new("RGB", (4, 3), "blue")
+    for x in range(4):
+        photo.putpixel((x, 2), (40 + x, 30, 20))
+    canvas = gemini_image_edit.edge_extended_canvas(
+        photo, {"left": 0, "right": 0, "top": 0, "bottom": 2})
+    assert canvas.size == (4, 5)
+    assert [canvas.getpixel((x, 4)) for x in range(4)] == \
+        [photo.getpixel((x, 2)) for x in range(4)]
+    assert canvas.getpixel((0, 4)) != (0, 0, 255)
+
+
 def test_expand_prompt_is_edge_specific_conservative_and_not_duplicated(monkeypatch):
     seen = {}
 
@@ -218,6 +230,7 @@ def test_expand_prompt_is_edge_specific_conservative_and_not_duplicated(monkeypa
     assert "Outpaint only the WHITE masked border region" in instruction
     assert "Requested expansion edges: left." in instruction
     assert "Do not introduce a new focal subject" in instruction
+    assert "Do not create a second or replacement curb" in instruction
     assert instruction.count("continue the brick wall") == 1
     assert "every white border area" not in instruction.lower()
     assert len(parts) == 3  # instruction, canvas, red-marked reference; raw mask stays local
