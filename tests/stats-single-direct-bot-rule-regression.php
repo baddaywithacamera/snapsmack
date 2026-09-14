@@ -16,7 +16,7 @@ $check = static function (string $name, bool $ok) use (&$fail): void {
 };
 
 $check('rule runs before every daily rollup',   str_contains($log, "snapsmack_reclassify_single_direct(\$pdo, \$date);\n\n    try {\n        // Total views"));
-$check('only human rows with no referrer move', str_contains($log, "WHERE DATE(s.hit_at) = ? AND s.is_bot = 0 AND s.referrer_host IS NULL"));
+$check('only human rows with no referrer move', str_contains($log, "WHERE s.hit_at >= ? AND s.hit_at < ? AND s.is_bot = 0 AND s.referrer_host IS NULL"));
 $check('only single-hit visitors that day',     str_contains($log, "GROUP BY ip_hash\n                HAVING COUNT(*) = 1"));
 $check('reversible: bot_reason stamped',        str_contains($log, "SET s.is_bot = 1, s.bot_reason = 'single-direct'"));
 $check('column added idempotently',             str_contains($log, "ADD COLUMN IF NOT EXISTS bot_reason"));
@@ -26,6 +26,10 @@ $check('CLI is SMACKBACK-exempt (repair-*.php)', preg_match('/^repair-[a-z0-9-]+
 $check('CLI dry-runs unless --apply',            str_contains($cli, "getopt('', ['apply'])") && str_contains($cli, 'DRY RUN'));
 $check('CLI refuses the web',                    str_contains($cli, "if (PHP_SAPI !== 'cli')"));
 $check('UA bot check untouched',                 str_contains($log, 'function snapsmack_is_bot($ua)'));
+// Index ranges only: DATE(hit_at) = ? in a WHERE scans the whole table, and the
+// re-roll runs per day for a year on 37 sites sharing one DB box.
+$check('no DATE(hit_at) = ? in any WHERE',        !preg_match('/WHERE[^;"]*DATE\(hit_at\) = \?/', $log));
+$check('no DATE(hit_at) = ? in the CLI',           !preg_match('/WHERE[^;"]*DATE\(hit_at\)\s*[=<>]/', $cli));
 
 if ($fail) { fwrite(STDERR, "{$fail} check(s) failed.\n"); exit(1); }
 echo "ALL PASS — single-page no-referrer visitors are counted as fetchers, reversibly, and history can be re-counted.\n";
