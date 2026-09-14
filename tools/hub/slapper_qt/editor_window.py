@@ -281,7 +281,8 @@ class EditorWindow(QMainWindow):
     def _recovery_path(self):
         if not self._recovery_dir or not self.doc:
             return None
-        return photo_manager.recovery_path(self._recovery_dir, self.doc.source_path)
+        source = getattr(self.doc, "recorded_source_path", self.doc.source_path)
+        return photo_manager.recovery_path(self._recovery_dir, source)
 
     def _write_recovery(self, force=False):
         path = self._recovery_path()
@@ -3377,7 +3378,7 @@ class EditorWindow(QMainWindow):
         self.filmstrip.setVisible(self._filmstrip_visible)
         self._sync_filmstrip_handle()
         if self._filmstrip_visible and self.doc:
-            self.filmstrip.show_for(self.doc.source_path)
+            self.filmstrip.show_for(getattr(self.doc, "browse_source_path", None))
         from . import prefs
         values = prefs.load()
         values["filmstrip_visible"] = self._filmstrip_visible
@@ -3392,7 +3393,7 @@ class EditorWindow(QMainWindow):
 
     def _refresh_filmstrip(self):
         if self._filmstrip_visible and self.doc:
-            self.filmstrip.show_for(self.doc.source_path)
+            self.filmstrip.show_for(getattr(self.doc, "browse_source_path", None))
 
     def _open_from_filmstrip(self, path):
         if not self._confirm_discard():
@@ -3492,7 +3493,7 @@ class EditorWindow(QMainWindow):
             self.setWindowTitle(BUILD_VERSION)
             self._refresh_history()
             return
-        name = os.path.basename(self.doc.source_path)
+        name = getattr(self.doc, "original_filename", os.path.basename(self.doc.source_path))
         dirty = " ●" if self.doc.is_dirty() else ""
         self.setWindowTitle(f"{name}{dirty} — {BUILD_VERSION}")
         self._refresh_history()
