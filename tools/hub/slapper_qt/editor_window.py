@@ -411,12 +411,6 @@ class EditorWindow(QMainWindow):
         self.act_ai_fill.triggered.connect(self.open_ai_fill)
         bar.addAction(self.act_ai_fill)
 
-        self.act_ai_expand = QAction("Generative Expand…", self)
-        self.act_ai_expand.setToolTip(
-            "Extend the canvas and let Gemini continue the scene beyond the frame")
-        self.act_ai_expand.triggered.connect(self.open_ai_expand)
-        bar.addAction(self.act_ai_expand)
-
         self.act_mask_brush = QAction("Mask Brush", self)
         self.act_mask_brush.setToolTip("Paint the selected layer mask directly on the photo")
         self.act_mask_brush.triggered.connect(lambda: self._activate_canvas_mask_tool("brush"))
@@ -549,7 +543,7 @@ class EditorWindow(QMainWindow):
                 self.act_reset, self.act_auto, self.act_fit, self.act_full,
                 self.act_zoom_out, self.act_zoom_in,
                 self.act_crop, self.act_heal, self.act_redeye, self.act_ai_heal,
-                self.act_ai_fill, self.act_ai_expand,
+                self.act_ai_fill,
                 self.act_mask_brush, self.act_mask_gradient, self.act_colour_range,
                 self.act_compare, self.act_filmstrip,
                 self.act_recipe_save, self.act_recipe_apply,
@@ -581,7 +575,7 @@ class EditorWindow(QMainWindow):
             "edit": (self.act_crop, self.act_auto, self.act_reset,
                      self.act_compare),
             "retouch": (self.act_heal, self.act_redeye, self.act_ai_heal,
-                        self.act_ai_fill, self.act_ai_expand,
+                        self.act_ai_fill,
                         self.act_mask_brush,
                         self.act_mask_gradient, self.act_colour_range),
             "looks": (self.act_lewks, self.act_lewk_again, self.act_filters, self.act_textures,
@@ -2307,66 +2301,6 @@ class EditorWindow(QMainWindow):
         from .ai_heal_dialog import AIHealDialog
         AIHealDialog(self, operation="fill").exec()
 
-    def open_ai_expand(self):
-        if not self.doc:
-            QMessageBox.information(self, "Open a photograph", "Open a photograph first.")
-            return
-        from .generative_consent import confirm
-        if not confirm(self):
-            return
-        from .ai_expand_dialog import AIExpandDialog
-        AIExpandDialog(self).exec()
-
-    def generative_expand_budget(self):
-        """Return original/current dimensions and the active generated-area budget."""
-        with Image.open(self.doc.source_path) as source:
-            original_size = source.size
-        original_area = original_size[0] * original_size[1]
-        used = sum(int(layer.get("generated_area_pixels", 0))
-                   for layer in self.doc.layers
-                   if layer.get("type") == "generative_expand")
-        current_width, current_height = original_size
-        for layer in self.doc.layers:
-            if layer.get("type") != "generative_expand":
-                continue
-            edges = layer.get("expanded_edges", {})
-            current_width += round(original_size[0] *
-                                   (float(edges.get("left", 0)) +
-                                    float(edges.get("right", 0))) / 100)
-            current_height += round(original_size[1] *
-                                    (float(edges.get("top", 0)) +
-                                     float(edges.get("bottom", 0))) / 100)
-        return (original_size, (current_width, current_height), used,
-                max(0, round(original_area * .20) - used))
-
-    def apply_ai_expand(self, path, mask, content_box, provider, model, instruction, input_image,
-                        generated_area_pixels=0, edges=None):
-        """Add one undoable canvas-extension layer with Class C provenance."""
-        with Image.open(path) as generated:
-            output_image = generated.convert("RGB")
-        import slapper_provenance
-        layer = {
-            "id": editor_engine._new_layer_id(), "name": "Generative Expand",
-            "type": "generative_expand", "path": path,
-            "content_box": list(content_box), "visible": True, "opacity": 1.0,
-            "blend": "normal",
-            "generated_area_pixels": int(generated_area_pixels),
-            "expanded_edges": dict(edges or {}),
-            "provenance": slapper_provenance.new_ai_operation(
-                operation_class="C", tool_name="Generative Expand",
-                purpose="canvas expansion", provider=provider, model=model,
-                instruction=instruction, sent_mask=mask, input_image=input_image,
-                output_image=output_image, app_version=BUILD_VERSION,
-                canvas_extension=True, scene_invention=True),
-        }
-        layer["provenance"]["kind"] = "generative-expand"
-        self.doc.layers.append(layer)
-        self.doc.record("Generative Expand")
-        self.active_target = layer["id"]
-        self.layers_panel.rebuild(); self.request_render(); self._update_title()
-        self.status.showMessage(
-            "Generative Expand added — the captured frame remains intact inside it.")
-
     def apply_ai_generation(self, path, mask, model, instruction="", operation="heal"):
         """Add the generated frame as a locally enforced masked image layer."""
         # Build the generated layer completely before recording history. An
@@ -3444,7 +3378,6 @@ class EditorWindow(QMainWindow):
         self.act_redeye.setEnabled(editing)
         self.act_ai_heal.setEnabled(editing)
         self.act_ai_fill.setEnabled(editing)
-        self.act_ai_expand.setEnabled(editing)
         self.act_recipe_save.setEnabled(editing)
         self.act_recipe_apply.setEnabled(editing)
         self.act_save_project.setEnabled(editing)
