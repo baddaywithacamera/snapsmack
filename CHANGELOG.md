@@ -9,7 +9,10 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.714D "ROLL CALL" — 2026-09-14
+## 0.7.715D "SAY IT AGAIN" — 2026-09-14
+- **The pre-708D comment backfill never sent anything.** It joined `snap_users` (admin accounts) instead of `snap_community_users`; the query threw, the catch returned zero, and SEND UNSENT BLOG COMMENTS reported "0 queued, 0 already sent" as if there were nothing to send — the ledger's own failure mode, a swallowed error read as an empty result. Fixed; the error is now logged. The once-per-version run fires again on this build's first delivery tick. (`core/fediverse.php`.)
+
+## 0.7.714D "ROLL CALL" — 2026-09-14 (deployed)
 - **Fediverse cron died every tick on 18 sites.** `pc_activate_due_prompts()` (PHOTO CHALLENGE) ran on every site and queried `pc_prompts`, which only exists where the challenge was ever switched on; everywhere else it threw an uncaught "table doesn't exist" fatal — nobody saw it because on those sites the cron was never actually running until this morning (OPAUDIT 014). First fleet-wide CRONOMETER reading: 18 × "worker reported failed". Now a no-op when the challenge is off or its tables are absent. Regression: `tests/photochallenge-cron-guard-regression.php`. (`core/photochallenge.php`.)
 - **Post-deploy cron gate waits one interval.** 713D flagged the 6-hourly version check as "HAS NOT FIRED SINCE THE DEPLOY" 20 minutes after a deploy — it was never due. The gate now arms after max(15 min, the job's own interval). (`core/cron-register.php`.)
 - **The hub answers its own heartbeat.** The hub has no node row for itself, so every fleet tool got 401 asking it for status. `multisite/heartbeat` (GET, read-only) now also accepts the hub's own `hub`-type discovery key — the one that already reads every node's full key from suyb-data.php — and nothing else does. (`core/multisite-api.php`.)
