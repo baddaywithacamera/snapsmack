@@ -89,7 +89,7 @@ if ($_canonical_url === 'https://snapsmack.ca/') {
             'operatingSystem' => 'Linux',
             'description' => 'Free self-hosted photo publishing software for independent photographers.',
             'url' => 'https://snapsmack.ca/',
-            'license' => 'https://github.com/baddaywithacamera/snapsmack/blob/master/licenses/SNAPSMACK-LICENSE.txt',
+            'license' => 'https://github.com/baddaywithacamera/snapsmack/blob/spl-2.3/licenses/SNAPSMACK-LICENSE.txt',
             'offers' => [
                 '@type' => 'Offer',
                 'price' => '0',
