@@ -151,15 +151,16 @@ def test_generative_expand_grows_canvas_and_restores_original_interior(monkeypat
     monkeypatch.setattr(gemini_image_edit.requests, "post", lambda *_args, **_kwargs: Response())
     photo = Image.new("RGB", (20, 10), "red")
     result, mask, box = gemini_image_edit.expand(
-        photo, 20, "continue the sky", "secret")
-    assert result.size == (28, 14)
-    assert box == (4, 2, 24, 12)
+        photo, {"right": 20}, "continue the sky", "secret")
+    assert result.size == (24, 10)
+    assert box == (0, 0, 20, 10)
     assert result.crop(box).tobytes() == photo.tobytes()
-    assert mask.getpixel((0, 0)) == 255
+    assert mask.getpixel((0, 0)) == 0
     assert mask.getpixel((10, 5)) == 0
+    assert mask.getpixel((23, 5)) == 255
 
 
-def test_generative_expand_caps_requested_border_at_twenty_percent(monkeypatch):
+def test_generative_expand_caps_total_generated_area_at_twenty_percent(monkeypatch):
     class Response:
         ok = True
         status_code = 200
@@ -170,10 +171,25 @@ def test_generative_expand_caps_requested_border_at_twenty_percent(monkeypatch):
             ]}}]}
 
     monkeypatch.setattr(gemini_image_edit.requests, "post", lambda *_args, **_kwargs: Response())
+    photo = Image.new("RGB", (100, 50), "red")
     result, _mask, box = gemini_image_edit.expand(
-        Image.new("RGB", (100, 50), "red"), 90, "", "secret")
-    assert result.size == (140, 70)
-    assert box == (20, 10, 120, 60)
+        photo, {"right": 20}, "", "secret")
+    assert result.size == (120, 50)
+    assert box == (0, 0, 100, 50)
+    try:
+        gemini_image_edit.expand(photo, {"left": 20, "right": 20}, "", "secret")
+    except ValueError as error:
+        assert "20%" in str(error)
+    else:
+        raise AssertionError("an over-cap expansion was sent")
+
+
+def test_expand_geometry_starts_at_zero_and_reports_actual_area():
+    pads, size, area = gemini_image_edit.expansion_geometry(
+        (100, 50), {"right": 15})
+    assert pads == {"left": 0, "right": 15, "top": 0, "bottom": 0}
+    assert size == (115, 50)
+    assert area == 750
 
 
 def test_editor_exposes_generative_expand_with_class_c_provenance():
@@ -191,5 +207,17 @@ def test_first_run_notice_is_tracked_source_and_gates_all_generative_tools():
         HUB / "slapper_qt" / "prefs.py").read_text(encoding="utf-8")
     assert source.count("from .generative_consent import confirm") == 3
     assert source.count("if not confirm(self):") == 3
+
+
+def test_provider_send_warnings_can_be_dismissed_per_tool():
+    notice = (HUB / "slapper_qt" / "generative_consent.py").read_text(encoding="utf-8")
+    prefs_source = (HUB / "slapper_qt" / "prefs.py").read_text(encoding="utf-8")
+    heal = (HUB / "slapper_qt" / "ai_heal_dialog.py").read_text(encoding="utf-8")
+    expand = (HUB / "slapper_qt" / "ai_expand_dialog.py").read_text(encoding="utf-8")
+    assert 'QCheckBox("Do not display again")' in notice
+    for key in ("ai_heal_send_warning_hidden", "ai_fill_send_warning_hidden",
+                "ai_expand_send_warning_hidden"):
+        assert f'"{key}": False' in prefs_source
+        assert key in heal + expand
 
 # ===== SNAPSMACK EOF =====
