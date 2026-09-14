@@ -255,6 +255,7 @@ def new_profile_template() -> Dict:
         "api_key":               "",             # scoped 'suyb' key (Bearer); preferred over admin login
         "login_slug":            "snap-in",       # admin-login path (CMS login slug); /login.php 403s on slug-login installs
         "backup_method":         "cloud",         # "ftp" | "cloud" | "local"
+        "exit_package":          False,           # also write TYSWY archive + WordPress + Ghost into exit/ (doubles size; OFF by default)
         "schedule_enabled":      False,
         "schedule_type":         "daily",        # "daily" | "weekly"
         "schedule_day":          "monday",       # weekday for weekly schedule
