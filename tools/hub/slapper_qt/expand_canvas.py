@@ -5,6 +5,23 @@ from PySide6.QtGui import QColor, QImage, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QWidget
 
 
+def clamp_edges(start, candidate, allowed, steps=28):
+    """Return the furthest point on a drag that satisfies the caller's budget."""
+    if allowed(candidate):
+        return candidate
+    low, high = 0.0, 1.0
+    for _ in range(steps):
+        fraction = (low + high) / 2
+        probe = {name: start[name] + (candidate[name] - start[name]) * fraction
+                 for name in start}
+        if allowed(probe):
+            low = fraction
+        else:
+            high = fraction
+    return {name: start[name] + (candidate[name] - start[name]) * low
+            for name in start}
+
+
 class ExpandCanvas(QWidget):
     edges_changed = Signal(object)
 
@@ -21,6 +38,11 @@ class ExpandCanvas(QWidget):
         self._drag = None
         self._start = None
         self._start_edges = None
+        self._constraint = None
+
+    def set_constraint(self, constraint):
+        """Set a predicate that defines the legal cumulative expansion budget."""
+        self._constraint = constraint
 
     def _original_rect(self):
         available = self.rect().adjusted(70, 50, -70, -50)
@@ -79,9 +101,13 @@ class ExpandCanvas(QWidget):
             original = self._original_rect()
             dx = (point.x() - self._start.x()) * 100 / original.width()
             dy = (point.y() - self._start.y()) * 100 / original.height()
+            candidate = dict(self._start_edges)
             for edge in self._drag:
                 delta = {"left": -dx, "right": dx, "top": -dy, "bottom": dy}[edge]
-                self.edges[edge] = max(0.0, min(20.0, self._start_edges[edge] + delta))
+                candidate[edge] = max(0.0, min(20.0, self._start_edges[edge] + delta))
+            if self._constraint is not None:
+                candidate = clamp_edges(self._start_edges, candidate, self._constraint)
+            self.edges = candidate
             self.edges_changed.emit(dict(self.edges))
             self.update()
         else:
