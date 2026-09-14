@@ -53,8 +53,8 @@ $page_css = <<<'CSS'
 .callout a:hover { color: var(--black); }
 .faq-more { padding: 40px 0 72px; border-top: 8px solid var(--black); background: #f4f1eb; }
 .faq-more h2 { margin-bottom: 18px; }
-.faq-more-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
-.faq-more-grid a { display: block; padding: 18px 20px; background: var(--white); color: var(--black); }
+.faq-more-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
+.faq-more-grid a { display: block; padding: 18px 20px; background: var(--white); color: var(--black); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .faq-more-grid a strong { display: block; font: 900 .85rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .faq-more-grid a span { display: block; margin-top: 5px; color: var(--mid-grey); font-size: .84rem; line-height: 1.45; }
 .faq-more-grid a:hover { background: #fff5f3; text-decoration: none; box-shadow: inset 0 -4px 0 var(--red); }
