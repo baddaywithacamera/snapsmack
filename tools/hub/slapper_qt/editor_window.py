@@ -480,9 +480,9 @@ class EditorWindow(QMainWindow):
         self.act_export.triggered.connect(self.export_image)
         bar.addAction(self.act_export)
 
-        self.act_blog_copy = QAction("Blog Copy…", self)
+        self.act_blog_copy = QAction("Publish…", self)
         self.act_blog_copy.setToolTip(
-            "Prepare a local upload copy using a profile configured in THE HUB")
+            "Publish to SMACKTHEMUP or prepare a local blog copy")
         self.act_blog_copy.triggered.connect(self.prepare_blog_copy)
         bar.addAction(self.act_blog_copy)
 
@@ -2301,7 +2301,8 @@ class EditorWindow(QMainWindow):
         from .ai_heal_dialog import AIHealDialog
         AIHealDialog(self, operation="fill").exec()
 
-    def apply_ai_generation(self, path, mask, model, instruction="", operation="heal"):
+    def apply_ai_generation(self, path, mask, model, instruction="", operation="heal",
+                            provider="Google Gemini"):
         """Add the generated frame as a locally enforced masked image layer."""
         # Build the generated layer completely before recording history. An
         # earlier version recorded an unmasked halfway state, so stepping back
@@ -2328,7 +2329,7 @@ class EditorWindow(QMainWindow):
             operation_class=operation_class,
             tool_name=layer_name,
             purpose="creative fill" if is_fill else "localized restoration",
-            provider="Google Gemini", model=model, instruction=instruction,
+            provider=provider, model=model, instruction=instruction,
             sent_mask=mask, input_image=input_image, output_image=output_image,
             app_version=BUILD_VERSION,
             scene_invention=is_fill or operation_class == "C")
@@ -3169,6 +3170,10 @@ class EditorWindow(QMainWindow):
         if not accepted:
             return
         profile = profiles[labels.index(label)]
+        extras = dict(profile.get("extras") or {})
+        if str(extras.get("site_mode") or extras.get("gyss_site_mode") or "").lower() == "smackthemup":
+            self._publish_to_smackthemup(profile)
+            return
         from . import publishing_contract
         try:
             summary = publishing_contract.describe(profile)
@@ -3194,6 +3199,58 @@ class EditorWindow(QMainWindow):
         self.status.showMessage(
             f"Prepared {os.path.basename(target)} — ready in the local staging folder",
             9000)
+
+    def _publish_to_smackthemup(self, profile):
+        """Prepare an upload copy, then use the mode-bound public publisher."""
+        import snap_creds
+        import snap_home
+        from . import prefs, publishing_contract
+        from .smackthemup_dialog import SmackPublishDialog
+
+        site = profile.get("site_url", "")
+        key = snap_creds.get_site(site, "api_key_smackthemup_publish", "")
+        if not key:
+            key, accepted = QInputDialog.getText(
+                self, "Connect SNAP SLAPPER",
+                "Paste this site's SNAP SLAPPER (SMACKTHEMUP — PUBLISH ONLY) key:",
+                QLineEdit.Password)
+            key = key.strip()
+            if not accepted:
+                return
+            if len(key) != 64:
+                QMessageBox.warning(
+                    self, "Publishing key refused",
+                    "The SMACKTHEMUP publishing key must contain 64 characters.")
+                return
+            snap_creds.set_site(site, "api_key_smackthemup_publish", key)
+
+        folder = os.path.join(snap_home.shared_library(), "snap_slapper", "publishing")
+        os.makedirs(folder, exist_ok=True)
+        settings = prefs.load()
+        copyright_text = (settings["copyright_text"]
+                          if settings["add_copyright_if_missing"] else "")
+        upload_profile = dict(profile)
+        upload_profile["extras"] = dict(upload_profile.get("extras") or {})
+        upload_profile["extras"].update({
+            "max_image_width": 2500, "max_image_height": 2500,
+            "preferred_quality": 90, "preferred_extension": ".jpg",
+            "strip_gps": bool(settings["strip_gps"]),
+        })
+        try:
+            target, manifest_path, manifest = publishing_contract.prepare(
+                self.doc, upload_profile, copyright_text=copyright_text,
+                destination_override=folder)
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Publish preparation failed", str(exc))
+            return
+        try:
+            SmackPublishDialog(self, profile, target, manifest).exec()
+        finally:
+            for path in (target, manifest_path):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
 
     # --- Rendering ----------------------------------------------------------
     def _schedule_render(self):
