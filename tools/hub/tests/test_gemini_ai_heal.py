@@ -227,10 +227,11 @@ def test_expand_prompt_is_edge_specific_conservative_and_not_duplicated(monkeypa
         "continue the brick wall", "secret")
     instruction = seen["json"]["contents"][0]["parts"][0]["text"]
     parts = seen["json"]["contents"][0]["parts"]
-    assert "Outpaint only the WHITE masked border region" in instruction
-    assert "Requested expansion edges: left." in instruction
-    assert "Do not introduce a new focal subject" in instruction
-    assert "Do not create a second or replacement curb" in instruction
+    assert "one continuous photograph of the same scene" in instruction
+    assert "Extend the scene outward on the left." in instruction
+    assert "Add no new focal subject" in instruction
+    assert "do not introduce a tonal division" in instruction
+    assert "as it would have appeared through a wider camera frame" in instruction
     assert instruction.count("continue the brick wall") == 1
     assert "every white border area" not in instruction.lower()
     assert len(parts) == 3  # instruction, canvas, red-marked reference; raw mask stays local

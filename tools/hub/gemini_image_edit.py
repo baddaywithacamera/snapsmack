@@ -72,15 +72,15 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
     marked = marked_selection(work_image, work_mask)
     if operation == "expand":
         task = (
-            "Outpaint only the WHITE masked border region on the requested edge or "
-            "edges. Preserve the supplied interior photograph exactly. At the inner "
-            "mask boundary, continue every intersecting line, surface, object, texture, "
-            "lighting gradient, perspective, focus characteristic, grain and noise "
-            "pattern without a visible seam. Extend existing content conservatively. "
-            "Do not introduce a new focal subject or a large foreground object unless "
-            "the user's direction explicitly requests one. The outer canvas edge may "
-            "crop objects naturally. Return the complete expanded canvas at the supplied "
-            "dimensions. " + prompt.strip()
+            "Complete the marked outer canvas so the result reads as one continuous "
+            "photograph of the same scene. Extend what is already visible naturally "
+            "outward, maintaining continuous illumination, colour, exposure, texture, "
+            "perspective, focus, grain and spatial geometry. Keep gradual tonal changes "
+            "gradual; do not introduce a tonal division, hard transition, border, band, "
+            "or change of material where none exists in the photograph. Preserve the "
+            "supplied photograph exactly. Add no new focal subject or large foreground "
+            "object unless the user's direction requests one. Return the complete canvas "
+            "at the supplied dimensions. " + prompt.strip()
         )
     elif operation == "fill":
         if prompt.strip():
@@ -225,11 +225,9 @@ def expand(image, edges, prompt, api_key, model="gemini-3.1-flash-image", timeou
         (box[0], box[1], box[2] - 1, box[3] - 1), fill=0)
     direction = ", ".join(name for name, value in pads.items() if value)
     request = (
-        "Requested expansion edges: " + direction + ". Preserve all structures that "
-        "cross the boundary. Continue curbs, sidewalks, road edges, lane markings, "
-        "rooflines, fences and horizon lines at exactly the same position, angle, width, "
-        "perspective and material. Do not create a second or replacement curb, sidewalk, "
-        "road edge, roofline or fence."
+        "Extend the scene outward on the " + direction + ". Continue the existing view "
+        "as it would have appeared through a wider camera frame, with no invented change "
+        "in surface, lighting, colour or geometry."
     )
     if str(prompt or "").strip():
         request += " User direction: " + str(prompt).strip()
