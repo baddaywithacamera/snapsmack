@@ -388,7 +388,7 @@ class EditorWindow(QMainWindow):
         self.act_crop.toggled.connect(self._toggle_crop)
         bar.addAction(self.act_crop)
 
-        self.act_heal = QAction("Heal", self)
+        self.act_heal = QAction("Spot Heal", self)
         self.act_heal.setCheckable(True)
         self.act_heal.toggled.connect(lambda on: self._toggle_retouch("heal", on))
         bar.addAction(self.act_heal)
@@ -409,6 +409,12 @@ class EditorWindow(QMainWindow):
             "Paint an area, describe what belongs there, and let Gemini build it")
         self.act_ai_fill.triggered.connect(self.open_ai_fill)
         bar.addAction(self.act_ai_fill)
+
+        self.act_ai_expand = QAction("Generative Expand…", self)
+        self.act_ai_expand.setToolTip(
+            "Extend the canvas and let Gemini continue the scene beyond the frame")
+        self.act_ai_expand.triggered.connect(self.open_ai_expand)
+        bar.addAction(self.act_ai_expand)
 
         self.act_mask_brush = QAction("Mask Brush", self)
         self.act_mask_brush.setToolTip("Paint the selected layer mask directly on the photo")
@@ -542,7 +548,7 @@ class EditorWindow(QMainWindow):
                 self.act_reset, self.act_auto, self.act_fit, self.act_full,
                 self.act_zoom_out, self.act_zoom_in,
                 self.act_crop, self.act_heal, self.act_redeye, self.act_ai_heal,
-                self.act_ai_fill,
+                self.act_ai_fill, self.act_ai_expand,
                 self.act_mask_brush, self.act_mask_gradient, self.act_colour_range,
                 self.act_compare, self.act_filmstrip,
                 self.act_recipe_save, self.act_recipe_apply,
@@ -574,7 +580,7 @@ class EditorWindow(QMainWindow):
             "edit": (self.act_crop, self.act_auto, self.act_reset,
                      self.act_compare),
             "retouch": (self.act_heal, self.act_redeye, self.act_ai_heal,
-                        self.act_ai_fill,
+                        self.act_ai_fill, self.act_ai_expand,
                         self.act_mask_brush,
                         self.act_mask_gradient, self.act_colour_range),
             "looks": (self.act_lewks, self.act_lewk_again, self.act_filters, self.act_textures,
@@ -2270,6 +2276,9 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             QMessageBox.information(self, "Open a photograph", "Open a photograph first.")
             return
+        from .generative_consent import confirm
+        if not confirm(self):
+            return
         from .ai_heal_dialog import AIHealDialog
         AIHealDialog(self).exec()
 
@@ -2277,8 +2286,46 @@ class EditorWindow(QMainWindow):
         if not self.doc:
             QMessageBox.information(self, "Open a photograph", "Open a photograph first.")
             return
+        from .generative_consent import confirm
+        if not confirm(self):
+            return
         from .ai_heal_dialog import AIHealDialog
         AIHealDialog(self, operation="fill").exec()
+
+    def open_ai_expand(self):
+        if not self.doc:
+            QMessageBox.information(self, "Open a photograph", "Open a photograph first.")
+            return
+        from .generative_consent import confirm
+        if not confirm(self):
+            return
+        from .ai_expand_dialog import AIExpandDialog
+        AIExpandDialog(self).exec()
+
+    def apply_ai_expand(self, path, mask, content_box, model, instruction, input_image):
+        """Add one undoable canvas-extension layer with Class C provenance."""
+        with Image.open(path) as generated:
+            output_image = generated.convert("RGB")
+        import slapper_provenance
+        layer = {
+            "id": editor_engine._new_layer_id(), "name": "Generative Expand",
+            "type": "generative_expand", "path": path,
+            "content_box": list(content_box), "visible": True, "opacity": 1.0,
+            "blend": "normal",
+            "provenance": slapper_provenance.new_ai_operation(
+                operation_class="C", tool_name="Generative Expand",
+                purpose="canvas expansion", provider="Google Gemini", model=model,
+                instruction=instruction, sent_mask=mask, input_image=input_image,
+                output_image=output_image, app_version=BUILD_VERSION,
+                canvas_extension=True, scene_invention=True),
+        }
+        layer["provenance"]["kind"] = "generative-expand"
+        self.doc.layers.append(layer)
+        self.doc.record("Generative Expand")
+        self.active_target = layer["id"]
+        self.layers_panel.rebuild(); self.request_render(); self._update_title()
+        self.status.showMessage(
+            "Generative Expand added — the captured frame remains intact inside it.")
 
     def apply_ai_generation(self, path, mask, model, instruction="", operation="heal"):
         """Add the generated frame as a locally enforced masked image layer."""
@@ -2287,6 +2334,9 @@ class EditorWindow(QMainWindow):
         # in History exposed Gemini's entire returned frame.
         is_fill = operation == "fill"
         layer_name = "Generative Fill" if is_fill else "AI Heal"
+        input_image = self.render_preview_image((2048, 2048)).convert("RGB")
+        with Image.open(path) as generated:
+            output_image = generated.convert("RGB")
         layer = self.doc.add_image_layer(path, name=layer_name, record=False)
         layer["fit"] = "stretch"
         import gemini_image_edit
@@ -2297,11 +2347,21 @@ class EditorWindow(QMainWindow):
         layer["mask_enabled"] = True
         layer["mask_linked"] = True
         layer["mask_kind"] = "ai-fill-selection" if is_fill else "ai-heal-selection"
-        layer["provenance"] = {
-            "kind": "generative-fill" if is_fill else "generative-repair",
-            "provider": "Gemini",
-            "model": model, "instruction": instruction,
-        }
+        import slapper_provenance
+        operation_class = ("C" if is_fill else
+                           slapper_provenance.classify_heal_instruction(instruction))
+        layer["provenance"] = slapper_provenance.new_ai_operation(
+            operation_class=operation_class,
+            tool_name=layer_name,
+            purpose="creative fill" if is_fill else "localized restoration",
+            provider="Google Gemini", model=model, instruction=instruction,
+            sent_mask=mask, input_image=input_image, output_image=output_image,
+            app_version=BUILD_VERSION,
+            scene_invention=is_fill or operation_class == "C")
+        # Retain the pre-v0.2 project hint for older SNAP SLAPPER builds. The
+        # structured fields above are authoritative for new exports.
+        layer["provenance"].update({
+            "kind": "generative-fill" if is_fill else "generative-repair"})
         self.doc.record(layer_name)
         self.active_target = layer["id"]
         self.layers_panel.rebuild()
@@ -2541,7 +2601,8 @@ class EditorWindow(QMainWindow):
                             for layer in recipe.get("layers", []) if layer.get("type") == "filter"],
             }), recipe.get("provider", ""), recipe.get("model", ""),
             recipe.get("prompt", ""))
-        added = self.doc.stack_layers(safe["layers"])
+        added = self.doc.stack_layers(
+            safe["layers"], history_label=f"Apply LEWK — {safe['name']}")
         if added:
             self.set_target(added[-1]["id"])
         self.after_structure_change()
@@ -3078,10 +3139,27 @@ class EditorWindow(QMainWindow):
         copyright_text = (settings["copyright_text"]
                           if settings["add_copyright_if_missing"] else "")
         try:
-            if os.path.splitext(path)[1].lower() == ".ora":
+            export_extension = os.path.splitext(path)[1].lower()
+            import slapper_provenance
+            records = slapper_provenance.export_operations(
+                self.doc.layers, self.doc.render().size)
+            if records and export_extension in {".ora", ".psd"}:
+                raise ValueError(
+                    "This layered checkpoint format cannot carry the mandatory AI "
+                    "provenance record. Export a JPEG, PNG, or TIFF copy instead.")
+            if records:
+                summary = slapper_provenance.human_summary(records)
+                if QMessageBox.question(
+                        self, "Review export provenance",
+                        summary + "\n\nThis record will travel inside the exported "
+                        "photograph and cannot be switched off. Continue?",
+                        QMessageBox.Yes | QMessageBox.Cancel,
+                        QMessageBox.Yes) != QMessageBox.Yes:
+                    return
+            if export_extension == ".ora":
                 from .ora_export import export_openraster
                 export_openraster(self.doc, path)
-            elif os.path.splitext(path)[1].lower() == ".psd":
+            elif export_extension == ".psd":
                 from .psd_export import export_layered_psd
                 export_layered_psd(self.doc, path)
             else:

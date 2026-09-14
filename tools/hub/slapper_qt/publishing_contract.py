@@ -11,6 +11,7 @@ import os
 from PIL import Image
 
 import photo_manager
+import slapper_provenance
 
 
 CONTRACT_VERSION = 1
@@ -80,9 +81,12 @@ def prepare(document, profile, copyright_text=""):
     if image_format in {"JPEG", "WEBP"}:
         save_options.update(quality=policy["quality"], optimize=True)
     try:
+        provenance_records = slapper_provenance.export_operations(
+            document.layers, image.size)
         photo_manager.save_with_metadata(
             image, temporary, document.source_path, copyright_text,
-            strip_gps=policy["strip_gps"], format=image_format, **save_options)
+            strip_gps=policy["strip_gps"], format=image_format,
+            provenance_records=provenance_records, **save_options)
         os.replace(temporary, target)
     finally:
         if os.path.exists(temporary):

@@ -2,6 +2,8 @@
 
 import os
 import sys
+import zipfile
+from pathlib import Path
 
 from PIL import Image
 
@@ -38,6 +40,23 @@ def test_project_round_trip_keeps_history_and_active_position(tmp_path):
     assert loaded.adjustments["contrast"] == 0
     assert loaded.redo()
     assert loaded.adjustments["contrast"] == 20
+
+
+def test_project_contains_and_can_restore_untouched_original(tmp_path):
+    source = _photo(tmp_path)
+    original = Path(source).read_bytes()
+    document = editor_engine.EditorDocument(source)
+    project = str(tmp_path / "portable.slapper")
+    document.save_project(project)
+
+    with zipfile.ZipFile(project) as archive:
+        members = archive.namelist()
+        embedded = next(name for name in members if name.startswith("original/source"))
+        assert archive.read(embedded) == original
+
+    os.remove(source)
+    loaded = editor_engine.EditorDocument.load_project(project)
+    assert Path(loaded.source_path).read_bytes() == original
 
 
 def test_101st_edit_is_rejected_when_checkpoint_is_cancelled(tmp_path):
