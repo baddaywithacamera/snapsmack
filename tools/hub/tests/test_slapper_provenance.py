@@ -110,6 +110,19 @@ def test_expand_layer_changes_canvas_without_replacing_interior(tmp_path):
     assert result.getpixel((5, 5))[:3] == (255, 0, 0)
 
 
+def test_expand_provenance_declares_trained_algorithmic_composite():
+    mask = Image.new("L", (12, 10), 0)
+    operation = slapper_provenance.new_ai_operation(
+        operation_class="C", tool_name="Generative Expand",
+        purpose="canvas expansion", provider="Google Gemini", model="test",
+        instruction="continue right edge", sent_mask=mask,
+        input_image=Image.new("RGB", (10, 10)),
+        output_image=Image.new("RGB", (12, 10)), app_version="test",
+        canvas_extension=True, scene_invention=True)
+    assert operation["digital_source_type"] == \
+        "compositeWithTrainedAlgorithmicMedia"
+
+
 def test_verbatim_instruction_stays_in_project_and_out_of_export(tmp_path):
     source = tmp_path / "source.png"
     Image.new("RGB", (8, 8), "gray").save(source)

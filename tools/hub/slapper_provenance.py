@@ -83,6 +83,10 @@ def new_ai_operation(*, operation_class, tool_name, purpose, provider, model,
         "canvas_extension": bool(canvas_extension),
         "subject_replacement": bool(subject_replacement),
         "scene_invention": bool(scene_invention),
+        "digital_source_type": (
+            "compositeWithTrainedAlgorithmicMedia" if canvas_extension else
+            "trainedAlgorithmicMedia" if operation_class in ("C", "D") else
+            "compositeWithTrainedAlgorithmicMedia"),
         "input_render_sha256": image_digest(input_image),
         "output_result_sha256": image_digest(output_image),
         "parent_operation_id": parent_operation_id,
@@ -112,7 +116,7 @@ def export_operations(layers, canvas_size):
             "ai_model", "ai_model_version", "instruction_summary",
             "sent_mask_bounds", "sent_mask_size", "sent_mask_pixel_count",
             "whole_image_processing", "canvas_extension", "subject_replacement",
-            "scene_invention", "input_render_sha256", "output_result_sha256",
+            "scene_invention", "digital_source_type", "input_render_sha256", "output_result_sha256",
             "parent_operation_id", "kind") if key in record}
         clean["instruction_summary"] = _safe_text(
             clean.get("instruction_summary") or
