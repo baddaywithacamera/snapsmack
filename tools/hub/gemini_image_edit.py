@@ -101,23 +101,35 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
             "the mark, then reconstruct natural matching content from the surrounding "
             "photograph."
         )
-    instruction = (
-        "Edit the FIRST image and return the repaired photograph, not an explanation. "
-        "The SECOND image marks the repair target in RED. The THIRD image is the "
-        "same selection as a black-and-white mask; WHITE is the repair target. "
-        "The red paint is an annotation, not part of the photograph. " + task + " "
-        "Do not merely return the original image. Do not alter anything outside the "
-        "white selection."
-    )
+    if operation == "expand":
+        instruction = (
+            "Edit the FIRST image and return the complete expanded photograph, not an "
+            "explanation, mask, matte, diagram, or marked reference. The SECOND image "
+            "marks the outpainting target in RED; the red paint is an annotation and "
+            "must not appear in the result. " + task + " Do not alter anything outside "
+            "the marked border region."
+        )
+    else:
+        instruction = (
+            "Edit the FIRST image and return the repaired photograph, not an explanation. "
+            "The SECOND image marks the repair target in RED. The THIRD image is the "
+            "same selection as a black-and-white mask; WHITE is the repair target. "
+            "The red paint is an annotation, not part of the photograph. " + task + " "
+            "Do not merely return the original image. Do not alter anything outside the "
+            "white selection."
+        )
     if operation == "heal" and prompt.strip():
         instruction += " Additional instruction: " + prompt.strip()
+    parts = [
+        {"text": instruction},
+        {"inlineData": {"mimeType": "image/png", "data": _png_data(work_image)}},
+        {"inlineData": {"mimeType": "image/png", "data": _png_data(marked)}},
+    ]
+    if operation != "expand":
+        parts.append({"inlineData": {
+            "mimeType": "image/png", "data": _png_data(work_mask)}})
     payload = {
-        "contents": [{"role": "user", "parts": [
-            {"text": instruction},
-            {"inlineData": {"mimeType": "image/png", "data": _png_data(work_image)}},
-            {"inlineData": {"mimeType": "image/png", "data": _png_data(marked)}},
-            {"inlineData": {"mimeType": "image/png", "data": _png_data(work_mask)}},
-        ]}],
+        "contents": [{"role": "user", "parts": parts}],
         "generationConfig": {"responseModalities": ["IMAGE"]},
     }
     response = requests.post(
