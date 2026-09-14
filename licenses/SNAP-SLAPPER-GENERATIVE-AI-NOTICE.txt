@@ -1,0 +1,28 @@
+SNAP SLAPPER generative editing and privacy notice
+
+Before SNAP SLAPPER sends a generative editing request, it shows what will
+leave the computer and requires the user to continue affirmatively.
+
+SNAP SLAPPER writes an embedded provenance record into exported photographs
+that contain generative AI edits. The record cannot be switched off inside SNAP
+SLAPPER. It identifies the operation, affected scope, provider, model, time,
+and material scene-change flags. It does not export the user's exact written
+instruction, identity, original untouched pixels, credentials, or local paths.
+
+The exact instruction is sent to the chosen AI provider to perform the edit and
+is retained with the untouched original photograph in the local .slapper
+project. It is not written into the exported photograph. Sharing a .slapper
+file therefore shares those local contents.
+
+SNAP SLAPPER collects no user identity, telemetry, or per-user editing log.
+The only consent-related state is a local non-personal preference recording
+that the first-run notice has been acknowledged.
+
+Metadata can be removed later by other software. SNAP SLAPPER does not provide
+an option to remove mandatory provenance from its own exports.
+
+The repository history of the tracked notice source documents when and how
+this warning was published. It does not claim to prove that a particular
+individual saw it.
+
+SNAPSMACK EOF

@@ -25,7 +25,7 @@ from datetime import datetime
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
-BUILD_VERSION = "0.7.45"
+BUILD_VERSION = "0.7.47"
 
 # ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
 def _add_shared_to_path():
@@ -723,6 +723,9 @@ class Hub(tk.Tk):
                                  headers={"Authorization": f"Bearer {key}"}, timeout=15)
             elif provider == "kimi":
                 r = requests.get("https://api.moonshot.cn/v1/models",
+                                 headers={"Authorization": f"Bearer {key}"}, timeout=15)
+            elif provider == "stability":
+                r = requests.get("https://api.stability.ai/v1/user/balance",
                                  headers={"Authorization": f"Bearer {key}"}, timeout=15)
             else:
                 self._set_status(status, False, "unknown provider"); return

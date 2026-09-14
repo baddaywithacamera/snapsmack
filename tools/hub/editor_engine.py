@@ -22,6 +22,7 @@ import numpy as np
 
 import photo_manager
 import slapper_filters
+import slapper_provenance
 
 # SECAUDIT 054 chokepoint 1 (image ingress): importing snap_imgsafe pins
 # Image.MAX_IMAGE_PIXELS process-wide (decompression-bomb cap) for EVERY
@@ -86,6 +87,7 @@ MAX_TEXT_LAYER_CHARS = 1_000_000
 MAX_HISTORY_STEPS = 100
 PROJECT_DOCUMENT_NAME = "project.json"
 PROJECT_README_NAME = "README.txt"
+PROJECT_ORIGINAL_NAME = "original/source"
 DEFAULT_ADJUSTMENTS = {
     "exposure": 0.0, "brightness": 0.0, "contrast": 0.0,
     "highlights": 0.0, "midtones": 0.0, "shadows": 0.0,
@@ -259,7 +261,15 @@ def _mask_from_text(value):
         base64.b64decode(value), formats={"PNG"}).convert("L")
 
 
-def _write_project_archive(path, value):
+def _source_sha256(path):
+    digest = __import__("hashlib").sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _write_project_archive(path, value, source_path):
     """Atomically publish an ordinary ZIP container with a .slapper extension."""
     target = os.path.abspath(path)
     directory = os.path.dirname(target)
@@ -267,16 +277,26 @@ def _write_project_archive(path, value):
     descriptor, temporary = tempfile.mkstemp(prefix=".snap-project-", suffix=".tmp",
                                              dir=directory)
     os.close(descriptor)
+    extension = os.path.splitext(source_path)[1].lower()
+    original_name = PROJECT_ORIGINAL_NAME + extension
+    value = copy.deepcopy(value)
+    value["source_ingredient"] = {
+        "archive_path": original_name,
+        "original_filename": os.path.basename(source_path),
+        "sha256": _source_sha256(source_path),
+        "byte_count": os.path.getsize(source_path),
+    }
     document = json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode("utf-8")
     readme = ("SNAP SLAPPER project archive\n\n"
               "Rename this file from .slapper to .zip to inspect it with any ZIP tool.\n"
               "project.json contains the versioned, human-readable editing document.\n"
-              "The original photograph is referenced, not imprisoned inside this archive.\n")
+              "original/source contains the untouched source photograph as a provenance ingredient.\n")
     try:
         with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED,
                              allowZip64=True) as archive:
             archive.writestr(PROJECT_DOCUMENT_NAME, document)
             archive.writestr(PROJECT_README_NAME, readme)
+            archive.write(source_path, original_name)
         photo_manager.fsync_file(temporary)
         os.replace(temporary, target)
     except Exception:
@@ -305,6 +325,38 @@ def _read_project_document(path):
             raise ValueError("Invalid SNAP SLAPPER project archive") from exc
     with open(path, "r", encoding="utf-8") as handle:
         return json.load(handle, parse_constant=photo_manager.reject_json_constant)
+
+
+def _extract_embedded_source(project_path, ingredient):
+    """Verify and extract a project's untouched source ingredient for editing."""
+    member = ingredient.get("archive_path") if isinstance(ingredient, dict) else None
+    expected_hash = ingredient.get("sha256") if isinstance(ingredient, dict) else None
+    if not isinstance(member, str) or not member.startswith(PROJECT_ORIGINAL_NAME):
+        return None
+    suffix = os.path.splitext(member)[1]
+    descriptor, extracted = tempfile.mkstemp(prefix="snap-slapper-original-", suffix=suffix)
+    digest = __import__("hashlib").sha256()
+    try:
+        with os.fdopen(descriptor, "wb") as target, zipfile.ZipFile(project_path, "r") as archive:
+            info = archive.getinfo(member)
+            if info.file_size > MAX_PROJECT_BYTES:
+                raise ValueError("Embedded original photograph is too large")
+            with archive.open(info, "r") as source:
+                while True:
+                    chunk = source.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    digest.update(chunk)
+                    target.write(chunk)
+        if expected_hash and digest.hexdigest() != expected_hash:
+            raise ValueError("Embedded original photograph failed its integrity check")
+        return extracted
+    except Exception:
+        try:
+            os.remove(extracted)
+        except OSError:
+            pass
+        raise
 
 
 def _curve_lut(points):
@@ -1148,6 +1200,12 @@ class EditorDocument:
     _font_reference_cache = {}
     def __init__(self, source_path):
         self.source_path = os.path.abspath(source_path)
+        # Rendering may use a verified source extracted from a portable project,
+        # but folder browsing and recovery identity must remain attached to the
+        # photograph the user actually opened.
+        self.recorded_source_path = self.source_path
+        self.browse_source_path = self.source_path
+        self.original_filename = os.path.basename(self.source_path)
         self.adjustments = copy.deepcopy(DEFAULT_ADJUSTMENTS)
         self.geometry = {
             "rotation": 0.0, "crop": None, "flip_x": False, "flip_y": False,
@@ -1597,7 +1655,8 @@ class EditorDocument:
                 "luminance": ImageOps.grayscale(image).histogram()}
 
     def project_value(self, recovery=False):
-        value = {"version": PROJECT_VERSION, "source_path": self.source_path,
+        value = {"version": PROJECT_VERSION,
+                 "source_path": self.recorded_source_path,
                  "adjustments": self.adjustments, "geometry": self.geometry,
                  "layers": self.layers, "retouched": self.retouched,
                  "history": self.history[-MAX_HISTORY_STEPS:],
@@ -1611,14 +1670,14 @@ class EditorDocument:
         if photo_manager.same_file(path, self.source_path):
             raise ValueError("SNAP SLAPPER will not overwrite the original photograph with a project.")
         value = self.project_value()
-        _write_project_archive(path, value)
+        _write_project_archive(path, value, self.source_path)
         self.project_path = path
         self.mark_saved()
 
     def save_recovery(self, path):
         if photo_manager.same_file(path, self.source_path):
             raise ValueError("Recovery path resolves to the original photograph.")
-        _write_project_archive(path, self.project_value(recovery=True))
+        _write_project_archive(path, self.project_value(recovery=True), self.source_path)
 
     @classmethod
     def load_project(cls, path):
@@ -1629,10 +1688,16 @@ class EditorDocument:
             raise ValueError("Invalid SNAP SLAPPER project: the root must be an object")
         if value.get("version") != PROJECT_VERSION:
             raise ValueError("Unsupported SNAP SLAPPER project version")
-        source_path = value.get("source_path")
-        if not isinstance(source_path, str) or not source_path.strip():
+        recorded_source_path = value.get("source_path")
+        if not isinstance(recorded_source_path, str) or not recorded_source_path.strip():
             raise ValueError("Invalid SNAP SLAPPER project: source_path is missing")
-        if not os.path.isfile(source_path):
+        source_path = recorded_source_path
+        embedded_source = None
+        if zipfile.is_zipfile(path) and isinstance(value.get("source_ingredient"), dict):
+            embedded_source = _extract_embedded_source(path, value["source_ingredient"])
+        if embedded_source:
+            source_path = embedded_source
+        elif not os.path.isfile(source_path):
             raise FileNotFoundError(f"The project's original photograph is missing: {source_path}")
         if os.path.splitext(source_path)[1].lower() in photo_manager.RAW_EXTENSIONS:
             raise ValueError("This project references a RAW photograph. Open the original with "
@@ -1681,6 +1746,22 @@ class EditorDocument:
                     raise ValueError(
                         f"Invalid SNAP SLAPPER project: layer {index + 1} filter version is unsupported")
         document = cls(source_path)
+        document.recorded_source_path = os.path.abspath(recorded_source_path)
+        ingredient = value.get("source_ingredient")
+        original_name = (ingredient.get("original_filename")
+                         if isinstance(ingredient, dict) else None)
+        if isinstance(original_name, str) and original_name.strip():
+            document.original_filename = os.path.basename(original_name)
+        if embedded_source:
+            expected_hash = ingredient.get("sha256") if isinstance(ingredient, dict) else None
+            candidate = document.recorded_source_path
+            document.browse_source_path = None
+            if os.path.isfile(candidate) and expected_hash:
+                try:
+                    if _source_sha256(candidate) == expected_hash:
+                        document.browse_source_path = candidate
+                except OSError:
+                    pass
         document.adjustments = value.get("adjustments", copy.deepcopy(DEFAULT_ADJUSTMENTS))
         document.geometry = value.get("geometry", document.geometry)
         document.layers = layers
@@ -1709,8 +1790,10 @@ class EditorDocument:
             background.paste(output, mask=output.getchannel("A"))
             output = background
         options = {"quality": quality, "optimize": True} if extension in {".jpg", ".jpeg", ".webp"} else {}
-        photo_manager.save_with_metadata(output, path, self.source_path,
-                                         copyright_text, strip_gps=strip_gps, **options)
+        records = slapper_provenance.export_operations(self.layers, output.size)
+        photo_manager.save_with_metadata(
+            output, path, self.source_path, copyright_text, strip_gps=strip_gps,
+            provenance_records=records, **options)
 
     def recipe(self):
         geometry = {key: copy.deepcopy(value) for key, value in self.geometry.items()
@@ -1726,7 +1809,7 @@ class EditorDocument:
         return {"version": PROJECT_VERSION, "adjustments": copy.deepcopy(self.adjustments),
                 "geometry": geometry, "layers": layers}
 
-    def stack_layers(self, layers):
+    def stack_layers(self, layers, history_label="Apply LEWK"):
         """Add LEWK layers ON TOP without touching the base or existing
         layers. This is how a LEWK applies — it must not flatten the
         photographer's existing edits. Each layer gets a fresh unique id.
@@ -1747,7 +1830,7 @@ class EditorDocument:
             added.append(clone)
         if len(self.layers) > MAX_PROJECT_LAYERS:
             raise ValueError("Too many layers")
-        self.record("Apply LEWK")
+        self.record(history_label)
         return added
 
     def apply_recipe(self, recipe):
