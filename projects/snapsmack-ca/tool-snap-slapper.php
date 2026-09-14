@@ -20,7 +20,8 @@ $tool_facts    = [
     ['What it is', 'Photo library + non-destructive editor'],
     ['Originals', 'Never touched. Exports are new files.'],
     ['Formats out', 'JPEG, PNG, TIFF, PSD, OpenRaster'],
-    ['AI', 'LEWK AGAIN, five providers, your key'],
+    ['AI', 'LEWK AGAIN, AI Heal, Generative Fill, Generative Expand; five providers, your key'],
+    ['AI on the record', 'Every generative edit is written into the export. Cannot be switched off.'],
 ];
 $tool_body = <<<'HTML'
             <p>SNAP SLAPPER began as the missing space between a folder full of photographs and the finished work on a SnapSmack site. It has grown into the place where the whole local workflow can happen: browse a real archive, rate and tag it, organize files and folders, develop one photograph carefully, move through a shoot quickly, save the work as an open project, and hand the finished result to the web without surrendering the originals.</p>
@@ -47,6 +48,10 @@ $tool_body = <<<'HTML'
             <p>LEWKS are reusable appearance recipes, previewed against the photograph that is actually open rather than a vendor&rsquo;s perfectly lit sample. Black-and-white treatments, corrective starting points, film and print character, landscape colour, portrait handling, and deliberately strange experiments can all be auditioned at adjustable strength.</p>
             <p>Applying one does not flatten the photograph into a dead end. The underlying controls remain controls. Change the contrast, pull back a colour channel, alter the curve, stack another idea, or save the result as your own recipe. A useful preset should accelerate a decision, not conceal how the decision was made.</p>
             <p>SNAP SLAPPER runs locally, arrives through SNAP HQ, and works beside a SnapSmack installation rather than inventing another subscription account or cloud library. The desktop application does the heavy image work on your computer. Your site, your archive, your edits, and your exit remain yours.</p>
+            <h2 id="provenance">Generative tools, and what they leave behind.</h2>
+            <p>SNAP SLAPPER now has <strong>Generative Fill</strong> and <strong>Generative Expand</strong> alongside AI Heal: paint a region and a model reconstructs it, or push the canvas past the captured frame and the model invents the rest. Useful. Also exactly the kind of thing a photograph should not be quiet about.</p>
+            <p>So it isn&rsquo;t quiet. Every generative operation that is still in the picture at export &mdash; fill, expand, heal, whole-image restoration &mdash; is written into the exported file&rsquo;s metadata: what tool did it, why, where, how much of the frame (measured by the region you handed to the model, not the blend around it), which provider and model, the instruction that was sent, and when. A dust spot repaired by a generative model is labelled as AI-assisted restoration, not &ldquo;AI-generated photograph&rdquo; &mdash; and a replaced sky is labelled as what it is, not as dust. Undo something before you export and it isn&rsquo;t in the file, because it isn&rsquo;t in the picture.</p>
+            <p><strong>This cannot be disabled.</strong> There is no setting, no advanced-mode override, no export option that strips it. If you want to hide that a generative model touched a photograph, you will have to do that in someone else&rsquo;s software. We&rsquo;re not driving your getaway car if you rob the pixel bank. The original file is never modified either way. The full rules are written down in the provenance spec; the short version is: the picture that ships says what happened to it.</p>
 HTML;
 $tool_shots = [
     ['snapslapper-library.png', 'SNAP SLAPPER photo library showing folders, thumbnails, ratings, tags, and photograph information', 'The library: folders remain folders, with ratings, tags, albums, search, sorting, and readable thumbnails.'],
