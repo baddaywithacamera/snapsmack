@@ -381,12 +381,23 @@ def test_normal_advanced_mode():
     assert win.act_textures.isVisible() is False
     assert win.act_save_project.isVisible() is False
     assert win.act_lewks.isVisible() is True and win.act_auto.isVisible() is True
+    win._context_selectors["retouch"].trigger()
+    normal_retouch = [action.text() for action in win.context_toolbar.actions()
+                      if not action.isSeparator()]
+    assert "AI Heal…" in normal_retouch
+    assert "Generative Fill…" in normal_retouch
+    assert "Generative Expand…" in normal_retouch
     # back to advanced restores everything
     win.mode_combo.setCurrentIndex(win.mode_combo.findData("advanced"))
     assert win.mode == "advanced" and win.act_advanced.isChecked()
     assert not win._sections["LEVELS"].isHidden()
     assert not win.rows["exposure"].isHidden()
     assert win.act_textures.isVisible() is True
+    advanced_retouch = [action.text() for action in win.context_toolbar.actions()
+                        if not action.isSeparator()]
+    assert "AI Heal…" in advanced_retouch
+    assert "Generative Fill…" in advanced_retouch
+    assert "Generative Expand…" in advanced_retouch
 
 
 def test_context_sensitive_toolbars():
@@ -401,8 +412,9 @@ def test_context_sensitive_toolbars():
 
     assert visible_tools() == ["Crop", "Auto", "Reset All", "Before/After"]
     win._context_selectors["retouch"].trigger()
-    assert visible_tools() == ["Heal", "Red-Eye", "Mask Brush",
-                               "Mask Gradient", "Colour Range"]
+    assert visible_tools() == ["Spot Heal", "Red-Eye", "AI Heal…",
+                               "Generative Fill…", "Generative Expand…",
+                               "Mask Brush", "Mask Gradient", "Colour Range"]
     win._context_selectors["looks"].trigger()
     assert visible_tools() == [
         "LEWKS…", "LEWK AGAIN…", "Filters…", "Textures…", "Save Recipe", "Apply Recipe"]
