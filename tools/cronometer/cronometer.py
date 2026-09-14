@@ -21,7 +21,7 @@ UI thread; results are marshalled back with Tk's `after`.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.6"
+BUILD_VERSION = "0.7.10"
 
 # ---------------------------------------------------------------------------
 # Shared-path bootstrap + debug log. Must happen before any _shared import so
@@ -137,6 +137,16 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"CRONOMETER  —  build {BUILD_VERSION}")
+        # Window / taskbar icon: bundled next to the exe's assets (spec), or the
+        # family icon dir when run from source. Never fatal.
+        try:
+            _base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+            for _ico in (os.path.join(_base, 'assets', 'cronometer.ico'),
+                         os.path.join(_base, '..', 'hub', 'icons', 'cronometer.ico')):
+                if os.path.isfile(_ico):
+                    self.iconbitmap(_ico); break
+        except Exception:
+            pass
         self.geometry(f"{WIN_W}x{WIN_H}")
         self.minsize(760, 520)
         self.configure(bg=BG_DEEP)
