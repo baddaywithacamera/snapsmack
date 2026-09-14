@@ -529,7 +529,7 @@ class EditorWindow(QMainWindow):
         context_group.setExclusive(True)
         for key, label, tip in (
                 ("edit", "EDIT", "Crop, automatic correction and comparison"),
-                ("retouch", "RETOUCH", "Healing and red-eye correction"),
+                ("retouch", "IMPROVE", "Healing, restoration and AI-assisted improvements"),
                 ("looks", "LOOKS", "LEWKS, filters, textures and recipes"),
                 ("output", "OUTPUT", "Projects, exports and blog copies"),
                 ("view", "VIEW", "Zoom, filmstrip, preferences and help")):
