@@ -34,7 +34,7 @@ class DiscoveryScopedKeyTests(unittest.TestCase):
 
         called_types = [call.args[2] for call in mint.call_args_list]
         self.assertEqual(
-            ['sybu', 'gyss', 'ohsnap', 'tyswy', 'unzucker', 'flkrfckr', 'smackpress'],
+            ['sybu', 'gyss', 'ohsnap', 'tyswy', 'unzucker', 'flkrfckr', 'smackpress', 'bloggerflogger'],
             called_types)
         spoke = next(p for p in saved if p['site_url'] == 'https://spoke.test')
         for key_type in called_types:

@@ -21,7 +21,7 @@ UI thread; results are marshalled back with Tk's `after`.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.10"
+BUILD_VERSION = "0.7.11"
 
 # ---------------------------------------------------------------------------
 # Shared-path bootstrap + debug log. Must happen before any _shared import so
@@ -457,7 +457,8 @@ class App(tk.Tk):
         if not card:
             return
         self._health_by_url[site['url']] = health
-        overall = health.overall()
+        is_muted = site['url'] in self._muted
+        overall = SEV_MUTED if is_muted else health.overall()
         card['severity'] = overall
         colour, _word = _sev_style(overall)
         card['dot'].configure(fg=colour)
@@ -495,7 +496,12 @@ class App(tk.Tk):
             return
 
         if not health.online:
-            card['summary'].configure(text=health.error or "offline", fg=FG_ERR)
+            err = health.error or "offline"
+            # The one failure an operator can fix without us: the profile has no
+            # full hub→spoke key (extras.api_key_local), so the heartbeat 401s.
+            if "401" in err:
+                err += " — profile has no fleet key: SNAP HQ → SETTINGS → run discovery, then refresh"
+            card['summary'].configure(text=err, fg=FG_ERR)
             for spec in hb.JOB_SPECS:
                 jdot, jstate, jage, jdetail = card['job_rows'][spec.key]
                 jdot.configure(fg=FG_DIM)

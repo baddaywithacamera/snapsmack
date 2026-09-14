@@ -1,8 +1,8 @@
-"""
-SNAP HQ — SnapSmack unified desktop front end & launcher.
+﻿"""
+SNAP HQ â€” SnapSmack unified desktop front end & launcher.
 
 One door: launch every offline tool from here, and set the fleet up ONCE. Enter the
-hub login and hit Discover Fleet — it fills the SHARED stores (snap_creds + snap_profiles)
+hub login and hit Discover Fleet â€” it fills the SHARED stores (snap_creds + snap_profiles)
 that every tool reads, so SYBU / SUYB / GYSS / COLD SNAP all get every site and every
 shared secret. No per-tool setup.
 
@@ -25,9 +25,9 @@ from datetime import datetime
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
-BUILD_VERSION = "0.7.48"
+BUILD_VERSION = "0.7.49"
 
-# ── shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) ──
+# â”€â”€ shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) â”€â”€
 def _add_shared_to_path():
     base = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) \
         else os.path.dirname(os.path.abspath(__file__))
@@ -56,7 +56,7 @@ except Exception as _e:                      # pragma: no cover
     _SHARED_ERR = str(_e)
 
 # Start the run log + crash capture as early as possible so anything that goes
-# wrong during HQ startup is recorded. Filed under HQ's own namespace — it used to
+# wrong during HQ startup is recorded. Filed under HQ's own namespace â€” it used to
 # log as "snap_slapper", which buried HQ's interface/startup failures inside SNAP
 # SLAPPER's run logs and made them hard to attribute. Tools HQ launches keep their
 # own logs.
@@ -66,7 +66,7 @@ try:
 except Exception:                            # pragma: no cover
     pass
 
-# ── palette (matches the tool family: onyx + green) ─────────────────────────
+# â”€â”€ palette (matches the tool family: onyx + green) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 BG      = "#0a0a0a"
 CARD    = "#141414"
 INK     = "#e6e6e6"
@@ -84,17 +84,17 @@ def _launcher_column_count(width):
         return 2
     return 1
 
-# ── the tools SNAP HQ fronts, and where they install ─────────────────────
+# â”€â”€ the tools SNAP HQ fronts, and where they install â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # The SnapSmack shared root. This is ALSO the GYSS file-jail root (SECAUDIT 039): a
 # compromised GYSS webview is permitted to write ANYWHERE under it. So it must never
-# be a source of WILDCARD-matched launch targets — see _find_exe and SECAUDIT 044.
+# be a source of WILDCARD-matched launch targets â€” see _find_exe and SECAUDIT 044.
 def _shared_root():
     return os.path.abspath((os.environ.get("SNAPSMACK_HOME") or "").strip() or r"C:\snapsmack")
 
 
 # Candidate exe locations per tool. THUMB-DRIVE PORTABLE (2026-08-21): every path is
 # now built from _shared_root() (honours SNAPSMACK_HOME), so the whole kit runs from
-# one folder on any drive/letter — Sean's "all utils in one place" requirement. Each
+# one folder on any drive/letter â€” Sean's "all utils in one place" requirement. Each
 # path is EXACT and inside the shared root; NO wildcards anywhere, which keeps the
 # SECAUDIT 044 rule satisfied (a wildcard inside the GYSS-writable root would let a
 # compromised webview plant an arbitrary <name>.exe for the launcher to run). Tools
@@ -154,7 +154,7 @@ def _find_exe(paths):
     versioned exe name); when it matches, the most-recently-modified file wins.
 
     SECURITY (SECAUDIT 044, Finding 1): a WILDCARD candidate is REFUSED when it
-    resolves inside the shared root, because that tree is the GYSS write-jail — a
+    resolves inside the shared root, because that tree is the GYSS write-jail â€” a
     compromised webview (or a weak-ACL local user) could plant an arbitrary
     `<name>.exe` there and this launcher would execute it. Wildcards are therefore
     honoured only for out-of-jail legacy install dirs; inside the jail only the
@@ -173,8 +173,8 @@ def _find_exe(paths):
     return None
 
 
-# ── Roster-exe hash pinning (SECAUDIT 054) ───────────────────────────────────
-# The Hub launches exes that live inside the shared root — the same tree the
+# â”€â”€ Roster-exe hash pinning (SECAUDIT 054) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# The Hub launches exes that live inside the shared root â€” the same tree the
 # GYSS fs-jail can write into. Pin each exe's sha256 on first launch and verify
 # it on every launch after; a changed exe is refused until the operator says,
 # in one click, "yes, I rebuilt this on purpose." The pin ledger lives OUTSIDE
@@ -202,7 +202,7 @@ def _exe_pin_verify(path):
     try:
         with open(ledger_file, encoding="utf-8") as fh:
             ledger = json.load(fh)
-    except Exception:  # noqa: BLE001 — absent/corrupt ledger = start fresh
+    except Exception:  # noqa: BLE001 â€” absent/corrupt ledger = start fresh
         ledger = {}
     key = os.path.abspath(path).lower()
     pinned = ledger.get(key)
@@ -228,7 +228,7 @@ def _launch(path, parent=None):
         status, _pinned, current = _exe_pin_verify(path)
         if status == "changed":
             # A different exe than the one this Hub has been launching. That is
-            # either the operator's own rebuild — or exactly the swap the pin
+            # either the operator's own rebuild â€” or exactly the swap the pin
             # exists to catch. One plain question, one click.
             proceed = messagebox.askyesno(
                 "This program changed",
@@ -239,7 +239,7 @@ def _launch(path, parent=None):
                 f"not run it until you know why it changed.",
                 parent=parent)
             if not proceed:
-                return False, "Launch cancelled — the exe changed and was not trusted."
+                return False, "Launch cancelled â€” the exe changed and was not trusted."
         if status in ("new", "changed"):
             _exe_pin_store(path, current)
         subprocess.Popen([path], cwd=os.path.dirname(path))
@@ -301,7 +301,7 @@ def _try_pin_to_taskbar(shortcut):
 class Hub(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title(f"SNAP HQ — local desktop headquarters   (build {BUILD_VERSION})")
+        self.title(f"SNAP HQ â€” local desktop headquarters   (build {BUILD_VERSION})")
         self.configure(bg=BG)
         self.geometry("980x480")
         self.minsize(700, 480)
@@ -372,7 +372,7 @@ class Hub(tk.Tk):
             self._body_canvas.yview_scroll(
                 -1 if event.delta > 0 else 1, "units")
 
-    # ── header ──────────────────────────────────────────────────────────────
+    # â”€â”€ header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _build_header(self):
         h = tk.Frame(self, bg=BG)
         h.pack(fill="x", padx=18, pady=(16, 12))
@@ -382,7 +382,7 @@ class Hub(tk.Tk):
                  font=("Segoe UI Black", 22, "bold")).pack(side="left")
         tk.Label(h, text="  local desktop headquarters",
                  bg=BG, fg=DIM, font=("Segoe UI", 11)).pack(side="left", pady=(10, 0))
-        settings_b = tk.Button(h, text="⚙  SETTINGS", bg=ACCENT, fg=BG,
+        settings_b = tk.Button(h, text="âš™  SETTINGS", bg=ACCENT, fg=BG,
                                activebackground="#2ecc10", activeforeground=BG,
                                relief="flat", bd=0, font=("Segoe UI", 9, "bold"),
                                cursor="hand2", command=self._open_settings)
@@ -513,7 +513,7 @@ class Hub(tk.Tk):
         btn.bind("<Leave>", on_leave)
         return btn
 
-    # ── launcher ────────────────────────────────────────────────────────────
+    # â”€â”€ launcher â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _build_launcher(self, parent):
         card = self._card(parent, "LAUNCH")
         grid = tk.Frame(card, bg=CARD)
@@ -618,7 +618,7 @@ class Hub(tk.Tk):
             "Right-click its icon on the taskbar and choose Pin to taskbar.",
             parent=self)
 
-    # ── shared setup ─────────────────────────────────────────────────────────
+    # â”€â”€ shared setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _field(self, parent, label, key, show=None, browse=False, test=None, reveal=False):
         row = tk.Frame(parent, bg=CARD)
         row.pack(fill="x", padx=14, pady=(0, 8))
@@ -653,7 +653,7 @@ class Hub(tk.Tk):
             rb.pack(side="left", padx=(6, 0), ipadx=8, ipady=3)
             self._hoverize(rb)
         if browse:
-            bb = tk.Button(line, text="…", bg=FIELD, fg=INK, relief="flat",
+            bb = tk.Button(line, text="â€¦", bg=FIELD, fg=INK, relief="flat",
                            command=lambda v=var: self._browse(v))
             bb.pack(side="left", padx=(6, 0))
             self._hoverize(bb)
@@ -669,12 +669,12 @@ class Hub(tk.Tk):
 
     def _set_status(self, label, ok, msg):
         if label is not None:
-            label.configure(text=("✓ " if ok else "✗ ") + msg,
+            label.configure(text=("âœ“ " if ok else "âœ— ") + msg,
                             fg=ACCENT if ok else "#ff5555")
 
     def _testing(self, label):
         if label is not None:
-            label.configure(text="testing…", fg=DIM)
+            label.configure(text="testingâ€¦", fg=DIM)
             self.update_idletasks()
 
     def _test_hub(self, status):
@@ -686,7 +686,7 @@ class Hub(tk.Tk):
         try:
             _hub_info, spokes = snap_discovery.discover(url, api_key=key)
             n = len(spokes or [])
-            self._set_status(status, True, f"connected — {n} site(s)")
+            self._set_status(status, True, f"connected â€” {n} site(s)")
         except Exception as e:
             self._set_status(status, False, str(e)[:70])
 
@@ -752,9 +752,9 @@ class Hub(tk.Tk):
         if not looks_ok:
             self._set_status(status, False, "doesn't look like Google creds"); return
         if not folder:
-            self._set_status(status, True, "creds look valid — add a backup folder ID")
+            self._set_status(status, True, "creds look valid â€” add a backup folder ID")
         else:
-            self._set_status(status, True, "creds + folder set — SUYB proves the live link")
+            self._set_status(status, True, "creds + folder set â€” SUYB proves the live link")
 
     def _browse(self, var):
         p = filedialog.askopenfilename(parent=self, title="Choose credentials JSON",
@@ -763,7 +763,7 @@ class Hub(tk.Tk):
             var.set(p)
 
     def _build_setup(self, parent):
-        auth = self._card(parent, "DEVICE AUTHORIZATION  ·  one CMS licence, up to four computers")
+        auth = self._card(parent, "DEVICE AUTHORIZATION  Â·  one CMS licence, up to four computers")
         auth_row = tk.Frame(auth, bg=CARD)
         auth_row.pack(fill="x", padx=14, pady=(0, 8))
         self._device_site = tk.StringVar()
@@ -773,7 +773,7 @@ class Hub(tk.Tk):
             cell.grid(row=0, column=column, sticky="ew", padx=(0, 10))
             auth_row.grid_columnconfigure(column, weight=1)
             tk.Label(cell, text=label, bg=CARD, fg=DIM, font=("Segoe UI", 8)).pack(anchor="w")
-            entry = tk.Entry(cell, textvariable=variable, show="•" if secret else "", bg=FIELD, fg=INK,
+            entry = tk.Entry(cell, textvariable=variable, show="â€¢" if secret else "", bg=FIELD, fg=INK,
                              insertbackground=INK, relief="flat", font=("Consolas", 9))
             entry.pack(fill="x", ipady=5)
             if not secret:
@@ -788,18 +788,18 @@ class Hub(tk.Tk):
         self._device_status.pack(side="left", padx=8)
         self._show_device_auth_status()
 
-        card = self._card(parent, "HUB SETUP  ·  set once, every tool has it")
+        card = self._card(parent, "HUB SETUP  Â·  set once, every tool has it")
         self._field(card, "HUB SITE URL",   "hub_url")
-        self._field(card, "HUB API KEY",    "hub_key", show="•", test=self._test_hub)
-        self._field(card, "CLAUDE API KEY", "claude_api_key", show="•",
+        self._field(card, "HUB API KEY",    "hub_key", show="â€¢", test=self._test_hub)
+        self._field(card, "CLAUDE API KEY", "claude_api_key", show="â€¢",
                     test=lambda s: self._test_ai_provider(s, "claude", "claude_api_key"))
-        self._field(card, "GEMINI API KEY", "gemini_api_key", show="•", test=self._test_gemini)
-        self._field(card, "KIMI API KEY", "kimi_api_key", show="•", reveal=True)
-        self._field(card, "DEEPSEEK API KEY", "deepseek_api_key", show="•", reveal=True)
-        self._field(card, "CLAUDE API KEY", "claude_api_key", show="•", reveal=True)
-        self._field(card, "OPENAI API KEY", "openai_api_key", show="•", reveal=True)
+        self._field(card, "GEMINI API KEY", "gemini_api_key", show="â€¢", test=self._test_gemini)
+        self._field(card, "KIMI API KEY", "kimi_api_key", show="â€¢", reveal=True)
+        self._field(card, "DEEPSEEK API KEY", "deepseek_api_key", show="â€¢", reveal=True)
+        self._field(card, "CLAUDE API KEY", "claude_api_key", show="â€¢", reveal=True)
+        self._field(card, "OPENAI API KEY", "openai_api_key", show="â€¢", reveal=True)
         self._field(card, "GOOGLE DRIVE CREDENTIALS (json)", "google_credentials", browse=True, test=self._test_drive)
-        self._field(card, "BACKUP FOLDER ID", "drive_folder_id", show="•", reveal=True)
+        self._field(card, "BACKUP FOLDER ID", "drive_folder_id", show="â€¢", reveal=True)
         bar = tk.Frame(card, bg=CARD)
         bar.pack(fill="x", padx=14, pady=(4, 12))
         save_b = tk.Button(bar, text="SAVE SHARED CREDENTIALS", bg=INK, fg=BG,
@@ -808,7 +808,7 @@ class Hub(tk.Tk):
                            command=self._on_save_creds)
         save_b.pack(side="left", ipadx=8, ipady=4)
         self._hoverize(save_b)
-        disc_b = tk.Button(bar, text="⟳  DISCOVER FLEET", bg=ACCENT, fg=BG,
+        disc_b = tk.Button(bar, text="âŸ³  DISCOVER FLEET", bg=ACCENT, fg=BG,
                            activebackground="#2ecc10", relief="flat",
                            font=("Segoe UI", 9, "bold"), cursor="hand2",
                            command=self._on_discover)
@@ -826,12 +826,12 @@ class Hub(tk.Tk):
         payload = result.get("payload") or {}
         if status == "full":
             expiry = datetime.fromtimestamp(int(payload.get("expires_at", 0))).strftime("%Y-%m-%d")
-            text, colour = f"✓ AUTHORIZED · renew by {expiry}", ACCENT
+            text, colour = f"âœ“ AUTHORIZED Â· renew by {expiry}", ACCENT
         elif status == "grace":
             expiry = datetime.fromtimestamp(int(payload.get("grace_ends_at", 0))).strftime("%Y-%m-%d")
-            text, colour = f"! GRACE PERIOD · connect by {expiry}", "#ffb000"
+            text, colour = f"! GRACE PERIOD Â· connect by {expiry}", "#ffb000"
         else:
-            text, colour = "RESTRICTED · SNAP SLAPPER opens and exports only", "#ff5555"
+            text, colour = "RESTRICTED Â· SNAP SLAPPER opens and exports only", "#ff5555"
         self._device_status.configure(text=text, fg=colour)
         if result.get("site_url") and not self._device_site.get().strip():
             self._device_site.set(result["site_url"])
@@ -853,7 +853,7 @@ class Hub(tk.Tk):
         if creds is None:
             return
         username, password, totp = creds
-        self._device_status.configure(text="authorizing…", fg=DIM)
+        self._device_status.configure(text="authorizingâ€¦", fg=DIM)
         self.update_idletasks()
         try:
             result = snap_device_auth.enroll(
@@ -863,7 +863,7 @@ class Hub(tk.Tk):
             self._device_status.configure(text=f"authorization failed: {exc}", fg="#ff5555")
 
     def _refresh_device_auth(self):
-        self._device_status.configure(text="checking…", fg=DIM); self.update_idletasks()
+        self._device_status.configure(text="checkingâ€¦", fg=DIM); self.update_idletasks()
         try:
             self._show_device_auth_status(snap_device_auth.refresh(BUILD_VERSION))
         except Exception as exc:
@@ -912,10 +912,10 @@ class Hub(tk.Tk):
                     snap_creds.set(key, val); saved += 1
                 elif snap_creds.get(key, "").strip():
                     snap_creds.delete(key); cleared += 1
-            msg = f"✓ {saved} credential(s) saved"
+            msg = f"âœ“ {saved} credential(s) saved"
             if cleared:
                 msg += f", {cleared} cleared"
-            self._setup_status.configure(text=f"{msg} · shared vault", fg=ACCENT)
+            self._setup_status.configure(text=f"{msg} Â· shared vault", fg=ACCENT)
         except Exception as e:
             self._setup_status.configure(text=f"save failed: {e}", fg="#ff5555")
 
@@ -938,7 +938,7 @@ class Hub(tk.Tk):
             except Exception:
                 messagebox.showerror("Credentials not saved", str(e), parent=self)
             return
-        self._setup_status.configure(text="saving + discovering…", fg=DIM)
+        self._setup_status.configure(text="saving + discoveringâ€¦", fg=DIM)
         self.update_idletasks()
         try:
             summary = snap_discovery.discover_and_save(hub_url, api_key=hub_key)
@@ -956,17 +956,17 @@ class Hub(tk.Tk):
         native_failed = summary.get("native_credential_failures") or []
         if native_failed:
             self._setup_status.configure(
-                text=f"saved {n} site(s), but {len(native_failed)} native app credential(s) failed — details shown",
+                text=f"saved {n} site(s), but {len(native_failed)} native app credential(s) failed â€” details shown",
                 fg="#ff5555")
             messagebox.showerror(
                 "Some app credentials were not saved",
                 "Windows protected storage refused:\n\n" + "\n".join(
-                    f"{row['site_url']} — {row['key_type']}" for row in native_failed),
+                    f"{row['site_url']} â€” {row['key_type']}" for row in native_failed),
                 parent=self)
         else:
-            self._setup_status.configure(text=f"✓ saved + {n} site(s) into the shared store", fg=ACCENT)
+            self._setup_status.configure(text=f"âœ“ saved + {n} site(s) into the shared store", fg=ACCENT)
 
-    # ── shared profiles list ─────────────────────────────────────────────────
+    # â”€â”€ shared profiles list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     def _build_profiles(self, parent):
         card = self._card(parent, "BLOG IMAGE SETUP")
         wrap = tk.Frame(card, bg=CARD)
@@ -991,13 +991,13 @@ class Hub(tk.Tk):
         tk.Entry(root_line, textvariable=self._workflow_root_var, bg=FIELD, fg=INK,
                  insertbackground=INK, relief="flat", font=("Consolas", 9)).pack(
                      side="left", fill="x", expand=True, ipady=4)
-        tk.Button(root_line, text="CHOOSE FOLDER…", command=self._browse_workflow_root, bg=FIELD,
+        tk.Button(root_line, text="CHOOSE FOLDERâ€¦", command=self._browse_workflow_root, bg=FIELD,
                   fg=INK, relief="flat").pack(side="left", padx=(6, 0), ipadx=7, ipady=3)
         tk.Button(root_line, text="USE THIS FOLDER", command=self._save_workflow_root,
                   bg=ACCENT, fg=BG, relief="flat", font=("Segoe UI", 8, "bold")).pack(
                       side="left", padx=(6, 0), ipadx=7, ipady=3)
         tk.Label(root_row,
-                 text="Example: Main folder  ›  example.com  ›  Upload / Finished",
+                 text="Example: Main folder  â€º  example.com  â€º  Upload / Finished",
                  bg=CARD, fg=DIM, font=("Segoe UI", 8)).pack(anchor="w", pady=(4, 0))
 
         choose = tk.Frame(wrap, bg=CARD)
@@ -1017,7 +1017,7 @@ class Hub(tk.Tk):
         editor.pack(fill="both", expand=True)
         # Schema-2 sizing: max_long_edge is the ONE canonical size control (the
         # legacy landscape/portrait pair is derived from it and no longer edited
-        # here — two boxes whose values get overwritten are two dead controls).
+        # here â€” two boxes whose values get overwritten are two dead controls).
         self._site_vars = {key: tk.StringVar() for key in
             ("max_long_edge", "jpeg_quality",
              "image_resize_enabled", "export_sharpen", "handoff_dir")}
@@ -1044,7 +1044,7 @@ class Hub(tk.Tk):
         self._advanced_visible = False
         self._advanced_frame = tk.Frame(advanced, bg=CARD)
         self._advanced_button = tk.Button(
-            advanced, text="▸ Advanced image settings", bg=CARD, fg=DIM,
+            advanced, text="â–¸ Advanced image settings", bg=CARD, fg=DIM,
             activebackground=CARD, activeforeground=INK, relief="flat", bd=0,
             cursor="hand2", font=("Segoe UI", 9), command=self._toggle_advanced)
         self._advanced_button.pack(anchor="w")
@@ -1057,7 +1057,7 @@ class Hub(tk.Tk):
                              insertbackground=INK, relief="flat", font=("Consolas", 9))
             entry.grid(row=row, column=1, sticky="ew", padx=(10, 4), pady=3, ipady=4)
             if key == "handoff_dir":
-                tk.Button(self._advanced_frame, text="CHOOSE…", command=self._browse_handoff, bg=FIELD, fg=INK,
+                tk.Button(self._advanced_frame, text="CHOOSEâ€¦", command=self._browse_handoff, bg=FIELD, fg=INK,
                           relief="flat").grid(row=row, column=2, sticky="ew", pady=3)
         self._advanced_frame.grid_columnconfigure(1, weight=1)
 
@@ -1077,10 +1077,10 @@ class Hub(tk.Tk):
         self._advanced_visible = not self._advanced_visible
         if self._advanced_visible:
             self._advanced_frame.pack(fill="x", pady=(5, 0))
-            self._advanced_button.configure(text="▾ Advanced image settings")
+            self._advanced_button.configure(text="â–¾ Advanced image settings")
         else:
             self._advanced_frame.pack_forget()
-            self._advanced_button.configure(text="▸ Advanced image settings")
+            self._advanced_button.configure(text="â–¸ Advanced image settings")
 
     def _refresh_profiles(self):
         try:
@@ -1092,13 +1092,13 @@ class Hub(tk.Tk):
         menu.delete(0, "end")
         self._profile_choice_map = {}
         if not profs:
-            self._prof_choice.set("No blogs found — use FIND MY BLOGS above")
+            self._prof_choice.set("No blogs found â€” use FIND MY BLOGS above")
             self._site_status.configure(text="No blogs have been discovered yet", fg=DIM)
             return
         for index, profile in enumerate(profs):
             name = str(profile.get("name", "") or "Untitled blog").strip()
             url = str(profile.get("site_url", "") or "").strip()
-            label = f"{name}  —  {url}"
+            label = f"{name}  â€”  {url}"
             if label in self._profile_choice_map:
                 label += f" ({index + 1})"
             self._profile_choice_map[label] = index
@@ -1124,7 +1124,7 @@ class Hub(tk.Tk):
         self._site_prompt.insert("1.0", portable.get("prompt", ""))
         for key, value in portable.items():
             # Skip fields this pane doesn't edit (derived legacy pair, future
-            # schema additions) — an unknown key must never crash the window.
+            # schema additions) â€” an unknown key must never crash the window.
             if key == "prompt" or key not in self._site_vars:
                 continue
             self._site_vars[key].set("on" if value is True else "off" if value is False else str(value))
@@ -1134,7 +1134,7 @@ class Hub(tk.Tk):
             text=f"Images waiting to upload:\n  {paths['upload'] or 'Choose the main image folder above'}\n\n"
                  f"Completed uploads:\n  {paths['completed'] or 'Choose the main image folder above'}")
         synced = (profile.get("portable_sync") or {}).get("synced_at")
-        self._site_status.configure(text=("OFFLINE COPY — synced " + synced if synced else "NOT YET SYNCED"), fg=DIM)
+        self._site_status.configure(text=("OFFLINE COPY â€” synced " + synced if synced else "NOT YET SYNCED"), fg=DIM)
 
     def _browse_handoff(self):
         path = filedialog.askdirectory(parent=self, title="Choose handoff parent folder")
@@ -1198,7 +1198,7 @@ class Hub(tk.Tk):
                 result = snap_settings_sync.save(profile["site_url"], portable)
                 states = ", ".join(r.get("status", "saved") for r in result.get("results", []))
                 self._site_status.configure(
-                    text="✓ Prompt and blog settings saved" + (" — " + states if states else ""),
+                    text="âœ“ Prompt and blog settings saved" + (" â€” " + states if states else ""),
                     fg=ACCENT)
             except Exception as sync_exc:
                 # Compatibility mode is an expected rollout state, not a failed
@@ -1207,7 +1207,7 @@ class Hub(tk.Tk):
                 if "unknown action" not in str(sync_exc).lower():
                     raise
                 self._site_status.configure(
-                    text="✓ Prompt saved to the blog; image settings saved on this computer",
+                    text="âœ“ Prompt saved to the blog; image settings saved on this computer",
                     fg=ACCENT)
         except Exception as exc:
             self._site_status.configure(text="Prompt was not saved", fg="#ff5555")
@@ -1219,19 +1219,19 @@ class Hub(tk.Tk):
             self._refresh_profiles()
             self._site_status.configure(text="SYNCED " + result["synced_at"], fg=ACCENT)
         except Exception as exc:
-            self._site_status.configure(text="OFFLINE — using last synchronized copy", fg="#ff5555")
+            self._site_status.configure(text="OFFLINE â€” using last synchronized copy", fg="#ff5555")
             messagebox.showerror("Sync failed", str(exc), parent=self)
 
-    # ── prompt sync ──────────────────────────────────────────────────────────
+    # â”€â”€ prompt sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # One WHOLE-POST AI prompt per blog (the single-call prompt that fills
-    # caption / ALT / tags / colours in ONE request). It lives in two places —
+    # caption / ALT / tags / colours in ONE request). It lives in two places â€”
     # the CMS setting on each blog (GET|POST gyss/prompt) and the shared desktop
     # pool (snap_prompts). This card syncs them: PULL brings every blog's prompt
     # into the pool so you see them all in one place; PUSH sends the edited
     # prompt back to a blog. Non-destructive: a blog whose live prompt differs
     # from your local pool is reported, never silently overwritten.
     def _build_prompts(self, parent):
-        card = self._card(parent, "PROMPT SYNC  ·  one AI prompt per blog, shared across the fleet")
+        card = self._card(parent, "PROMPT SYNC  Â·  one AI prompt per blog, shared across the fleet")
         wrap = tk.Frame(card, bg=CARD)
         wrap.pack(fill="both", expand=True, padx=14, pady=(0, 12))
 
@@ -1245,7 +1245,7 @@ class Hub(tk.Tk):
                                    font=("Consolas", 10), width=30, anchor="w")
         self._psite_menu["menu"].configure(bg=FIELD, fg=INK)
         self._psite_menu.pack(side="left", padx=(8, 0))
-        pull_all = tk.Button(top, text="⟳  PULL ALL FROM FLEET", bg=ACCENT, fg=BG,
+        pull_all = tk.Button(top, text="âŸ³  PULL ALL FROM FLEET", bg=ACCENT, fg=BG,
                              activebackground="#2ecc10", relief="flat", cursor="hand2",
                              font=("Segoe UI", 9, "bold"), command=self._on_pull_all)
         pull_all.pack(side="right", ipadx=8, ipady=4)
@@ -1258,13 +1258,13 @@ class Hub(tk.Tk):
 
         bot = tk.Frame(wrap, bg=CARD)
         bot.pack(fill="x")
-        copy_b = tk.Button(bot, text="COPY FROM…", bg=FIELD, fg=INK, relief="flat",
+        copy_b = tk.Button(bot, text="COPY FROMâ€¦", bg=FIELD, fg=INK, relief="flat",
                            cursor="hand2", font=("Segoe UI", 9), command=self._on_copy_from)
         copy_b.pack(side="left", ipadx=6, ipady=3)
-        pull_one = tk.Button(bot, text="⬇  PULL THIS SITE", bg=FIELD, fg=INK, relief="flat",
+        pull_one = tk.Button(bot, text="â¬‡  PULL THIS SITE", bg=FIELD, fg=INK, relief="flat",
                              cursor="hand2", font=("Segoe UI", 9), command=self._on_pull_one)
         pull_one.pack(side="left", padx=(8, 0), ipadx=6, ipady=3)
-        push_b = tk.Button(bot, text="⬆  PUSH TO THIS SITE", bg=INK, fg=BG,
+        push_b = tk.Button(bot, text="â¬†  PUSH TO THIS SITE", bg=INK, fg=BG,
                            activebackground=ACCENT, activeforeground=BG, relief="flat",
                            cursor="hand2", font=("Segoe UI", 9, "bold"), command=self._on_push_one)
         push_b.pack(side="right", ipadx=8, ipady=4)
@@ -1356,7 +1356,7 @@ class Hub(tk.Tk):
         site = (profile.get("site_url") or "").rstrip("/")
         key = self._gyss_key_for(profile)
         if not key:
-            raise RuntimeError("no GYSS key for this site — run Discover Fleet")
+            raise RuntimeError("no GYSS key for this site â€” run Discover Fleet")
         r = requests.get(site + "/api.php", params={"route": "gyss/prompt"},
                          headers={"Authorization": "Bearer " + key,
                                   "User-Agent": f"SnapSmackHub/{BUILD_VERSION}"}, timeout=25)
@@ -1395,7 +1395,7 @@ class Hub(tk.Tk):
         if not profs:
             messagebox.showwarning("No sites", "Run Discover Fleet first.", parent=self)
             return
-        self._psync_status.configure(text="pulling from the fleet…", fg=DIM)
+        self._psync_status.configure(text="pulling from the fleetâ€¦", fg=DIM)
         self.update_idletasks()
         try:
             report = snap_prompt_sync.pull(profs, self._prompt_fetch)
@@ -1409,17 +1409,17 @@ class Hub(tk.Tk):
         differs = report.get("differs", [])
         failed = report.get("failed", [])
         msg = (f"Pulled {len(added) + len(unchanged)} blog(s) into the shared pool.\n\n"
-               f"• {len(added)} new prompt(s) added\n"
-               f"• {len(unchanged)} already matched\n")
+               f"â€¢ {len(added)} new prompt(s) added\n"
+               f"â€¢ {len(unchanged)} already matched\n")
         if differs:
-            msg += ("• " + str(len(differs)) + " differ from your local pool (left untouched): "
+            msg += ("â€¢ " + str(len(differs)) + " differ from your local pool (left untouched): "
                     + ", ".join(d["site"] for d in differs)
                     + "\n   Select one, then PULL THIS SITE to see the live copy, or PUSH to overwrite it.\n")
         if failed:
-            msg += ("• " + str(len(failed)) + " could not be reached: "
+            msg += ("â€¢ " + str(len(failed)) + " could not be reached: "
                     + ", ".join(f'{f["site"]} ({f["error"]})' for f in failed) + "\n")
         self._psync_status.configure(
-            text=f"✓ {len(added)} added · {len(differs)} differ · {len(failed)} failed",
+            text=f"âœ“ {len(added)} added Â· {len(differs)} differ Â· {len(failed)} failed",
             fg=ACCENT if not failed else "#e0a020")
         messagebox.showinfo("Prompt sync", msg, parent=self)
 
@@ -1427,7 +1427,7 @@ class Hub(tk.Tk):
         p = self._current_profile()
         if not p:
             return
-        self._psync_status.configure(text="fetching this site's live prompt…", fg=DIM)
+        self._psync_status.configure(text="fetching this site's live promptâ€¦", fg=DIM)
         self.update_idletasks()
         try:
             remote = self._prompt_fetch(p)
@@ -1437,7 +1437,7 @@ class Hub(tk.Tk):
             return
         self._ptext.delete("1.0", "end")
         self._ptext.insert("1.0", str(remote or ""))
-        self._psync_status.configure(text="✓ showing the live prompt — PUSH to keep it, or edit first", fg=ACCENT)
+        self._psync_status.configure(text="âœ“ showing the live prompt â€” PUSH to keep it, or edit first", fg=ACCENT)
 
     def _on_push_one(self):
         p = self._current_profile()
@@ -1451,7 +1451,7 @@ class Hub(tk.Tk):
                 f"uses for every new image. An empty prompt resets that blog to its built-in default.",
                 parent=self):
             return
-        self._psync_status.configure(text="pushing…", fg=DIM)
+        self._psync_status.configure(text="pushingâ€¦", fg=DIM)
         self.update_idletasks()
         try:
             ok = snap_prompt_sync.push(p, text, self._prompt_push)
@@ -1460,10 +1460,10 @@ class Hub(tk.Tk):
             self._psync_err("Push failed", e)
             return
         if ok:
-            self._psync_status.configure(text=f"✓ pushed to {key} and saved to the shared pool", fg=ACCENT)
+            self._psync_status.configure(text=f"âœ“ pushed to {key} and saved to the shared pool", fg=ACCENT)
         else:
             self._psync_status.configure(
-                text="push rejected — check the site key (re-run Discover Fleet)", fg="#ff5555")
+                text="push rejected â€” check the site key (re-run Discover Fleet)", fg="#ff5555")
 
     def _on_copy_from(self):
         keys = sorted(self._pprofiles.keys())
@@ -1472,7 +1472,7 @@ class Hub(tk.Tk):
             messagebox.showinfo("Copy from", "No other blog to copy from yet.", parent=self)
             return
         win = tk.Toplevel(self)
-        win.title("Copy prompt from…")
+        win.title("Copy prompt fromâ€¦")
         win.configure(bg=CARD)
         win.transient(self)
         tk.Label(win, text="Use which blog's prompt as a starting point?", bg=CARD, fg=INK,
@@ -1495,7 +1495,7 @@ class Hub(tk.Tk):
                 self._ptext.delete("1.0", "end")
                 self._ptext.insert("1.0", str(pool.get(src, "")))
                 self._psync_status.configure(
-                    text=f"copied {src}'s prompt into the editor — review, then PUSH", fg=ACCENT)
+                    text=f"copied {src}'s prompt into the editor â€” review, then PUSH", fg=ACCENT)
             win.destroy()
 
         use_b = tk.Button(win, text="USE THIS", bg=ACCENT, fg=BG, relief="flat",
