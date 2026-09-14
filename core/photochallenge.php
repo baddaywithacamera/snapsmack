@@ -1022,8 +1022,18 @@ function pc_sync_active_prompt_tag(PDO $pdo, array &$settings): bool {
 }
 
 function pc_activate_due_prompts(PDO $pdo, array &$settings): int {
-    $due = $pdo->query("SELECT * FROM pc_prompts WHERE status='queued' AND drop_at<=UTC_TIMESTAMP() ORDER BY drop_at LIMIT 5")
-        ->fetchAll(PDO::FETCH_ASSOC);
+    // Only a site running the challenge has pc_prompts. On the other 18 fleet
+    // sites this query threw "table doesn't exist" as an uncaught fatal and
+    // killed the fediverse cron on every tick — invisible until 2026-09-14,
+    // when cron started actually running there (OPAUDIT 014) and CRONOMETER
+    // showed "worker reported failed" fleet-wide. Not enabled = nothing to do.
+    if (!pc_enabled($settings)) return 0;
+    try {
+        $due = $pdo->query("SELECT * FROM pc_prompts WHERE status='queued' AND drop_at<=UTC_TIMESTAMP() ORDER BY drop_at LIMIT 5")
+            ->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        return 0;   // enabled but tables not created yet: the admin page creates them
+    }
     if (!$due) {
         pc_sync_active_prompt_tag($pdo, $settings);
         return 0;

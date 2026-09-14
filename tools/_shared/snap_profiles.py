@@ -152,12 +152,26 @@ def _to_disk(profile: dict) -> dict:
 def _from_disk(data: dict) -> dict:
     """On-disk -> canonical in-memory, hydrating secrets from the vault."""
     site = data.get("site_url", "")
+    extras = dict(data.get("extras") or {})
+    # save() moves every _SECRET_EXTRA_KEYS value out of extras into the vault;
+    # this is the other half. Without it, tools reading extras.api_key_local /
+    # api_key_gyss / … (CRONOMETER's heartbeat, SMACK YOUR MOUTH's moderation
+    # key) saw nothing on every profile, however many times discovery ran
+    # (2026-09-14: 25 × "auth rejected 401"). Vault-first; a value still sitting
+    # in the file (pre-migration) is kept as-is.
+    if site:
+        for field in _SECRET_EXTRA_KEYS:
+            if field == "api_key":
+                continue
+            value = snap_creds.get_site(site, field)
+            if isinstance(value, str) and value:
+                extras[field] = value
     return {
         "name":           data.get("name", ""),
         "site_url":       data.get("site_url", ""),
         "api_key":        snap_creds.get_site(site, "api_key") if site else "",
         "last_connected": data.get("last_connected"),
-        "extras":         dict(data.get("extras") or {}),
+        "extras":         extras,
         "portable":       snap_site_settings.validate_portable(data.get("portable") or {}),
         "portable_sync":  dict(data.get("portable_sync") or {}),
     }

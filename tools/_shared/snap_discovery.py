@@ -188,6 +188,22 @@ def _provision_spoke_key(site_url, api_key_local, key_type="sybu", key_value="",
     return ""
 
 
+def _provision_hub_tool_key(site_url, hub_api_key, key_type, timeout=20):
+    """Mint a per-tool key on the HUB itself.
+
+    Referenced by save_to_shared since 705D but never defined — so DISCOVER FLEET
+    died with NameError on the hub's own row before a single profile was written,
+    and no profile ever received the full fleet key (CRONOMETER 401 on all 25
+    sites, 2026-09-14). The hub has no self-referential multisite node, so the
+    spoke-only multisite/provision-key route 401s for it, and there is no
+    hub-local tool-key route yet (only suyb-data.php's backup-key action). Until
+    one exists this returns "" — the hub's profile keeps the hub key itself as
+    its credential (extras.api_key_local, set by the caller) — and discovery
+    carries on to the spokes instead of crashing.
+    """
+    return ""
+
+
 def _provision_hub_backup_key(site_url, hub_api_key, key_value, timeout=20):
     """Install the shared SUYB key on the hub through its local endpoint.
 
