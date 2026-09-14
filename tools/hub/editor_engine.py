@@ -1200,6 +1200,12 @@ class EditorDocument:
     _font_reference_cache = {}
     def __init__(self, source_path):
         self.source_path = os.path.abspath(source_path)
+        # Rendering may use a verified source extracted from a portable project,
+        # but folder browsing and recovery identity must remain attached to the
+        # photograph the user actually opened.
+        self.recorded_source_path = self.source_path
+        self.browse_source_path = self.source_path
+        self.original_filename = os.path.basename(self.source_path)
         self.adjustments = copy.deepcopy(DEFAULT_ADJUSTMENTS)
         self.geometry = {
             "rotation": 0.0, "crop": None, "flip_x": False, "flip_y": False,
@@ -1668,7 +1674,8 @@ class EditorDocument:
                 "luminance": ImageOps.grayscale(image).histogram()}
 
     def project_value(self, recovery=False):
-        value = {"version": PROJECT_VERSION, "source_path": self.source_path,
+        value = {"version": PROJECT_VERSION,
+                 "source_path": self.recorded_source_path,
                  "adjustments": self.adjustments, "geometry": self.geometry,
                  "layers": self.layers, "retouched": self.retouched,
                  "history": self.history[-MAX_HISTORY_STEPS:],
@@ -1700,9 +1707,10 @@ class EditorDocument:
             raise ValueError("Invalid SNAP SLAPPER project: the root must be an object")
         if value.get("version") != PROJECT_VERSION:
             raise ValueError("Unsupported SNAP SLAPPER project version")
-        source_path = value.get("source_path")
-        if not isinstance(source_path, str) or not source_path.strip():
+        recorded_source_path = value.get("source_path")
+        if not isinstance(recorded_source_path, str) or not recorded_source_path.strip():
             raise ValueError("Invalid SNAP SLAPPER project: source_path is missing")
+        source_path = recorded_source_path
         embedded_source = None
         if zipfile.is_zipfile(path) and isinstance(value.get("source_ingredient"), dict):
             embedded_source = _extract_embedded_source(path, value["source_ingredient"])
@@ -1763,6 +1771,22 @@ class EditorDocument:
                     raise ValueError(
                         f"Invalid SNAP SLAPPER project: layer {index + 1} filter version is unsupported")
         document = cls(source_path)
+        document.recorded_source_path = os.path.abspath(recorded_source_path)
+        ingredient = value.get("source_ingredient")
+        original_name = (ingredient.get("original_filename")
+                         if isinstance(ingredient, dict) else None)
+        if isinstance(original_name, str) and original_name.strip():
+            document.original_filename = os.path.basename(original_name)
+        if embedded_source:
+            expected_hash = ingredient.get("sha256") if isinstance(ingredient, dict) else None
+            candidate = document.recorded_source_path
+            document.browse_source_path = None
+            if os.path.isfile(candidate) and expected_hash:
+                try:
+                    if _source_sha256(candidate) == expected_hash:
+                        document.browse_source_path = candidate
+                except OSError:
+                    pass
         document.adjustments = value.get("adjustments", copy.deepcopy(DEFAULT_ADJUSTMENTS))
         document.geometry = value.get("geometry", document.geometry)
         document.layers = layers
