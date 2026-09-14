@@ -5,7 +5,7 @@ import time
 from PIL import Image
 from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QImage, QPixmap
-from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout
+from PySide6.QtWidgets import QComboBox, QDialog, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout
 import gemini_image_edit
 import stability_image_edit
 import snap_creds
@@ -39,7 +39,7 @@ class AIExpandDialog(QDialog):
         self.pending = None
         self.attempt = 0
         self.signals = _Signals(); self.signals.finished.connect(self._received); self.signals.failed.connect(self._failed)
-        self.setWindowTitle(f"Generative Expand — Stability AI — {BUILD_VERSION}"); self.resize(700, 610)
+        self.setWindowTitle(f"Generative Expand — {BUILD_VERSION}"); self.resize(700, 610)
         layout = QVBoxLayout(self)
         title = QLabel("EXPAND THE PHOTOGRAPH BEYOND ITS CAPTURED FRAME"); title.setObjectName("SectionTitle"); layout.addWidget(title)
         note = QLabel("Drag only the edge or corner you want. Generated area is measured against the original captured frame and is cumulatively limited to 20%.")
@@ -48,15 +48,22 @@ class AIExpandDialog(QDialog):
         self.canvas.set_constraint(self._within_budget)
         self.canvas.edges_changed.connect(self._edges_changed); layout.addWidget(self.canvas)
         self.measure = QLabel(); self.measure.setAlignment(Qt.AlignCenter); layout.addWidget(self.measure)
+        provider_row = QHBoxLayout(); provider_row.addWidget(QLabel("Provider"))
+        self.provider = QComboBox(); self.provider.addItems(("Gemini", "Stability AI"))
+        self.provider.currentTextChanged.connect(self._provider_changed)
+        provider_row.addWidget(self.provider, 1); layout.addLayout(provider_row)
         self.prompt = QLineEdit(); self.prompt.setPlaceholderText("Optional direction: continue the prairie and evening sky…"); layout.addWidget(self.prompt)
         self.preview = QLabel(); self.preview.setAlignment(Qt.AlignCenter); self.preview.setVisible(False); layout.addWidget(self.preview, 1)
         actions = QHBoxLayout(); actions.addStretch(1)
         cancel = QPushButton("CANCEL"); cancel.clicked.connect(self.reject); actions.addWidget(cancel)
-        self.go = QPushButton("EXPAND WITH STABILITY AI"); self.go.setObjectName("LayerAddBtn"); self.go.clicked.connect(self._start); actions.addWidget(self.go)
+        self.go = QPushButton(); self.go.setObjectName("LayerAddBtn"); self.go.clicked.connect(self._start); actions.addWidget(self.go)
         self.accept_result = QPushButton("ADD EXPANSION"); self.accept_result.setObjectName("LayerAddBtn")
         self.accept_result.clicked.connect(self._accept_result); self.accept_result.setVisible(False); actions.addWidget(self.accept_result)
         layout.addLayout(actions); self.status = QLabel("Ready"); layout.addWidget(self.status)
-        self._edges_changed(self.edges)
+        self._provider_changed(self.provider.currentText()); self._edges_changed(self.edges)
+
+    def _provider_changed(self, provider):
+        self.go.setText(f"EXPAND WITH {provider.upper()}")
 
     def _measurement(self, edges=None):
         edges = self.edges if edges is None else edges
@@ -84,24 +91,24 @@ class AIExpandDialog(QDialog):
         if area <= 0 or area > self.remaining_area:
             QMessageBox.information(self, "Expansion limit", self.status.text()); return
         sides = ", ".join(f"{name} {value:.1f}%" for name, value in self.edges.items() if value >= .1)
-        key = snap_creds.get("stability_api_key", "")
+        provider = self.provider.currentText()
+        key_name = "gemini_api_key" if provider == "Gemini" else "stability_api_key"
+        key = snap_creds.get(key_name, "")
         if not key:
             QMessageBox.information(
-                self, "Stability AI key needed",
-                "Add a Stability AI API key in SNAP HQ Settings before using Generative Expand.")
+                self, f"{provider} key needed",
+                f"Add a {provider} API key in SNAP HQ Settings before using Generative Expand.")
             return
-        if not confirm_send(self, "ai_expand_send_warning_hidden", "Send this expansion to Stability AI?",
+        if not confirm_send(self, "ai_expand_send_warning_hidden", f"Send this expansion to {provider}?",
                 f"Expand {sides}: {area:,} generated pixels ({percent:.1f}% of the original frame), producing {size[0]} × {size[1]} pixels. The working copy and displayed instruction will leave this computer. This is a Class C generative alteration. Continue?"):
             return
-        model = "Stable Image Outpaint"
+        model = (snap_creds.get("gemini_image_model", "gemini-3.1-flash-image")
+                 if provider == "Gemini" else "Stable Image Outpaint")
         instruction = self.prompt.text().strip()
-        if self.pending:
-            instruction = (instruction + " Generate a visibly different alternative to the "
-                           "previous result.").strip()
         self.attempt += 1
         self.go.setEnabled(False); self.accept_result.setEnabled(False)
         self.preview.setText(f"Generating alternative {self.attempt}…")
-        self.status.setText(f"Stability AI is extending the selected edge — attempt {self.attempt}…")
+        self.status.setText(f"{provider} is extending the selected edge — attempt {self.attempt}…")
         def work():
             try:
                 generator_edges = {
@@ -112,18 +119,23 @@ class AIExpandDialog(QDialog):
                 }
                 preview_limit = round(self.photo.width * self.photo.height *
                                       (self.remaining_area / (self.current_size[0] * self.current_size[1])))
-                result, mask, box, sent_instruction = stability_image_edit.expand(
-                    self.photo, generator_edges, instruction, key,
-                    max_generated_area=preview_limit)
+                if provider == "Gemini":
+                    result, mask, box, sent_instruction = gemini_image_edit.expand(
+                        self.photo, generator_edges, instruction, key, model=model,
+                        max_generated_area=preview_limit)
+                else:
+                    result, mask, box, sent_instruction = stability_image_edit.expand(
+                        self.photo, generator_edges, instruction, key,
+                        max_generated_area=preview_limit)
                 self.signals.finished.emit(((result, mask, box), model, sent_instruction,
-                                            area, dict(self.edges)))
+                                            area, dict(self.edges), provider))
             except Exception as error:
                 self.signals.failed.emit(str(error))
         threading.Thread(target=work, daemon=True).start()
 
     def _received(self, payload):
-        (result, mask, box), model, instruction, area, edges = payload
-        self.pending = (result, mask, box, model, instruction, area, edges)
+        (result, mask, box), model, instruction, area, edges, provider = payload
+        self.pending = (result, mask, box, provider, model, instruction, area, edges)
         self.preview.setText(""); self.preview.setPixmap(_pixmap(result)); self.preview.setVisible(True); self.canvas.setVisible(False)
         self.go.setText("GENERATE AGAIN"); self.go.setEnabled(True); self.accept_result.setVisible(True)
         self.accept_result.setEnabled(True)
@@ -131,15 +143,16 @@ class AIExpandDialog(QDialog):
 
     def _accept_result(self):
         if not self.pending: return
-        result, mask, box, model, instruction, area, edges = self.pending
+        result, mask, box, provider, model, instruction, area, edges = self.pending
         folder = os.path.join(snap_home.shared_library(), "snap_slapper", "generative"); os.makedirs(folder, exist_ok=True)
         path = os.path.join(folder, f"ai-expand-{int(time.time() * 1000)}.png"); result.save(path, "PNG")
-        self.host.apply_ai_expand(path, mask, box, "Stability AI", model, instruction,
+        provenance_provider = "Google Gemini" if provider == "Gemini" else "Stability AI"
+        self.host.apply_ai_expand(path, mask, box, provenance_provider, model, instruction,
                                   self.photo, area, edges); self.accept()
 
     def _failed(self, message):
         self._edges_changed(self.edges); self.accept_result.setEnabled(self.pending is not None)
-        self.status.setText("Stability AI could not expand the selected edge.")
+        self.status.setText(f"{self.provider.currentText()} could not expand the selected edge.")
         QMessageBox.warning(self, "Generative Expand could not finish", message)
 
 # ===== SNAPSMACK EOF =====

@@ -151,7 +151,7 @@ def test_generative_expand_grows_canvas_and_restores_original_interior(monkeypat
 
     monkeypatch.setattr(gemini_image_edit.requests, "post", lambda *_args, **_kwargs: Response())
     photo = Image.new("RGB", (20, 10), "red")
-    result, mask, box = gemini_image_edit.expand(
+    result, mask, box, _instruction = gemini_image_edit.expand(
         photo, {"right": 20}, "continue the sky", "secret")
     assert result.size == (24, 10)
     assert box == (0, 0, 20, 10)
@@ -173,7 +173,7 @@ def test_generative_expand_caps_total_generated_area_at_twenty_percent(monkeypat
 
     monkeypatch.setattr(gemini_image_edit.requests, "post", lambda *_args, **_kwargs: Response())
     photo = Image.new("RGB", (100, 50), "red")
-    result, _mask, box = gemini_image_edit.expand(
+    result, _mask, box, _instruction = gemini_image_edit.expand(
         photo, {"right": 20}, "", "secret")
     assert result.size == (120, 50)
     assert box == (0, 0, 100, 50)
@@ -205,7 +205,7 @@ def test_expand_canvas_seeds_bottom_from_the_actual_bottom_edge():
     assert canvas.getpixel((0, 4)) != (0, 0, 255)
 
 
-def test_expand_prompt_is_edge_specific_conservative_and_not_duplicated(monkeypatch):
+def test_expand_prompt_is_short_positive_and_not_duplicated(monkeypatch):
     seen = {}
 
     class Response:
@@ -222,20 +222,20 @@ def test_expand_prompt_is_edge_specific_conservative_and_not_duplicated(monkeypa
         return Response()
 
     monkeypatch.setattr(gemini_image_edit.requests, "post", fake_post)
-    gemini_image_edit.expand(
+    _result, _mask, _box, recorded_instruction = gemini_image_edit.expand(
         Image.new("RGB", (100, 50), "red"), {"left": 10},
         "continue the brick wall", "secret")
     instruction = seen["json"]["contents"][0]["parts"][0]["text"]
     parts = seen["json"]["contents"][0]["parts"]
-    assert "one continuous photograph of the same scene" in instruction
-    assert "Extend the scene outward on the left." in instruction
-    assert "Add no new focal subject" in instruction
-    assert "do not introduce a tonal division" in instruction
-    assert "as it would have appeared through a wider camera frame" in instruction
+    assert "Extend the photograph naturally into the red area" in instruction
+    assert "as though the camera captured a wider frame" in instruction
+    assert "curb" not in instruction.lower()
+    assert "boundary" not in instruction.lower()
     assert instruction.count("continue the brick wall") == 1
     assert "every white border area" not in instruction.lower()
     assert len(parts) == 3  # instruction, canvas, red-marked reference; raw mask stays local
     assert "not an explanation, mask, matte" in instruction
+    assert recorded_instruction == instruction
 
 
 def test_editor_exposes_generative_expand_with_class_c_provenance():
