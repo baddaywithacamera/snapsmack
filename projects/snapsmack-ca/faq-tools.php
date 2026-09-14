@@ -33,6 +33,10 @@ $faq_qas = <<<'HTML'
                 <p>No, and this is a rule, not a setting. Every tool treats its local store as a <em>cache of your site</em> &mdash; never a second copy of your originals. Nothing shadow-copies your RAW files into some tool folder. You archive your own work; the tools work beside it. SNAP SLAPPER reads photographs where they live and never modifies the original file. Exports are new files. If a tool ever quietly duplicated your archive, that would be a bug, and a serious one.</p>
             </div>
 
+            <div class="qa" id="q-tools-ai-record">
+                <h3>Can I turn off the AI edit record in SNAP SLAPPER?</h3>
+                <p>No. Generative Fill, Generative Expand, AI Heal, and whole-image restoration are all written into the exported file&rsquo;s metadata &mdash; tool, purpose, region, how much of the frame, provider and model, the instruction sent, and when. There is no setting that disables it and none is coming. If you want to hide that a generative model touched a photograph, you will need a third-party tool to strip the metadata, and that is your decision to make in your software, not something ours will do for you. We&rsquo;re not driving your getaway car if you rob the pixel bank. Ordinary corrections &mdash; crop, levels, colour, sharpening, a non-generative clone &mdash; are recorded as ordinary edits and carry no AI flag.</p>
+            </div>
             <div class="qa" id="q-tools-ai">
                 <h3>The AI enrichment &mdash; whose key, whose data?</h3>
                 <p>Your key, your bill, your data relationship. You pick the provider (Claude, ChatGPT, Gemini, Kimi, Deepseek), you paste your own API key into SNAP HQ once, and the tools use it. The photograph and your site's prompt go to the provider you chose; nothing goes through us. Every tool that writes for a site reads the same per-site prompt, so a caption from GYSS sounds like a caption from SMACK YOUR BATCH UP sounds like you. And it's optional: leave the key blank and the tools simply don't offer it.</p>
