@@ -302,6 +302,21 @@ class Engine:
             'copyright_text': c.get('copyright_text', ''),
         }
 
+    def shared_service_fields(self) -> dict:
+        """Reload global service credentials from SNAP HQ's shared store.
+
+        Site profiles may contain historical copies from before services became
+        global. They must never override the current protected shared values.
+        """
+        fresh = cfg_module.load()
+        fields = {
+            'gemini_api_key': fresh.get('gemini_api_key', ''),
+            'google_credentials': fresh.get('google_credentials', ''),
+            'drive_folder_id': fresh.get('drive_folder_id', ''),
+        }
+        self.config.update(fields)
+        return fields
+
     def save_config(self, fields: dict) -> None:
         """Persist POST-tab fields through config.save (which also pushes shared
         secrets and preserves [ui] keys)."""
@@ -1266,12 +1281,13 @@ class Engine:
         when the profile leaves them blank (same as _apply_profile_to_post)."""
         p = profile_manager.load_profile(name) or {}
         c = self.config
+        services = self.shared_service_fields()
         return {
             'url': p.get('url', ''),
             'api_key': p.get('api_key', ''),
-            'google_credentials': p.get('google_credentials', '') or c.get('google_credentials', ''),
-            'drive_folder_id': p.get('drive_folder_id', '') or c.get('drive_folder_id', ''),
-            'gemini_api_key': p.get('gemini_api_key', '') or c.get('gemini_api_key', ''),
+            'google_credentials': services['google_credentials'],
+            'drive_folder_id': services['drive_folder_id'],
+            'gemini_api_key': services['gemini_api_key'],
             'copyright_text': p.get('copyright_text', ''),
             'default_category': p.get('default_category', ''),
             'default_album': p.get('default_album', ''),
