@@ -1,7 +1,7 @@
 ================================================================================
 
                         SMACK PUBLIC LICENSE (SPL)
-                               Version 2.2
+                               Version 2.3
 
           Copyright (c) 2026 Sean McCormick (sean@baddaywithacamera.ca)
 
@@ -37,6 +37,16 @@ that the user installs -- is set out in Section 7.
 "Software" means the SNAPSMACK codebase and all associated files distributed
 under this license, including the CMS, companion desktop tools, skins, and
 documentation.
+
+"Companion desktop tools" means every desktop or command-line program in the
+codebase, whether distributed as source, as a packaged executable, or through
+an installer or updater, including without limitation: SNAP HQ, SNAP SLAPPER,
+COLD SNAP, GET YOUR SHIT SORTED, SMACK YOUR BATCH UP, SMACK UP YOUR BACKUP,
+SMACK YOUR MOUTH, SHOTS FIRED, CRONOMETER, OH SNAP, SMACKPRESS, BLOGGER
+FLOGGER, UNZUCKER, FLKR FCKR, TAKE YOUR SHIT WITH YOU, the SMACK CENTRAL
+operator tools, and any tool added to the codebase after this version. A tool
+is covered by this license whether or not it is named here. Renaming a tool
+does not remove it from the Software.
 
 "Fork" means any derivative work, redistribution, rebranding, or hosted
 instance of the Software or any substantial portion thereof.
@@ -245,11 +255,15 @@ lost again.
 --------------------------------------------------------------------------------
 
 This Software includes third-party components subject to their own respective
-licenses. Users and Forks must respect the terms for fjGallery (MIT); the
-DotMatrix, Tiny5, Blackcasper, and FlottFlott fonts (SIL OFL); and the Qt
-framework, used through the PySide6 bindings (GNU Lesser General Public
-License, version 3). Detailed license texts and notices for these components
-are provided in the /licenses directory of the installation.
+licenses. Users and Forks must respect their terms. They include: fjGallery
+(MIT); the bundled fonts, each under its own license as filed; the Qt
+framework, used by the companion desktop tools through the PySide6 bindings
+(GNU Lesser General Public License, version 3); and the Python packages the
+desktop tools depend on -- among them Pillow, NumPy, OpenCV, Requests,
+cryptography, and psd-tools -- each under its own permissive license. The
+authoritative list, with license texts and notices, is the /licenses
+directory of the installation and the repository; where this paragraph and
+that directory differ, the directory governs.
 
 Where a component is provided under the GNU Lesser General Public License
 (LGPL), the Software and any Fork honour that license's terms, including the
@@ -278,9 +292,10 @@ incorporation, and is expressly permitted, including where that program is
 licensed under the GPL. Such a program is not part of the Software, is not a
 Fork, is not distributed with the Software, and its license does not extend to
 the Software. RawTherapee (GPLv3), used as an optional external raw processor
-invoked through its command-line interface, is permitted on this basis. The
-Software and any Fork must not bundle, redistribute, embed, or link the code
-of any such program.
+invoked through its command-line interface, is permitted on this basis; so
+are darktable and xpano, used the same way, and any other external program
+noted in the /licenses directory. The Software and any Fork must not bundle,
+redistribute, embed, or link the code of any such program.
 
 
 --------------------------------------------------------------------------------
@@ -308,16 +323,93 @@ without regard to conflict of law principles.
 
 
 --------------------------------------------------------------------------------
-10. DISCLAIMER
+10. DISCLAIMER, AND YOUR RESPONSIBILITY FOR YOUR OWN DATA
 --------------------------------------------------------------------------------
 
-This software is provided "as is," without warranty of any kind, express or
-implied, including but not limited to warranties of merchantability, fitness
-for a particular purpose, or non-infringement. In no event shall the author
-or AI Co-Authors be liable for any claim, damages, or other liability,
-whether in an action of contract, tort, or otherwise, arising from, out of,
-or in connection with the software or the use or other dealings in the
-software.
+10.1  NO WARRANTY
+
+     This software is provided "as is," without warranty of any kind,
+     express or implied, including but not limited to warranties of
+     merchantability, fitness for a particular purpose, or
+     non-infringement. In no event shall the author or AI Co-Authors be
+     liable for any claim, damages, or other liability, whether in an
+     action of contract, tort, or otherwise, arising from, out of, or in
+     connection with the software or the use or other dealings in the
+     software.
+
+10.2  YOUR DATA IS YOURS, AND SO IS KEEPING IT SAFE
+
+     The Software is built so that nobody but you holds your photographs,
+     your database, your credentials, or your site. That is the point of
+     it. The unavoidable other half is that nobody but you is keeping them
+     safe. By using the Software or any companion desktop tool you accept
+     that you alone are responsible for the safekeeping of your own
+     information and your own data, including all of the following:
+
+     (a) BACKUPS. The author operates no backup service, holds no copy of
+         your site, and cannot restore anything. SMACK UP YOUR BACKUP and
+         TAKE YOUR SHIT WITH YOU are tools that run on your computer and
+         write files you must then keep somewhere safe; running a tool is
+         not the same as having a backup you have checked. If you do not
+         use them, or you use a platform they do not support, you are
+         responsible for exporting your database and files from your host
+         yourself. A backup that has never been restored is a hope, not a
+         backup.
+
+     (b) ORIGINALS. The companion desktop tools treat their local store as
+         a cache of your site and never make a second copy of your original
+         photographs. Archiving your originals, and any finished exports
+         you care about, is your job. The tools work beside your archive;
+         they do not replace it.
+
+     (c) CREDENTIALS AND KEYS. Passwords, API keys, hub keys, device keys,
+         two-factor secrets, and recovery codes live on your machines and
+         in your accounts. Keep them safe, keep them current, and keep
+         copies where you can find them. If you lose them the author
+         cannot recover them, because the author never had them.
+
+     (d) AI PROVIDERS. Where a tool sends text or images to a third-party
+         AI provider, it does so using your key, under your account, and
+         subject to that provider's terms, retention, and privacy
+         practices -- none of which the author controls. You decide what
+         to send. Captions, alt text, looks, fills, and other AI output are
+         suggestions you are responsible for reviewing before you publish
+         them.
+
+     (e) YOUR HOST AND YOUR SERVER. The Software runs on hosting you
+         choose. Its limits, outages, data loss, security failures, and
+         terms are between you and your host. The author has no access to
+         your server, by design, and therefore no ability to intervene on
+         it. Fleet and network alerts, where present, only inform; nothing
+         in the Software can lock you out or reach in, and nothing in it
+         can reach in to rescue you either.
+
+     (f) COMMANDS THAT CHANGE YOUR SITE. Several companion desktop tools
+         publish to, modify, reorder, or delete content on your server when
+         you tell them to, and the importers rewrite large amounts of data
+         in one pass. Read what a tool says it is about to do, confirm the
+         target site, and check the result. A command you confirmed is
+         yours.
+
+     (g) METADATA AND PROVENANCE. The Software writes metadata, including
+         the record of generative-AI edits described in the SNAP SLAPPER
+         provenance policy, into the files it exports. That record is a
+         statement of what happened, not a lock: other software can strip
+         it, and the author is not responsible for what happens to a file
+         after it leaves the Software. Likewise, the Software preserves or
+         removes camera metadata (including location data) according to
+         your settings; reviewing what an exported file carries before you
+         publish it is your responsibility.
+
+     (h) THE NETWORK. Federation, directories, challenges, and relays send
+         copies of what you publish to other people's servers, where they
+         may be cached, copied, or kept beyond your control and outside the
+         author's. Publishing is publishing.
+
+     None of this narrows Section 10.1. It spells out, so that no one can
+     say they were not told, that the author and the AI Co-Authors accept
+     no responsibility for loss of, damage to, exposure of, or inability
+     to recover your data, credentials, or content, however it happens.
 
 
 ================================================================================
