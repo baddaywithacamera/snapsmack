@@ -69,11 +69,13 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
     image = image.convert("RGB")
     mask = mask.convert("L").resize(image.size, Image.Resampling.LANCZOS)
     box, work_image, work_mask = focus_region(image, mask)
-    marked = marked_selection(work_image, work_mask)
     if operation == "expand":
         task = (
-            "Extend the photograph naturally into the red area, as though the camera "
-            "captured a wider frame."
+            "Seamless photographic outpainting. Extend the visual scene outward into "
+            "the neutral grey margin to create a natural wider camera frame. Continue "
+            "local textures, surfaces and structures across the edge while matching "
+            "perspective, lighting, colour, focus and sensor noise. Do not add a new "
+            "focal subject, person, vehicle, text or clutter."
         )
         if prompt.strip():
             task += " " + prompt.strip()
@@ -98,11 +100,10 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
         )
     if operation == "expand":
         instruction = (
-            "Edit the FIRST image and return the complete expanded photograph, not an "
-            "explanation, mask, matte, diagram, or marked reference. The SECOND image "
-            "marks the outpainting target in RED; the red paint is an annotation and "
-            "must not appear in the result. " + task + " Do not alter anything outside "
-            "the marked border region."
+            "IMAGE 1 is the original reference photograph. IMAGE 2 is the target canvas "
+            "with the photograph positioned beside a neutral grey margin. Return IMAGE "
+            "2 as a complete photograph, not an explanation, mask, matte or diagram. "
+            + task
         )
     else:
         instruction = (
@@ -115,12 +116,25 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
         )
     if operation == "heal" and prompt.strip():
         instruction += " Additional instruction: " + prompt.strip()
-    parts = [
-        {"text": instruction},
-        {"inlineData": {"mimeType": "image/png", "data": _png_data(work_image)}},
-        {"inlineData": {"mimeType": "image/png", "data": _png_data(marked)}},
-    ]
-    if operation != "expand":
+    if operation == "expand":
+        # The zero-valued mask area is the unexpanded reference. Sending it before the
+        # clean grey-padded canvas avoids teaching Gemini that a coloured annotation or
+        # repeated edge pixels are photographic content.
+        locked = work_mask.point(lambda value: 255 if value < 128 else 0)
+        reference_box = locked.getbbox()
+        reference = (work_image.crop(reference_box) if reference_box else work_image)
+        parts = [
+            {"text": instruction},
+            {"inlineData": {"mimeType": "image/png", "data": _png_data(reference)}},
+            {"inlineData": {"mimeType": "image/png", "data": _png_data(work_image)}},
+        ]
+    else:
+        marked = marked_selection(work_image, work_mask)
+        parts = [
+            {"text": instruction},
+            {"inlineData": {"mimeType": "image/png", "data": _png_data(work_image)}},
+            {"inlineData": {"mimeType": "image/png", "data": _png_data(marked)}},
+        ]
         parts.append({"inlineData": {
             "mimeType": "image/png", "data": _png_data(work_mask)}})
     payload = {
@@ -176,29 +190,35 @@ def expansion_geometry(size, edges):
     return pads, out_size, generated_area
 
 
-def edge_extended_canvas(image, pads):
-    """Seed each new border from the nearest captured edge pixels."""
+def neutral_extended_canvas(image, pads, fill=(128, 128, 128)):
+    """Place the photograph on a larger canvas with neutral expansion margins."""
     image = image.convert("RGB")
     left, right = pads["left"], pads["right"]
     top, bottom = pads["top"], pads["bottom"]
-    width = image.width + left + right
-    horizontal = Image.new("RGB", (width, image.height))
-    horizontal.paste(image, (left, 0))
-    if left:
-        horizontal.paste(image.crop((0, 0, 1, image.height)).resize(
-            (left, image.height), Image.Resampling.NEAREST), (0, 0))
-    if right:
-        horizontal.paste(image.crop((image.width - 1, 0, image.width, image.height)).resize(
-            (right, image.height), Image.Resampling.NEAREST), (left + image.width, 0))
-    canvas = Image.new("RGB", (width, image.height + top + bottom))
-    canvas.paste(horizontal, (0, top))
-    if top:
-        canvas.paste(horizontal.crop((0, 0, width, 1)).resize(
-            (width, top), Image.Resampling.NEAREST), (0, 0))
-    if bottom:
-        canvas.paste(horizontal.crop((0, image.height - 1, width, image.height)).resize(
-            (width, bottom), Image.Resampling.NEAREST), (0, top + image.height))
+    canvas = Image.new(
+        "RGB", (image.width + left + right, image.height + top + bottom), fill)
+    canvas.paste(image, (left, top))
     return canvas
+
+
+# Compatibility name for older callers. Expansion margins are deliberately no longer
+# populated by stretching one captured edge pixel.
+edge_extended_canvas = neutral_extended_canvas
+
+
+def _expand_one_edge(image, side, pixels, prompt, api_key, model, timeout):
+    pads = {name: 0 for name in ("left", "top", "right", "bottom")}
+    pads[side] = pixels
+    canvas = neutral_extended_canvas(image, pads)
+    offset = (pads["left"], pads["top"])
+    box = (offset[0], offset[1], offset[0] + image.width, offset[1] + image.height)
+    mask = Image.new("L", canvas.size, 255)
+    ImageDraw.Draw(mask).rectangle((box[0], box[1], box[2] - 1, box[3] - 1), fill=0)
+    generated, instruction = heal(
+        canvas, mask, prompt, api_key, model=model, timeout=timeout,
+        operation="expand", return_instruction=True)
+    generated.paste(image, offset)
+    return generated, instruction
 
 
 def expand(image, edges, prompt, api_key, model="gemini-3.1-flash-image", timeout=300,
@@ -214,13 +234,21 @@ def expand(image, edges, prompt, api_key, model="gemini-3.1-flash-image", timeou
         raise ValueError("Generative Expand is limited to 20% of the original frame area.")
     box = (pads["left"], pads["top"], pads["left"] + image.width,
            pads["top"] + image.height)
-    canvas = edge_extended_canvas(image, pads)
+    # Isolate semantic zones. A multi-edge user gesture stays one operation locally,
+    # while Gemini receives one rectangular edge at a time. Each completed pass becomes
+    # immutable context for the next pass.
+    generated = image
+    sent_instruction = ""
+    for side in ("left", "right", "top", "bottom"):
+        if pads[side]:
+            generated, sent_instruction = _expand_one_edge(
+                generated, side, pads[side], str(prompt or "").strip(), api_key,
+                model, timeout)
     mask = Image.new("L", size, 255)
     ImageDraw.Draw(mask).rectangle(
         (box[0], box[1], box[2] - 1, box[3] - 1), fill=0)
-    generated, sent_instruction = heal(
-        canvas, mask, str(prompt or "").strip(), api_key, model=model,
-        timeout=timeout, operation="expand", return_instruction=True)
+    if generated.size != size:
+        raise RuntimeError("Gemini expansion passes returned an unexpected canvas size.")
     generated.paste(image, box[:2])
     return generated, mask, box, sent_instruction
 
