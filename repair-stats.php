@@ -6,6 +6,8 @@
  * bot rule (one page, no referrer, never seen again that day = a fetcher, not
  * a reader), then rebuild that day's snap_stats_daily row. Nothing is deleted.
  * Idempotent: a second run reclassifies zero rows and rebuilds the same totals.
+ * Paced (four index-range queries per day, then a pause): about a minute per
+ * site for 365 days — a background hum on the DB box, not a spike.
  *
  * Why: on 2026-08-29 the fleet's "human" line fell ~65%. It was not readers
  * leaving — readers clicking through the site went UP — it was a pool of
@@ -47,19 +49,17 @@ $site  = basename($base);
 
 if (!$apply) {
     // Dry run: count what the rule WOULD move, per day, without touching a row.
+    // One pass over the table grouped by (day, visitor); no join back.
     $rows = $pdo->query("
-        SELECT DATE(s.hit_at) AS d, COUNT(*) AS would_move
-        FROM snap_stats s
-        JOIN (
-            SELECT DATE(hit_at) AS d, ip_hash
+        SELECT d, COUNT(*) AS would_move FROM (
+            SELECT DATE(hit_at) AS d, ip_hash,
+                   COUNT(*) AS n, SUM(is_bot = 0 AND referrer_host IS NULL) AS direct_human
             FROM snap_stats
-            WHERE DATE(hit_at) < CURDATE()
+            WHERE hit_at < CURDATE()
             GROUP BY DATE(hit_at), ip_hash
-            HAVING COUNT(*) = 1
-        ) one ON one.ip_hash = s.ip_hash AND one.d = DATE(s.hit_at)
-        WHERE s.is_bot = 0 AND s.referrer_host IS NULL
-        GROUP BY DATE(s.hit_at)
-        ORDER BY d DESC
+        ) v
+        WHERE n = 1 AND direct_human = 1
+        GROUP BY d ORDER BY d DESC
     ")->fetchAll(PDO::FETCH_ASSOC);
     $total = 0;
     foreach ($rows as $r) { $total += (int)$r['would_move']; }
