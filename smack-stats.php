@@ -285,24 +285,27 @@ if ($table_exists) {
     $stmt->execute([$date_from, $date_to]);
     $t3_countries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Visitor flow: where did they go next?
-    // For image pages, what page_type did the next hit from the same ip_hash go to?
+    // Visitor flow: where did they go next? The next hit from the same visitor
+    // (ip_hash) within 30 minutes, as one pass with a window function — one
+    // sort, linear. The previous form was a triple self-join with a correlated
+    // subquery (rows x rows per visitor); on a busy hub over 90 days it ran for
+    // minutes and pinned the shared DB box every time this page was opened
+    // (2026-09-14). Belt and braces: MariaDB's max_statement_time caps it at
+    // 15 s, and a failure just leaves the panel empty.
     $stmt = $pdo->prepare("
-        SELECT
-            s1.page_type as from_type,
-            s2.page_type as to_type,
-            COUNT(*) as transitions
-        FROM snap_stats s1
-        JOIN snap_stats s2 ON s1.ip_hash = s2.ip_hash
-            AND s2.hit_at > s1.hit_at
-            AND s2.hit_at <= DATE_ADD(s1.hit_at, INTERVAL 30 MINUTE)
-            AND s2.id = (
-                SELECT MIN(s3.id) FROM snap_stats s3
-                WHERE s3.ip_hash = s1.ip_hash AND s3.hit_at > s1.hit_at
-                  AND s3.hit_at <= DATE_ADD(s1.hit_at, INTERVAL 30 MINUTE)
-            )
-        WHERE s1.hit_at >= ? AND s1.hit_at <= ? AND s1.is_bot = 0
-        GROUP BY s1.page_type, s2.page_type
+        SET STATEMENT max_statement_time=15 FOR
+        SELECT from_type, to_type, COUNT(*) AS transitions
+        FROM (
+            SELECT page_type AS from_type,
+                   hit_at,
+                   LEAD(page_type) OVER (PARTITION BY ip_hash ORDER BY hit_at, id) AS to_type,
+                   LEAD(hit_at)    OVER (PARTITION BY ip_hash ORDER BY hit_at, id) AS next_at
+            FROM snap_stats
+            WHERE hit_at >= ? AND hit_at <= ? AND is_bot = 0
+        ) t
+        WHERE to_type IS NOT NULL
+          AND next_at <= DATE_ADD(hit_at, INTERVAL 30 MINUTE)
+        GROUP BY from_type, to_type
         ORDER BY transitions DESC
         LIMIT 20
     ");
@@ -310,7 +313,7 @@ if ($table_exists) {
         $stmt->execute([$date_from, $date_to]);
         $t3_flow = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        // Flow query is expensive — gracefully degrade on large datasets
+        // Timed out or an older server without window functions: no panel, no harm.
         $t3_flow = [];
     }
 }
