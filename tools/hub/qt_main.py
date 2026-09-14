@@ -46,6 +46,7 @@ MIGRATION_ROSTER = [
     ("BLOGGER FLOGGER", "Blogger → SMACKTALK", [os.path.join(core._R, "blogger-flogger", "blogger-flogger.exe")]),
     ("UNZUCKER", "Instagram → GRAMOFSMACK", [os.path.join(core._R, "unzucker", "unzucker.exe")]),
     ("FLKR FCKR", "Flickr → SMACKONEOUT", [os.path.join(core._R, "flkr-fckr", "flkr-fckr.exe")]),
+    ("FED UP", "Fediverse → SnapSmack", [os.path.join(core._R, "fed-up", "fed-up.exe")]),
 ]
 
 
