@@ -41,6 +41,7 @@ $check('AP reader dereferences bare ids',  str_contains($core, "\$obj = is_array
 
 // 3. backfill + forwarding
 $check('backfill exists and keeps original dates', str_contains($core, 'function sv_backfill_community_comments(') && str_contains($core, "(string)(\$r['created_at'] ?: date('Y-m-d H:i:s'))"));
+$check('backfill joins the COMMUNITY users table', str_contains($core, "LEFT JOIN snap_community_users u ON u.id = c.user_id") && !str_contains($core, "LEFT JOIN snap_users u ON u.id = c.user_id"));
 $check('backfill skips already-mirrored', str_contains($core, "if (\$exists->fetchColumn()) { \$skipped++; continue; }"));
 $check('backfill runs once per version from cron', str_contains($cron, 'sv_backfill_community_comments_once($pdo, $settings);'));
 $check('inbound reply is forwarded to followers', str_contains($core, 'sv_forward_to_followers($pdo, $activity, $actor_id);'));
