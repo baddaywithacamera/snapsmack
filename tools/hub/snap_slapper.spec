@@ -23,6 +23,7 @@ for _path in (_src, _shared_dir):
 _hidden = collect_submodules('slapper_qt') + [
     'editor_engine', 'built_in_lewks', 'found_textures', 'texture_assets',
     'photo_manager', 'slapper_filters', 'lewk_again', 'gemini_image_edit',
+    'stability_image_edit',
     'slapper_provenance',
     'snap_home', 'snap_log', 'snap_profiles', 'snap_creds', 'snap_vault',
     'snap_device_auth', 'snap_native_creds', 'cryptography',

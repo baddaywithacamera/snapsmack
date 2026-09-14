@@ -2338,7 +2338,7 @@ class EditorWindow(QMainWindow):
         return (original_size, (current_width, current_height), used,
                 max(0, round(original_area * .20) - used))
 
-    def apply_ai_expand(self, path, mask, content_box, model, instruction, input_image,
+    def apply_ai_expand(self, path, mask, content_box, provider, model, instruction, input_image,
                         generated_area_pixels=0, edges=None):
         """Add one undoable canvas-extension layer with Class C provenance."""
         with Image.open(path) as generated:
@@ -2353,7 +2353,7 @@ class EditorWindow(QMainWindow):
             "expanded_edges": dict(edges or {}),
             "provenance": slapper_provenance.new_ai_operation(
                 operation_class="C", tool_name="Generative Expand",
-                purpose="canvas expansion", provider="Google Gemini", model=model,
+                purpose="canvas expansion", provider=provider, model=model,
                 instruction=instruction, sent_mask=mask, input_image=input_image,
                 output_image=output_image, app_version=BUILD_VERSION,
                 canvas_extension=True, scene_invention=True),
