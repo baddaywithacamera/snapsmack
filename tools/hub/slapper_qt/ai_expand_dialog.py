@@ -52,6 +52,7 @@ class AIExpandDialog(QDialog):
         self.provider = QComboBox(); self.provider.addItems(("Gemini", "Stability AI"))
         self.provider.currentTextChanged.connect(self._provider_changed)
         provider_row.addWidget(self.provider, 1); layout.addLayout(provider_row)
+        self.provider_note = QLabel(); self.provider_note.setWordWrap(True); layout.addWidget(self.provider_note)
         self.prompt = QLineEdit(); self.prompt.setPlaceholderText("Optional direction: continue the prairie and evening sky…"); layout.addWidget(self.prompt)
         self.preview = QLabel(); self.preview.setAlignment(Qt.AlignCenter); self.preview.setVisible(False); layout.addWidget(self.preview, 1)
         actions = QHBoxLayout(); actions.addStretch(1)
@@ -64,6 +65,10 @@ class AIExpandDialog(QDialog):
 
     def _provider_changed(self, provider):
         self.go.setText(f"EXPAND WITH {provider.upper()}")
+        self.provider_note.setText(
+            "Gemini image generation has no free API tier; Google requires a billing-enabled project."
+            if provider == "Gemini" else
+            "Stability AI outpainting uses paid credits from your Stability account.")
 
     def _measurement(self, edges=None):
         edges = self.edges if edges is None else edges
