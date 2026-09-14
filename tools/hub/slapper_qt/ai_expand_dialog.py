@@ -36,6 +36,7 @@ class AIExpandDialog(QDialog):
         self.original_area = self.original_size[0] * self.original_size[1]
         self.edges = {name: 0.0 for name in ("left", "top", "right", "bottom")}
         self.pending = None
+        self.attempt = 0
         self.signals = _Signals(); self.signals.finished.connect(self._received); self.signals.failed.connect(self._failed)
         self.setWindowTitle(f"Generative Expand — Gemini — {BUILD_VERSION}"); self.resize(700, 610)
         layout = QVBoxLayout(self)
@@ -80,7 +81,14 @@ class AIExpandDialog(QDialog):
                 f"Expand {sides}: {area:,} generated pixels ({percent:.1f}% of the original frame), producing {size[0]} × {size[1]} pixels. The working copy and displayed instruction will leave this computer. This is a Class C generative alteration. Continue?"):
             return
         key = snap_creds.get("gemini_api_key", ""); model = snap_creds.get("gemini_image_model", "gemini-3.1-flash-image")
-        instruction = self.prompt.text().strip(); self.go.setEnabled(False); self.status.setText("Gemini is extending the selected edge…")
+        instruction = self.prompt.text().strip()
+        if self.pending:
+            instruction = (instruction + " Generate a visibly different alternative to the "
+                           "previous result.").strip()
+        self.attempt += 1
+        self.go.setEnabled(False); self.accept_result.setEnabled(False)
+        self.preview.setText(f"Generating alternative {self.attempt}…")
+        self.status.setText(f"Gemini is extending the selected edge — attempt {self.attempt}…")
         def work():
             try:
                 generator_edges = {
@@ -102,9 +110,10 @@ class AIExpandDialog(QDialog):
     def _received(self, payload):
         (result, mask, box), model, instruction, area, edges = payload
         self.pending = (result, mask, box, model, instruction, area, edges)
-        self.preview.setPixmap(_pixmap(result)); self.preview.setVisible(True); self.canvas.setVisible(False)
+        self.preview.setText(""); self.preview.setPixmap(_pixmap(result)); self.preview.setVisible(True); self.canvas.setVisible(False)
         self.go.setText("GENERATE AGAIN"); self.go.setEnabled(True); self.accept_result.setVisible(True)
-        self.status.setText("Preview ready — add it, generate again, or cancel.")
+        self.accept_result.setEnabled(True)
+        self.status.setText(f"Preview {self.attempt} ready — add it, generate again, or cancel.")
 
     def _accept_result(self):
         if not self.pending: return
@@ -114,7 +123,8 @@ class AIExpandDialog(QDialog):
         self.host.apply_ai_expand(path, mask, box, model, instruction, self.photo, area, edges); self.accept()
 
     def _failed(self, message):
-        self._edges_changed(self.edges); self.status.setText("Gemini could not expand the selected edge.")
+        self._edges_changed(self.edges); self.accept_result.setEnabled(self.pending is not None)
+        self.status.setText("Gemini could not expand the selected edge.")
         QMessageBox.warning(self, "Generative Expand could not finish", message)
 
 # ===== SNAPSMACK EOF =====
