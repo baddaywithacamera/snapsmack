@@ -1564,25 +1564,6 @@ class EditorDocument:
         for layer_number, layer in enumerate(self.layers, 1):
             if not layer.get("visible", True):
                 continue
-            if layer.get("type") == "generative_expand":
-                path = layer.get("path", "")
-                if not os.path.isfile(path):
-                    raise FileNotFoundError("The Generative Expand result is missing")
-                expanded = _open_layer_image(path)
-                original_size = expanded.size
-                if max_size:
-                    expanded.thumbnail(max_size, Image.Resampling.LANCZOS)
-                sx = expanded.width / original_size[0]
-                sy = expanded.height / original_size[1]
-                box = layer.get("content_box", [0, 0, original_size[0], original_size[1]])
-                scaled_box = (round(box[0] * sx), round(box[1] * sy),
-                              round(box[2] * sx), round(box[3] * sy))
-                interior = image.resize(
-                    (max(1, scaled_box[2] - scaled_box[0]),
-                     max(1, scaled_box[3] - scaled_box[1])), Image.Resampling.LANCZOS)
-                expanded.paste(interior, scaled_box[:2])
-                image = expanded.convert("RGBA")
-                continue
             if layer.get("type") == "adjustment":
                 adjusted = apply_adjustments(image.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
                 top = adjusted
@@ -1748,12 +1729,6 @@ class EditorDocument:
         for index, layer in enumerate(layers):
             if not isinstance(layer, dict):
                 raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} is not an object")
-            if layer.get("type") == "generative_expand":
-                box = layer.get("content_box")
-                if (not isinstance(box, list) or len(box) != 4 or
-                        not all(isinstance(value, (int, float)) for value in box)):
-                    raise ValueError(
-                        f"Invalid SNAP SLAPPER project: layer {index + 1} expand bounds are invalid")
             mask = layer.get("mask", "")
             if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
                 raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} mask is invalid")

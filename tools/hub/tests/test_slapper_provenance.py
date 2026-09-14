@@ -92,37 +92,6 @@ def test_export_record_redacts_credentials_and_private_paths():
     assert "instruction_verbatim" not in record
 
 
-def test_expand_layer_changes_canvas_without_replacing_interior(tmp_path):
-    source = tmp_path / "source.png"
-    Image.new("RGB", (10, 10), "red").save(source)
-    generated = tmp_path / "expanded.png"
-    Image.new("RGB", (14, 14), "blue").save(generated)
-    document = editor_engine.EditorDocument(str(source))
-    document.layers.append({
-        "id": "expand", "name": "Generative Expand",
-        "type": "generative_expand", "path": str(generated),
-        "content_box": [2, 2, 12, 12], "visible": True,
-        "opacity": 1.0, "blend": "normal",
-    })
-    result = document.render()
-    assert result.size == (14, 14)
-    assert result.getpixel((0, 0))[:3] == (0, 0, 255)
-    assert result.getpixel((5, 5))[:3] == (255, 0, 0)
-
-
-def test_expand_provenance_declares_trained_algorithmic_composite():
-    mask = Image.new("L", (12, 10), 0)
-    operation = slapper_provenance.new_ai_operation(
-        operation_class="C", tool_name="Generative Expand",
-        purpose="canvas expansion", provider="Google Gemini", model="test",
-        instruction="continue right edge", sent_mask=mask,
-        input_image=Image.new("RGB", (10, 10)),
-        output_image=Image.new("RGB", (12, 10)), app_version="test",
-        canvas_extension=True, scene_invention=True)
-    assert operation["digital_source_type"] == \
-        "compositeWithTrainedAlgorithmicMedia"
-
-
 def test_verbatim_instruction_stays_in_project_and_out_of_export(tmp_path):
     source = tmp_path / "source.png"
     Image.new("RGB", (8, 8), "gray").save(source)

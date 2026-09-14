@@ -188,13 +188,12 @@ class SettingsDialog(QDialog):
         self.fields = {}; self.credential_test = None
         testable = {
             "gemini_api_key": "gemini", "claude_api_key": "claude",
-            "stability_api_key": "stability", "openai_api_key": "openai",
+            "openai_api_key": "openai",
             "kimi_api_key": "kimi", "deepseek_api_key": "deepseek",
         }
         for label, key, secret in (
             ("Hub site URL", "hub_url", False), ("Hub API key", "hub_key", True),
             ("Gemini API key", "gemini_api_key", True), ("Claude API key", "claude_api_key", True),
-            ("Stability AI API key", "stability_api_key", True),
             ("OpenAI API key", "openai_api_key", True), ("Kimi API key", "kimi_api_key", True),
             ("DeepSeek API key", "deepseek_api_key", True),
             ("Google Drive credentials", "google_credentials", False),

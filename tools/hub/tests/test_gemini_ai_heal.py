@@ -139,159 +139,10 @@ def test_ai_heal_blend_mask_expands_and_feathers_without_leaking_across_frame():
     assert gemini_image_edit.blend_mask(mask, 0).tobytes() == mask.tobytes()
 
 
-def test_generative_expand_grows_canvas_and_restores_original_interior(monkeypatch):
-    class Response:
-        ok = True
-        status_code = 200
-
-        def json(self):
-            return {"candidates": [{"content": {"parts": [
-                {"inlineData": {"mimeType": "image/png", "data": _encoded_png("blue")}}
-            ]}}]}
-
-    monkeypatch.setattr(gemini_image_edit.requests, "post", lambda *_args, **_kwargs: Response())
-    photo = Image.new("RGB", (20, 10), "red")
-    result, mask, box, _instruction = gemini_image_edit.expand(
-        photo, {"right": 20}, "continue the sky", "secret")
-    assert result.size == (24, 10)
-    assert box == (0, 0, 20, 10)
-    assert result.crop(box).tobytes() == photo.tobytes()
-    assert mask.getpixel((0, 0)) == 0
-    assert mask.getpixel((10, 5)) == 0
-    assert mask.getpixel((23, 5)) == 255
-
-
-def test_paid_only_gemini_image_quota_error_is_plain(monkeypatch):
-    class Response:
-        ok = False
-        status_code = 429
-
-        def json(self):
-            return {"error": {"message": (
-                "Quota exceeded for metric generate_content_free_tier_requests, "
-                "limit: 0, model: gemini-3.1-flash-image")}}
-
-    monkeypatch.setattr(gemini_image_edit.requests, "post", lambda *_a, **_k: Response())
-    try:
-        gemini_image_edit.expand(
-            Image.new("RGB", (100, 50), "red"), {"right": 10}, "", "valid-key")
-    except RuntimeError as error:
-        assert "no free API tier" in str(error)
-        assert "billing-enabled" in str(error)
-        assert "free_tier_requests" not in str(error)
-    else:
-        raise AssertionError("paid-only quota failure was not surfaced")
-
-
-def test_generative_expand_caps_total_generated_area_at_twenty_percent(monkeypatch):
-    class Response:
-        ok = True
-        status_code = 200
-
-        def json(self):
-            return {"candidates": [{"content": {"parts": [
-                {"inlineData": {"mimeType": "image/png", "data": _encoded_png("blue")}}
-            ]}}]}
-
-    monkeypatch.setattr(gemini_image_edit.requests, "post", lambda *_args, **_kwargs: Response())
-    photo = Image.new("RGB", (100, 50), "red")
-    result, _mask, box, _instruction = gemini_image_edit.expand(
-        photo, {"right": 20}, "", "secret")
-    assert result.size == (120, 50)
-    assert box == (0, 0, 100, 50)
-    try:
-        gemini_image_edit.expand(photo, {"left": 20, "right": 20}, "", "secret")
-    except ValueError as error:
-        assert "20%" in str(error)
-    else:
-        raise AssertionError("an over-cap expansion was sent")
-
-
-def test_expand_geometry_starts_at_zero_and_reports_actual_area():
-    pads, size, area = gemini_image_edit.expansion_geometry(
-        (100, 50), {"right": 15})
-    assert pads == {"left": 0, "right": 15, "top": 0, "bottom": 0}
-    assert size == (115, 50)
-    assert area == 750
-
-
-def test_expand_canvas_uses_neutral_grey_instead_of_stretched_edge_pixels():
-    photo = Image.new("RGB", (4, 3), "blue")
-    for x in range(4):
-        photo.putpixel((x, 2), (40 + x, 30, 20))
-    canvas = gemini_image_edit.edge_extended_canvas(
-        photo, {"left": 0, "right": 0, "top": 0, "bottom": 2})
-    assert canvas.size == (4, 5)
-    assert [canvas.getpixel((x, 4)) for x in range(4)] == [(128, 128, 128)] * 4
-    assert canvas.crop((0, 0, 4, 3)).tobytes() == photo.tobytes()
-
-
-def test_expand_prompt_is_short_positive_and_not_duplicated(monkeypatch):
-    seen = {}
-
-    class Response:
-        ok = True
-        status_code = 200
-
-        def json(self):
-            return {"candidates": [{"content": {"parts": [
-                {"inlineData": {"mimeType": "image/png", "data": _encoded_png("blue")}}
-            ]}}]}
-
-    def fake_post(_url, **kwargs):
-        seen.update(kwargs)
-        return Response()
-
-    monkeypatch.setattr(gemini_image_edit.requests, "post", fake_post)
-    _result, _mask, _box, recorded_instruction = gemini_image_edit.expand(
-        Image.new("RGB", (100, 50), "red"), {"left": 10},
-        "continue the brick wall", "secret")
-    instruction = seen["json"]["contents"][0]["parts"][0]["text"]
-    parts = seen["json"]["contents"][0]["parts"]
-    assert "neutral grey margin" in instruction
-    assert "Seamless photographic outpainting" in instruction
-    assert "curb" not in instruction.lower()
-    assert "boundary" not in instruction.lower()
-    assert instruction.count("continue the brick wall") == 1
-    assert "every white border area" not in instruction.lower()
-    assert len(parts) == 3  # instruction, original reference, neutral-grey target canvas
-    assert "not an explanation, mask, matte" in instruction
-    assert recorded_instruction == instruction
-
-
-def test_multi_edge_expand_is_sent_as_sequential_single_edge_passes(monkeypatch):
-    requests_seen = []
-
-    class Response:
-        ok = True
-        status_code = 200
-
-        def json(self):
-            return {"candidates": [{"content": {"parts": [
-                {"inlineData": {"mimeType": "image/png", "data": _encoded_png("blue")}}
-            ]}}]}
-
-    def fake_post(_url, **kwargs):
-        requests_seen.append(kwargs["json"])
-        return Response()
-
-    monkeypatch.setattr(gemini_image_edit.requests, "post", fake_post)
-    result, _mask, box, _instruction = gemini_image_edit.expand(
-        Image.new("RGB", (100, 50), "red"), {"left": 5, "bottom": 10}, "", "secret")
-    assert len(requests_seen) == 2
-    assert result.size == (105, 55)
-    assert box == (5, 0, 105, 50)
-    for request in requests_seen:
-        parts = request["contents"][0]["parts"]
-        assert len(parts) == 3
-        assert "RED" not in parts[0]["text"]
-
-
-def test_editor_exposes_generative_expand_with_class_c_provenance():
+def test_editor_does_not_expose_withdrawn_generative_expand():
     source = (HUB / "slapper_qt" / "editor_window.py").read_text(encoding="utf-8")
-    assert 'QAction("Generative Expand…", self)' in source
-    assert 'operation_class="C", tool_name="Generative Expand"' in source
-    assert 'canvas_extension=True, scene_invention=True' in source
+    assert "Generative Expand" not in source
+    assert "open_ai_expand" not in source
 
 
 def test_first_run_notice_is_tracked_source_and_gates_all_generative_tools():
@@ -300,19 +151,17 @@ def test_first_run_notice_is_tracked_source_and_gates_all_generative_tools():
     assert "SNAP SLAPPER collects no identity, telemetry, or per-user edit log" in notice
     assert '"generative_notice_acknowledged": False' in (
         HUB / "slapper_qt" / "prefs.py").read_text(encoding="utf-8")
-    assert source.count("from .generative_consent import confirm") == 3
-    assert source.count("if not confirm(self):") == 3
+    assert source.count("from .generative_consent import confirm") == 2
+    assert source.count("if not confirm(self):") == 2
 
 
 def test_provider_send_warnings_can_be_dismissed_per_tool():
     notice = (HUB / "slapper_qt" / "generative_consent.py").read_text(encoding="utf-8")
     prefs_source = (HUB / "slapper_qt" / "prefs.py").read_text(encoding="utf-8")
     heal = (HUB / "slapper_qt" / "ai_heal_dialog.py").read_text(encoding="utf-8")
-    expand = (HUB / "slapper_qt" / "ai_expand_dialog.py").read_text(encoding="utf-8")
     assert 'QCheckBox("Do not display again")' in notice
-    for key in ("ai_heal_send_warning_hidden", "ai_fill_send_warning_hidden",
-                "ai_expand_send_warning_hidden"):
+    for key in ("ai_heal_send_warning_hidden", "ai_fill_send_warning_hidden"):
         assert f'"{key}": False' in prefs_source
-        assert key in heal + expand
+        assert key in heal
 
 # ===== SNAPSMACK EOF =====
