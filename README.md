@@ -59,9 +59,9 @@ Point a PHP/MySQL host at the code and run the setup. Full instructions at **[sn
 
 ---
 
-## License — the SMACK PUBLIC LICENSE (SPL) 2.2
+## License — the SMACK PUBLIC LICENSE (SPL) 2.3
 
-SNAPSMACK is public and free to read, run, and self-host. It's licensed under the **SMACK PUBLIC LICENSE 2.2**, together with **THE THOMAS CLAUSE** — deliberately *not* the GPL.
+SNAPSMACK is public and free to read, run, and self-host. It's licensed under the **SMACK PUBLIC LICENSE 2.3**, together with **THE THOMAS CLAUSE** — deliberately *not* the GPL.
 
 Most licenses govern who may *use* the code. The SPL is pointed at something else: **honesty and historical continuity.** It gives the software to everyone, and it refuses to let anyone hide where it came from or erase the people — and the AI co-authors — who made it.
 
