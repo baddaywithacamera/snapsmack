@@ -613,15 +613,26 @@ if ($resource === 'heartbeat' && $method === 'GET') {
     // for anyone who wants a separate (non-cron) indicator. Every value is a plain
     // snap_settings row written by the matching cron; a missing last_run leaves
     // that job 'unknown' (age-based on the client), never a false green.
-    $job_state = static function ($last_run, $status) {
+    //
+    // OPAUDIT 014: `last_run` is written by ANY launcher — the page-hit
+    // fallback, RUN NOW, event kicks — so it kept CRONOMETER green on 36 sites
+    // with no cron at all. `sched_last_fire` + `sched_state` are written only
+    // when the scheduler itself launched the job (cron_job_verdict); a client
+    // that sees them must judge on those and treat last_run as colour only.
+    require_once __DIR__ . '/cron-register.php';
+    $job_state = static function ($job, $last_run, $status) use ($settings) {
         $last_run = ($last_run ?? '') !== '' ? (string)$last_run : null;
         $status   = ($status   ?? '') !== '' ? (string)$status   : ($last_run !== null ? 'ok' : 'unknown');
-        return ['last_run' => $last_run, 'status' => $status];
+        [$sched_state, $sched_fire, $sched_age] = cron_job_verdict($settings, $job);
+        return ['last_run' => $last_run, 'status' => $status,
+                'sched_last_fire' => $sched_fire !== '' ? $sched_fire : null,
+                'sched_state'     => $sched_state,
+                'sched_age_sec'   => $sched_age];
     };
     $jobs = [
-        'fediverse'     => $job_state($settings['fediverse_cron_last_run']   ?? null, $settings['fediverse_cron_last_status'] ?? null),
-        'rss_fetch'     => $job_state($settings['rss_last_run']                ?? null, $settings['rss_last_status']              ?? null),
-        'version_check' => $job_state($settings['last_update_check']           ?? null, $settings['version_check_last_status']    ?? null),
+        'fediverse'     => $job_state('fediverse',     $settings['fediverse_cron_last_run']   ?? null, $settings['fediverse_cron_last_status'] ?? null),
+        'rss_fetch'     => $job_state('rss_fetch',     $settings['rss_last_run']                ?? null, $settings['rss_last_status']              ?? null),
+        'version_check' => $job_state('version_check', $settings['last_update_check']           ?? null, $settings['version_check_last_status']    ?? null),
     ];
 
     ms_ok([
@@ -637,6 +648,7 @@ if ($resource === 'heartbeat' && $method === 'GET') {
         'disk_usage_bytes'   => $disk_bytes,
         'site_tagline'       => $settings['site_tagline'] ?? '',
         'maintenance_mode'   => ($settings['maintenance_mode'] ?? '0') === '1' ? 1 : 0,
+        'deploy_finalized_at'=> $settings['deploy_finalized_at'] ?? null,
         'smackback_status'   => $settings['smackback_status']   ?? (($settings['smackback_enabled'] ?? '0') === '1' ? 'pending' : 'unknown'),
         'smackback_breach_at'=> ($settings['smackback_breach_at'] ?? '') ?: null,
         'site_mode'          => $settings['site_mode']           ?? 'photoblog',
@@ -1819,6 +1831,7 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
     // jobs remain absent.
     require_once __DIR__ . '/cron-register.php';
     $cron_refresh = cron_refresh_enabled_jobs(dirname(__DIR__));
+    cron_stamp_deploy_finalized($pdo);   // post-deploy gate: every job must fire again within 15 min
     $cron_failures = array_values(array_filter(
         $cron_refresh,
         static fn(array $row): bool => empty($row['ok'])

@@ -204,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'disab
     $sv_setting_upsert('fediverse_enabled', '0');
     // Pull the delivery cron — no point running a sweep that self-exits.
     require_once 'core/cron-register.php';
-    cron_remove_job('# snapsmack-fediverse');
+    cron_remove_job('# snapsmack-fediverse', dirname(__DIR__) . '/cron-fediverse.php');
     header('Location: ' . $sv_self . '?msg=' . urlencode('Fediverse disabled — all federation endpoints now 404, delivery task removed. Followers are kept and resume if you re-enable.'));
     exit;
 }
@@ -720,7 +720,7 @@ unset($_SESSION['sc_fleet_results']);
 // Delivery cron health — registration state + last-run freshness.
 require_once 'core/cron-register.php';
 list($sv_cron_supported, )  = cron_capability();
-$sv_cron_registered = cron_job_registered('# snapsmack-fediverse');
+$sv_cron_registered = cron_job_registered('# snapsmack-fediverse', dirname(__DIR__) . '/cron-fediverse.php');
 $sv_cron_last = trim($sv_settings['fediverse_cron_last_run'] ?? '');
 $sv_cron_ok   = $sv_cron_last !== '' && (time() - strtotime($sv_cron_last)) < 3600;
 // NOTE: the visitor-triggered web-cron was REMOVED in 0.7.639D — public page
