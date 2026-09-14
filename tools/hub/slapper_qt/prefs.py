@@ -28,6 +28,7 @@ DEFAULTS = {
     "projects_folder": "",         # initial location for .slapper projects
     "exports_folder": "",          # initial location for rendered copies
     "panomerge_xpano_path": "", # separately installed XPANO executable
+    "generative_notice_acknowledged": False,  # non-personal first-run UI state
 }
 
 
