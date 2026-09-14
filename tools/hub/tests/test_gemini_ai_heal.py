@@ -86,6 +86,7 @@ def test_heal_refuses_empty_selection():
 def test_editor_wires_ai_heal_as_a_masked_layer():
     source = (HUB / "slapper_qt" / "editor_window.py").read_text(encoding="utf-8")
     assert 'QAction("AI Heal…"' in source
+    assert 'QAction("Spot Heal", self)' in source
     assert 'self.act_ai_fill = QAction("Generative Fill…", self)' in source
     assert 'def apply_ai_generation(' in source
     assert 'layer["ai_heal_source_mask"] = editor_engine._mask_to_text(mask)' in source
@@ -135,5 +136,60 @@ def test_ai_heal_blend_mask_expands_and_feathers_without_leaking_across_frame():
     assert 0 < blended.getpixel((560, 400)) < 255
     assert blended.getpixel((0, 0)) == 0
     assert gemini_image_edit.blend_mask(mask, 0).tobytes() == mask.tobytes()
+
+
+def test_generative_expand_grows_canvas_and_restores_original_interior(monkeypatch):
+    class Response:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"candidates": [{"content": {"parts": [
+                {"inlineData": {"mimeType": "image/png", "data": _encoded_png("blue")}}
+            ]}}]}
+
+    monkeypatch.setattr(gemini_image_edit.requests, "post", lambda *_args, **_kwargs: Response())
+    photo = Image.new("RGB", (20, 10), "red")
+    result, mask, box = gemini_image_edit.expand(
+        photo, 20, "continue the sky", "secret")
+    assert result.size == (28, 14)
+    assert box == (4, 2, 24, 12)
+    assert result.crop(box).tobytes() == photo.tobytes()
+    assert mask.getpixel((0, 0)) == 255
+    assert mask.getpixel((10, 5)) == 0
+
+
+def test_generative_expand_caps_requested_border_at_twenty_percent(monkeypatch):
+    class Response:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"candidates": [{"content": {"parts": [
+                {"inlineData": {"mimeType": "image/png", "data": _encoded_png("blue")}}
+            ]}}]}
+
+    monkeypatch.setattr(gemini_image_edit.requests, "post", lambda *_args, **_kwargs: Response())
+    result, _mask, box = gemini_image_edit.expand(
+        Image.new("RGB", (100, 50), "red"), 90, "", "secret")
+    assert result.size == (140, 70)
+    assert box == (20, 10, 120, 60)
+
+
+def test_editor_exposes_generative_expand_with_class_c_provenance():
+    source = (HUB / "slapper_qt" / "editor_window.py").read_text(encoding="utf-8")
+    assert 'QAction("Generative Expand…", self)' in source
+    assert 'operation_class="C", tool_name="Generative Expand"' in source
+    assert 'canvas_extension=True, scene_invention=True' in source
+
+
+def test_first_run_notice_is_tracked_source_and_gates_all_generative_tools():
+    notice = (HUB / "slapper_qt" / "generative_consent.py").read_text(encoding="utf-8")
+    source = (HUB / "slapper_qt" / "editor_window.py").read_text(encoding="utf-8")
+    assert "SNAP SLAPPER collects no identity, telemetry, or per-user edit log" in notice
+    assert '"generative_notice_acknowledged": False' in (
+        HUB / "slapper_qt" / "prefs.py").read_text(encoding="utf-8")
+    assert source.count("from .generative_consent import confirm") == 3
+    assert source.count("if not confirm(self):") == 3
 
 # ===== SNAPSMACK EOF =====
