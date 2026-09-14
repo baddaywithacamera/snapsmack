@@ -547,7 +547,7 @@ function snapsmack_rollup_daily($pdo, $date = null) {
 }
 
 /**
- * Behavioural bot classification (0.7.712D).
+ * Behavioural bot classification (0.7.713D).
  *
  * The user-agent check catches bots that announce themselves. It did not catch
  * the fetcher pools that took the fleet's "human" line from ~6k/day to ~2k/day
@@ -597,7 +597,7 @@ function snapsmack_ensure_bot_reason_column($pdo) {
     $done = true;
     try {
         $pdo->exec("ALTER TABLE snap_stats ADD COLUMN IF NOT EXISTS bot_reason VARCHAR(32) NULL DEFAULT NULL
-                    COMMENT 'Why is_bot=1: NULL = user-agent match; single-direct = behavioural (0.7.712D)'");
+                    COMMENT 'Why is_bot=1: NULL = user-agent match; single-direct = behavioural (0.7.713D)'");
     } catch (PDOException $e) { /* older server: the UPDATE below will fail softly */ }
 }
 
