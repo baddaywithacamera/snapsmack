@@ -41,13 +41,30 @@ def test_outpaint_maps_selected_sides_and_restores_original_pixels(monkeypatch):
     assert seen["data"]["right"] == "10"
     assert seen["data"]["up"] == "0"
     assert seen["data"]["down"] == "0"
-    assert seen["data"]["creativity"] == "0.2"
+    assert "creativity" not in seen["data"]
     assert box == (10, 0, 110, 50)
     assert result.crop(box).getpixel((0, 0)) == (255, 0, 0)
     assert mask.getpixel((10, 0)) == 0
     assert mask.getpixel((0, 0)) == 255
-    assert "wider camera frame" in instruction
-    assert "continue the prairie" in instruction
+    assert instruction == "continue the prairie"
+
+
+def test_blank_direction_sends_no_prompt_or_creativity_override(monkeypatch):
+    seen = {}
+
+    class Response:
+        ok = True
+        status_code = 200
+        content = _png((110, 50), "blue")
+
+    monkeypatch.setattr(
+        stability_image_edit.requests, "post",
+        lambda _url, **kwargs: seen.update(kwargs) or Response())
+    _result, _mask, _box, instruction = stability_image_edit.expand(
+        Image.new("RGB", (100, 50), "red"), {"right": 10}, "", "secret")
+    assert "prompt" not in seen["data"]
+    assert "creativity" not in seen["data"]
+    assert instruction == ""
 
 
 def test_outpaint_requires_stability_key():
@@ -57,4 +74,3 @@ def test_outpaint_requires_stability_key():
         assert "Stability AI API key" in str(error)
     else:
         raise AssertionError("missing key was accepted")
-
