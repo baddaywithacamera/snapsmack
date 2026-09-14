@@ -141,7 +141,11 @@ function cron_job_verdict(array $settings, string $job): array {
     $deploy = trim((string)($settings['deploy_finalized_at'] ?? ''));
     $deploy_t = $deploy !== '' ? (strtotime($deploy) ?: 0) : 0;
     $age = $fire_t ? max(0, time() - $fire_t) : null;
-    if ($deploy_t && (time() - $deploy_t) >= 900 && $fire_t < $deploy_t) {
+    // Post-deploy gate arms only once the job has HAD a chance to fire: at
+    // least one interval after the deploy (15 min floor for the 10-min job).
+    // A 6-hourly version check deployed at 19:03 is not "missing" at 19:20.
+    $gate = max(900, $interval);
+    if ($deploy_t && (time() - $deploy_t) >= $gate && $fire_t < $deploy_t) {
         return ['not-since-deploy', $fire, $age, $deploy];
     }
     if (!$fire_t) return ['never', '', null, $deploy];
