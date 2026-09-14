@@ -11,8 +11,7 @@ from gemini_image_edit import expansion_geometry
 ENDPOINT = "https://api.stability.ai/v2beta/stable-image/edit/outpaint"
 
 
-def expand(image, edges, prompt, api_key, timeout=300, max_generated_area=None,
-           creativity=0.2):
+def expand(image, edges, prompt, api_key, timeout=300, max_generated_area=None):
     """Outpaint selected sides, then restore every captured source pixel locally."""
     if not api_key:
         raise ValueError("Add a Stability AI API key in SNAP HQ Settings first.")
@@ -29,22 +28,14 @@ def expand(image, edges, prompt, api_key, timeout=300, max_generated_area=None,
 
     stream = io.BytesIO()
     image.save(stream, "PNG", optimize=True)
-    direction = ", ".join(name for name, value in pads.items() if value)
-    instruction = (
-        "A natural photographic continuation of the existing scene toward the "
-        f"{direction}, as though captured through a wider camera frame. Maintain "
-        "continuous illumination, colour, exposure, surface, perspective, focus, "
-        "grain and spatial geometry. Keep gradual tonal changes gradual. Add no "
-        "border, band, new focal subject, or change of material."
-    )
-    if str(prompt or "").strip():
-        instruction += " " + str(prompt).strip()
+    instruction = str(prompt or "").strip()
     data = {
         "left": str(pads["left"]), "right": str(pads["right"]),
         "up": str(pads["top"]), "down": str(pads["bottom"]),
-        "prompt": instruction, "creativity": str(max(0.0, min(1.0, creativity))),
         "output_format": "png",
     }
+    if instruction:
+        data["prompt"] = instruction
     response = requests.post(
         ENDPOINT,
         headers={"Authorization": f"Bearer {api_key}", "Accept": "image/*"},
