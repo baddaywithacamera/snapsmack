@@ -17,6 +17,7 @@ import snap_creds
 import snap_home
 from .mask_brush import MaskBrushCanvas
 from . import BUILD_VERSION
+from .generative_consent import confirm_send
 
 
 class _Signals(QObject):
@@ -76,13 +77,15 @@ class AIHealDialog(QDialog):
                 "Paint where content should be generated first." if self.is_fill else
                 "Paint over the defect first.")
             return
-        if QMessageBox.question(
-                self, "Send this generative fill to Gemini?" if self.is_fill else
+        if not confirm_send(
+                self,
+                "ai_fill_send_warning_hidden" if self.is_fill else
+                "ai_heal_send_warning_hidden",
+                "Send this generative fill to Gemini?" if self.is_fill else
                 "Send this repair to Gemini?",
                 "SNAP SLAPPER will send a working-resolution copy of this photograph, "
                 "the painted mask, and your instruction to Google Gemini. This may incur "
-                "an API charge. Continue?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+                "an API charge. Continue?"):
             return
         key = snap_creds.get("gemini_api_key", "")
         model = snap_creds.get("gemini_image_model", "gemini-3.1-flash-image")

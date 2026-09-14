@@ -44,4 +44,25 @@ def confirm(parent):
         prefs.save(values)
     return True
 
+
+def confirm_send(parent, preference, title, text):
+    """Confirm a provider upload, with a persistent per-tool dismissal."""
+    values = prefs.load()
+    if values.get(preference, False):
+        return True
+    box = QMessageBox(parent)
+    box.setIcon(QMessageBox.Question)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+    box.setDefaultButton(QMessageBox.No)
+    remember = QCheckBox("Do not display again")
+    box.setCheckBox(remember)
+    if box.exec() != QMessageBox.Yes:
+        return False
+    if remember.isChecked():
+        values[preference] = True
+        prefs.save(values)
+    return True
+
 # ===== SNAPSMACK EOF =====
