@@ -150,6 +150,12 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
         raise RuntimeError(f"Gemini returned HTTP {response.status_code}, not a usable response.") from error
     if not response.ok:
         detail = ((data.get("error") or {}).get("message") or f"HTTP {response.status_code}")
+        if ("free_tier" in detail and "limit: 0" in detail) or (
+                "quota" in detail.lower() and response.status_code == 429):
+            raise RuntimeError(
+                "Gemini image generation has no free API tier. Use a Gemini key from a "
+                "billing-enabled Google project, or choose another provider. No expansion "
+                "was added.")
         raise RuntimeError("Gemini could not heal the photograph: " + detail)
     for candidate in data.get("candidates", []):
         for part in (candidate.get("content") or {}).get("parts", []):
