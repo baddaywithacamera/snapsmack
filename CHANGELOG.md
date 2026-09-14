@@ -9,8 +9,10 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.710D "FINE PRINT" — 2026-09-13
+## 0.7.711D "FED UP" — 2026-09-13
 - **FED UP joins SNAP HQ’s MIGRATION CENTRE (shell, 0.0.1).** The fediverse backup / restore / alias tool has a card and a Qt window (`tools/fed-up/`) in the suite’s look, with its three functions laid out and each labelled NOT BUILT YET in its own body — no button that would do nothing. The card reads MISSING until the exe is built. Build order per spec v0.2: the `@you@photoblogs.fyi` alias (CMS) → backup → restore. SNAP HQ 0.7.45. (`tools/fed-up/`, `tools/hub/qt_main.py`, `tools/desktop-versions.json`.)
+
+## 0.7.710D "FINE PRINT" — 2026-09-13
 - **SMACK PUBLIC LICENSE 2.3.** Three additions, nothing removed. §1 now names every companion desktop tool (SNAP HQ through FLKR FCKR, the SMACK CENTRAL operator tools, and anything added later — renaming a tool does not take it out of the licence). §7 catches up with what actually ships: the Python packages the desktop tools use, all the bundled fonts, and darktable/xpano alongside RawTherapee as external programs; the /licenses directory is declared authoritative. §10 gains 10.2 “Your data is yours, and so is keeping it safe”: backups, originals, credentials and keys, AI providers, your host, commands that change your site, metadata and provenance, and the network — plain statements that the author holds none of it and cannot recover any of it. (`licenses/SNAPSMACK-LICENSE.txt`, mirrored on snapsmack.ca.)
 
 ## 0.7.709D "QUILT" — 2026-09-13
