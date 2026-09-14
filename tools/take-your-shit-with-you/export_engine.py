@@ -53,7 +53,7 @@ if os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in sys.path:
     sys.path.insert(0, _SHARED_DIR)
 from snap_paths import contained_local_path  # noqa: E402
 
-APP_VERSION = '0.1.0'
+APP_VERSION = '0.2.0'
 
 # Streamed in this order: reference data first, so the assembly pass never has to
 # guess at something it has not read yet, and so a run that dies early still has
@@ -92,12 +92,13 @@ class Cancelled(Exception):
 class ExportOptions:
 
     def __init__(self, *, include_thumbnails=False, media_concurrency=2,
-                 courtesy_wordpress=True, compress=False, chunk_size=500,
-                 skip_media=False):
+                 courtesy_wordpress=True, courtesy_ghost=True, compress=False,
+                 chunk_size=500, skip_media=False):
         self.include_thumbnails = bool(include_thumbnails)
         # Kind to cheap shared hosting, not a benchmark of it (spec 12).
         self.media_concurrency  = max(1, min(int(media_concurrency), 4))
         self.courtesy_wordpress = bool(courtesy_wordpress)
+        self.courtesy_ghost     = bool(courtesy_ghost)
         self.compress           = bool(compress)
         self.chunk_size         = max(1, min(int(chunk_size), 2000))
         self.skip_media         = bool(skip_media)
@@ -1051,6 +1052,21 @@ class ExportEngine:
             except Exception as e:                      # an adapter must never
                 self.warn(f'The WordPress courtesy package could not be built '  # break the canonical
                           f'({e}). Your canonical archive is unaffected — the '   # archive
+                          'courtesy files can be regenerated from it at any time.')
+        if self.options.courtesy_ghost:
+            try:
+                import ghost_adapter
+                self.progress('adapters', 'Writing the Ghost courtesy package…', 0.98)
+                result = ghost_adapter.generate(
+                    self.root, on_log=self.log, cancel=self.cancel)
+                adapters['ghost'] = result
+                for loss in result.get('losses', [])[:50]:
+                    self.log('Ghost cannot represent: ' + loss)
+            except Cancelled:
+                raise
+            except Exception as e:                      # same rule as WordPress:
+                self.warn(f'The Ghost courtesy package could not be built '   # an adapter never
+                          f'({e}). Your canonical archive is unaffected — the '  # breaks the archive
                           'courtesy files can be regenerated from it at any time.')
         self.archive.write_json('courtesy/adapters.json', {
             'schema_version': pa.SCHEMA_VERSION,
