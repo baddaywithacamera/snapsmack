@@ -192,6 +192,34 @@ def test_expand_geometry_starts_at_zero_and_reports_actual_area():
     assert area == 750
 
 
+def test_expand_prompt_is_edge_specific_conservative_and_not_duplicated(monkeypatch):
+    seen = {}
+
+    class Response:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"candidates": [{"content": {"parts": [
+                {"inlineData": {"mimeType": "image/png", "data": _encoded_png("blue")}}
+            ]}}]}
+
+    def fake_post(_url, **kwargs):
+        seen.update(kwargs)
+        return Response()
+
+    monkeypatch.setattr(gemini_image_edit.requests, "post", fake_post)
+    gemini_image_edit.expand(
+        Image.new("RGB", (100, 50), "red"), {"left": 10},
+        "continue the brick wall", "secret")
+    instruction = seen["json"]["contents"][0]["parts"][0]["text"]
+    assert "Outpaint only the WHITE masked border region" in instruction
+    assert "Requested expansion edges: left." in instruction
+    assert "Do not introduce a new focal subject" in instruction
+    assert instruction.count("continue the brick wall") == 1
+    assert "every white border area" not in instruction.lower()
+
+
 def test_editor_exposes_generative_expand_with_class_c_provenance():
     source = (HUB / "slapper_qt" / "editor_window.py").read_text(encoding="utf-8")
     assert 'QAction("Generative Expand…", self)' in source
