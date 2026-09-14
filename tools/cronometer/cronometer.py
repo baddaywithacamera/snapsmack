@@ -21,7 +21,7 @@ UI thread; results are marshalled back with Tk's `after`.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.12"
+BUILD_VERSION = "0.7.13"
 
 # ---------------------------------------------------------------------------
 # Shared-path bootstrap + debug log. Must happen before any _shared import so
@@ -139,12 +139,17 @@ class App(tk.Tk):
         self.title(f"CRONOMETER  —  build {BUILD_VERSION}")
         # Window / taskbar icon: bundled next to the exe's assets (spec), or the
         # family icon dir when run from source. Never fatal.
+        # iconphoto + PNG, not iconbitmap + .ico: the family .ico is a single
+        # 256 px frame and Tk's title bar silently falls back to the feather
+        # when it can't find a 16/32 px frame (0.7.12). Tk 8.6 reads PNG
+        # natively and iconphoto(True) sets title bar AND taskbar.
         try:
             _base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-            for _ico in (os.path.join(_base, 'assets', 'cronometer.ico'),
-                         os.path.join(_base, '..', 'hub', 'icons', 'cronometer.ico')):
-                if os.path.isfile(_ico):
-                    self.iconbitmap(_ico); break
+            for _png in (os.path.join(_base, 'assets', 'cronometer-64.png'),
+                         os.path.join(_base, 'cronometer-64.png')):
+                if os.path.isfile(_png):
+                    self._app_icon = tk.PhotoImage(file=_png)   # keep a ref or Tk drops it
+                    self.iconphoto(True, self._app_icon); break
         except Exception:
             pass
         self.geometry(f"{WIN_W}x{WIN_H}")

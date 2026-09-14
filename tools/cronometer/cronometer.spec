@@ -26,6 +26,7 @@ _shared_data  = [(f, '.') for f in _shared_files]
 _shared_mods  = [os.path.splitext(os.path.basename(f))[0] for f in _shared_files]
 # App icon lives with the family's icons (tools/hub/icons); exe + window use it.
 _icon_ico     = os.path.normpath(os.path.join(_src, '..', 'hub', 'icons', 'cronometer.ico'))
+_icon_png     = os.path.join(_src, 'cronometer-64.png')   # 64 px copy of hub/icons/cronometer.png for the title bar
 
 a = Analysis(
     ['cronometer.py'],
@@ -37,7 +38,7 @@ a = Analysis(
     datas=_local_data + _shared_data + (
         [(os.path.join(_src, 'assets'), 'assets')]
         if os.path.isdir(os.path.join(_src, 'assets')) else [])
-        + [(_icon_ico, 'assets')],   # window icon at runtime (see cronometer.py)
+        + [(_icon_ico, 'assets'), (_icon_png, 'assets')],   # window icon at runtime (see cronometer.py)
     hiddenimports=_local_mods + _shared_mods + [
         # UI
         'tkinter', 'tkinter.ttk', 'tkinter.messagebox',
