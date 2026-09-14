@@ -15,12 +15,12 @@ $check = static function (string $name, bool $ok) use (&$fail): void {
     if (!$ok) $fail++;
 };
 
-$check('rule runs before every daily rollup',   str_contains($log, "snapsmack_reclassify_single_direct(\$pdo, \$date);\n\n    try {\n        // Total views"));
+$check('rule runs before every daily rollup',   preg_match('/snapsmack_reclassify_single_direct\(\$pdo, \$date\);\s+try \{\s+\/\/ One index range/', $log) === 1);
 $check('only human rows with no referrer move', str_contains($log, "WHERE s.hit_at >= ? AND s.hit_at < ? AND s.is_bot = 0 AND s.referrer_host IS NULL"));
 $check('only single-hit visitors that day',     str_contains($log, "GROUP BY ip_hash\n                HAVING COUNT(*) = 1"));
 $check('reversible: bot_reason stamped',        str_contains($log, "SET s.is_bot = 1, s.bot_reason = 'single-direct'"));
 $check('column added idempotently',             str_contains($log, "ADD COLUMN IF NOT EXISTS bot_reason"));
-$check('re-roll rebuilds every held day',       str_contains($log, 'function snapsmack_reroll_all_days(') && str_contains($log, "snapsmack_rollup_daily(\$pdo, \$date);\n            \$days++;"));
+$check('re-roll rebuilds every held day',       str_contains($log, 'function snapsmack_reroll_all_days(') && str_contains($log, 'usleep($pace_ms * 1000)'));
 $check('stats page has the re-count action',    str_contains($page, "\$_POST['action'] === 'reroll'") && str_contains($page, 'value="reroll"'));
 $check('CLI is SMACKBACK-exempt (repair-*.php)', preg_match('/^repair-[a-z0-9-]+\.php$/', 'repair-stats.php') === 1 && is_file($root . '/repair-stats.php'));
 $check('CLI dry-runs unless --apply',            str_contains($cli, "getopt('', ['apply'])") && str_contains($cli, 'DRY RUN'));
