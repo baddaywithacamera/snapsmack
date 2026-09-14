@@ -86,9 +86,16 @@ if (!function_exists('sv_web_cron_tick')) {
         // live script path and repair it without waiting for an admin visit.
         require_once __DIR__ . '/cron-register.php';
         $cron_script = dirname(__DIR__) . '/cron-fediverse.php';
-        $inspection = cron_job_inspect('# snapsmack-fediverse', '*/10 * * * *', $cron_script);
-        if (empty($inspection['valid'])) {
-            cron_register_job('*/10 * * * *', $cron_script, '# snapsmack-fediverse');
+        // Heartbeat first: if the scheduler is firing this job — by our crontab
+        // line, a box-level /etc/cron.d loop, anything — the crontab is not
+        // ours to "repair". Only a job that is NOT firing gets re-registered,
+        // and then only this site's line (OPAUDIT 014).
+        [$sched_state] = cron_job_verdict($settings, 'fediverse');
+        if ($sched_state !== 'firing') {
+            $inspection = cron_job_inspect('# snapsmack-fediverse', '*/10 * * * *', $cron_script);
+            if (empty($inspection['valid'])) {
+                cron_register_job('*/10 * * * *', $cron_script, '# snapsmack-fediverse');
+            }
         }
 
         // One worker heartbeat is enough. The former CLI grace period blocked

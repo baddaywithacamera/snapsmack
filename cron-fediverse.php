@@ -47,6 +47,10 @@ if (!defined('BASE_URL')) {
 }
 require_once "{$root}/core/db.php";
 require_once "{$root}/core/constants.php";
+require_once "{$root}/core/cron-register.php";
+// Scheduler heartbeat FIRST, before the worker lock: it answers "did cron
+// fire", nothing else. Worker health (running/wedged) stays on the keys below.
+cron_stamp_scheduler_fire($pdo, 'fediverse');
 require_once "{$root}/core/fediverse.php";
 
 try {
