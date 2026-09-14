@@ -136,6 +136,10 @@ list($sent, $failed) = sv_process_deliveries(
 // scoped so only a fleet member's IP is lifted, never a real stranger's.
 sv_heal_stale_inbox_bans_once($pdo, $settings);
 
+// Comments typed on the blog before 708D were never sent (OPAUDIT 013 §6).
+// One-shot per version: mirror + federate them, original dates kept.
+sv_backfill_community_comments_once($pdo, $settings);
+
 // Make the multisite roster's peer-follow promise real, gradually. One missing
 // edge per ten-minute tick avoids a follow/backfill thundering herd.
 $mesh_follow = sv_reconcile_mesh_follows($pdo, $settings, 1);
