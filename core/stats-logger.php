@@ -487,37 +487,38 @@ function snapsmack_rollup_daily($pdo, $date = null) {
     snapsmack_reclassify_single_direct($pdo, $date);
 
     try {
-        // Total views (excluding bots)
-        $views = $pdo->prepare("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at) = ? AND is_bot = 0");
-        $views->execute([$date]);
-        $total_views = (int)$views->fetchColumn();
+        // One index range per query (idx_hit_at / idx_stats_enriched). The old
+        // DATE(hit_at) = ? form scanned the whole table six times per day.
+        $from = $date . ' 00:00:00';
+        $to   = date('Y-m-d 00:00:00', strtotime($date . ' +1 day'));
 
-        // Unique visitors (distinct IP hashes, excluding bots)
-        $uniq = $pdo->prepare("SELECT COUNT(DISTINCT ip_hash) FROM snap_stats WHERE DATE(hit_at) = ? AND is_bot = 0");
-        $uniq->execute([$date]);
-        $unique_visitors = (int)$uniq->fetchColumn();
-
-        // Bot views
-        $bots = $pdo->prepare("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at) = ? AND is_bot = 1");
-        $bots->execute([$date]);
-        $bot_views = (int)$bots->fetchColumn();
+        // Views + unique visitors + bot views in one pass over the day
+        $agg = $pdo->prepare("
+            SELECT SUM(is_bot = 0) AS v, COUNT(DISTINCT IF(is_bot = 0, ip_hash, NULL)) AS u, SUM(is_bot = 1) AS b
+            FROM snap_stats WHERE hit_at >= ? AND hit_at < ?
+        ");
+        $agg->execute([$from, $to]);
+        $row = $agg->fetch(PDO::FETCH_ASSOC) ?: [];
+        $total_views     = (int)($row['v'] ?? 0);
+        $unique_visitors = (int)($row['u'] ?? 0);
+        $bot_views       = (int)($row['b'] ?? 0);
 
         // Top image
         $top_img = $pdo->prepare("
             SELECT image_id, COUNT(*) as cnt FROM snap_stats
-            WHERE DATE(hit_at) = ? AND is_bot = 0 AND image_id IS NOT NULL
+            WHERE hit_at >= ? AND hit_at < ? AND is_bot = 0 AND image_id IS NOT NULL
             GROUP BY image_id ORDER BY cnt DESC LIMIT 1
         ");
-        $top_img->execute([$date]);
+        $top_img->execute([$from, $to]);
         $top_image = $top_img->fetch(PDO::FETCH_ASSOC);
 
         // Top referrer
         $top_ref = $pdo->prepare("
             SELECT referrer_host, COUNT(*) as cnt FROM snap_stats
-            WHERE DATE(hit_at) = ? AND is_bot = 0 AND referrer_host IS NOT NULL
+            WHERE hit_at >= ? AND hit_at < ? AND is_bot = 0 AND referrer_host IS NOT NULL
             GROUP BY referrer_host ORDER BY cnt DESC LIMIT 1
         ");
-        $top_ref->execute([$date]);
+        $top_ref->execute([$from, $to]);
         $top_referrer = $top_ref->fetch(PDO::FETCH_ASSOC);
 
         // Upsert
@@ -565,19 +566,24 @@ function snapsmack_rollup_daily($pdo, $date = null) {
 function snapsmack_reclassify_single_direct($pdo, $date) {
     try {
         snapsmack_ensure_bot_reason_column($pdo);
+        // Range on hit_at (idx_hit_at), never DATE(hit_at) = ? — that form
+        // scans the whole table, and the re-roll runs this for 365 days on
+        // 37 sites sharing one DB box.
+        $from = $date . ' 00:00:00';
+        $to   = date('Y-m-d 00:00:00', strtotime($date . ' +1 day'));
         $stmt = $pdo->prepare("
             UPDATE snap_stats s
             JOIN (
                 SELECT ip_hash
                 FROM snap_stats
-                WHERE DATE(hit_at) = ?
+                WHERE hit_at >= ? AND hit_at < ?
                 GROUP BY ip_hash
                 HAVING COUNT(*) = 1
             ) one ON one.ip_hash = s.ip_hash
             SET s.is_bot = 1, s.bot_reason = 'single-direct'
-            WHERE DATE(s.hit_at) = ? AND s.is_bot = 0 AND s.referrer_host IS NULL
+            WHERE s.hit_at >= ? AND s.hit_at < ? AND s.is_bot = 0 AND s.referrer_host IS NULL
         ");
-        $stmt->execute([$date, $date]);
+        $stmt->execute([$from, $to, $from, $to]);
         return $stmt->rowCount();
     } catch (PDOException $e) {
         return 0;
@@ -602,18 +608,22 @@ function snapsmack_ensure_bot_reason_column($pdo) {
  * rows that are still there (retention window, default 365 days).
  * Returns [days re-rolled, rows reclassified].
  */
-function snapsmack_reroll_all_days($pdo, $max_days = 400) {
+function snapsmack_reroll_all_days($pdo, $max_days = 400, $pace_ms = 150) {
     $days = 0; $rows = 0;
     try {
         $dates = $pdo->query("
             SELECT DISTINCT DATE(hit_at) AS d FROM snap_stats
-            WHERE DATE(hit_at) < CURDATE()
+            WHERE hit_at < CURDATE()
             ORDER BY d DESC LIMIT " . max(1, (int)$max_days)
         )->fetchAll(PDO::FETCH_COLUMN);
         foreach ($dates as $date) {
             $rows += snapsmack_reclassify_single_direct($pdo, $date);
-            snapsmack_rollup_daily($pdo, $date);
+            snapsmack_rollup_daily($pdo, $date);   // re-runs the rule: finds nothing, cheap
             $days++;
+            // Paced: four index-range queries per day, then a breath, so a
+            // 365-day re-roll on 37 sites is a background hum on the shared
+            // DB box, not a spike. About a minute per site at 365 days.
+            if ($pace_ms > 0) usleep($pace_ms * 1000);
         }
     } catch (PDOException $e) { /* partial re-roll is still progress */ }
     return [$days, $rows];
