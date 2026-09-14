@@ -77,13 +77,18 @@
     a new site the moment its directory exists. The old per-site crontab lines were left in place for
     now; the delivery sweep&rsquo;s own database lock stops a double drain, and they are on the cleanup
     list.</p>
-    <p><strong>In the code:</strong> nothing yet. Owed, in one build: (a) per-site tags so sites stop
-    overwriting each other; (b) the Cron &amp; Jobs page and the fleet API report the real
-    command-line heartbeat &mdash; <em>last fired X minutes ago</em>, in red past twice the interval
-    &mdash; and demote crontab text to a footnote; (c) CRONOMETER reads that heartbeat, not the one the
-    page-hit fallback pollutes; (d) a post-deploy check that fails loudly for any site whose job
-    hasn&rsquo;t fired within fifteen minutes of a deploy; (e) the cleanup paste for the stale and
-    duplicate lines.</p>
+    <p><strong>In the code (0.7.712D, built the same afternoon, not yet deployed):</strong>
+    (a) crontab lines are matched by tag <em>and</em> script path, so a site&rsquo;s REGISTER,
+    UNREGISTER, the post-deploy refresh and the fleet tick&rsquo;s auto-repair touch only that
+    site&rsquo;s line; an orphan line whose script is gone is adopted, another site&rsquo;s is
+    never touched; the two pages that still edited the crontab by hand now go through the one
+    helper. (b) Each cron script stamps a scheduler heartbeat first thing, and only when the
+    scheduler launched it &mdash; RUN NOW and event kicks are marked manual and ignored, the
+    page-hit fallback is not command-line and ignored. Cron &amp; Jobs gets a SCHEDULER row that
+    reads that stamp alone: FIRING, or NOT FIRING / NEVER FIRED / HAS NOT FIRED SINCE THE DEPLOY,
+    in red, in words. (c) The fleet heartbeat ships the same verdict per job and CRONOMETER judges
+    on it when present. (d) Every finished deploy is stamped; a job that has not fired within
+    fifteen minutes of it is red on every surface. (e) The cleanup paste is still owed.</p>
 
     <h2>6. Verified live — and what remains</h2>
     <p>Sites box: installed 14:55 UTC; the 15:20 run drained allinthewrist.photoblogs.fyi&rsquo;s 28
@@ -91,8 +96,10 @@
     16:26:55 UTC; on the next ten-minute tick the relay&rsquo;s own page went from &ldquo;13h ago&rdquo;
     to &ldquo;3m ago (16:50:01, running)&rdquo;. Hourly and six-hourly jobs on the relay were not yet
     due at the time of writing.</p>
-    <p>What remains is the code. Until (a)&ndash;(d) ship and a deploy is watched with every
-    site&rsquo;s heartbeat moving afterwards, this stays
+    <p>Relay, later the same afternoon: the hourly RSS job fired at 17:07:01 on the new schedule
+    and delivery kept firing on the tens &mdash; two jobs, watched. What remains is the deploy.
+    Until 712D ships and a deploy is watched with every site&rsquo;s SCHEDULER row green
+    afterwards, this stays
     <span class="state-chip chip-confirm">Running on the box &mdash; confirming</span>. The status pages
     will keep saying &ldquo;registered but invalid&rdquo; until then; that message is now known to be
     the instrument, not the patient.</p>

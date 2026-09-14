@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 015 — One photograph, three places, three different comment counts</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 015 — One photograph, three places, three different comment counts</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-14-015</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-14</td></tr>
+        <tr><td class="k">First observed</td><td>2026-09-14, the day after OPAUDIT 013 was called watched. Sean opened the same photograph (&ldquo;Got my eye on you&rdquo;, allinthewrist.photoblogs.fyi) in three places and screenshotted all three.</td></tr>
+        <tr><td class="k">Theme</td><td>&ldquo;Comments federate&rdquo; had been checked in one direction, one hop, one pair of servers. A thread is not one hop. Every place that shows the photograph must show the same conversation, or the feature is a rumour.</td></tr>
+        <tr><td class="k">Surfaces</td><td>The public comment thread on the blog; the same post on Pixelfed; the same post inside another SnapSmack blog&rsquo;s FEDIVERSE reader; the ActivityPub Note the blog publishes.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-confirm">Fixed &mdash; confirming</span> &nbsp; Three fixes built and regression-tested in 0.7.712D, not yet deployed, not yet watched on a live Pixelfed. Forwarding in particular depends on how the receiving server treats a forwarded activity, which only a live test settles.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>No.</strong> The defect was watched (three screenshots, three counts). The fix has not been.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean (looked at the photograph as three different readers would) + Claude (traced the three causes, wrote the three fixes).</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 013 (replies stored, never shown &mdash; this is its sequel: shown, but not the same set everywhere); OPAUDIT 014 (cron &mdash; ruled out here: none of the three gaps was a delivery problem).</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No exploitable detail.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>The same photograph had four comments on the blog that owns it, two on Pixelfed, and none
+    in another SnapSmack blog&rsquo;s reader. Three separate causes, none of them the delivery
+    queue: the reader only knew how to ask a Pixelfed-style API for a thread, so a SnapSmack post
+    always answered with nothing; a comment typed on the blog before the outbound fix of 708D
+    had simply never been sent; and a reply that came from a third server was kept by the blog
+    but never passed on to the blog&rsquo;s followers, so Pixelfed had no way to know it existed.</p>
+
+    <h2>2. What a human saw</h2>
+    <table>
+        <tr><th>Where</th><th>Comments shown</th></tr>
+        <tr><td>allinthewrist.photoblogs.fyi (the source)</td><td>4 &mdash; zuckit@unzucked.ca, mccormickphoto@pixelfed.social, The Dude, Cthulhu</td></tr>
+        <tr><td>pixelfed.social</td><td>2 &mdash; mccormickphoto (its own), Cthulhu (the 708D mirror, watched the day before)</td></tr>
+        <tr><td>unzucked.ca FEDIVERSE reader</td><td>0 &mdash; not even zuckit&rsquo;s own reply, sent from that very reader</td></tr>
+    </table>
+
+    <h2>3. Root cause &mdash; three of them</h2>
+    <p><strong>The reader (0 comments).</strong> The reader&rsquo;s thread loader took the post&rsquo;s
+    address, pulled the last number out of it, and asked <code>/api/v1/statuses/N/context</code>
+    on that host &mdash; the Mastodon/Pixelfed API. A SnapSmack blog has no such API. The request
+    404&rsquo;d and the thread rendered empty, for every SnapSmack post, since the reader was
+    written.</p>
+    <p><strong>The Dude (missing on Pixelfed).</strong> A local comment, older than Cthulhu&rsquo;s.
+    708D mirrors each <em>new</em> community comment into the classic table and federates it;
+    everything typed before 708D existed sat in the community table only. Cthulhu was typed
+    after the deploy and went out; The Dude was typed before and never would.</p>
+    <p><strong>zuckit&rsquo;s reply (missing on Pixelfed).</strong> unzucked.ca sent its reply to
+    allinthewrist, which stored and displayed it. Pixelfed follows allinthewrist, not unzucked.
+    ActivityPub&rsquo;s answer to this is inbox forwarding (spec &sect;7.1.2): the server that owns
+    the post forwards replies it receives to its own followers. Mastodon and Pixelfed do this.
+    SnapSmack did not. On top of that, a SnapSmack blog receiving a forwarded activity rejected
+    it outright, because the activity&rsquo;s actor did not match the server that signed the
+    delivery &mdash; correct for a forgery, wrong for a forward.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>Three screenshots of the same photograph, counts as above. allinthewrist&rsquo;s delivery
+    log: queue empty, worker firing every ten minutes (the cron fix of OPAUDIT 014 was already in),
+    so delivery was ruled out before code was read. The reader&rsquo;s thread function
+    (<code>sv_status_replies</code>) contained one code path, the Mastodon API; the inbox
+    handler&rsquo;s first check was actor-equals-signer-or-401; the 708D mirror lived only in the
+    new-comment handler.</p>
+
+    <h2>5. What we did (0.7.712D)</h2>
+    <p><strong>A standard <code>replies</code> collection on every post.</strong> Each content
+    Note now carries <code>replies</code> pointing at <code>/ap/note/{i|p|l}/N/replies</code>: an
+    ordered collection of the approved thread &mdash; remote replies listed by their own addresses
+    (the fetcher dereferences them from where they were written; the blog never vouches for
+    someone else&rsquo;s words), local comments embedded in full. Mastodon reads this collection
+    when a thread is opened. The reader now falls back to it when the origin has no Mastodon API,
+    following <code>first</code> when the collection is paged and dereferencing bare ids. Same
+    output shape, so the reader&rsquo;s page code did not change.</p>
+    <p><strong>Inbox forwarding.</strong> A public reply that reaches one of the blog&rsquo;s own
+    posts is forwarded, as received, to every follower inbox except the replier&rsquo;s host &mdash;
+    and only when the blog kept it (a reply held for moderation is not amplified). On the receiving
+    side a Create whose actor is not the signer is accepted only after the object is fetched from
+    its origin and is attributed to the claimed actor on that actor&rsquo;s own host; anything
+    else is the same 401 as before. The receipt line says &ldquo;forwarded by X &mdash; object
+    verified from its origin&rdquo;.</p>
+    <p><strong>One-time backfill.</strong> The delivery cron, once per version, mirrors every
+    visible community comment that has no local mirror yet and federates it with its original
+    date; a second pass finds nothing to do. Push &amp; Tools gets a SEND UNSENT BLOG COMMENTS
+    button that runs the same routine now.</p>
+
+    <h2>6. Verified &mdash; and what remains</h2>
+    <p>Regression <code>tests/fediverse-thread-whole-everywhere-regression.php</code> (19 checks)
+    and the existing fediverse suites pass. Nothing has been watched live. To close this:
+    deploy 712D to allinthewrist and unzucked; open the photograph in unzucked&rsquo;s reader and
+    count four; wait one delivery tick and count The Dude on pixelfed.social; have zuckit reply
+    again and see whether pixelfed.social shows it. The last of those is the one that can still
+    fail for reasons outside our code: a receiving server may drop a forwarded activity it cannot
+    verify its own way. If Pixelfed does, the honest state of forwarding becomes
+    <em>contained</em> &mdash; it works between SnapSmack blogs and Mastodon, and Pixelfed needs a
+    different route &mdash; and this entry says so.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>The three counts, after deploy. Then: hiding or deleting a comment does not yet retract
+    it from the fediverse (708D&rsquo;s known gap, still open). And the same three-places check
+    for likes, which OPAUDIT 009 left undiagnosed.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>A federated feature is watched when the <em>same</em> thing is seen from every place
+        it can be looked at &mdash; not when one hop between one pair of servers succeeds once.
+        Count it in three places before calling it working.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
