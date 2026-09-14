@@ -20,7 +20,7 @@ $faq_qas = <<<'HTML'
 
             <div class="qa" id="q-tools-required">
                 <h3>Do I have to use them?</h3>
-                <p>No. The website does everything a photoblog needs on its own. The tools exist because some jobs &mdash; editing eighty RAW files, importing fifteen years of Flickr, backing up twenty sites &mdash; are miserable through a browser and cruel to a shared host. They move that work onto your own computer. If you post one photograph a week from your phone, you may never open one.</p>
+                <p>One of them, yes: backup. The website used to back itself up, and on a large archive that slaughtered the server &mdash; a shared host will kill a job that big before it finishes &mdash; so it was taken out of the site and lives in SMACK UP YOUR BACKUP on your own computer. Everything else the website does on its own. The other tools exist because some jobs &mdash; editing eighty RAW files, importing fifteen years of Flickr &mdash; are miserable through a browser and cruel to a shared host, so they move that work onto your machine. If you post one photograph a week from your phone, backup is the only one you&rsquo;ll ever open.</p>
             </div>
 
             <div class="qa" id="q-tools-platforms">
