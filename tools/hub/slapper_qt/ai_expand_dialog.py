@@ -7,6 +7,7 @@ from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout
 import gemini_image_edit
+import stability_image_edit
 import snap_creds
 import snap_home
 from . import BUILD_VERSION
@@ -38,7 +39,7 @@ class AIExpandDialog(QDialog):
         self.pending = None
         self.attempt = 0
         self.signals = _Signals(); self.signals.finished.connect(self._received); self.signals.failed.connect(self._failed)
-        self.setWindowTitle(f"Generative Expand — Gemini — {BUILD_VERSION}"); self.resize(700, 610)
+        self.setWindowTitle(f"Generative Expand — Stability AI — {BUILD_VERSION}"); self.resize(700, 610)
         layout = QVBoxLayout(self)
         title = QLabel("EXPAND THE PHOTOGRAPH BEYOND ITS CAPTURED FRAME"); title.setObjectName("SectionTitle"); layout.addWidget(title)
         note = QLabel("Drag only the edge or corner you want. Generated area is measured against the original captured frame and is cumulatively limited to 20%.")
@@ -49,7 +50,7 @@ class AIExpandDialog(QDialog):
         self.preview = QLabel(); self.preview.setAlignment(Qt.AlignCenter); self.preview.setVisible(False); layout.addWidget(self.preview, 1)
         actions = QHBoxLayout(); actions.addStretch(1)
         cancel = QPushButton("CANCEL"); cancel.clicked.connect(self.reject); actions.addWidget(cancel)
-        self.go = QPushButton("EXPAND WITH GEMINI"); self.go.setObjectName("LayerAddBtn"); self.go.clicked.connect(self._start); actions.addWidget(self.go)
+        self.go = QPushButton("EXPAND WITH STABILITY AI"); self.go.setObjectName("LayerAddBtn"); self.go.clicked.connect(self._start); actions.addWidget(self.go)
         self.accept_result = QPushButton("ADD EXPANSION"); self.accept_result.setObjectName("LayerAddBtn")
         self.accept_result.clicked.connect(self._accept_result); self.accept_result.setVisible(False); actions.addWidget(self.accept_result)
         layout.addLayout(actions); self.status = QLabel("Ready"); layout.addWidget(self.status)
@@ -77,10 +78,16 @@ class AIExpandDialog(QDialog):
         if area <= 0 or area > self.remaining_area:
             QMessageBox.information(self, "Expansion limit", self.status.text()); return
         sides = ", ".join(f"{name} {value:.1f}%" for name, value in self.edges.items() if value >= .1)
-        if not confirm_send(self, "ai_expand_send_warning_hidden", "Send this expansion to Gemini?",
+        key = snap_creds.get("stability_api_key", "")
+        if not key:
+            QMessageBox.information(
+                self, "Stability AI key needed",
+                "Add a Stability AI API key in SNAP HQ Settings before using Generative Expand.")
+            return
+        if not confirm_send(self, "ai_expand_send_warning_hidden", "Send this expansion to Stability AI?",
                 f"Expand {sides}: {area:,} generated pixels ({percent:.1f}% of the original frame), producing {size[0]} × {size[1]} pixels. The working copy and displayed instruction will leave this computer. This is a Class C generative alteration. Continue?"):
             return
-        key = snap_creds.get("gemini_api_key", ""); model = snap_creds.get("gemini_image_model", "gemini-3.1-flash-image")
+        model = "Stable Image Outpaint"
         instruction = self.prompt.text().strip()
         if self.pending:
             instruction = (instruction + " Generate a visibly different alternative to the "
@@ -88,7 +95,7 @@ class AIExpandDialog(QDialog):
         self.attempt += 1
         self.go.setEnabled(False); self.accept_result.setEnabled(False)
         self.preview.setText(f"Generating alternative {self.attempt}…")
-        self.status.setText(f"Gemini is extending the selected edge — attempt {self.attempt}…")
+        self.status.setText(f"Stability AI is extending the selected edge — attempt {self.attempt}…")
         def work():
             try:
                 generator_edges = {
@@ -99,10 +106,11 @@ class AIExpandDialog(QDialog):
                 }
                 preview_limit = round(self.photo.width * self.photo.height *
                                       (self.remaining_area / (self.current_size[0] * self.current_size[1])))
-                result = gemini_image_edit.expand(self.photo, generator_edges, instruction, key,
-                                                  model=model,
-                                                  max_generated_area=preview_limit)
-                self.signals.finished.emit((result, model, instruction, area, dict(self.edges)))
+                result, mask, box, sent_instruction = stability_image_edit.expand(
+                    self.photo, generator_edges, instruction, key,
+                    max_generated_area=preview_limit)
+                self.signals.finished.emit(((result, mask, box), model, sent_instruction,
+                                            area, dict(self.edges)))
             except Exception as error:
                 self.signals.failed.emit(str(error))
         threading.Thread(target=work, daemon=True).start()
@@ -120,11 +128,12 @@ class AIExpandDialog(QDialog):
         result, mask, box, model, instruction, area, edges = self.pending
         folder = os.path.join(snap_home.shared_library(), "snap_slapper", "generative"); os.makedirs(folder, exist_ok=True)
         path = os.path.join(folder, f"ai-expand-{int(time.time() * 1000)}.png"); result.save(path, "PNG")
-        self.host.apply_ai_expand(path, mask, box, model, instruction, self.photo, area, edges); self.accept()
+        self.host.apply_ai_expand(path, mask, box, "Stability AI", model, instruction,
+                                  self.photo, area, edges); self.accept()
 
     def _failed(self, message):
         self._edges_changed(self.edges); self.accept_result.setEnabled(self.pending is not None)
-        self.status.setText("Gemini could not expand the selected edge.")
+        self.status.setText("Stability AI could not expand the selected edge.")
         QMessageBox.warning(self, "Generative Expand could not finish", message)
 
 # ===== SNAPSMACK EOF =====
