@@ -2027,20 +2027,40 @@ cPanel or SSH. Three jobs run on every SnapSmack site:</p>
     <li><strong>Version / update check</strong> &mdash; checks SMACK CENTRAL for a newer build
     and skin updates. Runs every 6 hours.</li>
 </ul>
-<p>For each job you see its <strong>last run</strong> and whether it is <strong>registered</strong>
-(scheduled). Three buttons:</p>
+<p>For each job there are three rows. Read them in this order:</p>
+<ul>
+    <li><strong>SCHEDULER</strong> &mdash; the only row that tells you whether cron is working.
+    Green <strong>FIRING</strong> means the server's scheduler itself launched the job recently.
+    Red means it did not: <strong>NOT FIRING</strong> (it used to, and stopped),
+    <strong>NEVER FIRED</strong> (no record of the scheduler ever launching it), or
+    <strong>HAS NOT FIRED SINCE THE DEPLOY</strong> (an update finished more than fifteen minutes
+    ago and the job has not run since). This row moves <em>only</em> when the scheduler launches
+    the job. Pressing RUN NOW does not move it. A visitor loading a page does not move it. That is
+    deliberate: for months every site looked healthy because those two kept the old "last run"
+    fresh while cron was not running at all.</li>
+    <li><strong>Last run (any launcher)</strong> &mdash; the last time the job ran by any means:
+    scheduler, RUN NOW, or the fallback that drains the queue when a visitor loads a page. Useful
+    for "is the queue moving"; useless for "is cron working".</li>
+    <li><strong>This site's crontab line</strong> &mdash; whether this site has its own line in the
+    server's crontab. Informational. A site can be FIRING with no line of its own (a server-wide
+    schedule runs it) and that is fine; a site can have a perfect line and be NOT FIRING (cron
+    itself is down on the server) and that is not.</li>
+</ul>
+<p>Three buttons:</p>
 <ul>
     <li><strong>RUN NOW</strong> &mdash; runs the job this second. Use it to fix something now,
-    or to prove a job works.</li>
-    <li><strong>REGISTER</strong> &mdash; installs the job in the server's crontab so it runs on
-    schedule. <em>This is the fix for a job that says "never" and "not registered."</em></li>
-    <li><strong>UNREGISTER</strong> &mdash; removes it from the crontab.</li>
+    or to prove the job's code works. It never turns the SCHEDULER row green.</li>
+    <li><strong>REGISTER</strong> &mdash; writes this site's line into the server's crontab. Then
+    wait one interval and look at the SCHEDULER row &mdash; a written line is a promise, a green
+    row is proof.</li>
+    <li><strong>UNREGISTER</strong> &mdash; removes this site's line. Only this site's: on a
+    server that hosts several SnapSmack sites under one user, every site's line carries the same
+    tag, and until 0.7.712D registering one site quietly replaced another's. Lines are now told
+    apart by their script path.</li>
 </ul>
-<p>If a job shows <strong>never</strong> and <strong>not registered</strong>, it has simply never
-been scheduled on this host &mdash; click REGISTER and it will start running. If your host can't
-schedule cron at all (some shared hosting), use the <strong>WEB CRON</strong> option at the bottom
-of the page: point an external uptime pinger at the web-cron URL every few minutes and the due
-jobs run on each hit.</p>
+<p>If your host can't schedule cron at all (some shared hosting), use the <strong>WEB CRON</strong>
+option at the bottom of the page: point an external uptime pinger at the web-cron URL every few
+minutes and the due jobs run on each hit.</p>
 <p>This page controls only this site's crons. To watch cron health across your whole fleet at a
 glance, use the desktop <strong>CRONOMETER</strong> tool.</p>
 HTML

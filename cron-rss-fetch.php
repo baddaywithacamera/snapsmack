@@ -28,6 +28,8 @@ if (php_sapi_name() !== 'cli' && !defined('SNAPSMACK_INTERNAL_CRON')) {
 if (!defined('SNAPSMACK_CRON')) define('SNAPSMACK_CRON', true);
 $base = dirname(__FILE__);
 require_once $base . '/core/db.php';
+require_once $base . '/core/cron-register.php';
+cron_stamp_scheduler_fire($pdo, 'rss_fetch');   // "did cron fire" — the only truth
 
 // Distinguish a real CLI worker from the public-page fallback. A current
 // heartbeat suppresses duplicate web-cron work; if system cron stops, the
