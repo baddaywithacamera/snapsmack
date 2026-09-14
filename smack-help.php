@@ -3690,7 +3690,7 @@ $help_topics['traffic-stats-bots'] = [
     <li><strong>What it says it is.</strong> A visitor that announces itself as a crawler
     (Googlebot, Bingbot, the AI fetchers that identify themselves) goes straight to the bot
     column.</li>
-    <li><strong>How it behaves</strong> (from 0.7.712D). A visitor that arrives with no
+    <li><strong>How it behaves</strong> (from 0.7.713D). A visitor that arrives with no
     referrer, looks at one page, and is never seen again that day is counted as a fetcher, not a
     reader. That is the shape of scraper pools running on ordinary home addresses, and they
     pass the first check every time. It is also, occasionally, the shape of a real person
