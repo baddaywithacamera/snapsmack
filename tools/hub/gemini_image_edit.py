@@ -4,7 +4,7 @@ import base64
 import io
 
 import requests
-from PIL import Image, ImageChops, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageStat
 
 
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
@@ -70,7 +70,14 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
     mask = mask.convert("L").resize(image.size, Image.Resampling.LANCZOS)
     box, work_image, work_mask = focus_region(image, mask)
     marked = marked_selection(work_image, work_mask)
-    if operation == "fill":
+    if operation == "expand":
+        task = (
+            "Extend the photograph naturally into every white border area. "
+            "Continue the existing scene, perspective, lighting, focus, grain, colour "
+            "and texture beyond the captured frame. " +
+            (("Additional direction: " + prompt.strip() + ".") if prompt.strip() else "")
+        )
+    elif operation == "fill":
         if prompt.strip():
             task = (
                 "Replace the marked area with this requested content: " + prompt.strip() +
@@ -136,5 +143,25 @@ def fill(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
     """Generate requested content inside a locally enforced selection."""
     return heal(image, mask, prompt, api_key, model=model, timeout=timeout,
                 operation="fill")
+
+
+def expand(image, percent, prompt, api_key, model="gemini-3.1-flash-image", timeout=300):
+    """Generate a larger frame while restoring the supplied photograph locally."""
+    image = image.convert("RGB")
+    amount = max(1, min(20, int(percent))) / 100.0
+    x_pad = max(1, round(image.width * amount))
+    y_pad = max(1, round(image.height * amount))
+    size = (image.width + x_pad * 2, image.height + y_pad * 2)
+    box = (x_pad, y_pad, x_pad + image.width, y_pad + image.height)
+    mean = tuple(round(value) for value in ImageStat.Stat(image.resize((1, 1))).mean[:3])
+    canvas = Image.new("RGB", size, mean)
+    canvas.paste(image, box[:2])
+    mask = Image.new("L", size, 255)
+    ImageDraw.Draw(mask).rectangle(
+        (box[0], box[1], box[2] - 1, box[3] - 1), fill=0)
+    generated = heal(canvas, mask, prompt, api_key, model=model, timeout=timeout,
+                     operation="expand")
+    generated.paste(image, box[:2])
+    return generated, mask, box
 
 # ===== SNAPSMACK EOF =====
