@@ -1926,6 +1926,14 @@ input[type="range"]:active::-webkit-slider-thumb {
     color: #ffbb33;
 }
 
+/* Cron & Jobs — the SCHEDULER row is the one verdict that says whether cron
+   fires (OPAUDIT 014). Green = firing; red = not firing / never / not since
+   the deploy. Same tokens as the alerts so it reads the same in every theme. */
+.data-table tr.cron-sched-ok td  { background: #0a2e12; color: #5ddd72; }
+.data-table tr.cron-sched-bad td { background: #3b0d0d; color: #ff8080; }
+.data-table tr.cron-sched-bad td .dim,
+.data-table tr.cron-sched-ok td .dim { color: inherit; opacity: .75; }
+
 /* AI cost gate: presentation follows the active admin theme. The previous
    inline brown/black block bypassed light themes and made its text unreadable. */
 .ai-consent-gate {

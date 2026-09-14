@@ -24,21 +24,21 @@ require_once 'core/cron-register.php';
    registrations in fediverse-admin-shared.php, smack-admin.php, smack-update.php. */
 $CRON_JOBS = [
     [
-        'key' => 'fediverse', 'label' => 'Fediverse delivery',
+        'key' => 'fediverse', 'verdict' => 'fediverse', 'label' => 'Fediverse delivery',
         'tag' => '# snapsmack-fediverse', 'schedule' => '*/10 * * * *',
         'human' => 'every 10 minutes', 'script' => 'cron-fediverse.php',
         'last_key' => 'fediverse_cron_last_run', 'status_key' => 'fediverse_cron_last_status',
         'blurb' => 'Sends this blog\'s posts out to the fediverse and pulls followed accounts in.',
     ],
     [
-        'key' => 'rss', 'label' => 'RSS blogroll fetch',
+        'key' => 'rss', 'verdict' => 'rss_fetch', 'label' => 'RSS blogroll fetch',
         'tag' => '# snapsmack-rss-fetch', 'schedule' => '0 * * * *',
         'human' => 'hourly', 'script' => 'cron-rss-fetch.php',
         'last_key' => 'rss_last_run', 'status_key' => 'rss_last_status',
         'blurb' => 'Refreshes the blogroll from the peer feeds it follows.',
     ],
     [
-        'key' => 'version', 'label' => 'Version / update check',
+        'key' => 'version', 'verdict' => 'version_check', 'label' => 'Version / update check',
         'tag' => '# snapsmack-version-check', 'schedule' => '0 */6 * * *',
         'human' => 'every 6 hours', 'script' => 'cron-version-check.php',
         'last_key' => 'last_update_check', 'status_key' => 'version_check_last_status',
@@ -89,10 +89,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $flash = 'This host can\'t self-register cron. Use the WEB CRON option below.'; $flash_type = 'error';
             } else {
                 list($ok, $msg) = cron_register_job($job['schedule'], $script_abs ?: (__DIR__ . '/' . $job['script']), $job['tag']);
+                if ($ok) $msg .= ' That only proves the line was written. The SCHEDULER row below turns green when the job actually fires — check back after the next ' . $job['human'] . ' mark.';
                 $flash = $msg; $flash_type = $ok ? 'success' : 'error';
             }
         } elseif ($action === 'remove') {
-            list($ok, $msg) = cron_remove_job($job['tag']);
+            list($ok, $msg) = cron_remove_job($job['tag'], $script_abs ?: (__DIR__ . '/' . $job['script']));
             $flash = $msg; $flash_type = $ok ? 'success' : 'error';
         }
         $settings = cron_load_settings($pdo); // refresh last-run after a run
@@ -131,10 +132,12 @@ include 'core/sidebar.php';
 
     <div class="box mb-20">
         <p class="dim">
-            The scheduled jobs this site runs. <strong>RUN NOW</strong> runs a job this second.
-            <strong>REGISTER</strong> installs it in the server's crontab so it runs on schedule;
-            <strong>UNREGISTER</strong> removes it. A job that has never run and isn't registered is
-            the thing to fix — register it, or run it now to prove it works.
+            The scheduled jobs this site runs. The <strong>SCHEDULER</strong> row is the only one that
+            says whether cron is working: it moves only when the scheduler itself launches the job — not
+            when you press RUN NOW, not when a visitor's page load drains the queue. Red there means the
+            job is not being scheduled on this server, whatever the crontab says.
+            <strong>RUN NOW</strong> runs a job this second. <strong>REGISTER</strong> writes this site's
+            line into the server's crontab; <strong>UNREGISTER</strong> removes it (only this site's line).
         </p>
         <?php if (!$cron_supported): ?>
             <p class="alert alert-warn">&gt; This host can't schedule cron from the CMS (no command-line PHP / crontab access). Public visitors will never be used to run background jobs. Configure these commands in the hosting control panel.</p>
@@ -153,14 +156,36 @@ include 'core/sidebar.php';
         $stale_after = $job['key'] === 'fediverse' ? 1200 : ($job['key'] === 'rss' ? 7200 : 46800);
         $stale = !$last_epoch || (time() - $last_epoch) > $stale_after;
         $wedged = $job['key'] === 'fediverse' && $status === 'running' && $stale;
+        // The scheduler heartbeat: the only row that answers "is cron running".
+        [$sched_state, $sched_fire, $sched_age, $deploy_at] = cron_job_verdict($settings, $job['verdict']);
+        $sched_ok = $sched_state === 'firing';
     ?>
     <div class="box mb-20">
         <h3><?php echo htmlspecialchars($job['label']); ?></h3>
         <p class="dim mb-10"><?php echo htmlspecialchars($job['blurb']); ?> Runs <?php echo htmlspecialchars($job['human']); ?> (<code><?php echo htmlspecialchars($job['schedule']); ?></code>).</p>
         <table class="data-table mb-10">
             <tbody>
+                <tr class="<?php echo $sched_ok ? 'cron-sched-ok' : 'cron-sched-bad'; ?>">
+                    <th>Scheduler</th>
+                    <td>
+                        <?php if ($sched_state === 'firing'): ?>
+                            &#10003; <strong>FIRING</strong> &mdash; last launched by the scheduler <?php echo htmlspecialchars(cron_age_text($sched_fire)); ?>
+                            <span class="dim">(<?php echo htmlspecialchars($sched_fire); ?>)</span>
+                        <?php elseif ($sched_state === 'not-since-deploy'): ?>
+                            &#10007; <strong>HAS NOT FIRED SINCE THE DEPLOY</strong> at <?php echo htmlspecialchars($deploy_at); ?>
+                            <?php if ($sched_fire !== ''): ?>&mdash; last scheduler launch was <?php echo htmlspecialchars(cron_age_text($sched_fire)); ?><?php else: ?>&mdash; and never before it<?php endif; ?>.
+                            Cron is not running this job on this server. Fix the schedule; RUN NOW does not count.
+                        <?php elseif ($sched_state === 'stale'): ?>
+                            &#10007; <strong>NOT FIRING</strong> &mdash; the scheduler last launched this job <?php echo htmlspecialchars(cron_age_text($sched_fire)); ?>
+                            <span class="dim">(<?php echo htmlspecialchars($sched_fire); ?>)</span>; it should run <?php echo htmlspecialchars($job['human']); ?>.
+                            Cron is not running this job on this server. RUN NOW does not count.
+                        <?php else: ?>
+                            &#10007; <strong>NEVER FIRED</strong> &mdash; no record of the scheduler ever launching this job on this server (this record began in 0.7.712D; if the site was updated less than <?php echo htmlspecialchars($job['human']); ?> ago, wait one interval). RUN NOW does not count.
+                        <?php endif; ?>
+                    </td>
+                </tr>
                 <tr>
-                    <th>Last run</th>
+                    <th>Last run (any launcher)</th>
                     <td>
                         <?php if ($ever_ran): ?>
                             &#10003; <?php echo htmlspecialchars(cron_age_text($last)); ?>
@@ -171,18 +196,18 @@ include 'core/sidebar.php';
                     </td>
                 </tr>
                 <tr>
-                    <th>Scheduled</th>
-                    <td>
-                        <?php if ($registered && $command_ok && !$stale): ?>
-                            &#10003; registered, command verified, and running on schedule
-                        <?php elseif ($wedged): ?>
-                            &#10007; worker says RUNNING but its heartbeat is stale &mdash; it stopped or wedged; the authenticated fleet tick will take over
+                    <th>This site's crontab line</th>
+                    <td class="dim">
+                        <?php if ($wedged): ?>
+                            &#10007; worker says RUNNING but its heartbeat is stale &mdash; it stopped or wedged; the next scheduled launch takes over
                         <?php elseif ($registered && $command_ok): ?>
-                            &#10007; registered command is valid, but the job is stale and is not running on schedule
+                            present, command verified<?php if (!$sched_ok): ?> &mdash; and yet the scheduler is not firing it: check that cron itself is running on this server<?php endif; ?>
                         <?php elseif ($registered): ?>
-                            &#10007; tagged entry exists, but it is invalid: <?php echo htmlspecialchars((string)$inspection['problem']); ?>. The authenticated fleet tick will repair it automatically.
+                            present but wrong: <?php echo htmlspecialchars((string)$inspection['problem']); ?>
+                        <?php elseif ($sched_ok): ?>
+                            none for this site &mdash; something else schedules it (a server-wide cron loop, for example). That is fine; the SCHEDULER row is what counts.
                         <?php else: ?>
-                            &#10007; not registered &mdash; this job won't run on its own until you register it
+                            none for this site
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -192,7 +217,7 @@ include 'core/sidebar.php';
             <?php csrf_field(); ?>
             <input type="hidden" name="job" value="<?php echo htmlspecialchars($job['key']); ?>">
             <button type="submit" name="cron_action" value="run_now" class="btn-smack">RUN NOW</button>
-            <?php if (!$registered || !$command_ok || $stale): ?>
+            <?php if (!$registered || !$command_ok): ?>
                 <button type="submit" name="cron_action" value="register" class="btn-smack">REGISTER</button>
             <?php else: ?>
                 <button type="submit" name="cron_action" value="remove" class="btn-smack btn-smack--danger">UNREGISTER</button>
@@ -201,7 +226,7 @@ include 'core/sidebar.php';
     </div>
     <?php endforeach; ?>
 
-    <p class="dim">This page controls only this site's crons. Fleet-wide cron health is in the desktop CRONOMETER board.</p>
+    <p class="dim">This page controls only this site's crons. Fleet-wide cron health is in the desktop CRONOMETER board, which reads the same SCHEDULER heartbeat.</p>
 
 </div>
 

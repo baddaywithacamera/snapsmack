@@ -37,6 +37,8 @@ if (!file_exists("{$root}/core/db.php")) {
     exit(1);
 }
 require_once "{$root}/core/db.php";
+require_once "{$root}/core/cron-register.php";
+cron_stamp_scheduler_fire($pdo, 'version_check');   // "did cron fire" — the only truth
 
 // Load updater engine
 require_once "{$root}/core/updater.php";

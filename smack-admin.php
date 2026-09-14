@@ -238,42 +238,24 @@ try {
 // Allows the user to register or remove the RSS fetcher from the system crontab.
 // The job runs hourly to automatically fetch updates from peer feeds.
 $cron_msg = '';
+// One code path for every crontab write (core/cron-register.php): per-site
+// lines, so this site's REGISTER/REMOVE never touches another site's job on a
+// shared box (OPAUDIT 014). The raw crontab edit that used to live here was
+// tag-only and overwrote whichever site registered last.
+require_once __DIR__ . '/core/cron-register.php';
+$rss_cron_script = realpath(__DIR__ . '/cron-rss-fetch.php') ?: (__DIR__ . '/cron-rss-fetch.php');
 if ($cron_supported && isset($_POST['cron_action'])) {
-    $script_path = realpath(__DIR__ . '/cron-rss-fetch.php');
-    $cron_line   = "0 * * * * {$php_cli_path} {$script_path} >> /dev/null 2>&1";
-    $tag         = '# snapsmack-rss-fetch';
-    $full_entry  = "{$cron_line} {$tag}";
-
-    exec('crontab -l 2>&1', $current_cron, $rc);
-    $current_cron_str = ($rc === 0) ? implode("\n", $current_cron) : '';
-
     if ($_POST['cron_action'] === 'register') {
-        if (strpos($current_cron_str, $tag) === false) {
-            $new_cron = trim($current_cron_str) . "\n" . $full_entry . "\n";
-            $tmp = tempnam(sys_get_temp_dir(), 'ssck');
-            file_put_contents($tmp, $new_cron);
-            exec("crontab {$tmp} 2>&1", $out, $ret);
-            unlink($tmp);
-            $cron_msg = ($ret === 0) ? 'RSS FETCH JOB REGISTERED. RUNS HOURLY.' : 'FAILED TO REGISTER: ' . implode(' ', $out);
-        } else {
-            $cron_msg = 'JOB ALREADY REGISTERED.';
-        }
+        [$ok, $msg] = cron_register_job('0 * * * *', $rss_cron_script, '# snapsmack-rss-fetch');
+        $cron_msg = $ok ? 'RSS FETCH JOB REGISTERED. RUNS HOURLY. (Cron & Jobs shows when it actually fires.)' : 'FAILED TO REGISTER: ' . $msg;
     } elseif ($_POST['cron_action'] === 'remove') {
-        $cleaned = preg_replace('/.*' . preg_quote($tag, '/') . '.*\n?/', '', $current_cron_str);
-        $tmp = tempnam(sys_get_temp_dir(), 'ssck');
-        file_put_contents($tmp, trim($cleaned) . "\n");
-        exec("crontab {$tmp} 2>&1", $out, $ret);
-        unlink($tmp);
-        $cron_msg = ($ret === 0) ? 'RSS FETCH JOB REMOVED.' : 'FAILED TO REMOVE: ' . implode(' ', $out);
+        [$ok, $msg] = cron_remove_job('# snapsmack-rss-fetch', $rss_cron_script);
+        $cron_msg = $ok ? 'RSS FETCH JOB REMOVED.' : 'FAILED TO REMOVE: ' . $msg;
     }
 }
 
-// Checks whether the RSS fetcher job is currently registered in the crontab.
-$rss_job_registered = false;
-if ($cron_supported) {
-    exec('crontab -l 2>&1', $check_cron, $check_rc);
-    $rss_job_registered = ($check_rc === 0 && strpos(implode("\n", $check_cron), '# snapsmack-rss-fetch') !== false);
-}
+// Is THIS site's RSS fetcher line in the crontab?
+$rss_job_registered = $cron_supported && cron_job_registered('# snapsmack-rss-fetch', $rss_cron_script);
 
 // --- BIG WHEEL / PIMPMOBILE ---
 // ui_mode is per-user — read from session (loaded at login from snap_users.ui_mode)

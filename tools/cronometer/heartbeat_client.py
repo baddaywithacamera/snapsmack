@@ -10,7 +10,9 @@ jobs and none are monitored here.) This is the honest-degradation layer:
 
   * it reads the `jobs` block the heartbeat ships (core/multisite-api.php, GET
     multisite/heartbeat — keyed {fediverse, rss_fetch, version_check}, each
-    {last_run, status}; shape in docs/cronometer-spec.md), and
+    {last_run, status} and, from 0.7.712D, {sched_last_fire, sched_state} —
+    the scheduler-only heartbeat, which is the verdict when present because
+    last_run moves on page hits and RUN NOW too; shape in docs/cronometer-spec.md), and
   * for a site too old to ship that block, derives what it honestly can from
     today's fields (fediverse ENABLED/DISABLED from fediverse_enabled) and marks
     everything else UNKNOWN / "not reported" rather than inventing a green light.
@@ -352,12 +354,48 @@ def _jobs_from_heartbeat(data: dict) -> List[JobHealth]:
 
 
 def _job_from_rich(spec: JobSpec, rich: dict) -> JobHealth:
-    """Consume the MUST-ADD `jobs.<key>` shape: {last_run, status, detail}."""
+    """Consume the `jobs.<key>` shape: {last_run, status, detail} plus, from
+    0.7.712D, {sched_last_fire, sched_state, sched_age_sec}.
+
+    OPAUDIT 014: `last_run` moves whenever ANYTHING ran the job — a visitor's
+    page load, RUN NOW, the run-crons kick this very board sends — so it kept
+    36 unscheduled sites green. When the site reports `sched_state` (written
+    only when the scheduler itself launched the job) that is the verdict:
+      firing            -> OK (age from sched_last_fire)
+      stale / never     -> STALE up to red cutoff, then FAILED
+      not-since-deploy  -> FAILED (post-deploy gate)
+    A hard 'failed' worker status still wins. Sites without the field fall
+    back to the old last_run judgement and say so in the detail.
+    """
     last = _parse_ts(rich.get('last_run'))
     status = str(rich.get('status') or '')
-    sev = _severity_for(spec, last, status)
-    detail = str(rich.get('detail') or '') or (status or 'reported')
-    return JobHealth(spec.key, spec.label, sev, last, detail, reported=True)
+    sched_state = str(rich.get('sched_state') or '').strip().lower()
+    if not sched_state:
+        sev = _severity_for(spec, last, status)
+        detail = str(rich.get('detail') or '') or (status or 'reported')
+        return JobHealth(spec.key, spec.label, sev, last,
+                         detail + ' (pre-712D site: judged on last_run, any launcher)', reported=True)
+
+    fire = _parse_ts(rich.get('sched_last_fire'))
+    st = status.strip().lower()
+    if st in ('failed', 'error', 'breach'):
+        return JobHealth(spec.key, spec.label, SEV_FAILED, fire,
+                         'worker reported ' + st, reported=True)
+    if sched_state == 'firing':
+        return JobHealth(spec.key, spec.label, SEV_OK, fire,
+                         'scheduler firing' + (f' · worker {st}' if st else ''), reported=True)
+    if sched_state == 'not-since-deploy':
+        return JobHealth(spec.key, spec.label, SEV_FAILED, fire,
+                         'NOT FIRED SINCE DEPLOY — cron is not running this job', reported=True)
+    if sched_state == 'never':
+        return JobHealth(spec.key, spec.label, SEV_STALE, None,
+                         'scheduler has never launched this job (record began 712D)', reported=True)
+    # stale
+    age = (_now() - fire).total_seconds() if fire else None
+    sev = SEV_FAILED if (age is not None and age > spec.red_after_sec) else SEV_STALE
+    return JobHealth(spec.key, spec.label, sev, fire,
+                     'scheduler NOT firing — last launch ' + (_humanize_age(fire) if fire else 'unknown')
+                     + ' (last_run may look fresh: a visitor or RUN NOW did that)', reported=True)
 
 
 def _job_derived(spec: JobSpec, data: dict) -> JobHealth:

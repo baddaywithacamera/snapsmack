@@ -7,7 +7,10 @@ $fleet  = file_get_contents($root . '/core/multisite-api.php');
 
 $checks = [
     'shared refresh helper exists' => str_contains($helper, 'function cron_refresh_enabled_jobs'),
-    'disabled jobs stay disabled'  => str_contains($helper, 'if (!cron_job_registered($tag)) continue;'),
+    'disabled jobs stay disabled'  => str_contains($helper, 'if (!$ours && !$dead) continue;'),
+    'refresh is per-site (014)'    => str_contains($helper, 'cron_job_registered($tag, $path)'),
+    'deploy stamps the gate'       => substr_count($update, 'cron_stamp_deploy_finalized($pdo)') >= 2
+                                      && str_contains($fleet, 'cron_stamp_deploy_finalized($pdo)'),
     'federation job is covered'    => str_contains($helper, "'# snapsmack-fediverse'"),
     'RSS job is covered'           => str_contains($helper, "'# snapsmack-rss-fetch'"),
     'version job is covered'       => str_contains($helper, "'# snapsmack-version-check'"),
