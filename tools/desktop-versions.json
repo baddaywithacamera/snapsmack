@@ -15,7 +15,7 @@
     "version_file": "sybu/main.py"
   },
   "smack-up-your-backup": {
-    "version": "0.7.30",
+    "version": "0.7.43",
     "version_file": "smack-up-your-backup/_version.py"
   },
   "flkr-fckr": {
@@ -49,5 +49,9 @@
   "fed-up": {
     "version": "0.0.1",
     "version_file": "fed-up/_version.py"
+  },
+  "take-your-shit-with-you": {
+    "version": "0.2.0",
+    "version_file": "take-your-shit-with-you/main.py"
   }
 }

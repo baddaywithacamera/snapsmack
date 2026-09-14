@@ -42,6 +42,10 @@ import ftp_client as ftp_module
 import transport
 import manifest_reader
 import config as config_module
+try:
+    from _version import BUILD_VERSION as _SUYB_VERSION
+except Exception:                                                  # noqa: BLE001
+    _SUYB_VERSION = "dev"
 from path_safety import contained_local_path
 
 # Shared transport guard (tools/_shared/snap_stepup.py). SECAUDIT 037 deferred
@@ -520,9 +524,11 @@ class BackupEngine:
         self._prompt_event     = threading.Event()
         self._prompt_continue  = False
         self._asked_once       = False    # only prompt the user once per run
+        self._exit_cancel      = threading.Event()   # handed to the exit-package engine
 
     def cancel(self) -> None:
         self._cancelled = True
+        self._exit_cancel.set()
         self._run_gate.set()
         self._prompt_event.set()   # unblock engine if it's waiting for a prompt response
 
@@ -986,6 +992,34 @@ class BackupEngine:
             done += 1
 
         # ── Stage 4: Package ─────────────────────────────────────────
+        # ── Stage 3b: Exit package (optional, off by default) ─────────────
+        # TAKE YOUR SHIT WITH YOU's canonical archive + WordPress + Ghost
+        # packages, written to <backup_dir>/exit/ and zipped in below, so the
+        # backup that goes to the cloud is also the exit. Never fails the backup:
+        # a problem here is logged and reported, the recovery copy stands.
+        exit_dir = os.path.join(backup_dir, "exit")
+        result["exit_package"] = None
+        if self.profile.get("exit_package") and not self._cancelled:
+            self._progress("stage3b", "Writing the exit package (canonical archive + WordPress + Ghost)…", 0.60)
+            try:
+                import exit_package as exit_module
+                summary = exit_module.write_exit_package(
+                    self.profile.get("site_url", ""), self.profile.get("api_key", ""), backup_dir,
+                    on_log=self._log,
+                    on_progress=lambda stage, msg, frac: self._progress(
+                        "stage3b", f"exit package: {msg}", 0.60 + 0.05 * float(frac or 0)),
+                    cancel_event=self._exit_cancel,
+                    allow_http=bool(self.profile.get("allow_http")),
+                    app_version=f"suyb-{_SUYB_VERSION}")
+                result["exit_package"] = summary
+                for err in summary.get("errors", []):
+                    result["errors"].append(err)
+                if summary.get("ok"):
+                    self._log("Exit package written: canonical archive, WordPress and Ghost packages in exit/.")
+            except Exception as e:                                   # noqa: BLE001
+                result["errors"].append(f"exit package skipped: {e}")
+                self._log(f"⚠ Exit package skipped: {e}")
+
         if self._cancelled:
             result["cancelled"] = True
             if ftp:
@@ -1072,6 +1106,12 @@ class BackupEngine:
                         full = os.path.join(dirpath, fname)
                         arc  = os.path.relpath(full, local_media_dir)
                         zf.write(full, arc)
+                # Include the exit package, if one was written this run
+                if result.get("exit_package") and result["exit_package"].get("ok") and os.path.isdir(exit_dir):
+                    for dirpath, _, fnames in os.walk(exit_dir):
+                        for fname in fnames:
+                            full = os.path.join(dirpath, fname)
+                            zf.write(full, os.path.join("exit", os.path.relpath(full, exit_dir)))
                 # Optionally include SUYB settings (profile + global config)
                 if self.include_settings:
                     settings_bundle = {
