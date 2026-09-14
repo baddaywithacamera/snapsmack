@@ -176,16 +176,23 @@ p:last-child { margin-bottom: 0; }
     border-top: 3px solid var(--red);
     box-shadow: 0 12px 30px rgba(0,0,0,.2);
 }
-.nav-flyout a {
+/* Scoped like the top-nav rules above (#site-header nav a …), or those outrank
+   this and paint the flyout's links dark grey on black — unreadable, looked
+   disabled (2026-09-14). */
+#site-header nav .nav-flyout a,
+#mini-header nav .nav-flyout a {
     display: block;
     padding: 10px 12px;
     color: var(--white);
     text-align: left;
     white-space: nowrap;
 }
-.nav-flyout a:hover,
-.nav-flyout a.active { color: var(--white); background: var(--red); }
-.nav-flyout a::after { display: none; }
+#site-header nav .nav-flyout a:hover,
+#site-header nav .nav-flyout a.active,
+#mini-header nav .nav-flyout a:hover,
+#mini-header nav .nav-flyout a.active { color: var(--white); background: var(--red); }
+#site-header nav .nav-flyout a::after,
+#mini-header nav .nav-flyout a::after { display: none; }
 
 /* --- LIVE SKIN STATS --- */
 #skin-stats-tooltip {
@@ -478,9 +485,9 @@ p:last-child { margin-bottom: 0; }
         box-shadow: none;
         background: var(--light-grey);
     }
-    #site-header .nav-flyout a { padding: 10px 0; color: var(--black); text-align: center; }
-    #site-header .nav-flyout a:hover,
-    #site-header .nav-flyout a.active { color: var(--white); background: var(--red); }
+    #site-header nav .nav-flyout a { padding: 10px 0; color: var(--black); text-align: center; }
+    #site-header nav .nav-flyout a:hover,
+    #site-header nav .nav-flyout a.active { color: var(--white); background: var(--red); }
 
     /* Sticky mini-header dropdown */
     #mini-header .mini-inner { position: relative; }
@@ -501,7 +508,7 @@ p:last-child { margin-bottom: 0; }
     #mini-header .nav-group { width: 100%; text-align: center; }
     #mini-header .nav-group summary { padding: 10px 0; font-size: .9rem; }
     #mini-header .nav-flyout { position: static; min-width: 0; padding: 0; border: 0; box-shadow: none; background: rgba(240,240,240,.98); }
-    #mini-header .nav-flyout a { color: var(--black); text-align: center; }
+    #mini-header nav .nav-flyout a { color: var(--black); text-align: center; }
 }
 
 @media (max-width: 480px) {
