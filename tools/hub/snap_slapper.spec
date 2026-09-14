@@ -35,7 +35,9 @@ a = Analysis(
     [os.path.join(_src, 'run_slapper_qt.py')],
     pathex=[_src, _shared_dir],
     binaries=[],
-    datas=[(path, 'licenses') for path in _external_notices],
+    datas=([(path, 'licenses') for path in _external_notices] +
+           [(os.path.join(_src, 'local_ai', name), 'local_ai') for name in
+            ('install_local_fill.py', 'local_fill_runner.py')]),
     hiddenimports=_hidden,
     hookspath=[],
     hooksconfig={},

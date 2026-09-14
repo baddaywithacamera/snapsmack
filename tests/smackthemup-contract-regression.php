@@ -11,6 +11,7 @@ $schema=(string)file_get_contents($root.'/database/schema/snapsmack_canonical.sq
 $skins=(string)file_get_contents($root.'/smack-skin.php');
 $manifest=(string)file_get_contents($root.'/projects/snapsmack-ca/install-manifest.php');
 $footer=(string)file_get_contents($root.'/core/footer.php');
+$share=(string)file_get_contents($root.'/assets/js/ss-engine-public-share.js');
 $check(str_contains($router,"strpos(\$route, 'smackthemup')"),'dedicated API route exists');
 $check(str_contains($api,"key_type='smackthemup_publish'"),'only the SNAP SLAPPER publish key opens the write API');
 $check(str_contains($api,"!== 'smackthemup'")&&str_contains($api,'409'),'publishing is mode-bound and wrong mode is 409');
@@ -30,5 +31,8 @@ $check(str_contains($nav,"\$_gn_mode === 'smackthemup'")&&str_contains($nav,'>Al
 $check(str_contains($skins,"['carousel', 'smackthemup']")&&str_contains($skins,"\$_cur_mode !== 'smackthemup'"),'gram skins work without changing the permanent hybrid mode');
 $check(str_contains($manifest,"'smackthemup' => 'the-grid'"),'remote installer supplies the Grid renderer skin');
 $check(str_contains($footer,'stu-email-this')&&str_contains($footer,'EMAIL THIS')&&str_contains($footer,'mailto:?subject='),'public photo/taxonomy pages expose EMAIL THIS without server mail');
+$check(str_contains($footer,"rtrim((string)BASE_URL")&&!str_contains($footer,"\$_SERVER['HTTP_HOST']"),'share links use the configured canonical origin, never the request Host header');
+$check(str_contains($footer,'SHARE TO BLUESKY')&&str_contains($footer,'SHARE TO FACEBOOK')&&str_contains($footer,'stu-copy-link'),'public pages expose explicit share and copy-link actions');
+$check(str_contains($share,'navigator.clipboard')&&str_contains($share,"execCommand('copy')"),'copy-link action has a secure API and compatibility fallback');
 echo $fail?"\n{$fail} CHECK(S) FAILED\n":"\nALL PASS\n"; exit($fail?1:0);
 // ===== SNAPSMACK EOF =====
