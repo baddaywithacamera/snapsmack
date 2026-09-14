@@ -29,8 +29,8 @@ $page_css = <<<'CSS'
 .slang { background: var(--light-grey); border-left: 4px solid var(--black); padding: 20px 24px; margin: 8px 0 0; font-size: 0.97rem; }
 .slang p { margin-bottom: 0; }
 .slang strong { color: var(--black); }
-.faq-sections { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 8px; background: var(--border); border: 1px solid var(--border); }
-.faq-sections a { display: block; padding: 18px 20px; background: var(--white); color: var(--black); }
+.faq-sections { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--border); border-left: 1px solid var(--border); margin-top: 8px; }
+.faq-sections a { display: block; padding: 18px 20px; background: var(--white); color: var(--black); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .faq-sections a strong { display: block; font: 900 .85rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .faq-sections a strong::after { content: " \2192"; color: var(--red); }
 .faq-sections a span { display: block; margin-top: 5px; color: var(--mid-grey); font-size: .82rem; line-height: 1.45; }
