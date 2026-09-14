@@ -122,12 +122,17 @@ if (($settings['site_mode'] ?? '') === 'smackthemup') {
         || $_stu_script === 'collection.php';
     if ($_stu_shareable) {
         $_stu_title = trim(strip_tags((string)($page_title ?? $site_name ?? 'Photograph')));
-        $_stu_scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $_stu_url = $_stu_scheme . '://' . ($_SERVER['HTTP_HOST'] ?? parse_url((string)BASE_URL, PHP_URL_HOST)) . ($_SERVER['REQUEST_URI'] ?? '/');
+        // BASE_URL is the configured canonical origin. Never derive share links
+        // from the request Host header, which is visitor-controlled on some hosts.
+        $_stu_url = rtrim((string)BASE_URL, '/') . '/' . ltrim((string)($_SERVER['REQUEST_URI'] ?? '/'), '/');
         $_stu_mailto = 'mailto:?subject=' . rawurlencode($_stu_title) . '&body=' . rawurlencode($_stu_title . "\n" . $_stu_url);
         $slots[] = '<a href="' . htmlspecialchars($_stu_mailto, ENT_QUOTES) . '" class="footer-link stu-email-this">EMAIL THIS</a>';
+        $_stu_share_text = rawurlencode($_stu_title . ' ' . $_stu_url);
+        $slots[] = '<a href="https://bsky.app/intent/compose?text=' . $_stu_share_text . '" class="footer-link stu-share-bsky" target="_blank" rel="noopener noreferrer">SHARE TO BLUESKY</a>';
+        $slots[] = '<a href="https://www.facebook.com/sharer/sharer.php?u=' . rawurlencode($_stu_url) . '" class="footer-link stu-share-facebook" target="_blank" rel="noopener noreferrer">SHARE TO FACEBOOK</a>';
+        $slots[] = '<a href="' . htmlspecialchars($_stu_url, ENT_QUOTES) . '" role="button" class="footer-link stu-copy-link" data-share-url="' . htmlspecialchars($_stu_url, ENT_QUOTES) . '">COPY LINK</a>';
     }
-    unset($_stu_script,$_stu_shareable,$_stu_title,$_stu_scheme,$_stu_url,$_stu_mailto);
+    unset($_stu_script,$_stu_shareable,$_stu_title,$_stu_url,$_stu_mailto,$_stu_share_text);
 }
 
 // --- SLOT 7: RSS (ALWAYS ON) ---
@@ -187,5 +192,8 @@ $_footer_lowercase = (($settings['footer_lowercase'] ?? '0') === '1');
 <?php endif; ?>
 <!-- 0.7.80: public help modal — F1 / footer HELP link -->
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-public-help.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
+<?php if (($settings['site_mode'] ?? '') === 'smackthemup'): ?>
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-public-share.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
+<?php endif; ?>
 </footer>
 <?php // ===== SNAPSMACK EOF =====

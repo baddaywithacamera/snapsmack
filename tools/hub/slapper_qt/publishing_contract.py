@@ -60,9 +60,9 @@ def describe(profile):
         f"{'removed' if policy['strip_gps'] else 'preserved'}")
 
 
-def prepare(document, profile, copyright_text=""):
+def prepare(document, profile, copyright_text="", destination_override=""):
     policy = profile_policy(profile)
-    destination = policy["staging_dir"]
+    destination = os.path.abspath(destination_override) if destination_override else policy["staging_dir"]
     if not destination:
         raise ValueError("This blog has no local uploads folder. Configure it in THE HUB first.")
     if not os.path.isdir(destination):
