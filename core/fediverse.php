@@ -5673,11 +5673,18 @@ function sv_backfill_community_comments(PDO $pdo, array $settings, int $limit = 
             "SELECT c.id, c.post_id, c.user_id, c.guest_name, c.comment_text, c.created_at,
                     u.display_name, u.username
                FROM snap_community_comments c
-          LEFT JOIN snap_users u ON u.id = c.user_id
+          LEFT JOIN snap_community_users u ON u.id = c.user_id
               WHERE c.status = 'visible'
            ORDER BY c.id ASC"
         )->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Throwable $e) { return [0, 0]; }
+    } catch (Throwable $e) {
+        // Say so. The first version joined the wrong users table, the query
+        // threw, this returned [0,0], and the button reported "0 queued" as if
+        // there were nothing to send (2026-09-14). A swallowed error must not
+        // read as an empty result.
+        error_log('FEDIVERSE backfill: could not read community comments: ' . $e->getMessage());
+        return [0, 0];
+    }
 
     $img_check = $pdo->prepare("SELECT id FROM snap_images WHERE id = ? LIMIT 1");
     $first_img = $pdo->prepare("SELECT id FROM snap_images WHERE post_id = ? ORDER BY id ASC LIMIT 1");

@@ -42,6 +42,15 @@ h3 { font-size: 1rem; }
 }
 .slang p { margin-bottom: 0; }
 .slang strong { color: var(--black); }
+.epigraph {
+    max-width: 72ch;
+    margin: 0 0 1.6em;
+    padding: 0 0 0 24px;
+    border-left: 4px solid var(--light-grey);
+    font-style: italic;
+}
+.epigraph p { margin-bottom: 0.3em; }
+.epigraph cite { display: block; font-style: normal; font-size: 0.9rem; color: var(--grey, #666); }
 
 /* ─── AUDIT INDEX (links up top) ──────────────────────────────────────────── */
 .post-index {
@@ -149,6 +158,10 @@ require_once __DIR__ . '/includes/header.php';
     <section>
         <div class="wrap">
             <div class="intro-body">
+                <blockquote class="epigraph">
+                    <p>&ldquo;Always acknowledge a fault. This will throw those in authority off their guard and give you an opportunity to commit more.&rdquo;</p>
+                    <cite>&mdash; Mark Twain</cite>
+                </blockquote>
                 <p>We believe a photographer should be able to see how the software guarding their life's work actually holds up — not take our word for it. So here it is: the security audits we've run on SnapSmack and its companion tools, the findings, and the releases that closed them.</p>
                 <p><strong>Transparency and accountability aren't a marketing line here, they're the deal.</strong> Claude and Codex run ongoing security audits of the codebase; high and medium-risk findings are fixed immediately, low-risk ones on a schedule. The reports below are the closed ones — issues found, issues fixed, dated and signed. What you won't find is a report describing a live, serious hole that's still open: publishing the blueprint for an unpatched break-in would put every SnapSmack site at risk, which is the opposite of protecting you. Those stay private until they're fixed, and then they show up here. That's responsible disclosure, and it's the honest version of "we take security seriously."</p>
                 <p><strong>And here's how we audit.</strong> The standard every one of these audits works from &mdash; the method, not the current state of any specific control &mdash; is public too: <a class="report-link" href="secaudits/SECAUDIT-PROCESS-PUBLIC.pdf" target="_blank" rel="noopener">read our audit standard &rarr;</a></p>
