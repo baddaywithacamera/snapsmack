@@ -482,6 +482,10 @@ function snapsmack_scrolltime_tag($settings) {
 function snapsmack_rollup_daily($pdo, $date = null) {
     if (!$date) $date = date('Y-m-d', strtotime('-1 day'));
 
+    // Behaviour first, then count: fetchers that pass the user-agent check
+    // are moved to the bot column before the day is totted up.
+    snapsmack_reclassify_single_direct($pdo, $date);
+
     try {
         // Total views (excluding bots)
         $views = $pdo->prepare("SELECT COUNT(*) FROM snap_stats WHERE DATE(hit_at) = ? AND is_bot = 0");
@@ -539,6 +543,80 @@ function snapsmack_rollup_daily($pdo, $date = null) {
     } catch (PDOException $e) {
         // Silently fail
     }
+}
+
+/**
+ * Behavioural bot classification (0.7.712D).
+ *
+ * The user-agent check catches bots that announce themselves. It did not catch
+ * the fetcher pools that took the fleet's "human" line from ~6k/day to ~2k/day
+ * on 2026-08-29 — not because readers left, but because a pool of scrapers on
+ * residential addresses (Brazil 4,747, Mexico 1,796, Turkey, Ukraine… in two
+ * weeks on one site) stopped, and it had been counted as people all along.
+ * Their shape is unmistakable and it is not a reader's: no referrer, ONE page,
+ * never a second hit from that visitor that day. A reader who lands from a
+ * bookmark and leaves after one page looks the same, and is miscounted the same
+ * way — that is the trade, and the count is kept (bot_views), not lost.
+ *
+ * Runs on a completed day (the daily salt makes ip_hash a per-day visitor id).
+ * Flips is_bot=1 and stamps bot_reason='single-direct' so it is reversible.
+ * Returns the number of rows reclassified.
+ */
+function snapsmack_reclassify_single_direct($pdo, $date) {
+    try {
+        snapsmack_ensure_bot_reason_column($pdo);
+        $stmt = $pdo->prepare("
+            UPDATE snap_stats s
+            JOIN (
+                SELECT ip_hash
+                FROM snap_stats
+                WHERE DATE(hit_at) = ?
+                GROUP BY ip_hash
+                HAVING COUNT(*) = 1
+            ) one ON one.ip_hash = s.ip_hash
+            SET s.is_bot = 1, s.bot_reason = 'single-direct'
+            WHERE DATE(s.hit_at) = ? AND s.is_bot = 0 AND s.referrer_host IS NULL
+        ");
+        $stmt->execute([$date, $date]);
+        return $stmt->rowCount();
+    } catch (PDOException $e) {
+        return 0;
+    }
+}
+
+/** Add bot_reason to snap_stats once; harmless when present. */
+function snapsmack_ensure_bot_reason_column($pdo) {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        $pdo->exec("ALTER TABLE snap_stats ADD COLUMN IF NOT EXISTS bot_reason VARCHAR(32) NULL DEFAULT NULL
+                    COMMENT 'Why is_bot=1: NULL = user-agent match; single-direct = behavioural (0.7.712D)'");
+    } catch (PDOException $e) { /* older server: the UPDATE below will fail softly */ }
+}
+
+/**
+ * Re-roll every completed day still in the raw table: reclassify, then rebuild
+ * its snap_stats_daily row. This is how the history gets cleaned after the
+ * behavioural rule lands — nothing is deleted, every day is recounted from the
+ * rows that are still there (retention window, default 365 days).
+ * Returns [days re-rolled, rows reclassified].
+ */
+function snapsmack_reroll_all_days($pdo, $max_days = 400) {
+    $days = 0; $rows = 0;
+    try {
+        $dates = $pdo->query("
+            SELECT DISTINCT DATE(hit_at) AS d FROM snap_stats
+            WHERE DATE(hit_at) < CURDATE()
+            ORDER BY d DESC LIMIT " . max(1, (int)$max_days)
+        )->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($dates as $date) {
+            $rows += snapsmack_reclassify_single_direct($pdo, $date);
+            snapsmack_rollup_daily($pdo, $date);
+            $days++;
+        }
+    } catch (PDOException $e) { /* partial re-roll is still progress */ }
+    return [$days, $rows];
 }
 
 /**
