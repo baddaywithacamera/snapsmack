@@ -3994,6 +3994,40 @@ interacts exactly the way a carousel blog does.</p>
 HTML
 ];
 
+$help_topics['fediverse-thread'] = [
+    'section'  => 'FEDIVERSE',
+    'title'    => 'Comments &mdash; the whole thread, everywhere',
+    'icon'     => '&#x1F4AC;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Comments &mdash; the whole thread, everywhere</h3>
+<p>One photograph can be looked at in three places: on your blog, on Pixelfed or Mastodon
+where a follower saw it, and inside another SnapSmack blog's FEDIVERSE reader. Before
+0.7.712D each place showed a different set of comments. Now:</p>
+<ul>
+    <li><strong>Your blog</strong> is the source of truth &mdash; every approved comment,
+    typed here or arrived from the fediverse.</li>
+    <li><strong>Other servers can pull the thread.</strong> Every post now carries a standard
+    <code>replies</code> list (<code>/ap/note/i/N/replies</code>): the remote replies by their
+    own addresses, and your local comments in full. Mastodon reads it when someone opens the
+    thread; SnapSmack's own reader reads it for any SnapSmack post &mdash; which is why the reader
+    used to show zero comments on a SnapSmack photograph (it only knew Pixelfed's API).</li>
+    <li><strong>Replies are passed on.</strong> When a public reply reaches your blog from
+    another server, your blog forwards it to your followers (the ActivityPub inbox-forwarding
+    rule), so a Pixelfed follower sees a reply that came from, say, another SnapSmack blog.
+    Receivers verify the reply from where it was written; your blog never vouches for anyone
+    else's words. A reply you hold for moderation is not forwarded.</li>
+    <li><strong>Old comments go out once.</strong> Comments typed on the blog before 0.7.708D
+    were shown but never sent. The delivery job sends them once after this update, original
+    dates kept; <strong>SEND UNSENT BLOG COMMENTS</strong> on Push &amp; Tools does the same on
+    demand and never sends a comment twice.</li>
+</ul>
+<p>What this does not do: a reply you later hide or delete is not yet retracted from the
+fediverse, and a server that refuses forwarded activities will still only show the replies
+it received directly.</p>
+HTML
+];
+
 $help_topics['fediverse-fleet-join'] = [
     'section'  => 'FEDIVERSE',
     'title'    => 'Network Relay — Fleet Join (hub)',
