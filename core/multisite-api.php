@@ -342,6 +342,29 @@ if (!$node) {
     }
 }
 
+// The HUB itself has no node row (it is not its own spoke), so nothing above
+// can authenticate a fleet tool asking the hub for its own heartbeat — the
+// hub's discovery credential is a 'hub'-type key in snap_ohsnap_keys, which
+// already reads every node's full key from suyb-data.php. Accept that same key
+// here for the READ-ONLY heartbeat only, so CRONOMETER can show the hub next to
+// its spokes instead of a permanent 401 (2026-09-14). Nothing else: the scope
+// is 'heartbeat' and every other resource still needs a node key.
+if (!$node && $resource === 'heartbeat' && $method === 'GET'
+    && preg_match('/^[a-f0-9]{64}$/i', $api_key)) {
+    try {
+        $hk = $pdo->prepare("SELECT id, expires_at FROM snap_ohsnap_keys
+                             WHERE key_hash = ? AND is_active = 1 AND key_type = 'hub' LIMIT 1");
+        $hk->execute([hash('sha256', $api_key)]);
+        $hk_row = $hk->fetch(PDO::FETCH_ASSOC);
+        $hk_exp = $hk_row['expires_at'] ?? null;
+        if ($hk_row && ($hk_exp === null || $hk_exp === '' || strtotime((string)$hk_exp) > time())) {
+            $node = ['id' => 0, 'site_url' => rtrim((string)($settings['site_url'] ?? ''), '/'),
+                     'site_name' => (string)($settings['site_name'] ?? ''), 'role' => 'self'];
+            $ms_key_scope = 'heartbeat';
+        }
+    } catch (\PDOException $e) { $node = false; }
+}
+
 if (!$node) {
     ms_err('Invalid or revoked API key', 401);
 }
@@ -353,8 +376,10 @@ if ($ms_key_scope === 'backup' && $resource !== 'backup') {
 
 $node_id = $node['id'];
 
-// Touch last_seen
-$pdo->prepare("UPDATE snap_multisite_nodes SET last_seen_at = NOW() WHERE id = ?")->execute([$node_id]);
+// Touch last_seen (a real node row only; the hub's self-heartbeat has none)
+if ($node_id > 0) {
+    $pdo->prepare("UPDATE snap_multisite_nodes SET last_seen_at = NOW() WHERE id = ?")->execute([$node_id]);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: POST multisite/provision-key

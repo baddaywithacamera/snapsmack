@@ -11,9 +11,19 @@ red / amber / grey / green — so a silently-dead cron is caught before it bites
 Versioning follows the SnapSmack desktop-family `0.7.x` convention;
 `bump_version.py` adds one patch for subsequent builds.
 
-## Unreleased
+## 0.7.11 — 2026-09-14
 
 ### Fixed
+- **Rows stuck on "checking…" after a sweep.** `_render_site` read `is_muted` before defining it (merged mute feature) → NameError on the UI thread on every result; the status line said "checked 25" while every card sat on "checking…". Fixed. A 401 now says what to do: run discovery in SNAP HQ.
+
+## 0.7.10 — 2026-09-14 (superseded same day)
+
+### Fixed
+- **Board judges on the scheduler heartbeat, not `last_run`.** OPAUDIT 014: `last_run` moved on every visitor page load and on the `run-crons` kick this board itself sends, so 36 unscheduled sites stayed green for months. Sites on 0.7.712D+ report `sched_last_fire` + `sched_state` (written only when the scheduler launched the job); the board now uses those — FIRING → OK, stale/never → STALE/FAILED, not-since-deploy → FAILED. Older sites fall back to `last_run` and say so in the detail.
+- **"No fleet sites found" on the installed build.** The Sep 5 exe predated the shared profile store's current shape. Rebuilt from source; 25 sites load.
+- **App icon** on the exe and the window (was the Tk default feather).
+
+### Fixed (carried from Unreleased)
 - **Health verdict now reflects the cron run it just triggered.** Each poll runs a
   site's due crons (`multisite/run-crons`), but the job status was read from the
   heartbeat fetched *before* that run — so a job CRONOMETER had just kicked off

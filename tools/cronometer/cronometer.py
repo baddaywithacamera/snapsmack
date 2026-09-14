@@ -21,7 +21,7 @@ UI thread; results are marshalled back with Tk's `after`.
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
-BUILD_VERSION = "0.7.6"
+BUILD_VERSION = "0.7.13"
 
 # ---------------------------------------------------------------------------
 # Shared-path bootstrap + debug log. Must happen before any _shared import so
@@ -137,6 +137,21 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"CRONOMETER  —  build {BUILD_VERSION}")
+        # Window / taskbar icon: bundled next to the exe's assets (spec), or the
+        # family icon dir when run from source. Never fatal.
+        # iconphoto + PNG, not iconbitmap + .ico: the family .ico is a single
+        # 256 px frame and Tk's title bar silently falls back to the feather
+        # when it can't find a 16/32 px frame (0.7.12). Tk 8.6 reads PNG
+        # natively and iconphoto(True) sets title bar AND taskbar.
+        try:
+            _base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+            for _png in (os.path.join(_base, 'assets', 'cronometer-64.png'),
+                         os.path.join(_base, 'cronometer-64.png')):
+                if os.path.isfile(_png):
+                    self._app_icon = tk.PhotoImage(file=_png)   # keep a ref or Tk drops it
+                    self.iconphoto(True, self._app_icon); break
+        except Exception:
+            pass
         self.geometry(f"{WIN_W}x{WIN_H}")
         self.minsize(760, 520)
         self.configure(bg=BG_DEEP)
@@ -447,7 +462,8 @@ class App(tk.Tk):
         if not card:
             return
         self._health_by_url[site['url']] = health
-        overall = health.overall()
+        is_muted = site['url'] in self._muted
+        overall = SEV_MUTED if is_muted else health.overall()
         card['severity'] = overall
         colour, _word = _sev_style(overall)
         card['dot'].configure(fg=colour)
@@ -485,7 +501,12 @@ class App(tk.Tk):
             return
 
         if not health.online:
-            card['summary'].configure(text=health.error or "offline", fg=FG_ERR)
+            err = health.error or "offline"
+            # The one failure an operator can fix without us: the profile has no
+            # full hub→spoke key (extras.api_key_local), so the heartbeat 401s.
+            if "401" in err:
+                err += " — profile has no fleet key: SNAP HQ → SETTINGS → run discovery, then refresh"
+            card['summary'].configure(text=err, fg=FG_ERR)
             for spec in hb.JOB_SPECS:
                 jdot, jstate, jage, jdetail = card['job_rows'][spec.key]
                 jdot.configure(fg=FG_DIM)
