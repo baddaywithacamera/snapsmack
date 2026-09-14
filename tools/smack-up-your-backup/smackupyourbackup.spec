@@ -20,6 +20,15 @@ _shared_files = _glob.glob(os.path.join(_shared_dir, '*.py'))
 _shared_data  = [(f, '.') for f in _shared_files]
 _shared_mods  = [os.path.splitext(os.path.basename(f))[0] for f in _shared_files]
 
+# EXIT PACKAGE: bundle TAKE YOUR SHIT WITH YOU's engine into a tyswy/ folder inside the
+# exe. exit_package.py appends sys._MEIPASS/tyswy to sys.path at runtime, so these ride
+# as plain .py data files (no hidden-import juggling) plus the schema it validates against.
+_tyswy_dir   = os.path.normpath(os.path.join(_src, '..', 'take-your-shit-with-you'))
+_tyswy_data  = [(f, 'tyswy') for f in _glob.glob(os.path.join(_tyswy_dir, '*.py'))
+                if os.path.basename(f) not in ('main.py', 'bump_version.py')]
+if os.path.isdir(os.path.join(_tyswy_dir, 'schema')):
+    _tyswy_data.append((os.path.join(_tyswy_dir, 'schema'), 'tyswy/schema'))
+
 a = Analysis(
     ['suyb_launcher.py'],
     pathex=[_src, _shared_dir],
@@ -28,6 +37,7 @@ a = Analysis(
     datas=[
         (os.path.join(_src, '..', 'hub', 'icons', 'suyb.ico'), 'assets'),
         (os.path.join(_src, 'audit_engine.py'),       '.'),
+        (os.path.join(_src, 'exit_package.py'),       '.'),
         (os.path.join(_src, 'backup_engine.py'),      '.'),
         (os.path.join(_src, 'b2_integrity.py'),       '.'),
         (os.path.join(_src, 'checkpoint.py'),         '.'),
@@ -52,7 +62,7 @@ a = Analysis(
         (os.path.join(_src, 'slap_happy.py'),         '.'),
         (os.path.join(_src, 'sync_manager.py'),       '.'),
         (os.path.join(_src, 'sync_manifest.py'),      '.'),
-    ] + _shared_data,
+    ] + _shared_data + _tyswy_data,
     hiddenimports=_shared_mods + [
         # UI
         'PySide6', 'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
