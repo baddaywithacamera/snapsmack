@@ -331,7 +331,9 @@ def _jobs_from_heartbeat(data: dict) -> List[JobHealth]:
     future `jobs` block; otherwise derives honestly from today's fields."""
     jobs_block = data.get('jobs') if isinstance(data.get('jobs'), dict) else {}
     fedi_on = str(data.get('fediverse_enabled') or data.get('smackverse_enabled') or '0') in ('1', 'true', 'True')
-    followers = int(data.get('smackverse_followers') or 0)
+    # 'smackverse_*' fields were renamed 'fediverse_*' in 0.7.585 GOOD NEIGHBOUR;
+    # reading only the old name made every site look follower-less → delivery N/A.
+    followers = int(data.get('fediverse_followers') or data.get('smackverse_followers') or 0)
     out: List[JobHealth] = []
     for spec in JOB_SPECS:
         rich = jobs_block.get(spec.key) if isinstance(jobs_block.get(spec.key), dict) else None
