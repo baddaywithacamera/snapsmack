@@ -62,14 +62,13 @@ def focus_region(image, mask, target=1536):
 
 
 def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=300,
-         operation="heal"):
+         operation="heal", return_instruction=False):
     """Return Gemini's edited full frame. The caller owns local mask enforcement."""
     if not api_key:
         raise ValueError("Add a Gemini API key in SNAP HQ Settings first.")
     image = image.convert("RGB")
     mask = mask.convert("L").resize(image.size, Image.Resampling.LANCZOS)
     box, work_image, work_mask = focus_region(image, mask)
-    marked = marked_selection(work_image, work_mask)
     if operation == "fill":
         if prompt.strip():
             task = (
@@ -97,15 +96,18 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
         "Do not merely return the original image. Do not alter anything outside the "
         "white selection."
     )
-    if operation != "fill" and prompt.strip():
+    if operation == "heal" and prompt.strip():
         instruction += " Additional instruction: " + prompt.strip()
+    marked = marked_selection(work_image, work_mask)
+    parts = [
+        {"text": instruction},
+        {"inlineData": {"mimeType": "image/png", "data": _png_data(work_image)}},
+        {"inlineData": {"mimeType": "image/png", "data": _png_data(marked)}},
+    ]
+    parts.append({"inlineData": {
+        "mimeType": "image/png", "data": _png_data(work_mask)}})
     payload = {
-        "contents": [{"role": "user", "parts": [
-            {"text": instruction},
-            {"inlineData": {"mimeType": "image/png", "data": _png_data(work_image)}},
-            {"inlineData": {"mimeType": "image/png", "data": _png_data(marked)}},
-            {"inlineData": {"mimeType": "image/png", "data": _png_data(work_mask)}},
-        ]}],
+        "contents": [{"role": "user", "parts": parts}],
         "generationConfig": {"responseModalities": ["IMAGE"]},
     }
     response = requests.post(
@@ -117,6 +119,11 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
         raise RuntimeError(f"Gemini returned HTTP {response.status_code}, not a usable response.") from error
     if not response.ok:
         detail = ((data.get("error") or {}).get("message") or f"HTTP {response.status_code}")
+        if ("free_tier" in detail and "limit: 0" in detail) or (
+                "quota" in detail.lower() and response.status_code == 429):
+            raise RuntimeError(
+                "Gemini image generation has no free API tier. Use a Gemini key from a "
+                "billing-enabled Google project. No generated edit was added.")
         raise RuntimeError("Gemini could not heal the photograph: " + detail)
     for candidate in data.get("candidates", []):
         for part in (candidate.get("content") or {}).get("parts", []):
@@ -128,7 +135,7 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
                 repaired = image.copy()
                 repaired.paste(result.resize((box[2] - box[0], box[3] - box[1]),
                                              Image.Resampling.LANCZOS), box[:2])
-                return repaired
+                return (repaired, instruction) if return_instruction else repaired
     raise RuntimeError("Gemini returned no edited image.")
 
 
@@ -136,5 +143,6 @@ def fill(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
     """Generate requested content inside a locally enforced selection."""
     return heal(image, mask, prompt, api_key, model=model, timeout=timeout,
                 operation="fill")
+
 
 # ===== SNAPSMACK EOF =====
