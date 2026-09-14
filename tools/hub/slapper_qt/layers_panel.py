@@ -257,7 +257,7 @@ class LayersPanel(QWidget):
 
     def _label_for(self, layer):
         kind = {"adjustment": "Adjustment", "paint": "Blank", "image": "Image", "text": "Text",
-                "filter": "Filter", "generative_expand": "Canvas expansion"}.get(
+                "filter": "Filter"}.get(
                     layer.get("type"), "Layer")
         name = layer.get("name", "Layer")
         return name if name.lower() == kind.lower() else f"{name}  ·  {kind}"
@@ -335,7 +335,7 @@ class LayersPanel(QWidget):
             return
         self.opacity.blockSignals(True)
         self.opacity.setValue(int(round(float(layer.get("opacity", 1.0)) * 100)))
-        self.opacity.setEnabled(layer.get("type") != "generative_expand")
+        self.opacity.setEnabled(True)
         self.opacity.blockSignals(False)
         self.opacity_value.setText(str(self.opacity.value()))
         mode = layer.get("blend", "normal")
@@ -343,7 +343,7 @@ class LayersPanel(QWidget):
             self.blend.blockSignals(True)
             self.blend.setCurrentIndex(BLEND_MODES.index(mode))
             self.blend.blockSignals(False)
-        self.blend.setEnabled(layer.get("type") != "generative_expand")
+        self.blend.setEnabled(True)
         has_mask = bool(layer.get("mask"))
         self.mask_enabled.blockSignals(True)
         self.mask_enabled.setChecked(bool(layer.get("mask_enabled", True)))
