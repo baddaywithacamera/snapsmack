@@ -436,6 +436,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reimp
     exit;
 }
 
+// SEND UNSENT BLOG COMMENTS — comments typed before 708D never left the blog.
+// Same routine the cron runs once per version; the button is for "now".
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'backfill_blog_comments') {
+    if (!sv_enabled($sv_settings)) {
+        header('Location: ' . $sv_self . '?msg=' . urlencode('Fediverse is off — nothing to send.'));
+        exit;
+    }
+    list($bc_sent, $bc_skipped) = sv_backfill_community_comments($pdo, $sv_settings, 200);
+    require_once __DIR__ . '/fediverse-kick.php';
+    sv_kick_delivery();
+    header('Location: ' . $sv_self . '?msg=' . urlencode(sprintf(
+        'BLOG COMMENTS: %d queued for the fediverse, %d already sent. Watch the Delivery Log drain, then look for them under the photograph on Pixelfed or Mastodon.',
+        $bc_sent, $bc_skipped
+    )));
+    exit;
+}
+
 // Repair a remote ghost whose local Manage Posts row was deleted by an older
 // build. Only this actor's canonical Note paths are accepted.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'retract_stale_note') {

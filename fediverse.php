@@ -90,6 +90,8 @@ if (isset($_GET['appath'])) {
         $key = ['p' => 'post', 'i' => 'id', 'c' => 'comment', 'r' => 'reply', 'l' => 'longform'][$seg[1] ?? ''] ?? null;
         if ($key === null || !isset($seg[2])) sv_404();
         $_GET[$key] = $seg[2];
+        // /ap/note/{i|p|l}/N/replies — the thread under one of our posts.
+        if (($seg[3] ?? '') === 'replies') $_GET['replies'] = '1';
     }
 }
 
@@ -241,6 +243,11 @@ switch ($ap) {
             $note = $img ? sv_note_for_image($pdo, $img, $settings) : null;
         }
         if ($note === null) sv_404();
+        if (!empty($_GET['replies'])) {
+            $coll = sv_replies_collection($pdo, (string)($note['id'] ?? ''), $settings);
+            if ($coll === null) sv_404();
+            sv_respond($coll);
+        }
         sv_respond($note);
         break;
 
@@ -321,6 +328,7 @@ switch ($ap) {
         }
         try {
             sv_ensure_tables($pdo);
+            $activity['_signed_by'] = (string)($actor_doc['id'] ?? '');   // for forwarded-activity receipts
             $code = sv_handle_inbox($pdo, $settings, $activity, $actor_doc);
         } catch (Exception $e) {
             $code = 500;

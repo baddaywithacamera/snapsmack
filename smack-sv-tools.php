@@ -159,6 +159,21 @@ include 'core/sidebar.php';
         </form>
     </div>
 
+    <!-- SEND UNSENT BLOG COMMENTS (pre-708D backfill) -->
+    <div class="box mb-20">
+        <h3>SEND UNSENT BLOG COMMENTS</h3>
+        <p class="dim mb-20">
+            Comments typed on this blog before 0.7.708D were shown here but never sent to the fediverse.
+            The delivery cron sends them once, automatically, after this update; this button does the same
+            thing now. Each one goes out as a reply under the photograph with its original date. Already-sent
+            comments are skipped, so pressing it twice sends nothing twice.
+        </p>
+        <form method="post" action="">
+            <input type="hidden" name="action" value="backfill_blog_comments">
+            <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>SEND UNSENT BLOG COMMENTS</button>
+        </form>
+    </div>
+
     <div class="box mb-20">
         <h3>RETRACT A STALE FEDIVERSE POST</h3>
         <p class="dim mb-20">

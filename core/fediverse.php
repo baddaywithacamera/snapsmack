@@ -2554,15 +2554,73 @@ function sv_ingest_timeline(PDO $pdo, array $obj, string $actor_url, string $han
     return null;
 }
 
+/**
+ * Verify a FORWARDED Create (signer ≠ actor) from its origin. Returns
+ * [activity-with-origin-object, actor_doc] or null. The object id must live
+ * on the claimed actor's host, fetch as a Note, and be attributedTo that actor.
+ */
+function sv_verify_forwarded_create(array $activity, string $act_actor, string $signer = ''): ?array {
+    if (($activity['type'] ?? '') !== 'Create') return null;
+    $obj = $activity['object'] ?? null;
+    $oid = is_array($obj) ? (string)($obj['id'] ?? '') : (is_string($obj) ? $obj : '');
+    if ($oid === '' || $act_actor === '' || stripos($oid, 'https://') !== 0) return null;
+    $ahost = parse_url($act_actor, PHP_URL_HOST); $ohost = parse_url($oid, PHP_URL_HOST);
+    if (!$ahost || !$ohost || strcasecmp($ahost, $ohost) !== 0) return null;
+    $origin = sv_fetch_ap($oid);
+    if (!is_array($origin) || !in_array((string)($origin['type'] ?? ''), ['Note', 'Image'], true)) return null;
+    $attr = is_array($origin['attributedTo'] ?? null) ? (string)($origin['attributedTo']['id'] ?? '') : (string)($origin['attributedTo'] ?? '');
+    if ($attr !== $act_actor) return null;
+    $adoc = sv_fetch_ap($act_actor);
+    if (!is_array($adoc) || (string)($adoc['id'] ?? '') !== $act_actor) return null;
+    $adoc['_forwarded_by'] = $signer;
+    $activity['object'] = $origin;
+    return [$activity, $adoc];
+}
+
+/**
+ * Forward an inbound activity, as received, to every follower inbox except
+ * the sender's own host (ActivityPub §7.1.2 inbox forwarding).
+ */
+function sv_forward_to_followers(PDO $pdo, array $activity, string $from_actor): int {
+    $json = json_encode($activity, JSON_UNESCAPED_SLASHES);
+    if ($json === false) return 0;
+    $skip_host = strtolower((string)(parse_url($from_actor, PHP_URL_HOST) ?: ''));
+    $n = 0;
+    foreach (sv_follower_inboxes($pdo) as $inbox) {
+        $h = strtolower((string)(parse_url($inbox, PHP_URL_HOST) ?: ''));
+        if ($h === '' || $h === $skip_host) continue;
+        sv_queue_delivery($pdo, $inbox, $json);
+        $n++;
+    }
+    return $n;
+}
+
 function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $actor_doc): int {
     $actor_id = $actor_doc['id'] ?? '';
+    // Who signed the POST (set by the inbox route; never part of the activity).
+    $signed_by = (string)($activity['_signed_by'] ?? $actor_id);
+    unset($activity['_signed_by']);
     $act_actor = is_array($activity['actor'] ?? null)
         ? ($activity['actor']['id'] ?? '') : ($activity['actor'] ?? '');
     if ($actor_id === '' || $act_actor !== $actor_id) {
-        sv_inbox_log($pdo, (string)($activity['type'] ?? 'Unknown'),
-            (string)$act_actor, null,
-            'REJECTED: activity actor does not match signing actor ' . (string)$actor_id);
-        return 401;
+        // INBOX FORWARDING (ActivityPub §7.1.2, 0.7.712D): the server that owns
+        // a post forwards replies it receives to its own followers, so a thread
+        // stays whole everywhere. The forwarder signs the POST; the activity's
+        // actor is the original replier. We accept that ONLY when the object
+        // verifies from its origin: fetch the Note by its id, and it must be
+        // attributed to the claimed actor on the actor's own host. Anything
+        // else is still the old 401 — an unverifiable claim changes nothing.
+        $fwd = sv_verify_forwarded_create($activity, (string)$act_actor, $signed_by);
+        if ($fwd === null) {
+            sv_inbox_log($pdo, (string)($activity['type'] ?? 'Unknown'),
+                (string)$act_actor, null,
+                'REJECTED: activity actor does not match signing actor ' . (string)$actor_id);
+            return 401;
+        }
+        [$activity, $actor_doc] = $fwd;
+        $actor_id = (string)($actor_doc['id'] ?? '');
+        sv_inbox_log($pdo, 'Create', $actor_id, (string)($activity['object']['id'] ?? ''),
+            'forwarded by ' . (string)($actor_doc['_forwarded_by'] ?? '?') . ' — object verified from its origin');
     }
 
     $type = $activity['type'] ?? '';
@@ -2904,6 +2962,16 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                     sv_cache_actor($pdo, $actor_doc);
                     sv_notify($pdo, 'reply', $actor_id, $handle, $note_id, $in_reply, $text);
                 }
+            }
+            // INBOX FORWARDING (§7.1.2, 0.7.712D): a public reply to OUR post
+            // goes on to OUR followers, as received, so Pixelfed / Mastodon /
+            // SnapSmack followers see the whole thread under the photograph,
+            // not just the replies that happen to come from accounts they
+            // follow. Never sent back to the replier's own server, and only
+            // when we kept it (approved) — a reply held for moderation is not
+            // amplified. Receivers verify the object from its origin.
+            if ($note_id !== '' && (($settings['fedi_auto_approve_replies'] ?? '1') !== '0')) {
+                sv_forward_to_followers($pdo, $activity, $actor_id);
             }
             // RECEIPT (0.7.611D)
             sv_inbox_log($pdo, 'Create', $actor_id, $note_id !== '' ? $note_id : null,
@@ -4607,7 +4675,9 @@ function sv_status_replies(string $object_url): array {
     if ($sid === '') return [];
     $host = preg_replace('/[^a-z0-9.\-]/i', '', $host);
     $ctx  = sv_fetch_json("https://{$host}/api/v1/statuses/{$sid}/context", 12);
-    if (!is_array($ctx)) return [];
+    // Not a Mastodon/Pixelfed server (a SnapSmack blog, GoToSocial, …): read
+    // the ActivityPub `replies` collection off the Note instead (OPAUDIT 015).
+    if (!is_array($ctx) || empty($ctx['descendants'])) return sv_ap_replies_items($object_url);
     $out = [];
     foreach (($ctx['descendants'] ?? []) as $st) {
         if (!is_array($st)) continue;
@@ -4628,6 +4698,51 @@ function sv_status_replies(string $object_url): array {
             'text'    => $text,
             'url'     => (string)($st['url'] ?? ($st['uri'] ?? '')),
             'created' => (string)($st['created_at'] ?? ''),
+        ];
+    }
+    return $out;
+}
+
+/**
+ * Thread items for the reader from a Note's ActivityPub `replies` collection
+ * — the generic path when the origin has no Mastodon API (SnapSmack blogs).
+ * Fetches the Note, then its collection (following `first` once), and maps
+ * up to 40 replies: an inline Note object is used as-is, a bare id is
+ * dereferenced from its origin. Authors resolve through the actor doc. Same
+ * output shape as the Mastodon path so ss-pixel.js needs no change.
+ */
+function sv_ap_replies_items(string $object_url, int $cap = 40): array {
+    $note = sv_fetch_ap($object_url);
+    if (!is_array($note)) return [];
+    $coll = $note['replies'] ?? null;
+    if (is_string($coll) && $coll !== '') $coll = sv_fetch_ap($coll);
+    if (!is_array($coll)) return [];
+    $items = $coll['orderedItems'] ?? ($coll['items'] ?? null);
+    if ($items === null && !empty($coll['first'])) {
+        $first = is_array($coll['first']) ? $coll['first'] : sv_fetch_ap((string)$coll['first']);
+        if (is_array($first)) $items = $first['orderedItems'] ?? ($first['items'] ?? []);
+    }
+    if (!is_array($items)) return [];
+    $out = []; $actors = [];
+    foreach (array_slice($items, 0, $cap) as $it) {
+        $obj = is_array($it) ? $it : (is_string($it) ? sv_fetch_ap($it) : null);
+        if (!is_array($obj) || ($obj['type'] ?? '') !== 'Note') continue;
+        $text = sv_client_plain_text((string)($obj['content'] ?? ''));
+        if ($text === '') continue;
+        $aid = is_array($obj['attributedTo'] ?? null) ? (string)($obj['attributedTo']['id'] ?? '') : (string)($obj['attributedTo'] ?? '');
+        if ($aid !== '' && !isset($actors[$aid])) $actors[$aid] = sv_fetch_ap($aid) ?: [];
+        $a = $actors[$aid] ?? [];
+        $user = (string)($a['preferredUsername'] ?? '');
+        $ahost = parse_url($aid, PHP_URL_HOST) ?: '';
+        $handle = $user !== '' ? $user . '@' . $ahost : '';
+        $icon = is_array($a['icon'] ?? null) ? (string)($a['icon']['url'] ?? '') : '';
+        $out[] = [
+            'name'    => (string)(($a['name'] ?? '') ?: ($user ?: $ahost)),
+            'handle'  => $handle !== '' ? '@' . $handle : '',
+            'avatar'  => $icon,
+            'text'    => $text,
+            'url'     => (string)($obj['url'] ?? ($obj['id'] ?? '')),
+            'created' => (string)($obj['published'] ?? ''),
         ];
     }
     return $out;
@@ -5112,6 +5227,7 @@ function sv_note_for_image(PDO $pdo, array $img, array $settings): array {
         'sensitive'    => (!empty($img['is_sensitive']) || !empty($img['content_warning'])),
         'content'      => $content,
         'attachment'   => [sv_image_attachment($img, $settings, $title !== '' ? $title : $desc)],
+        'replies'      => preg_replace('/~\d+$/', '', $note_id) . '/replies',
     ];
     if (!empty($tagobjs)) $note['tag'] = $tagobjs;
     return $note;
@@ -5233,6 +5349,7 @@ function sv_note_for_post(PDO $pdo, array $post, array $settings): ?array {
         'sensitive'    => (!empty($post['is_sensitive']) || !empty($post['content_warning'])),
         'content'      => $content,
         'attachment'   => $attachments,
+        'replies'      => preg_replace('/~\d+$/', '', $note_id) . '/replies',
     ];
     if ($tagobjs) $note['tag'] = $tagobjs;
     return $note;
@@ -5346,6 +5463,7 @@ function sv_note_for_longform(PDO $pdo, array $post, array $settings): ?array {
         'sensitive'    => (!empty($post['is_sensitive']) || !empty($post['content_warning'])),
         'content'      => $content,
         'attachment'   => $attachments,
+        'replies'      => preg_replace('/~\d+$/', '', $note_id) . '/replies',
     ];
     return $note;
 }
@@ -5429,6 +5547,64 @@ function sv_note_for_comment(PDO $pdo, array $c, array $settings): ?array {
 }
 
 /**
+ * The `replies` collection of one of OUR content Notes (image / post /
+ * longform) — ActivityPub's standard way for a remote server to pull the
+ * thread under a post it already holds. Mastodon fetches it when a user
+ * opens the thread; our own FEDIVERSE reader reads it for SnapSmack posts
+ * (OPAUDIT 015: the reader only knew the Mastodon API, so every SnapSmack
+ * post showed zero comments). Approved replies only, oldest first:
+ *   - a federated reply → its remote Note id (the fetcher dereferences it
+ *     from its origin, so we never vouch for someone else's words);
+ *   - a local comment   → the full Note we federate (sv_note_for_comment).
+ * Returns null when the id is not one of our content Notes.
+ */
+function sv_replies_collection(PDO $pdo, string $note_id, array $settings): ?array {
+    $target = sv_resolve_target($note_id, $pdo);
+    if (!$target || !in_array($target['type'], ['image', 'post', 'longform'], true)) return null;
+    $img_ids = [];
+    $post_id = 0;
+    if ($target['type'] === 'image') {
+        $img_ids = [(int)$target['id']];
+    } elseif ($target['type'] === 'post') {
+        $img_ids = array_map(static fn($im) => (int)$im['id'], sv_post_images($pdo, (int)$target['id']));
+    } else {
+        $post_id = (int)$target['id'];
+    }
+    $img_ids = array_values(array_filter($img_ids));
+    if (!$img_ids && $post_id <= 0) return null;
+
+    $where = [];
+    if ($img_ids) $where[] = 'img_id IN (' . implode(',', $img_ids) . ')';
+    if ($post_id > 0) $where[] = 'post_id = ' . $post_id;
+    $items = [];
+    try {
+        $rows = $pdo->query(
+            "SELECT * FROM snap_comments
+              WHERE is_approved = 1 AND is_spam = 0 AND (" . implode(' OR ', $where) . ")
+           ORDER BY comment_date ASC, id ASC LIMIT 500"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) { $rows = []; }
+    foreach ($rows as $c) {
+        if (($c['ap_source'] ?? 'local') === 'fediverse') {
+            $rid = trim((string)($c['ap_object_id'] ?? ''));
+            if ($rid !== '') $items[] = $rid;
+            continue;
+        }
+        $note = sv_note_for_comment($pdo, $c, $settings);
+        if ($note !== null) { unset($note['@context']); $items[] = $note; }
+    }
+    // Strip any generation suffix so the collection id is stable per post.
+    $cid = preg_replace('/~\d+$/', '', $note_id) . '/replies';
+    return [
+        '@context'     => 'https://www.w3.org/ns/activitystreams',
+        'id'           => $cid,
+        'type'         => 'OrderedCollection',
+        'totalItems'   => count($items),
+        'orderedItems' => $items,
+    ];
+}
+
+/**
  * Federate an APPROVED local comment out as the blog actor. No-op for remote
  * comments (never echo them back) and unapproved ones. Called from the comment
  * approval path. Assigns + persists a stable Note id, then queues delivery to
@@ -5475,6 +5651,83 @@ function sv_federate_comment(PDO $pdo, int $comment_id, array $settings): void {
             if ($inbox !== '') sv_queue_delivery($pdo, $inbox, $json);
         }
     }
+}
+
+/**
+ * Send out the comments typed on the blog BEFORE 0.7.708D existed.
+ *
+ * 708D mirrors each NEW community comment into snap_comments and federates it.
+ * Everything typed before that sits in snap_community_comments only — visible
+ * on the blog, never sent (OPAUDIT 013 §6: "The Dude" on allinthewrist). This
+ * walks every visible community comment on a federation-enabled site, skips
+ * the ones that already have a local mirror (same text, same target, local
+ * source), and mirrors + federates the rest with their ORIGINAL date kept.
+ * Bounded per call; safe to re-run — a second pass finds nothing to do.
+ * Returns [mirrored, skipped].
+ */
+function sv_backfill_community_comments(PDO $pdo, array $settings, int $limit = 200): array {
+    if (!sv_enabled($settings)) return [0, 0];
+    $mirrored = 0; $skipped = 0;
+    try {
+        $rows = $pdo->query(
+            "SELECT c.id, c.post_id, c.user_id, c.guest_name, c.comment_text, c.created_at,
+                    u.display_name, u.username
+               FROM snap_community_comments c
+          LEFT JOIN snap_users u ON u.id = c.user_id
+              WHERE c.status = 'visible'
+           ORDER BY c.id ASC"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) { return [0, 0]; }
+
+    $img_check = $pdo->prepare("SELECT id FROM snap_images WHERE id = ? LIMIT 1");
+    $first_img = $pdo->prepare("SELECT id FROM snap_images WHERE post_id = ? ORDER BY id ASC LIMIT 1");
+    $exists    = $pdo->prepare(
+        "SELECT id FROM snap_comments
+          WHERE ap_source = 'local' AND comment_text = ? AND comment_author = ?
+            AND ((img_id IS NOT NULL AND img_id = ?) OR (post_id IS NOT NULL AND post_id = ?))
+          LIMIT 1");
+    $mirror    = $pdo->prepare(
+        "INSERT INTO snap_comments
+            (img_id, post_id, comment_author, comment_text, comment_date, is_approved, ap_source)
+         VALUES (?, ?, ?, ?, ?, 1, 'local')");
+
+    foreach ($rows as $r) {
+        if ($mirrored >= $limit) break;
+        $key = (int)$r['post_id'];
+        // Same key resolution as process-community-comment.php: the key is an
+        // image id (image-keyed) or a post id (post-keyed → its first image).
+        $img_check->execute([$key]);
+        if ($img_check->fetchColumn()) { $fed_img = $key; $fed_post = null; }
+        else {
+            $fed_post = $key;
+            $first_img->execute([$fed_post]);
+            $fed_img = (int)$first_img->fetchColumn() ?: null;
+        }
+        $author = (string)($r['user_id']
+            ? (($r['display_name'] ?? '') ?: ($r['username'] ?? 'Someone'))
+            : ($r['guest_name'] ?? 'Someone'));
+        $text = (string)$r['comment_text'];
+        $exists->execute([$text, $author, $fed_img ?? 0, $fed_post ?? 0]);
+        if ($exists->fetchColumn()) { $skipped++; continue; }
+        try {
+            $mirror->execute([$fed_img, $fed_post, $author, $text, (string)($r['created_at'] ?: date('Y-m-d H:i:s'))]);
+            $mid = (int)$pdo->lastInsertId();
+            if ($mid > 0) { sv_federate_comment($pdo, $mid, $settings); $mirrored++; }
+        } catch (Throwable $e) { /* one bad row must not stop the rest */ }
+    }
+    return [$mirrored, $skipped];
+}
+
+/** One-shot per version: run the community-comment backfill from the cron so
+ *  every site sends its pre-708D comments without anyone pressing a button. */
+function sv_backfill_community_comments_once(PDO $pdo, array &$settings): void {
+    try {
+        $ver = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0';
+        if ((string)($settings['community_comment_backfill_done'] ?? '') === $ver) return;
+        [$n, $k] = sv_backfill_community_comments($pdo, $settings, 200);
+        if ($n) error_log("FEDIVERSE: backfilled {$n} pre-708D blog comment(s) to the fediverse ({$k} already sent).");
+        sv_set_setting($pdo, $settings, 'community_comment_backfill_done', $ver);
+    } catch (Throwable $e) { /* must never break the sweep */ }
 }
 
 /** Combined like tally for a target: native snap_likes + federated snap_ap_likes. */
