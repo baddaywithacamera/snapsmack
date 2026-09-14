@@ -125,6 +125,7 @@ TOOL_ICON_FILES = {
     "SMACK YOUR MOUTH": "smackmouth-simple.ico",
     "SHOTS FIRED": "shotsfired-simple.ico",
     "CRONOMETER": "cronometer-simple.ico",
+    "FED UP": "fed-up.ico",
 }
 
 TOOL_IMAGE_FILES = {
