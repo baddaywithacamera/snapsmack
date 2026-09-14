@@ -3678,6 +3678,39 @@ the directory) or <strong>REMOVE</strong> it. The public directory is at <code>/
 HTML
 ];
 
+$help_topics['traffic-stats-bots'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Traffic Stats &mdash; who counts as a reader',
+    'icon'     => '&#x1F465;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Traffic Stats &mdash; who counts as a reader</h3>
+<p>Two checks decide whether a hit is a person or a machine.</p>
+<ul>
+    <li><strong>What it says it is.</strong> A visitor that announces itself as a crawler
+    (Googlebot, Bingbot, the AI fetchers that identify themselves) goes straight to the bot
+    column.</li>
+    <li><strong>How it behaves</strong> (from 0.7.712D). A visitor that arrives with no
+    referrer, looks at one page, and is never seen again that day is counted as a fetcher, not a
+    reader. That is the shape of scraper pools running on ordinary home addresses, and they
+    pass the first check every time. It is also, occasionally, the shape of a real person
+    landing from a bookmark and leaving &mdash; that person is miscounted, and the count is
+    kept in the bot column rather than thrown away.</li>
+</ul>
+<p>Why the second check exists: on 2026-08-29 the fleet&rsquo;s &ldquo;human&rdquo; line
+fell by about two thirds. Readers had not left &mdash; people clicking from one page to the
+next on the same site went <em>up</em>. A pool of fetchers (thousands a day from Brazil,
+Mexico, Turkey, Ukraine on one site alone, one page each, no referrer) had stopped, and it had
+been counted as people all along. The chart was measuring the wrong thing.</p>
+<p>The behavioural check runs when a day is rolled up (the day after). Today&rsquo;s live
+partial still shows everything. To apply the rule to the history already in the database,
+press <strong>Re-count History (bot rule)</strong> under Maintenance on Traffic Stats: every
+day still held in raw form is re-counted and its daily row rebuilt. Nothing is deleted, and
+pressing it twice changes nothing the second time. Each reclassified hit is stamped with the
+reason, so the rule can be undone if it is ever wrong.</p>
+HTML
+];
+
 $help_topics['fleet-stats'] = [
     'section'  => 'Boring Ass Stuff',
     'title'    => 'Fleet Stats Rollup',

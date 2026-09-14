@@ -38,6 +38,13 @@ if (isset($_POST['action'])) {
         header('Location: smack-stats.php?msg=backfill_ok&days=' . $count);
         exit;
     }
+    if ($_POST['action'] === 'reroll') {
+        // Clean the history: behavioural bot rule over every day still held raw,
+        // then rebuild each daily row. Idempotent — a second run changes nothing.
+        [$rr_days, $rr_rows] = snapsmack_reroll_all_days($pdo);
+        header('Location: smack-stats.php?msg=reroll_ok&days=' . $rr_days . '&n=' . $rr_rows);
+        exit;
+    }
     if ($_POST['action'] === 'purge') {
         $days = (int)($settings['stats_retention_days'] ?? 365);
         $deleted = snapsmack_purge_old_stats($pdo, $days);
@@ -344,6 +351,8 @@ $msg = $_GET['msg'] ?? '';
         <div class="notice notice-success">Daily rollup complete.</div>
     <?php elseif ($msg === 'backfill_ok'): ?>
         <div class="notice notice-success">Backfill complete — <?php echo (int)($_GET['days'] ?? 0); ?> date(s) processed.</div>
+    <?php elseif ($msg === 'reroll_ok'): ?>
+        <div class="alert alert-success">&gt; Re-rolled <?php echo (int)($_GET['days'] ?? 0); ?> day(s); <?php echo number_format((int)($_GET['n'] ?? 0)); ?> single-page, no-referrer hits moved to the bot column. The chart now counts readers.</div>
     <?php elseif ($msg === 'purge_ok'): ?>
         <div class="notice notice-success">Purged <?php echo (int)($_GET['n'] ?? 0); ?> old records.</div>
     <?php endif; ?>
@@ -699,6 +708,11 @@ $msg = $_GET['msg'] ?? '';
                   onsubmit="return confirm('Backfill all missing historical dates from raw stats?');">
                 <input type="hidden" name="action" value="backfill">
                 <button type="submit" class="btn btn-small">Backfill Historical Data</button>
+            </form>
+            <form method="post" class="stats-action-inline"
+                  onsubmit="return confirm('Re-count every day still held in raw stats with the behavioural bot rule (one page, no referrer, never seen again that day = fetcher, not reader)? Nothing is deleted; the daily numbers are rebuilt. Takes a moment on a busy site.');">
+                <input type="hidden" name="action" value="reroll">
+                <button type="submit" class="btn btn-small">Re-count History (bot rule)</button>
             </form>
             <form method="post" class="stats-action-inline"
                   onsubmit="return confirm('Purge stats older than <?php echo (int)($settings['stats_retention_days'] ?? 365); ?> days?');">
