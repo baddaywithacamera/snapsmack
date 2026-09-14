@@ -425,6 +425,14 @@ def test_generative_expand_uses_active_history_and_starts_with_no_border():
     dialog.close(); win.close()
 
 
+def test_expand_corner_cursors_follow_the_drag_direction():
+    from slapper_qt.expand_canvas import ExpandCanvas
+    assert ExpandCanvas._cursor_for_edges(("left", "top")) == Qt.SizeFDiagCursor
+    assert ExpandCanvas._cursor_for_edges(("right", "bottom")) == Qt.SizeFDiagCursor
+    assert ExpandCanvas._cursor_for_edges(("right", "top")) == Qt.SizeBDiagCursor
+    assert ExpandCanvas._cursor_for_edges(("left", "bottom")) == Qt.SizeBDiagCursor
+
+
 def test_context_sensitive_toolbars():
     win = _editor(_image("context-bars.jpg", (300, 200)))
 
