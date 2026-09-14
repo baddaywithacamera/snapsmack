@@ -21,6 +21,7 @@ import shutil
 import time
 import photo_manager
 import editor_engine
+import raw_preview
 
 from PySide6.QtCore import (
     Qt, QObject, QRunnable, QThreadPool, Signal, QSize, QDir, QTimer,
@@ -219,9 +220,15 @@ class _ThumbTask(QRunnable):
 
     def run(self):
         try:
-            with Image.open(self.path) as source:
+            is_raw = os.path.splitext(self.path)[1].lower() in photo_manager.RAW_EXTENSIONS
+            if is_raw:
+                source = raw_preview.render(self.path)
                 stamp = _capture_timestamp(source, self.path)
                 image = ImageOps.exif_transpose(source).convert("RGBA")
+            else:
+                with Image.open(self.path) as source:
+                    stamp = _capture_timestamp(source, self.path)
+                    image = ImageOps.exif_transpose(source).convert("RGBA")
             image.thumbnail((THUMB_SOURCE, THUMB_SOURCE), Image.Resampling.LANCZOS)
             data = image.tobytes("raw", "RGBA")
             qimage = QImage(data, image.width, image.height,

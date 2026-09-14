@@ -4,6 +4,8 @@ import os
 import shutil
 import subprocess
 
+import raw_preview
+
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 
@@ -18,8 +20,12 @@ def detected_editors():
     if os.name == "nt":
         roots = [os.environ.get("ProgramFiles", ""),
                  os.environ.get("ProgramFiles(x86)", "")]
-        known = (("RawTherapee", "RawTherapee", "rawtherapee.exe"),
-                 ("darktable", "darktable", "bin", "darktable.exe"))
+        rawtherapee = raw_preview.find_rawtherapee(cli=False)
+        if rawtherapee and not any(
+                os.path.normcase(path) == os.path.normcase(rawtherapee)
+                for _, path in candidates):
+            candidates.append(("RawTherapee", rawtherapee))
+        known = (("darktable", "darktable", "bin", "darktable.exe"),)
         for root in roots:
             for entry in known:
                 path = os.path.join(root, *entry[1:]) if root else ""
