@@ -67,8 +67,7 @@ require_once __DIR__ . '/header.php';
 <main>
     <div class="page-header">
         <div class="wrap">
-            <p class="faq-crumb"><a href="brass-tacks.php">&larr; BRASS TACKS! &middot; every question</a></p>
-            <p class="site-discovery-kicker">BRASS TACKS! &middot; <?php echo $faq_section; ?></p>
+            <p class="site-discovery-kicker"><a href="brass-tacks.php">&larr; BRASS TACKS! &middot; the FAQ</a></p>
             <h1><?php echo $faq_section; ?></h1>
             <p class="lede"><?php echo $faq_lede; ?></p>
             <nav class="faq-subnav" aria-label="FAQ sections">
