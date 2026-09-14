@@ -51,6 +51,21 @@ class ExpandCanvas(QWidget):
             return (vertical,)
         return ()
 
+    @staticmethod
+    def _cursor_for_edges(edges):
+        edge_set = frozenset(edges)
+        if edge_set in (frozenset(("left", "top")),
+                        frozenset(("right", "bottom"))):
+            return Qt.SizeFDiagCursor
+        if edge_set in (frozenset(("right", "top")),
+                        frozenset(("left", "bottom"))):
+            return Qt.SizeBDiagCursor
+        if edge_set & {"left", "right"}:
+            return Qt.SizeHorCursor
+        if edge_set & {"top", "bottom"}:
+            return Qt.SizeVerCursor
+        return Qt.ArrowCursor
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self._drag = self._hit_edges(event.position())
@@ -71,9 +86,7 @@ class ExpandCanvas(QWidget):
             self.update()
         else:
             hit = self._hit_edges(point)
-            self.setCursor(Qt.SizeFDiagCursor if len(hit) == 2 else
-                           Qt.SizeHorCursor if hit and hit[0] in ("left", "right") else
-                           Qt.SizeVerCursor if hit else Qt.ArrowCursor)
+            self.setCursor(self._cursor_for_edges(hit))
 
     def mouseReleaseEvent(self, _event):
         self._drag = self._start = self._start_edges = None
