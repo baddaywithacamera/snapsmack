@@ -2,6 +2,8 @@
 
 import os
 import sys
+import zipfile
+from pathlib import Path
 
 from PIL import Image
 
@@ -31,6 +33,9 @@ def test_project_round_trip_keeps_history_and_active_position(tmp_path):
     document.save_project(project)
     loaded = editor_engine.EditorDocument.load_project(project)
 
+    assert loaded.browse_source_path == os.path.abspath(document.source_path)
+    assert loaded.original_filename == "photo.jpg"
+
     assert [item["label"] for item in loaded.history] == [
         "Open image", "Brightness", "Contrast"]
     assert loaded.history_index == 1
@@ -38,6 +43,26 @@ def test_project_round_trip_keeps_history_and_active_position(tmp_path):
     assert loaded.adjustments["contrast"] == 0
     assert loaded.redo()
     assert loaded.adjustments["contrast"] == 20
+
+
+def test_project_contains_and_can_restore_untouched_original(tmp_path):
+    source = _photo(tmp_path)
+    original = Path(source).read_bytes()
+    document = editor_engine.EditorDocument(source)
+    project = str(tmp_path / "portable.slapper")
+    document.save_project(project)
+
+    with zipfile.ZipFile(project) as archive:
+        members = archive.namelist()
+        embedded = next(name for name in members if name.startswith("original/source"))
+        assert archive.read(embedded) == original
+
+    os.remove(source)
+    loaded = editor_engine.EditorDocument.load_project(project)
+    assert Path(loaded.source_path).read_bytes() == original
+    assert loaded.browse_source_path is None
+    assert loaded.original_filename == "photo.jpg"
+    assert loaded.recorded_source_path == os.path.abspath(source)
 
 
 def test_101st_edit_is_rejected_when_checkpoint_is_cancelled(tmp_path):

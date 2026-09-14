@@ -61,6 +61,8 @@ def test_connection(api_key: str) -> tuple[bool, str]:
         genai.configure(api_key=api_key)
         model    = genai.GenerativeModel(MODEL_NAME)
         response = model.generate_content("Reply with only the word: OK")
+        if not str(getattr(response, 'text', '') or '').strip():
+            return False, "Google returned no text response."
         return True, f"Connected — {MODEL_NAME}"
     except Exception as e:
         return False, str(e)

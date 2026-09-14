@@ -86,6 +86,7 @@ def test_heal_refuses_empty_selection():
 def test_editor_wires_ai_heal_as_a_masked_layer():
     source = (HUB / "slapper_qt" / "editor_window.py").read_text(encoding="utf-8")
     assert 'QAction("AI Heal…"' in source
+    assert 'QAction("Spot Heal", self)' in source
     assert 'self.act_ai_fill = QAction("Generative Fill…", self)' in source
     assert 'def apply_ai_generation(' in source
     assert 'layer["ai_heal_source_mask"] = editor_engine._mask_to_text(mask)' in source
@@ -122,6 +123,7 @@ def test_generative_fill_can_infer_content_without_a_description(monkeypatch):
     mask = Image.new("L", photo.size, 255)
     gemini_image_edit.fill(photo, mask, "", "secret")
     instruction = seen["json"]["contents"][0]["parts"][0]["text"]
+    parts = seen["json"]["contents"][0]["parts"]
     assert "natural matching content inferred" in instruction
 
 
@@ -135,5 +137,31 @@ def test_ai_heal_blend_mask_expands_and_feathers_without_leaking_across_frame():
     assert 0 < blended.getpixel((560, 400)) < 255
     assert blended.getpixel((0, 0)) == 0
     assert gemini_image_edit.blend_mask(mask, 0).tobytes() == mask.tobytes()
+
+
+def test_editor_does_not_expose_withdrawn_generative_expand():
+    source = (HUB / "slapper_qt" / "editor_window.py").read_text(encoding="utf-8")
+    assert "Generative Expand" not in source
+    assert "open_ai_expand" not in source
+
+
+def test_first_run_notice_is_tracked_source_and_gates_all_generative_tools():
+    notice = (HUB / "slapper_qt" / "generative_consent.py").read_text(encoding="utf-8")
+    source = (HUB / "slapper_qt" / "editor_window.py").read_text(encoding="utf-8")
+    assert "SNAP SLAPPER collects no identity, telemetry, or per-user edit log" in notice
+    assert '"generative_notice_acknowledged": False' in (
+        HUB / "slapper_qt" / "prefs.py").read_text(encoding="utf-8")
+    assert source.count("from .generative_consent import confirm") == 2
+    assert source.count("if not confirm(self):") == 2
+
+
+def test_provider_send_warnings_can_be_dismissed_per_tool():
+    notice = (HUB / "slapper_qt" / "generative_consent.py").read_text(encoding="utf-8")
+    prefs_source = (HUB / "slapper_qt" / "prefs.py").read_text(encoding="utf-8")
+    heal = (HUB / "slapper_qt" / "ai_heal_dialog.py").read_text(encoding="utf-8")
+    assert 'QCheckBox("Do not display again")' in notice
+    for key in ("ai_heal_send_warning_hidden", "ai_fill_send_warning_hidden"):
+        assert f'"{key}": False' in prefs_source
+        assert key in heal
 
 # ===== SNAPSMACK EOF =====
