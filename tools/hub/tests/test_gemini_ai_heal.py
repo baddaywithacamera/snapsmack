@@ -193,16 +193,15 @@ def test_expand_geometry_starts_at_zero_and_reports_actual_area():
     assert area == 750
 
 
-def test_expand_canvas_seeds_bottom_from_the_actual_bottom_edge():
+def test_expand_canvas_uses_neutral_grey_instead_of_stretched_edge_pixels():
     photo = Image.new("RGB", (4, 3), "blue")
     for x in range(4):
         photo.putpixel((x, 2), (40 + x, 30, 20))
     canvas = gemini_image_edit.edge_extended_canvas(
         photo, {"left": 0, "right": 0, "top": 0, "bottom": 2})
     assert canvas.size == (4, 5)
-    assert [canvas.getpixel((x, 4)) for x in range(4)] == \
-        [photo.getpixel((x, 2)) for x in range(4)]
-    assert canvas.getpixel((0, 4)) != (0, 0, 255)
+    assert [canvas.getpixel((x, 4)) for x in range(4)] == [(128, 128, 128)] * 4
+    assert canvas.crop((0, 0, 4, 3)).tobytes() == photo.tobytes()
 
 
 def test_expand_prompt_is_short_positive_and_not_duplicated(monkeypatch):
@@ -227,15 +226,43 @@ def test_expand_prompt_is_short_positive_and_not_duplicated(monkeypatch):
         "continue the brick wall", "secret")
     instruction = seen["json"]["contents"][0]["parts"][0]["text"]
     parts = seen["json"]["contents"][0]["parts"]
-    assert "Extend the photograph naturally into the red area" in instruction
-    assert "as though the camera captured a wider frame" in instruction
+    assert "neutral grey margin" in instruction
+    assert "Seamless photographic outpainting" in instruction
     assert "curb" not in instruction.lower()
     assert "boundary" not in instruction.lower()
     assert instruction.count("continue the brick wall") == 1
     assert "every white border area" not in instruction.lower()
-    assert len(parts) == 3  # instruction, canvas, red-marked reference; raw mask stays local
+    assert len(parts) == 3  # instruction, original reference, neutral-grey target canvas
     assert "not an explanation, mask, matte" in instruction
     assert recorded_instruction == instruction
+
+
+def test_multi_edge_expand_is_sent_as_sequential_single_edge_passes(monkeypatch):
+    requests_seen = []
+
+    class Response:
+        ok = True
+        status_code = 200
+
+        def json(self):
+            return {"candidates": [{"content": {"parts": [
+                {"inlineData": {"mimeType": "image/png", "data": _encoded_png("blue")}}
+            ]}}]}
+
+    def fake_post(_url, **kwargs):
+        requests_seen.append(kwargs["json"])
+        return Response()
+
+    monkeypatch.setattr(gemini_image_edit.requests, "post", fake_post)
+    result, _mask, box, _instruction = gemini_image_edit.expand(
+        Image.new("RGB", (100, 50), "red"), {"left": 5, "bottom": 10}, "", "secret")
+    assert len(requests_seen) == 2
+    assert result.size == (105, 55)
+    assert box == (5, 0, 105, 50)
+    for request in requests_seen:
+        parts = request["contents"][0]["parts"]
+        assert len(parts) == 3
+        assert "RED" not in parts[0]["text"]
 
 
 def test_editor_exposes_generative_expand_with_class_c_provenance():
