@@ -3575,6 +3575,18 @@ function sv_actor_doc(PDO $pdo, array &$settings): array {
     $icon = sv_avatar($settings);
     if ($icon !== null) $doc['icon'] = $icon;
 
+    // 719D (FED UP function 2): MOVING FROM. When the owner is bringing an old
+    // fediverse account here, the OLD actor's URL goes in alsoKnownAs — that is
+    // the one thing a Move from the old server checks before followers are
+    // re-pointed at this blog. Owner-typed, https only, blank = absent. This is
+    // the only writer of alsoKnownAs; the alias (STAGE NAME) never touches it.
+    $aka = [];
+    foreach (preg_split('/[\s,]+/', (string)($settings['fediverse_moving_from'] ?? '')) as $old_actor) {
+        $old_actor = trim($old_actor);
+        if ($old_actor !== '' && preg_match('~^https://[^\s/]+/\S+$~', $old_actor)) $aka[] = $old_actor;
+    }
+    if ($aka) $doc['alsoKnownAs'] = array_values(array_unique($aka));
+
     $pub = sv_ensure_keys($pdo, $settings);
     if ($pub !== '') {
         $doc['publicKey'] = [
@@ -5987,6 +5999,7 @@ function sv_actor_profile_fingerprint(PDO $pdo, array &$settings): string {
         'summary' => $a['summary'] ?? '',
         'icon'    => $a['icon']['url'] ?? '',
         'mafo'    => $a['manuallyApprovesFollowers'] ?? false,
+        'aka'     => $a['alsoKnownAs'] ?? [],
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 }
 
