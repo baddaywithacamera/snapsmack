@@ -208,6 +208,17 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="entry">
                 <div class="entry-top">
+                    <h3>A 16-bit file with an 8-bit picture inside it</h3>
+                    <span class="date">&ldquo;Prove the Bits&rdquo; &middot; 2026-09-14</span>
+                    <span class="state open">Blew up / Open</span>
+                </div>
+                <p>SNAP SLAPPER is specified as a 16-bit non-destructive photo editor. RawTherapee develops a RAW to a real 16-bit TIFF and hands it over correctly. Then SLAPPER&rsquo;s compositor &mdash; the layer, blend, mask and effect engine &mdash; converts it to 8-bit before doing any of that work, because the image library it is built on (Pillow) has no 16-bit colour mode. The edits were computed in 8-bit and written into a 16-bit file. The container said 16-bit; the picture inside had already been reduced. The original RAW was never touched, so nothing was lost at the source. Every edit of a high-bit image made through the app was degraded. Nobody saw it for a month because that month&rsquo;s work was all JPEGs, which are 8-bit to begin with: nothing to lose, nothing visibly wrong. The first real RAW, on 2026-09-14, showed it on day one.</p>
+                <p>Done was claimed twice on the way here &mdash; &ldquo;6 RAW-focused tests passed&rdquo; without one of them opening a developed file in the live app. Not fixed. The compositor is being rebuilt to work in float internally and write 16-bit only on export, off Pillow entirely, with every file the pipeline makes tracked by an assigned identity instead of a guessed filename. It leaves this state when a real RAW goes through the rebuilt app and the bits in the export are proven &mdash; not the depth written in the header. Until then, for anything above 8-bit, SNAP SLAPPER is an 8-bit editor and this page says so.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-14-016-sixteen-bit-file-eight-bit-picture.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top">
                     <h3>The site had picture containers but no post containers</h3>
                     <span class="date">the deep one</span>
                     <span class="state watched">Watched working</span>
@@ -479,7 +490,7 @@ require_once __DIR__ . '/includes/header.php';
                     <span class="state nottested">Confirming</span>
                 </div>
                 <p><strong>SNAP SLAPPER into Photoshop is confirmed</strong> &mdash; a real export was opened in Photoshop and checked against the original with a difference file, and it held up. That&rsquo;s the one direction we&rsquo;ve genuinely proven.</p>
-                <p class="watched-line"><strong>Watched working:</strong> SNAP SLAPPER export &rarr; Photoshop, verified against the original with a difference file.</p>
+                <p class="watched-line"><strong>Watched working:</strong> SNAP SLAPPER export &rarr; Photoshop, verified against the original with a difference file. That test ran on an 8-bit source, so it proved the file opens and matches &mdash; not that a 16-bit source keeps its bits; see &ldquo;A 16-bit file with an 8-bit picture inside it&rdquo; above.</p>
                 <p class="next-line"><strong>Still confirming:</strong> the other direction (a Photoshop file coming <em>into</em> SNAP SLAPPER) is not yet checked, and neither are other editors like Affinity. Each editor and each direction gets its own confirmation &mdash; one passing doesn&rsquo;t vouch for the rest.</p>
             </div>
 
