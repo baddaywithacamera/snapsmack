@@ -103,7 +103,13 @@ $actor_src = file_get_contents(dirname(__DIR__) . '/core/fediverse.php');
 $doc_at = strpos($actor_src, 'function sv_actor_doc(');
 $doc_fn = substr($actor_src, $doc_at, strpos($actor_src, "
 function ", $doc_at + 1) - $doc_at);
-$check('actor document never carries the alias in alsoKnownAs', !str_contains($doc_fn, 'alsoKnownAs') && !str_contains($doc_fn, 'sv_alias'));
+// alsoKnownAs is written from ONE owner-typed setting (MOVING FROM, function 2) and nothing else.
+$check('actor document alsoKnownAs comes only from fediverse_moving_from',
+    !str_contains($doc_fn, 'sv_alias') && !str_contains($doc_fn, 'alias_handle')
+    && substr_count($doc_fn, "\$doc['alsoKnownAs']") === 1
+    && str_contains($doc_fn, "\$settings['fediverse_moving_from']"));
+$check('moving-from accepts https actor URLs only', str_contains($doc_fn, "preg_match('~^https://[^\s/]+/\S+$~', \$old_actor)"));
+$check('moving-from change re-pushes the profile', str_contains($actor_src, "'aka'     => \$a['alsoKnownAs'] ?? [],"));
 $check('route passes pdo', str_contains(file_get_contents(dirname(__DIR__) . '/fediverse.php'), "sv_webfinger(\$_GET['resource'] ?? '', \$settings, \$pdo)"));
 $admin = file_get_contents(dirname(__DIR__) . '/core/fediverse-admin-shared.php');
 $check('enable verifies the hub answers with OUR actor', str_contains($admin, "rtrim(\$al_self, '/') !== rtrim(sv_actor_url(\$sv_settings), '/')"));
