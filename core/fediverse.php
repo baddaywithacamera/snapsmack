@@ -3429,9 +3429,33 @@ function sv_profile_url(array $settings): string {
     return rtrim(sv_base($settings), '/') . '/' . rawurlencode(sv_handle($settings));
 }
 
-function sv_webfinger(string $resource, array $settings): ?array {
+/**
+ * 719D "STAGE NAME": the @handle@<relay domain> alias, spoke side.
+ * The alias domain is the relay's host (photoblogs.fyi for the network). The
+ * alias is ON only when the owner switched it on in Fediverse Config AND the
+ * hub confirmed it answers for this blog (the enable handler checks that).
+ * The actor's own domain never changes; only the WebFinger subject does —
+ * that is exactly how Mastodon's handle-domain / server-domain split works.
+ */
+function sv_alias_domain(array $settings): string {
+    $h = strtolower((string)(parse_url(sv_relay_actor_url($settings), PHP_URL_HOST) ?: ''));
+    return ($h !== '' && $h !== strtolower(sv_domain($settings))) ? $h : '';
+}
+
+function sv_alias_enabled(array $settings): bool {
+    return (string)($settings['fediverse_alias_enabled'] ?? '0') === '1' && sv_alias_domain($settings) !== '';
+}
+
+/** The acct: this blog calls itself — the alias when it is on, its own domain otherwise. */
+function sv_acct(array $settings): string {
+    $dom = sv_alias_enabled($settings) ? sv_alias_domain($settings) : sv_domain($settings);
+    return 'acct:' . sv_handle($settings) . '@' . $dom;
+}
+
+function sv_webfinger(string $resource, array $settings, ?PDO $pdo = null): ?array {
+    $res = trim($resource);
     if (function_exists('sc_curator_is_hub') && sc_curator_is_hub($settings)
-        && strcasecmp(trim($resource), 'acct:curator@photoblogs.fyi') === 0) {
+        && strcasecmp($res, 'acct:curator@photoblogs.fyi') === 0) {
         $curator = sc_curator_settings(null, $settings, false);
         $actor = sv_actor_url($curator);
         return ['subject'=>'acct:curator@photoblogs.fyi','aliases'=>[$actor,sv_profile_url($curator)],'links'=>[
@@ -3439,17 +3463,43 @@ function sv_webfinger(string $resource, array $settings): ?array {
             ['rel'=>'http://webfinger.net/rel/profile-page','type'=>'text/html','href'=>sv_profile_url($curator)],
         ]];
     }
-    $acct = 'acct:' . sv_handle($settings) . '@' . sv_domain($settings);
-    if (strcasecmp(trim($resource), $acct) !== 0) return null;
-    return [
-        'subject' => $acct,
-        'aliases' => [sv_actor_url($settings), sv_profile_url($settings), rtrim(sv_base($settings), '/')],
-        'links'   => [
-            ['rel' => 'self', 'type' => 'application/activity+json', 'href' => sv_actor_url($settings)],
-            ['rel' => 'http://webfinger.net/rel/profile-page', 'type' => 'text/html',
-             'href' => sv_profile_url($settings)],
-        ],
-    ];
+    $own_domain = strtolower(sv_domain($settings));
+    $own_acct   = 'acct:' . sv_handle($settings) . '@' . $own_domain;
+    $alias_acct = sv_alias_enabled($settings) ? strtolower(sv_acct($settings)) : '';
+    // This blog, asked by either of its names. Subject = the alias when it is on,
+    // so a remote that found us via our own domain learns the handle to display.
+    if (strcasecmp($res, $own_acct) === 0 || ($alias_acct !== '' && strcasecmp($res, $alias_acct) === 0)) {
+        return [
+            'subject' => $alias_acct !== '' ? $alias_acct : $own_acct,
+            'aliases' => [sv_actor_url($settings), sv_profile_url($settings), rtrim(sv_base($settings), '/')],
+            'links'   => [
+                ['rel' => 'self', 'type' => 'application/activity+json', 'href' => sv_actor_url($settings)],
+                ['rel' => 'http://webfinger.net/rel/profile-page', 'type' => 'text/html',
+                 'href' => sv_profile_url($settings)],
+            ],
+        ];
+    }
+    // Hub side: acct:<member handle>@<this relay's domain> → the member's own actor.
+    // Only ACTIVE roster rows answer (sc_relay_alias_lookup); a blog that left or
+    // was blocked stops being reachable under the network name at once.
+    if ($pdo !== null && function_exists('sc_relay_is_hub') && sc_relay_is_hub($settings)
+        && preg_match('/^acct:([a-z0-9_]{1,60})@(.+)$/i', $res, $m)
+        && strtolower(rtrim($m[2], '.')) === $own_domain) {
+        $row = sc_relay_alias_lookup($pdo, $m[1]);
+        if ($row) {
+            $actor = (string)$row['actor_url'];
+            $site  = 'https://' . strtolower((string)$row['domain']) . '/';
+            return [
+                'subject' => 'acct:' . $row['alias_handle'] . '@' . $own_domain,
+                'aliases' => [$actor, $site],
+                'links'   => [
+                    ['rel' => 'self', 'type' => 'application/activity+json', 'href' => $actor],
+                    ['rel' => 'http://webfinger.net/rel/profile-page', 'type' => 'text/html', 'href' => $site],
+                ],
+            ];
+        }
+    }
+    return null;
 }
 
 /**

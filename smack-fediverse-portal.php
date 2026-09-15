@@ -218,6 +218,34 @@ include 'core/sidebar.php';
         <?php endif; ?>
     </div>
 
+    <!-- 719D ALIAS — @handle@<relay domain> -->
+    <div class="box mb-20">
+        <h3>ALIAS &mdash; @<?php echo htmlspecialchars($sv_handle_raw !== '' ? $sv_handle_raw : 'you'); ?>@<?php echo htmlspecialchars(sv_alias_domain($sv_settings) ?: $relay_host); ?></h3>
+        <?php
+            $al_on  = sv_alias_enabled($sv_settings);
+            $al_dom = sv_alias_domain($sv_settings) ?: $relay_host;
+            $al_name = '@' . ($sv_handle_raw !== '' ? $sv_handle_raw : 'you') . '@' . $al_dom;
+        ?>
+        <p class="dim mb-20">A second name for this blog on a domain the network keeps alive. Your posts still come from <code><?php echo htmlspecialchars($sv_dom); ?></code> and nothing about your server changes; the fediverse just learns to show you as <code><?php echo htmlspecialchars($al_name); ?></code>. The name is yours from the moment you join the network (first come, first served). Switching ON asks the hub to confirm it answers for this blog before anything is saved. <strong>Servers that already follow you will show the new name after they refresh your profile</strong> &mdash; the same followers, the same posts, a different label.</p>
+        <?php if (!$sv_on): ?>
+            <p class="dim">Enable Fediverse above first.</p>
+        <?php elseif (!$relay_joined): ?>
+            <p class="dim">Join the FEDIVERSE NETWORK above first &mdash; the name is claimed when you join.</p>
+        <?php else: ?>
+            <form method="post" action="">
+                <input type="hidden" name="action" value="alias_save">
+                <label class="toggle-row">
+                    <span class="toggle-label">INTRODUCE THIS BLOG AS <code><?php echo htmlspecialchars($al_name); ?></code></span>
+                    <span class="toggle-desc">OFF = <code><?php echo htmlspecialchars($sv_address); ?></code>, your own domain only.</span>
+                    <input type="hidden"   name="alias_enabled" value="0">
+                    <input type="checkbox" name="alias_enabled" value="1" <?php echo $al_on ? 'checked' : ''; ?>>
+                </label>
+                <button type="submit" class="btn-smack">SAVE ALIAS</button>
+            </form>
+            <p class="dim mt-14">Now answering as <code><?php echo htmlspecialchars(substr(sv_acct($sv_settings), 5)); ?></code>.</p>
+        <?php endif; ?>
+    </div>
+
     <?php if ($sc_is_hub_install): ?>
     <div class="box mb-20">
         <h3>SMACKCAST HUB</h3>
@@ -238,6 +266,7 @@ include 'core/sidebar.php';
                 <input type="hidden" name="action" value="smackcast_member">
                 <input type="hidden" name="subscriber_id" value="<?php echo (int)$member['id']; ?>">
                 <code><?php echo htmlspecialchars($member['actor_url']); ?></code>
+                <?php if (!empty($member['alias_handle'])): ?><code>@<?php echo htmlspecialchars($member['alias_handle']); ?>@<?php echo htmlspecialchars($sv_dom); ?></code><?php endif; ?>
                 <strong><?php echo htmlspecialchars(strtoupper($member['state'])); ?></strong>
                 <select name="member_state"><option value="active">Approve</option><option value="blocked">Block</option><option value="left">Remove</option></select>
                 <input type="password" name="reauth_password" placeholder="Password" autocomplete="off" required>

@@ -245,6 +245,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'push_
 // pushes a signed Update(Actor) so the #fedi22 + topic tags land on (or leave)
 // the remotes' cached profile. The listing itself is completed (or removed) by
 // the admin on fediverse.info; we only ever change our own bio.
+// --- 719D "STAGE NAME": @handle@<relay domain> ALIAS ---
+// ON is a two-ended agreement: the hub must already answer WebFinger for
+// acct:<our handle>@<relay domain> with THIS blog's actor as `self` (it claims
+// the name when the blog joins the relay). We ask the hub before flipping the
+// switch; if it does not answer for us, the switch stays OFF and the message
+// says why in plain words. OFF never asks anyone — the subject simply reverts.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'alias_save') {
+    $al_on  = (($_POST['alias_enabled'] ?? '') === '1');
+    $al_dom = sv_alias_domain($sv_settings);
+    $al_acct = 'acct:' . sv_handle($sv_settings) . '@' . $al_dom;
+    if (!$al_on) {
+        sv_set_setting($pdo, $sv_settings, 'fediverse_alias_enabled', '0');
+        $al_msg = 'ALIAS is OFF — this blog answers as @' . sv_handle($sv_settings) . '@' . sv_domain($sv_settings) . ' only.';
+    } elseif ($al_dom === '') {
+        $al_msg = 'ALIAS NOT ENABLED — no network relay is configured, so there is no domain to be known by.';
+    } elseif (($sv_settings['photoblogs_relay_joined'] ?? '0') !== '1') {
+        $al_msg = 'ALIAS NOT ENABLED — join the FEDIVERSE NETWORK first; the name is claimed when you join.';
+    } else {
+        $al_doc = sv_fetch_ap('https://' . $al_dom . '/.well-known/webfinger?resource=' . rawurlencode($al_acct), $sv_settings);
+        $al_self = '';
+        foreach ((is_array($al_doc) ? ($al_doc['links'] ?? []) : []) as $l) {
+            if (($l['rel'] ?? '') === 'self') { $al_self = (string)($l['href'] ?? ''); break; }
+        }
+        if ($al_self === '') {
+            $al_msg = 'ALIAS NOT ENABLED — ' . $al_dom . ' does not answer for @' . sv_handle($sv_settings) . '@' . $al_dom
+                    . '. Either the hub is not on a build that hands out aliases yet, or that name is already held by another blog. Nothing changed.';
+        } elseif (rtrim($al_self, '/') !== rtrim(sv_actor_url($sv_settings), '/')) {
+            $al_msg = 'ALIAS NOT ENABLED — @' . sv_handle($sv_settings) . '@' . $al_dom . ' already points at a different blog (' . $al_self . '). Nothing changed.';
+        } else {
+            sv_set_setting($pdo, $sv_settings, 'fediverse_alias_enabled', '1');
+            $al_msg = 'ALIAS is ON — this blog now introduces itself as @' . sv_handle($sv_settings) . '@' . $al_dom
+                    . '. Servers that already follow you pick the new name up the next time they refresh your profile.';
+        }
+    }
+    header('Location: ' . $sv_self . '?msg=' . urlencode($al_msg));
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'rollcall_save') {
     $rc_on = (($_POST['rollcall_enabled'] ?? '') === '1') ? '1' : '0';
     sv_set_setting($pdo, $sv_settings, 'fediverse_rollcall', $rc_on);
@@ -711,6 +749,7 @@ $sv_aproute_ok  = strpos($sv_htaccess, 'fediverse.php?appath=') !== false;
 
 $sc_subscribers = [];
 if ($sc_is_hub_install) {
+    if (function_exists('sc_relay_ensure_alias_column')) sc_relay_ensure_alias_column($pdo); // 719D
     try {
         $sc_subscribers = $pdo->query("SELECT * FROM snap_relay_subscribers ORDER BY subscribed_at DESC LIMIT 200")
             ->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -730,6 +769,36 @@ $sc_fleet_join_allowed = stripos($sc_fleet_relay_target, 'https://') === 0;
 $sc_fleet_review = null;
 if ($sc_fleet_spoke_count > 0 && isset($_GET['fleet_review'])) {
     $sc_fleet_review = array_map('sc_fleet_status_row', sc_fleet_spokes($pdo));
+    // 719D: two spokes wanting the same @name@<relay domain> alias. The hub hands
+    // the name to whichever joins first; the other keeps its own domain only.
+    // Flag it here, fix-first, so nobody finds out from a stranger's profile.
+    $sc_alias_seen = [];
+    foreach ($sc_fleet_review as $ar) {
+        $ah = strtolower(trim((string)($ar['status']['handle'] ?? '')));
+        if ($ah !== '') $sc_alias_seen[$ah][] = (string)($ar['node']['site_name'] ?? $ar['node']['site_url']);
+    }
+    $sc_alias_held = [];
+    if ($sc_is_hub_install && function_exists('sc_relay_alias_rows')) {
+        foreach (sc_relay_alias_rows($pdo) as $arow) $sc_alias_held[(string)$arow['alias_handle']] = $arow;
+    }
+    foreach ($sc_fleet_review as &$ar) {
+        $ah = strtolower(trim((string)($ar['status']['handle'] ?? '')));
+        if ($ah === '') continue;
+        if (count($sc_alias_seen[$ah] ?? []) > 1) {
+            $ar['problems'][] = 'ALIAS COLLISION — @' . $ah . '@' . $sv_dom . ' is also wanted by '
+                . implode(', ', array_diff($sc_alias_seen[$ah], [(string)($ar['node']['site_name'] ?? $ar['node']['site_url'])]))
+                . '; only the first to join gets the name';
+        }
+        $held = $sc_alias_held[$ah] ?? null;
+        if ($held) {
+            $held_host = strtolower((string)$held['domain']);
+            $spoke_host = strtolower((string)(parse_url((string)$ar['node']['site_url'], PHP_URL_HOST) ?: ''));
+            if ($held_host !== '' && $spoke_host !== '' && $held_host !== $spoke_host) {
+                $ar['problems'][] = 'ALIAS TAKEN — @' . $ah . '@' . $sv_dom . ' is held by ' . $held_host . ' (' . $held['state'] . ')';
+            }
+        }
+    }
+    unset($ar);
 }
 $sc_fleet_results = $_SESSION['sc_fleet_results'] ?? [];
 unset($_SESSION['sc_fleet_results']);
