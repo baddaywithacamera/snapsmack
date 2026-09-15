@@ -252,11 +252,24 @@ function ms_ingest_roster(PDO $pdo, string $hub_url, array $peers): array
  *
  * @return array{added:int,updated:int,pruned:int,ok:bool}
  */
-function ms_spoke_pull_roster(PDO $pdo, array $settings): array
+function ms_spoke_pull_roster(PDO $pdo, array $settings, bool $force = false): array
 {
     $none = ['added' => 0, 'updated' => 0, 'pruned' => 0, 'ok' => false];
     if (($settings['multisite_role'] ?? '') === 'hub') {
         return $none;
+    }
+    // 716D: the roster changes about once a week, and every spoke was asking
+    // the hub for it twice per ten-minute tick (36 spokes = 432 hub hits an
+    // hour for nothing). Background callers now pull at most hourly after a
+    // success, ten-minutely after a failure. A deliberate action (the hub's
+    // fleet job fan-out, an empty picker) passes $force and always pulls.
+    if (!$force) {
+        $last_attempt = (int)($settings['fedboard_roster_pull_attempt'] ?? 0);
+        $last_ok      = (int)strtotime((string)($settings['fedboard_roster_pull_last_success'] ?? ''));
+        $fresh_for    = ($last_ok > 0 && $last_ok >= $last_attempt - 5) ? 3600 : 600;
+        if ($last_attempt > 0 && time() - $last_attempt < $fresh_for) {
+            return ['added' => 0, 'updated' => 0, 'pruned' => 0, 'ok' => true, 'skipped' => 'fresh'];
+        }
     }
     $stamp = static function (bool $ok, string $error = '') use ($pdo): void {
         $values = [
