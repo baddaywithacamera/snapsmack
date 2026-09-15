@@ -111,7 +111,7 @@ switch ($ap) {
 
     case 'webfinger':
         if ($method !== 'GET') sv_404();
-        $jrd = sv_webfinger($_GET['resource'] ?? '', $settings);
+        $jrd = sv_webfinger($_GET['resource'] ?? '', $settings, $pdo);
         if ($jrd === null) sv_404();
         sv_respond($jrd, 200, 'application/jrd+json');
         break;
