@@ -12,13 +12,17 @@ import requests
 
 from PySide6.QtCore import QObject, QSettings, QThread, Qt, Signal, Slot
 from PySide6.QtGui import QGuiApplication, QIcon, QPixmap
-from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QFileDialog,
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QFileDialog,
     QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
-    QMessageBox, QProgressBar, QPushButton, QScrollArea, QVBoxLayout, QWidget)
+    QMessageBox, QProgressBar, QPushButton, QScrollArea, QTextEdit, QVBoxLayout, QWidget)
 
 import main as core
 import snap_creds
 import snap_discovery
+import snap_profiles
+import snap_prompt_sync
+import snap_settings_sync
+import snap_site_settings
 
 
 STYLE = """
@@ -38,6 +42,9 @@ QPushButton:hover { border-color:#63ef3d; background:#243129; }
 QPushButton#primary { background:#63ef3d; color:#071006; border-color:#63ef3d; }
 QPushButton#quiet { background:transparent; border-color:transparent; color:#94a098; }
 QLineEdit { background:#0b0f0c; border:1px solid #334238; border-radius:8px; padding:9px; }
+QTextEdit { background:#0b0f0c; border:1px solid #334238; border-radius:8px; padding:9px; font-family:Consolas; }
+QComboBox { background:#0b0f0c; border:1px solid #334238; border-radius:8px; padding:8px; }
+QComboBox QAbstractItemView { background:#0b0f0c; selection-background-color:#243129; }
 QScrollArea { border:0; }
 QCheckBox { spacing:9px; }
 """
@@ -299,6 +306,95 @@ class SettingsDialog(QDialog):
         self.discovery_worker = None
 
 
+class _PromptTransport:
+    """Borrow the Tk hub's proven prompt push/fetch (same key minting, same
+    gyss/prompt route) without dragging the Tk window in. The methods only
+    need a per-run key cache on self."""
+    def __init__(self):
+        self._gyss_keys = {}
+    push = core.Hub._prompt_push
+    fetch = core.Hub._prompt_fetch
+
+
+class PromptsDialog(QDialog):
+    """Per-blog AI instructions — the PROMPTS section the Tk hub had, restored.
+
+    One prompt per blog, entered once here, saved to the blog (gyss/prompt)
+    and to the shared desktop profile, so SYBU / GYSS / COLD SNAP load it when
+    that blog is selected. Save path copied from main.Hub._save_site_settings.
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent); self.transport = _PromptTransport(); self.profiles = []
+        self.setWindowTitle("SNAP HQ — AI PROMPTS"); self.resize(820, 640); self.setMinimumSize(600, 480)
+        outer = QVBoxLayout(self); outer.setContentsMargins(22, 20, 22, 20); outer.setSpacing(13)
+        title = QLabel("AI PROMPTS"); title.setObjectName("brand"); outer.addWidget(title)
+        hint = QLabel("One set of instructions per blog. Enter it once here; every desktop tool loads it when you pick that blog.")
+        hint.setObjectName("muted"); hint.setWordWrap(True); outer.addWidget(hint)
+        row = QHBoxLayout(); caption = QLabel("Blog"); caption.setMinimumWidth(60); row.addWidget(caption)
+        self.site = QComboBox(); self.site.currentIndexChanged.connect(self._load); row.addWidget(self.site, 1)
+        pull = QPushButton("PULL FROM BLOG"); pull.clicked.connect(self._pull); row.addWidget(pull); outer.addLayout(row)
+        self.editor = QTextEdit(); self.editor.setPlaceholderText("Paste this blog's enrichment instructions."); outer.addWidget(self.editor, 1)
+        self.status = QLabel(""); self.status.setObjectName("muted"); self.status.setWordWrap(True); outer.addWidget(self.status)
+        actions = QHBoxLayout(); save = QPushButton("SAVE TO BLOG"); save.setObjectName("primary"); save.clicked.connect(self._save); actions.addWidget(save)
+        actions.addStretch(1); close = QPushButton("DONE"); close.clicked.connect(self.accept); actions.addWidget(close); outer.addLayout(actions)
+        self._refresh()
+
+    def _refresh(self):
+        try: self.profiles = [p for p in snap_profiles.list_profiles() if p.get("site_url")]
+        except Exception: self.profiles = []
+        self.site.blockSignals(True); self.site.clear()
+        for p in self.profiles:
+            name = str(p.get("name", "") or "Untitled blog").strip(); url = str(p.get("site_url", "") or "").strip()
+            self.site.addItem(f"{name}  —  {url}")
+        self.site.blockSignals(False)
+        if not self.profiles:
+            self.status.setText("No blogs found — run DISCOVER FLEET in SETTINGS first."); self.editor.setEnabled(False); return
+        self._load()
+
+    def _current(self):
+        i = self.site.currentIndex()
+        return self.profiles[i] if 0 <= i < len(self.profiles) else None
+
+    def _load(self, *_):
+        p = self._current()
+        if not p: return
+        portable = snap_site_settings.validate_portable(p.get("portable") or {})
+        self.editor.setPlainText(portable.get("prompt", ""))
+        synced = (p.get("portable_sync") or {}).get("synced_at")
+        self.status.setText(("Offline copy — synced " + synced) if synced else "Not yet synced from the blog. PULL FROM BLOG fetches what the site has now.")
+
+    def _pull(self):
+        p = self._current()
+        if not p: return
+        try:
+            text = self.transport.fetch(p); self.editor.setPlainText(text or "")
+            self.status.setText("Pulled from the blog. SAVE TO BLOG keeps any edits.")
+        except Exception as exc:
+            QMessageBox.critical(self, "Could not pull the prompt", str(exc))
+
+    def _save(self):
+        p = self._current()
+        if not p: return
+        text = self.editor.toPlainText().strip()
+        try:
+            cached = snap_profiles.load_by_site(p["site_url"]) or dict(p)
+            portable = snap_site_settings.validate_portable(dict(cached.get("portable") or {}, prompt=text))
+            # Blog first, so an older site that lacks the all-settings action
+            # can never stop the prompt itself from being saved.
+            if not snap_prompt_sync.push(p, text, self.transport.push):
+                raise RuntimeError("The blog did not accept the prompt. Run DISCOVER FLEET, then try again.")
+            cached["portable"] = portable; snap_profiles.save(cached)
+            self.profiles[self.site.currentIndex()] = cached
+            try:
+                snap_settings_sync.save(p["site_url"], portable)
+                self.status.setText("\u2713 Prompt saved to the blog and to the shared profile.")
+            except Exception as sync_exc:
+                if "unknown action" not in str(sync_exc).lower(): raise
+                self.status.setText("\u2713 Prompt saved to the blog; shared profile updated on this computer.")
+        except Exception as exc:
+            self.status.setText("Prompt was not saved."); QMessageBox.critical(self, "Could not save this blog's prompt", str(exc))
+
+
 class Window(QMainWindow):
     def __init__(self):
         super().__init__(); self.settings = QSettings("SnapSmack", "SNAP HQ")
@@ -310,6 +406,7 @@ class Window(QMainWindow):
         header = QFrame(); self.header = header; header.setObjectName("header"); self.header_line = QHBoxLayout(header); self.header_line.setContentsMargins(24, 16, 24, 16)
         brand = QLabel("SNAP HQ"); brand.setObjectName("brand"); self.header_line.addWidget(brand)
         tagline = QLabel("local desktop headquarters"); tagline.setObjectName("muted"); self.header_line.addWidget(tagline); self.header_line.addStretch(1)
+        prompts = QPushButton("AI PROMPTS"); prompts.clicked.connect(self._prompts); self.header_line.addWidget(prompts)
         settings = QPushButton("SETTINGS"); settings.setObjectName("primary"); settings.clicked.connect(self._settings); self.header_line.addWidget(settings)
         shell.addWidget(header)
         scroll = QScrollArea(); self.scroll = scroll; scroll.setWidgetResizable(True)
@@ -341,6 +438,9 @@ class Window(QMainWindow):
     def _settings(self):
         dialog = SettingsDialog(self.settings, self)
         dialog.exec(); self._apply_settings()
+
+    def _prompts(self):
+        PromptsDialog(self).exec()
 
     def _apply_settings(self):
         self.migration.setVisible(self.settings.value("showMigrationCentre", True, type=bool))
