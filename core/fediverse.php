@@ -3969,6 +3969,15 @@ function sv_reconcile_mesh_follows(PDO $pdo, array $settings, int $limit = 1): a
     $stale_pending_secs = 3600;
     $now  = time();
     $self = rtrim(sv_actor_url($settings), '/');
+    // 716D: a peer that cannot be reached (not built yet, down, blocking) used
+    // to be retried EVERY tick, forever — a webfinger + actor fetch sitting in
+    // its timeouts, on every site missing that edge, 144 times a day. Failures
+    // now back off per actor: 10 min, 20, 40 … capped at a day. Kept in one
+    // settings row so nothing needs a new column; a success clears the entry.
+    $backoff_key = 'sv_mesh_follow_backoff';
+    $backoff = json_decode((string)($settings[$backoff_key] ?? ''), true);
+    if (!is_array($backoff)) $backoff = [];
+    $backoff_dirty = false;
     foreach ($sites as $site_url) {
         $actor = rtrim((string)$site_url, '/') . '/ap/actor';
         if ($actor === $self) continue;
@@ -3979,14 +3988,25 @@ function sv_reconcile_mesh_follows(PDO $pdo, array $settings, int $limit = 1): a
             $age = $now - (int)strtotime((string)$existing[$actor]['followed_at']);
             if ($age < $stale_pending_secs) continue;
         }
+        if (isset($backoff[$actor]) && (int)($backoff[$actor]['next'] ?? 0) > $now) continue;
         $result['checked']++;
         [$ok, $message] = sv_follow_actor($pdo, $settings, $actor);
         $result['message'] = $message;
         if ($ok) {
             $existing[$actor] = true;
             $result['followed']++;
+            if (isset($backoff[$actor])) { unset($backoff[$actor]); $backoff_dirty = true; }
+        } else {
+            $fails = (int)($backoff[$actor]['fails'] ?? 0) + 1;
+            $wait  = min(86400, 600 * (2 ** min($fails - 1, 8)));
+            $backoff[$actor] = ['fails' => $fails, 'next' => $now + $wait, 'why' => mb_substr($message, 0, 120)];
+            $backoff_dirty = true;
         }
         if ($result['checked'] >= $limit) break;
+    }
+    if ($backoff_dirty) {
+        try { sv_set_setting($pdo, $settings, $backoff_key, json_encode($backoff, JSON_UNESCAPED_SLASHES)); }
+        catch (Throwable $e) {}
     }
     return $result;
 }
@@ -5651,6 +5671,14 @@ function sv_federate_comment(PDO $pdo, int $comment_id, array $settings): void {
             if ($inbox !== '') sv_queue_delivery($pdo, $inbox, $json);
         }
     }
+
+    // 716D: send it NOW. Posts, challenge cards and follows all kick the
+    // detached worker the moment they happen; comments only ever queued and
+    // waited for the next scheduled tick — up to ten minutes. Same launcher,
+    // same lock; the request still returns immediately. (No-op under CLI: the
+    // backfill runs inside the worker already.)
+    require_once __DIR__ . '/fediverse-kick.php';
+    sv_kick_delivery();
 }
 
 /**
