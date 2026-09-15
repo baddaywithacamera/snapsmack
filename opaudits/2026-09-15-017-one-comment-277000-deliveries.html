@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 017 — One comment, 277,000 deliveries</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 017 — One comment, 277,000 deliveries</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-15-017</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-15</td></tr>
+        <tr><td class="k">First observed</td><td>2026-09-14 evening, on the host&rsquo;s Proxmox graphs: CPU bursting to 30&ndash;45% every ten minutes, load 6&ndash;7 on eight cores, the fan on constantly. &ldquo;I&rsquo;ve never had the box work this hard and this often before.&rdquo;</td></tr>
+        <tr><td class="k">Theme</td><td>Every SnapSmack site names its posts the same way. A reply to <em>someone else&rsquo;s</em> image 388 looked, to every site in the fleet, like a reply to <em>its own</em> image 388 &mdash; so every site filed it, and every site forwarded it to everyone. Sean: &ldquo;microphone audio feedback, fediverse version.&rdquo;</td></tr>
+        <tr><td class="k">Surfaces</td><td>The inbox (replies, likes, boosts, undo, delete); the 712D inbox-forwarding rule; the delivery queue; the public comment thread on 27 sites; the shared MariaDB box.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-watched">Watched working</span> &nbsp; 0.7.718D deployed fleet-wide 2026-09-15; queues, misfiled comments, stray boosts and log cleaned on both boxes; six consecutive quiet ticks watched on the host graphs (CPU 2&ndash;4%, load under 1).</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes, both ways.</strong> The defect: the queue contents were read and every row was the same Note. The fix: the graph, before and after, on the same box.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean (read the graphs, refused &ldquo;it&rsquo;s just the new cron&rdquo;, kept asking) + Claude (wrote the bug in 712D, found it, fixed it).</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 014 (the fleet cron finally running is what made this visible); OPAUDIT 015 (712D inbox forwarding, &ldquo;built and tested&rdquo; &mdash; tested on the mechanism, never on a reply to someone else&rsquo;s post); OPAUDIT 013/708D (comments federating at all).</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No exploitable detail. One user (Sean) runs every affected site.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>A single comment &mdash; #1 on usedcarparts.photoblogs.fyi, a reply to that site&rsquo;s image 388 &mdash;
+    was delivered to the site&rsquo;s followers, as it should be. Each follower is another SnapSmack
+    site. Each of them resolved the reply&rsquo;s target, <code>/ap/note/i/388</code>, by pattern
+    alone, without checking the host, and concluded it was a reply to <em>its own</em> image 388. So
+    each filed it as an approved, public comment on the wrong photograph, and &mdash; per the inbox
+    forwarding rule added in 712D &mdash; forwarded it to all of <em>its</em> followers as &ldquo;a reply
+    to our post&rdquo;. Those followers did the same. Nearly every site follows nearly every other, so
+    the same Note kept arriving from a new direction, and every arrival queued 25 more sends.
+    acolourlesslife.ca held 68,131 copies; the fleet about 277,000 on the first count, refilling
+    within one tick of being dumped. The box spent four minutes of every ten, per site, sending one
+    comment to itself.</p>
+
+    <h2>2. What a human saw</h2>
+    <table>
+        <tr><th>When</th><th>What</th></tr>
+        <tr><td>2026-09-14, 19:30&ndash;20:30</td><td>Proxmox host: CPU peaks 30&ndash;45%, load 6&ndash;7, CPU pressure stall 35&ndash;45%, IO stall 18%. Sawtooth every ten minutes. Fan on.</td></tr>
+        <tr><td>Same night</td><td>Stale per-site crontab lines removed (OPAUDIT 014&rsquo;s leftovers); cron.d parallelism 6 &rarr; 2. Peaks halved; plateaus instead of spikes. Fan still on.</td></tr>
+        <tr><td>716D deployed</td><td>Hourly roster pull, back-off on unreachable peers, comments kick the worker. No visible change. The tick&rsquo;s new <code>TIMING</code> line named the step: <code>drain=228s</code> on three sites, <code>13s</code> on the rest, <code>0.03s</code> on the one site with nothing queued.</td></tr>
+        <tr><td>Queue read</td><td>foundtextures.ca: ~6,000 rows to each of ~25 followers. acolourlesslife ~56,000. curbappeal ~27,000 &mdash; a site with no posts. photofri.day 8,412. Dumped: ~277,000 rows. Refilled within one tick.</td></tr>
+        <tr><td>Queue read again</td><td>Every row on every site: <code>Create Note</code>, actor usedcarparts, object <code>/ap/note/c/1</code>, inReplyTo <code>/ap/note/i/388</code>. One Note.</td></tr>
+        <tr><td>2026-09-15, 10:44&ndash;11:44</td><td>After 718D + cleanup: CPU 2&ndash;4%, load 0.3&ndash;0.9, stalls under 1%. Six ticks.</td></tr>
+    </table>
+
+    <h2>3. Root cause &mdash; three layers</h2>
+    <p><strong>Host-blind object resolution.</strong> <code>sv_resolve_target()</code> matched
+    <code>/ap/note/{p|i|c|l}/N</code> on any URL and returned &ldquo;image N&rdquo;. It was written when
+    a site only ever received activities about its own objects. Once sites followed each other, every
+    inbound reply, like, boost, undo and delete about <em>any</em> fleet post resolved against local
+    ids. Replies were filed as comments on the wrong photograph; likes and boosts were tallied on the
+    wrong photograph.</p>
+    <p><strong>Forwarding without ownership.</strong> 712D&rsquo;s inbox forwarding (ActivityPub
+    &sect;7.1.2) is correct as a rule: the server that <em>owns</em> a post forwards replies to its
+    followers. It trusted the host-blind resolver to decide ownership, so every site believed it owned
+    every post, and forwarded. And a forwarded copy was itself eligible to be forwarded again, so the
+    hop count was unbounded.</p>
+    <p><strong>A dense mesh as amplifier.</strong> Twenty-five sites, nearly all following nearly all.
+    One hop &times; 25 &times; 25 &times; 25&hellip; The relay (photoblogs.fyi) was not the cause; it
+    ran the same code and was caught the same way (16,852 rows).</p>
+    <p><strong>Underneath: the test that never ran.</strong> OPAUDIT 015 called forwarding &ldquo;built
+    and regression-tested&rdquo;. The regression checked that a reply to our post is forwarded and that
+    a forwarded copy is verified from its origin. It never sent a reply to <em>someone else&rsquo;s</em>
+    post through the inbox. The one case that mattered in a fleet was the one not exercised.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>The <code>TIMING</code> line added in 716D, per site, per tick. The queue grouped by host,
+    then by activity type, actor and object: one distinct object across hundreds of thousands of rows,
+    all priority 10 (live publication), all created within one second on the sites that had just
+    received a copy. The inbox code path: <code>sv_resolve_target</code> with no host comparison;
+    the forward call gated only on &ldquo;we kept it&rdquo;.</p>
+
+    <h2>5. What we did (0.7.718D &ldquo;FEEDBACK&rdquo;)</h2>
+    <p><strong>A URL names one of our objects only when it is on our host.</strong>
+    <code>sv_url_is_ours()</code> now gates every inbound resolve: replies, likes, boosts, undo,
+    delete. A reply to another site&rsquo;s image 388 is not a reply to ours; it falls through to the
+    mention path like any other remote post.</p>
+    <p><strong>Only the origin forwards.</strong> A copy that reached us as a forward (signer &ne;
+    actor) is never forwarded again. &sect;7.1.2 is one hop from the owner, not a relay chain.</p>
+    <p><strong>One forward per object per inbox.</strong> A dedupe key, so a repeat arrival of the
+    same Note is a no-op rather than another 25 rows.</p>
+    <p><strong>Box side, after deploy:</strong> queues dumped on both boxes (a further ~202,000 rows
+    had refilled); every fediverse comment whose reply target was on another host deleted &mdash;
+    6,000&ndash;11,000 per site on the older sites, about 170,000 fleet-wide, all of them other
+    people&rsquo;s comments shown under the wrong photographs since yesterday&rsquo;s 715D backfill sent
+    the historic ones; stray boosts of other sites&rsquo; posts (0&ndash;26 per site) and their
+    notifications removed; all tables rebuilt (MariaDB 2.5 GB &rarr; 1.2 GB); the DB container&rsquo;s
+    buffer pool cut from 2 GB to 1.25 GB on a 4 GB box, which ended its 98% swap.</p>
+    <p>Also shipped on the way here, each real but not the cause: 716D (hourly roster pull; back-off
+    on unreachable peers; comments kick the worker on post; the TIMING line) and 717D (first-follow
+    catalogue 5 posts, not 200; a failing delivery retried for a week, then dropped).</p>
+
+    <h2>6. Verified</h2>
+    <p>Regression <code>tests/fediverse-forward-feedback-regression.php</code> (11 checks) and the
+    existing fediverse suites pass. Live: the host graphs on 2026-09-15 from 10:44 to 11:44 &mdash;
+    six ticks, CPU 2&ndash;4%, load under 1, the one 11% blip the hourly rclone backup. Not yet
+    re-verified after the cleanup: that a <em>genuine</em> reply to a fleet post still forwards
+    exactly once to the owner&rsquo;s followers and appears on Pixelfed &mdash; OPAUDIT 015&rsquo;s
+    open item, now with the loop removed underneath it.</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>Comment #1 on usedcarparts, watched arriving on pixelfed.social once, and on one fleet
+    site once, after 718D. The HTTP 401s seen between fleet sites on the first queue read (a
+    signature problem, separate). And a fleet-wide cost check: any inbound handler that resolves an
+    id by pattern anywhere else in the codebase.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>An id is not an identity. In a fleet where every site mints the same id shapes, nothing
+        about an object is known until its <em>host</em> is checked. And any rule that re-sends what
+        it receives is a feedback loop unless it can prove, each time, that it is the origin.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
