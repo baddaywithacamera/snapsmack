@@ -1940,7 +1940,7 @@ function sv_finish_delivery_row(PDO $pdo, array $primary_settings, array $row): 
     }
     // Rate limited: reschedule after the receiver's own Retry-After (clamped
     // 1–60min, default 15) and DO NOT increment attempts — a busy receiver must
-    // never drop a good post at the 8-try cliff. Signal the host cooldown so the
+    // never drop a good post at the week-old cliff. Signal the host cooldown so the
     // paced drain rests this whole host instead of hammering it row by row.
     $is_429 = ((int)($meta['code'] ?? 0) === 429) || strncmp($info, 'HTTP 429', 8) === 0;
     if ($is_429) {
@@ -1963,13 +1963,17 @@ function sv_finish_delivery_row(PDO $pdo, array $primary_settings, array $row): 
                 ->execute([$fresh, $row['id']]);
         }
     }
-    if ($attempts >= 8) {
-        // Eight tries spans several days under the exponential backoff. Keeping
-        // the corpse forever only bloats diagnostics and lets dead destinations
-        // dominate operator attention; the published source post is untouched.
+    // 717D: a delivery is retried for a WEEK from the moment it was queued —
+    // 10 min, 20, 40 … then daily — and then dropped. The old rule dropped
+    // it after eight tries, which under that backoff was about eighteen
+    // hours: a receiver down for a long weekend lost the post for good.
+    // Sean, 2026-09-14: "after a week of retrying ditch it." The published
+    // source post is untouched either way.
+    $queued_age = time() - (int)strtotime((string)($row['created_at'] ?? 'now'));
+    if ($queued_age >= 7 * 86400) {
         $pdo->prepare("DELETE FROM snap_ap_deliveries WHERE id=?")->execute([$row['id']]);
     } else {
-        $delay = min(300 * (2 ** $attempts), 86400);
+        $delay = min(300 * (2 ** min($attempts, 9)), 86400);
         $pdo->prepare(
             "UPDATE snap_ap_deliveries
              SET attempts=?, last_error=?, next_try_at=DATE_ADD(NOW(), INTERVAL ? SECOND)
@@ -2019,7 +2023,7 @@ function sv_test_whitelist_recipients(PDO $pdo, array $settings): array {
 
 /**
  * Process due queued deliveries. Success → row deleted; failure → backoff
- * (5min · 2^attempts, capped 24h); parked as status=failed after 8 tries.
+ * (5min · 2^attempts, capped 24h); dropped a week after it was queued (717D).
  * Returns [sent, failed_now].
  *
  * PACED CADENCE ($cadence_secs > 0): spacing is enforced PER RECEIVING HOST,
@@ -2038,8 +2042,10 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
                                ?int $first_id = null, ?int $last_id = null,
                                ?string $inbox_url = null, int $max_runtime_secs = 0): array {
     // Pre-687D workers parked terminal failures forever. Retire those legacy
-    // corpses before planning a run; only outbound copies are removed.
+    // corpses before planning a run; only outbound copies are removed. 717D:
+    // and anything queued more than a week ago, whatever its state.
     $pdo->exec("DELETE FROM snap_ap_deliveries WHERE status='failed' AND attempts>=8");
+    $pdo->exec("DELETE FROM snap_ap_deliveries WHERE created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)");
     // A curator action may kick the shared queue. Never let that context sign
     // unrelated primary-actor rows: recover the site's ordinary settings once.
     $primary_settings = $settings;
@@ -2728,7 +2734,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         // Backfill: seed this new/reactivated follower with our recent catalogue.
         // We record a one-shot job here; a detached CLI worker owns it when
         // available, otherwise the router uses a post-response FPM fallback.
-        $backfill = (int)($settings['fediverse_backfill_count'] ?? 200);
+        $backfill = (int)($settings['fediverse_backfill_count'] ?? 5);
         if ($backfill > 0 && !$was_active) {
             $pdo->prepare(
                 "INSERT INTO snap_ap_backfill_jobs (actor_url, inbox_url) VALUES (?, ?)
@@ -5963,7 +5969,7 @@ function sv_maybe_push_actor_update(PDO $pdo, array &$settings): int {
  * @return array [notes_built, activities_queued]
  */
 function sv_resync_recent(PDO $pdo, array $settings, ?int $limit = null, string $mode = 'create'): array {
-    if ($limit === null) $limit = (int)($settings['fediverse_backfill_count'] ?? 200);
+    if ($limit === null) $limit = (int)($settings['fediverse_backfill_count'] ?? 5);
     $creates = sv_recent_creates($pdo, $settings, $limit);
     $inboxes = sv_follower_inboxes($pdo);
     if (!$creates || !$inboxes) return [0, 0];
@@ -6030,7 +6036,7 @@ function sv_push_to_follower(PDO $pdo, array $settings, string $actor_url,
                              ?int $limit = null, string $mode = 'create'): array {
     $actor_url = trim($actor_url);
     if ($actor_url === '' || !sv_enabled($settings)) return [0, 0, ''];
-    if ($limit === null) $limit = (int)($settings['fediverse_backfill_count'] ?? 200);
+    if ($limit === null) $limit = (int)($settings['fediverse_backfill_count'] ?? 5);
     $limit = max(1, min(500, (int)$limit));
     $mode = $mode === 'update' ? 'update' : 'create';
 
@@ -6633,7 +6639,7 @@ function sv_backfill_addendum_create(PDO $pdo, array $settings, int $shown, int 
 
 /**
  * Process pending first-follow backfill jobs (recorded by the inbox Follow
- * handler). Builds up to fediverse_backfill_count (default 200) recent Creates
+ * handler). Builds up to fediverse_backfill_count (default 5) recent Creates
  * via sv_recent_creates — reusing the exact grid/trigram delivery order — queues
  * them to each follower's inbox for the paced drain, then (catalogue over 500) a
  * single "more on the site" addendum Note. One-shot: the job row is deleted once
@@ -6647,7 +6653,7 @@ function sv_backfill_addendum_create(PDO $pdo, array $settings, int $shown, int 
  */
 function sv_process_backfill_jobs(PDO $pdo, array $settings, int $max_jobs = 3,
                                   ?string $actor_url = null): array {
-    $cap = (int)($settings['fediverse_backfill_count'] ?? 200);
+    $cap = (int)($settings['fediverse_backfill_count'] ?? 5);
     if ($cap < 1) return [0, 0, null, null];
     try {
         if ($actor_url !== null) {
@@ -6733,7 +6739,7 @@ function sv_unit_comment_ids(PDO $pdo, array $u): array {
  */
 function sv_reseed_all(PDO $pdo, array $settings, ?int $limit = null): array {
     if (!sv_enabled($settings)) return [0, 0, 0];
-    if ($limit === null) $limit = (int)($settings['fediverse_backfill_count'] ?? 200);
+    if ($limit === null) $limit = (int)($settings['fediverse_backfill_count'] ?? 5);
 
     // Keep published metadata aligned with grid order for servers that honour it.
     // Pixelfed profile position is still ingestion-id based, so the reversed,
