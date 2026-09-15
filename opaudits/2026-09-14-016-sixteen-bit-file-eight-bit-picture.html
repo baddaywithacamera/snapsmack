@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 016 — A 16-bit file with an 8-bit picture inside it</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 016 — A 16-bit file with an 8-bit picture inside it</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-14-016</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-14</td></tr>
+        <tr><td class="k">First observed</td><td>2026-09-14, the first day a RAW file went through SNAP SLAPPER since the RAW handoff was built. Every edit in the month before was made from JPEGs.</td></tr>
+        <tr><td class="k">Theme</td><td>SNAP SLAPPER is specified as a 16-bit non-destructive editor. It was 16-bit at the door and 8-bit in the room where the editing happens. The file it wrote said 16-bit; the picture inside had already been reduced to 8-bit.</td></tr>
+        <tr><td class="k">Surfaces</td><td>SNAP SLAPPER&rsquo;s compositor (layers, blends, masks, effects); its TIFF export; the RAW handoff to RawTherapee; the &ldquo;open developed file&rdquo; step.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-open">Blew up / Open</span> &nbsp; Diagnosed, not fixed. The compositor has to be rebuilt off Pillow. No build carries the fix yet.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>The defect, yes.</strong> A real RAW, developed to a real 16-bit TIFF, came out of the app as 8-bit data in a 16-bit container. The fix has not been built, so nothing about the fix has been watched.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean (put the first real RAW through it and asked why the app still showed an 8-bit engine) + Codex (diagnosed it, once asked plainly, and did not dress it up).</td></tr>
+        <tr><td class="k">Related</td><td>DING DONG BELL &ldquo;Photo editor files opened in other editors&rdquo; &mdash; the Photoshop difference test on that entry was run on an 8-bit source, so it proved the wrapper and not the bits; it stands, with that limit now written on it.</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No exploitable detail. Anyone who used SNAP SLAPPER on a high-bit source is affected and should know.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>RawTherapee develops a RAW to a real 16-bit TIFF and hands it to SNAP SLAPPER correctly. SLAPPER&rsquo;s
+    compositor is built on Pillow. Pillow has no multi-channel high-bit image mode, so the first thing
+    the compositor does with a 16-bit image is convert it to 8-bit RGB. Every layer, blend, mask and effect
+    then runs in 8-bit, and the result is written into a 16-bit TIFF. The container is honest; the contents
+    are not. The original RAW was never touched &mdash; the editor is non-destructive at the source, and that
+    held. But every edit of a high-bit image made through the app was quietly degraded. It went unnoticed
+    for a month because the month&rsquo;s work was all JPEGs: 8-bit in, 8-bit composite, 8-bit out, nothing
+    to lose, nothing visibly wrong.</p>
+
+    <h2>2. What a human saw</h2>
+    <table>
+        <tr><th>Step</th><th>What happened</th></tr>
+        <tr><td>Open a RAW in SLAPPER</td><td>The app refused to develop it and offered only to open the original in RawTherapee. The RAW handoff (SLAPPER&rsquo;s sliders driving RawTherapee, a developed 16-bit TIFF coming back) had to be built first.</td></tr>
+        <tr><td>Handoff reported done &mdash; &ldquo;6 RAW-focused tests passed&rdquo;</td><td>The developed file would not open. The app tried to open the RawTherapee settings sidecar (<code>.pp3</code>) as if it were the photograph. Six tests had passed without one of them opening a developed image in the live app.</td></tr>
+        <tr><td>Ask why the app still shows an 8-bit engine</td><td>Codex diagnosed it: RawTherapee produces 16-bit, the Pillow compositor downgrades to 8-bit before any layer or effect runs. The &ldquo;16-bit editor&rdquo; claim was true at RAW decode and false at composite.</td></tr>
+    </table>
+
+    <h2>3. Root cause &mdash; three of them</h2>
+    <p><strong>The compositor never left 8-bit.</strong> Pillow can hold a single 16-bit channel or a float
+    channel, but not 16-bit RGB. The whole editing stage therefore ran in 8-bit regardless of what it was
+    handed. This is the defect that matters.</p>
+    <p><strong>Files identified by guessing their names.</strong> The <code>.pp3</code>-opened-as-a-photo
+    error, and a separate preview that snapped back to a stale cached TIFF, are the same bug: the pipeline
+    works out which cached file is current by building a path string (add <code>.tif</code>, or open the
+    <code>.pp3</code>) instead of tracking each file it makes by an assigned identity. Guess a filename and
+    sooner or later you open the wrong file.</p>
+    <p><strong>Done was claimed twice for a path nobody had run.</strong> Completion was reported &mdash;
+    first for the handoff, then for RAW support &mdash; without a real RAW ever going through the live app.
+    Green tests on the one workflow the feature exists for were taken as proof it worked. They were proof the
+    tests ran.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <p>One real RAW, developed by RawTherapee to a 16-bit TIFF (confirmed at that step). SLAPPER&rsquo;s
+    compositor entry point converting to Pillow <code>RGB</code> before layer work. Export writing a 16-bit
+    TIFF from that 8-bit working image. The RAW test suite: six passing tests, none of which opened a developed
+    file in the app. A month of exports, all from JPEG sources, all internally consistent and therefore
+    silent.</p>
+
+    <h2>5. What we did</h2>
+    <p>Nothing shipped yet. This entry is the disclosure. The rework, in one engine pass:</p>
+    <p><strong>Work in float32 internally; quantise to 16-bit only on export.</strong> Not 16-bit integer
+    &mdash; that still clips highlights on the first curve. Float keeps the headroom that makes highlight
+    recovery from a RAW possible at all.</p>
+    <p><strong>Move colour compositing off Pillow.</strong> Pillow stays for 8-bit legacy reading and writing
+    only.</p>
+    <p><strong>Assigned identities for every file the pipeline makes.</strong> A typed registry where a settings
+    sidecar can never be opened as an image and a preview proxy can never become an edit source. Same pass as
+    the bit-depth work, because the two bugs share the cause.</p>
+
+    <h2>6. Verified &mdash; and what remains</h2>
+    <p>Verified: the defect, on a real RAW, on 2026-09-14. Not verified: anything else. To close this:
+    put a real RAW through the rebuilt app, export a 16-bit TIFF, and prove the bits &mdash; a difference
+    against the RawTherapee-developed TIFF, or a histogram that shows more than 256 levels per channel &mdash;
+    not the declared depth in the header. Until that is watched, this stays open and SNAP SLAPPER is an 8-bit
+    editor for anything above 8-bit, whatever the spec says.</p>
+
+    <h2>7. What was damaged, and what was not</h2>
+    <table>
+        <tr><th>Safe</th><td>Original RAW files. Never modified.</td></tr>
+        <tr><th>Safe</th><td>The month of JPEG edits. 8-bit sources composited in 8-bit lost nothing they had to give.</td></tr>
+        <tr><th>Degraded</th><td>Any edit of a high-bit image made through the app: 8-bit data inside a 16-bit file. The RAW path &mdash; the path the tool exists for.</td></tr>
+    </table>
+    <p>Caught on the first day of real RAW use rather than after a month of masters had gone through it.</p>
+
+    <h2>8. Eyeball next</h2>
+    <p>The DING DONG BELL Photoshop entry: re-run the difference test from a RAW-developed source once the
+    rework lands, because the existing pass was on an 8-bit source. Then every other place the app promises
+    a bit depth &mdash; the export dialog, the file info panel, the LEWKS pipeline &mdash; gets the same
+    prove-the-bits check.</p>
+
+    <h2>9. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>A container is not its contents. A 16-bit file can hold an 8-bit picture. Checking that the
+        output is a 16-bit TIFF proves the wrapper; prove the bits. And &ldquo;done&rdquo; on a feature is
+        watching a real file go through the live app and come out right &mdash; a green test suite on a path
+        nobody has walked certifies nothing.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
