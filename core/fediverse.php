@@ -68,6 +68,17 @@ function sv_domain(array $settings): string {
 }
 
 /**
+ * 718D: an object URL names one of OUR objects only when it is on OUR host.
+ * Every SnapSmack site publishes the same id shapes (/ap/note/i/388), so a
+ * pattern match alone says "image 388" on every site in the fleet. Inbound
+ * likes, boosts, replies and deletes must pass this before resolving.
+ */
+function sv_url_is_ours(string $url, array $settings): bool {
+    $h = strtolower((string)(parse_url($url, PHP_URL_HOST) ?: ''));
+    return $h !== '' && $h === strtolower(sv_domain($settings));
+}
+
+/**
  * The actor's preferredUsername. The explicit fediverse_handle setting is the
  * source of truth: enabling federation now REQUIRES one (see the enable handler
  * in fediverse-admin-shared.php), so every blog federated from 0.7.588 on has a
@@ -2591,11 +2602,16 @@ function sv_forward_to_followers(PDO $pdo, array $activity, string $from_actor):
     $json = json_encode($activity, JSON_UNESCAPED_SLASHES);
     if ($json === false) return 0;
     $skip_host = strtolower((string)(parse_url($from_actor, PHP_URL_HOST) ?: ''));
+    // 718D: one forward per object per inbox, ever. The dedupe key makes a
+    // repeat arrival of the same Note a no-op instead of another 25 rows.
+    $obj_id = is_array($activity['object'] ?? null)
+        ? (string)($activity['object']['id'] ?? '') : (string)($activity['object'] ?? '');
     $n = 0;
     foreach (sv_follower_inboxes($pdo) as $inbox) {
         $h = strtolower((string)(parse_url($inbox, PHP_URL_HOST) ?: ''));
         if ($h === '' || $h === $skip_host) continue;
-        sv_queue_delivery($pdo, $inbox, $json);
+        $dedupe = $obj_id !== '' ? 'fwd:' . substr(hash('sha256', $obj_id . '|' . $inbox), 0, 60) : null;
+        sv_queue_delivery($pdo, $inbox, $json, $dedupe);
         $n++;
     }
     return $n;
@@ -2823,7 +2839,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         } elseif ($otype === 'Like') {
             // Un-like: drop the federated like on our target.
             $liked = is_array($obj['object'] ?? null) ? ($obj['object']['id'] ?? '') : ($obj['object'] ?? '');
-            $t = is_string($liked) ? sv_resolve_target($liked, $pdo) : null;
+            $t = (is_string($liked) && sv_url_is_ours($liked, $settings)) ? sv_resolve_target($liked, $pdo) : null;
             // Only image/post likes are stored in snap_ap_likes; comment & reply
             // likes never got a row, so there's nothing to undo for them.
             if ($t && $t['type'] !== 'comment' && $t['type'] !== 'reply') {
@@ -2846,7 +2862,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
                 // Drop the per-post boost tally too, mirroring Undo Like, so the
                 // count decrements in step with the notification. Guarded.
                 try {
-                    $bt = sv_resolve_target($boosted, $pdo);
+                    $bt = sv_url_is_ours($boosted, $settings) ? sv_resolve_target($boosted, $pdo) : null;
                     if ($bt && $bt['type'] !== 'comment') {
                         $pdo->prepare("DELETE FROM snap_ap_boosts WHERE target_type = ? AND target_id = ? AND actor_url = ?")
                             ->execute([$bt['type'], (int)$bt['id'], $actor_id]);
@@ -2864,7 +2880,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         // A remote actor liked one of our posts → federated like (combined tally).
         $obj = is_array($activity['object'] ?? null) ? ($activity['object']['id'] ?? '') : ($activity['object'] ?? '');
         $obj_s = is_string($obj) ? $obj : '';
-        $t = is_string($obj) ? sv_resolve_target($obj, $pdo) : null;
+        $t = (is_string($obj) && sv_url_is_ours($obj, $settings)) ? sv_resolve_target($obj, $pdo) : null;
         if ($t && $t['type'] === 'reply') {
             // Like on the blog's OWN outbound reply. There's no photo to add it
             // to (the like tally is per image/post), but it IS a real interaction
@@ -2926,7 +2942,14 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         }
 
         // (a) A reply to one of OUR posts → moderation comment + a notification.
-        $target = ($in_reply !== '') ? sv_resolve_target($in_reply, $pdo) : null;
+        // 718D: "OUR post" means the reply target lives on OUR host. The id
+        // pattern (/ap/note/i/388) is the same on every SnapSmack site, so a
+        // reply to usedcarparts' image 388 used to resolve as a reply to THIS
+        // site's image 388 on every fleet site — filed as a comment on the
+        // wrong photograph, then forwarded to every follower as "a reply to our
+        // post", who did the same. One comment, 277,000 deliveries. FEEDBACK.
+        $target = ($in_reply !== '' && sv_url_is_ours($in_reply, $settings))
+            ? sv_resolve_target($in_reply, $pdo) : null;
         $img_id = $target ? sv_target_image_id($pdo, $target) : 0;
         // Longform posts carry NO image row (sv_target_image_id → 0), so a reply
         // to one attaches by post_id instead. Same ap_* + approval logic; the
@@ -2976,7 +2999,11 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             // follow. Never sent back to the replier's own server, and only
             // when we kept it (approved) — a reply held for moderation is not
             // amplified. Receivers verify the object from its origin.
-            if ($note_id !== '' && (($settings['fedi_auto_approve_replies'] ?? '1') !== '0')) {
+            // 718D: and only the ORIGIN forwards. A copy that reached us as a
+            // forward (signer ≠ actor) is never forwarded again — §7.1.2 is one
+            // hop, from the server that owns the post, not a relay chain.
+            if ($note_id !== '' && (($settings['fedi_auto_approve_replies'] ?? '1') !== '0')
+                && empty($actor_doc['_forwarded_by'])) {
                 sv_forward_to_followers($pdo, $activity, $actor_id);
             }
             // RECEIPT (0.7.611D)
@@ -3133,7 +3160,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
             }
             $handle = ($actor_doc['preferredUsername'] ?? 'someone') . '@' . (parse_url($actor_id, PHP_URL_HOST) ?: '');
             // Boost of OUR post → notification + counted tally.
-            $t = sv_resolve_target($obj_id, $pdo);
+            $t = sv_url_is_ours($obj_id, $settings) ? sv_resolve_target($obj_id, $pdo) : null;
             if ($t && $t['type'] !== 'comment') {
                 sv_cache_actor($pdo, $actor_doc);
                 sv_notify($pdo, 'boost', $actor_id, $handle, $obj_id, $obj_id, null);
