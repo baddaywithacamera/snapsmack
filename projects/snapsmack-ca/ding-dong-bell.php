@@ -208,6 +208,17 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="entry">
                 <div class="entry-top">
+                    <h3>One comment, 277,000 deliveries</h3>
+                    <span class="date">&ldquo;Feedback&rdquo; &middot; 2026-09-15</span>
+                    <span class="state watched">Watched working</span>
+                </div>
+                <p>The day the scheduled jobs finally ran on every site (the entry below this one), the server started working hard every ten minutes and never stopped: CPU bursting to 45%, the fan on all night. It was one comment. Every SnapSmack site names its posts the same way &mdash; image 388 is <code>/ap/note/i/388</code> on all of them &mdash; and the inbox resolved a reply&rsquo;s target by that pattern alone, never checking which site it belonged to. So when a reply to usedcarparts&rsquo; image 388 reached the other sites, each decided it was a reply to <em>its own</em> image 388, filed it as a public comment on the wrong photograph, and &mdash; by the forwarding rule added two days earlier &mdash; sent it on to all of its followers as a reply to its post. Those followers did the same. Nearly every site follows nearly every other. One comment became 277,000 queued deliveries, and refilled within ten minutes of being dumped. Sean: &ldquo;microphone audio feedback, fediverse version.&rdquo;</p>
+                <p>Fixed in 0.7.718D: a reply, like, boost or delete counts as being about one of our posts only when its address is on our own site; only the site that owns a post forwards replies to it, and a forwarded copy is never forwarded again; one forward per comment per recipient. Then the cleanup: 480,000 queued rows dumped across both boxes, about 170,000 other people&rsquo;s comments removed from under the wrong photographs, stray boost counts corrected, the database rebuilt from 2.5 GB to 1.2 GB, and the database box taken out of swap. Watched: six quiet ten-minute ticks in a row on the host graphs &mdash; CPU 2&ndash;4%, load under 1. The forwarding entry above (015) claimed &ldquo;built and tested&rdquo;; the test never sent a reply to someone else&rsquo;s post. That is the lesson, and it is on this page.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-15-017-one-comment-277000-deliveries.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top">
                     <h3>A 16-bit file with an 8-bit picture inside it</h3>
                     <span class="date">&ldquo;Prove the Bits&rdquo; &middot; 2026-09-14</span>
                     <span class="state open">Blew up / Open</span>
