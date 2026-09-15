@@ -4165,6 +4165,57 @@ suspenders: their crawler also delists anyone whose bio no longer carries
 HTML
 ];
 
+$help_topics['fediverse-alias'] = [
+    'section'  => 'FEDIVERSE',
+    'title'    => 'Alias — @you@photoblogs.fyi',
+    'icon'     => '&#x1F3AD;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>ALIAS &mdash; a second name on a domain the network keeps alive</h3>
+<p>Your blog's fediverse address is <code>@handle@your-domain</code>. If your domain ever lapses,
+that address is gone with it. The ALIAS gives the same blog a second address on the network's
+domain &mdash; <code>@handle@photoblogs.fyi</code> &mdash; that points at <em>your</em> server.
+Nothing moves: your posts still come from your domain, your followers still follow your actor,
+your keys are still yours. The fediverse just learns to <em>show</em> you under the network name.</p>
+
+<h4>How you get the name</h4>
+<ol>
+    <li>Choose your handle and enable federation (FEDIVERSE HANDLE, above).</li>
+    <li>Press JOIN NETWORK. The moment the hub admits you, it claims <code>@your-handle@photoblogs.fyi</code>
+    for this blog &mdash; first come, first served. Two blogs with the same handle: the first to join
+    gets the name; the hub's REVIEW FLEET page flags the collision so the other can pick a different handle.
+    Blogs that joined before this build are named by the hub over its next few delivery ticks.</li>
+    <li>In <strong>ALIAS</strong> on the Federation page, tick INTRODUCE THIS BLOG AS&hellip; and SAVE ALIAS.
+    Before anything is saved, your blog asks the hub whether it answers for that name with <em>your</em>
+    actor. If it doesn't (hub not updated yet, or the name is held by someone else), the switch stays OFF
+    and the message says which.</li>
+</ol>
+
+<h4>What changes on the wire</h4>
+<p>Only WebFinger. Asked <code>acct:handle@your-domain</code> <em>or</em> <code>acct:handle@photoblogs.fyi</code>,
+your blog answers with the same actor and gives <code>acct:handle@photoblogs.fyi</code> as the subject;
+the hub answers the same question the same way. That two-ended agreement is exactly how Mastodon's
+own "handle domain / server domain" split works, so remote servers accept it. The actor document is
+untouched &mdash; in particular <code>alsoKnownAs</code> is never written, because that field means
+"I moved" and would arm every remote's anti-hijack check.</p>
+
+<h4>Honest limits</h4>
+<ul>
+    <li><strong>Servers that already follow you will show the new name after they next refresh your
+    profile</strong> &mdash; same followers, same posts, a different label. Some show it within hours,
+    some take a day.</li>
+    <li>The alias stabilises the <em>handle</em>, not the server. If your domain dies, followers still
+    need your actor reachable; the alias makes you findable again by name once you are back up.</li>
+    <li>It moves one point of trust to photoblogs.fyi. If the hub is down, the alias does not resolve
+    until it is back; your own address keeps working throughout.</li>
+    <li>Leave the network and the hub stops answering for your name at once; it holds the name for 90
+    days (so nobody wears it the next morning), then releases it.</li>
+</ul>
+<p>Untick, SAVE ALIAS &mdash; your blog goes back to giving its own domain as the subject. Nothing is
+asked of anyone; remotes revert the label on their next refresh.</p>
+HTML
+];
+
 
 // =========================================================================
 //  SKIN HELP HOOK
