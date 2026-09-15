@@ -63,10 +63,18 @@ try {
 
 // Roster synchronization is lightweight and must not depend on federation
 // delivery being enabled. This keeps FEDBOARD healthy on every spoke.
+// 716D: every phase is timed and the log line says where the seconds went.
+// A tick with nothing queued should cost about a second; when it costs
+// forty, this is how we find out which step, instead of guessing.
+$sv_t0 = microtime(true); $sv_tprev = $sv_t0; $sv_timing = [];
+$sv_lap = static function (string $phase) use (&$sv_tprev, &$sv_timing): void {
+    $now = microtime(true); $sv_timing[$phase] = round($now - $sv_tprev, 2); $sv_tprev = $now;
+};
 require_once "{$root}/core/mesh-helpers.php";
 if (function_exists('ms_spoke_pull_roster')) {
     try { ms_spoke_pull_roster($pdo, $settings); } catch (Throwable $e) {}
 }
+$sv_lap('roster');
 
 if (!sv_enabled($settings)) {
     echo "FEDIVERSE disabled — nothing to do.\n";
@@ -124,12 +132,14 @@ if (function_exists('pc_activate_due_prompts')) {
     pc_activate_due_prompts($pdo, $settings);
 }
 list($units, $queued) = sv_sweep_new_posts($pdo, $settings);
+$sv_lap('sweep');
 
 // Drain durable outbound work FIRST. Optional remote maintenance below must
 // never prevent already-queued posts from getting an attempt.
 list($sent, $failed) = sv_process_deliveries(
     $pdo, $settings, 1000, sv_delivery_cadence($settings), null, null, null, 240
 );
+$sv_lap('drain');
 
 // Clear a stale self-inflicted inbox IP-ban left by the pre-666D limiter (one
 // shared IP → a backfill self-banned the fleet). One-shot per version, roster-
@@ -139,10 +149,12 @@ sv_heal_stale_inbox_bans_once($pdo, $settings);
 // Comments typed on the blog before 708D were never sent (OPAUDIT 013 §6).
 // One-shot per version: mirror + federate them, original dates kept.
 sv_backfill_community_comments_once($pdo, $settings);
+$sv_lap('oneshots');
 
 // Make the multisite roster's peer-follow promise real, gradually. One missing
 // edge per ten-minute tick avoids a follow/backfill thundering herd.
 $mesh_follow = sv_reconcile_mesh_follows($pdo, $settings, 1);
+$sv_lap('mesh');
 
 // Receiver-side relay dereference failures are durable work, separate from the
 // outbound delivery queue. The helper is inert when this blog has no jobs.
@@ -156,10 +168,12 @@ if (function_exists('sc_relay_recover_member_outboxes')) {
     try { $relay_recovery = sc_relay_recover_member_outboxes($pdo, $settings, 5, 20); }
     catch (Throwable $e) { fwrite(STDERR, "Optional relay outbox recovery failed; ordinary delivery will continue: " . $e->getMessage() . "\n"); }
 }
+$sv_lap('relay');
 $pc_maintenance = [0, 0, 0];
 if (function_exists('pc_cron_maintain')) {
     $pc_maintenance = pc_cron_maintain($pdo, $settings, 25);
 }
+$sv_lap('photofri');
 $curator = null;
 $is_fedistructure_hub = ($settings['site_mode'] ?? '') === 'fedistructure'
     && ($settings['node_role'] ?? '') === 'hub'
@@ -208,16 +222,11 @@ list($bf_jobs, $bf_queued) = sv_process_backfill_jobs($pdo, $settings);
 // changed since we last federated it, push a signed Update(Actor) so followers'
 // cached profiles refresh. Detected by fingerprint, so a profile edit made through
 // ANY save path lands within a cron tick — no per-page hook to forget.
+$sv_lap('curator+backfill');
 $actor_upd = sv_maybe_push_actor_update($pdo, $settings);
-
-// Mesh roster refresh so the FEDBOARD site-picker fills without anyone loading
-// the Multisite admin page (its only other trigger).
-if (is_file("{$root}/core/mesh-helpers.php")) {
-    require_once "{$root}/core/mesh-helpers.php";
-    if (function_exists('ms_spoke_pull_roster')) {
-        try { ms_spoke_pull_roster($pdo, $settings); } catch (Throwable $e) {}
-    }
-}
+$sv_lap('actor');
+// (716D: the second roster pull that used to sit here is gone — the one at the
+// top of this file already ran, and the pull is hourly-gated now anyway.)
 
 // Health stamp for the FEDIVERSE admin page's delivery panel. Record how many
 // this run actually delivered/failed so the page can SHOW success — otherwise a
@@ -237,5 +246,7 @@ echo sprintf(
     is_array($curator) ? sprintf('; CURATOR: %s, %d discovered%s (%s)',
         $curator[0], $curator[1], $curator[2] ? ' (scan complete)' : '', $curator[3]) : ''
 );
+$sv_timing['total'] = round(microtime(true) - $sv_t0, 2);
+echo 'TIMING ' . implode(' ', array_map(static fn($k, $v) => "$k={$v}s", array_keys($sv_timing), $sv_timing)) . PHP_EOL;
 exit(0);
 // ===== SNAPSMACK EOF =====
