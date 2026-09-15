@@ -168,6 +168,12 @@ if (function_exists('sc_relay_recover_member_outboxes')) {
     try { $relay_recovery = sc_relay_recover_member_outboxes($pdo, $settings, 5, 20); }
     catch (Throwable $e) { fwrite(STDERR, "Optional relay outbox recovery failed; ordinary delivery will continue: " . $e->getMessage() . "\n"); }
 }
+$relay_aliases = [0, 0];
+if (function_exists('sc_relay_backfill_aliases')) {
+    try { $relay_aliases = sc_relay_backfill_aliases($pdo, $settings, 3); }
+    catch (Throwable $e) { fwrite(STDERR, "Optional relay alias naming failed; ordinary delivery will continue: " . $e->getMessage() . "
+"); }
+}
 $sv_lap('relay');
 $pc_maintenance = [0, 0, 0];
 if (function_exists('pc_cron_maintain')) {
