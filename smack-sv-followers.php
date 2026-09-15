@@ -148,7 +148,7 @@ include 'core/sidebar.php';
                             <input type="hidden" name="action" value="push_follower">
                             <input type="hidden" name="follower_actor" value="<?php echo htmlspecialchars($f['actor_url']); ?>">
                             <input type="number" name="follower_count" min="1" max="500"
-                                   value="<?php echo (int)($sv_settings['fediverse_backfill_count'] ?? 200); ?>"
+                                   value="<?php echo (int)($sv_settings['fediverse_backfill_count'] ?? 5); ?>"
                                    aria-label="Posts to push" class="sv-push-count">
                             <select name="follower_mode" aria-label="Push mode">
                                 <option value="create">Seed missing posts</option>
