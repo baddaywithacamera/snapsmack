@@ -1681,7 +1681,7 @@ if ($resource === 'jobs' && $sub_action === 'run' && $method === 'POST') {
     require_once __DIR__ . '/mesh-helpers.php';
     $roster = ['added' => 0, 'updated' => 0, 'pruned' => 0, 'ok' => false];
     if (function_exists('ms_spoke_pull_roster')) {
-        try { $roster = ms_spoke_pull_roster($pdo, $settings); } catch (Throwable $e) {}
+        try { $roster = ms_spoke_pull_roster($pdo, $settings, true); } catch (Throwable $e) {}
     }
     ms_ok(['ran' => !empty($roster['ok']), 'roster' => $roster]);
 }

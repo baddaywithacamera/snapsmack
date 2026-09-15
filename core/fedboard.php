@@ -74,7 +74,7 @@ function fb_refresh_sparse_roster(PDO $pdo, array &$settings): void {
 
     require_once __DIR__ . '/mesh-helpers.php';
     if (function_exists('ms_spoke_pull_roster')) {
-        try { ms_spoke_pull_roster($pdo, $settings); } catch (Throwable $e) {}
+        try { ms_spoke_pull_roster($pdo, $settings, true); } catch (Throwable $e) {}
     }
 }
 
