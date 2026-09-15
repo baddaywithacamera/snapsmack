@@ -91,7 +91,7 @@ include 'core/sidebar.php';
             <label class="dim d-block mb-12">
                 Posts to push:
                 <input type="number" name="resync_count" min="1" max="500"
-                       value="<?php echo (int)($sv_settings['fediverse_backfill_count'] ?? 200); ?>"
+                       value="<?php echo (int)($sv_settings['fediverse_backfill_count'] ?? 5); ?>"
                        class="w-90 ml-6">
             </label>
             <label class="dim d-block mb-12">
@@ -152,7 +152,7 @@ include 'core/sidebar.php';
             <label class="dim d-block mb-12">
                 Posts to re-imprint:
                 <input type="number" name="reimprint_count" min="1" max="1000"
-                       value="<?php echo (int)($sv_settings['fediverse_backfill_count'] ?? 200); ?>"
+                       value="<?php echo (int)($sv_settings['fediverse_backfill_count'] ?? 5); ?>"
                        class="w-90 ml-6">
             </label>
             <button type="submit" class="btn-smack" <?php echo $sv_on ? '' : 'disabled'; ?>>RE-IMPRINT ORDER</button>

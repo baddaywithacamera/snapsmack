@@ -40,6 +40,14 @@ $checks = [
     // Comments: kicked on the spot, same launcher as posts.
     'federating a comment kicks the worker' => str_contains($federate_comment, 'sv_kick_delivery();'),
     'kick uses the shared launcher' => str_contains($federate_comment, "require_once __DIR__ . '/fediverse-kick.php';"),
+    // 717D: five posts on first follow, not two hundred; a week of retries, then drop.
+    'first-follow catalogue defaults to 5' => substr_count($fedi, "['fediverse_backfill_count'] ?? 5)") === 5
+        && !str_contains($fedi, "['fediverse_backfill_count'] ?? 200)"),
+    'push forms default to 5' => !str_contains(file_get_contents($root . '/smack-sv-tools.php'), '?? 200)')
+        && !str_contains(file_get_contents($root . '/smack-sv-followers.php'), '?? 200)'),
+    'a delivery is dropped a week after queueing' => str_contains($fedi, '$queued_age >= 7 * 86400')
+        && str_contains($fedi, "created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)"),
+    'no eight-try cliff' => !str_contains($fedi, 'if ($attempts >= 8)'),
     // Timing: the log names where the seconds went.
     'tick logs per-phase timing' => str_contains($cron, "echo 'TIMING '") && str_contains($cron, "\$sv_lap('drain')") && str_contains($cron, "\$sv_lap('mesh')"),
 ];
