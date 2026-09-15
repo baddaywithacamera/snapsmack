@@ -127,7 +127,12 @@ class Window(QMainWindow):
     def _queue_page(self):
         page,l=self._page("Your posting queue","Edit the fields that matter. Selection, enrichment and posting all operate on this table.")
         tools=QHBoxLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); tools.addStretch(1); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); qsolo=QPushButton("POST SOLO"); qsolo.clicked.connect(lambda:self._post(False)); tools.addWidget(qsolo); qgram=QPushButton("POST GRAM"); qgram.clicked.connect(lambda:self._post(True)); tools.addWidget(qgram); self.queue_count=label("0 images","Muted"); tools.addWidget(self.queue_count); l.addLayout(tools)
-        self.table=QTableWidget(0,12); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents); self.table.horizontalHeader().setSectionResizeMode(3,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(4,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(5,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(6,QHeaderView.Stretch); self.table.setMinimumHeight(500); l.addWidget(self.table,1); return page
+        self.table=QTableWidget(0,12); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        # Text columns SHARE the width the window has; nothing dictates it. FILE
+        # used to size to its longest filename and squeeze title/caption/alt to
+        # nothing after an enrich. Rows grow to their wrapped text instead.
+        for c in (2,3,4,5,6): self.table.horizontalHeader().setSectionResizeMode(c,QHeaderView.Stretch)
+        self.table.setTextElideMode(Qt.ElideMiddle); self.table.setMinimumHeight(500); l.addWidget(self.table,1); return page
 
     def _settings_page(self):
         page,l=self._page("Connection and services","Profiles come from SNAP HQ's shared library. Secrets stay in the protected shared store.")
@@ -212,6 +217,8 @@ class Window(QMainWindow):
             orient=QComboBox()
             for text,value in (("Auto","auto"),("Landscape","0"),("Portrait","1"),("Square","2")): orient.addItem(text,value)
             orient.setFixedHeight(36); orient.setCurrentIndex(max(0,orient.findData(row.get('orientation','auto')))); self.table.setCellWidget(r,8,self._centred_control(orient))
+        self.table.resizeRowsToContents()
+        for r in range(self.table.rowCount()): self.table.setRowHeight(r,max(118,self.table.rowHeight(r)))
         self.queue_count.setText(f"{data['selected']} selected · {data['count']} images")
 
     def _centred_control(self, control):
@@ -323,6 +330,7 @@ class Window(QMainWindow):
             for c,k in ((3,'title'),(4,'caption'),(5,'alt'),(6,'tags'),(9,'category'),(10,'album')):
                 if self.table.item(r,c) is not None and row.get(k) is not None: self.table.item(r,c).setText(str(row.get(k,"")))
             if self.table.item(r,11): self.table.item(r,11).setText("enriched")
+            self.table.resizeRowToContents(r); self.table.setRowHeight(r,max(118,self.table.rowHeight(r)))
         else:
             if self.table.item(r,11): self.table.item(r,11).setText(f"ERROR: {ev.get('message') or 'enrichment failed'}")
         self._enrich_done=getattr(self,'_enrich_done',0)+1
