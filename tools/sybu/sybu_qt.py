@@ -47,7 +47,7 @@ QHeaderView::section {{ background:#121a15; color:#bac3b8; border:0; border-bott
 QTableWidget {{ background:{BASE}; border:0; gridline-color:transparent; alternate-background-color:#111a14; outline:0; }}
 QTableWidget::item {{ border-bottom:1px solid {BORDER}; padding:9px 7px; }}
 QTableWidget::item:selected {{ background:#253a2b; color:{INK}; }}
-QTableWidget QComboBox {{ margin:8px 3px; padding:7px; }}
+QTableWidget QComboBox {{ margin:0; padding:4px 7px; min-height:24px; }}
 QProgressBar {{ background:#0b100d; border:1px solid {BORDER}; border-radius:7px; height:13px; text-align:center; }}
 QProgressBar::chunk {{ background:{GREEN}; border-radius:6px; }} QScrollArea {{ border:0; }}
 """
@@ -126,8 +126,8 @@ class Window(QMainWindow):
 
     def _queue_page(self):
         page,l=self._page("Your posting queue","Edit the fields that matter. Selection, enrichment and posting all operate on this table.")
-        tools=QHBoxLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); tools.addStretch(1); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); self.queue_count=label("0 images","Muted"); tools.addWidget(self.queue_count); l.addLayout(tools)
-        self.table=QTableWidget(0,12); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents); self.table.horizontalHeader().setSectionResizeMode(3,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(5,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(6,QHeaderView.Stretch); self.table.setMinimumHeight(500); l.addWidget(self.table,1); return page
+        tools=QHBoxLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); tools.addStretch(1); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); qsolo=QPushButton("POST SOLO"); qsolo.clicked.connect(lambda:self._post(False)); tools.addWidget(qsolo); qgram=QPushButton("POST GRAM"); qgram.clicked.connect(lambda:self._post(True)); tools.addWidget(qgram); self.queue_count=label("0 images","Muted"); tools.addWidget(self.queue_count); l.addLayout(tools)
+        self.table=QTableWidget(0,12); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents); self.table.horizontalHeader().setSectionResizeMode(3,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(4,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(5,QHeaderView.Stretch); self.table.horizontalHeader().setSectionResizeMode(6,QHeaderView.Stretch); self.table.setMinimumHeight(500); l.addWidget(self.table,1); return page
 
     def _settings_page(self):
         page,l=self._page("Connection and services","Profiles come from SNAP HQ's shared library. Secrets stay in the protected shared store.")
@@ -202,7 +202,9 @@ class Window(QMainWindow):
                 preview.setText("No preview")
             self.table.setCellWidget(r,1,preview); self.table.setRowHeight(r,118)
             for c,k in ((2,'file'),(3,'title'),(4,'caption'),(5,'alt'),(6,'tags'),(9,'category'),(10,'album'),(11,'status')):
-                item=QTableWidgetItem(str(row.get(k,"")))
+                text=str(row.get(k,""))
+                if k=='status' and row.get('status')=='error' and row.get('message'): text=f"ERROR: {row['message']}"
+                item=QTableWidgetItem(text)
                 if k in ('file','status'): item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                 self.table.setItem(r,c,item)
             colour=QComboBox(); colour.addItem("—",""); colour.addItem("Colour","color"); colour.addItem("B&W","bw"); colour.setFixedHeight(36)
@@ -213,7 +215,7 @@ class Window(QMainWindow):
         self.queue_count.setText(f"{data['selected']} selected · {data['count']} images")
 
     def _centred_control(self, control):
-        host=QWidget(); host._control=control
+        host=QWidget(); host._control=control; host.setAttribute(Qt.WA_TranslucentBackground); host.setStyleSheet("background:transparent")
         layout=QVBoxLayout(host); layout.setContentsMargins(3,3,3,3); layout.addStretch(1); layout.addWidget(control); layout.addStretch(1)
         return host
 
@@ -251,7 +253,14 @@ class Window(QMainWindow):
         self._fill_queue(self.engine.clear_queue()); self._say("Posting queue cleared.")
 
     def _enrich(self):
-        try:self._sync_queue(); self.engine.enrich_start(self.gemini.text(),self.prompt.text()); self.poll_seen['enrich']=0; self.progress_text.setText("Enriching selected images…"); self._show(0)
+        try:
+            self._sync_queue(); self.engine.enrich_start(self.gemini.text(),self.prompt.text()); self.poll_seen['enrich']=0; self.progress_text.setText("Enriching selected images…")
+            # Stay on the queue: the rows themselves show progress (STATUS
+            # column + counter) instead of a bar on another page.
+            self._enrich_total=sum(1 for r in range(self.table.rowCount()) if self.table.item(r,0).checkState()==Qt.Checked); self._enrich_done=0
+            for r in range(self.table.rowCount()):
+                if self.table.item(r,0).checkState()==Qt.Checked and self.table.item(r,11): self.table.item(r,11).setText("enriching…")
+            self.queue_count.setText(f"Enriching 0/{self._enrich_total}…")
         except Exception as e:self._error(str(e))
 
     def _validate(self):
@@ -293,6 +302,7 @@ class Window(QMainWindow):
             self.poll_seen[key]=out.get('total_seen',self.poll_seen[key])
             for ev in out.get('events',[]):
                 cur,total=ev.get('current',0),ev.get('total',1); self.progress.setValue(int(cur*100/max(1,total))); self._say(ev.get('message') or ev.get('file') or f"{key.title()} {cur}/{total}")
+                if key=='enrich' and ev.get('type')=='progress' and ev.get('index') is not None: self._enrich_row_event(ev)
             if not out.get('running',False):
                 self.poll_seen.pop(key,None); self.progress.setValue(100); self.progress_text.setText(f"{key.replace('_',' ').title()} complete." if not out.get('error') else f"{key.replace('_',' ').title()} failed."); self._fill_queue()
                 result=out.get('result') or {}
@@ -305,6 +315,19 @@ class Window(QMainWindow):
 
     def _save(self):
         self.engine.save_config({'url':self.url.text(),'api_key':self.key.text(),'last_image_folder':self.folder.text(),'last_manifest_file':self.manifest.text(),'google_credentials':self.gcreds.text(),'drive_folder_id':self.drive_folder.text(),'gemini_api_key':self.gemini.text(),'gemini_last_prompt':self.prompt.text()}); self._gemini_manually_edited=False; self.engine.drive_toggle(self.drive.isChecked()); self.gemini_source.setText("Gemini key source: SNAP HQ shared store"); self._say("Settings saved to the shared store.")
+    def _enrich_row_event(self,ev):
+        r=int(ev['index'])
+        if r<0 or r>=self.table.rowCount(): return
+        row=ev.get('row') or {}
+        if ev.get('ok'):
+            for c,k in ((3,'title'),(4,'caption'),(5,'alt'),(6,'tags'),(9,'category'),(10,'album')):
+                if self.table.item(r,c) is not None and row.get(k) is not None: self.table.item(r,c).setText(str(row.get(k,"")))
+            if self.table.item(r,11): self.table.item(r,11).setText("enriched")
+        else:
+            if self.table.item(r,11): self.table.item(r,11).setText(f"ERROR: {ev.get('message') or 'enrichment failed'}")
+        self._enrich_done=getattr(self,'_enrich_done',0)+1
+        self.queue_count.setText(f"Enriching {self._enrich_done}/{getattr(self,'_enrich_total',ev.get('total',1))}…")
+
     def _say(self,text): self.log.append(str(text))
     def _error(self,text): QMessageBox.critical(self,"SYBU needs attention",text); self._say("ERROR · "+text)
 
