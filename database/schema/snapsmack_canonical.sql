@@ -1417,8 +1417,10 @@ CREATE TABLE IF NOT EXISTS `snap_relay_subscribers` (
   `subscribed_at`    datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `last_seen_at`     datetime DEFAULT NULL,
   `last_outbox_check_at` datetime DEFAULT NULL,
+  `alias_handle`     varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_relay_sub_actor` (`actor_url`(191)),
+  UNIQUE KEY `uq_relay_sub_alias` (`alias_handle`),
   KEY `idx_relay_sub_state` (`state`),
   KEY `idx_relay_sub_domain` (`domain`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -506,6 +506,8 @@ if ($resource === 'fediverse' && $sub_action === 'status' && $method === 'GET') 
         'relay_url'        => sv_relay_actor_url($settings),
         'relay_joined'     => (string)($settings['photoblogs_relay_joined'] ?? '0') === '1',
         'join_state'       => $fj_state,
+        'alias_enabled'    => function_exists('sv_alias_enabled') ? sv_alias_enabled($settings) : false,
+        'acct'             => function_exists('sv_acct') ? sv_acct($settings) : '',
     ]);
 }
 

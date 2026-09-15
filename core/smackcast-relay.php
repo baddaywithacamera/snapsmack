@@ -48,6 +48,122 @@ function sc_relay_ensure_ingest_jobs(PDO $pdo): void {
     }
 }
 
+// ── 719D "STAGE NAME": @handle@photoblogs.fyi aliases ───────────────────────
+// A member blog may be addressed as @<handle>@<relay domain>. The roster row
+// carries the alias; the hub answers WebFinger for it (sv_webfinger) with the
+// spoke's own actor as `self`, and the spoke answers the same question about
+// itself so remote servers see both ends agree. The handle is claimed at join
+// time from the actor's preferredUsername — same name as the blog's own
+// handle, first come first served, unique on the hub. It is NEVER written to
+// alsoKnownAs (that is the Move signal and arms the anti-hijack path).
+
+/** Schema self-heal: the alias column on installs that predate 719D. */
+function sc_relay_ensure_alias_column(PDO $pdo): void {
+    static $done = null;
+    if ($done !== null) return;
+    try {
+        $has = (bool)$pdo->query("SELECT 1 FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='snap_relay_subscribers' AND COLUMN_NAME='alias_handle' LIMIT 1")->fetchColumn();
+        if (!$has) {
+            $pdo->exec("ALTER TABLE snap_relay_subscribers ADD COLUMN alias_handle varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL");
+            $pdo->exec("ALTER TABLE snap_relay_subscribers ADD UNIQUE KEY uq_relay_sub_alias (alias_handle)");
+        }
+        $done = true;
+    } catch (Throwable $e) { $done = false; }
+}
+
+/** The one handle shape the alias accepts: 1-60 of [a-z0-9_], same as the blog handle. */
+function sc_relay_alias_normalize(string $handle): string {
+    $h = strtolower(trim($handle));
+    return preg_match('/^[a-z0-9_]{1,60}$/', $h) ? $h : '';
+}
+
+/** Names the hub keeps for itself — never handed out as a member alias. */
+function sc_relay_alias_reserved(string $handle, array $settings): bool {
+    $own = strtolower(function_exists('sv_handle') ? sv_handle($settings) : '');
+    return $handle === 'curator' || ($own !== '' && $handle === $own);
+}
+
+/**
+ * Claim <handle> as the alias of <actor_url> if it is free. Free means: no other
+ * row holds it, or the row holding it LEFT the relay more than 90 days ago (held
+ * that long so a departed blog's name cannot be picked up the next morning and
+ * worn by someone else; released after so a dead blog does not squat it forever).
+ * Returns the alias now on the row (existing one wins; '' when none could be set).
+ */
+function sc_relay_claim_alias(PDO $pdo, array $settings, string $actor_url, string $wanted): string {
+    sc_relay_ensure_alias_column($pdo);
+    try {
+        $cur = $pdo->prepare("SELECT alias_handle FROM snap_relay_subscribers WHERE actor_url=? LIMIT 1");
+        $cur->execute([$actor_url]);
+        $have = (string)($cur->fetchColumn() ?: '');
+        if ($have !== '') return $have;
+        $h = sc_relay_alias_normalize($wanted);
+        if ($h === '' || sc_relay_alias_reserved($h, $settings)) return '';
+        $holder = $pdo->prepare("SELECT id, actor_url, state, last_seen_at FROM snap_relay_subscribers WHERE alias_handle=? LIMIT 1");
+        $holder->execute([$h]);
+        $row = $holder->fetch(PDO::FETCH_ASSOC);
+        if ($row && (string)$row['actor_url'] !== $actor_url) {
+            $left_long_ago = ($row['state'] ?? '') === 'left'
+                && !empty($row['last_seen_at'])
+                && strtotime((string)$row['last_seen_at']) < time() - 90 * 86400;
+            if (!$left_long_ago) return '';
+            $pdo->prepare("UPDATE snap_relay_subscribers SET alias_handle=NULL WHERE id=?")->execute([(int)$row['id']]);
+        }
+        $pdo->prepare("UPDATE snap_relay_subscribers SET alias_handle=? WHERE actor_url=? AND alias_handle IS NULL")
+            ->execute([$h, $actor_url]);
+        return $h;
+    } catch (Throwable $e) { return ''; }
+}
+
+/**
+ * Members who joined before 719D have no alias yet and will not re-join. Each
+ * cron tick on the hub names a few of them from their live actor doc — bounded
+ * (default 3 fetches), active rows only, oldest first. Returns [checked, named].
+ */
+function sc_relay_backfill_aliases(PDO $pdo, array $settings, int $limit = 3): array {
+    if (!sc_relay_is_hub($settings)) return [0, 0];
+    sc_relay_ensure_alias_column($pdo);
+    $limit = max(1, min(20, $limit));
+    try {
+        $rows = $pdo->query("SELECT actor_url FROM snap_relay_subscribers
+            WHERE state='active' AND alias_handle IS NULL ORDER BY subscribed_at ASC LIMIT {$limit}")
+            ->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    } catch (Throwable $e) { return [0, 0]; }
+    $checked = 0; $named = 0;
+    foreach ($rows as $actor_url) {
+        $checked++;
+        $actor = sv_fetch_ap((string)$actor_url, $settings);
+        $want = is_array($actor) ? (string)($actor['preferredUsername'] ?? '') : '';
+        if ($want === '') continue;
+        if (sc_relay_claim_alias($pdo, $settings, (string)$actor_url, $want) !== '') $named++;
+    }
+    return [$checked, $named];
+}
+
+/** The ACTIVE member behind an alias, or null. Left/blocked/pending rows never answer. */
+function sc_relay_alias_lookup(PDO $pdo, string $handle): ?array {
+    $h = sc_relay_alias_normalize($handle);
+    if ($h === '') return null;
+    sc_relay_ensure_alias_column($pdo);
+    try {
+        $q = $pdo->prepare("SELECT actor_url, domain, alias_handle FROM snap_relay_subscribers
+            WHERE alias_handle=? AND state='active' LIMIT 1");
+        $q->execute([$h]);
+        $row = $q->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    } catch (Throwable $e) { return null; }
+}
+
+/** Alias rows the hub holds, for the FLEET review and the directory. */
+function sc_relay_alias_rows(PDO $pdo): array {
+    sc_relay_ensure_alias_column($pdo);
+    try {
+        return $pdo->query("SELECT actor_url, domain, state, alias_handle FROM snap_relay_subscribers
+            WHERE alias_handle IS NOT NULL ORDER BY alias_handle")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) { return []; }
+}
+
 function sc_relay_is_receiver(PDO $pdo, array $settings): bool {
     $relay = sv_relay_actor_url($settings);
     return $relay !== '' && sv_is_following($pdo, $relay);
@@ -126,6 +242,8 @@ function sc_relay_join(PDO $pdo, array $settings, array $activity, array $actor)
            shared_inbox_url=VALUES(shared_inbox_url), follow_id=VALUES(follow_id),
            state=IF(state='blocked','blocked',VALUES(state)), last_seen_at=NOW()"
     )->execute([$actor_url, $domain, $inbox, $shared, $follow_id, $state]);
+    // 719D: the blog's own handle becomes its @handle@<relay domain> alias, if free.
+    sc_relay_claim_alias($pdo, $settings, $actor_url, (string)($actor['preferredUsername'] ?? ''));
     return $state;
 }
 
