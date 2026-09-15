@@ -151,6 +151,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
     $sv_setting_upsert('fediverse_display_name', trim((string)($_POST['sv_display_name'] ?? '')));
     $sv_setting_upsert('fediverse_website',      trim((string)($_POST['sv_website'] ?? '')));
     $sv_setting_upsert('fediverse_pronouns',     trim((string)($_POST['sv_pronouns'] ?? '')));
+    // 719D: MOVING FROM — old actor URL(s) for alsoKnownAs (FED UP function 2). https only.
+    $sv_mf = [];
+    foreach (preg_split('/[\s,]+/', (string)($_POST['sv_moving_from'] ?? '')) as $sv_mf_one) {
+        $sv_mf_one = trim($sv_mf_one);
+        if ($sv_mf_one !== '' && preg_match('~^https://[^\s/]+/\S+$~', $sv_mf_one)) $sv_mf[] = $sv_mf_one;
+    }
+    $sv_setting_upsert('fediverse_moving_from', implode("
+", array_unique($sv_mf)));
     // The delivery cron's fingerprint check (sv_maybe_push_actor_update) auto-pushes
     // an Update(Actor) to followers within a tick; REFRESH PROFILE forces it now.
     header('Location: ' . $sv_self . '?msg=' . urlencode('Profile saved — display name, website and pronouns propagate to followers within a cron tick, or hit REFRESH PROFILE ON REMOTES in the PROFILE box below to push now.'));

@@ -135,6 +135,14 @@ include 'core/sidebar.php';
                        value="<?php echo htmlspecialchars((string)($sv_settings['fediverse_pronouns'] ?? '')); ?>"
                        placeholder="e.g. she/her — leave blank to hide" autocomplete="off">
             </div>
+            <div class="lens-input-wrapper">
+                <label>MOVING FROM (OLD ACCOUNT'S ACTOR URL)</label>
+                <input type="text" name="sv_moving_from" maxlength="600"
+                       value="<?php echo htmlspecialchars(str_replace("
+", ', ', (string)($sv_settings['fediverse_moving_from'] ?? ''))); ?>"
+                       placeholder="https://old.instance/users/you — only if you are moving an old fediverse account here" autocomplete="off">
+                <p class="dim">Bringing an old Mastodon / Pixelfed account to this blog? Put its actor URL here (your old profile's <code>/users/name</code> address), then trigger the MOVE from the old account's settings pointing at <code><?php echo htmlspecialchars(sv_actor_url($sv_settings)); ?></code>. The old server checks this field before it re-points your followers. Blank for everyone else. FED UP (desktop) restores the posts.</p>
+            </div>
             <button type="submit" class="btn-smack">SAVE PROFILE</button>
         </form>
         <!-- Same action the Followers page offers. It belongs HERE too: this is
