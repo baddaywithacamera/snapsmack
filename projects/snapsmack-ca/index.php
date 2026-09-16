@@ -221,7 +221,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="section-heading">
                 <p class="site-discovery-kicker">Real sites, running today</p>
                 <h2>One engine. No house style.</h2>
-                <p class="lede">Four live SnapSmack sites, four completely different answers to what a photography website should look like. Hover for the numbers.</p>
+                <p class="lede">Four live SnapSmack sites, four completely different answers to what a photography website should look like. Hover for the numbers. <strong>All skins are free, always.</strong></p>
             </div>
             <div class="featured-skin-grid">
                 <a class="featured-skin" href="https://hekeepsdroningon.ca" target="_blank" rel="noopener" data-stats="<?php echo ss_skin_card_stats('hekeepsdroningon.ca', $_skin_demo_stats); ?>">
