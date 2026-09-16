@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QLayo
     QComboBox, QDialog, QFileDialog, QFrame, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QMainWindow, QMessageBox, QProgressBar, QPushButton, QScrollArea,
     QSizePolicy, QStackedWidget, QTableWidget, QTableWidgetItem, QTextEdit,
-    QVBoxLayout, QWidget)
+    QPlainTextEdit, QStyledItemDelegate, QVBoxLayout, QWidget)
 
 import sybu_core
 
@@ -136,6 +136,25 @@ class FlowLayout(QLayout):
         return y + row_h - r.y()
 
 
+class WordsDelegate(QStyledItemDelegate):
+    """Title / caption / alt / tags edit in a wrapping box the size of the cell, not a
+    one-line strip. Enter commits; Shift+Enter makes a new line; Esc cancels."""
+    def createEditor(self, parent, option, index):
+        box = QPlainTextEdit(parent); box.setFrameShape(QFrame.NoFrame); box.setTabChangesFocus(True)
+        box.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        box.installEventFilter(self); return box
+    def setEditorData(self, editor, index):
+        editor.setPlainText(str(index.data(Qt.EditRole) or "")); editor.selectAll()
+    def setModelData(self, editor, model, index):
+        model.setData(index, editor.toPlainText().strip(), Qt.EditRole)
+    def updateEditorGeometry(self, editor, option, index):
+        r = option.rect; editor.setGeometry(r.x(), r.y(), r.width(), max(r.height(), 90))
+    def eventFilter(self, obj, ev):
+        if isinstance(obj, QPlainTextEdit) and ev.type() == ev.Type.KeyPress and ev.key() in (Qt.Key_Return, Qt.Key_Enter) and not (ev.modifiers() & Qt.ShiftModifier):
+            self.commitData.emit(obj); self.closeEditor.emit(obj, QStyledItemDelegate.EndEditHint.NoHint); return True
+        return super().eventFilter(obj, ev)
+
+
 class QueueTable(QTableWidget):
     """Drag a row onto another to change posting order. Qt's own InternalMove would
     scramble the cell widgets (previews, dropdowns), so the drop is reported as
@@ -215,6 +234,14 @@ class Window(QMainWindow):
         # used to size to its longest filename and squeeze title/caption/alt to
         # nothing after an enrich. Rows grow to their wrapped text instead.
         for c in (2,3,4,5,6): self.table.horizontalHeader().setSectionResizeMode(c,QHeaderView.Stretch)
+        # One click on a text cell opens it for editing (the fields were "only for
+        # show" - editing needed a double-click nobody found). Enter commits. The
+        # edited value is what ENRICH/POST read; a row's drag still starts from the
+        # preview or file cell.
+        self.table.setEditTriggers(QAbstractItemView.SelectedClicked|QAbstractItemView.DoubleClicked|QAbstractItemView.EditKeyPressed|QAbstractItemView.AnyKeyPressed)
+        self.table.clicked.connect(lambda ix: self.table.edit(ix) if ix.column() in (3,4,5,6,9,10) else None)
+        self._words=WordsDelegate(self.table)
+        for c in (3,4,5,6): self.table.setItemDelegateForColumn(c,self._words)
         self.table.setTextElideMode(Qt.ElideMiddle); self.table.setMinimumHeight(500); l.addWidget(self.table,1)
         self._row_fit=QTimer(self); self._row_fit.setSingleShot(True); self._row_fit.setInterval(60); self._row_fit.timeout.connect(self._fit_rows)
         self.table.horizontalHeader().sectionResized.connect(lambda *_: self._row_fit.start())
