@@ -9,7 +9,14 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.720D — 2026-09-16
+### SNAP SLAPPER 0.7.81 — 2026-09-16
+- **Texture searches understand hashtags, including the rights tags.** `#rust`, `rust`, and multi-tag searches such as `#rust #metal` use the same local catalogue matcher; commas are accepted too. `#certifiedrights` and `#unclearrights` explicitly select the corresponding rights status exposed by the existing catalogue API, so the site's rights markings are not mistaken for descriptive words. No CMS/blog change. (`tools/hub/found_textures.py`.)
+
+### SNAP SLAPPER 0.7.80 — 2026-09-16
+- **Photographic tone controls, exact typed values, real noise reduction, and a usable texture browser.** Every slider value is an editable number again, including exact zero. Exposure remains a true `2^EV` linear-light scale; Brightness, Contrast, Highlights, Midtones, Shadows, Whites, and Blacks now remap luminance while scaling the colour vector, preserving hue instead of bending RGB channels separately. Highlight/Shadow masks have steeper shoulders so Highlights stays out of ordinary midtones; Whites/Blacks are confined to the top/bottom fifth. Advanced Presence gains independent Luminance Noise and Colour Noise controls backed by an original multiscale soft-threshold/MAD implementation with luminance-edge protection rather than a whole-image blur. The Found Textures browser searches its remote catalogue asynchronously inside SNAP SLAPPER, opens with results, has paging and a larger grid; no blog or CMS change is involved. (`tools/hub/highbit_image.py`, `tools/hub/editor_engine.py`, `tools/hub/slapper_qt/`, `tools/hub/found_textures.py`.)
+
+## 0.7.720D — 2026-09-16 (deployed)
+- **NEW HORIZON 1.3.5: tagline sits beside the site name — `SITE NAME / tagline` on one line**, slash between, wrapping under on narrow screens. 1.3.4 had put it on a second line. Registry, not this build. (`skins/new-horizon/style.css`.)
 - **NEW HORIZON 1.3.4: shorter footer.** The system footer was 32 px of padding above and below one line of text; now 22 px — about a quarter shorter ("too phat"). Same skin version as the tagline controls below, since 1.3.4 has not been packaged yet. Ships via the registry, not this build. (`skins/new-horizon/style.css`.)
 
 ## 0.7.719D "STAGE NAME" — 2026-09-15 (deployed 2026-09-16)
