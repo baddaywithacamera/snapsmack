@@ -240,6 +240,10 @@ class Window(QMainWindow):
     def _show(self,n):
         self.pages.setCurrentIndex(n)
         for i,b in enumerate(self.nav): b.setChecked(i==n)
+        # The queue is filled while its page is hidden (scan finishes on the Post
+        # page), so the table had no real width and wrapped every caption one word
+        # per line - 640 px rows. Re-fit once the page is actually on screen.
+        if n==1 and hasattr(self,'_row_fit'): self._row_fit.start()
 
     def _load(self):
         names=self.engine.profiles_list(); self.profile.blockSignals(True); self.profile.clear(); self.profile.addItems(names); self.profile.blockSignals(False)
