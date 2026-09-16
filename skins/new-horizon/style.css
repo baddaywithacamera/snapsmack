@@ -85,12 +85,26 @@ body {
     padding: 0 40px; 
 }
 
+/* SITE NAME / tagline on one line (Sean, 2026-09-16: "tagline BESIDE site name"). */
+.logo-area a {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .site-tagline-text {
-    margin: 4px 0 0;
+    margin: 0;
     line-height: 1.2;
     letter-spacing: .04em;
     font-weight: 400;
     text-transform: none;
+}
+
+.site-tagline-text::before {
+    content: "/";
+    margin-right: 10px;
+    opacity: .55;
 }
 
 .site-title-text {
