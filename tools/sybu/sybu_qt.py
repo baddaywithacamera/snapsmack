@@ -7,9 +7,9 @@ import os
 import sys
 import threading
 
-from PySide6.QtCore import QObject, Qt, QTimer, Signal
+from PySide6.QtCore import QObject, QPoint, QRect, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox,
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QLayout,
     QComboBox, QDialog, QFileDialog, QFrame, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QMainWindow, QMessageBox, QProgressBar, QPushButton, QScrollArea,
     QSizePolicy, QStackedWidget, QTableWidget, QTableWidgetItem, QTextEdit,
@@ -90,6 +90,35 @@ class FitScrollArea(QScrollArea):
         if widget: widget.resize(self.viewport().width(),max(self.viewport().height(),widget.sizeHint().height(),widget.minimumSizeHint().height()))
 
 
+class FlowLayout(QLayout):
+    """Buttons wrap to the next line instead of shrinking and clipping their text
+    (queue toolbar at ~1400 px showed "ICH SELEC", "eview prompt")."""
+    def __init__(self, parent=None, spacing=8):
+        super().__init__(parent); self._items = []; self.setSpacing(spacing); self.setContentsMargins(0, 0, 0, 0)
+    def addItem(self, item): self._items.append(item)
+    def count(self): return len(self._items)
+    def itemAt(self, i): return self._items[i] if 0 <= i < len(self._items) else None
+    def takeAt(self, i): return self._items.pop(i) if 0 <= i < len(self._items) else None
+    def expandingDirections(self): return Qt.Orientation(0)
+    def hasHeightForWidth(self): return True
+    def heightForWidth(self, w): return self._arrange(QRect(0, 0, w, 0), True)
+    def setGeometry(self, r): super().setGeometry(r); self._arrange(r, False)
+    def sizeHint(self): return self.minimumSize()
+    def minimumSize(self):
+        s = QSize()
+        for it in self._items: s = s.expandedTo(it.minimumSize())
+        return s
+    def _arrange(self, r, test):
+        x, y, row_h = r.x(), r.y(), 0; sp = self.spacing()
+        for it in self._items:
+            w = it.sizeHint().width(); h = it.sizeHint().height()
+            if x + w > r.right() + 1 and row_h > 0:
+                x = r.x(); y += row_h + sp; row_h = 0
+            if not test: it.setGeometry(QRect(QPoint(x, y), it.sizeHint()))
+            x += w + sp; row_h = max(row_h, h)
+        return y + row_h - r.y()
+
+
 class QueueTable(QTableWidget):
     """Drag a row onto another to change posting order. Qt's own InternalMove would
     scramble the cell widgets (previews, dropdowns), so the drop is reported as
@@ -163,7 +192,7 @@ class Window(QMainWindow):
 
     def _queue_page(self):
         page,l=self._page("Your posting queue","Edit the fields that matter. Selection, enrichment and posting all operate on this table.")
-        tools=QHBoxLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); up=QPushButton("▲ Move up"); up.setToolTip("Move the highlighted row up one. You can also drag a row."); up.clicked.connect(lambda:self._move_row(-1)); tools.addWidget(up); down=QPushButton("▼ Move down"); down.setToolTip("Move the highlighted row down one. You can also drag a row."); down.clicked.connect(lambda:self._move_row(1)); tools.addWidget(down); rnd=QPushButton("Randomize"); rnd.setToolTip("Shuffle the posting order."); rnd.clicked.connect(self._randomize); tools.addWidget(rnd); tools.addStretch(1); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); self.qpost_btn=QPushButton("POST"); self.qpost_btn.clicked.connect(lambda:self._post(None)); tools.addWidget(self.qpost_btn); self.qpost_solo=QPushButton("POST SOLO"); self.qpost_solo.clicked.connect(lambda:self._post(False)); tools.addWidget(self.qpost_solo); self.qpost_gram=QPushButton("POST GRAM"); self.qpost_gram.clicked.connect(lambda:self._post(True)); tools.addWidget(self.qpost_gram); self.queue_count=label("0 images","Muted"); tools.addWidget(self.queue_count); l.addLayout(tools)
+        tools=FlowLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); up=QPushButton("▲ Move up"); up.setToolTip("Move the highlighted row up one. You can also drag a row."); up.clicked.connect(lambda:self._move_row(-1)); tools.addWidget(up); down=QPushButton("▼ Move down"); down.setToolTip("Move the highlighted row down one. You can also drag a row."); down.clicked.connect(lambda:self._move_row(1)); tools.addWidget(down); rnd=QPushButton("Randomize"); rnd.setToolTip("Shuffle the posting order."); rnd.clicked.connect(self._randomize); tools.addWidget(rnd); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); self.qpost_btn=QPushButton("POST"); self.qpost_btn.clicked.connect(lambda:self._post(None)); tools.addWidget(self.qpost_btn); self.qpost_solo=QPushButton("POST SOLO"); self.qpost_solo.clicked.connect(lambda:self._post(False)); tools.addWidget(self.qpost_solo); self.qpost_gram=QPushButton("POST GRAM"); self.qpost_gram.clicked.connect(lambda:self._post(True)); tools.addWidget(self.qpost_gram); self.queue_count=label("0 images","Muted"); self.queue_count.setWordWrap(False); tools.addWidget(self.queue_count); l.addLayout(tools)
         self.table=QueueTable(0,12); self.table.moved.connect(self._reorder); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         # Text columns SHARE the width the window has; nothing dictates it. FILE
         # used to size to its longest filename and squeeze title/caption/alt to
@@ -216,7 +245,18 @@ class Window(QMainWindow):
                 return
             self._apply_site_mode(result.get('site_mode','')); self.status.setText("● Connected · ready to post"); self.status.setObjectName("Good"); self.status.style().unpolish(self.status); self.status.style().polish(self.status); self.cat.clear(); self.cat.addItems(result['categories']); self.cat.setEditable(True); self.album.clear(); self.album.addItems(result['albums']); self.album.setEditable(True); self._say(f"Connected to {result['base_url']} · {result['site_mode'] or 'site mode unknown'}")
         elif name in ("scan","manifest"):
-            self._fill_queue(result); self._show(1); self._say(f"Loaded {result['count']} images.")
+            # Saved enrichment for this folder comes back on its own (the Tk window asked
+            # first; the Qt window never called apply_resume at all, so a re-scan looked
+            # like the work was gone). Nothing is re-sent to Gemini for restored rows.
+            restored = 0
+            try:
+                if self.engine.recovery and self.engine.recovery.exists():
+                    restored = self.engine.recovery.enriched_count_for(self.engine.entries)
+                    if restored: result = self.engine.apply_resume()
+            except Exception as e: self._say(f"Saved enrichment not restored: {e}")
+            self._fill_queue(result); self._show(1)
+            self._say(f"Loaded {result['count']} images." + (f" Restored saved enrichment for {restored} of them from the last run - no Gemini cost." if restored else ""))
+            if restored: self.progress_text.setText(f"{restored} of {result['count']} images already enriched (restored from the last run).")
 
     def _choose_folder(self):
         p=QFileDialog.getExistingDirectory(self,"Choose image folder",self.folder.text());
