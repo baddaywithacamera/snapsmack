@@ -9,7 +9,7 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.720D — 2026-09-16 (open)
+## 0.7.720D — 2026-09-16
 - **NEW HORIZON 1.3.4: shorter footer.** The system footer was 32 px of padding above and below one line of text; now 22 px — about a quarter shorter ("too phat"). Same skin version as the tagline controls below, since 1.3.4 has not been packaged yet. Ships via the registry, not this build. (`skins/new-horizon/style.css`.)
 
 ## 0.7.719D "STAGE NAME" — 2026-09-15 (deployed 2026-09-16)
