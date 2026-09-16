@@ -9,7 +9,7 @@ import threading
 
 from PySide6.QtCore import QObject, QPoint, QRect, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QLayout,
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QLayout, QSpacerItem,
     QComboBox, QDialog, QFileDialog, QFrame, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QMainWindow, QMessageBox, QProgressBar, QPushButton, QScrollArea,
     QSizePolicy, QStackedWidget, QTableWidget, QTableWidgetItem, QTextEdit,
@@ -96,6 +96,7 @@ class FlowLayout(QLayout):
     def __init__(self, parent=None, spacing=8):
         super().__init__(parent); self._items = []; self.setSpacing(spacing); self.setContentsMargins(0, 0, 0, 0)
     def addItem(self, item): self._items.append(item)
+    def addStretch(self, n=1): self.addItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
     def count(self): return len(self._items)
     def itemAt(self, i): return self._items[i] if 0 <= i < len(self._items) else None
     def takeAt(self, i): return self._items.pop(i) if 0 <= i < len(self._items) else None
@@ -106,16 +107,32 @@ class FlowLayout(QLayout):
     def sizeHint(self): return self.minimumSize()
     def minimumSize(self):
         s = QSize()
-        for it in self._items: s = s.expandedTo(it.minimumSize())
+        for it in self._items:
+            if not it.isEmpty(): s = s.expandedTo(it.minimumSize())
         return s
     def _arrange(self, r, test):
-        x, y, row_h = r.x(), r.y(), 0; sp = self.spacing()
-        for it in self._items:
+        sp = self.spacing()
+        # hidden widgets (the POST SOLO/GRAM pair once the blog's mode is known) take no room
+        items = [it for it in self._items if it.spacerItem() is not None or not it.isEmpty()]
+        split = next((k for k, it in enumerate(items) if it.spacerItem() is not None), None)
+        left = items if split is None else items[:split]
+        right = [] if split is None else items[split + 1:]
+        x, y, row_h = r.x(), r.y(), 0
+        for it in left:
             w = it.sizeHint().width(); h = it.sizeHint().height()
             if x + w > r.right() + 1 and row_h > 0:
                 x = r.x(); y += row_h + sp; row_h = 0
             if not test: it.setGeometry(QRect(QPoint(x, y), it.sizeHint()))
             x += w + sp; row_h = max(row_h, h)
+        if right:
+            need = sum(it.sizeHint().width() for it in right) + sp * (len(right) - 1)
+            if x + need > r.right() + 1 and row_h > 0:
+                y += row_h + sp; row_h = 0
+            rx = r.right() + 1 - need
+            for it in right:
+                w = it.sizeHint().width(); h = it.sizeHint().height()
+                if not test: it.setGeometry(QRect(QPoint(rx, y), it.sizeHint()))
+                rx += w + sp; row_h = max(row_h, h)
         return y + row_h - r.y()
 
 
@@ -192,13 +209,21 @@ class Window(QMainWindow):
 
     def _queue_page(self):
         page,l=self._page("Your posting queue","Edit the fields that matter. Selection, enrichment and posting all operate on this table.")
-        tools=FlowLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); up=QPushButton("▲ Move up"); up.setToolTip("Move the highlighted row up one. You can also drag a row."); up.clicked.connect(lambda:self._move_row(-1)); tools.addWidget(up); down=QPushButton("▼ Move down"); down.setToolTip("Move the highlighted row down one. You can also drag a row."); down.clicked.connect(lambda:self._move_row(1)); tools.addWidget(down); rnd=QPushButton("Randomize"); rnd.setToolTip("Shuffle the posting order."); rnd.clicked.connect(self._randomize); tools.addWidget(rnd); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); self.qpost_btn=QPushButton("POST"); self.qpost_btn.clicked.connect(lambda:self._post(None)); tools.addWidget(self.qpost_btn); self.qpost_solo=QPushButton("POST SOLO"); self.qpost_solo.clicked.connect(lambda:self._post(False)); tools.addWidget(self.qpost_solo); self.qpost_gram=QPushButton("POST GRAM"); self.qpost_gram.clicked.connect(lambda:self._post(True)); tools.addWidget(self.qpost_gram); self.queue_count=label("0 images","Muted"); self.queue_count.setWordWrap(False); tools.addWidget(self.queue_count); l.addLayout(tools)
+        tools=FlowLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); up=QPushButton("▲ Move up"); up.setToolTip("Move the highlighted row up one. You can also drag a row."); up.clicked.connect(lambda:self._move_row(-1)); tools.addWidget(up); down=QPushButton("▼ Move down"); down.setToolTip("Move the highlighted row down one. You can also drag a row."); down.clicked.connect(lambda:self._move_row(1)); tools.addWidget(down); rnd=QPushButton("Randomize"); rnd.setToolTip("Shuffle the posting order."); rnd.clicked.connect(self._randomize); tools.addWidget(rnd); tools.addStretch(1); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); self.qpost_btn=QPushButton("POST"); self.qpost_btn.clicked.connect(lambda:self._post(None)); tools.addWidget(self.qpost_btn); self.qpost_solo=QPushButton("POST SOLO"); self.qpost_solo.clicked.connect(lambda:self._post(False)); tools.addWidget(self.qpost_solo); self.qpost_gram=QPushButton("POST GRAM"); self.qpost_gram.clicked.connect(lambda:self._post(True)); tools.addWidget(self.qpost_gram); self.queue_count=label("0 images","Muted"); self.queue_count.setWordWrap(False); tools.addWidget(self.queue_count); l.addLayout(tools)
         self.table=QueueTable(0,12); self.table.moved.connect(self._reorder); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         # Text columns SHARE the width the window has; nothing dictates it. FILE
         # used to size to its longest filename and squeeze title/caption/alt to
         # nothing after an enrich. Rows grow to their wrapped text instead.
         for c in (2,3,4,5,6): self.table.horizontalHeader().setSectionResizeMode(c,QHeaderView.Stretch)
-        self.table.setTextElideMode(Qt.ElideMiddle); self.table.setMinimumHeight(500); l.addWidget(self.table,1); return page
+        self.table.setTextElideMode(Qt.ElideMiddle); self.table.setMinimumHeight(500); l.addWidget(self.table,1)
+        self._row_fit=QTimer(self); self._row_fit.setSingleShot(True); self._row_fit.setInterval(60); self._row_fit.timeout.connect(self._fit_rows)
+        self.table.horizontalHeader().sectionResized.connect(lambda *_: self._row_fit.start())
+        return page
+
+    def _fit_rows(self):
+        """Row height = wrapped text at the current column widths, never under the 118 px preview."""
+        self.table.resizeRowsToContents()
+        for r in range(self.table.rowCount()): self.table.setRowHeight(r,max(118,self.table.rowHeight(r)))
 
     def _settings_page(self):
         page,l=self._page("Connection and services","Profiles come from SNAP HQ's shared library. Secrets stay in the protected shared store.")
@@ -295,8 +320,7 @@ class Window(QMainWindow):
             orient=QComboBox()
             for text,value in (("Auto","auto"),("Landscape","0"),("Portrait","1"),("Square","2")): orient.addItem(text,value)
             orient.setFixedHeight(36); orient.setCurrentIndex(max(0,orient.findData(row.get('orientation','auto')))); self.table.setCellWidget(r,8,self._centred_control(orient))
-        self.table.resizeRowsToContents()
-        for r in range(self.table.rowCount()): self.table.setRowHeight(r,max(118,self.table.rowHeight(r)))
+        self._fit_rows(); self._row_fit.start()
         self.queue_count.setText(f"{data['selected']} selected · {data['count']} images")
 
     def _centred_control(self, control):
