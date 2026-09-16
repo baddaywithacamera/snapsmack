@@ -38,5 +38,24 @@ class CompletedMoveTests(unittest.TestCase):
             self.assertTrue(os.path.exists(source))
 
 
+class EngineCompletedDirTests(unittest.TestCase):
+    """SYBU 0.7.68: the Qt engine must hand the poster the completed folder the Tk window did."""
+
+    def test_upload_folder_maps_to_sibling_completed(self):
+        import sybu_core
+        with tempfile.TemporaryDirectory() as root:
+            upload = os.path.join(root, 'site', 'upload')
+            os.makedirs(upload)
+            self.assertEqual(sybu_core.Engine.completed_dir_for(upload), os.path.join(root, 'site', 'completed'))
+            self.assertTrue(os.path.isdir(os.path.join(root, 'site', 'completed')))
+            self.assertEqual(sybu_core.Engine.completed_dir_for(os.path.join(root, 'site', 'other')), '')
+            self.assertEqual(sybu_core.Engine.completed_dir_for(''), '')
+
+    def test_post_start_passes_completed_dir_to_both_posters(self):
+        src = open(os.path.join(HERE, 'sybu_core.py'), encoding='utf-8').read()
+        body = src[src.index('def post_start('):src.index('def cancel_post(')]
+        self.assertEqual(body.count('completed_dir=completed_dir,'), 2)
+
+
 if __name__ == '__main__':
     unittest.main()
