@@ -15,6 +15,7 @@ import tempfile
 from pathlib import PurePosixPath
 import textwrap
 import threading
+import weakref
 import zipfile
 from collections import OrderedDict
 
@@ -146,13 +147,16 @@ PROJECT_ORIGINAL_NAME = "original/original"
 
 
 class ExternalProjectSourceApprovalRequired(ValueError):
-    """An imported project asked to read a path outside its own archive."""
+    """An imported project asked to read one or more paths outside its archive."""
 
     def __init__(self, source_path):
-        self.source_path = os.path.abspath(os.fspath(source_path))
+        candidates = (source_path if isinstance(source_path, (list, tuple))
+                      else [source_path])
+        self.paths = [os.path.abspath(os.fspath(path)) for path in candidates]
+        self.source_path = "\n".join(self.paths)
         super().__init__(
-            "This project references a photograph outside the project file. "
-            "SNAP SLAPPER will not read it without your confirmation.")
+            "This project references files outside the project archive. "
+            "SNAP SLAPPER will not read them without your confirmation.")
 DEFAULT_ADJUSTMENTS = {
     "exposure": 0.0, "brightness": 0.0, "contrast": 0.0,
     "highlights": 0.0, "midtones": 0.0, "shadows": 0.0,
@@ -262,33 +266,11 @@ def _new_layer_id():
 
 
 def _open_layer_image(path, target_size=None):
-    """Open a raster layer or render an SVG sharply at the requested size."""
-    if os.path.splitext(path)[1].lower() != ".svg":
-        with Image.open(path) as source:
-            return ImageOps.exif_transpose(source).convert("RGBA")
-    try:
-        from PySide6.QtCore import QSize
-        from PySide6.QtGui import QImage, QPainter
-        from PySide6.QtSvg import QSvgRenderer
-    except ImportError as error:
-        raise ValueError(
-            "SVG watermarks require the SVG renderer included with SNAP SLAPPER") from error
-    renderer = QSvgRenderer(path)
-    if not renderer.isValid():
-        raise ValueError(f"SVG watermark is invalid: {path}")
-    natural = renderer.defaultSize()
-    if target_size:
-        width, height = max(1, int(target_size[0])), max(1, int(target_size[1]))
-    elif natural.isValid() and not natural.isEmpty():
-        width, height = natural.width(), natural.height()
-    else:
-        width, height = 1024, 1024
-    canvas = QImage(QSize(width, height), QImage.Format_RGBA8888)
-    canvas.fill(0)
-    painter = QPainter(canvas)
-    renderer.render(painter)
-    painter.end()
-    return Image.frombytes("RGBA", (width, height), bytes(canvas.bits()), "raw", "RGBA")
+    """Open a raster layer. Untrusted SVG is disabled pending a safe frozen Qt."""
+    if os.path.splitext(path)[1].lower() == ".svg":
+        raise ValueError("SVG input is disabled for security; use a transparent PNG watermark")
+    with Image.open(path) as source:
+        return ImageOps.exif_transpose(source).convert("RGBA")
 
 # Hue centres (degrees) for the black & white colour mix, in wheel order.
 BW_BANDS = [("bw_red", 0.0), ("bw_orange", 30.0), ("bw_yellow", 60.0),
@@ -486,8 +468,13 @@ def _validate_project_archive(archive):
         raise ValueError("SNAP SLAPPER project contains too many archive entries")
     if sum(info.file_size for info in entries) > MAX_PROJECT_ARCHIVE_BYTES:
         raise ValueError("SNAP SLAPPER project archive expands beyond the safe limit")
+    seen_names = set()
     for info in entries:
         name = info.filename.replace("\\", "/")
+        canonical_name = name.casefold()
+        if canonical_name in seen_names:
+            raise ValueError("SNAP SLAPPER project contains duplicate archive entries")
+        seen_names.add(canonical_name)
         parts = PurePosixPath(name).parts
         if (not name or name.startswith("/") or (len(name) > 1 and name[1] == ":") or
                 ".." in parts):
@@ -533,6 +520,89 @@ def _extract_embedded_source(project_path, ingredient):
         except OSError:
             pass
         raise
+
+
+def _remove_temporary_project_source(path):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
+def _validate_project_collections(value, expected_types):
+    """Validate every attacker-controlled collection before any file/decode action."""
+    layers = value.get("layers", [])
+    retouched = value.get("retouched", [])
+    saved_selections = value.get("saved_selections", {})
+    history = value.get("history", [])
+    if len(layers) > MAX_PROJECT_LAYERS:
+        raise ValueError("Invalid SNAP SLAPPER project: too many layers")
+    if len(retouched) > MAX_RETOUCH_POINTS:
+        raise ValueError("Invalid SNAP SLAPPER project: too many retouch points")
+    if len(saved_selections) > 100:
+        raise ValueError("Invalid SNAP SLAPPER project: too many saved selections")
+    for name, encoded in saved_selections.items():
+        if (not isinstance(name, str) or not name.strip() or len(name) > 100 or
+                not isinstance(encoded, str) or len(encoded) > MAX_ENCODED_MASK_BYTES):
+            raise ValueError("Invalid SNAP SLAPPER project: saved selection is invalid")
+    if not isinstance(history, list) or len(history) > MAX_HISTORY_STEPS:
+        raise ValueError("Invalid SNAP SLAPPER project: editing history is invalid")
+    for entry in history:
+        if not isinstance(entry, dict) or not isinstance(entry.get("label"), str):
+            raise ValueError("Invalid SNAP SLAPPER project: editing history entry is invalid")
+        state = entry.get("state")
+        if not isinstance(state, dict):
+            raise ValueError("Invalid SNAP SLAPPER project: editing history state is invalid")
+        for field, expected in expected_types.items():
+            if field == "saved_selections" and field not in state:
+                continue
+            if not isinstance(state.get(field), expected):
+                raise ValueError(
+                    f"Invalid SNAP SLAPPER project: history {field} has the wrong type")
+    for index, layer in enumerate(layers):
+        if not isinstance(layer, dict):
+            raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} is not an object")
+        if "path" in layer and (not isinstance(layer["path"], str) or
+                                len(layer["path"]) > 32768):
+            raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} path is invalid")
+        if "asset_ref" in layer and not isinstance(layer["asset_ref"], dict):
+            raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} asset is invalid")
+        mask = layer.get("mask", "")
+        if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
+            raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} mask is invalid")
+        if layer.get("type") == "text":
+            text = layer.get("text", "")
+            if not isinstance(text, str) or len(text) > MAX_TEXT_LAYER_CHARS:
+                raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} text is invalid")
+            if not isinstance(layer.get("font_path", ""), str):
+                raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} font is invalid")
+        if layer.get("type") == "filter":
+            if layer.get("filter_type") not in slapper_filters.FILTER_DEFAULTS:
+                raise ValueError(
+                    f"Invalid SNAP SLAPPER project: layer {index + 1} filter is unsupported")
+            if layer.get("filter_version", 1) != 1:
+                raise ValueError(
+                    f"Invalid SNAP SLAPPER project: layer {index + 1} filter version is unsupported")
+    return layers, retouched, saved_selections, history
+
+
+def _project_external_layer_paths(layers):
+    """List project-controlled files that renderers would otherwise open silently."""
+    paths = []
+    for layer in layers:
+        if layer.get("type") == "image" and layer.get("path"):
+            trusted_asset = False
+            if layer.get("asset_ref"):
+                try:
+                    import texture_assets
+                    trusted_asset = bool(texture_assets.resolve(layer["asset_ref"]))
+                except Exception:  # noqa: BLE001 - unresolved means approval required
+                    trusted_asset = False
+            if not trusted_asset:
+                paths.append(layer["path"])
+        if layer.get("type") == "text" and layer.get("font_path"):
+            paths.append(layer["font_path"])
+    return list(dict.fromkeys(os.path.abspath(os.fspath(path)) for path in paths))
 
 
 def _curve_lut(points):
@@ -2121,22 +2191,30 @@ class EditorDocument:
         for field, expected in expected_types.items():
             if field in value and not isinstance(value[field], expected):
                 raise ValueError(f"Invalid SNAP SLAPPER project: {field} has the wrong type")
+        layers, retouched, saved_selections, history = _validate_project_collections(
+            value, expected_types)
         recorded_source_path = value.get("source_path")
         if not isinstance(recorded_source_path, str) or not recorded_source_path.strip():
             raise ValueError("Invalid SNAP SLAPPER project: source_path is missing")
+        ingredient = value.get("source_ingredient")
+        source_is_embedded = (zipfile.is_zipfile(path) and
+                              isinstance(ingredient, dict) and
+                              bool(ingredient.get("archive_path")))
+        approval_paths = _project_external_layer_paths(layers)
+        if not source_is_embedded and not legacy_project:
+            approval_paths.insert(0, recorded_source_path)
+        if approval_paths and not trust_external_source:
+            raise ExternalProjectSourceApprovalRequired(approval_paths)
         source_path = recorded_source_path
         embedded_source = None
-        if zipfile.is_zipfile(path) and isinstance(value.get("source_ingredient"), dict):
-            embedded_source = _extract_embedded_source(path, value["source_ingredient"])
+        if source_is_embedded:
+            embedded_source = _extract_embedded_source(path, ingredient)
         if embedded_source:
             source_path = embedded_source
         else:
-            if not legacy_project and not trust_external_source:
-                raise ExternalProjectSourceApprovalRequired(source_path)
             if not os.path.isfile(source_path):
                 raise FileNotFoundError(
                     f"The project's original photograph is missing: {source_path}")
-            ingredient = value.get("source_ingredient")
             expected_hash = ingredient.get("sha256") if isinstance(ingredient, dict) else ""
             if expected_hash:
                 if not isinstance(expected_hash, str) or len(expected_hash) != 64:
@@ -2149,54 +2227,13 @@ class EditorDocument:
             raw_source_path = source_path
             source_path = raw_preview.develop(raw_source_path,
                                               value.get("adjustments", {}))
-        layers = value.get("layers", [])
-        retouched = value.get("retouched", [])
-        saved_selections = value.get("saved_selections", {})
-        history = value.get("history", [])
-        if len(layers) > MAX_PROJECT_LAYERS:
-            raise ValueError("Invalid SNAP SLAPPER project: too many layers")
-        if len(retouched) > MAX_RETOUCH_POINTS:
-            raise ValueError("Invalid SNAP SLAPPER project: too many retouch points")
-        if len(saved_selections) > 100:
-            raise ValueError("Invalid SNAP SLAPPER project: too many saved selections")
-        for name, encoded in saved_selections.items():
-            if (not isinstance(name, str) or not name.strip() or len(name) > 100 or
-                    not isinstance(encoded, str) or len(encoded) > MAX_ENCODED_MASK_BYTES):
-                raise ValueError("Invalid SNAP SLAPPER project: saved selection is invalid")
-        if not isinstance(history, list) or len(history) > MAX_HISTORY_STEPS:
-            raise ValueError("Invalid SNAP SLAPPER project: editing history is invalid")
-        for entry in history:
-            if not isinstance(entry, dict) or not isinstance(entry.get("label"), str):
-                raise ValueError("Invalid SNAP SLAPPER project: editing history entry is invalid")
-            state = entry.get("state")
-            if not isinstance(state, dict):
-                raise ValueError("Invalid SNAP SLAPPER project: editing history state is invalid")
-            for field, expected in expected_types.items():
-                if field == "saved_selections" and field not in state:
-                    continue
-                if not isinstance(state.get(field), expected):
-                    raise ValueError(
-                        f"Invalid SNAP SLAPPER project: history {field} has the wrong type")
-        for index, layer in enumerate(layers):
-            if not isinstance(layer, dict):
-                raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} is not an object")
-            mask = layer.get("mask", "")
-            if not isinstance(mask, str) or len(mask) > MAX_ENCODED_MASK_BYTES:
-                raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} mask is invalid")
-            if layer.get("type") == "text":
-                text = layer.get("text", "")
-                if not isinstance(text, str) or len(text) > MAX_TEXT_LAYER_CHARS:
-                    raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} text is invalid")
-                if not isinstance(layer.get("font_path", ""), str):
-                    raise ValueError(f"Invalid SNAP SLAPPER project: layer {index + 1} font is invalid")
-            if layer.get("type") == "filter":
-                if layer.get("filter_type") not in slapper_filters.FILTER_DEFAULTS:
-                    raise ValueError(
-                        f"Invalid SNAP SLAPPER project: layer {index + 1} filter is unsupported")
-                if layer.get("filter_version", 1) != 1:
-                    raise ValueError(
-                        f"Invalid SNAP SLAPPER project: layer {index + 1} filter version is unsupported")
         document = cls(source_path)
+        if embedded_source:
+            # Portable-project originals are working copies, not durable user
+            # files. Remove them when the document is released or the process
+            # exits so private photographs do not accumulate in the temp dir.
+            weakref.finalize(document, _remove_temporary_project_source,
+                             embedded_source)
         if raw_source_path:
             artifacts_value = value.get("artifacts")
             if artifacts_value:

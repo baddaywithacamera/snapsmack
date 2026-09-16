@@ -5,6 +5,7 @@ SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
 
 import hashlib
 import errno
+import gc
 import json
 import os
 import sys
@@ -149,6 +150,53 @@ class ImmutableOriginalTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "layer 1 is not an object"):
             editor_engine.EditorDocument.load_project(project)
 
+    def test_embedded_raw_is_not_extracted_before_full_project_validation(self):
+        project = os.path.join(self.temporary.name, "hostile-embedded.slapper")
+        value = {
+            "version": editor_engine.PROJECT_VERSION,
+            "source_path": "camera.raw",
+            "source_ingredient": {
+                "archive_path": "original/original.raw",
+                "sha256": "0" * 64,
+            },
+            "layers": ["not-a-layer"],
+        }
+        with zipfile.ZipFile(project, "w") as archive:
+            archive.writestr("project.json", json.dumps(value))
+            archive.writestr("original/original.raw", b"hostile raw payload")
+
+        with mock.patch.object(editor_engine, "_extract_embedded_source") as extract:
+            with self.assertRaisesRegex(ValueError, "layer 1 is not an object"):
+                editor_engine.EditorDocument.load_project(project)
+        extract.assert_not_called()
+
+    def test_project_requires_approval_before_reading_external_layer_files(self):
+        project = os.path.join(self.temporary.name, "external-layer.slapper")
+        private_layer = os.path.join(self.temporary.name, "private.png")
+        Image.new("RGB", (4, 4), "red").save(private_layer)
+        document = editor_engine.EditorDocument(self.source)
+        document.layers.append({
+            "id": "external", "name": "External", "type": "image",
+            "path": private_layer, "visible": True, "opacity": 1.0,
+            "blend": "normal", "mask": "",
+        })
+        document.save_project(project)
+
+        with self.assertRaises(editor_engine.ExternalProjectSourceApprovalRequired) as raised:
+            editor_engine.EditorDocument.load_project(project)
+        self.assertIn(os.path.abspath(private_layer), raised.exception.paths)
+
+    def test_project_rejects_duplicate_archive_member_names(self):
+        project = os.path.join(self.temporary.name, "duplicate.slapper")
+        value = {"version": editor_engine.PROJECT_VERSION,
+                 "source_path": self.source, "layers": []}
+        with self.assertWarns(UserWarning):
+            with zipfile.ZipFile(project, "w") as archive:
+                archive.writestr("project.json", json.dumps(value))
+                archive.writestr("project.json", json.dumps(value))
+        with self.assertRaisesRegex(ValueError, "duplicate archive entries"):
+            editor_engine.EditorDocument.load_project(project)
+
     def test_project_writer_refuses_original_path(self):
         document = editor_engine.EditorDocument(self.source)
         with self.assertRaisesRegex(ValueError, "will not overwrite the original"):
@@ -180,6 +228,16 @@ class ImmutableOriginalTests(unittest.TestCase):
                 self.assertEqual(original.read(), archive.read("original/original.jpg"))
         restored = editor_engine.EditorDocument.load_project(project)
         self.assertEqual(17, restored.adjustments["contrast"])
+
+    def test_portable_project_temporary_original_is_removed_with_document(self):
+        project = os.path.join(self.temporary.name, "temporary-source.slapper")
+        editor_engine.EditorDocument(self.source).save_project(project)
+        restored = editor_engine.EditorDocument.load_project(project)
+        extracted = restored.source_path
+        self.assertTrue(os.path.isfile(extracted))
+        del restored
+        gc.collect()
+        self.assertFalse(os.path.exists(extracted))
 
     def test_legacy_bare_json_slapper_still_opens(self):
         project = os.path.join(self.temporary.name, "legacy.slapper")

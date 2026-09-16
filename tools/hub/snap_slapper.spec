@@ -21,7 +21,6 @@ _hidden = collect_submodules('slapper_qt') + [
     'snap_home', 'snap_log', 'snap_profiles', 'snap_creds', 'snap_vault',
     'snap_device_auth', 'snap_native_creds', 'cryptography',
     'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
-    'PySide6.QtSvg',
     'PIL', 'PIL.Image', 'psd_tools',
     'numpy', 'OpenImageIO',
 ]
@@ -43,6 +42,15 @@ a = Analysis(
               'notebook', 'streamlit', 'gradio', 'tkinter'],
     noarchive=False,
 )
+
+# SECAUDIT 057: Qt 6.9's SVG parser has a current vendor-rated HIGH advisory.
+# The beta does not accept SVG, so remove the parser and its image/icon plugins
+# from the frozen payload instead of merely hiding the file-picker extension.
+_svg_runtime = ('qt6svg.dll', 'qsvg.dll', 'qsvgicon.dll')
+a.binaries = [entry for entry in a.binaries
+              if os.path.basename(entry[0]).lower() not in _svg_runtime]
+a.datas = [entry for entry in a.datas
+           if os.path.basename(entry[0]).lower() not in _svg_runtime]
 
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='SNAP SLAPPER',

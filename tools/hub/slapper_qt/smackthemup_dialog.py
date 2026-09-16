@@ -3,7 +3,7 @@
 import hashlib
 import os
 import threading
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from PySide6.QtCore import QObject, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
@@ -21,6 +21,13 @@ def email_share_url(title, public_url):
     subject = quote(str(title).strip())
     body = quote(f"{str(title).strip()}\n{str(public_url).strip()}")
     return f"mailto:?subject={subject}&body={body}"
+
+
+def safe_public_url(value):
+    """Return only a normal public web URL from the untrusted server reply."""
+    value = str(value or "").strip()
+    parsed = urlsplit(value)
+    return value if parsed.scheme in {"http", "https"} and parsed.hostname else ""
 
 
 class _Signals(QObject):
@@ -126,12 +133,12 @@ class SmackPublishDialog(QDialog):
             self.status.setText("Connected — ready to publish.")
             self.go.setEnabled(True)
             return
-        self.result_url = str(data.get("url") or "")
+        self.result_url = safe_public_url(data.get("url"))
         self.status.setText("Published. It is live on your site.")
         self.cancel.setText("DONE"); self.cancel.setEnabled(True)
         self.go.hide()
         actions = QHBoxLayout()
-        view = QPushButton("VIEW"); view.clicked.connect(self._view)
+        view = QPushButton("VIEW"); view.setEnabled(bool(self.result_url)); view.clicked.connect(self._view)
         copy = QPushButton("COPY LINK"); copy.clicked.connect(self._copy)
         email = QPushButton("EMAIL"); email.clicked.connect(self._email)
         share = QPushButton("SHARE"); share.clicked.connect(self._share)
