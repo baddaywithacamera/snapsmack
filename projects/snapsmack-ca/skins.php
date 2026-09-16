@@ -58,7 +58,7 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <p class="site-discovery-kicker">GLAD RAGS!</p>
             <h1>Same engine.<br><span>Entirely different attitude.</span></h1>
-            <p class="lede">These are not mockups padded with stock photographs. Every skin below is running on a real site with a real archive.</p>
+            <p class="lede">These are not mockups padded with stock photographs. Every skin below is running on a real site with a real archive. <strong>All skins are free, always.</strong></p>
         </div>
     </section>
     <div class="wrap goods-nav-wrap">
