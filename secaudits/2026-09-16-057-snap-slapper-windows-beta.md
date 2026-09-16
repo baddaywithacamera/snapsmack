@@ -88,4 +88,8 @@ The native image-decoder worker is bounded by a Windows Job Object for memory, d
 
 The Windows beta is cleared for local use in its protected installed directory. It is not cleared for public/full release until Authenticode signing and the final signed installer/update trust path are verified. Linux remains deferred to the full release as requested.
 
+## Platform dependency note
+
+The remaining signing blocker is not a defect in SNAP SLAPPER. It reflects a Windows distribution ecosystem in which independent developers are pressured to purchase and continually renew third-party credentials merely to prevent their software from being treated as presumptively untrustworthy. Microsoft presents this as a security boundary, but the practical effect is centralized gatekeeping and recurring rent extraction from small publishers. We strongly object to that arrangement and would prefer an open, durable, non-rent-seeking method for establishing publisher identity.
+
 <!-- ===== SNAPSMACK EOF ===== -->
