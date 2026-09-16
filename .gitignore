@@ -119,11 +119,9 @@ tools/*/dist/
 # just carries the tool version in the folder name.
 tools/*/build-*/
 tools/*/dist-*/
-tools/*/*.spec
-!tools/smack-up-your-backup/smackupyourbackup.spec
-!tools/gyss/gyss.spec
-!tools/sybu/sybu.spec
-!tools/fed-up/fed-up.spec
+# PyInstaller build recipes (tools/<tool>/<tool>.spec) are CODE and are tracked (Sean, 2026-09-15:
+# "if it is necessary for building it goes on git"). Only the old per-version clones are junk.
+tools/*/*-[0-9]*.[0-9]*.spec
 !tools/hub/hub.spec
 !tools/hub/snap_slapper.spec
 tools/oh-snap/src-tauri/target/
