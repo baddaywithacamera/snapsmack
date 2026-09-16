@@ -29,7 +29,6 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import (
     QImage, QPixmap, QIcon, QAction, QKeySequence, QDrag, QDesktopServices,
-    QPainter,
 )
 from PySide6.QtWidgets import (
     QMainWindow, QListWidget, QListWidgetItem, QFileDialog, QLabel, QSlider,
@@ -37,8 +36,6 @@ from PySide6.QtWidgets import (
     QFileSystemModel, QAbstractItemView, QInputDialog, QMessageBox, QMenu,
     QToolButton, QDockWidget, QVBoxLayout, QPushButton, QCheckBox, QDialog,
 )
-from PySide6.QtPrintSupport import QPrinter, QPrintDialog
-
 from PIL import Image, ImageOps
 
 from . import theme
@@ -417,7 +414,7 @@ class LibraryWindow(QMainWindow):
         """Keep local browsing/opening available while locking library changes."""
         self._restricted = bool(restricted)
         locked_actions = (
-            self.act_import, self.act_panomerge, self.act_new_folder,
+            self.act_import, self.act_panomerge, self.act_hdr, self.act_new_folder,
             self.act_rename, self.act_batch_rename, self.act_move,
             self.act_copy, self.act_trash, self.act_restore_trash,
             self.act_undo_files, self.act_rotate_left, self.act_rotate_right,
@@ -471,15 +468,21 @@ class LibraryWindow(QMainWindow):
         bar.addAction(self.act_import)
 
         self.act_panomerge = QAction("PANOMERGE…", self)
-        from .panomerge import detect_xpano, platform_supported
-        panomerge_available = platform_supported() and bool(detect_xpano())
+        from .panomerge import platform_supported
+        panomerge_available = platform_supported()
         self.act_panomerge.setEnabled(panomerge_available)
         self.act_panomerge.setToolTip(
-            "Stitch selected overlapping photographs into a panorama with XPANO"
+            "Stitch selected photographs; locate XPANO in the dialog if necessary"
             if panomerge_available else
-            "Install XPANO separately, then restart SNAP SLAPPER to enable PANOMERGE")
+            "PANOMERGE is available on Windows and Linux")
         self.act_panomerge.triggered.connect(self._panomerge_selected)
         bar.addAction(self.act_panomerge)
+
+        self.act_hdr = QAction("HDR…", self)
+        self.act_hdr.setToolTip(
+            "Merge selected exposure brackets with separately installed Luminance HDR")
+        self.act_hdr.triggered.connect(self._hdr_selected)
+        bar.addAction(self.act_hdr)
 
         self.act_new_folder = QAction("New Folder…", self)
         self.act_new_folder.setShortcut(QKeySequence("Ctrl+Shift+N"))
@@ -521,9 +524,6 @@ class LibraryWindow(QMainWindow):
         self.act_slideshow.triggered.connect(self._start_slideshow)
         self.act_contact_sheet = QAction("Create Contact Sheet…", self)
         self.act_contact_sheet.triggered.connect(self._create_contact_sheet)
-        self.act_print = QAction("Print Selected…", self)
-        self.act_print.setShortcut(QKeySequence.Print)
-        self.act_print.triggered.connect(self._print_selected)
 
         organize_menu = QMenu(self)
         for action in (self.act_new_folder, self.act_rename,
@@ -542,13 +542,13 @@ class LibraryWindow(QMainWindow):
         bar.addWidget(organize_button)
 
         output_menu = QMenu(self)
-        for action in (self.act_slideshow, self.act_contact_sheet, self.act_print):
+        for action in (self.act_slideshow, self.act_contact_sheet):
             output_menu.addAction(action)
         output_button = QToolButton()
-        output_button.setText("Present / Print")
+        output_button.setText("Present")
         output_button.setPopupMode(QToolButton.InstantPopup)
         output_button.setMenu(output_menu)
-        output_button.setToolTip("Slideshow, contact sheet, or print selected photos")
+        output_button.setToolTip("Slideshow or create a contact sheet")
         bar.addWidget(output_button)
 
         # Standard menus make the same operations discoverable without knowing
@@ -557,7 +557,7 @@ class LibraryWindow(QMainWindow):
         file_menu.addAction(self.act_open)
         file_menu.addAction(self.act_edit)
         file_menu.addAction(self.act_panomerge)
-        file_menu.addAction(self.act_print)
+        file_menu.addAction(self.act_hdr)
         file_menu.addAction(self.act_show_folder)
         organize_bar_menu = self.menuBar().addMenu("Organize")
         for action in (self.act_import, self.act_new_folder, self.act_rename,
@@ -571,7 +571,6 @@ class LibraryWindow(QMainWindow):
         output_bar_menu = self.menuBar().addMenu("Present")
         output_bar_menu.addAction(self.act_slideshow)
         output_bar_menu.addAction(self.act_contact_sheet)
-        output_bar_menu.addAction(self.act_print)
 
         act_help = QAction("Help", self)
         act_help.setShortcut(QKeySequence.HelpContents)   # F1
@@ -836,7 +835,8 @@ class LibraryWindow(QMainWindow):
             self.list.clearSelection()
             item.setSelected(True)
         menu = QMenu(self)
-        for action in (self.act_edit, self.act_panomerge, self.act_rename, self.act_move,
+        for action in (self.act_edit, self.act_panomerge, self.act_hdr,
+                       self.act_rename, self.act_move,
                        self.act_copy, self.act_trash, self.act_show_folder):
             menu.addAction(action)
         menu.addSeparator()
@@ -1146,36 +1146,6 @@ class LibraryWindow(QMainWindow):
             return
         self.status.showMessage(f"Saved contact sheet: {output}", 7000)
 
-    def _print_selected(self):
-        paths = self._require_selected("Print")
-        if not paths:
-            return
-        printer = QPrinter(QPrinter.HighResolution)
-        printer.setDocName("SNAP SLAPPER photographs")
-        dialog = QPrintDialog(printer, self)
-        if dialog.exec() != QPrintDialog.Accepted:
-            return
-        painter = QPainter(printer)
-        if not painter.isActive():
-            QMessageBox.warning(self, "Print failed", "The printer could not be started.")
-            return
-        try:
-            page = printer.pageRect(QPrinter.DevicePixel)
-            for index, path in enumerate(paths):
-                if index:
-                    printer.newPage()
-                image = QImage(path)
-                if image.isNull():
-                    continue
-                target = image.size()
-                target.scale(page.size(), Qt.KeepAspectRatio)
-                x = page.x() + (page.width() - target.width()) // 2
-                y = page.y() + (page.height() - target.height()) // 2
-                painter.drawImage(x, y, image.scaled(
-                    target, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-        finally:
-            painter.end()
-        self.status.showMessage(f"Sent {len(paths)} photo(s) to the printer", 7000)
 
     def _choose_transfer(self, copy_files):
         paths = self._selected_photo_paths()
@@ -1553,6 +1523,17 @@ class LibraryWindow(QMainWindow):
             if self._folder and os.path.dirname(dialog.result_path) == self._folder:
                 self._reload_current()
 
+    def _hdr_selected(self):
+        from .hdr_dialog import HdrDialog
+        dialog = HdrDialog(self, self._selected_photo_paths())
+        dialog.completed.connect(self._hdr_ready)
+        dialog.exec()
+
+    def _hdr_ready(self, path):
+        self._open_editor_path(path)
+        if self._folder and os.path.dirname(path) == self._folder:
+            self._reload_current()
+
     def _open_item(self, item):
         path = item.data(Qt.UserRole)
         if not path:
@@ -1583,10 +1564,24 @@ class LibraryWindow(QMainWindow):
             # layout can process queued UI events; a second activation during
             # that interval must not manufacture another editor.
             self._editors.append(editor)
-            editor.open_path(path)
             editor.show()
+            editor.raise_()
+            editor.activateWindow()
+            # Let the editor become the active native window before recovery
+            # loading and the first composite begin.  Previously it was hidden
+            # until all that work finished, so Windows marked the app hung and
+            # returned focus to the Library.
+            QTimer.singleShot(0, lambda e=editor, p=path: self._finish_editor_open(e, p))
         finally:
             self._opening_editor_paths.discard(path_key)
+
+    def _finish_editor_open(self, editor, path):
+        if not editor.open_path(path):
+            editor.close()
+            return
+        editor.show()
+        editor.raise_()
+        editor.activateWindow()
 
     def showEvent(self, event):  # noqa: N802 — Qt override
         """Restore the useful library state after its native window exists."""

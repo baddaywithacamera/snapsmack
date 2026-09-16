@@ -1,0 +1,12 @@
+Luminance HDR — optional external HDR processor
+
+SNAP SLAPPER can invoke a separately installed copy of Luminance HDR through
+its command-line interface. Luminance HDR is not included with SNAP SLAPPER.
+
+Project: https://github.com/LuminanceHDR/LuminanceHDR
+Licence: GNU General Public License 2.0 or later (GPL-2.0+)
+
+Installing and using Luminance HDR is the user's choice. SNAP SLAPPER exchanges
+files and command-line arguments with the independent executable and contains
+no Luminance HDR source code or binaries.
+

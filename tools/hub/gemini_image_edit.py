@@ -2,12 +2,59 @@
 
 import base64
 import io
+import json
 
 import requests
 from PIL import Image, ImageChops, ImageFilter
 
 
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+MAX_RESPONSE_BYTES = 64 * 1024 * 1024
+MAX_INLINE_IMAGE_BYTES = 32 * 1024 * 1024
+MAX_GENERATED_PIXELS = 16_000_000
+
+
+def _response_json(response):
+    """Read a response through a hard body ceiling before JSON parsing."""
+    headers = getattr(response, "headers", {}) or {}
+    declared = headers.get("Content-Length") or headers.get("content-length")
+    if declared:
+        try:
+            if int(declared) > MAX_RESPONSE_BYTES:
+                raise RuntimeError("Gemini returned an image response that is too large.")
+        except ValueError:
+            raise RuntimeError("Gemini returned an invalid response length.")
+    if not hasattr(response, "iter_content"):
+        return response.json()
+    body = bytearray()
+    for chunk in response.iter_content(64 * 1024):
+        if not chunk:
+            continue
+        body.extend(chunk)
+        if len(body) > MAX_RESPONSE_BYTES:
+            raise RuntimeError("Gemini returned an image response that is too large.")
+    return json.loads(body.decode("utf-8"))
+
+
+def _generated_image(encoded, mime_type):
+    """Decode only a bounded raster result with dimensions suitable for a patch."""
+    if mime_type not in {"image/jpeg", "image/png", "image/webp"}:
+        raise RuntimeError("Gemini returned an unsupported image format.")
+    if not isinstance(encoded, str) or len(encoded) > ((MAX_INLINE_IMAGE_BYTES + 2) // 3) * 4:
+        raise RuntimeError("Gemini returned an image that is too large.")
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except (ValueError, TypeError) as error:
+        raise RuntimeError("Gemini returned invalid image data.") from error
+    if len(raw) > MAX_INLINE_IMAGE_BYTES:
+        raise RuntimeError("Gemini returned an image that is too large.")
+    result = Image.open(io.BytesIO(raw))
+    if result.format not in {"JPEG", "PNG", "WEBP"}:
+        raise RuntimeError("Gemini returned an unsupported image format.")
+    if result.width <= 0 or result.height <= 0 or result.width * result.height > MAX_GENERATED_PIXELS:
+        raise RuntimeError("Gemini returned unsafe image dimensions.")
+    result.load()
+    return result
 
 
 def blend_mask(mask, strength=1.0):
@@ -112,10 +159,10 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
     }
     response = requests.post(
         ENDPOINT.format(model=model), params={"key": api_key}, json=payload,
-        timeout=timeout)
+        timeout=timeout, stream=True)
     try:
-        data = response.json()
-    except ValueError as error:
+        data = _response_json(response)
+    except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise RuntimeError(f"Gemini returned HTTP {response.status_code}, not a usable response.") from error
     if not response.ok:
         detail = ((data.get("error") or {}).get("message") or f"HTTP {response.status_code}")
@@ -129,8 +176,7 @@ def heal(image, mask, prompt, api_key, model="gemini-3.1-flash-image", timeout=3
         for part in (candidate.get("content") or {}).get("parts", []):
             blob = part.get("inlineData") or part.get("inline_data")
             if blob and blob.get("data"):
-                result = Image.open(io.BytesIO(base64.b64decode(blob["data"])))
-                result.load()
+                result = _generated_image(blob["data"], blob.get("mimeType") or blob.get("mime_type"))
                 result = result.convert("RGB").resize(work_image.size, Image.Resampling.LANCZOS)
                 repaired = image.copy()
                 repaired.paste(result.resize((box[2] - box[0], box[3] - box[1]),

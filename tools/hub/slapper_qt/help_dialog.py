@@ -25,12 +25,27 @@ TOPICS = [
      "rotating, applying LEWKS or textures, and exporting all create new results "
      "in memory or new files. Export preserves EXIF, ICC profile, and existing "
      "copyright; you choose where the new file goes."),
+    ("RAW photographs",
+     "Opening a recognized RAW file sends the untouched camera original to your "
+     "separately installed RawTherapee. SNAP SLAPPER passes its supported Light and "
+     "Colour slider settings through a saved processing profile, receives a 16-bit "
+     "TIFF master, and performs the rest of the edit in a float32 workspace. The "
+     "title and status line identify RAW work. The 900-pixel screen preview is the "
+     "only 8-bit copy; 16-bit PNG and TIFF exports come from the float32 composite. "
+     "Saved .slapper projects retain the RAW settings and reference the untouched "
+     "original rather than embedding or modifying it."),
     ("Adjustments",
      "The right rail holds Light, Colour, Presence, Effects, Levels, Geometry, "
      "Retouch, and Black & White. Drag a slider to change the photo live; "
      "double-click a slider to reset just that control; use Reset to clear them "
      "all. A live Luma/RGB histogram sits at the top, and Before/After shows the "
      "untouched original."),
+    ("SMACK IT UP",
+     "SMACK IT UP is SNAP SLAPPER's one-click whole-photo improvement in Normal "
+     "and Advanced modes. It analyzes the photograph, corrects overall tone and "
+     "colour, and leaves the resulting sliders fully editable. Use it as a fast "
+     "starting point, then tweak anything you dislike. Ctrl+U runs it. Auto Exposure "
+     "inside LIGHT is deliberately separate and changes exposure only."),
     ("White balance",
      "Open COLOUR and click Pick Neutral Colour, then click a grey card or a "
      "neutral grey/white object in the photograph. SNAP SLAPPER samples a small "
@@ -88,17 +103,43 @@ TOPICS = [
      "a Radial mask, a linear Gradient, a paint Brush, or Colour Range. Colour "
      "Range has an eyedropper: click it, then click the photograph to seed the "
      "range before refining hue, saturation, luminance and softness. The shared "
+     "Gradient tool uses a fine precision cursor and draws a start-to-end guide; "
+     "the hollow handle is the black/start side and the filled handle is the "
+     "white/end side. The guide remains visible while the Gradient tool is active. "
      "brush palette includes Soft/Medium/Hard presets, size, hardness, opacity "
      "and flow. Bucket: Hide all fills the mask black; Reveal all fills it white. "
      "The layer row shows MASK, and Use layer mask lets you compare the layer "
-     "with its mask temporarily disabled. White reveals the layer; black hides it."),
+     "with its mask temporarily disabled. White reveals the layer; black hides it.\n\n"
+     "REFINE SELECTION appears in the selected layer's controls after a mask exists. "
+     "Grow / shrink expands positive values and contracts negative values; Smooth "
+     "rounds small irregularities; Feather softens the boundary. Save selection gives "
+     "the finished mask a project-local name, and Load selection applies any named "
+     "selection to the current layer. Every saved selection is stored in the .slapper "
+     "project."),
+    ("Clone Stamp and Patch",
+     "Choose IMPROVE, then Clone Stamp or Patch. Adjust Spot size first. Click once on "
+     "a clean source area, then click the damaged destination; repeat that source-and-"
+     "destination pair for each repair. Clone Stamp copies source pixels with a soft "
+     "edge. Patch copies the source texture while gently matching it to the destination's "
+     "colour and brightness. These repairs run in the float32 compositor, are recorded "
+     "in Undo/Redo and projects, and never alter the original. Spot Heal remains the "
+     "quick choice when you do not need to choose the source yourself."),
+    ("Free Transform and Warp",
+     "Select an Image or Text layer, then click Free Transform / Warp in the layer "
+     "controls. Position X/Y moves its centre; Scale X/Y resizes each axis; Rotation "
+     "turns it; Flip horizontal/vertical mirrors it. Corner warp moves the Top left, "
+     "Top right, Bottom right, and Bottom left independently. Each X/Y value is a "
+     "percentage of the layer's own size: positive X moves right, positive Y moves "
+     "down. Choose OK to keep the complete transform as one undoable edit, Cancel to "
+     "restore the previous placement, or Reset transform and warp to return to centred, "
+     "unwarped defaults. The operation remains live and float32 through export."),
     ("LEWKS",
      "The LEWKS button (Ctrl+K) opens a gallery of built-in looks, each previewed "
      "on your own photograph at an adjustable Strength. Applying a LEWK adds it as "
      "a non-destructive layer on top of your edits — it never flattens the work "
      "you've already done; lower the layer's opacity later to ease it back.\n\n"
      "Looks are grouped: Clean + Corrective, Landscape + Weather, Night + Neon, "
-     "Film + Print, Black + White, Portrait, and Experimental. Every LEWK is a "
+     "Film, Black + White, Portrait, and Experimental. Every LEWK is a "
      "glass-box recipe built from the same controls you use by hand — tone curves, "
      "colour mix, split tone, photo filter, glow, grain — not a baked colour "
      "table. Select a LEWK and choose TEACH ME to see its real instructions in "
@@ -144,9 +185,11 @@ TOPICS = [
      "corner to fan or narrow "
      "the image while straight lines remain straight. Auto Crop removes empty "
      "edges; Transparent Edges preserves the full canvas for PNG, TIFF, or PSD. "
-     "Perspective is saved in projects and recipes. RETOUCH "
-     "has Heal and Red-Eye: turn one on and click blemishes; adjust Spot size or "
-     "Clear all. AI Heal opens a larger brush view: paint red over a defect and "
+     "Perspective is saved in projects and recipes. IMPROVE "
+     "has Heal and Red-Eye for one-click repairs, plus Clone Stamp and Patch for "
+     "source-sampled repairs: turn on a tool, adjust Spot size, and click the photo. "
+     "Clear all retouch removes those local repairs. AI Heal opens a larger brush "
+     "view: paint red over a defect and "
      "Gemini rebuilds matching content using the surrounding photograph. Before "
      "the paid request, SNAP SLAPPER asks permission to send a working-resolution "
      "photo and mask to Google. The repair returns as a masked layer; pixels "
@@ -166,7 +209,7 @@ TOPICS = [
     ("Keyboard",
      "Standard: Ctrl+O open · Ctrl+S export · Ctrl+Z undo · Ctrl+Y redo · "
      "F1 this help.\n\n"
-     "Tools & view: Ctrl+U auto-enhance · Ctrl+0 fit to window · Ctrl+1 100% "
+     "Tools & view: Ctrl+U SMACK IT UP · Ctrl+0 fit to window · Ctrl+1 100% "
      "(actual pixels) · Ctrl++ zoom in · Ctrl+- zoom out · "
      "Ctrl+\\ before/after · Ctrl+Shift+C crop · "
      "Ctrl+Shift+H heal · Ctrl+Shift+E red-eye · Ctrl+Shift+F filmstrip · "

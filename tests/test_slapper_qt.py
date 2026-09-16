@@ -54,6 +54,7 @@ def _image(name, size=(400, 300), colour=(90, 120, 150)):
 def _editor(path):
     win = EditorWindow()
     assert win.open_path(path) is True
+    assert _wait_for(lambda: win.doc is not None and win._last_rendered is not None)
     # Tests invoke recovery explicitly. Leaving every prior test window's timer
     # running causes unrelated event-loop checks to autosave dozens of projects.
     win._recovery_timer.stop()
@@ -84,6 +85,7 @@ def test_restricted_library_remains_browser_and_propagates_gate():
     library._open_editor_path(path)
     assert len(library._editors) == 1
     assert library._editors[0]._restricted is True
+    assert _wait_for(lambda: library._editors[0].doc is not None)
     library._editors[0].close()
     library.close()
 
@@ -110,13 +112,16 @@ def test_bad_file_does_not_crash():
     # a corrupt/non-image file must fail cleanly, not crash the app
     from PySide6.QtWidgets import QMessageBox
     original = QMessageBox.critical
-    QMessageBox.critical = staticmethod(lambda *a, **k: None)
+    errors = []
+    QMessageBox.critical = staticmethod(lambda *a, **k: errors.append(a))
     try:
         bad = os.path.join(TMP, "not_an_image.jpg")
         with open(bad, "w") as handle:
             handle.write("this is not an image")
         win = EditorWindow()
-        assert win.open_path(bad) is False   # returns cleanly, no exception
+        assert win.open_path(bad) is True    # accepted without blocking the UI
+        assert _wait_for(lambda: bool(errors))
+        assert win.doc is None
     finally:
         QMessageBox.critical = original
 
@@ -138,7 +143,7 @@ def test_workspace_discloses_source_depth_and_profile_assumption():
     assert info["profile_source"] == "assumed"
     assert workspace_label(info) == (
         "RGB · 8-bit/channel · Unprofiled (assumed sRGB) · "
-        "Working: 8-bit sRGB (legacy engine)")
+        "Working: float32 compositor")
     win = _editor(path)
     assert win.colour_status.text() == workspace_label(info)
 
@@ -243,6 +248,20 @@ def test_layer_can_be_reselected_after_clicking_base():
     assert layer["id"] in win.layers_panel._row_buttons
     win.layers_panel._row_buttons[layer["id"]].click()
     assert win.active_target == layer["id"]
+
+
+def test_layer_selection_does_not_rebuild_or_decode_masks(monkeypatch):
+    win = _editor(_image("instant-layer-select.jpg", (400, 300)))
+    first = win.doc.add_adjustment_layer("First")
+    second = win.doc.add_adjustment_layer("Second")
+    first["mask"] = editor_engine._mask_to_text(Image.new("L", (400, 300), 255))
+    second["mask"] = editor_engine._mask_to_text(Image.new("L", (400, 300), 128))
+    win.set_target(first["id"])
+    win.layers_panel.rebuild()  # thumbnails are validated/decoded here once
+    monkeypatch.setattr(editor_engine, "_mask_from_text",
+                        lambda *_args: pytest.fail("selection decoded a mask"))
+    win.layers_panel._row_buttons[second["id"]].click()
+    assert win.active_target == second["id"]
 
 
 def test_layers_panel_exposes_found_textures_button():
@@ -374,11 +393,12 @@ def test_auto_exposure_preserves_highlight_headroom():
 
 def test_normal_advanced_mode():
     win = _editor(_image("mode.jpg", (300, 200)))
+    win.apply_mode("advanced")
     # Both modes are explicitly named in the toolbar; no secret unchecked state.
     assert [win.mode_combo.itemText(i) for i in range(win.mode_combo.count())] == [
         "Normal", "Advanced"]
-    win.mode_combo.setCurrentIndex(win.mode_combo.findData("normal"))
-    assert win.mode == "normal" and not win.act_advanced.isChecked()
+    win.apply_mode("normal")
+    assert win.mode == "normal"
     # advanced-only sections/rows hidden, curated ones shown
     assert win._sections["LEVELS"].isHidden()
     assert win._sections["PRESENCE"].isHidden()
@@ -406,8 +426,8 @@ def test_normal_advanced_mode():
     assert "Generative Fill…" in normal_retouch
     assert "Generative Expand…" in normal_retouch
     # back to advanced restores everything
-    win.mode_combo.setCurrentIndex(win.mode_combo.findData("advanced"))
-    assert win.mode == "advanced" and win.act_advanced.isChecked()
+    win.apply_mode("advanced")
+    assert win.mode == "advanced"
     assert not win._sections["LEVELS"].isHidden()
     assert not win.rows["exposure"].isHidden()
     assert win.act_textures.isVisible() is True
@@ -453,6 +473,7 @@ def test_expand_corner_cursors_follow_the_drag_direction():
 
 def test_context_sensitive_toolbars():
     win = _editor(_image("context-bars.jpg", (300, 200)))
+    win.apply_mode("advanced")
 
     assert [action.text() for action in win._context_selectors.values()] == [
         "EDIT", "IMPROVE", "LOOKS", "OUTPUT", "VIEW"]
@@ -461,24 +482,25 @@ def test_context_sensitive_toolbars():
         return [action.text() for action in win.context_toolbar.actions()
                 if not action.isSeparator()]
 
-    assert visible_tools() == ["Crop", "Auto", "Reset All", "Before/After"]
+    assert visible_tools() == ["Crop", "Reset All", "Before/After"]
     win._context_selectors["retouch"].trigger()
-    assert visible_tools() == ["Spot Heal", "Red-Eye", "AI Heal…",
+    assert visible_tools() == ["Spot Heal", "Red-Eye", "Clone Stamp", "Patch", "AI Heal…",
                                "Generative Fill…", "Generative Expand…",
                                "Mask Brush", "Mask Gradient", "Colour Range"]
     win._context_selectors["looks"].trigger()
     assert visible_tools() == [
         "LEWKS…", "LEWK AGAIN…", "Filters…", "Textures…", "Save Recipe", "Apply Recipe"]
     win._context_selectors["output"].trigger()
-    assert visible_tools() == ["Save Project", "Export…", "Blog Copy…"]
+    assert visible_tools() == ["Save Project", "Export…", "Blog Copy…", "HDR…",
+                               "External Edit…"]
     win._context_selectors["view"].trigger()
     assert visible_tools() == [
         "Fit", "100%", "−", "+", "Filmstrip", "Preferences", "Help"]
 
     # Normal mode keeps the chosen workspace but removes Advanced-only tools.
     win._context_selectors["looks"].trigger()
-    win.mode_combo.setCurrentIndex(win.mode_combo.findData("normal"))
-    assert visible_tools() == ["LEWKS…", "LEWK AGAIN…"]
+    win.apply_mode("normal")
+    assert visible_tools() == ["SMACK IT UP", "LEWKS…", "LEWK AGAIN…"]
 
 
 def test_autosave_recovery():
@@ -807,6 +829,48 @@ def test_raw_handoff_uses_safe_process_arguments():
     assert kwargs["shell"] is False
 
 
+def test_raw_open_develops_in_rawtherapee_and_enters_editor():
+    from unittest.mock import patch
+    raw = os.path.join(TMP, "editable.nef")
+    with open(raw, "wb") as handle:
+        handle.write(b"untouched raw")
+    developed = _image("editable-developed.tif", (80, 60), (70, 90, 110))
+    win = EditorWindow()
+    artifacts = {"original": os.path.abspath(raw),
+                 "profile": os.path.join(TMP, "editable.pp3"),
+                 "master": os.path.abspath(developed),
+                 "producer": "RawTherapee-test"}
+    with open(artifacts["profile"], "w", encoding="utf-8") as handle:
+        handle.write("[Version]\n")
+    with patch("raw_preview.development_artifacts", return_value=artifacts) as develop_artifacts:
+        assert win.open_path(raw)
+        assert _wait_for(lambda: win.doc is not None and win._last_rendered is not None)
+    assert develop_artifacts.call_args_list[0].args == (os.path.abspath(raw),)
+    assert any(call.args[0] == os.path.abspath(raw) and len(call.args) == 2
+               for call in develop_artifacts.call_args_list)
+    assert win.doc.source_path == os.path.abspath(developed)
+    assert win.doc.recorded_source_path == os.path.abspath(raw)
+    assert win.doc.browse_source_path == os.path.abspath(raw)
+    assert "RAW via RawTherapee" in win.target_label.text()
+    assert "[RAW · RawTherapee]" in win.windowTitle()
+    assert "RAW: 16-bit RawTherapee development" in win.colour_status.text()
+    assert "Working: float32 compositor" in win.colour_status.text()
+
+
+def test_neutral_picker_changes_white_balance_and_records_edit():
+    path = _image("neutral-picker.jpg", (240, 160), (150, 120, 90))
+    win = _editor(path)
+    before = (win.doc.adjustments["temperature"], win.doc.adjustments["tint"])
+    history_count = len(win.doc.history)
+    win.neutral_picker.setChecked(True)
+    win._apply_neutral_sample(.5, .5)
+    after = (win.doc.adjustments["temperature"], win.doc.adjustments["tint"])
+    assert after != before
+    assert len(win.doc.history) == history_count + 1
+    assert win.doc.history[-1]["label"] == "Neutral white balance"
+    assert not win.neutral_picker.isChecked()
+
+
 def test_local_blog_copy_contract_is_safe_and_auditable():
     import json
     from slapper_qt import publishing_contract
@@ -1034,41 +1098,59 @@ def test_crop_and_perspective_overlays_are_mutually_exclusive():
 
 def test_preview_reuses_canvas_render_for_histogram():
     win = _editor(_image("single-preview-render.jpg", (400, 300)))
-    original_render = win.doc.render
-    calls = []
-
-    def counted_render(*args, **kwargs):
-        calls.append((args, kwargs))
-        return original_render(*args, **kwargs)
-
-    win.doc.render = counted_render
+    before = win._preview_generation
     win._render_preview()
-
-    assert len(calls) == 1
+    assert win._preview_generation == before + 1
+    assert _wait_for(lambda: not win._preview_jobs)
     assert win.histogram._data is not None
 
 
 def test_slider_drag_uses_light_proxy_then_resolves_crisp_preview():
     win = _editor(_image("interactive-tones.jpg", (2400, 1600)))
-    requested = []
-    original_render = win.doc.render
-
-    def counted_render(max_size=None):
-        requested.append(max_size)
-        return original_render(max_size=max_size)
-
-    win.doc.render = counted_render
     win._on_adjust("highlights", -50)
     win._render_timer.stop()
-    win._render_preview()
-    drag_target = requested[-1]
+    win._dispatch_render()
+    interactive_jobs = [job for job in win._preview_jobs
+                        if hasattr(job, "max_size")]
+    assert interactive_jobs
+    drag_target = interactive_jobs[-1].max_size
     assert win._interactive_render is True
     assert max(drag_target) <= 1100
 
+    quality = []
+    win._dispatch_quality_render = lambda *args, **kwargs: quality.append(True)
     win._on_commit("highlights")
-    final_target = requested[-1]
     assert win._interactive_render is False
-    assert max(final_target) > max(drag_target)
+    assert quality == [True]
+
+
+def test_vignette_controls_allow_extended_size_and_feather():
+    win = _editor(_image("extended-vignette.jpg", (640, 480)))
+    assert win.rows["vignette_size"].slider.maximum() == 200
+    assert win.rows["vignette_feather"].slider.maximum() == 200
+
+
+def test_smack_it_up_stays_visible_in_normal_improve_context():
+    win = _editor(_image("normal-smack.jpg", (640, 480)))
+    win.apply_mode("normal")
+    win._show_toolbar_context("retouch")
+    assert win.act_auto in win.context_toolbar.actions()
+
+
+def test_authoritative_redraw_rejects_preview_started_before_layer_delete():
+    win = _editor(_image("stale-layer-preview.jpg", (640, 480)))
+    layer = win.doc.add_adjustment_layer("Vignette")
+    layer["adjustments"]["vignette"] = -80
+    stale_generation = win._preview_generation
+    win.doc.layers.remove(layer)
+    win._render_preview()
+    accepted = []
+    win._show_rendered = lambda *_args, **_kwargs: accepted.append(True)
+    dummy_job = object()
+    win._preview_jobs.add(dummy_job)
+    win._accept_quality_proxy(
+        stale_generation, Image.new("RGB", (8, 8), "black"), dummy_job)
+    assert accepted == []
 
 
 def test_highlight_midtone_shadow_controls_are_tonally_isolated():
@@ -1167,6 +1249,7 @@ def test_perspective_geometry_and_project_round_trip():
 
     opened = EditorWindow()
     assert opened.open_project_path(project)
+    assert _wait_for(lambda: opened.doc is not None and opened._last_rendered is not None)
     assert opened.doc.geometry["perspective_vertical"] == 45.0
 
     win = _editor(path)
@@ -1247,7 +1330,9 @@ def test_library_scan_and_open():
     for _ in range(20):
         APP.processEvents(); time.sleep(0.01)
     lib._open_item(lib.list.item(0))
-    assert lib._editors and lib._editors[0].doc is not None
+    assert lib._editors
+    assert _wait_for(lambda: lib._editors[0].doc is not None and
+                     lib._editors[0]._last_rendered is not None)
     opened = len(lib._editors)
     lib._open_item(lib.list.item(0))
     assert len(lib._editors) == opened, "the same activation must not open a duplicate editor"
@@ -1277,7 +1362,7 @@ def test_zoom_actual_shows_native_pixels():
     APP.processEvents()
     fit_w = win.view._item.pixmap().width()
     win.zoom_actual()
-    APP.processEvents()
+    assert _wait_for(lambda: win.view._item.pixmap().width() == 2400)
     actual_w = win.view._item.pixmap().width()
     assert actual_w == 2400, f"100% should be native width 2400, got {actual_w}"
     assert fit_w < 2400, f"Fit should be a smaller proxy, got {fit_w}"
@@ -1287,6 +1372,7 @@ def test_zoom_actual_shows_native_pixels():
     # opening a fresh photo resets to fitted, never stuck at 100%
     win.zoom_actual()
     win.open_path(big)
+    assert _wait_for(lambda: win.doc is not None and not win._zoom_actual)
     assert win._zoom_actual is False
 
 
@@ -1326,11 +1412,11 @@ def test_fit_preview_refreshes_after_window_layout():
     win = EditorWindow()
     win.resize(480, 320)
     assert win.open_path(path)
+    assert _wait_for(lambda: win.doc is not None and win._last_rendered is not None)
     first_width = win.view._item.pixmap().width()
     win.resize(1600, 1000)
     win.show()
-    QTest.qWait(250)
-    APP.processEvents()
+    assert _wait_for(lambda: win.view._item.pixmap().width() > first_width)
     refreshed_width = win.view._item.pixmap().width()
     assert refreshed_width > first_width
     assert not win._zoom_actual and win.view._fitting
@@ -1399,7 +1485,8 @@ def test_filmstrip_lists_folder_and_opens():
         APP.processEvents(); time.sleep(0.01)
     # activating the other frame opens it (clean doc → no discard dialog)
     win.filmstrip._activate(win.filmstrip._items[os.path.abspath(second)])
-    APP.processEvents()
+    assert _wait_for(lambda: win.doc is not None and
+                     os.path.abspath(win.doc.source_path) == os.path.abspath(second))
     assert os.path.abspath(win.doc.source_path) == os.path.abspath(second)
 
 
@@ -1506,7 +1593,7 @@ def test_before_after_divider():
     img = _image("compare.jpg", size=(600, 400))
     win = _editor(img)
     win.act_compare.setChecked(True)     # enter Before/After
-    APP.processEvents()
+    assert _wait_for(lambda: win.view._compare is True)
     assert win.view._compare is True
     width = win.view._item.pixmap().width()
     assert width > 0

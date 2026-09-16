@@ -48,6 +48,33 @@ def test_heal_sends_photo_marked_target_mask_and_extracts_image(monkeypatch):
     assert "marks the repair target in RED" in parts[0]["text"]
     assert "secret" not in str(seen["json"])
     assert seen["params"] == {"key": "secret"}
+    assert seen["stream"] is True
+
+
+def test_response_body_ceiling_is_enforced_while_streaming():
+    class Response:
+        headers = {}
+
+        def iter_content(self, _size):
+            yield b"x" * (gemini_image_edit.MAX_RESPONSE_BYTES + 1)
+
+    try:
+        gemini_image_edit._response_json(Response())
+    except RuntimeError as error:
+        assert "too large" in str(error)
+    else:
+        raise AssertionError("oversized Gemini response was accepted")
+
+
+def test_generated_image_rejects_unsafe_dimensions(monkeypatch):
+    encoded = _encoded_png("blue")
+    monkeypatch.setattr(gemini_image_edit, "MAX_GENERATED_PIXELS", 10)
+    try:
+        gemini_image_edit._generated_image(encoded, "image/png")
+    except RuntimeError as error:
+        assert "unsafe image dimensions" in str(error)
+    else:
+        raise AssertionError("oversized generated image was accepted")
 
 
 def test_marked_selection_only_tints_the_masked_area():
@@ -92,7 +119,7 @@ def test_editor_wires_ai_heal_as_a_masked_layer():
     assert 'layer["ai_heal_source_mask"] = editor_engine._mask_to_text(mask)' in source
     assert '"kind": "generative-fill" if is_fill else "generative-repair"' in source
     assert '"retouch": (self.act_heal, self.act_redeye, self.act_ai_heal,' in source
-    assert 'f"{name}{dirty} — {BUILD_VERSION}"' in source
+    assert 'self.setWindowTitle(f"{name}{raw}{dirty}")' in source
     assert 'QTimer.singleShot(0, self._scroll_rail_to_layers)' in source
     panel = (HUB / "slapper_qt" / "layers_panel.py").read_text(encoding="utf-8")
     assert 'self.feather.setRange(0, 200)' in panel
