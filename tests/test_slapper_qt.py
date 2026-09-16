@@ -1986,22 +1986,15 @@ def test_blur_filter_layers():
         assert label in buttons
 
 
-def test_svg_watermark_layer_renders_at_output_size():
-    from PIL import ImageChops
+def test_svg_watermark_is_refused_before_qt_parses_it():
     base = _image("svg-base.png", (320, 200), (20, 30, 40))
     svg = os.path.join(TMP, "watermark.svg")
     with open(svg, "w", encoding="utf-8") as handle:
         handle.write('''<svg xmlns="http://www.w3.org/2000/svg" width="240" height="80" viewBox="0 0 240 80">
         <rect width="240" height="80" fill="none"/><text x="12" y="55" font-size="42"
         font-family="sans-serif" fill="white" fill-opacity="0.75">SNAPSMACK</text></svg>''')
-    doc = editor_engine.EditorDocument(base)
-    original = doc.render()
-    layer = doc.add_image_layer(svg, "Vector watermark")
-    layer["fit"] = "contain"
-    rendered = doc.render()
-    assert rendered.size == original.size
-    assert ImageChops.difference(original.convert("RGB"), rendered.convert("RGB")).getbbox()
-    assert editor_engine._open_layer_image(svg, (640, 240)).size == (640, 240)
+    with pytest.raises(ValueError, match="disabled for security"):
+        editor_engine._open_layer_image(svg, (640, 240))
 
 
 def test_keyboard_shortcuts_and_help_topics():

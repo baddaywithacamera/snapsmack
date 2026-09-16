@@ -2611,9 +2611,9 @@ class EditorWindow(QMainWindow):
         if generation != self._open_generation:
             return
         answer = QMessageBox.question(
-            self, "Confirm external photograph",
-            "This project references a photograph outside the project file:\n\n"
-            f"{source}\n\nOpen and process this photograph?",
+            self, "Confirm external files",
+            "This project references files outside the project archive:\n\n"
+            f"{source}\n\nOpen and process these files?",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if answer == QMessageBox.Yes:
             self._start_open_job(project, "project", trust_external=True)

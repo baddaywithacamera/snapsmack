@@ -4,7 +4,7 @@ import threading
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from slapper_qt.smackthemup_dialog import email_share_url
+from slapper_qt.smackthemup_dialog import email_share_url, safe_public_url
 
 
 def test_email_uses_user_mail_service_without_recipient_or_tracking():
@@ -13,6 +13,13 @@ def test_email_uses_user_mail_service_without_recipient_or_tracking():
     assert "to=" not in value.lower()
     assert "utm_" not in value.lower()
     assert "photos.example" in value
+
+
+def test_server_result_link_allows_only_public_web_schemes():
+    assert safe_public_url("https://photos.example/p/1")
+    assert safe_public_url("http://photos.example/p/1")
+    assert safe_public_url("file:///C:/Windows/System32/calc.exe") == ""
+    assert safe_public_url("custom-handler:payload") == ""
 
 
 def test_export_worker_runs_render_and_write_off_ui_thread(tmp_path, monkeypatch):
