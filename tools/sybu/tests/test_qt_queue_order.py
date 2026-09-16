@@ -68,4 +68,19 @@ def test_qt_drop_reorders_through_engine(monkeypatch):
     w.table.moved.emit(2, 0)
     assert [x.file for x in e.entries] == ["img2.jpg", "img0.jpg", "img1.jpg"]
     assert filled["count"] == 3
+
+
+def test_post_button_follows_the_blogs_mode():
+    from PySide6.QtWidgets import QApplication
+    import sybu_qt
+    app = QApplication.instance() or QApplication([])
+    w = sybu_qt.Window()
+    # unknown mode → the explicit pair, no single POST
+    assert w.post_solo.isVisibleTo(w) and w.post_gram.isVisibleTo(w) and not w.post_btn.isVisibleTo(w)
+    w._apply_site_mode("carousel")
+    assert w.post_btn.isVisibleTo(w) and w.post_btn.text() == "POST GRAM" and w._site_grams is True
+    assert not w.post_solo.isVisibleTo(w) and not w.qpost_gram.isVisibleTo(w)
+    assert w.qpost_btn.text() == "POST GRAM"
+    w._apply_site_mode("photoblog")
+    assert w.post_btn.text() == "POST SOLO" and w._site_grams is False
 # ===== SNAPSMACK EOF =====
