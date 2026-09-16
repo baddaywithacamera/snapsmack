@@ -714,6 +714,19 @@ class Engine:
             'site_mode': site_mode,
         }
 
+    @staticmethod
+    def completed_dir_for(image_folder: str) -> str:
+        """<site>/upload -> <site>/completed (created); any other folder -> '' (untouched)."""
+        folder = os.path.normpath((image_folder or '').strip())
+        if not folder or os.path.basename(folder).lower() != 'upload':
+            return ''
+        completed = os.path.join(os.path.dirname(folder), 'completed')
+        try:
+            os.makedirs(completed, exist_ok=True)
+        except OSError:
+            return ''
+        return completed
+
     def post_start(self, as_grams: bool, def_cat: str, def_album: str, def_orient: str,
                    def_color: str, copyright_text: str, drive_folder_id: str,
                    ack_no_drive: bool = False, ack_unknown_mode: bool = False,
@@ -741,6 +754,10 @@ class Engine:
         sel_entries = [e for _, e in sel]
         image_folder = self.image_folder
         self.ensure_recovery(image_folder)
+        # Managed SNAP HQ workflow: a file posted from `...\\upload` moves to its sibling
+        # `...\\completed` (poster._archive_success). The Tk window computed this; the Qt
+        # rebuild never passed it, so posted files sat in upload (Sean, 2026-09-15).
+        completed_dir = self.completed_dir_for(image_folder)
 
         # Batch COLOUR/B&W tag → color_mode on entries lacking one.
         batch_color = {'colour': 'color', 'color': 'color', 'b&w': 'bw', 'bw': 'bw'}.get(
@@ -787,6 +804,7 @@ class Engine:
                     drive_service=self.drive_service,
                     drive_folder_id=(drive_folder_id or '').strip(),
                     download_link_required=pf['drive_required'],
+                    completed_dir=completed_dir,
                     cancel_event=op.cancel)
             else:
                 results = poster_module.run_batch(
@@ -800,6 +818,7 @@ class Engine:
                     drive_folder_id=(drive_folder_id or '').strip(),
                     download_link_required=pf['drive_required'],
                     copyright_text=(copyright_text or '').strip(),
+                    completed_dir=completed_dir,
                     cancel_event=op.cancel)
             op.active_conn = None
             cancelled = op.cancel.is_set()
