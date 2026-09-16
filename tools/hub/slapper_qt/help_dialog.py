@@ -171,8 +171,8 @@ TOPICS = [
      "blend mode, mask the effect to part of the photograph, save it in a "
      ".slapper project or recipe, and use it in batch processing."),
     ("Watermarks and transparency",
-     "Add Image Layer accepts transparent PNG files and SVG watermarks. PNG alpha "
-     "is preserved. SVG remains a referenced vector file and is rendered sharply "
+     "Add Image Layer accepts raster images, including transparent PNG watermarks. PNG alpha "
+     "is preserved. SVG input is disabled for security; export vector artwork to PNG "
      "at the photograph's preview or export size, so a small logo does not become "
      "a permanently blurry bitmap. Use the image layer's transform, opacity, blend "
      "mode, and mask controls to place it. PNG, TIFF, and PSD can preserve transparent "

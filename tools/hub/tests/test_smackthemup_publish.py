@@ -13,11 +13,12 @@ from slapper_qt import smackthemup_publish as publish
 
 
 class Reply:
-    def __init__(self, data):
+    def __init__(self, data, headers=None):
         self.data = json.dumps(data).encode()
+        self.headers = headers or {}
     def __enter__(self): return self
     def __exit__(self, *_args): return False
-    def read(self): return self.data
+    def read(self, size=-1): return self.data if size < 0 else self.data[:size]
 
 
 def test_capabilities_requires_correct_mode(monkeypatch):
@@ -72,6 +73,30 @@ def test_cross_host_redirect_is_refused_before_key_can_follow():
         assert "key was not sent" in str(error)
     else:
         raise AssertionError("cross-host publishing redirect was accepted")
+
+
+def test_same_host_different_port_redirect_is_refused():
+    from urllib.request import Request
+    handler = publish._SameHostRedirect()
+    request = Request("https://photos.example/api.php?route=smackthemup/upload")
+    try:
+        handler.redirect_request(request, None, 302, "Found", {},
+                                 "https://photos.example:8443/collect")
+    except publish.PublishError:
+        pass
+    else:
+        raise AssertionError("cross-port publishing redirect was accepted")
+
+
+def test_oversized_site_reply_is_refused(monkeypatch):
+    monkeypatch.setattr(publish, "_open", lambda *_a, **_k: Reply(
+        {"ok": True}, {"Content-Length": str(publish.MAX_RESPONSE_BYTES + 1)}))
+    try:
+        publish.capabilities("https://photos.example", "e" * 64)
+    except publish.PublishError as error:
+        assert "too large" in str(error)
+    else:
+        raise AssertionError("oversized publishing response was accepted")
 
 
 # ===== SNAPSMACK EOF =====
