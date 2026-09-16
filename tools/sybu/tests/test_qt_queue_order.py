@@ -83,4 +83,24 @@ def test_post_button_follows_the_blogs_mode():
     assert w.qpost_btn.text() == "POST GRAM"
     w._apply_site_mode("photoblog")
     assert w.post_btn.text() == "POST SOLO" and w._site_grams is False
+
+
+def test_progress_strip_visible_from_every_page_and_posted_wording():
+    from PySide6.QtWidgets import QApplication
+    import sybu_qt
+    app = QApplication.instance() or QApplication([])
+    w = sybu_qt.Window()
+    # the strip is a child of the main column, not of the Post page
+    assert w.progress.parent() is not None and w.progress.parent() is not w.pages.widget(0)
+    assert w.stop_btn.text() == "STOP" and not w.stop_btn.isEnabled()
+    # status wording: 'ok' from the engine means the image went up
+    data = {"rows": [{"selected": True, "status": "ok", "file": "a.jpg", "message": ""},
+                     {"selected": True, "status": "posting", "file": "b.jpg", "message": ""},
+                     {"selected": True, "status": "error", "file": "c.jpg", "message": "401"}],
+            "count": 3, "selected": 3, "failed": 1}
+    w.engine.thumb = lambda i, n: ""
+    w._fill_queue(data)
+    assert w.table.item(0, 11).text() == "POSTED"
+    assert w.table.item(1, 11).text() == "posting…"
+    assert w.table.item(2, 11).text() == "ERROR: 401"
 # ===== SNAPSMACK EOF =====
