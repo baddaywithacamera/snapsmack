@@ -116,7 +116,7 @@ class Window(QMainWindow):
         self.setWindowTitle(f"SMACK YOUR BATCH UP — {BUILD_VERSION}")
         icon = os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(__file__)), "assets", "sybu-taskbar.ico")
         if os.path.isfile(icon): self.setWindowIcon(QIcon(icon))
-        self.resize(1420, 880); self.setMinimumSize(1040, 700); self._build(); self._load()
+        self.resize(1420, 880); self.setMinimumSize(1040, 700); self._build(); self._apply_site_mode(''); self._load()
         self.timer = QTimer(self); self.timer.timeout.connect(self._poll); self.timer.start(250)
 
     def _build(self):
@@ -147,13 +147,13 @@ class Window(QMainWindow):
         ai,al=card("2 · Enrich","Generate titles, tags, captions and alt text for selected images. Existing work is preserved.")
         r=QHBoxLayout(); self.prompt=QLineEdit(); self.prompt.setReadOnly(True); self.prompt.setPlaceholderText("Built-in enrichment prompt"); r.addWidget(self.prompt,1); review=QPushButton("REVIEW PROMPT…"); review.clicked.connect(self._review_prompt); r.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.clicked.connect(self._enrich); r.addWidget(enrich); al.addLayout(r); l.addWidget(ai)
         send,pl=card("3 · Publish","SOLO posts individual photographs. GRAM creates carousel posts. The site mode is checked before anything is sent.")
-        r=QHBoxLayout(); self.drive=QCheckBox("Attach Google Drive originals"); r.addWidget(self.drive); r.addStretch(1); validate=QPushButton("Validate"); validate.clicked.connect(self._validate); r.addWidget(validate); solo=QPushButton("POST SOLO"); solo.clicked.connect(lambda:self._post(False)); r.addWidget(solo); gram=QPushButton("POST GRAM"); gram.setObjectName("Primary"); gram.clicked.connect(lambda:self._post(True)); r.addWidget(gram); pl.addLayout(r)
+        r=QHBoxLayout(); self.drive=QCheckBox("Attach Google Drive originals"); r.addWidget(self.drive); r.addStretch(1); validate=QPushButton("Validate"); validate.clicked.connect(self._validate); r.addWidget(validate); self.post_btn=QPushButton("POST"); self.post_btn.setObjectName("Primary"); self.post_btn.clicked.connect(lambda:self._post(None)); r.addWidget(self.post_btn); self.post_solo=QPushButton("POST SOLO"); self.post_solo.clicked.connect(lambda:self._post(False)); r.addWidget(self.post_solo); self.post_gram=QPushButton("POST GRAM"); self.post_gram.clicked.connect(lambda:self._post(True)); r.addWidget(self.post_gram); pl.addLayout(r)
         self.progress=QProgressBar(); self.progress.setRange(0,100); pl.addWidget(self.progress); self.progress_text=label("Ready when you are.","Muted"); pl.addWidget(self.progress_text); l.addWidget(send)
         act,aa=card("Activity"); self.activity_card=act; self.log=QTextEdit(); self.log.setReadOnly(True); self.log.setMinimumHeight(72); aa.addWidget(self.log); l.addWidget(act,1); return page
 
     def _queue_page(self):
         page,l=self._page("Your posting queue","Edit the fields that matter. Selection, enrichment and posting all operate on this table.")
-        tools=QHBoxLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); up=QPushButton("▲ Move up"); up.setToolTip("Move the highlighted row up one. You can also drag a row."); up.clicked.connect(lambda:self._move_row(-1)); tools.addWidget(up); down=QPushButton("▼ Move down"); down.setToolTip("Move the highlighted row down one. You can also drag a row."); down.clicked.connect(lambda:self._move_row(1)); tools.addWidget(down); rnd=QPushButton("Randomize"); rnd.setToolTip("Shuffle the posting order."); rnd.clicked.connect(self._randomize); tools.addWidget(rnd); tools.addStretch(1); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); qsolo=QPushButton("POST SOLO"); qsolo.clicked.connect(lambda:self._post(False)); tools.addWidget(qsolo); qgram=QPushButton("POST GRAM"); qgram.clicked.connect(lambda:self._post(True)); tools.addWidget(qgram); self.queue_count=label("0 images","Muted"); tools.addWidget(self.queue_count); l.addLayout(tools)
+        tools=QHBoxLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); up=QPushButton("▲ Move up"); up.setToolTip("Move the highlighted row up one. You can also drag a row."); up.clicked.connect(lambda:self._move_row(-1)); tools.addWidget(up); down=QPushButton("▼ Move down"); down.setToolTip("Move the highlighted row down one. You can also drag a row."); down.clicked.connect(lambda:self._move_row(1)); tools.addWidget(down); rnd=QPushButton("Randomize"); rnd.setToolTip("Shuffle the posting order."); rnd.clicked.connect(self._randomize); tools.addWidget(rnd); tools.addStretch(1); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); self.qpost_btn=QPushButton("POST"); self.qpost_btn.clicked.connect(lambda:self._post(None)); tools.addWidget(self.qpost_btn); self.qpost_solo=QPushButton("POST SOLO"); self.qpost_solo.clicked.connect(lambda:self._post(False)); tools.addWidget(self.qpost_solo); self.qpost_gram=QPushButton("POST GRAM"); self.qpost_gram.clicked.connect(lambda:self._post(True)); tools.addWidget(self.qpost_gram); self.queue_count=label("0 images","Muted"); tools.addWidget(self.queue_count); l.addLayout(tools)
         self.table=QueueTable(0,12); self.table.moved.connect(self._reorder); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         # Text columns SHARE the width the window has; nothing dictates it. FILE
         # used to size to its longest filename and squeeze title/caption/alt to
@@ -204,7 +204,7 @@ class Window(QMainWindow):
             if result.get('needs_insecure_ack'):
                 if QMessageBox.warning(self,"Insecure connection",result['reason'],QMessageBox.Ok|QMessageBox.Cancel)==QMessageBox.Ok: self._async("connect",lambda:self.engine.connect(self.url.text(),self.key.text(),True,True))
                 return
-            self.status.setText("● Connected · ready to post"); self.status.setObjectName("Good"); self.status.style().unpolish(self.status); self.status.style().polish(self.status); self.cat.clear(); self.cat.addItems(result['categories']); self.cat.setEditable(True); self.album.clear(); self.album.addItems(result['albums']); self.album.setEditable(True); self._say(f"Connected to {result['base_url']} · {result['site_mode'] or 'site mode unknown'}")
+            self._apply_site_mode(result.get('site_mode','')); self.status.setText("● Connected · ready to post"); self.status.setObjectName("Good"); self.status.style().unpolish(self.status); self.status.style().polish(self.status); self.cat.clear(); self.cat.addItems(result['categories']); self.cat.setEditable(True); self.album.clear(); self.album.addItems(result['albums']); self.album.setEditable(True); self._say(f"Connected to {result['base_url']} · {result['site_mode'] or 'site mode unknown'}")
         elif name in ("scan","manifest"):
             self._fill_queue(result); self._show(1); self._say(f"Loaded {result['count']} images.")
 
@@ -319,7 +319,20 @@ class Window(QMainWindow):
             self._sync_queue(); out=self.engine.validate(self.cat.currentText(),self.album.currentText()); QMessageBox.information(self,"Queue validation","Ready to post." if out['ok'] else "\n".join(out['issues'][:20]))
         except Exception as e:self._error(str(e))
 
+    def _apply_site_mode(self,mode):
+        """The blog decides solo vs gram (photoblog → SOLO, carousel → GRAM). One POST
+        button that does the right thing; the explicit pair only when the blog's mode
+        is unknown (old build, or a mode SYBU has no posting shape for)."""
+        self._site_grams={'photoblog':False,'carousel':True}.get((mode or '').strip().lower())
+        known=self._site_grams is not None
+        text="POST GRAM" if self._site_grams else "POST SOLO"
+        for b in (self.post_btn,self.qpost_btn): b.setVisible(known); b.setText(text); b.setToolTip(f"This blog is {'GRAMOFSMACK' if self._site_grams else 'SMACKONEOUT'} — posting as {'gram' if self._site_grams else 'solo'}.")
+        for b in (self.post_solo,self.post_gram,self.qpost_solo,self.qpost_gram): b.setVisible(not known)
+
     def _post(self,grams):
+        if grams is None:
+            grams=getattr(self,'_site_grams',None)
+            if grams is None: self._error("Connect to the blog first — it decides solo or gram."); return
         try:
             self._sync_queue(); pf=self.engine.post_preflight(grams,self.drive.isChecked())
             if QMessageBox.question(self,"Confirm publish",f"Post {pf['count']} selected image(s) to {pf['dest']} as {'GRAM' if grams else 'SOLO'}?",QMessageBox.Yes|QMessageBox.No)!=QMessageBox.Yes:return
