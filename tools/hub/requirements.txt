@@ -1,5 +1,8 @@
 requests>=2.28
 pyinstaller>=6.0
 pillow>=10.0
-PySide6==6.8.3
+numpy>=2.0
+OpenImageIO>=3.0,<4
+tifffile==2026.9.9
+PySide6==6.9.3
 psd-tools==1.18.0

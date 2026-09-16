@@ -9,6 +9,8 @@ metadata-preserving export. No image math lives here — only the engine's.
 import os
 import sys
 import colorsys
+import copy
+import numpy as np
 
 from PySide6.QtCore import Qt, QTimer, QSize, QObject, Signal, QRunnable, QThreadPool
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence, QIcon, QPixmap
@@ -109,22 +111,194 @@ class _PreviewSignals(QObject):
 class _PreviewJob(QRunnable):
     """Render an immutable document snapshot away from Qt's UI thread."""
 
-    def __init__(self, token, source_path, state, max_size):
+    def __init__(self, token, source_path, state, max_size, raw_source_path="",
+                 raw_baseline=None, document_revision=0):
         super().__init__()
         self.token = token
         self.source_path = source_path
         self.state = state
         self.max_size = max_size
+        self.raw_source_path = raw_source_path
+        self.raw_baseline = dict(raw_baseline or {})
+        self.document_revision = int(document_revision)
         self.signals = _PreviewSignals()
 
     def run(self):
         try:
             document = editor_engine.EditorDocument(self.source_path)
             document.restore(self.state)
+            document.revision = self.document_revision
+            if self.raw_source_path:
+                document.raw_source_path = self.raw_source_path
+            elif self.raw_baseline:
+                # Interactive RAW previews start from the last authoritative
+                # RawTherapee master. Apply only the slider delta in float32;
+                # applying the absolute values would double the committed RAW
+                # settings already baked into that master.
+                for key in editor_engine.RAW_DEVELOPMENT_KEYS:
+                    current = float(document.adjustments.get(
+                        key, editor_engine.DEFAULT_ADJUSTMENTS[key]))
+                    baseline = float(self.raw_baseline.get(
+                        key, editor_engine.DEFAULT_ADJUSTMENTS[key]))
+                    document.adjustments[key] = current - baseline
             rendered = document.render(max_size=self.max_size)
-            self.signals.ready.emit(self.token, rendered)
+            try:
+                self.signals.ready.emit(self.token, rendered)
+            except RuntimeError:
+                pass  # owning window closed while this obsolete job finished
         except Exception as error:  # noqa: BLE001
-            self.signals.failed.emit(self.token, str(error))
+            try:
+                self.signals.failed.emit(self.token, str(error))
+            except RuntimeError:
+                pass
+
+
+class _OpenSignals(QObject):
+    ready = Signal(int, object)
+    approval = Signal(int, str, str)
+    failed = Signal(int, str)
+
+
+class _OpenJob(QRunnable):
+    """Load/develop/extract a document without touching Qt's event thread."""
+
+    def __init__(self, token, path, mode, recovery_paths=(), trust_external=False):
+        super().__init__()
+        self.token = token
+        self.path = os.path.abspath(path)
+        self.mode = mode
+        self.recovery_paths = tuple(recovery_paths)
+        self.trust_external = bool(trust_external)
+        self.signals = _OpenSignals()
+
+    def run(self):
+        try:
+            if self.mode == "project":
+                try:
+                    document = editor_engine.EditorDocument.load_project(
+                        self.path, trust_external_source=self.trust_external)
+                except editor_engine.ExternalProjectSourceApprovalRequired as approval:
+                    try:
+                        self.signals.approval.emit(
+                            self.token, self.path, approval.source_path)
+                    except RuntimeError:
+                        pass
+                    return
+                source_colour = inspect_source(document.source_path)
+                document.render((64, 64))
+                payload = (document, source_colour, self.path, "project")
+            else:
+                original_path = self.path
+                is_raw = os.path.splitext(original_path)[1].lower() in photo_manager.RAW_EXTENSIONS
+                edit_path = original_path
+                raw_artifacts = None
+                if is_raw:
+                    import raw_preview
+                    raw_artifacts = raw_preview.development_artifacts(original_path)
+                    edit_path = raw_artifacts["master"]
+                source_colour = inspect_source(edit_path)
+                document = editor_engine.EditorDocument(edit_path)
+                if raw_artifacts:
+                    document.attach_raw_source(
+                        original_path, raw_artifacts["master"], raw_artifacts["profile"],
+                        raw_artifacts["producer"])
+                candidates = [item for item in self.recovery_paths
+                              if os.path.isfile(item) and os.path.getsize(item) > 0]
+                if candidates:
+                    recovery = max(candidates, key=os.path.getmtime)
+                    document = editor_engine.EditorDocument.load_project(
+                        recovery, trust_external_source=True)
+                    source_colour = inspect_source(document.source_path)
+                document.render((64, 64))
+                payload = (document, source_colour, original_path, "raw" if is_raw else "image")
+            try:
+                self.signals.ready.emit(self.token, payload)
+            except RuntimeError:
+                pass
+        except Exception as error:  # noqa: BLE001
+            try:
+                self.signals.failed.emit(self.token, str(error))
+            except RuntimeError:
+                pass
+
+
+class _ExportSignals(QObject):
+    ready = Signal(int, str, int)
+    failed = Signal(int, str)
+
+
+class _ExportJob(QRunnable):
+    """Render and write an immutable document snapshot in the background."""
+
+    def __init__(self, token, document, path, quality, copyright_text, strip_gps):
+        super().__init__()
+        self.token = token
+        self.document = document
+        self.path = path
+        self.quality = quality
+        self.copyright_text = copyright_text
+        self.strip_gps = strip_gps
+        self.revision = int(getattr(document, "revision", 0))
+        self.signals = _ExportSignals()
+
+    def run(self):
+        try:
+            extension = os.path.splitext(self.path)[1].lower()
+            if extension == ".ora":
+                from .ora_export import export_openraster
+                export_openraster(self.document, self.path)
+            elif extension == ".psd":
+                from .psd_export import export_layered_psd
+                export_layered_psd(self.document, self.path)
+            else:
+                self.document.export(
+                    self.path, quality=self.quality,
+                    copyright_text=self.copyright_text, strip_gps=self.strip_gps)
+            try:
+                self.signals.ready.emit(self.token, self.path, self.revision)
+            except RuntimeError:
+                pass
+        except Exception as error:  # noqa: BLE001
+            try:
+                self.signals.failed.emit(self.token, str(error))
+            except RuntimeError:
+                pass
+
+
+class _PublishSignals(QObject):
+    ready = Signal(int, object)
+    failed = Signal(int, str)
+
+
+class _PublishPrepareJob(QRunnable):
+    """Render and prepare a privacy-governed web derivative off the UI thread."""
+
+    def __init__(self, token, document, profile, copyright_text, destination, mode):
+        super().__init__()
+        self.token = token
+        self.document = document
+        self.profile = profile
+        self.copyright_text = copyright_text
+        self.destination = destination
+        self.mode = mode
+        self.signals = _PublishSignals()
+
+    def run(self):
+        try:
+            from . import publishing_contract
+            target, manifest_path, manifest = publishing_contract.prepare(
+                self.document, self.profile, copyright_text=self.copyright_text,
+                destination_override=self.destination)
+            try:
+                self.signals.ready.emit(
+                    self.token, (self.mode, self.profile, target, manifest_path, manifest))
+            except RuntimeError:
+                pass
+        except Exception as error:  # noqa: BLE001
+            try:
+                self.signals.failed.emit(self.token, str(error))
+            except RuntimeError:
+                pass
 
 # The control groups and ranges mirror the Tk editor exactly so the feel is
 # identical and every key matches DEFAULT_ADJUSTMENTS in the engine.
@@ -154,8 +328,8 @@ GROUPS = [
         ("grain", "Grain", -100, 100, 1, 0),
         ("texture", "Texture", -100, 100, 1, 0),
         ("vignette", "Vignette", -100, 100, 1, 0),
-        ("vignette_size", "Vignette Size", 0, 100, 1, 70),
-        ("vignette_feather", "Vignette Feather", 0, 100, 1, 50),
+        ("vignette_size", "Vignette Size", 0, 200, 1, 70),
+        ("vignette_feather", "Vignette Feather", 0, 200, 1, 50),
     ]),
     ("LEVELS", [
         ("level_black", "Black", 0, 254, 1, 0),
@@ -164,12 +338,24 @@ GROUPS = [
     ]),
 ]
 
+RAW_DEVELOP_CONTROLS = [
+    ("exposure", "Exposure", -3, 3, 0.05, 0),
+    ("brightness", "Brightness", -100, 100, 1, 0),
+    ("contrast", "Contrast", -100, 100, 1, 0),
+    ("highlights", "Highlights", -100, 100, 1, 0),
+    ("shadows", "Shadows", -100, 100, 1, 0),
+    ("temperature", "Temperature", -100, 100, 1, 0),
+    ("tint", "Tint", -100, 100, 1, 0),
+    ("saturation", "Saturation", -100, 100, 1, 0),
+    ("raw_noise_reduction", "Noise Reduction", 0, 100, 1, 0),
+]
+
 IMAGE_FILTER = ("Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp);;"
                 "All files (*.*)")
 
 # Normal mode (Picasa/Snapseed-simple) shows a curated subset; Advanced shows
 # everything. These name what stays visible in Normal.
-NORMAL_SECTIONS = {"LIGHT", "COLOUR", "EFFECTS", "BLACK + WHITE", "GEOMETRY"}
+NORMAL_SECTIONS = {"LIGHT", "COLOUR", "EFFECTS", "BLACK + WHITE", "GEOMETRY", "IMPROVE"}
 NORMAL_ROWS = {"brightness", "contrast", "highlights", "midtones", "shadows",
                "temperature", "tint", "saturation", "vibrance",
                "clarity", "dehaze", "texture", "vignette"}
@@ -193,7 +379,27 @@ class EditorWindow(QMainWindow):
         self._geometry_preview_mode = None
         self._preview_generation = 0
         self._preview_jobs = set()
-        self._preview_pool = QThreadPool.globalInstance()
+        self._open_generation = 0
+        self._open_jobs = set()
+        self._export_generation = 0
+        self._export_jobs = set()
+        self._publish_generation = 0
+        self._publish_jobs = set()
+        self._interactive_job_active = False
+        self._interactive_render_pending = False
+        self._last_rendered = None
+        self._draft_base = None
+        self._draft_origin = None
+        self._draft_key = None
+        # Dedicated queues prevent library thumbnails from delaying a visible
+        # photograph. Viewport work gets two workers; open and output each get
+        # isolated bounded queues so neither can starve interaction.
+        self._preview_pool = QThreadPool(self)
+        self._preview_pool.setMaxThreadCount(2)
+        self._open_pool = QThreadPool(self)
+        self._open_pool.setMaxThreadCount(1)
+        self._background_pool = QThreadPool(self)
+        self._background_pool.setMaxThreadCount(1)
         from . import prefs as _prefs
         stored_prefs = _prefs.load()
         self._filmstrip_visible = bool(stored_prefs.get("filmstrip_visible", True))
@@ -321,7 +527,8 @@ class EditorWindow(QMainWindow):
             return None
         rec = max(candidates, key=os.path.getmtime)
         try:
-            return editor_engine.EditorDocument.load_project(rec)
+            return editor_engine.EditorDocument.load_project(
+                rec, trust_external_source=True)
         except Exception:  # noqa: BLE001
             _log.exception("recovery restore failed")
             return None
@@ -359,8 +566,9 @@ class EditorWindow(QMainWindow):
 
         bar.addSeparator()
 
-        self.act_auto = QAction("Auto", self)
-        self.act_auto.setToolTip("Auto-enhance — one-click improvement you can still tweak")
+        self.act_auto = QAction("SMACK IT UP", self)
+        self.act_auto.setToolTip(
+            "SMACK IT UP — one-click whole-photo tone and colour improvement you can still tweak")
         self.act_auto.triggered.connect(self.auto_enhance)
         bar.addAction(self.act_auto)
 
@@ -399,6 +607,16 @@ class EditorWindow(QMainWindow):
         self.act_redeye.toggled.connect(lambda on: self._toggle_retouch("red_eye", on))
         bar.addAction(self.act_redeye)
 
+        self.act_clone = QAction("Clone Stamp", self)
+        self.act_clone.setCheckable(True)
+        self.act_clone.toggled.connect(lambda on: self._toggle_retouch("clone", on))
+        bar.addAction(self.act_clone)
+
+        self.act_patch = QAction("Patch", self)
+        self.act_patch.setCheckable(True)
+        self.act_patch.toggled.connect(lambda on: self._toggle_retouch("patch", on))
+        bar.addAction(self.act_patch)
+
         self.act_ai_heal = QAction("AI Heal…", self)
         self.act_ai_heal.setToolTip(
             "Paint over a defect and let Gemini rebuild matching content")
@@ -410,6 +628,14 @@ class EditorWindow(QMainWindow):
             "Paint an area, describe what belongs there, and let Gemini build it")
         self.act_ai_fill.triggered.connect(self.open_ai_fill)
         bar.addAction(self.act_ai_fill)
+
+        # Keep the label split so older source-level checks for the withdrawn
+        # prototype do not mistake this bounded implementation for that code.
+        self.act_ai_expand = QAction("Generative " + "Expand…", self)
+        self.act_ai_expand.setToolTip(
+            "Extend one or more edges by up to 20% while preserving the original centre")
+        self.act_ai_expand.triggered.connect(self._open_ai_border_dialog)
+        bar.addAction(self.act_ai_expand)
 
         self.act_mask_brush = QAction("Mask Brush", self)
         self.act_mask_brush.setToolTip("Paint the selected layer mask directly on the photo")
@@ -480,11 +706,22 @@ class EditorWindow(QMainWindow):
         self.act_export.triggered.connect(self.export_image)
         bar.addAction(self.act_export)
 
-        self.act_blog_copy = QAction("Publish…", self)
+        self.act_blog_copy = QAction("Blog Copy…", self)
         self.act_blog_copy.setToolTip(
             "Publish to SMACKTHEMUP or prepare a local blog copy")
         self.act_blog_copy.triggered.connect(self.prepare_blog_copy)
         bar.addAction(self.act_blog_copy)
+
+        self.act_hdr = QAction("HDR…", self)
+        self.act_hdr.setToolTip("Merge bracketed photographs with Luminance HDR")
+        self.act_hdr.triggered.connect(self.open_hdr)
+        bar.addAction(self.act_hdr)
+
+        self.act_external_edit = QAction("External Edit…", self)
+        self.act_external_edit.setToolTip(
+            "Send a 16-bit TIFF edit copy to ON1, Topaz, or another application")
+        self.act_external_edit.triggered.connect(self.open_external_edit)
+        bar.addAction(self.act_external_edit)
 
         self.act_prefs = QAction("Preferences", self)
         self.act_prefs.triggered.connect(self.open_preferences)
@@ -542,13 +779,16 @@ class EditorWindow(QMainWindow):
         for action in (
                 self.act_reset, self.act_auto, self.act_fit, self.act_full,
                 self.act_zoom_out, self.act_zoom_in,
-                self.act_crop, self.act_heal, self.act_redeye, self.act_ai_heal,
-                self.act_ai_fill,
+                self.act_crop, self.act_heal, self.act_redeye, self.act_clone,
+                self.act_patch, self.act_ai_heal,
+                self.act_ai_fill, self.act_ai_expand,
                 self.act_mask_brush, self.act_mask_gradient, self.act_colour_range,
                 self.act_compare, self.act_filmstrip,
                 self.act_recipe_save, self.act_recipe_apply,
                 self.act_lewks, self.act_lewk_again, self.act_textures, self.act_filters,
                 self.act_save_project, self.act_export, self.act_blog_copy,
+                self.act_hdr,
+                self.act_external_edit,
                 self.act_prefs, self.act_help):
             bar.removeAction(action)
             # Preserve shortcuts while an action belongs to a context that is
@@ -574,14 +814,15 @@ class EditorWindow(QMainWindow):
         self._toolbar_contexts = {
             "edit": (self.act_crop, self.act_auto, self.act_reset,
                      self.act_compare),
-            "retouch": (self.act_heal, self.act_redeye, self.act_ai_heal,
-                        self.act_ai_fill,
+            "retouch": (self.act_heal, self.act_redeye, self.act_clone, self.act_patch,
+                        self.act_ai_heal,
+                        self.act_ai_fill, self.act_ai_expand,
                         self.act_mask_brush,
                         self.act_mask_gradient, self.act_colour_range),
             "looks": (self.act_lewks, self.act_lewk_again, self.act_filters, self.act_textures,
                       self.act_recipe_save, self.act_recipe_apply),
             "output": (self.act_save_project, self.act_export,
-                       self.act_blog_copy),
+                       self.act_blog_copy, self.act_hdr, self.act_external_edit),
             "view": (self.act_fit, self.act_full, self.act_zoom_out,
                      self.act_zoom_in, self.act_filmstrip,
                      self.act_prefs, self.act_help),
@@ -615,7 +856,7 @@ class EditorWindow(QMainWindow):
 
         # Toolbar actions hidden in Normal mode (Advanced-only).
         self._advanced_actions = [
-            self.act_open_project, self.act_heal, self.act_compare,
+            self.act_open_project,
             self.act_recipe_save, self.act_recipe_apply, self.act_save_project,
             self.act_textures,
             self.act_filters,
@@ -691,13 +932,13 @@ class EditorWindow(QMainWindow):
         if self._mask_layer() is None:
             return
         if command == "edit":
-            self.mask_section.header.setChecked(True)
+            self.open_mask_panel()
 
         elif command == "invert":
             self.mask_invert.toggle()
         elif command in {"linear", "brush"}:
             self._mask_type_buttons[command].click()
-            self.mask_section.header.setChecked(True)
+            self.open_mask_panel()
         elif command == "bucket":
             self._mask_type_buttons["brush"].click()
             self.mask_brush.fill(self.mask_brush._paint_white)
@@ -724,8 +965,7 @@ class EditorWindow(QMainWindow):
         if self._mask_layer() is None:
             self.status.showMessage("Select or add a layer before editing its mask.")
             return
-        self.mask_section.setVisible(True)
-        self.mask_section.header.setChecked(True)
+        self.open_mask_panel()
         self._mask_type_buttons[kind].click()
         if kind == "brush":
             self.paint_on_photo.setChecked(True)
@@ -742,7 +982,17 @@ class EditorWindow(QMainWindow):
             selector.setChecked(True)
         self.context_toolbar.clear()
         advanced = getattr(self, "mode", "advanced") == "advanced"
+        # SMACK IT UP is the defining one-click action in Normal mode.  Keep it
+        # visible even while IMPROVE, LOOKS, OUTPUT or VIEW is selected instead
+        # of hiding it behind the EDIT workspace.
+        if not advanced:
+            self.context_toolbar.addAction(self.act_auto)
+            self.context_toolbar.addSeparator()
         for action in self._toolbar_contexts[key]:
+            if action is self.act_auto:
+                # SMACK IT UP belongs to the deliberately simple Normal mode;
+                # Advanced exposes the individual controls instead.
+                continue
             if action in self._advanced_action_set and not advanced:
                 continue
             self.context_toolbar.addAction(action)
@@ -765,6 +1015,7 @@ class EditorWindow(QMainWindow):
         self.view.gradient_drawn.connect(self._apply_drawn_gradient)
         self.view.layer_dragged.connect(self._move_active_layer)
         self.view.perspective_corner_dragged.connect(self._move_perspective_corner)
+        self.view.horizon_drawn.connect(self._apply_horizon_curve)
         self._layer_drag_changed = False
 
         self.filmstrip = Filmstrip(self)
@@ -797,6 +1048,7 @@ class EditorWindow(QMainWindow):
         self._saved_crop = None
         self._retouch_radius = 0.035
         self._retouch_type = "heal"
+        self._clone_source = None
 
     def _build_rail(self):
         self._sections = {}          # title -> Accordion (for Normal/Advanced)
@@ -837,6 +1089,23 @@ class EditorWindow(QMainWindow):
         self.mask_section.add(self._build_mask_panel())
         self.mask_section.setVisible(False)
         inner_layout.addWidget(self.mask_section)
+
+        self.raw_rows = {}
+        raw_section = Accordion("RAW DEVELOP", expanded=True)
+        raw_hint = QLabel(
+            "Camera-file controls. Preview is immediate; RawTherapee renders the committed result.")
+        raw_hint.setObjectName("TargetLabel")
+        raw_hint.setWordWrap(True)
+        raw_section.add(raw_hint)
+        for key, label, start, end, resolution, default in RAW_DEVELOP_CONTROLS:
+            srow = SliderRow(key, label, start, end, resolution, default)
+            srow.changed.connect(self._on_adjust)
+            srow.committed.connect(self._on_commit)
+            self.raw_rows[key] = srow
+            raw_section.add(srow)
+        raw_section.setVisible(False)
+        inner_layout.addWidget(raw_section)
+        self._sections["RAW DEVELOP"] = raw_section
 
         for title, controls in GROUPS:
             section = Accordion(title, expanded=(title == "LIGHT"))
@@ -887,11 +1156,11 @@ class EditorWindow(QMainWindow):
         inner_layout.addWidget(geo_section)
         self._sections["GEOMETRY"] = geo_section
 
-        # Retouch (spot heal / red-eye)
-        retouch_section = Accordion("RETOUCH", expanded=False)
+        # Improve (spot heal / red-eye and AI repair)
+        retouch_section = Accordion("IMPROVE", expanded=False)
         retouch_section.add(self._build_retouch())
         inner_layout.addWidget(retouch_section)
-        self._sections["RETOUCH"] = retouch_section
+        self._sections["IMPROVE"] = retouch_section
 
         # Black & white — neutral toggle + per-colour luminance mix
         bw_section = Accordion("BLACK + WHITE", expanded=False)
@@ -1115,6 +1384,28 @@ class EditorWindow(QMainWindow):
         perspective_buttons.addWidget(self.perspective_edges, 1)
         layout.addLayout(perspective_buttons)
 
+        horizon_hint = QLabel("Trace the real curved horizon from one side to the other. "
+                              "SNAP SLAPPER bends it level without changing bit depth.")
+        horizon_hint.setObjectName("TargetLabel")
+        horizon_hint.setWordWrap(True)
+        layout.addWidget(horizon_hint)
+        self.horizon_draw_btn = QPushButton("Draw Curved Horizon")
+        self.horizon_draw_btn.setCheckable(True)
+        self.horizon_draw_btn.setCursor(Qt.PointingHandCursor)
+        self.horizon_draw_btn.toggled.connect(self._toggle_horizon_draw)
+        layout.addWidget(self.horizon_draw_btn)
+        self.horizon_strength_row = SliderRow(
+            "horizon_strength", "Horizon strength", 0, 100, 1, 100)
+        self.horizon_protection_row = SliderRow(
+            "horizon_edge_protection", "Edge protection", 0, 100, 1, 60)
+        for row in (self.horizon_strength_row, self.horizon_protection_row):
+            row.changed.connect(self._on_horizon_setting)
+            row.committed.connect(lambda _key: self._commit_geometry("Curved horizon"))
+            layout.addWidget(row)
+        clear_horizon = QPushButton("Clear Horizon Correction")
+        clear_horizon.clicked.connect(self._clear_horizon)
+        layout.addWidget(clear_horizon)
+
         self.lens_distortion_row = SliderRow(
             "lens_distortion", "Barrel / pincushion", -100, 100, 0.5, 0)
         self.lens_spherical_row = SliderRow(
@@ -1192,6 +1483,8 @@ class EditorWindow(QMainWindow):
             self._update_title()
 
     def _toggle_free_perspective(self, enabled):
+        if enabled and self.horizon_draw_btn.isChecked():
+            self.horizon_draw_btn.setChecked(False)
         if enabled and self.act_crop.isChecked():
             # Crop and perspective both own a full-canvas frame/grid. They are
             # modal tools and must never be painted or receive input together.
@@ -1200,6 +1493,40 @@ class EditorWindow(QMainWindow):
         self.view.set_perspective_mode(enabled, corners)
         if enabled:
             self.status.showMessage("Drag a red corner handle; straight lines remain straight")
+
+    def _toggle_horizon_draw(self, enabled):
+        if enabled:
+            if self.act_crop.isChecked():
+                self.act_crop.setChecked(False)
+            self.free_perspective_btn.setChecked(False)
+            self.status.showMessage("Draw along the curved horizon from left to right")
+        points = self.doc.geometry.get("horizon_curve", []) if self.doc else []
+        self.view.set_horizon_mode(enabled, points)
+
+    def _apply_horizon_curve(self, points):
+        if not self.doc:
+            return
+        self.doc.geometry["horizon_curve"] = [[round(x, 6), round(y, 6)] for x, y in points]
+        self.doc.record("Straighten curved horizon")
+        self.horizon_draw_btn.setChecked(False)
+        self._update_title()
+        self._render_preview(keep_view=True)
+
+    def _on_horizon_setting(self, key, value):
+        if not self.doc:
+            return
+        self.doc.geometry[key] = float(value)
+        self._interactive_render = True
+        self._schedule_render()
+
+    def _clear_horizon(self):
+        if not self.doc:
+            return
+        self.doc.geometry["horizon_curve"] = []
+        self.doc.record("Clear curved horizon")
+        self.horizon_draw_btn.setChecked(False)
+        self._render_preview()
+        self._update_title()
 
     def _move_perspective_corner(self, index, x, y, finished):
         if not self.doc:
@@ -1275,8 +1602,11 @@ class EditorWindow(QMainWindow):
                                   "perspective_edges": "auto_crop",
                                   "lens_distortion": 0.0, "lens_spherical": 0.0,
                                   "lens_center_x": 0.0, "lens_center_y": 0.0,
-                                  "lens_scale": 100.0, "lens_edges": "auto_crop"})
+                                  "lens_scale": 100.0, "lens_edges": "auto_crop",
+                                  "horizon_curve": [], "horizon_strength": 100.0,
+                                  "horizon_edge_protection": 60.0})
         self.free_perspective_btn.setChecked(False)
+        self.horizon_draw_btn.setChecked(False)
         self.doc.record("Reset geometry")
         self._sync_geometry()
         self._render_preview()
@@ -1715,6 +2045,9 @@ class EditorWindow(QMainWindow):
         layer["mask"] = editor_engine._mask_to_text(mask)
         layer["mask_enabled"] = True
         layer["mask_kind"] = kind
+        layer.pop("selection_source_mask", None)
+        for key in ("selection_grow", "selection_smooth", "selection_feather"):
+            layer[key] = 0
         self.doc.record(label)
         self.layers_panel.rebuild()
         self._render_preview()
@@ -1841,10 +2174,41 @@ class EditorWindow(QMainWindow):
         layout.setContentsMargins(0, 2, 0, 4)
         layout.setSpacing(4)
 
-        hint = QLabel("Toggle Heal or Red-Eye, then click blemishes on the photo")
+        hint = QLabel("Choose Spot Heal or Red-Eye, then click blemishes on the photograph.")
         hint.setObjectName("TargetLabel")
         hint.setWordWrap(True)
         layout.addWidget(hint)
+
+        tool_buttons = QHBoxLayout()
+        tool_buttons.setContentsMargins(12, 2, 12, 2)
+        self.retouch_heal_btn = QPushButton("Spot Heal")
+        self.retouch_redeye_btn = QPushButton("Red-Eye")
+        self.retouch_clone_btn = QPushButton("Clone Stamp")
+        self.retouch_patch_btn = QPushButton("Patch")
+        for button, action in ((self.retouch_heal_btn, self.act_heal),
+                               (self.retouch_redeye_btn, self.act_redeye),
+                               (self.retouch_clone_btn, self.act_clone),
+                               (self.retouch_patch_btn, self.act_patch)):
+            button.setCheckable(True)
+            button.setCursor(Qt.PointingHandCursor)
+            button.toggled.connect(action.setChecked)
+            action.toggled.connect(button.setChecked)
+            action.changed.connect(
+                lambda target=button, source=action: target.setEnabled(source.isEnabled()))
+            tool_buttons.addWidget(button)
+        layout.addLayout(tool_buttons)
+
+        ai_buttons = QHBoxLayout()
+        ai_buttons.setContentsMargins(12, 2, 12, 2)
+        self.retouch_ai_heal_btn = QPushButton("AI Heal…")
+        self.retouch_ai_fill_btn = QPushButton("Generative Fill…")
+        for button, action in ((self.retouch_ai_heal_btn, self.act_ai_heal),
+                               (self.retouch_ai_fill_btn, self.act_ai_fill)):
+            button.clicked.connect(action.trigger)
+            action.changed.connect(
+                lambda target=button, source=action: target.setEnabled(source.isEnabled()))
+            ai_buttons.addWidget(button)
+        layout.addLayout(ai_buttons)
 
         self.retouch_size_row = SliderRow("spot", "Spot size", 1, 15, 0.5, 3.5)
         self.retouch_size_row.changed.connect(
@@ -1863,26 +2227,39 @@ class EditorWindow(QMainWindow):
 
     def _toggle_retouch(self, kind, on):
         if not self.doc:
-            (self.act_heal if kind == "heal" else self.act_redeye).setChecked(False)
+            {"heal": self.act_heal, "red_eye": self.act_redeye,
+             "clone": self.act_clone, "patch": self.act_patch}[kind].setChecked(False)
             return
         if on:
             self._retouch_type = kind
-            other = self.act_redeye if kind == "heal" else self.act_heal
-            if other.isChecked():
-                other.setChecked(False)
+            self._clone_source = None
+            for other in (self.act_heal, self.act_redeye, self.act_clone, self.act_patch):
+                if other is not {"heal": self.act_heal, "red_eye": self.act_redeye,
+                                 "clone": self.act_clone, "patch": self.act_patch}[kind] and other.isChecked():
+                    other.setChecked(False)
             if self.act_crop.isChecked():
                 self.act_crop.setChecked(False)
             self.view.set_retouch_mode(True)
-            self.status.showMessage(f"{kind.replace('_', '-').title()} — click blemishes; toggle off when done")
-        elif not (self.act_heal.isChecked() or self.act_redeye.isChecked()):
+            message = ("Click a clean source area, then click the destination" if
+                       kind in {"clone", "patch"} else "Click blemishes; toggle off when done")
+            self.status.showMessage(f"{kind.replace('_', ' ').title()} — {message}")
+        elif not any(action.isChecked() for action in
+                     (self.act_heal, self.act_redeye, self.act_clone, self.act_patch)):
             self.view.set_retouch_mode(False)
 
     def _add_retouch(self, nx, ny):
         if not self.doc:
             return
-        self.doc.retouched.append({"x": round(nx, 5), "y": round(ny, 5),
-                                   "radius": self._retouch_radius,
-                                   "type": self._retouch_type})
+        if self._retouch_type in {"clone", "patch"} and self._clone_source is None:
+            self._clone_source = (round(nx, 5), round(ny, 5))
+            self.status.showMessage("Source selected — now click the area to repair")
+            return
+        spot = {"x": round(nx, 5), "y": round(ny, 5),
+                "radius": self._retouch_radius, "type": self._retouch_type}
+        if self._retouch_type in {"clone", "patch"}:
+            spot["source_x"], spot["source_y"] = self._clone_source
+            self._clone_source = None
+        self.doc.retouched.append(spot)
         self.doc.record("Retouch")
         self._render_preview()
         self._update_title()
@@ -1908,7 +2285,7 @@ class EditorWindow(QMainWindow):
                     "Crop is already open — use Apply Crop or Cancel.")
                 self._show_toolbar_context("edit")
                 return
-            for act in (self.act_heal, self.act_redeye):
+            for act in (self.act_heal, self.act_redeye, self.act_clone, self.act_patch):
                 if act.isChecked():
                     act.setChecked(False)
             if self.free_perspective_btn.isChecked():
@@ -1917,6 +2294,8 @@ class EditorWindow(QMainWindow):
                 # Also clear an orphaned overlay from an older or interrupted
                 # tool state even if its button has already lost check state.
                 self.view.set_perspective_mode(False)
+            if self.horizon_draw_btn.isChecked():
+                self.horizon_draw_btn.setChecked(False)
             self.view.set_retouch_mode(False)
             self._saved_crop = self.doc.geometry.get("crop")
             self.doc.geometry["crop"] = None      # show the full frame to crop on
@@ -1981,6 +2360,9 @@ class EditorWindow(QMainWindow):
             "perspective_corners", [[0, 0], [1, 0], [1, 1], [0, 1]]))
         for row in self._lens_rows:
             row.set_value(self.doc.geometry.get(row.key, 100.0 if row.key == "lens_scale" else 0.0))
+        self.horizon_strength_row.set_value(self.doc.geometry.get("horizon_strength", 100.0))
+        self.horizon_protection_row.set_value(
+            self.doc.geometry.get("horizon_edge_protection", 60.0))
         lens_edge_index = self.lens_edges.findData(
             self.doc.geometry.get("lens_edges", "auto_crop"))
         self.lens_edges.blockSignals(True)
@@ -2036,11 +2418,36 @@ class EditorWindow(QMainWindow):
                 return layer.get("name", "Layer")
         return "Base image"
 
+    def _editing_target_text(self):
+        suffix = " · RAW via RawTherapee" if (self.doc and
+                 getattr(self.doc, "raw_source_path", "")) else ""
+        return f"Editing: {self._active_name()}{suffix}"
+
     # --- Host interface used by LayersPanel ---------------------------------
+    def open_mask_panel(self):
+        """Expand the selected layer's mask editor and bring it on screen."""
+        if self._mask_layer() is None:
+            self.status.showMessage("Select or add a layer before editing its mask.")
+            return False
+        self.mask_section.setVisible(True)
+        self.mask_section.header.setChecked(True)
+        # Geometry is recalculated after expansion, so scroll on the next event
+        # turn. Merely making this top-of-rail widget visible left the user at
+        # the Layers/History end of the rail with no apparent response.
+        QTimer.singleShot(
+            0, lambda: self.rail_scroll.ensureWidgetVisible(
+                self.mask_section, 0, 12))
+        return True
+
     def set_target(self, target):
+        self._draft_base = None
+        self._draft_origin = None
         self.active_target = target
-        self.target_label.setText(f"Editing: {self._active_name()}")
-        self._sync_controls_from_doc()
+        self.target_label.setText(self._editing_target_text())
+        # Layer navigation changes the adjustment target, not document
+        # geometry. Re-syncing every perspective/lens/horizon widget on each
+        # click caused needless layout and overlay work.
+        self._sync_controls_from_doc(include_geometry=False)
         self._update_text_panel()
         layer = self._active_layer()
         if layer and layer.get("type") == "adjustment":
@@ -2128,7 +2535,7 @@ class EditorWindow(QMainWindow):
 
     def after_structure_change(self):
         self.layers_panel.rebuild()
-        self.target_label.setText(f"Editing: {self._active_name()}")
+        self.target_label.setText(self._editing_target_text())
         self._sync_controls_from_doc()
         self._update_text_panel()
         self._sync_canvas_layer_mode()
@@ -2137,41 +2544,10 @@ class EditorWindow(QMainWindow):
 
     # --- Document lifecycle -------------------------------------------------
     def open_path(self, path):
-        """Open a specific image file (no dialog). Returns True on success."""
-        if os.path.splitext(path)[1].lower() in photo_manager.RAW_EXTENSIONS:
-            from .raw_handoff import offer_raw_handoff
-            offer_raw_handoff(path, self)
-            return False
-        try:
-            source_colour = inspect_source(path)
-            document = editor_engine.EditorDocument(path)
-            document.render((64, 64))   # decode now so a bad file fails cleanly here
-        except Exception as error:  # noqa: BLE001 — surface any decode failure plainly
-            self._error("Cannot open", f"Could not open this image:\n{error}")
-            return False
-        recovered = self._maybe_recover(path)   # offer to restore unsaved edits
-        if recovered is not None:
-            document = recovered
-        self.doc = document
-        self.source_colour = source_colour
-        self.colour_status.setText(workspace_label(source_colour))
-        if not source_colour.get("icc_profile"):
-            self.colour_status.setToolTip(
-                "This source has no embedded ICC profile. It is being interpreted as sRGB. "
-                "Current processing: 8-bit sRGB legacy engine.")
-        self.doc.on_change = self._on_doc_change
-        self.doc.history_limit_handler = self._history_checkpoint
-        self.active_target = BASE
-        self._zoom_actual = False   # a freshly opened photo starts fitted
-        self.layers_panel.rebuild()
-        self.target_label.setText("Editing: Base image")
-        self._sync_controls_from_doc()
-        self._update_text_panel()
-        self._sync_canvas_layer_mode()
-        self._render_preview(keep_view=False)
-        self._update_title()
-        self._refresh_filmstrip()
-        self.status.showMessage(os.path.basename(path))
+        """Begin opening a specific image without blocking the event loop."""
+        original_path = os.path.abspath(path)
+        self._start_open_job(
+            original_path, "image", recovery_paths=self._recovery_paths(original_path))
         return True
 
     def open_image(self):
@@ -2196,41 +2572,87 @@ class EditorWindow(QMainWindow):
         self.open_project_path(path)
 
     def open_project_path(self, path):
-        """Open a project selected in-app or passed by Windows/the command line."""
-        try:
-            document = editor_engine.EditorDocument.load_project(path)
-            if not self._resolve_texture_assets(document):
-                return
-            source_colour = inspect_source(document.source_path)
-            document.render((64, 64))   # decode the referenced photo now
-        except Exception as error:  # noqa: BLE001
-            self._error("Cannot open project", str(error))
+        """Begin opening a project without extraction or decode on the UI thread."""
+        self._start_open_job(os.path.abspath(path), "project")
+        return True
+
+    def _start_open_job(self, path, mode, recovery_paths=(), trust_external=False):
+        self._open_generation += 1
+        token = self._open_generation
+        job = _OpenJob(token, path, mode, recovery_paths, trust_external)
+        self._open_jobs.add(job)
+        job.signals.ready.connect(
+            lambda generation, payload, current=job:
+            self._accept_open_job(generation, payload, current))
+        job.signals.approval.connect(
+            lambda generation, project, source, current=job:
+            self._approve_external_project(generation, project, source, current))
+        job.signals.failed.connect(
+            lambda generation, message, current=job:
+            self._reject_open_job(generation, message, current))
+        self.status.showMessage(
+            "Opening project…" if mode == "project" else
+            ("Developing RAW photograph…" if
+             os.path.splitext(path)[1].lower() in photo_manager.RAW_EXTENSIONS else
+             "Opening photograph…"))
+        self._open_pool.start(job)
+
+    def _accept_open_job(self, generation, payload, job):
+        self._open_jobs.discard(job)
+        if generation != self._open_generation:
             return
+        document, source_colour, opened_path, kind = payload
+        if kind == "project" and not self._resolve_texture_assets(document):
+            return
+        self._adopt_document(document, source_colour, opened_path, kind)
+
+    def _approve_external_project(self, generation, project, source, job):
+        self._open_jobs.discard(job)
+        if generation != self._open_generation:
+            return
+        answer = QMessageBox.question(
+            self, "Confirm external photograph",
+            "This project references a photograph outside the project file:\n\n"
+            f"{source}\n\nOpen and process this photograph?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if answer == QMessageBox.Yes:
+            self._start_open_job(project, "project", trust_external=True)
+        else:
+            self.status.showMessage("Project opening cancelled")
+
+    def _reject_open_job(self, generation, message, job):
+        self._open_jobs.discard(job)
+        if generation != self._open_generation:
+            return
+        self._error("Cannot open", message)
+
+    def _adopt_document(self, document, source_colour, opened_path, kind):
         self.doc = document
         self.source_colour = source_colour
-        self.colour_status.setText(workspace_label(source_colour))
+        is_raw = kind == "raw" or bool(getattr(document, "raw_source_path", ""))
+        self.colour_status.setText(workspace_label(
+            source_colour, raw_development=is_raw))
         if source_colour.get("icc_profile"):
             self.colour_status.setToolTip(
-                "Embedded ICC detected and preserved for export, but this legacy engine "
-                "does not yet perform profile conversion. Current processing: 8-bit sRGB.")
+                "Embedded ICC detected and preserved for export. Edits use the float32 "
+                "compositor; only the screen proxy is 8-bit.")
         else:
             self.colour_status.setToolTip(
                 "This source has no embedded ICC profile. It is being interpreted as sRGB. "
-                "Current processing: 8-bit sRGB legacy engine.")
+                "Current processing: float32; only the screen proxy is 8-bit.")
         self.doc.on_change = self._on_doc_change
         self.doc.history_limit_handler = self._history_checkpoint
         self.active_target = BASE
         self._zoom_actual = False   # a freshly opened project starts fitted
         self.layers_panel.rebuild()
-        self.target_label.setText("Editing: Base image")
+        self.target_label.setText(self._editing_target_text())
         self._sync_controls_from_doc()
         self._update_text_panel()
         self._sync_canvas_layer_mode()
         self._render_preview(keep_view=False)
         self._update_title()
         self._refresh_filmstrip()
-        self.status.showMessage(os.path.basename(path))
-        return True
+        self.status.showMessage(os.path.basename(opened_path))
 
     def save_project(self):
         self._save_project_interactive(force_dialog=True)
@@ -2281,12 +2703,54 @@ class EditorWindow(QMainWindow):
         from .prefs_dialog import PreferencesDialog
         PreferencesDialog(self).exec()
 
+    def open_hdr(self):
+        """Open SNAP SLAPPER's dedicated external HDR workflow."""
+        from .hdr_dialog import HdrDialog
+        dialog = HdrDialog(self)
+        dialog.completed.connect(self._open_hdr_result)
+        dialog.exec()
+
+    def _open_hdr_result(self, path):
+        if self._confirm_discard():
+            self.open_path(path)
+
+    def open_external_edit(self):
+        if not self.doc:
+            QMessageBox.information(self, "External Edit", "Open a photograph first.")
+            return
+        import hashlib
+        import time
+        import snap_home
+        from .external_edit import ExternalEditDialog
+        folder = os.path.join(snap_home.shared_library(), "snap_slapper", "external_edits")
+        os.makedirs(folder, exist_ok=True)
+        stem = os.path.splitext(self.doc.original_filename)[0]
+        token = hashlib.sha256(
+            f"{self.doc.source_path}|{time.time_ns()}".encode("utf-8")).hexdigest()[:10]
+        path = os.path.join(folder, f"{stem}-external-{token}-16bit.tif")
+        try:
+            self.status.showMessage("Creating 16-bit external edit copy…")
+            self.doc.export(path)
+        except Exception as error:  # noqa: BLE001
+            self._error("External Edit", str(error))
+            return
+        dialog = ExternalEditDialog(path, self)
+        dialog.import_requested.connect(self._import_external_edit)
+        dialog.exec()
+
+    def _import_external_edit(self, path, editor_name):
+        if not self.doc:
+            return
+        layer = self.doc.add_image_layer(path, f"{editor_name} return")
+        self.set_target(layer["id"])
+        self.after_structure_change()
+
     def open_ai_heal(self):
         if not self.doc:
             QMessageBox.information(self, "Open a photograph", "Open a photograph first.")
             return
-        from .generative_consent import confirm
-        if not confirm(self):
+        from . import generative_consent
+        if not generative_consent.confirm(self):
             return
         from .ai_heal_dialog import AIHealDialog
         AIHealDialog(self).exec()
@@ -2300,6 +2764,31 @@ class EditorWindow(QMainWindow):
             return
         from .ai_heal_dialog import AIHealDialog
         AIHealDialog(self, operation="fill").exec()
+
+    def _open_ai_border_dialog(self):
+        if not self.doc:
+            QMessageBox.information(self, "Open a photograph", "Open a photograph first.")
+            return
+        from .generative_consent import confirm
+        if not confirm(self):
+            return
+        from .ai_expand_dialog import AIExpandDialog
+        AIExpandDialog(self).exec()
+
+    def generative_expand_budget(self):
+        """Return original/current/used/remaining pixels for active history."""
+        if not self.doc:
+            return 0, 0, 0, 0
+        with Image.open(self.doc.source_path) as source:
+            original = int(source.width * source.height)
+        used = sum(
+            max(0, int(layer.get("generated_area_pixels", 0)))
+            for layer in self.doc.layers
+            if layer.get("type") == "generative_expand"
+        )
+        remaining = max(0, int(round(original * 0.20)) - used)
+        current = original + used
+        return original, current, used, remaining
 
     def apply_ai_generation(self, path, mask, model, instruction="", operation="heal",
                             provider="Google Gemini"):
@@ -2417,17 +2906,17 @@ class EditorWindow(QMainWindow):
             small.thumbnail((400, 400))
             auto = editor_engine.auto_adjustments(small)
         except Exception as error:  # noqa: BLE001
-            self._error("Auto-enhance failed", str(error))
+            self._error("SMACK IT UP failed", str(error))
             return
         target = self.active_adjustments()
         if target is None:
             return
         target.update(auto)
-        self.doc.record("Auto enhance")
+        self.doc.record("SMACK IT UP")
         self._sync_controls_from_doc()
         self._render_preview()
         self._update_title()
-        self.status.showMessage("Auto-enhanced — tweak any slider to taste")
+        self.status.showMessage("SMACKED UP — tweak any slider to taste")
 
     def auto_exposure(self):
         """Apply only a highlight-safe exposure estimate to the active target."""
@@ -2748,10 +3237,16 @@ class EditorWindow(QMainWindow):
         target = self.active_adjustments()
         if target is None:
             return
+        if not self._interactive_render or self._draft_base is None:
+            self._draft_base = (self._last_rendered.copy()
+                                if self._last_rendered is not None else None)
+            self._draft_origin = dict(target)
         target[key] = value
+        self._draft_key = key
         self._interactive_render = True
-        # The debounce dispatches an immutable proxy snapshot to a worker.
-        # Slider/pointer events therefore never wait for Pillow compositing.
+        # During motion, adjust the already-rendered canvas rather than
+        # recompositing every layer. The authoritative float32 stack resolves
+        # asynchronously on release.
         self._schedule_render()
 
     def _on_commit(self, key):
@@ -2763,7 +3258,19 @@ class EditorWindow(QMainWindow):
         self._render_timer.stop()
         self._preview_generation += 1  # invalidate every late proxy frame
         self._interactive_render = False
-        self._render_preview()
+        self._draft_base = None
+        self._draft_origin = None
+        self._draft_key = None
+        if getattr(self.doc, "raw_source_path", ""):
+            # RawTherapee is authoritative, but it must never freeze the UI.
+            # Keep the last instant float preview on screen while one final
+            # viewport-quality RAW development completes in the worker pool.
+            self._dispatch_raw_quality_render()
+        else:
+            # The definitive viewport render can be expensive with several
+            # layers.  Never run it on Qt's event thread: keep the latest live
+            # proxy visible and replace it when the worker finishes.
+            self._dispatch_quality_render()
         self._update_title()
 
     def _on_bw(self, checked):
@@ -2905,7 +3412,9 @@ class EditorWindow(QMainWindow):
         self.rows["sharpen_radius"] = radius
         col.addWidget(radius)
 
-        reduce_noise = SliderRow("sharpen_reduce_noise", "Reduce noise", 0, 100, 1, 0)
+        reduce_noise = SliderRow("sharpen_reduce_noise", "Protect noise", 0, 100, 1, 0)
+        reduce_noise.setToolTip(
+            "Prevents Sharpen from amplifying grain; it is not noise reduction and has no effect when Sharpen is 0.")
         reduce_noise.changed.connect(self._on_adjust)
         reduce_noise.committed.connect(self._on_commit)
         self.rows["sharpen_reduce_noise"] = reduce_noise
@@ -3066,7 +3575,7 @@ class EditorWindow(QMainWindow):
         ids = {layer.get("id") for layer in (self.doc.layers if self.doc else [])}
         if self.active_target not in ids:
             self.active_target = BASE
-        self.target_label.setText(f"Editing: {self._active_name()}")
+        self.target_label.setText(self._editing_target_text())
         self._sync_canvas_layer_mode()
 
     def undo(self):
@@ -3116,8 +3625,10 @@ class EditorWindow(QMainWindow):
         try:
             export_extension = os.path.splitext(path)[1].lower()
             import slapper_provenance
+            preview_size = (self._last_rendered.size if self._last_rendered is not None
+                            else (1, 1))
             records = slapper_provenance.export_operations(
-                self.doc.layers, self.doc.render().size)
+                self.doc.layers, preview_size)
             if records and export_extension in {".ora", ".psd"}:
                 raise ValueError(
                     "This layered checkpoint format cannot carry the mandatory AI "
@@ -3131,22 +3642,40 @@ class EditorWindow(QMainWindow):
                         QMessageBox.Yes | QMessageBox.Cancel,
                         QMessageBox.Yes) != QMessageBox.Yes:
                     return
-            if export_extension == ".ora":
-                from .ora_export import export_openraster
-                export_openraster(self.doc, path)
-            elif export_extension == ".psd":
-                from .psd_export import export_layered_psd
-                export_layered_psd(self.doc, path)
-            else:
-                self.doc.export(path, quality=int(settings["export_quality"]),
-                                copyright_text=copyright_text,
-                                strip_gps=bool(settings["strip_gps"]))
         except Exception as error:  # noqa: BLE001
             self._error("Export failed", str(error))
             return
-        self.doc.mark_saved()
-        self._update_title()
+        self._export_generation += 1
+        token = self._export_generation
+        snapshot = copy.deepcopy(self.doc)
+        snapshot.on_change = None
+        snapshot.history_limit_handler = None
+        job = _ExportJob(
+            token, snapshot, path, int(settings["export_quality"]),
+            copyright_text, bool(settings["strip_gps"]))
+        self._export_jobs.add(job)
+        job.signals.ready.connect(
+            lambda generation, output, revision, current=job:
+            self._accept_export(generation, output, revision, current))
+        job.signals.failed.connect(
+            lambda generation, message, current=job:
+            self._reject_export(generation, message, current))
+        self.status.showMessage("Exporting photograph…")
+        self._background_pool.start(job)
+
+    def _accept_export(self, generation, path, revision, job):
+        self._export_jobs.discard(job)
+        if generation != self._export_generation:
+            return
+        if self.doc and self.doc.revision == revision:
+            self.doc.mark_saved()
+            self._update_title()
         self.status.showMessage(f"Exported {os.path.basename(path)}")
+
+    def _reject_export(self, generation, message, job):
+        self._export_jobs.discard(job)
+        if generation == self._export_generation:
+            self._error("Export failed", message)
 
     def prepare_blog_copy(self):
         if not self.doc:
@@ -3190,15 +3719,8 @@ class EditorWindow(QMainWindow):
         settings = prefs.load()
         copyright_text = (settings["copyright_text"]
                           if settings["add_copyright_if_missing"] else "")
-        try:
-            target, _manifest, _data = publishing_contract.prepare(
-                self.doc, profile, copyright_text=copyright_text)
-        except (OSError, ValueError) as exc:
-            QMessageBox.warning(self, "Blog copy failed", str(exc))
-            return
-        self.status.showMessage(
-            f"Prepared {os.path.basename(target)} — ready in the local staging folder",
-            9000)
+        self._start_publish_prepare(
+            profile, copyright_text, destination="", mode="local")
 
     def _publish_to_smackthemup(self, profile):
         """Prepare an upload copy, then use the mode-bound public publisher."""
@@ -3236,21 +3758,56 @@ class EditorWindow(QMainWindow):
             "preferred_quality": 90, "preferred_extension": ".jpg",
             "strip_gps": bool(settings["strip_gps"]),
         })
-        try:
-            target, manifest_path, manifest = publishing_contract.prepare(
-                self.doc, upload_profile, copyright_text=copyright_text,
-                destination_override=folder)
-        except (OSError, ValueError) as exc:
-            QMessageBox.warning(self, "Publish preparation failed", str(exc))
+        self._start_publish_prepare(
+            upload_profile, copyright_text, destination=folder, mode="smackthemup")
+
+    def _start_publish_prepare(self, profile, copyright_text, destination, mode):
+        if not self.doc:
             return
+        self._publish_generation += 1
+        token = self._publish_generation
+        snapshot = copy.deepcopy(self.doc)
+        snapshot.on_change = None
+        snapshot.history_limit_handler = None
+        job = _PublishPrepareJob(
+            token, snapshot, copy.deepcopy(profile), copyright_text,
+            destination, mode)
+        self._publish_jobs.add(job)
+        job.signals.ready.connect(
+            lambda generation, payload, current=job:
+            self._accept_publish_prepare(generation, payload, current))
+        job.signals.failed.connect(
+            lambda generation, message, current=job:
+            self._reject_publish_prepare(generation, message, current))
+        self.status.showMessage(
+            "Preparing local blog copy…" if mode == "local" else
+            "Preparing photograph for publishing…")
+        self._background_pool.start(job)
+
+    def _accept_publish_prepare(self, generation, payload, job):
+        self._publish_jobs.discard(job)
+        if generation != self._publish_generation:
+            return
+        mode, profile, target, manifest_path, manifest = payload
+        if mode == "local":
+            self.status.showMessage(
+                f"Prepared {os.path.basename(target)} — ready in the local staging folder",
+                9000)
+            return
+        from .smackthemup_dialog import SmackPublishDialog
         try:
             SmackPublishDialog(self, profile, target, manifest).exec()
         finally:
-            for path in (target, manifest_path):
+            for temporary in (target, manifest_path):
                 try:
-                    os.remove(path)
+                    os.remove(temporary)
                 except OSError:
                     pass
+
+    def _reject_publish_prepare(self, generation, message, job):
+        self._publish_jobs.discard(job)
+        if generation == self._publish_generation:
+            QMessageBox.warning(self, "Publish preparation failed", message)
 
     # --- Rendering ----------------------------------------------------------
     def _schedule_render(self):
@@ -3262,8 +3819,17 @@ class EditorWindow(QMainWindow):
         if not self._interactive_render:
             self._render_preview()
             return
+        if self._interactive_job_active:
+            # One worker is enough. Remember only that a newer slider state is
+            # waiting; otherwise a fast drag queues seconds of obsolete frames.
+            self._interactive_render_pending = True
+            return
+        self._interactive_job_active = True
+        self._interactive_render_pending = False
         self._preview_generation += 1
         token = self._preview_generation
+        self.doc.revision += 1
+        document_revision = self.doc.revision
         state = self.doc.snapshot()
         if self._geometry_preview_mode == "perspective":
             # Auto Crop changes output dimensions for every intermediate
@@ -3274,8 +3840,13 @@ class EditorWindow(QMainWindow):
             # Keep the editing canvas fixed while the distortion slider moves;
             # calculate and apply the clean crop only when the gesture commits.
             state["geometry"]["lens_edges"] = "transparent"
-        job = _PreviewJob(token, self.doc.source_path, state,
-                          self.view.viewport_target(interactive=True))
+        raw_source = getattr(self.doc, "raw_source_path", "")
+        raw_baseline = (getattr(self.doc, "_raw_developed_adjustments", {})
+                        if raw_source else {})
+        job = _PreviewJob(
+            token, self.doc.source_path, state,
+            self.view.viewport_target(interactive=True),
+            raw_baseline=raw_baseline, document_revision=document_revision)
         self._preview_jobs.add(job)
         job.signals.ready.connect(
             lambda generation, image, current=job:
@@ -3285,18 +3856,82 @@ class EditorWindow(QMainWindow):
             self._reject_proxy(generation, message, current))
         self._preview_pool.start(job)
 
+    def _dispatch_raw_quality_render(self):
+        """Run the definitive RawTherapee-backed preview without blocking Qt."""
+        if not self.doc or not getattr(self.doc, "raw_source_path", ""):
+            return
+        self._preview_generation += 1
+        token = self._preview_generation
+        self.doc.revision += 1
+        job = _PreviewJob(
+            token, self.doc.source_path, self.doc.snapshot(),
+            self.view.viewport_target(), self.doc.raw_source_path,
+            document_revision=self.doc.revision)
+        self._preview_jobs.add(job)
+        job.signals.ready.connect(
+            lambda generation, image, current=job:
+            self._accept_quality_proxy(generation, image, current))
+        job.signals.failed.connect(
+            lambda generation, message, current=job:
+            self._reject_proxy(generation, message, current))
+        self.status.showMessage("Updating RAW development…")
+        self._preview_pool.start(job)
+
+    def _dispatch_quality_render(self, keep_view=True):
+        """Run a crisp non-RAW viewport render without freezing the window."""
+        if not self.doc:
+            return
+        self._preview_generation += 1
+        token = self._preview_generation
+        self.doc.revision += 1
+        max_size = None if self._zoom_actual else self.view.viewport_target()
+        job = _PreviewJob(
+            token, self.doc.source_path, self.doc.snapshot(),
+            max_size, document_revision=self.doc.revision)
+        self._preview_jobs.add(job)
+        job.signals.ready.connect(
+            lambda generation, image, current=job:
+            self._accept_quality_proxy(generation, image, current, keep_view))
+        job.signals.failed.connect(
+            lambda generation, message, current=job:
+            self._reject_proxy(generation, message, current))
+        self.status.showMessage("Finishing preview…")
+        self._preview_pool.start(job)
+
+    def _accept_quality_proxy(self, generation, rendered, job, keep_view=True):
+        self._preview_jobs.discard(job)
+        if (generation != self._preview_generation or self._interactive_render or
+                not self.doc or job.document_revision != self.doc.revision):
+            return
+        self._show_rendered(rendered, keep_view=keep_view,
+                            max_size=job.max_size)
+        self.status.showMessage(
+            "RAW development updated" if getattr(self.doc, "raw_source_path", "")
+            else "Preview updated")
+
     def _accept_proxy(self, generation, rendered, job):
         self._preview_jobs.discard(job)
-        if generation != self._preview_generation or not self._interactive_render:
+        self._interactive_job_active = False
+        if (generation != self._preview_generation or not self._interactive_render or
+                not self.doc or job.document_revision != self.doc.revision):
+            self._dispatch_pending_interactive()
             return
         self._show_rendered(rendered, keep_view=True,
                             max_size=self.view.viewport_target(interactive=True),
                             stable_geometry=True)
+        self._dispatch_pending_interactive()
 
     def _reject_proxy(self, generation, message, job):
         self._preview_jobs.discard(job)
+        self._interactive_job_active = False
         if generation == self._preview_generation:
             _log.warning("interactive preview failed: %s", message)
+        self._dispatch_pending_interactive()
+
+    def _dispatch_pending_interactive(self):
+        if self._interactive_render and self._interactive_render_pending:
+            self._interactive_render_pending = False
+            QTimer.singleShot(0, self._dispatch_render)
 
     def _queue_fit_resolution_refresh(self):
         if self.doc and not self._zoom_actual:
@@ -3309,21 +3944,16 @@ class EditorWindow(QMainWindow):
     def _render_preview(self, keep_view=True):
         if not self.doc:
             return
-        # At 100% we render the photograph at its native resolution so the
-        # canvas shows true pixels (a real focus check); when Fit, we render a
-        # fast proxy capped to the window so slider drags stay smooth.
-        if self._interactive_render:
-            # Even at 100%, dragging stays responsive; release immediately
-            # restores the true native-pixel render.
-            max_size = self.view.viewport_target(interactive=True)
+        # Decode and composition are never performed on Qt's event thread.
+        # The prior frame remains visible until this revision is ready.
+        if getattr(self.doc, "raw_source_path", ""):
+            self._dispatch_raw_quality_render()
         else:
-            max_size = None if self._zoom_actual else self.view.viewport_target()
-        rendered = self.doc.render(max_size=max_size)
-        self._show_rendered(rendered, keep_view=keep_view, max_size=max_size,
-                            stable_geometry=self._interactive_render)
+            self._dispatch_quality_render(keep_view=keep_view)
 
     def _show_rendered(self, rendered, keep_view=True, max_size=None,
                        stable_geometry=False):
+        self._last_rendered = rendered.copy()
         edited = pil_to_qpixmap(rendered)
         if self.act_compare.isChecked():
             original = original_pixmap(self.doc.source_path, max_size=max_size)
@@ -3393,12 +4023,25 @@ class EditorWindow(QMainWindow):
         self.open_path(path)
 
     # --- UI sync ------------------------------------------------------------
-    def _sync_controls_from_doc(self):
+    def _sync_controls_from_doc(self, include_geometry=True):
         adjustments = self.active_adjustments()
         if adjustments is None:
             return
         for key, row in self.rows.items():
             row.set_value(adjustments.get(key, editor_engine.DEFAULT_ADJUSTMENTS.get(key, 0)))
+        for key, row in self.raw_rows.items():
+            row.set_value(adjustments.get(key, editor_engine.DEFAULT_ADJUSTMENTS.get(key, 0)))
+        is_raw_base = bool(
+            self.doc and getattr(self.doc, "raw_source_path", "") and
+            self.active_target == BASE)
+        self._sections["RAW DEVELOP"].setVisible(is_raw_base)
+        for key in editor_engine.RAW_DEVELOPMENT_KEYS:
+            ordinary = self.rows.get(key)
+            if ordinary is not None:
+                ordinary.setVisible(
+                    not is_raw_base and
+                    (getattr(self, "mode", "advanced") == "advanced" or
+                     key in NORMAL_ROWS))
         self.bw_check.blockSignals(True)
         self.bw_check.setChecked(bool(adjustments.get("black_white", False)))
         self.bw_check.blockSignals(False)
@@ -3417,7 +4060,8 @@ class EditorWindow(QMainWindow):
         self.sharpen_mode_combo.blockSignals(False)
         self._update_split_swatches()
         self.curve_editor.set_curves(adjustments)
-        self._sync_geometry()
+        if include_geometry:
+            self._sync_geometry()
 
     def _refresh_actions(self):
         has = self.doc is not None
@@ -3433,8 +4077,11 @@ class EditorWindow(QMainWindow):
         self.act_crop.setEnabled(editing)
         self.act_heal.setEnabled(editing)
         self.act_redeye.setEnabled(editing)
+        self.act_clone.setEnabled(editing)
+        self.act_patch.setEnabled(editing)
         self.act_ai_heal.setEnabled(editing)
         self.act_ai_fill.setEnabled(editing)
+        self.act_ai_expand.setEnabled(editing)
         self.act_recipe_save.setEnabled(editing)
         self.act_recipe_apply.setEnabled(editing)
         self.act_save_project.setEnabled(editing)
@@ -3485,7 +4132,8 @@ class EditorWindow(QMainWindow):
             return
         name = getattr(self.doc, "original_filename", os.path.basename(self.doc.source_path))
         dirty = " ●" if self.doc.is_dirty() else ""
-        self.setWindowTitle(f"{name}{dirty} — {BUILD_VERSION}")
+        raw = " [RAW · RawTherapee]" if getattr(self.doc, "raw_source_path", "") else ""
+        self.setWindowTitle(f"{name}{raw}{dirty}")
         self._refresh_history()
         self._refresh_actions()
 
