@@ -40,15 +40,15 @@ $page_css = <<<'CSS'
 .layer-num { display: block; margin-bottom: 8px; color: #888; font: 700 .64rem/1.2 'Courier New', monospace; letter-spacing: .1em; text-transform: uppercase; }
 .feat-list { max-width: 820px; margin: 0 0 0 1.2em; columns: 2; column-gap: 40px; }
 .feat-list li { margin-bottom: .6em; break-inside: avoid; font-size: .95rem; }
-.feat.feat--modes { background: #9a9a9a; border-top: 8px solid var(--black); }
-.feat--modes h2 { color: var(--black); }
-.feat--modes .lede { color: #222; }
-.mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #7a7a7a; border: 1px solid #7a7a7a; }
-.mode-card { padding: 30px; background: #dcdcdc; }
+.feat.feat--modes { background: #2a2a2a; color: #ddd; border-top: 8px solid var(--black); }
+.feat--modes h2 { color: var(--white); }
+.feat--modes .lede { color: #bbb; }
+.mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #444; border: 1px solid #444; }
+.mode-card { padding: 30px; background: #171717; }
 .mode-num { color: var(--red); font: 900 .72rem/1 Arial, sans-serif; }
-.mode-card h3 { margin: 10px 0 12px; font-size: 1.18rem; }
+.mode-card h3 { margin: 10px 0 12px; font-size: 1.18rem; color: var(--white); }
 .mode-tagline { margin: -5px 0 14px; color: var(--red); font: 900 .76rem/1.25 Arial Black, Arial, sans-serif; text-transform: uppercase; }
-.mode-card p { font-size: .93rem; }
+.mode-card p { font-size: .93rem; color: #bbb; }
 .fed-shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 30px 0; }
 .fed-shots figure { margin: 0; background: var(--white); border: 1px solid var(--border); }
 .fed-shots img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
