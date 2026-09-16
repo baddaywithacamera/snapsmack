@@ -6,11 +6,11 @@ screen shares one look and one behaviour instead of styling controls ad hoc.
 
 from PySide6.QtCore import Qt, Signal, QRectF, QTimer
 from PySide6.QtGui import (QPainter, QPixmap, QImage, QColor, QPolygonF, QPen,
-                           QFont, QTransform)
+                           QFont, QTransform, QPainterPath, QCursor)
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem,
-    QGraphicsEllipseItem, QGraphicsPolygonItem, QGraphicsLineItem,
+    QGraphicsEllipseItem, QGraphicsPolygonItem, QGraphicsLineItem, QGraphicsPathItem,
     QWidget, QLabel, QSlider, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy,
 )
 from PIL import Image
@@ -41,6 +41,7 @@ class ImageView(QGraphicsView):
     # normalized x/y and stroke-finished state for full-canvas mask painting
     mask_painted = Signal(float, float, bool)
     gradient_drawn = Signal(float, float, float, float)
+    horizon_drawn = Signal(object)
     # The editor uses a viewport-sized proxy in Fit mode. When layout changes,
     # ask it to render a new proxy instead of stretching the old one.
     fit_view_resized = Signal()
@@ -78,6 +79,8 @@ class ImageView(QGraphicsView):
         self._gradient_mode = False
         self._gradient_start = None
         self._gradient_line = None
+        self._gradient_handles = []
+        self._gradient_points = None
         self._mask_paint_mode = False
         self._mask_painting = False
         self._mask_overlay = QGraphicsPixmapItem()
@@ -93,6 +96,9 @@ class ImageView(QGraphicsView):
         self._perspective_polygon = None
         self._perspective_handles = []
         self._perspective_grid = []
+        self._horizon_mode = False
+        self._horizon_points = []
+        self._horizon_path_item = None
         # Before/After split: original on the left of the divider, edited on the
         # right, drag anywhere to move the split.
         self._compare = False
@@ -120,6 +126,39 @@ class ImageView(QGraphicsView):
                          else QGraphicsView.ScrollHandDrag)
         self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
         self._update_perspective_overlay()
+
+    def set_horizon_mode(self, enabled, points=None):
+        self._horizon_mode = bool(enabled)
+        self._horizon_points = []
+        if self._horizon_path_item is not None:
+            self._scene.removeItem(self._horizon_path_item)
+            self._horizon_path_item = None
+        if enabled:
+            rect = self._scene.sceneRect()
+            if points and rect.width() and rect.height():
+                self._horizon_points = [
+                    QPointF(rect.left() + float(x) * rect.width(),
+                            rect.top() + float(y) * rect.height())
+                    for x, y in points]
+                self._update_horizon_path()
+            self.setDragMode(QGraphicsView.NoDrag)
+            self.viewport().setCursor(Qt.CrossCursor)
+        elif not (self._crop_mode or self._retouch_mode or self._perspective_mode):
+            self.setDragMode(QGraphicsView.ScrollHandDrag)
+            self.viewport().unsetCursor()
+
+    def _update_horizon_path(self):
+        if not self._horizon_points:
+            return
+        if self._horizon_path_item is None:
+            self._horizon_path_item = QGraphicsPathItem()
+            self._horizon_path_item.setPen(QPen(QColor(theme.ACCENT), 3))
+            self._horizon_path_item.setZValue(40)
+            self._scene.addItem(self._horizon_path_item)
+        path = QPainterPath(self._horizon_points[0])
+        for point in self._horizon_points[1:]:
+            path.lineTo(point)
+        self._horizon_path_item.setPath(path)
 
     def set_perspective_corners(self, corners):
         if corners and len(corners) == 4:
@@ -205,12 +244,58 @@ class ImageView(QGraphicsView):
         """Let a graduated mask be drawn directly across the photograph."""
         self._gradient_mode = bool(enabled)
         self._gradient_start = None
-        if self._gradient_line is not None:
-            self._scene.removeItem(self._gradient_line)
-            self._gradient_line = None
+        if not enabled:
+            self._clear_gradient_guide()
         self.setDragMode(QGraphicsView.NoDrag if enabled
                          else QGraphicsView.ScrollHandDrag)
-        self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+        self.viewport().setCursor(self._precision_cursor() if enabled else Qt.ArrowCursor)
+
+    @staticmethod
+    def _precision_cursor():
+        """Small photographic crosshair instead of Qt's full-window cross."""
+        pixmap = QPixmap(17, 17)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        painter.setPen(QPen(QColor(0, 0, 0, 220), 3))
+        for x1, y1, x2, y2 in ((8, 1, 8, 5), (8, 11, 8, 15),
+                               (1, 8, 5, 8), (11, 8, 15, 8)):
+            painter.drawLine(x1, y1, x2, y2)
+        painter.setPen(QPen(QColor(theme.ACCENT), 1))
+        for x1, y1, x2, y2 in ((8, 1, 8, 5), (8, 11, 8, 15),
+                               (1, 8, 5, 8), (11, 8, 15, 8)):
+            painter.drawLine(x1, y1, x2, y2)
+        painter.drawPoint(8, 8)
+        painter.end()
+        return QCursor(pixmap, 8, 8)
+
+    def _clear_gradient_guide(self):
+        for item in ([self._gradient_line] if self._gradient_line is not None else []) + \
+                self._gradient_handles:
+            self._scene.removeItem(item)
+        self._gradient_line = None
+        self._gradient_handles = []
+        self._gradient_points = None
+
+    def _update_gradient_guide(self, start, end):
+        if self._gradient_line is None:
+            self._gradient_line = QGraphicsLineItem()
+            self._gradient_line.setPen(QPen(QColor(theme.ACCENT), 0))
+            self._gradient_line.setZValue(30)
+            self._scene.addItem(self._gradient_line)
+        self._gradient_line.setLine(start.x(), start.y(), end.x(), end.y())
+        for handle in self._gradient_handles:
+            self._scene.removeItem(handle)
+        self._gradient_handles = []
+        radius = max(3.0, min(self._scene.sceneRect().width(),
+                              self._scene.sceneRect().height()) / 180.0)
+        for index, point in enumerate((start, end)):
+            handle = QGraphicsEllipseItem(point.x() - radius, point.y() - radius,
+                                          radius * 2, radius * 2)
+            handle.setPen(QPen(QColor(theme.ACCENT), 0))
+            handle.setBrush(QColor(theme.ACCENT) if index else QColor(0, 0, 0, 0))
+            handle.setZValue(31)
+            self._scene.addItem(handle)
+            self._gradient_handles.append(handle)
 
     def set_mask_paint_mode(self, enabled):
         self._mask_paint_mode = bool(enabled)
@@ -524,15 +609,21 @@ class ImageView(QGraphicsView):
         self._compose_compare(keep_view=True)
 
     def mousePressEvent(self, event):
+        if self._horizon_mode and self._has_image and event.button() == Qt.LeftButton:
+            point = self.mapToScene(event.position().toPoint())
+            if self._scene.sceneRect().contains(point):
+                if self._horizon_path_item is not None:
+                    self._scene.removeItem(self._horizon_path_item)
+                    self._horizon_path_item = None
+                self._horizon_points = [point]
+                self._update_horizon_path()
+            return
         if self._gradient_mode and self._has_image and event.button() == Qt.LeftButton:
             point = self.mapToScene(event.position().toPoint())
             if self._scene.sceneRect().contains(point):
+                self._clear_gradient_guide()
                 self._gradient_start = point
-                self._gradient_line = QGraphicsLineItem(point.x(), point.y(),
-                                                        point.x(), point.y())
-                self._gradient_line.setPen(QPen(QColor(theme.ACCENT), 2))
-                self._gradient_line.setZValue(30)
-                self._scene.addItem(self._gradient_line)
+                self._update_gradient_guide(point, point)
             return
         if self._perspective_mode and self._has_image and event.button() == Qt.LeftButton:
             point = self.mapToScene(event.position().toPoint())
@@ -599,11 +690,22 @@ class ImageView(QGraphicsView):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        if self._horizon_mode and self._horizon_points and (event.buttons() & Qt.LeftButton):
+            point = self.mapToScene(event.position().toPoint())
+            rect = self._scene.sceneRect()
+            point.setX(max(rect.left(), min(rect.right(), point.x())))
+            point.setY(max(rect.top(), min(rect.bottom(), point.y())))
+            if (point - self._horizon_points[-1]).manhattanLength() >= 2:
+                self._horizon_points.append(point)
+                self._update_horizon_path()
+            return
         if self._gradient_mode and self._gradient_start is not None and \
                 (event.buttons() & Qt.LeftButton):
             point = self.mapToScene(event.position().toPoint())
-            self._gradient_line.setLine(self._gradient_start.x(), self._gradient_start.y(),
-                                        point.x(), point.y())
+            rect = self._scene.sceneRect()
+            point.setX(max(rect.left(), min(rect.right(), point.x())))
+            point.setY(max(rect.top(), min(rect.bottom(), point.y())))
+            self._update_gradient_guide(self._gradient_start, point)
             return
         if self._mask_paint_mode and self._mask_painting and \
                 (event.buttons() & Qt.LeftButton):
@@ -676,20 +778,34 @@ class ImageView(QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+        if self._horizon_mode and self._horizon_points:
+            rect = self._scene.sceneRect()
+            points = [[max(0.0, min(1.0, (p.x() - rect.left()) / rect.width())),
+                       max(0.0, min(1.0, (p.y() - rect.top()) / rect.height()))]
+                      for p in self._horizon_points] if rect.width() and rect.height() else []
+            self._horizon_points = []
+            if self._horizon_path_item is not None:
+                self._scene.removeItem(self._horizon_path_item)
+                self._horizon_path_item = None
+            if len(points) >= 2:
+                self.horizon_drawn.emit(points)
+            return
         if self._gradient_mode and self._gradient_start is not None:
             end = self.mapToScene(event.position().toPoint())
             scene = self._scene.sceneRect()
             start = self._gradient_start
             self._gradient_start = None
-            if self._gradient_line is not None:
-                self._scene.removeItem(self._gradient_line)
-                self._gradient_line = None
             if scene.width() and scene.height():
-                self.gradient_drawn.emit(
+                end.setX(max(scene.left(), min(scene.right(), end.x())))
+                end.setY(max(scene.top(), min(scene.bottom(), end.y())))
+                self._update_gradient_guide(start, end)
+                self._gradient_points = (
                     (start.x() - scene.left()) / scene.width(),
                     (start.y() - scene.top()) / scene.height(),
                     (end.x() - scene.left()) / scene.width(),
                     (end.y() - scene.top()) / scene.height())
+                self.gradient_drawn.emit(
+                    *self._gradient_points)
             return
         if self._mask_paint_mode and self._mask_painting:
             self._mask_painting = False
@@ -756,7 +872,11 @@ class ImageView(QGraphicsView):
         width = max(320, int(self.viewport().width() * ratio))
         height = max(320, int(self.viewport().height() * ratio))
         if interactive:
-            scale = min(1.0, 1100.0 / max(width, height))
+            # A live drag must win on latency.  The former 1100 px proxy was
+            # large enough that a multi-layer document could take several
+            # seconds per frame, making the slider appear dead.  A 600 px
+            # working proxy is replaced by a crisp viewport render on release.
+            scale = min(1.0, 600.0 / max(width, height))
             return (max(320, int(width * scale)),
                     max(320, int(height * scale)))
         # A little headroom so a zoom-in past fit still looks sharp.

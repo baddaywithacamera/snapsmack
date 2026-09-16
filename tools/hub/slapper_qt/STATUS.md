@@ -120,7 +120,7 @@ identity, so every existing look/project renders unchanged.
   recipes, deterministic seeds, colour controls, direct Light Leak placement,
   project persistence, and selected-photo batch application.
 - Colour-range masks and direct canvas movement for text/image layers.
-- Slideshow, JPEG contact sheets, printing, and visible Present/Print commands.
+- Slideshow and JPEG contact sheets under the visible Present command.
 - Safe RAW handoff to RawTherapee, darktable, or a chosen external application.
 - Hub-profile `Blog Copy` preparation: local-only, collision-safe staging copies
   with an auditable `.snapstage.json` manifest; it never uploads or publishes.

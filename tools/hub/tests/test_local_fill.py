@@ -24,7 +24,8 @@ def test_fill_sends_only_a_bounded_crop_to_external_runner(monkeypatch, tmp_path
     root = pathlib.Path(local_fill.install_root())
     (root / "venv" / "Scripts").mkdir(parents=True)
     (root / "venv" / "Scripts" / "python.exe").write_bytes(b"")
-    (root / "local_fill_runner.py").write_text("", encoding="utf-8")
+    source_runner = pathlib.Path(local_fill._resource("local_fill_runner.py"))
+    (root / "local_fill_runner.py").write_bytes(source_runner.read_bytes())
     (root / "installed.txt").write_text(local_fill.MODEL, encoding="utf-8")
     seen = {}
     def fake_run(args, **_kwargs):
@@ -33,7 +34,7 @@ def test_fill_sends_only_a_bounded_crop_to_external_runner(monkeypatch, tmp_path
         seen["size"] = Image.open(image_path).size
         Image.new("RGB", seen["size"], "blue").save(output_path)
         return type("Result", (), {"returncode": 0, "stderr": "", "stdout": ""})()
-    monkeypatch.setattr(local_fill.subprocess, "run", fake_run)
+    monkeypatch.setattr(local_fill.subprocess_limits, "run", fake_run)
     photo = Image.new("RGB", (2000, 1200), "red")
     mask = Image.new("L", photo.size, 0)
     for y in range(590, 610):
@@ -44,6 +45,16 @@ def test_fill_sends_only_a_bounded_crop_to_external_runner(monkeypatch, tmp_path
     assert result.getpixel((0, 0)) == (255, 0, 0)
     assert result.getpixel((1000, 600)) == (0, 0, 255)
     assert model == local_fill.MODEL
+
+
+def test_modified_runner_is_not_treated_as_installed(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
+    root = pathlib.Path(local_fill.install_root())
+    (root / "venv" / "Scripts").mkdir(parents=True)
+    (root / "venv" / "Scripts" / "python.exe").write_bytes(b"")
+    (root / "local_fill_runner.py").write_text("modified", encoding="utf-8")
+    (root / "installed.txt").write_text(local_fill.MODEL, encoding="utf-8")
+    assert not local_fill.installed()
 
 
 def test_packaged_installer_includes_runner_sources():

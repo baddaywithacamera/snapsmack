@@ -1,0 +1,15 @@
+SNAP SLAPPER uses the Qt framework via the PySide6 bindings under the LGPLv3.
+
+Qt and PySide6 are shipped as separate dynamic libraries in the SNAP SLAPPER
+application directory. Recipients may replace those libraries with compatible
+modified versions and may reverse engineer SNAP SLAPPER where needed to debug
+those modifications, as required by LGPLv3 section 4.
+
+The complete LGPLv3 text is included as LGPL-3.0.txt. The GPLv3 text on which
+LGPLv3 is based is included as GPL-3.0.txt.
+
+Qt: https://www.qt.io/
+PySide6 / Qt for Python: https://doc.qt.io/qtforpython-6/
+Source code: https://code.qt.io/cgit/pyside/pyside-setup.git/
+
+SNAP SLAPPER does not modify Qt or PySide6.

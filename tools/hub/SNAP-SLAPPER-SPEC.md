@@ -218,7 +218,7 @@ usable below 100%.
 Initial categories:
 
 - Clean and corrective;
-- Film and print;
+- Film-inspired finishing;
 - Black and white;
 - Portrait;
 - Landscape and weather;

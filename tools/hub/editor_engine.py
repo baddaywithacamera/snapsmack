@@ -5,12 +5,14 @@ SNAPSMACK_EOF_HEADER: this file must end with the canonical Python EOF marker.
 
 import base64
 import copy
+import hmac
 import io
 import json
 import math
 import os
 import time
 import tempfile
+from pathlib import PurePosixPath
 import textwrap
 import threading
 import zipfile
@@ -23,6 +25,9 @@ import numpy as np
 import photo_manager
 import slapper_filters
 import slapper_provenance
+import render_graph
+from artifact_registry import ArtifactKind, ArtifactRegistry
+import highbit_image as highbit
 
 # SECAUDIT 054 chokepoint 1 (image ingress): importing snap_imgsafe pins
 # Image.MAX_IMAGE_PIXELS process-wide (decompression-bomb cap) for EVERY
@@ -43,6 +48,50 @@ except ImportError:  # _shared not on path — untrusted decodes will refuse bel
 _PREVIEW_SOURCE_CACHE = OrderedDict()
 _PREVIEW_SOURCE_CACHE_LOCK = threading.RLock()
 _PREVIEW_SOURCE_CACHE_LIMIT = 4
+
+# Float compositor equivalent. The Qt editor renders each slider frame from a
+# fresh immutable document snapshot on worker threads; without this cache every
+# frame re-ran the bounded OIIO decoder against the same 16-bit TIFF. That was
+# the visible multi-second pause. Keep the largest recent proxy and derive
+# smaller drag frames from RAM.
+_FLOAT_SOURCE_CACHE = OrderedDict()
+_FLOAT_SOURCE_CACHE_LOCK = threading.RLock()
+_FLOAT_SOURCE_CACHE_LIMIT = 3
+_MASK_IMAGE_CACHE = OrderedDict()
+_MASK_IMAGE_CACHE_LOCK = threading.RLock()
+_MASK_IMAGE_CACHE_LIMIT = 8
+_MASK_IMAGE_CACHE_PIXELS = 256 * 1024 * 1024
+
+
+def _read_float_source(path, max_size=None):
+    absolute = os.path.abspath(path)
+    try:
+        signature = (absolute, os.path.getmtime(absolute), os.path.getsize(absolute))
+    except OSError:
+        return highbit.read(absolute, max_size)
+    requested = tuple(map(int, max_size)) if max_size else None
+    with _FLOAT_SOURCE_CACHE_LOCK:
+        entry = _FLOAT_SOURCE_CACHE.get(signature)
+        if entry is not None:
+            cached, native = entry
+            _FLOAT_SOURCE_CACHE.move_to_end(signature)
+            if requested is not None:
+                # A cached larger proxy is sufficient for this viewport. Never
+                # upscale a small cache entry; decode once at the needed size.
+                scale = min(requested[0] / cached.width,
+                            requested[1] / cached.height, 1.0)
+                if native or cached.width >= requested[0] or cached.height >= requested[1]:
+                    return cached.resized(requested)
+            elif native:
+                return cached
+        image = highbit.read(absolute, requested)
+        native = requested is None or (image.width < requested[0] and
+                                       image.height < requested[1])
+        _FLOAT_SOURCE_CACHE[signature] = (image, native)
+        _FLOAT_SOURCE_CACHE.move_to_end(signature)
+        while len(_FLOAT_SOURCE_CACHE) > _FLOAT_SOURCE_CACHE_LIMIT:
+            _FLOAT_SOURCE_CACHE.popitem(last=False)
+        return image
 
 
 def _open_source_image(path, max_size=None):
@@ -78,8 +127,13 @@ def _open_source_image(path, max_size=None):
         return image
 
 
-PROJECT_VERSION = 1
+LEGACY_PROJECT_VERSION = 1
+PROJECT_VERSION = 2
 MAX_PROJECT_BYTES = 512 * 1024 * 1024
+MAX_PROJECT_DOCUMENT_BYTES = 16 * 1024 * 1024
+MAX_PROJECT_ENTRIES = 2048
+MAX_PROJECT_ARCHIVE_BYTES = MAX_PROJECT_BYTES + MAX_PROJECT_DOCUMENT_BYTES + 1024 * 1024
+MAX_PROJECT_COMPRESSION_RATIO = 200
 MAX_PROJECT_LAYERS = 500
 MAX_RETOUCH_POINTS = 100000
 MAX_ENCODED_MASK_BYTES = 128 * 1024 * 1024
@@ -87,7 +141,18 @@ MAX_TEXT_LAYER_CHARS = 1_000_000
 MAX_HISTORY_STEPS = 100
 PROJECT_DOCUMENT_NAME = "project.json"
 PROJECT_README_NAME = "README.txt"
-PROJECT_ORIGINAL_NAME = "original/source"
+PROJECT_MIMETYPE = "application/vnd.snapsmack.snap-slapper-project+zip"
+PROJECT_ORIGINAL_NAME = "original/original"
+
+
+class ExternalProjectSourceApprovalRequired(ValueError):
+    """An imported project asked to read a path outside its own archive."""
+
+    def __init__(self, source_path):
+        self.source_path = os.path.abspath(os.fspath(source_path))
+        super().__init__(
+            "This project references a photograph outside the project file. "
+            "SNAP SLAPPER will not read it without your confirmation.")
 DEFAULT_ADJUSTMENTS = {
     "exposure": 0.0, "brightness": 0.0, "contrast": 0.0,
     "highlights": 0.0, "midtones": 0.0, "shadows": 0.0,
@@ -98,6 +163,7 @@ DEFAULT_ADJUSTMENTS = {
     # edge-limits the sharpen (finer detail, no haloes, noise left alone);
     # gaussian is the classic unsharp mask. Defaults keep sharpen off (0).
     "sharpen_radius": 1.2, "sharpen_reduce_noise": 0.0, "sharpen_mode": "lens",
+    "raw_noise_reduction": 0.0,
     "level_black": 0.0, "level_gamma": 1.0, "level_white": 255.0,
     "black_white": False, "vignette": 0.0, "grain": 0.0,
     # Vignette edge softness (50 == the classic look) and a darken-only grain
@@ -137,6 +203,12 @@ DEFAULT_ADJUSTMENTS = {
     "photo_filter_color": [236, 138, 0], "photo_filter_density": 0.0,
     "photo_filter_preserve_lum": True,
     "curve": [[0, 0], [255, 255]],
+}
+
+# Controls performed in the RAW developer when a document has a RAW source.
+RAW_DEVELOPMENT_KEYS = {
+    "exposure", "brightness", "contrast", "highlights", "shadows",
+    "temperature", "tint", "saturation", "raw_noise_reduction",
 }
 
 
@@ -257,8 +329,27 @@ def _mask_from_text(value):
             "Mask refused — snap_imgsafe (shared image safety module) is not "
             "available. Reinstall/repair SNAP SLAPPER; masks are never decoded "
             "unguarded.")
-    return snap_imgsafe.safe_open(
-        base64.b64decode(value), formats={"PNG"}).convert("L")
+    # The encoded string is immutable and already belongs to the document, so
+    # it is an exact collision-free cache key. Validation and full decode still
+    # happen once; subsequent renders/layer selections receive an independent
+    # copy and cannot mutate the cached image.
+    with _MASK_IMAGE_CACHE_LOCK:
+        cached = _MASK_IMAGE_CACHE.get(value)
+        if cached is not None:
+            _MASK_IMAGE_CACHE.move_to_end(value)
+            return cached.copy()
+        decoded = snap_imgsafe.safe_open(
+            base64.b64decode(value), formats={"PNG"}).convert("L")
+        pixels = decoded.width * decoded.height
+        if pixels <= _MASK_IMAGE_CACHE_PIXELS:
+            while _MASK_IMAGE_CACHE and (
+                    len(_MASK_IMAGE_CACHE) >= _MASK_IMAGE_CACHE_LIMIT or
+                    sum(image.width * image.height
+                        for image in _MASK_IMAGE_CACHE.values()) + pixels >
+                    _MASK_IMAGE_CACHE_PIXELS):
+                _MASK_IMAGE_CACHE.popitem(last=False)
+            _MASK_IMAGE_CACHE[value] = decoded.copy()
+        return decoded
 
 
 def _source_sha256(path):
@@ -269,8 +360,21 @@ def _source_sha256(path):
     return digest.hexdigest()
 
 
-def _write_project_archive(path, value, source_path):
-    """Atomically publish an ordinary ZIP container with a .slapper extension."""
+def _project_preview_bytes(image):
+    """Return portable flattened previews for browsers that cannot render a recipe."""
+    composite = io.BytesIO()
+    image.convert("RGB").save(composite, format="TIFF", compression="tiff_deflate")
+    thumbnail_image = image.copy()
+    thumbnail_image.thumbnail((512, 512), Image.Resampling.LANCZOS)
+    thumbnail = io.BytesIO()
+    thumbnail_image.convert("RGB").save(thumbnail, format="JPEG", quality=88,
+                                         optimize=True)
+    return composite.getvalue(), thumbnail.getvalue()
+
+
+def _write_project_archive(path, value, source_path, *, embed_source=True,
+                           preview=None):
+    """Atomically publish the documented v2 ZIP64 project container."""
     target = os.path.abspath(path)
     directory = os.path.dirname(target)
     os.makedirs(directory, exist_ok=True)
@@ -281,22 +385,69 @@ def _write_project_archive(path, value, source_path):
     original_name = PROJECT_ORIGINAL_NAME + extension
     value = copy.deepcopy(value)
     value["source_ingredient"] = {
-        "archive_path": original_name,
+        "archive_path": original_name if embed_source else "",
+        "external": not embed_source,
         "original_filename": os.path.basename(source_path),
         "sha256": _source_sha256(source_path),
         "byte_count": os.path.getsize(source_path),
     }
     document = json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode("utf-8")
-    readme = ("SNAP SLAPPER project archive\n\n"
+    readme = ("SNAP SLAPPER project archive (standard ZIP/ZIP64)\n\n"
               "Rename this file from .slapper to .zip to inspect it with any ZIP tool.\n"
               "project.json contains the versioned, human-readable editing document.\n"
-              "original/source contains the untouched source photograph as a provenance ingredient.\n")
+              + ("original/original contains the untouched source photograph as a provenance ingredient.\n"
+                 if embed_source else
+                 "The immutable RAW original remains external and is referenced by typed artifact ID.\n"))
+    if preview is None:
+        with Image.open(source_path) as source_preview:
+            preview = ImageOps.exif_transpose(source_preview).convert("RGB")
+    composite, thumbnail = _project_preview_bytes(preview)
+    entries = {
+        PROJECT_DOCUMENT_NAME: document,
+        PROJECT_README_NAME: readme.encode("utf-8"),
+        "previews/composite.tif": composite,
+        "previews/thumbnail.jpg": thumbnail,
+        "metadata/original-exif.json": json.dumps(
+            {"preserved_in_original": bool(embed_source)}, sort_keys=True).encode("utf-8"),
+        "metadata/provenance.json": json.dumps(
+            value["source_ingredient"], indent=2, sort_keys=True).encode("utf-8"),
+        "metadata/dependencies.json": json.dumps(
+            {"external_source": not embed_source}, sort_keys=True).encode("utf-8"),
+        "schemas/project-schema.json": json.dumps(
+            {"$schema": "https://json-schema.org/draft/2020-12/schema",
+             "title": "SNAP SLAPPER project", "type": "object",
+             "required": ["version", "source_path", "layers"],
+             "properties": {"version": {"const": PROJECT_VERSION}}},
+            indent=2, sort_keys=True).encode("utf-8"),
+    }
+    for index, layer in enumerate(value.get("layers", [])):
+        stable_id = str(layer.get("id") or f"layer-{index + 1}")
+        safe_id = "".join(character for character in stable_id
+                          if character.isalnum() or character in "-_") or f"layer-{index + 1}"
+        entries[f"layers/{safe_id}/layer.json"] = json.dumps(
+            layer, indent=2, sort_keys=True, allow_nan=False).encode("utf-8")
+    if embed_source:
+        with open(source_path, "rb") as original:
+            entries[original_name] = original.read()
+    hashes = {name: __import__("hashlib").sha256(payload).hexdigest()
+              for name, payload in entries.items()}
+    entries["metadata/checksums.json"] = json.dumps(
+        {"algorithm": "sha256", "entries": hashes},
+        indent=2, sort_keys=True).encode("utf-8")
+    entries["manifest.json"] = json.dumps({
+        "format": "SNAP SLAPPER", "format_version": PROJECT_VERSION,
+        "container": "standard ZIP/ZIP64", "project": PROJECT_DOCUMENT_NAME,
+        "original": original_name if embed_source else None,
+        "layer_order": [str(layer.get("id") or f"layer-{index + 1}")
+                        for index, layer in enumerate(value.get("layers", []))],
+    }, indent=2, sort_keys=True).encode("utf-8")
     try:
         with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED,
                              allowZip64=True) as archive:
-            archive.writestr(PROJECT_DOCUMENT_NAME, document)
-            archive.writestr(PROJECT_README_NAME, readme)
-            archive.write(source_path, original_name)
+            archive.writestr("mimetype", PROJECT_MIMETYPE,
+                             compress_type=zipfile.ZIP_STORED)
+            for name, payload in entries.items():
+                archive.writestr(name, payload)
         photo_manager.fsync_file(temporary)
         os.replace(temporary, target)
     except Exception:
@@ -312,11 +463,12 @@ def _read_project_document(path):
     if zipfile.is_zipfile(path):
         try:
             with zipfile.ZipFile(path, "r") as archive:
+                _validate_project_archive(archive)
                 try:
                     info = archive.getinfo(PROJECT_DOCUMENT_NAME)
                 except KeyError as exc:
                     raise ValueError("Invalid SNAP SLAPPER project: project.json is missing") from exc
-                if info.file_size > MAX_PROJECT_BYTES:
+                if info.file_size > MAX_PROJECT_DOCUMENT_BYTES:
                     raise ValueError("SNAP SLAPPER project document is too large to open safely")
                 raw = archive.read(info)
             return json.loads(raw.decode("utf-8"),
@@ -325,6 +477,29 @@ def _read_project_document(path):
             raise ValueError("Invalid SNAP SLAPPER project archive") from exc
     with open(path, "r", encoding="utf-8") as handle:
         return json.load(handle, parse_constant=photo_manager.reject_json_constant)
+
+
+def _validate_project_archive(archive):
+    """Reject hostile ZIP structure before reading any project member."""
+    entries = archive.infolist()
+    if len(entries) > MAX_PROJECT_ENTRIES:
+        raise ValueError("SNAP SLAPPER project contains too many archive entries")
+    if sum(info.file_size for info in entries) > MAX_PROJECT_ARCHIVE_BYTES:
+        raise ValueError("SNAP SLAPPER project archive expands beyond the safe limit")
+    for info in entries:
+        name = info.filename.replace("\\", "/")
+        parts = PurePosixPath(name).parts
+        if (not name or name.startswith("/") or (len(name) > 1 and name[1] == ":") or
+                ".." in parts):
+            raise ValueError("SNAP SLAPPER project contains an unsafe archive path")
+        unix_mode = (info.external_attr >> 16) & 0xFFFF
+        if unix_mode and (unix_mode & 0o170000) == 0o120000:
+            raise ValueError("SNAP SLAPPER project contains a symbolic link")
+        if info.file_size and info.compress_size == 0:
+            raise ValueError("SNAP SLAPPER project contains an invalid compressed member")
+        if (info.compress_size and
+                info.file_size / info.compress_size > MAX_PROJECT_COMPRESSION_RATIO):
+            raise ValueError("SNAP SLAPPER project compression ratio is unsafe")
 
 
 def _extract_embedded_source(project_path, ingredient):
@@ -338,6 +513,7 @@ def _extract_embedded_source(project_path, ingredient):
     digest = __import__("hashlib").sha256()
     try:
         with os.fdopen(descriptor, "wb") as target, zipfile.ZipFile(project_path, "r") as archive:
+            _validate_project_archive(archive)
             info = archive.getinfo(member)
             if info.file_size > MAX_PROJECT_BYTES:
                 raise ValueError("Embedded original photograph is too large")
@@ -590,12 +766,13 @@ def apply_adjustments(image, adjustments):
         yy, xx = np.ogrid[:height, :width]
         radius = np.sqrt(((xx - (width - 1) / 2) / max(1, width / 2)) ** 2 +
                          ((yy - (height - 1) / 2) / max(1, height / 2)) ** 2)
-        size = max(0.0, min(100.0, float(settings.get("vignette_size", 70)))) / 100.0
-        feather = float(settings.get("vignette_feather", 50)) / 100.0
+        size = max(0.0, min(200.0, float(settings.get("vignette_size", 70)))) / 100.0
+        feather = max(0.0, min(200.0, float(
+            settings.get("vignette_feather", 50)))) / 100.0
         midpoint = .55 + size * .40
         transition = .04 + feather * .42
         start = max(.08, midpoint - transition / 2)
-        end = min(1.05, midpoint + transition / 2)
+        end = min(1.80, midpoint + transition / 2)
         weight = np.clip((radius - start) / max(.001, end - start), 0.0, 1.0)
         weight = weight * weight * (3.0 - 2.0 * weight)
         strength = abs(vignette) / 100.0
@@ -1200,12 +1377,17 @@ class EditorDocument:
     _font_reference_cache = {}
     def __init__(self, source_path):
         self.source_path = os.path.abspath(source_path)
+        self.revision = 0
         # Rendering may use a verified source extracted from a portable project,
         # but folder browsing and recovery identity must remain attached to the
         # photograph the user actually opened.
         self.recorded_source_path = self.source_path
         self.browse_source_path = self.source_path
         self.original_filename = os.path.basename(self.source_path)
+        self.artifacts = ArtifactRegistry()
+        self.original_artifact_id = self.artifacts.assign(
+            ArtifactKind.ORIGINAL_RASTER, self.source_path)
+        self.edit_source_artifact_id = self.original_artifact_id
         self.adjustments = copy.deepcopy(DEFAULT_ADJUSTMENTS)
         self.geometry = {
             "rotation": 0.0, "crop": None, "flip_x": False, "flip_y": False,
@@ -1216,9 +1398,12 @@ class EditorDocument:
             "lens_distortion": 0.0, "lens_spherical": 0.0,
             "lens_center_x": 0.0, "lens_center_y": 0.0,
             "lens_scale": 100.0, "lens_edges": "auto_crop",
+            "horizon_curve": [], "horizon_strength": 100.0,
+            "horizon_edge_protection": 60.0,
         }
         self.layers = []
         self.retouched = []
+        self.saved_selections = {}
         self.history = []
         self.history_index = -1
         self.project_path = None
@@ -1229,20 +1414,78 @@ class EditorDocument:
         self.record("Open image")
         self.saved_snapshot = self.snapshot()
 
+    def attach_raw_source(self, original_path, developed_path, profile_path,
+                          producer_build="RawTherapee"):
+        """Attach an explicit RAW→profile→master artifact chain."""
+        original_path = os.path.abspath(original_path)
+        developed_path = os.path.abspath(developed_path)
+        profile_path = os.path.abspath(profile_path)
+        registry = ArtifactRegistry()
+        raw_id = registry.assign(ArtifactKind.ORIGINAL_RAW, original_path)
+        profile_id = registry.assign(ArtifactKind.RAW_PROFILE, profile_path,
+                                     source_refs=(raw_id,))
+        master_id = registry.derive(
+            ArtifactKind.DEVELOPED_MASTER, developed_path,
+            source_refs=(raw_id, profile_id), bit_depth="uint16",
+            producer_build=str(producer_build))
+        self.artifacts = registry
+        self.original_artifact_id = raw_id
+        self.raw_profile_artifact_id = profile_id
+        self.edit_source_artifact_id = master_id
+        self.raw_source_path = original_path
+        self.source_path = developed_path
+        self._raw_developed_adjustments = {
+            key: copy.deepcopy(DEFAULT_ADJUSTMENTS[key])
+            for key in RAW_DEVELOPMENT_KEYS
+        }
+        self.recorded_source_path = original_path
+        self.browse_source_path = original_path
+        self.original_filename = os.path.basename(original_path)
+
+    def _use_raw_development(self, artifacts):
+        """Advance the typed profile/master chain when RAW controls change."""
+        original_path = os.path.abspath(artifacts["original"])
+        current_original = None
+        try:
+            candidate = self.artifacts.get(self.original_artifact_id)
+            if candidate.kind == ArtifactKind.ORIGINAL_RAW:
+                current_original = candidate
+        except (KeyError, TypeError, AttributeError):
+            pass
+        if current_original is None:
+            self.attach_raw_source(original_path, artifacts["master"],
+                                   artifacts["profile"], artifacts["producer"])
+            return
+        self.artifacts.relocate(current_original.id, original_path)
+        profile_hash = _source_sha256(artifacts["profile"])
+        profile_id = self.artifacts.derive(
+            ArtifactKind.RAW_PROFILE, artifacts["profile"],
+            source_refs=(current_original.id,), producer_build=profile_hash)
+        master_id = self.artifacts.derive(
+            ArtifactKind.DEVELOPED_MASTER, artifacts["master"],
+            source_refs=(current_original.id, profile_id), bit_depth="uint16",
+            producer_build=str(artifacts["producer"]))
+        self.raw_profile_artifact_id = profile_id
+        self.edit_source_artifact_id = master_id
+        self.source_path = os.path.abspath(artifacts["master"])
+
     def notify_change(self):
+        self.revision += 1
         if self.on_change:
             self.on_change(self)
 
     def snapshot(self):
         return {"adjustments": copy.deepcopy(self.adjustments),
                 "geometry": copy.deepcopy(self.geometry),
-                "layers": copy.deepcopy(self.layers), "retouched": copy.deepcopy(self.retouched)}
+                "layers": copy.deepcopy(self.layers), "retouched": copy.deepcopy(self.retouched),
+                "saved_selections": copy.deepcopy(self.saved_selections)}
 
     def restore(self, value):
         self.adjustments = copy.deepcopy(value["adjustments"])
         self.geometry = copy.deepcopy(value["geometry"])
         self.layers = copy.deepcopy(value["layers"])
         self.retouched = copy.deepcopy(value.get("retouched", []))
+        self.saved_selections = copy.deepcopy(value.get("saved_selections", {}))
 
     def record(self, label):
         state = self.snapshot()
@@ -1339,7 +1582,9 @@ class EditorDocument:
     @staticmethod
     def default_transform():
         return {"x": .5, "y": .5, "scale_x": 1.0, "scale_y": 1.0,
-                "rotation": 0.0, "flip_x": False, "flip_y": False}
+                "rotation": 0.0, "flip_x": False, "flip_y": False,
+                "warp_corners": [[0.0, 0.0], [0.0, 0.0],
+                                 [0.0, 0.0], [0.0, 0.0]]}
 
     def add_text_layer(self, text="Text", name="Text", font_path="", font_size=72):
         self.layers.append({"id": _new_layer_id(), "name": name or "Text",
@@ -1515,33 +1760,167 @@ class EditorDocument:
         return output
 
     def render(self, max_size=None):
+        return self.render_float(max_size).display_proxy()
+
+    def _graph_source_identity(self):
+        raw_source = getattr(self, "raw_source_path", "")
+        raw_settings = ({key: self.adjustments.get(key, DEFAULT_ADJUSTMENTS[key])
+                         for key in RAW_DEVELOPMENT_KEYS} if raw_source else None)
+        return {"source": render_graph.file_identity(self.source_path),
+                "raw_source": render_graph.file_identity(raw_source) if raw_source else None,
+                "raw_settings": raw_settings}
+
+    def _graph_base_identity(self):
+        return {"adjustments": self.adjustments, "geometry": self.geometry,
+                "retouched": self.retouched}
+
+    @staticmethod
+    def _graph_layer_identity(layer):
+        identity = copy.deepcopy(layer)
+        path = identity.get("path")
+        if path:
+            identity["path_identity"] = render_graph.file_identity(path)
+        return identity
+
+    def _graph_decode_source(self, max_size):
+        raw_source = getattr(self, "raw_source_path", "")
+        if not raw_source:
+            self._graph_base_adjustments = copy.deepcopy(self.adjustments)
+            return highbit.read(self.source_path, max_size)
+        import raw_preview
+        raw_settings = {key: self.adjustments.get(key, DEFAULT_ADJUSTMENTS[key])
+                        for key in RAW_DEVELOPMENT_KEYS}
+        artifacts = raw_preview.development_artifacts(raw_source, raw_settings)
+        self._use_raw_development(artifacts)
+        self._raw_developed_adjustments = copy.deepcopy(raw_settings)
+        base_adjustments = copy.deepcopy(self.adjustments)
+        for key in RAW_DEVELOPMENT_KEYS:
+            base_adjustments[key] = DEFAULT_ADJUSTMENTS[key]
+        self._graph_base_adjustments = base_adjustments
+        return highbit.read(artifacts["master"], max_size)
+
+    def _graph_stage_document(self, image):
+        stage = copy.copy(self)
+        stage._graph_input_image = image
+        stage.raw_source_path = ""
+        stage.on_change = None
+        return stage
+
+    def _graph_render_base(self, source):
+        stage = self._graph_stage_document(source)
+        stage.adjustments = copy.deepcopy(self.adjustments)
+        if getattr(self, "raw_source_path", ""):
+            for key in RAW_DEVELOPMENT_KEYS:
+                stage.adjustments[key] = DEFAULT_ADJUSTMENTS[key]
+        stage.layers = []
+        return stage._render_float_reference()
+
+    def _graph_render_layer(self, composite, layer, _position):
+        stage = self._graph_stage_document(composite)
+        stage._graph_skip_base = True
+        stage.adjustments = copy.deepcopy(DEFAULT_ADJUSTMENTS)
+        stage.geometry = {
+            "rotation": 0.0, "crop": None, "flip_x": False, "flip_y": False,
+            "perspective_vertical": 0.0, "perspective_horizontal": 0.0,
+            "perspective_corners": [[0.0, 0.0], [1.0, 0.0],
+                                    [1.0, 1.0], [0.0, 1.0]],
+            "perspective_edges": "transparent", "lens_distortion": 0.0,
+            "lens_spherical": 0.0, "lens_center_x": 0.0, "lens_center_y": 0.0,
+            "lens_scale": 100.0, "lens_edges": "transparent",
+            "horizon_curve": [], "horizon_strength": 100.0,
+            "horizon_edge_protection": 60.0,
+        }
+        stage.retouched = []
+        stage.layers = [copy.deepcopy(layer)]
+        return stage._render_float_reference()
+
+    def render_float(self, max_size=None, *, request=None, is_current=None):
+        """Evaluate the authoritative incremental graph in float32."""
+        return render_graph.DEFAULT_GRAPH.render(
+            self, max_size, request=request, is_current=is_current).image
+
+    def _float_geometry(self, image):
+        geometry = self.geometry
+        if any(float(geometry.get(key, 0.0)) for key in
+               ("lens_distortion", "lens_spherical", "lens_center_x", "lens_center_y")) or \
+                float(geometry.get("lens_scale", 100.0)) != 100.0:
+            image = highbit.radial_lens(image, geometry)
+            if geometry.get("lens_edges", "auto_crop") == "auto_crop" and image.pixels.shape[2] == 4:
+                alpha = Image.fromarray(np.uint8(np.clip(image.pixels[:, :, 3], 0, 1) * 255), "L")
+                rectangle = _largest_opaque_rectangle(alpha)
+                if rectangle:
+                    image = image.crop(rectangle)
+        neutral_perspective = (
+            not float(geometry.get("perspective_vertical", 0.0)) and
+            not float(geometry.get("perspective_horizontal", 0.0)) and
+            geometry.get("perspective_corners", [[0, 0], [1, 0], [1, 1], [0, 1]]) ==
+            [[0, 0], [1, 0], [1, 1], [0, 1]])
+        if not neutral_perspective:
+            destination = _perspective_destination(geometry, image.width, image.height)
+            image = highbit.projective(
+                image, _perspective_coefficients(destination, image.width, image.height))
+            if geometry.get("perspective_edges", "auto_crop") == "auto_crop":
+                left = math.ceil(max(destination[0][0], destination[3][0], 0))
+                right = math.floor(min(destination[1][0], destination[2][0], image.width - 1))
+                top = math.ceil(max(destination[0][1], destination[1][1], 0))
+                bottom = math.floor(min(destination[2][1], destination[3][1], image.height - 1))
+                if right - left >= 2 and bottom - top >= 2:
+                    image = image.crop((left, top, right + 1, bottom + 1))
+        horizon = geometry.get("horizon_curve") or []
+        if len(horizon) >= 2 and float(geometry.get("horizon_strength", 100.0)):
+            image = highbit.straighten_curved_horizon(
+                image, horizon,
+                float(geometry.get("horizon_strength", 100.0)) / 100.0,
+                float(geometry.get("horizon_edge_protection", 60.0)) / 100.0)
+        rotation = float(geometry.get("rotation", 0.0))
+        if rotation:
+            image = highbit.rotate(image, rotation)
+        image = image.flipped(bool(geometry.get("flip_x")), bool(geometry.get("flip_y")))
+        crop = geometry.get("crop")
+        if crop:
+            left, top, right, bottom = crop
+            image = image.crop((left * image.width, top * image.height,
+                                right * image.width, bottom * image.height))
+        return image
+
+    @staticmethod
+    def _float_mask(mask, size):
+        if mask is None:
+            return None
+        values = np.asarray(mask.convert("L"), dtype=np.float32) / 255.0
+        if (mask.width, mask.height) != size:
+            values = highbit.FloatImage(values[:, :, None], ("Y",)).resized_exact(size).pixels[:, :, 0]
+        return values
+
+    def _render_float_reference(self, max_size=None):
+        """Render the complete document with float32 as the sole colour source."""
         # Preview work starts at preview resolution. Previously the source TIFF
         # and all geometry were processed at full resolution, then discarded by
         # thumbnail() at the end of the render.
-        image = _open_source_image(self.source_path, max_size)
-        image = apply_lens_distortion(image, self.geometry)
-        image = apply_perspective(image, self.geometry)
-        rotation = float(self.geometry.get("rotation", 0))
-        if rotation:
-            image = image.rotate(rotation, expand=True, resample=Image.Resampling.BICUBIC)
-        if self.geometry.get("flip_x"):
-            image = ImageOps.mirror(image)
-        if self.geometry.get("flip_y"):
-            image = ImageOps.flip(image)
-        crop = self.geometry.get("crop")
-        if crop:
-            left, top, right, bottom = crop
-            image = image.crop((int(left * image.width), int(top * image.height),
-                                int(right * image.width), int(bottom * image.height)))
-        if max_size:
-            image.thumbnail(max_size, Image.Resampling.LANCZOS)
-        preserve_geometry_alpha = (
-            self.geometry.get("perspective_edges") == "transparent" or
-            self.geometry.get("lens_edges") == "transparent")
-        geometry_alpha = (image.getchannel("A") if image.mode == "RGBA" and
-                          preserve_geometry_alpha else None)
-        image = apply_adjustments(image, self.adjustments).convert("RGBA")
-        if self.retouched:
+        base_adjustments = self.adjustments
+        graph_input = getattr(self, "_graph_input_image", None)
+        raw_source = getattr(self, "raw_source_path", "")
+        if graph_input is not None:
+            image = graph_input
+        elif raw_source:
+            import raw_preview
+            raw_settings = {key: self.adjustments.get(key, DEFAULT_ADJUSTMENTS[key])
+                            for key in RAW_DEVELOPMENT_KEYS}
+            artifacts = raw_preview.development_artifacts(raw_source, raw_settings)
+            self._use_raw_development(artifacts)
+            self._raw_developed_adjustments = copy.deepcopy(raw_settings)
+            image = _read_float_source(artifacts["master"], max_size)
+            # RawTherapee has already applied these controls. The remaining
+            # SNAP SLAPPER-only controls continue through the layer engine.
+            base_adjustments = copy.deepcopy(self.adjustments)
+            for key in RAW_DEVELOPMENT_KEYS:
+                base_adjustments[key] = DEFAULT_ADJUSTMENTS[key]
+        else:
+            image = _read_float_source(self.source_path, max_size)
+        if not getattr(self, "_graph_skip_base", False):
+            image = self._float_geometry(image)
+            image = highbit.apply_adjustments(image, base_adjustments, DEFAULT_ADJUSTMENTS)
+        if self.retouched and not getattr(self, "_graph_skip_base", False):
             for spot in self.retouched:
                 x = int(float(spot.get("x", .5)) * image.width)
                 y = int(float(spot.get("y", .5)) * image.height)
@@ -1549,31 +1928,59 @@ class EditorDocument:
                 box = (max(0, x - radius), max(0, y - radius),
                        min(image.width, x + radius), min(image.height, y + radius))
                 if box[2] > box[0] and box[3] > box[1]:
-                    patch = image.crop(box)
-                    if spot.get("type") == "red_eye":
-                        red, green, blue, alpha = patch.split()
-                        red = red.point(lambda value: int(value * .35))
-                        corrected = Image.merge("RGBA", (red, green, blue, alpha))
-                        patch = Image.blend(patch, corrected, .8)
+                    if spot.get("type") in {"clone", "patch"}:
+                        source_x = int(float(spot.get("source_x", spot.get("x", .5))) * image.width)
+                        source_y = int(float(spot.get("source_y", spot.get("y", .5))) * image.height)
+                        source_box = (source_x - (x - box[0]), source_y - (y - box[1]),
+                                      source_x + (box[2] - x), source_y + (box[3] - y))
+                        sx0, sy0, sx1, sy1 = source_box
+                        sx0 = max(0, min(image.width - (box[2] - box[0]), sx0))
+                        sy0 = max(0, min(image.height - (box[3] - box[1]), sy0))
+                        patch = image.crop((sx0, sy0, sx0 + (box[2] - box[0]),
+                                            sy0 + (box[3] - box[1])))
+                        if spot.get("type") == "patch":
+                            # Patch keeps source texture but gently matches the
+                            # destination's mean colour/luminance.
+                            target_values = image.pixels[box[1]:box[3], box[0]:box[2]]
+                            values = patch.pixels.copy()
+                            channels = min(3, values.shape[2], target_values.shape[2])
+                            delta = (target_values[:, :, :channels].mean(axis=(0, 1)) -
+                                     values[:, :, :channels].mean(axis=(0, 1)))
+                            values[:, :, :channels] += delta[None, None, :] * .75
+                            patch = highbit.FloatImage(values, patch.channel_names,
+                                                       patch.source_format, patch.icc_profile)
                     else:
-                        patch = patch.filter(ImageFilter.GaussianBlur(max(2, radius / 3)))
-                    mask = Image.new("L", patch.size, 0)
-                    ImageDraw.Draw(mask).ellipse((0, 0, patch.width - 1, patch.height - 1), fill=255)
-                    mask = mask.filter(ImageFilter.GaussianBlur(max(1, radius / 5)))
-                    image.paste(patch, box[:2], mask)
+                        patch = image.crop(box)
+                    if spot.get("type") == "red_eye":
+                        values = patch.pixels.copy()
+                        values[:, :, 0] *= .48
+                        patch = highbit.FloatImage(values, patch.channel_names,
+                                                   patch.source_format, patch.icc_profile)
+                    elif spot.get("type") not in {"clone", "patch"}:
+                        patch = highbit.gaussian_blur(patch, max(2, radius / 3))
+                    yy, xx = np.mgrid[0:patch.height, 0:patch.width]
+                    px = (patch.width - 1) / 2; py = (patch.height - 1) / 2
+                    mask = np.clip(1.0 - np.sqrt(((xx - px) / max(1, px)) ** 2 +
+                                                 ((yy - py) / max(1, py)) ** 2), 0, 1)
+                    values = image.pixels.copy()
+                    target = values[box[1]:box[3], box[0]:box[2]]
+                    channels = min(target.shape[2], patch.pixels.shape[2])
+                    target[:, :, :channels] = (patch.pixels[:, :, :channels] * mask[:, :, None] +
+                                                target[:, :, :channels] * (1.0 - mask[:, :, None]))
+                    image = highbit.FloatImage(values, image.channel_names,
+                                               image.source_format, image.icc_profile)
         for layer_number, layer in enumerate(self.layers, 1):
             if not layer.get("visible", True):
                 continue
             if layer.get("type") == "adjustment":
-                adjusted = apply_adjustments(image.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
-                top = adjusted
+                top = highbit.apply_adjustments(image, layer.get("adjustments", {}),
+                                                DEFAULT_ADJUSTMENTS)
             elif layer.get("type") == "filter":
                 if layer.get("filter_version", 1) != 1:
                     raise ValueError(
                         f"Unsupported filter version: {layer.get('filter_version')}")
-                top = slapper_filters.apply_filter(
-                    image.convert("RGB"), layer.get("filter_type", ""),
-                    layer.get("settings", {})).convert("RGBA")
+                top = highbit.apply_filter(image, layer.get("filter_type", ""),
+                                           layer.get("settings", {}))
             elif layer.get("type") == "image":
                 path = layer.get("path", "")
                 if layer.get("asset_ref"):
@@ -1598,67 +2005,72 @@ class EditorDocument:
                 svg_target = image.size if (
                     os.path.splitext(path)[1].lower() == ".svg" and
                     fit in ("cover", "contain", "stretch")) else None
-                top = _open_layer_image(path, svg_target)
-                if max_size:
-                    top.thumbnail(image.size, Image.Resampling.LANCZOS)
-                alpha = top.getchannel("A")
-                top = apply_adjustments(
-                    top.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
-                top.putalpha(alpha)
+                top = (highbit.from_pillow(_open_layer_image(path, svg_target))
+                       if os.path.splitext(path)[1].lower() == ".svg" else
+                       highbit.read(path))
+                top = highbit.apply_adjustments(top, layer.get("adjustments", {}),
+                                                DEFAULT_ADJUSTMENTS)
                 if fit in ("cover", "contain", "stretch", "tile"):
-                    top = self._fit_layer_image(top, image.size, fit)
+                    top = highbit.fit_layer(top, image.size, fit)
             elif layer.get("type") == "paint":
                 fill = list(layer.get("fill", [0, 0, 0, 0]))
                 fill = (fill + [0, 0, 0, 0])[:4]
-                top = Image.new("RGBA", image.size, tuple(int(value) for value in fill))
-                alpha = top.getchannel("A")
-                top = apply_adjustments(
-                    top.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
-                top.putalpha(alpha)
+                top = highbit.constant(image.size, fill)
+                top = highbit.apply_adjustments(top, layer.get("adjustments", {}),
+                                                DEFAULT_ADJUSTMENTS)
             elif layer.get("type") == "text":
-                top = self._text_layer_image(layer)
-                alpha = top.getchannel("A")
-                top = apply_adjustments(top.convert("RGB"), layer.get("adjustments", {})).convert("RGBA")
-                top.putalpha(alpha)
+                top = highbit.from_pillow(self._text_layer_image(layer))
+                top = highbit.apply_adjustments(top, layer.get("adjustments", {}),
+                                                DEFAULT_ADJUSTMENTS)
             else:
                 continue
             mask = (_mask_from_text(layer.get("mask", ""))
                     if layer.get("mask_enabled", True) else None)
             if layer.get("type") in {"image", "text"}:
-                linked_mask = mask if mask is not None and layer.get("mask_linked", True) else None
+                linked_mask = (self._float_mask(mask, top.size) if
+                               mask is not None and layer.get("mask_linked", True) else None)
                 # A fit mode already sized the layer to the canvas; place it
                 # centred at scale 1 rather than re-applying the free transform.
                 fitted = layer.get("fit", "original") in ("cover", "contain", "stretch", "tile")
                 transform = self.default_transform() if fitted else layer.get("transform", {})
-                top = self._image_layer_canvas(top, image.size, transform, linked_mask)
+                top = highbit.place_layer(top, image.size, transform, linked_mask)
                 if mask is not None and not layer.get("mask_linked", True):
-                    mask = self._canvas_mask(mask, image.size,
-                                             layer.get("mask_transform", {}))
-                    top.putalpha(ImageChops.multiply(top.getchannel("A"), mask))
+                    mask_layer = highbit.place_layer(
+                        highbit.FloatImage(self._float_mask(mask, mask.size)[:, :, None], ("Y",)),
+                        image.size, layer.get("mask_transform", {}))
+                    values = top.pixels.copy()
+                    values[:, :, 3] *= mask_layer.pixels[:, :, -1]
+                    top = highbit.FloatImage(values, top.channel_names)
             elif mask:
-                if mask.size != image.size:
-                    mask = mask.resize(image.size, Image.Resampling.LANCZOS)
-                top.putalpha(ImageChops.multiply(top.getchannel("A"), mask))
-            top = apply_layer_styles(top, layer.get("styles", {}))
-            image = blend_images(image, top, layer.get("blend", "normal"), float(layer.get("opacity", 1.0)))
-        if geometry_alpha is not None:
-            if geometry_alpha.size != image.size:
-                geometry_alpha = geometry_alpha.resize(image.size, Image.Resampling.LANCZOS)
-            image.putalpha(geometry_alpha)
-            return image
-        return image.convert("RGB")
+                layer_mask = self._float_mask(mask, image.size)
+                values = top.pixels.copy()
+                if values.shape[2] == 4:
+                    values[:, :, 3] *= layer_mask
+                    top = highbit.FloatImage(values, top.channel_names)
+                else:
+                    top = highbit.FloatImage(np.concatenate((values, layer_mask[:, :, None]), axis=2),
+                                             ("R", "G", "B", "A"))
+            top = highbit.apply_styles(top, layer.get("styles", {}))
+            image = highbit.blend(image, top, layer.get("blend", "normal"),
+                                  float(layer.get("opacity", 1.0)))
+        return image
 
     def histogram(self, max_size=(512, 512)):
-        image = self.render(max_size).convert("RGB")
-        red, green, blue = image.split()
-        return {"red": red.histogram(), "green": green.histogram(), "blue": blue.histogram(),
-                "luminance": ImageOps.grayscale(image).histogram()}
+        values = np.clip(self.render_float(max_size).pixels[:, :, :3], 0.0, 1.0)
+        return {"red": np.histogram(values[:, :, 0], 256, (0, 1))[0].tolist(),
+                "green": np.histogram(values[:, :, 1], 256, (0, 1))[0].tolist(),
+                "blue": np.histogram(values[:, :, 2], 256, (0, 1))[0].tolist(),
+                "luminance": np.histogram(highbit.luminance(values), 256, (0, 1))[0].tolist()}
 
     def project_value(self, recovery=False):
         value = {"version": PROJECT_VERSION,
                  "source_path": self.recorded_source_path,
+                 "artifacts": self.artifacts.value(),
+                 "original_artifact_id": self.original_artifact_id,
+                 "edit_source_artifact_id": self.edit_source_artifact_id,
                  "adjustments": self.adjustments, "geometry": self.geometry,
                  "layers": self.layers, "retouched": self.retouched,
+                 "saved_selections": self.saved_selections,
                  "history": self.history[-MAX_HISTORY_STEPS:],
                  "history_index": min(self.history_index, MAX_HISTORY_STEPS - 1)}
         if recovery:
@@ -1667,27 +2079,48 @@ class EditorDocument:
         return value
 
     def save_project(self, path):
-        if photo_manager.same_file(path, self.source_path):
+        archive_source = getattr(self, "raw_source_path", self.source_path)
+        if photo_manager.same_file(path, archive_source):
             raise ValueError("SNAP SLAPPER will not overwrite the original photograph with a project.")
         value = self.project_value()
-        _write_project_archive(path, value, self.source_path)
+        preview_document = self
+        if getattr(self, "raw_source_path", ""):
+            preview_document = copy.deepcopy(self)
+            preview_document.raw_source_path = ""
+        _write_project_archive(path, value, archive_source,
+                               embed_source=not bool(getattr(self, "raw_source_path", "")),
+                               preview=preview_document.render((1600, 1600)))
         self.project_path = path
         self.mark_saved()
 
     def save_recovery(self, path):
-        if photo_manager.same_file(path, self.source_path):
+        archive_source = getattr(self, "raw_source_path", self.source_path)
+        if photo_manager.same_file(path, archive_source):
             raise ValueError("Recovery path resolves to the original photograph.")
-        _write_project_archive(path, self.project_value(recovery=True), self.source_path)
+        preview_document = self
+        if getattr(self, "raw_source_path", ""):
+            preview_document = copy.deepcopy(self)
+            preview_document.raw_source_path = ""
+        _write_project_archive(path, self.project_value(recovery=True), archive_source,
+                               embed_source=not bool(getattr(self, "raw_source_path", "")),
+                               preview=preview_document.render((1600, 1600)))
 
     @classmethod
-    def load_project(cls, path):
+    def load_project(cls, path, *, trust_external_source=False):
         if os.path.getsize(path) > MAX_PROJECT_BYTES:
             raise ValueError("SNAP SLAPPER project is too large to open safely")
         value = _read_project_document(path)
         if not isinstance(value, dict):
             raise ValueError("Invalid SNAP SLAPPER project: the root must be an object")
-        if value.get("version") != PROJECT_VERSION:
+        if value.get("version") not in {LEGACY_PROJECT_VERSION, PROJECT_VERSION}:
             raise ValueError("Unsupported SNAP SLAPPER project version")
+        legacy_project = value.get("version") == LEGACY_PROJECT_VERSION
+        expected_types = {"adjustments": dict, "geometry": dict,
+                          "layers": list, "retouched": list,
+                          "saved_selections": dict}
+        for field, expected in expected_types.items():
+            if field in value and not isinstance(value[field], expected):
+                raise ValueError(f"Invalid SNAP SLAPPER project: {field} has the wrong type")
         recorded_source_path = value.get("source_path")
         if not isinstance(recorded_source_path, str) or not recorded_source_path.strip():
             raise ValueError("Invalid SNAP SLAPPER project: source_path is missing")
@@ -1697,23 +2130,39 @@ class EditorDocument:
             embedded_source = _extract_embedded_source(path, value["source_ingredient"])
         if embedded_source:
             source_path = embedded_source
-        elif not os.path.isfile(source_path):
-            raise FileNotFoundError(f"The project's original photograph is missing: {source_path}")
+        else:
+            if not legacy_project and not trust_external_source:
+                raise ExternalProjectSourceApprovalRequired(source_path)
+            if not os.path.isfile(source_path):
+                raise FileNotFoundError(
+                    f"The project's original photograph is missing: {source_path}")
+            ingredient = value.get("source_ingredient")
+            expected_hash = ingredient.get("sha256") if isinstance(ingredient, dict) else ""
+            if expected_hash:
+                if not isinstance(expected_hash, str) or len(expected_hash) != 64:
+                    raise ValueError("Invalid SNAP SLAPPER project: source hash is invalid")
+                if not hmac.compare_digest(_source_sha256(source_path), expected_hash.lower()):
+                    raise ValueError("The project's external photograph failed its integrity check")
+        raw_source_path = None
         if os.path.splitext(source_path)[1].lower() in photo_manager.RAW_EXTENSIONS:
-            raise ValueError("This project references a RAW photograph. Open the original with "
-                             "RawTherapee or darktable.")
-        expected_types = {"adjustments": dict, "geometry": dict,
-                          "layers": list, "retouched": list}
-        for field, expected in expected_types.items():
-            if field in value and not isinstance(value[field], expected):
-                raise ValueError(f"Invalid SNAP SLAPPER project: {field} has the wrong type")
+            import raw_preview
+            raw_source_path = source_path
+            source_path = raw_preview.develop(raw_source_path,
+                                              value.get("adjustments", {}))
         layers = value.get("layers", [])
         retouched = value.get("retouched", [])
+        saved_selections = value.get("saved_selections", {})
         history = value.get("history", [])
         if len(layers) > MAX_PROJECT_LAYERS:
             raise ValueError("Invalid SNAP SLAPPER project: too many layers")
         if len(retouched) > MAX_RETOUCH_POINTS:
             raise ValueError("Invalid SNAP SLAPPER project: too many retouch points")
+        if len(saved_selections) > 100:
+            raise ValueError("Invalid SNAP SLAPPER project: too many saved selections")
+        for name, encoded in saved_selections.items():
+            if (not isinstance(name, str) or not name.strip() or len(name) > 100 or
+                    not isinstance(encoded, str) or len(encoded) > MAX_ENCODED_MASK_BYTES):
+                raise ValueError("Invalid SNAP SLAPPER project: saved selection is invalid")
         if not isinstance(history, list) or len(history) > MAX_HISTORY_STEPS:
             raise ValueError("Invalid SNAP SLAPPER project: editing history is invalid")
         for entry in history:
@@ -1723,6 +2172,8 @@ class EditorDocument:
             if not isinstance(state, dict):
                 raise ValueError("Invalid SNAP SLAPPER project: editing history state is invalid")
             for field, expected in expected_types.items():
+                if field == "saved_selections" and field not in state:
+                    continue
                 if not isinstance(state.get(field), expected):
                     raise ValueError(
                         f"Invalid SNAP SLAPPER project: history {field} has the wrong type")
@@ -1746,6 +2197,30 @@ class EditorDocument:
                     raise ValueError(
                         f"Invalid SNAP SLAPPER project: layer {index + 1} filter version is unsupported")
         document = cls(source_path)
+        if raw_source_path:
+            artifacts_value = value.get("artifacts")
+            if artifacts_value:
+                document.artifacts = ArtifactRegistry.from_value(artifacts_value)
+                document.original_artifact_id = value["original_artifact_id"]
+                document.edit_source_artifact_id = value["edit_source_artifact_id"]
+                document.artifacts.relocate(document.original_artifact_id,
+                                            raw_source_path)
+                profile = next((record for record in document.artifacts.records
+                                if record.kind == ArtifactKind.RAW_PROFILE), None)
+                if profile:
+                    document.raw_profile_artifact_id = profile.id
+                    document.artifacts.relocate(profile.id,
+                                                os.path.splitext(source_path)[0] + ".pp3")
+                document.artifacts.relocate(document.edit_source_artifact_id,
+                                            source_path)
+                document.source_path = source_path
+                document.raw_source_path = raw_source_path
+                document.original_filename = os.path.basename(recorded_source_path)
+            else:
+                artifacts = raw_preview.development_artifacts(
+                    raw_source_path, value.get("adjustments", {}))
+                document.attach_raw_source(raw_source_path, artifacts["master"],
+                                           artifacts["profile"], artifacts["producer"])
         document.recorded_source_path = os.path.abspath(recorded_source_path)
         ingredient = value.get("source_ingredient")
         original_name = (ingredient.get("original_filename")
@@ -1766,6 +2241,7 @@ class EditorDocument:
         document.geometry = value.get("geometry", document.geometry)
         document.layers = layers
         document.retouched = retouched
+        document.saved_selections = copy.deepcopy(saved_selections)
         document.history = copy.deepcopy(history)
         stored_index = value.get("history_index", len(history) - 1)
         document.history_index = (max(0, min(int(stored_index), len(history) - 1))
@@ -1783,17 +2259,31 @@ class EditorDocument:
         return document
 
     def export(self, path, quality=95, copyright_text="", strip_gps=False):
-        output = self.render()
+        output = self.render_float()
         extension = os.path.splitext(path)[1].lower()
-        if extension in {".jpg", ".jpeg", ".webp"} and output.mode == "RGBA":
-            background = Image.new("RGB", output.size, "black")
-            background.paste(output, mask=output.getchannel("A"))
-            output = background
-        options = {"quality": quality, "optimize": True} if extension in {".jpg", ".jpeg", ".webp"} else {}
         records = slapper_provenance.export_operations(self.layers, output.size)
-        photo_manager.save_with_metadata(
-            output, path, self.source_path, copyright_text, strip_gps=strip_gps,
-            provenance_records=records, **options)
+        if extension in {".tif", ".tiff", ".png"}:
+            source_xmp = None
+            try:
+                with Image.open(self.source_path) as source:
+                    source_xmp = source.info.get("xmp")
+            except (OSError, ValueError):
+                pass
+            xmp = (slapper_provenance.embed_xmp(source_xmp, records)
+                   if records else source_xmp)
+            highbit.write(output, path, integer_bits=16, metadata_source=self.source_path,
+                          copyright_text=copyright_text, strip_gps=strip_gps, xmp=xmp)
+        else:
+            display = output.display_proxy()
+            if display.mode == "RGBA":
+                background = Image.new("RGB", display.size, "black")
+                background.paste(display, mask=display.getchannel("A"))
+                display = background
+            options = ({"quality": quality, "optimize": True}
+                       if extension in {".jpg", ".jpeg", ".webp"} else {})
+            photo_manager.save_with_metadata(
+                display, path, self.source_path, copyright_text, strip_gps=strip_gps,
+                provenance_records=records, **options)
 
     def recipe(self):
         geometry = {key: copy.deepcopy(value) for key, value in self.geometry.items()
@@ -1864,7 +2354,8 @@ class EditorDocument:
         for key in ("rotation", "flip_x", "flip_y", "perspective_vertical",
                     "perspective_horizontal", "perspective_corners",
                     "perspective_edges", "lens_distortion", "lens_spherical",
-                    "lens_center_x", "lens_center_y", "lens_scale", "lens_edges"):
+                    "lens_center_x", "lens_center_y", "lens_scale", "lens_edges",
+                    "horizon_curve", "horizon_strength", "horizon_edge_protection"):
             if key in geometry:
                 self.geometry[key] = copy.deepcopy(geometry[key])
         clones = copy.deepcopy(layers)
