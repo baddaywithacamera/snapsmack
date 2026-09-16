@@ -85,6 +85,14 @@ body {
     padding: 0 40px; 
 }
 
+.site-tagline-text {
+    margin: 4px 0 0;
+    line-height: 1.2;
+    letter-spacing: .04em;
+    font-weight: 400;
+    text-transform: none;
+}
+
 .site-title-text {
     font-family: 'Montserrat', sans-serif;
     font-weight: 800;

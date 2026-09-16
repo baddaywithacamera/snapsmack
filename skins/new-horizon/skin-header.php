@@ -19,6 +19,7 @@ snapsmack_emit_font_tags([
     $settings['static_heading_font']  ?? 'Helvetica Neue',
     $settings['static_body_font']     ?? 'Georgia',
     $settings['footer_font_family']   ?? 'Inter',
+    $settings['tagline_font_family']  ?? 'Inter',
 ], BASE_URL);
 ?>
 <div id="header">
