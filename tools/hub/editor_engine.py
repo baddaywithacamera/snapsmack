@@ -1856,7 +1856,10 @@ class EditorDocument:
         raw_source = getattr(self, "raw_source_path", "")
         if not raw_source:
             self._graph_base_adjustments = copy.deepcopy(self.adjustments)
-            return highbit.read(self.source_path, max_size)
+            # The editor renders a fitted frame first, then a smaller live-drag
+            # frame. Reuse that already-decoded float source instead of sending
+            # the same multi-megapixel photograph through the decoder again.
+            return _read_float_source(self.source_path, max_size)
         import raw_preview
         raw_settings = {key: self.adjustments.get(key, DEFAULT_ADJUSTMENTS[key])
                         for key in RAW_DEVELOPMENT_KEYS}
@@ -1867,7 +1870,7 @@ class EditorDocument:
         for key in RAW_DEVELOPMENT_KEYS:
             base_adjustments[key] = DEFAULT_ADJUSTMENTS[key]
         self._graph_base_adjustments = base_adjustments
-        return highbit.read(artifacts["master"], max_size)
+        return _read_float_source(artifacts["master"], max_size)
 
     def _graph_stage_document(self, image):
         stage = copy.copy(self)
