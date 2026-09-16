@@ -41,12 +41,13 @@ QLabel#CardTitle {{ font-size:16px; font-weight:700; }}
 QLabel#Muted {{ color:{DIM}; }}
 QLabel#Good {{ color:{GREEN}; background:#142611; border:1px solid #315d25; border-radius:10px; padding:6px 11px; font-weight:700; }}
 QLabel#Warn {{ color:#ffbf47; background:#271f0f; border:1px solid #5f4821; border-radius:10px; padding:6px 11px; font-weight:700; }}
-QPushButton {{ background:#202c24; border:1px solid #34463a; border-radius:8px; padding:9px 14px; font-weight:650; }}
+QPushButton {{ background:#202c24; border:1px solid #34463a; border-radius:8px; padding:9px 14px; font-weight:650; min-height:18px; }}
 QPushButton:hover {{ border-color:{GREEN}; background:#26372b; }}
 QPushButton#Primary {{ color:#071006; background:{GREEN}; border-color:{GREEN}; font-weight:850; padding:11px 18px; }}
 QPushButton#Nav {{ text-align:left; background:transparent; border:0; color:#bac3b8; padding:11px 14px; }}
 QPushButton#Nav:checked {{ color:{GREEN}; background:#152219; border-left:3px solid {GREEN}; }}
 QLineEdit,QComboBox,QTextEdit,QTableWidget {{ background:#0c110e; border:1px solid {BORDER}; border-radius:7px; padding:7px; selection-background-color:#3ba525; }}
+QLineEdit,QComboBox {{ min-height:20px; }}
 QLineEdit:focus,QComboBox:focus,QTextEdit:focus,QTableWidget:focus {{ border-color:{GREEN}; }}
 QHeaderView::section {{ background:#121a15; color:#bac3b8; border:0; border-bottom:1px solid {BORDER}; padding:8px; font-weight:700; }}
 QTableWidget {{ background:{BASE}; border:0; gridline-color:transparent; alternate-background-color:#111a14; outline:0; }}
@@ -84,7 +85,9 @@ class FitScrollArea(QScrollArea):
         super().resizeEvent(event); self._fit_widget()
     def _fit_widget(self):
         widget=self.widget()
-        if widget: widget.resize(self.viewport().width(),max(self.viewport().height(),widget.minimumSizeHint().height()))
+        # Never hand the page less height than its controls need: a short window
+        # scrolls instead of squashing buttons to half height (Sean, 2026-09-15).
+        if widget: widget.resize(self.viewport().width(),max(self.viewport().height(),widget.sizeHint().height(),widget.minimumSizeHint().height()))
 
 
 class QueueTable(QTableWidget):
