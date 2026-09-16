@@ -19,7 +19,12 @@ import sybu_core
 
 # Kept explicit so the Qt shell never imports the legacy Tk entry point (which
 # redirects stdout/stderr and initializes Tk-only services at import time).
-BUILD_VERSION = "0.7.66"
+# One version, one source: main.py carries BUILD_VERSION (build.bat + the
+# desktop floor read it there). The Qt window must never carry its own copy —
+# it drifted to 0.7.66 while main.py said 0.7.67.
+import re as _re
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "main.py"), encoding="utf-8") as _fh:
+    BUILD_VERSION = (_re.search(r'^BUILD_VERSION\s*=\s*"([^"]+)"', _fh.read(), _re.M) or [None, "0.0.0"])[1]
 
 GREEN = "#73f04b"; BASE = "#0d120f"; VOID = "#090c0a"; PANEL = "#121a15"
 CARD = "#18231c"; BORDER = "#28372d"; INK = "#f4f7f2"; DIM = "#829087"
