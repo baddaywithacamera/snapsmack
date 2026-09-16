@@ -14,6 +14,7 @@ $nav_active       = 'reckoning';
 
 $page_css = <<<'CSS'
 .reckoning-intro { max-width: 820px; }
+.page-header:has(+ .reckoning-premise) { padding-bottom: clamp(36px, 4vw, 56px); }
 .reckoning-premise { padding: clamp(38px, 5vw, 64px) 0; color: var(--white); background: var(--black); border-top: 7px solid var(--red); }
 .reckoning-premise-grid { display: grid; grid-template-columns: minmax(150px, .35fr) minmax(0, 1fr); gap: clamp(28px, 6vw, 90px); align-items: start; }
 .reckoning-premise-label { margin: 7px 0 0; color: var(--red); font: 900 .78rem/1.2 Arial Black, Arial, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
