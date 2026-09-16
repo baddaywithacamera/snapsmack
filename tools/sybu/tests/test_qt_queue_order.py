@@ -103,4 +103,37 @@ def test_progress_strip_visible_from_every_page_and_posted_wording():
     assert w.table.item(0, 11).text() == "POSTED"
     assert w.table.item(1, 11).text() == "posting…"
     assert w.table.item(2, 11).text() == "ERROR: 401"
+def test_scan_restores_saved_enrichment(monkeypatch):
+    """A folder with a recovery file comes back enriched, without asking, without Gemini."""
+    from PySide6.QtWidgets import QApplication
+    import sybu_qt
+    app = QApplication.instance() or QApplication([])
+    w = sybu_qt.Window()
+    calls = {"apply": 0}
+    class Rec:
+        def exists(self): return True
+        def enriched_count_for(self, entries): return 3
+    w.engine.recovery = Rec(); w.engine.entries = [1, 2, 3, 4]
+    def apply_resume():
+        calls["apply"] += 1
+        return {"rows": [], "count": 4, "selected": 4, "failed": 0}
+    monkeypatch.setattr(w.engine, "apply_resume", apply_resume)
+    monkeypatch.setattr(w, "_fill_queue", lambda data=None: None)
+    w._task_done("scan", {"rows": [], "count": 4, "selected": 4, "failed": 0}, None)
+    assert calls["apply"] == 1
+    assert "Restored saved enrichment for 3" in w.log.toPlainText()
+
+
+def test_queue_toolbar_wraps_instead_of_clipping():
+    from PySide6.QtWidgets import QApplication
+    import sybu_qt
+    app = QApplication.instance() or QApplication([]); app.setStyleSheet(sybu_qt.STYLE)
+    w = sybu_qt.Window(); w.resize(1040, 700); w.show(); app.processEvents()
+    lay = w.table.parentWidget().layout()
+    flows = [lay.itemAt(i).layout() for i in range(lay.count()) if isinstance(lay.itemAt(i).layout(), sybu_qt.FlowLayout)]
+    assert flows, "queue toolbar must be a FlowLayout"
+    fl = flows[0]
+    # at 1040 px the eleven controls need more than one row
+    assert fl.heightForWidth(700) > fl.heightForWidth(3000)
+
 # ===== SNAPSMACK EOF =====
