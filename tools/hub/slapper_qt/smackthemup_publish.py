@@ -13,6 +13,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
 USER_AGENT = "SNAP-SLAPPER/0.7"
+MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 
 
 class PublishError(RuntimeError):
@@ -24,12 +25,28 @@ class _SameHostRedirect(HTTPRedirectHandler):
     def redirect_request(self, request, fp, code, message, headers, new_url):
         old = urlsplit(request.full_url)
         new = urlsplit(new_url)
-        if new.scheme != "https" or new.hostname != old.hostname:
+        old_port = old.port or 443
+        new_port = new.port or 443
+        if (new.scheme != "https" or new.hostname != old.hostname or
+                new_port != old_port):
             raise PublishError("The site redirected publishing to another host; the key was not sent.")
         return super().redirect_request(request, fp, code, message, headers, new_url)
 
 
 _open = build_opener(_SameHostRedirect()).open
+
+
+def _read_json_response(response):
+    length = response.headers.get("Content-Length", "")
+    try:
+        if length and int(length) > MAX_RESPONSE_BYTES:
+            raise PublishError("The site reply was too large and was refused.")
+    except ValueError:
+        raise PublishError("The site returned an invalid response size.")
+    raw = response.read(MAX_RESPONSE_BYTES + 1)
+    if len(raw) > MAX_RESPONSE_BYTES:
+        raise PublishError("The site reply was too large and was refused.")
+    return json.loads(raw.decode("utf-8"))
 
 
 def _endpoint(site_url: str, resource: str) -> str:
@@ -54,10 +71,10 @@ def _request(site_url, resource, api_key, *, method="GET", body=None,
                       method=method)
     try:
         with _open(request, timeout=timeout) as response:
-            payload = json.loads(response.read().decode("utf-8"))
+            payload = _read_json_response(response)
     except HTTPError as error:
         try:
-            payload = json.loads(error.read().decode("utf-8"))
+            payload = _read_json_response(error)
             message = payload.get("error") or str(error)
         except Exception:
             message = str(error)
