@@ -109,7 +109,8 @@ class LayerWorkspaceTests(unittest.TestCase):
             layer["mask_transform"].update(x=.25, y=.75, scale_x=.6, rotation=15)
             layer["mask"] = editor_engine._mask_to_text(Image.new("L", (40, 30), 180))
             document.save_project(project_path)
-            reopened = editor_engine.EditorDocument.load_project(project_path)
+            reopened = editor_engine.EditorDocument.load_project(
+                project_path, trust_external_source=True)
             loaded = reopened.layers[0]
             self.assertEqual(loaded["transform"], layer["transform"])
             self.assertEqual(loaded["mask_transform"], layer["mask_transform"])
