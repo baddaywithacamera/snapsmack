@@ -27,7 +27,7 @@ class BuiltInLewksTests(unittest.TestCase):
         for want in ("SPLIT DECISION", "COLD FRONT", "PLAIN TRUTH", "CROSS EXAMINED"):
             self.assertIn(want, names)
         categories = {item["category"] for item in lewks}
-        self.assertTrue({"Clean + Corrective", "Film + Print", "Black + White",
+        self.assertTrue({"Clean + Corrective", "Film", "Black + White",
                          "Portrait", "Landscape + Weather", "Night + Neon",
                          "Experimental"}.issubset(categories))
 

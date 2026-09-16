@@ -49,13 +49,15 @@ def inspect_source(path):
         }
 
 
-def workspace_label(info):
+def workspace_label(info, raw_development=False):
     profile = (f"{info['profile_name']} (embedded ICC)" if info.get("icc_profile") else
                "Unprofiled (assumed sRGB)")
     depth = f"{info['bits_per_channel']}-bit/channel"
     if info.get("sample_format") == "float":
         depth += " float"
-    return f"{info['model']} · {depth} · {profile} · Working: 8-bit sRGB (legacy engine)"
+    working = ("RAW: 16-bit RawTherapee development · Working: float32 compositor"
+               if raw_development else "Working: float32 compositor")
+    return f"{info['model']} · {depth} · {profile} · {working}"
 
 
 # ===== SNAPSMACK EOF =====

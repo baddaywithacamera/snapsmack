@@ -8,12 +8,16 @@ that layer's own adjustments.
 """
 
 import os
+import copy
+
+from PIL import Image, ImageDraw, ImageFilter
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
     QComboBox, QFileDialog, QSlider, QGridLayout, QInputDialog, QColorDialog,
+    QDialog, QDialogButtonBox, QDoubleSpinBox, QGroupBox,
 )
 
 import editor_engine
@@ -27,6 +31,80 @@ BLEND_MODES = [
     "darken", "lighten", "difference", "color", "luminosity",
 ]
 BASE = "base"
+
+
+class LayerTransformDialog(QDialog):
+    """Live, undoable affine and four-corner warp editor."""
+    def __init__(self, panel, layer):
+        super().__init__(panel)
+        self.panel = panel
+        self.layer = layer
+        self.before = copy.deepcopy(layer.get("transform", {}))
+        self.transform = layer.setdefault("transform", editor_engine.EditorDocument.default_transform())
+        self.setWindowTitle("Free Transform and Warp")
+        layout = QVBoxLayout(self)
+        grid = QGridLayout()
+        self.controls = {}
+        fields = (("x", "Position X", -100, 200, 100),
+                  ("y", "Position Y", -100, 200, 100),
+                  ("scale_x", "Scale X", 1, 2000, 100),
+                  ("scale_y", "Scale Y", 1, 2000, 100),
+                  ("rotation", "Rotation", -360, 360, 1))
+        for row, (key, label, low, high, factor) in enumerate(fields):
+            grid.addWidget(QLabel(label), row, 0)
+            box = QDoubleSpinBox(); box.setRange(low, high); box.setDecimals(2)
+            box.setValue(float(self.transform.get(key, .5 if key in {"x", "y"} else 1)) * factor)
+            box.valueChanged.connect(lambda value, k=key, f=factor: self._change(k, value / f))
+            grid.addWidget(box, row, 1); self.controls[key] = box
+        layout.addLayout(grid)
+        flip_row = QHBoxLayout()
+        self.flip_x = QCheckBox("Flip horizontal"); self.flip_y = QCheckBox("Flip vertical")
+        self.flip_x.setChecked(bool(self.transform.get("flip_x")))
+        self.flip_y.setChecked(bool(self.transform.get("flip_y")))
+        self.flip_x.toggled.connect(lambda value: self._change("flip_x", value))
+        self.flip_y.toggled.connect(lambda value: self._change("flip_y", value))
+        flip_row.addWidget(self.flip_x); flip_row.addWidget(self.flip_y); layout.addLayout(flip_row)
+        warp = QGroupBox("Corner warp — offsets in % of layer size")
+        warp_grid = QGridLayout(warp)
+        corners = self.transform.get("warp_corners") or [[0, 0] for _ in range(4)]
+        self.warp_controls = []
+        for row, label in enumerate(("Top left", "Top right", "Bottom right", "Bottom left")):
+            warp_grid.addWidget(QLabel(label), row, 0)
+            pair = []
+            for axis in range(2):
+                box = QDoubleSpinBox(); box.setRange(-75, 75); box.setSuffix("%")
+                box.setValue(float(corners[row][axis]) * 100)
+                box.valueChanged.connect(lambda value, c=row, a=axis: self._warp(c, a, value / 100))
+                warp_grid.addWidget(box, row, axis + 1); pair.append(box)
+            self.warp_controls.append(pair)
+        layout.addWidget(warp)
+        reset = QPushButton("Reset transform and warp"); reset.clicked.connect(self._reset)
+        layout.addWidget(reset)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept); buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def _change(self, key, value):
+        self.transform[key] = value; self.panel.host.request_render(interactive=True)
+
+    def _warp(self, corner, axis, value):
+        points = self.transform.setdefault("warp_corners", [[0., 0.] for _ in range(4)])
+        points[corner][axis] = value; self.panel.host.request_render(interactive=True)
+
+    def _reset(self):
+        self.transform.clear(); self.transform.update(editor_engine.EditorDocument.default_transform())
+        self.panel.host.request_render(interactive=True)
+        self.accept()
+
+    def accept(self):
+        if self.before != self.transform:
+            self.panel.doc.record("Free transform and warp")
+        self.panel.host.finish_interactive_render(); super().accept()
+
+    def reject(self):
+        self.layer["transform"] = self.before
+        self.panel.host.request_render(); self.panel.host.finish_interactive_render()
+        super().reject()
 
 
 class LayersPanel(QWidget):
@@ -187,6 +265,27 @@ class LayersPanel(QWidget):
         mask_copy_row.addWidget(self.paste_mask_btn)
         detail_layout.addLayout(mask_copy_row)
 
+        refine = QGroupBox("REFINE SELECTION")
+        refine_grid = QGridLayout(refine)
+        self.refine_controls = {}
+        for row, (key, label, low, high) in enumerate((
+                ("selection_grow", "Grow / shrink", -50, 50),
+                ("selection_smooth", "Smooth", 0, 50),
+                ("selection_feather", "Feather", 0, 100))):
+            refine_grid.addWidget(QLabel(label), row, 0)
+            slider = QSlider(Qt.Horizontal); slider.setRange(low, high)
+            slider.valueChanged.connect(lambda value, k=key: self._refine_selection(k, value))
+            slider.sliderReleased.connect(self._commit_refinement)
+            refine_grid.addWidget(slider, row, 1); self.refine_controls[key] = slider
+        save_selection = QPushButton("Save selection…"); save_selection.clicked.connect(self._save_selection)
+        load_selection = QPushButton("Load selection…"); load_selection.clicked.connect(self._load_selection)
+        refine_grid.addWidget(save_selection, 3, 0); refine_grid.addWidget(load_selection, 3, 1)
+        detail_layout.addWidget(refine); self.refine_group = refine
+
+        self.transform_btn = QPushButton("Free Transform / Warp…")
+        self.transform_btn.clicked.connect(self._open_transform)
+        detail_layout.addWidget(self.transform_btn)
+
         order_row = QHBoxLayout()
         order_row.setSpacing(4)
         for text, tip, handler in (("Move up", "Move toward the top of the stack", self._move_up),
@@ -296,11 +395,16 @@ class LayersPanel(QWidget):
             layer = next((item for item in self.doc.layers
                           if item.get("id") == target), None)
             if layer and layer.get("mask"):
-                mask = editor_engine._mask_from_text(layer["mask"])
-                mask.thumbnail((28, 28))
                 thumbnail = QLabel()
                 thumbnail.setFixedSize(30, 30)
-                thumbnail.setPixmap(pil_to_qpixmap(mask.convert("RGB")))
+                # Never decode every full-resolution mask merely to rebuild
+                # the layer list (especially while restoring a prior edit).
+                # Use an immediate neutral mask tile; editing the mask refreshes
+                # this widget with its real thumbnail via update_mask_thumbnail.
+                tile = Image.new("RGB", (28, 28), (245, 245, 245))
+                ImageDraw.Draw(tile).polygon(
+                    ((0, 28), (28, 0), (28, 28)), fill=(35, 35, 35))
+                thumbnail.setPixmap(pil_to_qpixmap(tile))
                 thumbnail.setToolTip(
                     "Layer mask thumbnail — white reveals, black hides" if
                     layer.get("mask_enabled", True) else "Layer mask is disabled")
@@ -355,18 +459,9 @@ class LayersPanel(QWidget):
         self.mask_linked.blockSignals(False)
         self.edit_mask_btn.setEnabled(True)
         self.fill_colour_btn.setVisible(layer.get("type") == "paint")
-        if (layer.get("mask_kind") in {"ai-heal-selection", "ai-fill-selection"} and
-                layer.get("mask") and not layer.get("ai_heal_source_mask")):
-            # Repairs made before 0.7.38 stored only the final feathered mask.
-            # Recover its solid centre so the user can tune those existing
-            # repairs instead of paying Gemini to generate them again.
-            legacy_mask = editor_engine._mask_from_text(layer["mask"])
-            recovered = legacy_mask.point(lambda value: 255 if value >= 128 else 0)
-            layer["ai_heal_source_mask"] = editor_engine._mask_to_text(recovered)
-            layer["ai_heal_feather"] = 100
         adjustable_feather = bool(
             layer.get("mask_kind") in {"ai-heal-selection", "ai-fill-selection"} and
-            layer.get("ai_heal_source_mask"))
+            (layer.get("ai_heal_source_mask") or layer.get("mask")))
         self.feather_row.setVisible(adjustable_feather)
         if adjustable_feather:
             self.feather.blockSignals(True)
@@ -380,11 +475,25 @@ class LayersPanel(QWidget):
                 f"background:{colour.name()};color:{'#000' if colour.lightness() > 140 else '#fff'}")
         self.copy_mask_btn.setEnabled(has_mask)
         self.paste_mask_btn.setEnabled(self._copied_mask is not None)
+        self.refine_group.setVisible(has_mask)
+        for key, slider in self.refine_controls.items():
+            slider.blockSignals(True); slider.setValue(int(layer.get(key, 0))); slider.blockSignals(False)
+        self.transform_btn.setVisible(layer.get("type") in {"image", "text"})
 
     # --- Actions ------------------------------------------------------------
     def _select(self, target):
         self.host.set_target(target)
-        self.rebuild()
+        # Selection changes controls, not layer structure. Rebuilding every row
+        # here recreated widgets and decoded every mask thumbnail, which made a
+        # simple layer click stall for seconds. Update the two row styles and
+        # selected detail in place instead.
+        for row_target, button in self._row_buttons.items():
+            row = button.parentWidget()
+            row.setObjectName("LayerRowActive" if row_target == target else "LayerRow")
+            row.style().unpolish(row)
+            row.style().polish(row)
+            row.update()
+        self._sync_detail()
 
     def _toggle_visible(self, target, state):
         layer = None
@@ -459,6 +568,61 @@ class LayersPanel(QWidget):
         self.host.after_structure_change()
         self.host.status.showMessage("Copied mask pasted as an independent mask.")
 
+    def _refined_mask(self, layer):
+        source_text = layer.get("selection_source_mask") or layer.get("mask")
+        mask = editor_engine._mask_from_text(source_text)
+        grow = int(layer.get("selection_grow", 0))
+        smooth = int(layer.get("selection_smooth", 0))
+        if grow:
+            operation = ImageFilter.MaxFilter if grow > 0 else ImageFilter.MinFilter
+            remaining = abs(grow)
+            while remaining:
+                radius = min(remaining, 25); mask = mask.filter(operation(radius * 2 + 1)); remaining -= radius
+        if smooth:
+            mask = mask.filter(ImageFilter.MedianFilter(min(49, smooth // 2 * 2 + 1)))
+        feather = int(layer.get("selection_feather", 0))
+        if feather:
+            mask = mask.filter(ImageFilter.GaussianBlur(feather))
+        return mask
+
+    def _refine_selection(self, key, value):
+        layer = self._selected_layer()
+        if not layer or not layer.get("mask"): return
+        if not layer.get("selection_source_mask"):
+            layer["selection_source_mask"] = layer["mask"]
+        layer[key] = int(value)
+        layer["mask"] = editor_engine._mask_to_text(self._refined_mask(layer))
+        self.update_mask_thumbnail(layer); self.host.request_render(interactive=True)
+
+    def _commit_refinement(self):
+        if self._selected_layer() is not None:
+            self.doc.record("Refine selection"); self.host.finish_interactive_render()
+
+    def _save_selection(self):
+        layer = self._selected_layer()
+        if not layer or not layer.get("mask"): return
+        name, accepted = QInputDialog.getText(self, "Save selection", "Selection name:")
+        if accepted and name.strip():
+            self.doc.saved_selections[name.strip()[:100]] = layer["mask"]
+            self.doc.record("Save selection"); self.host.status.showMessage(f"Selection saved: {name.strip()}")
+
+    def _load_selection(self):
+        layer = self._selected_layer()
+        if not layer or not self.doc.saved_selections:
+            self.host.status.showMessage("There are no saved selections in this project."); return
+        name, accepted = QInputDialog.getItem(self, "Load selection", "Selection:",
+                                              sorted(self.doc.saved_selections), 0, False)
+        if accepted:
+            layer["mask"] = self.doc.saved_selections[name]; layer["mask_enabled"] = True
+            layer.pop("selection_source_mask", None)
+            for key in ("selection_grow", "selection_smooth", "selection_feather"): layer[key] = 0
+            self.doc.record("Load selection"); self.host.after_structure_change()
+
+    def _open_transform(self):
+        layer = self._selected_layer()
+        if layer and layer.get("type") in {"image", "text"}:
+            LayerTransformDialog(self, layer).exec(); self.host.update_title()
+
     def _add_text(self):
         if not self.doc:
             return
@@ -517,8 +681,15 @@ class LayersPanel(QWidget):
     def _on_ai_heal_feather(self, value):
         self.feather_value.setText(str(value))
         layer = self._selected_layer()
-        if not layer or not layer.get("ai_heal_source_mask"):
+        if not layer or not (layer.get("ai_heal_source_mask") or layer.get("mask")):
             return
+        if not layer.get("ai_heal_source_mask"):
+            # Old repair layers stored only the final mask. Recover the source
+            # lazily when Feather is edited, never during simple navigation.
+            legacy_mask = editor_engine._mask_from_text(layer["mask"])
+            recovered = legacy_mask.point(lambda pixel: 255 if pixel >= 128 else 0)
+            layer["ai_heal_source_mask"] = editor_engine._mask_to_text(recovered)
+            layer["ai_heal_feather"] = 100
         self._pending_feather = (layer.get("id"), int(value))
         self._feather_changed = True
         self._feather_timer.start()
@@ -578,8 +749,7 @@ class LayersPanel(QWidget):
     def _edit_mask(self):
         if self._selected_layer() is None:
             return
-        self.host.mask_section.header.setChecked(True)
-        self.host.mask_section.setVisible(True)
+        self.host.open_mask_panel()
 
     def _rename(self):
         layer = self._selected_layer()

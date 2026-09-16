@@ -1,0 +1,22 @@
+SNAP SLAPPER high-bit compositor — third-party notice
+
+SNAP SLAPPER uses NumPy for floating-point image processing.
+NumPy is distributed under the BSD 3-Clause License.
+The complete license text is included as NumPy-BSD-3-Clause.txt.
+Project: https://numpy.org/
+
+SNAP SLAPPER uses OpenImageIO for high-bit-depth image input/output,
+colour-managed processing, and export.
+OpenImageIO is distributed under the Apache License, Version 2.0.
+The complete license text is included as OpenImageIO-Apache-2.0.txt.
+OpenImageIO's incorporated-code notices are included as
+OpenImageIO-THIRD-PARTY.txt.
+Project: https://openimageio.readthedocs.io/
+
+SnapSmack does not modify NumPy or OpenImageIO at the time of this notice.
+Each component remains subject to its own license; neither component changes
+the license governing SNAP SLAPPER or the rest of SnapSmack.
+
+The SNAP SLAPPER release build must use a deliberately limited, GPL-free
+OpenImageIO codec set. Optional GPL-licensed codecs and libraries must not be
+included in the distributed application.

@@ -53,16 +53,22 @@ instead of guessing which SNAP SLAPPER directories matter.
 
 ## 3. Unsupported and RAW files
 
-SNAP SLAPPER does not implement a RAW editor or RAW-processing workflow. If internal
-decoding fails or a recognized RAW format is opened, show a simple offline message:
+SNAP SLAPPER delegates RAW development to a separately installed RawTherapee while
+keeping SNAP SLAPPER's own editing workflow and controls. Opening a recognized RAW
+creates a cached 16-bit TIFF working derivative; the camera original remains untouched.
+SNAP SLAPPER passes supported base development controls to RawTherapee through a
+temporary processing profile and applies layers and other SNAP SLAPPER operations to
+the developed result.
+
+If RawTherapee is unavailable or development fails, show a simple offline message:
 
 > SNAP SLAPPER cannot open this file format. If this is a RAW photograph, open it with
 > RawTherapee or darktable.
 
-When either application is detected, offer `Open in RawTherapee` and/or `Open in
-darktable`, plus `Choose another program` and `Cancel`. Launch the untouched file using
-safe platform-native process arguments on Windows and Linux. Do not build return-folder
-watching, duplicate RAW conversion, or a native RAW subsystem. Never modify the source.
+Offer `Open in RawTherapee`, `Choose another program`, and `Cancel` as recovery choices.
+Launch the untouched file using safe platform-native process arguments on Windows and
+Linux. SNAP SLAPPER must not implement a second native RAW decoder. Never modify the
+source.
 
 ## 4. Offline help system
 

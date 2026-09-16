@@ -16,6 +16,13 @@ import snap_creds
 from . import smackthemup_publish
 
 
+def email_share_url(title, public_url):
+    """Use the photographer's configured mail app; collect no address or tracking."""
+    subject = quote(str(title).strip())
+    body = quote(f"{str(title).strip()}\n{str(public_url).strip()}")
+    return f"mailto:?subject={subject}&body={body}"
+
+
 class _Signals(QObject):
     finished = Signal(object)
     failed = Signal(str)
@@ -144,9 +151,8 @@ class SmackPublishDialog(QDialog):
         self.status.setText("Link copied.")
 
     def _email(self):
-        subject = quote(self.title.text().strip())
-        body = quote(f"{self.title.text().strip()}\n{self.result_url}")
-        QDesktopServices.openUrl(QUrl(f"mailto:?subject={subject}&body={body}"))
+        QDesktopServices.openUrl(QUrl(email_share_url(
+            self.title.text(), self.result_url)))
 
     def _share(self):
         text = quote(f"{self.title.text().strip()} {self.result_url}")

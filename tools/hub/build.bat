@@ -35,6 +35,14 @@ if exist dist  rmdir /s /q dist
 
 echo Installing dependencies...
 "%BUILD_PYTHON%" -m pip install -r requirements.txt
+if errorlevel 1 exit /b 1
+"%BUILD_PYTHON%" -m pip install pip-audit==2.10.1
+if errorlevel 1 exit /b 1
+"%BUILD_PYTHON%" -m pip_audit -r requirements.txt
+if errorlevel 1 (
+    echo ERROR: SNAP SLAPPER dependency vulnerability audit failed.
+    exit /b 1
+)
 
 echo.
 echo Building SNAP HQ...

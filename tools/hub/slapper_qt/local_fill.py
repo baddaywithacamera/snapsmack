@@ -1,6 +1,8 @@
 """Bridge between frozen SNAP SLAPPER and its optional local Diffusers tool."""
 
 import os
+import hashlib
+import hmac
 import shutil
 import subprocess
 import sys
@@ -9,8 +11,11 @@ import tempfile
 from PIL import Image
 
 import snap_home
+import subprocess_limits
 
 MODEL = "stable-diffusion-v1-5/stable-diffusion-inpainting"
+MAX_RESULT_BYTES = 32 * 1024 * 1024
+MAX_RUNNER_MEMORY_BYTES = 24 * 1024 * 1024 * 1024
 
 
 def install_root():
@@ -26,8 +31,21 @@ def _runner():
 
 
 def installed():
-    return all(os.path.isfile(path) for path in (
-        _python(), _runner(), os.path.join(install_root(), "installed.txt")))
+    required = (_python(), _runner(), os.path.join(install_root(), "installed.txt"))
+    if not all(os.path.isfile(path) for path in required):
+        return False
+    source = _resource("local_fill_runner.py")
+    if not source:
+        return False
+    return hmac.compare_digest(_sha256(_runner()), _sha256(source))
+
+
+def _sha256(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _resource(name):
@@ -73,16 +91,23 @@ def fill(photo, mask, prompt):
         mask_path = os.path.join(temp, "mask.png")
         output_path = os.path.join(temp, "result.png")
         crop.save(image_path); crop_mask.save(mask_path)
-        run = subprocess.run(
+        run = subprocess_limits.run(
             [_python(), _runner(), "--image", image_path, "--mask", mask_path,
              "--output", output_path, "--prompt", prompt or ""],
             capture_output=True, text=True, timeout=1800,
+            memory_bytes=MAX_RUNNER_MEMORY_BYTES,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if run.returncode != 0 or not os.path.isfile(output_path):
             message = (run.stderr or run.stdout or "Local model did not return an image.").strip()
             raise RuntimeError(message[-2000:])
-        generated = Image.open(output_path).convert("RGB").resize(
-            original_size, Image.Resampling.LANCZOS)
+        if os.path.getsize(output_path) > MAX_RESULT_BYTES:
+            raise RuntimeError("Local Generative Fill returned an oversized image.")
+        with Image.open(output_path) as source:
+            if source.format != "PNG" or source.width * source.height > 512 * 512:
+                raise RuntimeError("Local Generative Fill returned an unsafe image.")
+            source.load()
+            generated = source.convert("RGB").resize(
+                original_size, Image.Resampling.LANCZOS)
         result = photo.copy().convert("RGB")
         local_mask = mask.crop(box).convert("L")
         result.paste(generated, box[:2], local_mask)
