@@ -53,7 +53,10 @@ def test_saved_selection_and_warp_survive_project_round_trip(tmp_path):
     document.record("Finishing tools")
     project = tmp_path / "finish.slapper"
     document.save_project(str(project))
-    loaded = editor_engine.EditorDocument.load_project(str(project))
+    # This test created both external files itself; imported projects otherwise
+    # require the same explicit local-file approval as the real UI.
+    loaded = editor_engine.EditorDocument.load_project(
+        str(project), trust_external_source=True)
     assert loaded.saved_selections["Subject"] == layer["mask"]
     assert loaded.layers[-1]["transform"]["warp_corners"][0] == [.1, -.1]
 
