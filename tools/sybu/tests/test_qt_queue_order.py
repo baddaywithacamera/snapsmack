@@ -136,4 +136,21 @@ def test_queue_toolbar_wraps_instead_of_clipping():
     # at 1040 px the eleven controls need more than one row
     assert fl.heightForWidth(700) > fl.heightForWidth(3000)
 
+def test_text_cells_edit_on_single_click():
+    from PySide6.QtWidgets import QApplication, QPlainTextEdit
+    import sybu_qt
+    app = QApplication.instance() or QApplication([])
+    w = sybu_qt.Window(); w.engine.thumb = lambda i, n: ""
+    w._fill_queue({"rows": [{"selected": True, "status": "enriched", "file": "a.jpg", "title": "T", "caption": "C", "alt": "", "tags": "#x", "category": "", "album": "", "message": ""}], "count": 1, "selected": 1, "failed": 0})
+    w.show(); app.processEvents()
+    ix = w.table.model().index(0, 4)
+    w.table.clicked.emit(ix); app.processEvents()
+    editor = w.table.findChild(QPlainTextEdit)
+    assert editor is not None and editor.toPlainText() == "C", "caption should open in a wrapping editor on one click"
+    editor.setPlainText("New caption"); w.table.closePersistentEditor(w.table.item(0, 4)); w._words.setModelData(editor, w.table.model(), ix)
+    assert w.table.item(0, 4).text() == "New caption"
+    # file + status stay read-only
+    assert not (w.table.item(0, 2).flags() & sybu_qt.Qt.ItemIsEditable)
+    assert not (w.table.item(0, 11).flags() & sybu_qt.Qt.ItemIsEditable)
+
 # ===== SNAPSMACK EOF =====
