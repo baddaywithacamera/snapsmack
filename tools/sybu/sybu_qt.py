@@ -87,6 +87,28 @@ class FitScrollArea(QScrollArea):
         if widget: widget.resize(self.viewport().width(),max(self.viewport().height(),widget.minimumSizeHint().height()))
 
 
+class QueueTable(QTableWidget):
+    """Drag a row onto another to change posting order. Qt's own InternalMove would
+    scramble the cell widgets (previews, dropdowns), so the drop is reported as
+    (from, to) and the engine does the move; the table is redrawn from the engine."""
+    moved = Signal(int, int)
+
+    def __init__(self, *a):
+        super().__init__(*a)
+        self.setDragEnabled(True); self.setAcceptDrops(True); self.viewport().setAcceptDrops(True)
+        self.setDragDropMode(QAbstractItemView.InternalMove); self.setDropIndicatorShown(True)
+        self.setDragDropOverwriteMode(False)
+
+    def dropEvent(self, event):
+        src = self.currentRow()
+        pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
+        dst = self.rowAt(pos.y())
+        if dst < 0: dst = self.rowCount() - 1
+        event.setDropAction(Qt.IgnoreAction); event.accept()
+        if src >= 0 and dst >= 0 and src != dst:
+            self.moved.emit(src, dst)
+
+
 class Window(QMainWindow):
     def __init__(self):
         super().__init__(); self.engine = sybu_core.Engine(); self.bridge = Bridge(); self._gemini_manually_edited = False
@@ -131,8 +153,8 @@ class Window(QMainWindow):
 
     def _queue_page(self):
         page,l=self._page("Your posting queue","Edit the fields that matter. Selection, enrichment and posting all operate on this table.")
-        tools=QHBoxLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); tools.addStretch(1); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); qsolo=QPushButton("POST SOLO"); qsolo.clicked.connect(lambda:self._post(False)); tools.addWidget(qsolo); qgram=QPushButton("POST GRAM"); qgram.clicked.connect(lambda:self._post(True)); tools.addWidget(qgram); self.queue_count=label("0 images","Muted"); tools.addWidget(self.queue_count); l.addLayout(tools)
-        self.table=QTableWidget(0,12); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        tools=QHBoxLayout(); allb=QPushButton("Select all"); allb.clicked.connect(lambda:self._select_all(True)); tools.addWidget(allb); none=QPushButton("Select none"); none.clicked.connect(lambda:self._select_all(False)); tools.addWidget(none); clear=QPushButton("Clear queue"); clear.clicked.connect(self._clear_queue); tools.addWidget(clear); up=QPushButton("▲ Move up"); up.setToolTip("Move the highlighted row up one. You can also drag a row."); up.clicked.connect(lambda:self._move_row(-1)); tools.addWidget(up); down=QPushButton("▼ Move down"); down.setToolTip("Move the highlighted row down one. You can also drag a row."); down.clicked.connect(lambda:self._move_row(1)); tools.addWidget(down); rnd=QPushButton("Randomize"); rnd.setToolTip("Shuffle the posting order."); rnd.clicked.connect(self._randomize); tools.addWidget(rnd); tools.addStretch(1); review=QPushButton("Review prompt…"); review.clicked.connect(self._review_prompt); tools.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.setObjectName("Primary"); enrich.clicked.connect(self._enrich); tools.addWidget(enrich); qsolo=QPushButton("POST SOLO"); qsolo.clicked.connect(lambda:self._post(False)); tools.addWidget(qsolo); qgram=QPushButton("POST GRAM"); qgram.clicked.connect(lambda:self._post(True)); tools.addWidget(qgram); self.queue_count=label("0 images","Muted"); tools.addWidget(self.queue_count); l.addLayout(tools)
+        self.table=QueueTable(0,12); self.table.moved.connect(self._reorder); self.table.setHorizontalHeaderLabels(["USE","PREVIEW","FILE","TITLE","CAPTION","ALT TEXT","TAGS","COLOUR / B&W","ORIENTATION","CATEGORY","ALBUM","STATUS"]); self.table.verticalHeader().setVisible(False); self.table.setAlternatingRowColors(True); self.table.setShowGrid(False); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.SingleSelection); self.table.setWordWrap(True); self.table.horizontalHeader().setHighlightSections(False); self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         # Text columns SHARE the width the window has; nothing dictates it. FILE
         # used to size to its longest filename and squeeze title/caption/alt to
         # nothing after an enrich. Rows grow to their wrapped text instead.
@@ -258,6 +280,23 @@ class Window(QMainWindow):
     def _select_all(self,on):
         for r in range(self.table.rowCount()):self.table.item(r,0).setCheckState(Qt.Checked if on else Qt.Unchecked)
         self.engine.set_all_selected(on); self._fill_queue()
+
+    def _reorder(self,src,dst):
+        try:
+            self._sync_queue(); self._fill_queue(self.engine.reorder(src,dst)); self.table.selectRow(dst); self._say(f"Moved image {src+1} to position {dst+1}.")
+        except Exception as e:self._error(str(e))
+
+    def _move_row(self,step):
+        r=self.table.currentRow()
+        if r<0: self._say("Highlight a row first."); return
+        dst=r+step
+        if 0<=dst<self.table.rowCount(): self._reorder(r,dst)
+
+    def _randomize(self):
+        if self.table.rowCount()<2: return
+        try:
+            self._sync_queue(); self._fill_queue(self.engine.shuffle()); self._say("Posting order randomized.")
+        except Exception as e:self._error(str(e))
 
     def _clear_queue(self):
         if not self.table.rowCount(): return
