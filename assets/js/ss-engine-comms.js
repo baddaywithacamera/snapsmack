@@ -191,7 +191,17 @@ function scrollToFooter() {
 function createHelpToast() {
     const isMobile = window.innerWidth <= 768 || window.matchMedia("(pointer: coarse)").matches;
     if (isMobile) return;
-    if ((window.snapConsent && window.snapConsent.ok() && localStorage.getItem('snapsmack_help_seen') === 'true') || window.HIDE_SNAP_HELP) return;
+    // Remembered two ways. localStorage (forever) only with storage consent; the
+    // tab's own sessionStorage always — it is first-party, dies with the tab and
+    // tracks nothing. Without it a visitor who declined consent got the toast on
+    // EVERY page (Sean, 2026-09-16: "keeps coming up over and over").
+    let seen = false;
+    try { seen = sessionStorage.getItem('snapsmack_help_seen') === 'true'; } catch (e) {}
+    if (!seen && window.snapConsent && window.snapConsent.ok()) {
+        try { seen = localStorage.getItem('snapsmack_help_seen') === 'true'; } catch (e) {}
+    }
+    if (seen || window.HIDE_SNAP_HELP) return;
+    try { sessionStorage.setItem('snapsmack_help_seen', 'true'); } catch (e) {}
 
     const { bgColor, textColor } = getThemeColors();
 
@@ -213,7 +223,7 @@ function createHelpToast() {
 
     setTimeout(() => {
         toast.style.opacity = '0';
-        if (window.snapConsent && window.snapConsent.ok()) localStorage.setItem('snapsmack_help_seen', 'true');
+        if (window.snapConsent && window.snapConsent.ok()) { try { localStorage.setItem('snapsmack_help_seen', 'true'); } catch (e) {} }
     }, 5000);
 
     setTimeout(() => { if(toast.parentNode) toast.parentNode.removeChild(toast); }, 6000);
