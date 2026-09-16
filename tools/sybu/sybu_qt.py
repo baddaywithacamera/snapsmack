@@ -133,7 +133,14 @@ class Window(QMainWindow):
         hl.addWidget(label("SITE","Eyebrow")); self.profile=QComboBox(); self.profile.setMinimumWidth(300); self.profile.currentTextChanged.connect(self._profile); hl.addWidget(self.profile); hl.addStretch(1)
         self.status=label("● Ready to connect","Warn"); self.status.setWordWrap(False); hl.addWidget(self.status)
         self.connect_btn=QPushButton("Connect"); self.connect_btn.clicked.connect(self._connect); hl.addWidget(self.connect_btn)
-        ml.addWidget(head); ml.addWidget(self.pages,1); shell.addWidget(main,1); self.setCentralWidget(root)
+        # Progress strip: under every page, so a post started from the queue is
+        # seen from the queue. Bar + words + STOP. (Was inside the Post page only —
+        # POST GRAM from the queue "did nothing" while 8 images went up.)
+        strip=QFrame(); strip.setObjectName("Header"); stl=QHBoxLayout(strip); stl.setContentsMargins(24,10,24,10); stl.setSpacing(14)
+        self.progress=QProgressBar(); self.progress.setRange(0,100); self.progress.setFixedWidth(260); self.progress.setTextVisible(False); stl.addWidget(self.progress)
+        self.progress_text=label("Ready when you are.","Muted"); self.progress_text.setWordWrap(False); stl.addWidget(self.progress_text,1)
+        self.stop_btn=QPushButton("STOP"); self.stop_btn.setToolTip("Stop the running post or enrichment after the current image."); self.stop_btn.clicked.connect(self._stop); self.stop_btn.setEnabled(False); stl.addWidget(self.stop_btn)
+        ml.addWidget(head); ml.addWidget(self.pages,1); ml.addWidget(strip); shell.addWidget(main,1); self.setCentralWidget(root)
 
     def _page(self,title,sub):
         s=FitScrollArea(); host=QWidget(); host.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Ignored); l=QVBoxLayout(host); l.setContentsMargins(28,25,28,28); l.setSpacing(16)
@@ -148,7 +155,7 @@ class Window(QMainWindow):
         r=QHBoxLayout(); self.prompt=QLineEdit(); self.prompt.setReadOnly(True); self.prompt.setPlaceholderText("Built-in enrichment prompt"); r.addWidget(self.prompt,1); review=QPushButton("REVIEW PROMPT…"); review.clicked.connect(self._review_prompt); r.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.clicked.connect(self._enrich); r.addWidget(enrich); al.addLayout(r); l.addWidget(ai)
         send,pl=card("3 · Publish","SOLO posts individual photographs. GRAM creates carousel posts. The site mode is checked before anything is sent.")
         r=QHBoxLayout(); self.drive=QCheckBox("Attach Google Drive originals"); r.addWidget(self.drive); r.addStretch(1); validate=QPushButton("Validate"); validate.clicked.connect(self._validate); r.addWidget(validate); self.post_btn=QPushButton("POST"); self.post_btn.setObjectName("Primary"); self.post_btn.clicked.connect(lambda:self._post(None)); r.addWidget(self.post_btn); self.post_solo=QPushButton("POST SOLO"); self.post_solo.clicked.connect(lambda:self._post(False)); r.addWidget(self.post_solo); self.post_gram=QPushButton("POST GRAM"); self.post_gram.clicked.connect(lambda:self._post(True)); r.addWidget(self.post_gram); pl.addLayout(r)
-        self.progress=QProgressBar(); self.progress.setRange(0,100); pl.addWidget(self.progress); self.progress_text=label("Ready when you are.","Muted"); pl.addWidget(self.progress_text); l.addWidget(send)
+        l.addWidget(send)
         act,aa=card("Activity"); self.activity_card=act; self.log=QTextEdit(); self.log.setReadOnly(True); self.log.setMinimumHeight(72); aa.addWidget(self.log); l.addWidget(act,1); return page
 
     def _queue_page(self):
@@ -235,6 +242,7 @@ class Window(QMainWindow):
             self.table.setCellWidget(r,1,preview); self.table.setRowHeight(r,118)
             for c,k in ((2,'file'),(3,'title'),(4,'caption'),(5,'alt'),(6,'tags'),(9,'category'),(10,'album'),(11,'status')):
                 text=str(row.get(k,""))
+                if k=='status': text={'pending':'pending','enriched':'enriched','posting':'posting…','ok':'POSTED','warning':'POSTED (no EXIF)','error':'ERROR'}.get(row.get('status',''),row.get('status',''))
                 if k=='status' and row.get('status')=='error' and row.get('message'): text=f"ERROR: {row['message']}"
                 item=QTableWidgetItem(text)
                 if k in ('file','status'): item.setFlags(item.flags() & ~Qt.ItemIsEditable)
@@ -305,7 +313,7 @@ class Window(QMainWindow):
 
     def _enrich(self):
         try:
-            self._sync_queue(); self.engine.enrich_start(self.gemini.text(),self.prompt.text()); self.poll_seen['enrich']=0; self.progress_text.setText("Enriching selected images…")
+            self._sync_queue(); self.engine.enrich_start(self.gemini.text(),self.prompt.text()); self.poll_seen['enrich']=0; self.progress.setValue(0); self.progress_text.setText("Enriching selected images…"); self.stop_btn.setEnabled(True)
             # Stay on the queue: the rows themselves show progress (STATUS
             # column + counter) instead of a bar on another page.
             self._enrich_total=sum(1 for r in range(self.table.rowCount()) if self.table.item(r,0).checkState()==Qt.Checked); self._enrich_done=0
@@ -338,7 +346,7 @@ class Window(QMainWindow):
             if QMessageBox.question(self,"Confirm publish",f"Post {pf['count']} selected image(s) to {pf['dest']} as {'GRAM' if grams else 'SOLO'}?",QMessageBox.Yes|QMessageBox.No)!=QMessageBox.Yes:return
             out=self.engine.post_start(grams,self.cat.currentText(),self.album.currentText(),self.orient.currentText(),"",self.engine.config.get('copyright_text',''),self.drive_folder.text(),ack_no_drive=True,ack_unknown_mode=True,drive_enabled=self.drive.isChecked())
             if out.get('needs_ack'): self._error("Google Drive is not connected."); return
-            self.poll_seen['post']=0; self.progress_text.setText("Publishing…")
+            self.poll_seen['post']=0; self.progress.setValue(0); self.progress_text.setText(f"Publishing {pf['count']} image(s) to {pf['dest']}…"); self.stop_btn.setEnabled(True); self._fill_queue()
         except Exception as e:self._error(str(e))
 
     def _auth_drive(self):
@@ -367,8 +375,16 @@ class Window(QMainWindow):
             for ev in out.get('events',[]):
                 cur,total=ev.get('current',0),ev.get('total',1); self.progress.setValue(int(cur*100/max(1,total))); self._say(ev.get('message') or ev.get('file') or f"{key.title()} {cur}/{total}")
                 if key=='enrich' and ev.get('type')=='progress' and ev.get('index') is not None: self._enrich_row_event(ev)
+                if key=='post' and ev.get('type')=='progress':
+                    self.progress_text.setText(f"Posting {cur}/{total} — {ev.get('file','')}: {'sent' if ev.get('success') else 'FAILED'}"); self._post_row_event(ev)
             if not out.get('running',False):
-                self.poll_seen.pop(key,None); self.progress.setValue(100); self.progress_text.setText(f"{key.replace('_',' ').title()} complete." if not out.get('error') else f"{key.replace('_',' ').title()} failed."); self._fill_queue()
+                self.poll_seen.pop(key,None); self.progress.setValue(100); self.stop_btn.setEnabled(bool(self.poll_seen)); self._fill_queue()
+                if key=='post':
+                    q=self.engine.serialize_queue(); posted=sum(1 for r in q['rows'] if r.get('status') in ('ok','warning')); failed=q.get('failed',0)
+                    self.progress_text.setText(f"Batch done — {posted} posted, {failed} FAILED (red rows; see the log)." if failed else f"Batch complete — {posted} posted to {self.engine.connection_state().get('base_url','the blog')}.")
+                    self.queue_count.setText(f"{posted} posted · {q['count']} images")
+                else:
+                    self.progress_text.setText(f"{key.replace('_',' ').title()} complete." if not out.get('error') else f"{key.replace('_',' ').title()} failed.")
                 result=out.get('result') or {}
                 if result.get('message'):self._say(result['message'])
                 if key=='gemini_test':
@@ -379,6 +395,23 @@ class Window(QMainWindow):
 
     def _save(self):
         self.engine.save_config({'url':self.url.text(),'api_key':self.key.text(),'last_image_folder':self.folder.text(),'last_manifest_file':self.manifest.text(),'google_credentials':self.gcreds.text(),'drive_folder_id':self.drive_folder.text(),'gemini_api_key':self.gemini.text(),'gemini_last_prompt':self.prompt.text()}); self._gemini_manually_edited=False; self.engine.drive_toggle(self.drive.isChecked()); self.gemini_source.setText("Gemini key source: SNAP HQ shared store"); self._say("Settings saved to the shared store.")
+    def _post_row_event(self,ev):
+        r=ev.get('index')
+        if r is None or r>=self.table.rowCount(): return
+        item=self.table.item(r,11)
+        if item is None: return
+        item.setText("POSTED" if ev.get('success') else f"ERROR: {ev.get('message','')}")
+        item.setForeground(Qt.GlobalColor.green if ev.get('success') else Qt.GlobalColor.red)
+
+    def _stop(self):
+        stopped=[]
+        for key in list(self.poll_seen):
+            try:
+                out=self.engine.cancel_post() if key=='post' else self.engine.cancel_op(key)
+                if out.get('cancelling'): stopped.append(key)
+            except Exception as e:self._error(str(e))
+        self.progress_text.setText("Stopping after the current image…" if stopped else "Nothing is running."); self.stop_btn.setEnabled(False)
+
     def _enrich_row_event(self,ev):
         r=int(ev['index'])
         if r<0 or r>=self.table.rowCount(): return
