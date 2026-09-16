@@ -208,6 +208,17 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="entry">
                 <div class="entry-top">
+                    <h3>The exe that launched was not the one we built</h3>
+                    <span class="date">SMACK YOUR BATCH UP &middot; 2026-09-15</span>
+                    <span class="state watched">Watched working</span>
+                </div>
+                <p>Sean opened SMACK YOUR BATCH UP from SNAP HQ and got the old window &mdash; the one retired three days earlier &mdash; wearing the brand-new version number. The file that tells the exe-builder which window to open had been on the repository&rsquo;s ignore list since May, so every working copy of the code kept its own frozen copy of that file. One copy still pointed at the old window. That morning&rsquo;s build ran from that folder, on the wrong copy of Python, said &ldquo;built successfully&rdquo;, and installed the old program under the new number. The version was right. The icon was right. The program was wrong &mdash; and every check we made after building looked at the version and the icon.</p>
+                <p>Fixed the same evening: the build recipes are code and are in git now (three were only on one disk; two dead ones that would have done the same thing are deleted); the build script refuses a recipe that does not point at the current window and only ever uses the suite&rsquo;s own Python; the window stopped carrying a second copy of the version number. Watched: the installed exe&rsquo;s own archive read back, before and after &mdash; <code>main</code> then <code>sybu_launcher</code> &mdash; and Sean posted 8 images through the rebuilt tool. The rule that came out of it: a build is verified by reading what the installed program <em>is</em>, not by its label.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-15-018-the-exe-that-launched-was-not-the-one-built.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top">
                     <h3>One comment, 277,000 deliveries</h3>
                     <span class="date">&ldquo;Feedback&rdquo; &middot; 2026-09-15</span>
                     <span class="state watched">Watched working</span>
