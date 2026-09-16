@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 018 — The exe that launched was not the one we built</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 018 — The exe that launched was not the one we built</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-15-018</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-15</td></tr>
+        <tr><td class="k">First observed</td><td>2026-09-15 evening. Sean launched SMACK YOUR BATCH UP from SNAP HQ and got the retired Tk window, labelled with the new version number 0.7.67. &ldquo;WHY is a reverted, pre-Qt version of SYBU launching now????&rdquo;</td></tr>
+        <tr><td class="k">Theme</td><td>The exe-builder&rsquo;s recipe files were kept out of git, so each working copy of the repository carried its own frozen recipe. One stale recipe still pointed at the old window. A build from that folder installed the old program under the new number, and the version check, the icon check and the &ldquo;built successfully&rdquo; line all passed.</td></tr>
+        <tr><td class="k">Surfaces</td><td>The SYBU desktop tool; the PyInstaller build recipes for every desktop tool (<code>tools/&lt;tool&gt;/&lt;tool&gt;.spec</code>); <code>.gitignore</code>; the shared build discipline for GYSS, COLD SNAP, FED UP, SNAP HQ and the rest.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-watched">Watched working</span> &nbsp; SYBU 0.7.68 rebuilt from the Qt recipe 2026-09-15 21:59 and again 22:26; entry script read out of the installed exe (<code>sybu_launcher</code>); Sean launched it from SNAP HQ and posted 8 images through it.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes.</strong> The defect: the installed exe&rsquo;s archive was read and its entry script was <code>main</code> (Tk), built by Python 3.10, not the suite&rsquo;s 3.12. The fix: the same read after the rebuild says <code>sybu_launcher</code>, Python 3.12, icon present; then a real posting run.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean (saw the wrong window and said so) + Claude (built the wrong exe that morning; found the stale recipe; fixed the discipline).</td></tr>
+        <tr><td class="k">Related</td><td>OPAUDIT 016 (the desktop tool that looked right and was wrong); the GYSS version-floor regression still open on <code>dev</code> (same class: a build input drifting behind the code).</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No exploitable detail. One user (Sean) runs every affected machine.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>SMACK YOUR BATCH UP moved from its old Tk window to a Qt window on 2026-09-12. The Qt
+    window reads the version number from the same file the old window does, so both windows say
+    &ldquo;0.7.67&rdquo;. Which window the exe opens is decided by one line in the build recipe &mdash;
+    the PyInstaller <code>.spec</code> file &mdash; and that file was on the repository&rsquo;s ignore
+    list since May (<code>tools/*/*.spec</code>, added to stop a clutter of per-version clones).
+    Ignored files do not travel with commits. Every working copy of the repository kept whatever
+    recipe it had when it was created. The working copy used for the 07:38 build on 2026-09-15 was
+    created on 2026-09-10, two days before the Qt switch; its recipe still said
+    <code>Analysis(['main.py'])</code>. The build ran, on whatever <code>pyinstaller</code> was on
+    the system path (Python 3.10, not the suite&rsquo;s 3.12), printed &ldquo;built successfully&rdquo;,
+    installed a 153 MB Tk exe as <code>C:\snapsmack\sybu\sybu.exe</code>, and SNAP HQ launched it.
+    The version was right. The icon was right. The program was wrong.</p>
+
+    <h2>2. What a human saw</h2>
+    <table>
+        <tr><th>When</th><th>What</th></tr>
+        <tr><td>2026-09-15, 07:38</td><td>SYBU 0.7.67 &ldquo;built&rdquo; from a worktree, committed, memory updated: &ldquo;SYBU 0.7.67 built&rdquo;.</td></tr>
+        <tr><td>2026-09-15, ~19:30</td><td>Sean launches SYBU from SNAP HQ. Green LED-style status bar, six tabs (SMACKONEOUT / GRAMOFSMACK / AUDIT / BASIC REPAIR / ADV. MATCH / SETTINGS), title &ldquo;build 0.7.67&rdquo;. That is the Tk window retired three days earlier.</td></tr>
+        <tr><td>Diagnosis, ~5 min</td><td>Every shortcut and SNAP HQ&rsquo;s launcher point at the one exe. Read the exe&rsquo;s PyInstaller archive directly: entry scripts end in <code>main</code>; Python 3.10. The main checkout&rsquo;s <code>sybu.spec</code> says <code>sybu_launcher.py</code>; the worktree&rsquo;s says <code>main.py</code>; the worktree&rsquo;s <code>build-sybu.log</code> confirms &ldquo;Analyzing &hellip;\tools\sybu\main.py&rdquo; under Python 3.10.6.</td></tr>
+        <tr><td>21:59</td><td>Rebuilt from the main checkout with the suite interpreter. Archive read: <code>sybu_launcher</code>, Python 3.12, icon present. Installed, trusted.</td></tr>
+        <tr><td>21:5x&ndash;22:26</td><td>Sean uses the Qt build; three parity gaps surface in an hour (no drag/randomize, two POST buttons, no posting feedback &mdash; 8 images posted silently, confirmed on the site&rsquo;s RSS). Fixed and rebuilt at 22:26. Those gaps are a separate ledger item (SYBU Qt parity), not this one.</td></tr>
+    </table>
+
+    <h2>3. Root cause &mdash; three layers</h2>
+    <p><strong>A build input outside version control.</strong> The recipe that decides what the
+    exe <em>is</em> was treated as a generated artefact and ignored. It is code. Anything the build
+    needs to produce the program has to travel with the program&rsquo;s source, or the two drift.
+    Sean&rsquo;s rule, stated that night: &ldquo;if it is necessary for building it goes on git. If it
+    is private notes it does not.&rdquo;</p>
+    <p><strong>Building from a working copy that was not the main checkout.</strong> Worktrees are
+    cut from a moment in time; ignored files in them are frozen at that moment. A build from a
+    worktree therefore builds against stale inputs it cannot see are stale.</p>
+    <p><strong>Verification that checked the wrong things.</strong> The post-build checks were
+    version string, icon resource, &ldquo;build successful&rdquo;. None of those can tell a Tk exe
+    from a Qt exe when both carry the same version file. The one check that can &mdash; which script
+    the exe actually runs &mdash; was not made.</p>
+
+    <h2>4. Evidence at diagnosis</h2>
+    <table>
+        <tr><th>Where</th><th>What it said</th></tr>
+        <tr><td><code>C:\snapsmack\sybu\sybu.exe</code> (07:38 build), PyInstaller archive TOC</td><td>Python 310; entry scripts &hellip; <code>pyi_rth__tkinter</code>, <code>main</code></td></tr>
+        <tr><td><code>tools/sybu/sybu.spec</code> in the main checkout (2026-09-12)</td><td><code>Analysis(['sybu_launcher.py'], &hellip;)</code></td></tr>
+        <tr><td>Same file in worktree <code>opaudits-install-mode-4</code> (2026-09-10)</td><td><code>Analysis(['main.py'], &hellip;)</code> with tkinter hidden imports</td></tr>
+        <tr><td>That worktree&rsquo;s <code>build-sybu.log</code></td><td>&ldquo;Python: 3.10.6 &hellip; C:\Users\neutr\AppData\Local\Programs\Python\Python310 &hellip; Analyzing &hellip;\tools\sybu\main.py&rdquo;</td></tr>
+        <tr><td><code>.gitignore</code> line 122, since 0.7.159 (2026-05-20)</td><td><code>tools/*/*.spec</code></td></tr>
+        <tr><td>Untracked live recipes found by the sweep</td><td><code>sybu.spec</code>, <code>fed-up.spec</code>, <code>blogger-flogger.spec</code>; plus two dead Tk recipes (<code>coldsnap.spec</code>, <code>flkrfckr.spec</code>) waiting to do the same thing, and 22 stale per-version clones.</td></tr>
+        <tr><td><code>tools/sybu/sybu_qt.py</code></td><td>Carried its own <code>BUILD_VERSION = "0.7.66"</code> while <code>main.py</code> said 0.7.67 &mdash; a second copy of the version, already drifted.</td></tr>
+    </table>
+
+    <h2>5. What we did (SYBU 0.7.68, dev commits 8e6e4fa1 &rarr; 65f61cb4)</h2>
+    <ul>
+        <li>Rebuilt SYBU from the main checkout with <code>.python-build</code>; verified the entry script, interpreter and icon by reading the installed exe; trusted it; Sean ran it.</li>
+        <li><code>build.bat</code> refuses to build if the recipe does not launch <code>sybu_launcher.py</code>, and always calls the suite&rsquo;s own <code>pyinstaller.exe</code>, never the one on the path.</li>
+        <li>The Qt window reads its version from <code>main.py</code> instead of carrying a copy.</li>
+        <li>The ignore rule is gone. Every live recipe is tracked (<code>sybu</code>, <code>fed-up</code>, <code>blogger-flogger</code> added; the other ten already were). The two dead Tk recipes and the 22 version clones are deleted. Only <code>tools/*/*-N.N.spec</code> clones stay ignored.</li>
+        <li>Version floor raised to 0.7.68 in <code>tools/desktop-versions.json</code> in the same commit.</li>
+    </ul>
+
+    <h2>6. Verified</h2>
+    <p>Installed exe archive after each rebuild: last entry script <code>sybu_launcher</code>, Python
+    312, <code>RT_GROUP_ICON</code> present. <code>git ls-files</code> lists every <code>*.spec</code>
+    under <code>tools/</code>; a sweep for untracked live recipes returns none. Sean launched 0.7.68
+    from SNAP HQ and posted 8 images to craptasti.ca through it (03:39 UTC on the site&rsquo;s RSS).</p>
+
+    <h2>7. Eyeball next</h2>
+    <p>The GYSS floor regression on <code>dev</code> (<code>tauri.conf.json</code> 0.7.10 against a
+    floor of 0.7.17) &mdash; same family, not yet explained. And the next rebuild of any tool: read the
+    entry script out of the exe before saying &ldquo;built&rdquo;.</p>
+
+    <h2>8. The doctrine this incident created</h2>
+    <div class="doctrine">
+        <p>Anything the build needs is code and lives in git. A build is verified by reading what
+        the installed program <em>is</em> &mdash; its entry point &mdash; not by its version string,
+        its icon, or the word &ldquo;successful&rdquo;. And a desktop tool is built from one place, the
+        main checkout, with one interpreter, the suite&rsquo;s own.</p>
+    </div>
+
+    <div class="footer">
+        SnapSmack — DING DONG BELL operability ledger — snapsmack.ca/ding-dong-bell.php ·
+        Operability audits record whether a feature actually performs its job, proven not claimed.
+        Security audits live separately at snapsmack.ca/buzzers.php.
+    </div>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
