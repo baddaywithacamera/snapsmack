@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+import time
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
@@ -21,8 +22,14 @@ except Exception:  # noqa: BLE001 — never let logging setup stop the app
 
 def main(argv=None):
     argv = list(sys.argv if argv is None else argv)
+    core_gate_report = os.environ.get("SNAP_SLAPPER_CORE_GATE_REPORT", "").strip()
+    if core_gate_report:
+        import core_release_gate
+        return 0 if core_release_gate.run(core_gate_report) else 1
     import snap_single_instance
-    if not snap_single_instance.acquire("snap-slapper", "SNAP SLAPPER"):
+    qa_mode = bool(os.environ.get("SNAP_SLAPPER_QA_IMAGE") and
+                   os.environ.get("SNAP_SLAPPER_QA_MARKER"))
+    if not qa_mode and not snap_single_instance.acquire("snap-slapper", "SNAP SLAPPER"):
         return 0
     app = QApplication.instance() or QApplication(argv)
     app.setApplicationName("SNAP SLAPPER")
@@ -81,9 +88,29 @@ def main(argv=None):
     # Packaged-build smoke test: open a real image, prove the Qt event loop can
     # start, write a marker, and exit without requiring desktop interaction.
     if qa_image and qa_marker:
+        qa_deadline = time.monotonic() + 30.0
+        qa_state = {"edited": False}
         def finish_qa():
+            if (isinstance(window, EditorWindow) and
+                    (window.doc is None or window._last_rendered is None) and
+                    time.monotonic() < qa_deadline):
+                QTimer.singleShot(50, finish_qa)
+                return
+            if (isinstance(window, EditorWindow) and window.doc and
+                    window._last_rendered is not None and not qa_state["edited"]):
+                # Installed-build gate must exercise an actual edit and a
+                # second revision, not merely prove that a window launched.
+                window.doc.adjustments["exposure"] = .35
+                window.doc.notify_change()
+                window._last_rendered = None
+                qa_state["edited"] = True
+                window._render_preview()
+                QTimer.singleShot(10, finish_qa)
+                return
             try:
-                ready = os.path.isfile(qa_image)
+                ready = (os.path.isfile(qa_image) and
+                         isinstance(window, EditorWindow) and
+                         window.doc is not None and window._last_rendered is not None)
                 if ready and qa_psd and isinstance(window, EditorWindow) and window.doc:
                     from .psd_export import export_layered_psd
                     export_layered_psd(window.doc, qa_psd)
@@ -93,7 +120,7 @@ def main(argv=None):
                         marker.write("ok\n")
             finally:
                 app.quit()
-        QTimer.singleShot(750, finish_qa)
+        QTimer.singleShot(50, finish_qa)
 
     return app.exec()
 

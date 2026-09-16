@@ -7,6 +7,7 @@ drawn with ImageDraw + Gaussian blur so they stay dependency-free (no numpy).
 """
 
 from PIL import Image, ImageDraw, ImageFilter, ImageOps
+import numpy as np
 
 
 def radial_mask(size, center_x, center_y, radius, softness, invert=False):
@@ -54,16 +55,13 @@ def drawn_linear_mask(size, start_x, start_y, end_x, end_y, invert=False):
     length_squared = dx * dx + dy * dy
     if length_squared < 1:
         return Image.new("L", size, 255 if not invert else 0)
-    # PIL's affine transform samples a narrow padded ramp.  Projection before
-    # the drag is black, after it is white, and the dragged span is graduated.
-    ramp = Image.new("L", (1, 3072), 0)
-    ramp.paste(Image.linear_gradient("L").resize((1, 1024)), (0, 1024))
-    ramp.paste(255, (0, 2048, 1, 3072))
-    a = 1024 * dx / length_squared
-    b = 1024 * dy / length_squared
-    c = 1024 - a * sx - b * sy
-    mask = ramp.transform(size, Image.Transform.AFFINE,
-                          (0, 0, 0, a, b, c), Image.Resampling.BILINEAR)
+    # Project every pixel onto the drag vector and clamp. A former finite-ramp
+    # affine implementation turned white back to black when a corner projected
+    # far beyond a short diagonal drag, creating a false triangular wedge.
+    yy, xx = np.mgrid[0:height, 0:width].astype(np.float32)
+    amount = ((xx - sx) * dx + (yy - sy) * dy) / length_squared
+    values = np.uint8(np.rint(np.clip(amount, 0.0, 1.0) * 255.0))
+    mask = Image.fromarray(values, "L")
     return ImageOps.invert(mask) if invert else mask
 
 
