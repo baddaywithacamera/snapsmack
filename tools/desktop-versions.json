@@ -11,7 +11,7 @@
     "version_file": "coldsnap/_version.py"
   },
   "sybu": {
-    "version": "0.7.67",
+    "version": "0.7.68",
     "version_file": "sybu/main.py"
   },
   "smack-up-your-backup": {

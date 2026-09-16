@@ -48,12 +48,20 @@ if exist dist (
 )
 
 echo Installing dependencies...
-pip install -r requirements.txt
+C:\dev\snapsmack\.python-build\python.exe -m pip install -q -r requirements.txt
 
 echo.
 echo Building %EXE_NAME%...
 if not exist C:\snapsmack\sybu mkdir C:\snapsmack\sybu
-pyinstaller --clean %SPEC_FILE% --distpath "C:\snapsmack\sybu"
+REM ── Guard: the spec MUST launch the Qt entry. A stale spec that still says
+REM    main.py builds the retired Tk window and labels it with the new version
+REM    (that shipped to Sean on 2026-09-15). Refuse rather than install it.
+findstr /C:"['sybu_launcher.py']" %SPEC_FILE% >nul || (
+    echo BUILD REFUSED: %SPEC_FILE% does not launch sybu_launcher.py ^(Qt^). Fix the spec.
+    exit /b 1
+)
+REM ── Always the suite's own interpreter, never whatever pyinstaller is on PATH.
+C:\dev\snapsmack\.python-build\Scripts\pyinstaller.exe --clean %SPEC_FILE% --distpath "C:\snapsmack\sybu"
 
 echo.
 if exist "C:\snapsmack\sybu\%EXE_NAME%" (
