@@ -86,6 +86,14 @@ try {
                  class="site-logo">
         <?php else: ?>
             <h1 class="site-title-text"><?php echo htmlspecialchars($site_display_name); ?></h1>
+            <?php
+            // 719D: SITE NAME / tagline. Off unless the active skin turns it on
+            // (manifest option header_show_tagline), so no skin grows a line it
+            // never designed for. Text = Settings -> Tagline.
+            $hdr_tagline = trim((string)($settings['site_tagline'] ?? ''));
+            if ($hdr_tagline !== '' && (string)($settings['header_show_tagline'] ?? '0') === '1'): ?>
+            <p class="site-tagline-text"><?php echo htmlspecialchars($hdr_tagline); ?></p>
+            <?php endif; ?>
         <?php endif; ?>
     </a>
 </div>
