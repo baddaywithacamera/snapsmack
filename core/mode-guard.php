@@ -99,6 +99,24 @@ if (!function_exists('snap_mode_conflict')) {
      *
      * @return array{existing_mode:string, existing_count:int, target_mode:string, message:string}|null
      */
+    /**
+     * 721D: a skin may declare "min_images": N in its manifest — a wall skin like
+     * GLIDE/SLIDERS looks broken under ~100 photographs (rows of one tile), so it
+     * refuses to activate until the archive can carry it. Returns the refusal
+     * sentence, or null when the skin has no minimum or the site meets it.
+     */
+    function snap_skin_min_images_conflict(PDO $pdo, array $manifest, string $slug = ''): ?string {
+        $min = (int)($manifest['min_images'] ?? 0);
+        if ($min <= 0) return null;
+        try {
+            $have = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published'")->fetchColumn();
+        } catch (Throwable $e) { return null; }
+        if ($have >= $min) return null;
+        $name = trim((string)($manifest['name'] ?? $slug)) ?: $slug;
+        return sprintf('%s needs at least %d published photographs to look like itself — this site has %d. Keep posting; it unlocks at %d.',
+            $name, $min, $have, $min);
+    }
+
     function snap_mode_conflict(PDO $pdo, string $target_mode, int $threshold = 5): ?array {
         // Prefer the install's explicit mode whenever it has real content. The
         // unified post model deliberately makes single-image photoblog and gram
