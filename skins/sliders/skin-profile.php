@@ -257,10 +257,6 @@ $_sl_wall_opacity=max(15,min(100,(int)($settings['sl_wall_opacity']??72)))/100;
 $_sl_stmt=$pdo->prepare("SELECT img_file,img_thumb_aspect,img_width,img_height FROM snap_images WHERE img_status='published' AND img_date<=NOW() ORDER BY sort_order ASC,id DESC LIMIT 72");
 $_sl_stmt->execute();$_sl_images=$_sl_stmt->fetchAll(PDO::FETCH_ASSOC);$_sl_rows=array_fill(0,9,[]);
 foreach($_sl_images as $_sl_i=>$_sl_image)$_sl_rows[$_sl_i%9][]=$_sl_image;
-// Same rule as GLIDE: under ~72 photographs, cycle the inventory so each of the
-// nine rows still carries 8 tiles (offset per row) instead of a gappy wall.
-$_sl_n=count($_sl_images);
-if($_sl_n>0&&$_sl_n<72){$_sl_rows=array_fill(0,9,[]);for($_r=0;$_r<9;$_r++)for($_k=0;$_k<8;$_k++)$_sl_rows[$_r][]=$_sl_images[($_r*8+$_k)%$_sl_n];}
 ?>
 <?php if($_sl_images): ?>
 <div class="ic-bg sl-glide-bg" data-glide-wall data-flow-axis="<?php echo htmlspecialchars($_sl_axis); ?>" data-travel="<?php echo htmlspecialchars((string)$_sl_travel); ?>" style="opacity:<?php echo number_format($_sl_wall_opacity,2); ?>" aria-hidden="true">
