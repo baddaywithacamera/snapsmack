@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.721D — 2026-09-17
+- **A skin can refuse a site that is too small for it.** GLIDE and SLIDERS (the moving wall of your own photographs) need about a hundred photographs before the wall looks like anything but rows of one tile. Their manifests now declare `"min_images": 100`; both ways of activating a skin (the gallery's ACTIVATE and the Customize save) check the site's published-photograph count first and refuse in plain words — "GLIDE needs at least 100 published photographs to look like itself — this site has 45. Keep posting; it unlocks at 100." Nothing else about the skin changed. Any skin can declare its own minimum. Sean: "make that skin refuse to install with less than 100 images." Regression: `tests/skin-min-images-regression.php`. (`core/mode-guard.php`, `smack-skin.php`, `skins/glide/manifest.json`, `skins/sliders/manifest.json`.)
+- **GLIDE 0.1.3 / SLIDERS 0.1.5: the small-archive fill from 0.1.2 / 0.1.4 is removed** — with the minimum above, a wall never renders under 100 photographs, and above it every tile is a different photograph, as designed. Neither of those two versions was ever packaged.
+
 ### SNAP SLAPPER 0.7.97 — 2026-09-17
 
 - Vignettes can now use a chosen colour or sample one directly from the photograph. A new blend selector offers Normal, Multiply, Soft Light, and Overlay; existing edits retain the historical black/Normal result.
