@@ -112,8 +112,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
                 if ($_current_mode === 'smackthemup' && $_candidate_mode === 'carousel') $_candidate_mode = null;
                 $_activation_conflict = $_candidate_mode !== null && $_candidate_mode !== $_current_mode
                     ? snap_mode_conflict($pdo, $_candidate_mode) : null;
+                $_min_refusal = $_activation_conflict === null ? snap_skin_min_images_conflict($pdo, is_array($_candidate) ? $_candidate : [], $slug) : null;
                 if ($_activation_conflict !== null) {
                     $gallery_err = $_activation_conflict['message'] . ' Choose a ' . snap_mode_label($_current_mode) . '-compatible skin instead.';
+                } elseif ($_min_refusal !== null) {
+                    $gallery_err = $_min_refusal . ' No skin was changed.';
                 } else {
                 $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
                     ->execute([$slug, $slug]);
@@ -392,6 +395,15 @@ if (isset($_POST['save_skin_settings'])) {
 
     if (is_file($_requested_manifest)) {
         $_requested_data = snapsmack_load_manifest($_requested_manifest);
+        // 721D: a skin with a photograph minimum refuses to become active below it.
+        if ($_requested_skin !== (string)($settings['active_skin'] ?? '')) {
+            $_min_refusal = snap_skin_min_images_conflict($pdo, is_array($_requested_data) ? $_requested_data : [], $_requested_skin);
+            if ($_min_refusal !== null) {
+                $_SESSION['gallery_flash'] = $_min_refusal . ' No skin or setting was changed.';
+                header('Location: smack-skin.php?s=' . urlencode((string)($settings['active_skin'] ?? '')));
+                exit;
+            }
+        }
         $_requested_modes = is_array($_requested_data['modes'] ?? null) ? array_values($_requested_data['modes']) : [];
         $_current_mode = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1")->fetchColumn() ?: 'photoblog');
         if (count($_requested_modes) === 1 && in_array($_requested_modes[0], ['photoblog', 'carousel', 'smacktalk'], true)

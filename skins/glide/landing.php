@@ -15,15 +15,6 @@ $images = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $rows = array_fill(0, 9, []);
 foreach ($images as $i => $image) $rows[$i % count($rows)][] = $image;
-// A wall needs about 72 photographs to fill nine rows; a young blog has a
-// dozen and got a sparse, gappy wall (Sean: "can't use it until 200"). Below
-// that, cycle the inventory so every row still carries 8 tiles, offset per
-// row so neighbouring rows differ. The x4 repeat below keeps the loop seamless.
-$per_row = 8; $n = count($images);
-if ($n > 0 && $n < 9 * $per_row) {
-    $rows = array_fill(0, 9, []);
-    for ($r = 0; $r < 9; $r++) for ($k = 0; $k < $per_row; $k++) $rows[$r][] = $images[($r * $per_row + $k) % $n];
-}
 $travel = (float)($settings['glide_travel'] ?? 0.9);
 $travel = max(0.25, min(2, $travel));
 $site_name = trim((string)($settings['site_name'] ?? 'SnapSmack'));
