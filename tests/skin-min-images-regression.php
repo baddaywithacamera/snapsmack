@@ -90,5 +90,6 @@ $check('INSTANT CAMERA declares min_images 200', (int)($ic['min_images'] ?? 0) =
 
 foreach ($fails as $f) fwrite(STDERR, "FAIL: {$f}\n");
 if ($fails) exit(1);
-echo "PASS: GLIDE/SLIDERS refuse to activate under 200 published photographs; the wall is as designed.\n";
+echo "PASS: GLIDE/SLIDERS/INSTANT CAMERA refuse under 200 photographs; the wall and the mayhem table draw at random from the whole archive.
+";
 // ===== SNAPSMACK EOF =====
