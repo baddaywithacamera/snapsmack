@@ -1,12 +1,16 @@
 <?php
 /* SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
 /** SNAPSMACK — GLIDE kinetic wall landing. */
-$limit = 72;
+// 200 photographs, drawn at RANDOM from the whole archive on every load. The
+// wall used to take the 72 most recent — but the most recent are what the feed
+// already shows; the wall is where the back catalogue gets seen (Sean,
+// 2026-09-17). The skin refuses to activate under 200 (manifest min_images).
+$limit = 200;
 $stmt = $pdo->prepare(
     "SELECT id, img_title, img_slug, img_file, img_thumb_aspect, img_width, img_height
        FROM snap_images
       WHERE img_status = 'published' AND img_date <= NOW()
-      ORDER BY sort_order ASC, id DESC
+      ORDER BY RAND()
       LIMIT :lim"
 );
 $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
