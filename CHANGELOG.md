@@ -9,13 +9,73 @@
 -->
 
 # SnapSmack Changelog
+### SNAP SLAPPER 0.7.97 — 2026-09-17
+
+- Vignettes can now use a chosen colour or sample one directly from the photograph. A new blend selector offers Normal, Multiply, Soft Light, and Overlay; existing edits retain the historical black/Normal result.
+
+### SNAP SLAPPER 0.7.96 — 2026-09-17
+
+- A named `.slapper` project now becomes the document name shown in the editor, and flattened exports inherit that project stem instead of an internal RAW/cache filename.
+- Added **Copy Flattened JPEG** (`Ctrl+Shift+C`), which renders the complete edit at full resolution in the background and places both a paste-compatible image and JPEG data on the Windows clipboard.
+
+### SNAP SLAPPER 0.7.95 — 2026-09-17
+
+- Blog Copy now reads the same shared per-site upload and completed folders as SYBU. The confirmation names both paths explicitly instead of incorrectly saying a configured SNAP HQ workflow is missing.
+
+### SNAP SLAPPER 0.7.94 — 2026-09-16
+
+- The editor filmstrip now uses each photograph's saved recovery preview, including RAW development, crop, layers, and LEWK, rather than always showing the camera original. RAW photographs are also handled directly, with legacy recoveries falling back safely.
+
+### SNAP SLAPPER 0.7.93 — 2026-09-16
+
+- Older recovery files without an embedded edited preview now fall back to the photograph thumbnail instead of producing a blank tile. Current recoveries continue to display their saved crop and edits.
+
+### SNAP SLAPPER 0.7.92 — 2026-09-16
+
+- Fixed the library scan crash introduced in 0.7.91 by including the file-version helper used to invalidate edited thumbnail previews.
+
+### SNAP SLAPPER 0.7.91 — 2026-09-16
+
+- Fixed RAW recovery reopening when the same developed artifact is regenerated at a new cache location. Deterministic artifact identity now follows provenance instead of treating a changed cache filename as an ID collision.
+- Library thumbnails now use the flattened preview saved in a `.slapper-recovery`, so the library reflects the crop, RAW development, layers, and LEWK applied to the photograph instead of reverting visually to the camera original.
+
+### SNAP SLAPPER 0.7.90 — 2026-09-16
+- **Blog Copy uses each blog's image-export settings instead of silently falling back to 2048 px / JPEG 90.** The publishing contract now understands the actual portable mirror keys (`max_width_landscape`, `max_height_portrait`, and `jpeg_quality`) as well as capability aliases, preserving separate landscape-width and portrait-height limits. The curb appeal profile was refreshed to its current 2500 × 1850, JPEG 85 policy. (`tools/hub/slapper_qt/publishing_contract.py`.)
+
+### SNAP SLAPPER 0.7.89 — 2026-09-16
+- **Long LEWK/layer names no longer push the right-hand controls outside the window.** The fixed-width editing rail now remains authoritative even when a layer name, translated label, or high-DPI font has a wider natural size; names shrink within their row and the rail content cannot silently grow behind its disabled horizontal scrollbar. Verified at 1920×1080 with an intentionally oversized LEWK name and zero horizontal overflow. (`tools/hub/slapper_qt/editor_window.py`, `tools/hub/slapper_qt/layers_panel.py`.)
+
+### SNAP SLAPPER 0.7.88 — 2026-09-16
+- **RAW settings, project saves, TIFF exports, and Blog Copy no longer fail by trying to serialize the editor window.** Background work now receives an independent copy of the photographic document and its complete editing state, with the live Qt callbacks deliberately left behind. The old serialization error silently prevented per-photo RAW recovery files from being written—resetting manual correction and Lensfun choices—and visibly stopped `.slapper` and image exports with `cannot pickle 'EditorWindow' object`. Normal close, timed autosave, project save, export, and publishing preparation now share the safe boundary. (`tools/hub/editor_engine.py`, `tools/hub/slapper_qt/editor_window.py`.)
+
+### SNAP SLAPPER 0.7.87 — 2026-09-16
+- **Apply Crop now commits reliably on RAW photographs.** The crop is recorded before the definitive RawTherapee refresh is dispatched, so that refresh is no longer rejected as an obsolete pre-crop job. Apply also shows an exact crop of the current preview immediately while the full-quality RAW result is prepared, and the border, handles, grid, and shading still disappear at once. (`tools/hub/slapper_qt/editor_window.py`.)
+
+### SNAP SLAPPER 0.7.86 — 2026-09-16
+- **The RAW pincushion preview no longer zooms while moving.** Its lightweight local distortion/defish proxy now keeps a fixed transparent-edge canvas instead of auto-cropping the warped frame, which previously changed the image rectangle and made Fit view enlarge it. RawTherapee still applies its definitive edge fill once on commit. (`tools/hub/slapper_qt/editor_window.py`.)
+
+### SNAP SLAPPER 0.7.85 — 2026-09-16
+- **Typed slider values commit correctly, and RAW geometry no longer feels stuck.** Numeric entry now explicitly interprets the text before reading the spin-box value, so typing a pincushion value and pressing Enter follows the same change/commit path as dragging. RAW rotate, perspective, barrel/pincushion, and defish sliders use a lightweight local geometry proxy while moving; RawTherapee runs once on release/Enter for the authoritative 16-bit result. Corrections with no honest cheap proxy—CA, optical vignetting, and Lensfun matching—stay responsive and resolve only on commit. (`tools/hub/slapper_qt/widgets.py`, `tools/hub/slapper_qt/editor_window.py`.)
+
+### SNAP SLAPPER 0.7.84 — 2026-09-16
+- **RAW DEVELOP gains RawTherapee geometry and Lensfun profiles.** RAW photographs now expose RawTherapee-backed rotate, horizontal/vertical perspective, barrel/pincushion, fisheye, red/blue chromatic-aberration, and optical-vignette corrections. Lensfun auto-matching can be enabled independently, with separate distortion, vignetting, and chromatic-aberration switches; RawTherapee matches the camera/lens metadata against its installed Lensfun database. These corrections are written into the preserved `.pp3` and performed before the 16-bit TIFF enters SNAP SLAPPER. The existing Geometry section remains available for later Free Corners, curved-horizon, and composition work. (`tools/hub/raw_preview.py`, `tools/hub/editor_engine.py`, `tools/hub/slapper_qt/editor_window.py`.)
+
+### SNAP SLAPPER 0.7.83 — 2026-09-16
+- **RAW thumbnails no longer randomly leave one transparent tile.** RawTherapee preview jobs now use a dedicated one-at-a-time queue instead of racing each other in the general image pool. A transient RAW failure retries once; a persistent failure is shown in the status bar and logged instead of being silently swallowed as a permanent blank. Ordinary image thumbnails remain parallel. (`tools/hub/slapper_qt/library_window.py`.)
+
+### SNAP SLAPPER 0.7.82 — 2026-09-16
+- **Free Perspective applies with Enter and keeps its alignment grid still.** Enter now commits the correction even when the photograph canvas owns keyboard focus. The 20×20 reference grid stays anchored to the canvas while the photograph and green corner frame move, making straightened architectural lines possible to judge instead of moving the ruler along with the image. (`tools/hub/slapper_qt/editor_window.py`, `tools/hub/slapper_qt/widgets.py`.)
+
 ### SNAP SLAPPER 0.7.81 — 2026-09-16
+- **Crop now actually leaves crop mode when applied.** APPLY CROP removes the border, handles, grid, and outside shading before the contextual toolbar refresh can interrupt the action signal. Reopening an existing crop also rebases its frame against the asynchronously restored full photograph instead of the old cropped preview, and locked-aspect top/bottom handles now resize rather than snapping back. (`tools/hub/slapper_qt/editor_window.py`, `tools/hub/slapper_qt/widgets.py`.)
+- **Free Perspective keeps one stable canvas for the whole corner-editing session.** Auto Crop no longer changes the canvas underneath the still-active handles after every mouse release; the final edge policy is applied when Free Corners is closed. (`tools/hub/slapper_qt/editor_window.py`.)
 - **Texture searches understand hashtags, including the rights tags.** `#rust`, `rust`, and multi-tag searches such as `#rust #metal` use the same local catalogue matcher; commas are accepted too. `#certifiedrights` and `#unclearrights` explicitly select the corresponding rights status exposed by the existing catalogue API, so the site's rights markings are not mistaken for descriptive words. No CMS/blog change. (`tools/hub/found_textures.py`.)
 
 ### SNAP SLAPPER 0.7.80 — 2026-09-16
 - **Photographic tone controls, exact typed values, real noise reduction, and a usable texture browser.** Every slider value is an editable number again, including exact zero. Exposure remains a true `2^EV` linear-light scale; Brightness, Contrast, Highlights, Midtones, Shadows, Whites, and Blacks now remap luminance while scaling the colour vector, preserving hue instead of bending RGB channels separately. Highlight/Shadow masks have steeper shoulders so Highlights stays out of ordinary midtones; Whites/Blacks are confined to the top/bottom fifth. Advanced Presence gains independent Luminance Noise and Colour Noise controls backed by an original multiscale soft-threshold/MAD implementation with luminance-edge protection rather than a whole-image blur. The Found Textures browser searches its remote catalogue asynchronously inside SNAP SLAPPER, opens with results, has paging and a larger grid; no blog or CMS change is involved. (`tools/hub/highbit_image.py`, `tools/hub/editor_engine.py`, `tools/hub/slapper_qt/`, `tools/hub/found_textures.py`.)
 
 ## 0.7.720D — 2026-09-16 (deployed)
+- **GLIDE 0.1.2 / SLIDERS 0.1.4: the moving wall fills from a small archive.** The wall wants ~72 photographs for nine rows; a young blog with a dozen got a sparse, gappy wall and read as "unusable until 200". There was never a minimum in the code — just empty rows. Under 72 photographs the inventory is now cycled so every row carries 8 tiles (offset per row so neighbours differ; the x4 seamless repeat is unchanged). One photograph is enough to build a wall. Registry, not this build. (`skins/glide/landing.php`, `skins/sliders/skin-profile.php`.)
 - **NEW HORIZON 1.3.5: tagline sits beside the site name — `SITE NAME / tagline` on one line**, slash between, wrapping under on narrow screens. 1.3.4 had put it on a second line. Registry, not this build. (`skins/new-horizon/style.css`.)
 - **NEW HORIZON 1.3.4: shorter footer.** The system footer was 32 px of padding above and below one line of text; now 22 px — about a quarter shorter ("too phat"). Same skin version as the tagline controls below, since 1.3.4 has not been packaged yet. Ships via the registry, not this build. (`skins/new-horizon/style.css`.)
 
