@@ -2,7 +2,7 @@
   "schema_version": 1,
   "name": "GLIDE",
   "version": "0.1.3",
-  "min_images": 100,
+  "min_images": 200,
   "author": "Sean McCormick, OpenAI Codex",
   "description": "A kinetic, full-window photo wall that turns vertical scrolling into angled lateral motion.",
   "status": "alpha",

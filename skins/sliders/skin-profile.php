@@ -254,7 +254,7 @@ $_sl_axis=(string)($settings['sl_flow_axis']??'diagonal_up');
 if(!in_array($_sl_axis,['horizontal','vertical','diagonal_down','diagonal_up'],true))$_sl_axis='diagonal_up';
 $_sl_travel=max(0.2,min(1.5,(float)($settings['sl_travel']??0.55)));
 $_sl_wall_opacity=max(15,min(100,(int)($settings['sl_wall_opacity']??72)))/100;
-$_sl_stmt=$pdo->prepare("SELECT img_file,img_thumb_aspect,img_width,img_height FROM snap_images WHERE img_status='published' AND img_date<=NOW() ORDER BY sort_order ASC,id DESC LIMIT 72");
+$_sl_stmt=$pdo->prepare("SELECT img_file,img_thumb_aspect,img_width,img_height FROM snap_images WHERE img_status='published' AND img_date<=NOW() ORDER BY RAND() LIMIT 200"); // 200 at random from the whole archive — the feed already shows the newest (Sean 2026-09-17); skin refuses under 200 (min_images)
 $_sl_stmt->execute();$_sl_images=$_sl_stmt->fetchAll(PDO::FETCH_ASSOC);$_sl_rows=array_fill(0,9,[]);
 foreach($_sl_images as $_sl_i=>$_sl_image)$_sl_rows[$_sl_i%9][]=$_sl_image;
 ?>

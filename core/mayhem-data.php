@@ -13,7 +13,8 @@
  *     { "images":[{id,title,src,url}, …], "vitals":{load,ncpu,mem_used_pct} }
  * and exits. Otherwise it only defines helpers (safe to include on render).
  *
- * Sampling is deliberately CHEAP — a PK-range walk, never ORDER BY RAND() —
+ * Sampling is deliberately CHEAP — small PK-range walks from random floors, never
+ * ORDER BY RAND() — and spread over the WHOLE archive (721D), not its oldest end;
  * because the 64MB "shared-host defensible" budget is the SERVER's; the browser
  * does the scatter/render work. GramOfSmack fragments (trigram slices, panorama
  * rows, carousel members) are excluded so multi-part assets never scatter out
@@ -103,14 +104,23 @@ if (!function_exists('mayhem_image_pool')) {
         $rows = [];
         $seen = [];
         $attempts = 0;
-        // Each pass picks a random PK floor and walks forward; dedupe by id.
-        // Cap attempts so a sparse/low-id table can't spin.
-        while (count($rows) < $count && $attempts < 14) {
+        // 721D: the pool must come from the WHOLE archive, not its oldest end.
+        // The first pass used to walk from the bottom with the full quota, so on
+        // any archive bigger than the quota it returned the oldest N and stopped —
+        // the same N prints on the table every load (Sean, 2026-09-17: "it should
+        // be random, not most recent" — here it was oldest). Now: small slices
+        // from random PK floors, many passes; the bottom-up pass only when the
+        // archive is smaller than the quota (then it IS the whole archive).
+        $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date <= " . $pdo->quote($now))->fetchColumn();
+        $slice = max(8, (int)ceil($count / 10));
+        $max_attempts = $total <= $count ? 2 : 60;
+        while (count($rows) < $count && $attempts < $max_attempts) {
             $attempts++;
-            $floor = ($attempts === 1) ? $lo : random_int($lo, $hi); // first pass from the bottom guarantees coverage on small sets
+            $floor = ($total <= $count && $attempts === 1) ? $lo : random_int($lo, $hi);
+            $lim   = ($total <= $count) ? $count : $slice;
             $stmt->bindValue(':now', $now);
             $stmt->bindValue(':floor', $floor, PDO::PARAM_INT);
-            $stmt->bindValue(':lim', $count, PDO::PARAM_INT);
+            $stmt->bindValue(':lim', $lim, PDO::PARAM_INT);
             $stmt->execute();
             $batch = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if (!$batch) continue;
