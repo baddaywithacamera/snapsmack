@@ -27,6 +27,16 @@ try:
 except Exception:  # noqa: BLE001
     snap_profiles = None
 
+try:
+    import snap_connections
+except Exception:  # noqa: BLE001
+    snap_connections = None
+
+try:
+    import snap_discovery
+except Exception:  # noqa: BLE001
+    snap_discovery = None
+
 # SECAUDIT 054 chokepoint 1: downloaded texture bytes are validated as a real
 # image in an allowed format BEFORE they are cached to disk for the editor to
 # decode. FAIL-CLOSED — with the safety module missing, download() refuses.
@@ -47,9 +57,12 @@ DEFAULT_SITE_HINT = "foundtextures"
 
 # --- Credentials (from The Hub's profile store) ------------------------------
 def resolve_profile(hint=DEFAULT_SITE_HINT):
-    """Return the (site_url, api_key) for the Found Textures site, or None.
+    """Return the (site_url, GYSS api_key) for Found Textures, or None.
 
     Picks the Hub profile whose site URL contains `hint` (e.g. 'foundtextures').
+    Prefer the dedicated GYSS read key. Sites running 0.7.722D or newer also
+    accept the profile's SYBU key for this published-photo catalogue only, so
+    it is a safe compatibility fallback when an older discovery omitted GYSS.
     """
     if snap_profiles is None:
         return None
@@ -57,8 +70,29 @@ def resolve_profile(hint=DEFAULT_SITE_HINT):
         for profile in snap_profiles.list_profiles():
             site = (profile.get("site_url") or "").lower()
             if hint in site:
-                return (profile.get("site_url", "").rstrip("/"),
-                        profile.get("api_key", ""))
+                site_url = profile.get("site_url", "").rstrip("/")
+                key = ""
+                if snap_connections is not None:
+                    connection = snap_connections.resolve(site_url, "gyss")
+                    key = (connection or {}).get("api_key", "")
+                if not key:
+                    key = (profile.get("extras") or {}).get("api_key_gyss", "")
+                # Discovery from an older HQ could save the site and its full
+                # hub credential without ever minting the least-privilege GYSS
+                # key. Repair that incomplete result once, in place. This does
+                # not broaden access: the already-authorized full key is the
+                # credential the site's provisioning route requires.
+                if not key and snap_discovery is not None:
+                    full_key = (profile.get("extras") or {}).get("api_key_local", "")
+                    if full_key:
+                        key = snap_discovery._provision_spoke_key(
+                            site_url, full_key, "gyss")
+                        if key:
+                            profile.setdefault("extras", {})["api_key_gyss"] = key
+                            snap_profiles.save(profile)
+                if not key:
+                    key = profile.get("api_key", "")
+                return site_url, key
     except Exception:  # noqa: BLE001
         _log.exception("Found Textures: could not read Hub profiles")
     return None
@@ -100,6 +134,8 @@ def parse_response(payload, site_url):
         textures.append({
             "id": photo.get("id"),
             "title": photo.get("title") or photo.get("filename") or "Texture",
+            "description": photo.get("description") or "",
+            "filename": photo.get("filename") or "",
             "category": photo.get("category_name"),
             "thumb_url": thumb,
             "full_url": full_url_from_thumb(thumb),
@@ -150,6 +186,52 @@ def search(site_url, api_key, query="", category_id=None, page=1, per_page=40,
         with urllib.request.urlopen(request, timeout=timeout) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
     return parse_response(payload, site_url)
+
+
+def search_catalog(site_url, api_key, query="", page=1, per_page=40,
+                   rights="all", timeout=15):
+    """Browse/search textures without requiring a server-side search feature.
+
+    Found Textures currently exposes the ordinary GYSS photo catalogue.  For a
+    keyword search, fetch that catalogue in large pages on the worker thread
+    and filter its returned metadata locally. This keeps the feature entirely
+    inside SNAP SLAPPER and works with the already-deployed site.
+    """
+    query = (query or "").strip()
+    if not query:
+        return search(site_url, api_key, page=page, per_page=per_page,
+                      rights=rights, timeout=timeout)
+    terms = [term.lstrip("#").casefold() for term in re.split(r"[\s,]+", query)
+             if term.lstrip("#")]
+    # Found Textures records its rights decision with these site hashtags.
+    # The API exposes the decision as rights_status rather than returning the
+    # private tag row, so translate the hashtags back into that API filter.
+    rights_tags = {"certifiedrights": "clear", "unclearrights": "unclear"}
+    requested_rights = [rights_tags[term] for term in terms if term in rights_tags]
+    if requested_rights:
+        rights = requested_rights[-1]
+    terms = [term for term in terms if term not in rights_tags]
+    batch_size = 500
+    textures, total = search(site_url, api_key, page=1, per_page=batch_size,
+                             rights=rights, timeout=timeout)
+    all_textures = list(textures)
+    remote_page = 2
+    while len(all_textures) < total:
+        batch, _total = search(site_url, api_key, page=remote_page,
+                               per_page=batch_size, rights=rights,
+                               timeout=timeout)
+        if not batch:
+            break
+        all_textures.extend(batch)
+        remote_page += 1
+    matches = []
+    for texture in all_textures:
+        haystack = " ".join(str(texture.get(field) or "") for field in
+                            ("title", "description", "filename", "category")).casefold()
+        if all(term in haystack for term in terms):
+            matches.append(texture)
+    start = (max(1, int(page)) - 1) * int(per_page)
+    return matches[start:start + int(per_page)], len(matches)
 
 
 def fetch_bytes(url, api_key=None, timeout=20):
