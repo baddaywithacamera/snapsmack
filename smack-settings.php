@@ -225,13 +225,21 @@ if (isset($_POST['save_settings'])) {
     if (isset($_POST['settings']['update_track']) && !in_array($_POST['settings']['update_track'], ['stable', 'dev'], true)) {
         $_POST['settings']['update_track'] = 'stable';
     }
-    // archive_layout: only 'grid' or 'list' are valid.
-    if (isset($_POST['settings']['archive_layout']) && !in_array($_POST['settings']['archive_layout'], ['grid', 'list'], true)) {
-        $_POST['settings']['archive_layout'] = 'grid';
+    // archive_layout: only 'thumbs', 'masonry' or 'none' are valid (same
+    // vocabulary as Archive Appearance + archive.php). Legacy square/cropped/
+    // croppedwithcalendar collapse to 'thumbs'.
+    if (isset($_POST['settings']['archive_layout'])) {
+        $_al = $_POST['settings']['archive_layout'];
+        if (in_array($_al, ['square', 'cropped', 'croppedwithcalendar'], true)) $_al = 'thumbs';
+        if (!in_array($_al, ['thumbs', 'masonry', 'none'], true)) $_al = 'thumbs';
+        $_POST['settings']['archive_layout'] = $_al;
+        unset($_al);
     }
-    // archive_thumb_style: only 'square' or 'natural' are valid.
-    if (isset($_POST['settings']['archive_thumb_style']) && !in_array($_POST['settings']['archive_thumb_style'], ['square', 'natural'], true)) {
-        $_POST['settings']['archive_thumb_style'] = 'square';
+    // archive_thumb_style: only 'square' or 'cropped' are valid — MUST match the
+    // form's option values. The old guard accepted 'natural' (a value nothing
+    // sends) and so silently forced every 'cropped' save back to 'square'.
+    if (isset($_POST['settings']['archive_thumb_style']) && !in_array($_POST['settings']['archive_thumb_style'], ['square', 'cropped'], true)) {
+        $_POST['settings']['archive_thumb_style'] = 'cropped';
     }
     if (isset($_POST['settings']['trusted_proxies'])) {
         $proxy_raw = trim((string)$_POST['settings']['trusted_proxies']);
