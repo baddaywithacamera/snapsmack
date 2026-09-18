@@ -163,9 +163,12 @@ try {
 }
 
 // --- BEARER TOKEN AUTH ---
-// SYBU may write only the shared enrichment cache it produces. It does not gain
-// access to GYSS photo export, sorting, prompt management, or batch editing.
-$allowed_key_types = $resource === 'enrichment-cache'
+// SYBU may write the shared enrichment cache it produces and read the public
+// photo catalogue. The latter lets desktop texture browsers recover when an
+// older discovery stored a working SYBU key but no dedicated GYSS key. It does
+// not grant access to drafts, prompt management, metadata or batch editing.
+$sybu_public_catalogue = $method === 'GET' && $resource === 'photos';
+$allowed_key_types = ($resource === 'enrichment-cache' || $sybu_public_catalogue)
     ? "'gyss','hub','sybu'"
     : "'gyss','hub'";
 $auth_header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
@@ -212,8 +215,10 @@ if (!$api_key_row) {
     gy_err('Invalid or revoked GYSS API key', 401);
 }
 
-if (($api_key_row['key_type'] ?? '') === 'sybu' && $resource !== 'enrichment-cache') {
-    gy_err('The SYBU key is valid only for enrichment cache writes', 403);
+if (($api_key_row['key_type'] ?? '') === 'sybu'
+    && $resource !== 'enrichment-cache'
+    && !$sybu_public_catalogue) {
+    gy_err('The SYBU key is valid only for enrichment cache writes and public catalogue reads', 403);
 }
 
 // A SNAP HQ key may manage the hub's own whole-post prompt, because a hub has
