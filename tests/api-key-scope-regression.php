@@ -57,10 +57,12 @@ ks_test(str_contains($gyss, "\$resource === 'enrichment-cache'")
      && str_contains($gyss, "\"'gyss','hub','sybu'\"")
      && str_contains($gyss, "\"'gyss','hub'\""),
     'GYSS permits SYBU only for enrichment-cache and GET public photos; other routes accept gyss + hub');
-ks_test(str_contains($gyss, "&& !\$sybu_public_catalogue"),
+ks_test(str_contains($gyss, "&& !\$public_catalogue_read"),
     'SYBU keys remain method-and-route restricted inside the GYSS surface');
 ks_test(preg_match("/\\(\\\$api_key_row\\['key_type'\\] \\?\\? ''\\) === 'hub'/", $gyss) === 1,
     'hub-type keys stay route-restricted inside the GYSS surface (0.7.636D boundary)');
+ks_test(str_contains($gyss, "hub prompt and public catalogue reads"),
+    'hub keys may read the published catalogue without gaining editing routes');
 foreach ([['core/ohsnap-api.php', "key_type = 'ohsnap'"],
           ['core/tyswy-api.php', "key_type = 'tyswy'"],
           ['core/smackpress-api.php', "key_type = 'smackpress'"],
