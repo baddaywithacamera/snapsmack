@@ -9,10 +9,41 @@
 -->
 
 # SnapSmack Changelog
+- **0.7.722D restores Found Textures browsing for already-discovered sites.** `GET gyss/photos` is a published-photo-only catalogue and may now authenticate with the site's existing SYBU credential when an older SNAP HQ discovery did not save a dedicated GYSS key. Every non-public GYSS operation remains limited to GYSS or Hub credentials. SNAP SLAPPER 0.8.05 prefers GYSS, attempts repair, and uses that narrow catalogue fallback only when repair cannot mint a replacement.
+
+- **SNAP SLAPPER 0.8.04 adds genuine false-colour and fake-infrared LEWKS.** Per-colour Hue Shift controls can now move foliage completely out of green instead of merely tinting it. The new FALSE COLOUR + IR family begins with AEROCHROME ALIBI, CYAN CHLOROPHYLL, PINK TREELINE, RADIOACTIVE PRAIRIE, and MARTIAN BOTANY. They remain editable recipes, not baked mystery filters. Vignettes now use a frame-following superellipse and a smoother feather curve, removing the conspicuous oval seen in LEWK previews. Incomplete Found Textures discovery attempts to mint and save its missing read-only GYSS key automatically and reports an outdated server accurately when that route is unavailable.
+
+- **COLD SNAP 0.7.24 makes BIGGIE read like a visual editor instead of a block-control panel.** The two faces are now named TWIGGY — TEXT and BIGGIE — VISUAL. BIGGIE's cryptic one-row abbreviation strip is replaced by two readable WRITE and PLACE rows with full labels; MOSAIC joins the placement row beside images and columns. The complete COLD SNAP test collection passes unchanged.
+
+- **Existing SNAP SLAPPER work opens with the complete high-bit engine again.** Build 0.8.02 was accidentally frozen under Python 3.10 while the separately replaceable OpenImageIO runtime is built for Python 3.12. An overlay install then preserved the old `OpenImageIO` directory, producing a namespace-only module with no `ImageInput` instead of loading the binary extension. Build 0.8.03 is frozen with the project's pinned Python 3.12 runtime; installation now requires replacing the application payload rather than layering incompatible runtimes. Projects and original photographs were never damaged. (`tools/hub/slapper_qt/__init__.py`, release packaging.)
+
+- **SNAP SLAPPER's texture browser uses the catalogue credential.** The browser was sending FoundTextures the shared profile's SYBU publishing key, which the read-only `gyss/photos` endpoint correctly rejects with HTTP 403. It now resolves the dedicated GYSS key created by SNAP HQ discovery and never falls back to the publishing key; when discovery has not supplied that key, the app explains what is missing instead of issuing a doomed search. Build 0.8.02. (`tools/hub/found_textures.py`, `tools/hub/slapper_qt/editor_window.py`.)
+
 ## 0.7.721D — 2026-09-17
-- **A skin can refuse a site that is too small for it.** GLIDE and SLIDERS (the moving wall of your own photographs) need about a hundred photographs before the wall looks like anything but rows of one tile. Their manifests now declare `"min_images": 100`; both ways of activating a skin (the gallery's ACTIVATE and the Customize save) check the site's published-photograph count first and refuse in plain words — "GLIDE needs at least 100 published photographs to look like itself — this site has 45. Keep posting; it unlocks at 100." Nothing else about the skin changed. Any skin can declare its own minimum. Sean: "make that skin refuse to install with less than 100 images." Regression: `tests/skin-min-images-regression.php`. (`core/mode-guard.php`, `smack-skin.php`, `skins/glide/manifest.json`, `skins/sliders/manifest.json`.)
+- **A skin can refuse a site that is too small for it.** GLIDE and SLIDERS (the moving wall of your own photographs) need a real archive behind them. Their manifests now declare `"min_images": 200`; both ways of activating a skin (the gallery's ACTIVATE and the Customize save) check the site's published-photograph count first and refuse in plain words — "GLIDE needs at least 200 published photographs to look like itself — this site has 45. Keep posting; it unlocks at 200." Nothing else about the skin changed. Any skin can declare its own minimum. Sean: "make that skin refuse to install with less than 100 images." Regression: `tests/skin-min-images-regression.php`. (`core/mode-guard.php`, `smack-skin.php`, `skins/glide/manifest.json`, `skins/sliders/manifest.json`.)
 - **ORGANIZED MAYHEM (INSTANT CAMERA's drifting table, RACETRACK, RAINFALL) now scatters photographs from the whole archive.** The pool sampler walked up from the lowest id with the full quota, so on any archive bigger than the quota it returned the *oldest* 90 and stopped — the same prints on the table every load. Now it takes small slices from random points across the archive; the bottom-up pass only when the archive is smaller than the quota. INSTANT CAMERA 1.0.35 declares `min_images: 200` like the wall skins. Test extended: 1000-photo fake archive, 90 asked, 90 distinct spread across the range. (`core/mayhem-data.php`, `skins/instant-camera/manifest.json`.)
-- **GLIDE 0.1.3 / SLIDERS 0.1.5: the small-archive fill from 0.1.2 / 0.1.4 is removed** — with the minimum above, a wall never renders under 100 photographs, and above it every tile is a different photograph, as designed. Neither of those two versions was ever packaged.
+- **GLIDE 0.1.3 / SLIDERS 0.1.5: the small-archive fill from 0.1.2 / 0.1.4 is removed** — and the wall now draws **200 photographs at random from the whole archive on every load** instead of the 72 most recent — the feed already shows the newest; the wall is where the back catalogue gets seen (Sean). Nine rows of ~22, every tile a different photograph. Neither of those two versions was ever packaged.
+
+### SNAP SLAPPER 0.8.01 — 2026-09-17
+
+- Blog Copy now asks for the output filename after the blog is selected. It suggests the project/photo title, strips accidental nested image extensions such as `.tif.slapper`, keeps the configured upload folder and format, and prevents path characters from escaping the staging folder. The chosen title is stored in the project/recovery state and reused by later Blog Copies and ordinary exports, so it only needs to be entered once.
+- Crop-frame dragging is smooth instead of moving in visible segments. The dimmed surround is now one lightweight overlay with a transparent crop opening, replacing four overlapping full-canvas panels whose repaint cost caused Windows to coalesce pointer events.
+- An unfinished crop can no longer become stranded by clicking into another workspace or photograph. Crop keeps the EDIT workspace active until Apply or Cancel; leaving the photograph safely cancels the proposal and restores the preceding crop before recovery is saved.
+
+### SNAP SLAPPER 0.8.00 — 2026-09-17
+
+- CROSS EXAMINED now gets its drama from colour rather than crushed contrast: strong cyan-blue shadows, magenta lower tones, yellow-green highlights, independently crossed red/green/blue curves, a gently lifted black point, and restrained master contrast.
+- Normal mode once again shows the live histogram and keeps Vignette Size and Vignette Feather alongside the vignette amount; these are practical visual controls rather than advanced-interface clutter.
+- Blog Copy now renders in a separate process, so developing and flattening a large RAW cannot starve the editor window and make Windows report it as unresponsive. The worker renders directly to the selected blog's maximum dimensions instead of compositing an oversized master and shrinking it afterward.
+- Blog Copy filenames now inherit a named `.slapper` project stem instead of exposing an internal developed-RAW cache hash.
+
+### SNAP SLAPPER 0.7.99 — 2026-09-17
+
+- Slider motion is smoother: live previews now stay below a measured TIFF decode/composition cost cliff (480 px rather than 600 px) and may update every 24 ms instead of 45 ms. Obsolete frames remain coalesced, and releasing the control still produces the full-quality viewport render.
+
+### SNAP SLAPPER 0.7.98 — 2026-09-17
+
+- Normal mode keeps creative vignettes simple: one **Edge colour** menu offers Black, Pick from photograph, or Choose colour. Coloured choices automatically use Soft Light; explicit blend, size, feather, and separate picker controls remain in Advanced mode.
 
 ### SNAP SLAPPER 0.7.97 — 2026-09-17
 
