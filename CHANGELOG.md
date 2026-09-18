@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.724D — 2026-09-18 — SECAUDIT 058 fixes
+- **SNAP SLAPPER no longer sends your site key to Google Drive (or anywhere but your own site).** Found Textures fetched every thumbnail, full image and high-res download with `Authorization: Bearer <site key>` attached — and the high-res link is a Google Drive URL by design, so every download handed the key (sometimes the full hub key) to Google. Media fetches now carry no credential at all and refuse non-web schemes; the one call that does carry the key (the catalogue search on the configured site) is https-only and refuses to follow redirects. Ships in the next SNAP SLAPPER build. Tests: `tools/hub/tests/test_found_textures_credentials.py` (8 checks). (`tools/hub/found_textures.py`.)
+- **SMACK UP YOUR BACKUP 0.7.44: RESTORE inventories and bounds a backup ZIP before unpacking it** — unsafe names, links, entry count, per-file size, 200:1 expansion, and free disk space are all checked first; the staging folder is always cleaned up. Vault tests isolated from the real Hub profile store (they were copying real keys into %TEMP% and masking two red assertions). (`tools/smack-up-your-backup/restore_engine.py`, tests.)
+- **Security test gate is all green again.** The TYSWY scope test still demanded the pre-0.7.711D single-key SQL; it now pins the exact allowed set (`tyswy` + `suyb`) so a third key type would turn it red. (`tests/api-key-scope-regression.php`.)
+- Audit record: `secaudits/2026-09-18-058-current-codebase-security-sweep.md` — Codex first review, Claude second review + fixes; all findings CLOSED.
+
 ## 0.7.723D — 2026-09-18
 - **Found Textures accepts the credential SNAP HQ actually stored.** Older discovery records contain the hub credential rather than a SYBU or dedicated GYSS key. The hub credential may now perform only `GET gyss/photos`, whose query is restricted to published photographs; its historical hub-prompt access remains unchanged and every editing/private GYSS route remains denied.
 
