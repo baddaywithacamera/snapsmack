@@ -167,8 +167,8 @@ try {
 // photo catalogue. The latter lets desktop texture browsers recover when an
 // older discovery stored a working SYBU key but no dedicated GYSS key. It does
 // not grant access to drafts, prompt management, metadata or batch editing.
-$sybu_public_catalogue = $method === 'GET' && $resource === 'photos';
-$allowed_key_types = ($resource === 'enrichment-cache' || $sybu_public_catalogue)
+$public_catalogue_read = $method === 'GET' && $resource === 'photos';
+$allowed_key_types = ($resource === 'enrichment-cache' || $public_catalogue_read)
     ? "'gyss','hub','sybu'"
     : "'gyss','hub'";
 $auth_header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
@@ -217,7 +217,7 @@ if (!$api_key_row) {
 
 if (($api_key_row['key_type'] ?? '') === 'sybu'
     && $resource !== 'enrichment-cache'
-    && !$sybu_public_catalogue) {
+    && !$public_catalogue_read) {
     gy_err('The SYBU key is valid only for enrichment cache writes and public catalogue reads', 403);
 }
 
@@ -225,8 +225,9 @@ if (($api_key_row['key_type'] ?? '') === 'sybu'
 // no self-spoke row from which the desktop can provision a GYSS key. Keep this
 // exception deliberately narrow: no photo export, metadata or batch editing.
 if (($api_key_row['key_type'] ?? '') === 'hub'
+    && !$public_catalogue_read
     && (($settings['multisite_role'] ?? '') !== 'hub' || $resource !== 'prompt')) {
-    gy_err('The SNAP HQ key is valid only for this hub prompt', 403);
+    gy_err('The SNAP HQ key is valid only for this hub prompt and public catalogue reads', 403);
 }
 
 // Touch last_used_at

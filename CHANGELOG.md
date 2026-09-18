@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.723D — 2026-09-18
+- **Found Textures accepts the credential SNAP HQ actually stored.** Older discovery records contain the hub credential rather than a SYBU or dedicated GYSS key. The hub credential may now perform only `GET gyss/photos`, whose query is restricted to published photographs; its historical hub-prompt access remains unchanged and every editing/private GYSS route remains denied.
+
 - **SNAP SLAPPER 0.8.04 adds genuine false-colour and fake-infrared LEWKS.** Per-colour Hue Shift controls can now move foliage completely out of green instead of merely tinting it. The new FALSE COLOUR + IR family begins with AEROCHROME ALIBI, CYAN CHLOROPHYLL, PINK TREELINE, RADIOACTIVE PRAIRIE, and MARTIAN BOTANY. They remain editable recipes, not baked mystery filters. Vignettes now use a frame-following superellipse and a smoother feather curve, removing the conspicuous oval seen in LEWK previews. Incomplete Found Textures discovery attempts to mint and save its missing read-only GYSS key automatically and reports an outdated server accurately when that route is unavailable.
 
 - **COLD SNAP 0.7.24 makes BIGGIE read like a visual editor instead of a block-control panel.** The two faces are now named TWIGGY — TEXT and BIGGIE — VISUAL. BIGGIE's cryptic one-row abbreviation strip is replaced by two readable WRITE and PLACE rows with full labels; MOSAIC joins the placement row beside images and columns. The complete COLD SNAP test collection passes unchanged.
