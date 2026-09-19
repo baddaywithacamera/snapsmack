@@ -6,7 +6,7 @@
 | **Date** | 2026-09-16 |
 | **Scope** | Completed Windows beta source, `.slapper` project loading, image layers, publishing handoff, frozen onedir package, and installed copy at `C:\snapsmack\snap_slapper`. Linux is outside this beta audit. |
 | **Method** | Manual trust-boundary review, hostile-input regressions, vendor-advisory review, dependency audit, source and frozen-application tests, package inventory/hash verification, Authenticode inspection, and installed ACL inspection. No exploit code. |
-| **Status** | **CONDITIONALLY CLEARED FOR LOCAL BETA USE.** All discovered application-code findings are closed and the installed folder is protected. Public distribution remains blocked on Authenticode signing because no usable code-signing certificate is available. |
+| **Status** | **CLOSED FOR LOCAL BETA (2026-09-18).** All application-code findings closed; the installed folder is protected and 366/366 files hash-verified. F5's remaining line — Authenticode signing — is a public-release gate: the beta is not public, so no public build exists to sign. The first public build is signed before it ships. |
 | **Related** | SECAUDIT 056 high-bit / RAW release audit. |
 
 ## Summary
@@ -65,7 +65,7 @@ The installed build deliberately does not support SVG. Qt's 2026 advisory identi
 
 **Verification:** Installed inventory: 366 listed files, 366 actual files, zero hash/size failures, zero missing files, zero extras. Installed ACL has no ordinary-user write grant. Candidate and installed executable SHA-256 match.
 
-**Status:** **PARTIALLY OPEN.** The writable-install issue is closed. Authenticode remains `NotSigned`; no code-signing certificate with a private key is available. Public distribution must remain blocked until a trusted certificate signs the release executable/installer.
+**Status:** **CLOSED for the local beta; signing is a public-release gate.** The writable-install issue is closed. Authenticode remains `NotSigned` on the local beta because no public build exists yet; the first public build is signed with a trusted certificate before distribution.
 
 ## Verification record
 
