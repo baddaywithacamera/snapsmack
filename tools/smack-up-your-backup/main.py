@@ -1830,8 +1830,6 @@ class RestoreTab(tk.Frame):
             on_progress=lambda s, m, p: self._app.queue_msg(("restore_progress", m, p)),
             on_log=lambda m: self._app.queue_msg(("restore_log", m)),
             global_cloud=self._app.global_cloud_config(),
-            # SECAUDIT 054 item 8: unsigned package → ask on the main thread
-            on_ask=lambda msg: self._app.queue_msg(("restore_ask", msg)),
         )
 
         if src == "local":
@@ -6686,14 +6684,6 @@ class App(tk.Tk):
                         self.wait_window(dlg)
 
                         if result_holder[0]:
-                            engine.prompt_continue()
-                        else:
-                            engine.cancel()
-                elif kind == "restore_ask":
-                    # Restore engine is blocked on an unsigned-package question.
-                    engine = self._tab_restore._engine if hasattr(self, "_tab_restore") else None
-                    if engine:
-                        if messagebox.askyesno("Unsigned backup", msg[1], default="no", icon="warning"):
                             engine.prompt_continue()
                         else:
                             engine.cancel()
