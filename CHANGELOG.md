@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.728 — 2026-09-19 — PhotoFri recovery request target
+- **Fixed the recovery button's request address.** Its hidden `action` field masked the form's URL property in JavaScript, causing batch requests to load an HTML error page instead of running recovery. Requests now target the current admin page directly. (`smack-photochallenge.php`.)
+
 ## 0.7.727 — 2026-09-19 — Bounded PhotoFri recovery
 - **Photo Challenge recovery no longer holds one browser request open while it visits every participant.** The admin button checks one account at a time, shows progress, and releases the login session lock during each remote fetch. A slow or unreachable account can be retried without losing entries already recovered. The public board and normal incoming-post path are unchanged. (`core/photochallenge.php`, `smack-photochallenge.php`.)
 
