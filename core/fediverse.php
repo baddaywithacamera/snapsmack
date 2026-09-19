@@ -2081,9 +2081,9 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
         $where .= " AND inbox_url = ?";
         $args[] = $inbox_url;
     }
-    // Explicit service class, then FIFO within that class: protocol handshakes
-    // (0), boosts (5), live publications (10), catalogue backfills (100).
-    $order_by = "priority ASC, id ASC";
+    // First attempts go before retries, then service class and FIFO. A failed
+    // remote must not keep a new delivery behind its old retry backlog.
+    $order_by = "(attempts > 0 OR (last_error IS NOT NULL AND last_error <> '')) ASC, priority ASC, id ASC";
     $deadline = $max_runtime_secs > 0 ? microtime(true) + max(15, $max_runtime_secs) : 0.0;
 
     // ── UNPACED PATH (cadence_secs <= 0) ────────────────────────────────────
@@ -2117,13 +2117,13 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
     // the soonest one frees, never past the deadline.
     $layer_gap = sv_layer_cadence($settings);
 
-    // REFILL/PLAN: fetch lightweight (id, inbox_url) for ALL currently-due rows,
-    // oldest-first. No 30-row cap here — every due row enters the working set, so
+    // REFILL/PLAN: fetch lightweight routing fields for ALL currently-due rows,
+    // first attempts ahead of retries. No 30-row cap here — every due row enters the working set, so
     // previously-buried rows for idle hosts are reachable this run. activity_json
     // is pulled per row at send time, not held for the whole plan (memory). The
     // 5000 ceiling is a runaway guard, not the governor — the deadline is.
     $plan = $pdo->prepare(
-        "SELECT id, inbox_url, priority FROM snap_ap_deliveries WHERE {$where}
+        "SELECT id, inbox_url, priority, attempts, last_error FROM snap_ap_deliveries WHERE {$where}
          ORDER BY {$order_by} LIMIT 5000"
     );
     $plan->execute($args);
@@ -2136,6 +2136,7 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
         $by_host[sv_normalize_delivery_host((string)$p['inbox_url'])][] = [
             'id' => (int)$p['id'],
             'priority' => (int)$p['priority'],
+            'retry' => (int)$p['attempts'] > 0 || ($p['last_error'] !== null && $p['last_error'] !== ''),
         ];
     }
 
@@ -2169,14 +2170,16 @@ function sv_process_deliveries(PDO $pdo, array $settings, int $limit = 30, int $
             continue;
         }
 
-        // Among ready hosts, preserve the global service classes first, then
-        // FIFO by id. Backfills therefore remain dead last across every host.
+        // Among ready hosts, pick first attempts before retries, then service
+        // class and FIFO, matching the SQL plan within each host.
         $pick = $ready[0];
         foreach ($ready as $h) {
             $candidate = $by_host[$h][0];
             $current = $by_host[$pick][0];
-            if ($candidate['priority'] < $current['priority']
-                || ($candidate['priority'] === $current['priority'] && $candidate['id'] < $current['id'])) {
+            if (($candidate['retry'] < $current['retry'])
+                || ($candidate['retry'] === $current['retry']
+                    && ($candidate['priority'] < $current['priority']
+                        || ($candidate['priority'] === $current['priority'] && $candidate['id'] < $current['id'])))) {
                 $pick = $h;
             }
         }
