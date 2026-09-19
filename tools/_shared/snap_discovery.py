@@ -270,18 +270,24 @@ def _provision_spoke_key(site_url, api_key_local, key_type="sybu", key_value="",
 
 
 def _provision_hub_tool_key(site_url, hub_api_key, key_type, timeout=20):
-    """Mint a per-tool key on the HUB itself.
-
-    Referenced by save_to_shared since 705D but never defined — so DISCOVER FLEET
-    died with NameError on the hub's own row before a single profile was written,
-    and no profile ever received the full fleet key (CRONOMETER 401 on all 25
-    sites, 2026-09-14). The hub has no self-referential multisite node, so the
-    spoke-only multisite/provision-key route 401s for it, and there is no
-    hub-local tool-key route yet (only suyb-data.php's backup-key action). Until
-    one exists this returns "" — the hub's profile keeps the hub key itself as
-    its credential (extras.api_key_local, set by the caller) — and discovery
-    carries on to the spokes instead of crashing.
-    """
+    """Mint a scoped tool key on the hub using its discovery credential."""
+    if not (site_url and hub_api_key) or insecure_transport_reason(site_url):
+        return ""
+    try:
+        r = requests.post(
+            site_url.rstrip("/") + "/suyb-data.php",
+            json={"action": "provision-tool-key", "key_type": key_type},
+            headers={"Authorization": "Bearer " + hub_api_key.strip(),
+                     "User-Agent": "SnapSmackHub/1.0", **_site_scope(site_url)},
+            timeout=timeout,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            key = str(data.get("api_key") or "").strip()
+            if data.get("ok") and data.get("key_type") == key_type and re.fullmatch(r"[a-f0-9]{64}", key):
+                return key
+    except (requests.RequestException, ValueError, KeyError):
+        pass
     return ""
 
 
@@ -325,9 +331,15 @@ def save_to_shared(hub_info, spokes, hub_api_key="") -> dict:
     hub_node = {"site_url": hub_info.get("site_url", ""),
                 "site_name": hub_info.get("site_name", "")}
     for node in [hub_node] + list(spokes):
-        prof = _profile_for(node, fallback_key=hub_api_key)
+        prof = _profile_for(node, fallback_key="")
         if not prof["site_url"]:
             continue
+        # A discovery failure must not overwrite a previously working SYBU key
+        # with the hub-only credential. Preserve the last scoped tool key.
+        previous = snap_profiles.load_by_site(prof["site_url"]) or {}
+        old_sybu = (previous.get("extras") or {}).get("api_key_sybu") or previous.get("api_key") or ""
+        if old_sybu and old_sybu != hub_api_key:
+            prof["api_key"] = old_sybu
         akl = (node.get("api_key_local") or "").strip()
         # The full node key (role='hub' on the spoke). Hub-role tools like SMACK
         # YOUR MOUTH authenticate with THIS, not the sybu posting key — so persist

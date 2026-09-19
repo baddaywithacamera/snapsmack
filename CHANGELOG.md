@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.726 — 2026-09-19 — Hub discovery provisions tool keys
+- **Hub discovery now creates a real SYBU key for the Hub site.** The Hub used its discovery-only credential as SYBU's posting key because its tool-key provisioning function was an empty stub. The Hub's authenticated discovery endpoint now creates typed, expiring keys for the supported desktop tools; discovery saves each key to its matching site profile. A failed provisioning attempt preserves a previously saved SYBU key instead of replacing it with the Hub key. SUYB's read-only key cannot invoke provisioning. (`suyb-data.php`, `tools/_shared/snap_discovery.py`.)
+
 ## 0.7.725 — 2026-09-19 — Previous Challenge
 - **Previous Challenge keeps last week's entries.** Maintenance used the current prompt hashtag to recheck older admissions, so switching from Vroom to Numbers withdrew valid Vroom entries and emptied the archive even though the Hall of Fame still listed its winners. Rechecks now use each admission's own round hashtag. The archive can display affected withdrawn entries when their author remains active and the retained post still carries the original tag and a single image. The live board continues to require active admissions. Closed rounds no longer invite new submissions. (`core/photochallenge.php`, `photochallenge-board.php`.)
 
