@@ -1426,8 +1426,12 @@ if ($action === 'build_dev' && $preflight_ok) {
     } catch (Exception $e) {}
 
     $tag            = trim($_POST['tag']            ?? '');
-    $version        = trim($_POST['version']        ?? '');
+    // The selected tag owns the dev version. Never publish a form-edited bare version.
+    $version        = ltrim($tag, 'vV');
     $version_full   = trim($_POST['version_full']   ?? '');
+    if (preg_match('/D$/i', $version) && str_ends_with($version_full, substr($version, 0, -1))) {
+        $version_full .= 'D';
+    }
     $released       = trim($_POST['released']       ?? date('Y-m-d'));
     $requires_php   = trim($_POST['requires_php']   ?? '8.0');
     $requires_mysql = trim($_POST['requires_mysql'] ?? '5.7');
@@ -1437,12 +1441,12 @@ if ($action === 'build_dev' && $preflight_ok) {
 
     if (!preg_match('/^[a-zA-Z0-9._\-]+$/', $tag)) {
         $dev_build_error = 'Invalid tag format.';
-    } elseif (!preg_match('/D$/i', $tag) || !preg_match('/D$/i', $version)) {
+    } elseif (!preg_match('/D$/i', $tag)) {
         $dev_build_error = 'Dev releases require matching D-suffixed tag and version.';
-    } elseif (ltrim($tag, 'vV') !== $version) {
-        $dev_build_error = 'Dev tag and version do not match.';
     } elseif ($version === '' || $version_full === '') {
         $dev_build_error = 'Version and Version Full are required.';
+    } elseif (!str_ends_with($version_full, $version)) {
+        $dev_build_error = 'Version Full must end with the complete D-suffixed dev version.';
     } elseif (sc_release_identifier_used($version)) {
         $dev_build_error = 'Release identifier already published. Published versions are immutable; use the next version.';
     } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $released)) {
