@@ -9,7 +9,7 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.731D — 2026-09-19 — GYSS photo details
+## 0.7.731 — 2026-09-19 — GYSS photo details
 - **GYSS Sort exposes enrichment, ALT text, hashtags, colour swatches, colour/B&W classification, and landscape/portrait/square orientation.** The library and photo APIs return these fields, and batch publish saves validated changes. The desktop app warns before paid enrichment and checks site support before publishing the new fields. (`core/gyss-api.php`, `tools/gyss/gyss_qt.py`.)
 
 ## 0.7.730D — 2026-09-19 — Recover current Pixelfed challenge posts
