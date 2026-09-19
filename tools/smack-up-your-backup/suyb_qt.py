@@ -335,7 +335,7 @@ class SuybWindow(QMainWindow):
              "While a backup is running, the red X minimizes SUYB and the backup continues. Keep SUYB available from the taskbar; the Windows notification icon is only an optional convenience.\n\n"
              "If Windows restarts or the computer crashes, open SUYB again and choose RESUME when offered. Already downloaded and verified files are not downloaded again. START FRESH deliberately discards that run's saved progress."),
             ("Restoring a site",
-             "Open Restore, choose a SUYB .zip package, then choose REVIEW RESTORE. SUYB first checks the package's signature: every backup made by this SUYB (0.7.44+) is signed with a key that lives only on this PC, so a package that was altered, swapped, or made elsewhere is refused. An older, unsigned package asks you before continuing. Then SUYB shows what will happen before anything is uploaded. Restoring writes to the selected site, so check the site name and URL before confirming. Moving to a new PC: copy backup-signing.key from SUYB's config folder along with your profiles."),
+             "Open Restore, choose a verified SUYB .zip package, then choose REVIEW RESTORE. SUYB shows what will happen before anything is uploaded. Restoring writes to the selected site, so check the site name and URL before confirming."),
             ("Finding your backups",
              "Open Backups to see packages in the selected site's working folder. Open backup folder shows the same files in Windows so you can copy or manage them there. Refresh rereads the folder."),
             ("Connections",
@@ -647,28 +647,13 @@ class SuybWindow(QMainWindow):
             QMessageBox.warning(self, "Choose a backup", "Choose an existing SUYB backup package first."); return
         if QMessageBox.question(self, "Restore this site?", f"Restore {self.current_profile['name']} from:\n{os.path.basename(path)}?\n\nThis writes files and database content to the selected site.", QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
             return
-        # SECAUDIT 054 item 8 — signature check first, on this thread, so the
-        # unsigned case can ask a plain question. A bad signature stops here.
-        try:
-            sig_status, sig_detail = restore_engine.precheck_signature(path)
-        except restore_engine.backup_signing.SignatureError as e:
-            QMessageBox.critical(self, "Backup refused",
-                                 f"{e}\n\nThis package will not be restored."); return
-        except Exception as e:  # noqa: BLE001
-            QMessageBox.critical(self, "Backup unreadable", str(e)); return
-        if sig_status == "unsigned":
-            if QMessageBox.question(self, "Unsigned backup",
-                    f"{sig_detail}\n\nSUYB cannot prove this package is the one it made. Restore it anyway?",
-                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
-                return
         self.restore_btn.setEnabled(False); self.restore_btn.setText("RESTORING…")
         restore_profile = dict(self.current_profile)
         restore_profile["api_key"] = self._resolved_key(restore_profile)
         self.engine = restore_engine.RestoreEngine(
             restore_profile, global_cloud=self._global_cloud(),
             on_progress=lambda stage, msg, pct: self.bridge.progress.emit(stage, msg, pct),
-            on_log=lambda msg: self.bridge.log.emit(str(msg)),
-            on_ask=lambda _m: True)   # already answered above on the main thread
+            on_log=lambda msg: self.bridge.log.emit(str(msg)))
         engine = self.engine
         threading.Thread(target=lambda: self.bridge.restoreFinished.emit(
             engine.restore_from_zip(path)), daemon=True).start()
