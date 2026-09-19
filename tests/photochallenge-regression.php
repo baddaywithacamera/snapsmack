@@ -112,7 +112,7 @@ pc_test(str_contains($schema, 'CREATE TABLE IF NOT EXISTS `pc_entry_failures`')
     && str_contains($photo, 'function pc_latest_recovery_results')
     && !str_contains($admin, 'value="notify_failed_entries"'),
     'missed-entry recovery, durable failure logging, or resubmit notification is absent');
-pc_test(str_contains($photo, 'pc_rescan_participants($pdo,$settings,12,true,$tag)')
+pc_test(str_contains($photo, 'pc_rescan_participants($pdo,$settings,12,true,$tag,$actor_offset,$actor_limit)')
     && str_contains($photo, 'array_merge($rows, $participant_scan[\'rows\'])')
     && str_contains($photo, 'pc_participant_recent_posts($actor, $outbox, $settings, $per_actor)')
     && str_contains($photo, 'sv_masto_statuses($host, $username, $max)')
@@ -122,6 +122,11 @@ pc_test(str_contains($photo, 'pc_rescan_participants($pdo,$settings,12,true,$tag
     && str_contains($photo, "'participant_unreadable'")
     && str_contains($admin, 'every active participant&rsquo;s own outbox'),
     'recovery does not merge hashtag, participant outbox, and Pixelfed public-status discovery');
+pc_test(str_contains($admin, "data.set('pc_recover_batch', '1')")
+    && str_contains($admin, "data.set('actor_offset', String(offset))")
+    && str_contains($admin, 'session_write_close()')
+    && str_contains($photo, 'array_slice($rows, max(0, $actor_offset), $actor_limit)'),
+    'admin recovery must scan participants in bounded requests without holding the session lock');
 pc_test(str_contains($admin, 'EXTEND UNTIL &mdash; close automatically')
     && str_contains($admin, "value=\"extend_window_24\"")
     && str_contains($admin, "modify('+24 hours')")

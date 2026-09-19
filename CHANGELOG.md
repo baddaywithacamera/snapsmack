@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.727 — 2026-09-19 — Bounded PhotoFri recovery
+- **Photo Challenge recovery no longer holds one browser request open while it visits every participant.** The admin button checks one account at a time, shows progress, and releases the login session lock during each remote fetch. A slow or unreachable account can be retried without losing entries already recovered. The public board and normal incoming-post path are unchanged. (`core/photochallenge.php`, `smack-photochallenge.php`.)
+
 ## 0.7.726 — 2026-09-19 — Hub discovery provisions tool keys
 - **Hub discovery now creates a real SYBU key for the Hub site.** The Hub used its discovery-only credential as SYBU's posting key because its tool-key provisioning function was an empty stub. The Hub's authenticated discovery endpoint now creates typed, expiring keys for the supported desktop tools; discovery saves each key to its matching site profile. A failed provisioning attempt preserves a previously saved SYBU key instead of replacing it with the Hub key. SUYB's read-only key cannot invoke provisioning. (`suyb-data.php`, `tools/_shared/snap_discovery.py`.)
 
