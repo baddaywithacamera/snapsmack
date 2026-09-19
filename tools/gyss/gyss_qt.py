@@ -14,6 +14,31 @@ try: import snap_library
 except Exception: snap_library=None
 from _version import BUILD_VERSION
 
+try:
+    import snap_site_scope   # X-Snap-Site header (mutual-auth A1, SECAUDIT 054)
+except Exception:  # noqa: BLE001
+    # tools/_shared may not be on sys.path yet at this point in the file (each
+    # tool adds it at a different spot). Find it from here; frozen exes bundle
+    # it next to the entry script.
+    import os as _sso, sys as _sss
+    _d = _sso.path.dirname(_sso.path.abspath(__file__))
+    for _up in range(4):
+        _cand = _sso.path.join(_d, "_shared")
+        if _sso.path.isdir(_cand):
+            if _cand not in _sss.path:
+                _sss.path.insert(0, _cand)
+            break
+        _d = _sso.path.dirname(_d)
+    try:
+        import snap_site_scope
+    except Exception:  # noqa: BLE001
+        snap_site_scope = None
+
+
+def _site_scope(site_url):
+    return snap_site_scope.header(site_url) if snap_site_scope else {}
+
+
 GREEN,INK,DIM="#73f04b","#f4f7f2","#7e897f"; BASE,VOID,PANEL,CARD,BORDER="#0d120f","#090c0a","#121a15","#18231c","#293a30"
 STYLE="""QWidget{background:#0d120f;color:#f4f7f2;font:14px 'Segoe UI'} QMainWindow{background:#090c0a} QFrame#Sidebar{background:#090c0a;border-right:1px solid #293a30} QFrame#Header{background:#121a15;border-bottom:1px solid #293a30} QFrame#Card{background:#18231c;border:1px solid #293a30;border-radius:12px} QLabel#Eyebrow{color:#73f04b;font-size:11px;font-weight:800} QLabel#Title{font-size:23px;font-weight:800} QLabel#PageTitle{font-size:24px;font-weight:750} QLabel#Muted{color:#7e897f} QLabel#Good{color:#73f04b;background:#142611;border:1px solid #315d25;border-radius:9px;padding:6px 10px;font-weight:700} QPushButton{background:#202c24;border:1px solid #34463a;border-radius:8px;padding:9px 14px;font-weight:650} QPushButton:hover{border-color:#73f04b} QPushButton:disabled{color:#596259;background:#151a16} QPushButton#Primary{color:#071006;background:#73f04b;border-color:#73f04b;font-weight:850;padding:11px 18px} QPushButton#Danger{color:#ff8b8b;background:#271313;border-color:#683131} QPushButton#Nav{text-align:left;background:transparent;border:0;color:#bac3b8;padding:12px 14px} QPushButton#Nav:checked{color:#73f04b;background:#152219;border-left:3px solid #73f04b} QLineEdit,QComboBox,QTextEdit,QListWidget,QSpinBox{background:#0b100d;border:1px solid #293a30;border-radius:7px;padding:7px;selection-background-color:#3ba525} QListWidget::item{padding:7px;border-radius:6px} QListWidget::item:selected{background:#294531} QProgressBar{background:#0b100d;border:1px solid #293a30;border-radius:7px;text-align:center} QProgressBar::chunk{background:#73f04b} QScrollArea{border:0}"""
 
@@ -48,7 +73,7 @@ def merge_enrichment_record(record,result):
 
 class API:
     def __init__(self,p):
-        self.base=p["site_url"].rstrip("/"); self.s=requests.Session(); self.s.headers.update({"Authorization":"Bearer "+p.get("api_key",""),"Accept":"application/json"})
+        self.base=p["site_url"].rstrip("/"); self.s=requests.Session(); self.s.headers.update({"Authorization":"Bearer "+p.get("api_key",""),"Accept":"application/json",**_site_scope(self.base)})
     def call(self,method,endpoint,params=None,body=None,timeout=90):
         q={"route":"gyss/"+endpoint}; q.update(params or {}); r=self.s.request(method,self.base+"/api.php",params=q,json=body,timeout=timeout)
         try:data=r.json()

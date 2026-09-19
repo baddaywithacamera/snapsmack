@@ -247,9 +247,14 @@ async fn api_request(
         .timeout(std::time::Duration::from_secs(45))
         .build()
         .map_err(|e| e.to_string())?;
+    // Mutual-auth A1 (SECAUDIT 054): name the site this request is meant for.
+    // The URL is built from the profile's site_url, so its host IS the intended
+    // site; the server refuses the write if it is not that site.
+    let site_host = host.to_ascii_lowercase();
     let mut request = if verb == "GET" { client.get(parsed) } else { client.post(parsed) };
     request = request
         .bearer_auth(api_key.trim())
+        .header("X-Snap-Site", site_host)
         .header(reqwest::header::ACCEPT, "application/json")
         .header(reqwest::header::CONTENT_TYPE, "application/json");
     if let Some(payload) = body {

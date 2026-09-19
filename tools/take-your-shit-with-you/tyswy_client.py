@@ -44,6 +44,31 @@ from urllib.parse import urlsplit
 
 import requests
 
+try:
+    import snap_site_scope   # X-Snap-Site header (mutual-auth A1, SECAUDIT 054)
+except Exception:  # noqa: BLE001
+    # tools/_shared may not be on sys.path yet at this point in the file (each
+    # tool adds it at a different spot). Find it from here; frozen exes bundle
+    # it next to the entry script.
+    import os as _sso, sys as _sss
+    _d = _sso.path.dirname(_sso.path.abspath(__file__))
+    for _up in range(4):
+        _cand = _sso.path.join(_d, "_shared")
+        if _sso.path.isdir(_cand):
+            if _cand not in _sss.path:
+                _sss.path.insert(0, _cand)
+            break
+        _d = _sso.path.dirname(_d)
+    try:
+        import snap_site_scope
+    except Exception:  # noqa: BLE001
+        snap_site_scope = None
+
+
+def _site_scope(site_url):
+    return snap_site_scope.header(site_url) if snap_site_scope else {}
+
+
 CLIENT_NAME    = 'take-your-shit-with-you'
 API_VERSION    = '0.1'
 STREAM_FORMAT  = 1
@@ -166,6 +191,7 @@ class TyswyClient:
             'User-Agent':    f'{CLIENT_NAME}/{app_version}',
             'Accept':        'application/json, application/x-ndjson',
             'Authorization': f'Bearer {self.api_key}',
+            **_site_scope(self.site_url),
         })
         self.site_uuid = None          # learned at preflight, pinned thereafter
 
