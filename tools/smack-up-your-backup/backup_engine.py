@@ -41,6 +41,7 @@ import checkpoint as checkpoint_module
 import ftp_client as ftp_module
 import transport
 import manifest_reader
+import backup_signing
 import config as config_module
 try:
     from _version import BUILD_VERSION as _SUYB_VERSION
@@ -1124,6 +1125,18 @@ class BackupEngine:
                     self._log("SUYB settings bundled into backup.")
         except Exception as e:
             result["errors"].append(f"Packaging failed: {e}")
+            if ftp:
+                ftp.disconnect()
+            return result
+
+        # Sign the finished package (SECAUDIT 054 item 8). A backup SUYB cannot
+        # later prove it made is not a clean backup, so a signing failure is a
+        # packaging failure.
+        try:
+            signed = backup_signing.sign_zip(zip_path)
+            self._log(f"Package signed: {len(signed)} members (HMAC-SHA256, local key).")
+        except Exception as e:
+            result["errors"].append(f"Package signing failed: {e}")
             if ftp:
                 ftp.disconnect()
             return result
