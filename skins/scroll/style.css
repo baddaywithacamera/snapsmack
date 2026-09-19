@@ -978,4 +978,83 @@ body.is-blogroll .blogroll-canvas > .blogroll-category-block {
     .scroll-feature-item img,
     .scroll-item-title { transition: none; }
 }
+/* ── Archive page (SCROLL 0.1.49) ───────────────────────────────────────────
+   Core's archive.php emits a plain #infobox (SHOW ALL · T/M toggle), then the
+   search-status line and the tag row, then the grid. SCROLL never styled any of
+   it — .scroll-infobox above is the SOLO page's bottom nav, and the archive's
+   #infobox has no class — so the row sat raw at the left edge. These rules give
+   it the same treatment as the solo nav: one centred cluster in the body font,
+   uppercase, tracked. Core's own FILTER panel is turned off for this skin
+   (manifest archive_filter:false) because the header nav already carries it.
+   Widths follow the canvas (--scroll-canvas-width / -pct) like everything else. */
+#infobox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: min(var(--scroll-canvas-pct, 90%), var(--scroll-canvas-width, 1500px));
+    margin: 0 auto;
+    padding: 18px 0 6px;
+    background: inherit;
+}
+#infobox .nav-links {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    margin: 0;
+    padding: 0;
+    font-size: var(--scroll-bottomnav-size, .75rem);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+#infobox .center {
+    display: inline-flex;
+    align-items: center;
+    gap: 28px;
+}
+#infobox .nav-links a { text-decoration: none; color: inherit; }
+#infobox a.inactive { opacity: .55; }
+#infobox a.active   { opacity: 1; }
+#infobox .sep { opacity: .35; }
+#infobox .filter-group { display: inline-flex; align-items: center; }
+#infobox .archive-search-form { margin: 0; }
+/* Same field as the header nav's search (see .scroll-nav-search-panel input). */
+#infobox .archive-search-input {
+    width: 16rem;
+    max-width: 40vw;
+    padding: 7px 10px;
+    color: #181818;
+    background: #fff;
+    border: 1px solid #aaa;
+    font: inherit;
+    letter-spacing: 0;
+    text-transform: none;
+}
+#infobox .archive-search-input:focus { outline: none; border-color: #181818; }
+/* The T/M layout toggle is docked into #infobox by ss-engine-archive-toggle.js;
+   core positions it absolute at the right edge of the row. Keep it in the flow
+   here so it sits in the cluster instead of floating off to the canvas edge. */
+#infobox .archive-controls.archive-controls--docked {
+    position: static;
+    transform: none;
+    margin: 0 0 0 28px;
+    right: auto !important;   /* the engine writes an inline right: when it docks */
+}
+/* Results line + tag row: centred, on the canvas, same small caps as the row. */
+.archive-search-status,
+.archive-tags-row {
+    width: min(var(--scroll-canvas-pct, 90%), var(--scroll-canvas-width, 1500px));
+    margin: 0 auto;
+    text-align: center;
+    font-size: var(--scroll-bottomnav-size, .75rem);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.archive-search-status { padding: 10px 0 4px; }
+.archive-tags-row { padding: 4px 0 18px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; }
+.archive-tags-row .tg-tag { text-decoration: none; color: inherit; opacity: .75; }
+.archive-tags-row .tg-tag:hover { opacity: 1; }
+@media (max-width: 720px) {
+    #infobox .nav-links, #infobox .center { gap: 16px; }
+}
 /* ===== SNAPSMACK EOF ===== */
