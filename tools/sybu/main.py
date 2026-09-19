@@ -3821,7 +3821,7 @@ class App(tk.Tk):
             threading.Thread(target=_site_thread, daemon=True).start()
 
     def _save_config(self):
-        cfg_module.save({
+        _cfg = {
             'url':                self._url_var.get().strip(),
             'api_key':            self._api_key_var.get().strip(),
             'remember':           self._rem_var.get(),
@@ -3841,7 +3841,10 @@ class App(tk.Tk):
             'drive_warning_dismissed': bool(self._config.get('drive_warning_dismissed', False)),
             'win_maximized':      self._win_is_max(),
             'win_geometry':       getattr(self, '_normal_geometry', ''),
-        })
+        }
+        cfg_module.save(_cfg)
+        if _cfg.get('vault_warning'):
+            messagebox.showwarning('Key not remembered', _cfg['vault_warning'])
         self._update_ai_dot()
 
     def _update_ai_dot(self):
