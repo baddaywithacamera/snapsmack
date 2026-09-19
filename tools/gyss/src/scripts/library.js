@@ -184,7 +184,8 @@ export async function syncLibrary(api, profile, opts = {}) {
     for (const im of toFetch) {
         const abs = await join(tdir, `${im.id}.${extFromUrl(im.thumb_url)}`);
         try {
-            await invoke('download_to', { url: im.thumb_url, path: abs });
+            // site_url pins the native fetch to this site (SECAUDIT 054 item 3).
+            await invoke('download_to', { url: im.thumb_url, path: abs, siteUrl: profile.site_url });
             im.thumb_file = im._thumb_rel;
             thumbsDownloaded++;
         } catch {

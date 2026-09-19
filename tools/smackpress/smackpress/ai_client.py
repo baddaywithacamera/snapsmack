@@ -16,6 +16,20 @@ from typing import Any
 import config
 
 
+class _RefuseRedirect(urllib.request.HTTPRedirectHandler):
+    """urllib re-sends EVERY header on a redirect, Authorization included, so a
+    credentialed request that gets 30x'd would hand the key to whatever host
+    Location names. Refuse instead (SECAUDIT 053 F / 054). requests already
+    strips the header cross-host; urllib does not."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url, code, "redirect refused: request carried a credential", headers, fp)
+
+
+_NO_REDIRECT = urllib.request.build_opener(_RefuseRedirect)
+
+
+
 class AIError(Exception):
     pass
 
@@ -63,7 +77,7 @@ def _post_json(url: str, headers: dict, body: dict) -> Any:
     data = json.dumps(body).encode()
     req  = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with _NO_REDIRECT.open(req, timeout=120) as resp:
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
         msg = e.read().decode()
