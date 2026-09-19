@@ -1329,8 +1329,8 @@ function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25,
     pc_ensure_tables($pdo);
     $per_actor = max(1, min(60, $per_actor));
     try {
-        $rows = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active' ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Throwable $e) { return $out; }
+        $rows = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active' ORDER BY actor_url")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) { throw new RuntimeException('Could not list challenge participants for recovery.', 0, $e); }
     $out['total_actors'] = count($rows);
     if ($actor_limit > 0) $rows = array_slice($rows, max(0, $actor_offset), $actor_limit);
     foreach ($rows as $participant) {
@@ -1446,7 +1446,7 @@ function pc_text_has_tag(string $text, string $tag): bool {
 function pc_participant_recovery_rows(PDO $pdo, array $settings, string $tag, int $per_actor = 12): array {
     $rows = []; $actors = 0; $errors = 0;
     try {
-        $participants = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active' ORDER BY id")
+        $participants = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active' ORDER BY actor_url")
             ->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) { return ['rows'=>[],'actors'=>0,'errors'=>1]; }
     foreach ($participants as $participant) {

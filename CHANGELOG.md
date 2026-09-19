@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.729 — 2026-09-19 — Restore participant recovery scan
+- **Recovery now scans active participants again.** The bounded scan sorted by a nonexistent `id` column and silently treated the resulting database error as an empty participant list. It now sorts by the participant key and reports a query failure instead of claiming there are no posts. (`core/photochallenge.php`.)
+
 ## 0.7.728 — 2026-09-19 — PhotoFri recovery request target
 - **Fixed the recovery button's request address.** Its hidden `action` field masked the form's URL property in JavaScript, causing batch requests to load an HTML error page instead of running recovery. Requests now target the current admin page directly. (`smack-photochallenge.php`.)
 
