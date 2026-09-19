@@ -33,6 +33,16 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
   always deleted afterwards — whether the restore succeeded or failed.
   Previously a damaged or crafted package could fill the disk before SUYB
   even looked at the manifest, and left the half-unpacked folder behind.
+- **Every backup is signed; RESTORE verifies before it unpacks (SECAUDIT 054).**
+  The package carries `SUYB-SIGNATURE.json`: a sha256 of every member plus an
+  HMAC over that list, keyed by a secret that exists only on this machine
+  (`backup-signing.key` in SUYB's config folder — created on first backup,
+  vault-encrypted when the vault is enabled). A package that was altered,
+  had a file added or removed, or was made by a different SUYB is refused
+  with a plain reason, no override. A package made before 0.7.44 has no
+  signature: SUYB says so and asks before restoring it (unattended restores
+  refuse). Moving to a new PC? Copy `backup-signing.key` with your profiles.
+  Tests: `tests/test_backup_signing.py` (12 checks).
 - **Tests no longer touch your real Hub profiles.** The credential-vault
   rollback tests were pulling the operator's real site profiles (real API
   keys) into a temp folder on every run, which also masked two failing

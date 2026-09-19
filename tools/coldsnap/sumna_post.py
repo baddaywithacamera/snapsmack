@@ -26,12 +26,15 @@ Server-side items this build flags (see addendum):
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
+import logging
 import os
 import re
 import sys
 from typing import List, Optional, Tuple
 
 import requests
+
+_log = logging.getLogger("coldsnap.library")
 
 from sumna_offline import (
     Draft, SyncResult,
@@ -187,7 +190,10 @@ def _produce_library(site, draft, post_id, *, site_mode, post_type, body="",
             "source_tool": source_tool,
         }, assets=assets)
     except Exception:
-        pass
+        # A library hiccup must never fail a live post — but a persistently
+        # broken mirror must not be invisible either (SECAUDIT 053 F).
+        _log.warning("shared library: could not record post %s for %s",
+                     post_id, site, exc_info=True)
 
 
 def _resp_msg(r, default: str) -> str:

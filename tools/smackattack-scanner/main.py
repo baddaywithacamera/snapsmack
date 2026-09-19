@@ -626,6 +626,7 @@ class ResultsTab(ttk.Frame):
                          args=(api_url, api_key, iid, db_id, vals), daemon=True).start()
 
     def _upload_thread(self, url, key, iid, db_id, vals):
+        import urllib.error
         import urllib.request
         payload = json.dumps({
             'action':      'gobsmacked_report',
@@ -637,8 +638,17 @@ class ResultsTab(ttk.Frame):
         req = urllib.request.Request(url, data=payload,
                                      headers={'Content-Type': 'application/json',
                                               'Authorization': f'Bearer {key}'})
+
+        # urllib re-sends every header on a redirect, Authorization included —
+        # refuse redirects so the hub key can't be handed to another host
+        # (SECAUDIT 053 F / 054). requests strips it cross-host; urllib does not.
+        class _RefuseRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, r, fp, code, msg, headers, newurl):
+                raise urllib.error.HTTPError(
+                    r.full_url, code, "redirect refused: request carried a credential", headers, fp)
+        opener = urllib.request.build_opener(_RefuseRedirect)
         try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with opener.open(req, timeout=10) as resp:
                 body = json.loads(resp.read())
             if body.get('ok'):
                 _post(self._act_lbl.configure, text="✓ Uploaded to hub.", foreground=FG_OK)

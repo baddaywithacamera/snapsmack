@@ -53,6 +53,49 @@ class DiscoveryError(Exception):
     pass
 
 
+def node_url_reason(site_url) -> str:
+    """SECAUDIT 054 F2 — structural validation of a hub-supplied node URL.
+
+    The hub's node list is the ONLY thing that decides where the hub's
+    provisioning-capable key gets POSTed. A tampered hub (or a MITM'd reply)
+    can inject a node. Transport is already refused by insecure_transport_reason;
+    this refuses the rest: anything that is not a plain https origin, carries
+    user:pass@, points at a private / loopback / link-local literal IP, or has
+    a query/fragment. '' = acceptable; otherwise a plain sentence.
+
+    Whether a node may live on a DIFFERENT registrable domain than the hub is
+    a federation-trust policy call (three-way, Sean present) — deliberately
+    not decided here.
+    """
+    import ipaddress
+    from urllib.parse import urlsplit
+    u = str(site_url or "").strip()
+    if not u:
+        return "Node has no site URL."
+    try:
+        parts = urlsplit(u)
+    except Exception:
+        return "Node URL is malformed."
+    if parts.scheme.lower() != "https":
+        return "Node URL is not https://."
+    if not parts.hostname:
+        return "Node URL has no host."
+    if parts.username or parts.password:
+        return "Node URL carries credentials."
+    if parts.query or parts.fragment:
+        return "Node URL carries a query or fragment."
+    if "\\" in u or any(ord(c) < 32 or ord(c) == 127 for c in u):
+        return "Node URL contains control characters."
+    try:
+        ip = ipaddress.ip_address(parts.hostname)
+    except ValueError:
+        ip = None
+    if ip is not None and (ip.is_private or ip.is_loopback or ip.is_link_local
+                           or ip.is_unspecified or ip.is_multicast or ip.is_reserved):
+        return "Node URL points at a private or local address."
+    return ""
+
+
 def _session(hub_url, api_key="", admin_user="", admin_pass="", timeout=30,
              login_slug="snap-in"):
     """Authenticated requests.Session for the hub. Bearer key preferred; falls back
@@ -109,7 +152,19 @@ def discover(hub_url, api_key="", admin_user="", admin_pass="", timeout=30):
         "backup_status": data.get("backup_status", {}) or {},
     }
     nodes = (data.get("multisite", {}) or {}).get("nodes", []) or []
-    spokes = [n for n in nodes if n.get("role") == "spoke"]
+    spokes = []
+    for n in nodes:
+        if n.get("role") != "spoke":
+            continue
+        # SECAUDIT 054 F2 — a node that fails structural validation never becomes
+        # a profile and never receives the hub key. Dropped, not "fixed up".
+        reason = node_url_reason(n.get("site_url") or n.get("url") or "")
+        if reason:
+            n = dict(n)
+            n["_rejected"] = reason
+            hub_info.setdefault("rejected_nodes", []).append(n)
+            continue
+        spokes.append(n)
     return hub_info, spokes
 
 
