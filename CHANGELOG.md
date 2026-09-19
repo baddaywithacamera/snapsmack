@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.730D — 2026-09-19 — Recover current Pixelfed challenge posts
+- **PhotoFri recovery reads Pixelfed's public posts when its ActivityPub outbox is empty.** Pixelfed now advertises its account ID as a flat number in the avatar URL; recognize that form as well as the older segmented path so three tagged posts can be recovered. (`core/photochallenge.php`.)
+
 ## 0.7.729D — 2026-09-19 — Restore participant recovery scan
 - **SCROLL 0.1.49: the archive/search page is no longer raw.** Two SCROLL-only faults: (1) the header's inline social dock only had its stylesheet on the landing page (core loads it from footer-scripts.php), so on archive/about/blogroll it collapsed into a vertical strip of bare icons — SCROLL now loads that stylesheet itself on every page; (2) SCROLL had never styled the archive's `#infobox` at all (its `.scroll-infobox` rules are the solo page's bottom nav), so SHOW ALL / the search box / the T-M toggle / results / tag links sat unstyled at the left edge — now one centred row on the canvas in the same small caps as the solo nav, search box matching the header's. Also drops core's duplicate FILTER panel on this skin (the header nav already carries it; both used the same element ids). Previewed on usedcarparts.photoblogs.fyi before shipping. Ships via the skin registry, not the CMS package. (`skins/scroll/style.css`, `skin-meta.php`, `manifest.json`.)
 - **Recovery now scans active participants again.** The bounded scan sorted by a nonexistent `id` column and silently treated the resulting database error as an empty participant list. It now sorts by the participant key and reports a query failure instead of claiming there are no posts. (`core/photochallenge.php`.)
