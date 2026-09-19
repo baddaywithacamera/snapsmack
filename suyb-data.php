@@ -46,6 +46,40 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $body = json_decode(file_get_contents('php://input') ?: '', true);
     $action = is_array($body) ? strtolower(trim((string)($body['action'] ?? ''))) : '';
     $key_value = is_array($body) ? strtolower(trim((string)($body['key_value'] ?? ''))) : '';
+    // Provisioning is a hub operation. A backup-scoped SUYB key may read this
+    // endpoint, but must never be able to mint credentials for other tools.
+    if (!defined('SNAP_API_KEY_TYPE') || SNAP_API_KEY_TYPE !== 'hub') {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'A Hub key is required to provision keys.']);
+        exit;
+    }
+    if ($action === 'provision-tool-key') {
+        $key_type = is_array($body) ? strtolower(trim((string)($body['key_type'] ?? ''))) : '';
+        if (!in_array($key_type, ['sybu', 'gyss', 'ohsnap', 'tyswy', 'unzucker',
+                                  'flkrfckr', 'smackpress', 'bloggerflogger'], true)) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => 'Unsupported tool key type.']);
+            exit;
+        }
+        try {
+            $raw = bin2hex(random_bytes(32));
+            $pdo->beginTransaction();
+            $pdo->prepare("UPDATE snap_ohsnap_keys SET is_active = 0 WHERE key_type = ? AND label = ?")
+                ->execute([$key_type, 'HUB auto-provisioned (' . $key_type . ')']);
+            $pdo->prepare("INSERT INTO snap_ohsnap_keys
+                (label, key_type, key_hash, key_prefix, expires_at, user_id)
+                VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 1 YEAR), NULL)")
+                ->execute(['HUB auto-provisioned (' . $key_type . ')', $key_type,
+                           hash('sha256', $raw), substr($raw, 0, 8)]);
+            $pdo->commit();
+            echo json_encode(['ok' => true, 'key_type' => $key_type, 'api_key' => $raw]);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'error' => 'Tool key provisioning failed.']);
+        }
+        exit;
+    }
     if ($action !== 'provision-backup-key') {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'Unknown action.']);
