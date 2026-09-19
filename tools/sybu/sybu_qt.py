@@ -493,7 +493,8 @@ class Window(QMainWindow):
                 if out.get('error'):self._error(out['error'])
 
     def _save(self):
-        self.engine.save_config({'url':self.url.text(),'api_key':self.key.text(),'last_image_folder':self.folder.text(),'last_manifest_file':self.manifest.text(),'google_credentials':self.gcreds.text(),'drive_folder_id':self.drive_folder.text(),'gemini_api_key':self.gemini.text(),'gemini_last_prompt':self.prompt.text()}); self._gemini_manually_edited=False; self.engine.drive_toggle(self.drive.isChecked()); self.gemini_source.setText("Gemini key source: SNAP HQ shared store"); self._say("Settings saved to the shared store.")
+        _vw=self.engine.save_config({'url':self.url.text(),'api_key':self.key.text(),'last_image_folder':self.folder.text(),'last_manifest_file':self.manifest.text(),'google_credentials':self.gcreds.text(),'drive_folder_id':self.drive_folder.text(),'gemini_api_key':self.gemini.text(),'gemini_last_prompt':self.prompt.text()}); self._gemini_manually_edited=False; self.engine.drive_toggle(self.drive.isChecked()); self.gemini_source.setText("Gemini key source: SNAP HQ shared store"); self._say("Settings saved to the shared store.")
+        if _vw: self._say("⚠ KEY NOT REMEMBERED — "+_vw); self.progress_text.setText("⚠ Key not remembered: "+_vw)
     def _post_row_event(self,ev):
         r=ev.get('index')
         if r is None or r>=self.table.rowCount(): return
