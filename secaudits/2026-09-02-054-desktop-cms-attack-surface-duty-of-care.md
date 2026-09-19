@@ -159,7 +159,7 @@ The fix is method, and this pass demonstrates it. Standing rules for every secur
 - [x] AI title/caption sanitise at storage — `core/gyss-api.php` (`strip_tags` + `snap_sanitize_alt`)
 - [x] Suite-wide: strip/refuse Bearer on cross-host redirect — `requests` strips it cross-host by library behaviour (verified 2.34.2); every urllib caller that attaches a credential now uses a redirect-refusing opener (7 files). Test: `tests/test_urllib_no_redirect_with_credentials.py`
 - [x] `SECURITY.md` — exists at repo root
-- [ ] mutual-auth A1 server-side scope enforcement + config signing (B1) — **three-way decision, not started**
+- [x] mutual-auth A1 server-side scope enforcement — **BUILT 2026-09-18 (Sean: yes), ships DARK in 0.7.724D.** `core/api-site-scope.php` on both API doors; tools send `X-Snap-Site` (14 Python clients + GYSS Rust). Switch in Global Configuration: OFF / ENFORCE / REQUIRE. Rollout per closeout spec Tier 2: ENFORCE on ONE spoke first (owner). Config signing (B1) deferred — no second signer yet. Tests: `tests/api-site-scope-regression.php`, `tools/_shared/tests/test_snap_site_scope.py`
 - [ ] Mandatory vault (owner UX decision) — **three-way decision**
 - [ ] Dependency-CVE watch, tested rollback, user-notification channel — **process items, not code**
 - [ ] MEMENTO MORI gate before any tool touches deceased archives — no tool does yet; gate to be built with the first such tool
@@ -179,10 +179,9 @@ stay OPEN until answered (item 3 answered 2026-09-18):**
 1. **Mandatory vault.** Recommendation: mandatory for any profile that holds a
    posting-capable key, opt-in for read-only keys. Cost: one passphrase prompt
    per session on the affected tools.
-2. **Server-side scope enforcement (A1) + signed config (B1).** Recommendation:
-   do A1 (server refuses a key used outside its declared scope — it is the
-   backstop for every client-side check above) and defer B1 until there is a
-   second signer.
+2. **Server-side scope enforcement (A1) + signed config (B1).** ~~Recommendation:
+   do A1, defer B1.~~ **Sean: yes (2026-09-18). A1 BUILT, ships dark in 724D;
+   owner flips ENFORCE on one spoke first. B1 deferred (no second signer).**
 3. **Domain allowlist for discovered nodes.** ~~Recommendation: same registrable
    domain or a per-hub allowlist.~~ **CLOSED 2026-09-18 — leave it.** The hub's
    node list is the MULTISITE MANAGEMENT roster: 24 spokes, each connected by the
