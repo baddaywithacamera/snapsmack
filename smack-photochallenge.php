@@ -582,7 +582,7 @@ include 'core/sidebar.php';
                         const data = new FormData(form);
                         data.set('pc_recover_batch', '1');
                         data.set('actor_offset', String(offset));
-                        const response = await fetch(form.action || location.href, {method:'POST',body:data,credentials:'same-origin'});
+                        const response = await fetch(location.href, {method:'POST',body:data,credentials:'same-origin'});
                         const reply = await response.json();
                         if (!response.ok || !reply.ok) throw new Error(reply.error || 'Recovery request failed.');
                         const result = reply.result;
