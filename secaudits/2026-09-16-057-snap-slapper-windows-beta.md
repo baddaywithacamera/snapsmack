@@ -6,7 +6,7 @@
 | **Date** | 2026-09-16 |
 | **Scope** | Completed Windows beta source, `.slapper` project loading, image layers, publishing handoff, frozen onedir package, and installed copy at `C:\snapsmack\snap_slapper`. Linux is outside this beta audit. |
 | **Method** | Manual trust-boundary review, hostile-input regressions, vendor-advisory review, dependency audit, source and frozen-application tests, package inventory/hash verification, Authenticode inspection, and installed ACL inspection. No exploit code. |
-| **Status** | **CLOSED FOR LOCAL BETA (2026-09-18).** All application-code findings closed; the installed folder is protected and 366/366 files hash-verified. F5's remaining line — Authenticode signing — is a public-release gate: the beta is not public, so no public build exists to sign. The first public build is signed before it ships. |
+| **Status** | **CLOSED FOR LOCAL BETA (2026-09-18).** All application-code findings closed; the installed folder is protected and 366/366 files hash-verified. F5's remaining line — a Microsoft-recognised Authenticode certificate — is **DROPPED, owner decision (Sean, 2026-09-18): "that is not ever happening."** Releases carry SnapSmack's own Ed25519 signature; SmartScreen's first-run warning is a documented consequence. |
 | **Related** | SECAUDIT 056 high-bit / RAW release audit. |
 
 ## Summary
@@ -65,7 +65,7 @@ The installed build deliberately does not support SVG. Qt's 2026 advisory identi
 
 **Verification:** Installed inventory: 366 listed files, 366 actual files, zero hash/size failures, zero missing files, zero extras. Installed ACL has no ordinary-user write grant. Candidate and installed executable SHA-256 match.
 
-**Status:** **CLOSED for the local beta; signing is a public-release gate.** The writable-install issue is closed. Authenticode remains `NotSigned` on the local beta because no public build exists yet; the first public build is signed with a trusted certificate before distribution.
+**Status:** **CLOSED.** The writable-install issue is closed. Authenticode remains `NotSigned` and will stay that way — no certificate will be bought (owner decision, 2026-09-18). Publisher identity = SnapSmack's own Ed25519 release signature, verified by the updater and SMACKBACK.
 
 ## Verification record
 
@@ -86,7 +86,7 @@ The installed build deliberately does not support SVG. Qt's 2026 advisory identi
 
 The native image-decoder worker is bounded by a Windows Job Object for memory, duration, and descendant lifetime, but it is not an AppContainer or restricted-token sandbox. RawTherapee is an external, locally installed tool whose publisher/hash trust still depends on the local installation. These are documented residual risks for the local beta, not newly discovered regressions.
 
-The Windows beta is cleared for local use in its protected installed directory. It is not cleared for public/full release until Authenticode signing and the final signed installer/update trust path are verified. Linux remains deferred to the full release as requested.
+The Windows beta is cleared for local use in its protected installed directory. Public release is not gated on Authenticode (owner decision, 2026-09-18 — no certificate will be purchased); it is gated on the SnapSmack-signed installer/update trust path being verified end to end. Linux remains deferred to the full release as requested.
 
 ## Platform dependency note
 
