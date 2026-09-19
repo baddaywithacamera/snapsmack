@@ -1,10 +1,10 @@
 """GET YOUR SHIT SORTED — native Qt, local-first photo organizer."""
-import json, os, sys, threading, time, urllib.parse, uuid
+import json, os, re, sys, threading, time, urllib.parse, uuid
 from datetime import datetime, timezone
 import requests
 from PySide6.QtCore import QObject, Qt, Signal, QSize, QUrl
-from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence, QPixmap
-from PySide6.QtWidgets import (QApplication,QAbstractItemView,QCheckBox,QComboBox,QFormLayout,QFrame,QHBoxLayout,QLabel,QLineEdit,QListWidget,QListWidgetItem,QMainWindow,QMessageBox,QProgressBar,QPushButton,QScrollArea,QSpinBox,QStackedWidget,QTextEdit,QVBoxLayout,QWidget)
+from PySide6.QtGui import QAction, QColor, QDesktopServices, QIcon, QKeySequence, QPixmap
+from PySide6.QtWidgets import (QApplication,QAbstractItemView,QCheckBox,QColorDialog,QComboBox,QFormLayout,QFrame,QHBoxLayout,QLabel,QLineEdit,QListWidget,QListWidgetItem,QMainWindow,QMessageBox,QProgressBar,QPushButton,QScrollArea,QSpinBox,QStackedWidget,QTextEdit,QVBoxLayout,QWidget)
 
 HERE=os.path.dirname(os.path.abspath(__file__)); SHARED=os.path.abspath(os.path.join(HERE,"..","_shared")); sys.path.insert(0,SHARED)
 import snap_connections, snap_creds, snap_home, snap_profiles
@@ -131,7 +131,7 @@ class Window(QMainWindow):
         f,fl=card("Optional filter","Leave these alone to load the complete library."); form=QFormLayout(); self.cat=QComboBox(); self.alb=QComboBox(); self.limit=QSpinBox(); self.limit.setRange(1,500); self.limit.setValue(200); form.addRow("Category",self.cat); form.addRow("Album",self.alb); form.addRow("Live pull limit",self.limit); fl.addLayout(form); live=QPushButton("PULL A LIVE SESSION"); live.clicked.connect(self.pull_live); fl.addWidget(live,0,Qt.AlignRight); l.addWidget(f); l.addStretch(); return p
     def sort_page(self):
         p,l=self.page("Sort photographs","Drag to reorder. Select a photograph to edit its details or colour classification."); r=QHBoxLayout(); self.photo_list=QListWidget(); self.photo_list.setViewMode(QListWidget.IconMode); self.photo_list.setIconSize(QSize(150,110)); self.photo_list.setGridSize(QSize(180,165)); self.photo_list.setResizeMode(QListWidget.Adjust); self.photo_list.setDragDropMode(QAbstractItemView.InternalMove); self.photo_list.setSelectionMode(QAbstractItemView.ExtendedSelection); self.photo_list.currentItemChanged.connect(self.edit_photo); r.addWidget(self.photo_list,1)
-        e,el=card("Selected photograph"); e.setFixedWidth(330); form=QFormLayout(); self.title_edit=QLineEdit(); self.desc_edit=QTextEdit(); self.desc_edit.setMaximumHeight(130); self.edit_cat=QComboBox(); self.colour=QComboBox(); self.colour.addItem("Not classified",""); self.colour.addItem("Colour","color"); self.colour.addItem("Black & white","bw"); form.addRow("Title",self.title_edit); form.addRow("Description",self.desc_edit); form.addRow("Category",self.edit_cat); form.addRow("Classification",self.colour); el.addLayout(form); apply=QPushButton("APPLY TO SESSION"); apply.clicked.connect(self.apply_edit); el.addWidget(apply); r.addWidget(e); l.addLayout(r,1); br=QHBoxLayout(); save=QPushButton("SAVE SESSION"); save.clicked.connect(self.save_session); br.addWidget(save); br.addStretch(); push=QPushButton("PUBLISH CHANGES"); push.setObjectName("Primary"); push.clicked.connect(self.push); br.addWidget(push); l.addLayout(br); return p
+        e,el=card("Selected photograph"); form=QFormLayout(); self.title_edit=QLineEdit(); self.desc_edit=QTextEdit(); self.desc_edit.setMaximumHeight(90); self.alt_edit=QTextEdit(); self.alt_edit.setMaximumHeight(75); self.tags_edit=QLineEdit(); self.tags_edit.setPlaceholderText("#family #portrait"); self.colors_edit=QLineEdit(); self.colors_edit.setPlaceholderText("#RRGGBB #RRGGBB (up to 3)"); choose_color=QPushButton("CHOOSE COLOUR"); choose_color.clicked.connect(self.choose_color); self.edit_cat=QComboBox(); self.colour=QComboBox(); self.colour.addItem("Not classified",""); self.colour.addItem("Colour","color"); self.colour.addItem("Black & white","bw"); self.orientation=QComboBox(); self.orientation.addItem("Landscape",0); self.orientation.addItem("Portrait",1); self.orientation.addItem("Square",2); form.addRow("Title",self.title_edit); form.addRow("Description",self.desc_edit); form.addRow("ALT text",self.alt_edit); form.addRow("Hashtags",self.tags_edit); form.addRow("Colours",self.colors_edit); form.addRow("",choose_color); form.addRow("Category",self.edit_cat); form.addRow("Colour / B&W",self.colour); form.addRow("Orientation",self.orientation); el.addLayout(form); apply=QPushButton("APPLY TO SESSION"); apply.clicked.connect(self.apply_edit); el.addWidget(apply); enrich=QPushButton("ENRICH THIS PHOTO"); enrich.clicked.connect(self.enrich_sort_photo); el.addWidget(enrich); edit_scroll=QScrollArea(); edit_scroll.setWidgetResizable(True); edit_scroll.setFixedWidth(355); edit_scroll.setWidget(e); r.addWidget(edit_scroll); l.addLayout(r,1); br=QHBoxLayout(); save=QPushButton("SAVE SESSION"); save.clicked.connect(self.save_session); br.addWidget(save); br.addStretch(); push=QPushButton("PUBLISH CHANGES"); push.setObjectName("Primary"); push.clicked.connect(self.push); br.addWidget(push); l.addLayout(br); return p
     def grid_page(self):
         p,l=self.page("GRAMOFSMACK grid","Drag posts into order. Select two or more singles to make a carousel. Nothing changes online until you confirm."); self.gram=QListWidget(); self.gram.setViewMode(QListWidget.IconMode); self.gram.setIconSize(QSize(170,170)); self.gram.setGridSize(QSize(195,215)); self.gram.setResizeMode(QListWidget.Adjust); self.gram.setDragDropMode(QAbstractItemView.InternalMove); self.gram.setSelectionMode(QAbstractItemView.ExtendedSelection); l.addWidget(self.gram,1); r=QHBoxLayout(); refresh=QPushButton("REFRESH GRID"); refresh.clicked.connect(self.load_grid); r.addWidget(refresh); r.addStretch(); car=QPushButton("MAKE SELECTED A CAROUSEL"); car.clicked.connect(self.carousel); r.addWidget(car); order=QPushButton("PUBLISH ORDER"); order.setObjectName("Primary"); order.clicked.connect(self.push_grid); r.addWidget(order); l.addLayout(r); return p
     def images_page(self):
@@ -235,9 +235,10 @@ class Window(QMainWindow):
     def sync_library(self):
         if not self.require_api():return
         def work():
-            index,meta=self.local(); resp=self.api.library(meta.get("synced_at")); images=index.setdefault("images",{}); changed=resp.get("images",[]); cats={}; albs={}
+            index,meta=self.local(); since=meta.get("synced_at") if meta.get("gyss_detail_schema")==2 else None; resp=self.api.library(since); images=index.setdefault("images",{}); changed=resp.get("images",[]); cats={}; albs={}; tags={}
             for iid,x in resp.get("cat_map",[]):cats.setdefault(str(iid),[]).append(x)
             for iid,x in resp.get("album_map",[]):albs.setdefault(str(iid),[]).append(x)
+            for iid,x in resp.get("tag_map",[]):tags.setdefault(str(iid),[]).append("#"+str(x))
             tdir=snap_home.site_thumbs_dir(self.profile["site_url"]); downloaded=0
             for n,img in enumerate(changed,1):
                 k=str(img["id"]); old=images.get(k,{}); old.update(img); old["category_ids"]=cats.get(k,old.get("category_ids",[])); old["album_ids"]=albs.get(k,old.get("album_ids",[])); images[k]=old; u=img.get("thumb_url","")
@@ -249,11 +250,13 @@ class Window(QMainWindow):
                         old["thumb_file"]="thumbs/"+os.path.basename(target);downloaded+=1
                     except Exception:pass
                 self.worker.progress.emit("Saving thumbnails",n,max(len(changed),1))
+            for k,row in images.items():
+                if "tag_map" in resp:row["hashtags"]=" ".join(tags.get(k,[]))
             current={str(x) for x in resp.get("current_ids",[])}
             if current:
                 for k in list(images):
                     if k not in current:images.pop(k,None)
-            meta.update({"site_url":self.profile["site_url"],"synced_at":resp.get("synced_at") or meta.get("synced_at"),"site_mode":resp.get("site_mode") or meta.get("site_mode"),"categories":resp.get("categories",meta.get("categories",[])),"albums":resp.get("albums",meta.get("albums",[])),"counts":{"images":len(images)}}); ip,mp=self.paths(); os.makedirs(os.path.dirname(ip),exist_ok=True)
+            meta.update({"site_url":self.profile["site_url"],"synced_at":resp.get("synced_at") or meta.get("synced_at"),"site_mode":resp.get("site_mode") or meta.get("site_mode"),"gyss_detail_schema":resp.get("detail_schema",0),"categories":resp.get("categories",meta.get("categories",[])),"albums":resp.get("albums",meta.get("albums",[])),"counts":{"images":len(images)}}); ip,mp=self.paths(); os.makedirs(os.path.dirname(ip),exist_ok=True)
             for path,data in ((ip,index),(mp,meta)):
                 tmp=path+".tmp"
                 with open(tmp,"w",encoding="utf-8") as f:json.dump(data,f,indent=2,ensure_ascii=False)
@@ -305,11 +308,43 @@ class Window(QMainWindow):
             it=QListWidgetItem(self.thumb(p),p.get("title") or p.get("filename") or f"Photo {p['id']}");it.setData(Qt.UserRole,p);self.photo_list.addItem(it)
         self.show_page(1)
     def edit_photo(self,it,_):
-        p=it.data(Qt.UserRole) if it else {};self.title_edit.setText(p.get("title",""));self.desc_edit.setPlainText(p.get("description",""));self.edit_cat.setCurrentIndex(max(self.edit_cat.findData(p.get("category_id")),0));self.colour.setCurrentIndex(max(self.colour.findData(p.get("color_mode","")),0))
+        p=it.data(Qt.UserRole) if it else {};self.title_edit.setText(p.get("title") or "");self.desc_edit.setPlainText(p.get("description") or "");self.alt_edit.setPlainText(p.get("alt") or "");self.tags_edit.setText(p.get("hashtags") or "");self.colors_edit.setText(" ".join(p.get("colors") or []));self.edit_cat.setCurrentIndex(max(self.edit_cat.findData(p.get("category_id")),0));self.colour.setCurrentIndex(max(self.colour.findData(p.get("color_mode","")),0));self.orientation.setCurrentIndex(max(self.orientation.findData(p.get("orientation",0)),0))
+    def choose_color(self):
+        current=(self.colors_edit.text().split() or ["#FFFFFF"])[0]
+        color=QColorDialog.getColor(initial=QColor(current),parent=self,title="Choose a colour")
+        if not color.isValid():return
+        values=self.colors_edit.text().split();value=color.name().upper()
+        if value not in values:values=(values+[value])[:3]
+        self.colors_edit.setText(" ".join(values))
     def apply_edit(self):
         it=self.photo_list.currentItem()
         if not it:return
-        p=it.data(Qt.UserRole);p.update(title=self.title_edit.text(),description=self.desc_edit.toPlainText(),category_id=self.edit_cat.currentData(),color_mode=self.colour.currentData(),dirty=True);it.setData(Qt.UserRole,p);it.setText("• "+(p.get("title") or p.get("filename") or str(p["id"])))
+        tags=self.tags_edit.text().strip()
+        valid_tag=r"#(?:[A-Za-z][A-Za-z0-9_]{0,49}|[0-9][0-9A-Fa-f]{5})"
+        if tags and any(not re.fullmatch(valid_tag,token) for token in tags.replace(","," ").split()):
+            QMessageBox.warning(self,"Invalid hashtags","Use # before each tag, separated by spaces.");return
+        colors=self.colors_edit.text().replace(","," ").split()
+        if len(colors)>3 or any(not re.fullmatch(r"#[0-9A-Fa-f]{6}",value) for value in colors):
+            QMessageBox.warning(self,"Invalid colours","Choose up to three colours as #RRGGBB.");return
+        alt=self.alt_edit.toPlainText().strip()
+        if len(alt)>500:QMessageBox.warning(self,"ALT too long","ALT text must be 500 characters or less.");return
+        p=it.data(Qt.UserRole);before={k:p.get(k) for k in ("title","description","alt","hashtags","colors","category_id","color_mode","orientation")}
+        p.update(title=self.title_edit.text(),description=self.desc_edit.toPlainText(),alt=alt,hashtags=" ".join(tags.replace(","," ").split()),colors=[value.upper() for value in colors],category_id=self.edit_cat.currentData(),color_mode=self.colour.currentData(),orientation=self.orientation.currentData())
+        p["dirty"]=bool(p.get("dirty") or any(before[k]!=p.get(k) for k in before))
+        it.setData(Qt.UserRole,p);it.setText(("• " if p["dirty"] else "")+(p.get("title") or p.get("filename") or str(p["id"])))
+    def enrich_sort_photo(self):
+        it=self.photo_list.currentItem()
+        if not it or not self.require_api():return
+        if any((self.photo_list.item(i).data(Qt.UserRole) or {}).get("dirty") for i in range(self.photo_list.count())):
+            QMessageBox.information(self,"Unpublished edits","Publish or finish the current edits before enriching, so a refresh cannot replace them.");return
+        p=it.data(Qt.UserRole);fields=[key for key,empty in (("title",not p.get("title")),("caption",not p.get("description")),("alt",not p.get("alt")),("tags",not p.get("hashtags")),("colors",not p.get("colors")),("color_mode",not p.get("color_mode"))) if empty]
+        if not fields:QMessageBox.information(self,"Details already filled","This photograph has all the displayed details. Use Images for a custom re-enrichment.");return
+        if QMessageBox.question(self,"Enrich this photograph?",f"Fill missing {', '.join(fields)} for photo #{p['id']}?\n\nThis may make one paid AI call using this site's provider. Existing values will be kept.",QMessageBox.Yes|QMessageBox.No,QMessageBox.No)!=QMessageBox.Yes:return
+        def work():
+            result=self.api.enrich(p["id"],"",fields,False,False)
+            self.save_enrichment_local(p["id"],result,p)
+            return result
+        self.run(work,lambda _result:self.sync_library())
     def ordered(self):
         rows=[]
         for i in range(self.photo_list.count()):
@@ -324,9 +359,30 @@ class Window(QMainWindow):
         if not self.require_api():return
         dirty=[p for p in self.ordered() if p.get("dirty")]
         if not dirty:QMessageBox.information(self,"Nothing to publish","No photographs have changed.");return
+        detail_changed=any(any(p.get(key)!=self.original.get(int(p["id"]),{}).get(key) for key in ("alt","hashtags","colors","orientation")) for p in dirty)
+        if detail_changed:
+            try:capabilities=self.api.ping().get("sort_detail_fields",[])
+            except Exception as exc:QMessageBox.warning(self,"Cannot verify site support",str(exc));return
+            if not all(key in capabilities for key in ("alt","hashtags","colors","orientation")):
+                QMessageBox.warning(self,"Site update needed","This site has not yet received the GYSS detail-field update. Your ALT, hashtags and colour edits remain in this session; publish after the site updates.");return
         if QMessageBox.question(self,"Publish changes?",f"Publish {len(dirty)} changed photographs to\n{self.profile['site_url']}?",QMessageBox.Yes|QMessageBox.No,QMessageBox.No)!=QMessageBox.Yes:return
-        u=[{"id":p["id"],"sort_order":p["sort_order"],"title":p.get("title",""),"description":p.get("description",""),"category_id":p.get("category_id"),"color_mode":p.get("color_mode",""),"expected_modified_at":self.original.get(int(p["id"]),{}).get("modified_at")} for p in dirty]
-        self.run(lambda:self.api.batch(u),lambda r:QMessageBox.information(self,"Publish finished",f"Applied: {r.get('applied',0)}\nConflicts: {len(r.get('conflicts',[]))}\nFailed: {len(r.get('failed',[]))}"))
+        u=[]
+        for p in dirty:
+            original=self.original.get(int(p["id"]),{})
+            row={"id":p["id"],"sort_order":p["sort_order"],"title":p.get("title",""),"description":p.get("description",""),"category_id":p.get("category_id"),"color_mode":p.get("color_mode",""),"expected_modified_at":original.get("modified_at")}
+            for key in ("alt","hashtags","colors","orientation"):
+                if p.get(key)!=original.get(key):row[key]=p.get(key)
+            u.append(row)
+        def published(result):
+            failures=result.get("failed",[]);conflicts=result.get("conflicts",[])
+            summary=f"Applied: {result.get('applied',0)}\nConflicts: {len(conflicts)}\nFailed: {len(failures)}"
+            if failures or conflicts:
+                detail="\n".join(str(x.get("error") or x) for x in (failures+conflicts)[:8])
+                QMessageBox.warning(self,"Some edits were not published",summary+"\n\n"+detail)
+            else:
+                QMessageBox.information(self,"Publish finished",summary)
+                self.sync_library()
+        self.run(lambda:self.api.batch(u),published)
     def _gram_with_thumbs(self):
         response=self.api.gram_posts(); posts=response.get("posts",[]); tdir=snap_home.site_thumbs_dir(self.profile["site_url"])
         for n,post in enumerate(posts,1):
