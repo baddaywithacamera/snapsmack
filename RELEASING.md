@@ -42,6 +42,12 @@ FEDISTRUCTURE uses the same channels:
 
 The source constant uses the base version (`X.Y.Z`). Smack Central stamps
 `X.Y.ZD` into dev packages and manifests. Stable packages retain `X.Y.Z`.
+The changelog heading for a candidate may use its base version; Smack Central
+also accepts a `D` heading. A Git tag alone does not mean it was packaged or
+installed. Check the published manifest and package before calling it shipped.
+The `tag-dev` helper rejects a skipped or reused number in the same version
+series. An unbuilt mistaken tag can be corrected under rule 4; a published tag
+must remain at its original commit.
 
 ## Commands
 
