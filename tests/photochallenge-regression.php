@@ -125,7 +125,10 @@ pc_test(str_contains($photo, 'pc_rescan_participants($pdo,$settings,12,true,$tag
 pc_test(str_contains($admin, "data.set('pc_recover_batch', '1')")
     && str_contains($admin, "data.set('actor_offset', String(offset))")
     && str_contains($admin, 'session_write_close()')
-    && str_contains($photo, 'array_slice($rows, max(0, $actor_offset), $actor_limit)'),
+    && str_contains($photo, 'array_slice($rows, max(0, $actor_offset), $actor_limit)')
+    && str_contains($photo, "state='active' ORDER BY actor_url")
+    && !str_contains($photo, "state='active' ORDER BY id")
+    && str_contains($photo, 'Could not list challenge participants for recovery.'),
     'admin recovery must scan participants in bounded requests without holding the session lock');
 pc_test(str_contains($admin, 'EXTEND UNTIL &mdash; close automatically')
     && str_contains($admin, "value=\"extend_window_24\"")
