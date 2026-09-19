@@ -9,23 +9,23 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.729 — 2026-09-19 — Restore participant recovery scan
+## 0.7.729D — 2026-09-19 — Restore participant recovery scan
 - **SCROLL 0.1.49: the archive/search page is no longer raw.** Two SCROLL-only faults: (1) the header's inline social dock only had its stylesheet on the landing page (core loads it from footer-scripts.php), so on archive/about/blogroll it collapsed into a vertical strip of bare icons — SCROLL now loads that stylesheet itself on every page; (2) SCROLL had never styled the archive's `#infobox` at all (its `.scroll-infobox` rules are the solo page's bottom nav), so SHOW ALL / the search box / the T-M toggle / results / tag links sat unstyled at the left edge — now one centred row on the canvas in the same small caps as the solo nav, search box matching the header's. Also drops core's duplicate FILTER panel on this skin (the header nav already carries it; both used the same element ids). Previewed on usedcarparts.photoblogs.fyi before shipping. Ships via the skin registry, not the CMS package. (`skins/scroll/style.css`, `skin-meta.php`, `manifest.json`.)
 - **Recovery now scans active participants again.** The bounded scan sorted by a nonexistent `id` column and silently treated the resulting database error as an empty participant list. It now sorts by the participant key and reports a query failure instead of claiming there are no posts. (`core/photochallenge.php`.)
 
-## 0.7.728 — 2026-09-19 — PhotoFri recovery request target
+## 0.7.728D — 2026-09-19 — PhotoFri recovery request target
 - **Fixed the recovery button's request address.** Its hidden `action` field masked the form's URL property in JavaScript, causing batch requests to load an HTML error page instead of running recovery. Requests now target the current admin page directly. (`smack-photochallenge.php`.)
 
-## 0.7.727 — 2026-09-19 — Bounded PhotoFri recovery
+## 0.7.727D — 2026-09-19 — Bounded PhotoFri recovery
 - **Photo Challenge recovery no longer holds one browser request open while it visits every participant.** The admin button checks one account at a time, shows progress, and releases the login session lock during each remote fetch. A slow or unreachable account can be retried without losing entries already recovered. The public board and normal incoming-post path are unchanged. (`core/photochallenge.php`, `smack-photochallenge.php`.)
 
-## 0.7.726 — 2026-09-19 — Hub discovery provisions tool keys
+## 0.7.726D — 2026-09-19 — Hub discovery provisions tool keys
 - **Hub discovery now creates a real SYBU key for the Hub site.** The Hub used its discovery-only credential as SYBU's posting key because its tool-key provisioning function was an empty stub. The Hub's authenticated discovery endpoint now creates typed, expiring keys for the supported desktop tools; discovery saves each key to its matching site profile. A failed provisioning attempt preserves a previously saved SYBU key instead of replacing it with the Hub key. SUYB's read-only key cannot invoke provisioning. (`suyb-data.php`, `tools/_shared/snap_discovery.py`.)
 
-## 0.7.725 — 2026-09-19 — Previous Challenge
+## 0.7.725D — 2026-09-19 — Previous Challenge
 - **Previous Challenge keeps last week's entries.** Maintenance used the current prompt hashtag to recheck older admissions, so switching from Vroom to Numbers withdrew valid Vroom entries and emptied the archive even though the Hall of Fame still listed its winners. Rechecks now use each admission's own round hashtag. The archive can display affected withdrawn entries when their author remains active and the retained post still carries the original tag and a single image. The live board continues to require active admissions. Closed rounds no longer invite new submissions. (`core/photochallenge.php`, `photochallenge-board.php`.)
 
-## 0.7.724 — 2026-09-18 — SECAUDIT 058 fixes and Fresh First
+## 0.7.724D — 2026-09-18 — SECAUDIT 058 fixes and Fresh First
 - **New outbound deliveries go ahead of retries.** Both delivery paths put first attempts before previously failed jobs, then use the existing handshake, boost, post, update and backfill priorities. The paced worker uses the same order across receiving hosts; retry backoff and the one-week discard rule stay intact.
 - **The delivery log identifies retries accurately.** Rows with failed attempts or a saved error no longer appear as merely waiting. Its ordering mirrors the worker, and its queue heading no longer combines two separate snapshots into impossible counts such as “56 of 55”. (`core/fediverse.php`, `smack-sv-delivery-log.php`.)
 - **SNAP SLAPPER no longer sends your site key to Google Drive (or anywhere but your own site).** Found Textures fetched every thumbnail, full image and high-res download with `Authorization: Bearer <site key>` attached — and the high-res link is a Google Drive URL by design, so every download handed the key (sometimes the full hub key) to Google. Media fetches now carry no credential at all and refuse non-web schemes; the one call that does carry the key (the catalogue search on the configured site) is https-only and refuses to follow redirects. Ships in the next SNAP SLAPPER build. Tests: `tools/hub/tests/test_found_textures_credentials.py` (8 checks). (`tools/hub/found_textures.py`.)
