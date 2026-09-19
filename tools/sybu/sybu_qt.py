@@ -480,8 +480,8 @@ class Window(QMainWindow):
                 self.poll_seen.pop(key,None); self.progress.setValue(100); self.stop_btn.setEnabled(bool(self.poll_seen)); self._fill_queue()
                 if key=='post':
                     q=self.engine.serialize_queue(); posted=sum(1 for r in q['rows'] if r.get('status') in ('ok','warning')); failed=q.get('failed',0)
+                    # Result reads once, at the bottom; the top-right label stays "N selected · N images" (Sean 2026-09-18).
                     self.progress_text.setText(f"Batch done — {posted} posted, {failed} FAILED (red rows; see the log)." if failed else f"Batch complete — {posted} posted to {self.engine.connection_state().get('base_url','the blog')}.")
-                    self.queue_count.setText(f"{posted} posted · {q['count']} images")
                 else:
                     self.progress_text.setText(f"{key.replace('_',' ').title()} complete." if not out.get('error') else f"{key.replace('_',' ').title()} failed.")
                 result=out.get('result') or {}
