@@ -208,6 +208,17 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="entry">
                 <div class="entry-top">
+                    <h3>The backup that keeps your followers and the exit that forgets them</h3>
+                    <span class="date">SMACK UP YOUR BACKUP &middot; TAKE YOUR SHIT WITH YOU &middot; 2026-09-19</span>
+                    <span class="state open">Open</span>
+                </div>
+                <p>A SnapSmack site is two things: a photo blog and a fediverse account &mdash; a keypair, the people who follow it, the people it follows. We promise the data is backed up and that you can leave with it. The first promise holds: the raw backup takes every table, followers and key included. The second holds for the blog only. TAKE YOUR SHIT WITH YOU exports posts, images, albums and tags &mdash; and not one follower. And the honest twist: no file could carry them anyway. Followers only move by an ActivityPub <em>Move</em> sent from the old server, and we can receive one but not send one. Leave today and your followers stay behind, silently. Found by asking the question, not by breakage.</p>
+                <p>Nothing fixed yet; the spec is written. In order: the exit package gets a fediverse folder (followers, following, blocks as JSON <em>and</em> the CSVs Mastodon and Pixelfed actually import); SUYB&rsquo;s RESTORE stops finishing green after restoring only the files; the site learns to send <em>Move</em>; SMACKONEOUT and GRAMOFSMACK get an Instagram-archive export Pixelfed can read; and a post-restore check that the actor is actually alive. Closes on one watched run in the fediverse test lab. Posts to Mastodon: not possible from anywhere, and the FAQ will say so.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-19-019-the-backup-that-forgets-who-follows-you.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top">
                     <h3>The exe that launched was not the one we built</h3>
                     <span class="date">SMACK YOUR BATCH UP &middot; 2026-09-15</span>
                     <span class="state watched">Watched working</span>
