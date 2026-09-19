@@ -22,8 +22,9 @@ $ok(str_contains($core, 'function sv_push_to_follower'), 'targeted push helper m
 $ok(str_contains($core, 'WHERE actor_url = ? AND is_active = 1'), 'actor is not resolved through active followers');
 $ok(str_contains($core, "['inbox_url']"), 'trusted direct inbox is not used');
 $ok(str_contains($core, "fediverse_backfill_count"), 'default count must read the CURRENT setting name');
-$ok(str_contains($core, '$order_by = "priority ASC, id ASC"'), 'delivery drain is not ordered by explicit priority');
-$ok(str_contains($core, 'SELECT id, inbox_url, priority FROM snap_ap_deliveries'), 'paced delivery plan does not retain priority');
+$ok(str_contains($core, '$order_by = "(attempts > 0 OR (last_error IS NOT NULL AND last_error <> \'\')) ASC, priority ASC, id ASC"'), 'delivery drain does not put first attempts before retries');
+$ok(str_contains($core, 'SELECT id, inbox_url, priority, attempts, last_error FROM snap_ap_deliveries'), 'paced delivery plan does not retain priority and retry state');
+$ok(str_contains($core, '$candidate[\'retry\'] < $current[\'retry\']'), 'paced cross-host picker can put retries ahead of first attempts');
 $ok(str_contains($core, '$candidate[\'priority\'] < $current[\'priority\']'), 'paced cross-host picker can put backfills ahead of live work');
 $ok(str_contains($core, '$type === \'Announce\' ? 5 : ($type === \'Update\' ? 20 : 10)'),
     'priority bands must be handshake 0, boost 5, new Create 10, routine Update 20');
