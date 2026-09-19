@@ -173,8 +173,8 @@ already moved. Every checklist line above was re-verified against `dev` at
 (`download_to` pinning, backup signing, node-list validation) were fixed in
 0.7.724D, plus the suite-wide urllib redirect hardening 053 F named.
 
-**Labels:** every code item CLOSED. **Three items are decisions, not defects, and
-stay OPEN until the three of us sit down:**
+**Labels:** every code item CLOSED. **Two items are decisions, not defects, and
+stay OPEN until answered (item 3 answered 2026-09-18):**
 
 1. **Mandatory vault.** Recommendation: mandatory for any profile that holds a
    posting-capable key, opt-in for read-only keys. Cost: one passphrase prompt
@@ -183,9 +183,13 @@ stay OPEN until the three of us sit down:**
    do A1 (server refuses a key used outside its declared scope — it is the
    backstop for every client-side check above) and defer B1 until there is a
    second signer.
-3. **Domain allowlist for discovered nodes.** Recommendation: nodes must share
-   the hub's registrable domain OR be on an explicit per-hub allowlist the
-   owner edits. Today a hub can name any https host.
+3. **Domain allowlist for discovered nodes.** ~~Recommendation: same registrable
+   domain or a per-hub allowlist.~~ **CLOSED 2026-09-18 — leave it.** The hub's
+   node list is the MULTISITE MANAGEMENT roster: 24 spokes, each connected by the
+   owner by hand, each with its own DISCONNECT. That roster *is* the allowlist;
+   half the spokes are on different domains from the hub, so a same-domain rule
+   was never applicable. `node_url_reason()` stays as a sanity check on vetted
+   entries.
 
 **Owed live checks (Sean):** GYSS all-four-tabs on the Sep 13 build (or the
 0.7.11 rebuild); one watched SUYB backup → restore round-trip on 0.7.44 (bounded unpack).
