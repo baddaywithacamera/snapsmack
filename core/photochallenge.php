@@ -1283,12 +1283,12 @@ function pc_participant_recent_posts(array $actor, string $outbox, array $settin
 
     // Pixelfed <=0.12.6 can protect /api/v1/accounts/lookup while leaving its
     // logged-out profile/status feed public. Its actor avatar path contains the
-    // account snowflake in three-digit path chunks; use that vendor identifier
+    // account snowflake in three-digit path chunks or as one flat number; use that vendor identifier
     // only when the normal lookup returned no posts. This is not used for other
     // ActivityPub software and never changes the canonical object id.
     if (!$statuses && function_exists('sv_fetch_json') && function_exists('sv_masto_map_statuses')) {
         $icon = is_array($actor['icon'] ?? null) ? (string)($actor['icon']['url'] ?? '') : '';
-        if ($icon !== '' && preg_match('~/avatars/((?:[0-9]{3}/)+[0-9]{1,3})/~', $icon, $m)) {
+        if ($icon !== '' && preg_match('~/avatars/((?:[0-9]{3}/)+[0-9]{1,3}|[0-9]{8,20})/~', $icon, $m)) {
             $account_id = ltrim(str_replace('/', '', (string)$m[1]), '0');
             if ($account_id !== '') {
                 $limit = max(1, min($max, 40));
