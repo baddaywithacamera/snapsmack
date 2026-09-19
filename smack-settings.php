@@ -221,6 +221,10 @@ if (isset($_POST['save_settings'])) {
     }
 
     // Sanitise enum fields before they hit the DB.
+    // api_site_scope: off | enforce | require (mutual-auth A1, SECAUDIT 054). Anything else → off.
+    if (isset($_POST['settings']['api_site_scope']) && !in_array($_POST['settings']['api_site_scope'], ['off', 'enforce', 'require'], true)) {
+        $_POST['settings']['api_site_scope'] = 'off';
+    }
     // update_track: only 'stable' or 'dev' are valid; anything else silently collapses to 'stable'.
     if (isset($_POST['settings']['update_track']) && !in_array($_POST['settings']['update_track'], ['stable', 'dev'], true)) {
         $_POST['settings']['update_track'] = 'stable';
@@ -598,6 +602,15 @@ include 'core/sidebar.php';
                             ⚠ This site is on the dev track. It may receive builds with known issues. Flip back to Boring any time.
                         </p>
                     <?php endif; ?>
+                </div>
+                <div class="lens-input-wrapper">
+                    <label>TOOL WRITES MUST NAME THIS SITE <span class="field-tip" data-tip="The desktop tools share one key across your sites, so a write meant for one site would be accepted by another. With this on, a tool must say which site it is talking to and this site refuses writes meant for a different one. OFF = no check. ENFORCE = refuse a write that names another site; tools that don't say are still allowed. REQUIRE = tools that don't say are refused too — only after every tool you use has been updated. Turn it on for ONE site first.">ⓘ</span></label>
+                    <?php $_scope = $settings['api_site_scope'] ?? 'off'; if (!in_array($_scope, ['off', 'enforce', 'require'], true)) $_scope = 'off'; ?>
+                    <select name="settings[api_site_scope]">
+                        <option value="off"     <?php echo $_scope === 'off'     ? 'selected' : ''; ?>>OFF — no check (default)</option>
+                        <option value="enforce" <?php echo $_scope === 'enforce' ? 'selected' : ''; ?>>ENFORCE — refuse writes that name a different site</option>
+                        <option value="require" <?php echo $_scope === 'require' ? 'selected' : ''; ?>>REQUIRE — also refuse writes that don't name a site</option>
+                    </select>
                 </div>
             </div>
         </div>
