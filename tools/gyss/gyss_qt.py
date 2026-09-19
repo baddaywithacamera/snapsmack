@@ -149,6 +149,11 @@ class Window(QMainWindow):
     def show_page(self,n):
         self.pages.setCurrentIndex(n)
         for i,b in enumerate(self.nav):b.setChecked(i==n)
+        # Sync saves the library on disk. Opening Sort must actually load that
+        # library; an empty in-memory session is not an empty photo collection.
+        if n==1 and self.profile and not self.photo_list.count():
+            index,_=self.local()
+            if index.get("images"):self.browse_local()
     def show_help(self):
         QMessageBox.information(self,"GYSS help",
             "SYNC LIBRARY FROM SITE\nDownloads the complete catalogue and its thumbnails to this computer. Run it once, then again whenever the site changes.\n\n"
@@ -194,7 +199,12 @@ class Window(QMainWindow):
         for p in self.profiles:self.site.addItem(f"{p.get('name') or snap_home.site_key(p['site_url'])}  ·  {snap_home.site_key(p['site_url'])}",p)
         self.site.setCurrentIndex(next((i+1 for i,p in enumerate(self.profiles) if p.get("site_url")==old),0)); self.site.blockSignals(False); self.site_changed(self.site.currentIndex())
     def site_changed(self,i):
+        old_site=(self.profile or {}).get("site_url")
         self.profile=self.site.itemData(i) if i>=0 else None; self.api=API(self.profile) if self.profile and self.profile.get("api_key") else None; p=self.profile or {}; self.name.setText(p.get("name","")); self.url.setText(p.get("site_url","")); self.key.setText(p.get("api_key","")); self.status.setText("● Ready to verify" if self.api else ("● Run Discover Fleet" if self.profile else "Choose a site")); self.library_status()
+        if old_site!=p.get("site_url"):
+            self.photos=[];self.original={};self.photo_list.clear()
+            self.cat.setCurrentIndex(0);self.alb.setCurrentIndex(0)
+            if self.pages.currentIndex()==1 and self.profile:self.show_page(1)
     def require_api(self):
         if self.api:return True
         QMessageBox.information(self,"Choose a site","Choose a site with a saved GYSS key first."); return False
@@ -221,7 +231,7 @@ class Window(QMainWindow):
     def library_status(self):
         if not self.profile:self.lib_status.setText("Choose a site above.");return
         index,meta=self.local(); self.lib_status.setText(f"{len(index.get('images',{}))} photographs saved locally\nLast synced: {meta.get('synced_at') or 'never'}")
-        if meta.get("categories") or meta.get("albums"):self.meta=meta;self.fill_meta()
+        self.meta={"categories":meta.get("categories",[]),"albums":meta.get("albums",[])};self.fill_meta()
     def sync_library(self):
         if not self.require_api():return
         def work():
@@ -252,7 +262,13 @@ class Window(QMainWindow):
                 try:snap_library.sync_from_sybu_data(self.profile["site_url"],resp)
                 except Exception:pass
             return len(images),len(changed),downloaded
-        self.run(work,lambda r:(self.library_status(),QMessageBox.information(self,"Library ready",f"{r[0]} photographs are ready locally.\n{r[1]} records changed; {r[2]} thumbnails downloaded.")))
+        def synced(result):
+            self.library_status()
+            if result[0]:
+                self.cat.setCurrentIndex(0);self.alb.setCurrentIndex(0)
+                self.browse_local()
+            else:QMessageBox.information(self,"Library is empty","The site returned no photographs to sort.")
+        self.run(work,synced)
     def open_library(self):
         if self.profile:QDesktopServices.openUrl(QUrl.fromLocalFile(snap_home.site_dir(self.profile["site_url"])))
     def browse_local(self):
