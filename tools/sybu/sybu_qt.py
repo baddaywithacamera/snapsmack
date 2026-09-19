@@ -411,13 +411,14 @@ class Window(QMainWindow):
 
     def _enrich(self):
         try:
-            self._sync_queue(); self.engine.enrich_start(self.gemini.text(),self.prompt.text()); self.poll_seen['enrich']=0; self.progress.setValue(0); self.progress_text.setText("Enriching selected images…"); self.stop_btn.setEnabled(True)
+            self._sync_queue(); self.engine.enrich_start(self.gemini.text(),self.prompt.text()); self.poll_seen['enrich']=0; self.progress.setValue(0); self.stop_btn.setEnabled(True)
             # Stay on the queue: the rows themselves show progress (STATUS
             # column + counter) instead of a bar on another page.
             self._enrich_total=sum(1 for r in range(self.table.rowCount()) if self.table.item(r,0).checkState()==Qt.Checked); self._enrich_done=0
             for r in range(self.table.rowCount()):
                 if self.table.item(r,0).checkState()==Qt.Checked and self.table.item(r,11): self.table.item(r,11).setText("enriching…")
-            self.queue_count.setText(f"Enriching 0/{self._enrich_total}…")
+            # One place for progress: the bar + its label at the bottom (Sean 2026-09-18).
+            self.progress_text.setText(f"Enriching 0/{self._enrich_total}…")
         except Exception as e:self._error(str(e))
 
     def _validate(self):
@@ -522,7 +523,9 @@ class Window(QMainWindow):
         else:
             if self.table.item(r,11): self.table.item(r,11).setText(f"ERROR: {ev.get('message') or 'enrichment failed'}")
         self._enrich_done=getattr(self,'_enrich_done',0)+1
-        self.queue_count.setText(f"Enriching {self._enrich_done}/{getattr(self,'_enrich_total',ev.get('total',1))}…")
+        total=max(1,getattr(self,'_enrich_total',ev.get('total',1)))
+        self.progress.setValue(int(self._enrich_done*100/total))
+        self.progress_text.setText(f"Enriching {self._enrich_done}/{total}…" if self._enrich_done<total else f"Enriched {total}/{total}.")
 
     def _say(self,text): self.log.append(str(text))
     def _error(self,text): QMessageBox.critical(self,"SYBU needs attention",text); self._say("ERROR · "+text)
