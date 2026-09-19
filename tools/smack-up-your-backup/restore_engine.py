@@ -11,7 +11,6 @@ Accepts local ZIP, local recovery kit, or cloud-downloaded ZIP.
 
 
 import os
-import threading
 import zipfile
 from typing import Callable, Dict, List, Optional
 
@@ -20,7 +19,6 @@ import ftp_client as ftp_module
 import transport
 import file_matcher
 import manifest_reader
-import backup_signing
 from path_safety import is_safe_relative
 
 ProgressCallback = Callable[[str, str, float], None]
@@ -106,15 +104,6 @@ def extract_zip_bounded(zf: "zipfile.ZipFile", dest: str) -> None:
                 out.write(chunk)
 
 
-def precheck_signature(zip_path: str):
-    """For GUIs: run the signature check on the main thread BEFORE starting the
-    restore worker, so an 'unsigned — restore anyway?' question can be a normal
-    dialog. Returns (status, detail); raises backup_signing.SignatureError on a
-    bad signature (never overridable)."""
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        return backup_signing.verify_zip(zf)
-
-
 class RestoreEngine:
     def __init__(
         self,
@@ -122,43 +111,15 @@ class RestoreEngine:
         on_progress:  Optional[ProgressCallback] = None,
         on_log:       Optional[Callable[[str], None]] = None,
         global_cloud: Optional[dict] = None,
-        on_ask:       Optional[Callable[[str], bool]] = None,
     ):
         self.profile      = profile
         self.on_progress  = on_progress or (lambda s, m, p: None)
         self.on_log       = on_log or print
         self.global_cloud = global_cloud or {}
         self._cancelled   = False
-        # SECAUDIT 054 item 8: an UNSIGNED package (pre-0.7.44) needs a human
-        # yes. No callback (headless) = refuse. A BAD signature is never asked
-        # about — it is refused outright inside backup_signing.
-        self.on_ask       = on_ask
-        self._prompt_event    = threading.Event()
-        self._prompt_continue = False
-
-    def prompt_continue(self) -> None:
-        """UI answered 'yes' to an ask (same contract as BackupEngine)."""
-        self._prompt_continue = True
-        self._prompt_event.set()
-
-    def _ask(self, msg: str) -> bool:
-        """Ask the operator a yes/no. on_ask may answer synchronously (returns a
-        bool — Qt path, question already asked on the main thread) or post the
-        question to the UI and return None (Tk path); then we block until
-        prompt_continue() or cancel()."""
-        if not self.on_ask:
-            return False
-        answer = self.on_ask(msg)
-        if isinstance(answer, bool):
-            return answer
-        self._prompt_event.clear()
-        self._prompt_continue = False
-        self._prompt_event.wait()
-        return self._prompt_continue
 
     def cancel(self) -> None:
         self._cancelled = True
-        self._prompt_event.set()   # unblock a pending ask
 
     def _progress(self, stage: str, msg: str, pct: float) -> None:
         self.on_progress(stage, msg, pct)
@@ -182,22 +143,6 @@ class RestoreEngine:
         self._progress("extract", "Extracting backup package…", 0.02)
         extract_dir = tempfile.mkdtemp(prefix="sibu_restore_")
         try:
-            # Signature check BEFORE anything is expanded (SECAUDIT 054 item 8).
-            try:
-                with zipfile.ZipFile(zip_path, "r") as zf:
-                    status, detail = backup_signing.verify_zip(zf)
-            except backup_signing.SignatureError as e:
-                return self._fail(f"REFUSED — {e}")
-            except Exception as e:
-                return self._fail(f"Could not read backup package: {e}")
-            if status == "unsigned":
-                self._log(f"⚠ {detail}")
-                if not self._ask(detail + "\n\nSUYB cannot prove this package is the "
-                                 "one it made. Restore it anyway?"):
-                    return self._fail("Unsigned backup package refused.")
-                self._log("Unsigned package accepted by the operator.")
-            else:
-                self._log(f"✓ {detail}")
             try:
                 with zipfile.ZipFile(zip_path, "r") as zf:
                     extract_zip_bounded(zf, extract_dir)

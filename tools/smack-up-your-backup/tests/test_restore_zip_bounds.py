@@ -110,10 +110,6 @@ class RestoreZipBoundsTests(unittest.TestCase):
         engine.on_progress = lambda *a: None
         engine.on_log = lambda *a: None
         engine._cancelled = False
-        engine.on_ask = lambda m: True      # unsigned test zips: operator says yes
-        import threading
-        engine._prompt_event = threading.Event()
-        engine._prompt_continue = False
         # failure path: no kit inside
         with tempfile.TemporaryDirectory() as d:
             zpath = os.path.join(d, "b.zip")
