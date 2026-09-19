@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.725 — 2026-09-18 — Fresh First
+- **New outbound deliveries go ahead of retries.** Both delivery paths put first attempts before previously failed jobs, then use the existing handshake, boost, post, update and backfill priorities. The paced worker uses the same order across receiving hosts; retry backoff and the one-week discard rule stay intact.
+- **The delivery log identifies retries accurately.** Rows with failed attempts or a saved error no longer appear as merely waiting. Its ordering mirrors the worker, and its queue heading no longer combines two separate snapshots into impossible counts such as “56 of 55”. (`core/fediverse.php`, `smack-sv-delivery-log.php`.)
+
 ## 0.7.724D — 2026-09-18 — SECAUDIT 058 fixes
 - **SNAP SLAPPER no longer sends your site key to Google Drive (or anywhere but your own site).** Found Textures fetched every thumbnail, full image and high-res download with `Authorization: Bearer <site key>` attached — and the high-res link is a Google Drive URL by design, so every download handed the key (sometimes the full hub key) to Google. Media fetches now carry no credential at all and refuse non-web schemes; the one call that does carry the key (the catalogue search on the configured site) is https-only and refuses to follow redirects. Ships in the next SNAP SLAPPER build. Tests: `tools/hub/tests/test_found_textures_credentials.py` (8 checks). (`tools/hub/found_textures.py`.)
 - **SMACK UP YOUR BACKUP 0.7.44: RESTORE inventories and bounds a backup ZIP before unpacking it** — unsafe names, links, entry count, per-file size, 200:1 expansion, and free disk space are all checked first; the staging folder is always cleaned up. Vault tests isolated from the real Hub profile store (they were copying real keys into %TEMP% and masking two red assertions). (`tools/smack-up-your-backup/restore_engine.py`, tests.)
