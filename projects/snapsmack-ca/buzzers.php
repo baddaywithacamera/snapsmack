@@ -176,6 +176,9 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h3>Closed Audits</h3>
             <ol>
+                <li><span class="idx-date">Sep 18</span><a href="#a058">Codebase Sweep &mdash; A Photo Editor That Mailed Its Key to Google, and a Restore That Never Looked Before It Unpacked</a></li>
+                <li><span class="idx-date">Sep 16</span><a href="#a057">SNAP SLAPPER Windows Beta &mdash; Re-Verified as Installed</a></li>
+                <li><span class="idx-date">Sep 15</span><a href="#a056">SNAP SLAPPER High-Bit Build &mdash; Hostile Images, In-Process Decoders &amp; the Unsigned Package</a></li>
                 <li><span class="idx-date">Sep 5</span><a href="#a055">Release Packages Shipped Dev Directories &mdash; and the Integrity Monitor Vouched for Them</a></li>
                 <li><span class="idx-date">Aug 27</span><a href="#a052"><code>llms.txt</code> &mdash; Agent Instructions, Executable References &amp; Publisher Data</a></li>
                 <li><span class="idx-date">Aug 25</span><a href="#a051">Multisite Federation &mdash; Cross-Blog Trust, the Public Directory &amp; SNAP SLAPPER</a></li>
@@ -233,6 +236,30 @@ require_once __DIR__ . '/includes/header.php';
 
     <section class="posts">
         <div class="wrap">
+
+            <article class="post" id="a058">
+                <div class="post-meta"><span class="post-date">September 18, 2026</span><span class="post-tag">High Finding Closed &mdash; Same Day</span></div>
+                <h2>Codebase Sweep &mdash; A Photo Editor That Mailed Its Key to Google, and a Restore That Never Looked Before It Unpacked</h2>
+                <p>A full read of the current code, two reviewers working independently. The first pass rated the worst item &ldquo;medium&rdquo; on the theory that a hostile server would have to be involved. The second pass showed it was the ordinary path: SNAP SLAPPER&rsquo;s texture browser attached the site&rsquo;s API key to <em>every</em> image it fetched &mdash; thumbnails, full images, and the high-resolution download link, which is a Google Drive address by design. So every high-res texture download handed the key to Google. Depending on how the site had been set up, that key could be the full hub credential, not the read-only one the browser needs. Nobody stole anything that we know of; the bug simply talked to a third party it had no business talking to, with a credential in its hand. Re-rated HIGH.</p>
+                <p>Fixed the same day and shipped in 0.7.724D. Image fetches now carry no credential at all and refuse anything that isn&rsquo;t a web address; the one request that does carry the key &mdash; the catalogue search on the configured site &mdash; is HTTPS-only and refuses to follow redirects. Two smaller items closed alongside: SMACK UP YOUR BACKUP&rsquo;s restore used to unpack a backup package wholesale before checking what was inside, so a damaged or crafted package could fill the disk before the restore even read the manifest &mdash; it now inventories every entry, checks free space, and refuses anything that looks like a decompression bomb, then cleans up after itself whether it succeeded or not. And a stale security test that had gone permanently red was corrected, along with two backup-tool tests that were quietly copying the operator&rsquo;s real site keys into a temp folder every time they ran. Twenty-nine new regression checks. The SLAPPER build in the field still has the leak until its next release; if you use the texture browser, that release is the one to take.</p>
+                <a class="report-link" href="secaudits/2026-09-18-058-current-codebase-security-sweep.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a057">
+                <div class="post-meta"><span class="post-date">September 16, 2026</span><span class="post-tag">Beta Cleared &mdash; Code Findings Closed</span></div>
+                <h2>SNAP SLAPPER Windows Beta &mdash; Re-Verified as Installed</h2>
+                <p>The day after the high-bit audit below, the actual installed package was checked file by file: 366 files listed, 366 on disk, every hash matching, nothing extra, nothing missing. The dangerous SVG parser is gone &mdash; not sandboxed, not wrapped, <em>gone</em>: SVG is refused at the file picker, the engine refuses it before any image library sees it, and the Qt SVG runtime files are not in the package. Convert to PNG first. The install folder no longer lets ordinary users write into it, which matters for a program that loads libraries from the folder it lives in. Project files are fully validated before anything on disk is touched. 94 + 90 + 43 tests green; dependency audit clean.</p>
+                <p>What&rsquo;s left is not code. The executable has no publisher signature, because the beta isn&rsquo;t public and there is no public build to sign yet. When the first public build ships it will be signed first; that is the release rule, and it is a release-day step, not an open hole. The report also says plainly what we think of a distribution ecosystem that asks independent developers to pay rent every year so Windows will stop calling their software presumptively untrustworthy. We&rsquo;ll pay it. We don&rsquo;t have to like it.</p>
+                <a class="report-link" href="secaudits/2026-09-16-057-snap-slapper-windows-beta.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
+
+            <article class="post" id="a056">
+                <div class="post-meta"><span class="post-date">September 15, 2026</span><span class="post-tag">Critical Findings Closed</span></div>
+                <h2>SNAP SLAPPER High-Bit Build &mdash; Hostile Images, In-Process Decoders &amp; the Unsigned Package</h2>
+                <p>SNAP SLAPPER grew real 16-bit and RAW support, which means it grew real native image decoders &mdash; the exact kind of code that a booby-trapped file goes after. This audit rated it CRITICAL, twice over. First: the pinned Qt line carries a vendor-confirmed memory bug in its SVG parser, and a user-opened SVG layer reached it directly. Second: the RAW and high-bit decoders ran inside the editor&rsquo;s own process with no memory or time ceiling, so a hostile TIFF or EXR could take the whole program down &mdash; or worse &mdash; before the editor had any say. Three HIGH items around them: an unsigned package sitting in a folder any user could write to (drop a fake DLL beside the exe and it loads), RawTherapee found by searching the system path (a fake one earlier in the path wins), and imported projects that could trigger file decoding before the project had been fully checked.</p>
+                <p>Every code finding was fixed overnight and the next day. Decoding now happens in separate worker processes with hard memory and time limits, killed on overrun, so a hostile file can crash a worker and nothing else. Caches carry integrity tags. Hostile project archives are rejected before extraction. External tools need explicit approval and their integrity is checked. The SVG parser was removed outright the next day (see 057 above). Verified with packaged accept/reject tests against real hostile files. The one non-code item &mdash; signing &mdash; is handled at public release, as 057 explains.</p>
+                <a class="report-link" href="secaudits/2026-09-15-056-snap-slapper-high-bit-release.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a>
+            </article>
 
             <article class="post" id="a055">
                 <div class="post-meta"><span class="post-date">September 5, 2026</span><span class="post-tag">High Findings Closed</span></div>
