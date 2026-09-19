@@ -130,8 +130,8 @@ class Window(QMainWindow):
         p,l=self.page("Your local photo library","Choose a site. Sync while it is online; browse and sort the saved copy whenever you like."); c,cl=card("Library status"); self.lib_status=lbl("Choose a site above.","Muted"); cl.addWidget(self.lib_status); r=QHBoxLayout(); self.sync=QPushButton("SYNC FROM SITE"); self.sync.clicked.connect(self.sync_library); self.browse=QPushButton("BROWSE LOCAL COPY"); self.browse.setObjectName("Primary"); self.browse.clicked.connect(self.browse_local); folder=QPushButton("OPEN LIBRARY FOLDER"); folder.clicked.connect(self.open_library); r.addWidget(self.sync); r.addWidget(self.browse); r.addWidget(folder); r.addStretch(); cl.addLayout(r); self.progress=QProgressBar(); self.progress.hide(); cl.addWidget(self.progress); l.addWidget(c)
         f,fl=card("Optional filter","Leave these alone to load the complete library."); form=QFormLayout(); self.cat=QComboBox(); self.alb=QComboBox(); self.limit=QSpinBox(); self.limit.setRange(1,500); self.limit.setValue(200); form.addRow("Category",self.cat); form.addRow("Album",self.alb); form.addRow("Live pull limit",self.limit); fl.addLayout(form); live=QPushButton("PULL A LIVE SESSION"); live.clicked.connect(self.pull_live); fl.addWidget(live,0,Qt.AlignRight); l.addWidget(f); l.addStretch(); return p
     def sort_page(self):
-        p,l=self.page("Sort photographs","Drag to reorder. Select a photograph to edit its details or colour classification."); r=QHBoxLayout(); self.photo_list=QListWidget(); self.photo_list.setViewMode(QListWidget.IconMode); self.photo_list.setIconSize(QSize(150,110)); self.photo_list.setGridSize(QSize(180,165)); self.photo_list.setResizeMode(QListWidget.Adjust); self.photo_list.setDragDropMode(QAbstractItemView.InternalMove); self.photo_list.setSelectionMode(QAbstractItemView.ExtendedSelection); self.photo_list.currentItemChanged.connect(self.edit_photo); r.addWidget(self.photo_list,1)
-        e,el=card("Selected photograph"); form=QFormLayout(); self.title_edit=QLineEdit(); self.desc_edit=QTextEdit(); self.desc_edit.setMaximumHeight(90); self.alt_edit=QTextEdit(); self.alt_edit.setMaximumHeight(75); self.tags_edit=QLineEdit(); self.tags_edit.setPlaceholderText("#family #portrait"); self.colors_edit=QLineEdit(); self.colors_edit.setPlaceholderText("#RRGGBB #RRGGBB (up to 3)"); choose_color=QPushButton("CHOOSE COLOUR"); choose_color.clicked.connect(self.choose_color); self.edit_cat=QComboBox(); self.colour=QComboBox(); self.colour.addItem("Not classified",""); self.colour.addItem("Colour","color"); self.colour.addItem("Black & white","bw"); self.orientation=QComboBox(); self.orientation.addItem("Landscape",0); self.orientation.addItem("Portrait",1); self.orientation.addItem("Square",2); form.addRow("Title",self.title_edit); form.addRow("Description",self.desc_edit); form.addRow("ALT text",self.alt_edit); form.addRow("Hashtags",self.tags_edit); form.addRow("Colours",self.colors_edit); form.addRow("",choose_color); form.addRow("Category",self.edit_cat); form.addRow("Colour / B&W",self.colour); form.addRow("Orientation",self.orientation); el.addLayout(form); apply=QPushButton("APPLY TO SESSION"); apply.clicked.connect(self.apply_edit); el.addWidget(apply); enrich=QPushButton("ENRICH THIS PHOTO"); enrich.clicked.connect(self.enrich_sort_photo); el.addWidget(enrich); edit_scroll=QScrollArea(); edit_scroll.setWidgetResizable(True); edit_scroll.setFixedWidth(355); edit_scroll.setWidget(e); r.addWidget(edit_scroll); l.addLayout(r,1); br=QHBoxLayout(); save=QPushButton("SAVE SESSION"); save.clicked.connect(self.save_session); br.addWidget(save); br.addStretch(); push=QPushButton("PUBLISH CHANGES"); push.setObjectName("Primary"); push.clicked.connect(self.push); br.addWidget(push); l.addLayout(br); return p
+        p,l=self.page("Sort photographs","Drag to reorder. Select photographs to enrich missing details together."); r=QHBoxLayout(); self.photo_list=QListWidget(); self.photo_list.setViewMode(QListWidget.IconMode); self.photo_list.setIconSize(QSize(150,110)); self.photo_list.setGridSize(QSize(180,165)); self.photo_list.setResizeMode(QListWidget.Adjust); self.photo_list.setDragDropMode(QAbstractItemView.InternalMove); self.photo_list.setSelectionMode(QAbstractItemView.ExtendedSelection); self.photo_list.currentItemChanged.connect(self.edit_photo); self.photo_list.itemSelectionChanged.connect(self.update_sort_enrich_label); r.addWidget(self.photo_list,1)
+        e,el=card("Selected photograph"); form=QFormLayout(); self.title_edit=QLineEdit(); self.desc_edit=QTextEdit(); self.desc_edit.setMaximumHeight(90); self.alt_edit=QTextEdit(); self.alt_edit.setMaximumHeight(75); self.tags_edit=QLineEdit(); self.tags_edit.setPlaceholderText("#family #portrait"); self.colors_edit=QLineEdit(); self.colors_edit.setPlaceholderText("#RRGGBB #RRGGBB (up to 3)"); choose_color=QPushButton("CHOOSE COLOUR"); choose_color.clicked.connect(self.choose_color); self.edit_cat=QComboBox(); self.colour=QComboBox(); self.colour.addItem("Not classified",""); self.colour.addItem("Colour","color"); self.colour.addItem("Black & white","bw"); self.orientation=QComboBox(); self.orientation.addItem("Landscape",0); self.orientation.addItem("Portrait",1); self.orientation.addItem("Square",2); form.addRow("Title",self.title_edit); form.addRow("Description",self.desc_edit); form.addRow("ALT text",self.alt_edit); form.addRow("Hashtags",self.tags_edit); form.addRow("Colours",self.colors_edit); form.addRow("",choose_color); form.addRow("Category",self.edit_cat); form.addRow("Colour / B&W",self.colour); form.addRow("Orientation",self.orientation); el.addLayout(form); apply=QPushButton("APPLY TO SESSION"); apply.clicked.connect(self.apply_edit); el.addWidget(apply); self.sort_enrich=QPushButton("ENRICH THIS PHOTO"); self.sort_enrich.clicked.connect(self.enrich_sort_photo); el.addWidget(self.sort_enrich); self.sort_stop=QPushButton("STOP AFTER THIS IMAGE"); self.sort_stop.setObjectName("Danger"); self.sort_stop.setEnabled(False); self.sort_stop.clicked.connect(lambda:setattr(self,"cancel",True)); el.addWidget(self.sort_stop); self.sort_progress=QProgressBar(); self.sort_progress.hide(); el.addWidget(self.sort_progress); edit_scroll=QScrollArea(); edit_scroll.setWidgetResizable(True); edit_scroll.setFixedWidth(355); edit_scroll.setWidget(e); r.addWidget(edit_scroll); l.addLayout(r,1); br=QHBoxLayout(); save=QPushButton("SAVE SESSION"); save.clicked.connect(self.save_session); br.addWidget(save); br.addStretch(); push=QPushButton("PUBLISH CHANGES"); push.setObjectName("Primary"); push.clicked.connect(self.push); br.addWidget(push); l.addLayout(br); return p
     def grid_page(self):
         p,l=self.page("GRAMOFSMACK grid","Drag posts into order. Select two or more singles to make a carousel. Nothing changes online until you confirm."); self.gram=QListWidget(); self.gram.setViewMode(QListWidget.IconMode); self.gram.setIconSize(QSize(170,170)); self.gram.setGridSize(QSize(195,215)); self.gram.setResizeMode(QListWidget.Adjust); self.gram.setDragDropMode(QAbstractItemView.InternalMove); self.gram.setSelectionMode(QAbstractItemView.ExtendedSelection); l.addWidget(self.gram,1); r=QHBoxLayout(); refresh=QPushButton("REFRESH GRID"); refresh.clicked.connect(self.load_grid); r.addWidget(refresh); r.addStretch(); car=QPushButton("MAKE SELECTED A CAROUSEL"); car.clicked.connect(self.carousel); r.addWidget(car); order=QPushButton("PUBLISH ORDER"); order.setObjectName("Primary"); order.clicked.connect(self.push_grid); r.addWidget(order); l.addLayout(r); return p
     def images_page(self):
@@ -189,11 +189,13 @@ class Window(QMainWindow):
             except Exception as e:self.worker.failed.emit(str(e))
         threading.Thread(target=work,daemon=True).start()
     def done(self,result):
-        self.busy=False; QApplication.restoreOverrideCursor(); self.progress.hide(); cb=getattr(self,"after",None); self.after=None
+        self.busy=False; QApplication.restoreOverrideCursor(); self.progress.hide(); self.sort_progress.hide(); cb=getattr(self,"after",None); self.after=None
         if cb:cb(result)
     def failed(self,msg):
-        self.busy=False; QApplication.restoreOverrideCursor(); self.progress.hide(); self.stop.setEnabled(False); self.after=None; QMessageBox.critical(self,"GYSS could not finish",msg); self.status.setText("● Needs attention")
-    def on_progress(self,text,n,total):self.progress.show(); self.progress.setRange(0,max(total,1)); self.progress.setValue(n); self.progress.setFormat(text+"  %p%")
+        self.busy=False; QApplication.restoreOverrideCursor(); self.progress.hide(); self.sort_progress.hide(); self.stop.setEnabled(False); self.sort_stop.setEnabled(False); self.sort_enrich.setEnabled(True); self.after=None; QMessageBox.critical(self,"GYSS could not finish",msg); self.status.setText("● Needs attention")
+    def on_progress(self,text,n,total):
+        bar=self.sort_progress if self.pages.currentIndex()==1 else self.progress
+        bar.show(); bar.setRange(0,max(total,1)); bar.setValue(n); bar.setFormat(text+"  %p%")
     def load_profiles(self,keep=""):
         old=keep or (self.profile or {}).get("site_url",""); self.profiles=[p for p in snap_connections.list_connections("gyss") if p.get("extras",{}).get("gyss_site_mode")!="smacktalk"]; self.site.blockSignals(True); self.site.clear(); self.site.addItem("Choose a site…",None)
         for p in self.profiles:self.site.addItem(f"{p.get('name') or snap_home.site_key(p['site_url'])}  ·  {snap_home.site_key(p['site_url'])}",p)
@@ -270,6 +272,12 @@ class Window(QMainWindow):
             if result[0]:
                 self.cat.setCurrentIndex(0);self.alb.setCurrentIndex(0)
                 self.browse_local()
+                restore=getattr(self,"sort_enrich_restore_ids",None)
+                self.sort_enrich_restore_ids=None
+                if restore:
+                    for i in range(self.photo_list.count()):
+                        item=self.photo_list.item(i)
+                        if item.data(Qt.UserRole).get("id") in restore:item.setSelected(True)
             else:QMessageBox.information(self,"Library is empty","The site returned no photographs to sort.")
         self.run(work,synced)
     def open_library(self):
@@ -309,6 +317,9 @@ class Window(QMainWindow):
         self.show_page(1)
     def edit_photo(self,it,_):
         p=it.data(Qt.UserRole) if it else {};self.title_edit.setText(p.get("title") or "");self.desc_edit.setPlainText(p.get("description") or "");self.alt_edit.setPlainText(p.get("alt") or "");self.tags_edit.setText(p.get("hashtags") or "");self.colors_edit.setText(" ".join(p.get("colors") or []));self.edit_cat.setCurrentIndex(max(self.edit_cat.findData(p.get("category_id")),0));self.colour.setCurrentIndex(max(self.colour.findData(p.get("color_mode","")),0));self.orientation.setCurrentIndex(max(self.orientation.findData(p.get("orientation",0)),0))
+    def update_sort_enrich_label(self):
+        count=len(self.photo_list.selectedItems())
+        self.sort_enrich.setText(f"ENRICH {count} SELECTED PHOTOS" if count>1 else "ENRICH THIS PHOTO")
     def choose_color(self):
         current=(self.colors_edit.text().split() or ["#FFFFFF"])[0]
         color=QColorDialog.getColor(initial=QColor(current),parent=self,title="Choose a colour")
@@ -333,18 +344,56 @@ class Window(QMainWindow):
         p["dirty"]=bool(p.get("dirty") or any(before[k]!=p.get(k) for k in before))
         it.setData(Qt.UserRole,p);it.setText(("• " if p["dirty"] else "")+(p.get("title") or p.get("filename") or str(p["id"])))
     def enrich_sort_photo(self):
-        it=self.photo_list.currentItem()
-        if not it or not self.require_api():return
-        if any((self.photo_list.item(i).data(Qt.UserRole) or {}).get("dirty") for i in range(self.photo_list.count())):
-            QMessageBox.information(self,"Unpublished edits","Publish or finish the current edits before enriching, so a refresh cannot replace them.");return
-        p=it.data(Qt.UserRole);fields=[key for key,empty in (("title",not p.get("title")),("caption",not p.get("description")),("alt",not p.get("alt")),("tags",not p.get("hashtags")),("colors",not p.get("colors")),("color_mode",not p.get("color_mode"))) if empty]
-        if not fields:QMessageBox.information(self,"Details already filled","This photograph has all the displayed details. Use Images for a custom re-enrichment.");return
-        if QMessageBox.question(self,"Enrich this photograph?",f"Fill missing {', '.join(fields)} for photo #{p['id']}?\n\nThis may make one paid AI call using this site's provider. Existing values will be kept.",QMessageBox.Yes|QMessageBox.No,QMessageBox.No)!=QMessageBox.Yes:return
+        if self.busy or not self.require_api():return
+        current=self.photo_list.currentItem()
+        if current:
+            photo=current.data(Qt.UserRole)
+            editor_changes=(self.title_edit.text()!=str(photo.get("title") or "") or
+                self.desc_edit.toPlainText()!=str(photo.get("description") or "") or
+                self.alt_edit.toPlainText()!=str(photo.get("alt") or "") or
+                self.tags_edit.text()!=str(photo.get("hashtags") or "") or
+                self.colors_edit.text()!=" ".join(photo.get("colors") or []) or
+                self.edit_cat.currentData()!=photo.get("category_id") or
+                self.colour.currentData()!=photo.get("color_mode","") or
+                self.orientation.currentData()!=photo.get("orientation",0))
+            if editor_changes:
+                QMessageBox.information(self,"Unapplied edits","Apply or discard the edits in the right panel before enriching.");return
+        selected=self.photo_list.selectedItems()
+        if not selected and self.photo_list.currentItem():selected=[self.photo_list.currentItem()]
+        if not selected:return
+        current_ids=[self.photo_list.item(i).data(Qt.UserRole)["id"] for i in range(self.photo_list.count())]
+        if any((self.photo_list.item(i).data(Qt.UserRole) or {}).get("dirty") for i in range(self.photo_list.count())) or current_ids!=list(self.original):
+            QMessageBox.information(self,"Unpublished edits","Publish or save this arrangement before enriching, so a refresh cannot replace it.");return
+        jobs=[]
+        for item in selected:
+            photo=item.data(Qt.UserRole)
+            fields=[key for key,empty in (("title",not photo.get("title")),("caption",not photo.get("description")),("alt",not photo.get("alt")),("tags",not photo.get("hashtags")),("colors",not photo.get("colors")),("color_mode",not photo.get("color_mode"))) if empty]
+            if fields:jobs.append((dict(photo),fields))
+        if not jobs:QMessageBox.information(self,"Details already filled","The selected photographs have all the displayed details. Use Images for custom re-enrichment.");return
+        skipped=len(selected)-len(jobs)
+        if QMessageBox.question(self,"Enrich selected photographs?",f"Fill missing details for {len(jobs)} selected photograph(s)?"+(f"\n{skipped} already complete will be skipped." if skipped else "")+f"\n\nUp to {len(jobs)} paid AI calls may be made using this site's provider. Existing values will be kept. You can stop after the current image.",QMessageBox.Yes|QMessageBox.No,QMessageBox.No)!=QMessageBox.Yes:return
+        self.cancel=False;self.sort_stop.setEnabled(True);self.sort_enrich.setEnabled(False)
+        restore_ids={item.data(Qt.UserRole)["id"] for item in selected}
         def work():
-            result=self.api.enrich(p["id"],"",fields,False,False)
-            self.save_enrichment_local(p["id"],result,p)
-            return result
-        self.run(work,lambda _result:self.sync_library())
+            completed=[];failed=[]
+            for n,(photo,fields) in enumerate(jobs,1):
+                if self.cancel:break
+                self.worker.progress.emit("Enriching selected photographs",n-1,len(jobs))
+                try:
+                    result=self.api.enrich(photo["id"],"",fields,False,False)
+                    self.save_enrichment_local(photo["id"],result,photo)
+                    completed.append(photo["id"])
+                except Exception as exc:failed.append((photo["id"],str(exc)))
+            return completed,failed,self.cancel
+        def finished(result):
+            completed,failed,stopped=result;self.sort_stop.setEnabled(False);self.sort_enrich.setEnabled(True);self.progress.hide()
+            summary=f"Enriched: {len(completed)}\nFailed: {len(failed)}\nSkipped as complete: {skipped}"+("\nStopped before remaining photographs." if stopped else "")
+            if failed:summary+="\n\n"+"\n".join(f"Photo #{i}: {error}" for i,error in failed[:5])
+            (QMessageBox.warning if failed else QMessageBox.information)(self,"Enrichment finished",summary)
+            if completed:
+                self.sort_enrich_restore_ids=restore_ids
+                self.sync_library()
+        self.run(work,finished)
     def ordered(self):
         rows=[]
         for i in range(self.photo_list.count()):
