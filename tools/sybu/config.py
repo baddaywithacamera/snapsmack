@@ -89,6 +89,31 @@ def _shared_creds():
         return None
 
 
+# ── Tool-local secrets go through the shared vault (SECAUDIT 054, mandatory) ──
+# Sean 2026-09-18: a posting-capable key is never written to disk as base64.
+# seal → 'enc1:…' via snap_creds/snap_vault; a locked/unavailable vault raises
+# VaultRequired and the key stays in memory for this session (save() records
+# the reason in data['vault_warning'] for the UI to show).
+def _seal_secret(value: str) -> str:
+    sc = _shared_creds()
+    if sc is None:
+        raise RuntimeError("shared credential vault unavailable")
+    return sc.seal_local(value)
+
+
+def _open_secret(blob: str) -> str:
+    sc = _shared_creds()
+    if sc is not None:
+        try:
+            return sc.open_local(blob)
+        except Exception:
+            pass
+    try:                                     # legacy base64 (pre-vault installs)
+        return base64.b64decode(str(blob).encode()).decode() if blob else ''
+    except Exception:
+        return ''
+
+
 # Built-in, generic prompt presets shipped with the tool. ALWAYS available in
 # the preset dropdown (pre-saved) so no one is stuck with a site-specific
 # default. SOLO = plain title + caption + tags + colours; GRAM = caption +
@@ -251,17 +276,8 @@ def load() -> dict:
     cfg = configparser.ConfigParser()
     cfg.read(_config_path())
 
-    password_raw = cfg.get('auth', 'password', fallback='')
-    try:
-        password = base64.b64decode(password_raw.encode()).decode() if password_raw else ''
-    except Exception:
-        password = ''
-
-    api_key_raw = cfg.get('auth', 'api_key', fallback='')
-    try:
-        api_key = base64.b64decode(api_key_raw.encode()).decode() if api_key_raw else ''
-    except Exception:
-        api_key = ''
+    password = _open_secret(cfg.get('auth', 'password', fallback=''))
+    api_key  = _open_secret(cfg.get('auth', 'api_key', fallback=''))
 
     _data = {
         'url':                cfg.get('site', 'url', fallback='https://foundtextures.ca'),
@@ -323,10 +339,19 @@ def save(data: dict) -> None:
     cfg['site'] = {'url': data.get('url', '')}
 
     password_plain = data.get('password', '') if data.get('remember') else ''
-    password_enc = base64.b64encode(password_plain.encode()).decode() if password_plain else ''
+    # Vault-sealed or not at all. A VaultRequired here means the secret is kept
+    # for this session only; the UI reads data['vault_warning'].
+    data.pop('vault_warning', None)
+    def _sealed(v):
+        try:
+            return _seal_secret(v) if v else ''
+        except Exception as e:
+            data['vault_warning'] = str(e)
+            return ''
+    password_enc = _sealed(password_plain)
     # API key is the primary credential now (Bearer auth). Persist it regardless
     # of "remember" — it's a generated, reusable token the CMS shows only once.
-    api_key_enc = base64.b64encode(data['api_key'].encode()).decode() if data.get('api_key') else ''
+    api_key_enc = _sealed(data.get('api_key', ''))
     cfg['auth'] = {
         'username': data.get('username', '') if data.get('remember') else '',
         'password': password_enc,
