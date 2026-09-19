@@ -9,6 +9,11 @@ $ht = file_get_contents($root . '/core/htaccess-template');
 $checks = [
     'previous completed window helper exists' => str_contains($photo, 'function pc_previous_window('),
     'historical round uses its own prompt tag' => str_contains($photo, 'SELECT tag FROM pc_prompts WHERE week_key=?'),
+    'maintenance checks an admission against its original round tag' =>
+        str_contains($photo, "pc_round_tag(\$pdo, \$settings, (string)\$row['week_key'])"),
+    'archive can show entries withdrawn by the old rotating-tag bug' =>
+        str_contains($photo, "a.status IN ('active','withdrawn')")
+        && str_contains($photo, '$archived ?'),
     'embed accepts an explicit window' => str_contains($photo, 'array $settings, ?array $window = null'),
     'feed selects previous while board stays current' => str_contains($board, "? pc_previous_window(\$pdo, \$settings) : pc_window(\$settings)"),
     'human feed has its own route instead of colliding with RSS' =>

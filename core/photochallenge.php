@@ -251,6 +251,18 @@ function pc_previous_window(PDO $pdo, array $settings): array {
     return $fallback ? $fallback + ['open' => false] : $current;
 }
 
+/** A round keeps its own hashtag after the next prompt becomes live. */
+function pc_round_tag(PDO $pdo, array $settings, string $week_key): string {
+    try {
+        $q = $pdo->prepare("SELECT tag FROM pc_prompts WHERE week_key=? LIMIT 1");
+        $q->execute([$week_key]);
+        $tag = strtolower(trim((string)($q->fetchColumn() ?: '')));
+        if ($tag !== '') return $tag;
+    } catch (Throwable $e) {
+    }
+    return pc_tag($settings);
+}
+
 /**
  * Turn a plain-language prompt into its hashtag pair. One word is the norm
  * ("Belonging"); multiple words CamelCase ("Golden Hour" -> GoldenHour).
@@ -719,7 +731,10 @@ function pc_reconcile_object(PDO $pdo, array $settings, string $object_id): void
     $tags = json_decode((string)($row['tags_json'] ?? '[]'), true) ?: [];
     $media = json_decode((string)($row['media_json'] ?? '[]'), true) ?: [];
     $videos = json_decode((string)($row['media_video_json'] ?? '[]'), true) ?: [];
-    $valid = in_array(pc_tag($settings), $tags, true) && count($media) === 1 && !$videos
+    $round_tag = $row['admission_id']
+        ? pc_round_tag($pdo, $settings, (string)$row['week_key'])
+        : pc_tag($settings);
+    $valid = in_array($round_tag, $tags, true) && count($media) === 1 && !$videos
         && empty($row['in_reply_to']) && (int)($row['sensitive'] ?? 0) === 0 && (int)$row['is_boost'] === 0;
     if (!$row['admission_id']) {
         if ($valid) pc_maybe_boost_entry($pdo, $settings, $object_id);
@@ -1095,16 +1110,12 @@ function pc_refresh_prompt_pointers(PDO $pdo, array &$settings): void {
 function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit = 200): array {
     if (!pc_enabled($settings)) return [];
     $win = $window ?? pc_window($settings);
-    $tag = pc_tag($settings);
-    // Historical feeds must validate against that round's hashtag, not the
-    // currently-live prompt. Otherwise last week's valid entries all vanish.
-    try {
-        $tag_q = $pdo->prepare("SELECT tag FROM pc_prompts WHERE week_key=? LIMIT 1");
-        $tag_q->execute([(string)$win['week_key']]);
-        $round_tag = strtolower(trim((string)($tag_q->fetchColumn() ?: '')));
-        if ($round_tag !== '') $tag = $round_tag;
-    } catch (Throwable $e) {
-    }
+    $tag = pc_round_tag($pdo, $settings, (string)$win['week_key']);
+    // Older workers withdrew valid entries when the next prompt changed the
+    // global tag. A historical entry remains visible if the participant is
+    // active and the retained Note still carries its original round's tag.
+    $archived = (string)$win['end'] <= gmdate('Y-m-d H:i:s');
+    $admission_status = $archived ? "a.status IN ('active','withdrawn')" : "a.status='active'";
     $rows = [];
     try {
         $st = $pdo->prepare(
@@ -1113,7 +1124,7 @@ function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit =
                FROM pc_admissions a
                JOIN snap_ap_timeline t ON t.object_id=a.object_id
                JOIN pc_participants p ON p.actor_url=a.actor_url AND p.state='active'
-              WHERE a.week_key=:week_key AND a.status='active'
+              WHERE a.week_key=:week_key AND {$admission_status}
            ORDER BY a.admission_number ASC,a.admitted_at ASC LIMIT " . min(1000, max($limit, 1))
         );
         $st->execute([':week_key' => $win['week_key']]);
@@ -1848,14 +1859,8 @@ function pc_board_embed_html(PDO $pdo, array $settings, ?array $window = null): 
     $base   = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : '/';
     $ver    = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';
     $win    = $window ?? pc_window($settings);
-    $tag    = pc_tag($settings);
-    try {
-        $tag_q = $pdo->prepare("SELECT tag FROM pc_prompts WHERE week_key=? LIMIT 1");
-        $tag_q->execute([(string)$win['week_key']]);
-        $round_tag = strtolower(trim((string)($tag_q->fetchColumn() ?: '')));
-        if ($round_tag !== '') $tag = $round_tag;
-    } catch (Throwable $e) {
-    }
+    $tag    = pc_round_tag($pdo, $settings, (string)$win['week_key']);
+    $archived = (string)$win['end'] <= gmdate('Y-m-d H:i:s');
     $layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonry') ? 'masonry' : 'three';
     $rows   = pc_board_ranked($pdo, $settings, $win, 200);
 
@@ -1865,8 +1870,9 @@ function pc_board_embed_html(PDO $pdo, array $settings, ?array $window = null): 
     $out .= '<link rel="stylesheet" href="' . $esc($base) . 'assets/css/photochallenge-board-embed.css?v=' . $esc($ver) . '">';
     $out .= '<div class="pc-board">';
     if (!$rows) {
-        $out .= '<p class="pc-board-empty">No entries yet. Post a photo tagged '
-              . '<code>#' . $esc($tag) . '</code> and follow to join.</p></div>';
+        $out .= '<p class="pc-board-empty">No entries for <code>#' . $esc($tag)
+              . '</code>' . ($archived ? ' in this round.' : ' yet. Post a photo and follow to join.')
+              . '</p></div>';
         return $out;
     }
     $out .= '<div class="grid grid--' . $esc($layout) . '">';
