@@ -9,6 +9,9 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.725 — 2026-09-19 — Previous Challenge
+- **Previous Challenge keeps last week's entries.** Maintenance used the current prompt hashtag to recheck older admissions, so switching from Vroom to Numbers withdrew valid Vroom entries and emptied the archive even though the Hall of Fame still listed its winners. Rechecks now use each admission's own round hashtag. The archive can display affected withdrawn entries when their author remains active and the retained post still carries the original tag and a single image. The live board continues to require active admissions. Closed rounds no longer invite new submissions. (`core/photochallenge.php`, `photochallenge-board.php`.)
+
 ## 0.7.724 — 2026-09-18 — SECAUDIT 058 fixes and Fresh First
 - **New outbound deliveries go ahead of retries.** Both delivery paths put first attempts before previously failed jobs, then use the existing handshake, boost, post, update and backfill priorities. The paced worker uses the same order across receiving hosts; retry backoff and the one-week discard rule stay intact.
 - **The delivery log identifies retries accurately.** Rows with failed attempts or a saved error no longer appear as merely waiting. Its ordering mirrors the worker, and its queue heading no longer combines two separate snapshots into impossible counts such as “56 of 55”. (`core/fediverse.php`, `smack-sv-delivery-log.php`.)
