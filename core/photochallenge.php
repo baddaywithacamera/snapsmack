@@ -1321,15 +1321,18 @@ function pc_participant_recent_posts(array $actor, string $outbox, array $settin
  * @return array{actors:int,posts:int,recovered:int,errors:int}
  */
 function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25,
-                                bool $collect_only = false, string $tag = ''): array {
+                                bool $collect_only = false, string $tag = '',
+                                int $actor_offset = 0, int $actor_limit = 0): array {
     $out = ['actors' => 0, 'posts' => 0, 'recovered' => 0, 'errors' => 0,
             'rows' => [], 'unreadable' => []];
     if (!pc_enabled($settings)) return $out;
     pc_ensure_tables($pdo);
     $per_actor = max(1, min(60, $per_actor));
     try {
-        $rows = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active'")->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active' ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) { return $out; }
+    $out['total_actors'] = count($rows);
+    if ($actor_limit > 0) $rows = array_slice($rows, max(0, $actor_offset), $actor_limit);
     foreach ($rows as $participant) {
         $actor_url = (string)($participant['actor_url'] ?? '');
         $actor_handle = trim((string)($participant['handle'] ?? ''));
@@ -1473,16 +1476,21 @@ function pc_participant_recovery_rows(PDO $pdo, array $settings, string $tag, in
 }
 
 /** Discover current-tag posts through search accounts AND participant outboxes, then recover them. */
-function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40): array {
+function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40,
+                                   int $actor_offset = 0, int $actor_limit = 0,
+                                   string $run_token = ''): array {
     pc_ensure_tables($pdo);
     $tag = pc_tag($settings); $win = pc_window($settings);
-    $run_token = bin2hex(random_bytes(8));
-    $rows = function_exists('sv_authed_hashtag_timeline') ? sv_authed_hashtag_timeline($pdo,$settings,$tag,$limit) : null;
-    if (!is_array($rows)) $rows = [];
-    if (!$rows && function_exists('sv_hashtag_timeline')) $rows = sv_hashtag_timeline('mastodon.social',$tag,$limit);
+    if ($run_token === '') $run_token = bin2hex(random_bytes(8));
+    $rows = [];
+    if ($actor_offset === 0) {
+        $rows = function_exists('sv_authed_hashtag_timeline') ? sv_authed_hashtag_timeline($pdo,$settings,$tag,$limit) : null;
+        if (!is_array($rows)) $rows = [];
+        if (!$rows && function_exists('sv_hashtag_timeline')) $rows = sv_hashtag_timeline('mastodon.social',$tag,$limit);
+    }
     // Wire the established participant-rescan/outbox reader in collection mode.
     // It returns raw Notes; admission below remains the one policy path.
-    $participant_scan = pc_rescan_participants($pdo,$settings,12,true,$tag);
+    $participant_scan = pc_rescan_participants($pdo,$settings,12,true,$tag,$actor_offset,$actor_limit);
     $merged = [];
     foreach (array_merge($rows, $participant_scan['rows']) as $row) {
         if (!is_array($row)) continue;
@@ -1491,7 +1499,8 @@ function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40): 
     }
     $rows = array_values($merged);
     $out = ['found'=>count($rows),'recovered'=>0,'already'=>0,'failed'=>0,'outside'=>0,
-        'actors'=>(int)$participant_scan['actors'],'scan_errors'=>(int)$participant_scan['errors'],'run_token'=>$run_token];
+        'actors'=>(int)$participant_scan['actors'],'scan_errors'=>(int)$participant_scan['errors'],
+        'total_actors'=>(int)($participant_scan['total_actors'] ?? 0),'run_token'=>$run_token];
     foreach ($participant_scan['unreadable'] as $miss) {
         $actor_url=(string)($miss['actor_url'] ?? '');
         pc_log_entry_failure($pdo,[
