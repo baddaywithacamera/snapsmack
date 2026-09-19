@@ -11,6 +11,20 @@ import editor_engine
 import slapper_filters
 
 
+class _RefuseRedirect(urllib.request.HTTPRedirectHandler):
+    """urllib re-sends EVERY header on a redirect, Authorization included, so a
+    credentialed request that gets 30x'd would hand the key to whatever host
+    Location names. Refuse instead (SECAUDIT 053 F / 054). requests already
+    strips the header cross-host; urllib does not."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url, code, "redirect refused: request carried a credential", headers, fp)
+
+
+_NO_REDIRECT = urllib.request.build_opener(_RefuseRedirect)
+
+
+
 def library_dir():
     import os
     import snap_home
@@ -85,7 +99,7 @@ def _post(url, headers, payload, timeout=60):
     request = urllib.request.Request(url, data=_json_bytes(payload), headers=headers,
                                      method="POST")
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with _NO_REDIRECT.open(request, timeout=timeout) as response:
             data = response.read(1024 * 1024 + 1)
     except urllib.error.HTTPError as error:
         detail = error.read(4096).decode("utf-8", "replace")
