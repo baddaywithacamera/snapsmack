@@ -43,6 +43,31 @@ from sumna_offline import (
 )
 import sumna_resize
 
+try:
+    import snap_site_scope   # X-Snap-Site header (mutual-auth A1, SECAUDIT 054)
+except Exception:  # noqa: BLE001
+    # tools/_shared may not be on sys.path yet at this point in the file (each
+    # tool adds it at a different spot). Find it from here; frozen exes bundle
+    # it next to the entry script.
+    import os as _sso, sys as _sss
+    _d = _sso.path.dirname(_sso.path.abspath(__file__))
+    for _up in range(4):
+        _cand = _sso.path.join(_d, "_shared")
+        if _sso.path.isdir(_cand):
+            if _cand not in _sss.path:
+                _sss.path.insert(0, _cand)
+            break
+        _d = _sso.path.dirname(_d)
+    try:
+        import snap_site_scope
+    except Exception:  # noqa: BLE001
+        snap_site_scope = None
+
+
+def _site_scope(site_url):
+    return snap_site_scope.header(site_url) if snap_site_scope else {}
+
+
 # Canonical per-site settings contract. Bundled flat next to this module on the
 # frozen exe, one dir up under _shared/ in the dev tree (same shim sumna_resize uses).
 try:
@@ -229,6 +254,7 @@ class SumnaConnection:
         self.session.headers.update({
             "User-Agent": "ColdSnap/%s" % "0.1.0",
             "Authorization": f"Bearer {api_key}",
+            **_site_scope(self.base_url),
             # Opt into smack-post-solo.php's deterministic AJAX reply ("success").
             "X-Requested-With": "XMLHttpRequest",
         })
@@ -606,6 +632,7 @@ class SmacktalkPoster:
             self.session.headers.update({
                 "User-Agent": "ColdSnap/%s" % "0.1.0",
                 "Authorization": f"Bearer {self.key}",
+                **_site_scope(self.base_url),
                 "X-Requested-With": "XMLHttpRequest",
             })
         # Same destination-aware sizing policy as solo/gram (per-site max_long_edge,
