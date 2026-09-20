@@ -879,5 +879,139 @@ if ($action === 'media') {
     exit;
 }
 
+// ---------------------------------------------------------------------------
+// 6.7 fediverse - the people attached to this site (OPAUDIT 019)
+// ---------------------------------------------------------------------------
+// A site is a blog AND a fediverse actor. Everything above is the blog. This
+// returns the actor's public identity and its relationships: who follows it,
+// who it follows, what it blocks - as JSON and, because no server on earth
+// imports someone else's JSON, as the exact CSVs Mastodon / Pixelfed / Holos
+// read on their Import pages.
+//
+// What it does NOT return, on purpose: the private signing key. That key only
+// matters for resurrecting THIS site (SUYB's dump has it). A leave-package
+// that people email around is the wrong place for it, and `excluded_classes`
+// in preflight already promises it is absent.
+//
+// Followers are listed for the record. No file carries followers to a new
+// account; only an ActivityPub Move sent by THIS site does (FED UP -> MOVING TO).
+if ($action === 'fediverse') {
+    require_once __DIR__ . '/fediverse.php';
+    $settings = [];
+    try {
+        foreach ($pdo->query("SELECT setting_key, setting_val FROM snap_settings") as $r) {
+            $settings[$r['setting_key']] = $r['setting_val'];
+        }
+    } catch (Throwable $e) { $settings = []; }
+
+    $enabled = function_exists('sv_enabled') ? sv_enabled($settings) : false;
+    $handle  = function_exists('sv_handle') ? sv_handle($settings) : '';
+    $host    = (string)parse_url((string)tyswy_setting($pdo, 'site_url', ''), PHP_URL_HOST);
+    $actor   = function_exists('sv_actor_url') ? sv_actor_url($settings) : '';
+
+    // "@user@host" from a stored handle, or from an actor URL's host as a last resort.
+    $addr = function (?string $h, string $url): string {
+        $h = trim((string)$h, "@ \t");
+        if ($h !== '' && str_contains($h, '@')) return '@' . $h;
+        $uh = (string)parse_url($url, PHP_URL_HOST);
+        if ($h !== '' && $uh !== '') return '@' . $h . '@' . $uh;
+        return $url;   // Mastodon's importer accepts a bare actor URL
+    };
+    $rows = function (string $sql) use ($pdo): array {
+        try { return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: []; }
+        catch (Throwable $e) { return []; }
+    };
+
+    $followers = $following = $blocked_accounts = $blocked_domains = [];
+    if (tyswy_table_exists($pdo, 'snap_ap_followers')) {
+        foreach ($rows("SELECT actor_url, actor_handle, inbox_url, shared_inbox_url, followed_at
+                        FROM snap_ap_followers WHERE is_active = 1 ORDER BY id") as $r) {
+            $followers[] = [
+                'address'      => $addr($r['actor_handle'], $r['actor_url']),
+                'actor_url'    => $r['actor_url'],
+                'inbox'        => $r['inbox_url'],
+                'shared_inbox' => $r['shared_inbox_url'],
+                'since'        => $r['followed_at'],
+            ];
+        }
+    }
+    if (tyswy_table_exists($pdo, 'snap_ap_following')) {
+        foreach ($rows("SELECT actor_url, actor_handle, state, followed_at
+                        FROM snap_ap_following WHERE state IN ('accepted','pending') ORDER BY id") as $r) {
+            $following[] = [
+                'address'   => $addr($r['actor_handle'], $r['actor_url']),
+                'actor_url' => $r['actor_url'],
+                'state'     => $r['state'],
+                'since'     => $r['followed_at'],
+            ];
+        }
+    }
+    if (tyswy_table_exists($pdo, 'snap_ap_blocks')) {
+        foreach ($rows("SELECT kind, value, created_at FROM snap_ap_blocks ORDER BY created_at") as $r) {
+            if ($r['kind'] === 'domain') {
+                $blocked_domains[] = ['domain' => $r['value'], 'since' => $r['created_at']];
+            } else {
+                $blocked_accounts[] = ['address' => $addr(null, $r['value']), 'actor_url' => $r['value'], 'since' => $r['created_at']];
+            }
+        }
+    }
+
+    // CSVs in the shapes Mastodon's Import page (and Pixelfed's, and Holos's
+    // subscriptions import) read. Column headers are theirs, not ours.
+    $csv = function (array $header, array $lines): string {
+        $out = fopen('php://temp', 'r+');
+        if ($header) fputcsv($out, $header);
+        foreach ($lines as $l) fputcsv($out, $l);
+        rewind($out);
+        $t = stream_get_contents($out);
+        fclose($out);
+        return $t;
+    };
+    $csv_following = $csv(['Account address', 'Show boosts', 'Notify on new posts', 'Languages'],
+        array_map(fn($f) => [$f['address'], 'true', 'false', ''], $following));
+    $csv_blocked   = $csv([], array_map(fn($b) => [$b['address']], $blocked_accounts));
+    $csv_muted     = $csv(['Account address', 'Hide notifications'], []);   // we have no mutes; empty on purpose
+    $csv_domains   = $csv([], array_map(fn($d) => [$d['domain']], $blocked_domains));
+
+    $aka = [];
+    foreach (preg_split('/[\s,]+/', (string)($settings['fediverse_moving_from'] ?? '')) as $a) {
+        if ($a !== '') $aka[] = $a;
+    }
+
+    tyswy_ok($pdo, [
+        'enabled'   => $enabled,
+        'actor'     => [
+            'address'         => ($handle !== '' && $host !== '') ? '@' . $handle . '@' . $host : '',
+            'actor_url'       => $actor,
+            'display_name'    => (string)tyswy_setting($pdo, 'site_name', ''),
+            'summary'         => (string)tyswy_setting($pdo, 'site_description', ''),
+            'public_key_pem'  => (string)($settings['fediverse_public_key'] ?? ''),   // PUBLIC key only
+            'also_known_as'   => $aka,
+            'follower_count'  => count($followers),
+            'following_count' => count($following),
+        ],
+        'followers'        => $followers,
+        'following'        => $following,
+        'blocked_accounts' => $blocked_accounts,
+        'blocked_domains'  => $blocked_domains,
+        'csv' => [
+            'following.csv'        => $csv_following,
+            'blocked_accounts.csv' => $csv_blocked,
+            'muted_accounts.csv'   => $csv_muted,
+            'blocked_domains.csv'  => $csv_domains,
+        ],
+        'notes' => [
+            'followers'   => 'Listed for the record. No file carries followers to a new account; '
+                           . 'only an ActivityPub Move sent by THIS site does (FED UP -> MOVING TO).',
+            'csv'         => 'following.csv / blocked_accounts.csv / muted_accounts.csv / blocked_domains.csv '
+                           . 'are in the shapes Mastodon, Pixelfed and Holos import from their Import page.',
+            'posts'       => 'Mastodon, GoToSocial and Holos import no posts from anywhere. Pixelfed imports '
+                           . 'photos in Instagram-archive form. WordPress + the ActivityPub plugin imports the '
+                           . 'WordPress courtesy package and keeps federating.',
+            'private_key' => 'Never included. It only matters for restoring this exact site; SUYB backs it up.',
+        ],
+    ]);
+}
+
 tyswy_error(400, 'unknown_action', 'Unknown action.');
 // ===== SNAPSMACK EOF =====

@@ -329,6 +329,19 @@ class TyswyClient:
                 code='stream_format_mismatch')
         return body
 
+    # -- 6.7 fediverse (OPAUDIT 019) ----------------------------------------
+    def fediverse(self):
+        """The people attached to this site: actor identity (public key only),
+        followers, following, blocks, plus the CSVs Mastodon/Pixelfed/Holos
+        import. An older site without the action returns None, not an error —
+        the archive then records the gap instead of failing the whole export."""
+        try:
+            return self._get_json('fediverse')
+        except TyswyError as e:
+            if getattr(e, 'code', '') in ('unknown_action', 'not_found'):
+                return None
+            raise
+
     # -- 6.2 stream ---------------------------------------------------------
     def stream_chunk(self, record_type, *, after_id=0, limit=CHUNK_DEFAULT,
                      snapshot=None, on_record=None):
