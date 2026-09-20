@@ -90,7 +90,15 @@
     </ol>
 
     <h2>7. Verified</h2>
-    <p>Nothing yet. The audit closes on one watched run in the fediverse test lab: back up &rarr;
+    <table>
+        <tr><th>Step</th><th>State</th><th>Evidence</th></tr>
+        <tr><td>1. <code>exit/fediverse/</code> in the leave package</td><td>Built 2026-09-19 (<code>a7784b63</code>), not yet run against a live site</td><td>TYSWY 0.2.1; server <code>action=fediverse</code>; engine test writes all nine files from a fake site and walks the whole archive for a private key (none). PHP contract test 13/13.</td></tr>
+        <tr><td>2. SUYB RESTORE tells the truth about the database</td><td>Open (Codex)</td><td>&mdash;</td></tr>
+        <tr><td>3. Outbound <code>Move</code></td><td>Open</td><td>&mdash;</td></tr>
+        <tr><td>4. Instagram-archive export for Pixelfed</td><td>Open</td><td>&mdash;</td></tr>
+        <tr><td>5. Post-restore fediverse health check</td><td>Open</td><td>&mdash;</td></tr>
+    </table>
+    <p>Live, nothing yet. The audit closes on one watched run in the fediverse test lab: back up &rarr;
     destroy the database &rarr; RESTORE (files + DB) &rarr; the actor still resolves and a follow
     lands; TYSWY export &rarr; <code>following.csv</code> imports into the lab Mastodon;
     <code>pixelfed-import.zip</code> imports into the lab Pixelfed; MOVING TO re-points a lab
