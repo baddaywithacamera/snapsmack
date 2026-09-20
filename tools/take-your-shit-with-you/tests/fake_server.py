@@ -114,6 +114,36 @@ class FakeSite:
                 'request_id': 'test'})
         return fn(q, headers or {})
 
+    def _a_fediverse(self, q, headers):
+        """OPAUDIT 019: the people attached to the site. Public key only."""
+        if getattr(self, 'no_fediverse', False):
+            return FakeResponse(status=400, json_body={
+                'ok': False, 'error': {'code': 'unknown_action', 'message': 'Unknown action.',
+                                       'retryable': False}}, headers={'Content-Type': 'application/json'})
+        body = dict(self._envelope())
+        body.update({
+            'enabled': True,
+            'actor': {'address': '@sean@fake.example', 'actor_url': 'https://fake.example/ap/actor',
+                      'display_name': 'Fake', 'summary': '', 'public_key_pem': '-----BEGIN PUBLIC KEY-----\nAAA\n-----END PUBLIC KEY-----',
+                      'also_known_as': [], 'follower_count': 2, 'following_count': 1},
+            'followers': [
+                {'address': '@a@mastodon.example', 'actor_url': 'https://mastodon.example/users/a',
+                 'inbox': 'https://mastodon.example/users/a/inbox', 'shared_inbox': None, 'since': '2026-01-01 00:00:00'},
+                {'address': '@b@pixelfed.example', 'actor_url': 'https://pixelfed.example/users/b',
+                 'inbox': 'https://pixelfed.example/users/b/inbox', 'shared_inbox': None, 'since': '2026-02-01 00:00:00'},
+            ],
+            'following': [{'address': '@c@holos.social', 'actor_url': 'https://holos.social/users/c',
+                           'state': 'accepted', 'since': '2026-03-01 00:00:00'}],
+            'blocked_accounts': [], 'blocked_domains': [{'domain': 'spam.example', 'since': '2026-04-01 00:00:00'}],
+            'csv': {
+                'following.csv': 'Account address,Show boosts,Notify on new posts,Languages\n@c@holos.social,true,false,\n',
+                'blocked_accounts.csv': '', 'muted_accounts.csv': 'Account address,Hide notifications\n',
+                'blocked_domains.csv': 'spam.example\n',
+            },
+            'notes': {},
+        })
+        return FakeResponse(json_body=body, headers={'Content-Type': 'application/json'})
+
     def _a_preflight(self, q, headers):
         types = {}
         for rtype, rows in self.tables.items():
