@@ -194,6 +194,33 @@ class FullExportTests(EngineHarness):
         for f in ('README.txt', 'manifest.json', 'verification.json', 'site.json'):
             self.assertTrue(os.path.exists(os.path.join(self.root, f)), f)
 
+    # OPAUDIT 019 — the people attached to the site travel with the blog.
+    def test_fediverse_folder_is_written_with_importable_csvs(self):
+        base = os.path.join(self.root, 'exit', 'fediverse')
+        for f in ('actor.json', 'followers.json', 'following.json', 'blocks.json',
+                  'following.csv', 'blocked_accounts.csv', 'muted_accounts.csv',
+                  'blocked_domains.csv', 'README.txt'):
+            self.assertTrue(os.path.exists(os.path.join(base, f)), f)
+        with open(os.path.join(base, 'following.csv'), encoding='utf-8') as fh:
+            head = fh.readline().strip()
+        self.assertEqual(head, 'Account address,Show boosts,Notify on new posts,Languages',
+                         "following.csv must carry Mastodon's exact header")
+        followers = self.read(self.root, 'exit/fediverse/followers.json')
+        self.assertEqual([f['address'] for f in followers], ['@a@mastodon.example', '@b@pixelfed.example'])
+        actor = self.read(self.root, 'exit/fediverse/actor.json')
+        self.assertEqual(actor['address'], '@sean@fake.example')
+        self.assertIn('public_key_pem', actor)
+
+    def test_private_key_never_appears_anywhere_in_the_archive(self):
+        for dirpath, _, files in os.walk(self.root):
+            for f in files:
+                p = os.path.join(dirpath, f)
+                if p.endswith(('.json', '.txt', '.csv', '.md')):
+                    with open(p, encoding='utf-8', errors='replace') as fh:
+                        text = fh.read()
+                    self.assertNotIn('PRIVATE KEY', text, p)
+                    self.assertNotIn('private_key_pem', text, p)
+
     def test_the_export_is_complete(self):
         self.assertTrue(self.report.complete, self.report.mismatches)
         v = self.read(self.root, 'verification.json')
