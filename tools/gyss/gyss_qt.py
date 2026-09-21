@@ -142,7 +142,7 @@ class Window(QMainWindow):
         f,fl=card("Optional filter","Leave these alone to load the complete library."); form=QFormLayout(); self.cat=QComboBox(); self.alb=QComboBox(); self.limit=QSpinBox(); self.limit.setRange(1,500); self.limit.setValue(200); form.addRow("Category",self.cat); form.addRow("Album",self.alb); form.addRow("Live pull limit",self.limit); fl.addLayout(form); live=QPushButton("PULL A LIVE SESSION"); live.clicked.connect(self.pull_live); fl.addWidget(live,0,Qt.AlignRight); l.addWidget(f); l.addStretch(); return p
     def sort_page(self):
         p,l=self.page("Sort photographs","Drag to reorder. Select photographs to enrich missing details together."); self.sort_intro=l.itemAt(1).widget(); r=QHBoxLayout(); self.photo_list=QListWidget(); self.photo_list.setViewMode(QListWidget.IconMode); self.photo_list.setIconSize(QSize(150,110)); self.photo_list.setGridSize(QSize(180,165)); self.photo_list.setResizeMode(QListWidget.Adjust); self.photo_list.setDragDropMode(QAbstractItemView.InternalMove); self.photo_list.setSelectionMode(QAbstractItemView.ExtendedSelection); self.photo_list.currentItemChanged.connect(self.edit_photo); self.photo_list.itemSelectionChanged.connect(self.update_sort_enrich_label); r.addWidget(self.photo_list,1)
-        e,el=card("Selected photograph"); form=QFormLayout(); self.title_edit=QLineEdit(); self.desc_edit=QTextEdit(); self.desc_edit.setMaximumHeight(90); self.alt_edit=QTextEdit(); self.alt_edit.setMaximumHeight(75); self.tags_edit=QLineEdit(); self.tags_edit.setPlaceholderText("#family #portrait"); self.colors_edit=QLineEdit(); self.colors_edit.setPlaceholderText("#RRGGBB #RRGGBB (up to 3)"); choose_color=QPushButton("CHOOSE COLOUR"); choose_color.clicked.connect(self.choose_color); self.edit_cat=QComboBox(); self.colour=QComboBox(); self.colour.addItem("Not classified",""); self.colour.addItem("Colour","color"); self.colour.addItem("Black & white","bw"); self.orientation=QComboBox(); self.orientation.addItem("Landscape",0); self.orientation.addItem("Portrait",1); self.orientation.addItem("Square",2); form.addRow("Title",self.title_edit); form.addRow("Description",self.desc_edit); form.addRow("ALT text",self.alt_edit); form.addRow("Hashtags",self.tags_edit); form.addRow("Colours",self.colors_edit); form.addRow("",choose_color); form.addRow("Category",self.edit_cat); form.addRow("Colour / B&W",self.colour); form.addRow("Orientation",self.orientation); el.addLayout(form); apply=QPushButton("APPLY EDIT"); apply.clicked.connect(self.apply_edit); el.addWidget(apply); self.sort_enrich=QPushButton("ENRICH THIS PHOTO"); self.sort_enrich.clicked.connect(self.enrich_sort_photo); el.addWidget(self.sort_enrich); self.sort_stop=QPushButton("STOP AFTER THIS IMAGE"); self.sort_stop.setObjectName("Danger"); self.sort_stop.setEnabled(False); self.sort_stop.clicked.connect(lambda:setattr(self,"cancel",True)); el.addWidget(self.sort_stop); self.sort_progress=QProgressBar(); self.sort_progress.hide(); el.addWidget(self.sort_progress); edit_scroll=QScrollArea(); edit_scroll.setWidgetResizable(True); edit_scroll.setFixedWidth(355); edit_scroll.setWidget(e); r.addWidget(edit_scroll); l.addLayout(r,1); br=QHBoxLayout(); self.save_session_button=QPushButton("SAVE SESSION"); self.save_session_button.clicked.connect(self.save_session); br.addWidget(self.save_session_button); self.detect_orientation_button=QPushButton("MATCH ORIENTATION TO PHOTO SHAPE"); self.detect_orientation_button.clicked.connect(self.match_orientations); br.addWidget(self.detect_orientation_button); br.addStretch(); push=QPushButton("PUBLISH CHANGES"); push.setObjectName("Primary"); push.clicked.connect(self.push); br.addWidget(push); l.addLayout(br); return p
+        e,el=card("Selected photograph"); form=QFormLayout(); self.title_edit=QLineEdit(); self.desc_edit=QTextEdit(); self.desc_edit.setMaximumHeight(90); self.alt_edit=QTextEdit(); self.alt_edit.setMaximumHeight(75); self.tags_edit=QLineEdit(); self.tags_edit.setPlaceholderText("#family #portrait"); self.colors_edit=QLineEdit(); self.colors_edit.setPlaceholderText("#RRGGBB #RRGGBB (up to 3)"); choose_color=QPushButton("CHOOSE COLOUR"); choose_color.clicked.connect(self.choose_color); self.edit_cats=QListWidget(); self.edit_cats.setSelectionMode(QAbstractItemView.MultiSelection); self.edit_cats.setMaximumHeight(92); self.edit_albums=QListWidget(); self.edit_albums.setSelectionMode(QAbstractItemView.MultiSelection); self.edit_albums.setMaximumHeight(92); self.colour=QComboBox(); self.colour.addItem("Not classified",""); self.colour.addItem("Colour","color"); self.colour.addItem("Black & white","bw"); self.orientation=QComboBox(); self.orientation.addItem("Landscape",0); self.orientation.addItem("Portrait",1); self.orientation.addItem("Square",2); form.addRow("Title",self.title_edit); form.addRow("Description",self.desc_edit); form.addRow("ALT text",self.alt_edit); form.addRow("Hashtags",self.tags_edit); form.addRow("Colours",self.colors_edit); form.addRow("",choose_color); form.addRow("Categories",self.edit_cats); form.addRow("Albums",self.edit_albums); form.addRow("Colour / B&W",self.colour); form.addRow("Orientation",self.orientation); el.addLayout(form); apply=QPushButton("APPLY DETAILS TO THIS PHOTO"); apply.clicked.connect(self.apply_edit); el.addWidget(apply); organize=QPushButton("ORGANIZE SELECTED PHOTOS"); organize.clicked.connect(self.apply_organization); el.addWidget(organize); self.sort_enrich=QPushButton("ENRICH THIS PHOTO"); self.sort_enrich.clicked.connect(self.enrich_sort_photo); el.addWidget(self.sort_enrich); self.sort_stop=QPushButton("STOP AFTER THIS IMAGE"); self.sort_stop.setObjectName("Danger"); self.sort_stop.setEnabled(False); self.sort_stop.clicked.connect(lambda:setattr(self,"cancel",True)); el.addWidget(self.sort_stop); self.sort_progress=QProgressBar(); self.sort_progress.hide(); el.addWidget(self.sort_progress); edit_scroll=QScrollArea(); edit_scroll.setWidgetResizable(True); edit_scroll.setFixedWidth(380); edit_scroll.setWidget(e); r.addWidget(edit_scroll); l.addLayout(r,1); br=QHBoxLayout(); self.save_session_button=QPushButton("SAVE SESSION"); self.save_session_button.clicked.connect(self.save_session); br.addWidget(self.save_session_button); self.detect_orientation_button=QPushButton("MATCH ORIENTATION TO PHOTO SHAPE"); self.detect_orientation_button.clicked.connect(self.match_orientations); br.addWidget(self.detect_orientation_button); br.addStretch(); push=QPushButton("PUBLISH CHANGES"); push.setObjectName("Primary"); push.clicked.connect(self.push); br.addWidget(push); l.addLayout(br); return p
     def grid_page(self):
         p,l=self.page("GRAMOFSMACK grid","Drag posts into order. Select two or more singles to make a carousel. Nothing changes online until you confirm."); self.gram=QListWidget(); self.gram.setViewMode(QListWidget.IconMode); self.gram.setIconSize(QSize(170,170)); self.gram.setGridSize(QSize(195,215)); self.gram.setResizeMode(QListWidget.Adjust); self.gram.setDragDropMode(QAbstractItemView.InternalMove); self.gram.setSelectionMode(QAbstractItemView.ExtendedSelection); l.addWidget(self.gram,1); self.gram_empty=lbl("Choose a site to load its published posts.","Muted"); l.addWidget(self.gram_empty); r=QHBoxLayout(); refresh=QPushButton("REFRESH GRID"); refresh.clicked.connect(self.load_grid); r.addWidget(refresh); r.addStretch(); car=QPushButton("MAKE SELECTED A CAROUSEL"); car.clicked.connect(self.carousel); r.addWidget(car); order=QPushButton("PUBLISH ORDER"); order.setObjectName("Primary"); order.clicked.connect(self.push_grid); r.addWidget(order); l.addLayout(r); return p
     def images_page(self):
@@ -244,9 +244,13 @@ class Window(QMainWindow):
         elif self.mode=="photoblog":self.run(self.api.meta,lambda x:(setattr(self,"meta",x),self.fill_meta(),self.show_page(0)))
         else:self.show_page(3)
     def fill_meta(self):
-        for box,rows in ((self.cat,self.meta.get("categories",[])),(self.alb,self.meta.get("albums",[])),(self.edit_cat,self.meta.get("categories",[]))):
-            box.clear(); box.addItem("All" if box is not self.edit_cat else "No category",None)
+        for box,rows in ((self.cat,self.meta.get("categories",[])),(self.alb,self.meta.get("albums",[]))):
+            box.clear(); box.addItem("All",None)
             for x in rows:box.addItem(str(x.get("name","")),x.get("id"))
+        for box,rows in ((self.edit_cats,self.meta.get("categories",[])),(self.edit_albums,self.meta.get("albums",[]))):
+            box.clear()
+            for x in rows:
+                item=QListWidgetItem(str(x.get("name","")));item.setData(Qt.UserRole,x.get("id"));box.addItem(item)
     def paths(self):
         root=snap_home.site_dir(self.profile["site_url"]); return os.path.join(root,"index.json"),os.path.join(root,"meta.json")
     def local(self):
@@ -373,7 +377,15 @@ class Window(QMainWindow):
         if self.photo_list.currentItem():self.edit_photo(self.photo_list.currentItem(),None)
         QMessageBox.information(self,"Orientation checked",f"{changed} photograph(s) adjusted from their saved dimensions. Review the labels, then choose PUBLISH CHANGES to save them on the site.")
     def edit_photo(self,it,_):
-        p=it.data(Qt.UserRole) if it else {};self.title_edit.setText(p.get("title") or "");self.desc_edit.setPlainText(p.get("description") or "");self.alt_edit.setPlainText(p.get("alt") or "");self.tags_edit.setText(p.get("hashtags") or "");self.colors_edit.setText(" ".join(p.get("colors") or []));self.edit_cat.setCurrentIndex(max(self.edit_cat.findData(p.get("category_id")),0));self.colour.setCurrentIndex(max(self.colour.findData(p.get("color_mode","")),0));self.orientation.setCurrentIndex(max(self.orientation.findData(p.get("orientation",0)),0))
+        p=it.data(Qt.UserRole) if it else {};self.title_edit.setText(p.get("title") or "");self.desc_edit.setPlainText(p.get("description") or "");self.alt_edit.setPlainText(p.get("alt") or "");self.tags_edit.setText(p.get("hashtags") or "");self.colors_edit.setText(" ".join(p.get("colors") or []));self.set_memberships(self.edit_cats,p.get("category_ids") or ([p.get("category_id")] if p.get("category_id") else []));self.set_memberships(self.edit_albums,p.get("album_ids") or []);self.colour.setCurrentIndex(max(self.colour.findData(p.get("color_mode","")),0));self.orientation.setCurrentIndex(max(self.orientation.findData(p.get("orientation",0)),0))
+    @staticmethod
+    def membership_ids(box):
+        return sorted(int(item.data(Qt.UserRole)) for item in box.selectedItems())
+    @staticmethod
+    def set_memberships(box,ids):
+        wanted={int(value) for value in (ids or []) if value is not None}
+        for index in range(box.count()):
+            item=box.item(index);item.setSelected(int(item.data(Qt.UserRole)) in wanted)
     def update_sort_enrich_label(self):
         count=len(self.photo_list.selectedItems())
         self.sort_enrich.setText(f"ENRICH {count} SELECTED PHOTOS" if count>1 else "ENRICH THIS PHOTO")
@@ -396,10 +408,21 @@ class Window(QMainWindow):
             QMessageBox.warning(self,"Invalid colours","Choose up to three colours as #RRGGBB.");return
         alt=self.alt_edit.toPlainText().strip()
         if len(alt)>500:QMessageBox.warning(self,"ALT too long","ALT text must be 500 characters or less.");return
-        p=it.data(Qt.UserRole);before={k:p.get(k) for k in ("title","description","alt","hashtags","colors","category_id","color_mode","orientation")}
-        p.update(title=self.title_edit.text(),description=self.desc_edit.toPlainText(),alt=alt,hashtags=" ".join(tags.replace(","," ").split()),colors=[value.upper() for value in colors],category_id=self.edit_cat.currentData(),color_mode=self.colour.currentData(),orientation=self.orientation.currentData())
+        p=it.data(Qt.UserRole);before={k:p.get(k) for k in ("title","description","alt","hashtags","colors","color_mode","orientation")}
+        p.update(title=self.title_edit.text(),description=self.desc_edit.toPlainText(),alt=alt,hashtags=" ".join(tags.replace(","," ").split()),colors=[value.upper() for value in colors],color_mode=self.colour.currentData(),orientation=self.orientation.currentData())
         p["dirty"]=bool(p.get("dirty") or any(before[k]!=p.get(k) for k in before))
         it.setData(Qt.UserRole,p);it.setText(("• " if p["dirty"] else "")+(p.get("title") or p.get("filename") or str(p["id"])))
+    def apply_organization(self):
+        selected=self.photo_list.selectedItems()
+        if not selected and self.photo_list.currentItem():selected=[self.photo_list.currentItem()]
+        if not selected:return
+        categories=self.membership_ids(self.edit_cats);albums=self.membership_ids(self.edit_albums)
+        for item in selected:
+            photo=item.data(Qt.UserRole);before=(sorted(photo.get("category_ids") or []),sorted(photo.get("album_ids") or []))
+            photo["category_ids"]=list(categories);photo["album_ids"]=list(albums);photo["category_id"]=categories[0] if categories else None
+            photo["dirty"]=bool(photo.get("dirty") or before!=(categories,albums));item.setData(Qt.UserRole,photo)
+            item.setText(("• " if photo["dirty"] else "")+(photo.get("title") or photo.get("filename") or str(photo["id"])))
+        QMessageBox.information(self,"Organization staged",f"Categories and albums were applied to {len(selected)} photograph(s). Choose PUBLISH CHANGES to save them on the site.")
     def enrich_sort_photo(self):
         if self.busy or not self.require_api():return
         current=self.photo_list.currentItem()
@@ -410,7 +433,8 @@ class Window(QMainWindow):
                 self.alt_edit.toPlainText()!=str(photo.get("alt") or "") or
                 self.tags_edit.text()!=str(photo.get("hashtags") or "") or
                 self.colors_edit.text()!=" ".join(photo.get("colors") or []) or
-                self.edit_cat.currentData()!=photo.get("category_id") or
+                self.membership_ids(self.edit_cats)!=sorted(photo.get("category_ids") or ([photo.get("category_id")] if photo.get("category_id") else [])) or
+                self.membership_ids(self.edit_albums)!=sorted(photo.get("album_ids") or []) or
                 self.colour.currentData()!=photo.get("color_mode","") or
                 self.orientation.currentData()!=photo.get("orientation",0))
             if editor_changes:
@@ -488,7 +512,7 @@ class Window(QMainWindow):
         u=[]
         for p in dirty:
             original=self.original.get(int(p["id"]),{})
-            row={"id":p["id"],"title":p.get("title",""),"description":p.get("description",""),"category_id":p.get("category_id"),"color_mode":p.get("color_mode",""),"expected_modified_at":original.get("modified_at")}
+            row={"id":p["id"],"title":p.get("title",""),"description":p.get("description",""),"category_id":p.get("category_id"),"category_ids":p.get("category_ids",[]),"album_ids":p.get("album_ids",[]),"color_mode":p.get("color_mode",""),"expected_modified_at":original.get("modified_at")}
             if self.mode!="carousel":row["sort_order"]=p["sort_order"]
             for key in ("alt","hashtags","colors","orientation"):
                 if p.get(key)!=original.get(key):row[key]=p.get(key)
