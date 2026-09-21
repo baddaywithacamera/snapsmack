@@ -22,6 +22,7 @@
 - **GYSS desktop 0.7.22** restores maximized windows, avoids fetching an unchanged cached thumbnail, downloads needed thumbnails in parallel, and labels batch errors by selection position plus database ID. (`tools/gyss/`.)
 
 ## 0.7.731D — 2026-09-19 — GYSS photo details
+- **SMACK UP YOUR BACKUP 0.7.44: FTPS certificate memory — the item every SUYB audit since April called "scheduled".** First connection remembers the site's certificate; a changed certificate that a public authority vouches for is a renewal (Let's Encrypt / cPanel AutoSSL rotate every 60–90 days) and is remembered silently; any other change stops before the password is sent and shows both fingerprints. Certificate checking itself stays off by default — this survives the cheap-host reality that made validation impossible. Audits 004-closure and 037 updated; buzzers wording updated; SECAUDIT 001's filename corrected to its real date (2026-04-25); closed-audit list re-ordered. (`tools/smack-up-your-backup/ftps_pins.py`, `ftp_client.py`.)
 - **GYSS Sort exposes enrichment, ALT text, hashtags, colour swatches, colour/B&W classification, and landscape/portrait/square orientation.** The library and photo APIs return these fields, and batch publish saves validated changes. The desktop app warns before paid enrichment and checks site support before publishing the new fields. (`core/gyss-api.php`, `tools/gyss/gyss_qt.py`.)
 
 ## 0.7.730D — 2026-09-19 — Recover current Pixelfed challenge posts

@@ -855,6 +855,8 @@ class BackupEngine:
                     batch_size     = int(self.profile.get("batch_size", 0)),
                 )
             try:
+                if hasattr(ftp, "on_log"):
+                    ftp.on_log = self._log
                 ftp.connect()
             except Exception as e:
                 result["errors"].append(f"Connection failed: {e}")
