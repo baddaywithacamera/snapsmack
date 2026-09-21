@@ -899,7 +899,15 @@ if ($action === 'fediverse') {
     require_once __DIR__ . '/fediverse.php';
     $settings = [];
     try {
-        foreach ($pdo->query("SELECT setting_key, setting_val FROM snap_settings") as $r) {
+        // Only the public identity inputs are needed here. Never load the
+        // private signing key or unrelated site secrets into an exit response.
+        $public_keys = ['fediverse_enabled', 'site_url', 'fediverse_handle',
+            'smackverse_handle', 'site_name', 'fediverse_moving_from',
+            'fediverse_public_key'];
+        $in = implode(',', array_fill(0, count($public_keys), '?'));
+        $setting_stmt = $pdo->prepare("SELECT setting_key, setting_val FROM snap_settings WHERE setting_key IN ($in)");
+        $setting_stmt->execute($public_keys);
+        foreach ($setting_stmt as $r) {
             $settings[$r['setting_key']] = $r['setting_val'];
         }
     } catch (Throwable $e) { $settings = []; }
