@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.733D — 2026-09-20 — Lighter INSTANT CAMERA and clearer GYSS ordering
+
+- **INSTANT CAMERA no longer rebuilds the entire archive for each lazy-load request.** The visible grid is limited and offset in MariaDB, so the first page and each appended page fetch only their own 120 posts. The Organized Mayhem backdrop is capped at 30 decorative thumbnails instead of loading a second 120-image feed immediately. (`skins/instant-camera/landing.php`, `skins/instant-camera/skin-profile.php`.)
+- **GYSS desktop 0.7.23 separates photo editing from GRAMOFSMACK display order.** GRAMOFSMACK Grid loads automatically and remains the only place that changes the published post order; the photo view edits details without silently staging a second order. Cached thumbnails load in parallel, and a matching action can correct saved orientation from actual image dimensions before publishing. (`tools/gyss/`.)
+
 ## 0.7.732D — 2026-09-20 — GYSS enrichment repair
 
 - **GYSS enrichment reads originals from their stored upload directory.** Current `img_uploads/` paths and legacy `uploads/` paths are resolved under the site root, with traversal blocked. The colour-column migration runs before the metadata transaction so saving an AI result can commit normally. The library export includes saved hashtags and colour swatches, allowing GYSS to show completed enrichment after syncing. (`core/gyss-api.php`.)
