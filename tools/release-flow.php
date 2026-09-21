@@ -139,10 +139,11 @@ if ($command === 'tag-dev') {
     rf_require_dev();
     rf_require_clean();
     $version = rf_version($argv[2] ?? '');
-    if (rf_source_version() !== $version) {
-        rf_fail("source version is " . rf_source_version() . "; expected {$version}");
+    $dev_version = $version . 'D';
+    if (rf_source_version() !== $dev_version) {
+        rf_fail("source version is " . rf_source_version() . "; expected {$dev_version}");
     }
-    rf_require_changelog($version);
+    rf_require_changelog($dev_version);
     rf_git(['fetch', 'Github', '--tags', '--prune'], false);
     $tag = 'v' . $version . 'D';
     if (rf_tag_target($tag) !== '') rf_fail("tag {$tag} already exists; use the next version");
