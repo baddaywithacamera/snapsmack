@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.734D — 2026-09-21 — Pixelix can let go
+
+- **Pixelix can delete posts it created.** SnapSmack now implements the Mastodon-compatible `DELETE /api/v1/statuses/{id}` operation instead of returning unsupported. The route requires write scope, proves every attached image belongs to the calling Pixelix authorization, retracts the federated Note, removes the complete post/carousel and unshared media records, safely removes their upload files, and returns the deleted status object expected by the client. (`pixelfed-api.php`.)
+
 ## 0.7.733D — 2026-09-20 — Lighter INSTANT CAMERA and clearer GYSS ordering
 
 - **GYSS desktop 0.7.33 turns the organizer photograph modal into a processing workflow.** Previous, Next and Save & Next move through the visible container page without closing the editor; the preview is larger and can open the full-size source; filename, ID, dimensions and date are shown; AI enrichment has per-field choices; Restore Original resets the form; and closing with unsaved edits requires confirmation. (`tools/gyss/`.)
