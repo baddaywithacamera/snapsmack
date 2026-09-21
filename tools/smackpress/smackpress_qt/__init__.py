@@ -28,8 +28,12 @@ import sys
 # COLD SNAP's package and the shared modules, by path — same repo, same build.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _TOOLS = os.path.dirname(os.path.dirname(_HERE))
-for _p in (os.path.join(_TOOLS, "coldsnap"), os.path.join(_TOOLS, "_shared"),
-           os.path.dirname(_HERE)):
+# insert(0) reverses the order, so add SMACKPRESS first and COLD SNAP last.
+# COLD SNAP intentionally uses top-level ``config`` and ``profile_manager``
+# modules; its directory must win over SMACKPRESS's package directory in a
+# frozen build or ConnectPanel imports smackpress/config.py as ``config``.
+for _p in (os.path.dirname(_HERE), os.path.join(_TOOLS, "_shared"),
+           os.path.join(_TOOLS, "coldsnap")):
     if os.path.isdir(_p) and _p not in sys.path:
         sys.path.insert(0, _p)
 
