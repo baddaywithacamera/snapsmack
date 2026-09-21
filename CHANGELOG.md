@@ -11,6 +11,7 @@
 # SnapSmack Changelog
 ## 0.7.733D — 2026-09-20 — Lighter INSTANT CAMERA and clearer GYSS ordering
 
+- **GYSS desktop 0.7.33 turns the organizer photograph modal into a processing workflow.** Previous, Next and Save & Next move through the visible container page without closing the editor; the preview is larger and can open the full-size source; filename, ID, dimensions and date are shown; AI enrichment has per-field choices; Restore Original resets the form; and closing with unsaved edits requires confirmation. (`tools/gyss/`.)
 - **GYSS desktop 0.7.32 adds direct editing to the organizer workspace.** Double-clicking a photograph in the right container opens a modal for title, description, ALT text, hashtags, colours, category and album membership, colour/B&W and orientation. The modal can save that photograph directly to its site or make one confirmed AI call to fill only its missing supported fields. (`tools/gyss/`.)
 - **GYSS desktop 0.7.31 makes large category and album lists manageable.** A live search box filters both container groups by name, and the workspace's Previous, Next, Remove Selected and Publish Organization controls now share one row. (`tools/gyss/`.)
 - **GYSS desktop 0.7.30 fixes the actual GRAMOFSMACK mouse path.** The grid now tracks a tile press, owns the drag gesture, and moves the selected tile or tiles when the mouse is released over a destination. This bypasses Qt's failed built-in icon-grid drag. The vague `Ready to verify` profile label is now `Site selected`. (`tools/gyss/`.)

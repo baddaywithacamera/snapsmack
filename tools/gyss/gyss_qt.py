@@ -167,6 +167,13 @@ class GramReorderList(QListWidget):
             return
         super().dropEvent(event)
 
+class PhotoEditDialog(QDialog):
+    def __init__(self,parent=None):
+        super().__init__(parent);self.dirty_check=lambda:False
+    def reject(self):
+        if self.dirty_check() and QMessageBox.question(self,"Discard unsaved changes?","Close without saving your edits?",QMessageBox.Yes|QMessageBox.No,QMessageBox.No)!=QMessageBox.Yes:return
+        super().reject()
+
 class Window(QMainWindow):
     def __init__(self):
         super().__init__(); self.setWindowTitle(f"GET YOUR SHIT SORTED — {BUILD_VERSION}"); self.setWindowIcon(QIcon(icon_path())); self.resize(1420,900); self.setMinimumSize(1060,700)
@@ -334,17 +341,36 @@ class Window(QMainWindow):
         index,meta=self.local();self.organizer_photos={int(row["id"]):dict(row) for row in index.get("images",{}).values()};self.organizer_member_page=0;self.organizer_tray_page=0;self.meta={"categories":meta.get("categories",[]),"albums":meta.get("albums",[])};self.fill_meta();self.render_organizer_tray();self.render_organizer()
     def open_organizer_photo(self,item):
         if not item or not self.require_api():return
-        photo=self.organizer_photos.get(int(item.data(Qt.UserRole)["id"]),item.data(Qt.UserRole));dialog=QDialog(self);dialog.setWindowTitle("Edit photograph");dialog.resize(720,760);layout=QVBoxLayout(dialog)
-        preview=QLabel();preview.setAlignment(Qt.AlignCenter);preview.setPixmap(self.thumb(photo).pixmap(QSize(280,210)));layout.addWidget(preview)
-        form=QFormLayout();title=QLineEdit(photo.get("title") or "");description=QTextEdit(photo.get("description") or "");description.setMaximumHeight(90);alt=QTextEdit(photo.get("alt") or "");alt.setMaximumHeight(75);tags=QLineEdit(photo.get("hashtags") or "");tags.setPlaceholderText("#family #portrait");colors=QLineEdit(" ".join(photo.get("colors") or []));colors.setPlaceholderText("#RRGGBB #RRGGBB (up to 3)")
+        visible_ids=[int(self.organizer_members.item(i).data(Qt.UserRole)["id"]) for i in range(self.organizer_members.count())];photo_id=int(item.data(Qt.UserRole)["id"]);position=visible_ids.index(photo_id);photo=self.organizer_photos.get(photo_id,item.data(Qt.UserRole));original={};dialog=PhotoEditDialog(self);dialog.resize(780,860);layout=QVBoxLayout(dialog)
+        nav=QHBoxLayout();previous=QPushButton("◀ PREVIOUS");next_photo=QPushButton("NEXT ▶");position_label=lbl("","Muted");nav.addWidget(previous);nav.addWidget(next_photo);nav.addStretch();nav.addWidget(position_label);layout.addLayout(nav)
+        preview=QLabel();preview.setMinimumHeight(260);preview.setAlignment(Qt.AlignCenter);layout.addWidget(preview);info=lbl("","Muted");info.setTextInteractionFlags(Qt.TextSelectableByMouse);layout.addWidget(info);open_full=QPushButton("OPEN FULL SIZE");layout.addWidget(open_full,0,Qt.AlignCenter)
+        form=QFormLayout();title=QLineEdit();description=QTextEdit();description.setMaximumHeight(90);alt=QTextEdit();alt.setMaximumHeight(75);tags=QLineEdit();tags.setPlaceholderText("#family #portrait");colors=QLineEdit();colors.setPlaceholderText("#RRGGBB #RRGGBB (up to 3)")
         categories=QListWidget();categories.setSelectionMode(QAbstractItemView.MultiSelection);categories.setMaximumHeight(90);albums=QListWidget();albums.setSelectionMode(QAbstractItemView.MultiSelection);albums.setMaximumHeight(90)
         for row,box in ((self.meta.get("categories",[]),categories),(self.meta.get("albums",[]),albums)):
             for value in row:entry=QListWidgetItem(str(value.get("name") or "Untitled"));entry.setData(Qt.UserRole,int(value["id"]));box.addItem(entry)
-        self.set_memberships(categories,photo.get("category_ids") or ([photo.get("category_id")] if photo.get("category_id") else []));self.set_memberships(albums,photo.get("album_ids") or [])
-        colour=QComboBox();colour.addItem("Not classified","");colour.addItem("Colour","color");colour.addItem("Black & white","bw");colour.setCurrentIndex(max(colour.findData(photo.get("color_mode","")),0));orientation=QComboBox();orientation.addItem("Landscape",0);orientation.addItem("Portrait",1);orientation.addItem("Square",2);orientation.setCurrentIndex(max(orientation.findData(photo.get("orientation",0)),0))
+        colour=QComboBox();colour.addItem("Not classified","");colour.addItem("Colour","color");colour.addItem("Black & white","bw");orientation=QComboBox();orientation.addItem("Landscape",0);orientation.addItem("Portrait",1);orientation.addItem("Square",2)
         for label,field in (("Title",title),("Description",description),("ALT text",alt),("Hashtags",tags),("Colours",colors),("Categories",categories),("Albums",albums),("Colour / B&W",colour),("Orientation",orientation)):form.addRow(label,field)
-        layout.addLayout(form);replace_ai=QCheckBox("Replace existing AI-supported values");layout.addWidget(replace_ai);buttons=QHBoxLayout();enrich=QPushButton("ENRICH THIS PHOTO");save=QPushButton("SAVE TO SITE");save.setObjectName("Primary");cancel=QPushButton("CANCEL");buttons.addWidget(enrich);buttons.addStretch();buttons.addWidget(cancel);buttons.addWidget(save);layout.addLayout(buttons)
+        layout.addLayout(form);ai_fields={};ai_row=QHBoxLayout();ai_row.addWidget(lbl("AI fields","Muted"));
+        for key,label in (("title","Title"),("caption","Description"),("alt","ALT"),("tags","Hashtags"),("colors","Colours"),("color_mode","Colour/B&W")):
+            ai_fields[key]=QCheckBox(label);ai_row.addWidget(ai_fields[key])
+        layout.addLayout(ai_row);replace_ai=QCheckBox("Replace existing values in the selected AI fields");layout.addWidget(replace_ai)
+        buttons=QHBoxLayout();enrich=QPushButton("ENRICH THIS PHOTO");restore=QPushButton("RESTORE ORIGINAL");cancel=QPushButton("CANCEL");save=QPushButton("SAVE TO SITE");save.setObjectName("Primary");save_next=QPushButton("SAVE & NEXT");save_next.setObjectName("Primary");buttons.addWidget(enrich);buttons.addWidget(restore);buttons.addStretch();buttons.addWidget(cancel);buttons.addWidget(save);buttons.addWidget(save_next);layout.addLayout(buttons)
         def values():return {"title":title.text().strip(),"description":description.toPlainText().strip(),"alt":alt.toPlainText().strip(),"hashtags":" ".join(tags.text().replace(","," ").split()),"colors":[value.upper() for value in colors.text().replace(","," ").split()],"category_ids":self.membership_ids(categories),"album_ids":self.membership_ids(albums),"color_mode":colour.currentData(),"orientation":orientation.currentData()}
+        def load_current():
+            nonlocal photo,original
+            photo=self.organizer_photos[visible_ids[position]];dialog.setWindowTitle(f"Edit photograph · {position+1} of {len(visible_ids)}");position_label.setText(f"{position+1} of {len(visible_ids)}");previous.setEnabled(position>0);next_photo.setEnabled(position+1<len(visible_ids));save_next.setEnabled(position+1<len(visible_ids))
+            preview.setPixmap(self.thumb(photo).pixmap(QSize(420,300)));width=photo.get("width") or "?";height=photo.get("height") or "?";date=photo.get("date_taken") or photo.get("created_at") or photo.get("uploaded_at") or "Unknown date";info.setText(f"ID {photo['id']}  ·  {photo.get('filename') or 'Unknown filename'}  ·  {width} × {height}  ·  {date}")
+            title.setText(photo.get("title") or "");description.setPlainText(photo.get("description") or "");alt.setPlainText(photo.get("alt") or "");tags.setText(photo.get("hashtags") or "");colors.setText(" ".join(photo.get("colors") or []));self.set_memberships(categories,photo.get("category_ids") or ([photo.get("category_id")] if photo.get("category_id") else []));self.set_memberships(albums,photo.get("album_ids") or []);colour.setCurrentIndex(max(colour.findData(photo.get("color_mode","")),0));orientation.setCurrentIndex(max(orientation.findData(photo.get("orientation",0)),0));original=values()
+            missing={"title":not original["title"],"caption":not original["description"],"alt":not original["alt"],"tags":not original["hashtags"],"colors":not original["colors"],"color_mode":not original["color_mode"]}
+            for key,box in ai_fields.items():box.setChecked(missing[key])
+        def move(step):
+            nonlocal position
+            if values()!=original:QMessageBox.information(dialog,"Unsaved edits","Save or restore this photograph before moving to another one.");return
+            position=max(0,min(position+step,len(visible_ids)-1));load_current()
+        def open_original():
+            target=photo.get("image_url") or photo.get("original_url") or photo.get("url") or photo.get("thumb_url") or photo.get("thumb_file")
+            if target:QDesktopServices.openUrl(QUrl.fromLocalFile(target) if os.path.isfile(str(target)) else QUrl(str(target)))
+            else:QMessageBox.information(dialog,"Original unavailable","No full-size location was returned for this photograph.")
         def refill(result):
             bundle=dict((result or {}).get("metadata") or {});applied=set((result or {}).get("applied") or [])
             if "title" in applied:title.setText(str(bundle.get("title") or ""))
@@ -353,25 +379,28 @@ class Window(QMainWindow):
             if "tags" in applied:tags.setText(" ".join(bundle.get("tags") or []))
             if "colors" in applied:colors.setText(" ".join(bundle.get("colors") or []))
             if "color_mode" in applied:colour.setCurrentIndex(max(colour.findData(bundle.get("color_mode","")),0))
-            self.save_enrichment_local(photo["id"],result,photo);photo.update(values());self.organizer_photos[int(photo["id"])]=photo;QMessageBox.information(dialog,"Enrichment finished","This photograph was enriched. Review the returned details, then save any edits.")
+            self.save_enrichment_local(photo["id"],result,photo);photo.update(values());self.organizer_photos[int(photo["id"])]=photo;original.update(values());QMessageBox.information(dialog,"Enrichment finished","This photograph was enriched. Review the returned details; further edits still need Save to Site.")
         def enrich_one():
             if self.busy:return
-            fields=[key for key,empty in (("title",not title.text().strip()),("caption",not description.toPlainText().strip()),("alt",not alt.toPlainText().strip()),("tags",not tags.text().strip()),("colors",not colors.text().strip()),("color_mode",not colour.currentData())) if replace_ai.isChecked() or empty]
-            if not fields:QMessageBox.information(dialog,"Details already filled","All AI-supported fields already contain values.");return
+            fields=[key for key,box in ai_fields.items() if box.isChecked()]
+            if not fields:QMessageBox.information(dialog,"Choose AI fields","Select at least one field for AI enrichment.");return
             action="Replace its AI-supported details" if replace_ai.isChecked() else "Fill its missing details"
             if QMessageBox.question(dialog,"Enrich this photograph?",action+" with one paid AI call?",QMessageBox.Yes|QMessageBox.No,QMessageBox.No)==QMessageBox.Yes:self.run(lambda:self.api.enrich(photo["id"],"",fields,replace_ai.isChecked(),replace_ai.isChecked()),refill)
-        def save_one():
+        def save_one(advance=False):
             data=values();valid_tag=r"#(?:[A-Za-z][A-Za-z0-9_]{0,49}|[0-9][0-9A-Fa-f]{5})"
             if data["hashtags"] and any(not re.fullmatch(valid_tag,token) for token in data["hashtags"].split()):QMessageBox.warning(dialog,"Invalid hashtags","Use # before each tag, separated by spaces.");return
             if len(data["colors"])>3 or any(not re.fullmatch(r"#[0-9A-Fa-f]{6}",value) for value in data["colors"]):QMessageBox.warning(dialog,"Invalid colours","Choose up to three colours as #RRGGBB.");return
             if len(data["alt"])>500:QMessageBox.warning(dialog,"ALT too long","ALT text must be 500 characters or less.");return
             update={"id":photo["id"],"title":data["title"],"description":data["description"],"alt":data["alt"],"hashtags":data["hashtags"],"colors":data["colors"],"category_id":data["category_ids"][0] if data["category_ids"] else None,"category_ids":data["category_ids"],"album_ids":data["album_ids"],"color_mode":data["color_mode"],"orientation":data["orientation"],"expected_modified_at":photo.get("modified_at")}
             def saved(result):
+                nonlocal position,original
                 failures=result.get("failed",[]);conflicts=result.get("conflicts",[])
                 if failures or conflicts:QMessageBox.warning(dialog,"Photograph was not saved",str((failures+conflicts)[0].get("error") or (failures+conflicts)[0]));return
-                photo.update(data);photo["category_id"]=update["category_id"];self.organizer_photos[int(photo["id"])]=photo;dialog.accept();self.render_organizer();self.render_organizer_tray();QMessageBox.information(self,"Photograph saved","The photograph was updated on the site.")
+                photo.update(data);photo["category_id"]=update["category_id"];self.organizer_photos[int(photo["id"])]=photo;original=dict(data);self.render_organizer();self.render_organizer_tray()
+                if advance and position+1<len(visible_ids):position+=1;load_current()
+                else:QMessageBox.information(dialog,"Photograph saved","The photograph was updated on the site.")
             self.run(lambda:self.api.batch([update]),saved)
-        enrich.clicked.connect(enrich_one);save.clicked.connect(save_one);cancel.clicked.connect(dialog.reject);dialog.exec()
+        dialog.dirty_check=lambda:values()!=original;previous.clicked.connect(lambda:move(-1));next_photo.clicked.connect(lambda:move(1));open_full.clicked.connect(open_original);restore.clicked.connect(load_current);enrich.clicked.connect(enrich_one);save.clicked.connect(lambda:save_one(False));save_next.clicked.connect(lambda:save_one(True));cancel.clicked.connect(dialog.reject);load_current();dialog.exec()
     def organizer_membership(self,photo,kind):
         return photo.get("category_ids",[]) if kind=="category" else photo.get("album_ids",[])
     def render_organizer(self,*_):
