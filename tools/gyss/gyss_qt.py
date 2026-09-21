@@ -126,6 +126,29 @@ class OrganizerList(QListWidget):
             self.photosDropped.emit([item.data(Qt.UserRole)["id"] for item in source.selectedItems()]);event.acceptProposedAction();return
         super().dropEvent(event)
 
+class GramReorderList(QListWidget):
+    def dragEnterEvent(self,event):
+        if event.source() is self:event.acceptProposedAction()
+        else:super().dragEnterEvent(event)
+    def dragMoveEvent(self,event):
+        if event.source() is self:event.acceptProposedAction()
+        else:super().dragMoveEvent(event)
+    def move_selected_to(self,target_row):
+        rows=sorted({self.row(item) for item in self.selectedItems()})
+        if not rows:return False
+        target_row=max(0,min(int(target_row),self.count()));items=[]
+        for row in reversed(rows):items.append((row,self.takeItem(row)))
+        items=[item for _row,item in reversed(items)];target_row-=sum(row<target_row for row in rows);target_row=max(0,min(target_row,self.count()))
+        for offset,item in enumerate(items):self.insertItem(target_row+offset,item);item.setSelected(True)
+        self.setCurrentItem(items[0]);return True
+    def dropEvent(self,event):
+        if event.source() is self:
+            point=event.position().toPoint();index=self.indexAt(point);target=index.row() if index.isValid() else self.count()
+            if self.move_selected_to(target):event.acceptProposedAction()
+            else:event.ignore()
+            return
+        super().dropEvent(event)
+
 class Window(QMainWindow):
     def __init__(self):
         super().__init__(); self.setWindowTitle(f"GET YOUR SHIT SORTED — {BUILD_VERSION}"); self.setWindowIcon(QIcon(icon_path())); self.resize(1420,900); self.setMinimumSize(1060,700)
@@ -167,7 +190,7 @@ class Window(QMainWindow):
         l.addWidget(lbl("ALL PHOTOGRAPHS · drag selected photographs up to add them","Eyebrow"));filters=QHBoxLayout();self.organizer_limit=QSpinBox();self.organizer_limit.setRange(0,100000);self.organizer_limit.setSpecialValueText("All");self.organizer_limit.setValue(0);self.organizer_from=QLineEdit();self.organizer_from.setPlaceholderText("From · YYYY-MM-DD");self.organizer_from.setMaximumWidth(170);self.organizer_to=QLineEdit();self.organizer_to.setPlaceholderText("To · YYYY-MM-DD");self.organizer_to.setMaximumWidth(170);apply_filters=QPushButton("APPLY WORKING SET");apply_filters.clicked.connect(self.organizer_apply_filters);filters.addWidget(lbl("Maximum","Muted"));filters.addWidget(self.organizer_limit);filters.addWidget(self.organizer_from);filters.addWidget(self.organizer_to);filters.addWidget(apply_filters);filters.addStretch();l.addLayout(filters)
         traybar=QHBoxLayout();self.organizer_search=QLineEdit();self.organizer_search.setPlaceholderText("Search this working set");self.organizer_search.textChanged.connect(self.organizer_search_changed);traybar.addWidget(self.organizer_search,1);self.organizer_tray_count=lbl("","Muted");traybar.addWidget(self.organizer_tray_count);self.organizer_tray_prev=QPushButton("◀");self.organizer_tray_prev.clicked.connect(lambda:self.organizer_turn_page("tray",-1));traybar.addWidget(self.organizer_tray_prev);self.organizer_tray_next=QPushButton("▶");self.organizer_tray_next.clicked.connect(lambda:self.organizer_turn_page("tray",1));traybar.addWidget(self.organizer_tray_next);add=QPushButton("ADD SELECTED TO THIS CONTAINER");add.clicked.connect(self.organizer_add_selected);traybar.addWidget(add);l.addLayout(traybar);self.organizer_tray=OrganizerList();self.organizer_tray.setFlow(QListWidget.LeftToRight);self.organizer_tray.setWrapping(False);self.organizer_tray.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel);self.organizer_tray.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded);self.organizer_tray.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff);self.organizer_tray.setIconSize(QSize(105,78));self.organizer_tray.setGridSize(QSize(125,118));self.organizer_tray.setFixedHeight(145);self.organizer_tray.photosDropped.connect(self.organizer_remove_ids);self.organizer_tray.itemDoubleClicked.connect(lambda _item:self.organizer_add_selected());l.addWidget(self.organizer_tray);return p
     def grid_page(self):
-        p,l=self.page("GRAMOFSMACK grid","Drag posts into order. Select two or more singles to make a carousel. Nothing changes online until you confirm."); self.gram=QListWidget(); self.gram.setViewMode(QListWidget.IconMode); self.gram.setMovement(QListView.Snap); self.gram.setIconSize(QSize(170,170)); self.gram.setGridSize(QSize(195,215)); self.gram.setResizeMode(QListWidget.Adjust); self.gram.setDragEnabled(True); self.gram.setAcceptDrops(True); self.gram.setDropIndicatorShown(True); self.gram.setDefaultDropAction(Qt.MoveAction); self.gram.setDragDropOverwriteMode(False); self.gram.setDragDropMode(QAbstractItemView.InternalMove); self.gram.setSelectionMode(QAbstractItemView.ExtendedSelection); l.addWidget(self.gram,1); self.gram_empty=lbl("Choose a site to load its published posts.","Muted"); l.addWidget(self.gram_empty); r=QHBoxLayout(); refresh=QPushButton("REFRESH GRID"); refresh.clicked.connect(self.load_grid); r.addWidget(refresh); r.addStretch(); car=QPushButton("MAKE SELECTED A CAROUSEL"); car.clicked.connect(self.carousel); r.addWidget(car); order=QPushButton("PUBLISH ORDER"); order.setObjectName("Primary"); order.clicked.connect(self.push_grid); r.addWidget(order); l.addLayout(r); return p
+        p,l=self.page("GRAMOFSMACK grid","Drag posts into order. Select two or more singles to make a carousel. Nothing changes online until you confirm."); self.gram=GramReorderList(); self.gram.setViewMode(QListWidget.IconMode); self.gram.setMovement(QListView.Static); self.gram.setIconSize(QSize(170,170)); self.gram.setGridSize(QSize(195,215)); self.gram.setResizeMode(QListWidget.Adjust); self.gram.setDragEnabled(True); self.gram.setAcceptDrops(True); self.gram.setDropIndicatorShown(True); self.gram.setDefaultDropAction(Qt.MoveAction); self.gram.setDragDropOverwriteMode(False); self.gram.setDragDropMode(QAbstractItemView.DragDrop); self.gram.setSelectionMode(QAbstractItemView.ExtendedSelection); l.addWidget(self.gram,1); self.gram_empty=lbl("Choose a site to load its published posts.","Muted"); l.addWidget(self.gram_empty); r=QHBoxLayout(); refresh=QPushButton("REFRESH GRID"); refresh.clicked.connect(self.load_grid); r.addWidget(refresh); earlier=QPushButton("MOVE EARLIER");earlier.clicked.connect(lambda:self.move_gram_selected(-1));r.addWidget(earlier);later=QPushButton("MOVE LATER");later.clicked.connect(lambda:self.move_gram_selected(1));r.addWidget(later); r.addStretch(); car=QPushButton("MAKE SELECTED A CAROUSEL"); car.clicked.connect(self.carousel); r.addWidget(car); order=QPushButton("PUBLISH ORDER"); order.setObjectName("Primary"); order.clicked.connect(self.push_grid); r.addWidget(order); l.addLayout(r); return p
     def images_page(self):
         p,l=self.page("Find and fill missing details","1. Choose the missing fields to find.  2. Scan the site.  3. Check photographs.  4. Enrich the checked photographs."); o,ol=card("Show photographs missing…","Choose one or more fields. Results must be missing every field you check."); r=QHBoxLayout(); self.fields={}
         for key,text,on in (("title","Title",1),("caption","Caption",1),("alt","ALT text",1),("tags","Tags",1),("colors","AI colours",1),("color_mode","Colour/B&W",1),("ocr","OCR",0),("content_warning","Safety review",0)):
@@ -672,6 +695,12 @@ class Window(QMainWindow):
         if not ids:QMessageBox.information(self,"No posts to order","Refresh Grid. If it remains empty, this site has no published GRAMOFSMACK posts to order.");return
         if ids and time.time()-self.gram_loaded>300:QMessageBox.warning(self,"Refresh before publishing","This grid is more than five minutes old. Refresh it so newer online changes are not overwritten.");return
         if ids and QMessageBox.question(self,"Publish grid order?",f"Write this order for {len(ids)} posts?",QMessageBox.Yes|QMessageBox.No,QMessageBox.No)==QMessageBox.Yes:self.run(lambda:self.api.gram_order(ids),lambda _:QMessageBox.information(self,"Grid published","The GRAMOFSMACK order is updated."))
+    def move_gram_selected(self,direction):
+        rows=sorted({self.gram.row(item) for item in self.gram.selectedItems()})
+        if not rows:return
+        if direction<0:
+            if rows[0]>0:self.gram.move_selected_to(rows[0]-1)
+        elif rows[-1]<self.gram.count()-1:self.gram.move_selected_to(rows[-1]+2)
     def carousel(self):
         ids=[x.data(Qt.UserRole)["id"] for x in self.gram.selectedItems()]
         if len(ids)<2:QMessageBox.information(self,"Select more posts","Select at least two single posts. The first selected becomes the cover.");return
