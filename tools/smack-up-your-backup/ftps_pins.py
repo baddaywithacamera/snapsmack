@@ -100,6 +100,19 @@ class PinStore:
             json.dump(d, f, indent=2, sort_keys=True)
         os.replace(tmp, self.path)
 
+    def forget(self, host: str, port: int) -> bool:
+        """Forget one endpoint. Returns True when a saved pin was removed."""
+        d = self._load()
+        key = f"{host}:{port}"
+        if key not in d:
+            return False
+        del d[key]
+        tmp = self.path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(d, f, indent=2, sort_keys=True)
+        os.replace(tmp, self.path)
+        return True
+
 
 def publicly_valid(host: str, port: int, timeout: int = 15) -> Tuple[bool, str]:
     """Is the certificate this server presents valid for `host` under the public

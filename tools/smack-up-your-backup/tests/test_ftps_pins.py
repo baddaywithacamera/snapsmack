@@ -11,6 +11,7 @@ import os
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -73,6 +74,29 @@ class FtpsPinTests(unittest.TestCase):
         ftps_pins.accept_change("host.example", 21, new_fp, self.store)
         self.assertEqual(self.store.get("host.example", 21), new_fp)
 
+    def test_operator_can_forget_one_endpoint(self):
+        ftps_pins.check_connection(_Ftp(b"cert-A"), "host.example", 21, self.store)
+        ftps_pins.check_connection(_Ftp(b"cert-B"), "other.example", 21, self.store)
+        self.assertTrue(self.store.forget("host.example", 21))
+        self.assertIsNone(self.store.get("host.example", 21))
+        self.assertIsNotNone(self.store.get("other.example", 21))
+        self.assertFalse(self.store.forget("host.example", 21))
+
+    def test_qt_offers_accept_retry_and_forget_actions(self):
+        qt_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "suyb_qt.py")
+        source = Path(qt_path).read_text(encoding="utf-8")
+        self.assertIn("ACCEPT NEW CERTIFICATE AND RETRY", source)
+        self.assertIn("Forget FTPS certificate", source)
+        self.assertIn("ftps_pins.accept_change(", source)
+        self.assertIn("store.forget(host, port)", source)
+
+    def test_engines_preserve_changed_certificate_details_for_the_ui(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        for filename in ("backup_engine.py", "restore_engine.py"):
+            source = Path(root, filename).read_text(encoding="utf-8")
+            self.assertIn('isinstance(e, ftps_pins.CertificateChanged)', source)
+            self.assertIn('result["certificate_change"]', source)
+
     def test_pins_are_per_host_and_port(self):
         ftps_pins.check_connection(_Ftp(b"cert-A"), "host.example", 21, self.store)
         ftps_pins.check_connection(_Ftp(b"cert-Z"), "host.example", 990, self.store)   # no alarm: different port
@@ -80,8 +104,8 @@ class FtpsPinTests(unittest.TestCase):
 
     def test_client_checks_before_sending_the_password(self):
         """ftp_client.connect(): the pin check runs after auth() and BEFORE login()."""
-        src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ftp_client.py"),
-                   encoding="utf-8").read()
+        src = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                   "ftp_client.py").read_text(encoding="utf-8")
         i_auth = src.index("ftp.auth()")
         i_check = src.index("ftps_pins.check_connection(")
         i_login = src.index("ftp.login(self.user, self.password)")

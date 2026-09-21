@@ -19,6 +19,15 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.45 — 2026-09-21
+
+- **A changed FTPS certificate has a complete desktop workflow.** Backup and
+  restore now show why the certificate was refused plus the remembered and new
+  SHA-256 fingerprints. **ACCEPT NEW CERTIFICATE AND RETRY** records the
+  operator's decision and retries the operation. The Connection page can
+  deliberately forget the selected site's saved FTPS certificate without
+  editing JSON beside the executable.
+
 ## 0.7.44 — 2026-09-18
 
 ### Added — security (SECAUDIT 004 / 037, the "scheduled" item)
