@@ -1,6 +1,6 @@
 # GET YOUR SHIT SORTED
 
-GYSS is the local-first SnapSmack photo organizer. Version 0.7.31 uses native Qt
+GYSS is the local-first SnapSmack photo organizer. Version 0.7.32 uses native Qt
 on Windows and shares profiles, protected credentials, and per-site libraries
 with the rest of the desktop family.
 
