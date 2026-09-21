@@ -321,7 +321,7 @@ on first connect, record the server's presented certificate fingerprint next to 
 executable; on every later connect, proceed silently if it matches and hard-warn if
 it changes. That gives real man-in-the-middle detection **without ever requiring a
 CA-signed certificate**, which is exactly the protection the cheap-host reality needs.
-Scheduled as a future SUYB enhancement; no code change in this release.
+~~Scheduled as a future SUYB enhancement; no code change in this release.~~ **Built 2026-09-20 (SUYB 0.7.44, `ftps_pins.py`)** with one addition the plan above lacked: on a changed certificate SUYB makes one extra handshake with full verification ON; success means a public-CA renewal (Let's Encrypt / cPanel AutoSSL rotate every 60–90 days, keys included) and the new cert is remembered silently; failure means a self-signed swap or a machine in the middle and the connection stops before the password is sent. Without that step, naive pinning would have alarmed on every site every couple of months.
 
 ## 8. Verification
 
