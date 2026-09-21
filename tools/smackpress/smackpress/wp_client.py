@@ -44,6 +44,11 @@ def _headers() -> dict:
         "Authorization": f"Basic {creds}",
         "Accept": "application/json",
         "Content-Type": "application/json",
+        # Python's default urllib signature is blocked by common Cloudflare
+        # rules (Error 1010). Identify the application explicitly, just as
+        # the image downloader does, so protected WordPress sites remain
+        # reachable without pretending to be a web browser.
+        "User-Agent": "SmackPress/0.3 (+https://snapsmack.ca)",
     }
 
 
