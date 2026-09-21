@@ -11,6 +11,7 @@
 # SnapSmack Changelog
 ## 0.7.733D — 2026-09-20 — Lighter INSTANT CAMERA and clearer GYSS ordering
 
+- **GYSS desktop 0.7.30 fixes the actual GRAMOFSMACK mouse path.** The grid now tracks a tile press, owns the drag gesture, and moves the selected tile or tiles when the mouse is released over a destination. This bypasses Qt's failed built-in icon-grid drag. The vague `Ready to verify` profile label is now `Site selected`. (`tools/gyss/`.)
 - **INSTANT CAMERA no longer rebuilds the entire archive for each lazy-load request.** The visible grid is limited and offset in MariaDB, so the first page and each appended page fetch only their own 120 posts. The Organized Mayhem backdrop is capped at 30 decorative thumbnails instead of loading a second 120-image feed immediately. (`skins/instant-camera/landing.php`, `skins/instant-camera/skin-profile.php`.)
 - **GYSS desktop 0.7.29 owns GRAMOFSMACK reordering instead of delegating it to Qt.** A grid drop explicitly removes the selected tile or tiles and inserts them at the target position; Move Earlier and Move Later provide a deterministic fallback using the same ordering routine. (`tools/gyss/`.)
 - **GYSS desktop 0.7.28 makes GRAMOFSMACK grid ordering draggable.** The icon grid now explicitly enables move drags, accepts internal drops, displays the drop target, snaps moved posts into the grid and preserves the resulting widget order for Publish Order. (`tools/gyss/`.)
