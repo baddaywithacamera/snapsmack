@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 import backup_engine
 from checkpoint import BackupCheckpoint
 import config as config_module
+import ftps_pins
 import profile_manager
 import restore_engine
 from _version import BUILD_VERSION
@@ -318,6 +319,8 @@ class SuybWindow(QMainWindow):
             col.addWidget(_label(label, "Muted")); col.addWidget(widget)
         buttons = QHBoxLayout(); buttons.addStretch(1)
         browse = QPushButton("Choose folder…"); browse.clicked.connect(self._choose_folder); buttons.addWidget(browse)
+        forget_cert = QPushButton("Forget FTPS certificate")
+        forget_cert.clicked.connect(self._forget_certificate); buttons.addWidget(forget_cert)
         save = QPushButton("Save connection"); save.setObjectName("Primary"); save.clicked.connect(self._save_profile); buttons.addWidget(save); col.addLayout(buttons)
         layout.addWidget(card); layout.addStretch(1); return page
 
@@ -611,12 +614,12 @@ class SuybWindow(QMainWindow):
         if self.tray_pause_action:
             self.tray_pause_action.setEnabled(False)
             self.tray_pause_action.setText("Pause backup")
+        self.run_btn.setEnabled(True); self.choose_sites_btn.setEnabled(True)
+        ok = bool((result or {}).get("success")); self.progress.setValue(100 if ok else self.progress.value())
         if self.tray:
             self.tray.setToolTip(
                 "SMACK UP YOUR BACKUP — backup complete" if ok
                 else "SMACK UP YOUR BACKUP — backup needs attention")
-        self.run_btn.setEnabled(True); self.choose_sites_btn.setEnabled(True)
-        ok = bool((result or {}).get("success")); self.progress.setValue(100 if ok else self.progress.value())
         self.progress_text.setText("Backup completed and verified." if ok else "Backup needs attention. Details are above.")
         self._refresh_stats()
         for item in (result or {}).get("profiles", []):
@@ -630,6 +633,8 @@ class SuybWindow(QMainWindow):
             if refreshed: self.current_profile = refreshed
         self._update_backup_selection()
         if not ok:
+            if self._offer_certificate_change(result, self._run_backup):
+                return
             errors = "\n".join((result or {}).get("errors", [])) or "The backup did not complete."
             if self.isVisible():
                 QMessageBox.warning(self, "Backup needs attention", errors[:1800])
@@ -663,8 +668,66 @@ class SuybWindow(QMainWindow):
         if (result or {}).get("success"):
             QMessageBox.information(self, "Restore complete", "The site was restored and the operation completed successfully.")
         else:
+            if self._offer_certificate_change(result, self._run_restore):
+                return
             errors = "\n".join((result or {}).get("errors", [])) or "The restore did not complete."
             QMessageBox.warning(self, "Restore needs attention", errors[:1800])
+
+    @staticmethod
+    def _certificate_change(result):
+        direct = (result or {}).get("certificate_change")
+        if direct:
+            return direct
+        for item in (result or {}).get("profiles", []):
+            if item.get("certificate_change"):
+                return item["certificate_change"]
+        return None
+
+    def _offer_certificate_change(self, result, retry):
+        change = self._certificate_change(result)
+        if not change:
+            return False
+        box = QMessageBox(self)
+        box.setWindowTitle("FTPS certificate changed")
+        box.setIcon(QMessageBox.Warning)
+        box.setText(f"The FTPS certificate for {change['host']} changed.")
+        box.setInformativeText(
+            "SUYB stopped before sending the password. Accept this only if you "
+            "changed the server certificate or confirmed the change with your host.\n\n"
+            f"Why it stopped: {change['why']}\n\n"
+            f"Remembered:\n{change['old_fp']}\n\n"
+            f"Offered now:\n{change['new_fp']}"
+        )
+        accept = box.addButton("ACCEPT NEW CERTIFICATE AND RETRY", QMessageBox.AcceptRole)
+        cancel = box.addButton(QMessageBox.Cancel)
+        box.setDefaultButton(cancel)
+        box.exec()
+        if box.clickedButton() is not accept:
+            return True
+        ftps_pins.accept_change(
+            change["host"], int(change.get("port") or 21), change["new_fp"])
+        QTimer.singleShot(0, retry)
+        return True
+
+    def _forget_certificate(self):
+        profile = self.current_profile or {}
+        host = str(profile.get("ftp_host", "")).strip()
+        port = int(profile.get("ftp_port") or 21)
+        if not host:
+            QMessageBox.information(self, "No FTPS server", "The selected site has no FTPS server configured.")
+            return
+        store = ftps_pins.PinStore()
+        if not store.get(host, port):
+            QMessageBox.information(self, "No saved certificate", f"There is no saved FTPS certificate for {host}:{port}.")
+            return
+        if QMessageBox.question(
+                self, "Forget FTPS certificate?",
+                f"Forget the saved FTPS certificate for {host}:{port}?\n\n"
+                "The next connection will remember whatever certificate that server presents.",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+            return
+        store.forget(host, port)
+        QMessageBox.information(self, "Certificate forgotten", f"The saved FTPS certificate for {host}:{port} was removed.")
 
     def _refresh_backups(self):
         if not hasattr(self, "backup_list"): return

@@ -859,6 +859,18 @@ class BackupEngine:
                     ftp.on_log = self._log
                 ftp.connect()
             except Exception as e:
+                try:
+                    import ftps_pins
+                    if isinstance(e, ftps_pins.CertificateChanged):
+                        result["certificate_change"] = {
+                            "host": e.host,
+                            "port": int(self.profile.get("ftp_port") or 21),
+                            "old_fp": e.old_fp,
+                            "new_fp": e.new_fp,
+                            "why": e.why,
+                        }
+                except ImportError:
+                    pass
                 result["errors"].append(f"Connection failed: {e}")
                 return result
         else:
