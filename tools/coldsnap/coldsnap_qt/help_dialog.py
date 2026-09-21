@@ -149,9 +149,12 @@ TOPICS = [
 
 
 class HelpDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, topics=None, title="COLD SNAP — Help"):
+        """`topics`/`title` let a tool that borrows COLD SNAP's editor (SMACKPRESS)
+        show its own help in the same dialog. Defaults are COLD SNAP's own."""
         super().__init__(parent)
-        self.setWindowTitle("COLD SNAP — Help")
+        self.topics = list(topics) if topics is not None else TOPICS
+        self.setWindowTitle(title)
         self.resize(760, 560)
         self.setStyleSheet(theme.stylesheet())
 
@@ -176,9 +179,9 @@ class HelpDialog(QDialog):
         body.addWidget(self.body, 1)
         root.addLayout(body, 1)
 
-        for title, _text in TOPICS:
+        for title, _text in self.topics:
             self.list.addItem(QListWidgetItem(title))
-        if TOPICS:
+        if self.topics:
             self.list.setCurrentRow(0)
 
     def _show_current(self, row):
@@ -189,8 +192,8 @@ class HelpDialog(QDialog):
     def _visible_topics(self):
         query = self.search.text().strip().lower()
         if not query:
-            return TOPICS
-        return [(t, x) for t, x in TOPICS if query in t.lower() or query in x.lower()]
+            return self.topics
+        return [(t, x) for t, x in self.topics if query in t.lower() or query in x.lower()]
 
     def _filter(self):
         visible = self._visible_topics()

@@ -15,7 +15,7 @@ import urllib.request
 import urllib.parse
 import urllib.error
 
-import config
+from smackpress import config   # explicit: tools/coldsnap on sys.path also has a `config`
 
 
 class _RefuseRedirect(urllib.request.HTTPRedirectHandler):
