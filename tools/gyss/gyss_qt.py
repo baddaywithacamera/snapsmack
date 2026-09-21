@@ -110,6 +110,22 @@ class API:
 class Worker(QObject):
     done=Signal(object); failed=Signal(str); progress=Signal(str,int,int)
 
+class OrganizerList(QListWidget):
+    photosDropped=Signal(list)
+    def __init__(self):
+        super().__init__();self.setViewMode(QListWidget.IconMode);self.setResizeMode(QListWidget.Adjust);self.setSelectionMode(QAbstractItemView.ExtendedSelection);self.setDragEnabled(True);self.setAcceptDrops(True)
+    def dragEnterEvent(self,event):
+        if isinstance(event.source(),QListWidget) and event.source() is not self:event.acceptProposedAction()
+        else:super().dragEnterEvent(event)
+    def dragMoveEvent(self,event):
+        if isinstance(event.source(),QListWidget) and event.source() is not self:event.acceptProposedAction()
+        else:super().dragMoveEvent(event)
+    def dropEvent(self,event):
+        source=event.source()
+        if isinstance(source,QListWidget) and source is not self:
+            self.photosDropped.emit([item.data(Qt.UserRole)["id"] for item in source.selectedItems()]);event.acceptProposedAction();return
+        super().dropEvent(event)
+
 class Window(QMainWindow):
     def __init__(self):
         super().__init__(); self.setWindowTitle(f"GET YOUR SHIT SORTED — {BUILD_VERSION}"); self.setWindowIcon(QIcon(icon_path())); self.resize(1420,900); self.setMinimumSize(1060,700)
@@ -130,7 +146,7 @@ class Window(QMainWindow):
     def build(self):
         root=QWidget(); sh=QHBoxLayout(root); sh.setContentsMargins(0,0,0,0); sh.setSpacing(0); side=QFrame(); side.setObjectName("Sidebar"); side.setFixedWidth(230); sl=QVBoxLayout(side); sl.setContentsMargins(18,24,18,18)
         sl.addWidget(lbl("SNAPSMACK","Eyebrow")); sl.addWidget(lbl("GET YOUR SHIT\nSORTED","Title")); sl.addSpacing(25); self.pages=QStackedWidget(); self.nav=[]
-        specs=(("Library","Choose and sync",self.library_page),("Sort","Arrange photographs",self.sort_page),("Grid","GRAMOFSMACK",self.grid_page),("Images","Fill missing details",self.images_page),("Sites","Connections",self.sites_page))
+        specs=(("Library","Choose and sync",self.library_page),("Photos","Edit details",self.sort_page),("Organize","Categories & albums",self.organizer_page),("Grid","GRAMOFSMACK",self.grid_page),("Images","Fill missing details",self.images_page),("Sites","Connections",self.sites_page))
         for i,(a,b,f) in enumerate(specs):
             n=QPushButton(a+"\n"+b); n.setObjectName("Nav"); n.setCheckable(True); n.clicked.connect(lambda _=False,x=i:self.show_page(x)); sl.addWidget(n); self.nav.append(n); self.pages.addWidget(f())
         self.nav[0].setChecked(True); sl.addStretch(); sl.addWidget(lbl(f"BUILD {BUILD_VERSION}\nLocal-first · deliberate publishing","Muted")); sh.addWidget(side)
@@ -143,6 +159,12 @@ class Window(QMainWindow):
     def sort_page(self):
         p,l=self.page("Sort photographs","Drag to reorder. Select photographs to enrich missing details together."); self.sort_intro=l.itemAt(1).widget(); r=QHBoxLayout(); self.photo_list=QListWidget(); self.photo_list.setViewMode(QListWidget.IconMode); self.photo_list.setIconSize(QSize(150,110)); self.photo_list.setGridSize(QSize(180,165)); self.photo_list.setResizeMode(QListWidget.Adjust); self.photo_list.setDragDropMode(QAbstractItemView.InternalMove); self.photo_list.setSelectionMode(QAbstractItemView.ExtendedSelection); self.photo_list.currentItemChanged.connect(self.edit_photo); self.photo_list.itemSelectionChanged.connect(self.update_sort_enrich_label); r.addWidget(self.photo_list,1)
         e,el=card("Selected photograph"); form=QFormLayout(); self.title_edit=QLineEdit(); self.desc_edit=QTextEdit(); self.desc_edit.setMaximumHeight(90); self.alt_edit=QTextEdit(); self.alt_edit.setMaximumHeight(75); self.tags_edit=QLineEdit(); self.tags_edit.setPlaceholderText("#family #portrait"); self.colors_edit=QLineEdit(); self.colors_edit.setPlaceholderText("#RRGGBB #RRGGBB (up to 3)"); choose_color=QPushButton("CHOOSE COLOUR"); choose_color.clicked.connect(self.choose_color); self.edit_cats=QListWidget(); self.edit_cats.setSelectionMode(QAbstractItemView.MultiSelection); self.edit_cats.setMaximumHeight(92); self.edit_albums=QListWidget(); self.edit_albums.setSelectionMode(QAbstractItemView.MultiSelection); self.edit_albums.setMaximumHeight(92); self.colour=QComboBox(); self.colour.addItem("Not classified",""); self.colour.addItem("Colour","color"); self.colour.addItem("Black & white","bw"); self.orientation=QComboBox(); self.orientation.addItem("Landscape",0); self.orientation.addItem("Portrait",1); self.orientation.addItem("Square",2); form.addRow("Title",self.title_edit); form.addRow("Description",self.desc_edit); form.addRow("ALT text",self.alt_edit); form.addRow("Hashtags",self.tags_edit); form.addRow("Colours",self.colors_edit); form.addRow("",choose_color); form.addRow("Categories",self.edit_cats); form.addRow("Albums",self.edit_albums); form.addRow("Colour / B&W",self.colour); form.addRow("Orientation",self.orientation); el.addLayout(form); apply=QPushButton("APPLY DETAILS TO THIS PHOTO"); apply.clicked.connect(self.apply_edit); el.addWidget(apply); organize=QPushButton("ORGANIZE SELECTED PHOTOS"); organize.clicked.connect(self.apply_organization); el.addWidget(organize); self.sort_enrich=QPushButton("ENRICH THIS PHOTO"); self.sort_enrich.clicked.connect(self.enrich_sort_photo); el.addWidget(self.sort_enrich); self.sort_stop=QPushButton("STOP AFTER THIS IMAGE"); self.sort_stop.setObjectName("Danger"); self.sort_stop.setEnabled(False); self.sort_stop.clicked.connect(lambda:setattr(self,"cancel",True)); el.addWidget(self.sort_stop); self.sort_progress=QProgressBar(); self.sort_progress.hide(); el.addWidget(self.sort_progress); edit_scroll=QScrollArea(); edit_scroll.setWidgetResizable(True); edit_scroll.setFixedWidth(380); edit_scroll.setWidget(e); r.addWidget(edit_scroll); l.addLayout(r,1); br=QHBoxLayout(); self.save_session_button=QPushButton("SAVE SESSION"); self.save_session_button.clicked.connect(self.save_session); br.addWidget(self.save_session_button); self.detect_orientation_button=QPushButton("MATCH ORIENTATION TO PHOTO SHAPE"); self.detect_orientation_button.clicked.connect(self.match_orientations); br.addWidget(self.detect_orientation_button); br.addStretch(); push=QPushButton("PUBLISH CHANGES"); push.setObjectName("Primary"); push.clicked.connect(self.push); br.addWidget(push); l.addLayout(br); return p
+    def organizer_page(self):
+        p,l=self.page("Organize categories and albums","Open a category or album, then drag photographs between the library filmstrip and the large working area.")
+        body=QHBoxLayout(); left,left_l=card("Categories & albums","Choose the container you are working on.");left.setFixedWidth(260);self.organizer_containers=QListWidget();self.organizer_containers.currentItemChanged.connect(self.render_organizer);left_l.addWidget(self.organizer_containers,1);body.addWidget(left)
+        work=QVBoxLayout();self.organizer_heading=lbl("Choose a category or album","Title");self.organizer_count=lbl("","Muted");work.addWidget(self.organizer_heading);work.addWidget(self.organizer_count);self.organizer_members=OrganizerList();self.organizer_members.setIconSize(QSize(150,110));self.organizer_members.setGridSize(QSize(175,155));self.organizer_members.photosDropped.connect(self.organizer_add_ids);self.organizer_members.itemDoubleClicked.connect(lambda _item:self.organizer_remove_selected());work.addWidget(self.organizer_members,1)
+        actions=QHBoxLayout();remove=QPushButton("REMOVE SELECTED FROM THIS CONTAINER");remove.clicked.connect(self.organizer_remove_selected);actions.addWidget(remove);actions.addStretch();self.organizer_publish_button=QPushButton("PUBLISH ORGANIZATION");self.organizer_publish_button.setObjectName("Primary");self.organizer_publish_button.clicked.connect(self.publish_organization);actions.addWidget(self.organizer_publish_button);work.addLayout(actions);body.addLayout(work,1);l.addLayout(body,1)
+        l.addWidget(lbl("ALL PHOTOGRAPHS · drag selected photographs up to add them","Eyebrow"));traybar=QHBoxLayout();self.organizer_search=QLineEdit();self.organizer_search.setPlaceholderText("Search the filmstrip");self.organizer_search.textChanged.connect(self.render_organizer_tray);traybar.addWidget(self.organizer_search,1);add=QPushButton("ADD SELECTED TO THIS CONTAINER");add.clicked.connect(self.organizer_add_selected);traybar.addWidget(add);l.addLayout(traybar);self.organizer_tray=OrganizerList();self.organizer_tray.setIconSize(QSize(105,78));self.organizer_tray.setGridSize(QSize(125,118));self.organizer_tray.setFixedHeight(165);self.organizer_tray.photosDropped.connect(self.organizer_remove_ids);self.organizer_tray.itemDoubleClicked.connect(lambda _item:self.organizer_add_selected());l.addWidget(self.organizer_tray);return p
     def grid_page(self):
         p,l=self.page("GRAMOFSMACK grid","Drag posts into order. Select two or more singles to make a carousel. Nothing changes online until you confirm."); self.gram=QListWidget(); self.gram.setViewMode(QListWidget.IconMode); self.gram.setIconSize(QSize(170,170)); self.gram.setGridSize(QSize(195,215)); self.gram.setResizeMode(QListWidget.Adjust); self.gram.setDragDropMode(QAbstractItemView.InternalMove); self.gram.setSelectionMode(QAbstractItemView.ExtendedSelection); l.addWidget(self.gram,1); self.gram_empty=lbl("Choose a site to load its published posts.","Muted"); l.addWidget(self.gram_empty); r=QHBoxLayout(); refresh=QPushButton("REFRESH GRID"); refresh.clicked.connect(self.load_grid); r.addWidget(refresh); r.addStretch(); car=QPushButton("MAKE SELECTED A CAROUSEL"); car.clicked.connect(self.carousel); r.addWidget(car); order=QPushButton("PUBLISH ORDER"); order.setObjectName("Primary"); order.clicked.connect(self.push_grid); r.addWidget(order); l.addLayout(r); return p
     def images_page(self):
@@ -160,13 +182,14 @@ class Window(QMainWindow):
     def show_page(self,n):
         self.pages.setCurrentIndex(n)
         for i,b in enumerate(self.nav):b.setChecked(i==n)
-        if n==2 and self.api and self.gram_site!=self.profile["site_url"] and not self.busy:
+        if n==3 and self.api and self.gram_site!=self.profile["site_url"] and not self.busy:
             self.load_grid()
         # Sync saves the library on disk. Opening Sort must actually load that
         # library; an empty in-memory session is not an empty photo collection.
         if n==1 and self.profile and not self.photo_list.count():
             index,_=self.local()
             if index.get("images"):self.browse_local()
+        if n==2 and self.profile:self.load_organizer()
     def show_help(self):
         QMessageBox.information(self,"GYSS help",
             "SYNC LIBRARY FROM SITE\nDownloads the complete catalogue and its thumbnails to this computer. Run it once, then again whenever the site changes.\n\n"
@@ -224,11 +247,12 @@ class Window(QMainWindow):
             self.configure_mode()
             self.cat.setCurrentIndex(0);self.alb.setCurrentIndex(0)
             if self.pages.currentIndex()==1 and self.profile:self.show_page(1)
-            if self.pages.currentIndex()==2 and self.api:self.load_grid()
+            if self.pages.currentIndex()==2:self.load_organizer()
+            if self.pages.currentIndex()==3 and self.api:self.load_grid()
     def configure_mode(self):
         gram=self.mode=="carousel"
         self.nav[1].setText(("Photos\nEdit details" if gram else "Sort\nArrange photographs"))
-        self.nav[2].setVisible(gram or not self.mode)
+        self.nav[3].setVisible(gram or not self.mode)
         self.sort_intro.setText("Edit and enrich individual photographs here. GRAMOFSMACK orders published posts on Grid; photo order here does not change the feed." if gram else "Drag to reorder. Select photographs to enrich missing details together.")
         self.photo_list.setDragDropMode(QAbstractItemView.NoDragDrop if gram else QAbstractItemView.InternalMove)
         self.save_session_button.setVisible(not gram)
@@ -242,7 +266,7 @@ class Window(QMainWindow):
         self.configure_mode()
         if self.mode=="carousel":self.load_grid(show=True)
         elif self.mode=="photoblog":self.run(self.api.meta,lambda x:(setattr(self,"meta",x),self.fill_meta(),self.show_page(0)))
-        else:self.show_page(3)
+        else:self.show_page(4)
     def fill_meta(self):
         for box,rows in ((self.cat,self.meta.get("categories",[])),(self.alb,self.meta.get("albums",[]))):
             box.clear(); box.addItem("All",None)
@@ -251,6 +275,61 @@ class Window(QMainWindow):
             box.clear()
             for x in rows:
                 item=QListWidgetItem(str(x.get("name","")));item.setData(Qt.UserRole,x.get("id"));box.addItem(item)
+        self.fill_organizer_containers()
+    def fill_organizer_containers(self):
+        if not hasattr(self,"organizer_containers"):return
+        current=self.organizer_containers.currentItem();wanted=current.data(Qt.UserRole) if current else None;self.organizer_containers.clear()
+        for kind,title,key in (("category","CATEGORIES","categories"),("album","ALBUMS","albums")):
+            heading=QListWidgetItem(title);heading.setFlags(Qt.NoItemFlags);self.organizer_containers.addItem(heading)
+            for row in self.meta.get(key,[]):
+                item=QListWidgetItem("    "+str(row.get("name") or "Untitled"));item.setData(Qt.UserRole,(kind,int(row.get("id"))));item.setData(Qt.UserRole+1,row);self.organizer_containers.addItem(item)
+                if wanted==item.data(Qt.UserRole):self.organizer_containers.setCurrentItem(item)
+    def organizer_photo_item(self,photo):
+        item=QListWidgetItem(self.thumb(photo),photo.get("title") or photo.get("filename") or f"Photo {photo['id']}");item.setData(Qt.UserRole,photo);item.setToolTip(item.text());return item
+    def load_organizer(self):
+        index,meta=self.local();self.organizer_photos={int(row["id"]):dict(row) for row in index.get("images",{}).values()};self.meta={"categories":meta.get("categories",[]),"albums":meta.get("albums",[])};self.fill_meta();self.render_organizer_tray();self.render_organizer()
+    def organizer_membership(self,photo,kind):
+        return photo.get("category_ids",[]) if kind=="category" else photo.get("album_ids",[])
+    def render_organizer(self,*_):
+        if not hasattr(self,"organizer_members"):return
+        self.organizer_members.clear();current=self.organizer_containers.currentItem();data=current.data(Qt.UserRole) if current else None
+        if not data:self.organizer_heading.setText("Choose a category or album");self.organizer_count.clear();return
+        kind,container_id=data;row=current.data(Qt.UserRole+1) or {};name=str(row.get("name") or current.text().strip());members=[photo for photo in self.organizer_photos.values() if container_id in self.organizer_membership(photo,kind)]
+        self.organizer_heading.setText(("Category: " if kind=="category" else "Album: ")+name);self.organizer_count.setText(f"{len(members):,} photographs · drag photographs here to add them; double-click or use Remove to take them out")
+        for photo in sorted(members,key=lambda x:(x.get("sort_order",0),-int(x["id"]))):self.organizer_members.addItem(self.organizer_photo_item(photo))
+    def render_organizer_tray(self,*_):
+        if not hasattr(self,"organizer_tray"):return
+        query=self.organizer_search.text().strip().lower();self.organizer_tray.clear()
+        for photo in sorted(self.organizer_photos.values(),key=lambda x:-int(x["id"])):
+            hay=" ".join(str(photo.get(key) or "") for key in ("title","filename","description")).lower()
+            if not query or query in hay:self.organizer_tray.addItem(self.organizer_photo_item(photo))
+    def organizer_change_ids(self,ids,add):
+        current=self.organizer_containers.currentItem();data=current.data(Qt.UserRole) if current else None
+        if not data:return
+        kind,container_id=data;key="category_ids" if kind=="category" else "album_ids"
+        for photo_id in ids:
+            photo=self.organizer_photos.get(int(photo_id));
+            if not photo:continue
+            values={int(value) for value in photo.get(key,[])}
+            if add:values.add(container_id)
+            else:values.discard(container_id)
+            photo[key]=sorted(values);photo["organization_dirty"]=True
+        self.render_organizer();self.render_organizer_tray()
+    def organizer_add_ids(self,ids):self.organizer_change_ids(ids,True)
+    def organizer_remove_ids(self,ids):self.organizer_change_ids(ids,False)
+    def organizer_add_selected(self):self.organizer_add_ids([item.data(Qt.UserRole)["id"] for item in self.organizer_tray.selectedItems()])
+    def organizer_remove_selected(self):self.organizer_remove_ids([item.data(Qt.UserRole)["id"] for item in self.organizer_members.selectedItems()])
+    def publish_organization(self):
+        if not self.require_api():return
+        dirty=[photo for photo in self.organizer_photos.values() if photo.get("organization_dirty")]
+        if not dirty:QMessageBox.information(self,"Nothing to publish","No category or album memberships have changed.");return
+        if QMessageBox.question(self,"Publish organization?",f"Publish category and album changes for {len(dirty)} photograph(s)?",QMessageBox.Yes|QMessageBox.No,QMessageBox.No)!=QMessageBox.Yes:return
+        updates=[{"id":photo["id"],"category_ids":photo.get("category_ids",[]),"album_ids":photo.get("album_ids",[]),"expected_modified_at":photo.get("modified_at")} for photo in dirty]
+        def finished(result):
+            failures=result.get("failed",[]);conflicts=result.get("conflicts",[])
+            if failures or conflicts:QMessageBox.warning(self,"Some changes were not published",f"Applied: {result.get('applied',0)}\nConflicts: {len(conflicts)}\nFailed: {len(failures)}")
+            else:QMessageBox.information(self,"Organization published",f"Saved category and album memberships for {result.get('applied',0)} photograph(s).");self.sync_library()
+        self.run(lambda:self.api.batch(updates),finished)
     def paths(self):
         root=snap_home.site_dir(self.profile["site_url"]); return os.path.join(root,"index.json"),os.path.join(root,"meta.json")
     def local(self):
@@ -498,7 +577,7 @@ class Window(QMainWindow):
         except Exception as exc:QMessageBox.warning(self,"Cannot verify site mode",str(exc));return
         if self.mode=="carousel" and [self.photo_list.item(i).data(Qt.UserRole)["id"] for i in range(self.photo_list.count())]!=[p["id"] for p in self.photos]:
             QMessageBox.information(self,"Use Grid for feed order","GRAMOFSMACK orders published posts, not individual photographs. Open Grid to arrange the feed.")
-            self.show_page(2)
+            self.show_page(3)
             return
         dirty=[p for p in self.ordered() if p.get("dirty")]
         if not dirty:QMessageBox.information(self,"Nothing to publish","No photographs have changed.");return
@@ -554,7 +633,7 @@ class Window(QMainWindow):
         def loaded(response):
             if not self.profile or self.profile["site_url"]!=site_url:return
             self.mode="carousel";self.configure_mode();self.render_gram(response.get("posts",[]));self.gram_site=site_url
-            if show:self.show_page(2)
+            if show:self.show_page(3)
         self.run(self._gram_with_thumbs,loaded)
     def render_gram(self,posts):
         self.gram.clear();self.gram_loaded=time.time()
@@ -612,7 +691,7 @@ class Window(QMainWindow):
                 self.worker.progress.emit("Enriching images",n-1,len(ids)); result=self.api.enrich(i,prompt,fields,overwrite,force); self.save_enrichment_local(i,result,next((x for x in selected if x["id"]==i),None)); out.append(result)
             return out
         self.run(work,lambda r:(self.stop.setEnabled(False),QMessageBox.information(self,"Enrichment finished",f"Processed {len(r)} images."),self.scan()))
-    def new_site(self):self.site.setCurrentIndex(0);self.name.clear();self.url.clear();self.key.clear();self.show_page(4)
+    def new_site(self):self.site.setCurrentIndex(0);self.name.clear();self.url.clear();self.key.clear();self.show_page(5)
     def save_site(self):
         url=self.url.text().strip();key=self.key.text().strip();name=self.name.text().strip()
         if not url or not key:QMessageBox.warning(self,"Missing connection","Enter the site URL and GYSS API key.");return
