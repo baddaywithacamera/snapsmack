@@ -1,8 +1,9 @@
 """GET YOUR SHIT SORTED — native Qt, local-first photo organizer."""
 import json, os, re, sys, threading, time, urllib.parse, uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 import requests
-from PySide6.QtCore import QObject, Qt, Signal, QSize, QUrl
+from PySide6.QtCore import QObject, Qt, Signal, QSize, QUrl, QSettings, QTimer
 from PySide6.QtGui import QAction, QColor, QDesktopServices, QIcon, QKeySequence, QPixmap
 from PySide6.QtWidgets import (QApplication,QAbstractItemView,QCheckBox,QColorDialog,QComboBox,QFormLayout,QFrame,QHBoxLayout,QLabel,QLineEdit,QListWidget,QListWidgetItem,QMainWindow,QMessageBox,QProgressBar,QPushButton,QScrollArea,QSpinBox,QStackedWidget,QTextEdit,QVBoxLayout,QWidget)
 
@@ -112,10 +113,20 @@ class Worker(QObject):
 class Window(QMainWindow):
     def __init__(self):
         super().__init__(); self.setWindowTitle(f"GET YOUR SHIT SORTED — {BUILD_VERSION}"); self.setWindowIcon(QIcon(icon_path())); self.resize(1420,900); self.setMinimumSize(1060,700)
+        self.window_settings=QSettings("SnapSmack", "GYSS")
+        geometry=self.window_settings.value("window/normal_geometry")
+        if geometry:self.restoreGeometry(geometry)
         self.profiles=[]; self.profile=None; self.api=None; self.mode=""; self.meta={"categories":[],"albums":[]}; self.photos=[]; self.original={}; self.busy=False; self.cancel=False; self.gram_loaded=0
         self.worker=Worker(); self.worker.done.connect(self.done); self.worker.failed.connect(self.failed); self.worker.progress.connect(self.on_progress)
         self.build(); self.load_profiles()
         help_action=QAction("Help",self); help_action.setShortcut(QKeySequence.HelpContents); help_action.triggered.connect(self.show_help); self.addAction(help_action)
+        if self.window_settings.value("window/maximized", False, type=bool):
+            QTimer.singleShot(0, self.showMaximized)
+    def closeEvent(self,event):
+        self.window_settings.setValue("window/maximized",self.isMaximized())
+        if not self.isMaximized():self.window_settings.setValue("window/normal_geometry",self.saveGeometry())
+        self.window_settings.sync()
+        super().closeEvent(event)
     def build(self):
         root=QWidget(); sh=QHBoxLayout(root); sh.setContentsMargins(0,0,0,0); sh.setSpacing(0); side=QFrame(); side.setObjectName("Sidebar"); side.setFixedWidth(230); sl=QVBoxLayout(side); sl.setContentsMargins(18,24,18,18)
         sl.addWidget(lbl("SNAPSMACK","Eyebrow")); sl.addWidget(lbl("GET YOUR SHIT\nSORTED","Title")); sl.addSpacing(25); self.pages=QStackedWidget(); self.nav=[]
@@ -241,17 +252,29 @@ class Window(QMainWindow):
             for iid,x in resp.get("cat_map",[]):cats.setdefault(str(iid),[]).append(x)
             for iid,x in resp.get("album_map",[]):albs.setdefault(str(iid),[]).append(x)
             for iid,x in resp.get("tag_map",[]):tags.setdefault(str(iid),[]).append("#"+str(x))
-            tdir=snap_home.site_thumbs_dir(self.profile["site_url"]); downloaded=0
+            tdir=snap_home.site_thumbs_dir(self.profile["site_url"]); downloaded=0; fetches=[]
             for n,img in enumerate(changed,1):
-                k=str(img["id"]); old=images.get(k,{}); old.update(img); old["category_ids"]=cats.get(k,old.get("category_ids",[])); old["album_ids"]=albs.get(k,old.get("album_ids",[])); images[k]=old; u=img.get("thumb_url","")
+                k=str(img["id"]); old=images.get(k,{}); previous_url=old.get("thumb_url"); previous_modified=old.get("modified_at"); previous_file=old.get("thumb_file"); old.update(img); old["category_ids"]=cats.get(k,old.get("category_ids",[])); old["album_ids"]=albs.get(k,old.get("album_ids",[])); images[k]=old; u=img.get("thumb_url","")
                 if u:
                     ext=os.path.splitext(urllib.parse.urlparse(u).path)[1] or ".jpg"; target=os.path.join(tdir,k+ext)
+                    cached=os.path.join(tdir,os.path.basename(previous_file)) if previous_file else ""
+                    if previous_url==u and previous_modified==img.get("modified_at") and cached and os.path.isfile(cached):
+                        continue
+                    fetches.append((k,u,target))
+            def fetch_thumb(job):
+                k,u,target=job
+                rr=requests.get(u,timeout=45);rr.raise_for_status()
+                tmp=target+".tmp"
+                with open(tmp,"wb") as f:f.write(rr.content)
+                os.replace(tmp,target)
+                return k,target
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                futures=[pool.submit(fetch_thumb,job) for job in fetches]
+                for n,future in enumerate(as_completed(futures),1):
                     try:
-                        rr=requests.get(u,timeout=45);rr.raise_for_status()
-                        with open(target,"wb") as f:f.write(rr.content)
-                        old["thumb_file"]="thumbs/"+os.path.basename(target);downloaded+=1
+                        k,target=future.result();images[k]["thumb_file"]="thumbs/"+os.path.basename(target);downloaded+=1
                     except Exception:pass
-                self.worker.progress.emit("Saving thumbnails",n,max(len(changed),1))
+                    self.worker.progress.emit("Saving thumbnails",n,max(len(fetches),1))
             for k,row in images.items():
                 if "tag_map" in resp:row["hashtags"]=" ".join(tags.get(k,[]))
             current={str(x) for x in resp.get("current_ids",[])}
@@ -383,12 +406,12 @@ class Window(QMainWindow):
                     result=self.api.enrich(photo["id"],"",fields,False,False)
                     self.save_enrichment_local(photo["id"],result,photo)
                     completed.append(photo["id"])
-                except Exception as exc:failed.append((photo["id"],str(exc)))
+                except Exception as exc:failed.append((n,photo["id"],str(exc)))
             return completed,failed,self.cancel
         def finished(result):
             completed,failed,stopped=result;self.sort_stop.setEnabled(False);self.sort_enrich.setEnabled(True);self.progress.hide()
             summary=f"Enriched: {len(completed)}\nFailed: {len(failed)}\nSkipped as complete: {skipped}"+("\nStopped before remaining photographs." if stopped else "")
-            if failed:summary+="\n\n"+"\n".join(f"Photo #{i}: {error}" for i,error in failed[:5])
+            if failed:summary+="\n\n"+"\n".join(f"Photo {n} of {len(jobs)} (ID {i}): {error}" for n,i,error in failed[:5])
             (QMessageBox.warning if failed else QMessageBox.information)(self,"Enrichment finished",summary)
             if completed:
                 self.sort_enrich_restore_ids=restore_ids

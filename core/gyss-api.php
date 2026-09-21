@@ -928,9 +928,21 @@ if ($resource === 'enrich-one' && $method === 'POST') {
     $image = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$image) gy_err('Published image not found.', 404);
 
-    $relative = ltrim((string)$image['img_file'], '/\\');
-    $path = dirname(__DIR__) . '/uploads/' . $relative;
-    if (!is_file($path) || !is_readable($path)) gy_err('Image file is missing or unreadable.', 404);
+    $relative = ltrim(str_replace('\\', '/', (string)$image['img_file']), '/');
+    // The stored path may already include its media root. Keep it confined to
+    // an upload directory before letting the AI provider read the file.
+    if (str_starts_with($relative, 'img_uploads/') || str_starts_with($relative, 'uploads/')) {
+        $candidate = dirname(__DIR__) . '/' . $relative;
+    } else {
+        $candidate = dirname(__DIR__) . '/img_uploads/' . $relative;
+        if (!is_file($candidate)) $candidate = dirname(__DIR__) . '/uploads/' . $relative;
+    }
+    $path = realpath($candidate);
+    $new_root = realpath(dirname(__DIR__) . '/img_uploads');
+    $old_root = realpath(dirname(__DIR__) . '/uploads');
+    $allowed = $path && (($new_root && str_starts_with($path, $new_root . DIRECTORY_SEPARATOR)) ||
+        ($old_root && str_starts_with($path, $old_root . DIRECTORY_SEPARATOR)));
+    if (!$allowed || !is_file($path) || !is_readable($path)) gy_err('Image file is missing or unreadable.', 404);
     if (filesize($path) > 20 * 1024 * 1024) gy_err('Image is larger than the 20 MB enrichment limit.', 413);
     $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path) ?: 'image/jpeg';
     if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], true)) {
@@ -1021,6 +1033,9 @@ if ($resource === 'enrich-one' && $method === 'POST') {
         : 0;
     $applied = [];
 
+    // DDL commits an active MySQL transaction even when the column exists.
+    // Finish the compatibility migration before opening the metadata write.
+    $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_color_mode VARCHAR(10) NOT NULL DEFAULT ''");
     $pdo->beginTransaction();
     try {
         $title = (string)$image['img_title'];
@@ -1079,7 +1094,6 @@ if ($resource === 'enrich-one' && $method === 'POST') {
             $sensitive = (($parsed['sensitive'] ?? 'no') === 'yes') ? 1 : $sensitive;
             $applied[] = 'content_warning';
         }
-        $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_color_mode VARCHAR(10) NOT NULL DEFAULT ''");
         $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_alt = ?, img_display_options = ?, img_color_mode = ?, content_warning = ?, is_sensitive = ? WHERE id = ?")
             ->execute([$title, $caption, $alt, $display_json, $color_mode, $warning ?: null, $sensitive, $id]);
 
