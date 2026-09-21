@@ -124,6 +124,8 @@ def _conn() -> sqlite3.Connection:
 
 
 def get(key: str) -> str:
+    if key in _SESSION_ONLY:
+        return _SESSION_ONLY[key]
     if key in _SECRET_KEYS and _keyring_ok():
         try:
             v = _keyring.get_password(_KR_SERVICE, key)
@@ -133,7 +135,17 @@ def get(key: str) -> str:
             pass  # fall through to DB
     with _conn() as con:
         row = con.execute("SELECT value FROM config WHERE key=?", (key,)).fetchone()
-        return row["value"] if row else _DEFAULTS.get(key, "")
+    if not row:
+        return _DEFAULTS.get(key, "")
+    if key in _SECRET_KEYS:
+        # Vault-sealed (enc1:) since 2026-09-21; an older plaintext row still reads
+        # and is re-sealed on the next set(). Never written as plaintext again.
+        try:
+            import snap_creds
+            return snap_creds.open_local(row["value"]) if str(row["value"]).startswith("enc1:") else row["value"]
+        except Exception:
+            return row["value"]
+    return row["value"]
 
 
 def set(key: str, value: str) -> None:
@@ -152,6 +164,16 @@ def set(key: str, value: str) -> None:
             return
         except Exception:
             pass  # fall through to DB storage
+    if key in _SECRET_KEYS and value:
+        # No keychain: the shared vault seals it (SECAUDIT 054 — vault mandatory
+        # for keys). If the vault cannot seal, the secret is NOT written; it works
+        # for this session only and the caller's status line says so.
+        try:
+            import snap_creds
+            value = snap_creds.seal_local(value)
+        except Exception as e:  # noqa: BLE001
+            _SESSION_ONLY[key] = str(value)
+            raise VaultRequired(str(e)) from e
     with _conn() as con:
         con.execute(
             "INSERT INTO config (key, value) VALUES (?, ?) "
@@ -159,6 +181,13 @@ def set(key: str, value: str) -> None:
             (key, value),
         )
         con.commit()
+
+
+_SESSION_ONLY: dict = {}
+
+
+class VaultRequired(RuntimeError):
+    """A secret could not be sealed; it is held for this session only."""
 
 
 def get_all() -> dict:
