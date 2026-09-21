@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.732D — 2026-09-20 — GYSS enrichment repair
+
+- **GYSS enrichment reads originals from their stored upload directory.** Current `img_uploads/` paths and legacy `uploads/` paths are resolved under the site root, with traversal blocked. The colour-column migration runs before the metadata transaction so saving an AI result can commit normally. The library export includes saved hashtags and colour swatches, allowing GYSS to show completed enrichment after syncing. (`core/gyss-api.php`.)
+- **Hub AI push includes cost acceptance and Hub control.** A Hub push carries `ai_cost_accepted` and `hub_controls_ai` with provider settings so spokes can use their configured AI without separate acceptance on each site. (`smack-multisite-settings.php`.)
+- **Fleet breach reports remain visible during a Hub lockout.** The Multisite sidebar opens a read-only status page that shows each spoke's last reported SMACKBACK state, last seen time, and reported files. It cannot run a sweep or change fleet settings. The breach screen links there directly. (`smack-multisite-breaches.php`, `core/auth-smack.php`, `core/sidebar.php`, `smack-back.php`.)
+- **GYSS desktop 0.7.22** restores maximized windows, avoids fetching an unchanged cached thumbnail, downloads needed thumbnails in parallel, and labels batch errors by selection position plus database ID. (`tools/gyss/`.)
+
 ## 0.7.731D — 2026-09-19 — GYSS photo details
 - **GYSS Sort exposes enrichment, ALT text, hashtags, colour swatches, colour/B&W classification, and landscape/portrait/square orientation.** The library and photo APIs return these fields, and batch publish saves validated changes. The desktop app warns before paid enrichment and checks site support before publishing the new fields. (`core/gyss-api.php`, `tools/gyss/gyss_qt.py`.)
 

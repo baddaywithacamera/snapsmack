@@ -325,7 +325,7 @@ if (isset($_SESSION['user_login']) && !smack_is_admin()) {
         // writes snap_settings and/or snap_images with no internal admin check.
         'smack-audit.php', 'smack-backfill.php', 'smack-stats.php',
         // Multisite / fleet
-        'smack-multisite.php', 'smack-multisite-blogroll.php', 'smack-multisite-comments.php',
+        'smack-multisite.php', 'smack-multisite-breaches.php', 'smack-multisite-blogroll.php', 'smack-multisite-comments.php',
         'smack-multisite-crosspost.php', 'smack-multisite-posts.php',
         'smack-multisite-settings.php', 'smack-multisite-sso.php', 'smack-multisite-stats.php',
         // Federation control. (Interactions / smack-fediverse.php is intentionally
@@ -359,6 +359,7 @@ $_smack_exempt  = [
     'smack-forum.php',            // support forum — get help
     'smack-backup.php',           // backup util (solo)
     'smack-multisite-backup.php', // backup util (fleet)
+    'smack-multisite-breaches.php', // read-only cached fleet breach status
 ];
 
 if (!in_array($_smack_current, $_smack_exempt, true)) {
