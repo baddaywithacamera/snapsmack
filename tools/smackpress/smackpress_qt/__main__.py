@@ -1,7 +1,8 @@
-#!/bin/sh
+"""python -m smackpress_qt"""
 # SNAPSMACK_EOF_HEADER
 #     # ===== SNAPSMACK EOF =====
 # Last non-empty line of this file MUST match the line above.
-# SMACKPRESS launcher - the Qt shell on COLD SNAP's engine
-cd "$(dirname "$0")" && python3 smackpress_qt_launcher.py
+# Missing or different = truncated/corrupted. Restore before saving.
+from .app import main
+raise SystemExit(main())
 # ===== SNAPSMACK EOF =====

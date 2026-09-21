@@ -27,8 +27,6 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # (Google Drive downloads redirect legitimately).
 CREDENTIALED_URLLIB_CALLERS = [
     "tools/hub/lewk_again.py",
-    "tools/smackpress/smackpress/ai_client.py",
-    "tools/smackpress/smackpress/smacktalk_client.py",
     "tools/smackpress/smackpress/wp_client.py",
     "tools/smackattack-scanner/main.py",
     "tools/linux/smackattack-scanner/app.py",
