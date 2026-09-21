@@ -127,6 +127,24 @@ class OrganizerList(QListWidget):
         super().dropEvent(event)
 
 class GramReorderList(QListWidget):
+    def __init__(self):
+        super().__init__();self._reorder_press=None;self._mouse_reordering=False
+    def mousePressEvent(self,event):
+        super().mousePressEvent(event)
+        point=event.position().toPoint()
+        self._reorder_press=point if event.button()==Qt.LeftButton and self.indexAt(point).isValid() else None
+        self._mouse_reordering=False
+    def mouseMoveEvent(self,event):
+        if self._reorder_press is not None and event.buttons()&Qt.LeftButton and (event.position().toPoint()-self._reorder_press).manhattanLength()>=QApplication.startDragDistance():
+            self._mouse_reordering=True;self.viewport().setCursor(Qt.ClosedHandCursor);event.accept();return
+        super().mouseMoveEvent(event)
+    def mouseReleaseEvent(self,event):
+        if self._mouse_reordering and event.button()==Qt.LeftButton:
+            point=event.position().toPoint();index=self.indexAt(point)
+            if index.isValid():
+                rect=self.visualRect(index);self.move_selected_to(index.row()+(1 if point.x()>=rect.center().x() else 0))
+            self.viewport().unsetCursor();self._reorder_press=None;self._mouse_reordering=False;event.accept();return
+        self._reorder_press=None;self._mouse_reordering=False;super().mouseReleaseEvent(event)
     def dragEnterEvent(self,event):
         if event.source() is self:event.acceptProposedAction()
         else:super().dragEnterEvent(event)
@@ -262,7 +280,7 @@ class Window(QMainWindow):
         self.site.setCurrentIndex(next((i+1 for i,p in enumerate(self.profiles) if p.get("site_url")==old),0)); self.site.blockSignals(False); self.site_changed(self.site.currentIndex())
     def site_changed(self,i):
         old_site=(self.profile or {}).get("site_url")
-        self.profile=self.site.itemData(i) if i>=0 else None; self.api=API(self.profile) if self.profile and self.profile.get("api_key") else None; p=self.profile or {}; self.name.setText(p.get("name","")); self.url.setText(p.get("site_url","")); self.key.setText(p.get("api_key","")); self.status.setText("● Ready to verify" if self.api else ("● Run Discover Fleet" if self.profile else "Choose a site")); self.library_status()
+        self.profile=self.site.itemData(i) if i>=0 else None; self.api=API(self.profile) if self.profile and self.profile.get("api_key") else None; p=self.profile or {}; self.name.setText(p.get("name","")); self.url.setText(p.get("site_url","")); self.key.setText(p.get("api_key","")); self.status.setText("● Site selected" if self.api else ("● Run Discover Fleet" if self.profile else "Choose a site")); self.library_status()
         if old_site!=p.get("site_url"):
             self.photos=[];self.original={};self.photo_list.clear();self.gram.clear();self.gram_site="";self.gram_loaded=0
             self.gram_empty.setText("Open Grid to load this site's published posts." if self.api else "Choose a site to load its published posts.")
