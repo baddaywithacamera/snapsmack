@@ -59,8 +59,11 @@ class ShellTests(unittest.TestCase):
 
     def test_window_builds_with_coldsnap_editor_inside(self):
         w = self._window()
+        import config as cold_config
         from coldsnap_qt.mode_take import TakeMode
         from coldsnap_qt.connect_panel import ConnectPanel
+        self.assertTrue(hasattr(cold_config, "load"),
+                        "COLD SNAP's config module must win the frozen import name")
         self.assertIsInstance(w.take, TakeMode)
         self.assertIsInstance(w.connect_panel, ConnectPanel)
         self.assertFalse(w.source.pull_btn.isEnabled(), "nothing selected → PULL is off")
