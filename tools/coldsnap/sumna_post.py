@@ -690,6 +690,10 @@ class SmacktalkPoster:
         }
         if draft.post_date:
             payload["date"] = draft.post_date
+        # An imported post keeps its old URL slug (SMACKPRESS / BLOGGER FLOGGER);
+        # the server de-duplicates. Blank = server derives from the title.
+        if getattr(draft, "slug", ""):
+            payload["slug"] = draft.slug
         return payload
 
     # A [mosaic] placeholder (optionally [mosaic:bucket]/[mosaic:new]/[mosaic:auto])
