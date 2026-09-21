@@ -377,7 +377,7 @@ class Window(QMainWindow):
         if self.photo_list.currentItem():self.edit_photo(self.photo_list.currentItem(),None)
         QMessageBox.information(self,"Orientation checked",f"{changed} photograph(s) adjusted from their saved dimensions. Review the labels, then choose PUBLISH CHANGES to save them on the site.")
     def edit_photo(self,it,_):
-        p=it.data(Qt.UserRole) if it else {};self.title_edit.setText(p.get("title") or "");self.desc_edit.setPlainText(p.get("description") or "");self.alt_edit.setPlainText(p.get("alt") or "");self.tags_edit.setText(p.get("hashtags") or "");self.colors_edit.setText(" ".join(p.get("colors") or []));self.set_memberships(self.edit_cats,p.get("category_ids") or ([p.get("category_id")] if p.get("category_id") else []));self.set_memberships(self.edit_albums,p.get("album_ids") or []);self.colour.setCurrentIndex(max(self.colour.findData(p.get("color_mode","")),0));self.orientation.setCurrentIndex(max(self.orientation.findData(p.get("orientation",0)),0))
+        p=it.data(Qt.UserRole) if it else {};self.title_edit.setText(p.get("title") or "");self.desc_edit.setPlainText(p.get("description") or "");self.alt_edit.setPlainText(p.get("alt") or "");self.tags_edit.setText(p.get("hashtags") or "");self.colors_edit.setText(" ".join(p.get("colors") or []));self.set_memberships(self.edit_cats,p.get("category_ids") or ([p.get("category_id")] if p.get("category_id") else []));self.set_memberships(self.edit_albums,p.get("album_ids") or ([p.get("album_id")] if p.get("album_id") else []));self.colour.setCurrentIndex(max(self.colour.findData(p.get("color_mode","")),0));self.orientation.setCurrentIndex(max(self.orientation.findData(p.get("orientation",0)),0))
     @staticmethod
     def membership_ids(box):
         return sorted(int(item.data(Qt.UserRole)) for item in box.selectedItems())
@@ -419,7 +419,7 @@ class Window(QMainWindow):
         categories=self.membership_ids(self.edit_cats);albums=self.membership_ids(self.edit_albums)
         for item in selected:
             photo=item.data(Qt.UserRole);before=(sorted(photo.get("category_ids") or []),sorted(photo.get("album_ids") or []))
-            photo["category_ids"]=list(categories);photo["album_ids"]=list(albums);photo["category_id"]=categories[0] if categories else None
+            photo["category_ids"]=list(categories);photo["album_ids"]=list(albums);photo["category_id"]=categories[0] if categories else None;photo["organization_dirty"]=True
             photo["dirty"]=bool(photo.get("dirty") or before!=(categories,albums));item.setData(Qt.UserRole,photo)
             item.setText(("• " if photo["dirty"] else "")+(photo.get("title") or photo.get("filename") or str(photo["id"])))
         QMessageBox.information(self,"Organization staged",f"Categories and albums were applied to {len(selected)} photograph(s). Choose PUBLISH CHANGES to save them on the site.")
@@ -434,7 +434,7 @@ class Window(QMainWindow):
                 self.tags_edit.text()!=str(photo.get("hashtags") or "") or
                 self.colors_edit.text()!=" ".join(photo.get("colors") or []) or
                 self.membership_ids(self.edit_cats)!=sorted(photo.get("category_ids") or ([photo.get("category_id")] if photo.get("category_id") else [])) or
-                self.membership_ids(self.edit_albums)!=sorted(photo.get("album_ids") or []) or
+                self.membership_ids(self.edit_albums)!=sorted(photo.get("album_ids") or ([photo.get("album_id")] if photo.get("album_id") else [])) or
                 self.colour.currentData()!=photo.get("color_mode","") or
                 self.orientation.currentData()!=photo.get("orientation",0))
             if editor_changes:
@@ -512,7 +512,9 @@ class Window(QMainWindow):
         u=[]
         for p in dirty:
             original=self.original.get(int(p["id"]),{})
-            row={"id":p["id"],"title":p.get("title",""),"description":p.get("description",""),"category_id":p.get("category_id"),"category_ids":p.get("category_ids",[]),"album_ids":p.get("album_ids",[]),"color_mode":p.get("color_mode",""),"expected_modified_at":original.get("modified_at")}
+            row={"id":p["id"],"title":p.get("title",""),"description":p.get("description",""),"category_id":p.get("category_id"),"color_mode":p.get("color_mode",""),"expected_modified_at":original.get("modified_at")}
+            if p.get("organization_dirty"):
+                row["category_ids"]=p.get("category_ids",[]);row["album_ids"]=p.get("album_ids",[])
             if self.mode!="carousel":row["sort_order"]=p["sort_order"]
             for key in ("alt","hashtags","colors","orientation"):
                 if p.get(key)!=original.get(key):row[key]=p.get(key)
