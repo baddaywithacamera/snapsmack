@@ -132,7 +132,7 @@ class Window(QMainWindow):
         self.window_settings=QSettings("SnapSmack", "GYSS")
         geometry=self.window_settings.value("window/normal_geometry")
         if geometry:self.restoreGeometry(geometry)
-        self.profiles=[]; self.profile=None; self.api=None; self.mode=""; self.meta={"categories":[],"albums":[]}; self.photos=[]; self.original={}; self.busy=False; self.cancel=False; self.gram_loaded=0; self.gram_site=""
+        self.profiles=[]; self.profile=None; self.api=None; self.mode=""; self.meta={"categories":[],"albums":[]}; self.photos=[]; self.original={}; self.busy=False; self.cancel=False; self.gram_loaded=0; self.gram_site="";self.organizer_page_size=180;self.organizer_member_page=0;self.organizer_tray_page=0
         self.worker=Worker(); self.worker.done.connect(self.done); self.worker.failed.connect(self.failed); self.worker.progress.connect(self.on_progress)
         self.build(); self.load_profiles()
         help_action=QAction("Help",self); help_action.setShortcut(QKeySequence.HelpContents); help_action.triggered.connect(self.show_help); self.addAction(help_action)
@@ -162,9 +162,9 @@ class Window(QMainWindow):
     def organizer_page(self):
         p,l=self.page("Organize categories and albums","Open a category or album, then drag photographs between the library filmstrip and the large working area.")
         body=QHBoxLayout(); left,left_l=card("Categories & albums","Choose the container you are working on.");left.setFixedWidth(260);self.organizer_containers=QListWidget();self.organizer_containers.currentItemChanged.connect(self.render_organizer);left_l.addWidget(self.organizer_containers,1);body.addWidget(left)
-        work=QVBoxLayout();self.organizer_heading=lbl("Choose a category or album","Title");self.organizer_count=lbl("","Muted");work.addWidget(self.organizer_heading);work.addWidget(self.organizer_count);self.organizer_members=OrganizerList();self.organizer_members.setIconSize(QSize(150,110));self.organizer_members.setGridSize(QSize(175,155));self.organizer_members.photosDropped.connect(self.organizer_add_ids);self.organizer_members.itemDoubleClicked.connect(lambda _item:self.organizer_remove_selected());work.addWidget(self.organizer_members,1)
+        work=QVBoxLayout();self.organizer_heading=lbl("Choose a category or album","Title");self.organizer_count=lbl("","Muted");work.addWidget(self.organizer_heading);work.addWidget(self.organizer_count);self.organizer_members=OrganizerList();self.organizer_members.setIconSize(QSize(150,110));self.organizer_members.setGridSize(QSize(175,155));self.organizer_members.photosDropped.connect(self.organizer_add_ids);self.organizer_members.itemDoubleClicked.connect(lambda _item:self.organizer_remove_selected());work.addWidget(self.organizer_members,1);member_pages=QHBoxLayout();self.organizer_member_prev=QPushButton("◀ PREVIOUS");self.organizer_member_prev.clicked.connect(lambda:self.organizer_turn_page("member",-1));self.organizer_member_next=QPushButton("NEXT ▶");self.organizer_member_next.clicked.connect(lambda:self.organizer_turn_page("member",1));member_pages.addWidget(self.organizer_member_prev);member_pages.addStretch();member_pages.addWidget(self.organizer_member_next);work.addLayout(member_pages)
         actions=QHBoxLayout();remove=QPushButton("REMOVE SELECTED FROM THIS CONTAINER");remove.clicked.connect(self.organizer_remove_selected);actions.addWidget(remove);actions.addStretch();self.organizer_publish_button=QPushButton("PUBLISH ORGANIZATION");self.organizer_publish_button.setObjectName("Primary");self.organizer_publish_button.clicked.connect(self.publish_organization);actions.addWidget(self.organizer_publish_button);work.addLayout(actions);body.addLayout(work,1);l.addLayout(body,1)
-        l.addWidget(lbl("ALL PHOTOGRAPHS · drag selected photographs up to add them","Eyebrow"));traybar=QHBoxLayout();self.organizer_search=QLineEdit();self.organizer_search.setPlaceholderText("Search the filmstrip");self.organizer_search.textChanged.connect(self.render_organizer_tray);traybar.addWidget(self.organizer_search,1);add=QPushButton("ADD SELECTED TO THIS CONTAINER");add.clicked.connect(self.organizer_add_selected);traybar.addWidget(add);l.addLayout(traybar);self.organizer_tray=OrganizerList();self.organizer_tray.setIconSize(QSize(105,78));self.organizer_tray.setGridSize(QSize(125,118));self.organizer_tray.setFixedHeight(165);self.organizer_tray.photosDropped.connect(self.organizer_remove_ids);self.organizer_tray.itemDoubleClicked.connect(lambda _item:self.organizer_add_selected());l.addWidget(self.organizer_tray);return p
+        l.addWidget(lbl("ALL PHOTOGRAPHS · drag selected photographs up to add them","Eyebrow"));traybar=QHBoxLayout();self.organizer_search=QLineEdit();self.organizer_search.setPlaceholderText("Search the complete library");self.organizer_search.textChanged.connect(self.organizer_search_changed);traybar.addWidget(self.organizer_search,1);self.organizer_tray_count=lbl("","Muted");traybar.addWidget(self.organizer_tray_count);self.organizer_tray_prev=QPushButton("◀");self.organizer_tray_prev.clicked.connect(lambda:self.organizer_turn_page("tray",-1));traybar.addWidget(self.organizer_tray_prev);self.organizer_tray_next=QPushButton("▶");self.organizer_tray_next.clicked.connect(lambda:self.organizer_turn_page("tray",1));traybar.addWidget(self.organizer_tray_next);add=QPushButton("ADD SELECTED TO THIS CONTAINER");add.clicked.connect(self.organizer_add_selected);traybar.addWidget(add);l.addLayout(traybar);self.organizer_tray=OrganizerList();self.organizer_tray.setIconSize(QSize(105,78));self.organizer_tray.setGridSize(QSize(125,118));self.organizer_tray.setFixedHeight(165);self.organizer_tray.photosDropped.connect(self.organizer_remove_ids);self.organizer_tray.itemDoubleClicked.connect(lambda _item:self.organizer_add_selected());l.addWidget(self.organizer_tray);return p
     def grid_page(self):
         p,l=self.page("GRAMOFSMACK grid","Drag posts into order. Select two or more singles to make a carousel. Nothing changes online until you confirm."); self.gram=QListWidget(); self.gram.setViewMode(QListWidget.IconMode); self.gram.setIconSize(QSize(170,170)); self.gram.setGridSize(QSize(195,215)); self.gram.setResizeMode(QListWidget.Adjust); self.gram.setDragDropMode(QAbstractItemView.InternalMove); self.gram.setSelectionMode(QAbstractItemView.ExtendedSelection); l.addWidget(self.gram,1); self.gram_empty=lbl("Choose a site to load its published posts.","Muted"); l.addWidget(self.gram_empty); r=QHBoxLayout(); refresh=QPushButton("REFRESH GRID"); refresh.clicked.connect(self.load_grid); r.addWidget(refresh); r.addStretch(); car=QPushButton("MAKE SELECTED A CAROUSEL"); car.clicked.connect(self.carousel); r.addWidget(car); order=QPushButton("PUBLISH ORDER"); order.setObjectName("Primary"); order.clicked.connect(self.push_grid); r.addWidget(order); l.addLayout(r); return p
     def images_page(self):
@@ -251,11 +251,11 @@ class Window(QMainWindow):
             if self.pages.currentIndex()==3 and self.api:self.load_grid()
     def configure_mode(self):
         gram=self.mode=="carousel"
-        self.nav[1].setText(("Photos\nEdit details" if gram else "Sort\nArrange photographs"))
+        self.nav[1].setText("Photos\nEdit details")
         self.nav[3].setVisible(gram or not self.mode)
-        self.sort_intro.setText("Edit and enrich individual photographs here. GRAMOFSMACK orders published posts on Grid; photo order here does not change the feed." if gram else "Drag to reorder. Select photographs to enrich missing details together.")
-        self.photo_list.setDragDropMode(QAbstractItemView.NoDragDrop if gram else QAbstractItemView.InternalMove)
-        self.save_session_button.setVisible(not gram)
+        self.sort_intro.setText("Edit and enrich a bounded working set of photographs. Use Organize for categories and albums; GRAMOFSMACK orders published posts on Grid.")
+        self.photo_list.setDragDropMode(QAbstractItemView.NoDragDrop)
+        self.save_session_button.setVisible(False)
     def require_api(self):
         if self.api:return True
         QMessageBox.information(self,"Choose a site","Choose a site with a saved GYSS key first."); return False
@@ -287,22 +287,31 @@ class Window(QMainWindow):
     def organizer_photo_item(self,photo):
         item=QListWidgetItem(self.thumb(photo),photo.get("title") or photo.get("filename") or f"Photo {photo['id']}");item.setData(Qt.UserRole,photo);item.setToolTip(item.text());return item
     def load_organizer(self):
-        index,meta=self.local();self.organizer_photos={int(row["id"]):dict(row) for row in index.get("images",{}).values()};self.meta={"categories":meta.get("categories",[]),"albums":meta.get("albums",[])};self.fill_meta();self.render_organizer_tray();self.render_organizer()
+        index,meta=self.local();self.organizer_photos={int(row["id"]):dict(row) for row in index.get("images",{}).values()};self.organizer_member_page=0;self.organizer_tray_page=0;self.meta={"categories":meta.get("categories",[]),"albums":meta.get("albums",[])};self.fill_meta();self.render_organizer_tray();self.render_organizer()
     def organizer_membership(self,photo,kind):
         return photo.get("category_ids",[]) if kind=="category" else photo.get("album_ids",[])
     def render_organizer(self,*_):
         if not hasattr(self,"organizer_members"):return
         self.organizer_members.clear();current=self.organizer_containers.currentItem();data=current.data(Qt.UserRole) if current else None
         if not data:self.organizer_heading.setText("Choose a category or album");self.organizer_count.clear();return
-        kind,container_id=data;row=current.data(Qt.UserRole+1) or {};name=str(row.get("name") or current.text().strip());members=[photo for photo in self.organizer_photos.values() if container_id in self.organizer_membership(photo,kind)]
-        self.organizer_heading.setText(("Category: " if kind=="category" else "Album: ")+name);self.organizer_count.setText(f"{len(members):,} photographs · drag photographs here to add them; double-click or use Remove to take them out")
-        for photo in sorted(members,key=lambda x:(x.get("sort_order",0),-int(x["id"]))):self.organizer_members.addItem(self.organizer_photo_item(photo))
+        kind,container_id=data;row=current.data(Qt.UserRole+1) or {};name=str(row.get("name") or current.text().strip());members=sorted((photo for photo in self.organizer_photos.values() if container_id in self.organizer_membership(photo,kind)),key=lambda x:(x.get("sort_order",0),-int(x["id"])))
+        pages=max(1,(len(members)+self.organizer_page_size-1)//self.organizer_page_size);self.organizer_member_page=min(self.organizer_member_page,pages-1);start=self.organizer_member_page*self.organizer_page_size
+        self.organizer_heading.setText(("Category: " if kind=="category" else "Album: ")+name);self.organizer_count.setText(f"{len(members):,} photographs · page {self.organizer_member_page+1} of {pages} · drag photographs here to add them")
+        self.organizer_member_prev.setEnabled(self.organizer_member_page>0);self.organizer_member_next.setEnabled(self.organizer_member_page+1<pages)
+        for photo in members[start:start+self.organizer_page_size]:self.organizer_members.addItem(self.organizer_photo_item(photo))
     def render_organizer_tray(self,*_):
         if not hasattr(self,"organizer_tray"):return
-        query=self.organizer_search.text().strip().lower();self.organizer_tray.clear()
+        query=self.organizer_search.text().strip().lower();self.organizer_tray.clear();matches=[]
         for photo in sorted(self.organizer_photos.values(),key=lambda x:-int(x["id"])):
             hay=" ".join(str(photo.get(key) or "") for key in ("title","filename","description")).lower()
-            if not query or query in hay:self.organizer_tray.addItem(self.organizer_photo_item(photo))
+            if not query or query in hay:matches.append(photo)
+        pages=max(1,(len(matches)+self.organizer_page_size-1)//self.organizer_page_size);self.organizer_tray_page=min(self.organizer_tray_page,pages-1);start=self.organizer_tray_page*self.organizer_page_size
+        self.organizer_tray_count.setText(f"{len(matches):,} photos · {self.organizer_tray_page+1}/{pages}");self.organizer_tray_prev.setEnabled(self.organizer_tray_page>0);self.organizer_tray_next.setEnabled(self.organizer_tray_page+1<pages)
+        for photo in matches[start:start+self.organizer_page_size]:self.organizer_tray.addItem(self.organizer_photo_item(photo))
+    def organizer_search_changed(self,*_):self.organizer_tray_page=0;self.render_organizer_tray()
+    def organizer_turn_page(self,which,direction):
+        if which=="member":self.organizer_member_page=max(0,self.organizer_member_page+direction);self.render_organizer()
+        else:self.organizer_tray_page=max(0,self.organizer_tray_page+direction);self.render_organizer_tray()
     def organizer_change_ids(self,ids,add):
         current=self.organizer_containers.currentItem();data=current.data(Qt.UserRole) if current else None
         if not data:return
@@ -412,7 +421,7 @@ class Window(QMainWindow):
         if cid is not None:rows=[x for x in rows if cid in x.get("category_ids",[])]
         if aid is not None:rows=[x for x in rows if aid in x.get("album_ids",[])]
         if not rows:QMessageBox.information(self,"Library is empty","Sync this site first, or clear the filters.");return
-        self.photos=sorted(rows,key=lambda x:(x.get("sort_order",0),-int(x.get("id",0))));self.begin_sort()
+        rows=sorted(rows,key=lambda x:(x.get("sort_order",0),-int(x.get("id",0))));limit=self.limit.value();self.photos=rows[:limit];self.photo_subset_total=len(rows);self.begin_sort()
     def pull_live(self):
         if not self.require_api():return
         f={"limit":self.limit.value()}
@@ -440,6 +449,7 @@ class Window(QMainWindow):
             it=QListWidgetItem(self.thumb(p),p.get("title") or p.get("filename") or f"Photo {p['id']}");it.setData(Qt.UserRole,p);self.photo_list.addItem(it)
         mismatched=sum(self.shape_orientation(p) is not None and self.shape_orientation(p)!=p.get("orientation") for p in self.photos)
         self.configure_mode()
+        if getattr(self,"photo_subset_total",len(self.photos))>len(self.photos):self.sort_intro.setText(self.sort_intro.text()+f" Showing {len(self.photos):,} of {self.photo_subset_total:,} matching photographs; change the Library limit or filters to choose a different working set.")
         if mismatched:self.sort_intro.setText(self.sort_intro.text()+f" {mismatched} saved orientation labels do not match the photo dimensions. Use MATCH ORIENTATION TO PHOTO SHAPE to review and publish a correction.")
         self.show_page(1)
     @staticmethod
