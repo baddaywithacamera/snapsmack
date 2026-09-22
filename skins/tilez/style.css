@@ -2150,55 +2150,123 @@ body.alfred-lb-open { overflow: hidden; }
 }
 
 /* ==========================================================================
-   TILEZ — SMACKTALK MASONRY FEED
-   Overrides ALFRED's square 3-column flex feed with a dense, varied CSS-grid
-   masonry. Same .posts / .post tile markup from preload.php — only the layout
-   changes, so covers, overlays, titles and links all keep working.
+   TILEZ — WHITE EDITORIAL PORTFOLIO
    ========================================================================== */
 
-.posts {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-auto-rows: 220px;
-    grid-auto-flow: dense;
-    gap: 10px;
-    margin-top: 0;
+:root {
+    --tilez-ink: #171717;
+    --tilez-muted: #777;
+    --tilez-gap: 18px;
+    --tilez-page: 1180px;
 }
 
-.posts .post {
-    width: auto;
-    margin: 0 !important;      /* kill ALFRED's flex margin-left / nth-child clears */
-    padding-bottom: 0;         /* release the square aspect padding */
-    grid-column: span 1;
-    grid-row: span 1;
+html, body { background: #fff; color: var(--tilez-ink); }
+body.blog, body.single, body.archive { background: #fff; }
+
+/* The TILEZ masthead is the identity. The old full-viewport ALFRED backdrop is
+   deliberately absent. Navigation floats at the upper-right of the white head. */
+.header-image { display: none !important; }
+.header {
+    width: min(var(--tilez-page), calc(100% - 48px));
     min-height: 0;
-    border-radius: 3px;
+    margin: 0 auto;
+    padding: clamp(26px, 5vw, 72px) 0 clamp(18px, 3vw, 38px);
+    text-align: left;
+}
+.header .blog-logo { display: block; width: min(720px, 76vw); }
+.header .custom-logo { width: 100%; height: auto; max-height: 210px; object-fit: contain; object-position: left center; }
+.header .blog-description { display: none; }
+
+.navigation {
+    position: absolute;
+    z-index: 20;
+    top: 26px;
+    right: max(24px, calc((100vw - var(--tilez-page)) / 2));
+    width: auto;
+    background: transparent;
+    border: 0;
+}
+.navigation .section-inner { width: auto; }
+.main-menu { gap: 18px; }
+.main-menu > li > a, .main-menu > li > span {
+    color: var(--tilez-ink);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .11em;
+}
+.nav-toggle .bar { background: var(--tilez-ink); }
+
+.content > .section-inner { width: min(var(--tilez-page), calc(100% - 48px)); }
+
+/* Shared SS-COLUMNS geometry. Every cover keeps its native aspect; the engine
+   places the next post in the shortest of three columns. */
+.posts.ss-masonry {
+    --ss-cols: 3;
+    --ss-gap: var(--tilez-gap);
+    display: block;
+    width: 100%;
+    margin: 0;
+}
+.posts .post.ss-masonry-item {
+    display: block;
+    width: auto;
+    min-height: 0;
+    margin: 0 !important;
+    padding: 0;
     overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background: #f2f2f2;
+    text-decoration: none;
+}
+.posts .post.ss-masonry-item > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: fill;
+    transition: opacity .3s ease, transform .25s ease;
+}
+.posts .post.ss-masonry-item:hover > img,
+.posts .post.ss-masonry-item:focus-visible > img { transform: scale(1.012); }
+
+.posts .post-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    padding: 18px;
+    background: linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,0) 52%);
+    opacity: 0;
+    transition: opacity .2s ease;
+}
+.posts .post:hover .post-overlay,
+.posts .post:focus-visible .post-overlay,
+.show-preview-titles .posts .post-overlay { opacity: 1; }
+.archive-post-header { color: #fff; }
+.archive-post-date { font-size: 10px; letter-spacing: .08em; }
+.archive-post-title { margin: 4px 0 0; font-size: clamp(15px, 1.4vw, 22px); line-height: 1.15; }
+
+/* Longform pages remain white and readable. */
+.post-container { background: #fff; }
+.featured-media { aspect-ratio: 3 / 2 !important; background: #f3f3f3; }
+.post-inner { width: min(900px, calc(100% - 48px)); }
+.entry-content { color: #282828; }
+
+@media (max-width: 900px) {
+    .posts.ss-masonry { --ss-cols: 2; }
+    .navigation { position: absolute; }
+    .main-menu { display: none; }
+    .nav-toggle { display: block; }
 }
 
-/* TILEZ rhythm: tall / wide / hero on a repeating cadence. */
-.posts .post:nth-child(3n) { grid-row: span 2; }
-.posts .post:nth-child(5n) { grid-column: span 2; }
-.posts .post:nth-child(7n) { grid-column: span 2; grid-row: span 2; }
-
-@media (max-width: 1024px) {
-    .posts { grid-template-columns: repeat(3, 1fr); }
-    .posts .post:nth-child(5n) { grid-column: span 1; }
-}
-
-@media (max-width: 768px) {
-    .posts { grid-template-columns: repeat(2, 1fr); }
-    .posts .post:nth-child(3n) { grid-row: span 1; }
-    .posts .post:nth-child(5n) { grid-column: span 1; }
-    .posts .post:nth-child(7n) { grid-column: span 2; grid-row: span 1; }
-}
-
-@media (max-width: 480px) {
-    .posts { grid-template-columns: 1fr; }
-    .posts .post,
-    .posts .post:nth-child(3n),
-    .posts .post:nth-child(5n),
-    .posts .post:nth-child(7n) { grid-column: span 1; grid-row: span 1; }
+@media (max-width: 560px) {
+    :root { --tilez-gap: 10px; }
+    .header, .content > .section-inner { width: calc(100% - 28px); }
+    .header { padding-top: 58px; }
+    .header .blog-logo { width: 100%; }
+    .posts.ss-masonry { --ss-cols: 1; }
+    .post-inner { width: calc(100% - 28px); }
 }
 
 /* ===== SNAPSMACK EOF ===== */

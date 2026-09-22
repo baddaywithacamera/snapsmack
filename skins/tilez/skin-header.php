@@ -31,6 +31,9 @@ $alfred_header_image = trim($settings['header_image'] ?? '');
 // keys. header_logo defaults to '' and ?? only skips null, so the old chain stopped
 // at '' and never read an uploaded header_logo_url/site_logo — logo never showed. (0.7.399)
 $alfred_header_logo  = trim(($settings['header_logo'] ?? '') ?: ($settings['header_logo_url'] ?? '') ?: ($settings['site_logo'] ?? ''));
+if ($alfred_header_logo === '') {
+    $alfred_header_logo = 'skins/tilez/assets/bad-day-masthead.png';
+}
 $alfred_retina_logo  = ($settings['retina_logo'] ?? '0') === '1';
 
 // Build header-image inline style
@@ -146,32 +149,16 @@ if (!function_exists('_alfred_nav_render_items')) {
 // Default nav item builder
 function _alfred_default_nav_items(array $settings, array $alfred_pages): array {
     $base = defined('BASE_URL') ? BASE_URL : '/';
-    $items = [['label' => 'HOME', 'url' => $base]];
-
-    if (($settings['homepage_mode'] ?? 'latest_post') === 'static_page') {
-        $items[] = ['label' => 'BLOG', 'url' => $base . 'blog.php'];
-    }
-
-    $archive_enabled = ($settings['archive_layout'] ?? 'square') !== 'none';
-    if ($archive_enabled) {
-        // ALFRED's ARCHIVE is a grid of INDIVIDUAL PHOTOGRAPHS (snap_images),
-        // rendered by its own preload.php archive branch — not core archive.php
-        // (which shows the generic layout). Route to ALFRED's own view.
-        $items[] = ['label' => 'ARCHIVE', 'url' => $base . '?view=archive'];
-    }
-
-    if (($settings['blogroll_enabled'] ?? '1') == '1') {
-        $items[] = ['label' => 'BLOGROLL', 'url' => $base . 'blogroll.php'];
-    }
-
-    foreach ($alfred_pages as $page) {
-        $items[] = [
-            'label' => strtoupper($page['title']),
-            'url'   => $base . 'page.php?slug=' . rawurlencode($page['slug']),
-        ];
-    }
-
-    return $items;
+    // Keep A Bad Day With A Camera's established navigation during migration.
+    // The three informational destinations stay on the WordPress archive until
+    // their pages are imported; Home and Images already have native TILEZ views.
+    return [
+        ['label' => 'HOME',       'url' => $base],
+        ['label' => 'THE IDEA',   'url' => 'https://old.baddaywithacamera.ca/the-idea/'],
+        ['label' => 'THE DIARY',  'url' => 'https://old.baddaywithacamera.ca/category/diary/'],
+        ['label' => 'THE ARTIST', 'url' => 'https://old.baddaywithacamera.ca/the-artist/'],
+        ['label' => 'THE IMAGES', 'url' => $base . '?view=archive'],
+    ];
 }
 ?>
 <nav class="navigation" role="navigation">
