@@ -152,6 +152,31 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
     ];
 }
 ?>
+<!-- Blog title / logo. TILEZ explicitly opts out of the shared sticky-header
+     engine so the masthead scrolls away naturally with the page. -->
+<header class="header section-inner" data-sticky-header="false">
+<?php if ($alfred_header_logo !== ''): ?>
+    <?php
+    $logo_url = (preg_match('#^https?://#', $alfred_header_logo))
+        ? $alfred_header_logo
+        : BASE_URL . ltrim($alfred_header_logo, '/');
+    ?>
+    <a href="<?php echo BASE_URL; ?>" class="custom-logo-link blog-logo">
+        <img src="<?php echo htmlspecialchars($logo_url); ?>"
+             alt="<?php echo htmlspecialchars($site_display_name); ?>"
+             class="custom-logo"
+             <?php if ($alfred_retina_logo): ?>
+             style="width: auto; max-width: 100%;"
+             <?php endif; ?>>
+    </a>
+<?php else: ?>
+    <h1 class="blog-title"><a href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars($site_display_name); ?></a></h1>
+<?php endif; ?>
+<?php $alfred_tagline = trim($settings['site_tagline'] ?? ''); if ($alfred_tagline !== '' && ($settings['show_tagline'] ?? '1') === '1'): ?>
+    <p class="blog-description"><?php echo htmlspecialchars($alfred_tagline); ?></p>
+<?php endif; ?>
+</header><!-- /.header -->
+
 <nav class="navigation" role="navigation">
     <div class="section-inner">
 
@@ -194,27 +219,4 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
 <!-- Full-viewport header image -->
 <div class="header-image"<?php echo $header_image_style; ?>></div>
 
-<!-- Blog title / logo -->
-<header class="header section-inner">
-<?php if ($alfred_header_logo !== ''): ?>
-    <?php
-    $logo_url = (preg_match('#^https?://#', $alfred_header_logo))
-        ? $alfred_header_logo
-        : BASE_URL . ltrim($alfred_header_logo, '/');
-    ?>
-    <a href="<?php echo BASE_URL; ?>" class="custom-logo-link blog-logo">
-        <img src="<?php echo htmlspecialchars($logo_url); ?>"
-             alt="<?php echo htmlspecialchars($site_display_name); ?>"
-             class="custom-logo"
-             <?php if ($alfred_retina_logo): ?>
-             style="width: auto; max-width: 100%;"
-             <?php endif; ?>>
-    </a>
-<?php else: ?>
-    <h1 class="blog-title"><a href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars($site_display_name); ?></a></h1>
-<?php endif; ?>
-<?php $alfred_tagline = trim($settings['site_tagline'] ?? ''); if ($alfred_tagline !== '' && ($settings['show_tagline'] ?? '1') === '1'): ?>
-    <p class="blog-description"><?php echo htmlspecialchars($alfred_tagline); ?></p>
-<?php endif; ?>
-</header><!-- /.header -->
 <?php // ===== SNAPSMACK EOF =====
