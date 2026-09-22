@@ -2291,6 +2291,16 @@ body.blog, body.single, body.archive { background: #fff; }
 .entry-content > .snap-mosaic,
 .entry-content > .snap-mosaic-wall { width: 100%; }
 
+/* A run of separately saved MOSAIC bundles must read as one continuous wall.
+   Keep the normal article spacing at text boundaries, but use the bundle's
+   own 4px gutter between adjacent layout containers. */
+.entry-content > :is(.snap-mosaic, .snap-mosaic-wall):has(+ :is(.snap-mosaic, .snap-mosaic-wall)) {
+    margin-bottom: 4px;
+}
+.entry-content > :is(.snap-mosaic, .snap-mosaic-wall) + :is(.snap-mosaic, .snap-mosaic-wall) {
+    margin-top: 0;
+}
+
 /* Keep the site chrome as quiet as the reference portfolio. */
 #system-footer {
     margin-top: 54px;
