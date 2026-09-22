@@ -35,6 +35,8 @@
     var closeB    = document.getElementById('gallery-pick-close');
     var emptyEl   = document.getElementById('gallery-pick-empty');
     var ta        = document.getElementById('long-content');
+    var widthEl   = document.getElementById('gallery-pick-width');
+    var widthOut  = document.getElementById('gallery-pick-width-value');
     if (!modal || !grid) return;
 
     var base = grid.getAttribute('data-base') || '';
@@ -46,6 +48,8 @@
         mode = m;
         modal.style.display = 'block';
         search.value = '';
+        if (widthEl) widthEl.value = '100';
+        if (widthOut) widthOut.textContent = '100%';
         fetchImages('');
         search.focus();
     }
@@ -122,7 +126,8 @@
     // ── INLINE BODY INSERT ───────────────────────────────────────────────────
     function insertShortcode(id) {
         if (!ta) return;
-        var tag    = '[img:g' + id + '|full|center]';
+        var width  = widthEl ? Math.max(20, Math.min(100, parseInt(widthEl.value, 10) || 100)) : 100;
+        var tag    = '[img:g' + id + '|full|center|' + width + ']';
         var start  = ta.selectionStart;
         var end    = ta.selectionEnd;
         var before = ta.value.substring(0, start);
@@ -171,6 +176,9 @@
     if (insertBtn) insertBtn.addEventListener('click', function () { openModal('insert'); });
     if (coverBtn)  coverBtn.addEventListener('click',  function () { openModal('cover'); });
     if (coverDel)  coverDel.addEventListener('click',  clearCover);
+    if (widthEl && widthOut) widthEl.addEventListener('input', function () {
+        widthOut.textContent = this.value + '%';
+    });
 
     closeB.addEventListener('click', closeModal);
     modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
