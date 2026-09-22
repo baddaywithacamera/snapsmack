@@ -842,6 +842,11 @@ include 'core/sidebar.php';
         </div>
         <input type="text" id="gallery-pick-search" placeholder="Search titles, descriptions, tags…"
                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--text);font-size:13px;margin-bottom:12px;box-sizing:border-box;">
+        <div id="gallery-width-control" style="display:flex;align-items:center;gap:12px;margin:0 0 14px;">
+            <label for="gallery-pick-width" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;">Display width</label>
+            <input type="range" id="gallery-pick-width" min="20" max="100" step="5" value="100" style="flex:1;">
+            <output id="gallery-pick-width-value" for="gallery-pick-width" style="min-width:42px;text-align:right;font-size:12px;">100%</output>
+        </div>
         <div id="gallery-pick-grid"
              data-base="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES); ?>"
              style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:480px;overflow-y:auto;"></div>
