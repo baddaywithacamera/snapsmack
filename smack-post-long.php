@@ -495,6 +495,13 @@ include 'core/sidebar.php';
             <textarea id="long-content" name="content" rows="28"
                       style="width:100%;box-sizing:border-box;font-family:monospace;font-size:13px;"
                       placeholder="Write something worth saying. Blank lines become paragraph breaks. Embed image shortcodes and MOSAIC panels inline."><?php echo htmlspecialchars($edit_content ?? ($edit_post['content'] ?? '')); ?></textarea>
+            <section id="long-image-blocks" data-base="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES); ?>" style="margin-top:18px;display:none;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px;">
+                    <strong style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;">Image blocks</strong>
+                    <span class="dim" style="font-size:11px;">Drag a block edge or use its width slider. Text stays in the shortcode editor.</span>
+                </div>
+                <div id="long-image-block-list" style="display:grid;gap:12px;"></div>
+            </section>
         </div>
 
         <?php /* ── BUCKET ──────────────────────────────────────────────────────
@@ -859,6 +866,7 @@ include 'core/sidebar.php';
 <script src="assets/js/smack-asset-picker.js"></script>
 <script src="assets/js/shortcode-toolbar.js"></script>
 <script src="assets/js/smack-longform-gallery-picker.js"></script>
+<script src="assets/js/smack-longform-image-blocks.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <script src="assets/js/ss-engine-longform-cover-crop.js"></script>
 
 <script>
