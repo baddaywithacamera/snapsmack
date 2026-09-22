@@ -13,6 +13,9 @@ import sys
 from pathlib import Path
 
 MAIN = Path(__file__).with_name("main.py")
+# The Qt shell reads BUILD_VERSION from flkrfckr_core.py, so that copy is bumped
+# in lockstep — one build, one number, or the window title lies about the exe.
+CORE = Path(__file__).with_name("flkrfckr_core.py")
 VERSION_INFO = Path(__file__).with_name("version_info.txt")
 
 
@@ -61,6 +64,14 @@ def main() -> int:
         src, count=1,
     )
     MAIN.write_text(src, encoding="utf-8")
+    if CORE.exists():
+        core = CORE.read_text(encoding="utf-8")
+        core = re.sub(
+            r'(BUILD_VERSION\s*=\s*")0\.7\.\d+(")',
+            lambda mm: f'{mm.group(1)}0.7.{new_patch}{mm.group(2)}',
+            core, count=1,
+        )
+        CORE.write_text(core, encoding="utf-8")
     _write_version_info(new_patch)
     print(f"bump_version: BUILD_VERSION -> 0.7.{new_patch}  (+ version_info.txt written)")
     return 0
