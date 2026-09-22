@@ -262,13 +262,13 @@ if ($_alfred_post_slug || $_alfred_post_id) {
         <?php snapsmack_indieweb_longform_properties($_alfred_post, $settings); ?>
 
         <?php if (!empty($_alfred_post['featured_image_path'])):
-            // Cover framed to ALFRED's shape (1:1), with the post's pan/zoom applied
+            // Cover framed to TILEZ's landscape shape (3:2), with the post's pan/zoom applied
             // non-destructively (object-position + scale). Must match manifest cover_aspect.
             $_cpx = isset($_alfred_post['cover_pos_x']) ? (int)$_alfred_post['cover_pos_x'] : 50;
             $_cpy = isset($_alfred_post['cover_pos_y']) ? (int)$_alfred_post['cover_pos_y'] : 50;
             $_cz  = isset($_alfred_post['cover_zoom'])  ? (int)$_alfred_post['cover_zoom']  : 100;
         ?>
-        <figure class="featured-media" style="aspect-ratio:1/1;overflow:hidden;">
+        <figure class="featured-media" style="aspect-ratio:3/2;overflow:hidden;">
             <img class="u-photo" src="<?php echo BASE_URL . ltrim($_alfred_post['featured_image_path'], '/'); ?>"
                  alt="<?php echo htmlspecialchars($_alfred_post['title']); ?>"
                  style="width:100%;height:100%;object-fit:cover;object-position:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform-origin:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform:scale(<?php echo number_format($_cz / 100, 3); ?>);display:block;">
@@ -363,7 +363,9 @@ try {
 
     $feed_stmt = $pdo->prepare(
         "SELECT p.id, p.title, p.slug, p.created_at,
-                COALESCE(i.img_thumb_square, i.img_file) AS featured_image_path
+                COALESCE(i.img_thumb_aspect, i.img_file) AS featured_image_path,
+                i.img_width AS featured_width,
+                i.img_height AS featured_height
          FROM snap_posts p
          LEFT JOIN snap_images i ON i.id = p.featured_image_id
          WHERE p.post_type = 'longform' AND p.status = 'published'
@@ -396,16 +398,22 @@ $_alfred_total_pages = (int)ceil($_alfred_total / $_alfred_per_page);
         <p style="color:#fff;text-align:center;padding:4rem 0;">No posts yet.</p>
         <?php else: ?>
 
-        <div class="posts">
+        <div class="posts ss-masonry tilez-posts">
         <?php foreach ($_alfred_posts as $_p):
             $has_thumb = !empty($_p['featured_image_path']);
-            $tile_style = $has_thumb
-                ? ' style="background-image: url(\'' . htmlspecialchars(BASE_URL . ltrim($_p['featured_image_path'], '/'), ENT_QUOTES) . '\')"'
-                : '';
             $tile_class = 'post' . ($has_thumb ? ' has-post-thumbnail' : '');
+            $tile_w = max(1, (int)($_p['featured_width'] ?? 3));
+            $tile_h = max(1, (int)($_p['featured_height'] ?? 2));
         ?>
             <a href="<?php echo BASE_URL . '?post=' . rawurlencode($_p['slug']); ?>"
-               class="<?php echo $tile_class; ?>"<?php echo $tile_style; ?>>
+               class="<?php echo $tile_class; ?> ss-masonry-item"
+               data-w="<?php echo $tile_w; ?>" data-h="<?php echo $tile_h; ?>"
+               aria-label="<?php echo htmlspecialchars($_p['title'], ENT_QUOTES); ?>">
+                <?php if ($has_thumb): ?>
+                <img src="<?php echo htmlspecialchars(BASE_URL . ltrim($_p['featured_image_path'], '/'), ENT_QUOTES); ?>"
+                     data-w="<?php echo $tile_w; ?>" data-h="<?php echo $tile_h; ?>"
+                     alt="<?php echo htmlspecialchars($_p['title'], ENT_QUOTES); ?>" loading="lazy">
+                <?php endif; ?>
                 <div class="post-overlay">
                     <div class="archive-post-header">
                         <p class="archive-post-date"><?php echo date('M j, Y', strtotime($_p['created_at'])); ?></p>
