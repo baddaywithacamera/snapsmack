@@ -30,10 +30,7 @@ $alfred_header_image = trim($settings['header_image'] ?? '');
 // Use ?: (not ??) so an EMPTY skin-option default falls through to the Global Vibe
 // keys. header_logo defaults to '' and ?? only skips null, so the old chain stopped
 // at '' and never read an uploaded header_logo_url/site_logo — logo never showed. (0.7.399)
-$alfred_header_logo  = trim(($settings['header_logo'] ?? '') ?: ($settings['header_logo_url'] ?? '') ?: ($settings['site_logo'] ?? ''));
-if ($alfred_header_logo === '') {
-    $alfred_header_logo = 'skins/tilez/assets/bad-day-masthead.png';
-}
+$alfred_header_logo  = 'skins/tilez/assets/bad-day-masthead.png';
 $alfred_retina_logo  = ($settings['retina_logo'] ?? '0') === '1';
 
 // Build header-image inline style

@@ -2173,8 +2173,8 @@ body.blog, body.single, body.archive { background: #fff; }
     padding: clamp(26px, 5vw, 72px) 0 clamp(18px, 3vw, 38px);
     text-align: left;
 }
-.header .blog-logo { display: block; width: min(720px, 76vw); }
-.header .custom-logo { width: 100%; height: auto; max-height: 210px; object-fit: contain; object-position: left center; }
+.header .blog-logo { display: block; width: min(780px, 68vw); }
+.header .custom-logo { width: 100%; height: auto; max-height: none; object-fit: contain; object-position: left center; }
 .header .blog-description { display: none; }
 
 .navigation {
@@ -2187,7 +2187,7 @@ body.blog, body.single, body.archive { background: #fff; }
     border: 0;
 }
 .navigation .section-inner { width: auto; }
-.main-menu { gap: 18px; }
+.main-menu { display: flex; width: auto; max-width: none; gap: 18px; white-space: nowrap; }
 .main-menu > li > a, .main-menu > li > span {
     color: var(--tilez-ink);
     font-size: 10px;
