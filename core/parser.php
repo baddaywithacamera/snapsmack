@@ -837,19 +837,22 @@ class SnapSmack {
     // =========================================================================
 
     /**
-     * Parse [img:ID|size|align] shortcodes into <img> tags.
+     * Parse [img:ID|size|align|width] shortcodes into <img> tags.
      *
      * Looks up the asset in snap_assets first, falls back to snap_images.
      * Supports size variants (small/wall/full) and alignment (left/center/right).
      */
     private function parseImages($content) {
         return preg_replace_callback(
-            '/\[img:\s*(g)?\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?\s*\]/i',
+            '/\[img:\s*(g)?\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?(?:\s*\|\s*(\d{1,3})(?:%)?)?\s*\]/i',
             function ($matches) {
                 $gallery = !empty($matches[1]);   // optional 'g' prefix ([img:gID]) forces Gallery
                 $id      = $matches[2];
                 $size    = $matches[3] ?? 'full';
                 $align   = $matches[4] ?? 'center';
+                $width   = isset($matches[5]) && $matches[5] !== ''
+                    ? max(20, min(100, (int)$matches[5]))
+                    : 100;
 
                 $asset = false;
 
@@ -920,8 +923,9 @@ class SnapSmack {
                 $classes      = "snap-framed-img asset-$size align-$align";
 
                 return sprintf(
-                    '<div class="snap-inline-frame align-%s"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy" data-lightbox-src="%s" style="cursor:zoom-in;%s"></div></div>',
+                    '<div class="snap-inline-frame align-%s" style="--snap-image-width:%d%%"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy" data-lightbox-src="%s" style="cursor:zoom-in;%s"></div></div>',
                     $align,
+                    $width,
                     $full_src,
                     $classes,
                     snap_alt_attr($asset['alt'] ?? null, $asset['name'] ?? ''),
