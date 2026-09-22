@@ -22,14 +22,8 @@
 
 // --- Skin options ---
 $alfred_header_image = trim($settings['header_image'] ?? '');
-// ALFRED honours its own header_logo skin option first, then falls back to the
-// shared Global Vibe logo settings (header_logo_url, then the masthead site_logo)
-// so a logo uploaded in Global Vibe actually shows — matching photogram and
-// new-horizon, which read header_logo_url. Previously ALFRED read only its own
-// key, so a Global Vibe logo upload had no effect on it.
-// Use ?: (not ??) so an EMPTY skin-option default falls through to the Global Vibe
-// keys. header_logo defaults to '' and ?? only skips null, so the old chain stopped
-// at '' and never read an uploaded header_logo_url/site_logo — logo never showed. (0.7.399)
+// TILEZ ships with the site's commissioned masthead. Do not inherit a logo
+// saved by the previously active skin.
 $alfred_header_logo  = 'skins/tilez/assets/bad-day-masthead.png';
 $alfred_retina_logo  = ($settings['retina_logo'] ?? '0') === '1';
 
