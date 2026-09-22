@@ -15,6 +15,35 @@ import snap_discovery
 
 
 class DiscoveryScopedKeyTests(unittest.TestCase):
+    def test_hub_provisions_scoped_key(self):
+        key = 'a' * 64
+        response = mock.Mock(status_code=200)
+        response.json.return_value = {'ok': True, 'key_type': 'sybu', 'api_key': key}
+        with mock.patch.object(snap_discovery.requests, 'post', return_value=response, create=True) as post:
+            self.assertEqual(key, snap_discovery._provision_hub_tool_key('https://hub.test', 'b' * 64, 'sybu'))
+        self.assertEqual('https://hub.test/suyb-data.php', post.call_args.args[0])
+        self.assertEqual({'action': 'provision-tool-key', 'key_type': 'sybu'}, post.call_args.kwargs['json'])
+
+    def test_failed_hub_provision_keeps_existing_sybu_key(self):
+        saved = []
+        previous = {'api_key': 'c' * 64, 'extras': {'api_key_sybu': 'c' * 64}}
+        with mock.patch.object(snap_discovery, '_save_cloud_to_vault', return_value=[]), \
+             mock.patch.object(snap_discovery, '_provision_hub_tool_key', return_value=''), \
+             mock.patch.object(snap_discovery.snap_profiles, 'load_by_site', return_value=previous), \
+             mock.patch.object(snap_discovery.snap_profiles, 'save', side_effect=lambda p: saved.append(p)):
+            snap_discovery.save_to_shared({'site_url': 'https://hub.test', 'site_name': 'Hub'}, [], hub_api_key='b' * 64)
+        self.assertEqual('c' * 64, saved[0]['api_key'])
+        self.assertNotEqual('b' * 64, saved[0]['api_key'])
+
+    def test_failed_hub_provision_does_not_save_hub_key_as_sybu_key(self):
+        saved = []
+        with mock.patch.object(snap_discovery, '_save_cloud_to_vault', return_value=[]), \
+             mock.patch.object(snap_discovery, '_provision_hub_tool_key', return_value=''), \
+             mock.patch.object(snap_discovery.snap_profiles, 'load_by_site', return_value=None), \
+             mock.patch.object(snap_discovery.snap_profiles, 'save', side_effect=lambda p: saved.append(p)):
+            snap_discovery.save_to_shared({'site_url': 'https://hub.test', 'site_name': 'Hub'}, [], hub_api_key='b' * 64)
+        self.assertEqual('', saved[0]['api_key'])
+
     def test_provisions_every_supported_tool_key(self):
         saved = []
 

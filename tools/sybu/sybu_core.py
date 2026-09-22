@@ -317,7 +317,7 @@ class Engine:
         self.config.update(fields)
         return fields
 
-    def save_config(self, fields: dict) -> None:
+    def save_config(self, fields: dict):
         """Persist POST-tab fields through config.save (which also pushes shared
         secrets and preserves [ui] keys)."""
         self.config.update({
@@ -336,6 +336,9 @@ class Engine:
             'copyright_text': fields.get('copyright_text', self.config.get('copyright_text', '')),
         })
         cfg_module.save(self.config)
+        # SECAUDIT 054: the key is vault-sealed or not written. If the vault
+        # could not seal it, say so — the key works this session only.
+        return self.config.get('vault_warning') or None
 
     # ────────────────────────────────────────────────────────────────────────
     # CONNECT

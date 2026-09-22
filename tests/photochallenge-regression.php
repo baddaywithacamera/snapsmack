@@ -7,6 +7,17 @@
 
 require_once __DIR__ . '/../core/photochallenge.php';
 
+// Pixelfed's public AP outbox may contain only totalItems. Its public status
+// API remains readable even when the standard account lookup requires login.
+function sv_fetch_ap(string $url, array $settings): array { return ['totalItems' => 7]; }
+function sv_masto_statuses(string $host, string $username, int $max): array { return []; }
+function sv_fetch_json(string $url): array {
+    return str_contains($url, '/accounts/503466088928548273/statuses?')
+        ? [['url' => 'https://pixelfed.social/p/mccormickphoto/1006830163143187544']]
+        : [];
+}
+function sv_masto_map_statuses(array $rows, int $max): array { return $rows; }
+
 $failures = [];
 function pc_test(bool $ok, string $message): void {
     global $failures;
@@ -24,6 +35,16 @@ $feed_off_settings = $settings;
 $feed_off_settings['photochallenge_feed_enabled'] = '0';
 pc_test(!pc_feed_enabled($feed_off_settings), 'explicitly disabled challenge feed remained available');
 pc_test(pc_tag($settings) === 'photofri', 'challenge tag normalization failed');
+foreach (['https://pxscdn.com/cache/avatars/503466088928548273/avatar_lih2.png',
+          'https://pxscdn.com/cache/avatars/503/466/088/928/548/273/avatar.png'] as $icon) {
+    $recent = pc_participant_recent_posts([
+        'id' => 'https://pixelfed.social/users/mccormickphoto',
+        'preferredUsername' => 'mccormickphoto', 'icon' => ['url' => $icon],
+    ], 'https://pixelfed.social/users/mccormickphoto/outbox', $settings);
+    pc_test(($recent[0]['status']['url'] ?? '') ===
+        'https://pixelfed.social/p/mccormickphoto/1006830163143187544',
+        'Pixelfed avatar account ID did not reach the public status fallback');
+}
 
 $test_gate = ['photochallenge_test_mode'=>'1',
     'photochallenge_test_allow'=>'leo@goto.photoblogs.fyi twilight@pix.photoblogs.fyi'];
@@ -112,7 +133,7 @@ pc_test(str_contains($schema, 'CREATE TABLE IF NOT EXISTS `pc_entry_failures`')
     && str_contains($photo, 'function pc_latest_recovery_results')
     && !str_contains($admin, 'value="notify_failed_entries"'),
     'missed-entry recovery, durable failure logging, or resubmit notification is absent');
-pc_test(str_contains($photo, 'pc_rescan_participants($pdo,$settings,12,true,$tag)')
+pc_test(str_contains($photo, 'pc_rescan_participants($pdo,$settings,12,true,$tag,$actor_offset,$actor_limit)')
     && str_contains($photo, 'array_merge($rows, $participant_scan[\'rows\'])')
     && str_contains($photo, 'pc_participant_recent_posts($actor, $outbox, $settings, $per_actor)')
     && str_contains($photo, 'sv_masto_statuses($host, $username, $max)')
@@ -122,6 +143,14 @@ pc_test(str_contains($photo, 'pc_rescan_participants($pdo,$settings,12,true,$tag
     && str_contains($photo, "'participant_unreadable'")
     && str_contains($admin, 'every active participant&rsquo;s own outbox'),
     'recovery does not merge hashtag, participant outbox, and Pixelfed public-status discovery');
+pc_test(str_contains($admin, "data.set('pc_recover_batch', '1')")
+    && str_contains($admin, "data.set('actor_offset', String(offset))")
+    && str_contains($admin, 'session_write_close()')
+    && str_contains($photo, 'array_slice($rows, max(0, $actor_offset), $actor_limit)')
+    && str_contains($photo, "state='active' ORDER BY actor_url")
+    && !str_contains($photo, "state='active' ORDER BY id")
+    && str_contains($photo, 'Could not list challenge participants for recovery.'),
+    'admin recovery must scan participants in bounded requests without holding the session lock');
 pc_test(str_contains($admin, 'EXTEND UNTIL &mdash; close automatically')
     && str_contains($admin, "value=\"extend_window_24\"")
     && str_contains($admin, "modify('+24 hours')")

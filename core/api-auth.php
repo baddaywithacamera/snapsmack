@@ -26,6 +26,7 @@
 
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/api-site-scope.php';   // mutual-auth A1 (SECAUDIT 054)
 
 /**
  * Optional install-mode gate for tool/API access. An endpoint sets
@@ -186,6 +187,7 @@ if (is_array($_allowed_types) && $_allowed_types) {
             define('SNAP_API_KEY_ID', (int)$_krow['id']);
             define('SNAP_API_KEY_TYPE', (string)($_krow['key_type'] ?? ''));
             snap_api_enforce_mode($pdo);
+            snap_api_site_scope_check($pdo);   // a valid key is not enough: is it aimed at THIS site?
             unset($_allowed_types, $_auth_hdr, $_bm, $_bhash, $_place, $_kst, $_krow);
             return;
         }

@@ -74,8 +74,8 @@ $failed_count = 0;
 $queued_count = 0;
 try {
     $counts = $pdo->query(
-        "SELECT SUM(status = 'queued') AS queued_count,
-                SUM(status = 'failed') AS failed_count
+        "SELECT SUM(status = 'queued' AND attempts = 0 AND (last_error IS NULL OR last_error = '')) AS queued_count,
+                SUM(status = 'failed' OR attempts > 0 OR (last_error IS NOT NULL AND last_error <> '')) AS failed_count
            FROM snap_ap_deliveries"
     )->fetch(PDO::FETCH_ASSOC) ?: [];
     $queued_count = (int)($counts['queued_count'] ?? 0);
@@ -83,7 +83,7 @@ try {
     $queue = $pdo->query(
         "SELECT id, inbox_url, activity_json, attempts, next_try_at, status, last_error, created_at, priority
            FROM snap_ap_deliveries
-       ORDER BY priority ASC, id ASC
+       ORDER BY (attempts > 0 OR (last_error IS NOT NULL AND last_error <> '')) ASC, priority ASC, id ASC
           LIMIT 200"
     )->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) { $queue = []; }
@@ -296,11 +296,10 @@ include 'core/sidebar.php';
             was tried has landed. (This does not prove a specific post reached a specific follower; check the
             per-post panel below for what has been pushed.)</p>
         <?php else: ?>
-        <p class="dim mb-10">Showing the first <?php echo count($queue); ?> of <?php echo (int)($queued_count + $failed_count); ?> jobs in actual sending order:
-        handshakes first, then boosts, new posts, routine updates, and backfills dead last. The queue sends a batch each cron run
-        and shrinks each time, so a long list here is normal, not broken. A row is only a problem when its
-        <strong>Status</strong> reads <strong>failing/retrying</strong>; then <strong>ERROR</strong> is the exact
-        reason the remote gave &mdash; that is what to read when a post won't go out.</p>
+        <p class="dim mb-10">Showing <?php echo count($queue); ?> queue jobs in actual sending order:
+        first attempts before retries, then handshakes, boosts, new posts, routine updates, and backfills within each group. The queue sends a batch each cron run
+        and shrinks each time. A row with attempts or an error is retrying; the <strong>Error</strong> column
+        shows the last delivery problem. An untried row is simply waiting.</p>
         <div class="ox-auto">
         <table class="data-table">
             <thead>
@@ -331,7 +330,7 @@ include 'core/sidebar.php';
                     <td><?php echo htmlspecialchars($d['type']); ?></td>
                     <td><?php echo $post_label; ?></td>
                     <td><?php echo (int)$q['attempts']; ?></td>
-                    <td><?php echo $q['status'] === 'failed' ? 'retrying/failed' : 'waiting'; ?></td>
+                    <td><?php echo $q['status'] === 'failed' || (int)$q['attempts'] > 0 || ($q['last_error'] !== null && $q['last_error'] !== '') ? 'retrying/failed' : 'waiting'; ?></td>
                     <td><?php echo htmlspecialchars(dlog_age((string)$q['next_try_at'])); ?></td>
                     <td><?php echo htmlspecialchars(dlog_age((string)$q['created_at'])); ?></td>
                     <td><?php echo $q['last_error'] !== null && $q['last_error'] !== ''

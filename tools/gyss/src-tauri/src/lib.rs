@@ -247,9 +247,14 @@ async fn api_request(
         .timeout(std::time::Duration::from_secs(45))
         .build()
         .map_err(|e| e.to_string())?;
+    // Mutual-auth A1 (SECAUDIT 054): name the site this request is meant for.
+    // The URL is built from the profile's site_url, so its host IS the intended
+    // site; the server refuses the write if it is not that site.
+    let site_host = host.to_ascii_lowercase();
     let mut request = if verb == "GET" { client.get(parsed) } else { client.post(parsed) };
     request = request
         .bearer_auth(api_key.trim())
+        .header("X-Snap-Site", site_host)
         .header(reqwest::header::ACCEPT, "application/json")
         .header(reqwest::header::CONTENT_TYPE, "application/json");
     if let Some(payload) = body {
@@ -373,19 +378,54 @@ fn list_dir(path: String) -> Result<Vec<String>, String> {
 /// etc.). Native fetch is deliberate — it is NOT bound by the webview's CORS, so
 /// it can pull static /uploads/ thumbnails that a JS fetch() would be blocked on.
 /// A response is capped to guard against a hostile/oversized body.
+///
+/// SECAUDIT 054 item 3: the URL comes from the site's API payload, so a
+/// tampered or hostile site could point this native (CORS-free) fetch at the
+/// LAN, at a metadata service, or at anything else on the operator's network.
+/// The fetch is therefore PINNED to the connected site: `site_url` is the
+/// profile's site, the download host must match it exactly, literal private /
+/// loopback / link-local addresses are refused, and redirects are not followed
+/// (a redirect is how a same-host URL turns into a different-host fetch).
 #[tauri::command]
-async fn download_to(url: String, path: String) -> Result<(), String> {
+async fn download_to(url: String, path: String, site_url: String) -> Result<(), String> {
     const MAX_BYTES: usize = 64 * 1024 * 1024; // 64 MiB — a thumb is tens of KB; this is a sanity bound.
 
-    let lower = url.to_ascii_lowercase();
-    if !(lower.starts_with("http://") || lower.starts_with("https://")) {
+    let target = reqwest::Url::parse(url.trim()).map_err(|_| "Refused: malformed download URL.".to_string())?;
+    if target.scheme() != "http" && target.scheme() != "https" {
         return Err("Refused: only http(s) URLs may be downloaded.".into());
+    }
+    if target.username() != "" || target.password().is_some() {
+        return Err("Refused: download URL carries credentials.".into());
+    }
+    let site = reqwest::Url::parse(site_url.trim()).map_err(|_| "Refused: no connected site to pin the download to.".to_string())?;
+    let (Some(thost), Some(shost)) = (target.host_str(), site.host_str()) else {
+        return Err("Refused: download URL has no host.".into());
+    };
+    if !thost.eq_ignore_ascii_case(shost) {
+        return Err(format!("Refused: download host {thost} is not the connected site {shost}."));
+    }
+    if let Ok(ip) = thost.trim_matches(|c| c == '[' || c == ']').parse::<std::net::IpAddr>() {
+        let private = match ip {
+            std::net::IpAddr::V4(v4) => v4.is_private() || v4.is_loopback() || v4.is_link_local() || v4.is_unspecified() || v4.is_broadcast(),
+            std::net::IpAddr::V6(v6) => v6.is_loopback() || v6.is_unspecified() || (v6.segments()[0] & 0xfe00) == 0xfc00 || (v6.segments()[0] & 0xffc0) == 0xfe80,
+        };
+        if private {
+            return Err("Refused: download URL points at a private or local address.".into());
+        }
     }
     // Resolve + jail the destination BEFORE spending a network round-trip.
     let dest = resolve_in_root(&path)?;
     refuse_executable(&dest)?;
 
-    let resp = reqwest::get(&url).await.map_err(|e| e.to_string())?;
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(60))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client.get(target).send().await.map_err(|e| e.to_string())?;
+    if resp.status().is_redirection() {
+        return Err("Refused: download redirected away from the connected site.".into());
+    }
     if !resp.status().is_success() {
         return Err(format!("Download failed: HTTP {}", resp.status()));
     }

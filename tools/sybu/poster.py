@@ -37,6 +37,31 @@ import exif_writer
 from exif_writer import COPYRIGHT as _DEFAULT_COPYRIGHT
 from manifest_parser import ManifestEntry
 
+try:
+    import snap_site_scope   # X-Snap-Site header (mutual-auth A1, SECAUDIT 054)
+except Exception:  # noqa: BLE001
+    # tools/_shared may not be on sys.path yet at this point in the file (each
+    # tool adds it at a different spot). Find it from here; frozen exes bundle
+    # it next to the entry script.
+    import os as _sso, sys as _sss
+    _d = _sso.path.dirname(_sso.path.abspath(__file__))
+    for _up in range(4):
+        _cand = _sso.path.join(_d, "_shared")
+        if _sso.path.isdir(_cand):
+            if _cand not in _sss.path:
+                _sss.path.insert(0, _cand)
+            break
+        _d = _sso.path.dirname(_d)
+    try:
+        import snap_site_scope
+    except Exception:  # noqa: BLE001
+        snap_site_scope = None
+
+
+def _site_scope(site_url):
+    return snap_site_scope.header(site_url) if snap_site_scope else {}
+
+
 WEB_MAX_W = 1900
 WEB_MAX_H = 1425
 
@@ -111,6 +136,7 @@ class SnapSmackClient:
         self.session.headers.update({
             'User-Agent': 'SYBU/1.0',
             'Authorization': f'Bearer {api_key}',
+            **_site_scope(self.base_url),
             # Opt into smack-post-solo.php's deterministic AJAX reply path so a
             # successful post returns the literal body "success" (and validation
             # failures return their message) instead of a 302 redirect we can't
@@ -612,6 +638,7 @@ class GramConnection:
         self.session.headers.update({
             'User-Agent':     'SYBU/1.0',
             'Authorization':  f'Bearer {api_key}',
+            **_site_scope(self.base_url),
             'X-Requested-With': 'XMLHttpRequest',
         })
 
