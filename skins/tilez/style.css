@@ -2247,11 +2247,30 @@ body.blog, body.single, body.archive { background: #fff; }
 .archive-post-date { font-size: 10px; letter-spacing: .08em; }
 .archive-post-title { margin: 4px 0 0; font-size: clamp(15px, 1.4vw, 22px); line-height: 1.15; }
 
-/* Longform pages remain white and readable. */
+/* Longform pages remain white and readable. The article canvas is wide enough
+   for MOSAIC bundles, while ordinary prose stays at a comfortable measure. */
 .post-container { background: #fff; }
-.featured-media { aspect-ratio: 3 / 2 !important; background: #f3f3f3; }
-.post-inner { width: min(900px, calc(100% - 48px)); }
+.featured-media {
+    width: min(900px, calc(100% - 48px));
+    margin: 0 auto;
+    aspect-ratio: 3 / 2 !important;
+    background: #f3f3f3;
+}
+.post-header { width: min(900px, calc(100% - 48px)); padding: 46px 0 38px; }
+.post-inner {
+    width: min(var(--tilez-page), calc(100% - 48px)) !important;
+    max-width: none;
+}
 .entry-content { color: #282828; }
+.entry-content > p,
+.entry-content > h2,
+.entry-content > h3,
+.entry-content > h4,
+.entry-content > blockquote,
+.entry-content > ul,
+.entry-content > ol { width: min(900px, 100%); margin-left: auto; margin-right: auto; }
+.entry-content > .snap-mosaic,
+.entry-content > .snap-mosaic-wall { width: 100%; }
 
 @media (max-width: 900px) {
     .posts.ss-masonry { --ss-cols: 2; }
@@ -2266,7 +2285,8 @@ body.blog, body.single, body.archive { background: #fff; }
     .header { padding-top: 58px; }
     .header .blog-logo { width: 100%; }
     .posts.ss-masonry { --ss-cols: 1; }
-    .post-inner { width: calc(100% - 28px); }
+    .post-inner { width: calc(100% - 28px) !important; }
+    .featured-media, .post-header { width: calc(100% - 28px); }
 }
 
 /* ===== SNAPSMACK EOF ===== */
