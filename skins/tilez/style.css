@@ -2251,8 +2251,8 @@ body.blog, body.single, body.archive { background: #fff; }
 .archive-post-date { font-size: 10px; letter-spacing: .08em; }
 .archive-post-title { margin: 4px 0 0; font-size: clamp(15px, 1.4vw, 22px); line-height: 1.15; }
 
-/* Longform pages remain white and readable. The article canvas is wide enough
-   for MOSAIC bundles, while ordinary prose stays at a comfortable measure. */
+/* Longform pages share one clean editorial canvas. Text and MOSAIC bundles
+   use the same outside edges so a post reads as one deliberate composition. */
 .post-container { background: #fff; }
 .featured-media {
     width: min(900px, calc(100% - 48px));
@@ -2265,14 +2265,29 @@ body.blog, body.single, body.archive { background: #fff; }
     width: min(var(--tilez-page), calc(100% - 48px)) !important;
     max-width: none;
 }
-.entry-content { color: #282828; }
+.post-content,
+.entry-content {
+    color: #282828;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 17px;
+    font-weight: 400;
+    line-height: 1.65;
+}
 .entry-content > p,
 .entry-content > h2,
 .entry-content > h3,
 .entry-content > h4,
 .entry-content > blockquote,
 .entry-content > ul,
-.entry-content > ol { width: min(900px, 100%); margin-left: auto; margin-right: auto; }
+.entry-content > ol {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+}
+.entry-content > p,
+.entry-content > blockquote,
+.entry-content > ul,
+.entry-content > ol { font-weight: 400; }
 .entry-content > .snap-mosaic,
 .entry-content > .snap-mosaic-wall { width: 100%; }
 
