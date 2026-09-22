@@ -2170,17 +2170,17 @@ body.blog, body.single, body.archive { background: #fff; }
     width: min(var(--tilez-page), calc(100% - 48px));
     min-height: 0;
     margin: 0 auto;
-    padding: clamp(26px, 5vw, 72px) 0 clamp(18px, 3vw, 38px);
+    padding: 28px 0 24px;
     text-align: left;
 }
-.header .blog-logo { display: block; width: min(780px, 68vw); }
+.header .blog-logo { display: block; width: min(430px, 48vw); }
 .header .custom-logo { width: 100%; height: auto; max-height: none; object-fit: contain; object-position: left center; }
 .header .blog-description { display: none; }
 
 .navigation {
     position: absolute;
     z-index: 20;
-    top: 26px;
+    top: 42px;
     right: max(24px, calc((100vw - var(--tilez-page)) / 2));
     width: auto;
     background: transparent;
@@ -2272,9 +2272,21 @@ body.blog, body.single, body.archive { background: #fff; }
 .entry-content > .snap-mosaic,
 .entry-content > .snap-mosaic-wall { width: 100%; }
 
+/* Keep the site chrome as quiet as the reference portfolio. */
+#system-footer {
+    margin-top: 54px;
+    padding: 24px 0;
+    border-top: 1px solid #eee;
+    background: #fff;
+}
+#system-footer .footer-metadata-bar p,
+#system-footer a,
+#system-footer .footer-link { color: #888; }
+#system-footer .sep { color: #ccc; }
+
 @media (max-width: 900px) {
     .posts.ss-masonry { --ss-cols: 2; }
-    .navigation { position: absolute; }
+    .navigation { position: absolute; top: 24px; }
     .main-menu { display: none; }
     .nav-toggle { display: block; }
 }
@@ -2282,7 +2294,7 @@ body.blog, body.single, body.archive { background: #fff; }
 @media (max-width: 560px) {
     :root { --tilez-gap: 10px; }
     .header, .content > .section-inner { width: calc(100% - 28px); }
-    .header { padding-top: 58px; }
+    .header { padding: 58px 0 20px; }
     .header .blog-logo { width: 100%; }
     .posts.ss-masonry { --ss-cols: 1; }
     .post-inner { width: calc(100% - 28px) !important; }
