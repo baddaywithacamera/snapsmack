@@ -2164,33 +2164,34 @@ html, body { background: #fff; color: var(--tilez-ink); }
 body.blog, body.single, body.archive { background: #fff; }
 
 /* The TILEZ masthead is the identity. The old full-viewport ALFRED backdrop is
-   deliberately absent. Navigation floats at the upper-right of the white head. */
+   deliberately absent. The masthead and menu are two left-aligned rows. */
 .header-image { display: none !important; }
 .header {
     width: min(var(--tilez-page), calc(100% - 48px));
     min-height: 0;
     margin: 0 auto;
-    padding: 28px 0 24px;
+    padding: 28px 0 14px;
     text-align: left;
 }
 .header .blog-logo {
     display: block;
-    width: min(300px, 42vw);
+    width: min(600px, 70vw);
     margin: 0;
 }
 .header .custom-logo { width: 100%; height: auto; max-height: none; object-fit: contain; object-position: left center; }
 .header .blog-description { display: none; }
 
 .navigation {
-    position: absolute;
+    position: relative;
     z-index: 20;
-    top: 42px;
-    right: max(24px, calc((100vw - var(--tilez-page)) / 2));
-    width: auto;
+    top: auto;
+    right: auto;
+    width: min(var(--tilez-page), calc(100% - 48px));
+    margin: 0 auto 24px;
     background: transparent;
     border: 0;
 }
-.navigation .section-inner { width: auto; }
+.navigation .section-inner { width: 100%; }
 .main-menu { display: flex; width: auto; max-width: none; gap: 18px; white-space: nowrap; }
 .main-menu > li > a, .main-menu > li > span {
     color: var(--tilez-ink);
@@ -2315,7 +2316,7 @@ body.blog, body.single, body.archive { background: #fff; }
 
 @media (max-width: 900px) {
     .posts.ss-masonry { --ss-cols: 2; }
-    .navigation { position: absolute; top: 24px; }
+    .navigation { position: relative; top: auto; }
     .main-menu { display: none; }
     .nav-toggle { display: block; }
 }
