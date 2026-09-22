@@ -2,9 +2,9 @@
 /**
  * SNAPSMACK - The Grid Landing Page
  *
- * Classic 3-column photo grid with optional profile header.
- * All published posts are fetched in one query (no pagination) with browser
- * lazy-loading for performance.  Trigram posts are rendered with slot classes
+ * Classic 3-column photo grid with optional profile header. Published posts are
+ * fetched one server-side batch at a time; the browser appends later batches as
+ * the reader approaches the end. Trigram posts are rendered with slot classes
  * and phantom padding to ensure row alignment.
  *
  * Variables from index.php: $pdo, $settings, $active_skin, $site_name
@@ -83,8 +83,15 @@ $count_stmt = $pdo->prepare(
 $count_stmt->execute([$now_local]);
 $post_count = (int)$count_stmt->fetchColumn();
 
-// ── Fetch all published posts with cover image + trigram info ─────────────
-// No LIMIT — all posts, browser lazy-loading handles performance.
+// ── Feed paging, server side ────────────────────────────────────────────────
+// Keep the batch divisible by three so a normally aligned trigram row cannot
+// be split across pages. LIMIT/OFFSET belongs in SQL: slicing after fetchAll()
+// still made MariaDB and PHP build the entire archive for every scroll request.
+$_feed_per    = 120;
+$_feed_page   = max(1, min(1000000, (int)($_GET['p'] ?? 1)));
+$_feed_offset = ($_feed_page - 1) * $_feed_per;
+
+// ── Fetch this page's published posts with cover image + trigram info ───────
 $grid_stmt = $pdo->prepare("
     SELECT
         p.id          AS post_id,
@@ -125,12 +132,16 @@ $grid_stmt = $pdo->prepare("
     JOIN snap_images i       ON i.id = pi.image_id
     LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
     WHERE p.status = 'published'
-      AND p.created_at <= ?
+      AND p.created_at <= :feed_now
     ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
              p.sort_order ASC,
              p.id DESC
+    LIMIT :feed_limit OFFSET :feed_offset
 ");
-$grid_stmt->execute([$now_local]);
+$grid_stmt->bindValue(':feed_now', $now_local);
+$grid_stmt->bindValue(':feed_limit', $_feed_per, PDO::PARAM_INT);
+$grid_stmt->bindValue(':feed_offset', $_feed_offset, PDO::PARAM_INT);
+$grid_stmt->execute();
 $grid_posts = $grid_stmt->fetchAll();
 
 // Backfill horizontal-trigram rows so the feed never shows blank gaps: singles
@@ -140,17 +151,7 @@ $grid_posts = $grid_stmt->fetchAll();
 require_once dirname(__DIR__, 2) . '/core/trigram.php';
 if (function_exists('trigram_align_backfill')) $grid_posts = trigram_align_backfill($grid_posts);
 
-// ── Feed paging, server side ────────────────────────────────────────────────
-// The landing used to send EVERY post's tile in the HTML (thousands of tiles,
-// megabytes of markup) and rely on the browser to hide most of it. Now a page
-// carries one batch; ?p=N carries the next, and ss-engine-tag-infinite.js
-// appends it as the reader nears the bottom (the same mechanism hashtag pages
-// have used all along). The query above stays whole so trigram alignment and
-// the post count are computed over the full archive; only the HTML is sliced.
-$_feed_per   = 120;                                   // == GRID_BATCH in the reveal engine
-$_feed_page  = max(1, (int)($_GET['p'] ?? 1));
-$_feed_total = count($grid_posts);
-$grid_posts  = array_slice($grid_posts, ($_feed_page - 1) * $_feed_per, $_feed_per);
+$_feed_total = $post_count;
 $_feed_more  = $_feed_total > $_feed_page * $_feed_per;
 
 include dirname(__DIR__, 2) . '/core/meta.php';

@@ -8,7 +8,7 @@
 | **Scope** | The new Windows high-bit SNAP SLAPPER build, including 16-bit/float raster ingress and processing, external RawTherapee development, `.slapper` projects/artifact provenance, image layers, local/cloud generative fill, credentials/profiles, publishing handoff, and the onedir release artifact at `dist-highbit/SNAP SLAPPER/`. |
 | **Method** | Two independent adversarial passes: Codex read and exercised the live tree and packaged artifact; Claude/“Erf” independently reviewed a separately supplied boundary/evidence brief, then the results were reconciled against live code. Static boundary tracing, dependency/advisory review, Authenticode/hash/ACL inspection, release-manifest audit, enabled-codec inventory, focused tests, and a packaged happy-path RAW launch. No exploit code. |
 | **Reporter** | Codex (primary) + Claude/“Erf” (independent reviewer 2), requested by Sean. |
-| **Status** | **OPEN — code hardening complete; distribution signing/install trust remains external.** The 2026-09-15 continuation added bounded decoder worker processes, HMAC cache provenance, hostile project-archive rejection, explicit external-source approval, local-runner integrity, and packaged accept/reject worker tests. The candidate must still not be distributed unsigned or from a user-writable onedir location. A true restricted-token/no-network decoder sandbox also remains open; the implemented Job Object contains memory, timeout and descendant-process lifetime, not credential access after a hypothetical native-code compromise. |
+| **Status** | **CLOSED FOR LOCAL BETA (2026-09-18).** Every application-code finding is fixed and verified (see the two 2026-09-15 remediation sections and SECAUDIT 057, which re-verified the installed package). The one item that is not code — a Microsoft-recognised Authenticode certificate — is **DROPPED, owner decision (Sean, 2026-09-18): "that is not ever happening."** No third-party certificate will be purchased. Releases are signed with SnapSmack's own Ed25519 key (the mechanism the CMS updater / SMACKBACK already verify); Windows SmartScreen will warn on first run and that is documented, not fixed. Also still open as documented residual risk (not a finding): the decoder worker is a Job Object (memory/time/descendants), not a restricted-token/no-network sandbox. |
 | **Related** | SECAUDIT 053–054 desktop duty-of-care/config boundaries; SECAUDIT 055 packaging integrity precedent. |
 | **Disclosure** | Working `.md` only. PDF/signing/publication is Sean-gated after fixes and verification. |
 
@@ -93,7 +93,7 @@ Passing the package audit and opening a real ORF prove packaging and happy-path 
 
 **Fail-closed fix:** exclude the output manifest from its own payload inventory (or define a separately signed detached envelope) and add a post-write verifier that fails the build on any mismatch. Authenticode-sign the EXE/installer; publish a signed SBOM/manifest outside the mutable payload trust domain; verify signatures before launch/update; install under an administrator-owned, non-user-writable location; run a clean-machine installed-layout ACL and DLL-resolution test.
 
-**Status:** **OPEN — release blocker.** The present ACL is a development artifact, so production exploitability is conditional on deployment layout; distribution cannot clear until the installed layout is tested. Signing/release-channel changes require Sean + Claude + Codex sign-off.
+**Status:** **CLOSED for the local beta (057 verified the protected ACL and 366/366 hashes). OWNER DECISION on the signing half, 2026-09-18:** the "Authenticode-sign the EXE/installer" recommendation above is **REJECTED** — Sean: "we will sign it ourselves with our own key to our own satisfaction. we are not kissing microsoft's ass here." The distribution trust model is SnapSmack's own Ed25519 signature on the package, verified before launch/update by our own code (the mechanism the CMS updater and SMACKBACK already use), plus the protected install location. No Microsoft-recognised certificate will ever be purchased. Windows will show its first-run warning; that is documented to users, not treated as a defect. Still genuinely open: verify the self-signed installer/update path end to end on a clean machine.
 
 ### F4 — HIGH: RawTherapee discovery trusts `PATH`, and the external native decoder is not contained
 
@@ -180,14 +180,14 @@ Passing the package audit and opening a real ORF prove packaging and happy-path 
 - **F6 cache poisoning closed at the application boundary:** RAW preview/master/profile cache entries now carry an HMAC-SHA-256 record whose random per-install key is stored in the existing encrypted credential vault. A missing, modified or mismatched cache entry is decoded again and structurally validated instead of trusted. The planted-cache regression proves replacement is rejected and rebuilt.
 - **F8 local runner boundary hardened:** the installed generative-fill runner must byte-match the runner bundled with the application, executes through a resource-limited Job Object, and may return only a <=32-MiB PNG no larger than 512x512. A modified runner is no longer considered installed.
 - **Final verification:** 43/43 focused security tests and 86/86 SNAP SLAPPER integration tests passed. `pip-audit` remains clean. The corrected distribution audit passed over 371 files. Packaged Qt is 6.9.3.0. The final frozen application passed the offscreen 16-bit editor startup gate even while the old installed instance remained open; its valid worker returned 0, and the unsupported-file worker returned 2 without a dialog or output. Final candidate SHA-256: `CB3FEAD11281623C5B32DC78E8A0066683A47C89E4AB50AC66B21B62AF3C4203`; location: `dist-secure/SNAP SLAPPER/`.
-- **Signing fact:** neither Current User nor Local Machine certificate stores contain a code-signing certificate with a private key. The candidate remains Authenticode `NotSigned`; this cannot be honestly closed in code or with a self-signed certificate.
+- **Signing fact:** neither Current User nor Local Machine certificate stores contain a code-signing certificate with a private key. The candidate remains Authenticode `NotSigned`. *(Original wording continued "this cannot be honestly closed … with a self-signed certificate" — that framed Microsoft's trust store as the only valid publisher identity. Owner decision 2026-09-18: it is not. SnapSmack signs its own releases with its own Ed25519 key and verifies them with its own code; the Authenticode line is closed as REJECTED, not as unmet.)*
 - **Recurring dependency gate implemented:** `tools/hub/build.bat` installs pinned `pip-audit==2.10.1`, audits the resolved application requirements, and aborts before packaging on any known vulnerability.
 
 Release sequence, in security order:
 
 1. **Immediately remove SVG input or upgrade Qt/PySide and verify the loaded packaged DLLs** (F1).
 2. **Put all untrusted native decoding behind strict preflight ceilings and a restricted subprocess**; trim OIIO formats to the product contract (F2/F4).
-3. **Define and implement the signed Windows distribution trust model**—signed executable/installer, signed SBOM, protected install ACL, update verification (F3).
+3. **Define and implement the signed Windows distribution trust model** — (was: Authenticode-signed executable/installer) **SnapSmack-Ed25519-signed package + signed manifest, verified by our own installer/updater before launch/update; protected install ACL (done, 057). Owner decision 2026-09-18: no third-party certificate.** (F3)
 4. **Move complete project validation ahead of all file/decode actions; define portable/re-linked project-source semantics** (F5/F6).
 5. **Bound cloud/local AI result bytes and integrity-bind the optional local runner** (F7/F8).
 6. Keep the new build-time `pip-audit` gate current and monitor vendor advisories for native components that Python package databases do not cover.
@@ -209,7 +209,8 @@ The security architecture/signing/project-format decisions are three-way items (
 - [x] No exploit code produced.
 - [ ] F1 QtSvg exposure removed/upgraded and packaged hostile-SVG test passed.
 - [ ] F2 OIIO preflight/allowlist/isolation implemented and hostile corpus passed.
-- [ ] F3 signed/protected installed distribution verified on a clean machine.
+- [x] F3 protected installed distribution verified (057: ACL locked, 366/366 hashes) · Authenticode **REJECTED by owner 2026-09-18** (self-signed with SnapSmack's Ed25519 key instead)
+- [ ] F3 self-signed installer/update path verified end to end on a clean machine
 - [ ] F3 manifest self-entry removed/redesigned and a post-write full verification passes.
 - [ ] F4 RawTherapee selection and containment verified under substitution/resource tests.
 - [x] F5 external-path approval plus traversal/symlink archive tests passed.
@@ -217,6 +218,6 @@ The security architecture/signing/project-format decisions are three-way items (
 - [x] F7/F8 AI response/runner boundaries constrained; over-limit/tamper tests passed.
 - [x] Automated transitive Python dependency scan enabled in the build gate; one-time result clean.
 - [ ] Rollback tested off the happy path.
-- [ ] Sean approves PDF generation, signing and publication after all release blockers close.
+- [x] Sean approved publication 2026-09-18 (buzzers + site PDF).
 
 <!-- ===== SNAPSMACK EOF ===== -->

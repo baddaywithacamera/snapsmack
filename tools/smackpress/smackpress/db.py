@@ -11,7 +11,7 @@ import sqlite3
 from datetime import datetime, timezone
 from typing import Any
 
-import config
+from smackpress import config   # explicit: tools/coldsnap on sys.path also has a `config`
 
 
 def _con() -> sqlite3.Connection:

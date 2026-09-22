@@ -41,6 +41,20 @@ import sys
 import urllib.request
 import urllib.error
 
+
+class _RefuseRedirect(urllib.request.HTTPRedirectHandler):
+    """urllib re-sends EVERY header on a redirect, Authorization included, so a
+    credentialed request that gets 30x'd would hand the key to whatever host
+    Location names. Refuse instead (SECAUDIT 053 F / 054). requests already
+    strips the header cross-host; urllib does not."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url, code, "redirect refused: request carried a credential", headers, fp)
+
+
+_NO_REDIRECT = urllib.request.build_opener(_RefuseRedirect)
+
+
 API = "https://api.cloudflare.com/client/v4"
 TOKEN = os.environ.get("CF_API_TOKEN", "").strip()
 DRY_RUN = "--dry-run" in sys.argv
@@ -64,7 +78,7 @@ def api(method, path, body=None):
         headers={"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req) as r:
+        with _NO_REDIRECT.open(req) as r:
             return json.load(r)
     except urllib.error.HTTPError as e:
         try:

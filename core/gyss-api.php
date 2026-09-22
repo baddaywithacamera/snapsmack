@@ -121,6 +121,29 @@ function gy_has_table(PDO $pdo, string $table): bool {
     }
 }
 
+/** Hashtags for a bounded page of image ids, without one query per photograph. */
+function gy_hashtags_by_image(PDO $pdo, array $image_ids): array {
+    if (!$image_ids || !gy_has_table($pdo, 'snap_tags') || !gy_has_table($pdo, 'snap_image_tags')) return [];
+    $out = [];
+    foreach (array_chunk(array_values(array_unique(array_map('intval', $image_ids))), 500) as $chunk) {
+        $in = implode(',', array_fill(0, count($chunk), '?'));
+        $stmt = $pdo->prepare("SELECT it.image_id, t.slug FROM snap_image_tags it JOIN snap_tags t ON t.id=it.tag_id WHERE it.image_id IN ($in) ORDER BY it.image_id,t.slug");
+        $stmt->execute($chunk);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $out[(int)$row['image_id']][] = '#' . $row['slug'];
+        }
+    }
+    return array_map(static fn($tags) => implode(' ', $tags), $out);
+}
+
+/** Existing colour swatches are stored inside per-image display options. */
+function gy_colors_from_display($raw): array {
+    $display = json_decode((string)$raw, true);
+    if (!is_array($display) || !is_array($display['ai_colors'] ?? null)) return [];
+    return array_values(array_filter(array_map('strval', $display['ai_colors']),
+        static fn($hex) => preg_match('/^#[0-9A-Fa-f]{6}$/', $hex)));
+}
+
 /** Ensure the authoritative enrichment store exists even before schema-sync runs. */
 function gy_ensure_enrichment_cache(PDO $pdo): void {
     $pdo->exec("CREATE TABLE IF NOT EXISTS snap_ai_enrichment_cache (
@@ -288,6 +311,7 @@ if ($resource === 'ping' && $method === 'GET') {
         'site_mode' => $settings['site_mode'] ?? 'photoblog',
         'scope'     => (($settings['site_mode'] ?? '') === 'smackthemup') ? 'smackthemup.organize' : 'gyss',
         'can_upload'=> false,
+        'sort_detail_fields' => ['alt', 'hashtags', 'colors', 'orientation'],
         'can_delete_single' => (($settings['site_mode'] ?? '') === 'smackthemup'),
     ]);
 }
@@ -416,6 +440,12 @@ if ($resource === 'photos' && $method === 'GET') {
         ? 'i.modified_at' : 'i.img_date AS modified_at';
     $color_select = gy_has_column($pdo, 'snap_images', 'img_color_mode')
         ? 'i.img_color_mode AS color_mode' : "'' AS color_mode";
+    $alt_select = gy_has_column($pdo, 'snap_images', 'img_alt')
+        ? 'i.img_alt AS alt' : "'' AS alt";
+    $display_select = gy_has_column($pdo, 'snap_images', 'img_display_options')
+        ? 'i.img_display_options' : "'' AS img_display_options";
+    $orientation_select = gy_has_column($pdo, 'snap_images', 'img_orientation')
+        ? 'i.img_orientation' : '0 AS img_orientation';
     $sort_select = gy_has_column($pdo, 'snap_images', 'sort_order')
         ? 'i.sort_order' : '0 AS sort_order';
     $sort_order = gy_has_column($pdo, 'snap_images', 'sort_order')
@@ -445,6 +475,7 @@ if ($resource === 'photos' && $method === 'GET') {
                 i.id,
                 i.img_title       AS title,
                 i.img_description AS description,
+                $alt_select, $color_select, $display_select, $orientation_select,
                 $sort_select,
                 i.img_file,
                 i.img_slug,
@@ -477,11 +508,17 @@ if ($resource === 'photos' && $method === 'GET') {
     }
 
     $photos = [];
+    $hashtags_by_id = gy_hashtags_by_image($pdo, array_column($rows, 'id'));
     foreach ($rows as $row) {
         $photos[] = [
             'id'            => (int)$row['id'],
             'title'         => $row['title'],
             'description'   => $row['description'],
+            'alt'           => $row['alt'],
+            'hashtags'      => $hashtags_by_id[(int)$row['id']] ?? '',
+            'colors'        => gy_colors_from_display($row['img_display_options']),
+            'color_mode'    => $row['color_mode'] ?? '',
+            'orientation'   => (int)$row['img_orientation'],
             'sort_order'    => (int)$row['sort_order'],
             'posted_date'   => $row['posted_date'],
             'modified_at'   => $row['modified_at'],
@@ -621,6 +658,8 @@ if ($resource === 'library' && $method === 'GET') {
         $has_color = gy_has_column($pdo, 'snap_images', 'img_color_mode');
         $color_select = $has_color ? "i.img_color_mode AS color_mode" : "'' AS color_mode";
         $alt_select = gy_has_column($pdo, 'snap_images', 'img_alt') ? 'i.img_alt AS alt' : "'' AS alt";
+        $display_select = gy_has_column($pdo, 'snap_images', 'img_display_options') ? 'i.img_display_options' : "'' AS img_display_options";
+        $orientation_select = gy_has_column($pdo, 'snap_images', 'img_orientation') ? 'i.img_orientation' : '0 AS img_orientation';
         $width_select = gy_has_column($pdo, 'snap_images', 'img_width') ? 'i.img_width' : 'NULL AS img_width';
         $height_select = gy_has_column($pdo, 'snap_images', 'img_height') ? 'i.img_height' : 'NULL AS img_height';
         $modified_select = $has_modified ? 'i.modified_at' : 'i.img_date AS modified_at';
@@ -628,7 +667,7 @@ if ($resource === 'library' && $method === 'GET') {
         $sort_order = gy_has_column($pdo, 'snap_images', 'sort_order') ? 'i.sort_order ASC, i.id DESC' : 'i.id DESC';
         $img_stmt = $pdo->prepare("
             SELECT i.id, i.img_title AS title, i.img_description AS description,
-                   $alt_select, $color_select, $sort_select, i.img_file,
+                   $alt_select, $color_select, $display_select, $orientation_select, $sort_select, i.img_file,
                    i.img_date AS posted_date, $modified_select,
                    $width_select, $height_select
             FROM snap_images i
@@ -636,14 +675,19 @@ if ($resource === 'library' && $method === 'GET') {
             ORDER BY $sort_order
         ");
         $img_stmt->execute($img_params);
+        $image_rows = $img_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $hashtags_by_id = gy_hashtags_by_image($pdo, array_column($image_rows, 'id'));
         $images = [];
-        foreach ($img_stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        foreach ($image_rows as $row) {
             $images[] = [
                 'id'          => (int)$row['id'],
                 'title'       => $row['title'],
                 'description' => $row['description'],
                 'alt'         => $row['alt'],
+                'hashtags'    => $hashtags_by_id[(int)$row['id']] ?? '',
+                'colors'      => gy_colors_from_display($row['img_display_options']),
                 'color_mode'  => $row['color_mode'] ?? '',
+                'orientation' => (int)$row['img_orientation'],
                 'sort_order'  => (int)$row['sort_order'],
                 'filename'    => basename((string)$row['img_file']),
                 'posted_date' => $row['posted_date'],
@@ -680,6 +724,12 @@ if ($resource === 'library' && $method === 'GET') {
         foreach ($pdo->query("SELECT image_id, cat_id FROM snap_image_cat_map")->fetchAll(PDO::FETCH_NUM) as $p) {
             $cat_map[] = [(int)$p[0], (int)$p[1]];
         }
+        $tag_map = [];
+        if (gy_has_table($pdo, 'snap_tags') && gy_has_table($pdo, 'snap_image_tags')) {
+            foreach ($pdo->query("SELECT it.image_id,t.slug FROM snap_image_tags it JOIN snap_tags t ON t.id=it.tag_id ORDER BY it.image_id,t.slug")->fetchAll(PDO::FETCH_NUM) as $p) {
+                $tag_map[] = [(int)$p[0], (string)$p[1]];
+            }
+        }
         $album_map = [];
         if ($has_albums) {
             foreach ($pdo->query("SELECT image_id, album_id FROM snap_image_album_map")->fetchAll(PDO::FETCH_NUM) as $p) {
@@ -703,6 +753,7 @@ if ($resource === 'library' && $method === 'GET') {
 
     gy_ok([
         'full'        => $since_sql === null,
+        'detail_schema' => 2,
         'synced_at'   => $synced_at,
         'site_mode'   => $settings['site_mode'] ?? 'photoblog',
         'base_url'    => BASE_URL,
@@ -710,6 +761,7 @@ if ($resource === 'library' && $method === 'GET') {
         'albums'      => $albums,
         'collections' => $collections,
         'cat_map'     => $cat_map,
+        'tag_map'     => $tag_map,
         'album_map'   => $album_map,
         'collection_map' => $collection_map,
         'current_ids' => $current_ids,
@@ -876,9 +928,21 @@ if ($resource === 'enrich-one' && $method === 'POST') {
     $image = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$image) gy_err('Published image not found.', 404);
 
-    $relative = ltrim((string)$image['img_file'], '/\\');
-    $path = dirname(__DIR__) . '/uploads/' . $relative;
-    if (!is_file($path) || !is_readable($path)) gy_err('Image file is missing or unreadable.', 404);
+    $relative = ltrim(str_replace('\\', '/', (string)$image['img_file']), '/');
+    // The stored path may already include its media root. Keep it confined to
+    // an upload directory before letting the AI provider read the file.
+    if (str_starts_with($relative, 'img_uploads/') || str_starts_with($relative, 'uploads/')) {
+        $candidate = dirname(__DIR__) . '/' . $relative;
+    } else {
+        $candidate = dirname(__DIR__) . '/img_uploads/' . $relative;
+        if (!is_file($candidate)) $candidate = dirname(__DIR__) . '/uploads/' . $relative;
+    }
+    $path = realpath($candidate);
+    $new_root = realpath(dirname(__DIR__) . '/img_uploads');
+    $old_root = realpath(dirname(__DIR__) . '/uploads');
+    $allowed = $path && (($new_root && str_starts_with($path, $new_root . DIRECTORY_SEPARATOR)) ||
+        ($old_root && str_starts_with($path, $old_root . DIRECTORY_SEPARATOR)));
+    if (!$allowed || !is_file($path) || !is_readable($path)) gy_err('Image file is missing or unreadable.', 404);
     if (filesize($path) > 20 * 1024 * 1024) gy_err('Image is larger than the 20 MB enrichment limit.', 413);
     $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path) ?: 'image/jpeg';
     if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], true)) {
@@ -969,6 +1033,9 @@ if ($resource === 'enrich-one' && $method === 'POST') {
         : 0;
     $applied = [];
 
+    // DDL commits an active MySQL transaction even when the column exists.
+    // Finish the compatibility migration before opening the metadata write.
+    $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_color_mode VARCHAR(10) NOT NULL DEFAULT ''");
     $pdo->beginTransaction();
     try {
         $title = (string)$image['img_title'];
@@ -1027,7 +1094,6 @@ if ($resource === 'enrich-one' && $method === 'POST') {
             $sensitive = (($parsed['sensitive'] ?? 'no') === 'yes') ? 1 : $sensitive;
             $applied[] = 'content_warning';
         }
-        $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_color_mode VARCHAR(10) NOT NULL DEFAULT ''");
         $pdo->prepare("UPDATE snap_images SET img_title = ?, img_description = ?, img_alt = ?, img_display_options = ?, img_color_mode = ?, content_warning = ?, is_sensitive = ? WHERE id = ?")
             ->execute([$title, $caption, $alt, $display_json, $color_mode, $warning ?: null, $sensitive, $id]);
 
@@ -1153,6 +1219,7 @@ if ($resource === 'batch-update' && $method === 'POST') {
         try {
             $row_stmt = $pdo->prepare("
                 SELECT i2.id, i2.img_title AS title, i2.img_description AS description,
+                       i2.img_alt AS alt, i2.img_display_options, i2.img_color_mode AS color_mode, i2.img_orientation AS orientation,
                        i2.sort_order, i2.modified_at,
                        (SELECT cm3.cat_id FROM snap_image_cat_map cm3 WHERE cm3.image_id = i2.id LIMIT 1) AS category_id
                 FROM snap_images i2 WHERE i2.id = ? LIMIT 1
@@ -1182,16 +1249,24 @@ if ($resource === 'batch-update' && $method === 'POST') {
                 $mine = ['sort_order' => (int)($upd['sort_order'] ?? $current['sort_order'])];
                 if (isset($upd['title']))       $mine['title']       = $upd['title'];
                 if (isset($upd['description'])) $mine['description'] = $upd['description'];
+                if (isset($upd['alt']))         $mine['alt'] = $upd['alt'];
+                if (isset($upd['hashtags']))    $mine['hashtags'] = $upd['hashtags'];
+                if (isset($upd['colors']))      $mine['colors'] = $upd['colors'];
                 if (isset($upd['category_id'])) $mine['category_id'] = (int)$upd['category_id'];
                 if (isset($upd['color_mode']))  $mine['color_mode']  = snap_normalize_color_mode($upd['color_mode']);
+                if (isset($upd['orientation'])) $mine['orientation'] = (int)$upd['orientation'];
 
                 // "theirs" = current live values
                 $theirs = [
                     'title'       => $current['title'],
                     'description' => $current['description'],
+                    'alt'         => $current['alt'],
+                    'hashtags'    => gy_hashtags_by_image($pdo, [$id])[$id] ?? '',
+                    'colors'      => gy_colors_from_display($current['img_display_options']),
                     'sort_order'  => (int)$current['sort_order'],
                     'category_id' => $current['category_id'] !== null ? (int)$current['category_id'] : null,
                     'color_mode'  => $current['color_mode'] ?? '',
+                    'orientation' => (int)$current['orientation'],
                 ];
 
                 $conflicts[] = [
@@ -1221,10 +1296,57 @@ if ($resource === 'batch-update' && $method === 'POST') {
             $set_parts[]  = 'img_description = ?';
             $set_params[] = trim($upd['description']);
         }
+        if (array_key_exists('alt', $upd)) {
+            if (!is_string($upd['alt']) || mb_strlen($upd['alt']) > 500) {
+                $failed[] = ['id' => $id, 'error' => 'ALT text must be at most 500 characters'];
+                continue;
+            }
+            $set_parts[] = 'img_alt = ?';
+            $set_params[] = snap_sanitize_alt($upd['alt']) ?? '';
+        }
+        if (array_key_exists('colors', $upd)) {
+            if (!is_array($upd['colors']) || count($upd['colors']) > 3) {
+                $failed[] = ['id' => $id, 'error' => 'Choose up to three hex colours'];
+                continue;
+            }
+            if (count(array_filter($upd['colors'], static fn($hex) => !is_string($hex) || !preg_match('/^#[0-9A-Fa-f]{6}$/', $hex)))) {
+                $failed[] = ['id' => $id, 'error' => 'Colours must use #RRGGBB'];
+                continue;
+            }
+            $colors = array_values(array_unique(array_map('strtoupper', $upd['colors'])));
+            $display = json_decode((string)$current['img_display_options'], true);
+            if (!is_array($display)) $display = [];
+            $display['ai_colors'] = $colors;
+            $set_parts[] = 'img_display_options = ?';
+            $set_params[] = json_encode($display, JSON_UNESCAPED_SLASHES);
+        }
+        if (array_key_exists('hashtags', $upd)) {
+            if (!is_string($upd['hashtags']) || mb_strlen($upd['hashtags']) > 3000) {
+                $failed[] = ['id' => $id, 'error' => 'Hashtags are too long'];
+                continue;
+            }
+            $tags = snap_extract_tags($upd['hashtags']);
+            if (trim($upd['hashtags']) !== '' && !$tags) {
+                $failed[] = ['id' => $id, 'error' => 'Hashtags must start with #'];
+                continue;
+            }
+            if (count($tags) > 50) {
+                $failed[] = ['id' => $id, 'error' => 'Maximum 50 hashtags'];
+                continue;
+            }
+        }
         // Colour/B&W classification tag (search/filter, not a render change).
         if (isset($upd['color_mode'])) {
             $set_parts[]  = 'img_color_mode = ?';
             $set_params[] = snap_normalize_color_mode($upd['color_mode']);
+        }
+        if (array_key_exists('orientation', $upd)) {
+            if (!in_array($upd['orientation'], [0, 1, 2], true)) {
+                $failed[] = ['id' => $id, 'error' => 'Orientation must be landscape, portrait, or square'];
+                continue;
+            }
+            $set_parts[] = 'img_orientation = ?';
+            $set_params[] = $upd['orientation'];
         }
 
         if ($set_parts) {
@@ -1236,6 +1358,15 @@ if ($resource === 'batch-update' && $method === 'POST') {
                 $failed[] = ['id' => $id, 'error' => 'Failed to update image fields'];
                 continue;
             }
+        }
+
+        if (array_key_exists('hashtags', $upd) || array_key_exists('colors', $upd)) {
+            $tag_text = array_key_exists('hashtags', $upd)
+                ? $upd['hashtags']
+                : (gy_hashtags_by_image($pdo, [$id])[$id] ?? '');
+            $display_colors = array_key_exists('colors', $upd)
+                ? $colors : gy_colors_from_display($current['img_display_options']);
+            snap_sync_tags($pdo, $id, $tag_text . ' ' . implode(' ', $display_colors));
         }
 
         // SMACKTHEMUP organization is many-to-many. Array fields replace the

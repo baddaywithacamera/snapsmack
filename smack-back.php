@@ -506,6 +506,9 @@ include 'core/sidebar.php';
     <div class="box" style="border-left: 4px solid var(--danger, #cc2200);">
         <h3 style="color:var(--danger, #cc2200)">BREACH DETAIL</h3>
         <p class="dim mb-16">Detected: <strong style="color:inherit"><?php echo htmlspecialchars($smack_breach_at ?: 'Unknown'); ?></strong></p>
+        <?php if (($settings['multisite_role'] ?? '') === 'hub'): ?>
+        <p class="mb-16"><a href="smack-multisite-breaches.php">VIEW FLEET BREACH STATUS</a> <span class="dim">— last reported by each spoke; available during lockout.</span></p>
+        <?php endif; ?>
 
         <?php require_once 'core/reauth.php'; $stepup_active = reauth_window_active('smackback_files'); ?>
 

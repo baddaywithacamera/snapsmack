@@ -88,6 +88,26 @@ function rf_tag_target(string $tag): string {
     return $code === 0 ? trim(implode("\n", $lines)) : '';
 }
 
+function rf_require_next_dev_version(string $version): void {
+    // A Git tag is a candidate, not proof of a package or deployment. Keep
+    // numbers sequential without claiming that any earlier tag was installed.
+    $tags = rf_git(['tag', '--list', 'v*D']);
+    $latest = -1;
+    $prefix = '';
+    foreach (explode("\n", $tags) as $tag) {
+        if (!preg_match('/^v(\d+\.\d+)\.(\d+)D$/', trim($tag), $m)) continue;
+        if ($m[1] !== implode('.', array_slice(explode('.', $version), 0, 2))) continue;
+        if ((int)$m[2] > $latest) {
+            $latest = (int)$m[2];
+            $prefix = $m[1];
+        }
+    }
+    if ($latest >= 0 && $version !== $prefix . '.' . ($latest + 1)) {
+        rf_fail("next dev candidate must be {$prefix}." . ($latest + 1)
+            . '; do not skip or reuse a tag number');
+    }
+}
+
 function rf_tests(): void {
     foreach (glob(__DIR__ . '/../tests/*regression.php') ?: [] as $test) {
         rf_run([PHP_BINARY, $test]);
@@ -119,13 +139,15 @@ if ($command === 'tag-dev') {
     rf_require_dev();
     rf_require_clean();
     $version = rf_version($argv[2] ?? '');
-    if (rf_source_version() !== $version) {
-        rf_fail("source version is " . rf_source_version() . "; expected {$version}");
+    $dev_version = $version . 'D';
+    if (rf_source_version() !== $dev_version) {
+        rf_fail("source version is " . rf_source_version() . "; expected {$dev_version}");
     }
-    rf_require_changelog($version);
+    rf_require_changelog($dev_version);
     rf_git(['fetch', 'Github', '--tags', '--prune'], false);
     $tag = 'v' . $version . 'D';
     if (rf_tag_target($tag) !== '') rf_fail("tag {$tag} already exists; use the next version");
+    rf_require_next_dev_version($version);
     rf_tests();
     rf_git(['tag', $tag]);
     rf_git(['push', 'Github', 'dev'], false);

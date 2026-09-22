@@ -138,9 +138,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
             : 'No rankable entries in this window — nothing crowned.';
 
     } elseif ($action === 'recover_entries') {
-        $r=pc_recover_tagged_entries($pdo,$settings,40);
-        $msg="Recovery checked {$r['found']} tagged post(s) across {$r['actors']} participant outbox(es): {$r['recovered']} admitted and queued, {$r['already']} already present, {$r['failed']} logged for review, {$r['outside']} outside this window."
-            . ($r['scan_errors'] ? " {$r['scan_errors']} participant account(s) could not be read and are shown as a scan warning." : '');
+        // One participant per request keeps remote outbox delays below the proxy
+        // timeout. Release the PHP session lock while fetching so the dashboard
+        // remains usable during a scan.
+        if (isset($_POST['pc_recover_batch'])) {
+            $offset = max(0, min(10000, (int)($_POST['actor_offset'] ?? 0)));
+            if ($offset === 0 || empty($_SESSION['pc_recover_token'])) {
+                $_SESSION['pc_recover_token'] = bin2hex(random_bytes(8));
+            }
+            $token = (string)$_SESSION['pc_recover_token'];
+            if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+            header('Content-Type: application/json; charset=utf-8');
+            try {
+                $r = pc_recover_tagged_entries($pdo,$settings,40,$offset,1,$token);
+                echo json_encode(['ok'=>true,'result'=>$r], JSON_UNESCAPED_SLASHES);
+            } catch (Throwable $e) {
+                http_response_code(500);
+                echo json_encode(['ok'=>false,'error'=>'Recovery stopped on this account. Retry this step.']);
+            }
+            exit;
+        }
+        $msg_ok = false;
+        $msg = 'Recovery needs JavaScript so each participant can be checked without timing out.';
 
     } elseif ($action === 'hof_toggle') {
         pc_hof_set_active($pdo, (int)($_POST['hof_id'] ?? 0), (string)($_POST['to'] ?? '') === '1');
@@ -539,10 +558,52 @@ include 'core/sidebar.php';
     <div class="box mb-20">
         <h3>RECOVER MISSED ENTRIES</h3>
         <p class="dim">Checks both the live hashtag and every active participant&rsquo;s own outbox, imports qualifying posts, and queues their boosts. Anything it cannot process is retained in the failed-entry log. &ldquo;Queued&rdquo; does not claim that every remote server has displayed it yet.</p>
-        <form method="post" action="" style="display:inline-block;">
+        <form method="post" action="" id="pc-recover-form" style="display:inline-block;">
             <?php csrf_field(); ?><input type="hidden" name="action" value="recover_entries">
             <button type="submit" class="btn-smack">FIND AND RECOVER</button>
         </form>
+        <p class="dim" id="pc-recover-progress" role="status" aria-live="polite"></p>
+        <script>
+        (() => {
+            const form = document.getElementById('pc-recover-form');
+            const progress = document.getElementById('pc-recover-progress');
+            if (!form || !progress) return;
+            let offset = 0, running = false;
+            const totals = {found:0,recovered:0,already:0,failed:0,outside:0,scan_errors:0};
+            form.addEventListener('submit', async event => {
+                event.preventDefault();
+                if (running) return;
+                running = true;
+                form.querySelector('button').disabled = true;
+                try {
+                    let total = 0;
+                    do {
+                        progress.textContent = 'Checking participant ' + (offset + 1) + (total ? ' of ' + total : '') + '…';
+                        const data = new FormData(form);
+                        data.set('pc_recover_batch', '1');
+                        data.set('actor_offset', String(offset));
+                        const response = await fetch(location.href, {method:'POST',body:data,credentials:'same-origin'});
+                        const reply = await response.json();
+                        if (!response.ok || !reply.ok) throw new Error(reply.error || 'Recovery request failed.');
+                        const result = reply.result;
+                        total = result.total_actors;
+                        for (const key of Object.keys(totals)) totals[key] += Number(result[key] || 0);
+                        offset++;
+                    } while (offset < total);
+                    progress.textContent = 'Recovery complete: ' + totals.recovered + ' added, ' + totals.already
+                        + ' already present, ' + totals.failed + ' need review, ' + totals.outside
+                        + ' outside the window. Refresh this page to see the receipt.';
+                    offset = 0;
+                    for (const key of Object.keys(totals)) totals[key] = 0;
+                } catch (error) {
+                    progress.textContent = (error.message || 'Recovery paused.') + ' Click FIND AND RECOVER to retry this participant.';
+                } finally {
+                    running = false;
+                    form.querySelector('button').disabled = false;
+                }
+            });
+        })();
+        </script>
         <p class="dim"><strong>No messages are sent from this page.</strong> Suggested DMs appear below for review only.</p>
         <?php if ($recovery_results): ?>
             <h4>LATEST RECOVERY RECEIPT</h4>

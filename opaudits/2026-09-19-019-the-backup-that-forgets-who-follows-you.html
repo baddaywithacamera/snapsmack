@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 019 — The backup that keeps your followers and the exit that forgets them</title>
+<link rel="stylesheet" href="_report.css">
+</head>
+<body>
+
+    <p class="doc-kicker">SnapSmack Operability Audit — DING DONG BELL</p>
+    <h1>OPAUDIT 019 — The backup that keeps your followers and the exit that forgets them</h1>
+
+    <table class="meta">
+        <tr><td class="k">Audit ID</td><td>2026-09-19-019</td></tr>
+        <tr><td class="k">Report date</td><td>2026-09-19</td></tr>
+        <tr><td class="k">First observed</td><td>2026-09-19, early hours. Sean, reading another project&rsquo;s FAQ (&ldquo;what happens if the relay shuts down?&rdquo;): &ldquo;how is the fediverse side of our backups? is it comprehensive? &hellip; i think it might be a blindspot or blog only.&rdquo; It was.</td></tr>
+        <tr><td class="k">Theme</td><td>A SnapSmack site is two things &mdash; a photo blog and a fediverse account. The raw backup keeps both. The portable &ldquo;leave with everything&rdquo; package keeps only the blog. Nobody had asked the second question, so nobody had noticed the answer.</td></tr>
+        <tr><td class="k">Surfaces</td><td>SMACK UP YOUR BACKUP (full dump, RESTORE, exit package); TAKE YOUR SHIT WITH YOU (<code>core/tyswy-api.php</code>); the fediverse engine (<code>core/fediverse.php</code>: followers, following, blocks, actor keypair, <code>Move</code>); DISASTER RECOVERY kit import.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-open">Open</span> &nbsp; Nothing built yet. Spec written the same night (<code>_spec/SPEC-fediverse-in-backup-and-exit-v0_1.md</code>). Closes only on the watched run in &sect;7.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Not yet.</strong> The findings are measured from code (which tables the dump selects, which resources TYSWY serves, whether an outbound <code>Move</code> exists). The fix is not; it needs the fediverse test lab.</td></tr>
+        <tr><td class="k">Reporter</td><td>Sean (asked the question) + Claude (measured the answer, wrote the spec).</td></tr>
+        <tr><td class="k">Related</td><td>SECAUDIT 054 (backup signing built then dropped &mdash; the user&rsquo;s archive is theirs; this audit is about what the archive <em>contains</em>, not who vouches for it). FED UP 719D (&ldquo;MOVING FROM&rdquo;, the inbound half of what &sect;5 needs). OPAUDIT 017 (delivery pacing the outbound <code>Move</code> must reuse).</td></tr>
+        <tr><td class="k">Publication</td><td>Public. No exploitable detail; the gap is a missing feature, not a hole.</td></tr>
+    </table>
+
+    <h2>1. Summary</h2>
+    <p>Every SnapSmack site that federates has an ActivityPub actor: a keypair, a list of who
+    follows it, who it follows, who it has blocked. That is the part of the site other people
+    are attached to. We promise two things about a site&rsquo;s data: it is backed up, and the
+    owner can leave with it. The first promise is kept in full &mdash; the SQL dump takes every
+    <code>snap_*</code> table, which includes all of the fediverse tables and the private key.
+    The second is kept for the blog only. TAKE YOUR SHIT WITH YOU exports posts, images, albums,
+    tags, mosaics &mdash; and not one follower. And even if it did, a list of followers is not
+    something Mastodon or Pixelfed will read from a file: the only way followers come with you
+    is the ActivityPub <code>Move</code> activity, sent by the <em>old</em> server, and we can
+    receive one but cannot send one. So the honest state is: leave SnapSmack and your followers
+    stay behind, silently.</p>
+
+    <h2>2. What a human saw</h2>
+    <table>
+        <tr><th>When</th><th>What</th></tr>
+        <tr><td>2026-09-19, ~01:30</td><td>Reading holos.social&rsquo;s FAQ: &ldquo;What happens if the relay shuts down? Your data is safe &hellip; point your DNS to another relay.&rdquo; Sean: is our fediverse side of backups comprehensive, or blog only?</td></tr>
+        <tr><td>~01:40</td><td>Measured: the dump is <code>SHOW TABLES</code> filtered to <code>snap_*</code> &mdash; comprehensive. TYSWY&rsquo;s resource list read out: eleven resources, all blog. <code>Move</code> grep: inbound handler at <code>fediverse.php:3213</code>, <code>alsoKnownAs</code> writer at <code>:3582</code>, no sender.</td></tr>
+        <tr><td>~01:45</td><td>Sean: &ldquo;ideally your exports from SMACKONEOUT and GRAMOFSMACK should work for creating a pixelfed account and a SMACKTALK backup should work for mastodon.&rdquo; Checked what those two actually import from outsiders (&sect;4).</td></tr>
+        <tr><td>~02:00</td><td>Sean: &ldquo;so we have an opaudit because this is another structural failure to address?&rdquo; Yes.</td></tr>
+    </table>
+
+    <h2>3. What the code does today</h2>
+    <table>
+        <tr><th>Path</th><th>Blog content</th><th>Followers / following / blocks</th><th>Actor keypair</th><th>Restore</th></tr>
+        <tr><td>SUYB full dump</td><td>every table</td><td><strong>yes</strong> (<code>snap_ap_followers</code>, <code>snap_ap_following</code>, <code>snap_ap_blocks</code>, <code>snap_relay_*</code>, deliveries, likes, boosts, DMs)</td><td><strong>yes</strong> (<code>snap_settings.fediverse_private_key</code>)</td><td>Database only by hand: DISASTER RECOVERY &rarr; import kit. SUYB&rsquo;s RESTORE button puts back <strong>files only</strong> and does not say so.</td></tr>
+        <tr><td>TYSWY export / exit package</td><td>posts, images, post_images, trigrams, mosaics, assets, categories, tags, image_tags, memberships, albums</td><td><strong>none</strong></td><td>no (correct &mdash; &sect;5)</td><td>&mdash;</td></tr>
+        <tr><td>Outbound <code>Move</code></td><td colspan="4"><strong>does not exist.</strong> Inbound <code>Move</code> is honoured with the anti-hijack <code>alsoKnownAs</code> check; &ldquo;MOVING FROM&rdquo; (719D) lets a site <em>receive</em> a migration. Nothing lets a site <em>send</em> one.</td></tr>
+    </table>
+
+    <h2>4. What the other side will actually accept</h2>
+    <p>This is the part that turns &ldquo;export a JSON&rdquo; into something real. Nobody imports
+    someone else&rsquo;s JSON.</p>
+    <ul>
+        <li><strong>Followers</strong> &mdash; only through ActivityPub <code>Move</code>. The new account names the old actor in <code>alsoKnownAs</code>; the old server sends <code>Move</code> to every follower; each follower&rsquo;s server re-follows the new account automatically. No file, no CSV, no JSON does this.</li>
+        <li><strong>Who you follow, blocks, mutes, domain blocks</strong> &mdash; Mastodon&rsquo;s Import page takes CSVs in fixed shapes (<code>following.csv</code>: &ldquo;Account address,Show boosts,Notify on new posts,Languages&rdquo;; <code>blocked_accounts.csv</code>; <code>muted_accounts.csv</code>; <code>blocked_domains.csv</code>). Pixelfed takes the following list the same way. We hold all of this data; we write none of the files.</li>
+        <li><strong>Posts &rarr; Pixelfed</strong> &mdash; Pixelfed&rsquo;s &ldquo;Import from Instagram&rdquo; reads Instagram&rsquo;s archive layout (media files + <code>posts_1.json</code> with caption and timestamp). A SMACKONEOUT or GRAMOFSMACK site maps onto that one-to-one.</li>
+        <li><strong>Posts &rarr; Mastodon</strong> &mdash; nothing. Mastodon imports no posts, not even its own archive. A SMACKTALK site&rsquo;s people can move (above); its posts stay published where they are, or in the exit package. That is Mastodon&rsquo;s limit and the FAQ must say so rather than imply otherwise.</li>
+    </ul>
+
+    <h2>5. Root cause</h2>
+    <p><strong>The exit package was built when the site was only a blog.</strong> TYSWY&rsquo;s
+    resource list is the blog&rsquo;s data model from the day it was written. Federation arrived
+    later and grew its own tables; nobody went back and asked whether &ldquo;everything&rdquo;
+    still meant everything. Same class as OPAUDIT 016 and 018: a thing that was complete once
+    and quietly stopped being complete when the ground moved.</p>
+    <p><strong>The portable and the raw were treated as the same promise.</strong> They are not.
+    The raw dump is for resurrecting <em>this</em> site (so the private key belongs in it).
+    The portable package is for becoming someone <em>else</em> (so the key does not, and the
+    followers can only be carried by <code>Move</code>). Both are needed; only one existed in
+    full.</p>
+    <p><strong>RESTORE that restores half.</strong> SUYB&rsquo;s RESTORE uploads files and
+    finishes green. The database is a separate, manual step on another page. A site restored
+    that way looks whole and is a dead actor.</p>
+
+    <h2>6. What we will do</h2>
+    <p>Full detail in <code>_spec/SPEC-fediverse-in-backup-and-exit-v0_1.md</code>. In order:</p>
+    <ol>
+        <li><strong>TYSWY fediverse block</strong> (core): <code>exit/fediverse/</code> with actor, followers, following, blocks as JSON <em>and</em> the Mastodon-format CSVs, plus a README that says plainly what each platform will and won&rsquo;t read. The private key is asserted absent from the whole package.</li>
+        <li><strong>SUYB says the truth about RESTORE</strong> (desktop): either RESTORE also imports the database through DISASTER RECOVERY behind one explicit yes, or its completion message says &ldquo;files restored; database: import the kit on DISASTER RECOVERY&rdquo;. Backup summary gains a line: &ldquo;Fediverse: N followers, N following, actor key present.&rdquo;</li>
+        <li><strong>Outbound <code>Move</code></strong> (core, FED UP &ldquo;MOVING TO&rdquo;): preflight that the new account lists us in <code>alsoKnownAs</code>, then <code>Move</code> to every follower through the paced delivery queue; <code>movedTo</code> on the actor; step-up gated; one spoke first.</li>
+        <li><strong>Instagram-archive adapter</strong> for SMACKONEOUT / GRAMOFSMACK &rarr; Pixelfed, beside the WP/Ghost adapters; verified against a real Pixelfed import before the FAQ claims it.</li>
+        <li><strong>Post-restore fediverse health check</strong>: actor resolves, served public key matches the stored private key, follower count &mdash; PASS/FAIL in SUYB&rsquo;s log.</li>
+    </ol>
+
+    <h2>7. Verified</h2>
+    <table>
+        <tr><th>Step</th><th>State</th><th>Evidence</th></tr>
+        <tr><td>1. <code>exit/fediverse/</code> in the leave package</td><td>Built 2026-09-19 (<code>a7784b63</code>), not yet run against a live site</td><td>TYSWY 0.2.1; server <code>action=fediverse</code>; engine test writes all nine files from a fake site and walks the whole archive for a private key (none). PHP contract test 13/13.</td></tr>
+        <tr><td>2. SUYB RESTORE tells the truth about the database</td><td>Open (Codex)</td><td>&mdash;</td></tr>
+        <tr><td>3. Outbound <code>Move</code></td><td>Open</td><td>&mdash;</td></tr>
+        <tr><td>4. Instagram-archive export for Pixelfed</td><td>Open</td><td>&mdash;</td></tr>
+        <tr><td>5. Post-restore fediverse health check</td><td>Open</td><td>&mdash;</td></tr>
+    </table>
+    <p>Live, nothing yet. The audit closes on one watched run in the fediverse test lab: back up &rarr;
+    destroy the database &rarr; RESTORE (files + DB) &rarr; the actor still resolves and a follow
+    lands; TYSWY export &rarr; <code>following.csv</code> imports into the lab Mastodon;
+    <code>pixelfed-import.zip</code> imports into the lab Pixelfed; MOVING TO re-points a lab
+    follower. Each step recorded here with a date.</p>
+
+    <h2>8. Eyeball next</h2>
+    <ul>
+        <li>Every other promise the FAQ makes about &ldquo;all your data&rdquo; &mdash; comments, likes received, the shared library&rsquo;s post cache &mdash; asked the same question: is it in the raw dump, is it in the portable package, and which of the two <em>should</em> hold it.</li>
+        <li>The DISASTER RECOVERY import itself has never been watched restoring a federating site. It is the only database restore path we have.</li>
+    </ul>
+
+    <h2>9. The doctrine this incident created</h2>
+    <p>&ldquo;Everything&rdquo; is re-measured every time the data model grows. When a new table
+    family lands (federation, relay, community), the same commit answers: raw dump &mdash; yes
+    by construction; portable package &mdash; yes or a written reason why not. A backup that
+    keeps the blog and forgets the people is not a backup of a fediverse site.</p>
+
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
