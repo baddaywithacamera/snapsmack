@@ -86,6 +86,21 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     $where   = [];
     $params  = [];
 
+    // The longform editor's visual image blocks resolve only the images that
+    // appear in the current post. Keeping this server-side avoids loading an
+    // entire large gallery merely to draw a handful of editor thumbnails.
+    $ids_raw = trim((string)($_GET['ids'] ?? ''));
+    if ($ids_raw !== '') {
+        $ids = array_values(array_unique(array_filter(array_map('intval', explode(',', $ids_raw)), static function ($id) {
+            return $id > 0;
+        })));
+        $ids = array_slice($ids, 0, 100);
+        if ($ids) {
+            $where[] = 'i.id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')';
+            array_push($params, ...$ids);
+        }
+    }
+
     // Full-text search across title, description, tags
     $search = trim($_GET['q'] ?? '');
     if ($search !== '') {
