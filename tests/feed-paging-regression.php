@@ -14,8 +14,14 @@ function fp_check(string $label, bool $ok): void {
 $root = dirname(__DIR__);
 foreach (['game-on' => 'go', 'instant-camera' => 'tg', 'sliders' => 'tg', 'sudden-impact' => 'tg', 'the-grid' => 'tg'] as $skin => $P) {
     $php = file_get_contents("$root/skins/$skin/landing.php");
-    fp_check("$skin slices the feed to one batch", strpos($php, '$grid_posts  = array_slice($grid_posts, ($_feed_page - 1) * $_feed_per, $_feed_per);') !== false
-        && strpos($php, "\$_feed_page  = max(1, (int)(\$_GET['p'] ?? 1));") !== false);
+    if ($skin === 'instant-camera') {
+        fp_check('instant-camera queries one feed batch', strpos($php, 'LIMIT :feed_limit OFFSET :feed_offset') !== false
+            && strpos($php, "\$_feed_page   = max(1, min(1000000, (int)(\$_GET['p'] ?? 1)));" ) !== false
+            && strpos($php, 'array_slice($grid_posts') === false);
+    } else {
+        fp_check("$skin slices the feed to one batch", strpos($php, '$grid_posts  = array_slice($grid_posts, ($_feed_page - 1) * $_feed_per, $_feed_per);') !== false
+            && strpos($php, "\$_feed_page  = max(1, (int)(\$_GET['p'] ?? 1));") !== false);
+    }
     fp_check("$skin emits a feed sentinel only when more exist", strpos($php, "<?php if (\$_feed_more): ?>") !== false
         && strpos($php, "id=\"$P-sentinel\" class=\"ss-feed-sentinel\" data-feed data-next=") !== false);
     $man = json_decode(file_get_contents("$root/skins/$skin/manifest.json"), true);

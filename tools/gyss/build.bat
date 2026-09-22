@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-echo Building GET YOUR SHIT SORTED 0.7.17 with Qt...
+echo Building GET YOUR SHIT SORTED 0.7.33 with Qt...
 python -m pip install -r requirements.txt
 if errorlevel 1 exit /b 1
 if exist build rmdir /s /q build

@@ -286,11 +286,12 @@ $_show_static    = (($_ic_bgmode === 'static'   || $_ic_cycle) && $_tg_treat_img
 <?php if ($_ic_cycle): ?><div id="ic-bg-cycle" data-secs="<?php echo (int)$_ic_cycle_secs; ?>"><?php endif; ?>
 <?php if ($_show_mayhem): ?>
 <!-- Background: Organized Mayhem ambient tabletop (data-pan=0 data-ambient=1) behind the scrim. -->
+<?php // Decorative coverage needs a small representative pool, not a second feed page. ?>
 <div class="ic-bg ic-bg-mayhem<?php echo $_cl; ?>" aria-hidden="true"
      data-mayhem
      data-api-url="<?php echo BASE_URL; ?>?ajax=mayhem"
      data-pan="0" data-ambient="1"
-     data-initial-count="<?php echo (int)($settings['mayhem_initial_count'] ?? 90); ?>"
+     data-initial-count="<?php echo max(12, min(30, (int)($settings['mayhem_initial_count'] ?? 30))); ?>"
      data-max-width="<?php echo (int)($settings['mayhem_max_width'] ?? 260); ?>"
      data-loading-label="Developing"></div>
 <?php endif; ?>

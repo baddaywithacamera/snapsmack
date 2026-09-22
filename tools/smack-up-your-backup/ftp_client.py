@@ -54,6 +54,7 @@ class FTPClient:
         self.keepalive_interval = keepalive_interval
         self.connect_timeout    = connect_timeout
         self.transfer_timeout   = transfer_timeout
+        self.on_log: Optional[Callable[[str], None]] = None   # engines attach their log
 
         self._ftp: Optional[ftplib.FTP] = None
         self._last_op_time: float = 0.0
@@ -78,6 +79,14 @@ class FTPClient:
             ftp = ftplib.FTP_TLS(context=ctx, timeout=self.connect_timeout)
             ftp.connect(self.host, self.port)
             ftp.auth()
+            # Certificate memory (SECAUDIT 004/037 "scheduled" item, built
+            # 2026-09-20): first connection remembers the certificate; a changed
+            # certificate that a public CA vouches for is a renewal and re-pins
+            # silently; any other change stops here BEFORE the password is sent.
+            # See ftps_pins.py for why naive pinning would alarm every 60-90 days.
+            if not self.verify_cert:
+                import ftps_pins
+                ftps_pins.check_connection(ftp, self.host, self.port, log=self.on_log)
             ftp.login(self.user, self.password)
             ftp.prot_p()
         else:

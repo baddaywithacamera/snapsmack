@@ -232,6 +232,45 @@ def set(key: str, value: str) -> None:
     _write(data)
 
 
+class VaultRequired(RuntimeError):
+    """A posting-capable secret cannot be written to disk unsealed."""
+
+
+def seal_local(value: str) -> str:
+    """Seal a secret a TOOL keeps in its own config file (SYBU/COLD SNAP config.ini
+    api_key, smackpress_key, admin password). SECAUDIT 054, Sean 2026-09-18: the
+    vault is MANDATORY for posting-capable keys — no base64 fallback. Returns ''
+    for an empty value; raises VaultRequired when the vault cannot seal, so the
+    caller keeps the key in memory for the session and tells the user, instead
+    of writing recoverable obfuscation to disk."""
+    value = value or ""
+    if value == "":
+        return ""
+    init()
+    if snap_vault.is_unlocked():
+        return snap_vault.encrypt(value)
+    raise VaultRequired(
+        "This key can only be remembered inside the credential vault, and the vault is "
+        "locked or unavailable on this PC. It will work for this session only.")
+
+
+def open_local(blob) -> str:
+    """Read a tool-local secret written by seal_local() — or by the pre-vault
+    base64 writer (migration input only: the next save re-seals it)."""
+    if not blob:
+        return ""
+    init()
+    if snap_vault.is_encrypted(blob):
+        try:
+            return snap_vault.decrypt(blob)
+        except Exception:
+            return ""
+    try:
+        return base64.b64decode(str(blob).encode()).decode("utf-8")
+    except Exception:
+        return ""
+
+
 def prepare_explicit_replacement() -> None:
     """Recover an orphaned vault only for an explicit user save/discovery action."""
     init()

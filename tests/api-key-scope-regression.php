@@ -64,12 +64,19 @@ ks_test(preg_match("/\\(\\\$api_key_row\\['key_type'\\] \\?\\? ''\\) === 'hub'/"
 ks_test(str_contains($gyss, "hub prompt and public catalogue reads"),
     'hub keys may read the published catalogue without gaining editing routes');
 foreach ([['core/ohsnap-api.php', "key_type = 'ohsnap'"],
-          ['core/tyswy-api.php', "key_type = 'tyswy'"],
           ['core/smackpress-api.php', "key_type = 'smackpress'"],
           ['core/flkrfckr-api.php', "key_type = 'flkrfckr'"]] as [$file, $needle]) {
     ks_test(str_contains(file_get_contents($root . '/' . $file), $needle),
         basename($file) . ' scopes to its own key type');
 }
+// TYSWY (0.7.711D): read-only export surface accepts EXACTLY tyswy + suyb — a
+// suyb key already receives the full SQL dump, so this is not a widening. Pin
+// the exact allowed set so any third type added here turns this red. (SECAUDIT 058 C)
+$tyswy = file_get_contents($root . '/core/tyswy-api.php');
+ks_test(substr_count($tyswy, "key_type IN ('tyswy', 'suyb')") === 2
+     && !str_contains($tyswy, "key_type = 'tyswy'")
+     && preg_match("/key_type IN \('(?!tyswy', 'suyb'\))[^)]*\)/", $tyswy) === 0,
+    'tyswy-api.php accepts exactly tyswy + suyb (both the expiry query and its fallback) and nothing else');
 
 echo $fail === 0 ? "ALL PASS\n" : ("{$fail} FAILURE(S)\n");
 exit($fail === 0 ? 0 : 1);

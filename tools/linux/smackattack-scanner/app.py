@@ -17,7 +17,22 @@ factored out of the old tkinter thread). This file only wires those to the page.
 import json
 import os
 import sys
+import urllib.error
 import urllib.request
+
+
+class _RefuseRedirect(urllib.request.HTTPRedirectHandler):
+    """urllib re-sends EVERY header on a redirect, Authorization included, so a
+    credentialed request that gets 30x'd would hand the key to whatever host
+    Location names. Refuse instead (SECAUDIT 053 F / 054). requests already
+    strips the header cross-host; urllib does not."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url, code, "redirect refused: request carried a credential", headers, fp)
+
+
+_NO_REDIRECT = urllib.request.build_opener(_RefuseRedirect)
+
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOL_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", os.path.basename(HERE)))                     # tools/smackattack-scanner/
@@ -227,7 +242,7 @@ def upload_to_hub(row_id):
                  "Authorization": f"Bearer {api_key}"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with _NO_REDIRECT.open(req, timeout=10) as resp:
             body = json.loads(resp.read())
     except Exception as e:
         return {"ok": False, "message": f"Upload failed: {e}"}

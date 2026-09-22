@@ -28,6 +28,13 @@ Spec: [`_spec/take-your-shit-with-you-spec-v0_1.md`](../../_spec/take-your-shit-
 - **Not a restore tool.** There is no import back into SnapSmack here, by design.
 - **Not a mode converter.** A GramOfSmack carousel comes out as a carousel; a
   photoblog image comes out as a photoblog image. Nothing is silently reshaped.
+- **Your followers are listed, not carried.** `exit/fediverse/` holds who follows
+  you, who you follow and what you block — the following/blocks as the exact CSVs
+  Mastodon, Pixelfed and Holos import. Followers themselves only move when THIS
+  site sends them an ActivityPub Move (FED UP → MOVING TO); no file does that.
+  Posts: Mastodon, GoToSocial and Holos import none from anyone; Pixelfed takes
+  photos; WordPress + the ActivityPub plugin takes the courtesy package. The
+  private signing key is never in the archive.
 - **Not a promise about WordPress.** The WordPress package is a courtesy, and
   every single thing WordPress cannot represent is written down in the
   conversion report rather than quietly dropped.
@@ -74,6 +81,9 @@ Take Your Shit With You - Your Site - 2026-08-07/
 │   └── optional/           thumbnails, if you asked for them
 ├── indexes/                albums, categories, collections, tags, blogroll,
 │                           fediverse references, stats, content-map
+├── exit/fediverse/         the people attached to the site: followers, following,
+│                           blocks (JSON) + the CSVs Mastodon / Pixelfed / Holos
+│                           import; README says what each server will and won't take
 ├── courtesy/wordpress/     WXR + media + conversion report
 ├── schema/                 the JSON Schema these files validate against
 └── logs/export.log
