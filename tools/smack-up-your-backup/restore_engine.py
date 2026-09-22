@@ -28,6 +28,82 @@ ProgressCallback = Callable[[str, str, float], None]
 _is_safe_rel_path = is_safe_relative
 
 
+# ── Bounded ZIP extraction (SECAUDIT 058 B) ──────────────────────────────────
+# A backup package is user-selected or cloud-downloaded. Before 0.7.724D it
+# was `extractall()`'d wholesale: no name check, no size check, no cleanup.
+# A damaged or crafted ZIP could fill the disk before SUYB looked at the
+# manifest. These bounds are generous for a real backup (a photo archive is
+# large but honest) and fatal for a bomb.
+ZIP_MAX_MEMBERS        = 250_000
+ZIP_MAX_MEMBER_BYTES   = 8 * 1024 ** 3        # one file: 8 GB
+ZIP_MAX_RATIO          = 200                  # expanded / compressed, per member
+ZIP_RATIO_FLOOR_BYTES  = 1024 * 1024          # ratio only judged above 1 MB expanded
+ZIP_FREE_SPACE_MARGIN  = 512 * 1024 ** 2      # keep 512 MB free on the volume
+_ZIP_COPY_CHUNK        = 1024 * 1024
+
+
+def inventory_zip(zf: "zipfile.ZipFile") -> int:
+    """Walk every member and refuse the archive on the first unsafe one.
+    Returns the total declared expanded size. Nothing is written."""
+    import stat
+    infos = zf.infolist()
+    if len(infos) > ZIP_MAX_MEMBERS:
+        raise ValueError(f"Backup package has {len(infos)} entries (limit {ZIP_MAX_MEMBERS})")
+    total = 0
+    for info in infos:
+        name = info.filename
+        if name.endswith("/"):
+            if not is_safe_relative(name.rstrip("/")):
+                raise ValueError(f"Unsafe directory name in backup package: {name!r}")
+            continue
+        if not is_safe_relative(name):
+            raise ValueError(f"Unsafe file name in backup package: {name!r}")
+        # Unix zips carry st_mode in the high 16 bits; Windows/plain zips carry
+        # nothing there (file-type bits 0). Only a SET, non-regular type is a link
+        # or device — refuse those; leave mode-less entries alone.
+        ftype = ((info.external_attr >> 16) & 0xFFFF) & 0xF000
+        if ftype and ftype not in (stat.S_IFREG, stat.S_IFDIR):
+            raise ValueError(f"Backup package contains a non-file entry (link/device): {name!r}")
+        if info.file_size > ZIP_MAX_MEMBER_BYTES:
+            raise ValueError(f"{name!r} declares {info.file_size} bytes (limit {ZIP_MAX_MEMBER_BYTES})")
+        if info.file_size > ZIP_RATIO_FLOOR_BYTES:
+            ratio = info.file_size / max(info.compress_size, 1)
+            if ratio > ZIP_MAX_RATIO:
+                raise ValueError(f"{name!r} expands {ratio:.0f}:1 — refused as a decompression bomb")
+        total += info.file_size
+    return total
+
+
+def extract_zip_bounded(zf: "zipfile.ZipFile", dest: str) -> None:
+    """Inventory, check free space, then stream each member under `dest`.
+    A member that yields more bytes than it declared aborts the extraction."""
+    import shutil
+    from path_safety import contained_local_path
+    total = inventory_zip(zf)
+    free = shutil.disk_usage(dest).free
+    if total + ZIP_FREE_SPACE_MARGIN > free:
+        raise ValueError(
+            f"Backup package expands to {total // 1048576} MB but only "
+            f"{free // 1048576} MB is free here")
+    for info in zf.infolist():
+        if info.filename.endswith("/"):
+            os.makedirs(contained_local_path(dest, info.filename.rstrip("/")), exist_ok=True)
+            continue
+        target = contained_local_path(dest, info.filename)
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        written = 0
+        with zf.open(info, "r") as src, open(target, "wb") as out:
+            while True:
+                chunk = src.read(_ZIP_COPY_CHUNK)
+                if not chunk:
+                    break
+                written += len(chunk)
+                if written > info.file_size:
+                    raise ValueError(
+                        f"{info.filename!r} produced more bytes than it declared — refused")
+                out.write(chunk)
+
+
 class RestoreEngine:
     def __init__(
         self,
@@ -56,27 +132,36 @@ class RestoreEngine:
     # ------------------------------------------------------------------
 
     def restore_from_zip(self, zip_path: str) -> dict:
-        """Restore from a local backup package ZIP."""
+        """Restore from a local backup package ZIP.
+
+        SECAUDIT 058 B: the package is inventoried and bounded BEFORE a single
+        byte is expanded, streamed out under the staging directory, and the
+        staging directory is always removed afterwards — success or failure.
+        """
+        import shutil
         import tempfile
         self._progress("extract", "Extracting backup package…", 0.02)
         extract_dir = tempfile.mkdtemp(prefix="sibu_restore_")
         try:
-            with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(extract_dir)
-        except Exception as e:
-            return self._fail(f"Could not extract ZIP: {e}")
+            try:
+                with zipfile.ZipFile(zip_path, "r") as zf:
+                    extract_zip_bounded(zf, extract_dir)
+            except Exception as e:
+                return self._fail(f"Could not extract ZIP: {e}")
 
-        # Find the recovery kit inside
-        kit_path = None
-        for fname in os.listdir(extract_dir):
-            if fname.endswith(".tar.gz"):
-                kit_path = os.path.join(extract_dir, fname)
-                break
+            # Find the recovery kit inside
+            kit_path = None
+            for fname in os.listdir(extract_dir):
+                if fname.endswith(".tar.gz"):
+                    kit_path = os.path.join(extract_dir, fname)
+                    break
 
-        if not kit_path:
-            return self._fail("No recovery kit (.tar.gz) found in backup package.")
+            if not kit_path:
+                return self._fail("No recovery kit (.tar.gz) found in backup package.")
 
-        return self.restore_from_kit(kit_path, extract_dir)
+            return self.restore_from_kit(kit_path, extract_dir)
+        finally:
+            shutil.rmtree(extract_dir, ignore_errors=True)
 
     def restore_from_cloud(self, file_id: str, local_download_dir: str) -> dict:
         """Download a backup ZIP from cloud then restore from it."""
@@ -148,8 +233,22 @@ class RestoreEngine:
             batch_size     = int(self.profile.get("batch_size", 0)),
         )
         try:
+            if hasattr(ftp, "on_log"):
+                ftp.on_log = self._log
             ftp.connect()
         except Exception as e:
+            try:
+                import ftps_pins
+                if isinstance(e, ftps_pins.CertificateChanged):
+                    result["certificate_change"] = {
+                        "host": e.host,
+                        "port": int(self.profile.get("ftp_port") or 21),
+                        "old_fp": e.old_fp,
+                        "new_fp": e.new_fp,
+                        "why": e.why,
+                    }
+            except ImportError:
+                pass
             return self._fail(f"FTP connection failed: {e}", result)
 
         # ── Pre-create directory tree ────────────────────────────────

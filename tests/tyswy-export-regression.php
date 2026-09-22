@@ -179,8 +179,8 @@ t_ok(str_contains($src, 'snap_api_safe_upload_path($rel)'),
      'media serving no longer contains the stored path (SECAUDIT 040 finding C)');
 t_ok(str_contains($src, "tyswy_error(403, 'https_required'"),
      'HTTPS enforcement is gone');
-t_ok(str_contains($src, "key_type = 'tyswy'"),
-     'the key scope is no longer pinned to tyswy');
+t_ok(substr_count($src, "key_type IN ('tyswy', 'suyb')") === 2,
+     'the export key scope must remain limited to tyswy and suyb');
 
 // ── Canonical serialization must be order-stable ────────────────────────────
 $a = tyswy_canonical(['b' => 2, 'a' => 1, 'c' => 3]);
