@@ -2164,29 +2164,34 @@ html, body { background: #fff; color: var(--tilez-ink); }
 body.blog, body.single, body.archive { background: #fff; }
 
 /* The TILEZ masthead is the identity. The old full-viewport ALFRED backdrop is
-   deliberately absent. Navigation floats at the upper-right of the white head. */
+   deliberately absent. The masthead and menu are two left-aligned rows. */
 .header-image { display: none !important; }
 .header {
     width: min(var(--tilez-page), calc(100% - 48px));
     min-height: 0;
     margin: 0 auto;
-    padding: clamp(26px, 5vw, 72px) 0 clamp(18px, 3vw, 38px);
+    padding: 28px 0 14px;
     text-align: left;
 }
-.header .blog-logo { display: block; width: min(780px, 68vw); }
+.header .blog-logo {
+    display: block;
+    width: min(600px, 70vw);
+    margin: 0;
+}
 .header .custom-logo { width: 100%; height: auto; max-height: none; object-fit: contain; object-position: left center; }
 .header .blog-description { display: none; }
 
 .navigation {
-    position: absolute;
+    position: relative;
     z-index: 20;
-    top: 26px;
-    right: max(24px, calc((100vw - var(--tilez-page)) / 2));
-    width: auto;
+    top: auto;
+    right: auto;
+    width: min(var(--tilez-page), calc(100% - 48px));
+    margin: 0 auto 24px;
     background: transparent;
     border: 0;
 }
-.navigation .section-inner { width: auto; }
+.navigation .section-inner { width: 100%; }
 .main-menu { display: flex; width: auto; max-width: none; gap: 18px; white-space: nowrap; }
 .main-menu > li > a, .main-menu > li > span {
     color: var(--tilez-ink);
@@ -2247,8 +2252,8 @@ body.blog, body.single, body.archive { background: #fff; }
 .archive-post-date { font-size: 10px; letter-spacing: .08em; }
 .archive-post-title { margin: 4px 0 0; font-size: clamp(15px, 1.4vw, 22px); line-height: 1.15; }
 
-/* Longform pages remain white and readable. The article canvas is wide enough
-   for MOSAIC bundles, while ordinary prose stays at a comfortable measure. */
+/* Longform pages share one clean editorial canvas. Text and MOSAIC bundles
+   use the same outside edges so a post reads as one deliberate composition. */
 .post-container { background: #fff; }
 .featured-media {
     width: min(900px, calc(100% - 48px));
@@ -2261,20 +2266,57 @@ body.blog, body.single, body.archive { background: #fff; }
     width: min(var(--tilez-page), calc(100% - 48px)) !important;
     max-width: none;
 }
-.entry-content { color: #282828; }
+.post-content,
+.entry-content {
+    color: #282828;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 17px;
+    font-weight: 400;
+    line-height: 1.65;
+}
 .entry-content > p,
 .entry-content > h2,
 .entry-content > h3,
 .entry-content > h4,
 .entry-content > blockquote,
 .entry-content > ul,
-.entry-content > ol { width: min(900px, 100%); margin-left: auto; margin-right: auto; }
+.entry-content > ol {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+}
+.entry-content > p,
+.entry-content > blockquote,
+.entry-content > ul,
+.entry-content > ol { font-weight: 400; }
 .entry-content > .snap-mosaic,
 .entry-content > .snap-mosaic-wall { width: 100%; }
 
+/* A run of separately saved MOSAIC bundles must read as one continuous wall.
+   Keep the normal article spacing at text boundaries, but use the bundle's
+   own 4px gutter between adjacent layout containers. */
+.entry-content > :is(.snap-mosaic, .snap-mosaic-wall):has(+ :is(.snap-mosaic, .snap-mosaic-wall)) {
+    margin-bottom: 4px;
+}
+.entry-content > :is(.snap-mosaic, .snap-mosaic-wall) + :is(.snap-mosaic, .snap-mosaic-wall) {
+    margin-top: 0;
+}
+
+/* Keep the site chrome as quiet as the reference portfolio. */
+#system-footer {
+    margin-top: 54px;
+    padding: 24px 0;
+    border-top: 1px solid #eee;
+    background: #fff;
+}
+#system-footer .footer-metadata-bar p,
+#system-footer a,
+#system-footer .footer-link { color: #888; }
+#system-footer .sep { color: #ccc; }
+
 @media (max-width: 900px) {
     .posts.ss-masonry { --ss-cols: 2; }
-    .navigation { position: absolute; }
+    .navigation { position: relative; top: auto; }
     .main-menu { display: none; }
     .nav-toggle { display: block; }
 }
@@ -2282,7 +2324,7 @@ body.blog, body.single, body.archive { background: #fff; }
 @media (max-width: 560px) {
     :root { --tilez-gap: 10px; }
     .header, .content > .section-inner { width: calc(100% - 28px); }
-    .header { padding-top: 58px; }
+    .header { padding: 58px 0 20px; }
     .header .blog-logo { width: 100%; }
     .posts.ss-masonry { --ss-cols: 1; }
     .post-inner { width: calc(100% - 28px) !important; }
