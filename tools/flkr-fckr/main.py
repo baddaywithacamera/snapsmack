@@ -45,7 +45,7 @@ import snap_stepup
 # app convention, matches unzucker), not in %APPDATA%.
 # ---------------------------------------------------------------------------
 
-BUILD_VERSION = "0.7.25"  # auto-incremented by bump_version.py on each build.bat run
+BUILD_VERSION = "0.7.26"  # auto-incremented by bump_version.py on each build.bat run
 
 if getattr(sys, 'frozen', False):
     # Running as the compiled exe — log next to flkrfckr.exe

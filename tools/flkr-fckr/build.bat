@@ -1,50 +1,64 @@
 @echo off
 REM FLKR FCKR — build.bat
-REM Builds a single-file Windows .exe via PyInstaller.
+REM Builds a single-file Windows .exe via PyInstaller from flkrfckr.spec.
 REM Run from the tools/flkr-fckr/ directory.
-REM Forked from tools/unzucker/build.bat.
+REM
+REM The exe is the Qt window (flkrfckr_launcher.py -> flkrfckr_qt.py) over the
+REM tkinter-free engine (flkrfckr_core.py). main.py is the OLD tkinter window
+REM and must never be the entry script again — the spec pins the launcher and
+REM the post-build check below refuses an exe that imports tkinter.
 
 echo === FLKR FCKR build ===
 
-REM Install / upgrade dependencies
+REM Build from the repo's pinned Python, never whatever "python" is on PATH
+REM (spec drift lesson, 2026-09-15). Falls back to py/python only if missing.
+set PYBIN=C:\dev\snapsmack\.python-build\python.exe
+if not exist "%PYBIN%" set PYBIN=python
+
+REM Install / upgrade dependencies.
 REM cryptography + keyring back the credential vault (SECAUDIT 040 finding A).
 REM Without them the exe still runs, but "Key security" reports encryption
 REM unavailable and the API key stays base64 — so they are NOT optional here.
-pip install --upgrade pyinstaller pillow requests cryptography keyring
-
-REM Auto-increment the 0.7.xx build version (main.py BUILD_VERSION) before building.
-REM Try the py launcher first, then python; ABORT loudly if neither bumps so a
-REM stale, un-versioned exe is never shipped silently (this was the bug: a bare
-REM "python" call no-oped when only the py launcher was on PATH).
-py bump_version.py || python bump_version.py
+"%PYBIN%" -m pip install --upgrade pyinstaller PySide6 pillow requests cryptography keyring
 if errorlevel 1 (
-    echo.
-    echo *** VERSION BUMP FAILED - is Python on PATH? Build aborted. ***
+    echo *** pip install failed. Build aborted. ***
     pause
     exit /b 1
 )
 
-REM Build single-file exe. --version-file stamps the Windows file-version
-REM resource (Properties > Details) from the version_info.txt that
-REM bump_version.py just regenerated. WITHOUT this flag the exe has no version
-REM number even though BUILD_VERSION was bumped — that was the recurring bug.
-REM --collect-all PIL + the _tkinter_finder hidden import: the one-file/windowed
-REM freeze was dropping Pillow (or its Tk bridge), so the thumbnail worker's
-REM "from PIL import Image / ImageTk" failed silently and thumbnails never rendered.
-REM --paths ..\_shared + --hidden-import snap_thumbs: bundle the shared,
-REM build-once client thumbnailer (tools/_shared/snap_thumbs.py) so the frozen
-REM exe can import it. In dev a sys.path bootstrap in image_prep.py finds it;
-REM in the bundle PyInstaller must be told where it lives, hence these flags.
-REM --hidden-import snap_vault: same story for the credential vault.
-REM --collect-submodules keyring.backends: keyring picks its backend at runtime by
-REM import, so PyInstaller's static analysis misses every backend and the frozen
-REM exe silently reports "no keychain" — which would quietly disable the
-REM remember-on-this-machine option rather than failing loudly.
-pyinstaller --onefile --windowed --name flkrfckr --icon assets\icon.ico --version-file version_info.txt --collect-all PIL --hidden-import PIL._tkinter_finder --paths ..\_shared --hidden-import snap_thumbs --hidden-import snap_stepup --hidden-import snap_vault --hidden-import snap_connections --hidden-import snap_profiles --hidden-import snap_creds --hidden-import snap_home --hidden-import snap_site_settings --collect-submodules keyring.backends main.py
+REM Auto-increment 0.7.xx in main.py AND flkrfckr_core.py (the Qt window reads
+REM the core copy) and regenerate version_info.txt. ABORT loudly if the bump
+REM fails so a stale, un-versioned exe is never shipped silently.
+"%PYBIN%" bump_version.py
+if errorlevel 1 (
+    echo.
+    echo *** VERSION BUMP FAILED. Build aborted. ***
+    pause
+    exit /b 1
+)
+
+REM One-file windowed exe. The spec carries the icon (assets\icon.ico), the
+REM version resource (version_info.txt) and bundles every local + _shared .py.
+"%PYBIN%" -m PyInstaller --noconfirm --clean flkrfckr.spec
+if errorlevel 1 (
+    echo *** PyInstaller failed. Build aborted. ***
+    pause
+    exit /b 1
+)
+
+REM Post-build check: the exe must be the Qt shell, must carry the version and
+REM the icon. Verifies the ENTRY SCRIPT, not just the number (SYBU 0.7.67 shipped
+REM the Tk app because only the version was checked).
+"%PYBIN%" ..\_build\verify_exe.py dist\flkrfckr.exe --entry flkrfckr_launcher --no-tk
+if errorlevel 1 (
+    echo *** Built exe failed verification. NOT copied. ***
+    pause
+    exit /b 1
+)
 
 if not exist C:\snapsmack\flkr-fckr mkdir C:\snapsmack\flkr-fckr
 copy /Y dist\flkrfckr.exe C:\snapsmack\flkr-fckr\flkr-fckr.exe
-C:\dev\snapsmack\.python-build\python.exe ..\hub\trust-installed-exe.py C:\snapsmack\flkr-fckr\flkr-fckr.exe
+"%PYBIN%" ..\hub\trust-installed-exe.py C:\snapsmack\flkr-fckr\flkr-fckr.exe
 if errorlevel 1 exit /b 1
 
 echo.

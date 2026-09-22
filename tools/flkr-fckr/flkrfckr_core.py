@@ -56,7 +56,7 @@ from checkpoint import ImportCheckpoint        # noqa: E402
 from poster import FlkrDckrClient, run_import   # noqa: E402
 import snap_stepup                             # noqa: E402
 
-BUILD_VERSION = "0.7.25"   # mirrors main.py's BUILD_VERSION
+BUILD_VERSION = "0.7.26"   # mirrors main.py's BUILD_VERSION — bump_version.py bumps BOTH
 
 # Log level names carried in events, so the web UI can colour lines the same way
 # the tkinter palette did (accent = ok, warn = amber, err = red, dim = muted).
@@ -68,8 +68,17 @@ OK, WARN, ERR, DIM, PRI = 'ok', 'warn', 'err', 'dim', 'pri'
 # main.py (flkrfckr.<date>.log) so an operator's "today's log" is findable.
 # ---------------------------------------------------------------------------
 
+def _log_dir() -> str:
+    """Where the dated log goes. Frozen exe: next to the exe (the portable-app
+    convention main.py used) — NOT this module's __file__, which inside a onefile
+    build is a throwaway temp dir that vanishes on exit, taking the log with it."""
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return _TOOL_DIR
+
+
 def _setup_logging() -> str:
-    log_dir = _TOOL_DIR
+    log_dir = _log_dir()
     os.makedirs(log_dir, exist_ok=True)
     log_file = os.path.join(log_dir, 'flkrfckr.' + datetime.date.today().isoformat() + '.log')
     try:
@@ -383,6 +392,11 @@ class Session:
             return [p for p in self.parse_result.photos if album_id in p.album_ids]
         return list(self.parse_result.photos)
 
+    def current_photos(self, flt: str, album_id: str) -> list:
+        """Public form of _current_photos for a UI that paints real photo
+        objects (the Qt grid) rather than the serialised payload."""
+        return self._current_photos(flt, album_id)
+
     def summary(self, flt: str, album_id: str) -> dict:
         shown = self._current_photos(flt, album_id)
         total = len(shown)
@@ -391,17 +405,16 @@ class Session:
         return {'total': total, 'selected': selected, 'missing': missing}
 
     # ── thumbnails ──────────────────────────────────────────────────────────
-    def thumbnail(self, flickr_id: str) -> Optional[str]:
-        """Square-cropped data: URI for one photo, decoded on demand (the page
-        lazy-loads visible tiles). Returns None if Pillow is unavailable or the
-        file can't be read — the page then shows the grey placeholder. Reuses the
-        exact centre-crop the tkinter grid used. Does NOT alter the source file or
-        its EXIF; it only reads it."""
+    def thumbnail_bytes(self, flickr_id: str) -> Optional[bytes]:
+        """Square-cropped JPEG bytes for one photo, decoded on demand (both UIs
+        lazy-load visible tiles). Returns None if Pillow is unavailable or the
+        file can't be read — the caller then shows the grey placeholder. Reuses
+        the exact centre-crop the tkinter grid used. Does NOT alter the source
+        file or its EXIF; it only reads it. Safe to call from a worker thread."""
         p = self._photo_by_id.get(flickr_id)
         if p is None or p.missing_image or not p.image_path:
             return None
         try:
-            import base64
             import io
             from PIL import Image
             im = Image.open(p.image_path)
@@ -417,10 +430,18 @@ class Session:
                 (self._thumb_px, self._thumb_px), Image.LANCZOS)
             buf = io.BytesIO()
             im.save(buf, format='JPEG', quality=82)
-            return 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode('ascii')
+            return buf.getvalue()
         except Exception as e:
             log.warning('thumb decode failed id=%s: %s', flickr_id, e)
             return None
+
+    def thumbnail(self, flickr_id: str) -> Optional[str]:
+        """data: URI form of thumbnail_bytes() for the Blink/web page."""
+        raw = self.thumbnail_bytes(flickr_id)
+        if raw is None:
+            return None
+        import base64
+        return 'data:image/jpeg;base64,' + base64.b64encode(raw).decode('ascii')
 
     # ── step-up authorization (GUI-free) ────────────────────────────────────
     def preflight_import(self, url: str, key: str) -> dict:
