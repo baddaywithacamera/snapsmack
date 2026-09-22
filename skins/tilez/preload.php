@@ -290,12 +290,7 @@ if ($_alfred_post_slug || $_alfred_post_id) {
                 // ALFRED was echoing them unparsed, so only PREVIEW rendered them).
                 require_once dirname(__DIR__, 2) . '/core/parser.php';
                 $_alfred_parser = new SnapSmack($pdo);
-                $_tilez_content = $_alfred_parser->parseContent($_alfred_post['content'] ?? '');
-                // TILEZ presents MOSAIC wall bundles with the same shared fixed-column
-                // engine as SCROLL. The parser honours each mosaic's stored layout;
-                // this skin deliberately remaps row walls to the columns hook.
-                $_tilez_content = str_replace('ss-scroll-wall', 'ss-masonry', $_tilez_content);
-                echo $_tilez_content;
+                echo $_alfred_parser->parseContent($_alfred_post['content'] ?? '');
                 ?>
             </div>
 
