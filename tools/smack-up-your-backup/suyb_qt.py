@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QButtonGroup, QCheckBox, QComboBox,
     QDialog, QDialogButtonBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
     QLineEdit, QListWidget, QMainWindow, QMenu, QMessageBox, QProgressBar,
-    QPushButton, QScrollArea, QSizePolicy, QStackedWidget, QTextEdit,
+    QPushButton, QRadioButton, QScrollArea, QSizePolicy, QStackedWidget, QTextEdit,
     QSystemTrayIcon, QVBoxLayout, QWidget,
 )
 
@@ -266,8 +266,22 @@ class SuybWindow(QMainWindow):
         for title, body in (("DATABASE", "Full SQL plus schema"), ("MEDIA", "Originals and site assets"), ("VERIFY", "Checksums before success")):
             card, col = _card(title, body); col.addStretch(1); actions.addWidget(card)
         layout.addLayout(actions)
-        run, rl = _card("Make a fresh backup", "Differential is fast and downloads only changed files. Full rechecks the complete site.")
-        opts = QHBoxLayout(); self.full_check = QCheckBox("Full backup"); opts.addWidget(self.full_check)
+        run, rl = _card("Make a fresh backup")
+        # Full vs differential is a two-way choice, so BOTH ways are named and on
+        # screen. It used to be a single "Full backup" tick-box: ticked told you
+        # what you were getting, cleared told you nothing at all, so there was no
+        # way to know that clearing it meant a differential run. The card's
+        # subtitle carried that explanation and the control contradicted it
+        # (Sean, 2026-09-23: "the display is a bit confusing, like picking full
+        # backup"). Differential stays the default, exactly as the cleared box was.
+        opts = QHBoxLayout()
+        self.mode_group = QButtonGroup(self); self.mode_group.setExclusive(True)
+        self.mode_diff = QRadioButton("Differential — only files that changed")
+        self.mode_full = QRadioButton("Full backup — recheck every file on the site")
+        self.mode_diff.setChecked(True)
+        for _b in (self.mode_diff, self.mode_full):
+            self.mode_group.addButton(_b); opts.addWidget(_b)
+        opts.addSpacing(18)
         # Exit package: TYSWY canonical archive + WordPress + Ghost, written into exit/
         # and zipped with the backup. Off by default — it can double a backup's size.
         self.exit_check = QCheckBox("Include exit package (WordPress + Ghost; larger)")
@@ -513,7 +527,7 @@ class SuybWindow(QMainWindow):
                 cp.delete()
             else:
                 return
-        force_full = self.full_check.isChecked()
+        force_full = self.mode_full.isChecked()
         exit_package = self.exit_check.isChecked()
         global_cloud = self._global_cloud()
         self.log.clear(); self.run_btn.setEnabled(False); self.choose_sites_btn.setEnabled(False)
