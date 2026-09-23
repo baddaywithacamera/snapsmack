@@ -808,17 +808,26 @@ a:hover {
     transition: width 0.4s ease;
 }
 
-/* One-per-wall proportional scaling — portraits are the reference size,
-   landscapes at ~78%, extreme panos at ~90% so portraits don't feel tiny.
-   Image only — mat and frame widths are untouched. Measured at 1920x1080:
-   landscape frame keeps 119px clear of header/footer, pano 76px, portrait 43px
-   (1.3.5: was 56/42/48vh — the framed picture sat too small on the wall). */
+/* One-per-wall sizing. Image only — mat and frame widths are untouched.
+   The base rule above (64vh) is what portraits and untagged photographs get;
+   these two override it for wide shapes. Sean asked twice for a bigger frame
+   (1.3.5: 56/42/48vh → 64/50/58, 1.3.6: landscape and pano → 60vh), so the old
+   "landscapes at 78% of a portrait" spacing is deliberately mostly gone: every
+   shape now roughly fills the wall.
+
+   Measured live at 1920x1080 — clearance between the FRAME and the header/footer,
+   and the frame's width against the 1805px slider wrapper:
+     landscape 60vh → frame 838x1054, 65px clear top and bottom
+     pano      60vh → frame 838x1718, 65px clear, 87px of width to spare
+     portrait  64vh → frame 881 tall, 43px clear  ← the tight one
+   Portrait is why none of these go higher: at 66vh its frame leaves 32px and
+   starts to crowd the header. The ceiling for a landscape alone is 72vh. */
 .slider-slide[data-orient="landscape"] .htbs-slide-link .frame-image img {
-    max-height: 50vh;
+    max-height: 60vh;
 }
 
 .slider-slide[data-orient="pano"] .htbs-slide-link .frame-image img {
-    max-height: 58vh;
+    max-height: 60vh;
 }
 
 /* Slider controls styling */
