@@ -764,8 +764,19 @@ a:hover {
     position: relative;
 }
 
+/* Full viewport width on purpose. The slider box (#...-slider.ss-slider) carries
+   overflow:hidden, so whatever width this wrapper has IS where frames get cut
+   off. At 94% of a 1920px screen that cut was at x=58 and x=1862 — a frame
+   vanished into an invisible edge 58px short of the screen on both sides
+   instead of sliding off it (Sean, 2026-09-22). At 100% the cut is the screen
+   edge, which is what a picture sliding away should do.
+   Safe because GALLERIA hardcodes one frame per wall (landing.php: $per_view=1),
+   so the frame is centred with ~400px of wall either side and only reaches the
+   edges mid-transition. #scroll-stage still has overflow:hidden, so nothing
+   here can create a horizontal page scrollbar (measured: body.scrollWidth 1920
+   on a 1920 viewport). */
 .htbs-slider-wrapper {
-    width: 94%;
+    width: 100%;
 }
 
 /* Vertical centering: let the container's align-items: center handle it.
