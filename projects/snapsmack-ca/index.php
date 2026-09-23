@@ -126,7 +126,11 @@ $page_css = <<<'CSS'
 #beta .wrap { max-width: 820px; }
 
 @media (max-width: 1100px) {
-    .was-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    /* Two, not three: with four cards a three-across row strands the fourth one
+       alone on a second row anywhere from ~700px to 1100px wide. Two gives a
+       clean 2x2. Measured: 1050px -> 474px cards, 900px -> 399px, 750px -> 331px,
+       no stranded card at any of them. (Was three when the list had five cards.) */
+    .was-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 850px) {
     .featured-skin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
