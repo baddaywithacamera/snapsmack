@@ -2166,7 +2166,8 @@ body.blog, body.single, body.archive { background: #fff; }
 /* The TILEZ masthead is the identity. The old full-viewport ALFRED backdrop is
    deliberately absent. The masthead and menu are two left-aligned rows. */
 .header-image { display: none !important; }
-.header {
+.header,
+.header.section-inner {
     width: min(var(--tilez-page), calc(100% - 48px));
     min-height: 0;
     margin: 0 auto;
@@ -2270,9 +2271,9 @@ body.blog, body.single, body.archive { background: #fff; }
 .entry-content {
     color: #282828;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 17px;
+    font-size: 19px;
     font-weight: 400;
-    line-height: 1.65;
+    line-height: 1.72;
 }
 .entry-content > p,
 .entry-content > h2,
@@ -2289,8 +2290,26 @@ body.blog, body.single, body.archive { background: #fff; }
 .entry-content > blockquote,
 .entry-content > ul,
 .entry-content > ol { font-weight: 400; }
+.entry-content > p,
+.entry-content > blockquote,
+.entry-content > ul,
+.entry-content > ol {
+    margin-bottom: 1.7em;
+}
+.entry-content > .snap-inline-frame {
+    margin-top: 2.6em;
+    margin-bottom: 2.6em;
+}
 .entry-content > .snap-mosaic,
-.entry-content > .snap-mosaic-wall { width: 100%; }
+.entry-content > .snap-mosaic-wall {
+    width: 100%;
+    margin-top: 3em;
+    margin-bottom: 3em;
+}
+
+/* The imported WordPress body has empty paragraphs around its shortcodes.
+   They carry no content and must not create false seams in the photo wall. */
+.entry-content > p:empty { display: none; }
 
 /* A run of separately saved MOSAIC bundles must read as one continuous wall.
    Keep the normal article spacing at text boundaries, but use the bundle's
@@ -2299,6 +2318,14 @@ body.blog, body.single, body.archive { background: #fff; }
     margin-bottom: 4px;
 }
 .entry-content > :is(.snap-mosaic, .snap-mosaic-wall) + :is(.snap-mosaic, .snap-mosaic-wall) {
+    margin-top: 0;
+}
+.entry-content > :is(.snap-mosaic, .snap-mosaic-wall):has(+ p:empty + :is(.snap-mosaic, .snap-mosaic-wall)),
+.entry-content > :is(.snap-mosaic, .snap-mosaic-wall):has(+ p:empty + p:empty + :is(.snap-mosaic, .snap-mosaic-wall)) {
+    margin-bottom: 4px;
+}
+.entry-content > :is(.snap-mosaic, .snap-mosaic-wall) + p:empty + :is(.snap-mosaic, .snap-mosaic-wall),
+.entry-content > :is(.snap-mosaic, .snap-mosaic-wall) + p:empty + p:empty + :is(.snap-mosaic, .snap-mosaic-wall) {
     margin-top: 0;
 }
 
