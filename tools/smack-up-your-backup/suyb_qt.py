@@ -390,8 +390,7 @@ class SuybWindow(QMainWindow):
         p = self.current_profile or {}
         self.name_edit.setText(str(p.get("name", ""))); self.url_edit.setText(str(p.get("site_url", "")))
         self.key_edit.setText(str(p.get("api_key", ""))); self.dir_edit.setText(str(p.get("backup_dir", "")))
-        shown = str(p.get("site_url", "")).replace("https://", "").rstrip("/")
-        self.site_summary.setText(f"{p.get('name', 'No site')}\n{shown or 'No URL'}\nLast successful run: {p.get('last_backup_date') or 'Not yet recorded'}")
+        self._render_site_summary()
         self.connection.setText("● Ready to verify" if p else "Choose a site")
         self.connection.setObjectName("StatusGood" if p else "StatusWarn"); self.connection.style().unpolish(self.connection); self.connection.style().polish(self.connection)
         self.run_btn.setEnabled(bool(p)); self._update_backup_selection(); self._refresh_backups()
@@ -421,11 +420,28 @@ class SuybWindow(QMainWindow):
         self.selected_profile_names = selected
         self._update_backup_selection()
 
+    def _render_site_summary(self):
+        """Draw the selected-site panel, including its "Last successful run" line.
+
+        Its own method because a finished backup writes a new last_backup_date to
+        the profile on disk and reloads self.current_profile, but nothing redrew
+        this label — with one site selected _update_backup_selection() returns
+        early. The panel kept showing a month-old date under a log that said
+        "Backup completed and verified", which reads as a failed backup and had
+        Sean asking whether he had to run the whole thing again (2026-09-23).
+        """
+        p = self.current_profile or {}
+        shown = str(p.get("site_url", "")).replace("https://", "").rstrip("/")
+        self.site_summary.setText(
+            f"{p.get('name', 'No site')}\n{shown or 'No URL'}\n"
+            f"Last successful run: {p.get('last_backup_date') or 'Not yet recorded'}")
+
     def _update_backup_selection(self):
         names = list(self.selected_profile_names)
         if len(names) <= 1:
             self.choose_sites_btn.setText("Choose sites…")
             self.run_btn.setText("BACK UP THIS SITE")
+            self._render_site_summary()
             return
         self.choose_sites_btn.setText(f"{len(names)} sites selected")
         self.run_btn.setText(f"BACK UP {len(names)} SITES")
