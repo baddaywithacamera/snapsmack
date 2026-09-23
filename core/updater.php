@@ -237,6 +237,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-curator-outbox-recovery.sql',
     'migrate-relay-ingest-jobs.sql',
     'migrate-game-scores-ledger.sql',
+    'migrate-posts-featured-visibility.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
