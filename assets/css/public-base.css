@@ -50,15 +50,27 @@
 
 /* ─── 4. INLINE IMAGE FRAMES (parser shortcodes) ─────────────────────────── */
 .snap-inline-frame {
+    width: min(var(--snap-image-width, 100%), 100%);
+    max-width: 100%;
     margin: 1.5em auto;
     text-align: center;
 }
 .snap-inline-frame.align-left  { float: left;  margin: 0.25em 1.5em 1em 0; }
 .snap-inline-frame.align-right { float: right; margin: 0.25em 0 1em 1.5em; }
 .snap-inline-frame img {
+    width: 100%;
     max-width: 100%;
     height: auto;
     display: block;
+}
+
+@media (max-width: 640px) {
+    .snap-inline-frame {
+        width: 100%;
+        float: none;
+        margin-left: auto;
+        margin-right: auto;
+    }
 }
 
 /* ─── 5. CONTENT LINKS (base fallback) ───────────────────────────────────── */
