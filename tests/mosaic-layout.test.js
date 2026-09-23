@@ -75,7 +75,7 @@ test('portrait-led four-image section spans a three-image stack', () => {
     assert.ok(layout.items[1].y < layout.items[2].y && layout.items[2].y < layout.items[3].y);
 });
 
-test('an extreme portrait trio splits rather than violating hard size limits', () => {
+test('an extreme portrait trio remains one edge-filled bundle', () => {
     const images = [
         { width: 500, height: 1800 },
         { width: 900, height: 700 },
@@ -84,7 +84,7 @@ test('an extreme portrait trio splits rather than violating hard size limits', (
     const layout = engine.computeLayout(images, 1600, 6);
 
     assertCleanGeometry(layout, 1600);
-    assert.ok(layout.sections.length >= 2, 'an impossible full-width group is split');
+    assert.equal(layout.sections.length, 1, 'one saved bundle remains one composition');
     layout.sections.forEach((section, sectionIndex) => {
         assert.ok(section.height <= 900.02, `section ${sectionIndex} stays within the hard ceiling`);
     });
@@ -203,7 +203,7 @@ test('six-photo desktop blocks do not collapse into postage-stamp cells', () => 
         'supporting photographs remain substantial beside the hero');
 });
 
-test('an unsuitable six-photo group splits instead of bypassing useful-size rules', () => {
+test('an unsuitable six-photo group remains one edge-filled bundle', () => {
     const layout = engine.computeLayout([
         { width: 900, height: 1200 },
         { width: 900, height: 1200 },
@@ -214,11 +214,12 @@ test('an unsuitable six-photo group splits instead of bypassing useful-size rule
     ], 1688, 20, 'landscape');
 
     assertCleanGeometry(layout, 1688);
-    assert.ok(layout.sections.length >= 2, 'the incompatible group becomes smaller mosaics');
-    assert.equal(layout.items.length, 6, 'splitting never drops a photograph');
+    assert.equal(layout.sections.length, 1, 'the bundle is never split into a ragged remainder');
+    assert.equal(layout.items.length, 6, 'the bundle never drops a photograph');
+    assert.ok(layout.height <= 900.02, 'the full composition stays within the section ceiling');
 });
 
-test('five-image layout ends with a full-width image', () => {
+test('five-image layout remains one edge-filled bundle', () => {
     const layout = engine.computeLayout([
         { width: 1400, height: 900 },
         { width: 700, height: 1000 },
@@ -228,9 +229,9 @@ test('five-image layout ends with a full-width image', () => {
     ], 800, 4);
 
     assertCleanGeometry(layout, 800);
-    assert.equal(layout.sections.length, 2);
-    assert.ok(Math.abs(layout.items[4].width - 800) < 0.02);
-    assert.equal(layout.items[4].x, 0);
+    assert.equal(layout.sections.length, 1);
+    assert.equal(layout.items.length, 5);
+    assert.ok(layout.height <= 900.02);
 });
 
 test('mobile layout collapses to one image per row', () => {
