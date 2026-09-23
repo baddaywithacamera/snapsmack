@@ -1,2 +1,2 @@
-BUILD_VERSION = "0.7.33"
+BUILD_VERSION = "0.7.34"
 # ===== SNAPSMACK EOF =====
