@@ -98,7 +98,12 @@ def _card(title, body=""):
 
 class Bridge(QObject):
     progress = Signal(str, str, float)
-    stats = Signal(str, int, int, int, int, int, int)
+    # The last three are BYTE counts. PySide6 maps a bare `int` to C++ `int`,
+    # which is 32-bit: a site over 2,147,483,647 bytes (2.1 GB) wrapped to a
+    # NEGATIVE number and the cockpit read "-268704206 B complete" on a 12 GB
+    # backup (Sean, forever photographing, 2026-09-23). qint64 carries the real
+    # value. Counts stay `int` — 2.1 billion files is not a thing.
+    stats = Signal(str, int, int, int, 'qint64', 'qint64', 'qint64')
     log = Signal(str)
     finished = Signal(object)
     tested = Signal(bool, str)
