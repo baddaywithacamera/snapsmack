@@ -141,4 +141,35 @@ def test_resumed_fully_downloaded_run_reaches_the_ping(monkeypatch):
     assert calls["ping"] == ("clean", 123, "local")
     assert calls["built"] == 1 and calls["login"] is True
 
+# -- 3. the panel that kept showing a month-old date -----------------------
+
+def test_site_panel_refreshes_after_a_backup():
+    """A finished backup saves last_backup_date and reloads current_profile, but
+    with ONE site selected _update_backup_selection() returned early and never
+    redrew the label. The cockpit then said "Backup completed and verified" over
+    a "Last successful run" a month old, which reads as a failed backup."""
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication, QLabel, QPushButton
+    import suyb_qt
+
+    QApplication.instance() or QApplication([])
+    win = suyb_qt.SuybWindow.__new__(suyb_qt.SuybWindow)   # no real window needed
+    win.site_summary = QLabel()
+    win.choose_sites_btn = QPushButton()
+    win.run_btn = QPushButton()
+    win.selected_profile_names = ["forever photographing"]
+    win.current_profile = {"name": "forever photographing",
+                           "site_url": "https://foreverphotograph.ing",
+                           "last_backup_date": "2026-08-23T06:39:44.907284+00:00"}
+
+    win._update_backup_selection()
+    assert "2026-08-23" in win.site_summary.text()
+
+    # backup finishes: the engine saved a new date, the window reloaded the profile
+    win.current_profile = dict(win.current_profile, last_backup_date="2026-09-23 14:05")
+    win._update_backup_selection()
+    assert "2026-09-23 14:05" in win.site_summary.text()
+    assert "2026-08-23" not in win.site_summary.text()
+
+
 # ===== SNAPSMACK EOF =====
