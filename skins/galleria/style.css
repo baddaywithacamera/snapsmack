@@ -809,21 +809,28 @@ a:hover {
 }
 
 /* One-per-wall sizing. Image only — mat and frame widths are untouched.
-   The base rule above (64vh) is what portraits and untagged photographs get;
-   these two override it for wide shapes. Sean asked twice for a bigger frame
-   (1.3.5: 56/42/48vh → 64/50/58, 1.3.6: landscape and pano → 60vh), so the old
-   "landscapes at 78% of a portrait" spacing is deliberately mostly gone: every
-   shape now roughly fills the wall.
+   These rules are INDEPENDENT of each other: the 64vh base rule above is not a
+   budget the wide shapes have to share. A landscape can be taller than a
+   portrait; nothing couples them. (1.3.6 said otherwise in this comment. It was
+   wrong — it stated a design opinion as if it were a constraint.)
 
-   Measured live at 1920x1080 — clearance between the FRAME and the header/footer,
-   and the frame's width against the 1805px slider wrapper:
-     landscape 60vh → frame 838x1054, 65px clear top and bottom
-     pano      60vh → frame 838x1718, 65px clear, 87px of width to spare
-     portrait  64vh → frame 881 tall, 43px clear  ← the tight one
-   Portrait is why none of these go higher: at 66vh its frame leaves 32px and
-   starts to crowd the header. The ceiling for a landscape alone is 72vh. */
+   Landscape matches the 64vh base on purpose. That base is not "the portrait
+   size": ss-engine-slider.js tags data-orient in JavaScript when each image
+   LOADS, so every lazy slide renders at the base value first and only then gets
+   its orientation. Landscape at anything other than 64vh therefore shows a
+   visible resize as you advance the slider (at 1.3.6's 60vh: 691px → 648px).
+   Same number, no jump.
+
+   Pano is the one shape with a real ceiling, and it is WIDTH, not height: a
+   2.36 pano at 64vh wants a 1820px frame and the slider wrapper is 1805px.
+   60vh keeps it at 1718px with room to spare.
+
+   Measured live at 1920x1080 — clearance between the FRAME and header/footer:
+     landscape 64vh → frame 881x1112, 43px clear   (66vh → 33px, 68vh → 22px,
+                                                    70vh → 11px, 72vh → touching)
+     pano      60vh → frame 838x1718, 65px clear, 87px of width to spare */
 .slider-slide[data-orient="landscape"] .htbs-slide-link .frame-image img {
-    max-height: 60vh;
+    max-height: 64vh;
 }
 
 .slider-slide[data-orient="pano"] .htbs-slide-link .frame-image img {
