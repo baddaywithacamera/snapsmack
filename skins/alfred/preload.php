@@ -260,7 +260,7 @@ if ($_alfred_post_slug || $_alfred_post_id) {
     <article class="post-container h-entry">
         <?php snapsmack_indieweb_longform_properties($_alfred_post, $settings); ?>
 
-        <?php if (!empty($_alfred_post['featured_image_path'])):
+        <?php if (!empty($_alfred_post['featured_image_path']) && (int)($_alfred_post['show_featured_image'] ?? 1) === 1):
             // Cover framed to ALFRED's shape (1:1), with the post's pan/zoom applied
             // non-destructively (object-position + scale). Must match manifest cover_aspect.
             $_cpx = isset($_alfred_post['cover_pos_x']) ? (int)$_alfred_post['cover_pos_x'] : 50;
