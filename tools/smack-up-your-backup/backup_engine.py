@@ -683,6 +683,11 @@ class BackupEngine:
         cp        = self._resume_cp  # None for fresh run, populated for resume
         resuming  = cp is not None
 
+        # Bound here, not only inside the fresh-run branch below: Stage 1 (which
+        # creates the authenticated session) lives in the `else`, so a RESUMED run
+        # never set it. See the backup-complete ping at the end of this method.
+        http = None
+
         if resuming:
             # ── Restore state from checkpoint ────────────────────────
             timestamp       = cp.data["timestamp"]
@@ -1321,6 +1326,22 @@ class BackupEngine:
             # no api_key, and if the re-login didn't stick the POST hit the
             # endpoint unauthenticated, got redirected to a 200 HTML login page,
             # and resp.json() blew up with "Expecting value: line 1 column 1".
+            # A resumed run whose media was already fully downloaded never built
+            # a session: Stage 1 only runs on a fresh run, and the HTTP media
+            # client is only created when files still need pulling. The ping then
+            # died with "cannot access local variable 'http'" and the site never
+            # learned the backup had finished — its dashboard kept showing a stale
+            # last-backup time for a backup that was actually good (Sean, 2026-09-23).
+            if http is None:
+                http = SnapSmackSession(
+                    self.profile["site_url"],
+                    config_module.effective_backup_key(self.profile),
+                    self.profile.get("login_slug", "snap-in"),
+                )
+                http.login(
+                    self.profile.get("snap_admin_user", ""),
+                    self.profile.get("snap_admin_pass", ""),
+                )
             http.report_backup_complete(status_str, size_b, dest)
             self._log(f"Reported backup status to site: {status_str}.")
         except Exception as e:
