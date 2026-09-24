@@ -17,6 +17,16 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
 function px_json(array $body, int $code = 200): void { http_response_code($code); echo json_encode($body, JSON_UNESCAPED_SLASHES); exit; }
+function px_write_input(): array {
+    $input=$_POST;$ctype=(string)($_SERVER['CONTENT_TYPE']??'');
+    if(stripos($ctype,'application/json')!==false){$decoded=json_decode(file_get_contents('php://input'),true);if(is_array($decoded))$input=$decoded;}
+    elseif(!$_POST){parse_str(file_get_contents('php://input'),$decoded);if(is_array($decoded))$input=$decoded;}
+    return is_array($input)?$input:[];
+}
+function px_bool($value): bool {
+    if(is_bool($value))return $value;
+    return in_array(strtolower(trim((string)$value)),['1','true','yes','on'],true);
+}
 function px_setting(PDO $pdo, string $key, string $fallback = ''): string {
     $s=$pdo->prepare('SELECT setting_val FROM snap_settings WHERE setting_key=? LIMIT 1'); $s->execute([$key]);
     $v=$s->fetchColumn(); return $v === false ? $fallback : (string)$v;
@@ -270,10 +280,17 @@ if (($route==='api/v1/media'||$route==='api/v2/media') && $method==='POST') {
     $slug=pathinfo($name,PATHINFO_FILENAME);$ins=$pdo->prepare("INSERT INTO snap_images(img_title,img_slug,img_file,img_description,img_alt,img_date,img_width,img_height,img_status,img_thumb_square,img_thumb_aspect,allow_comments,allow_download) VALUES('',?,?, '',?,NOW(),?,?,'draft',?,?,1,0)");$ins->execute([$slug,$rel,snap_sanitize_alt($_POST['description']??''),(int)($dim[0]??0),(int)($dim[1]??0),$thumbs['sq_path']??null,$thumbs['asp_path']??null]);$iid=(int)$pdo->lastInsertId();$pdo->prepare('INSERT INTO snap_oauth_media(image_id,token_id) VALUES(?,?)')->execute([$iid,(int)$token['id']]);px_json(px_media($pdo,$iid),$route==='api/v2/media'?202:200);
 }
 if (preg_match('#^api/v1/media/(\d+)$#',$route,$m) && $method==='PUT') {
-    px_gram_authoring_gate($pdo);px_offline_gate($pdo);px_require_scope($token,'write');parse_str(file_get_contents('php://input'),$put);$alt=snap_sanitize_alt($put['description']??'');$s=$pdo->prepare('UPDATE snap_images i JOIN snap_oauth_media om ON om.image_id=i.id SET i.img_alt=? WHERE i.id=? AND i.post_id IS NULL AND om.token_id=?');$s->execute([$alt,(int)$m[1],(int)$token['id']]);if($s->rowCount()<1)px_json(['error'=>'Record not found'],404);px_json(px_media($pdo,(int)$m[1]));
+    px_gram_authoring_gate($pdo);px_offline_gate($pdo);px_require_scope($token,'write');$put=px_write_input();$alt=snap_sanitize_alt($put['description']??'');$iid=(int)$m[1];
+    // Draft uploads stay token-owned. Once an image belongs to a published
+    // local post, any owner-approved write token may edit its ALT text. Check
+    // existence separately because an unchanged value has rowCount() zero and
+    // used to become Pixelix's misleading "Record not found" dialog.
+    $q=$pdo->prepare('SELECT i.id FROM snap_images i LEFT JOIN snap_oauth_media om ON om.image_id=i.id AND om.token_id=? LEFT JOIN snap_post_images pi ON pi.image_id=i.id WHERE i.id=? AND (i.post_id IS NOT NULL OR pi.post_id IS NOT NULL OR om.image_id IS NOT NULL) LIMIT 1');$q->execute([(int)$token['id'],$iid]);
+    if(!$q->fetchColumn())px_json(['error'=>'Record not found'],404);
+    $pdo->prepare('UPDATE snap_images SET img_alt=? WHERE id=?')->execute([$alt,$iid]);px_json(px_media($pdo,$iid));
 }
 if ($route==='api/v1/statuses' && $method==='POST') {
-    px_gram_authoring_gate($pdo);px_offline_gate($pdo);px_require_scope($token,'write');$input=$_POST;$ctype=(string)($_SERVER['CONTENT_TYPE']??'');if(stripos($ctype,'application/json')!==false){$decoded=json_decode(file_get_contents('php://input'),true);if(is_array($decoded))$input=$decoded;}$ids=$input['media_ids']??[];if(!is_array($ids))$ids=[$ids];$ids=array_values(array_unique(array_map('intval',$ids)));if(!$ids||count($ids)>10)px_json(['error'=>'Attach between 1 and 10 images'],422);
+    px_gram_authoring_gate($pdo);px_offline_gate($pdo);px_require_scope($token,'write');$input=px_write_input();$ids=$input['media_ids']??[];if(!is_array($ids))$ids=[$ids];$ids=array_values(array_unique(array_map('intval',$ids)));if(!$ids||count($ids)>10)px_json(['error'=>'Attach between 1 and 10 images'],422);
     snapsmack_gram_ensure_post_columns($pdo); // heal a drifted snap_posts BEFORE the txn (ALTER implicit-commits)
     $pdo->beginTransaction();$place=implode(',',array_fill(0,count($ids),'?'));$q=$pdo->prepare("SELECT i.id FROM snap_images i JOIN snap_oauth_media om ON om.image_id=i.id WHERE i.id IN ($place) AND i.post_id IS NULL AND om.token_id=? FOR UPDATE");$q->execute([...$ids,(int)$token['id']]);$valid=array_map('intval',$q->fetchAll(PDO::FETCH_COLUMN));if(count($valid)!==count($ids)){$pdo->rollBack();px_json(['error'=>'One or more media IDs are invalid'],422);}
     $status=trim((string)($input['status']??''));$allowComments=empty($input['comments_disabled'])?1:0;
@@ -288,6 +305,39 @@ if ($route==='api/v1/statuses' && $method==='POST') {
     // Pixelix post sat in the outbound queue until the next 10-minute cron tick.
     require_once __DIR__ . '/core/fediverse-kick.php';
     sv_kick_delivery();
+    px_json(px_status($pdo,$pid));
+}
+if (preg_match('#^api/v1/statuses/(\d+)$#',$route,$m) && $method==='PUT') {
+    px_gram_authoring_gate($pdo);px_offline_gate($pdo);px_require_scope($token,'write');snapsmack_gram_ensure_post_columns($pdo);$pid=(int)$m[1];$input=px_write_input();
+    $q=$pdo->prepare("SELECT * FROM snap_posts WHERE id=? AND status='published' AND post_type IN ('single','carousel','panorama') LIMIT 1");$q->execute([$pid]);$post=$q->fetch(PDO::FETCH_ASSOC);if(!$post)px_json(['error'=>'Record not found'],404);
+    $caption=array_key_exists('status',$input)?trim((string)$input['status']):(string)($post['description']??'');
+    $sensitive=array_key_exists('sensitive',$input)?(px_bool($input['sensitive'])?1:0):(int)($post['is_sensitive']??0);
+    $spoiler=array_key_exists('spoiler_text',$input)?trim((string)$input['spoiler_text']):(string)($post['content_warning']??'');
+    $allowComments=array_key_exists('comments_disabled',$input)?(px_bool($input['comments_disabled'])?0:1):(int)($post['allow_comments']??1);
+    $ids=$input['media_ids']??null;if($ids!==null&&!is_array($ids))$ids=[$ids];if(is_array($ids))$ids=array_values(array_unique(array_filter(array_map('intval',$ids))));
+    try{
+        $pdo->beginTransaction();
+        if(is_array($ids)){
+            if(!$ids||count($ids)>10)throw new DomainException('Attach between 1 and 10 images');
+            $old=$pdo->prepare('SELECT image_id FROM snap_post_images WHERE post_id=? ORDER BY sort_position,id');$old->execute([$pid]);$current=array_map('intval',$old->fetchAll(PDO::FETCH_COLUMN));
+            $a=$ids;$b=$current;sort($a);sort($b);if($a!==$b)throw new DomainException('Editing which images belong to a published post is not supported; reorder the existing images only.');
+            $order=$pdo->prepare('UPDATE snap_post_images SET sort_position=?,is_cover=? WHERE post_id=? AND image_id=?');foreach($ids as$n=>$iid)$order->execute([$n,$n===0?1:0,$pid,$iid]);
+        }
+        // Some Mastodon clients send edited ALT text here instead of calling
+        // PUT /media/:id separately.
+        $mediaAttrs=$input['media_attributes']??[];if(is_array($mediaAttrs)){
+            $altUpdate=$pdo->prepare('UPDATE snap_images i JOIN snap_post_images pi ON pi.image_id=i.id SET i.img_alt=? WHERE pi.post_id=? AND i.id=?');
+            foreach($mediaAttrs as$attr){if(!is_array($attr)||empty($attr['id']))continue;$altUpdate->execute([snap_sanitize_alt($attr['description']??''),$pid,(int)$attr['id']]);}
+        }
+        $pdo->prepare('UPDATE snap_posts SET description=?,allow_comments=?,is_sensitive=?,content_warning=?,updated_at=NOW() WHERE id=?')->execute([$caption,$allowComments,$sensitive,$spoiler,$pid]);
+        $pdo->prepare('UPDATE snap_images i JOIN snap_post_images pi ON pi.image_id=i.id SET i.img_description=?,i.allow_comments=? WHERE pi.post_id=?')->execute([$caption,$allowComments,$pid]);
+        $pdo->commit();
+    }catch(DomainException $e){if($pdo->inTransaction())$pdo->rollBack();px_json(['error'=>$e->getMessage()],422);}
+    catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();error_log('Pixelix edit failed: '.$e->getMessage());px_json(['error'=>'Post could not be updated'],500);}
+    // Match the CMS editor: update remotes, flush rendered pages, and start the
+    // delivery worker immediately.
+    require_once __DIR__.'/core/fediverse.php';$px_settings=$pdo->query('SELECT setting_key,setting_val FROM snap_settings')->fetchAll(PDO::FETCH_KEY_PAIR);if(function_exists('sv_federate_post_change'))sv_federate_post_change($pdo,$px_settings,$pid);
+    require_once __DIR__.'/core/page-cache.php';page_cache_purge_all();require_once __DIR__.'/core/fediverse-kick.php';sv_kick_delivery();
     px_json(px_status($pdo,$pid));
 }
 if (preg_match('#^api/v1/statuses/(\d+)$#',$route,$m) && $method==='DELETE') {
