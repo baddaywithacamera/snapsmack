@@ -96,14 +96,21 @@ try {
 
     // Installed PWAs start with ?source=pwa. Remember the shell selection so
     // tablets retain PHOTOGRAM while navigating inside the installed app.
-    if (($_GET['source'] ?? '') === 'pwa') {
+    $_snapsmack_explicit_pwa = (($_GET['source'] ?? '') === 'pwa');
+    if ($_snapsmack_explicit_pwa) {
         setcookie('snapsmack_pwa', '1', [
             'expires' => time() + 31536000, 'path' => '/',
             'secure' => snap_is_https(), 'httponly' => true, 'samesite' => 'Lax',
         ]);
         $_COOKIE['snapsmack_pwa'] = '1';
     }
-    $_snapsmack_pwa_shell = (($_COOKIE['snapsmack_pwa'] ?? '') === '1');
+    // A remembered PWA cookie must not defeat Chrome's "Desktop site"
+    // control. Installed phone PWAs advertise ?1; an explicit PWA launch is
+    // also honoured on its first request. Android tablets and desktop mode
+    // advertise ?0 and should receive the selected desktop skin.
+    $_snapsmack_desktop_hint = trim((string)($_SERVER['HTTP_SEC_CH_UA_MOBILE'] ?? '')) === '?0';
+    $_snapsmack_pwa_shell = $_snapsmack_explicit_pwa
+        || ((($_COOKIE['snapsmack_pwa'] ?? '') === '1') && !$_snapsmack_desktop_hint);
 
     // Force PHOTOGRAM on phones and in the installed phone/tablet shell.
     if ((snapsmack_is_mobile() || $_snapsmack_pwa_shell) && SNAPSMACK_MOBILE_SKIN !== '' && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {

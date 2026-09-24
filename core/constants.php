@@ -67,8 +67,8 @@ if (PHP_SAPI !== 'cli' && !defined('SNAPSMACK_IS_UPDATER')) {
 // UPGRADED installs even where this constants.php is frozen. SECAUDIT 048
 // follow-up (2026-08-15) — do not re-inline header() calls here.
 
-define('SNAPSMACK_VERSION', 'Alpha 0.7.737D');
-define('SNAPSMACK_VERSION_SHORT', '0.7.737D');
+define('SNAPSMACK_VERSION', 'Alpha 0.7.738D');
+define('SNAPSMACK_VERSION_SHORT', '0.7.738D');
 define("SNAPSMACK_VERSION_CODENAME", "MAKE CHANGES");
 
 // --- THUMBNAIL DIMENSIONS (single source of truth) ---
@@ -129,6 +129,14 @@ define('SNAPSMACK_MOBILE_SKIN', 'photogram');
  * Returns true for phones; tablets are treated as desktop.
  */
 function snapsmack_is_mobile(): bool {
+    // Chromium sends this low-entropy client hint on every request. Respecting
+    // an explicit desktop value makes Android's "Desktop site" switch work;
+    // the emulated desktop UA otherwise still contains enough Android tokens
+    // to be mistaken for the mandatory phone skin.
+    $ch_mobile = trim((string)($_SERVER['HTTP_SEC_CH_UA_MOBILE'] ?? ''));
+    if ($ch_mobile === '?0') return false;
+    if ($ch_mobile === '?1') return true;
+
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
     if (empty($ua)) return false;
 
