@@ -199,6 +199,7 @@ $pg_active_tab = 'home';
                     <img src="<?php echo htmlspecialchars($_pgci_url); ?>"
                          alt="<?php echo htmlspecialchars($_pgci['img_title']); ?>"
                          class="pg-post-image"
+                         data-pg-lightbox
                          draggable="false"
                          loading="lazy">
                 </div>
@@ -222,6 +223,7 @@ $pg_active_tab = 'home';
              alt="<?php echo htmlspecialchars($img['img_title']); ?>"
              class="pg-post-image"
              id="pg-post-image"
+             data-pg-lightbox
              draggable="false">
         <?php echo $download_button ?? ''; ?>
         <!-- Heart burst injected by JS on double-tap -->

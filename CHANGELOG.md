@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.738D — 2026-09-24 — PHOTOGRAM respects desktop mode
+- **Chrome's “Desktop site” switch now escapes PHOTOGRAM on Android.** The mobile selector honours Chromium's mobile client hint, and a remembered installed-app cookie can no longer force the phone skin after the browser explicitly requests a desktop page. Page-cache selection uses the same detector. (`core/constants.php`, `index.php`.)
+- **Every photograph on a PHOTOGRAM post can be viewed full screen.** The existing tap-to-zoom viewer was wired only to a single-image post; every slide in a multi-image post now opens the same fitted, full-viewport viewer. Grid tiles still open their post first, preserving captions, likes and comments. PHOTOGRAM 2.0.18. (`skins/photogram/layout.php`, `assets/js/ss-engine-photogram.js`.)
+
 ## 0.7.737D — 2026-09-23 — Pixelix edits save
 - **Sites now send a useful monthly activity email.** A multisite hub sends one consolidated summary on behalf of itself and every connected spoke; spokes do not generate duplicate mail. A standalone site sends its own summary. Each message covers the completed calendar month, lists human views, visitors, new local content and library totals, marks unreachable fleet sites, and is guarded so retries cannot send the same month twice. It runs from the normal version-check schedule and from the authenticated fleet cron fallback. (`core/monthly-activity-summary.php`, `cron-version-check.php`, `core/multisite-api.php`.)
 - **Pixelix can edit an existing GRAMOFSMACK post.** The compatibility API now implements the standard `PUT /api/v1/statuses/:id` edit route used by Pixelix, saving the caption, content warning, sensitivity, comment setting, image order and inline ALT changes. An already-federated post sends an ActivityPub Update immediately and the page cache is cleared. (`pixelfed-api.php`.)
