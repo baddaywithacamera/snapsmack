@@ -476,6 +476,18 @@ if ($resource === 'run-crons') {
             catch (Throwable $e) { error_log('run-crons tick failed: ' . $e->getMessage()); }
         }
     }
+    // The authenticated fleet driver is the fallback on hosts without system
+    // cron. The monthly runner is normally a no-op; on a hub it sends one
+    // consolidated message, while spokes explicitly delegate to that hub.
+    if (($settings['multisite_role'] ?? '') === 'hub') register_shutdown_function(static function () use ($pdo) {
+        if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request();
+        try {
+            require_once __DIR__ . '/monthly-activity-summary.php';
+            snap_monthly_activity_maybe_send($pdo);
+        } catch (Throwable $e) {
+            error_log('Monthly activity fallback failed: ' . $e->getMessage());
+        }
+    });
     ms_ok([
         'triggered'    => $ran,
         'rss_last_run' => $settings['rss_last_run'] ?? null,
@@ -1211,6 +1223,27 @@ if ($resource === 'stats' && $sub_action === 'daily' && $method === 'GET') {
         $cc = snapsmack_content_counts($pdo);
         $payload['post_count']  = $cc['posts'];
         $payload['image_count'] = $cc['images'];
+
+        // Optional exact content window for the hub's completed-month email.
+        // Keep the general stats endpoint backward compatible: these fields
+        // appear only when both strict ISO dates are supplied.
+        $period_start = (string)($_GET['period_start'] ?? '');
+        $period_end   = (string)($_GET['period_end'] ?? '');
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $period_start)
+            && preg_match('/^\d{4}-\d{2}-\d{2}$/', $period_end)
+            && $period_start < $period_end) {
+            try {
+                $pq = $pdo->prepare("SELECT COUNT(*) FROM snap_posts WHERE status='published' AND created_at >= ? AND created_at < ?");
+                $pq->execute([$period_start, $period_end]);
+                $payload['period_post_count'] = (int)$pq->fetchColumn();
+                $iq = $pdo->prepare("SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date >= ? AND img_date < ?");
+                $iq->execute([$period_start, $period_end]);
+                $payload['period_image_count'] = (int)$iq->fetchColumn();
+            } catch (Throwable $e) {
+                $payload['period_post_count'] = 0;
+                $payload['period_image_count'] = 0;
+            }
+        }
     }
 
     ms_ok($payload);
