@@ -5,6 +5,10 @@
  * One section open at a time; clicking a toggle slides the old
  * section closed and the new one open. PHP sets the initial .open
  * class based on which section contains the current page.
+ *
+ * Also the narrow-screen drawer: .sidebar-toggle opens the sidebar and its
+ * overlay, and a click on .sidebar-overlay closes both. That used to be two
+ * onclick= attributes in core/admin-header.php.
  */
 
 /**
@@ -49,6 +53,24 @@
     } else {
         init();
     }
+
+
+    // ---- narrow-screen drawer ---------------------------------------------
+    document.addEventListener('click', function (e) {
+        if (!e.target || !e.target.closest) return;
+        var bar = document.querySelector('.sidebar');
+        var veil = document.querySelector('.sidebar-overlay');
+
+        if (e.target.closest('.sidebar-toggle')) {
+            if (bar)  bar.classList.toggle('open');
+            if (veil) veil.classList.toggle('open');
+            return;
+        }
+        if (e.target.closest('.sidebar-overlay')) {
+            if (bar)  bar.classList.remove('open');
+            if (veil) veil.classList.remove('open');
+        }
+    });
 
 })();
 // ===== SNAPSMACK EOF =====

@@ -1468,7 +1468,7 @@ include 'core/sidebar.php';
                         live.innerHTML = '<div class="alert ' + (failCount ? 'alert-warning' : 'alert-success') +
                             '">Finished — ' + okCount + ' spoke(s) run, ' + added + ' peer(s) added' +
                             (failCount ? ', ' + failCount + ' failed' : '') +
-                            '. <a href="#" onclick="location.reload();return false;">Reload</a> to refresh the picker.</div>';
+                            '. <a href="#" data-reload>Reload</a> to refresh the picker.</div>';
                     }
                     function next() {
                         if (!queue.length) { finish(); return; }
@@ -1549,7 +1549,7 @@ include 'core/sidebar.php';
                             live.innerHTML =
                                 '<div class="alert ' + (failCount ? "alert-warning" : "alert-success") +
                                 '">Finished &mdash; ' + okCount + ' updated, ' +
-                                failCount + ' failed. <a href="#" onclick="location.reload();return false;">' +
+                                failCount + ' failed. <a href="#" data-reload>' +
                                 'Reload</a> to refresh the board.</div>';
                         }
                     }
@@ -1711,7 +1711,7 @@ include 'core/sidebar.php';
                                             <select name="update_track"
                                                     class="spoke-track-select spoke-track-select--<?php echo $spoke_track === 'dev' ? 'dev' : 'stable'; ?>"
                                                     aria-label="Update track for <?php echo htmlspecialchars($n['site_name'] ?? $n['site_url']); ?>"
-                                                    onchange="this.form.requestSubmit();">
+                                                    data-submit-on-change data-submit-mode="request">
                                                 <option value="stable" <?php echo $spoke_track === 'stable' ? 'selected' : ''; ?>>BORING</option>
                                                 <option value="dev" <?php echo $spoke_track === 'dev' ? 'selected' : ''; ?>>BITCHIN'</option>
                                             </select>
@@ -2118,9 +2118,9 @@ include 'core/sidebar.php';
                                       letter-spacing:2px; padding:12px 14px; margin-bottom:8px;
                                       background:var(--input-bg,#111); border:1px solid var(--border,#333);
                                       border-radius:4px; color:var(--text, #e0e0e0); cursor:text;"
-                               onclick="this.select();">
+                               data-select-on-click>
                         <button type="button" class="btn-smack" id="copy-token-btn" style="width:100%; margin-bottom:10px;"
-                                onclick="navigator.clipboard.writeText(document.getElementById('reg-token-display').value).then(function(){ var b=document.getElementById('copy-token-btn'); b.textContent='COPIED ✓'; setTimeout(function(){ b.textContent='COPY'; }, 2000); });">
+                                data-copy-from="reg-token-display" data-copied-label="COPIED ✓">
                             COPY
                         </button>
                         <p style="font-size:0.8rem; color:var(--accent,#aaa); margin-top:10px;">

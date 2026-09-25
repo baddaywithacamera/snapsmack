@@ -355,7 +355,7 @@ include 'core/sidebar.php';
                     <div class="flex-1">
                         <label style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);display:block;margin-bottom:6px;">SHORTCODE</label>
                         <code id="mosaic-shortcode" style="color:var(--accent);cursor:pointer;font-size:13px;"
-                              onclick="navigator.clipboard.writeText(this.textContent)" title="Click to copy">
+                              data-copy-self title="Click to copy">
                             <?php echo $mosaic_id ? '[mosaic:' . $mosaic_id . ']' : '(save first)'; ?>
                         </code>
                     </div>
@@ -981,7 +981,7 @@ include 'core/sidebar.php';
                         <strong><?php echo htmlspecialchars($m['title']); ?></strong>
                         <code class="slug-display"><?php echo $count; ?> IMAGE<?php echo $count !== 1 ? 'S' : ''; ?></code>
                         <div class="item-meta">
-                            <code onclick="navigator.clipboard.writeText(this.textContent)"
+                            <code data-copy-self
                                   style="color:var(--accent);cursor:pointer;" title="Click to copy">[mosaic:<?php echo $m['id']; ?>]</code>
                             &nbsp;·&nbsp;
                             Updated <?php echo date('M j, Y', strtotime($m['updated_at'])); ?>

@@ -2192,6 +2192,19 @@ input[type="range"]:active::-webkit-slider-thumb {
 .mosaic-pick-title { font-size: 13px; }
 .mosaic-pick-code  { font-size: 11px; color: var(--dim); }
 
+/* SILENCE ALARM button in the SmackBack banner (was a style attribute). */
+.smackback-silence-btn {
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid var(--warning, #884400);
+    color: var(--warning, #ff9900);
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+}
+
 .field-input     { padding: 8px 10px; background: var(--input-bg, #111); border: 1px solid var(--border, #333); border-radius: 4px; color: var(--text, #e0e0e0); }
 .field-input-120 { padding: 8px 10px; width: 120px; background: var(--input-bg, #111); border: 1px solid var(--border, #333); border-radius: 4px; color: var(--text, #e0e0e0); }
 .avatar-72 { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.15); display: block; }

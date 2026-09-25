@@ -237,7 +237,7 @@ include 'core/sidebar.php';
         <div class="skin-selector-wrap">
             <form method="POST">
                 <label>CORE ADMIN THEME</label>
-                <select name="active_admin_theme" onchange="this.form.submit()">
+                <select name="active_admin_theme" data-submit-on-change>
                     <?php foreach ($admin_themes as $slug => $meta): ?>
                         <option value="<?php echo htmlspecialchars($slug); ?>" <?php echo ($active_admin_slug == $slug) ? 'selected' : ''; ?>>
                             <?php echo strtoupper(htmlspecialchars($meta['name'])); ?>
@@ -269,7 +269,7 @@ include 'core/sidebar.php';
                         <div class="read-only-display">Plain Text — GramOfSmack mastheads are text-only</div>
                         <input type="hidden" name="settings[header_type]" value="text">
                         <?php else: ?>
-                        <select name="settings[header_type]" onchange="document.getElementById('logo-upload-group').classList.toggle('d-none', this.value !== 'image');">
+                        <select name="settings[header_type]" data-toggle-group="logo-upload-group" data-toggle-when="image">
                             <option value="text" <?php echo (($settings['header_type'] ?? 'text') == 'text') ? 'selected' : ''; ?>>Plain Text (Public Skin Font)</option>
                             <option value="image" <?php echo (($settings['header_type'] ?? 'text') == 'image') ? 'selected' : ''; ?>>Custom Logo Image</option>
                         </select>
@@ -443,12 +443,12 @@ include 'core/sidebar.php';
                              wrote a second key (header_logo_url) and confused which one
                              actually rendered — removed in 0.7.399. -->
                         <label>FAVICON</label>
-                        <div class="file-upload-wrapper" onclick="document.getElementById('favicon-input').click()">
+                        <div class="file-upload-wrapper" data-click-target="favicon-input">
                             <div class="file-custom-btn">UPLOAD</div>
                             <div class="file-name-display" id="favicon-name">
                                 <?php echo !empty($settings['favicon_url']) ? "CURRENT: " . basename($settings['favicon_url']) : "SELECT FILE (.ICO, .PNG, .SVG)"; ?>
                             </div>
-                            <input type="file" name="favicon_upload" id="favicon-input" accept=".ico,.png,.svg,image/x-icon,image/png,image/svg+xml" class="file-input-hidden" onchange="document.getElementById('favicon-name').innerText = this.files[0].name;">
+                            <input type="file" name="favicon_upload" id="favicon-input" accept=".ico,.png,.svg,image/x-icon,image/png,image/svg+xml" class="file-input-hidden" data-file-name-target="favicon-name">
                         </div>
                     </div>
                 </div>

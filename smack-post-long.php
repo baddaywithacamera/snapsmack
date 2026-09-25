@@ -691,7 +691,7 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>TIMESTAMP</label>
                         <input type="datetime-local" name="post_date" class="full-width-select edit-timestamp"
-                               onclick="this.showPicker()"
+                               data-show-picker
                                value="<?php echo $edit_post ? date('Y-m-d\TH:i', strtotime($edit_post['created_at'])) : date('Y-m-d\TH:i'); ?>">
                     </div>
 

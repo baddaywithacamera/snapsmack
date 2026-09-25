@@ -229,17 +229,17 @@ require __DIR__ . '/sc-layout-top.php';
     <form method="post">
       <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
         <button type="submit" name="set_level" value="1"
-                onclick="this.form.querySelector('[name=level]').value='green'"
+                data-set-field="level" data-set-value="green"
                 class="sc-btn" style="border-color:#5a9a5a;color:#5a9a5a;">
           &#9679; Set GREEN
         </button>
         <button type="submit" name="set_level" value="1"
-                onclick="this.form.querySelector('[name=level]').value='yellow_slow'"
+                data-set-field="level" data-set-value="yellow_slow"
                 class="sc-btn" style="border-color:#cc9900;color:#cc9900;">
           &#9679; Set YELLOW (slow)
         </button>
         <button type="submit" name="set_level" value="1"
-                onclick="this.form.querySelector('[name=level]').value='yellow_fast'"
+                data-set-field="level" data-set-value="yellow_fast"
                 class="sc-btn" style="border-color:#ffcc00;color:#ffcc00;">
           &#9679; Set YELLOW (fast)
         </button>
