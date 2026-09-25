@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
     if ($action === 'queue_prompt') {
         $res = pc_queue_prompt($pdo, $settings, [
             'prompt'  => (string)($_POST['pc_prompt'] ?? ''),
+            'hashtag' => (string)($_POST['pc_hashtag'] ?? ''),
             'caption' => (string)($_POST['pc_caption'] ?? ''),
             'alt'     => (string)($_POST['pc_alt'] ?? ''),
             'friday'  => (string)($_POST['pc_friday'] ?? ''),
@@ -49,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {   // CSRF already enforced in auth-
     } elseif ($action === 'update_prompt') {
         $res = pc_update_prompt($pdo, $settings, (int)($_POST['prompt_id'] ?? 0), [
             'prompt'  => (string)($_POST['pc_prompt'] ?? ''),
+            'hashtag' => (string)($_POST['pc_hashtag'] ?? ''),
             'caption' => (string)($_POST['pc_caption'] ?? ''),
             'alt'     => (string)($_POST['pc_alt'] ?? ''),
             'friday'  => (string)($_POST['pc_friday'] ?? ''),
@@ -420,8 +422,12 @@ include 'core/sidebar.php';
                 <label>PROMPT <span class="dim">(one word)</span></label>
                 <input type="text" name="pc_prompt" id="pc_prompt" maxlength="60" required
                        autocomplete="off" placeholder="Belonging" value="<?php echo $esc((string)($edit_prompt['prompt'] ?? '')); ?>">
-                <p class="dim">Hashtag: <span class="pc-hash-preview" id="pc_hash_preview">#<?php echo $esc($pc_prefix); ?>&hellip;</span>
-                    &mdash; built for you from the word above.</p>
+                <label for="pc_hashtag">HASHTAG <span class="dim">(editable)</span></label>
+                <input type="text" name="pc_hashtag" id="pc_hashtag" maxlength="120"
+                       autocomplete="off" placeholder="<?php echo $esc($pc_prefix); ?>Belonging"
+                       value="<?php echo $esc((string)($edit_prompt['tag_display'] ?? '')); ?>">
+                <p class="dim">Preview: <span class="pc-hash-preview" id="pc_hash_preview">#<?php echo $esc($pc_prefix); ?>&hellip;</span>.
+                    This exact hashtag is used by the card, board and recovery scan.</p>
             </div>
 
             <fieldset class="pc-date-plan">
