@@ -278,7 +278,7 @@ if (function_exists('trigram_align_backfill')) $grid_posts = trigram_align_backf
         endforeach; ?>
 
         <?php if (empty($grid_posts)): ?>
-        <div style="grid-column: 1/-1; padding: 60px 20px; text-align: center; color: var(--text-secondary);">
+        <div class="empty-sector-msg">
             <p>No posts yet. Start by uploading your first photograph.</p>
         </div>
         <?php endif; ?>

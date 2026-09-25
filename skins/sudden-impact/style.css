@@ -1407,4 +1407,8 @@ button, .btn, input, select {
     border: 1px dashed var(--border);
 }
 
+/* Empty archive message. Geometry is in assets/css/public-base.css;
+   this is the colour and padding this skin wants for it. */
+.empty-sector-msg { color: var(--text-secondary); }
+
 /* ===== SNAPSMACK EOF ===== */

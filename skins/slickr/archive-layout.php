@@ -71,7 +71,7 @@ $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
             </a>
         <?php endforeach; ?>
     <?php else: ?>
-        <div class="sl-no-photos" style="grid-column: 1 / -1; text-align: center; padding: 80px 20px;">
+        <div class="sl-no-photos">
             <p>No photographs found.</p>
         </div>
     <?php endif; ?>
@@ -139,7 +139,7 @@ $show_map_bg = ($settings['show_map_background'] ?? '1') === '1';
             </div>
         <?php endforeach; ?>
     <?php else: ?>
-        <div class="rg-no-photos">
+        <div class="sl-no-photos">
             <p>No photographs found.</p>
         </div>
     <?php endif; ?>

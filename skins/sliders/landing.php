@@ -283,7 +283,7 @@ include dirname(__DIR__, 2) . '/core/meta.php';
         <?php endif; ?>
 
         <?php if (empty($grid_posts) && $_feed_page === 1): ?>
-        <div style="grid-column: 1/-1; padding: 60px 20px; text-align: center; color: var(--text-secondary);">
+        <div class="empty-sector-msg">
             <p>No posts yet. Start by uploading your first photograph.</p>
         </div>
         <?php endif; ?>

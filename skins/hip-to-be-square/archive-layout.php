@@ -70,7 +70,7 @@ $grid_cols = (int)($settings['htbs_archive_cols'] ?? 4);
             </a>
         <?php endforeach; ?>
     <?php else: ?>
-        <div class="empty-sector-msg" style="grid-column: 1 / -1; text-align: center; padding: 80px 20px; color: var(--text-secondary);">
+        <div class="empty-sector-msg">
             No transmissions found in this sector.
         </div>
     <?php endif; ?>

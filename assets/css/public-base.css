@@ -134,6 +134,14 @@ img[data-lightbox-src] {
     font-size: 1.2rem;
     color: var(--text-dim, #999);
 }
+/* Empty archive / landing / hashtag message. Geometry only: every skin sets
+   its own colour, padding and type in its style.css, which loads after this. */
+.empty-sector-msg {
+    grid-column: 1 / -1;
+    padding: 60px 20px;
+    text-align: center;
+}
+
 /* Feed paging sentinel (ss-engine-tag-infinite.js): an invisible full-width
    row at the end of a paged landing grid. Fetching the next page starts when
    it scrolls within reach. */

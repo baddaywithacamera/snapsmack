@@ -96,7 +96,7 @@ $_chap_initial_thumbs = ($_chap_cur !== 'masonry');
             </a>
         <?php endforeach; ?>
     <?php else: ?>
-        <div style="grid-column: 1 / -1; text-align: center; padding: 80px 20px; color: var(--chap-ink-muted);">
+        <div class="empty-sector-msg">
             <p>The projector is dark. No frames to show.</p>
         </div>
     <?php endif; ?>
@@ -124,7 +124,7 @@ $_chap_initial_thumbs = ($_chap_cur !== 'masonry');
             </div>
         <?php endforeach; ?>
     <?php else: ?>
-        <div style="text-align: center; padding: 80px 20px; color: var(--chap-ink-muted);">
+        <div class="empty-sector-msg">
             <p>The projector is dark. No frames to show.</p>
         </div>
     <?php endif; ?>

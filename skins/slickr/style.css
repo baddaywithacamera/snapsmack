@@ -924,4 +924,7 @@ a:hover { color: var(--sl-link-hover); }
 }
 .static-content hr { border-top-color: var(--sl-header-border); opacity: 1; }
 
+/* Album list uses the same block with its own vertical rhythm. */
+.sl-no-photos--albums { padding: 64px 0; }
+
 /* ===== SNAPSMACK EOF ===== */
