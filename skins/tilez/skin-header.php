@@ -146,9 +146,10 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
     return [
         ['label' => 'HOME',       'url' => $base],
         ['label' => 'THE IDEA',   'url' => 'https://old.baddaywithacamera.ca/the-idea/'],
-        ['label' => 'THE DIARY',  'url' => 'https://old.baddaywithacamera.ca/category/diary/'],
-        ['label' => 'THE ARTIST', 'url' => 'https://old.baddaywithacamera.ca/the-artist/'],
-        ['label' => 'THE IMAGES', 'url' => $base . '?view=archive'],
+        ['label' => 'DIARY',      'url' => 'https://old.baddaywithacamera.ca/category/diary/'],
+        ['label' => 'CATEGORIES', 'url' => $base . 'archive.php'],
+        ['label' => 'ALBUMS',     'url' => $base . 'albums.php'],
+        ['label' => 'IMAGES',     'url' => $base . '?view=archive'],
     ];
 }
 ?>
@@ -175,6 +176,19 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
 <?php $alfred_tagline = trim($settings['site_tagline'] ?? ''); if ($alfred_tagline !== '' && ($settings['show_tagline'] ?? '1') === '1'): ?>
     <p class="blog-description"><?php echo htmlspecialchars($alfred_tagline); ?></p>
 <?php endif; ?>
+    <nav class="tilez-icon-nav" aria-label="Quick navigation">
+        <a href="<?php echo BASE_URL; ?>" title="Home" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></a>
+        <a href="https://old.baddaywithacamera.ca/the-idea/" title="The Idea" aria-label="The Idea"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.2"/></svg></a>
+        <a href="https://old.baddaywithacamera.ca/category/diary/" title="Diary" aria-label="Diary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h13v16H6zM6 8H3M6 12H3M6 16H3M10 8h5M10 12h5M10 16h4"/></svg></a>
+        <a href="<?php echo BASE_URL; ?>archive.php" title="Categories" aria-label="Categories"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg></a>
+        <a href="<?php echo BASE_URL; ?>albums.php" title="Albums" aria-label="Albums"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5zM3 12l9 5 9-5M3 16l9 5 9-5"/></svg></a>
+        <a href="<?php echo BASE_URL; ?>?view=archive" title="Images" aria-label="Images"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></a>
+        <?php
+        $social_dock_inline = true;
+        include dirname(__DIR__, 2) . '/core/social-dock.php';
+        unset($social_dock_inline);
+        ?>
+    </nav>
 </header><!-- /.header -->
 
 <nav class="navigation" role="navigation">
