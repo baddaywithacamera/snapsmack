@@ -176,7 +176,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     // pivot is OR-ed in as belt-and-suspenders for gram layout rows. No extra
     // per-row query — it resolves inside the existing paginated SELECT.
     $sql = "SELECT i.id, i.img_title, i.img_alt, i.img_file, i.img_thumb_square, i.img_thumb_aspect,
-                   i.img_date, i.img_status, i.img_width, i.img_height, i.img_exif,
+                   i.img_date, i.img_status, i.img_width, i.img_height, i.img_orientation, i.img_exif,
                    i.img_display_options, i.post_id,
                    (i.post_id IS NOT NULL
                     OR EXISTS (SELECT 1 FROM snap_post_images pi WHERE pi.image_id = i.id)) AS is_used
