@@ -75,7 +75,7 @@ test('portrait-led four-image section spans a three-image stack', () => {
     assert.ok(layout.items[1].y < layout.items[2].y && layout.items[2].y < layout.items[3].y);
 });
 
-test('an extreme portrait trio remains one edge-filled bundle', () => {
+test('an extreme portrait trio splits rather than violating hard size limits', () => {
     const images = [
         { width: 500, height: 1800 },
         { width: 900, height: 700 },
@@ -84,7 +84,7 @@ test('an extreme portrait trio remains one edge-filled bundle', () => {
     const layout = engine.computeLayout(images, 1600, 6);
 
     assertCleanGeometry(layout, 1600);
-    assert.equal(layout.sections.length, 1, 'one saved bundle remains one composition');
+    assert.ok(layout.sections.length >= 2, 'an impossible full-width group is split');
     layout.sections.forEach((section, sectionIndex) => {
         assert.ok(section.height <= 900.02, `section ${sectionIndex} stays within the hard ceiling`);
     });
@@ -203,7 +203,7 @@ test('six-photo desktop blocks do not collapse into postage-stamp cells', () => 
         'supporting photographs remain substantial beside the hero');
 });
 
-test('an unsuitable six-photo group remains one edge-filled bundle', () => {
+test('an unsuitable six-photo group splits instead of bypassing useful-size rules', () => {
     const layout = engine.computeLayout([
         { width: 900, height: 1200 },
         { width: 900, height: 1200 },
@@ -214,12 +214,11 @@ test('an unsuitable six-photo group remains one edge-filled bundle', () => {
     ], 1688, 20, 'landscape');
 
     assertCleanGeometry(layout, 1688);
-    assert.equal(layout.sections.length, 1, 'the bundle is never split into a ragged remainder');
-    assert.equal(layout.items.length, 6, 'the bundle never drops a photograph');
-    assert.ok(layout.height <= 900.02, 'the full composition stays within the section ceiling');
+    assert.ok(layout.sections.length >= 2, 'the incompatible group becomes smaller mosaics');
+    assert.equal(layout.items.length, 6, 'splitting never drops a photograph');
 });
 
-test('five-image layout remains one edge-filled bundle', () => {
+test('five-image layout ends with a full-width image', () => {
     const layout = engine.computeLayout([
         { width: 1400, height: 900 },
         { width: 700, height: 1000 },
@@ -229,9 +228,9 @@ test('five-image layout remains one edge-filled bundle', () => {
     ], 800, 4);
 
     assertCleanGeometry(layout, 800);
-    assert.equal(layout.sections.length, 1);
-    assert.equal(layout.items.length, 5);
-    assert.ok(layout.height <= 900.02);
+    assert.equal(layout.sections.length, 2);
+    assert.ok(Math.abs(layout.items[4].width - 800) < 0.02);
+    assert.equal(layout.items[4].x, 0);
 });
 
 test('mobile layout collapses to one image per row', () => {
@@ -243,6 +242,62 @@ test('mobile layout collapses to one image per row', () => {
 
     assertCleanGeometry(layout, 480);
     layout.items.forEach(item => assert.equal(item.width, 480));
+});
+
+test('a block never silently drops a photograph', () => {
+    // buildSection's fallback arrangement is hardcoded to FOUR cells:
+    //     group('horizontal', [
+    //         group('vertical', [cells[0], group('horizontal', cells.slice(2, 4))]),
+    //         cells[1]
+    //     ])
+    // cells[4] and beyond are never referenced. preferredBlock only sent groups of
+    // SIX or more to the general solver, so a group of FIVE went to that template
+    // and came back holding four. computeLayout then advanced its cursor by the
+    // five it had asked for, and the fifth photograph was never drawn at all -
+    // not misplaced, not cropped, absent, with nothing reported.
+    //
+    // Found on 2026-09-25 while harness-testing 50 SHADES 1.6.0: 10 of 2160
+    // width/gap/emphasis combinations lost exactly one photograph, e.g. a block
+    // of six at 1440px, gap 25, emphasis 'portrait' drew five. This affected
+    // every MOSAIC surface - SCROLL's Asymmetric wall, eatmeclaude.php and
+    // [mosaic:ID] blocks inside posts.
+    const shapes = [
+        { width: 1200, height: 1800 }, { width: 1800, height: 1200 },
+        { width: 1400, height: 1400 }, { width: 2400, height: 1000 },
+        { width: 1000, height: 1500 }, { width: 1600, height: 1067 }
+    ];
+    const take = (n, offset) =>
+        Array.from({ length: n }, (_, i) => shapes[(i + offset) % shapes.length]);
+
+    let checked = 0;
+    for (let size = 1; size <= 6; size++) {
+        for (let offset = 0; offset < 6; offset++) {
+            const block = take(size, offset);
+            for (const width of [1920, 1440, 1200, 768, 390]) {
+                for (const gap of [0, 4, 25]) {
+                    for (const emphasis of ['natural', 'balanced', 'landscape', 'portrait']) {
+                        const layout = engine.computeLayout(block, width, gap, emphasis);
+                        assert.equal(layout.items.length, block.length,
+                            `block of ${size} (offset ${offset}) at ${width}px, gap ${gap}, `
+                            + `emphasis ${emphasis}: every photograph is drawn`);
+                        checked++;
+                    }
+                }
+            }
+        }
+    }
+    assert.equal(checked, 2160);
+
+    // And end to end, on whole archives.
+    for (const total of [7, 11, 12, 13, 17, 23, 45, 100, 200]) {
+        for (const width of [1920, 1440, 1200, 768, 390]) {
+            for (const emphasis of ['natural', 'balanced', 'landscape', 'portrait']) {
+                const layout = engine.computeLayout(take(total, 0), width, 4, emphasis);
+                assert.equal(layout.items.length, total,
+                    `archive of ${total} at ${width}px, emphasis ${emphasis}: none lost`);
+            }
+        }
+    }
 });
 
 // ===== SNAPSMACK EOF =====

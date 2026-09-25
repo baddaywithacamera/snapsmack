@@ -77,10 +77,11 @@
     }
 
     function sectionSize(remaining) {
-        if (remaining <= 6) return remaining;
-        if (remaining === 7 || remaining === 8) return 4;
+        if (remaining <= 4) return remaining;
+        if (remaining === 5) return 4;
+        if (remaining === 6) return 3;
         if (remaining === 9) return 3;
-        return 6;
+        return 4;
     }
 
     /*
@@ -230,13 +231,17 @@
         return emphasis === 'portrait' ? heroIsPortrait : !heroIsPortrait;
     }
 
-    function solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, allowOversized) {
+    function solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize) {
         var best = null;
         candidateTrees(images, 0, images.length, {}).forEach(function (tree) {
             var trial = [];
             var height = placeNode(tree, 0, y, containerWidth, gap, trial);
-            if (height <= 0 || height > MAX_SECTION_HEIGHT ||
-                (!allowOversized && trial.some(tileExceedsLimit)) ||
+            // A block MUST draw every photograph it was handed. computeLayout
+            // advances its cursor by the number it asked for, not by the number
+            // that came back, so an incomplete composition silently skips a
+            // photograph. Reject it and let the caller try a smaller group.
+            if (trial.length !== images.length) return;
+            if (height <= 0 || trial.some(tileExceedsLimit) ||
                 (enforceUsefulSize && (!blockIsVisuallyBalanced(trial, containerWidth) ||
                     !blockMatchesEmphasis(trial, emphasis)))) return;
             var score = blockScore(trial, height, containerWidth, emphasis);
@@ -251,13 +256,17 @@
            boundary. Six-image groups require the general solver because the
            original editorial tree only defines arrangements up to four cells. */
         var enforceUsefulSize = containerWidth >= 1200;
-        if (images.length >= 5) {
+        if (images.length >= 6) {
             return solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize);
         }
         var tree = buildSection(images, false, template);
         var items = [];
         var height = placeNode(tree, 0, y, containerWidth, gap, items);
-        if (height > 0 && !items.some(tileExceedsLimit) &&
+        // buildSection's fallback arrangement only ever places four cells, so a
+        // group of five silently came back with four. Anything the editorial tree
+        // cannot hold in full goes to the general solver instead.
+        if (items.length === images.length &&
+            height > 0 && !items.some(tileExceedsLimit) &&
             (!enforceUsefulSize || blockIsVisuallyBalanced(items, containerWidth)) &&
             blockMatchesEmphasis(items, emphasis)) {
             return { items: items, height: height, score: 0 };
@@ -316,15 +325,6 @@
                 while (count >= 2 && !solved) {
                     sectionImages = images.slice(index, index + count);
                     solved = preferredBlock(sectionImages, y, containerWidth, gap, emphasis, template);
-                    /* A MOSAIC bundle is one edge-justified composition. If the
-                       preferred safety bounds reject its geometry, relax those
-                       bounds for the same photographs before considering a split.
-                       Splitting a five/six-photo bundle into a full row plus one
-                       centred photograph created the large empty rectangles seen
-                       on migrated posts. */
-                    if (!solved) {
-                        solved = solveBlock(sectionImages, y, containerWidth, gap, emphasis, false, true);
-                    }
                     if (!solved) count--;
                 }
                 if (!solved) {
