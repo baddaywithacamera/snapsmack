@@ -36,16 +36,68 @@ $ratio_max = 3 / 2;
 // (this replaces the MIT-licensed fjGallery so the whole gallery stays SnapSmack).
 // Tile size and gap come from the manifest (--ss-cols / --ss-gap on #justified-grid
 // in style.css) — nothing is set inline here, or it would override the controls.
-// 1.5.0: the M layout is a stored-value select (rows / columns / square). Same tiles,
-// same controls; the container class picks which SCROLL wall engine binds to it:
+// 1.6.0: the M layout is a stored-value select (rows / columns / square / mosaic).
+// Same tiles, same controls; the container class picks which engine binds to it:
 //   rows    → .ss-scroll-wall  (ss-engine-rows.js)
 //   columns → .ss-masonry      (ss-engine-columns.js)
 //   square  → .ss-square-wall  (pure CSS grid, style.css)
-// Copied from skins/scroll/wall.php, which has run all three in production.
+//   mosaic  → .ss-mosaic-wall  (ss-engine-mosaic.js — Codex's MOSAIC quilt)
+// Copied from skins/scroll/wall.php, which has run all four in production.
 $_fsog_m_layout = (string)($settings['masonry_layout'] ?? 'rows');
-if (!in_array($_fsog_m_layout, ['rows', 'columns', 'square'], true)) $_fsog_m_layout = 'rows';
-$_fsog_m_class  = $_fsog_m_layout === 'columns' ? 'ss-masonry'
-                : ($_fsog_m_layout === 'square' ? 'ss-square-wall' : 'ss-scroll-wall');
+if (!in_array($_fsog_m_layout, ['rows', 'columns', 'square', 'mosaic'], true)) $_fsog_m_layout = 'rows';
+$_fsog_is_mosaic = ($_fsog_m_layout === 'mosaic');
+$_fsog_m_class  = $_fsog_is_mosaic ? 'ss-mosaic-wall'
+                : ($_fsog_m_layout === 'columns' ? 'ss-masonry'
+                : ($_fsog_m_layout === 'square' ? 'ss-square-wall' : 'ss-scroll-wall'));
+
+// ── ASYMMETRIC (MOSAIC) ───────────────────────────────────────────────────────
+// Same block markup, payload and engine as skins/scroll/wall.php, which took them
+// unchanged from eatmeclaude.php. The one difference: an ARCHIVE is a finite,
+// already-filtered set, so every block is rendered here and there is no feed
+// sentinel — nothing to stream. Block sizes use the same 6-per-block rule so the
+// quilt reads identically.
+$_fsog_mosaic_blocks = [];
+if ($_fsog_is_mosaic && !empty($images)) {
+    if (!function_exists('fsog_mosaic_block_sizes')) {
+    function fsog_mosaic_block_sizes(int $total): array {
+        if ($total <= 0) return [];
+        if ($total <= 6) return [$total];
+        $full = intdiv($total, 6); $remainder = $total % 6;
+        $sizes = array_fill(0, $full, 6);
+        if ($remainder === 1) { $sizes[count($sizes) - 1] = 5; $sizes[] = 2; }
+        elseif ($remainder > 0) { $sizes[] = $remainder; }
+        return $sizes;
+    }
+    }
+    $_fsog_payload = [];
+    foreach ($images as $img) {
+        $full = ltrim((string)($img['img_file'] ?? ''), '/');
+        if ($full === '') continue;
+        $thumb = ltrim((string)($img['img_thumb_aspect'] ?? ''), '/');
+        if ($thumb === '') $thumb = $full;
+        $title = trim((string)($img['img_title'] ?? ''));
+        $alt   = trim((string)($img['img_alt'] ?? ''));
+        $_fsog_payload[] = [
+            'src'    => BASE_URL . $thumb,
+            'full'   => BASE_URL . $full,
+            'href'   => BASE_URL . ltrim((string)($img['img_slug'] ?? ''), '/'),
+            'alt'    => $alt !== '' ? $alt : $title,
+            'id'     => (int)($img['id'] ?? 0),
+            'width'  => max(1, (int)($img['img_width'] ?? 1)),
+            'height' => max(1, (int)($img['img_height'] ?? 1)),
+            'focusX' => 50,
+            'focusY' => 50,
+            'lazy'   => true,
+        ];
+    }
+    $_fsog_offset = 0;
+    foreach (fsog_mosaic_block_sizes(count($_fsog_payload)) as $_sz) {
+        $_fsog_mosaic_blocks[] = array_slice($_fsog_payload, $_fsog_offset, $_sz);
+        $_fsog_offset += $_sz;
+    }
+}
+$_fsog_mosaic_gap  = max(0, min(25, (int)($settings['masonry_gap'] ?? 4)));
+$_fsog_mosaic_emph = (string)($settings['masonry_mosaic_emphasis'] ?? 'landscape');
 ?>
 
 <?php
@@ -102,7 +154,20 @@ $_fsog_initial_thumbs = ($_fsog_cur === 'thumbs');
      downscale "sparkle" the old full-image grid produced. Shape comes from
      data-w/data-h so lazy-load never has to read naturalWidth. -->
 <div id="justified-grid" class="<?php echo $_fsog_m_class; ?>" data-masonry-layout="<?php echo $_fsog_m_layout; ?>"<?php echo $_fsog_initial_thumbs ? ' style="display:none;"' : ''; ?>>
-    <?php if (!empty($images)): ?>
+    <?php if ($_fsog_is_mosaic): ?>
+        <?php if ($_fsog_mosaic_blocks): ?>
+            <?php foreach ($_fsog_mosaic_blocks as $_blk): ?>
+            <div class="snap-mosaic fsog-mosaic-block"
+                 data-gap="<?php echo $_fsog_mosaic_gap; ?>"
+                 data-emphasis="<?php echo htmlspecialchars($_fsog_mosaic_emph, ENT_QUOTES); ?>"
+                 data-mosaic="<?php echo htmlspecialchars(json_encode($_blk, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>"></div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <div class="empty-sector-msg">
+                <p>No photographs found.</p>
+            </div>
+        <?php endif; ?>
+    <?php elseif (!empty($images)): ?>
         <?php foreach ($images as $img):
             $link = BASE_URL . htmlspecialchars($img['img_slug']);
             if (!empty($img['img_thumb_aspect'])) {
@@ -129,6 +194,15 @@ $_fsog_initial_thumbs = ($_fsog_cur === 'thumbs');
         </div>
     <?php endif; ?>
 </div>
+
+<?php if ($_fsog_is_mosaic): ?>
+<!-- ASYMMETRIC: Codex's MOSAIC engine, loaded exactly as skins/scroll/wall.php and
+     eatmeclaude.php load it. Rows/columns/square load nothing here — their engines
+     come via the skin's require_scripts. No mosaic-feed engine: an archive is a
+     finite set and every block is already on the page. -->
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
+<?php endif; ?>
 
 <?php /* Archive grid thumbs/masonry switch moved to
    assets/js/ss-engine-archive-grid-switch.js (loaded via the skin manifest).

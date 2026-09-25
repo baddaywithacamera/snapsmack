@@ -634,9 +634,23 @@ body {
     width: auto;
 }
 #justified-grid.ss-square-wall {
+    /* 1.6.0: Squares Across is its own control (--ss-square-cols), the way SCROLL
+       has it. It used to borrow --ss-cols from Masonry Tile Size, so the two
+       layouts could not be sized independently. */
+    --ss-square-cols: 4;
     display: grid;
-    grid-template-columns: repeat(var(--ss-cols, 4), minmax(0, 1fr));
+    grid-template-columns: repeat(var(--ss-square-cols, 4), minmax(0, 1fr));
     gap: var(--ss-gap, 4px);
+}
+
+/* 1.6.0 — ASYMMETRIC: the MOSAIC quilt. The engine sizes and positions every
+   tile itself and writes the container height, so this only spaces the blocks. */
+#justified-grid.ss-mosaic-wall {
+    display: block;
+    width: auto;
+}
+#justified-grid.ss-mosaic-wall .fsog-mosaic-block + .fsog-mosaic-block {
+    margin-top: var(--ss-gap, 4px);
 }
 #justified-grid.ss-square-wall .ss-masonry-item {
     box-sizing: border-box;
@@ -650,6 +664,11 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+/* 1.6.0: Image Corner Radius, matching SCROLL's --scroll-corner-radius control. */
+#justified-grid .ss-masonry-item {
+    border-radius: var(--masonry-corner-radius, 0px);
 }
 
 #justified-grid .ss-masonry-item img {
