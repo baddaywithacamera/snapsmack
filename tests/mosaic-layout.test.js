@@ -218,7 +218,7 @@ test('an unsuitable six-photo group splits instead of bypassing useful-size rule
     assert.equal(layout.items.length, 6, 'splitting never drops a photograph');
 });
 
-test('five-image layout ends with a full-width image', () => {
+test('five-image layout stays in one complete composition', () => {
     const layout = engine.computeLayout([
         { width: 1400, height: 900 },
         { width: 700, height: 1000 },
@@ -228,9 +228,8 @@ test('five-image layout ends with a full-width image', () => {
     ], 800, 4);
 
     assertCleanGeometry(layout, 800);
-    assert.equal(layout.sections.length, 2);
-    assert.ok(Math.abs(layout.items[4].width - 800) < 0.02);
-    assert.equal(layout.items[4].x, 0);
+    assert.equal(layout.sections.length, 1);
+    assert.equal(layout.items.length, 5);
 });
 
 test('mobile layout collapses to one image per row', () => {
@@ -298,6 +297,21 @@ test('a block never silently drops a photograph', () => {
             }
         }
     }
+});
+
+test('five photographs stay together without an orphan row', () => {
+    const photos = [
+        { width: 1800, height: 1200 }, { width: 1800, height: 1200 },
+        { width: 1200, height: 1800 }, { width: 1800, height: 1200 },
+        { width: 1800, height: 1200 }
+    ];
+    const layout = engine.computeLayout(photos, 1200, 4, 'balanced');
+    assert.equal(layout.items.length, 5);
+    assert.equal(layout.sections.length, 1, 'five photos form one composition instead of 4 + 1');
+    assertCleanGeometry(layout, 1200);
+    layout.items.forEach((item) => {
+        assert.ok(item.width >= 100 && item.height >= 100, 'every tile remains useful');
+    });
 });
 
 // ===== SNAPSMACK EOF =====

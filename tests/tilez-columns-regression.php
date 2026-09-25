@@ -1,5 +1,10 @@
 <?php
 /** TILEZ must remain a native-aspect three-column SMACKTALK portfolio. */
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ */
 $root = dirname(__DIR__);
 $manifest = json_decode((string)file_get_contents($root . '/skins/tilez/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
 $preload  = (string)file_get_contents($root . '/skins/tilez/preload.php');
@@ -28,6 +33,10 @@ $assert(str_contains($header, "['label' => 'ALBUMS'"), 'albums menu label is pre
 $assert(str_contains($header, "['label' => 'IMAGES'"), 'images menu label is present');
 $assert(str_contains($header, 'class="tilez-icon-nav"'), 'top-right icon navigation is present');
 $assert(str_contains($style, 'font-size: 20px;'), 'desktop text menu is doubled in size');
+$assert(!str_contains($preload, '<figure class="featured-media"'), 'single posts start with their title instead of repeating the archive cover');
+$assert(str_contains($style, 'font-size: clamp(3.25rem, 6vw, 6rem);'), 'single-post title is deliberately large');
 $assert(is_file($root . '/skins/tilez/assets/bad-day-masthead.png'), 'bundled masthead exists');
 
 echo "PASS: TILEZ white columns portfolio\n";
+
+// ===== SNAPSMACK EOF =====

@@ -77,11 +77,13 @@
     }
 
     function sectionSize(remaining) {
-        if (remaining <= 4) return remaining;
-        if (remaining === 5) return 4;
-        if (remaining === 6) return 3;
+        /* Keep five and six photographs in one complete composition. Splitting
+           five as 4 + 1 produced a full-width blank-looking second row beside
+           the orphaned final photograph. Seven and eight still divide evenly. */
+        if (remaining <= 6) return remaining;
+        if (remaining === 7 || remaining === 8) return 4;
         if (remaining === 9) return 3;
-        return 4;
+        return 6;
     }
 
     /*
@@ -256,7 +258,7 @@
            boundary. Six-image groups require the general solver because the
            original editorial tree only defines arrangements up to four cells. */
         var enforceUsefulSize = containerWidth >= 1200;
-        if (images.length >= 6) {
+        if (images.length >= 5) {
             return solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize);
         }
         var tree = buildSection(images, false, template);
