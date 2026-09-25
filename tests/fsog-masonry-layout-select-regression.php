@@ -4,6 +4,11 @@
  * SCROLL wall engine's four layouts, driven by manifest controls, and the
  * T/M switch must not force display:block (Square is a CSS grid).
  * The MOSAIC layout's own checks live in fsog-mosaic-archive-regression.php.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
  */
 $root = dirname(__DIR__);
 $skin = $root . '/skins/50-shades-of-noah-grey/';
