@@ -35,6 +35,7 @@ $assert(str_contains($header, 'class="tilez-icon-nav"'), 'top-right icon navigat
 $assert(str_contains($style, 'font-size: 20px;'), 'desktop text menu is doubled in size');
 $assert(!str_contains($preload, '<figure class="featured-media"'), 'single posts start with their title instead of repeating the archive cover');
 $assert(str_contains($style, 'font-size: clamp(3.25rem, 6vw, 6rem);'), 'single-post title is deliberately large');
+$assert(str_contains($style, '.post-gear-note'), 'closing equipment notes have a readable supporting style');
 $assert(is_file($root . '/skins/tilez/assets/bad-day-masthead.png'), 'bundled masthead exists');
 
 echo "PASS: TILEZ white columns portfolio\n";
