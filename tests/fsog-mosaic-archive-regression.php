@@ -7,6 +7,11 @@
  * loaded only on that layout, and that the block-splitting rule is sound for
  * every archive size. The geometry itself is covered by
  * tests/fsog-mosaic-archive.test.js against the real engine.
+ *
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
  */
 $root = dirname(__DIR__);
 $skin = $root . '/skins/50-shades-of-noah-grey/';
