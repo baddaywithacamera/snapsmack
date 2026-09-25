@@ -2,7 +2,7 @@
     "schema_version": 1,
     "name": "50 SHADES OF NOAH GREY",
     "oh_snap_ready": true,
-    "version": "1.5.0",
+    "version": "1.6.0",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Pure greyscale photography skin. Three monochrome variants with zero colour accents.",
@@ -39,7 +39,8 @@
         "smack-footer",
         "smack-image-fade-load",
         "smack-lightbox",
-        "smack-rows", "smack-columns",
+        "smack-rows",
+        "smack-columns",
         "smack-community",
         "smack-keyboard",
         "smack-calendar",
@@ -913,12 +914,13 @@
             "section": "ARCHIVE",
             "type": "select",
             "label": "Masonry Layout",
-            "hint": "All three are the same SCROLL wall engine. Rows favours landscapes, Columns favours portraits, Square makes an even cropped grid. Tile Size applies to all three.",
+            "hint": "All four are the same SCROLL wall engine SCROLL uses. Rows favours landscapes, Columns favours portraits, Square makes an even cropped grid, and Asymmetric builds a MOSAIC quilt. Tile Size applies to Rows and Columns.",
             "default": "rows",
             "options": {
                 "rows": "Rows (landscapes lead)",
                 "columns": "Columns (portraits stand tallest)",
-                "square": "Square (even cropped grid)"
+                "square": "Square (even cropped grid)",
+                "mosaic": "Asymmetric (MOSAIC quilt)"
             }
         },
         "masonry_cols": {
@@ -944,6 +946,51 @@
             "unit": "px",
             "selector": "#justified-grid",
             "property": "--ss-gap"
+        },
+        "masonry_square_cols": {
+            "section": "ARCHIVE",
+            "type": "range",
+            "label": "Squares Across",
+            "hint": "Choose 3–5 square photographs per row. Tiles divide the available wall width after gaps and borders are accounted for.",
+            "enable_when": {
+                "masonry_layout": "square"
+            },
+            "default": "4",
+            "min": "3",
+            "max": "5",
+            "step": "1",
+            "unit": "",
+            "selector": "#justified-grid.ss-square-wall",
+            "property": "--ss-square-cols"
+        },
+        "masonry_mosaic_emphasis": {
+            "section": "ARCHIVE",
+            "type": "select",
+            "label": "MOSAIC Hero Emphasis",
+            "hint": "Controls which orientation is promoted into the largest cells on MOSAIC feeds. This does not change the saved library order.",
+            "enable_when": {
+                "masonry_layout": "mosaic"
+            },
+            "default": "landscape",
+            "options": {
+                "natural": "Follow Library Order",
+                "balanced": "Balance Portraits & Landscapes",
+                "landscape": "Favor Landscapes",
+                "portrait": "Favor Portraits"
+            }
+        },
+        "masonry_corner_radius": {
+            "section": "ARCHIVE",
+            "type": "range",
+            "label": "Masonry Image Corner Radius (px)",
+            "hint": "",
+            "default": "0",
+            "min": "0",
+            "max": "24",
+            "step": "1",
+            "unit": "px",
+            "selector": ":root",
+            "property": "--masonry-corner-radius"
         },
         "masonry_width_pct": {
             "section": "ARCHIVE",
