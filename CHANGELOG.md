@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.743D — 2026-09-25 — Covers show their shape
+
+- The longform cover picker now labels every Gallery thumbnail as landscape, portrait, or square before selection.
+- The selected cover preview keeps the orientation label visible beside the image title.
+
 ## 0.7.742D — 2026-09-24 — Skin updates report the truth
 
 - Skin updates now stop with a clear permissions error when the existing skin directory cannot be removed, instead of leaving the old skin in place and falsely reporting success.
