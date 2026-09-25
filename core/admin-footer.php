@@ -40,6 +40,7 @@
 <script src="assets/js/ss-engine-sidebar.js"></script>
 <script src="assets/js/ss-engine-updater.js?v=<?php echo time(); ?>"></script>
 <script src="assets/js/ss-engine-admin-csrf.js?v=<?php echo time(); ?>"></script>
+<script src="assets/js/ss-engine-admin-inputs.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <?php if (!empty($GLOBALS['SNAPSMACK_APP_COMPOSER'])): ?>
 <script>window.SNAP_BASE_URL=<?php echo json_encode(defined('BASE_URL') ? BASE_URL : '/'); ?>;</script>
 <script src="assets/js/smack-pwa.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>

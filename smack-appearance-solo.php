@@ -133,8 +133,8 @@ include 'core/sidebar.php';
                     <?php if ($o['type'] === 'color'): ?>
                         <div class="color-picker-container">
                             <input type="color" name="settings[<?php echo $k; ?>]" value="<?php echo htmlspecialchars($val ?: '#000000'); ?>"
-                                   oninput="var s=this.nextElementSibling; if(s) s.innerText=this.value.toUpperCase();">
-                            <span class="hex-display"><?php echo strtoupper(htmlspecialchars($val)); ?></span>
+                                   data-readout="ro-<?php echo $k; ?>" data-readout-case="upper">
+                            <span id="ro-<?php echo $k; ?>" class="hex-display"><?php echo strtoupper(htmlspecialchars($val)); ?></span>
                         </div>
                     <?php elseif ($o['type'] === 'range'):
                         $u = strtoupper($o['unit'] ?? 'px');
@@ -144,15 +144,15 @@ include 'core/sidebar.php';
                                 min="<?php echo htmlspecialchars($o['min']); ?>" max="<?php echo htmlspecialchars($o['max']); ?>"
                                 step="<?php echo htmlspecialchars($o['step'] ?? '1'); ?>"
                                 value="<?php echo htmlspecialchars($val); ?>"
-                                oninput="this.nextElementSibling.innerText=this.value+'<?php echo $u; ?>'">
-                            <span class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?><?php echo $u; ?></span>
+                                data-readout="ro-<?php echo $k; ?>" data-unit="<?php echo htmlspecialchars($u); ?>">
+                            <span id="ro-<?php echo $k; ?>" class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?><?php echo $u; ?></span>
                         </div>
                     <?php elseif ($o['type'] === 'select'):
                         $is_font    = (($o['property'] ?? '') === 'font-family') || !empty($o['is_font']);
                         $inherit_ok = ($o['default'] ?? '') === '';   // empty default => offer "Same as masthead"
                     ?>
                         <select name="settings[<?php echo $k; ?>]"
-                            <?php if ($is_font): ?>onchange="var p=this.parentNode.querySelector('.font-preview span'); if(p) p.style.fontFamily=(this.value?(\"'\"+this.value+\"'\"):'inherit')+',sans-serif';"<?php endif; ?>>
+                            <?php if ($is_font): ?>data-font-preview<?php endif; ?>>
                             <?php if ($is_font && $inherit_ok): ?>
                                 <option value="" <?php echo ($val === '') ? 'selected' : ''; ?>><?php echo htmlspecialchars($o['inherit_label'] ?? 'Same as masthead'); ?></option>
                             <?php endif; ?>
@@ -179,8 +179,8 @@ include 'core/sidebar.php';
                                 <div class="range-wrapper">
                                     <input type="range" name="settings[<?php echo $sz_key; ?>]" min="0.6" max="2.4" step="0.05"
                                         value="<?php echo htmlspecialchars($sz_val); ?>"
-                                        oninput="this.nextElementSibling.innerText=this.value+'<?php echo $sz_u; ?>'">
-                                    <span class="active-val"><?php echo htmlspecialchars($sz_val); ?><?php echo $sz_u; ?></span>
+                                        data-readout="ro-<?php echo $sz_key; ?>" data-unit="<?php echo htmlspecialchars($sz_u); ?>">
+                                    <span id="ro-<?php echo $sz_key; ?>" class="active-val"><?php echo htmlspecialchars($sz_val); ?><?php echo $sz_u; ?></span>
                                 </div>
                             </div>
                             <?php endif; ?>

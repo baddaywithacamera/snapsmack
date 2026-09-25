@@ -401,7 +401,7 @@ include 'core/sidebar.php';
                     <div class="item-details">
                         <img src="<?php echo $display_thumb; ?>" 
                              class="archive-thumb" 
-                             onerror="this.src='<?php echo $latest_img['img_file']; ?>';">
+                             data-fallback-src="<?php echo htmlspecialchars($latest_img['img_file']); ?>">
                         <div class="item-text">
                             <strong><?php echo htmlspecialchars($latest_img['img_title']); ?></strong>
                             <span class="dim"><?php echo date('M j, Y', strtotime($latest_img['img_date'])); ?></span>

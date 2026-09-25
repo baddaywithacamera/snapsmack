@@ -180,14 +180,14 @@ include 'core/sidebar.php';
                 <div class="post-col-left">
                     <label>LIGHT ICON COLOUR <span class="field-tip" data-tip="Icon colour and border tint for dark backgrounds.">ⓘ</span></label>
                     <div class="flex-mid gap-10">
-                        <input type="color" name="social_dock_color_light" value="<?php echo htmlspecialchars($settings['social_dock_color_light'] ?? '#ffffff'); ?>" style="width: 50px; height: 34px; border: 1px solid var(--border, #ccc); cursor: pointer;" oninput="this.nextElementSibling.value = this.value">
-                        <input type="text" value="<?php echo htmlspecialchars($settings['social_dock_color_light'] ?? '#ffffff'); ?>" style="width: 100px; font-family: monospace;" onchange="this.previousElementSibling.value = this.value" oninput="this.previousElementSibling.value = this.value">
+                        <input type="color" name="social_dock_color_light" value="<?php echo htmlspecialchars($settings['social_dock_color_light'] ?? '#ffffff'); ?>" style="width: 50px; height: 34px; border: 1px solid var(--border, #ccc); cursor: pointer;" data-mirror>
+                        <input type="text" value="<?php echo htmlspecialchars($settings['social_dock_color_light'] ?? '#ffffff'); ?>" style="width: 100px; font-family: monospace;" data-mirror>
                     </div>
 
                     <label class="mt-15">DARK ICON COLOUR <span class="field-tip" data-tip="Icon colour and border tint for light backgrounds.">ⓘ</span></label>
                     <div class="flex-mid gap-10">
-                        <input type="color" name="social_dock_color_dark" value="<?php echo htmlspecialchars($settings['social_dock_color_dark'] ?? '#1a1a1a'); ?>" style="width: 50px; height: 34px; border: 1px solid var(--border, #ccc); cursor: pointer;" oninput="this.nextElementSibling.value = this.value">
-                        <input type="text" value="<?php echo htmlspecialchars($settings['social_dock_color_dark'] ?? '#1a1a1a'); ?>" style="width: 100px; font-family: monospace;" onchange="this.previousElementSibling.value = this.value" oninput="this.previousElementSibling.value = this.value">
+                        <input type="color" name="social_dock_color_dark" value="<?php echo htmlspecialchars($settings['social_dock_color_dark'] ?? '#1a1a1a'); ?>" style="width: 50px; height: 34px; border: 1px solid var(--border, #ccc); cursor: pointer;" data-mirror>
+                        <input type="text" value="<?php echo htmlspecialchars($settings['social_dock_color_dark'] ?? '#1a1a1a'); ?>" style="width: 100px; font-family: monospace;" data-mirror>
                     </div>
 
                     <label class="mt-15">DEFAULT MODE <span class="field-tip" data-tip="Which icon colour set to use — light icons for dark sites, dark icons for light sites.">ⓘ</span></label>
@@ -222,8 +222,8 @@ include 'core/sidebar.php';
 
                     <label class="mt-15">IDLE OPACITY <span class="field-tip" data-tip="How visible the dock is when not being hovered. Hovering always reveals at full opacity.">ⓘ</span></label>
                     <div class="flex-mid gap-10">
-                        <input type="range" name="social_dock_opacity" min="10" max="100" value="<?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '50'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + '%'">
-                        <span class="mw-40 mono"><?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '50'); ?>%</span>
+                        <input type="range" name="social_dock_opacity" min="10" max="100" value="<?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '50'); ?>" style="flex: 1;" data-readout="ro-dock-opacity" data-unit="%">
+                        <span id="ro-dock-opacity" class="mw-40 mono"><?php echo htmlspecialchars($settings['social_dock_opacity'] ?? '50'); ?>%</span>
                     </div>
                 </div>
             </div>

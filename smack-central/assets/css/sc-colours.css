@@ -60,4 +60,8 @@
     --sc-success:   #39FF14;
     --sc-success-bg: rgba(57,255,20,.10);
 }
+/* Fleet accordion (geometry in sc-geometry.css). */
+.sc-accordion-row { background: var(--sc-accent-dim, #111); }
+.sc-accordion-toggle { background: transparent; color: var(--sc-dim, #888); }
+
 /* ===== SNAPSMACK EOF ===== */

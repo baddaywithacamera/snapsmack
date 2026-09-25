@@ -304,16 +304,16 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>BACKGROUND OPACITY (TRANSPARENT STATE) <span class="field-tip" data-tip="0% = fully see-through, 100% = fully opaque.">ⓘ</span></label>
                         <div class="flex-mid gap-10">
-                            <input type="range" name="sticky_header_opacity" min="0" max="100" value="<?php echo htmlspecialchars($settings['sticky_header_opacity'] ?? '12'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + '%'">
-                            <span class="mw-40 mono"><?php echo htmlspecialchars($settings['sticky_header_opacity'] ?? '12'); ?>%</span>
+                            <input type="range" name="sticky_header_opacity" min="0" max="100" value="<?php echo htmlspecialchars($settings['sticky_header_opacity'] ?? '12'); ?>" style="flex: 1;" data-readout="ro-sticky-opacity" data-unit="%">
+                            <span id="ro-sticky-opacity" class="mw-40 mono"><?php echo htmlspecialchars($settings['sticky_header_opacity'] ?? '12'); ?>%</span>
                         </div>
                     </div>
 
                     <div class="lens-input-wrapper">
                         <label>BACKDROP BLUR <span class="field-tip" data-tip="Glass-morphism blur. Higher = more frosted glass. 0 = no blur.">ⓘ</span></label>
                         <div class="flex-mid gap-10">
-                            <input type="range" name="sticky_header_blur" min="0" max="30" value="<?php echo htmlspecialchars($settings['sticky_header_blur'] ?? '14'); ?>" style="flex: 1;" oninput="this.nextElementSibling.textContent = this.value + 'px'">
-                            <span class="mw-40 mono"><?php echo htmlspecialchars($settings['sticky_header_blur'] ?? '14'); ?>px</span>
+                            <input type="range" name="sticky_header_blur" min="0" max="30" value="<?php echo htmlspecialchars($settings['sticky_header_blur'] ?? '14'); ?>" style="flex: 1;" data-readout="ro-sticky-blur" data-unit="px">
+                            <span id="ro-sticky-blur" class="mw-40 mono"><?php echo htmlspecialchars($settings['sticky_header_blur'] ?? '14'); ?>px</span>
                         </div>
                     </div>
                 </div>
@@ -496,8 +496,8 @@ include 'core/sidebar.php';
                             <div class="flex-mid gap-12">
                                 <input type="range" name="settings[wall_gap]" min="4" max="120" step="2"
                                        value="<?php echo htmlspecialchars($settings['wall_gap'] ?? '24'); ?>"
-                                       oninput="this.nextElementSibling.textContent = this.value + 'px'">
-                                <span><?php echo htmlspecialchars($settings['wall_gap'] ?? '24'); ?>px</span>
+                                       data-readout="ro-wall-gap" data-unit="px">
+                                <span id="ro-wall-gap"><?php echo htmlspecialchars($settings['wall_gap'] ?? '24'); ?>px</span>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -511,8 +511,8 @@ include 'core/sidebar.php';
                             <div class="flex-mid gap-12">
                                 <input type="range" name="settings[wall_friction]" min="0.80" max="0.99" step="0.01"
                                        value="<?php echo htmlspecialchars($settings['wall_friction'] ?? '0.96'); ?>"
-                                       oninput="this.nextElementSibling.textContent = this.value">
-                                <span><?php echo htmlspecialchars($settings['wall_friction'] ?? '0.96'); ?></span>
+                                       data-readout="ro-wall-friction">
+                                <span id="ro-wall-friction"><?php echo htmlspecialchars($settings['wall_friction'] ?? '0.96'); ?></span>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -526,8 +526,8 @@ include 'core/sidebar.php';
                             <div class="flex-mid gap-12">
                                 <input type="range" name="settings[wall_dragweight]" min="0.5" max="5.0" step="0.1"
                                        value="<?php echo htmlspecialchars($settings['wall_dragweight'] ?? '2.5'); ?>"
-                                       oninput="this.nextElementSibling.textContent = this.value">
-                                <span><?php echo htmlspecialchars($settings['wall_dragweight'] ?? '2.5'); ?></span>
+                                       data-readout="ro-wall-dragweight">
+                                <span id="ro-wall-dragweight"><?php echo htmlspecialchars($settings['wall_dragweight'] ?? '2.5'); ?></span>
                             </div>
                         <?php endif; ?>
                     </div>

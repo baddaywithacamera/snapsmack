@@ -193,8 +193,8 @@ require __DIR__ . '/sc-layout-top.php';
         <tr style="border-bottom:1px solid var(--sc-border,#222);<?php echo $row_style; ?>">
           <td style="padding:5px 6px 5px 10px;">
             <?php if ($has_spokes): ?>
-            <button onclick="(function(b,r){r.style.display=r.style.display==='none'?'table-row':'none';b.textContent=r.style.display==='none'?'▶':'▼';})(this,document.getElementById('<?php echo $accord_id; ?>'))"
-                    style="background:transparent;border:none;color:var(--sc-dim,#888);cursor:pointer;font-size:0.8em;padding:0;line-height:1;"
+            <button type="button" class="sc-accordion-toggle"
+                    data-accordion="<?php echo $accord_id; ?>" aria-expanded="false"
                     title="Show/hide <?php echo count($hub_spokes); ?> spoke(s)">▶</button>
             <?php endif; ?>
           </td>
@@ -218,7 +218,7 @@ require __DIR__ . '/sc-layout-top.php';
           </td>
         </tr>
         <?php if ($has_spokes): ?>
-        <tr id="<?php echo $accord_id; ?>" style="display:none;background:var(--sc-accent-dim,#111);">
+        <tr id="<?php echo $accord_id; ?>" class="sc-accordion-row">
           <td colspan="8" style="padding:0 0 0 32px;">
             <table style="width:100%;border-collapse:collapse;font-size:0.85em;font-family:monospace;">
               <thead>
