@@ -397,7 +397,7 @@ $all_posts  = $pdo->query(
 // Library. featured_image_id → snap_images.
 $featured_image_data = null;
 if ($edit_post && !empty($edit_post['featured_image_id'])) {
-    $fis = $pdo->prepare("SELECT id, img_title AS name, img_file, img_thumb_square FROM snap_images WHERE id = ?");
+    $fis = $pdo->prepare("SELECT id, img_title AS name, img_file, img_thumb_square, img_width, img_height, img_orientation FROM snap_images WHERE id = ?");
     $fis->execute([$edit_post['featured_image_id']]);
     $featured_image_data = $fis->fetch(PDO::FETCH_ASSOC) ?: null;
 }
@@ -724,6 +724,16 @@ include 'core/sidebar.php';
                                      style="width:100%;max-width:200px;height:auto;border-radius:3px;border:1px solid var(--border);"
                                      alt="">
                                 <span class="dim" style="display:block;font-size:11px;margin-top:4px;"><?php echo htmlspecialchars($featured_image_data['name'] ?? ''); ?></span>
+                                <?php
+                                $fw = (int)($featured_image_data['img_width'] ?? 0);
+                                $fh = (int)($featured_image_data['img_height'] ?? 0);
+                                if ($fw > 0 && $fh > 0) {
+                                    $fo = abs($fw - $fh) <= max($fw, $fh) * 0.02 ? 'SQUARE' : ($fh > $fw ? 'PORTRAIT' : 'LANDSCAPE');
+                                } else {
+                                    $fo = (int)($featured_image_data['img_orientation'] ?? 0) === 2 ? 'SQUARE' : ((int)($featured_image_data['img_orientation'] ?? 0) === 1 ? 'PORTRAIT' : 'LANDSCAPE');
+                                }
+                                ?>
+                                <span style="display:inline-block;margin-top:4px;padding:3px 6px;border:1px solid var(--border);border-radius:2px;font-size:9px;font-weight:700;letter-spacing:.06em;"><?php echo $fo; ?></span>
                             <?php else: ?>
                                 <div style="width:100%;max-width:200px;height:80px;background:var(--card-bg);border:1px dashed var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;">
                                     <span class="dim" style="font-size:10px;text-align:center;padding:4px;">NO COVER</span>
