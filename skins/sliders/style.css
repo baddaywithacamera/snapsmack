@@ -1405,4 +1405,8 @@ body { background: transparent !important; }      /* let the fixed layers show *
 .tg-sticky-nav                 { background: transparent !important; }
 .tg-sticky-nav.profile-hidden  { background: var(--ic-nav-bg, transparent) !important; }
 
+/* Empty archive message. Geometry is in assets/css/public-base.css;
+   this is the colour and padding this skin wants for it. */
+.empty-sector-msg { color: var(--text-secondary); }
+
 /* ===== SNAPSMACK EOF ===== */

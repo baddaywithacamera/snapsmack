@@ -1319,4 +1319,8 @@ body.is-blogroll .blogroll-peer-url { display: none; }
     color: var(--text-secondary);
 }
 
+/* Empty archive message. Geometry is in assets/css/public-base.css;
+   this is the colour and padding this skin wants for it. */
+.empty-sector-msg { color: var(--text-secondary); }
+
 /* ===== SNAPSMACK EOF ===== */

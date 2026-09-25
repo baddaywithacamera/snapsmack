@@ -37,7 +37,7 @@
             </a>
         <?php endforeach; ?>
     <?php else: ?>
-        <p style="grid-column:1/-1;text-align:center;color:var(--text-secondary);">No images found.</p>
+        <p class="empty-sector-msg">No images found.</p>
     <?php endif; ?>
 </div>
 <?php // ===== SNAPSMACK EOF =====

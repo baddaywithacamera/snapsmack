@@ -580,4 +580,8 @@ a:hover { color: var(--text-primary); }
 .pickup-ghost-footer a { color: var(--text-primary); text-decoration: none; }
 .pickup-ghost-footer a:hover { color: var(--accent-color); }
 
+/* Empty archive message. Geometry is in assets/css/public-base.css;
+   this is the colour and padding this skin wants for it. */
+.empty-sector-msg { padding: 0; color: var(--text-secondary); }
+
 /* ===== SNAPSMACK EOF ===== */

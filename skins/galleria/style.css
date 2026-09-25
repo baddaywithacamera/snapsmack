@@ -2055,4 +2055,8 @@ nav_menu_json is configured). Classes emitted by core/header.php renderer.
     left: 100%;
 }
 
+/* Empty archive message. Geometry is in assets/css/public-base.css;
+   this is the colour and padding this skin wants for it. */
+.empty-sector-msg { padding: 80px 20px; color: var(--text-secondary); }
+
 /* ===== SNAPSMACK EOF ===== */
