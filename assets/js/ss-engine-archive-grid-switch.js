@@ -34,6 +34,11 @@
                 // 0px width and skipped it. Now that it is visible, lay it out.
                 if (window.SSRows    && justifiedGrid.classList.contains('ss-scroll-wall')) window.SSRows.relayout(justifiedGrid);
                 if (window.SSColumns && justifiedGrid.classList.contains('ss-masonry'))     window.SSColumns.relayout(justifiedGrid);
+                // Same for the MOSAIC quilt: it measured 0px while hidden.
+                if (window.SnapMosaic && justifiedGrid.classList.contains('ss-mosaic-wall')) {
+                    var quilts = justifiedGrid.querySelectorAll('.snap-mosaic[data-mosaic]');
+                    for (var q = 0; q < quilts.length; q++) window.SnapMosaic.renderMosaic(quilts[q]);
+                }
             } else { // 'thumbs' or anything else falls through to thumbs
                 browseGrid.style.display    = 'grid';
                 justifiedGrid.style.display = 'none';

@@ -1,8 +1,9 @@
 <?php
 /**
- * Regression guard (50 SHADES 1.5.0): the M archive layout is a select over the
- * SCROLL wall engine's three tile layouts, driven by manifest controls, and the
+ * Regression guard (50 SHADES 1.6.0): the M archive layout is a select over the
+ * SCROLL wall engine's four layouts, driven by manifest controls, and the
  * T/M switch must not force display:block (Square is a CSS grid).
+ * The MOSAIC layout's own checks live in fsog-mosaic-archive-regression.php.
  */
 $root = dirname(__DIR__);
 $skin = $root . '/skins/50-shades-of-noah-grey/';
@@ -17,7 +18,7 @@ foreach (['masonry_layout', 'masonry_cols', 'masonry_gap', 'masonry_width_pct'] 
 }
 if (($m['options']['masonry_cols']['property'] ?? '') !== '--ss-cols') $fail('masonry_cols → --ss-cols');
 if (($m['options']['masonry_gap']['property']  ?? '') !== '--ss-gap')  $fail('masonry_gap → --ss-gap');
-if (array_keys($m['options']['masonry_layout']['options']) !== ['rows', 'columns', 'square']) $fail('layout options rows/columns/square');
+if (array_keys($m['options']['masonry_layout']['options']) !== ['rows', 'columns', 'square', 'mosaic']) $fail('layout options rows/columns/square/mosaic');
 if (!in_array('smack-columns', $m['require_scripts'] ?? [], true)) $fail('smack-columns required');
 foreach (["'ss-masonry'", "'ss-square-wall'", "'ss-scroll-wall'", 'masonry_layout'] as $n) {
     if (strpos($al, $n) === false) $fail("archive-layout {$n}");
