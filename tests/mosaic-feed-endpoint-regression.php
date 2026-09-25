@@ -62,6 +62,15 @@ $json_at   = strpos($wall, 'if ($is_json) {');
 if ($helper_at === false || $json_at === false || $helper_at > $json_at) {
     $fail('the mosaic block helpers must be defined before the JSON path uses them');
 }
+// Each conditional function declaration must close immediately after the
+// function. Otherwise the wall query and render path become conditional on the
+// helper not already existing, which only shows up when this file is reused.
+if (!preg_match('/function eatmeclaude_images\(.*?return \$out;\s*}\s*}\s*\$grid_stmt/s', $wall)) {
+    $fail('eatmeclaude_images function_exists guard must close before the wall query');
+}
+if (!preg_match('/if \(\$_is_mosaic\) \{\s*\$emc_block_sizes.*?\$emc_emphasis = \$_ss_wall_emph;\s*}/s', $wall)) {
+    $fail('SCROLL mosaic setup must be scoped inside the mosaic layout condition');
+}
 
 // --- 4. 50 SHADES renders a finite archive and must not load the feed -----
 $fsog = file_get_contents($root . '/skins/50-shades-of-noah-grey/archive-layout.php');

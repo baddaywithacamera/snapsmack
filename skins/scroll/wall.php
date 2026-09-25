@@ -109,6 +109,7 @@ function eatmeclaude_images(PDO $pdo, string $cutoff, int $offset, int $limit): 
     }
     return $out;
 }
+}
 
 $grid_stmt = $pdo->prepare(
     "SELECT id, img_title, img_slug, img_file, img_thumb_aspect,
@@ -200,7 +201,6 @@ if ($is_json) {
 // that already work in production — the only change from the original cut-paste
 // is whose endpoint serves block 2 onwards.
 if ($_is_mosaic) {
-    }
     $emc_block_sizes = eatmeclaude_block_sizes($total);   // $total counted above (same WHERE + cutoff)
     $emc_limit    = $emc_block_sizes[0] ?? 0;
     $emc_images   = $emc_limit > 0 ? eatmeclaude_images($pdo, $cutoff, 0, $emc_limit) : [];
