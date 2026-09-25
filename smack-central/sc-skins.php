@@ -818,11 +818,11 @@ include __DIR__ . '/sc-layout-top.php';
                    value="<?php echo count($repo_skins) === 1 ? htmlspecialchars((string)array_key_first($repo_skins)) : ''; ?>">
 
             <div style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap;">
-                <button type="button" onclick="document.querySelectorAll('input[name=\'skins[]\']').forEach(c=>c.checked=true)"
+                <button type="button" data-check-all="input[name='skins[]']" data-check-state="on"
                         class="sc-btn" style="font-size:0.8rem; padding:5px 12px;">Select All</button>
-                <button type="button" onclick="document.querySelectorAll('input[name=\'skins[]\']').forEach(c=>c.checked=c.dataset.updated==='1')"
+                <button type="button" data-check-all="input[name='skins[]']" data-check-state="data-updated"
                         class="sc-btn" style="font-size:0.8rem; padding:5px 12px;">Select Updated</button>
-                <button type="button" onclick="document.querySelectorAll('input[name=\'skins[]\']').forEach(c=>c.checked=false)"
+                <button type="button" data-check-all="input[name='skins[]']" data-check-state="off"
                         class="sc-btn" style="font-size:0.8rem; padding:5px 12px;">Deselect All</button>
             </div>
 

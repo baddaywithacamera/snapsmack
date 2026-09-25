@@ -148,12 +148,12 @@ include 'core/sidebar.php';
             </p>
             <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="import_recovery">
-                <div class="file-upload-wrapper" onclick="document.getElementById('recovery-input').click()">
+                <div class="file-upload-wrapper" data-click-target="recovery-input">
                     <div class="file-custom-btn">SELECT FILE</div>
                     <div class="file-name-display" id="recovery-name">SELECT .TAR.GZ FILE</div>
                     <input type="file" name="recovery_file" id="recovery-input" accept=".tar.gz,.gz"
                            class="file-input-hidden"
-                           onchange="document.getElementById('recovery-name').innerText = this.files[0].name;">
+                           data-file-name-target="recovery-name">
                 </div>
                 <button type="submit" class="btn-smack btn-block"
                         onclick="return confirm('This will overwrite your database and files. Continue?');">

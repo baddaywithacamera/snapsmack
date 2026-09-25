@@ -818,7 +818,7 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>INTERNAL TIMESTAMP</label>
                         <input type="datetime-local" name="img_date" class="full-width-select edit-timestamp"
-                               onclick="this.showPicker()"
+                               data-show-picker
                                value="<?php echo date('Y-m-d\TH:i', strtotime($post['created_at'])); ?>">
                     </div>
 
@@ -854,7 +854,7 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>FEDIVERSE DATE (LABEL ONLY &mdash; BLANK = POST DATE)</label>
                         <input type="datetime-local" name="fedi_published_at" class="full-width-select edit-timestamp"
-                               onclick="this.showPicker()"
+                               data-show-picker
                                value="<?php echo !empty($post['fedi_published_at']) ? date('Y-m-d\TH:i', strtotime($post['fedi_published_at'])) : ''; ?>">
                     </div>
 

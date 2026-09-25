@@ -220,7 +220,7 @@ include 'core/sidebar.php';
             <div class="progress-bar" id="p-bar"></div>
         </div>
 
-        <div class="file-upload-wrapper" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="file-upload-wrapper" id="drop-zone" data-click-target="file-input">
             <div class="file-custom-btn">CHOOSE FILE</div>
             <span id="file-name-display" class="file-name-display">No signal selected... or drag & drop here.</span>
             <input type="file" id="file-input" accept="image/*" class="file-input-hidden">
@@ -303,7 +303,7 @@ include 'core/sidebar.php';
                                    data-asset-id="<?php echo $a['id']; ?>">
                             <button type="button"
                                     class="action-edit"
-                                    onclick="document.getElementById('swap-input-<?php echo $a['id']; ?>').click()">SWAP</button>
+                                    data-click-target="swap-input-<?php echo (int)$a['id']; ?>">SWAP</button>
                             <a href="?delete=<?php echo $a['id']; ?>&t=<?php echo urlencode(csrf_token()); ?>" class="action-delete-link" onclick="return confirm('Purge asset #<?php echo $a['id']; ?>? Any [img:<?php echo $a['id']; ?>] shortcodes will break.')">PURGE</a>
                         </div>
                     </div>
