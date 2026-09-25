@@ -224,7 +224,7 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fediverse — Pixelfed</title>
 <?php if (function_exists('csrf_meta_tag')) csrf_meta_tag(); ?>
-<script>try{var _t=localStorage.getItem('pixel-theme')||'dark';document.documentElement.setAttribute('data-theme',_t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
+<script src="assets/js/ss-page-pixel.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <link rel="stylesheet" href="assets/css/ss-pixel.css?v=<?php echo px_e($ver); ?>">
 </head>
 <body>

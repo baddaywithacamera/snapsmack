@@ -568,14 +568,7 @@ include 'core/sidebar.php';
     </form>
 </div>
 
-<script>
-document.querySelectorAll('.footer-slot-toggle').forEach(function(sel) {
-    sel.addEventListener('change', function() {
-        var field = document.getElementById('field-' + this.getAttribute('data-target'));
-        if (field) field.style.display = (this.value === 'custom') ? '' : 'none';
-    });
-});
-</script>
+<script src="assets/js/ss-page-globalvibe.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

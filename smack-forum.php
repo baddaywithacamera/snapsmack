@@ -978,18 +978,6 @@ require 'core/sidebar.php';
   </div><!-- /.dash-grid -->
 </div><!-- /.main -->
 
-<script>
-function forumInsertEmoji(btn, emoji) {
-    var form = btn.closest('form') || btn.closest('.lens-input-wrapper')?.closest('form');
-    var ta = form ? form.querySelector('textarea') : btn.closest('.lens-input-wrapper')?.querySelector('textarea');
-    if (!ta) return;
-    var start = ta.selectionStart;
-    var end   = ta.selectionEnd;
-    var val   = ta.value;
-    ta.value  = val.substring(0, start) + emoji + val.substring(end);
-    ta.selectionStart = ta.selectionEnd = start + emoji.length;
-    ta.focus();
-}
-</script>
+<script src="assets/js/ss-page-forum.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <?php require 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

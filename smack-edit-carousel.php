@@ -1133,24 +1133,7 @@ include 'core/sidebar.php';
 <script src="assets/js/ss-engine-admin-ui.js?v=<?php echo time(); ?>"></script>
 <script src="assets/js/shortcode-toolbar.js"></script>
 <script src="assets/js/ss-engine-carousel-edit.js?v=<?php echo time(); ?>"></script>
-<script>
-window.addEventListener('DOMContentLoaded', function () {
-    if (typeof updateLabel === 'function') {
-        updateLabel('cat');
-        updateLabel('album');
-    }
-    // Wire FRAME toggle buttons for per_image style panels (PHP-rendered strip items).
-    document.querySelectorAll('.ce-style-toggle').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var panel = this.nextElementSibling;
-            if (!panel || !panel.classList.contains('ce-style-panel')) return;
-            var open = panel.style.display !== 'none';
-            panel.style.display = open ? 'none' : 'block';
-            this.textContent = open ? 'FRAME ▸' : 'FRAME ▾';
-        });
-    });
-});
-</script>
+<script src="assets/js/ss-page-edit-carousel.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <link rel="stylesheet" href="assets/css/ss-engine-photo-editor.css?v=079L">
 <script src="assets/js/ss-engine-photo-editor.js?v=079L"></script>
 <link rel="stylesheet" href="assets/css/ss-engine-ai-enrichment.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">

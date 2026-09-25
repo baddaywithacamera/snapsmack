@@ -124,14 +124,7 @@ try {
 
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-wall.css?v=<?php echo time(); ?>">
 
-    <script>
-    // Mobile gate: Redirect touch devices or small screens to archive.
-    // Runs in <head> before body render as a client-side fallback for the PHP
-    // user-agent check (some devices slip through server-side sniffing).
-    if (window.innerWidth < 768 || ('ontouchstart' in window && window.innerWidth < 1024)) {
-        window.location.replace('archive.php');
-    }
-    </script>
+    <script src="<?php echo BASE_URL; ?>assets/js/ss-page-gallery-wall.js?v=<?php echo defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : ''; ?>"></script>
 </head>
 <body class="is-wall<?php echo $wall_reflect ? ' wall-reflect' : ''; ?>"
       style="--wall-bg:<?php echo htmlspecialchars($wall_theme); ?>; --wall-gap:<?php echo $wall_gap; ?>px; --wall-rows:<?php echo $wall_rows; ?>;">
