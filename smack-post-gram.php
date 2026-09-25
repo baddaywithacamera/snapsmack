@@ -660,7 +660,7 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
                     <div class="lens-input-wrapper">
                         <label>TIMESTAMP</label>
                         <input type="datetime-local" name="img_date" class="full-width-select edit-timestamp"
-                               onclick="this.showPicker()"
+                               data-show-picker
                                value="<?php echo date('Y-m-d\TH:i'); ?>">
                     </div>
 

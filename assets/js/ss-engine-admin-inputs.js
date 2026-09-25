@@ -55,6 +55,41 @@
  *     <button data-reset-field="input-id" data-reset-preview="preview-id"
  *             data-reset-html="Nothing chosen">
  *
+ *   Proxy button for a hidden file input:
+ *     <div data-click-target="file-input-id">Choose a file</div>
+ *     <input type="file" id="file-input-id" data-file-name-target="name-span-id">
+ *     <span id="name-span-id">SELECT FILE</span>
+ *
+ *     data-file-name-empty  what the span says when nothing is chosen
+ *                           (default: SELECT FILE).
+ *
+ *   Native picker on a date/time/colour input:
+ *     <input type="date" data-show-picker>
+ *
+ *   Copy to the clipboard:
+ *     <button data-copy-text="#1e73be">           copy this literal text
+ *     <button data-copy-from="element-id">        copy that element's value/text
+ *     <span data-copy-self>[mosaic:12]</span>     copy the element's own text
+ *     data-copied-label      shown on the button for two seconds after a copy
+ *                            (default: COPIED).
+ *
+ *   Submit on change / reload / select-all-text:
+ *     <select data-submit-on-change>                 form.submit()
+ *     <select data-submit-on-change data-submit-mode="request">  form.requestSubmit()
+ *     <button data-reload>
+ *     <input data-select-on-click>
+ *
+ *   Set a field, then let the button submit normally:
+ *     <button name="go" data-set-field="level" data-set-value="yellow_fast">
+ *
+ *   Tick or untick a set of checkboxes:
+ *     <button data-check-all="input[name='skins[]']" data-check-state="on">
+ *              data-check-state: on | off | data-<attr> (tick where that
+ *              attribute on the checkbox is truthy)
+ *
+ *   Show or hide a block when a select changes:
+ *     <select data-toggle-group="logo-upload-group" data-toggle-when="image">
+ *
  *   Font select with a live sample beside it:
  *     <select data-font-preview>  ... and a .font-preview span in its parent.
  *
@@ -189,6 +224,110 @@
             if (bits.length !== 2) continue;
             var dest = document.getElementById(bits[1].trim());
             if (dest) dest.value = (opt && opt.getAttribute(bits[0].trim())) || '';
+        }
+    });
+
+    // ---- clipboard ---------------------------------------------------------
+    function flash(btn) {
+        var label = btn.getAttribute('data-copied-label') || 'COPIED';
+        var was = btn.textContent;
+        btn.textContent = label;
+        setTimeout(function () { btn.textContent = was; }, 2000);
+    }
+
+    function copy(text, btn) {
+        if (!navigator.clipboard) return;
+        navigator.clipboard.writeText(text).then(function () {
+            if (btn) flash(btn);
+        });
+    }
+
+    // ---- the small click behaviours ----------------------------------------
+    document.addEventListener('click', function (e) {
+        var el = e.target;
+        if (!el || !el.closest) return;
+
+        var picker = el.closest('[data-show-picker]');
+        if (picker && typeof picker.showPicker === 'function') { picker.showPicker(); return; }
+
+        var proxy = el.closest('[data-click-target]');
+        if (proxy) {
+            var f = document.getElementById(proxy.getAttribute('data-click-target'));
+            if (f) f.click();
+            return;
+        }
+
+        var selfCopy = el.closest('[data-copy-self]');
+        if (selfCopy) { copy(selfCopy.textContent, null); return; }
+
+        var lit = el.closest('[data-copy-text]');
+        if (lit) { copy(lit.getAttribute('data-copy-text'), lit); return; }
+
+        var from = el.closest('[data-copy-from]');
+        if (from) {
+            var srcEl = document.getElementById(from.getAttribute('data-copy-from'));
+            if (srcEl) copy('value' in srcEl ? srcEl.value : srcEl.textContent, from);
+            return;
+        }
+
+        var reload = el.closest('[data-reload]');
+        if (reload) { e.preventDefault(); location.reload(); return; }
+
+        var setter = el.closest('[data-set-field]');
+        if (setter && setter.form) {
+            var field = setter.form.querySelector('[name="' + setter.getAttribute('data-set-field') + '"]');
+            if (field) field.value = setter.getAttribute('data-set-value') || '';
+            return;   // no preventDefault: the button still submits
+        }
+
+        var checker = el.closest('[data-check-all]');
+        if (checker) {
+            e.preventDefault();
+            var boxes = document.querySelectorAll(checker.getAttribute('data-check-all'));
+            var how = checker.getAttribute('data-check-state') || 'on';
+            for (var i = 0; i < boxes.length; i++) {
+                if (how === 'on')       boxes[i].checked = true;
+                else if (how === 'off') boxes[i].checked = false;
+                else {
+                    var flag = boxes[i].getAttribute(how);
+                    boxes[i].checked = !(flag === null || flag === '' || flag === '0' || flag === 'false');
+                }
+            }
+            return;
+        }
+
+        var sel = el.closest('[data-select-on-click]');
+        if (sel && typeof sel.select === 'function') sel.select();
+    });
+
+    // ---- change behaviours -------------------------------------------------
+    document.addEventListener('change', function (e) {
+        var el = e.target;
+        if (!el || !el.getAttribute) return;
+
+        if (el.hasAttribute('data-file-name-target')) {
+            var out = document.getElementById(el.getAttribute('data-file-name-target'));
+            if (out) {
+                out.textContent = (el.files && el.files[0])
+                    ? el.files[0].name
+                    : (el.getAttribute('data-file-name-empty') || 'SELECT FILE');
+            }
+        }
+
+        if (el.hasAttribute('data-toggle-group')) {
+            var group = document.getElementById(el.getAttribute('data-toggle-group'));
+            if (group) group.classList.toggle('d-none', el.value !== el.getAttribute('data-toggle-when'));
+        }
+
+        if (el.hasAttribute('data-submit-on-change') && el.form) {
+            // submit() by default, matching the handlers this replaced.
+            // data-submit-mode="request" opts into validation + the submit event.
+            if (el.getAttribute('data-submit-mode') === 'request'
+                    && typeof el.form.requestSubmit === 'function') {
+                el.form.requestSubmit();
+            } else {
+                el.form.submit();
+            }
         }
     });
 

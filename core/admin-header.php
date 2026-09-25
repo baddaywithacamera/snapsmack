@@ -124,15 +124,15 @@ ob_start();
 <?php if (!empty($GLOBALS['SNAPSMACK_APP_COMPOSER'])): ?>
 <nav class="smack-app-badge" aria-label="App"><a href="./" aria-label="Back to Photogram">&larr;</a><strong>SMACK THAT APP UP</strong><a href="?logout=1" data-app-logout>OUT</a></nav>
 <?php endif; ?>
-<button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open');">&#9776;</button>
-<div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open'); this.classList.remove('open');"></div>
+<button type="button" class="sidebar-toggle" aria-label="Menu">&#9776;</button>
+<div class="sidebar-overlay"></div>
 <?php if (!empty($GLOBALS['_smackback_alert_breach'])): ?>
 <style>#smackback-banner{margin-left:240px;}@media(max-width:1024px){#smackback-banner{margin-left:0;}}</style>
 <div id="smackback-banner" style="background:var(--danger, #3a1000);border-bottom:3px solid var(--danger, #cc2200);padding:10px 24px;font-size:0.88rem;color:var(--danger, #ffccc0);display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:999;">
     <strong style="color:var(--warning, #ff6600);letter-spacing:1px;font-size:0.82rem;">&#9888; SMACKBACK</strong>
     File tampering or corruption detected. Admin functions are unrestricted (Alert mode).
     <a href="smack-back.php" style="color:var(--warning, #ff9900);text-decoration:none;border:1px solid var(--warning, #ff6600);padding:3px 10px;font-size:0.8rem;white-space:nowrap;">View Breach Detail &rarr;</a>
-    <button id="smackback-silence-btn" onclick="document.body.classList.add('alarm-silenced');localStorage.setItem('smackback_alarm_silenced','1');this.style.display='none';" style="margin-left:auto;background:transparent;border:1px solid var(--warning, #884400);color:var(--warning, #ff9900);font-size:0.75rem;padding:3px 10px;cursor:pointer;white-space:nowrap;font-family:inherit;">&#128263; Silence Alarm</button>
+    <button type="button" id="smackback-silence-btn" class="smackback-silence-btn">&#128263; Silence Alarm</button>
 </div>
 <script src="assets/js/ss-engine-admin-chrome.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <?php endif; ?>

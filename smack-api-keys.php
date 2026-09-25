@@ -299,11 +299,8 @@ include 'core/sidebar.php';
             <strong><?php echo $msg; ?></strong><br><br>
             <code id="new-key-value" class="key-reveal"><?php echo htmlspecialchars($new_key_raw); ?></code>
             &nbsp;
-            <button type="button" class="action-copy" onclick="
-                navigator.clipboard.writeText(document.getElementById('new-key-value').textContent);
-                this.textContent = 'COPIED';
-                setTimeout(() => this.textContent = 'COPY', 2000);
-            ">COPY</button>
+            <button type="button" class="action-copy"
+                    data-copy-from="new-key-value" data-copied-label="COPIED">COPY</button>
         </div>
     <?php endif; ?>
 

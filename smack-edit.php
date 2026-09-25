@@ -481,7 +481,7 @@ include 'core/sidebar.php';
                     <div class="lens-input-wrapper">
                         <label>INTERNAL TIMESTAMP</label>
                         <input type="datetime-local" name="img_date" class="full-width-select edit-timestamp" 
-                               onclick="this.showPicker()"
+                               data-show-picker
                                value="<?php echo date('Y-m-d\TH:i', strtotime($post['img_date'])); ?>">
                     </div>
 
@@ -538,7 +538,7 @@ include 'core/sidebar.php';
 
                 <div class="lens-input-wrapper">
                     <label>FRAME WIDTH <span class="range-val" id="frame-width-val"><?php echo (int)($display_opts['frame_width'] ?? ($settings['htbs_frame_width'] ?? 8)); ?>px</span></label>
-                    <input type="range" name="frame_width" min="3" max="20" value="<?php echo (int)($display_opts['frame_width'] ?? ($settings['htbs_frame_width'] ?? 8)); ?>" oninput="document.getElementById('frame-width-val').textContent=this.value+'px'">
+                    <input type="range" name="frame_width" min="3" max="20" value="<?php echo (int)($display_opts['frame_width'] ?? ($settings['htbs_frame_width'] ?? 8)); ?>" data-readout="frame-width-val" data-unit="px">
                 </div>
 
                 <div class="lens-input-wrapper">
@@ -557,7 +557,7 @@ include 'core/sidebar.php';
 
                 <div class="lens-input-wrapper">
                     <label>MAT WIDTH <span class="range-val" id="mat-width-val"><?php echo (int)($display_opts['mat_width'] ?? ($settings['htbs_mat_width'] ?? 24)); ?>px</span></label>
-                    <input type="range" name="mat_width" min="8" max="60" value="<?php echo (int)($display_opts['mat_width'] ?? ($settings['htbs_mat_width'] ?? 24)); ?>" oninput="document.getElementById('mat-width-val').textContent=this.value+'px'">
+                    <input type="range" name="mat_width" min="8" max="60" value="<?php echo (int)($display_opts['mat_width'] ?? ($settings['htbs_mat_width'] ?? 24)); ?>" data-readout="mat-width-val" data-unit="px">
                 </div>
 
                 <div class="lens-input-wrapper">
@@ -575,7 +575,7 @@ include 'core/sidebar.php';
                     <?php if (!empty($palette)): ?>
                         <div class="palette-preview-row">
                             <?php foreach ($palette as $hex): ?>
-                                <span class="palette-chip" style="background:<?php echo htmlspecialchars($hex); ?>" title="<?php echo htmlspecialchars($hex); ?> (click to copy)" onclick="navigator.clipboard.writeText('<?php echo htmlspecialchars($hex); ?>')"></span>
+                                <span class="palette-chip" style="background:<?php echo htmlspecialchars($hex); ?>" title="<?php echo htmlspecialchars($hex); ?> (click to copy)" data-copy-text="<?php echo htmlspecialchars($hex); ?>"></span>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>

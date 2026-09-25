@@ -185,7 +185,7 @@ include 'core/sidebar.php';
     <form method="get" style="display:flex; gap:14px; align-items:end; margin-bottom:18px; flex-wrap:wrap;">
         <div>
             <label style="display:block; font-size:0.72rem; opacity:.7; letter-spacing:.05em;">ALBUM</label>
-            <select name="album" onchange="this.form.submit()">
+            <select name="album" data-submit-on-change>
                 <option value="0">All photos</option>
                 <?php foreach ($albums as $a): ?>
                     <option value="<?php echo (int)$a['id']; ?>" <?php echo $f_album === (int)$a['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($a['album_name']); ?></option>
@@ -194,7 +194,7 @@ include 'core/sidebar.php';
         </div>
         <div>
             <label style="display:block; font-size:0.72rem; opacity:.7; letter-spacing:.05em;">SORT</label>
-            <select name="sort" onchange="this.form.submit()">
+            <select name="sort" data-submit-on-change>
                 <option value="recent" <?php echo $f_sort === 'recent' ? 'selected' : ''; ?>>Newest</option>
                 <option value="viewed" <?php echo $f_sort === 'viewed' ? 'selected' : ''; ?>>Most viewed</option>
                 <option value="liked"  <?php echo $f_sort === 'liked'  ? 'selected' : ''; ?>>Most liked (faves)</option>

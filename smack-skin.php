@@ -1068,7 +1068,7 @@ if (!empty($google_families)) {
             <form method="GET">
                 <input type="hidden" name="tab" value="customize">
                 <label>SKIN SELECTOR</label>
-                <select name="s" onchange="this.form.submit()">
+                <select name="s" data-submit-on-change>
                     <?php foreach ($available_skins as $slug => $name): ?>
                         <option value="<?php echo $slug; ?>" <?php echo ($target_skin == $slug) ? 'selected' : ''; ?>>
                             <?php echo strtoupper($name); ?>
@@ -1109,13 +1109,13 @@ if (!empty($google_families)) {
                             <img src="<?php echo htmlspecialchars($_av_url); ?>" class="avatar-72">
                         </div>
                         <?php endif; ?>
-                        <div class="file-upload-wrapper" onclick="document.getElementById('skinimg-skin_avatar').click()">
+                        <div class="file-upload-wrapper" data-click-target="skinimg-skin_avatar">
                             <div class="file-custom-btn">UPLOAD</div>
                             <div class="file-name-display" id="skinimg-name-skin_avatar"><?php echo $_av_val ? 'CURRENT' : 'SELECT FILE'; ?></div>
                         </div>
                         <input type="file" id="skinimg-skin_avatar" name="skin_img_opt[skin_avatar]"
                                accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;"
-                               onchange="document.getElementById('skinimg-name-skin_avatar').innerText = (this.files[0] ? this.files[0].name : 'SELECT FILE')">
+                               data-file-name-target="skinimg-name-skin_avatar">
                         <p class="dim field-hint mt-4">SQUARE IMAGE. PROFILE AVATAR &mdash; ALSO USED BY THE PHOTOGRAM MOBILE VIEW.</p>
                     </div>
                 </div>
@@ -1236,14 +1236,14 @@ if (!empty($google_families)) {
                                         step="<?php echo $o['step'] ?? '1'; ?>"
                                         value="<?php echo $rn_val; ?>"
                                         style="flex:1"
-                                        oninput="document.getElementById('<?php echo $rn_num_id; ?>').value=this.value">
+                                        data-mirror="<?php echo htmlspecialchars($rn_num_id); ?>">
                                     <input type="number" id="<?php echo $rn_num_id; ?>" name="skin_opt[<?php echo $k; ?>]"
                                         min="<?php echo (int)$o['min']; ?>"
                                         max="<?php echo (int)$o['max']; ?>"
                                         step="<?php echo $o['step'] ?? '1'; ?>"
                                         value="<?php echo $rn_val; ?>"
                                         style="width:5em;text-align:right;"
-                                        oninput="document.getElementById('<?php echo $rn_slider_id; ?>').value=this.value">
+                                        data-mirror="<?php echo htmlspecialchars($rn_slider_id); ?>">
                                     <span style="opacity:0.6;font-size:0.8em;"><?php echo htmlspecialchars($rn_unit); ?></span>
                                 </div>
                             <?php elseif ($o['type'] === 'select'): ?>
@@ -1302,14 +1302,14 @@ if (!empty($google_families)) {
                                          class="avatar-72">
                                 </div>
                                 <?php endif; ?>
-                                <div class="file-upload-wrapper" onclick="document.getElementById('skinimg-<?php echo $k; ?>').click()">
+                                <div class="file-upload-wrapper" data-click-target="skinimg-<?php echo htmlspecialchars($k); ?>">
                                     <div class="file-custom-btn">UPLOAD</div>
                                     <div class="file-name-display" id="skinimg-name-<?php echo $k; ?>"><?php echo $val ? 'CURRENT' : 'SELECT FILE'; ?></div>
                                 </div>
                                 <input type="file" id="skinimg-<?php echo $k; ?>" name="skin_img_opt[<?php echo $k; ?>]"
                                        accept="<?php echo htmlspecialchars($img_accept); ?>"
                                        style="display:none;"
-                                       onchange="document.getElementById('skinimg-name-<?php echo $k; ?>').innerText = (this.files[0] ? this.files[0].name : 'SELECT FILE')">
+                                       data-file-name-target="skinimg-name-<?php echo htmlspecialchars($k); ?>">
                                 <?php if (!empty($o['hint'])): ?>
                                 <p class="dim field-hint mt-4"><?php echo htmlspecialchars(strtoupper($o['hint'])); ?></p>
                                 <?php endif; ?>
@@ -1530,13 +1530,13 @@ if (!empty($google_families)) {
                             <img src="<?php echo htmlspecialchars($_mav_url); ?>" class="avatar-72">
                         </div>
                         <?php endif; ?>
-                        <div class="file-upload-wrapper" onclick="document.getElementById('mob-av-<?php echo $_ms; ?>').click()">
+                        <div class="file-upload-wrapper" data-click-target="mob-av-<?php echo htmlspecialchars($_ms); ?>">
                             <div class="file-custom-btn">UPLOAD</div>
                             <div class="file-name-display" id="mob-av-name-<?php echo $_ms; ?>"><?php echo $_mav ? 'CURRENT' : 'SELECT FILE'; ?></div>
                         </div>
                         <input type="file" id="mob-av-<?php echo $_ms; ?>" name="mobile_avatar"
                                accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;"
-                               onchange="document.getElementById('mob-av-name-<?php echo $_ms; ?>').innerText = (this.files[0] ? this.files[0].name : 'SELECT FILE')">
+                               data-file-name-target="mob-av-name-<?php echo htmlspecialchars($_ms); ?>">
                         <p class="dim field-hint mt-4">SQUARE IMAGE. SHOWN AT THE TOP OF THE FEED AND PROFILE.</p>
                     </div>
                 </div>
