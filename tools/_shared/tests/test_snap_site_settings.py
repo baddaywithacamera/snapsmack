@@ -34,6 +34,7 @@ def _checks():
     v = S.validate_portable({})
     assert v["max_long_edge"] == 3840, v
     assert v["max_width_landscape"] == 3840 and v["max_height_portrait"] == 3840, v
+    assert v["prompt_presets"] == {}, v
     n += 1
 
     # 2. Canonical present is authoritative; pair derived symmetric.
@@ -91,8 +92,20 @@ def _checks():
     assert v["image_resize_enabled"] is False, v
     n += 1
 
-    # 9. Schema bumped to 2.
-    assert S.SCHEMA == 2, S.SCHEMA
+    # 9. Named site prompts survive normalization and remember the chosen default.
+    v = S.validate_portable({
+        "prompt": "certified",
+        "prompt_presets": {"Default": "ordinary", "Certified Rights": "certified"},
+        "default_prompt_preset": "Certified Rights",
+        "last_prompt_preset": "Certified Rights",
+    })
+    assert v["prompt_presets"]["Certified Rights"] == "certified", v
+    assert v["default_prompt_preset"] == "Certified Rights", v
+    assert v["last_prompt_preset"] == "Certified Rights", v
+    n += 1
+
+    # 10. Schema bumped to 3.
+    assert S.SCHEMA == 3, S.SCHEMA
     assert S.DEFAULT_MAX_LONG_EDGE == 3840, S.DEFAULT_MAX_LONG_EDGE
     n += 1
 
