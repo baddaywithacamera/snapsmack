@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.745D — 2026-09-25 — No photo left behind
+
+- MOSAIC now rejects any candidate layout that fails to place every photograph, preventing a five or six image block from silently omitting one image.
+- The fix preserves the existing tile size, balance, orientation emphasis, and mobile layout rules.
+- Includes the desktop first longform editing work that followed the 0.7.744D release line.
+- Corrected the clean install package builder's project-root lookup so it can build from its documented location.
+
 ## 0.7.744D — 2026-09-25 — Pick a side
 
 - The longform cover chooser can now filter the full Gallery to portrait, landscape, or square images, while keeping a high-contrast orientation badge on every thumbnail.
