@@ -496,16 +496,7 @@ require __DIR__ . '/sc-layout-top.php';
 
 </div>
 
-<script>
-function scTab(btn, id) {
-    document.querySelectorAll('.sc-tab').forEach(b => b.classList.remove('active'));
-    ['tab-fonts','tab-scripts','tab-upload'].forEach(t => {
-        var el = document.getElementById(t);
-        if (el) el.style.display = (t === id) ? '' : 'none';
-    });
-    btn.classList.add('active');
-}
-</script>
+<script src="assets/js/sc-page-assets.js?v=<?php echo $sc_v ?? ''; ?>"></script>
 
 <?php require __DIR__ . '/sc-layout-bottom.php'; ?>
 <?php // EOF

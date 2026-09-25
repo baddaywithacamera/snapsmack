@@ -134,7 +134,7 @@ ob_start();
     <a href="smack-back.php" style="color:var(--warning, #ff9900);text-decoration:none;border:1px solid var(--warning, #ff6600);padding:3px 10px;font-size:0.8rem;white-space:nowrap;">View Breach Detail &rarr;</a>
     <button id="smackback-silence-btn" onclick="document.body.classList.add('alarm-silenced');localStorage.setItem('smackback_alarm_silenced','1');this.style.display='none';" style="margin-left:auto;background:transparent;border:1px solid var(--warning, #884400);color:var(--warning, #ff9900);font-size:0.75rem;padding:3px 10px;cursor:pointer;white-space:nowrap;font-family:inherit;">&#128263; Silence Alarm</button>
 </div>
-<script>if(localStorage.getItem('smackback_alarm_silenced')==='1'){document.body.classList.add('alarm-silenced');var b=document.getElementById('smackback-silence-btn');if(b)b.style.display='none';}</script>
+<script src="assets/js/ss-engine-admin-chrome.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <?php endif; ?>
 <?php if (!empty($GLOBALS['_nalert_status'])): ?>
 <?php

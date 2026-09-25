@@ -996,17 +996,7 @@ include 'core/sidebar.php';
             <?php endforeach; ?>
         </div>
 
-        <script>
-        function deleteMosaic(id) {
-            if (!confirm('Delete mosaic #' + id + '? Any [mosaic:' + id + '] shortcodes will stop rendering.')) return;
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', 'smack-mosaics.php', true);
-            xhr.setRequestHeader('Content-Type',     'application/x-www-form-urlencoded');
-            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-            xhr.onload = function () { location.reload(); };
-            xhr.send('action=delete_mosaic&mosaic_id=' + id);
-        }
-        </script>
+        <script src="<?php echo BASE_URL; ?>assets/js/ss-page-mosaics.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
     <?php endif; ?>
 
 <?php endif; ?>
