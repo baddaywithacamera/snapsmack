@@ -8,7 +8,7 @@ $gram = file_get_contents($root . '/core/gram-nav-links.php');
 $ht = file_get_contents($root . '/core/htaccess-template');
 $checks = [
     'previous completed window helper exists' => str_contains($photo, 'function pc_previous_window('),
-    'historical round uses its own prompt tag' => str_contains($photo, 'SELECT tag FROM pc_prompts WHERE week_key=?'),
+    'historical round uses its own prompt tag' => str_contains($photo, 'FROM pc_prompts WHERE week_key=?'),
     'maintenance checks an admission against its original round tag' =>
         str_contains($photo, "pc_round_tag(\$pdo, \$settings, (string)\$row['week_key'])"),
     'archive can show entries withdrawn by the old rotating-tag bug' =>

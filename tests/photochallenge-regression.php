@@ -35,6 +35,10 @@ $feed_off_settings = $settings;
 $feed_off_settings['photochallenge_feed_enabled'] = '0';
 pc_test(!pc_feed_enabled($feed_off_settings), 'explicitly disabled challenge feed remained available');
 pc_test(pc_tag($settings) === 'photofri', 'challenge tag normalization failed');
+pc_test(pc_hashtag_for_prompt('Reflection', 'PhotoFri', '#PhotoFriReflect')['tag'] === 'photofrireflect',
+    'an explicitly advertised shortened hashtag was discarded');
+pc_test(pc_advertised_prompt_hashtag('Next: #PhotoFriReflect. Current: #PhotoFriNumbers', 'PhotoFri') === 'PhotoFriReflect',
+    'the first advertised prompt hashtag was not selected');
 foreach (['https://pxscdn.com/cache/avatars/503466088928548273/avatar_lih2.png',
           'https://pxscdn.com/cache/avatars/503/466/088/928/548/273/avatar.png'] as $icon) {
     $recent = pc_participant_recent_posts([
@@ -262,7 +266,7 @@ pc_test(strpos($cron, "pc_activate_due_prompts(\$pdo, \$settings)") <
 pc_test(str_contains($photo, 'function pc_sync_active_prompt_tag')
     && str_contains($photo, "submit_start<=UTC_TIMESTAMP()")
     && str_contains($photo, "ORDER BY (submit_end>UTC_TIMESTAMP()) DESC, submit_start DESC")
-    && str_contains($photo, "sv_set_setting(\$pdo, \$settings, 'photochallenge_tag', \$active)"),
+    && str_contains($photo, "sv_set_setting(\$pdo, \$settings, 'photochallenge_tag', \$hash['tag'])"),
     'the active tag must track the prompt whose submission window is current');
 pc_test(str_contains($photo, "if (!\$due) {\n        pc_sync_active_prompt_tag(\$pdo, \$settings);"),
     'active-tag reconciliation must run even when no queued prompt remains to drop');
