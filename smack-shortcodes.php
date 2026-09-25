@@ -181,25 +181,7 @@ include 'core/sidebar.php';
     <?php endforeach; ?>
 </div>
 
-<script>
-document.querySelectorAll('.shortcode-copy').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        var text = btn.dataset.copy;
-        navigator.clipboard.writeText(text).then(function() {
-            var orig = btn.textContent;
-            btn.textContent = 'Copied!';
-            btn.classList.add('copied');
-            setTimeout(function() {
-                btn.textContent = orig;
-                btn.classList.remove('copied');
-            }, 1800);
-        }).catch(function() {
-            // Clipboard API unavailable — show the text to copy manually
-            prompt('Copy this shortcode:', text);
-        });
-    });
-});
-</script>
+<script src="assets/js/ss-page-shortcodes.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

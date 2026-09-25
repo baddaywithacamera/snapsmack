@@ -627,14 +627,7 @@ include __DIR__ . '/sc-layout-top.php';
 
 <?php endif; // db_ok ?>
 
-<script>
-function steTab(name) {
-    document.querySelectorAll('.ste-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.ste-panel').forEach(p => p.classList.remove('active'));
-    document.getElementById('panel-' + name).classList.add('active');
-    event.target.classList.add('active');
-}
-</script>
+<script src="assets/js/sc-page-enemy-admin.js?v=<?php echo $sc_v ?? ''; ?>"></script>
 
 <?php include __DIR__ . '/sc-layout-bottom.php'; ?>
 <?php // EOF

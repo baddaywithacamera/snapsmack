@@ -402,18 +402,7 @@ require_once __DIR__ . '/sc-layout-top.php';
 
 </main>
 
-<script>
-document.querySelectorAll('.vax-token-preview').forEach(function(el) {
-    var full    = el.dataset.full;
-    var preview = el.textContent.trim();
-    var showing = false;
-    el.addEventListener('click', function() {
-        showing = !showing;
-        el.textContent = showing ? full : preview;
-        el.style.color = showing ? 'var(--sc-warn)' : '';
-    });
-});
-</script>
+<script src="assets/js/sc-page-vax.js?v=<?php echo $sc_v ?? ''; ?>"></script>
 
 <?php require_once __DIR__ . '/sc-layout-bottom.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

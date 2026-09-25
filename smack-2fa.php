@@ -445,26 +445,6 @@ require_once 'core/sidebar.php';
 <?php if ($pending_secret && $totp_uri): ?>
 <script>var _smackTotpUri = <?php echo json_encode($totp_uri); ?>;</script>
 <script src="assets/js/smack-qr.min.js"></script>
-<script>
-(function () {
-    'use strict';
-    function renderQR() {
-        var canvas = document.getElementById('totp-qr-canvas');
-        if (!canvas || !window.SmackQR || !window._smackTotpUri) return;
-        SmackQR.toCanvas(canvas, _smackTotpUri, {
-            width: 220, margin: 2,
-            color: { dark: '#000000', light: '#ffffff' }
-        }, function (err) {
-            if (err) canvas.insertAdjacentHTML('afterend',
-                '<p style="color:red;font-size:12px">QR render failed — use the manual key below.</p>');
-        });
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', renderQR);
-    } else {
-        renderQR();
-    }
-}());
-</script>
+<script src="assets/js/ss-page-2fa.js?v=<?php echo defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : ''; ?>"></script>
 <?php endif; ?>
 <?php // ===== SNAPSMACK EOF =====

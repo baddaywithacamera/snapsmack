@@ -393,21 +393,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 </div><!-- /.login-wrap -->
 
-<script>
-(function () {
-    document.querySelectorAll('.login-tabs .login-tab').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var tab = this.dataset.tab;
-            document.querySelectorAll('.login-tabs .login-tab').forEach(function (b) {
-                b.classList.toggle('active', b.dataset.tab === tab);
-            });
-            document.querySelectorAll('.login-panel').forEach(function (p) {
-                p.classList.toggle('active', p.id === tab);
-            });
-        });
-    });
-}());
-</script>
+<script src="assets/js/ss-page-snap-in.js?v=<?php echo defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : ''; ?>"></script>
 
 </body>
 </html>
