@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.741D — 2026-09-24 — Complete Cloudflare login recovery
+
+- Clears legacy automatic login bans once after the Cloudflare client-address repair, restoring owner access while preserving manual IP moderation bans.
+
 ## 0.7.740D — 2026-09-25 — Cloudflare login lockout repair
 
 - Fixed login lockouts on Cloudflare-hosted sites by recognizing Cloudflare's published proxy networks before resolving `CF-Connecting-IP`.
