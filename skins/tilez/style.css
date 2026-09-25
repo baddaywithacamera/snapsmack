@@ -2298,10 +2298,10 @@ body.blog, body.single, body.archive { background: #fff; }
 .post-content,
 .entry-content {
     color: #282828;
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 19px;
+    font-family: 'Droid Serif', Georgia, 'Times New Roman', serif;
+    font-size: 21px;
     font-weight: 400;
-    line-height: 1.72;
+    line-height: 1.7;
 }
 .entry-content > p,
 .entry-content > h2,
@@ -2385,6 +2385,8 @@ body.blog, body.single, body.archive { background: #fff; }
     .posts.ss-masonry { --ss-cols: 1; }
     .post-inner { width: calc(100% - 28px) !important; }
     .featured-media, .post-header { width: calc(100% - 28px); }
+    .post-content,
+    .entry-content { font-size: 18px; line-height: 1.65; }
 }
 
 /* ===== SNAPSMACK EOF ===== */
