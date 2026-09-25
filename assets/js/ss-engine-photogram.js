@@ -339,7 +339,7 @@
         if (countEl) {
             var n = (parseInt(countEl.textContent) || 0) + (newLiked ? 1 : -1);
             n = Math.max(0, n);
-            countEl.style.display = n ? '' : 'none';
+            countEl.classList.toggle('pg-is-hidden', !n);
             countEl.textContent   = n + (n === 1 ? ' like' : ' likes');
         }
 
@@ -350,7 +350,7 @@
                 btn.classList.toggle('liked', !!data.liked);
                 if (countEl && typeof data.like_count !== 'undefined') {
                     var c = Math.max(0, parseInt(data.like_count) || 0);
-                    countEl.style.display = c ? '' : 'none';
+                    countEl.classList.toggle('pg-is-hidden', !c);
                     countEl.textContent   = c + (c === 1 ? ' like' : ' likes');
                 }
             }

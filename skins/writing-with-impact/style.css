@@ -528,4 +528,7 @@ body.wwi a:hover { opacity: .7; }
     }
 }
 
+/* SMACKTALK cover image crop. */
+.featured-media { aspect-ratio: 4 / 3; overflow: hidden; }
+
 /* ===== SNAPSMACK EOF ===== */

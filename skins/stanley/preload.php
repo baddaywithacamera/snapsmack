@@ -173,10 +173,10 @@ if ($_st_post_slug || $_st_post_id) {
         http_response_code(404);
         $page_title = '404 — Not Found';
         ?><!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><title>404 — Not Found</title></head>
-<body style="background:#d5d6d7;padding:4rem;font-family:'Lucida Grande',Verdana,Arial,sans-serif;text-align:center;">
+<html lang="en"><head><meta charset="UTF-8"><title>404 — Not Found</title><link rel="stylesheet" href="<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>assets/css/skin-fallback.css"></head>
+<body class="skin-fallback skin-fallback--stanley skin-fallback--404">
     <h1>Post not found</h1>
-    <p><a href="<?php echo BASE_URL; ?>" style="color:#2e6da4;">&larr; Back to the front</a></p>
+    <p><a href="<?php echo BASE_URL; ?>">&larr; Back to the front</a></p>
 </body></html>
         <?php
         exit();
@@ -216,7 +216,7 @@ if ($_st_post_slug || $_st_post_id) {
             $_cpy = isset($_st_post['cover_pos_y']) ? (int)$_st_post['cover_pos_y'] : 50;
             $_cz  = isset($_st_post['cover_zoom'])  ? (int)$_st_post['cover_zoom']  : 100;
         ?>
-        <figure class="featured-media" style="aspect-ratio:4/3;overflow:hidden;">
+        <figure class="featured-media">
             <img class="u-photo" src="<?php echo BASE_URL . ltrim($_st_post['featured_image_path'], '/'); ?>" alt="<?php echo htmlspecialchars($_st_post['title']); ?>"
                  style="width:100%;height:100%;object-fit:cover;object-position:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform-origin:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform:scale(<?php echo number_format($_cz / 100, 3); ?>);display:block;">
         </figure>

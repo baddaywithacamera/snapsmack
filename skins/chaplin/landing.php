@@ -76,7 +76,7 @@ $hero = $stmt->fetch(PDO::FETCH_ASSOC);
     </div>
 
     <!-- HIDDEN FOOTER — kept so smack-keyboard.js finds expected DOM elements. -->
-    <div id="footer" style="display:none!important" aria-hidden="true">
+    <div id="footer" aria-hidden="true">
         <div id="pane-info"     class="footer-pane"></div>
         <div id="pane-comments" class="footer-pane"></div>
     </div>

@@ -265,7 +265,7 @@ $pg_active_tab = 'home';
             <?php echo number_format($like_count); ?> <?php echo $like_count === 1 ? 'like' : 'likes'; ?>
         </div>
     <?php else: ?>
-        <div class="pg-like-count" id="pg-like-count" style="display:none;">0 likes</div>
+        <div class="pg-like-count pg-is-hidden" id="pg-like-count">0 likes</div>
     <?php endif; ?>
 
     <!-- ── Caption ──────────────────────────────────────────────────────── -->

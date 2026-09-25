@@ -531,4 +531,7 @@ body.stanley footer:not(#stanley-footer) {
     }
 }
 
+/* SMACKTALK cover image crop. */
+.featured-media { aspect-ratio: 4 / 3; overflow: hidden; }
+
 /* ===== SNAPSMACK EOF ===== */

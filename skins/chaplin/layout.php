@@ -111,7 +111,7 @@ $exif_labels = [
 
     <!-- HIDDEN FOOTER — kept so smack-footer.js and smack-keyboard.js find
          their expected DOM elements. Never shown; overlay handles INFO/SIGNALS. -->
-    <div id="footer" style="display:none!important" aria-hidden="true">
+    <div id="footer" aria-hidden="true">
         <div id="pane-info"     class="footer-pane"></div>
         <div id="pane-comments" class="footer-pane"></div>
     </div>

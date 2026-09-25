@@ -243,7 +243,7 @@ function pg_render_feed_item(array $img, array $comm, string $site_title, string
     </div>
 
     <!-- Like count -->
-    <div class="pg-like-count pg-feed-like-count"<?php echo $like_count < 1 ? ' style="display:none"' : ''; ?>>
+    <div class="pg-like-count pg-feed-like-count<?php echo $like_count < 1 ? ' pg-is-hidden' : ''; ?>">
         <?php echo number_format($like_count); ?> <?php echo $like_count === 1 ? 'like' : 'likes'; ?>
     </div>
 

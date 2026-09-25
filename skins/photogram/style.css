@@ -1536,4 +1536,10 @@ button {
 
 .nav-submenu a:hover { opacity: 1; }
 
+/* Hidden by the server or by ss-engine-photogram.js when a count is zero. */
+.pg-is-hidden { display: none; }
+
+/* The magnifier drawn on an empty search result. */
+.pg-empty-icon { opacity: .3; }
+
 /* ===== SNAPSMACK EOF ===== */
