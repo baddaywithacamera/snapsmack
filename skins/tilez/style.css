@@ -1066,7 +1066,7 @@ input[type="button"],
 }
 
 .post-title {
-    font-size: 2.5em;
+    font-size: clamp(3.25rem, 6vw, 6rem);
     font-weight: 700;
     line-height: 120%;
     margin: 0;
@@ -1877,7 +1877,7 @@ p.comment-form-author { margin-right: 5%; }
         max-width: 85%;
     }
 
-    .post-title { font-size: 2em; }
+    .post-title { font-size: clamp(2.35rem, 10vw, 3.5rem); }
 
     .post-inner { padding: 40px 0 50px; }
 
