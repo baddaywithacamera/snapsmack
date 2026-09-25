@@ -63,8 +63,8 @@ $current_gutter = (int)($settings['static_content_gutter'] ?? 40);
                                min="400" max="1400" step="5"
                                value="<?php echo $current_width; ?>"
                                class="flex-1"
-                               oninput="this.nextElementSibling.textContent = this.value + 'px'">
-                        <span style="min-width:52px; font-family:monospace;"><?php echo $current_width; ?>px</span>
+                               data-readout="ro-static-width" data-unit="px">
+                        <span id="ro-static-width" class="mw-52 mono"><?php echo $current_width; ?>px</span>
                     </div>
                 </div>
 
@@ -76,8 +76,8 @@ $current_gutter = (int)($settings['static_content_gutter'] ?? 40);
                                min="0" max="120" step="4"
                                value="<?php echo $current_gutter; ?>"
                                class="flex-1"
-                               oninput="this.nextElementSibling.textContent = this.value + 'px'">
-                        <span style="min-width:52px; font-family:monospace;"><?php echo $current_gutter; ?>px</span>
+                               data-readout="ro-static-gutter" data-unit="px">
+                        <span id="ro-static-gutter" class="mw-52 mono"><?php echo $current_gutter; ?>px</span>
                     </div>
                 </div>
 

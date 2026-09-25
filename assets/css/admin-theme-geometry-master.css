@@ -2159,11 +2159,39 @@ input[type="range"]:active::-webkit-slider-thumb {
 .p-5-12 { padding: 5px 12px; }
 .o-45 { opacity: 0.45; }
 .no-underline { text-decoration: none; }
+.mw-24 { min-width: 24px; }
+.mw-36 { min-width: 36px; }
 .mw-40 { min-width: 40px; }
+.mw-44 { min-width: 44px; }
+.mw-52 { min-width: 52px; }
 .w-90 { width: 90px; }
 .border-b-dim { border-bottom: 1px solid var(--border, #222); }
 
 /* Wave 7 component blocks (values match the inline they replace; colours via variable) */
+.ms-stats-card {
+    display: block;
+    border: 1px solid var(--border, #333);
+    background: var(--input-bg, #111);
+    text-decoration: none;
+    overflow: hidden;
+    transition: border-color 0.15s;
+}
+.ms-stats-card:hover { border-color: var(--text, #eee); }
+.mosaic-pick {
+    cursor: pointer;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background .15s;
+}
+.mosaic-pick:hover { background: var(--hover-bg); }
+.mosaic-pick-title { font-size: 13px; }
+.mosaic-pick-code  { font-size: 11px; color: var(--dim); }
+
 .field-input     { padding: 8px 10px; background: var(--input-bg, #111); border: 1px solid var(--border, #333); border-radius: 4px; color: var(--text, #e0e0e0); }
 .field-input-120 { padding: 8px 10px; width: 120px; background: var(--input-bg, #111); border: 1px solid var(--border, #333); border-radius: 4px; color: var(--text, #e0e0e0); }
 .avatar-72 { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.15); display: block; }

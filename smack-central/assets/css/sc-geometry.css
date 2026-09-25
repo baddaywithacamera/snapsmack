@@ -32,4 +32,17 @@
     --sc-radius-sm:  2px;
     --sc-transition: 0.18s ease;
 }
+/* Fleet accordion: a spoke row folded under its hub, opened by the caret in
+   sc-ui.js. Was style="display:none" plus an inline onclick. Colours for both
+   are in sc-colours.css. */
+.sc-accordion-row { display: none; }
+.sc-accordion-row.sc-accordion-open { display: table-row; }
+.sc-accordion-toggle {
+    border: none;
+    cursor: pointer;
+    font-size: 0.8em;
+    padding: 0;
+    line-height: 1;
+}
+
 /* ===== SNAPSMACK EOF ===== */

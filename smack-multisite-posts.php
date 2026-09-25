@@ -204,7 +204,7 @@ include 'core/sidebar.php';
                                         <img src="<?php echo htmlspecialchars($p['thumb_url']); ?>"
                                              class="archive-thumb"
                                              alt="<?php echo htmlspecialchars($p['title'] ?? ''); ?>"
-                                             onerror="this.style.display='none'">
+                                             data-hide-on-error>
                                     </a>
                                 <?php endif; ?>
 
