@@ -8,6 +8,7 @@
  *
  * Routes (via api.php?route=smackpress/...):
  *   POST   smackpress/media/upload     — upload image, returns asset_id
+ *   GET    smackpress/posts            — list longform posts for desktop editing
  *   POST   smackpress/posts            — create or update longform post
  *   GET    smackpress/posts/{id}       — read back a post
  *   GET    smackpress/categories       — list all categories
@@ -453,6 +454,24 @@ function smackpress_save_bucket(PDO $pdo, int $post_id, array $body, string $con
 }
 
 // =====================================================================
+// ROUTE: GET smackpress/posts — desktop post picker
+// =====================================================================
+if ($sub === 'posts' && $method === 'GET') {
+    $limit = max(1, min(500, (int)($_GET['limit'] ?? 100)));
+    $stmt = $pdo->prepare("SELECT id,title,slug,status,created_at,updated_at,featured_image_id
+                            FROM snap_posts WHERE post_type='longform'
+                        ORDER BY updated_at DESC, id DESC LIMIT " . $limit);
+    $stmt->execute();
+    $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($posts as &$post) {
+        $post['id'] = (int)$post['id'];
+        $post['featured_image_id'] = (int)($post['featured_image_id'] ?? 0);
+    }
+    unset($post);
+    smackpress_ok(['posts' => $posts]);
+}
+
+// =====================================================================
 // ROUTE: POST smackpress/posts — create or update longform post
 // =====================================================================
 if ($sub === 'posts' && $method === 'POST') {
@@ -558,10 +577,54 @@ if ($sub === 'posts' && $method === 'POST') {
 // =====================================================================
 if (preg_match('#^posts/(\d+)$#', $sub, $m) && $method === 'GET') {
     $post_id = (int)$m[1];
-    $stmt = $pdo->prepare("SELECT id,title,slug,status,created_at,featured_asset_id FROM snap_posts WHERE id=? AND post_type='longform'");
+    $stmt = $pdo->prepare("SELECT id,title,slug,content,status,allow_comments,created_at,
+                                  featured_image_id
+                             FROM snap_posts WHERE id=? AND post_type='longform'");
     $stmt->execute([$post_id]);
     $post = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$post) smackpress_error(404, 'Post not found.');
+    require_once __DIR__ . '/bucket.php';
+    $bucket_ids = snap_bucket_ids($pdo, $post_id);
+    if (!$bucket_ids && !empty($post['featured_image_id'])) {
+        $bucket_ids = [(int)$post['featured_image_id']];
+    }
+    $post['bucket'] = [];
+    if ($bucket_ids) {
+        $ph = implode(',', array_fill(0, count($bucket_ids), '?'));
+        $images = $pdo->prepare("SELECT id,img_file,img_alt,img_title,img_width,img_height,
+                                        img_thumb_square,img_thumb_aspect
+                                   FROM snap_images WHERE id IN ($ph)");
+        $images->execute($bucket_ids);
+        $by_id = [];
+        foreach ($images->fetchAll(PDO::FETCH_ASSOC) as $image) $by_id[(int)$image['id']] = $image;
+        foreach ($bucket_ids as $image_id) {
+            if (!isset($by_id[$image_id])) continue;
+            $image = $by_id[$image_id];
+            $file = ltrim(str_replace('\\', '/', (string)$image['img_file']), '/');
+            $thumb = ltrim(str_replace('\\', '/', (string)($image['img_thumb_aspect'] ?: $image['img_thumb_square'])), '/');
+            $image['id'] = (int)$image['id'];
+            $image['width'] = (int)($image['img_width'] ?? 0);
+            $image['height'] = (int)($image['img_height'] ?? 0);
+            $image['url'] = rtrim($base_url, '/') . '/' . $file;
+            $image['thumb_url'] = rtrim($base_url, '/') . '/' . ($thumb ?: $file);
+            $post['bucket'][] = $image;
+        }
+    }
+    $cats = $pdo->prepare("SELECT cat_id FROM snap_post_cat_map WHERE post_id=? ORDER BY cat_id");
+    $cats->execute([$post_id]);
+    $albums = $pdo->prepare("SELECT album_id FROM snap_post_album_map WHERE post_id=? ORDER BY album_id");
+    $albums->execute([$post_id]);
+    $post['cat_ids'] = array_map('intval', $cats->fetchAll(PDO::FETCH_COLUMN));
+    $post['album_ids'] = array_map('intval', $albums->fetchAll(PDO::FETCH_COLUMN));
+    $post['tags'] = [];
+    if (!empty($post['featured_image_id'])) {
+        $tags = $pdo->prepare("SELECT t.tag FROM snap_image_tags it JOIN snap_tags t ON t.id=it.tag_id
+                                WHERE it.image_id=? ORDER BY t.tag");
+        $tags->execute([(int)$post['featured_image_id']]);
+        $post['tags'] = array_values(array_filter(array_map('strval', $tags->fetchAll(PDO::FETCH_COLUMN))));
+    }
+    $post['id'] = (int)$post['id'];
+    $post['featured_image_id'] = (int)($post['featured_image_id'] ?? 0);
     $post['url'] = $base_url . 'post/' . $post['slug'];
     smackpress_ok(['post' => $post]);
 }
