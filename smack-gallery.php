@@ -162,6 +162,24 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         $params[] = '%' . $colour . '%';
     }
 
+    // Filter by the image's natural shape. The two-percent tolerance matches
+    // the longform cover chooser's SQUARE label, so its filter and badges can
+    // never disagree. Old rows without dimensions fall back to the legacy
+    // orientation flag (0 landscape, 1 portrait, 2 square).
+    $orientation = strtolower(trim((string)($_GET['orientation'] ?? '')));
+    $known_size = '(COALESCE(i.img_width, 0) > 0 AND COALESCE(i.img_height, 0) > 0)';
+    $square_size = '(ABS(i.img_width - i.img_height) <= GREATEST(i.img_width, i.img_height) * 0.02)';
+    if ($orientation === 'portrait') {
+        $where[] = "(($known_size AND i.img_height > i.img_width AND NOT $square_size)
+                     OR (NOT $known_size AND i.img_orientation = 1))";
+    } elseif ($orientation === 'landscape') {
+        $where[] = "(($known_size AND i.img_width > i.img_height AND NOT $square_size)
+                     OR (NOT $known_size AND i.img_orientation = 0))";
+    } elseif ($orientation === 'square') {
+        $where[] = "(($known_size AND $square_size)
+                     OR (NOT $known_size AND i.img_orientation = 2))";
+    }
+
     $where_sql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
     // Count total

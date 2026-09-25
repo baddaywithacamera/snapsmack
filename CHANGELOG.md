@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.744D — 2026-09-25 — Pick a side
+
+- The longform cover chooser can now filter the full Gallery to portrait, landscape, or square images, while keeping a high-contrast orientation badge on every thumbnail.
+- Cover selection, removal, and re-centering controls now use the normal SnapSmack admin button styling.
+- The Gallery picker script is versioned so an update cannot leave an older cached chooser running in the browser.
+
 ## 0.7.743D — 2026-09-25 — Covers show their shape
 
 - The longform cover picker now labels every Gallery thumbnail as landscape, portrait, or square before selection.
