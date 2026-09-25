@@ -415,22 +415,31 @@ function skin_registry_install(string $slug, string $download_url, string $signa
         }
     }
 
-    // Validate: manifest.json must exist
+    // Validate: manifest.json must exist. Keep its exact bytes so an old skin
+    // left behind by a failed replacement can never masquerade as success.
     if (!file_exists($source . '/manifest.json')) {
         _skin_rmdir_recursive($staging);
         return ['success' => false, 'message' => 'Invalid skin package: no manifest.json found inside the zip.'];
     }
+    $expected_manifest_hash = hash_file('sha256', $source . '/manifest.json');
 
     // If the skin directory already exists, remove it (update scenario)
     if (is_dir($target_dir)) {
-        _skin_rmdir_recursive($target_dir);
+        if (!_skin_rmdir_recursive($target_dir) || file_exists($target_dir)) {
+            _skin_rmdir_recursive($staging);
+            return ['success' => false, 'message' => 'Installation failed — the existing skin directory could not be replaced. Check file ownership and permissions.'];
+        }
     }
 
     // Move staging into place.
     // rename() fails across filesystems (e.g. /tmp -> web root on a different device).
     // Suppress the cross-device warning and fall back to a recursive copy+delete.
     if (!@rename($source, $target_dir)) {
-        _skin_copy_recursive($source, $target_dir);
+        if (!_skin_copy_recursive($source, $target_dir)) {
+            _skin_rmdir_recursive($target_dir);
+            _skin_rmdir_recursive($staging);
+            return ['success' => false, 'message' => 'Installation failed — one or more skin files could not be copied.'];
+        }
     }
 
     // Clean up staging leftovers
@@ -439,7 +448,8 @@ function skin_registry_install(string $slug, string $download_url, string $signa
     }
 
     // Final check
-    if (!file_exists($target_dir . '/manifest.json')) {
+    if (!file_exists($target_dir . '/manifest.json')
+        || !hash_equals($expected_manifest_hash, hash_file('sha256', $target_dir . '/manifest.json'))) {
         return ['success' => false, 'message' => 'Installation failed — manifest.json not found after extraction.'];
     }
 
@@ -552,13 +562,18 @@ function _skin_rmdir_recursive(string $dir): bool {
 /**
  * Recursively copy a directory tree.
  */
-function _skin_copy_recursive(string $src, string $dst): void {
-    if (!is_dir($dst)) mkdir($dst, 0755, true);
-    $items = array_diff(scandir($src), ['.', '..']);
+function _skin_copy_recursive(string $src, string $dst): bool {
+    if (!is_dir($dst) && !@mkdir($dst, 0755, true) && !is_dir($dst)) return false;
+    $scan = @scandir($src);
+    if ($scan === false) return false;
+    $items = array_diff($scan, ['.', '..']);
+    $ok = true;
     foreach ($items as $item) {
         $s = $src . '/' . $item;
         $d = $dst . '/' . $item;
-        is_dir($s) ? _skin_copy_recursive($s, $d) : copy($s, $d);
+        $copied = is_dir($s) ? _skin_copy_recursive($s, $d) : @copy($s, $d);
+        $ok = $copied && $ok;
     }
+    return $ok;
 }
 // ===== SNAPSMACK EOF =====
