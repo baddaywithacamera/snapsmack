@@ -198,7 +198,8 @@ class Window(QMainWindow):
         self.nav[0].setChecked(True); sl.addStretch(1); sl.addWidget(label(f"BUILD {BUILD_VERSION}\nBatch posting without bullshit", "Muted")); shell.addWidget(side)
         main=QWidget(); ml=QVBoxLayout(main); ml.setContentsMargins(0,0,0,0); ml.setSpacing(0)
         head=QFrame(); head.setObjectName("Header"); hl=QHBoxLayout(head); hl.setContentsMargins(24,13,24,13)
-        hl.addWidget(label("SITE","Eyebrow")); self.profile=QComboBox(); self.profile.setMinimumWidth(300); self.profile.currentTextChanged.connect(self._profile); hl.addWidget(self.profile); hl.addStretch(1)
+        hl.addWidget(label("SITE","Eyebrow")); self.profile=QComboBox(); self.profile.setMinimumWidth(260); self.profile.currentTextChanged.connect(self._profile); hl.addWidget(self.profile)
+        hl.addSpacing(12); hl.addWidget(label("PROMPT","Eyebrow")); self.prompt_preset=QComboBox(); self.prompt_preset.setMinimumWidth(210); self.prompt_preset.currentTextChanged.connect(self._prompt_preset_changed); hl.addWidget(self.prompt_preset); hl.addStretch(1)
         self.status=label("● Ready to connect","Warn"); self.status.setWordWrap(False); hl.addWidget(self.status)
         self.connect_btn=QPushButton("Connect"); self.connect_btn.clicked.connect(self._connect); hl.addWidget(self.connect_btn)
         # Progress strip: under every page, so a post started from the queue is
@@ -279,7 +280,19 @@ class Window(QMainWindow):
 
     def _profile(self,name):
         if not name:return
-        p=self.engine.profile_apply_to_post(name); self.url.setText(p['url']); self.key.setText(p['api_key']); self.gemini.setText(p['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(p['google_credentials']); self.drive_folder.setText(p['drive_folder_id']); self.folder.setText(p['image_folder']); self.prompt.setText(p['prompt']); self.drive.setChecked(p['drive_enabled']); self._connect()
+        p=self.engine.profile_apply_to_post(name); self.url.setText(p['url']); self.key.setText(p['api_key']); self.gemini.setText(p['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(p['google_credentials']); self.drive_folder.setText(p['drive_folder_id']); self.folder.setText(p['image_folder']); self._set_prompt_state(p); self.drive.setChecked(p['drive_enabled']); self._connect()
+
+    def _set_prompt_state(self,state):
+        presets=state.get('prompt_presets') or {'Default':state.get('prompt','')}
+        selected=state.get('selected_prompt_preset') or state.get('default_prompt_preset') or next(iter(presets))
+        self._prompt_default=state.get('default_prompt_preset') or next(iter(presets))
+        self.prompt_preset.blockSignals(True); self.prompt_preset.clear(); self.prompt_preset.addItems(list(presets.keys())); self.prompt_preset.setCurrentText(selected); self.prompt_preset.blockSignals(False)
+        self.prompt.setText(str(presets.get(selected,state.get('prompt','')) or ''))
+
+    def _prompt_preset_changed(self,name):
+        if not name or not self.profile.currentText():return
+        try:self._set_prompt_state(self.engine.profile_select_prompt(self.profile.currentText(),name))
+        except Exception as error:self._error(str(error))
 
     def _async(self,name,fn):
         self.pending[name]=True
@@ -371,17 +384,22 @@ class Window(QMainWindow):
         dialog=QDialog(self); dialog.setWindowTitle("Review enrichment prompt"); dialog.resize(820,620)
         layout=QVBoxLayout(dialog)
         layout.addWidget(label("REVIEW THE PROMPT", "Eyebrow"))
-        layout.addWidget(label("Use for this run leaves the shared site prompt unchanged. Save to SNAP HQ deliberately updates the selected site's shared profile.","Muted"))
+        layout.addWidget(label("Choose a name for this site's prompt. Save preset remembers it in SNAP HQ; Make default uses it when no previous choice has been made.","Muted"))
+        preset_row=QHBoxLayout(); preset_row.addWidget(label("PRESET NAME","Eyebrow")); preset_name=QLineEdit(self.prompt_preset.currentText() or "Default"); preset_row.addWidget(preset_name,1); make_default=QCheckBox("Make default"); make_default.setChecked(self.prompt_preset.currentText()==getattr(self,'_prompt_default','')); preset_row.addWidget(make_default); layout.addLayout(preset_row)
         editor=QTextEdit(); editor.setPlainText(self.prompt.text()); editor.setPlaceholderText("Leave blank to use SYBU's complete built-in enrichment prompt."); layout.addWidget(editor,1)
         buttons=QHBoxLayout(); cancel=QPushButton("CANCEL"); cancel.clicked.connect(dialog.reject); buttons.addWidget(cancel); buttons.addStretch(1)
-        use=QPushButton("USE FOR THIS RUN"); buttons.addWidget(use)
-        save=QPushButton("SAVE TO SNAP HQ"); save.setObjectName("Primary"); buttons.addWidget(save); layout.addLayout(buttons)
+        delete=QPushButton("DELETE PRESET"); buttons.addWidget(delete); use=QPushButton("USE FOR THIS RUN"); buttons.addWidget(use)
+        save=QPushButton("SAVE PRESET"); save.setObjectName("Primary"); buttons.addWidget(save); layout.addLayout(buttons)
         def use_text(): self.prompt.setText(editor.toPlainText().strip()); dialog.accept()
         def save_text():
             try:
-                result=self.engine.profile_save_prompt(self.profile.currentText(),editor.toPlainText()); self.prompt.setText(result['prompt']); self._say(f"Prompt saved to SNAP HQ for {result['name']}."); dialog.accept()
+                result=self.engine.profile_save_prompt(self.profile.currentText(),editor.toPlainText(),preset_name.text(),make_default.isChecked()); self._set_prompt_state(result); self._say(f"Prompt preset saved to SNAP HQ for {result['name']}."); dialog.accept()
             except Exception as error: self._error(str(error))
-        use.clicked.connect(use_text); save.clicked.connect(save_text); dialog.exec()
+        def delete_text():
+            try:
+                result=self.engine.profile_delete_prompt(self.profile.currentText(),self.prompt_preset.currentText()); self._set_prompt_state(result); self._say("Prompt preset deleted."); dialog.accept()
+            except Exception as error:self._error(str(error))
+        use.clicked.connect(use_text); save.clicked.connect(save_text); delete.clicked.connect(delete_text); dialog.exec()
 
     def _select_all(self,on):
         for r in range(self.table.rowCount()):self.table.item(r,0).setCheckState(Qt.Checked if on else Qt.Unchecked)

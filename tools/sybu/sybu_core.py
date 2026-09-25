@@ -1304,6 +1304,22 @@ class Engine:
         p = profile_manager.load_profile(name) or {}
         c = self.config
         services = self.shared_service_fields()
+        prompt = str(p.get('prompt', '') or '')
+        portable = dict(p.get('portable') or {})
+        presets = portable.get('prompt_presets')
+        if not isinstance(presets, dict):
+            presets = {}
+        presets = {str(k).strip(): str(v or '') for k, v in presets.items()
+                   if str(k).strip()}
+        if not presets:
+            presets = {'Default': prompt}
+        default_preset = str(portable.get('default_prompt_preset', '') or '').strip()
+        if default_preset not in presets:
+            default_preset = next(iter(presets))
+        selected_preset = str(portable.get('last_prompt_preset', '') or '').strip()
+        if selected_preset not in presets:
+            selected_preset = default_preset
+        prompt = presets[selected_preset]
         return {
             'url': p.get('url', ''),
             'api_key': p.get('api_key', ''),
@@ -1316,16 +1332,56 @@ class Engine:
             'default_orientation': p.get('default_orientation', 'auto') or 'auto',
             'drive_enabled': bool(p.get('drive_enabled', True)),
             'image_folder': p.get('upload_dir', ''),
-            'prompt': p.get('prompt', ''),
+            'prompt': prompt,
+            'prompt_presets': presets,
+            'default_prompt_preset': default_preset,
+            'selected_prompt_preset': selected_preset,
         }
 
-    def profile_save_prompt(self, name: str, text: str) -> dict:
-        """Save a deliberate prompt edit into the selected shared SNAP HQ profile."""
+    def profile_select_prompt(self, name: str, preset_name: str) -> dict:
+        """Remember the selected named enrichment prompt for one site."""
+        profile = profile_manager.load_profile(name) or {}
+        if not profile:
+            raise RuntimeError("Select a site before choosing its prompt.")
+        portable = dict(profile.get('portable') or {})
+        presets = portable.get('prompt_presets')
+        if not isinstance(presets, dict) or not presets:
+            presets = {'Default': str(profile.get('prompt', '') or '')}
+        preset_name = str(preset_name or '').strip()
+        if preset_name not in presets:
+            raise RuntimeError("That prompt preset no longer exists.")
+        prompt = str(presets[preset_name] or '')
+        portable['prompt_presets'] = presets
+        if portable.get('default_prompt_preset') not in presets:
+            portable['default_prompt_preset'] = preset_name
+        portable['last_prompt_preset'] = preset_name
+        portable['prompt'] = prompt
+        profile['portable'] = portable
+        profile['prompt'] = prompt
+        profile_manager.save_profile(profile)
+        return {'name': name, 'prompt': prompt, 'selected_prompt_preset': preset_name,
+                'default_prompt_preset': portable['default_prompt_preset'],
+                'prompt_presets': presets}
+
+    def profile_save_prompt(self, name: str, text: str, preset_name: str = 'Default',
+                            make_default: bool = False) -> dict:
+        """Save or update a named prompt in the selected shared SNAP HQ profile."""
         profile = profile_manager.load_profile(name) or {}
         if not profile:
             raise RuntimeError("Select a site before saving its prompt.")
         prompt = str(text or '').strip()
+        preset_name = str(preset_name or '').strip()
+        if not preset_name:
+            raise RuntimeError("Give the prompt preset a name.")
         portable = dict(profile.get('portable') or {})
+        presets = portable.get('prompt_presets')
+        if not isinstance(presets, dict) or not presets:
+            presets = {'Default': str(profile.get('prompt', '') or '')}
+        presets[preset_name] = prompt
+        portable['prompt_presets'] = presets
+        if make_default or portable.get('default_prompt_preset') not in presets:
+            portable['default_prompt_preset'] = preset_name
+        portable['last_prompt_preset'] = preset_name
         portable['prompt'] = prompt
         profile['portable'] = portable
         profile['prompt'] = prompt
@@ -1340,7 +1396,39 @@ class Engine:
             snap_prompts.save(prompts)
         except Exception:
             pass
-        return {'saved': True, 'name': name, 'prompt': prompt}
+        return {'saved': True, 'name': name, 'prompt': prompt,
+                'prompt_presets': presets,
+                'selected_prompt_preset': preset_name,
+                'default_prompt_preset': portable['default_prompt_preset']}
+
+    def profile_delete_prompt(self, name: str, preset_name: str) -> dict:
+        """Delete a named prompt while always leaving the site with one choice."""
+        profile = profile_manager.load_profile(name) or {}
+        if not profile:
+            raise RuntimeError("Select a site before deleting its prompt.")
+        portable = dict(profile.get('portable') or {})
+        presets = portable.get('prompt_presets')
+        if not isinstance(presets, dict) or not presets:
+            presets = {'Default': str(profile.get('prompt', '') or '')}
+        preset_name = str(preset_name or '').strip()
+        if preset_name not in presets:
+            raise RuntimeError("That prompt preset no longer exists.")
+        if len(presets) == 1:
+            raise RuntimeError("A site must keep at least one prompt preset.")
+        del presets[preset_name]
+        selected = portable.get('default_prompt_preset')
+        if selected not in presets:
+            selected = next(iter(presets))
+        portable['prompt_presets'] = presets
+        portable['default_prompt_preset'] = selected
+        portable['last_prompt_preset'] = selected
+        portable['prompt'] = str(presets[selected] or '')
+        profile['portable'] = portable
+        profile['prompt'] = portable['prompt']
+        profile_manager.save_profile(profile)
+        return {'saved': True, 'name': name, 'prompt': portable['prompt'],
+                'prompt_presets': presets, 'selected_prompt_preset': selected,
+                'default_prompt_preset': selected}
 
     def sp_test(self, url: str, api_key: str, ack_insecure: bool = False) -> dict:
         url = (url or '').strip()
