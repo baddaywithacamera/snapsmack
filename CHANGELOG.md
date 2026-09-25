@@ -13,6 +13,7 @@
 
 - The longform cover picker now labels every Gallery thumbnail as landscape, portrait, or square before selection.
 - The selected cover preview keeps the orientation label visible beside the image title.
+- SMACK YOUR BATCH UP 0.7.70 adds named enrichment prompts per site. The prompt selector sits beside the site selector, remembers the last choice, supports a site default, and preserves each site's existing prompt as its initial Default preset.
 
 ## 0.7.742D — 2026-09-24 — Skin updates report the truth
 
