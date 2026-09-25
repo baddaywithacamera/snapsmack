@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.748D — 2026-09-25 — Easy reading
+
+- TILEZ longform articles use a 21px editorial serif face at 1.7 line spacing on desktop and 18px at 1.65 on phones. Navigation, dates, captions, headings, and controls retain their sans serif treatment.
+- TILEZ skin version 0.2.11 includes the longform reading typography.
+
 ## 0.7.747D — 2026-09-25 — The fine print
 
 - TILEZ equipment notes use a readable supporting size and generous line spacing beneath the author's graphic signature. They remain visually secondary without reverting to the tiny type used by the old WordPress theme.
