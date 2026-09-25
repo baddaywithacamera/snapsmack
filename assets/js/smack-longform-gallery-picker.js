@@ -86,6 +86,19 @@
         return base + String(img.thumb || img.img_file || '').replace(/^\//, '');
     }
 
+    function orientationLabel(img) {
+        var width = parseInt(img.img_width, 10) || 0;
+        var height = parseInt(img.img_height, 10) || 0;
+        if (width > 0 && height > 0) {
+            if (Math.abs(width - height) <= Math.max(width, height) * 0.02) return 'SQUARE';
+            return height > width ? 'PORTRAIT' : 'LANDSCAPE';
+        }
+        var stored = parseInt(img.img_orientation, 10);
+        if (stored === 2) return 'SQUARE';
+        if (stored === 1) return 'PORTRAIT';
+        return 'LANDSCAPE';
+    }
+
     function renderGrid(images) {
         grid.innerHTML = '';
         if (!images.length) {
@@ -96,8 +109,9 @@
 
         images.forEach(function (img) {
             var cell = document.createElement('div');
-            cell.style.cssText = 'cursor:pointer;border:2px solid transparent;border-radius:3px;overflow:hidden;aspect-ratio:1;background:#111;';
-            cell.title = img.img_title || '';
+            cell.style.cssText = 'cursor:pointer;border:2px solid transparent;border-radius:3px;overflow:hidden;aspect-ratio:1;background:#111;position:relative;';
+            var orientation = orientationLabel(img);
+            cell.title = (img.img_title || '') + (img.img_title ? ' — ' : '') + orientation.toLowerCase();
 
             var im = document.createElement('img');
             im.src = thumbUrl(img);
@@ -105,6 +119,11 @@
             im.loading = 'lazy';
             im.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
             cell.appendChild(im);
+
+            var badge = document.createElement('span');
+            badge.textContent = orientation;
+            badge.style.cssText = 'position:absolute;right:5px;bottom:5px;padding:3px 5px;border-radius:2px;background:rgba(0,0,0,.78);color:#fff;font-size:9px;font-weight:700;letter-spacing:.06em;line-height:1;pointer-events:none;';
+            cell.appendChild(badge);
 
             cell.addEventListener('mouseenter', function () { cell.style.borderColor = 'var(--accent, #7aad5a)'; });
             cell.addEventListener('mouseleave', function () { cell.style.borderColor = 'transparent'; });
@@ -147,9 +166,11 @@
         coverInput.value = img.id;
         var url  = thumbUrl(img);
         var name = (img.img_title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        var orientation = orientationLabel(img);
         coverPreview.innerHTML =
             '<img src="' + url + '" style="width:100%;max-width:200px;height:auto;border-radius:3px;border:1px solid var(--border);" alt="">' +
-            '<span class="dim" style="display:block;font-size:11px;margin-top:4px;">' + name + '</span>';
+            '<span class="dim" style="display:block;font-size:11px;margin-top:4px;">' + name + '</span>' +
+            '<span style="display:inline-block;margin-top:4px;padding:3px 6px;border:1px solid var(--border);border-radius:2px;font-size:9px;font-weight:700;letter-spacing:.06em;">' + orientation + '</span>';
         if (coverBtn)  coverBtn.textContent = 'CHANGE';
         if (coverDel)  coverDel.style.display = '';
         // Re-point the cover framing cropper at the new (full) image and reset framing.
