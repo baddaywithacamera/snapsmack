@@ -91,32 +91,55 @@ function assertCleanGeometry(layout, containerWidth, label) {
 // The widths the wall is actually seen at, plus the gap values the control allows.
 const WIDTHS = [1920, 1440, 1200, 768, 390];
 const GAPS = [0, 4, 25];
+// Every value MOSAIC Hero Emphasis offers. The engine falls back to 'natural'
+// for anything it does not know, so an unsupported value would pass silently -
+// these are checked against the manifest below.
+const EMPHASES = ['natural', 'balanced', 'landscape', 'portrait'];
 
-test('every block of every archive size lays out cleanly at every width', () => {
-    const sizes = [1, 2, 5, 6, 7, 11, 12, 13, 45, 200, 400];
-    let blocksChecked = 0;
-
-    for (const total of sizes) {
-        const images = archive(total);
-        let offset = 0;
-        for (const size of blockSizes(total)) {
-            const block = images.slice(offset, offset + size);
-            offset += size;
+test('every block shape lays out cleanly at every width, gap and emphasis', () => {
+    // A block always holds 1-6 photographs, so exhausting those six sizes covers
+    // every block any archive can produce. Each size is tried at several offsets
+    // into the shape cycle so the mix of portrait/landscape/panorama varies.
+    let checked = 0;
+    for (const size of [1, 2, 3, 4, 5, 6]) {
+        for (let offset = 0; offset < 6; offset++) {
+            const block = archive(size + offset).slice(offset, offset + size);
             for (const width of WIDTHS) {
                 for (const gap of GAPS) {
-                    const layout = engine.computeLayout(block, width, gap);
-                    const label = `archive ${total}, block of ${size}, ${width}px, gap ${gap}`;
-                    assert.equal(layout.items.length, block.length,
-                        `${label}: every photograph is placed`);
-                    assertCleanGeometry(layout, width, label);
-                    assert.ok(layout.height > 0, `${label}: block has height`);
-                    blocksChecked++;
+                    for (const emphasis of EMPHASES) {
+                        const layout = engine.computeLayout(block, width, gap, emphasis);
+                        const label = `block of ${size} (offset ${offset}), ${width}px, `
+                                    + `gap ${gap}, emphasis ${emphasis}`;
+                        assert.equal(layout.items.length, block.length,
+                            `${label}: every photograph is placed`);
+                        assertCleanGeometry(layout, width, label);
+                        assert.ok(layout.height > 0, `${label}: block has height`);
+                        checked++;
+                    }
                 }
             }
         }
-        assert.equal(offset, total, `archive ${total}: every photograph used exactly once`);
     }
-    assert.ok(blocksChecked > 500, 'a meaningful number of blocks was measured');
+    assert.equal(checked, 6 * 6 * WIDTHS.length * GAPS.length * EMPHASES.length);
+});
+
+test('an archive of any size splits into blocks that use every photograph once', () => {
+    // The splitting itself is checked against the shipping PHP by
+    // tests/fsog-mosaic-archive-regression.php; this confirms the JS mirror of the
+    // rule agrees, and that no block is ever outside the 1-6 range the layout
+    // sweep above covers.
+    for (let total = 0; total <= 400; total++) {
+        const sizes = blockSizes(total);
+        assert.equal(sizes.reduce((a, b) => a + b, 0), total,
+            `archive ${total}: blocks hold every photograph`);
+        for (const size of sizes) {
+            assert.ok(size >= 1 && size <= 6, `archive ${total}: block of ${size} is in range`);
+        }
+        if (total > 6) {
+            assert.notEqual(sizes[sizes.length - 1], 1,
+                `archive ${total}: no orphan final photograph`);
+        }
+    }
 });
 
 test('a full block of six fills the wall width at every viewport', () => {
@@ -158,6 +181,42 @@ test('a one-photograph archive still renders', () => {
     const layout = engine.computeLayout(archive(1), 1200, 4);
     assert.equal(layout.items.length, 1);
     assertCleanGeometry(layout, 1200, 'single photograph');
+});
+
+test('every emphasis the skin offers is one the engine understands', () => {
+    // The engine silently falls back to 'natural' for an unknown value, so a typo
+    // in the manifest would look like it worked. Compare the two lists directly.
+    const manifest = JSON.parse(fs.readFileSync(
+        path.join(__dirname, '..', 'skins', '50-shades-of-noah-grey', 'manifest.json'), 'utf8'));
+    const offered = Object.keys(manifest.options.masonry_mosaic_emphasis.options);
+    assert.deepEqual(offered.slice().sort(), EMPHASES.slice().sort(),
+        'manifest offers exactly the four values the engine implements');
+
+    const engineSource = fs.readFileSync(
+        path.join(__dirname, '..', 'assets', 'js', 'ss-engine-mosaic.js'), 'utf8');
+    for (const value of offered) {
+        assert.ok(engineSource.includes(`'${value}'`),
+            `ss-engine-mosaic.js handles '${value}'`);
+    }
+
+    // And the default must be one of them.
+    assert.ok(offered.includes(manifest.options.masonry_mosaic_emphasis.default),
+        'the default emphasis is one of the offered values');
+});
+
+test('favouring an orientation actually changes the quilt', () => {
+    // If emphasis were not reaching the engine, these would be identical and the
+    // control would be decorative.
+    const block = [
+        { width: 1200, height: 1800 }, { width: 1800, height: 1200 },
+        { width: 1000, height: 1500 }, { width: 1600, height: 1067 },
+        { width: 1400, height: 1400 }, { width: 2400, height: 1000 }
+    ];
+    const shape = e => JSON.stringify(engine.computeLayout(block, 1440, 4, e)
+        .items.map(i => [Math.round(i.x), Math.round(i.y), Math.round(i.width)]));
+
+    assert.notEqual(shape('portrait'), shape('landscape'),
+        'Favor Portraits and Favor Landscapes produce different quilts');
 });
 
 test('a phone gets one photograph per row', () => {

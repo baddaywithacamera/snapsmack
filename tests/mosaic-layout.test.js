@@ -244,4 +244,54 @@ test('mobile layout collapses to one image per row', () => {
     layout.items.forEach(item => assert.equal(item.width, 480));
 });
 
+test('a block never silently drops a photograph', () => {
+    // computeLayout advances its cursor by the number of photographs it ASKED a
+    // block to hold, not by the number that came back. A composition that placed
+    // fewer tiles than it was handed therefore skipped photographs entirely -
+    // they never appeared on the wall and nothing reported it.
+    //
+    // Found on 2026-09-25 while harness-testing 50 SHADES 1.6.0: 10 of 2160
+    // width/gap/emphasis combinations lost exactly one photograph, e.g. a block
+    // of six at 1440px, gap 25, emphasis 'portrait' drew five. This affected
+    // every MOSAIC surface - SCROLL's Asymmetric wall, eatmeclaude.php and
+    // [mosaic:ID] blocks inside posts.
+    const shapes = [
+        { width: 1200, height: 1800 }, { width: 1800, height: 1200 },
+        { width: 1400, height: 1400 }, { width: 2400, height: 1000 },
+        { width: 1000, height: 1500 }, { width: 1600, height: 1067 }
+    ];
+    const take = (n, offset) =>
+        Array.from({ length: n }, (_, i) => shapes[(i + offset) % shapes.length]);
+
+    let checked = 0;
+    for (let size = 1; size <= 6; size++) {
+        for (let offset = 0; offset < 6; offset++) {
+            const block = take(size, offset);
+            for (const width of [1920, 1440, 1200, 768, 390]) {
+                for (const gap of [0, 4, 25]) {
+                    for (const emphasis of ['natural', 'balanced', 'landscape', 'portrait']) {
+                        const layout = engine.computeLayout(block, width, gap, emphasis);
+                        assert.equal(layout.items.length, block.length,
+                            `block of ${size} (offset ${offset}) at ${width}px, gap ${gap}, `
+                            + `emphasis ${emphasis}: every photograph is drawn`);
+                        checked++;
+                    }
+                }
+            }
+        }
+    }
+    assert.equal(checked, 2160);
+
+    // And end to end, on whole archives.
+    for (const total of [7, 11, 12, 13, 17, 23, 45, 100, 200]) {
+        for (const width of [1920, 1440, 1200, 768, 390]) {
+            for (const emphasis of ['natural', 'balanced', 'landscape', 'portrait']) {
+                const layout = engine.computeLayout(take(total, 0), width, 4, emphasis);
+                assert.equal(layout.items.length, total,
+                    `archive of ${total} at ${width}px, emphasis ${emphasis}: none lost`);
+            }
+        }
+    }
+});
+
 // ===== SNAPSMACK EOF =====

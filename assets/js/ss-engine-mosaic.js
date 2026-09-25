@@ -236,6 +236,11 @@
         candidateTrees(images, 0, images.length, {}).forEach(function (tree) {
             var trial = [];
             var height = placeNode(tree, 0, y, containerWidth, gap, trial);
+            // A block MUST draw every photograph it was handed. computeLayout
+            // advances its cursor by the number it asked for, not by the number
+            // that came back, so an incomplete composition silently skips a
+            // photograph. Reject it and let the caller try a smaller group.
+            if (trial.length !== images.length) return;
             if (height <= 0 || trial.some(tileExceedsLimit) ||
                 (enforceUsefulSize && (!blockIsVisuallyBalanced(trial, containerWidth) ||
                     !blockMatchesEmphasis(trial, emphasis)))) return;
@@ -257,7 +262,8 @@
         var tree = buildSection(images, false, template);
         var items = [];
         var height = placeNode(tree, 0, y, containerWidth, gap, items);
-        if (height > 0 && !items.some(tileExceedsLimit) &&
+        if (items.length === images.length &&
+            height > 0 && !items.some(tileExceedsLimit) &&
             (!enforceUsefulSize || blockIsVisuallyBalanced(items, containerWidth)) &&
             blockMatchesEmphasis(items, emphasis)) {
             return { items: items, height: height, score: 0 };
