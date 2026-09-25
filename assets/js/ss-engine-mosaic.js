@@ -262,6 +262,9 @@
         var tree = buildSection(images, false, template);
         var items = [];
         var height = placeNode(tree, 0, y, containerWidth, gap, items);
+        // buildSection's fallback arrangement only ever places four cells, so a
+        // group of five silently came back with four. Anything the editorial tree
+        // cannot hold in full goes to the general solver instead.
         if (items.length === images.length &&
             height > 0 && !items.some(tileExceedsLimit) &&
             (!enforceUsefulSize || blockIsVisuallyBalanced(items, containerWidth)) &&
