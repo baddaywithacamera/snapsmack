@@ -157,10 +157,10 @@ if ($_wwi_post_slug || $_wwi_post_id) {
         http_response_code(404);
         $page_title = '404 — Not Found';
         ?><!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><title>404 — Not Found</title></head>
-<body style="background:#e9e6dc;padding:4rem;font-family:'Courier New',monospace;text-align:center;">
+<html lang="en"><head><meta charset="UTF-8"><title>404 — Not Found</title><link rel="stylesheet" href="<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>assets/css/skin-fallback.css"></head>
+<body class="skin-fallback skin-fallback--writing-with-impact skin-fallback--404">
     <h1>POST NOT FOUND</h1>
-    <p><a href="<?php echo BASE_URL; ?>" style="color:#2b2b2b;">&larr; Back to the front</a></p>
+    <p><a href="<?php echo BASE_URL; ?>">&larr; Back to the front</a></p>
 </body></html>
         <?php
         exit();
@@ -200,7 +200,7 @@ if ($_wwi_post_slug || $_wwi_post_id) {
             $_cpy = isset($_wwi_post['cover_pos_y']) ? (int)$_wwi_post['cover_pos_y'] : 50;
             $_cz  = isset($_wwi_post['cover_zoom'])  ? (int)$_wwi_post['cover_zoom']  : 100;
         ?>
-        <figure class="featured-media wwi-image-frame" style="aspect-ratio:4/3;overflow:hidden;">
+        <figure class="featured-media wwi-image-frame">
             <img class="u-photo" src="<?php echo BASE_URL . ltrim($_wwi_post['featured_image_path'], '/'); ?>" alt="<?php echo htmlspecialchars($_wwi_post['title']); ?>"
                  style="width:100%;height:100%;object-fit:cover;object-position:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform-origin:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform:scale(<?php echo number_format($_cz / 100, 3); ?>);display:block;">
         </figure>

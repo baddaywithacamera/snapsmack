@@ -106,7 +106,7 @@ if (($_GET['view'] ?? '') === 'archive') {
     <section class="section-inner">
 
         <?php if (empty($_alfred_tiles)): ?>
-        <p style="color:#fff;text-align:center;padding:4rem 0;">NO PHOTOGRAPHS YET.</p>
+        <p class="empty-sector-msg">NO PHOTOGRAPHS YET.</p>
         <?php else: ?>
 
         <div class="alfred-archive-grid">
@@ -211,10 +211,10 @@ if ($_alfred_post_slug || $_alfred_post_id) {
         include __DIR__ . '/skin-meta.php';
         ?><!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>404 — Not Found</title></head>
-<body style="background:#fff;padding:4rem;font-family:sans-serif;text-align:center;">
-    <h1 style="font-size:2rem;text-transform:uppercase;letter-spacing:.05em;">Post not found</h1>
-    <p><a href="<?php echo BASE_URL; ?>" style="color:#1e73be;">← Back to the front</a></p>
+<head><meta charset="UTF-8"><title>404 — Not Found</title><link rel="stylesheet" href="<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>assets/css/skin-fallback.css"></head>
+<body class="skin-fallback skin-fallback--alfred skin-fallback--404">
+    <h1>Post not found</h1>
+    <p><a href="<?php echo BASE_URL; ?>">← Back to the front</a></p>
 </body></html>
         <?php
         exit();
@@ -267,7 +267,7 @@ if ($_alfred_post_slug || $_alfred_post_id) {
             $_cpy = isset($_alfred_post['cover_pos_y']) ? (int)$_alfred_post['cover_pos_y'] : 50;
             $_cz  = isset($_alfred_post['cover_zoom'])  ? (int)$_alfred_post['cover_zoom']  : 100;
         ?>
-        <figure class="featured-media" style="aspect-ratio:1/1;overflow:hidden;">
+        <figure class="featured-media">
             <img class="u-photo" src="<?php echo BASE_URL . ltrim($_alfred_post['featured_image_path'], '/'); ?>"
                  alt="<?php echo htmlspecialchars($_alfred_post['title']); ?>"
                  style="width:100%;height:100%;object-fit:cover;object-position:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform-origin:<?php echo $_cpx; ?>% <?php echo $_cpy; ?>%;transform:scale(<?php echo number_format($_cz / 100, 3); ?>);display:block;">
@@ -392,7 +392,7 @@ $_alfred_total_pages = (int)ceil($_alfred_total / $_alfred_per_page);
     <section class="section-inner">
 
         <?php if (empty($_alfred_posts)): ?>
-        <p style="color:#fff;text-align:center;padding:4rem 0;">No posts yet.</p>
+        <p class="empty-sector-msg">No posts yet.</p>
         <?php else: ?>
 
         <div class="posts">

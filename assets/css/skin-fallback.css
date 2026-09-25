@@ -1,0 +1,84 @@
+@charset "UTF-8";
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ *     /* ===== SNAPSMACK EOF ===== */
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ *
+ * Bare fallback pages a SMACKTALK skin serves when it cannot render normally:
+ *   - "this skin requires SMACKTALK mode" (skins/<skin>/layout.php)
+ *   - "post not found" (skins/<skin>/preload.php)
+ *
+ * These are standalone documents with their own <head>. They do NOT load the
+ * skin's style.css, which is why their handful of rules used to sit in style=""
+ * attributes. They live here instead. Each page carries three classes:
+ *     .skin-fallback  .skin-fallback--<skin>  .skin-fallback--mode|--404
+ * and each skin sets its own palette through the variables below.
+ */
+
+.skin-fallback {
+    margin: 0;
+    padding: 4rem;
+    text-align: center;
+    background: var(--fb-bg, #fff);
+    color: var(--fb-ink, #000);
+    font-family: var(--fb-font, sans-serif);
+}
+
+.skin-fallback a { color: var(--fb-link, #1e73be); }
+
+/* The "requires SMACKTALK mode" line under the skin name. */
+.skin-fallback .skin-fallback-note { color: var(--fb-note, inherit); }
+
+/* ─── ALFRED and TILEZ: dark mode page, white 404 page ───────────────────── */
+.skin-fallback--alfred,
+.skin-fallback--tilez {
+    --fb-font: sans-serif;
+    --fb-link: #1e73be;
+    --fb-note: #999;
+}
+.skin-fallback--alfred.skin-fallback--mode,
+.skin-fallback--tilez.skin-fallback--mode {
+    --fb-bg: #1d1d1d;
+    --fb-ink: #fff;
+}
+.skin-fallback--alfred.skin-fallback--mode h1,
+.skin-fallback--tilez.skin-fallback--mode h1 {
+    text-transform: uppercase;
+    letter-spacing: .1em;
+}
+.skin-fallback--alfred.skin-fallback--404 h1,
+.skin-fallback--tilez.skin-fallback--404 h1 {
+    font-size: 2rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+/* ─── STANLEY: same paper on both pages, different face ──────────────────── */
+.skin-fallback--stanley {
+    --fb-bg: #d5d6d7;
+    --fb-link: #2e6da4;
+}
+.skin-fallback--stanley.skin-fallback--mode {
+    --fb-ink: #333;
+    --fb-font: Georgia, serif;
+}
+.skin-fallback--stanley.skin-fallback--404 {
+    --fb-font: 'Lucida Grande', Verdana, Arial, sans-serif;
+}
+
+/* ─── WRITING WITH IMPACT: typewriter on both ────────────────────────────── */
+.skin-fallback--writing-with-impact {
+    --fb-bg: #e9e6dc;
+    --fb-link: #2b2b2b;
+    --fb-font: 'Courier New', monospace;
+}
+.skin-fallback--writing-with-impact.skin-fallback--mode {
+    --fb-ink: #2b2b2b;
+}
+.skin-fallback--writing-with-impact.skin-fallback--mode h1 {
+    letter-spacing: .15em;
+}
+
+/* ===== SNAPSMACK EOF ===== */
