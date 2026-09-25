@@ -124,7 +124,29 @@ def _checks():
     assert draft.validate() == [], draft.validate()
     n += 1
 
-    # 7. A composed mosaic can select/reorder bucket positions and carry an
+    # 7. Revising a published post reuses its Gallery ids, keeps its date and
+    # sends post_id so the server updates instead of creating a duplicate.
+    revised = Draft(draft_id="remote", kind=KIND_SMACKTALK, mode=MODE_SMACKTALK,
+                    title="Revised essay", caption="new words",
+                    post_date="2024-07-06 12:00:00", remote_post_id=42,
+                    category_ids=[3], album_ids=[8])
+    revised.images = [
+        DraftImage(local_path=p1, filename="a.jpg", remote_image_id=501,
+                   is_cover=True),
+        DraftImage(local_path=p2, filename="b.jpg", remote_image_id=502),
+    ]
+    remote_fake = FakeSession()
+    result = P.SmacktalkPoster("https://smacktalk.example", "deadbeef",
+                               session=remote_fake).sync_smacktalk(revised)
+    assert result.ok and remote_fake.uploads == 0, (result.message, remote_fake.uploads)
+    assert remote_fake.last_json["post_id"] == 42
+    assert remote_fake.last_json["bucket_image_ids"] == [501, 502]
+    assert remote_fake.last_json["date"] == "2024-07-06 12:00:00"
+    assert remote_fake.last_json["cat_ids"] == [3]
+    assert remote_fake.last_json["album_ids"] == [8]
+    n += 1
+
+    # 8. A composed mosaic can select/reorder bucket positions and carry an
     # explicit three-photo layout through to mosaic creation.
     calls = []
     poster.create_mosaic = lambda ids, title="Mosaic", gap=4, layout="asymmetric": (
@@ -135,7 +157,7 @@ def _checks():
     assert mids == [55] and calls == [([103, 101, 102], "one-top")], calls
     n += 1
 
-    # 8. A four-photo bucket can use only its bottom three, in their chosen order.
+    # 9. A four-photo bucket can use only its bottom three, in their chosen order.
     calls.clear()
     resolved, mids = poster._resolve_mosaics(
         "[mosaic=2,3,4 layout=three-across]", [101, 102, 103, 104], draft)
