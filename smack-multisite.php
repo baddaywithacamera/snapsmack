@@ -1909,7 +1909,7 @@ include 'core/sidebar.php';
             <form method="POST" id="push-skin-form" class="skin-deploy-form">
                 <label>SKIN</label>
                 <select name="skin_slug" id="push-skin-select" required
-                        onchange="(function(s){var o=s.options[s.selectedIndex];document.getElementById('push-skin-url').value=o.getAttribute('data-url')||'';document.getElementById('push-skin-sig').value=o.getAttribute('data-sig')||'';})(this)">
+                        data-option-copy="data-url:push-skin-url,data-sig:push-skin-sig">
                     <option value="">-- choose a skin --</option>
                     <?php foreach ($registry_skins as $rslug => $rskin): ?>
                         <?php if (empty($rskin['download_url'])) continue; ?>

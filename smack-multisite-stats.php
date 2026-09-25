@@ -703,9 +703,7 @@ include 'core/sidebar.php';
                 $fi_views = number_format((int)($fi['views'] ?? 0));
             ?>
                 <a href="<?php echo $fi_url; ?>" target="_blank" rel="noopener"
-                   style="display:block; border:1px solid var(--border,#333); background:var(--input-bg,#111);
-                          text-decoration:none; overflow:hidden; transition:border-color 0.15s;"
-                   onmouseover="this.style.borderColor='var(--text,#eee)'" onmouseout="this.style.borderColor='var(--border,#333)'">
+                   class="ms-stats-card">
                     <?php if ($fi_thumb): ?>
                         <div style="width:100%; aspect-ratio:1; overflow:hidden; background:var(--input-bg, #000);">
                             <img src="<?php echo $fi_thumb; ?>" alt="<?php echo $fi_title; ?>"

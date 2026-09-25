@@ -1201,12 +1201,7 @@ if (!empty($google_families)) {
                                                 data-val="<?php echo $sw; ?>"
                                                 data-target="gp-<?php echo $k; ?>"
                                                 title="<?php echo strtoupper($sw); ?>"
-                                                onclick="(function(b){
-                                                    var inp=document.getElementById(b.dataset.target);
-                                                    inp.value=b.dataset.val;
-                                                    b.closest('.grey-swatches').querySelectorAll('.grey-swatch').forEach(function(s){s.classList.remove('selected');});
-                                                    b.classList.add('selected');
-                                                })(this)">
+                                                data-swatch>
                                         </button>
                                         <?php endforeach; ?>
                                     </div>
@@ -1225,8 +1220,8 @@ if (!empty($google_families)) {
                                         min="<?php echo $o['min']; ?>" max="<?php echo $o['max']; ?>"
                                         step="<?php echo $o['step'] ?? '1'; ?>"
                                         value="<?php echo htmlspecialchars($val); ?>"
-                                        oninput="this.nextElementSibling.innerText = this.value + '<?php echo $display_unit; ?>'">
-                                    <span class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?><?php echo $display_unit; ?></span>
+                                        data-readout="ro-<?php echo htmlspecialchars($k); ?>" data-unit="<?php echo htmlspecialchars($display_unit); ?>">
+                                    <span id="ro-<?php echo htmlspecialchars($k); ?>" class="active-val"><?php echo strtoupper(htmlspecialchars($val)); ?><?php echo $display_unit; ?></span>
                                 </div>
                             <?php elseif ($o['type'] === 'range_numeric'):
                                 $rn_unit      = $o['unit'] ?? 'px';
@@ -1287,8 +1282,8 @@ if (!empty($google_families)) {
                                                 max="<?php echo $sz['max'] ?? '2.0'; ?>"
                                                 step="<?php echo $sz['step'] ?? '0.05'; ?>"
                                                 value="<?php echo htmlspecialchars($sz_val); ?>"
-                                                oninput="this.nextElementSibling.innerText = this.value + '<?php echo $sz_unit; ?>'">
-                                            <span class="active-val"><?php echo htmlspecialchars($sz_val); ?><?php echo $sz_unit; ?></span>
+                                                data-readout="ro-sz-<?php echo htmlspecialchars($k); ?>" data-unit="<?php echo htmlspecialchars($sz_unit); ?>">
+                                            <span id="ro-sz-<?php echo htmlspecialchars($k); ?>" class="active-val"><?php echo htmlspecialchars($sz_val); ?><?php echo $sz_unit; ?></span>
                                         </div>
                                     </div>
                                     <?php endif; ?>
@@ -1342,7 +1337,9 @@ if (!empty($google_families)) {
                                     SELECT FROM LIBRARY
                                 </button>
                                 <button type="button" class="sc-btn"
-                                        onclick="(function(i,p){i.value='';p.innerHTML='<span class=&quot;dim&quot;>AN IMAGE WILL BE CHOSEN FROM YOUR LIBRARY ON FIRST USE.</span>';})(document.getElementById('<?php echo htmlspecialchars($asset_input_id); ?>'),document.getElementById('<?php echo htmlspecialchars($asset_preview_id); ?>'))">
+                                        data-reset-field="<?php echo htmlspecialchars($asset_input_id); ?>"
+                                        data-reset-preview="<?php echo htmlspecialchars($asset_preview_id); ?>"
+                                        data-reset-html="AN IMAGE WILL BE CHOSEN FROM YOUR LIBRARY ON FIRST USE.">
                                     USE AUTOMATIC
                                 </button>
                             <?php else: ?>
@@ -1428,8 +1425,8 @@ if (!empty($google_families)) {
                                     max="<?php echo htmlspecialchars($o['max'] ?? 100); ?>"
                                     step="<?php echo htmlspecialchars($step); ?>"
                                     value="<?php echo htmlspecialchars($val); ?>"
-                                    oninput="this.nextElementSibling.innerText = this.value + '<?php echo $display_unit2; ?>'">
-                                <span class="active-val"><?php echo htmlspecialchars($val); ?><?php echo $display_unit2; ?></span>
+                                    data-readout="ro-o-<?php echo htmlspecialchars($k); ?>" data-unit="<?php echo htmlspecialchars($display_unit2); ?>">
+                                <span id="ro-o-<?php echo htmlspecialchars($k); ?>" class="active-val"><?php echo htmlspecialchars($val); ?><?php echo $display_unit2; ?></span>
                             </div>
                         <?php elseif (($o['type'] ?? '') === 'select'): ?>
                             <select name="skin_opt[<?php echo htmlspecialchars($k); ?>]">
@@ -1602,7 +1599,7 @@ if (!empty($google_families)) {
                      class="<?php echo $i === 0 ? 'ss-active' : ''; ?>"
                      data-label="<?php echo htmlspecialchars($s['label']); ?>"
                      loading="lazy"
-                     onerror="this.style.display='none';">
+                     data-hide-on-error>
             <?php endforeach; ?>
             <?php if (count($shots) > 1): ?>
                 <span class="ss-label"><?php echo htmlspecialchars($shots[0]['label']); ?></span>
@@ -1621,7 +1618,7 @@ if (!empty($google_families)) {
                      class="<?php echo $i === 0 ? 'ss-active' : ''; ?>"
                      data-label="<?php echo htmlspecialchars($s['label']); ?>"
                      loading="lazy"
-                     onerror="this.style.display='none'; this.parentElement.querySelector('.no-preview') && (this.parentElement.querySelector('.no-preview').style.display='block');">
+                     data-hide-on-error data-on-error-show=".no-preview">
             <?php endforeach; ?>
             <?php if (count($remote_screenshots) > 1): ?>
                 <span class="ss-label"><?php echo htmlspecialchars($remote_screenshots[0]['label']); ?></span>
@@ -1638,7 +1635,7 @@ if (!empty($google_families)) {
                  alt="<?php echo htmlspecialchars($skin_name); ?>"
                  class="ss-active"
                  loading="lazy"
-                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                 data-hide-on-error data-on-error-show=".no-preview">
             <span class="no-preview d-none">PREVIEW UNAVAILABLE</span>
         <?php else: ?>
             <span class="no-preview">NO PREVIEW</span>

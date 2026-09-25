@@ -261,8 +261,8 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                         <input type="range" name="settings[browse_cols]"
                                min="2" max="8" step="1"
                                value="<?php echo $current_cols; ?>"
-                               oninput="this.nextElementSibling.textContent = this.value">
-                        <span style="min-width:24px; font-family:monospace;"><?php echo $current_cols; ?></span>
+                               data-readout="ro-browse-cols">
+                        <span id="ro-browse-cols" class="mw-24 mono"><?php echo $current_cols; ?></span>
                     </div>
                 </div>
 
@@ -272,8 +272,8 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                         <input type="range" name="settings[archive_gutter]"
                                min="0" max="40" step="2"
                                value="<?php echo $current_gutter; ?>"
-                               oninput="this.nextElementSibling.textContent = this.value + 'px'">
-                        <span style="min-width:36px; font-family:monospace;"><?php echo $current_gutter; ?>px</span>
+                               data-readout="ro-archive-gutter" data-unit="px">
+                        <span id="ro-archive-gutter" class="mw-36 mono"><?php echo $current_gutter; ?>px</span>
                     </div>
                 </div>
 
@@ -283,8 +283,8 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                         <input type="range" name="settings[justified_row_height]"
                                min="120" max="500" step="10"
                                value="<?php echo $current_row_h; ?>"
-                               oninput="this.nextElementSibling.textContent = this.value + 'px'">
-                        <span style="min-width:44px; font-family:monospace;"><?php echo $current_row_h; ?>px</span>
+                               data-readout="ro-row-height" data-unit="px">
+                        <span id="ro-row-height" class="mw-44 mono"><?php echo $current_row_h; ?>px</span>
                     </div>
                 </div>
 
@@ -355,8 +355,8 @@ if (!isset($size_steps[$current_size])) $current_size = 'm';
                         <input type="range" name="settings[calendar_post_count]"
                                min="5" max="20" step="1"
                                value="<?php echo $cal_posts; ?>"
-                               oninput="this.nextElementSibling.textContent = this.value">
-                        <span style="min-width:24px; font-family:monospace;"><?php echo $cal_posts; ?></span>
+                               data-readout="ro-cal-posts">
+                        <span id="ro-cal-posts" class="mw-24 mono"><?php echo $cal_posts; ?></span>
                     </div>
                 </div>
 

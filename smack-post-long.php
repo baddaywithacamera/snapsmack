@@ -912,19 +912,28 @@ function openMosaicModal() {
             list.innerHTML = '<p class="dim text-12 p-10">No mosaics yet. <a href="smack-mosaics.php?new=1<?php echo $edit_post ? '&amp;post=' . (int)$edit_post['id'] : ''; ?>" target="_blank" style="color:var(--link);">Build one →</a></p>';
             return;
         }
-        var html = '';
+        // Built as nodes, not an HTML string: a mosaic title is user text and
+        // must not be parsed as markup. Hover and layout live in
+        // assets/css/admin-theme-geometry-master.css (.mosaic-pick).
+        list.textContent = '';
         mosaics.forEach(function (m) {
-            html += '<div onclick="insertMosaic(' + m.id + ')" style="'
-                  + 'cursor:pointer;padding:10px 14px;border:1px solid var(--border);border-radius:3px;'
-                  + 'margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;'
-                  + 'transition:background .15s;"'
-                  + ' onmouseover="this.style.background=\'var(--hover-bg)\'"'
-                  + ' onmouseout="this.style.background=\'\'">'
-                  + '<span style="font-size:13px;">' + m.title + '</span>'
-                  + '<code style="font-size:11px;color:var(--dim);">[mosaic:' + m.id + ']</code>'
-                  + '</div>';
+            var row = document.createElement('div');
+            row.className = 'mosaic-pick';
+            row.dataset.mosaicId = m.id;
+
+            var title = document.createElement('span');
+            title.className = 'mosaic-pick-title';
+            title.textContent = m.title;
+
+            var code = document.createElement('code');
+            code.className = 'mosaic-pick-code';
+            code.textContent = '[mosaic:' + m.id + ']';
+
+            row.appendChild(title);
+            row.appendChild(code);
+            row.addEventListener('click', function () { insertMosaic(m.id); });
+            list.appendChild(row);
         });
-        list.innerHTML = html;
     };
     xhr.send();
 }
