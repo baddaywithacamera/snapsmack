@@ -245,10 +245,16 @@ test('mobile layout collapses to one image per row', () => {
 });
 
 test('a block never silently drops a photograph', () => {
-    // computeLayout advances its cursor by the number of photographs it ASKED a
-    // block to hold, not by the number that came back. A composition that placed
-    // fewer tiles than it was handed therefore skipped photographs entirely -
-    // they never appeared on the wall and nothing reported it.
+    // buildSection's fallback arrangement is hardcoded to FOUR cells:
+    //     group('horizontal', [
+    //         group('vertical', [cells[0], group('horizontal', cells.slice(2, 4))]),
+    //         cells[1]
+    //     ])
+    // cells[4] and beyond are never referenced. preferredBlock only sent groups of
+    // SIX or more to the general solver, so a group of FIVE went to that template
+    // and came back holding four. computeLayout then advanced its cursor by the
+    // five it had asked for, and the fifth photograph was never drawn at all -
+    // not misplaced, not cropped, absent, with nothing reported.
     //
     // Found on 2026-09-25 while harness-testing 50 SHADES 1.6.0: 10 of 2160
     // width/gap/emphasis combinations lost exactly one photograph, e.g. a block
