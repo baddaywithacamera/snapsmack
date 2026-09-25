@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.746D — 2026-09-25 — Put it together
+
+- Five and six photo MOSAIC groups now stay in one balanced composition when their geometry is usable. Five photos no longer split into four plus an orphaned full-width row, while the safeguards that prevent missing photos, giant derivatives, and postage-stamp tiles remain in force.
+- TILEZ single articles begin with the date and a substantially larger title. The display image remains available to archive cards and social previews without being repeated as a giant image above the article.
+- TILEZ skin version 0.2.9 carries the revised single-article treatment.
+
 ## 0.7.745D — 2026-09-25 — No photo left behind
 
 - MOSAIC now rejects any candidate layout that fails to place every photograph, preventing a five or six image block from silently omitting one image.
