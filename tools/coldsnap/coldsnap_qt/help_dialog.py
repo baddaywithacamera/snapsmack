@@ -56,7 +56,7 @@ TOPICS = [
     ("BIGGIE — the WYSIWYG editor",
      "COLD TAKE's write-up has two faces (COLD ONE and COLD STACK are "
      "deliberately basic: the plain box and bar only), switched by the TWIGGY / BIGGIE — "
-     "BLOCKS pills above it. TWIGGY is the plain text box with the shortcode "
+     "VISUAL pills above it. TWIGGY is the plain text box with the shortcode "
      "bar, exactly like the site editor. BIGGIE is one writing surface: click "
      "in it and type. Enter makes a new paragraph. Headings, quotes and pull "
      "quotes look like headings, quotes and pull quotes. The bar above it sets "
