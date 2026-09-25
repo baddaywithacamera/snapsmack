@@ -229,7 +229,7 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
              alt="<?php echo htmlspecialchars($site_display_name); ?>"
              class="custom-logo"
              <?php if ($alfred_retina_logo): ?>
-             style="width: auto; max-width: 100%;"
+             class="custom-logo--retina"
              <?php endif; ?>>
     </a>
 <?php else: ?>

@@ -20,11 +20,11 @@ if (!headers_sent()) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>STANLEY &mdash; SMACKTALK</title></head>
-<body style="background:#d5d6d7;color:#333;font-family:Georgia,serif;text-align:center;padding:4rem;">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>STANLEY &mdash; SMACKTALK</title><link rel="stylesheet" href="<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>assets/css/skin-fallback.css"></head>
+<body class="skin-fallback skin-fallback--stanley skin-fallback--mode">
     <h1>STANLEY</h1>
     <p>This skin requires SMACKTALK mode.</p>
-    <p><a href="<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>" style="color:#2e6da4;">Return to front</a></p>
+    <p><a href="<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>">Return to front</a></p>
 </body>
 </html>
 <?php // ===== SNAPSMACK EOF =====
