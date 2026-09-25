@@ -16,6 +16,11 @@
     var status = document.getElementById('eatmeclaude-status');
     if (!feed || !sentinel || !window.SnapMosaic) return;
 
+    // Where the next block comes from. eatmeclaude.php is the default only so
+    // that page keeps working unchanged; a skin serving its own blocks sets
+    // data-endpoint and owns its feed.
+    var endpoint = feed.getAttribute('data-endpoint') || 'eatmeclaude.php?format=json';
+
     var next = parseInt(sentinel.getAttribute('data-next') || '1', 10);
     var hasMore = sentinel.getAttribute('data-has-more') === '1';
     var cutoff = sentinel.getAttribute('data-cutoff') || '';
@@ -45,8 +50,13 @@
         loading = true;
         if (status) status.textContent = 'Loading another mosaic…';
 
-        var url = 'eatmeclaude.php?format=json&block=' + encodeURIComponent(next)
-            + '&cutoff=' + encodeURIComponent(cutoff);
+        // cutoff and t are the same value under the two names the endpoints use
+        // (eatmeclaude.php reads cutoff, a skin wall reads t). Sending both keeps
+        // one engine talking to either without knowing which it has.
+        var url = endpoint + (endpoint.indexOf('?') >= 0 ? '&' : '?')
+            + 'block=' + encodeURIComponent(next)
+            + '&cutoff=' + encodeURIComponent(cutoff)
+            + '&t=' + encodeURIComponent(cutoff);
         fetch(url, { credentials: 'same-origin' })
             .then(function (response) {
                 if (!response.ok) throw new Error('HTTP ' + response.status);
