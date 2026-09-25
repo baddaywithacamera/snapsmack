@@ -72,6 +72,8 @@ foreach (['snap-in.php', 'probe-ban.php', 'core/flkrfckr-api.php'] as $file) {
 }
 $resolver = file_get_contents(__DIR__ . '/../core/client-ip.php');
 ip_test(str_contains($resolver, "reason LIKE 'auto:%'"), 'historical automatic-ban reset is missing');
+ip_test(str_contains($resolver, 'client_ip_cloudflare_repair_741d'), 'one-time Cloudflare client-ban repair is missing');
+ip_test(str_contains($resolver, "DELETE FROM snap_ip_bans WHERE reason LIKE 'auto:%'"), 'legacy automatic login bans are not cleared during repair');
 ip_test(str_contains($resolver, '$recent >= 250 || $total >= 10000'), 'ban-table insertion bounds are missing');
 ip_test(str_contains($resolver, 'snap_ip_send_owner_ban_alert'), 'owner lockout alert path is missing');
 

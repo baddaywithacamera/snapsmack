@@ -228,6 +228,34 @@ function snap_ip_ban_maintenance(PDO $pdo): void {
             }
         }
 
+        // 0.7.741D: the Cloudflare correction changes the selected address
+        // from the shared edge to the real visitor. A real address may still
+        // have an automatic login ban created while the old resolver was
+        // active, so clear legacy automatic bans once after upgrading. Manual
+        // moderation bans are deliberately preserved.
+        $cloudflare_repair = $pdo->prepare(
+            "INSERT IGNORE INTO snap_settings (setting_key, setting_val)
+             VALUES ('client_ip_cloudflare_repair_741d', 'running')"
+        );
+        $cloudflare_repair->execute();
+        if ($cloudflare_repair->rowCount() === 1) {
+            try {
+                $pdo->exec("DELETE FROM snap_ip_bans WHERE reason LIKE 'auto:%'");
+                $complete = $pdo->prepare(
+                    "UPDATE snap_settings SET setting_val = ?
+                     WHERE setting_key = 'client_ip_cloudflare_repair_741d'"
+                );
+                $complete->execute([gmdate('Y-m-d H:i:s')]);
+            } catch (Throwable $cleanup_error) {
+                $pdo->exec(
+                    "DELETE FROM snap_settings
+                     WHERE setting_key = 'client_ip_cloudflare_repair_741d'
+                       AND setting_val = 'running'"
+                );
+                throw $cleanup_error;
+            }
+        }
+
         $pdo->exec("DELETE FROM snap_ip_bans WHERE expires_at <= NOW()");
         // Repair sites that previously mistook a Cloudflare edge for a visitor.
         // Only automatic rows are removed; manual moderation is preserved.
