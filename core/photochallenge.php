@@ -251,13 +251,44 @@ function pc_previous_window(PDO $pdo, array $settings): array {
     return $fallback ? $fallback + ['open' => false] : $current;
 }
 
+/** Use an explicitly advertised hashtag when the card intentionally shortens
+ * the prompt word (Reflection -> #PhotoFriReflect). */
+function pc_hashtag_for_prompt(string $prompt, string $prefix = 'PhotoFri', string $override = ''): array {
+    $generated = pc_hashtag_from_prompt($prompt, $prefix);
+    $raw = ltrim(trim($override), '#');
+    if ($raw === '') return $generated;
+    $display = preg_replace('/[^A-Za-z0-9_]/', '', $raw) ?: '';
+    $clean_prefix = preg_replace('/[^A-Za-z0-9]/', '', $prefix) ?: 'PhotoFri';
+    if ($display === '' || stripos($display, $clean_prefix) !== 0) return $generated;
+    return ['tag' => strtolower($display), 'display' => $display];
+}
+
+/** First branded hashtag in the authored caption is the advertised new round.
+ * Later tags may refer to the round that is just closing. */
+function pc_advertised_prompt_hashtag(string $caption, string $prefix = 'PhotoFri'): string {
+    $clean_prefix = preg_replace('/[^A-Za-z0-9]/', '', $prefix) ?: 'PhotoFri';
+    if (preg_match('/#(' . preg_quote($clean_prefix, '/') . '[A-Za-z0-9_]+)/i', $caption, $m)) {
+        return (string)$m[1];
+    }
+    return '';
+}
+
 /** A round keeps its own hashtag after the next prompt becomes live. */
 function pc_round_tag(PDO $pdo, array $settings, string $week_key): string {
     try {
-        $q = $pdo->prepare("SELECT tag FROM pc_prompts WHERE week_key=? LIMIT 1");
+        $q = $pdo->prepare("SELECT id,prompt,caption,tag,tag_display FROM pc_prompts WHERE week_key=? LIMIT 1");
         $q->execute([$week_key]);
-        $tag = strtolower(trim((string)($q->fetchColumn() ?: '')));
-        if ($tag !== '') return $tag;
+        $row = $q->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $advertised = pc_advertised_prompt_hashtag((string)($row['caption'] ?? ''), pc_tag_prefix($settings));
+            $hash = pc_hashtag_for_prompt((string)($row['prompt'] ?? ''), pc_tag_prefix($settings),
+                $advertised !== '' ? $advertised : (string)($row['tag_display'] ?? $row['tag'] ?? ''));
+            if ($hash['tag'] !== strtolower((string)($row['tag'] ?? ''))) {
+                $pdo->prepare("UPDATE pc_prompts SET tag=?,tag_display=? WHERE id=?")
+                    ->execute([$hash['tag'],$hash['display'],(int)$row['id']]);
+            }
+            return $hash['tag'];
+        }
     } catch (Throwable $e) {
     }
     return pc_tag($settings);
@@ -837,7 +868,7 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
         return ['ok' => false, 'msg' => 'The target challenge date must be a Friday.'];
     }
 
-    $hash = pc_hashtag_from_prompt($prompt, pc_tag_prefix($settings));
+    $hash = pc_hashtag_for_prompt($prompt, pc_tag_prefix($settings), (string)($data['hashtag'] ?? ''));
 
     $drop_at = trim((string)($data['drop_at'] ?? ''));
     if ($drop_at === '') {
@@ -956,7 +987,7 @@ function pc_update_prompt(PDO $pdo, array &$settings, int $id, array $data): arr
     $dupe = $pdo->prepare("SELECT 1 FROM pc_prompts WHERE week_key=? AND id<>? AND status IN ('queued','live') LIMIT 1");
     $dupe->execute([$win['week_key'], $id]);
     if ($dupe->fetchColumn()) return ['ok' => false, 'msg' => 'Another prompt is already scheduled for that Friday.'];
-    $hash = pc_hashtag_from_prompt($prompt, pc_tag_prefix($settings));
+    $hash = pc_hashtag_for_prompt($prompt, pc_tag_prefix($settings), (string)($data['hashtag'] ?? ''));
     $body = pc_prompt_body($settings, $prompt, $caption, $hash['display']);
     $pdo->beginTransaction();
     try {
@@ -1024,16 +1055,41 @@ function pc_cancel_prompt(PDO $pdo, array &$settings, int $id): array {
  */
 function pc_sync_active_prompt_tag(PDO $pdo, array &$settings): bool {
     $active = $pdo->query(
-        "SELECT tag FROM pc_prompts
+        "SELECT id,prompt,caption,tag,tag_display FROM pc_prompts
          WHERE status IN ('live','done')
            AND submit_start<=UTC_TIMESTAMP()
          ORDER BY (submit_end>UTC_TIMESTAMP()) DESC, submit_start DESC
          LIMIT 1"
-    )->fetchColumn();
-    if (!is_string($active) || $active === '') return false;
-    if (pc_tag($settings) === strtolower($active)) return false;
-    sv_set_setting($pdo, $settings, 'photochallenge_tag', $active);
-    return true;
+    )->fetch(PDO::FETCH_ASSOC);
+    if (!$active) return false;
+    $advertised = pc_advertised_prompt_hashtag((string)($active['caption'] ?? ''), pc_tag_prefix($settings));
+    $hash = pc_hashtag_for_prompt((string)($active['prompt'] ?? ''), pc_tag_prefix($settings),
+        $advertised !== '' ? $advertised : (string)($active['tag_display'] ?? $active['tag'] ?? ''));
+    $changed = false;
+    if ($hash['tag'] !== strtolower((string)($active['tag'] ?? ''))) {
+        $pdo->prepare("UPDATE pc_prompts SET tag=?,tag_display=? WHERE id=?")
+            ->execute([$hash['tag'],$hash['display'],(int)$active['id']]);
+        $changed = true;
+    }
+    if (pc_tag($settings) !== $hash['tag']) {
+        sv_set_setting($pdo, $settings, 'photochallenge_tag', $hash['tag']);
+        $changed = true;
+    }
+    // A corrected live hashtag must also recover posts that already arrived
+    // while the board was listening for the wrong tag. This is deliberately
+    // bounded and runs only when the active tag changed.
+    if ($changed && function_exists('pc_maybe_boost_entry')) {
+        $win = pc_window($settings);
+        if ($win['open']) {
+            $q = $pdo->prepare("SELECT object_id FROM snap_ap_timeline
+                 WHERE published>=? AND published<? ORDER BY published DESC LIMIT 200");
+            $q->execute([$win['start'],$win['end']]);
+            foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $object_id) {
+                try { pc_maybe_boost_entry($pdo, $settings, (string)$object_id); } catch (Throwable $e) {}
+            }
+        }
+    }
+    return $changed;
 }
 
 function pc_activate_due_prompts(PDO $pdo, array &$settings): int {

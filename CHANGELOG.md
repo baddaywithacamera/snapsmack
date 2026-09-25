@@ -9,6 +9,14 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.739D — 2026-09-24 — GRAMOFSMACK metadata controls match SYBU
+
+- Added per-image Orientation controls (Auto, Landscape, Portrait, Square) to the CMS GRAMOFSMACK posting page.
+- Added per-image Colour / B&W controls using the same `color` / `bw` values as SYBU.
+- The CMS now saves both choices to `snap_images`; Auto continues to derive orientation from the uploaded image dimensions.
+- SMACKTHEMUP is unchanged because it does not publish through the CMS.
+- Corrected Photo Friday prompts whose advertised hashtag intentionally differs from the full prompt word, such as Reflection / `#PhotoFriReflect`. The scheduler now exposes the exact hashtag as an editable field, the live board repairs older prompt records from their published caption, and an automatic bounded recovery pass picks up entries that arrived while the wrong tag was active.
+
 ## 0.7.738D — 2026-09-24 — PHOTOGRAM respects desktop mode
 - **Chrome's “Desktop site” switch now escapes PHOTOGRAM on Android.** The mobile selector honours Chromium's mobile client hint, and a remembered installed-app cookie can no longer force the phone skin after the browser explicitly requests a desktop page. Page-cache selection uses the same detector. (`core/constants.php`, `index.php`.)
 - **Every photograph on a PHOTOGRAM post can be viewed full screen.** The existing tap-to-zoom viewer was wired only to a single-image post; every slide in a multi-image post now opens the same fitted, full-viewport viewer. Grid tiles still open their post first, preserving captions, likes and comments. PHOTOGRAM 2.0.18. (`skins/photogram/layout.php`, `assets/js/ss-engine-photogram.js`.)

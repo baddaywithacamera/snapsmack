@@ -66,6 +66,7 @@
                 fx: 50, fy: 50, zoom: 100,
                 // "Post separately" — this image becomes its own single post.
                 split: false,
+                orientation: 'auto', colorMode: '',
             });
         });
         renderStrip();
@@ -192,6 +193,19 @@
                     // ALT applies in both crop modes, so it lives outside .gp-fit.
                     '<div class="gp-ctl gp-ctl-alt"><span>Alt</span>' +
                         '<input type="text" class="gp-alt" maxlength="500" placeholder="Describe this photo for screen readers" value="' + escHtml(item.alt || '') + '" style="flex:1;min-width:0;"></div>' +
+                    '<div class="gp-ctl"><span>Orientation</span>' +
+                        '<select class="gp-orientation">' +
+                            '<option value="auto"' + (item.orientation === 'auto' ? ' selected' : '') + '>Auto</option>' +
+                            '<option value="0"' + (item.orientation === '0' ? ' selected' : '') + '>Landscape</option>' +
+                            '<option value="1"' + (item.orientation === '1' ? ' selected' : '') + '>Portrait</option>' +
+                            '<option value="2"' + (item.orientation === '2' ? ' selected' : '') + '>Square</option>' +
+                        '</select></div>' +
+                    '<div class="gp-ctl"><span>Colour / B&amp;W</span>' +
+                        '<select class="gp-color-mode">' +
+                            '<option value=""' + (item.colorMode === '' ? ' selected' : '') + '>&mdash;</option>' +
+                            '<option value="color"' + (item.colorMode === 'color' ? ' selected' : '') + '>Colour</option>' +
+                            '<option value="bw"' + (item.colorMode === 'bw' ? ' selected' : '') + '>B&amp;W</option>' +
+                        '</select></div>' +
                 '</div>';
 
             const wrap     = el.querySelector('.cp-thumb-wrap');
@@ -275,6 +289,8 @@
             styleEl.querySelector('.gp-shadow').addEventListener('change', e => { item.shadow = parseInt(e.target.value); applyPreview(item, wrap, thumbImg); });
             const altInput = styleEl.querySelector('.gp-alt');
             if (altInput) altInput.addEventListener('input', e => { item.alt = e.target.value; });
+            styleEl.querySelector('.gp-orientation').addEventListener('change', e => { item.orientation = e.target.value; });
+            styleEl.querySelector('.gp-color-mode').addEventListener('change', e => { item.colorMode = e.target.value; });
 
             // Zoom (square crop) — always available, independent of fit/fill.
             const zoomR = styleEl.querySelector('.gp-zoom'), zoomV = styleEl.querySelector('.gp-zoom-v');
@@ -460,6 +476,8 @@
             data.append('img_zoom[]',         item.zoom != null ? item.zoom : 100);
             data.append('img_split[]',        item.split ? 1 : 0);
             data.append('img_alt[]',          item.alt || '');
+            data.append('orientation_override[]', item.orientation || 'auto');
+            data.append('color_mode[]',           item.colorMode || '');
         });
 
         const xhr = new XMLHttpRequest();

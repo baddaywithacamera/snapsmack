@@ -81,6 +81,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
     // instead of joining the carousel stack.
     $st_split  = $_POST['img_split']        ?? [];
     $st_alt    = $_POST['img_alt']          ?? [];   // per-image accessibility ALT
+    // Shared GRAMOFSMACK metadata contract used by SYBU and the CMS composer.
+    // Orientation accepts auto or the stored numeric classes (0/1/2); colour
+    // mode accepts the canonical color/bw values.
+    $st_orient = $_POST['orientation_override'] ?? [];
+    $st_color  = $_POST['color_mode']           ?? [];
 
     $hexok = function ($v, $def) {
         return (is_string($v) && preg_match('/^#[0-9a-fA-F]{6}$/', $v)) ? $v : $def;
@@ -107,6 +112,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         $pdo->exec("ALTER TABLE snap_post_images
                     ADD COLUMN IF NOT EXISTS img_crop_mode
                     ENUM('fit','fill') NOT NULL DEFAULT 'fit' AFTER img_shadow");
+    } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
+    try {
+        $pdo->exec("ALTER TABLE snap_images
+                    ADD COLUMN IF NOT EXISTS img_color_mode VARCHAR(10) NOT NULL DEFAULT ''");
     } catch (Throwable $e) { /* already present, or engine lacks IF NOT EXISTS */ }
     // Per-image square-crop focal point + zoom (canonical adds these on update;
     // defensive add here catches an install mid-migration). Pure structural.
@@ -317,19 +326,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES['img_files'])) {
         if ($orig_w == $orig_h)    $auto_orient = 2;
         elseif ($orig_h > $orig_w) $auto_orient = 1;
 
+        $orient_raw = strtolower(trim((string)($st_orient[$i] ?? 'auto')));
+        $orient_map = ['0' => 0, 'landscape' => 0, '1' => 1, 'portrait' => 1, '2' => 2, 'square' => 2];
+        $img_orient = array_key_exists($orient_raw, $orient_map) ? $orient_map[$orient_raw] : $auto_orient;
+        $color_mode = snap_normalize_color_mode($st_color[$i] ?? '');
+
         // Insert snap_images record (no EXIF data in gram mode)
         $img_alt_val = snap_sanitize_alt($st_alt[$i] ?? '');   // per-image ALT
         $img_stmt = $pdo->prepare("
             INSERT INTO snap_images (
                 img_title, img_slug, img_file, img_description, img_alt,
-                img_status, img_date, img_orientation, img_width, img_height,
+                img_status, img_date, img_orientation, img_width, img_height, img_color_mode,
                 allow_comments, allow_download, download_url,
                 img_thumb_square, img_thumb_aspect, img_checksum, img_display_options
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $img_stmt->execute([
             '', $img_slug, $db_path, $desc, $img_alt_val,
-            $status, $post_date, $auto_orient, $orig_w, $orig_h,
+            $status, $post_date, $img_orient, $orig_w, $orig_h, $color_mode,
             $allow_cmt, $allow_dl, $dl_url,
             $db_thumb_square, $db_thumb_aspect, $db_checksum, $palette_json,
         ]);
