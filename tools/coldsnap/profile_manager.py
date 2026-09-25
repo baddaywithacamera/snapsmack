@@ -50,7 +50,8 @@ def _shared_to_coldsnap(p: dict) -> Dict:
         'name':           p.get('name', ''),
         'url':            p.get('site_url', ''),
         'api_key':        p.get('api_key', ''),
-        'smackpress_key': extras.get('smackpress_key', ''),
+        'smackpress_key': (extras.get('smackpress_key', '') or
+                           extras.get('api_key_smackpress', '')),
     }
     for k, v in extras.items():
         out.setdefault(k, v)

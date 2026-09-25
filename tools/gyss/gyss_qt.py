@@ -1,5 +1,5 @@
 """GET YOUR SHIT SORTED — native Qt, local-first photo organizer."""
-import json, os, re, sys, threading, time, urllib.parse, uuid
+import json, os, re, subprocess, sys, threading, time, urllib.parse, uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 import requests
@@ -8,7 +8,7 @@ from PySide6.QtGui import QAction, QColor, QDesktopServices, QIcon, QKeySequence
 from PySide6.QtWidgets import (QApplication,QAbstractItemView,QCheckBox,QColorDialog,QComboBox,QDialog,QFormLayout,QFrame,QHBoxLayout,QLabel,QLineEdit,QListView,QListWidget,QListWidgetItem,QMainWindow,QMessageBox,QProgressBar,QPushButton,QScrollArea,QSpinBox,QStackedWidget,QTextEdit,QVBoxLayout,QWidget)
 
 HERE=os.path.dirname(os.path.abspath(__file__)); SHARED=os.path.abspath(os.path.join(HERE,"..","_shared")); sys.path.insert(0,SHARED)
-import snap_connections, snap_creds, snap_home, snap_profiles
+import snap_connections, snap_creds, snap_desktop_handoff, snap_home, snap_profiles
 try: import snap_native_creds
 except Exception: snap_native_creds=None
 try: import snap_library
@@ -177,19 +177,21 @@ class PhotoEditDialog(QDialog):
 class Window(QMainWindow):
     def __init__(self):
         super().__init__(); self.setWindowTitle(f"GET YOUR SHIT SORTED — {BUILD_VERSION}"); self.setWindowIcon(QIcon(icon_path())); self.resize(1420,900); self.setMinimumSize(1060,700)
-        self.window_settings=QSettings("SnapSmack", "GYSS")
-        geometry=self.window_settings.value("window/normal_geometry")
+        self._window_settings=QSettings("SnapSmack", "GET YOUR SHIT SORTED")
+        geometry=self._window_settings.value("window/normal_geometry")
         if geometry:self.restoreGeometry(geometry)
         self.profiles=[]; self.profile=None; self.api=None; self.mode=""; self.meta={"categories":[],"albums":[]}; self.photos=[]; self.original={}; self.busy=False; self.cancel=False; self.gram_loaded=0; self.gram_site="";self.organizer_page_size=180;self.organizer_member_page=0;self.organizer_tray_page=0
         self.worker=Worker(); self.worker.done.connect(self.done); self.worker.failed.connect(self.failed); self.worker.progress.connect(self.on_progress)
         self.build(); self.load_profiles()
         help_action=QAction("Help",self); help_action.setShortcut(QKeySequence.HelpContents); help_action.triggered.connect(self.show_help); self.addAction(help_action)
-        if self.window_settings.value("window/maximized", False, type=bool):
+        if self._window_settings.value("window/maximized", False, type=bool):
             QTimer.singleShot(0, self.showMaximized)
     def closeEvent(self,event):
-        self.window_settings.setValue("window/maximized",self.isMaximized())
-        if not self.isMaximized():self.window_settings.setValue("window/normal_geometry",self.saveGeometry())
-        self.window_settings.sync()
+        if not self.isMinimized():
+            self._window_settings.setValue("window/maximized", self.isMaximized())
+            if not self.isMaximized():
+                self._window_settings.setValue("window/normal_geometry", self.saveGeometry())
+            self._window_settings.sync()
         super().closeEvent(event)
     def build(self):
         root=QWidget(); sh=QHBoxLayout(root); sh.setContentsMargins(0,0,0,0); sh.setSpacing(0); side=QFrame(); side.setObjectName("Sidebar"); side.setFixedWidth(230); sl=QVBoxLayout(side); sl.setContentsMargins(18,24,18,18)
@@ -202,11 +204,11 @@ class Window(QMainWindow):
     def page(self,title,sub):
         s=QScrollArea(); s.setWidgetResizable(True); h=QWidget(); l=QVBoxLayout(h); l.setContentsMargins(28,24,28,28); l.setSpacing(15); l.addWidget(lbl(title,"PageTitle")); l.addWidget(lbl(sub,"Muted")); s.setWidget(h); return s,l
     def library_page(self):
-        p,l=self.page("Your local photo library","Choose a site. Sync while it is online; browse and sort the saved copy whenever you like."); c,cl=card("Library status"); self.lib_status=lbl("Choose a site above.","Muted"); cl.addWidget(self.lib_status); r=QHBoxLayout(); self.sync=QPushButton("SYNC FROM SITE"); self.sync.clicked.connect(self.sync_library); self.browse=QPushButton("BROWSE LOCAL COPY"); self.browse.setObjectName("Primary"); self.browse.clicked.connect(self.browse_local); folder=QPushButton("OPEN LIBRARY FOLDER"); folder.clicked.connect(self.open_library); r.addWidget(self.sync); r.addWidget(self.browse); r.addWidget(folder); r.addStretch(); cl.addLayout(r); self.progress=QProgressBar(); self.progress.hide(); cl.addWidget(self.progress); l.addWidget(c)
+        p,l=self.page("Your local photo library","Choose a site. Sync while it is online; browse and sort the saved copy whenever you like."); c,cl=card("Library status"); self.lib_status=lbl("Choose a site above.","Muted"); cl.addWidget(self.lib_status); r=QHBoxLayout(); self.sync=QPushButton("SYNC FROM SITE"); self.sync.clicked.connect(self.sync_library); self.browse=QPushButton("BROWSE LOCAL COPY"); self.browse.setObjectName("Primary"); self.browse.clicked.connect(self.browse_local); folder=QPushButton("OPEN LIBRARY FOLDER"); folder.clicked.connect(self.open_library); self.open_editor=QPushButton("OPEN POST EDITOR IN COLD SNAP"); self.open_editor.clicked.connect(self.open_in_coldsnap); r.addWidget(self.sync); r.addWidget(self.browse); r.addWidget(folder); r.addWidget(self.open_editor); r.addStretch(); cl.addLayout(r); self.progress=QProgressBar(); self.progress.hide(); cl.addWidget(self.progress); l.addWidget(c)
         f,fl=card("Optional filter","Leave these alone to load the complete library."); form=QFormLayout(); self.cat=QComboBox(); self.alb=QComboBox(); self.limit=QSpinBox(); self.limit.setRange(1,500); self.limit.setValue(200); form.addRow("Category",self.cat); form.addRow("Album",self.alb); form.addRow("Live pull limit",self.limit); fl.addLayout(form); live=QPushButton("PULL A LIVE SESSION"); live.clicked.connect(self.pull_live); fl.addWidget(live,0,Qt.AlignRight); l.addWidget(f); l.addStretch(); return p
     def sort_page(self):
         p,l=self.page("Sort photographs","Drag to reorder. Select photographs to enrich missing details together."); self.sort_intro=l.itemAt(1).widget();sort_bar=QHBoxLayout();sort_bar.addStretch();sort_all=QPushButton("SELECT ALL");sort_all.clicked.connect(lambda:self.select_all_in(self.photo_list,True));sort_bar.addWidget(sort_all);sort_none=QPushButton("SELECT NONE");sort_none.clicked.connect(lambda:self.select_all_in(self.photo_list,False));sort_bar.addWidget(sort_none);sort_bar.addSpacing(392);l.addLayout(sort_bar); r=QHBoxLayout(); self.photo_list=QListWidget(); self.photo_list.setViewMode(QListWidget.IconMode); self.photo_list.setIconSize(QSize(150,110)); self.photo_list.setGridSize(QSize(180,165)); self.photo_list.setResizeMode(QListWidget.Adjust); self.photo_list.setDragDropMode(QAbstractItemView.InternalMove); self.photo_list.setSelectionMode(QAbstractItemView.ExtendedSelection); self.photo_list.currentItemChanged.connect(self.edit_photo); self.photo_list.itemSelectionChanged.connect(self.update_sort_enrich_label); r.addWidget(self.photo_list,1)
-        e,el=card("Selected photograph"); form=QFormLayout(); self.title_edit=QLineEdit(); self.desc_edit=QTextEdit(); self.desc_edit.setMaximumHeight(90); self.alt_edit=QTextEdit(); self.alt_edit.setMaximumHeight(75); self.tags_edit=QLineEdit(); self.tags_edit.setPlaceholderText("#family #portrait"); self.colors_edit=QLineEdit(); self.colors_edit.setPlaceholderText("#RRGGBB #RRGGBB (up to 3)"); choose_color=QPushButton("CHOOSE COLOUR"); choose_color.clicked.connect(self.choose_color); self.edit_cats=QListWidget(); self.edit_cats.setSelectionMode(QAbstractItemView.MultiSelection); self.edit_cats.setMaximumHeight(92); self.edit_albums=QListWidget(); self.edit_albums.setSelectionMode(QAbstractItemView.MultiSelection); self.edit_albums.setMaximumHeight(92); self.colour=QComboBox(); self.colour.addItem("Not classified",""); self.colour.addItem("Colour","color"); self.colour.addItem("Black & white","bw"); self.orientation=QComboBox(); self.orientation.addItem("Landscape",0); self.orientation.addItem("Portrait",1); self.orientation.addItem("Square",2); form.addRow("Title",self.title_edit); form.addRow("Description",self.desc_edit); form.addRow("ALT text",self.alt_edit); form.addRow("Hashtags",self.tags_edit); form.addRow("Colours",self.colors_edit); form.addRow("",choose_color); form.addRow("Categories",self.edit_cats); form.addRow("Albums",self.edit_albums); form.addRow("Colour / B&W",self.colour); form.addRow("Orientation",self.orientation); el.addLayout(form); apply=QPushButton("APPLY DETAILS TO THIS PHOTO"); apply.clicked.connect(self.apply_edit); el.addWidget(apply); organize=QPushButton("ORGANIZE SELECTED PHOTOS"); organize.clicked.connect(self.apply_organization); el.addWidget(organize); self.sort_enrich=QPushButton("ENRICH THIS PHOTO"); self.sort_enrich.clicked.connect(self.enrich_sort_photo); el.addWidget(self.sort_enrich); self.sort_stop=QPushButton("STOP AFTER THIS IMAGE"); self.sort_stop.setObjectName("Danger"); self.sort_stop.setEnabled(False); self.sort_stop.clicked.connect(lambda:setattr(self,"cancel",True)); el.addWidget(self.sort_stop); self.sort_progress=QProgressBar(); self.sort_progress.hide(); el.addWidget(self.sort_progress); edit_scroll=QScrollArea(); edit_scroll.setWidgetResizable(True); edit_scroll.setFixedWidth(380); edit_scroll.setWidget(e); r.addWidget(edit_scroll); l.addLayout(r,1); br=QHBoxLayout(); self.save_session_button=QPushButton("SAVE SESSION"); self.save_session_button.clicked.connect(self.save_session); br.addWidget(self.save_session_button); self.detect_orientation_button=QPushButton("MATCH ORIENTATION TO PHOTO SHAPE"); self.detect_orientation_button.clicked.connect(self.match_orientations); br.addWidget(self.detect_orientation_button); br.addStretch(); push=QPushButton("PUBLISH CHANGES"); push.setObjectName("Primary"); push.clicked.connect(self.push); br.addWidget(push); l.addLayout(br); return p
+        e,el=card("Selected photograph"); form=QFormLayout(); self.title_edit=QLineEdit(); self.desc_edit=QTextEdit(); self.desc_edit.setMaximumHeight(90); self.alt_edit=QTextEdit(); self.alt_edit.setMaximumHeight(75); self.tags_edit=QLineEdit(); self.tags_edit.setPlaceholderText("#family #portrait"); self.colors_edit=QLineEdit(); self.colors_edit.setPlaceholderText("#RRGGBB #RRGGBB (up to 3)"); choose_color=QPushButton("CHOOSE COLOUR"); choose_color.clicked.connect(self.choose_color); self.edit_cats=QListWidget(); self.edit_cats.setSelectionMode(QAbstractItemView.MultiSelection); self.edit_cats.setMaximumHeight(92); self.edit_albums=QListWidget(); self.edit_albums.setSelectionMode(QAbstractItemView.MultiSelection); self.edit_albums.setMaximumHeight(92); self.colour=QComboBox(); self.colour.addItem("Not classified",""); self.colour.addItem("Colour","color"); self.colour.addItem("Black & white","bw"); self.orientation=QComboBox(); self.orientation.addItem("Landscape",0); self.orientation.addItem("Portrait",1); self.orientation.addItem("Square",2); form.addRow("Title",self.title_edit); form.addRow("Description",self.desc_edit); form.addRow("ALT text",self.alt_edit); form.addRow("Hashtags",self.tags_edit); form.addRow("Colours",self.colors_edit); form.addRow("",choose_color); form.addRow("Categories",self.edit_cats); form.addRow("Albums",self.edit_albums); form.addRow("Colour / B&W",self.colour); form.addRow("Orientation",self.orientation); el.addLayout(form); apply=QPushButton("APPLY DETAILS TO THIS PHOTO"); apply.clicked.connect(self.apply_edit); el.addWidget(apply); organize=QPushButton("ORGANIZE SELECTED PHOTOS"); organize.clicked.connect(self.apply_organization); el.addWidget(organize); self.sort_enrich=QPushButton("ENRICH THIS PHOTO"); self.sort_enrich.clicked.connect(self.enrich_sort_photo); el.addWidget(self.sort_enrich); self.sort_stop=QPushButton("STOP AFTER THIS IMAGE"); self.sort_stop.setObjectName("Danger"); self.sort_stop.setEnabled(False); self.sort_stop.clicked.connect(lambda:setattr(self,"cancel",True)); el.addWidget(self.sort_stop); self.sort_progress=QProgressBar(); self.sort_progress.hide(); el.addWidget(self.sort_progress); edit_scroll=QScrollArea(); edit_scroll.setWidgetResizable(True); edit_scroll.setFixedWidth(380); edit_scroll.setWidget(e); r.addWidget(edit_scroll); l.addLayout(r,1); br=QHBoxLayout(); self.save_session_button=QPushButton("SAVE SESSION"); self.save_session_button.clicked.connect(self.save_session); br.addWidget(self.save_session_button); self.detect_orientation_button=QPushButton("MATCH ORIENTATION TO PHOTO SHAPE"); self.detect_orientation_button.clicked.connect(self.match_orientations); br.addWidget(self.detect_orientation_button); cold=QPushButton("SEND SELECTED TO COLD TAKE"); cold.clicked.connect(self.send_selected_to_cold_take); br.addWidget(cold); br.addStretch(); push=QPushButton("PUBLISH CHANGES"); push.setObjectName("Primary"); push.clicked.connect(self.push); br.addWidget(push); l.addLayout(br); return p
     def organizer_page(self):
         p,l=self.page("Organize categories and albums","Open a category or album, then drag photographs between the library filmstrip and the large working area.")
         body=QHBoxLayout(); left,left_l=card("Categories & albums","Choose the container you are working on.");left.setFixedWidth(260);self.organizer_container_search=QLineEdit();self.organizer_container_search.setPlaceholderText("Search categories and albums");self.organizer_container_search.textChanged.connect(self.fill_organizer_containers);left_l.addWidget(self.organizer_container_search);self.organizer_containers=QListWidget();self.organizer_containers.currentItemChanged.connect(self.render_organizer);left_l.addWidget(self.organizer_containers,1);body.addWidget(left)
@@ -291,7 +293,7 @@ class Window(QMainWindow):
         bar=self.sort_progress if self.pages.currentIndex()==1 else self.progress
         bar.show(); bar.setRange(0,max(total,1)); bar.setValue(n); bar.setFormat(text+"  %p%")
     def load_profiles(self,keep=""):
-        old=keep or (self.profile or {}).get("site_url",""); self.profiles=[p for p in snap_connections.list_connections("gyss") if p.get("extras",{}).get("gyss_site_mode")!="smacktalk"]; self.site.blockSignals(True); self.site.clear(); self.site.addItem("Choose a site…",None)
+        old=keep or (self.profile or {}).get("site_url",""); self.profiles=list(snap_connections.list_connections("gyss")); self.site.blockSignals(True); self.site.clear(); self.site.addItem("Choose a site…",None)
         for p in self.profiles:self.site.addItem(f"{p.get('name') or snap_home.site_key(p['site_url'])}  ·  {snap_home.site_key(p['site_url'])}",p)
         self.site.setCurrentIndex(next((i+1 for i,p in enumerate(self.profiles) if p.get("site_url")==old),0)); self.site.blockSignals(False); self.site_changed(self.site.currentIndex())
     def site_changed(self,i):
@@ -551,6 +553,33 @@ class Window(QMainWindow):
         self.run(work,synced)
     def open_library(self):
         if self.profile:QDesktopServices.openUrl(QUrl.fromLocalFile(snap_home.site_dir(self.profile["site_url"])))
+    def open_in_coldsnap(self):
+        if not self.profile:
+            QMessageBox.information(self,"Choose a site","Choose the site whose posts you want to edit first.");return
+        _index,meta=self.local(); mode=(self.mode or meta.get("site_mode") or (self.profile.get("extras") or {}).get("gyss_site_mode") or "").strip().lower()
+        if mode not in {"photoblog","carousel","smacktalk"}:
+            QMessageBox.information(self,"Verify this site","Test the connection or sync its library once so GYSS knows which COLD SNAP editor to open.");return
+        snap_desktop_handoff.write_request("coldsnap",{"source":"gyss","site_url":self.profile["site_url"],"site_mode":mode})
+        exe=os.path.join(snap_home.app_dir("coldsnap"),"coldsnap.exe")
+        if not os.path.isfile(exe):
+            QMessageBox.warning(self,"COLD SNAP is not installed",f"GYSS saved the handoff, but could not find:\n{exe}\n\nInstall or rebuild COLD SNAP, then try again.");return
+        try:subprocess.Popen([exe],cwd=os.path.dirname(exe))
+        except OSError as exc:QMessageBox.critical(self,"Could not open COLD SNAP",str(exc));return
+        self.status.setText("● Sent to COLD SNAP")
+    def send_selected_to_cold_take(self):
+        if not self.profile:return
+        selected=[item.data(Qt.UserRole) for item in self.photo_list.selectedItems()]
+        if not selected:
+            QMessageBox.information(self,"Choose photographs","Select one or more photographs first.");return
+        _index,meta=self.local(); mode=(self.mode or meta.get("site_mode") or (self.profile.get("extras") or {}).get("gyss_site_mode") or "").strip().lower()
+        if mode!="smacktalk":
+            QMessageBox.information(self,"Choose a SMACKTALK site","A COLD TAKE bucket belongs to a SMACKTALK site. Choose that site's library first.");return
+        photos=[{"id":int(row.get("id") or 0),"filename":row.get("filename") or "","alt":row.get("alt") or "","width":row.get("width") or 0,"height":row.get("height") or 0,"full_url":row.get("full_url") or row.get("thumb_url") or ""} for row in selected]
+        snap_desktop_handoff.write_request("coldsnap",{"source":"gyss","site_url":self.profile["site_url"],"site_mode":"smacktalk","selected_images":photos})
+        exe=os.path.join(snap_home.app_dir("coldsnap"),"coldsnap.exe")
+        try:subprocess.Popen([exe],cwd=os.path.dirname(exe))
+        except OSError as exc:QMessageBox.critical(self,"Could not open COLD SNAP",str(exc));return
+        self.status.setText(f"● Sent {len(photos)} photographs to COLD TAKE")
     def browse_local(self):
         if not self.profile:return
         index,_=self.local(); rows=list(index.get("images",{}).values()); cid=self.cat.currentData();aid=self.alb.currentData()
