@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.740D — 2026-09-25 — Cloudflare login lockout repair
+
+- Fixed login lockouts on Cloudflare-hosted sites by recognizing Cloudflare's published proxy networks before resolving `CF-Connecting-IP`.
+- Automatically removes old automatic bans against Cloudflare edge addresses while preserving manually created bans.
+- TILEZ 0.2.8 doubles the desktop text navigation and adds the requested circular quick-navigation menu at the top right; its text menu now reads Home, The Idea, Diary, Categories, Albums, Images.
+
 ## 0.7.739D — 2026-09-24 — GRAMOFSMACK metadata controls match SYBU
 
 - Added per-image Orientation controls (Auto, Landscape, Portrait, Square) to the CMS GRAMOFSMACK posting page.
