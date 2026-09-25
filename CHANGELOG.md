@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.747D — 2026-09-25 — The fine print
+
+- TILEZ equipment notes use a readable supporting size and generous line spacing beneath the author's graphic signature. They remain visually secondary without reverting to the tiny type used by the old WordPress theme.
+- TILEZ skin version 0.2.10 includes the equipment-note treatment.
+
 ## 0.7.746D — 2026-09-25 — Put it together
 
 - Five and six photo MOSAIC groups now stay in one balanced composition when their geometry is usable. Five photos no longer split into four plus an orphaned full-width row, while the safeguards that prevent missing photos, giant derivatives, and postage-stamp tiles remain in force.
