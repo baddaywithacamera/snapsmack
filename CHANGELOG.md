@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.742D — 2026-09-24 — Skin updates report the truth
+
+- Skin updates now stop with a clear permissions error when the existing skin directory cannot be removed, instead of leaving the old skin in place and falsely reporting success.
+- Cross-filesystem skin copies are checked file by file, and the installed manifest must exactly match the signed package before an update is reported successful.
+
 ## 0.7.741D — 2026-09-24 — Complete Cloudflare login recovery
 
 - Clears legacy automatic login bans once after the Cloudflare client-address repair, restoring owner access while preserving manual IP moderation bans.
