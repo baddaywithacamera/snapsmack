@@ -5,8 +5,9 @@
  *   • columns  — landing.php's .ss-masonry + ss-engine-columns.js (unchanged).
  *   • mosaic   — Codex's real MOSAIC, cut-and-pasted from eatmeclaude.php: the
  *                #eatmeclaude-feed block markup + ss-engine-mosaic.js +
- *                ss-engine-mosaic-feed.js, which streams later blocks from
- *                eatmeclaude.php. Identical to the page that already works.
+ *                ss-engine-mosaic-feed.js. Later blocks are served by THIS
+ *                file's own ?pg=wall&format=json path (data-endpoint), not by
+ *                eatmeclaude.php - that page is a test page and may be deleted.
  *   • rows     — justified rows via ss-engine-rows.js: a pure-SnapSmack adaptation
  *                of ss-engine-columns.js (NO third-party library — licensing stays
  *                all-SnapSmack). Landscapes lead. Container .ss-scroll-wall so the
@@ -56,6 +57,58 @@ if ($cutoff > $_ss_now) $cutoff = $_ss_now;
 $total_stmt = $pdo->prepare("SELECT COUNT(*) FROM snap_images WHERE img_status = 'published' AND img_date <= ?");
 $total_stmt->execute([$cutoff]);
 $total = (int)$total_stmt->fetchColumn();
+
+// MOSAIC block helpers, defined before the JSON path so the Asymmetric
+// layout can serve its own blocks. Still guarded by function_exists: the
+// HTML path below finds them already defined.
+if (!function_exists('eatmeclaude_block_sizes')) {
+function eatmeclaude_block_sizes(int $total): array {
+    if ($total <= 0) return [];
+    if ($total <= 6) return [$total];
+    $full = intdiv($total, 6); $remainder = $total % 6;
+    $sizes = array_fill(0, $full, 6);
+    if ($remainder === 1) { $sizes[count($sizes) - 1] = 5; $sizes[] = 2; }
+    elseif ($remainder > 0) { $sizes[] = $remainder; }
+    return $sizes;
+}
+}
+if (!function_exists('eatmeclaude_images')) {
+function eatmeclaude_images(PDO $pdo, string $cutoff, int $offset, int $limit): array {
+    $stmt = $pdo->prepare(
+        "SELECT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_aspect,
+                i.img_width, i.img_height,
+                COALESCE(pi.img_focus_x, 50) AS img_focus_x,
+                COALESCE(pi.img_focus_y, 50) AS img_focus_y
+         FROM snap_images i
+         LEFT JOIN snap_post_images pi ON pi.image_id = i.id
+         WHERE i.img_status = 'published' AND i.img_date <= :cutoff
+         ORDER BY i.sort_order ASC, i.id DESC
+         LIMIT :lim OFFSET :off"
+    );
+    $stmt->bindValue(':cutoff', $cutoff);
+    $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    $out = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $full = ltrim((string)($row['img_file'] ?? ''), '/');
+        if ($full === '') continue;
+        $thumb = ltrim((string)($row['img_thumb_aspect'] ?? ''), '/');
+        if ($thumb === '') $thumb = $full;
+        $title = trim((string)($row['img_title'] ?? ''));
+        $out[] = [
+            'src' => BASE_URL . $thumb, 'full' => BASE_URL . $full,
+            'href' => BASE_URL . ltrim((string)($row['img_slug'] ?? ''), '/'),
+            'alt' => $title, 'id' => (int)$row['id'],
+            'width' => max(1, (int)($row['img_width'] ?? 1)),
+            'height' => max(1, (int)($row['img_height'] ?? 1)),
+            'focusX' => max(0, min(100, (float)($row['img_focus_x'] ?? 50))),
+            'focusY' => max(0, min(100, (float)($row['img_focus_y'] ?? 50))),
+            'lazy' => true,
+        ];
+    }
+    return $out;
+}
 
 $grid_stmt = $pdo->prepare(
     "SELECT id, img_title, img_slug, img_file, img_thumb_aspect,
@@ -112,6 +165,27 @@ function scroll_wall_tile(array $img): string {
 // JSON chunk path (via index.php's ?format=json&pg=wall hook): emit just this
 // page's tiles + paging state, then stop.
 if ($is_json) {
+    // ASYMMETRIC asks for one MOSAIC block at a time (?block=N), not a page of
+    // tiles, and wants the image payload rather than markup. Same shape
+    // eatmeclaude.php returns, so ss-engine-mosaic-feed.js does not care which
+    // endpoint answered.
+    if ($_is_mosaic) {
+        $_blk_sizes = eatmeclaude_block_sizes($total);
+        $_blk       = max(0, min(100000, (int)($_GET['block'] ?? 0)));
+        $_blk_off   = array_sum(array_slice($_blk_sizes, 0, $_blk));
+        $_blk_lim   = $_blk_sizes[$_blk] ?? 0;
+        $_blk_imgs  = $_blk_lim > 0 ? eatmeclaude_images($pdo, $cutoff, $_blk_off, $_blk_lim) : [];
+        header('Content-Type: application/json; charset=utf-8');
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: no-store');
+        $_blk_json = json_encode([
+            'images'   => $_blk_imgs,
+            'has_more' => ($_blk + 1) < count($_blk_sizes),
+            'next'     => $_blk + 1,
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        echo $_blk_json === false ? '{"images":[],"has_more":false,"next":0}' : $_blk_json;
+        return;
+    }
     $_html = '';
     foreach ($images as $_im) $_html .= scroll_wall_tile($_im);
     header('Content-Type: application/json');
@@ -121,57 +195,11 @@ if ($is_json) {
 
 // ── ASYMMETRIC (MOSAIC) — cut-and-paste of the working eatmeclaude.php ─────────
 // Builds the first six-image .snap-mosaic block exactly as eatmeclaude.php does;
-// ss-engine-mosaic-feed.js then streams the rest FROM eatmeclaude.php. Same
-// engine, markup and feed that already work in production — no adaptation.
+// ss-engine-mosaic-feed.js then streams the rest from THIS file's own
+// ?pg=wall&format=json path (see data-endpoint below). Same engine and markup
+// that already work in production — the only change from the original cut-paste
+// is whose endpoint serves block 2 onwards.
 if ($_is_mosaic) {
-    if (!function_exists('eatmeclaude_block_sizes')) {
-    function eatmeclaude_block_sizes(int $total): array {
-        if ($total <= 0) return [];
-        if ($total <= 6) return [$total];
-        $full = intdiv($total, 6); $remainder = $total % 6;
-        $sizes = array_fill(0, $full, 6);
-        if ($remainder === 1) { $sizes[count($sizes) - 1] = 5; $sizes[] = 2; }
-        elseif ($remainder > 0) { $sizes[] = $remainder; }
-        return $sizes;
-    }
-    }
-    if (!function_exists('eatmeclaude_images')) {
-    function eatmeclaude_images(PDO $pdo, string $cutoff, int $offset, int $limit): array {
-        $stmt = $pdo->prepare(
-            "SELECT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_aspect,
-                    i.img_width, i.img_height,
-                    COALESCE(pi.img_focus_x, 50) AS img_focus_x,
-                    COALESCE(pi.img_focus_y, 50) AS img_focus_y
-             FROM snap_images i
-             LEFT JOIN snap_post_images pi ON pi.image_id = i.id
-             WHERE i.img_status = 'published' AND i.img_date <= :cutoff
-             ORDER BY i.sort_order ASC, i.id DESC
-             LIMIT :lim OFFSET :off"
-        );
-        $stmt->bindValue(':cutoff', $cutoff);
-        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
-        $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-        $out = [];
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $full = ltrim((string)($row['img_file'] ?? ''), '/');
-            if ($full === '') continue;
-            $thumb = ltrim((string)($row['img_thumb_aspect'] ?? ''), '/');
-            if ($thumb === '') $thumb = $full;
-            $title = trim((string)($row['img_title'] ?? ''));
-            $out[] = [
-                'src' => BASE_URL . $thumb, 'full' => BASE_URL . $full,
-                'href' => BASE_URL . ltrim((string)($row['img_slug'] ?? ''), '/'),
-                'alt' => $title, 'id' => (int)$row['id'],
-                'width' => max(1, (int)($row['img_width'] ?? 1)),
-                'height' => max(1, (int)($row['img_height'] ?? 1)),
-                'focusX' => max(0, min(100, (float)($row['img_focus_x'] ?? 50))),
-                'focusY' => max(0, min(100, (float)($row['img_focus_y'] ?? 50))),
-                'lazy' => true,
-            ];
-        }
-        return $out;
-    }
     }
     $emc_block_sizes = eatmeclaude_block_sizes($total);   // $total counted above (same WHERE + cutoff)
     $emc_limit    = $emc_block_sizes[0] ?? 0;
@@ -324,6 +352,7 @@ try {
           // when the mosaic payload and engine are byte-identical. ?>
     <main class="scroll-wall eatmeclaude-content">
         <div id="eatmeclaude-feed" class="eatmeclaude-feed"
+             data-endpoint="?pg=wall&amp;format=json"
              data-gap="<?php echo $emc_gap; ?>"
              data-emphasis="<?php echo htmlspecialchars($emc_emphasis, ENT_QUOTES); ?>"
              style="--eatmeclaude-gap:<?php echo $emc_gap; ?>px;">
