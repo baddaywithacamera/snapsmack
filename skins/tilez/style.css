@@ -1085,6 +1085,14 @@ input[type="button"],
 
 .post-header + .post-inner { padding-top: 0; }
 
+/* Closing equipment notes should read as supporting information without
+   shrinking to the difficult-to-read size used by the old WordPress theme. */
+.post-gear-note {
+    font-size: 0.9em;
+    line-height: 1.65;
+    color: #555;
+}
+
 /* Post Meta */
 
 .post-meta {
