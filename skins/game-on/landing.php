@@ -424,7 +424,7 @@ $_go_candidate_sample = array_slice($_go_puzzle_pool, 0, 288);   // pool is alre
         <?php endif; ?>
 
         <?php if (empty($grid_posts) && $_feed_page === 1): ?>
-        <div style="grid-column: 1/-1; padding: 60px 20px; text-align: center; color: var(--text-secondary);">
+        <div class="empty-sector-msg">
             <p>No posts yet. Start by uploading your first photograph.</p>
         </div>
         <?php endif; ?>

@@ -56,8 +56,8 @@ $albums_list = isset($albums) ? $albums : [];
             <?php endforeach; ?>
         </div>
     <?php else: ?>
-        <div class="sl-no-photos" style="text-align:center; padding:64px 0;">
-            <p style="color: var(--sl-text-secondary);">No albums yet.</p>
+        <div class="sl-no-photos sl-no-photos--albums">
+            <p>No albums yet.</p>
         </div>
     <?php endif; ?>
 </main>

@@ -91,7 +91,7 @@ $_fsog_initial_thumbs = ($_fsog_cur === 'thumbs');
             </a>
         <?php endforeach; ?>
     <?php else: ?>
-        <div class="empty-sector-msg" style="grid-column: 1 / -1; text-align: center; padding: 80px 20px;">
+        <div class="empty-sector-msg">
             <p>No photographs found.</p>
         </div>
     <?php endif; ?>

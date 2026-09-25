@@ -1560,4 +1560,8 @@ html[data-archive-layout="thumbs"]  #browse-grid    { display: grid  !important;
 html[data-archive-layout="thumbs"]  #justified-grid { display: none  !important; }
 html[data-archive-layout="masonry"] #browse-grid    { display: none  !important; }
 html[data-archive-layout="masonry"] #justified-grid { display: block !important; }
+/* Empty archive message. Geometry is in assets/css/public-base.css;
+   this is the colour and padding this skin wants for it. */
+.empty-sector-msg { padding: 80px 20px; color: var(--chap-ink-muted); }
+
 /* ===== SNAPSMACK EOF ===== */

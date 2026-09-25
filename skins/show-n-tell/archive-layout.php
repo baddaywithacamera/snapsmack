@@ -36,7 +36,7 @@ $row_height = (int)($settings['htbs_grid_row_height'] ?? 280);
                 </a>
             <?php endforeach; ?>
         <?php else: ?>
-            <p class="dim" style="text-align:center;padding:40px;">No images found.</p>
+            <p class="dim empty-sector-msg">No images found.</p>
         <?php endif; ?>
     </div>
 </div>

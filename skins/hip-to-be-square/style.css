@@ -1843,4 +1843,8 @@ textarea:focus {
 .slide-in-up {
     animation: slideInUp 0.3s ease;
 }
+/* Empty archive message. Geometry is in assets/css/public-base.css;
+   this is the colour and padding this skin wants for it. */
+.empty-sector-msg { padding: 80px 20px; color: var(--text-secondary); }
+
 /* ===== SNAPSMACK EOF ===== */

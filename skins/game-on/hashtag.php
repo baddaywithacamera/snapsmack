@@ -167,11 +167,10 @@ $has_more = ($offset + count($raw_images)) < $total_count;
     </main>
 
     <?php if ($has_more): ?>
-        <div id="go-sentinel"
+        <div id="go-sentinel" class="ss-feed-sentinel"
              data-tag="<?php echo htmlspecialchars($tag_slug); ?>"
              data-next="<?php echo $curr_page + 1; ?>"
-             data-base="<?php echo htmlspecialchars(BASE_URL); ?>"
-             style="height:1px;"></div>
+             data-base="<?php echo htmlspecialchars(BASE_URL); ?>"></div>
     <?php endif; ?>
 
 </div><!-- /#go-app -->

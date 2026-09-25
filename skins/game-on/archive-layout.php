@@ -133,7 +133,7 @@ include dirname(__DIR__, 2) . '/core/meta.php';
         <?php endforeach; ?>
 
         <?php if (empty($tiles)): ?>
-        <div style="grid-column: 1/-1; padding: 60px 20px; text-align: center; color: var(--text-secondary);">
+        <div class="empty-sector-msg">
             <p>No posts in this <?php echo $archive_type === 'album' ? 'album' : 'category'; ?> yet.</p>
         </div>
         <?php endif; ?>
