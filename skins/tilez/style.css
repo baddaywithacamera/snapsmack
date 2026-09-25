@@ -2168,6 +2168,7 @@ body.blog, body.single, body.archive { background: #fff; }
 .header-image { display: none !important; }
 .header,
 .header.section-inner {
+    position: relative;
     width: min(var(--tilez-page), calc(100% - 48px));
     min-height: 0;
     margin: 0 auto;
@@ -2181,6 +2182,61 @@ body.blog, body.single, body.archive { background: #fff; }
 }
 .header .custom-logo { width: 100%; height: auto; max-height: none; object-fit: contain; object-position: left center; }
 .header .blog-description { display: none; }
+
+.tilez-icon-nav {
+    position: absolute;
+    top: 32px;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.tilez-icon-nav > a,
+.tilez-icon-nav .social-dock-inline .dock-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    padding: 0;
+    color: var(--tilez-ink);
+    background: #fff;
+    border: 1px solid #aaa;
+    border-radius: 50%;
+    text-decoration: none;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+.tilez-icon-nav > a:hover,
+.tilez-icon-nav > a:focus-visible,
+.tilez-icon-nav .social-dock-inline .dock-link:hover,
+.tilez-icon-nav .social-dock-inline .dock-link:focus-visible {
+    color: #000;
+    background: #f3f3f3;
+    border-color: #222;
+    transform: none;
+}
+.tilez-icon-nav > a svg {
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.tilez-icon-nav .social-dock-inline {
+    position: static;
+    z-index: auto;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    max-height: none;
+    opacity: 1;
+    overflow: visible;
+    transform: none;
+}
 
 .navigation {
     position: relative;
@@ -2196,7 +2252,7 @@ body.blog, body.single, body.archive { background: #fff; }
 .main-menu { display: flex; width: auto; max-width: none; gap: 18px; white-space: nowrap; }
 .main-menu > li > a, .main-menu > li > span {
     color: var(--tilez-ink);
-    font-size: 10px;
+    font-size: 20px;
     font-weight: 500;
     letter-spacing: .11em;
 }
@@ -2346,6 +2402,12 @@ body.blog, body.single, body.archive { background: #fff; }
     .navigation { position: relative; top: auto; }
     .main-menu { display: none; }
     .nav-toggle { display: block; }
+    .tilez-icon-nav {
+        position: static;
+        justify-content: flex-start;
+        margin-top: 18px;
+        flex-wrap: wrap;
+    }
 }
 
 @media (max-width: 560px) {
