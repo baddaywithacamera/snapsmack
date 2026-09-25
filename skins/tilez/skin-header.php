@@ -146,9 +146,10 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
     return [
         ['label' => 'HOME',       'url' => $base],
         ['label' => 'THE IDEA',   'url' => 'https://old.baddaywithacamera.ca/the-idea/'],
-        ['label' => 'THE DIARY',  'url' => 'https://old.baddaywithacamera.ca/category/diary/'],
-        ['label' => 'THE ARTIST', 'url' => 'https://old.baddaywithacamera.ca/the-artist/'],
-        ['label' => 'THE IMAGES', 'url' => $base . '?view=archive'],
+        ['label' => 'DIARY',      'url' => 'https://old.baddaywithacamera.ca/category/diary/'],
+        ['label' => 'CATEGORIES', 'url' => $base . 'archive.php'],
+        ['label' => 'ALBUMS',     'url' => $base . 'albums.php'],
+        ['label' => 'IMAGES',     'url' => $base . '?view=archive'],
     ];
 }
 ?>
@@ -172,6 +173,14 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
 <?php else: ?>
     <h1 class="blog-title"><a href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars($site_display_name); ?></a></h1>
 <?php endif; ?>
+<nav class="tilez-icon-nav" aria-label="Quick navigation">
+    <a href="<?php echo BASE_URL; ?>" title="Home" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></a>
+    <a href="https://old.baddaywithacamera.ca/the-idea/" title="The Idea" aria-label="The Idea"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.1"/></svg></a>
+    <a href="https://old.baddaywithacamera.ca/category/diary/" title="Diary" aria-label="Diary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></a>
+    <a href="<?php echo BASE_URL; ?>archive.php" title="Categories" aria-label="Categories"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="18" r="1"/><path d="M9 6h10M9 12h10M9 18h10"/></svg></a>
+    <a href="<?php echo BASE_URL; ?>albums.php" title="Albums" aria-label="Albums"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h7l2 2h9v11H3z"/></svg></a>
+    <a href="<?php echo BASE_URL; ?>?view=archive" title="Images" aria-label="Images"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><circle cx="9" cy="10" r="2"/><path d="m5 18 5-5 3 3 2-2 4 4"/></svg></a>
+</nav>
 <?php $alfred_tagline = trim($settings['site_tagline'] ?? ''); if ($alfred_tagline !== '' && ($settings['show_tagline'] ?? '1') === '1'): ?>
     <p class="blog-description"><?php echo htmlspecialchars($alfred_tagline); ?></p>
 <?php endif; ?>

@@ -23,7 +23,11 @@ $assert(str_contains($style, '--ss-cols: 3'), 'desktop feed has three columns');
 $assert(str_contains($style, '.header-image { display: none !important; }'), 'legacy full-screen backdrop is disabled');
 $assert(str_contains($header, 'skins/tilez/assets/bad-day-masthead.png'), 'bundled masthead is the TILEZ fallback');
 $assert(str_contains($header, "['label' => 'THE IDEA'"), 'old site menu labels are preserved');
-$assert(str_contains($header, "['label' => 'THE IMAGES'"), 'old images menu label is preserved');
+$assert(str_contains($header, "['label' => 'CATEGORIES'"), 'categories menu label is present');
+$assert(str_contains($header, "['label' => 'ALBUMS'"), 'albums menu label is present');
+$assert(str_contains($header, "['label' => 'IMAGES'"), 'images menu label is present');
+$assert(str_contains($header, 'class="tilez-icon-nav"'), 'top-right icon navigation is present');
+$assert(str_contains($style, 'font-size: 20px;'), 'desktop text menu is doubled in size');
 $assert(is_file($root . '/skins/tilez/assets/bad-day-masthead.png'), 'bundled masthead exists');
 
 echo "PASS: TILEZ white columns portfolio\n";
