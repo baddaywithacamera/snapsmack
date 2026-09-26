@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.750D — 2026-09-26 — No shortcuts
+
+- INSTANT CAMERA's original fast, overlapping Organized Mayhem tabletop is delivered through the normal signed release and updater path. Ambient prints may grow beyond the interactive size cap so the background remains seamless without increasing the live site's 30-print loading budget.
+
 ## 0.7.749D — 2026-09-25 — Welcome back
 
 - Images no longer remain black after switching away from a browser tab and returning. The shared fade engine now reconciles completed images on tab visibility restore and browser page restore, covering loads Chrome completed while the page was suspended without delivering the original callback.
