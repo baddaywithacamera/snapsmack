@@ -2015,7 +2015,7 @@ p.comment-form-author { margin-right: 5%; }
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     grid-gap: 4px;
-    margin: 40px 0;
+    margin: 0 0 40px;
 }
 
 .alfred-archive-tile {
@@ -2171,6 +2171,7 @@ body.alfred-lb-open { overflow: hidden; }
     --tilez-muted: #777;
     --tilez-gap: 18px;
     --tilez-page: 1180px;
+    --tilez-content-start: 40px;
 }
 
 html, body { background: #fff; color: var(--tilez-ink); }
@@ -2249,7 +2250,7 @@ body.blog, body.single, body.archive { background: #fff; }
     top: auto;
     right: auto;
     width: min(var(--tilez-page), calc(100% - 48px));
-    margin: 0 auto 24px;
+    margin: 0 auto;
     background: transparent;
     border: 0;
 }
@@ -2263,7 +2264,10 @@ body.blog, body.single, body.archive { background: #fff; }
 }
 .nav-toggle .bar { background: var(--tilez-ink); }
 
-.content > .section-inner { width: min(var(--tilez-page), calc(100% - 48px)); }
+.content > .section-inner {
+    width: min(var(--tilez-page), calc(100% - 48px));
+    padding-top: var(--tilez-content-start);
+}
 
 /* Shared SS-COLUMNS geometry. Every cover keeps its native aspect; the engine
    places the next post in the shortest of three columns. */
@@ -2323,7 +2327,10 @@ body.blog, body.single, body.archive { background: #fff; }
     aspect-ratio: 3 / 2 !important;
     background: #f3f3f3;
 }
-.post-header { width: min(900px, calc(100% - 48px)); padding: 46px 0 38px; }
+.post-header {
+    width: min(900px, calc(100% - 48px));
+    padding: var(--tilez-content-start) 0 38px;
+}
 .post-inner {
     width: min(var(--tilez-page), calc(100% - 48px)) !important;
     max-width: none;
