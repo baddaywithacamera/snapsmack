@@ -157,6 +157,23 @@
    LAYOUT SHORTCODES
    ========================================================================= */
 
+/* A standalone SMACKTALK photograph should be visible as one composition.
+   The [img:] wrapper is separate from .snap-mosaic and .snap-mosaic-wall, so
+   MOSAIC keeps complete control of its own tile geometry. The wrapper retains
+   the author's requested width; the image scales proportionally without crop. */
+.post-content .snap-inline-frame .ip-ascii-frame-inner {
+    display: flex;
+    justify-content: center;
+}
+.post-content .snap-inline-frame img {
+    width: auto;
+    max-width: 100%;
+    max-height: 75vh;
+    height: auto;
+    margin-inline: auto;
+    object-fit: contain;
+}
+
 /* [card-grid] — N-column card grid */
 .snap-card-grid {
     display: grid;

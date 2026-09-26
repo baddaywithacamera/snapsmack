@@ -25,7 +25,7 @@ from datetime import datetime
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
-BUILD_VERSION = "0.7.51"
+BUILD_VERSION = "0.7.52"
 
 # Ã¢â€â‚¬Ã¢â€â‚¬ shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) Ã¢â€â‚¬Ã¢â€â‚¬
 def _add_shared_to_path():

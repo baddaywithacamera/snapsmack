@@ -317,7 +317,7 @@ class Engine:
         self.config.update(fields)
         return fields
 
-    def save_config(self, fields: dict) -> None:
+    def save_config(self, fields: dict):
         """Persist POST-tab fields through config.save (which also pushes shared
         secrets and preserves [ui] keys)."""
         self.config.update({
@@ -336,6 +336,9 @@ class Engine:
             'copyright_text': fields.get('copyright_text', self.config.get('copyright_text', '')),
         })
         cfg_module.save(self.config)
+        # SECAUDIT 054: the key is vault-sealed or not written. If the vault
+        # could not seal it, say so — the key works this session only.
+        return self.config.get('vault_warning') or None
 
     # ────────────────────────────────────────────────────────────────────────
     # CONNECT
@@ -853,19 +856,13 @@ class Engine:
         if not creds_path or not os.path.isfile(creds_path):
             raise RuntimeError("Pick a valid Google credentials .json first.")
         d = _drive()
-        self.drive_service = None
 
         def _target(op: Op):
             # NOTE(port): first-run Drive auth opens a browser tab for OAuth consent
             # (drive.authenticate → run_local_server); after that token.json is silent.
             service = d.authenticate(creds_path)
-            # Building a service object only proves that credentials could be
-            # loaded. Make a real Drive request so "Connected" means Google
-            # accepted the token and the API is reachable.
-            account = service.about().get(fields='user(displayName,emailAddress)').execute().get('user', {})
             self.drive_service = service
-            identity = account.get('emailAddress') or account.get('displayName') or 'Google Drive'
-            op.result = {'connected': True, 'identity': identity}
+            op.result = {'connected': True}
         return self.start_op('drive_auth', _target)
 
     def drive_status(self) -> dict:
@@ -1310,13 +1307,18 @@ class Engine:
         prompt = str(p.get('prompt', '') or '')
         portable = dict(p.get('portable') or {})
         presets = portable.get('prompt_presets')
-        if not isinstance(presets, dict): presets = {}
-        presets = {str(k).strip(): str(v or '') for k, v in presets.items() if str(k).strip()}
-        if not presets: presets = {'Default': prompt}
+        if not isinstance(presets, dict):
+            presets = {}
+        presets = {str(k).strip(): str(v or '') for k, v in presets.items()
+                   if str(k).strip()}
+        if not presets:
+            presets = {'Default': prompt}
         default_preset = str(portable.get('default_prompt_preset', '') or '').strip()
-        if default_preset not in presets: default_preset = next(iter(presets))
+        if default_preset not in presets:
+            default_preset = next(iter(presets))
         selected_preset = str(portable.get('last_prompt_preset', '') or '').strip()
-        if selected_preset not in presets: selected_preset = default_preset
+        if selected_preset not in presets:
+            selected_preset = default_preset
         prompt = presets[selected_preset]
         return {
             'url': p.get('url', ''),
@@ -1337,34 +1339,48 @@ class Engine:
         }
 
     def profile_select_prompt(self, name: str, preset_name: str) -> dict:
+        """Remember the selected named enrichment prompt for one site."""
         profile = profile_manager.load_profile(name) or {}
-        if not profile: raise RuntimeError("Select a site before choosing its prompt.")
+        if not profile:
+            raise RuntimeError("Select a site before choosing its prompt.")
         portable = dict(profile.get('portable') or {})
         presets = portable.get('prompt_presets')
-        if not isinstance(presets, dict) or not presets: presets = {'Default': str(profile.get('prompt', '') or '')}
+        if not isinstance(presets, dict) or not presets:
+            presets = {'Default': str(profile.get('prompt', '') or '')}
         preset_name = str(preset_name or '').strip()
-        if preset_name not in presets: raise RuntimeError("That prompt preset no longer exists.")
+        if preset_name not in presets:
+            raise RuntimeError("That prompt preset no longer exists.")
         prompt = str(presets[preset_name] or '')
         portable['prompt_presets'] = presets
-        if portable.get('default_prompt_preset') not in presets: portable['default_prompt_preset'] = preset_name
-        portable['last_prompt_preset'] = preset_name; portable['prompt'] = prompt
-        profile['portable'] = portable; profile['prompt'] = prompt; profile_manager.save_profile(profile)
+        if portable.get('default_prompt_preset') not in presets:
+            portable['default_prompt_preset'] = preset_name
+        portable['last_prompt_preset'] = preset_name
+        portable['prompt'] = prompt
+        profile['portable'] = portable
+        profile['prompt'] = prompt
+        profile_manager.save_profile(profile)
         return {'name': name, 'prompt': prompt, 'selected_prompt_preset': preset_name,
-                'default_prompt_preset': portable['default_prompt_preset'], 'prompt_presets': presets}
+                'default_prompt_preset': portable['default_prompt_preset'],
+                'prompt_presets': presets}
 
-    def profile_save_prompt(self, name: str, text: str, preset_name: str = 'Default', make_default: bool = False) -> dict:
+    def profile_save_prompt(self, name: str, text: str, preset_name: str = 'Default',
+                            make_default: bool = False) -> dict:
         """Save or update a named prompt in the selected shared SNAP HQ profile."""
         profile = profile_manager.load_profile(name) or {}
         if not profile:
             raise RuntimeError("Select a site before saving its prompt.")
         prompt = str(text or '').strip()
         preset_name = str(preset_name or '').strip()
-        if not preset_name: raise RuntimeError("Give the prompt preset a name.")
+        if not preset_name:
+            raise RuntimeError("Give the prompt preset a name.")
         portable = dict(profile.get('portable') or {})
         presets = portable.get('prompt_presets')
-        if not isinstance(presets, dict) or not presets: presets = {'Default': str(profile.get('prompt', '') or '')}
-        presets[preset_name] = prompt; portable['prompt_presets'] = presets
-        if make_default or portable.get('default_prompt_preset') not in presets: portable['default_prompt_preset'] = preset_name
+        if not isinstance(presets, dict) or not presets:
+            presets = {'Default': str(profile.get('prompt', '') or '')}
+        presets[preset_name] = prompt
+        portable['prompt_presets'] = presets
+        if make_default or portable.get('default_prompt_preset') not in presets:
+            portable['default_prompt_preset'] = preset_name
         portable['last_prompt_preset'] = preset_name
         portable['prompt'] = prompt
         profile['portable'] = portable
@@ -1380,25 +1396,39 @@ class Engine:
             snap_prompts.save(prompts)
         except Exception:
             pass
-        return {'saved': True, 'name': name, 'prompt': prompt, 'prompt_presets': presets,
-                'selected_prompt_preset': preset_name, 'default_prompt_preset': portable['default_prompt_preset']}
+        return {'saved': True, 'name': name, 'prompt': prompt,
+                'prompt_presets': presets,
+                'selected_prompt_preset': preset_name,
+                'default_prompt_preset': portable['default_prompt_preset']}
 
     def profile_delete_prompt(self, name: str, preset_name: str) -> dict:
+        """Delete a named prompt while always leaving the site with one choice."""
         profile = profile_manager.load_profile(name) or {}
-        if not profile: raise RuntimeError("Select a site before deleting its prompt.")
-        portable = dict(profile.get('portable') or {}); presets = portable.get('prompt_presets')
-        if not isinstance(presets, dict) or not presets: presets = {'Default': str(profile.get('prompt', '') or '')}
+        if not profile:
+            raise RuntimeError("Select a site before deleting its prompt.")
+        portable = dict(profile.get('portable') or {})
+        presets = portable.get('prompt_presets')
+        if not isinstance(presets, dict) or not presets:
+            presets = {'Default': str(profile.get('prompt', '') or '')}
         preset_name = str(preset_name or '').strip()
-        if preset_name not in presets: raise RuntimeError("That prompt preset no longer exists.")
-        if len(presets) == 1: raise RuntimeError("A site must keep at least one prompt preset.")
+        if preset_name not in presets:
+            raise RuntimeError("That prompt preset no longer exists.")
+        if len(presets) == 1:
+            raise RuntimeError("A site must keep at least one prompt preset.")
         del presets[preset_name]
         selected = portable.get('default_prompt_preset')
-        if selected not in presets: selected = next(iter(presets))
-        portable.update({'prompt_presets': presets, 'default_prompt_preset': selected,
-                         'last_prompt_preset': selected, 'prompt': str(presets[selected] or '')})
-        profile['portable'] = portable; profile['prompt'] = portable['prompt']; profile_manager.save_profile(profile)
-        return {'saved': True, 'name': name, 'prompt': portable['prompt'], 'prompt_presets': presets,
-                'selected_prompt_preset': selected, 'default_prompt_preset': selected}
+        if selected not in presets:
+            selected = next(iter(presets))
+        portable['prompt_presets'] = presets
+        portable['default_prompt_preset'] = selected
+        portable['last_prompt_preset'] = selected
+        portable['prompt'] = str(presets[selected] or '')
+        profile['portable'] = portable
+        profile['prompt'] = portable['prompt']
+        profile_manager.save_profile(profile)
+        return {'saved': True, 'name': name, 'prompt': portable['prompt'],
+                'prompt_presets': presets, 'selected_prompt_preset': selected,
+                'default_prompt_preset': selected}
 
     def sp_test(self, url: str, api_key: str, ack_insecure: bool = False) -> dict:
         url = (url or '').strip()
