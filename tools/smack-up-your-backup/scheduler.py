@@ -93,47 +93,48 @@ class BackupScheduler:
                 pass
 
     @staticmethod
+    def _latest_occurrence(profile: dict, now: datetime) -> Optional[datetime]:
+        """The most recent scheduled time at or before `now`, or None if the
+        schedule can't be read."""
+        try:
+            h, m = map(int, str(profile.get("schedule_time", "02:00")).split(":"))
+            slot = now.replace(hour=h, minute=m, second=0, microsecond=0)
+        except Exception:
+            return None
+        if profile.get("schedule_type", "daily") == "weekly":
+            try:
+                target = DAYS.index(str(profile.get("schedule_day", "monday")).lower())
+            except ValueError:
+                return None
+            slot -= timedelta(days=(now.weekday() - target) % 7)
+            if slot > now:
+                slot -= timedelta(days=7)
+        elif slot > now:
+            slot -= timedelta(days=1)
+        return slot
+
+    @staticmethod
     def _is_due(profile: dict, now: datetime) -> bool:
+        """Due when the latest scheduled time has passed and no scheduled run
+        has started since it.
+
+        This used to require the clock's minute to EQUAL schedule_time. The
+        60-second wait drifts, so a tick could skip that minute, and a PC that
+        was asleep or had SUYB closed at that minute simply lost the backup —
+        silently. Now a missed run starts at the next check instead.
+        """
         if not profile.get("schedule_enabled"):
             return False
-
-        # Parse scheduled time
-        schedule_time = profile.get("schedule_time", "02:00")
-        try:
-            h, m = map(int, schedule_time.split(":"))
-        except Exception:
+        slot = BackupScheduler._latest_occurrence(profile, now)
+        if slot is None:
             return False
-
-        # Must be the right minute
-        if now.hour != h or now.minute != m:
-            return False
-
-        schedule_type = profile.get("schedule_type", "daily")
-
-        # Weekly: must be the right day of the week
-        if schedule_type == "weekly":
-            day_name = profile.get("schedule_day", "monday").lower()
-            try:
-                target_weekday = DAYS.index(day_name)
-            except ValueError:
-                return False
-            if now.weekday() != target_weekday:
-                return False
-
-        # Deduplication: don't run twice in the same window
         last_run = profile.get("last_scheduled_run", "")
         if last_run:
             try:
-                last_dt = datetime.fromisoformat(last_run)
-                if schedule_type == "daily":
-                    if last_dt.date() == now.date():
-                        return False
-                elif schedule_type == "weekly":
-                    if (now.date() - last_dt.date()).days < 6:
-                        return False
+                if datetime.fromisoformat(last_run) >= slot:
+                    return False
             except Exception:
                 pass
-
         return True
 
     @staticmethod

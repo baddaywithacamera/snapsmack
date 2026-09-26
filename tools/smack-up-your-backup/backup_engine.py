@@ -519,6 +519,19 @@ def needs_download(record: manifest_reader.FileRecord, state: dict) -> bool:
 # Main backup engine
 # ---------------------------------------------------------------------------
 
+_SECRET_FIELD_PARTS = ("pass", "key", "secret", "token")
+
+
+def settings_bundle_profile(profile: dict) -> dict:
+    """The profile as written into suyb-settings.json: every secret removed.
+
+    Drops ftp_pass, snap_admin_pass, api_key, their *_enc sealed forms, and any
+    future field whose name says pass/key/secret/token. Values are never read.
+    """
+    return {k: v for k, v in profile.items()
+            if not any(part in str(k).lower() for part in _SECRET_FIELD_PARTS)}
+
+
 class BackupEngine:
     def __init__(
         self,
@@ -1160,10 +1173,13 @@ class BackupEngine:
                             zf.write(full, os.path.join("exit", os.path.relpath(full, exit_dir)))
                 # Optionally include SUYB settings (profile + global config)
                 if self.include_settings:
+                    # No secret ever rides in the package. This used to drop only
+                    # the two passwords, so the site's backup key (api_key) went
+                    # into every zip — including the nightly headless runs and
+                    # the copy pushed to the cloud. Nothing reads this file back.
                     settings_bundle = {
                         "export_version": 1,
-                        "profile":        {k: v for k, v in self.profile.items()
-                                           if k not in ("ftp_pass", "snap_admin_pass")},
+                        "profile":        settings_bundle_profile(self.profile),
                         "global_config":  self.global_config,
                     }
                     zf.writestr("suyb-settings.json", json.dumps(settings_bundle, indent=2))

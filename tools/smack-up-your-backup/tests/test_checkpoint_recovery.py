@@ -87,7 +87,7 @@ def test_qt_background_backup_has_a_real_tray_contract():
     assert 'QApplication.instance().quit()' in source
     assert 'QKeySequence.HelpContents' in source
     assert 'HELP · F1' in source
-    assert 'Pause, close, and resume' in source
+    assert 'Pause, cancel, close, and resume' in source
 
 if __name__ == "__main__":
     test_resume_does_not_require_final_kit()

@@ -19,6 +19,66 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.47 — 2026-09-25
+
+The Qt window (0.7.4x) shipped with 4 pages; the Tk window it replaced had 9 tabs
+plus site dialogs. Everything it dropped is back, in Qt, on the same engines.
+
+### Restored — pages
+
+- **Manage** — the backups in your cloud and Backblaze buckets: search, sort, date
+  filters, tick boxes, download, delete (confirmed with the count and names), and
+  hand a backup to Restore.
+- **Audit** — audit against the recovery kit, coverage check, clean up duplicate
+  copies (confirmed), save the report as .txt or .html.
+- **Schedule** — per-site automatic times, Run now, last and next run.
+- **Cloud Sync** — copy between clouds (Google Drive → Backblaze B2): jobs,
+  run / cancel, progress, the abort-or-continue question, Audit & Cleanup, and the
+  saved-credentials library.
+- **SLAP HAPPY** — back up SNAP SLAPPER's settings, catalog, photographs and projects.
+- **Settings** — admin sign-in, backup method, FTP/FTPS/SFTP, the site's cloud,
+  global cloud + Authenticate with Google, pacing, automatic daily backup,
+  minimize to tray, launch at startup, credential encryption (enable / change
+  passphrase / disable), AI matching, Discover from Hub, export / import.
+
+### Restored — window
+
+- **Adding a site.** The Qt window said "add a site first" with no way to do it.
+  Connection → + Add site / Edit all details… / Duplicate / Delete site…; the setup
+  wizard runs on first launch; Discover from Hub is back.
+- **Encrypted credentials unlock at start.** With encryption on, the Qt window never
+  asked for the passphrase, so every password and key read as blank (and saving a
+  site could write the blanks back). It also never rolled back an interrupted
+  re-key. Both now happen before any site is read, as in Tk.
+- **CANCEL** for a backup (and every site still queued) and for a restore.
+- **Include SUYB settings** on the Overview (on by default, as in Tk).
+- **Abort or continue?** When too many files fail, the backup asks again. The Qt
+  window gave the engine no way to ask, so it silently aborted.
+- **Checks before a run**: a site with no working folder is skipped with a
+  warning; a cloud that is not set up asks before falling back to local-only.
+- **Restore** from the cloud (Browse cloud…) and from a recovery kit + media
+  folder, with its own progress and log on the Restore page.
+- **Choose sites…** has Select all (the old BACKUP ALL BLOGS).
+- **Minimize to tray instead of closing** is honoured again.
+- The last selected site is remembered between launches again.
+
+### Fixed
+
+- **Your backup key was written into every backup zip.** suyb-settings.json
+  dropped only the two passwords, so the site's backup key rode along in plain
+  text — including every nightly automatic backup and the copy sent to the cloud.
+  Every password, key, secret and token is now left out. Nothing reads that file
+  back, so nothing else changes.
+- **Scheduled backups could silently not happen.** The check fired only if the
+  clock read the exact scheduled minute; a drifting timer, a sleeping PC or SUYB
+  being closed lost that backup with no message. A missed scheduled backup now
+  starts at the next check, and waits if another backup is running. A schedule
+  that has never run starts at its next time, not immediately.
+- **Last automatic run always said Never** — nothing recorded it. It is recorded now.
+- **Backblaze listings stopped at 10,000 files.** Manage showed part of a big
+  bucket and Cloud Sync treated the rest as missing. Every page is read now.
+- The site-dialog backup key and hub key fields hide what is typed.
+
 ## 0.7.45 — 2026-09-21
 
 - **A changed FTPS certificate has a complete desktop workflow.** Backup and
