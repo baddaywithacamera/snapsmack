@@ -38,6 +38,10 @@ $expect(
         && substr_count($mayhem, 'build();') >= 2,
     'ambient Mayhem must use the original clustered tabletop builder, not a coverage grid'
 );
+$expect(
+    hash('sha256', $mayhem) === '33695076c3b19f1e1e19f74fdc7e522f0ad9e62033014e80b87d2cdbc8042cd6',
+    'Organized Mayhem must remain byte-for-byte identical to the last known-good pre-coverage engine'
+);
 
 if ($failures) {
     fwrite(STDERR, "INSTANT CAMERA feed budget regression failed:\n - " . implode("\n - ", $failures) . "\n");

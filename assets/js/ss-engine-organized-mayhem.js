@@ -257,14 +257,11 @@
             var a = document.createElement('a');
             a.className = 'om-card';
             a.href = card.url;
-            // HARD RULE: prints stay WHOLE. Only a 2D translate + rotate — no
-            // rotateX/rotateY 3D warp. The warp foreshortened each rectangle into
-            // a wedge, and overlapping wedges read as sliced/merged images. Flat
-            // rotated rectangles overlap cleanly, layered by z-index, never merge.
             a.style.cssText = 'position:absolute;left:0;top:0;display:block;width:' +
                 card.w.toFixed(0) + 'px;z-index:' + card.z + ';will-change:transform;text-decoration:none;' +
                 'transform:translate3d(' + card.x.toFixed(1) + 'px,' + card.y.toFixed(1) + 'px,0) rotate(' +
-                card.rot.toFixed(2) + 'deg);';
+                card.rot.toFixed(2) + 'deg)' + (budget.warp ? ' rotateX(' + card.warpX.toFixed(1) +
+                'deg) rotateY(' + card.warpY.toFixed(1) + 'deg)' : '') + ';';
 
             var img = document.createElement('img');
             img.src = card.src; img.alt = card.title;
@@ -571,13 +568,9 @@
         s.id = 'om-keyframes';
         s.textContent =
             '@keyframes om-flip{0%{transform:rotate(0)}50%{transform:rotate(180deg)}100%{transform:rotate(360deg)}}' +
-            // Full cycle that STARTS and ENDS at the print's resting angle (0deg)
-            // so a staggered-delay wobble never snaps into place on first run.
-            '@keyframes om-wobble{0%{transform:rotate(0deg)}25%{transform:rotate(-0.6deg)}50%{transform:rotate(0deg)}75%{transform:rotate(0.6deg)}100%{transform:rotate(0deg)}}' +
-            // No preserve-3d / perspective: the tabletop is a flat 2D stack of
-            // whole prints layered by z-index. 3D context is what let the warp
-            // slice them.
-            '.om-alive .om-img{animation:om-wobble var(--om-w,9s) ease-in-out var(--om-d,0s) infinite}' +
+            '@keyframes om-wobble{from{transform:rotate(-0.6deg)}to{transform:rotate(0.6deg)}}' +
+            '.om-world{transform-style:preserve-3d}.om-card{perspective:900px}' +
+            '.om-alive .om-img{animation:om-wobble var(--om-w,9s) ease-in-out var(--om-d,0s) infinite alternate}' +
             '@media (prefers-reduced-motion: reduce){.om-alive .om-img{animation:none}}';
         document.head.appendChild(s);
     }
