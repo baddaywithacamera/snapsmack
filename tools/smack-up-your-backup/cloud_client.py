@@ -871,19 +871,33 @@ class B2Client:
         import requests
         auth   = self._auth()
         prefix = (self.folder + "/") if self.folder else ""
-        resp   = requests.post(
-            f"{auth['apiUrl']}/b2api/v2/b2_list_file_names",
-            headers={"Authorization": auth["authorizationToken"]},
-            json={
+        # b2_list_file_names returns at most 10,000 names per call. This used to
+        # make ONE call, so a bucket over 10,000 files was silently cut short:
+        # Manage showed a partial list and Cloud Sync treated the rest as missing.
+        # Follow nextFileName until B2 says there is no more.
+        files, start = [], None
+        while True:
+            body = {
                 "bucketId":     self._bucket_id(),
                 "prefix":       prefix,
                 "maxFileCount": 10000,
-            },
-            timeout=30,
-        )
-        resp.raise_for_status()
+            }
+            if start:
+                body["startFileName"] = start
+            resp = requests.post(
+                f"{auth['apiUrl']}/b2api/v2/b2_list_file_names",
+                headers={"Authorization": auth["authorizationToken"]},
+                json=body,
+                timeout=30,
+            )
+            resp.raise_for_status()
+            page = resp.json()
+            files.extend(page.get("files", []))
+            start = page.get("nextFileName")
+            if not start:
+                break
         result = []
-        for f in resp.json().get("files", []):
+        for f in files:
             name = f["fileName"]
             if prefix and name.startswith(prefix):
                 name = name[len(prefix):]
