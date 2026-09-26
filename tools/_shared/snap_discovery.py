@@ -36,6 +36,31 @@ import snap_profiles
 import snap_native_creds
 
 try:
+    import snap_site_scope   # X-Snap-Site header (mutual-auth A1, SECAUDIT 054)
+except Exception:  # noqa: BLE001
+    # tools/_shared may not be on sys.path yet at this point in the file (each
+    # tool adds it at a different spot). Find it from here; frozen exes bundle
+    # it next to the entry script.
+    import os as _sso, sys as _sss
+    _d = _sso.path.dirname(_sso.path.abspath(__file__))
+    for _up in range(4):
+        _cand = _sso.path.join(_d, "_shared")
+        if _sso.path.isdir(_cand):
+            if _cand not in _sss.path:
+                _sss.path.insert(0, _cand)
+            break
+        _d = _sso.path.dirname(_d)
+    try:
+        import snap_site_scope
+    except Exception:  # noqa: BLE001
+        snap_site_scope = None
+
+
+def _site_scope(site_url):
+    return snap_site_scope.header(site_url) if snap_site_scope else {}
+
+
+try:
     from snap_stepup import insecure_transport_reason
 except Exception:
     def insecure_transport_reason(base_url: str) -> str:
@@ -51,6 +76,49 @@ except Exception:
 
 class DiscoveryError(Exception):
     pass
+
+
+def node_url_reason(site_url) -> str:
+    """SECAUDIT 054 F2 — structural validation of a hub-supplied node URL.
+
+    The hub's node list is the ONLY thing that decides where the hub's
+    provisioning-capable key gets POSTed. A tampered hub (or a MITM'd reply)
+    can inject a node. Transport is already refused by insecure_transport_reason;
+    this refuses the rest: anything that is not a plain https origin, carries
+    user:pass@, points at a private / loopback / link-local literal IP, or has
+    a query/fragment. '' = acceptable; otherwise a plain sentence.
+
+    Whether a node may live on a DIFFERENT registrable domain than the hub is
+    a federation-trust policy call (three-way, Sean present) — deliberately
+    not decided here.
+    """
+    import ipaddress
+    from urllib.parse import urlsplit
+    u = str(site_url or "").strip()
+    if not u:
+        return "Node has no site URL."
+    try:
+        parts = urlsplit(u)
+    except Exception:
+        return "Node URL is malformed."
+    if parts.scheme.lower() != "https":
+        return "Node URL is not https://."
+    if not parts.hostname:
+        return "Node URL has no host."
+    if parts.username or parts.password:
+        return "Node URL carries credentials."
+    if parts.query or parts.fragment:
+        return "Node URL carries a query or fragment."
+    if "\\" in u or any(ord(c) < 32 or ord(c) == 127 for c in u):
+        return "Node URL contains control characters."
+    try:
+        ip = ipaddress.ip_address(parts.hostname)
+    except ValueError:
+        ip = None
+    if ip is not None and (ip.is_private or ip.is_loopback or ip.is_link_local
+                           or ip.is_unspecified or ip.is_multicast or ip.is_reserved):
+        return "Node URL points at a private or local address."
+    return ""
 
 
 def _session(hub_url, api_key="", admin_user="", admin_pass="", timeout=30,
@@ -109,7 +177,19 @@ def discover(hub_url, api_key="", admin_user="", admin_pass="", timeout=30):
         "backup_status": data.get("backup_status", {}) or {},
     }
     nodes = (data.get("multisite", {}) or {}).get("nodes", []) or []
-    spokes = [n for n in nodes if n.get("role") == "spoke"]
+    spokes = []
+    for n in nodes:
+        if n.get("role") != "spoke":
+            continue
+        # SECAUDIT 054 F2 — a node that fails structural validation never becomes
+        # a profile and never receives the hub key. Dropped, not "fixed up".
+        reason = node_url_reason(n.get("site_url") or n.get("url") or "")
+        if reason:
+            n = dict(n)
+            n["_rejected"] = reason
+            hub_info.setdefault("rejected_nodes", []).append(n)
+            continue
+        spokes.append(n)
     return hub_info, spokes
 
 
@@ -176,7 +256,8 @@ def _provision_spoke_key(site_url, api_key_local, key_type="sybu", key_value="",
             params={"route": "multisite/provision-key"},
             json=body,
             headers={"Authorization": "Bearer " + api_key_local.strip(),
-                     "User-Agent": "SnapSmackHub/1.0"},
+                     "User-Agent": "SnapSmackHub/1.0",
+                     **_site_scope(site_url)},
             timeout=timeout,
         )
         if r.status_code == 200:
@@ -189,18 +270,24 @@ def _provision_spoke_key(site_url, api_key_local, key_type="sybu", key_value="",
 
 
 def _provision_hub_tool_key(site_url, hub_api_key, key_type, timeout=20):
-    """Mint a per-tool key on the HUB itself.
-
-    Referenced by save_to_shared since 705D but never defined — so DISCOVER FLEET
-    died with NameError on the hub's own row before a single profile was written,
-    and no profile ever received the full fleet key (CRONOMETER 401 on all 25
-    sites, 2026-09-14). The hub has no self-referential multisite node, so the
-    spoke-only multisite/provision-key route 401s for it, and there is no
-    hub-local tool-key route yet (only suyb-data.php's backup-key action). Until
-    one exists this returns "" — the hub's profile keeps the hub key itself as
-    its credential (extras.api_key_local, set by the caller) — and discovery
-    carries on to the spokes instead of crashing.
-    """
+    """Mint a scoped tool key on the hub using its discovery credential."""
+    if not (site_url and hub_api_key) or insecure_transport_reason(site_url):
+        return ""
+    try:
+        r = requests.post(
+            site_url.rstrip("/") + "/suyb-data.php",
+            json={"action": "provision-tool-key", "key_type": key_type},
+            headers={"Authorization": "Bearer " + hub_api_key.strip(),
+                     "User-Agent": "SnapSmackHub/1.0", **_site_scope(site_url)},
+            timeout=timeout,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            key = str(data.get("api_key") or "").strip()
+            if data.get("ok") and data.get("key_type") == key_type and re.fullmatch(r"[a-f0-9]{64}", key):
+                return key
+    except (requests.RequestException, ValueError, KeyError):
+        pass
     return ""
 
 
@@ -223,7 +310,8 @@ def _provision_hub_backup_key(site_url, hub_api_key, key_value, timeout=20):
             json={"action": "provision-backup-key",
                   "key_value": key_value.strip().lower()},
             headers={"Authorization": "Bearer " + hub_api_key.strip(),
-                     "User-Agent": "SnapSmackHub/1.0"},
+                     "User-Agent": "SnapSmackHub/1.0",
+                     **_site_scope(site_url)},
             timeout=timeout,
         )
         if r.status_code == 200 and r.json().get("ok"):
@@ -243,9 +331,15 @@ def save_to_shared(hub_info, spokes, hub_api_key="") -> dict:
     hub_node = {"site_url": hub_info.get("site_url", ""),
                 "site_name": hub_info.get("site_name", "")}
     for node in [hub_node] + list(spokes):
-        prof = _profile_for(node, fallback_key=hub_api_key)
+        prof = _profile_for(node, fallback_key="")
         if not prof["site_url"]:
             continue
+        # A discovery failure must not overwrite a previously working SYBU key
+        # with the hub-only credential. Preserve the last scoped tool key.
+        previous = snap_profiles.load_by_site(prof["site_url"]) or {}
+        old_sybu = (previous.get("extras") or {}).get("api_key_sybu") or previous.get("api_key") or ""
+        if old_sybu and old_sybu != hub_api_key:
+            prof["api_key"] = old_sybu
         akl = (node.get("api_key_local") or "").strip()
         # The full node key (role='hub' on the spoke). Hub-role tools like SMACK
         # YOUR MOUTH authenticate with THIS, not the sybu posting key — so persist

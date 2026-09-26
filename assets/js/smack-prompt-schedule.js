@@ -23,6 +23,7 @@ window._smackPromptScheduleLoaded = true;
 
 function _smackPromptScheduleInit() {
     var promptEl = document.getElementById('pc_prompt');
+    var hashInput = document.getElementById('pc_hashtag');
     var hashEl   = document.getElementById('pc_hash_preview');
     var fridayEl = document.getElementById('pc_friday');
     var windowEl = document.getElementById('pc_window_start');
@@ -49,7 +50,10 @@ function _smackPromptScheduleInit() {
     function updateHash() {
         if (!hashEl) return;
         var tail = camel(promptEl.value);
-        hashEl.textContent = '#' + prefix + (tail || '…');   // … while empty
+        var generated = prefix + (tail || '');
+        if (hashInput && !hashInput.dataset.edited) hashInput.value = generated;
+        var exact = hashInput ? String(hashInput.value || '').replace(/^#+/, '') : generated;
+        hashEl.textContent = '#' + (exact || prefix + '…');
     }
 
     // PROMPT is primary. The boosting window opens EXACTLY one week after the
@@ -79,6 +83,11 @@ function _smackPromptScheduleInit() {
         }
     }
 
+    if (hashInput && hashInput.value) hashInput.dataset.edited = '1';
+    if (hashInput) hashInput.addEventListener('input', function () {
+        hashInput.dataset.edited = '1';
+        updateHash();
+    });
     if (promptEl) { promptEl.addEventListener('input', updateHash); updateHash(); }
     if (dropEl) {
         dropEl.addEventListener('change', syncFromPrompt);

@@ -29,6 +29,13 @@ if (isset($_GET['route'])) {
     }
 }
 
+// --- SITE SCOPE (mutual-auth A1, SECAUDIT 054) ---
+// Before any route runs: a Bearer WRITE that names a different site is refused.
+// Dark by default (snap_settings.api_site_scope = off); see core/api-site-scope.php.
+require_once __DIR__ . '/core/db.php';
+require_once __DIR__ . '/core/api-site-scope.php';
+snap_api_site_scope_check($pdo);
+
 // --- MULTISITE ROUTES ---
 // Route all /api/multisite/* requests to the multisite API handler
 if (strpos($route, 'multisite') === 0) {

@@ -34,6 +34,31 @@ from typing import List, Optional
 
 import requests
 
+try:
+    import snap_site_scope   # X-Snap-Site header (mutual-auth A1, SECAUDIT 054)
+except Exception:  # noqa: BLE001
+    # tools/_shared may not be on sys.path yet at this point in the file (each
+    # tool adds it at a different spot). Find it from here; frozen exes bundle
+    # it next to the entry script.
+    import os as _sso, sys as _sss
+    _d = _sso.path.dirname(_sso.path.abspath(__file__))
+    for _up in range(4):
+        _cand = _sso.path.join(_d, "_shared")
+        if _sso.path.isdir(_cand):
+            if _cand not in _sss.path:
+                _sss.path.insert(0, _cand)
+            break
+        _d = _sso.path.dirname(_d)
+    try:
+        import snap_site_scope
+    except Exception:  # noqa: BLE001
+        snap_site_scope = None
+
+
+def _site_scope(site_url):
+    return snap_site_scope.header(site_url) if snap_site_scope else {}
+
+
 # The intended route file on each spoke. A single endpoint with two actions keeps
 # it parallel to the existing smack-audit.php (action=list / action=update_title),
 # which is the pattern the spec says to copy.
@@ -81,13 +106,14 @@ class RescheduleResult:
 # helpers
 # ---------------------------------------------------------------------------
 
-def _headers(api_key: str) -> dict:
+def _headers(api_key: str, site_url: str = "") -> dict:
     return {
         "User-Agent": _UA,
         "X-Snap-Key": api_key,                 # core/api-auth.php form
         "Authorization": f"Bearer {api_key}",  # api.php route form
         "X-Requested-With": "XMLHttpRequest",
         "Accept": "application/json",
+        **_site_scope(site_url),
     }
 
 
@@ -149,7 +175,7 @@ def list_scheduled(site, lookahead_days: int = 60) -> ListResult:
     }
     try:
         resp = requests.get(_endpoint(site.url), params=params,
-                            headers=_headers(site.api_key), timeout=_TIMEOUT)
+                            headers=_headers(site.api_key, site.url), timeout=_TIMEOUT)
     except requests.RequestException as e:
         return ListResult(ApiStatus.ERROR, message=f"unreachable: {e}")
 
@@ -210,7 +236,7 @@ def reschedule(site, snap_id: int, new_dt: datetime.datetime) -> RescheduleResul
     form = {"action": "set_date", "snap_id": str(int(snap_id)), "img_date": fmt_dt(new_dt)}
     try:
         resp = requests.post(_endpoint(site.url), data=form,
-                             headers=_headers(site.api_key), timeout=_TIMEOUT)
+                             headers=_headers(site.api_key, site.url), timeout=_TIMEOUT)
     except requests.RequestException as e:
         return RescheduleResult(ApiStatus.ERROR, f"unreachable: {e}")
 

@@ -923,6 +923,13 @@ class ExportEngine:
         })
 
         self.archive.write_site(pre.get('settings_public') or {})
+        # OPAUDIT 019: the people attached to the site travel with the blog.
+        try:
+            self.progress('fediverse', 'Writing followers, following and blocks…', 0.94)
+            self.archive.write_fediverse(self.client.fediverse())
+        except Exception as e:   # noqa: BLE001 — never fail the blog export over this
+            self.warn(f'The fediverse export could not be written ({e}); '
+                      'followers / following / blocks are NOT in this archive.')
         self.archive.write_readme()
         self.archive.write_schema()
 

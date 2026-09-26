@@ -10,6 +10,11 @@ The pure helpers (search_url / parse_response / full_url_from_thumb) have no
 network and are unit-tested; ``search`` and ``download`` do the HTTP.
 """
 
+# SNAPSMACK_EOF_HEADER
+#     # ===== SNAPSMACK EOF =====
+# Last non-empty line of this file MUST match the line above.
+# Missing or different = truncated/corrupted. Restore before saving.
+
 import datetime
 import json
 import os
@@ -77,13 +82,19 @@ def resolve_profile(hint=DEFAULT_SITE_HINT):
                     key = (connection or {}).get("api_key", "")
                 if not key:
                     key = (profile.get("extras") or {}).get("api_key_gyss", "")
-                # The hub has no self-referential multisite node, so the
-                # spoke-only provision-key route can never mint a key for the
-                # hub itself. Discovery already stores the authenticated hub
-                # credential as api_key_local. Current servers accept that
-                # credential for this read-only published-photo catalogue.
-                if not key:
-                    key = (profile.get("extras") or {}).get("api_key_local", "")
+                # Discovery from an older HQ could save the site and its full
+                # hub credential without ever minting the least-privilege GYSS
+                # key. Repair that incomplete result once, in place. This does
+                # not broaden access: the already-authorized full key is the
+                # credential the site's provisioning route requires.
+                if not key and snap_discovery is not None:
+                    full_key = (profile.get("extras") or {}).get("api_key_local", "")
+                    if full_key:
+                        key = snap_discovery._provision_spoke_key(
+                            site_url, full_key, "gyss")
+                        if key:
+                            profile.setdefault("extras", {})["api_key_gyss"] = key
+                            snap_profiles.save(profile)
                 if not key:
                     key = profile.get("api_key", "")
                 return site_url, key
@@ -165,19 +176,40 @@ def provenance(texture):
 
 
 # --- Network ----------------------------------------------------------------
+class _RefuseRedirect(urllib.request.HTTPRedirectHandler):
+    """urllib follows redirects and re-sends every header, Authorization
+    included. A credentialed request must never do that (SECAUDIT 058 A)."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise ValueError("Found Textures API redirected — refused to follow "
+                         "with the site key")
+
+
+_NO_REDIRECT_OPENER = urllib.request.build_opener(_RefuseRedirect)
+
+
 def search(site_url, api_key, query="", category_id=None, page=1, per_page=40,
            rights="all", timeout=15):
     """Search the Found Textures site. Returns (textures, total)."""
     url = search_url(site_url, query, category_id, page, per_page, rights)
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    # SECAUDIT 058 A: this is the ONLY request that carries the key, so it
+    # must not be talked into handing it elsewhere. Plain http would put the
+    # key on the wire in the clear; a redirect would carry it to another host
+    # (urllib re-sends headers on redirect). Refuse both.
+    if api_key and urllib.parse.urlparse(url).scheme.lower() != "https":
+        raise ValueError("Found Textures refuses to send the site key over plain http")
     _log.info("Found Textures search: %s", url)
     if requests is not None:
-        response = requests.get(url, headers=headers, timeout=timeout)
+        response = requests.get(url, headers=headers, timeout=timeout,
+                                allow_redirects=False)
+        if 300 <= response.status_code < 400:
+            raise ValueError("Found Textures API redirected — refused to follow "
+                             "with the site key")
         response.raise_for_status()
         payload = response.json()
     else:
         request = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(request, timeout=timeout) as resp:
+        with _NO_REDIRECT_OPENER.open(request, timeout=timeout) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
     return parse_response(payload, site_url)
 
@@ -229,18 +261,30 @@ def search_catalog(site_url, api_key, query="", page=1, per_page=40,
 
 
 def fetch_bytes(url, api_key=None, timeout=20):
-    """GET public image bytes without disclosing a catalogue credential.
+    """GET a media URL (thumbnail / full image / high-res link) and return the
+    raw bytes.
 
-    Thumbnail and full-image URLs are supplied by catalogue records and can
-    point at a CDN or other host. They are public assets; the Hub key belongs
-    only on the catalogue request.
+    SECAUDIT 058 A: media fetches NEVER carry the site credential. Thumbnails
+    and full images are public files; the high-res link is usually a Google
+    Drive URL the texture owner typed in; a catalogue row may even hold an
+    absolute URL to another host. Until 0.7.724D every one of those requests
+    went out with `Authorization: Bearer <key>` — and the key could be the
+    site's full hub credential. The `api_key` parameter is kept so callers do
+    not break, but it is deliberately ignored here. Only `search()` (the
+    catalogue API on the configured site) may send the key.
+
+    Scheme is limited to http/https so a catalogue cannot point the client at
+    file:// or another urllib handler.
     """
-    headers = {}
+    del api_key  # never sent — see docstring
+    scheme = urllib.parse.urlparse(str(url or "")).scheme.lower()
+    if scheme not in ("http", "https"):
+        raise ValueError(f"Refusing non-web media URL: {url!r}")
     if requests is not None:
-        response = requests.get(url, headers=headers, timeout=timeout)
+        response = requests.get(url, timeout=timeout)
         response.raise_for_status()
         return response.content
-    request = urllib.request.Request(url, headers=headers)
+    request = urllib.request.Request(url)
     with urllib.request.urlopen(request, timeout=timeout) as resp:
         return resp.read()
 

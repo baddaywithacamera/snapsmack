@@ -40,8 +40,16 @@ FEDISTRUCTURE uses the same channels:
 7. Never create the plain and `D` tags together at the start of testing.
 8. Never push implementation work directly to `master`.
 
-The source constant uses the base version (`X.Y.Z`). Smack Central stamps
-`X.Y.ZD` into dev packages and manifests. Stable packages retain `X.Y.Z`.
+**On `dev`, EVERYTHING carries the `D`** — the source constant
+(`SNAPSMACK_VERSION` / `SNAPSMACK_VERSION_SHORT` = `X.Y.ZD`), the changelog
+heading, the tag, the package, the manifest. The plain `X.Y.Z` exists only
+after promotion to `master` (rule 6). Sean, 2026-09-19: "we are only working on
+dev branch right now, EVERYTHING is D." Do not strip the D from the constant
+on `dev` for any packaging reason; fix the packager instead. A Git tag alone
+does not mean it was packaged or installed. Check the published manifest and package before calling it shipped.
+The `tag-dev` helper rejects a skipped or reused number in the same version
+series. An unbuilt mistaken tag can be corrected under rule 4; a published tag
+must remain at its original commit.
 
 ## Commands
 
