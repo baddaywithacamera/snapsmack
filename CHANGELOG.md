@@ -14,6 +14,10 @@
 - Restores TILEZ's original post-title scale and normal-weight body rhythm.
 - Pairs consecutive standalone photographs on desktop while preserving a single-column mobile layout.
 - Keeps saved MOSAIC bundles edge-filled by relaxing aesthetic preferences before splitting, without exceeding hard image-size limits.
+- **Security (SECAUDIT 050-B): the five sensitive core files refuse a direct web request.** `updater.php`, `release-pubkey.php`, `skin-registry.php`, `manifest-inventory.php` and `auth-smack.php` now answer a direct request with 404 on any web server, and the Apache block list names the real files (it listed dead `login`/`auth` names and missed `auth-smack.php`). This fix was written on 2026-08-20 and announced as released in 0.7.544, but it sat on an unmerged branch and never shipped. A live check of every fleet site on 2026-09-26 found nothing exposed: the web-server block list refused the four files and `auth-smack.php` only redirected to the login page. The updater's self-repair of `release-pubkey.php` keeps the guard.
+- **Security (SECAUDIT 049): community login and email-link tokens are stored scrambled.** The database now keeps only a SHA-256 of each community session, email-verification and password-reset token, so a copied database row cannot be used to sign in. Community members sign in once more after this update, and links sent before it must be requested again.
+- **Fixed: community sign-in, email verification and password reset.** The session token was 128 characters written into a 64-character column, and verification and reset read a `used_at` column that did not exist. The scrambled token is exactly 64 characters, and the column is added.
+- **Post model: every way of publishing a photograph on a photoblog now makes a post.** FLKR FCKR imports, SMACKTHEMUP and hub posting (`multisite posts/create`) created bare photos with no post, left for Maintenance → CONVERT PHOTOS TO POSTS. They now make the post at birth, with the same code that button uses. Photoblogs only; GRAMOFSMACK and SMACKTALK are unchanged.
 
 ## 0.7.757D — 2026-09-26 — Last week
 
