@@ -16,7 +16,7 @@ import sys
 import traceback
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QThread, Signal
+from PySide6.QtCore import QObject, Qt, QThread, QSettings, QTimer, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout,
                                QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit,
@@ -559,6 +559,11 @@ class Window(QMainWindow):
         self.cfg = config.load()
         self.setWindowTitle(f"FED UP — fed up with your server  ·  {BUILD_VERSION}")
         self.resize(980, 760); self.setMinimumSize(780, 600)
+        self._window_settings = QSettings("SnapSmack", "FED UP")
+        geometry = self._window_settings.value("window/normal_geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+        self._restore_maximized = self._window_settings.value("window/maximized", False, type=bool)
         root = QWidget(); self.setCentralWidget(root)
         outer = QVBoxLayout(root); outer.setContentsMargins(0, 0, 0, 0); outer.setSpacing(0)
 
@@ -582,12 +587,19 @@ class Window(QMainWindow):
                       "writes to the folders you name, and posts to your site only when you press RESTORE.")
         foot.setObjectName("muted"); foot.setContentsMargins(22, 0, 22, 14); foot.setWordWrap(True)
         outer.addWidget(foot)
+        if self._restore_maximized:
+            QTimer.singleShot(0, self.showMaximized)
 
     def closeEvent(self, ev):
         if self.backup.job.busy() or self.restore.job.busy():
             if QMessageBox.question(self, "A job is running", "A backup or restore is still running. Close anyway?",
                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
                 ev.ignore(); return
+        if not self.isMinimized():
+            self._window_settings.setValue("window/maximized", self.isMaximized())
+            if not self.isMaximized():
+                self._window_settings.setValue("window/normal_geometry", self.saveGeometry())
+            self._window_settings.sync()
         ev.accept()
 
 

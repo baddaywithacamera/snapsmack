@@ -26,7 +26,8 @@ ACTION_GROUPS = (
      "Warms, cools, or neutralises the photograph before the stylistic colour work."),
     ("colour", "Control colour intensity", ("saturation", "vibrance"),
      "Saturation moves every colour together; vibrance concentrates more on quieter colours."),
-    ("presence", "Shape local detail", ("clarity", "texture", "dehaze", "sharpen",
+    ("presence", "Shape local detail", ("clarity", "texture", "dehaze",
+                                        "noise_luminance", "noise_colour", "sharpen",
                                         "sharpen_radius", "sharpen_reduce_noise", "sharpen_mode"),
      "Changes edge contrast and fine detail. This can add bite, reveal surface, or soften skin."),
     ("curve", "Draw the tone curve", ("curve",),
@@ -34,9 +35,9 @@ ACTION_GROUPS = (
     ("channel-curves", "Colour with channel curves", ("curve_red", "curve_green", "curve_blue"),
      "Moves the red, green, and blue channels independently to create colour casts and cross-processing."),
     ("colour-mix", "Mix individual colours", tuple(
-        f"col_{kind}_{colour}" for kind in ("sat", "lum")
+        f"col_{kind}_{colour}" for kind in ("hue", "sat", "lum")
         for colour in ("red", "orange", "yellow", "green", "aqua", "blue", "purple", "magenta")),
-     "Targets particular hues instead of pushing every colour in the photograph together."),
+     "Moves selected colours into new hues, or changes their intensity and brightness, without pushing every colour together."),
     ("black-white", "Build the monochrome response", ("black_white",) + tuple(
         f"bw_{colour}" for colour in
         ("red", "orange", "yellow", "green", "aqua", "blue", "purple", "magenta")),
@@ -127,6 +128,8 @@ def explain_action(action):
         "saturation": ("intensifies every colour", "restrains every colour", 100),
         "vibrance": ("brings up the quieter colours", "calms the quieter colours", 100),
         "texture": ("brings out fine surface detail", "smooths fine surface detail", 100),
+        "noise_luminance": ("reduces grain while protecting edges", "", 100),
+        "noise_colour": ("reduces coloured speckles while protecting edges", "", 100),
         "clarity": ("adds midtone bite", "softens midtone edges", 100),
         "dehaze": ("cuts through haze", "adds atmospheric haze", 100),
         "vignette": ("brightens the edges", "darkens the edges to hold attention inward", 100),

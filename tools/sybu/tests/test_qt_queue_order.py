@@ -101,7 +101,8 @@ def test_progress_strip_visible_from_every_page_and_posted_wording():
     w.engine.thumb = lambda i, n: ""
     w._fill_queue(data)
     assert w.table.item(0, 11).text() == "POSTED"
-    assert w.table.item(1, 11).text() == "posting…"
+    # Operation progress appears once in the bottom strip as Posting #/#.
+    assert w.table.item(1, 11).text() == ""
     assert w.table.item(2, 11).text() == "ERROR: 401"
 def test_scan_restores_saved_enrichment(monkeypatch):
     """A folder with a recovery file comes back enriched, without asking, without Gemini."""
@@ -152,5 +153,25 @@ def test_text_cells_edit_on_single_click():
     # file + status stay read-only
     assert not (w.table.item(0, 2).flags() & sybu_qt.Qt.ItemIsEditable)
     assert not (w.table.item(0, 11).flags() & sybu_qt.Qt.ItemIsEditable)
+
+
+def test_bulk_selection_does_not_rebuild_large_queue(monkeypatch):
+    """Select all/none must update in place; rebuilding thumbnails froze 120 rows."""
+    from PySide6.QtWidgets import QApplication
+    import sybu_qt
+    app = QApplication.instance() or QApplication([])
+    w = sybu_qt.Window()
+    rows = [{"selected": True, "status": "pending", "file": f"{i}.jpg",
+             "title": "", "caption": "", "alt": "", "tags": "",
+             "category": "", "album": "", "message": ""} for i in range(120)]
+    monkeypatch.setattr(w, "_load_thumbnails", lambda generation, count: None)
+    w._fill_queue({"rows": rows, "count": 120, "selected": 120, "failed": 0})
+    monkeypatch.setattr(w, "_fill_queue", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("queue rebuilt")))
+    selected = []
+    monkeypatch.setattr(w.engine, "set_all_selected", lambda on: selected.append(on))
+    w._select_all(False)
+    assert all(w.table.item(r, 0).checkState() == sybu_qt.Qt.Unchecked for r in range(120))
+    assert selected == [False]
+    assert w.queue_count.text() == "0 selected · 120 images"
 
 # ===== SNAPSMACK EOF =====

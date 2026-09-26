@@ -77,19 +77,13 @@ def resolve_profile(hint=DEFAULT_SITE_HINT):
                     key = (connection or {}).get("api_key", "")
                 if not key:
                     key = (profile.get("extras") or {}).get("api_key_gyss", "")
-                # Discovery from an older HQ could save the site and its full
-                # hub credential without ever minting the least-privilege GYSS
-                # key. Repair that incomplete result once, in place. This does
-                # not broaden access: the already-authorized full key is the
-                # credential the site's provisioning route requires.
-                if not key and snap_discovery is not None:
-                    full_key = (profile.get("extras") or {}).get("api_key_local", "")
-                    if full_key:
-                        key = snap_discovery._provision_spoke_key(
-                            site_url, full_key, "gyss")
-                        if key:
-                            profile.setdefault("extras", {})["api_key_gyss"] = key
-                            snap_profiles.save(profile)
+                # The hub has no self-referential multisite node, so the
+                # spoke-only provision-key route can never mint a key for the
+                # hub itself. Discovery already stores the authenticated hub
+                # credential as api_key_local. Current servers accept that
+                # credential for this read-only published-photo catalogue.
+                if not key:
+                    key = (profile.get("extras") or {}).get("api_key_local", "")
                 if not key:
                     key = profile.get("api_key", "")
                 return site_url, key
@@ -235,8 +229,13 @@ def search_catalog(site_url, api_key, query="", page=1, per_page=40,
 
 
 def fetch_bytes(url, api_key=None, timeout=20):
-    """GET a URL (with the Hub key) and return the raw bytes. For thumbnails."""
-    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    """GET public image bytes without disclosing a catalogue credential.
+
+    Thumbnail and full-image URLs are supplied by catalogue records and can
+    point at a CDN or other host. They are public assets; the Hub key belongs
+    only on the catalogue request.
+    """
+    headers = {}
     if requests is not None:
         response = requests.get(url, headers=headers, timeout=timeout)
         response.raise_for_status()

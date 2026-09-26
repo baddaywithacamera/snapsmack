@@ -7,7 +7,7 @@ import os
 import sys
 import threading
 
-from PySide6.QtCore import QObject, QPoint, QRect, QSize, Qt, QTimer, Signal
+from PySide6.QtCore import QObject, QPoint, QRect, QSize, Qt, QTimer, Signal, QSettings
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QLayout, QSpacerItem,
     QComboBox, QDialog, QFileDialog, QFrame, QHBoxLayout, QHeaderView, QLabel,
@@ -73,6 +73,7 @@ def card(title, subtitle=""):
 
 class Bridge(QObject):
     done = Signal(str, object, object)
+    thumb = Signal(int, int, object)
 
 
 class FitScrollArea(QScrollArea):
@@ -180,12 +181,36 @@ class QueueTable(QTableWidget):
 class Window(QMainWindow):
     def __init__(self):
         super().__init__(); self.engine = sybu_core.Engine(); self.bridge = Bridge(); self._gemini_manually_edited = False
-        self.bridge.done.connect(self._task_done); self.pending = {}; self.poll_seen = {}
+        self.bridge.done.connect(self._task_done); self.bridge.thumb.connect(self._thumb_ready)
+        self.pending = {}; self.poll_seen = {}; self._thumb_generation = 0
         self.setWindowTitle(f"SMACK YOUR BATCH UP — {BUILD_VERSION}")
         icon = os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(__file__)), "assets", "sybu-taskbar.ico")
         if os.path.isfile(icon): self.setWindowIcon(QIcon(icon))
-        self.resize(1420, 880); self.setMinimumSize(1040, 700); self._build(); self._apply_site_mode(''); self._load()
+        self.resize(1420, 880); self.setMinimumSize(1040, 700)
+        self._window_settings = QSettings("SnapSmack", "SMACK YOUR BATCH UP")
+        geometry = self._window_settings.value("window/normal_geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+        self._restore_maximized = self._window_settings.value("window/maximized", False, type=bool)
+        self._build(); self._apply_site_mode(''); self._load()
         self.timer = QTimer(self); self.timer.timeout.connect(self._poll); self.timer.start(250)
+        if self._restore_maximized:
+            QTimer.singleShot(0, self.showMaximized)
+
+    def closeEvent(self, event):
+        if not self.isMinimized():
+            self._window_settings.setValue("window/maximized", self.isMaximized())
+            if not self.isMaximized():
+                self._window_settings.setValue("window/normal_geometry", self.saveGeometry())
+            self._window_settings.sync()
+        # Closing the only visible window must end the process.  Relying on
+        # Qt's implicit last-window behaviour left a headless sybu.exe alive,
+        # which continued to own the single-instance mutex indefinitely.
+        self.timer.stop()
+        event.accept()
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
 
     def _build(self):
         root = QWidget(); shell = QHBoxLayout(root); shell.setContentsMargins(0,0,0,0); shell.setSpacing(0)
@@ -198,7 +223,8 @@ class Window(QMainWindow):
         self.nav[0].setChecked(True); sl.addStretch(1); sl.addWidget(label(f"BUILD {BUILD_VERSION}\nBatch posting without bullshit", "Muted")); shell.addWidget(side)
         main=QWidget(); ml=QVBoxLayout(main); ml.setContentsMargins(0,0,0,0); ml.setSpacing(0)
         head=QFrame(); head.setObjectName("Header"); hl=QHBoxLayout(head); hl.setContentsMargins(24,13,24,13)
-        hl.addWidget(label("SITE","Eyebrow")); self.profile=QComboBox(); self.profile.setMinimumWidth(300); self.profile.currentTextChanged.connect(self._profile); hl.addWidget(self.profile); hl.addStretch(1)
+        hl.addWidget(label("SITE","Eyebrow")); self.profile=QComboBox(); self.profile.setMinimumWidth(260); self.profile.currentTextChanged.connect(self._profile); hl.addWidget(self.profile)
+        hl.addSpacing(12); hl.addWidget(label("PROMPT","Eyebrow")); self.prompt_preset=QComboBox(); self.prompt_preset.setMinimumWidth(210); self.prompt_preset.currentTextChanged.connect(self._prompt_preset_changed); hl.addWidget(self.prompt_preset); hl.addStretch(1)
         self.status=label("● Ready to connect","Warn"); self.status.setWordWrap(False); hl.addWidget(self.status)
         self.connect_btn=QPushButton("Connect"); self.connect_btn.clicked.connect(self._connect); hl.addWidget(self.connect_btn)
         # Progress strip: under every page, so a post started from the queue is
@@ -222,7 +248,7 @@ class Window(QMainWindow):
         ai,al=card("2 · Enrich","Generate titles, tags, captions and alt text for selected images. Existing work is preserved.")
         r=QHBoxLayout(); self.prompt=QLineEdit(); self.prompt.setReadOnly(True); self.prompt.setPlaceholderText("Built-in enrichment prompt"); r.addWidget(self.prompt,1); review=QPushButton("REVIEW PROMPT…"); review.clicked.connect(self._review_prompt); r.addWidget(review); enrich=QPushButton("ENRICH SELECTED"); enrich.clicked.connect(self._enrich); r.addWidget(enrich); al.addLayout(r); l.addWidget(ai)
         send,pl=card("3 · Publish","SOLO posts individual photographs. GRAM creates carousel posts. The site mode is checked before anything is sent.")
-        r=QHBoxLayout(); self.drive=QCheckBox("Attach Google Drive originals"); r.addWidget(self.drive); r.addStretch(1); validate=QPushButton("Validate"); validate.clicked.connect(self._validate); r.addWidget(validate); self.post_btn=QPushButton("POST"); self.post_btn.setObjectName("Primary"); self.post_btn.clicked.connect(lambda:self._post(None)); r.addWidget(self.post_btn); self.post_solo=QPushButton("POST SOLO"); self.post_solo.clicked.connect(lambda:self._post(False)); r.addWidget(self.post_solo); self.post_gram=QPushButton("POST GRAM"); self.post_gram.clicked.connect(lambda:self._post(True)); r.addWidget(self.post_gram); pl.addLayout(r)
+        r=QHBoxLayout(); self.drive=QCheckBox("Attach Google Drive originals"); r.addWidget(self.drive); self.drive_status_publish=label("Drive: Not tested","Muted"); r.addWidget(self.drive_status_publish); r.addStretch(1); test_drive=QPushButton("TEST DRIVE"); test_drive.setToolTip("Connect to Google Drive and verify the saved credentials. No posting queue is required."); test_drive.clicked.connect(self._auth_drive); r.addWidget(test_drive); validate=QPushButton("CHECK QUEUE"); validate.setToolTip("Check the queued images and their posting fields before publishing."); validate.clicked.connect(self._validate); r.addWidget(validate); self.post_btn=QPushButton("POST"); self.post_btn.setObjectName("Primary"); self.post_btn.clicked.connect(lambda:self._post(None)); r.addWidget(self.post_btn); self.post_solo=QPushButton("POST SOLO"); self.post_solo.clicked.connect(lambda:self._post(False)); r.addWidget(self.post_solo); self.post_gram=QPushButton("POST GRAM"); self.post_gram.clicked.connect(lambda:self._post(True)); r.addWidget(self.post_gram); pl.addLayout(r)
         l.addWidget(send)
         act,aa=card("Activity"); self.activity_card=act; self.log=QTextEdit(); self.log.setReadOnly(True); self.log.setMinimumHeight(72); aa.addWidget(self.log); l.addWidget(act,1); return page
 
@@ -244,13 +270,23 @@ class Window(QMainWindow):
         for c in (3,4,5,6): self.table.setItemDelegateForColumn(c,self._words)
         self.table.setTextElideMode(Qt.ElideMiddle); self.table.setMinimumHeight(500); l.addWidget(self.table,1)
         self._row_fit=QTimer(self); self._row_fit.setSingleShot(True); self._row_fit.setInterval(60); self._row_fit.timeout.connect(self._fit_rows)
+        self._row_fit_batch=QTimer(self); self._row_fit_batch.setInterval(0); self._row_fit_batch.timeout.connect(self._fit_row_batch)
+        self._fit_row = 0
         self.table.horizontalHeader().sectionResized.connect(lambda *_: self._row_fit.start())
         return page
 
     def _fit_rows(self):
-        """Row height = wrapped text at the current column widths, never under the 118 px preview."""
-        self.table.resizeRowsToContents()
-        for r in range(self.table.rowCount()): self.table.setRowHeight(r,max(118,self.table.rowHeight(r)))
+        """Fit wrapped rows in small slices so a large queue never freezes Qt."""
+        self._fit_row = 0
+        if self.table.rowCount(): self._row_fit_batch.start()
+
+    def _fit_row_batch(self):
+        stop=min(self.table.rowCount(),self._fit_row+8)
+        for r in range(self._fit_row,stop):
+            self.table.resizeRowToContents(r)
+            self.table.setRowHeight(r,max(118,self.table.rowHeight(r)))
+        self._fit_row=stop
+        if self._fit_row>=self.table.rowCount(): self._row_fit_batch.stop()
 
     def _settings_page(self):
         page,l=self._page("Connection and services","Profiles come from SNAP HQ's shared library. Secrets stay in the protected shared store.")
@@ -259,6 +295,7 @@ class Window(QMainWindow):
         svc,vl=card("AI and Google Drive")
         self.gemini=QLineEdit(); self.gemini.setEchoMode(QLineEdit.Password); self.gemini.setPlaceholderText("Gemini API key"); self.gemini.textEdited.connect(lambda _text:setattr(self,'_gemini_manually_edited',True)); self.gcreds=QLineEdit(); self.gcreds.setPlaceholderText("Google credentials JSON"); self.drive_folder=QLineEdit(); self.drive_folder.setPlaceholderText("Google Drive folder ID"); vl.addWidget(self.gemini); vl.addWidget(self.gcreds); vl.addWidget(self.drive_folder)
         self.gemini_source=label("Gemini key source: SNAP HQ shared store", "Muted"); vl.addWidget(self.gemini_source)
+        self.drive_status_settings=label("Google Drive: Not tested", "Muted"); vl.addWidget(self.drive_status_settings)
         row=QHBoxLayout(); choose=QPushButton("Choose credentials"); choose.clicked.connect(self._choose_creds); row.addWidget(choose)
         drive_auth=QPushButton("Connect Drive"); drive_auth.clicked.connect(self._auth_drive); row.addWidget(drive_auth)
         gem_test=QPushButton("Test Gemini"); gem_test.clicked.connect(self._test_gemini); row.addWidget(gem_test)
@@ -279,7 +316,19 @@ class Window(QMainWindow):
 
     def _profile(self,name):
         if not name:return
-        p=self.engine.profile_apply_to_post(name); self.url.setText(p['url']); self.key.setText(p['api_key']); self.gemini.setText(p['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(p['google_credentials']); self.drive_folder.setText(p['drive_folder_id']); self.folder.setText(p['image_folder']); self.prompt.setText(p['prompt']); self.drive.setChecked(p['drive_enabled']); self._connect()
+        p=self.engine.profile_apply_to_post(name); self.url.setText(p['url']); self.key.setText(p['api_key']); self.gemini.setText(p['gemini_api_key']); self._gemini_manually_edited=False; self.gcreds.setText(p['google_credentials']); self.drive_folder.setText(p['drive_folder_id']); self.folder.setText(p['image_folder']); self._set_prompt_state(p); self.drive.setChecked(p['drive_enabled']); self._connect()
+
+    def _set_prompt_state(self,state):
+        presets=state.get('prompt_presets') or {'Default':state.get('prompt','')}
+        selected=state.get('selected_prompt_preset') or state.get('default_prompt_preset') or next(iter(presets))
+        self._prompt_default=state.get('default_prompt_preset') or next(iter(presets))
+        self.prompt_preset.blockSignals(True); self.prompt_preset.clear(); self.prompt_preset.addItems(list(presets.keys())); self.prompt_preset.setCurrentText(selected); self.prompt_preset.blockSignals(False)
+        self.prompt.setText(str(presets.get(selected,state.get('prompt','')) or ''))
+
+    def _prompt_preset_changed(self,name):
+        if not name or not self.profile.currentText():return
+        try:self._set_prompt_state(self.engine.profile_select_prompt(self.profile.currentText(),name))
+        except Exception as error:self._error(str(error))
 
     def _async(self,name,fn):
         self.pending[name]=True
@@ -329,30 +378,55 @@ class Window(QMainWindow):
         self._async("manifest" if self.manifest.text().strip() else "scan",fn)
 
     def _fill_queue(self,data=None):
-        data=data or self.engine.serialize_queue(); rows=data['rows']; self.table.setRowCount(len(rows))
-        for r,row in enumerate(rows):
-            use=QTableWidgetItem(); use.setFlags(Qt.ItemIsEnabled|Qt.ItemIsUserCheckable); use.setCheckState(Qt.Checked if row['selected'] else Qt.Unchecked); self.table.setItem(r,0,use)
-            preview=QLabel(); preview.setAlignment(Qt.AlignCenter)
-            try:
-                encoded=self.engine.thumb(r,108).partition(',')[2]
-                pix=QPixmap(); pix.loadFromData(base64.b64decode(encoded)); preview.setPixmap(pix)
-            except Exception:
-                preview.setText("No preview")
-            self.table.setCellWidget(r,1,preview); self.table.setRowHeight(r,118)
-            for c,k in ((2,'file'),(3,'title'),(4,'caption'),(5,'alt'),(6,'tags'),(9,'category'),(10,'album'),(11,'status')):
-                text=str(row.get(k,""))
-                if k=='status': text={'pending':'pending','enriched':'enriched','posting':'posting…','ok':'POSTED','warning':'POSTED (no EXIF)','error':'ERROR'}.get(row.get('status',''),row.get('status',''))
-                if k=='status' and row.get('status')=='error' and row.get('message'): text=f"ERROR: {row['message']}"
-                item=QTableWidgetItem(text)
-                if k in ('file','status'): item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                self.table.setItem(r,c,item)
-            colour=QComboBox(); colour.addItem("—",""); colour.addItem("Colour","color"); colour.addItem("B&W","bw"); colour.setFixedHeight(36)
-            colour.setCurrentIndex(max(0,colour.findData(row.get('color_mode','')))); self.table.setCellWidget(r,7,self._centred_control(colour))
-            orient=QComboBox()
-            for text,value in (("Auto","auto"),("Landscape","0"),("Portrait","1"),("Square","2")): orient.addItem(text,value)
-            orient.setFixedHeight(36); orient.setCurrentIndex(max(0,orient.findData(row.get('orientation','auto')))); self.table.setCellWidget(r,8,self._centred_control(orient))
-        self._fit_rows(); self._row_fit.start()
+        data=data or self.engine.serialize_queue(); rows=data['rows']
+        self._thumb_generation += 1
+        generation=self._thumb_generation
+        self._row_fit.stop(); self._row_fit_batch.stop()
+        self.table.setUpdatesEnabled(False); self.table.blockSignals(True)
+        try:
+            self.table.clearContents(); self.table.setRowCount(len(rows))
+            for r,row in enumerate(rows):
+                use=QTableWidgetItem(); use.setFlags(Qt.ItemIsEnabled|Qt.ItemIsUserCheckable); use.setCheckState(Qt.Checked if row['selected'] else Qt.Unchecked); self.table.setItem(r,0,use)
+                preview=QLabel("Loading…"); preview.setObjectName("Muted"); preview.setAlignment(Qt.AlignCenter)
+                self.table.setCellWidget(r,1,preview); self.table.setRowHeight(r,118)
+                for c,k in ((2,'file'),(3,'title'),(4,'caption'),(5,'alt'),(6,'tags'),(9,'category'),(10,'album'),(11,'status')):
+                    text=str(row.get(k,""))
+                    if k=='status': text={'pending':'pending','enriched':'enriched','posting':'','ok':'POSTED','warning':'POSTED (no EXIF)','error':'ERROR'}.get(row.get('status',''),row.get('status',''))
+                    if k=='status' and row.get('status')=='error' and row.get('message'): text=f"ERROR: {row['message']}"
+                    item=QTableWidgetItem(text)
+                    if k in ('file','status'): item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    self.table.setItem(r,c,item)
+                colour=QComboBox(); colour.addItem("—",""); colour.addItem("Colour","color"); colour.addItem("B&W","bw"); colour.setFixedHeight(36)
+                colour.setCurrentIndex(max(0,colour.findData(row.get('color_mode','')))); self.table.setCellWidget(r,7,self._centred_control(colour))
+                orient=QComboBox()
+                for text,value in (("Auto","auto"),("Landscape","0"),("Portrait","1"),("Square","2")): orient.addItem(text,value)
+                orient.setFixedHeight(36); orient.setCurrentIndex(max(0,orient.findData(row.get('orientation','auto')))); self.table.setCellWidget(r,8,self._centred_control(orient))
+        finally:
+            self.table.blockSignals(False); self.table.setUpdatesEnabled(True)
+        self.table.viewport().update(); self._row_fit.start()
+        self._load_thumbnails(generation,len(rows))
         self.queue_count.setText(f"{data['selected']} selected · {data['count']} images")
+
+    def _load_thumbnails(self,generation,count):
+        """Decode previews away from the GUI thread and paint them one by one."""
+        def work():
+            for r in range(count):
+                if generation != self._thumb_generation: return
+                try:
+                    encoded=self.engine.thumb(r,108).partition(',')[2]
+                    raw=base64.b64decode(encoded) if encoded else b''
+                except Exception:
+                    raw=b''
+                self.bridge.thumb.emit(generation,r,raw)
+        threading.Thread(target=work,daemon=True).start()
+
+    def _thumb_ready(self,generation,row,raw):
+        if generation != self._thumb_generation or not (0<=row<self.table.rowCount()): return
+        preview=self.table.cellWidget(row,1)
+        if not isinstance(preview,QLabel): return
+        pix=QPixmap()
+        if raw and pix.loadFromData(raw): preview.setText(""); preview.setPixmap(pix)
+        else: preview.setText("No preview")
 
     def _centred_control(self, control):
         host=QWidget(); host._control=control; host.setAttribute(Qt.WA_TranslucentBackground); host.setStyleSheet("background:transparent")
@@ -371,21 +445,35 @@ class Window(QMainWindow):
         dialog=QDialog(self); dialog.setWindowTitle("Review enrichment prompt"); dialog.resize(820,620)
         layout=QVBoxLayout(dialog)
         layout.addWidget(label("REVIEW THE PROMPT", "Eyebrow"))
-        layout.addWidget(label("Use for this run leaves the shared site prompt unchanged. Save to SNAP HQ deliberately updates the selected site's shared profile.","Muted"))
+        layout.addWidget(label("Choose a name for this site's prompt. Save preset remembers it in SNAP HQ; Make default uses it when no previous choice has been made.","Muted"))
+        preset_row=QHBoxLayout(); preset_row.addWidget(label("PRESET NAME","Eyebrow")); preset_name=QLineEdit(self.prompt_preset.currentText() or "Default"); preset_row.addWidget(preset_name,1); make_default=QCheckBox("Make default"); make_default.setChecked(self.prompt_preset.currentText()==getattr(self,'_prompt_default','')); preset_row.addWidget(make_default); layout.addLayout(preset_row)
         editor=QTextEdit(); editor.setPlainText(self.prompt.text()); editor.setPlaceholderText("Leave blank to use SYBU's complete built-in enrichment prompt."); layout.addWidget(editor,1)
         buttons=QHBoxLayout(); cancel=QPushButton("CANCEL"); cancel.clicked.connect(dialog.reject); buttons.addWidget(cancel); buttons.addStretch(1)
-        use=QPushButton("USE FOR THIS RUN"); buttons.addWidget(use)
-        save=QPushButton("SAVE TO SNAP HQ"); save.setObjectName("Primary"); buttons.addWidget(save); layout.addLayout(buttons)
+        delete=QPushButton("DELETE PRESET"); buttons.addWidget(delete); use=QPushButton("USE FOR THIS RUN"); buttons.addWidget(use)
+        save=QPushButton("SAVE PRESET"); save.setObjectName("Primary"); buttons.addWidget(save); layout.addLayout(buttons)
         def use_text(): self.prompt.setText(editor.toPlainText().strip()); dialog.accept()
         def save_text():
             try:
-                result=self.engine.profile_save_prompt(self.profile.currentText(),editor.toPlainText()); self.prompt.setText(result['prompt']); self._say(f"Prompt saved to SNAP HQ for {result['name']}."); dialog.accept()
+                result=self.engine.profile_save_prompt(self.profile.currentText(),editor.toPlainText(),preset_name.text(),make_default.isChecked()); self._set_prompt_state(result); self._say(f"Prompt preset saved to SNAP HQ for {result['name']}."); dialog.accept()
             except Exception as error: self._error(str(error))
-        use.clicked.connect(use_text); save.clicked.connect(save_text); dialog.exec()
+        def delete_text():
+            try:
+                result=self.engine.profile_delete_prompt(self.profile.currentText(),self.prompt_preset.currentText()); self._set_prompt_state(result); self._say("Prompt preset deleted."); dialog.accept()
+            except Exception as error:self._error(str(error))
+        use.clicked.connect(use_text); save.clicked.connect(save_text); delete.clicked.connect(delete_text); dialog.exec()
 
     def _select_all(self,on):
-        for r in range(self.table.rowCount()):self.table.item(r,0).setCheckState(Qt.Checked if on else Qt.Unchecked)
-        self.engine.set_all_selected(on); self._fill_queue()
+        state=Qt.Checked if on else Qt.Unchecked
+        self.table.setUpdatesEnabled(False); self.table.blockSignals(True)
+        try:
+            for r in range(self.table.rowCount()):
+                item=self.table.item(r,0)
+                if item is not None: item.setCheckState(state)
+        finally:
+            self.table.blockSignals(False); self.table.setUpdatesEnabled(True)
+        self.engine.set_all_selected(on)
+        self.table.viewport().update()
+        self.queue_count.setText(f"{self.table.rowCount() if on else 0} selected · {self.table.rowCount()} images")
 
     def _reorder(self,src,dst):
         try:
@@ -411,13 +499,10 @@ class Window(QMainWindow):
 
     def _enrich(self):
         try:
-            self._sync_queue(); self.engine.enrich_start(self.gemini.text(),self.prompt.text()); self.poll_seen['enrich']=0; self.progress.setValue(0); self.progress_text.setText("Enriching selected images…"); self.stop_btn.setEnabled(True)
-            # Stay on the queue: the rows themselves show progress (STATUS
-            # column + counter) instead of a bar on another page.
+            self._sync_queue(); self.engine.enrich_start(self.gemini.text(),self.prompt.text()); self.poll_seen['enrich']=0; self.progress.setValue(0); self.stop_btn.setEnabled(True)
             self._enrich_total=sum(1 for r in range(self.table.rowCount()) if self.table.item(r,0).checkState()==Qt.Checked); self._enrich_done=0
-            for r in range(self.table.rowCount()):
-                if self.table.item(r,0).checkState()==Qt.Checked and self.table.item(r,11): self.table.item(r,11).setText("enriching…")
-            self.queue_count.setText(f"Enriching 0/{self._enrich_total}…")
+            self.progress_text.setText(f"Enriching 0/{self._enrich_total}")
+            self.queue_count.setText("")
         except Exception as e:self._error(str(e))
 
     def _validate(self):
@@ -444,13 +529,17 @@ class Window(QMainWindow):
             if QMessageBox.question(self,"Confirm publish",f"Post {pf['count']} selected image(s) to {pf['dest']} as {'GRAM' if grams else 'SOLO'}?",QMessageBox.Yes|QMessageBox.No)!=QMessageBox.Yes:return
             out=self.engine.post_start(grams,self.cat.currentText(),self.album.currentText(),self.orient.currentText(),"",self.engine.config.get('copyright_text',''),self.drive_folder.text(),ack_no_drive=True,ack_unknown_mode=True,drive_enabled=self.drive.isChecked())
             if out.get('needs_ack'): self._error("Google Drive is not connected."); return
-            self.poll_seen['post']=0; self.progress.setValue(0); self.progress_text.setText(f"Publishing {pf['count']} image(s) to {pf['dest']}…"); self.stop_btn.setEnabled(True); self._fill_queue()
+            self.poll_seen['post']=0; self.progress.setValue(0); self.progress_text.setText(f"Posting 0/{pf['count']}"); self.stop_btn.setEnabled(True); self._fill_queue(); self.queue_count.setText("")
         except Exception as e:self._error(str(e))
 
     def _auth_drive(self):
         try:
-            self.engine.drive_toggle(True); self.engine.auth_drive(self.gcreds.text()); self.poll_seen['drive_auth']=0; self._say("Connecting Google Drive…")
-        except Exception as e:self._error(str(e))
+            self._set_drive_status("Connecting…"); self.engine.drive_toggle(True); self.engine.auth_drive(self.gcreds.text()); self.poll_seen['drive_auth']=0; self._say("Connecting Google Drive…")
+        except Exception as e:self._set_drive_status("Failed"); self._error(str(e))
+
+    def _set_drive_status(self,text):
+        self.drive_status_publish.setText(f"Drive: {text}")
+        self.drive_status_settings.setText(f"Google Drive: {text}")
 
     def _test_gemini(self):
         try:
@@ -474,13 +563,12 @@ class Window(QMainWindow):
                 cur,total=ev.get('current',0),ev.get('total',1); self.progress.setValue(int(cur*100/max(1,total))); self._say(ev.get('message') or ev.get('file') or f"{key.title()} {cur}/{total}")
                 if key=='enrich' and ev.get('type')=='progress' and ev.get('index') is not None: self._enrich_row_event(ev)
                 if key=='post' and ev.get('type')=='progress':
-                    self.progress_text.setText(f"Posting {cur}/{total} — {ev.get('file','')}: {'sent' if ev.get('success') else 'FAILED'}"); self._post_row_event(ev)
+                    self.progress_text.setText(f"Posting {cur}/{total}"); self._post_row_event(ev)
             if not out.get('running',False):
                 self.poll_seen.pop(key,None); self.progress.setValue(100); self.stop_btn.setEnabled(bool(self.poll_seen)); self._fill_queue()
                 if key=='post':
                     q=self.engine.serialize_queue(); posted=sum(1 for r in q['rows'] if r.get('status') in ('ok','warning')); failed=q.get('failed',0)
                     self.progress_text.setText(f"Batch done — {posted} posted, {failed} FAILED (red rows; see the log)." if failed else f"Batch complete — {posted} posted to {self.engine.connection_state().get('base_url','the blog')}.")
-                    self.queue_count.setText(f"{posted} posted · {q['count']} images")
                 else:
                     self.progress_text.setText(f"{key.replace('_',' ').title()} complete." if not out.get('error') else f"{key.replace('_',' ').title()} failed.")
                 result=out.get('result') or {}
@@ -488,7 +576,14 @@ class Window(QMainWindow):
                 if key=='gemini_test':
                     ok=bool(result.get('ok')) and not out.get('error'); message=result.get('message') or out.get('error') or "No response."
                     self.gemini_source.setText(("Gemini key accepted by Google: " if ok else "Gemini key rejected by Google: ")+message)
-                if key=='drive_auth' and not out.get('error'):self._say("Google Drive connected.")
+                if key=='drive_auth':
+                    result=out.get('result') or {}
+                    if out.get('error'):
+                        self._set_drive_status("Failed")
+                    else:
+                        identity=result.get('identity') or 'Connected'
+                        self._set_drive_status(f"Connected — {identity}")
+                        self._say(f"Google Drive connected — {identity}.")
                 if out.get('error'):self._error(out['error'])
 
     def _save(self):
@@ -522,7 +617,7 @@ class Window(QMainWindow):
         else:
             if self.table.item(r,11): self.table.item(r,11).setText(f"ERROR: {ev.get('message') or 'enrichment failed'}")
         self._enrich_done=getattr(self,'_enrich_done',0)+1
-        self.queue_count.setText(f"Enriching {self._enrich_done}/{getattr(self,'_enrich_total',ev.get('total',1))}…")
+        self.progress_text.setText(f"Enriching {self._enrich_done}/{getattr(self,'_enrich_total',ev.get('total',1))}")
 
     def _say(self,text): self.log.append(str(text))
     def _error(self,text): QMessageBox.critical(self,"SYBU needs attention",text); self._say("ERROR · "+text)

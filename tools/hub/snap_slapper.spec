@@ -13,7 +13,7 @@ for _path in (_src, _shared_dir):
 
 _hidden = collect_submodules('slapper_qt') + [
     'editor_engine', 'built_in_lewks', 'found_textures', 'texture_assets',
-    'highbit_image', 'highbit_decode_worker', 'subprocess_limits', 'render_graph',
+    'highbit_image', 'highbit_decode_worker', 'blog_copy_worker', 'subprocess_limits', 'render_graph',
     'core_release_gate',
     'photo_manager', 'raw_preview', 'hdr_processor', 'slapper_filters', 'lewk_again', 'gemini_image_edit',
     'slapper_qt.external_edit',

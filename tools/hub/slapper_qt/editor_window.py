@@ -10,15 +10,22 @@ import os
 import sys
 import colorsys
 import copy
+import io
+import json
 import numpy as np
+import shutil
+import subprocess
+import tempfile
 
-from PySide6.QtCore import Qt, QTimer, QSize, QObject, Signal, QRunnable, QThreadPool
-from PySide6.QtGui import QAction, QActionGroup, QKeySequence, QIcon, QPixmap
+from PySide6.QtCore import (Qt, QTimer, QSize, QObject, Signal, QRunnable,
+                            QThreadPool, QMimeData, QByteArray)
+from PySide6.QtGui import QAction, QActionGroup, QKeySequence, QIcon, QPixmap, QImage
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea, QCheckBox,
     QFileDialog, QMessageBox, QLabel, QButtonGroup, QPushButton, QLineEdit,
     QColorDialog, QComboBox, QStackedWidget, QInputDialog, QWidgetAction,
     QApplication, QListWidget, QListWidgetItem, QDialog, QDialogButtonBox,
+    QSizePolicy, QMenu,
 )
 from PySide6.QtGui import QColor
 
@@ -140,7 +147,21 @@ class _PreviewJob(QRunnable):
                         key, editor_engine.DEFAULT_ADJUSTMENTS[key]))
                     baseline = float(self.raw_baseline.get(
                         key, editor_engine.DEFAULT_ADJUSTMENTS[key]))
-                    document.adjustments[key] = current - baseline
+                    delta = current - baseline
+                    delta = _raw_tone_proxy_delta(key, delta)
+                    proxy = RAW_GEOMETRY_PROXY.get(key)
+                    if proxy:
+                        geometry_key, scale = proxy
+                        if not hasattr(document, "geometry"):
+                            document.geometry = {}
+                        document.geometry[geometry_key] = delta * scale
+                        if key in ("raw_lens_distortion", "raw_defish"):
+                            # Never auto-crop/auto-fill the cheap drag proxy:
+                            # either changes framing and looks like a zoom.
+                            document.geometry["lens_edges"] = "transparent"
+                        document.adjustments[key] = editor_engine.DEFAULT_ADJUSTMENTS[key]
+                    else:
+                        document.adjustments[key] = delta
             rendered = document.render(max_size=self.max_size)
             try:
                 self.signals.ready.emit(self.token, rendered)
@@ -151,6 +172,28 @@ class _PreviewJob(QRunnable):
                 self.signals.failed.emit(self.token, str(error))
             except RuntimeError:
                 pass
+
+
+class _RecoverySignals(QObject):
+    ready = Signal(str)
+    failed = Signal(str, str)
+
+
+class _RecoveryJob(QRunnable):
+    """Write an immutable crash-recovery snapshot away from the UI thread."""
+
+    def __init__(self, document, path):
+        super().__init__()
+        self.document = document
+        self.path = path
+        self.signals = _RecoverySignals()
+
+    def run(self):
+        try:
+            self.document.save_recovery(self.path)
+            self.signals.ready.emit(self.path)
+        except Exception as error:  # noqa: BLE001
+            self.signals.failed.emit(self.path, str(error))
 
 
 class _OpenSignals(QObject):
@@ -185,8 +228,12 @@ class _OpenJob(QRunnable):
                         pass
                     return
                 source_colour = inspect_source(document.source_path)
-                document.render((64, 64))
-                payload = (document, source_colour, self.path, "project")
+                # Warm the same useful proxy the editor will display. A 64 px
+                # validation render forced large photographs through a second
+                # full decode immediately after opening.
+                initial_preview = document.render((1600, 1600))
+                payload = (document, source_colour, self.path, "project",
+                           initial_preview)
             else:
                 original_path = self.path
                 is_raw = os.path.splitext(original_path)[1].lower() in photo_manager.RAW_EXTENSIONS
@@ -209,8 +256,9 @@ class _OpenJob(QRunnable):
                     document = editor_engine.EditorDocument.load_project(
                         recovery, trust_external_source=True)
                     source_colour = inspect_source(document.source_path)
-                document.render((64, 64))
-                payload = (document, source_colour, original_path, "raw" if is_raw else "image")
+                initial_preview = document.render((1600, 1600))
+                payload = (document, source_colour, original_path,
+                           "raw" if is_raw else "image", initial_preview)
             try:
                 self.signals.ready.emit(self.token, payload)
             except RuntimeError:
@@ -265,15 +313,40 @@ class _ExportJob(QRunnable):
                 pass
 
 
+class _ClipboardSignals(QObject):
+    ready = Signal(bytes)
+    failed = Signal(str)
+
+
+class _ClipboardJob(QRunnable):
+    """Render a full-resolution flattened JPEG without freezing the window."""
+
+    def __init__(self, document, quality):
+        super().__init__()
+        self.document = document
+        self.quality = int(quality)
+        self.signals = _ClipboardSignals()
+
+    def run(self):
+        try:
+            image = self.document.render().convert("RGB")
+            payload = io.BytesIO()
+            image.save(payload, "JPEG", quality=self.quality, optimize=True)
+            self.signals.ready.emit(payload.getvalue())
+        except Exception as error:  # noqa: BLE001
+            self.signals.failed.emit(str(error))
+
+
 class _PublishSignals(QObject):
     ready = Signal(int, object)
     failed = Signal(int, str)
 
 
 class _PublishPrepareJob(QRunnable):
-    """Render and prepare a privacy-governed web derivative off the UI thread."""
+    """Prepare a derivative in another process so RAW work cannot starve Qt."""
 
-    def __init__(self, token, document, profile, copyright_text, destination, mode):
+    def __init__(self, token, document, profile, copyright_text, destination, mode,
+                 filename_stem=""):
         super().__init__()
         self.token = token
         self.document = document
@@ -281,14 +354,47 @@ class _PublishPrepareJob(QRunnable):
         self.copyright_text = copyright_text
         self.destination = destination
         self.mode = mode
+        self.filename_stem = filename_stem
         self.signals = _PublishSignals()
 
     def run(self):
+        temporary_dir = None
         try:
-            from . import publishing_contract
-            target, manifest_path, manifest = publishing_contract.prepare(
-                self.document, self.profile, copyright_text=self.copyright_text,
-                destination_override=self.destination)
+            temporary_dir = tempfile.mkdtemp(prefix="snap-slapper-blog-copy-")
+            project_path = os.path.join(temporary_dir, "working-project.json")
+            result_path = os.path.join(temporary_dir, "result.json")
+            job_path = os.path.join(temporary_dir, "job.json")
+            photo_manager.atomic_json(
+                project_path, self.document.project_value(recovery=True))
+            photo_manager.atomic_json(job_path, {
+                "project_path": project_path,
+                "result_path": result_path,
+                "profile": self.profile,
+                "copyright_text": self.copyright_text,
+                "destination": self.destination,
+                "filename_stem": self.filename_stem,
+            })
+            if getattr(sys, "frozen", False):
+                command = [sys.executable, "--blog-copy-worker", job_path]
+            else:
+                launcher = os.path.abspath(os.path.join(
+                    os.path.dirname(__file__), os.pardir, "run_slapper_qt.py"))
+                command = [sys.executable, launcher, "--blog-copy-worker", job_path]
+            done = subprocess.run(
+                command, capture_output=True, text=True, timeout=1800,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            if not os.path.isfile(result_path):
+                detail = (done.stderr or done.stdout or
+                          f"worker stopped with status {done.returncode}").strip()
+                raise RuntimeError(f"Blog-copy renderer failed: {detail}")
+            with open(result_path, "r", encoding="utf-8") as handle:
+                result = json.load(
+                    handle, parse_constant=photo_manager.reject_json_constant)
+            if not result.get("ok"):
+                raise RuntimeError(result.get("error") or "Blog-copy renderer failed")
+            target = result["target"]
+            manifest_path = result["manifest_path"]
+            manifest = result["manifest"]
             try:
                 self.signals.ready.emit(
                     self.token, (self.mode, self.profile, target, manifest_path, manifest))
@@ -299,6 +405,9 @@ class _PublishPrepareJob(QRunnable):
                 self.signals.failed.emit(self.token, str(error))
             except RuntimeError:
                 pass
+        finally:
+            if temporary_dir:
+                shutil.rmtree(temporary_dir, ignore_errors=True)
 
 # The control groups and ranges mirror the Tk editor exactly so the feel is
 # identical and every key matches DEFAULT_ADJUSTMENTS in the engine.
@@ -320,6 +429,8 @@ GROUPS = [
         ("vibrance", "Vibrance", -100, 100, 1, 0),
     ]),
     ("PRESENCE", [
+        ("noise_luminance", "Luminance Noise", 0, 100, 1, 0),
+        ("noise_colour", "Colour Noise", 0, 100, 1, 0),
         ("sharpen", "Sharpen", -100, 100, 1, 0),
     ]),
     ("EFFECTS", [
@@ -348,7 +459,44 @@ RAW_DEVELOP_CONTROLS = [
     ("tint", "Tint", -100, 100, 1, 0),
     ("saturation", "Saturation", -100, 100, 1, 0),
     ("raw_noise_reduction", "Noise Reduction", 0, 100, 1, 0),
+    ("raw_rotation", "RT Rotate", -45, 45, 0.1, 0),
+    ("raw_perspective_vertical", "RT Vertical perspective", -100, 100, 1, 0),
+    ("raw_perspective_horizontal", "RT Horizontal perspective", -100, 100, 1, 0),
+    ("raw_lens_distortion", "RT Barrel / pincushion", -50, 50, 0.1, 0),
+    ("raw_defish", "RT Fisheye correction", 0, 100, 1, 0),
+    ("raw_ca_red", "RT Red chromatic aberration", -4, 4, 0.01, 0),
+    ("raw_ca_blue", "RT Blue chromatic aberration", -4, 4, 0.01, 0),
+    ("raw_vignette_correction", "RT Optical vignette correction", -100, 100, 1, 0),
 ]
+
+# Lightweight stand-ins used only while a RAW geometry slider is moving. The
+# authoritative result is always redeveloped by RawTherapee on release/Enter.
+RAW_GEOMETRY_PROXY = {
+    "raw_rotation": ("rotation", 1.0),
+    "raw_perspective_vertical": ("perspective_vertical", 1.0),
+    "raw_perspective_horizontal": ("perspective_horizontal", 1.0),
+    "raw_lens_distortion": ("lens_distortion", 2.0),
+    "raw_defish": ("lens_spherical", 1.0),
+}
+
+# RawTherapee's exposure compensation is deliberately gentler than the
+# editor's generic float exposure control. Keep the immediate drag preview
+# visually aligned with the authoritative RAW render that replaces it when
+# the control is released.
+RAW_TONE_PROXY_SCALE = {
+    "exposure": 0.52,
+}
+
+
+def _raw_tone_proxy_delta(key, delta):
+    """Approximate RawTherapee's tone response during an interactive drag."""
+    scale = RAW_TONE_PROXY_SCALE.get(key, 1.0)
+    if key == "exposure":
+        # RT's exposure response gets progressively gentler at larger
+        # compensations. A fixed multiplier matches small edits but makes a
+        # strong live edit visibly brighter than the committed development.
+        scale = max(0.40, scale - 0.076 * max(0.0, abs(delta) - 0.85))
+    return delta * scale
 
 IMAGE_FILTER = ("Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp);;"
                 "All files (*.*)")
@@ -358,7 +506,8 @@ IMAGE_FILTER = ("Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp);;"
 NORMAL_SECTIONS = {"LIGHT", "COLOUR", "EFFECTS", "BLACK + WHITE", "GEOMETRY", "IMPROVE"}
 NORMAL_ROWS = {"brightness", "contrast", "highlights", "midtones", "shadows",
                "temperature", "tint", "saturation", "vibrance",
-               "clarity", "dehaze", "texture", "vignette"}
+               "clarity", "dehaze", "texture", "vignette",
+               "vignette_size", "vignette_feather"}
 
 
 class EditorWindow(QMainWindow):
@@ -400,6 +549,11 @@ class EditorWindow(QMainWindow):
         self._open_pool.setMaxThreadCount(1)
         self._background_pool = QThreadPool(self)
         self._background_pool.setMaxThreadCount(1)
+        self._recovery_pool = QThreadPool(self)
+        self._recovery_pool.setMaxThreadCount(1)
+        self._recovery_job_active = False
+        self._recovery_pending = False
+        self._recovery_jobs = set()
         from . import prefs as _prefs
         stored_prefs = _prefs.load()
         self._filmstrip_visible = bool(stored_prefs.get("filmstrip_visible", True))
@@ -422,7 +576,10 @@ class EditorWindow(QMainWindow):
         # Debounce live renders so a slider drag doesn't render on every pixel.
         self._render_timer = QTimer(self)
         self._render_timer.setSingleShot(True)
-        self._render_timer.setInterval(45)
+        # Keep live controls near 40 fps when the compositor can keep up. The
+        # worker queue still coalesces obsolete values, so this never builds a
+        # backlog on a complicated document.
+        self._render_timer.setInterval(24)
         self._render_timer.timeout.connect(self._dispatch_render)
 
         # Opening from Windows happens before the window receives its final
@@ -502,11 +659,41 @@ class EditorWindow(QMainWindow):
                 except OSError:
                     pass
             return
-        try:
-            self.doc.save_recovery(path)
-            _log.info("autosaved per-photo edit state: %s", path)
-        except Exception:  # noqa: BLE001
-            _log.exception("autosave (recovery) failed")
+        if force:
+            try:
+                self.doc.save_recovery(path)
+                _log.info("saved per-photo edit state: %s", path)
+            except Exception:  # noqa: BLE001
+                _log.exception("recovery save failed")
+            return
+        if self._recovery_job_active:
+            self._recovery_pending = True
+            return
+        job = _RecoveryJob(self.doc.detached_copy(), path)
+        self._recovery_job_active = True
+        self._recovery_jobs.add(job)
+        job.signals.ready.connect(
+            lambda saved, current=job: self._recovery_finished(current, saved))
+        job.signals.failed.connect(
+            lambda failed_path, message, current=job:
+            self._recovery_failed(current, failed_path, message))
+        self._recovery_pool.start(job)
+
+    def _recovery_finished(self, job, path):
+        self._recovery_jobs.discard(job)
+        self._recovery_job_active = False
+        _log.info("autosaved per-photo edit state: %s", path)
+        if self._recovery_pending:
+            self._recovery_pending = False
+            QTimer.singleShot(0, self._write_recovery)
+
+    def _recovery_failed(self, job, path, message):
+        self._recovery_jobs.discard(job)
+        self._recovery_job_active = False
+        _log.error("autosave (recovery) failed for %s: %s", path, message)
+        if self._recovery_pending:
+            self._recovery_pending = False
+            QTimer.singleShot(0, self._write_recovery)
 
     def _clear_recovery(self):
         for path in self._recovery_paths():
@@ -706,6 +893,13 @@ class EditorWindow(QMainWindow):
         self.act_export.triggered.connect(self.export_image)
         bar.addAction(self.act_export)
 
+        self.act_copy_flattened = QAction("Copy Flattened JPEG", self)
+        self.act_copy_flattened.setShortcut(QKeySequence("Ctrl+Shift+C"))
+        self.act_copy_flattened.setToolTip(
+            "Copy the complete edited photograph for pasting into another application")
+        self.act_copy_flattened.triggered.connect(self.copy_flattened_jpeg)
+        bar.addAction(self.act_copy_flattened)
+
         self.act_blog_copy = QAction("Blog Copy…", self)
         self.act_blog_copy.setToolTip(
             "Publish to SMACKTHEMUP or prepare a local blog copy")
@@ -786,7 +980,8 @@ class EditorWindow(QMainWindow):
                 self.act_compare, self.act_filmstrip,
                 self.act_recipe_save, self.act_recipe_apply,
                 self.act_lewks, self.act_lewk_again, self.act_textures, self.act_filters,
-                self.act_save_project, self.act_export, self.act_blog_copy,
+                self.act_save_project, self.act_export, self.act_copy_flattened,
+                self.act_blog_copy,
                 self.act_hdr,
                 self.act_external_edit,
                 self.act_prefs, self.act_help):
@@ -822,6 +1017,7 @@ class EditorWindow(QMainWindow):
             "looks": (self.act_lewks, self.act_lewk_again, self.act_filters, self.act_textures,
                       self.act_recipe_save, self.act_recipe_apply),
             "output": (self.act_save_project, self.act_export,
+                       self.act_copy_flattened,
                        self.act_blog_copy, self.act_hdr, self.act_external_edit),
             "view": (self.act_fit, self.act_full, self.act_zoom_out,
                      self.act_zoom_in, self.act_filmstrip,
@@ -869,7 +1065,17 @@ class EditorWindow(QMainWindow):
         # Keyboard shortcuts. Modifier combos only (never bare letters) so they
         # can't fire while someone is typing in a text layer or a dialog. Open,
         # Undo, Redo, Export (save) and Help already carry the standard sequences.
+        self.act_invert_layer = QAction("Invert selected layer", self)
+        self.act_invert_layer.triggered.connect(
+            lambda: self._toggle_layer_inversion("invert_rgb"))
+        self.addAction(self.act_invert_layer)
+        self.act_invert_luminance = QAction("Invert selected layer luminance", self)
+        self.act_invert_luminance.triggered.connect(
+            lambda: self._toggle_layer_inversion("invert_luminance"))
+        self.addAction(self.act_invert_luminance)
         self._shortcuts = [
+            (self.act_invert_layer,  "Ctrl+I"),
+            (self.act_invert_luminance, "Ctrl+Shift+I"),
             (self.act_auto,         "Ctrl+U"),        # auto-enhance
             (self.act_fit,          "Ctrl+0"),        # fit to window
             (self.act_full,         "Ctrl+1"),        # 100% / actual pixels
@@ -901,6 +1107,22 @@ class EditorWindow(QMainWindow):
         self.delete_layer_action.setShortcutContext(Qt.WindowShortcut)
         self.delete_layer_action.triggered.connect(self._delete_layer_key)
         self.addAction(self.delete_layer_action)
+
+    def _toggle_layer_inversion(self, field):
+        """Toggle a reversible inversion flag on the selected layer."""
+        if self._restricted or not self.doc:
+            return
+        layer = self._active_layer()
+        if layer is None:
+            self.status.showMessage("Select a layer to invert.", 3000)
+            return
+        enabled = not bool(layer.get(field, False))
+        layer[field] = enabled
+        description = ("Invert layer luminance" if field == "invert_luminance"
+                       else "Invert layer")
+        self.doc.record(description if enabled else f"Restore {description.lower()}")
+        self.layers_panel.rebuild()
+        self._update_title()
 
     def _install_mask_shortcuts(self):
         """Install Photoshop-like local-mask keys with a typing guard."""
@@ -976,6 +1198,16 @@ class EditorWindow(QMainWindow):
         """Expand one top-row workspace into the contextual second row."""
         if key not in self._toolbar_contexts:
             return
+        if (key != "edit" and hasattr(self, "view") and
+                self.act_crop.isChecked() and self.view._crop_mode):
+            # Crop owns a temporary full-frame state and its Apply/Cancel
+            # controls. Letting another workspace hide those controls leaves a
+            # checked action that looks broken when the photographer returns.
+            # Keep the modal session visibly in EDIT until it is resolved.
+            self._context_selectors["edit"].setChecked(True)
+            self.status.showMessage(
+                "Finish the crop with Apply Crop or Cancel before changing tools.")
+            return
         self._toolbar_context = key
         selector = self._context_selectors[key]
         if not selector.isChecked():
@@ -1011,10 +1243,12 @@ class EditorWindow(QMainWindow):
         self.view.retouch_clicked.connect(self._add_retouch)
         self.view.neutral_clicked.connect(self._apply_neutral_sample)
         self.view.colour_range_clicked.connect(self._apply_colour_sample)
+        self.view.vignette_colour_clicked.connect(self._apply_vignette_colour_sample)
         self.view.mask_painted.connect(self._paint_canvas_mask)
         self.view.gradient_drawn.connect(self._apply_drawn_gradient)
         self.view.layer_dragged.connect(self._move_active_layer)
         self.view.perspective_corner_dragged.connect(self._move_perspective_corner)
+        self.view.perspective_commit_requested.connect(self._commit_free_perspective)
         self.view.horizon_drawn.connect(self._apply_horizon_curve)
         self._layer_drag_changed = False
 
@@ -1046,6 +1280,7 @@ class EditorWindow(QMainWindow):
         self.setCentralWidget(container)
 
         self._saved_crop = None
+        self._crop_commit_in_progress = False
         self._retouch_radius = 0.035
         self._retouch_type = "heal"
         self._clone_source = None
@@ -1068,6 +1303,11 @@ class EditorWindow(QMainWindow):
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         inner = QWidget()
+        # The rail owns the width. Long translated labels, layer names, or
+        # high-DPI font metrics must shrink/reflow inside it rather than making
+        # the scroll-area child wider and clipping its right-hand controls.
+        inner.setMinimumWidth(0)
+        inner.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         inner_layout = QVBoxLayout(inner)
         inner_layout.setContentsMargins(0, 0, 0, 0)
         inner_layout.setSpacing(0)
@@ -1093,7 +1333,8 @@ class EditorWindow(QMainWindow):
         self.raw_rows = {}
         raw_section = Accordion("RAW DEVELOP", expanded=True)
         raw_hint = QLabel(
-            "Camera-file controls. Preview is immediate; RawTherapee renders the committed result.")
+            "Camera-file controls. Tone preview is immediate; RawTherapee resolves "
+            "geometry and Lensfun corrections when a control is released.")
         raw_hint.setObjectName("TargetLabel")
         raw_hint.setWordWrap(True)
         raw_section.add(raw_hint)
@@ -1103,6 +1344,20 @@ class EditorWindow(QMainWindow):
             srow.committed.connect(self._on_commit)
             self.raw_rows[key] = srow
             raw_section.add(srow)
+        self.raw_lensfun_check = QCheckBox("Use Lensfun auto profile")
+        self.raw_lensfun_distortion = QCheckBox("Lensfun distortion")
+        self.raw_lensfun_vignette = QCheckBox("Lensfun vignetting")
+        self.raw_lensfun_ca = QCheckBox("Lensfun chromatic aberration")
+        self._raw_lensfun_checks = {
+            "raw_lensfun": self.raw_lensfun_check,
+            "raw_lensfun_distortion": self.raw_lensfun_distortion,
+            "raw_lensfun_vignette": self.raw_lensfun_vignette,
+            "raw_lensfun_ca": self.raw_lensfun_ca,
+        }
+        for key, checkbox in self._raw_lensfun_checks.items():
+            checkbox.toggled.connect(
+                lambda checked, setting=key: self._on_raw_option(setting, checked))
+            raw_section.add(checkbox)
         raw_section.setVisible(False)
         inner_layout.addWidget(raw_section)
         self._sections["RAW DEVELOP"] = raw_section
@@ -1140,6 +1395,7 @@ class EditorWindow(QMainWindow):
             "brightening the photo.")
         self.grain_darken_check.toggled.connect(self._on_grain_darken)
         if "EFFECTS" in self._sections:
+            self._sections["EFFECTS"].add(self._build_vignette_style())
             self._sections["EFFECTS"].add(self.grain_darken_check)
 
         # Tone curve — master + per-channel (R / G / B)
@@ -1184,7 +1440,7 @@ class EditorWindow(QMainWindow):
         inner_layout.addWidget(bw_section)
         self._sections["BLACK + WHITE"] = bw_section
 
-        # Colour mix — per-hue saturation + luminance (HSL in colour)
+        # Colour mix — per-hue remapping, saturation + luminance (HSL in colour)
         hsl_section = Accordion("COLOUR MIX", expanded=False)
         _bands = (("red", "Red"), ("orange", "Orange"), ("yellow", "Yellow"),
                   ("green", "Green"), ("aqua", "Aqua"), ("blue", "Blue"),
@@ -1195,6 +1451,16 @@ class EditorWindow(QMainWindow):
         for band, label in _bands:
             key = f"col_sat_{band}"
             srow = SliderRow(key, label, -100, 100, 1, 0)
+            srow.changed.connect(self._on_adjust)
+            srow.committed.connect(self._on_commit)
+            self.rows[key] = srow
+            hsl_section.add(srow)
+        hue_hint = QLabel("Hue shift — move each colour somewhere new")
+        hue_hint.setObjectName("TargetLabel")
+        hsl_section.add(hue_hint)
+        for band, label in _bands:
+            key = f"col_hue_{band}"
+            srow = SliderRow(key, label, -180, 180, 1, 0)
             srow.changed.connect(self._on_adjust)
             srow.committed.connect(self._on_commit)
             self.rows[key] = srow
@@ -1493,6 +1759,16 @@ class EditorWindow(QMainWindow):
         self.view.set_perspective_mode(enabled, corners)
         if enabled:
             self.status.showMessage("Drag a red corner handle; straight lines remain straight")
+        elif self.doc:
+            # While handles are active the preview deliberately keeps a fixed
+            # transparent canvas. Leaving the tool is the point at which the
+            # selected Auto Crop policy may change the output dimensions.
+            self._render_preview(keep_view=True)
+
+    def _commit_free_perspective(self):
+        """Apply the active four-corner correction and leave its modal tool."""
+        if self.free_perspective_btn.isChecked():
+            self.free_perspective_btn.setChecked(False)
 
     def _toggle_horizon_draw(self, enabled):
         if enabled:
@@ -1618,8 +1894,8 @@ class EditorWindow(QMainWindow):
         layout.setContentsMargins(12, 4, 12, 6)
         layout.setSpacing(6)
 
-        hint = QLabel("Limit this layer to part of the photo. "
-                      "Pick a mask type, then shape it.")
+        hint = QLabel("A mask controls where this layer appears. White reveals "
+                      "the layer; black hides it. The photo shows the result directly.")
         hint.setObjectName("TargetLabel")
         hint.setWordWrap(True)
         layout.addWidget(hint)
@@ -1632,8 +1908,8 @@ class EditorWindow(QMainWindow):
         self.mask_type_group.setExclusive(True)
         self._mask_type_buttons = {}
         for index, (kind, label) in enumerate((
-                ("radial", "Radial"), ("linear", "Gradient"),
-                ("brush", "Brush"), ("colour", "Colour Range"))):
+                ("radial", "Oval / spotlight"), ("linear", "Linear gradient"),
+                ("brush", "Paint by hand"), ("colour", "Select by colour"))):
             btn = QPushButton(label)
             btn.setObjectName("MaskTypeBtn")
             btn.setCheckable(True)
@@ -1661,32 +1937,30 @@ class EditorWindow(QMainWindow):
             rl.addWidget(row)
         self.mask_stack.addWidget(radial_page)
 
-        # Graduated page
+        # Linear gradients paint into one mask, like repeated black/white
+        # foreground-to-transparent strokes in a conventional mask editor.
         linear_page = QWidget()
         ll = QVBoxLayout(linear_page)
         ll.setContentsMargins(0, 0, 0, 0)
         ll.setSpacing(4)
-        dir_row = QHBoxLayout()
-        dir_row.setContentsMargins(0, 0, 0, 0)
-        dir_row.setSpacing(8)
-        dlabel = QLabel("Direction")
-        dlabel.setObjectName("ControlName")
-        dlabel.setFixedWidth(SliderRow.LABEL_WIDTH)
-        dir_row.addWidget(dlabel)
-        self.mask_dir = QComboBox()
-        self.mask_dir.addItems(["Top", "Bottom", "Left", "Right"])
-        self.mask_dir.currentIndexChanged.connect(self._reapply_mask)
-        dir_row.addWidget(self.mask_dir, 1)
-        ll.addLayout(dir_row)
-        draw_hint = QLabel("Drag across the photograph to draw the gradient.")
+        mode_row = QHBoxLayout()
+        self.gradient_mode_group = QButtonGroup(self)
+        self.gradient_mode_group.setExclusive(True)
+        self.gradient_hide = QPushButton("Hide from edge")
+        self.gradient_reveal = QPushButton("Reveal from edge")
+        for button in (self.gradient_hide, self.gradient_reveal):
+            button.setObjectName("MaskTypeBtn")
+            button.setCheckable(True)
+            self.gradient_mode_group.addButton(button)
+            mode_row.addWidget(button)
+        self.gradient_hide.setChecked(True)
+        ll.addLayout(mode_row)
+        draw_hint = QLabel("Start at an edge and drag inward. Each drag adds to "
+                           "the same mask; use Reveal to bring an area back. "
+                           "Ctrl+Z undoes the last stroke.")
         draw_hint.setObjectName("TargetLabel")
         draw_hint.setWordWrap(True)
         ll.addWidget(draw_hint)
-        self.mask_pos = SliderRow("pos", "Line position", 0, 100, 1, 50)
-        self.mask_soft_lin = SliderRow("softl", "Softness", 0, 60, 1, 15)
-        for row in (self.mask_pos, self.mask_soft_lin):
-            row.committed.connect(self._reapply_mask)   # apply on release, not per tick
-            ll.addWidget(row)
         self.mask_stack.addWidget(linear_page)
 
         # Brush page
@@ -1791,7 +2065,7 @@ class EditorWindow(QMainWindow):
         layout.addWidget(self.mask_stack)
 
         # --- Shared: invert + clear -----------------------------------------
-        self.mask_invert = QCheckBox("Invert mask")
+        self.mask_invert = QCheckBox("Swap hidden and revealed areas")
         self.mask_invert.toggled.connect(self._reapply_mask)
         layout.addWidget(self.mask_invert)
 
@@ -1824,10 +2098,11 @@ class EditorWindow(QMainWindow):
             self.paint_on_photo.setChecked(False)
         self._mask_kind = kind
         self.mask_stack.setCurrentIndex(self._MASK_PAGES[kind])
+        self.mask_invert.setVisible(kind != "linear")
         self.view.set_gradient_mode(kind == "linear")
         if kind == "brush":
             self._seed_brush()
-        else:
+        elif kind != "linear":
             self._reapply_mask()
 
     def _mask_layer(self):
@@ -1839,7 +2114,15 @@ class EditorWindow(QMainWindow):
         return None
 
     def _mask_target_size(self):
-        probe = self.doc.render((256, 256))
+        # A mask only needs the composition's current aspect ratio.  Rendering
+        # the whole document here used to make every mask-slider commit block
+        # Qt's event thread (especially with RAW and texture layers) merely to
+        # rediscover dimensions we already have in the visible preview.
+        probe = self._last_rendered
+        if probe is None:
+            # This is only an early-open fallback; normal mask editing starts
+            # after the first background preview has arrived.
+            probe = self.doc.render((256, 256))
         long_edge = 1600
         scale = long_edge / max(probe.width, probe.height)
         return (max(1, int(probe.width * scale)), max(1, int(probe.height * scale)))
@@ -1854,36 +2137,26 @@ class EditorWindow(QMainWindow):
             self.mask_soft.slider.value() / 100.0, self.mask_invert.isChecked())
         self._store_mask(layer, mask, "radial", "Radial mask")
 
-    def _apply_linear_mask(self):
-        layer = self._mask_layer()
-        if layer is None:
-            return
-        mask = masks.linear_mask(
-            self._mask_target_size(), self.mask_dir.currentText().lower(),
-            self.mask_pos.slider.value() / 100.0, self.mask_soft_lin.slider.value() / 100.0,
-            self.mask_invert.isChecked())
-        self._store_mask(layer, mask, "linear", "Graduated mask")
-
     def _apply_drawn_gradient(self, start_x, start_y, end_x, end_y):
         layer = self._mask_layer()
         if layer is None:
             return
         mask = masks.drawn_linear_mask(
-            self._mask_target_size(), start_x, start_y, end_x, end_y,
-            self.mask_invert.isChecked())
+            self._mask_target_size(), start_x, start_y, end_x, end_y)
+        hiding = self.gradient_hide.isChecked()
+        if not hiding:
+            mask = ImageOps.invert(mask)
         existing_kind = str(layer.get("mask_kind", ""))
-        if layer.get("mask") and "colour" in existing_kind:
+        if layer.get("mask"):
             existing = editor_engine._mask_from_text(layer["mask"])
             if existing.size != mask.size:
                 existing = existing.resize(mask.size, Image.Resampling.LANCZOS)
-            mask = ImageChops.multiply(existing, mask)
-            kind = "colour+linear"
-            label = "Add gradient to colour mask"
-        else:
-            kind = "linear"
-            label = "Draw gradient mask"
+            mask = (ImageChops.darker(existing, mask) if hiding
+                    else ImageChops.lighter(existing, mask))
+        kind = "colour+linear" if "colour" in existing_kind else "linear"
+        label = "Hide with gradient" if hiding else "Reveal with gradient"
         self._store_mask(layer, mask, kind, label)
-        self.status.showMessage("Gradient mask applied — drag again to replace it.")
+        self.status.showMessage("Gradient added — drag another edge or Ctrl+Z to undo.")
 
     def _seed_brush(self):
         layer = self._mask_layer()
@@ -2057,8 +2330,6 @@ class EditorWindow(QMainWindow):
         # regenerate the currently-chosen mask kind (slider/invert changed)
         if self._mask_kind == "radial":
             self._apply_radial_mask()
-        elif self._mask_kind == "linear":
-            self._apply_linear_mask()
         elif self._mask_kind == "brush":
             self._store_brush_mask()
         elif self._mask_kind == "colour":
@@ -2308,7 +2579,8 @@ class EditorWindow(QMainWindow):
             self.view.set_crop_mode(False)
             if self.doc.geometry.get("crop") is None and self._saved_crop is not None:
                 self.doc.geometry["crop"] = self._saved_crop   # cancelled — restore
-            self._render_preview(keep_view=False)
+            if not self._crop_commit_in_progress:
+                self._render_preview(keep_view=False)
         self._show_toolbar_context("edit")
 
     def _on_crop_aspect(self, index):
@@ -2337,10 +2609,38 @@ class EditorWindow(QMainWindow):
     def _apply_crop(self, left, top, right, bottom):
         if not self.doc:
             return
+        # Give Apply immediate, deterministic feedback while a definitive RAW
+        # development runs in the background.  This is the exact crop of the
+        # frame the photographer was looking at when they pressed Apply.
+        proxy = None
+        if self._last_rendered is not None:
+            width, height = self._last_rendered.size
+            box = (max(0, min(width - 1, round(left * width))),
+                   max(0, min(height - 1, round(top * height))),
+                   max(1, min(width, round(right * width))),
+                   max(1, min(height, round(bottom * height))))
+            if box[2] > box[0] and box[3] > box[1]:
+                proxy = self._last_rendered.crop(box)
         self.doc.geometry["crop"] = [round(left, 5), round(top, 5),
                                      round(right, 5), round(bottom, 5)]
+        # Remove the editing furniture before record() refreshes actions and
+        # rebuilds the contextual toolbar. In packaged builds that refresh can
+        # otherwise detach the Apply widget before the action's toggled signal
+        # finishes, leaving the crop border painted over the committed image.
+        self.view.set_crop_mode(False)
+        self._crop_commit_in_progress = True
+        try:
+            if self.act_crop.isChecked():
+                self.act_crop.setChecked(False)
+        finally:
+            self._crop_commit_in_progress = False
+        # Record first.  Rendering before record() advances the document again,
+        # which makes the eventual RAW result look stale and silently rejects
+        # it — the reason Apply Crop appeared to do nothing on RAW files.
         self.doc.record("Crop")
-        self.act_crop.setChecked(False)   # exits crop mode, keeps the new crop
+        if proxy is not None:
+            self._show_rendered(proxy, keep_view=False)
+        self._render_preview(keep_view=False)
         self._update_title()
 
     def _sync_geometry(self):
@@ -2601,10 +2901,11 @@ class EditorWindow(QMainWindow):
         self._open_jobs.discard(job)
         if generation != self._open_generation:
             return
-        document, source_colour, opened_path, kind = payload
+        document, source_colour, opened_path, kind, initial_preview = payload
         if kind == "project" and not self._resolve_texture_assets(document):
             return
-        self._adopt_document(document, source_colour, opened_path, kind)
+        self._adopt_document(document, source_colour, opened_path, kind,
+                             initial_preview)
 
     def _approve_external_project(self, generation, project, source, job):
         self._open_jobs.discard(job)
@@ -2626,7 +2927,8 @@ class EditorWindow(QMainWindow):
             return
         self._error("Cannot open", message)
 
-    def _adopt_document(self, document, source_colour, opened_path, kind):
+    def _adopt_document(self, document, source_colour, opened_path, kind,
+                        initial_preview=None):
         self.doc = document
         self.source_colour = source_colour
         is_raw = kind == "raw" or bool(getattr(document, "raw_source_path", ""))
@@ -2649,7 +2951,11 @@ class EditorWindow(QMainWindow):
         self._sync_controls_from_doc()
         self._update_text_panel()
         self._sync_canvas_layer_mode()
-        self._render_preview(keep_view=False)
+        if initial_preview is not None:
+            self._show_rendered(initial_preview, keep_view=False,
+                                max_size=(1600, 1600))
+        else:
+            self._render_preview(keep_view=False)
         self._update_title()
         self._refresh_filmstrip()
         self.status.showMessage(os.path.basename(opened_path))
@@ -2874,12 +3180,18 @@ class EditorWindow(QMainWindow):
         self.mode = mode
         for title, section in self._sections.items():
             section.setVisible(advanced or title in NORMAL_SECTIONS)
-        self._histogram_wrap.setVisible(advanced)
+        # Exposure feedback is useful in the everyday editor too.  Normal mode
+        # keeps the histogram while still hiding the specialist controls.
+        self._histogram_wrap.setVisible(True)
         for widget in self._bw_mixer_widgets:
             widget.setVisible(advanced)
         # Normal keeps the everyday Effects controls; the grain-specific option
         # belongs with the Advanced-only Grain control.
         self.grain_darken_check.setVisible(advanced)
+        self.vignette_quick_btn.setVisible(not advanced)
+        self.vignette_blend_combo.setVisible(advanced)
+        self.vignette_colour_btn.setVisible(advanced)
+        self.vignette_eyedropper.setVisible(advanced)
         for key, row in self.rows.items():
             row.setVisible(advanced or key in NORMAL_ROWS)
         self.target_label.setVisible(advanced)
@@ -3177,6 +3489,14 @@ class EditorWindow(QMainWindow):
                 "foundtextures.ca site (with its API key) in The Hub first.")
             return
         site, key = resolved
+        if not key:
+            self._error(
+                "Found Textures needs discovery",
+                "The Found Textures site is present, but it could not issue its "
+                "read-only catalogue key. SNAP SLAPPER tried to repair discovery "
+                "automatically. If this remains, update Found Textures on the "
+                "server, run SNAP HQ discovery once, then open Textures again.")
+            return
         TexturesDialog(self, site, key).show()
 
     def add_texture_layer(self, path, provenance, *, fit="cover",
@@ -3244,6 +3564,13 @@ class EditorWindow(QMainWindow):
         target[key] = value
         self._draft_key = key
         self._interactive_render = True
+        if (getattr(self.doc, "raw_source_path", "") and
+                key.startswith("raw_") and key not in RAW_GEOMETRY_PROXY and
+                key != "raw_noise_reduction"):
+            # CA, optical vignetting and profile matching have no faithful
+            # cheap equivalent. Keep the control responsive and run the one
+            # definitive RawTherapee job on release/Enter.
+            return
         # During motion, adjust the already-rendered canvas rather than
         # recompositing every layer. The authoritative float32 stack resolves
         # asynchronously on release.
@@ -3271,6 +3598,14 @@ class EditorWindow(QMainWindow):
             # layers.  Never run it on Qt's event thread: keep the latest live
             # proxy visible and replace it when the worker finishes.
             self._dispatch_quality_render()
+        self._update_title()
+
+    def _on_raw_option(self, key, checked):
+        if not self.doc or not getattr(self.doc, "raw_source_path", ""):
+            return
+        self.doc.adjustments[key] = bool(checked)
+        self.doc.record(f"Adjust {key.replace('_', ' ')}")
+        self._dispatch_raw_quality_render()
         self._update_title()
 
     def _on_bw(self, checked):
@@ -3540,6 +3875,119 @@ class EditorWindow(QMainWindow):
         self.photo_filter_combo.setCurrentIndex(matched)
         self.photo_filter_combo.blockSignals(False)
 
+    def _build_vignette_style(self):
+        wrap = QWidget()
+        col = QVBoxLayout(wrap)
+        col.setContentsMargins(12, 4, 12, 6)
+        col.setSpacing(4)
+
+        self.vignette_quick_btn = QPushButton("Edge colour…")
+        self.vignette_quick_btn.setCursor(Qt.PointingHandCursor)
+        self.vignette_quick_btn.setToolTip(
+            "Use black, borrow a colour from the photograph, or choose one")
+        quick_menu = QMenu(self.vignette_quick_btn)
+        quick_menu.addAction("Black", self._use_black_vignette)
+        quick_menu.addAction("Pick from photograph", self._start_quick_vignette_picker)
+        quick_menu.addAction("Choose colour…", self._pick_vignette_colour)
+        self.vignette_quick_btn.setMenu(quick_menu)
+        col.addWidget(self.vignette_quick_btn)
+
+        self.vignette_blend_combo = QComboBox()
+        for label, mode in (("Normal", "normal"), ("Multiply", "multiply"),
+                            ("Soft Light", "soft_light"), ("Overlay", "overlay")):
+            self.vignette_blend_combo.addItem(label, mode)
+        self.vignette_blend_combo.setToolTip(
+            "How the feathered edge colour mixes with the photograph")
+        self.vignette_blend_combo.activated.connect(self._on_vignette_blend)
+        col.addWidget(self.vignette_blend_combo)
+
+        self.vignette_colour_btn = QPushButton("Vignette colour")
+        self.vignette_colour_btn.setObjectName("SwatchBtn")
+        self.vignette_colour_btn.setCursor(Qt.PointingHandCursor)
+        self.vignette_colour_btn.clicked.connect(self._pick_vignette_colour)
+        col.addWidget(self.vignette_colour_btn)
+
+        self.vignette_eyedropper = QPushButton("Pick colour from photograph")
+        self.vignette_eyedropper.setCheckable(True)
+        self.vignette_eyedropper.setCursor(Qt.PointingHandCursor)
+        self.vignette_eyedropper.toggled.connect(self._toggle_vignette_picker)
+        col.addWidget(self.vignette_eyedropper)
+        return wrap
+
+    def _on_vignette_blend(self, index):
+        target = self.active_adjustments()
+        if target is None:
+            return
+        target["vignette_blend"] = self.vignette_blend_combo.itemData(index) or "normal"
+        self.doc.record("Vignette blend")
+        self._schedule_render()
+        self._update_title()
+
+    def _pick_vignette_colour(self):
+        target = self.active_adjustments()
+        if target is None:
+            return
+        current = target.get(
+            "vignette_color", editor_engine.DEFAULT_ADJUSTMENTS["vignette_color"])
+        colour = QColorDialog.getColor(
+            QColor(*[int(c) for c in current[:3]]), self, "Choose vignette colour")
+        if colour.isValid():
+            self._set_vignette_colour([colour.red(), colour.green(), colour.blue()],
+                                      "Vignette colour")
+
+    def _use_black_vignette(self):
+        target = self.active_adjustments()
+        if target is None:
+            return
+        target["vignette_blend"] = "normal"
+        self._set_vignette_colour([0, 0, 0], "Black vignette")
+
+    def _start_quick_vignette_picker(self):
+        self.vignette_eyedropper.setChecked(True)
+
+    def _toggle_vignette_picker(self, checked):
+        self.view.set_vignette_colour_mode(bool(checked))
+        self.status.showMessage(
+            "Click a colour in the photograph for the vignette edge"
+            if checked else "Vignette colour picker off")
+
+    def _apply_vignette_colour_sample(self, x, y):
+        if self._last_rendered is None:
+            return
+        sample = self._last_rendered.convert("RGB")
+        px = max(0, min(sample.width - 1, round(float(x) * (sample.width - 1))))
+        py = max(0, min(sample.height - 1, round(float(y) * (sample.height - 1))))
+        self._set_vignette_colour(list(sample.getpixel((px, py))),
+                                  "Sample vignette colour")
+        self.vignette_eyedropper.blockSignals(True)
+        self.vignette_eyedropper.setChecked(False)
+        self.vignette_eyedropper.blockSignals(False)
+        self.view.set_vignette_colour_mode(False)
+
+    def _set_vignette_colour(self, rgb, label):
+        target = self.active_adjustments()
+        if target is None:
+            return
+        target["vignette_color"] = [max(0, min(255, int(c))) for c in rgb[:3]]
+        if self.mode == "normal" and target["vignette_color"] != [0, 0, 0]:
+            target["vignette_blend"] = "soft_light"
+        self._update_vignette_controls(target)
+        self.doc.record(label)
+        self._schedule_render()
+        self._update_title()
+
+    def _update_vignette_controls(self, adjustments=None):
+        adjustments = adjustments or self.active_adjustments() or {}
+        rgb = adjustments.get(
+            "vignette_color", editor_engine.DEFAULT_ADJUSTMENTS["vignette_color"])
+        self._set_swatch_icon(self.vignette_colour_btn, rgb)
+        self._set_swatch_icon(self.vignette_quick_btn, rgb)
+        mode = str(adjustments.get("vignette_blend", "normal"))
+        index = self.vignette_blend_combo.findData(mode)
+        self.vignette_blend_combo.blockSignals(True)
+        self.vignette_blend_combo.setCurrentIndex(max(0, index))
+        self.vignette_blend_combo.blockSignals(False)
+
     def _on_grain_darken(self, checked):
         target = self.active_adjustments()
         if target is None:
@@ -3599,12 +4047,13 @@ class EditorWindow(QMainWindow):
     def export_image(self):
         if not self.doc:
             return
-        base = os.path.splitext(os.path.basename(self.doc.source_path))[0]
+        base = self._document_stem()
         from . import prefs
         settings = prefs.load()
         export_dir = settings.get("exports_folder", "")
-        suggested = (os.path.join(export_dir, f"{base}_edited.jpg")
-                     if export_dir else f"{base}_edited.jpg")
+        filename = f"{base}.jpg" if self.doc.project_path else f"{base}_edited.jpg"
+        suggested = (os.path.join(export_dir, filename)
+                     if export_dir else filename)
         path, selected_filter = QFileDialog.getSaveFileName(
             self, "Export copy", suggested,
             "JPEG — flattened (*.jpg);;PNG — flattened (*.png);;"
@@ -3647,9 +4096,7 @@ class EditorWindow(QMainWindow):
             return
         self._export_generation += 1
         token = self._export_generation
-        snapshot = copy.deepcopy(self.doc)
-        snapshot.on_change = None
-        snapshot.history_limit_handler = None
+        snapshot = self.doc.detached_copy()
         job = _ExportJob(
             token, snapshot, path, int(settings["export_quality"]),
             copyright_text, bool(settings["strip_gps"]))
@@ -3662,6 +4109,36 @@ class EditorWindow(QMainWindow):
             self._reject_export(generation, message, current))
         self.status.showMessage("Exporting photograph…")
         self._background_pool.start(job)
+
+    def copy_flattened_jpeg(self):
+        if not self.doc:
+            return
+        from . import prefs
+        job = _ClipboardJob(
+            self.doc.detached_copy(), int(prefs.load()["export_quality"]))
+        self._export_jobs.add(job)
+        job.signals.ready.connect(
+            lambda payload, current=job: self._accept_clipboard(payload, current))
+        job.signals.failed.connect(
+            lambda message, current=job: self._reject_clipboard(message, current))
+        self.status.showMessage("Rendering flattened JPEG for the clipboard…")
+        self._background_pool.start(job)
+
+    def _accept_clipboard(self, payload, job):
+        self._export_jobs.discard(job)
+        image = QImage.fromData(payload, "JPEG")
+        if image.isNull():
+            self._error("Copy failed", "The flattened JPEG could not be decoded.")
+            return
+        mime = QMimeData()
+        mime.setImageData(image)
+        mime.setData("image/jpeg", QByteArray(payload))
+        QApplication.clipboard().setMimeData(mime)
+        self.status.showMessage("Flattened JPEG copied — paste it into another window")
+
+    def _reject_clipboard(self, message, job):
+        self._export_jobs.discard(job)
+        self._error("Copy failed", message)
 
     def _accept_export(self, generation, path, revision, job):
         self._export_jobs.discard(job)
@@ -3699,11 +4176,24 @@ class EditorWindow(QMainWindow):
         if not accepted:
             return
         profile = profiles[labels.index(label)]
+        from . import publishing_contract
+        suggested = publishing_contract.suggested_stem(self.doc)
+        filename_stem, accepted = QInputDialog.getText(
+            self, "Name Blog Copy", "Filename (without extension):", text=suggested)
+        if not accepted:
+            return
+        try:
+            filename_stem = publishing_contract.safe_filename_stem(filename_stem)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Blog Copy", str(exc))
+            return
+        if filename_stem != getattr(self.doc, "output_title", ""):
+            self.doc.output_title = filename_stem
+            self.doc.record("Set output title")
         extras = dict(profile.get("extras") or {})
         if str(extras.get("site_mode") or extras.get("gyss_site_mode") or "").lower() == "smackthemup":
-            self._publish_to_smackthemup(profile)
+            self._publish_to_smackthemup(profile, filename_stem)
             return
-        from . import publishing_contract
         try:
             summary = publishing_contract.describe(profile)
         except ValueError as exc:
@@ -3720,9 +4210,10 @@ class EditorWindow(QMainWindow):
         copyright_text = (settings["copyright_text"]
                           if settings["add_copyright_if_missing"] else "")
         self._start_publish_prepare(
-            profile, copyright_text, destination="", mode="local")
+            profile, copyright_text, destination="", mode="local",
+            filename_stem=filename_stem)
 
-    def _publish_to_smackthemup(self, profile):
+    def _publish_to_smackthemup(self, profile, filename_stem=""):
         """Prepare an upload copy, then use the mode-bound public publisher."""
         import snap_creds
         import snap_home
@@ -3759,19 +4250,19 @@ class EditorWindow(QMainWindow):
             "strip_gps": bool(settings["strip_gps"]),
         })
         self._start_publish_prepare(
-            upload_profile, copyright_text, destination=folder, mode="smackthemup")
+            upload_profile, copyright_text, destination=folder, mode="smackthemup",
+            filename_stem=filename_stem)
 
-    def _start_publish_prepare(self, profile, copyright_text, destination, mode):
+    def _start_publish_prepare(self, profile, copyright_text, destination, mode,
+                               filename_stem=""):
         if not self.doc:
             return
         self._publish_generation += 1
         token = self._publish_generation
-        snapshot = copy.deepcopy(self.doc)
-        snapshot.on_change = None
-        snapshot.history_limit_handler = None
+        snapshot = self.doc.detached_copy()
         job = _PublishPrepareJob(
             token, snapshot, copy.deepcopy(profile), copyright_text,
-            destination, mode)
+            destination, mode, filename_stem)
         self._publish_jobs.add(job)
         job.signals.ready.connect(
             lambda generation, payload, current=job:
@@ -3885,8 +4376,14 @@ class EditorWindow(QMainWindow):
         token = self._preview_generation
         self.doc.revision += 1
         max_size = None if self._zoom_actual else self.view.viewport_target()
+        state = self.doc.snapshot()
+        if (self.free_perspective_btn.isChecked() and
+                self._geometry_preview_mode in {None, "perspective"}):
+            # Do not let Auto Crop move the canvas out from underneath the
+            # still-active corner handles after every mouse release.
+            state["geometry"]["perspective_edges"] = "transparent"
         job = _PreviewJob(
-            token, self.doc.source_path, self.doc.snapshot(),
+            token, self.doc.source_path, state,
             max_size, document_revision=self.doc.revision)
         self._preview_jobs.add(job)
         job.signals.ready.connect(
@@ -4031,6 +4528,11 @@ class EditorWindow(QMainWindow):
             row.set_value(adjustments.get(key, editor_engine.DEFAULT_ADJUSTMENTS.get(key, 0)))
         for key, row in self.raw_rows.items():
             row.set_value(adjustments.get(key, editor_engine.DEFAULT_ADJUSTMENTS.get(key, 0)))
+        for key, checkbox in self._raw_lensfun_checks.items():
+            checkbox.blockSignals(True)
+            checkbox.setChecked(bool(adjustments.get(
+                key, editor_engine.DEFAULT_ADJUSTMENTS[key])))
+            checkbox.blockSignals(False)
         is_raw_base = bool(
             self.doc and getattr(self.doc, "raw_source_path", "") and
             self.active_target == BASE)
@@ -4054,6 +4556,7 @@ class EditorWindow(QMainWindow):
         self.photo_filter_preserve.blockSignals(False)
         self._update_photo_filter_swatch()
         self._sync_photo_filter_combo(adjustments)
+        self._update_vignette_controls(adjustments)
         self.sharpen_mode_combo.blockSignals(True)
         self.sharpen_mode_combo.setCurrentIndex(
             0 if adjustments.get("sharpen_mode", "lens") == "lens" else 1)
@@ -4070,6 +4573,7 @@ class EditorWindow(QMainWindow):
         self.act_undo.setEnabled(editing and self.doc.history_index > 0)
         self.act_redo.setEnabled(editing and self.doc.history_index + 1 < len(self.doc.history))
         self.act_export.setEnabled(has)
+        self.act_copy_flattened.setEnabled(has)
         self.act_reset.setEnabled(editing)
         self.act_fit.setEnabled(has)
         self.act_full.setEnabled(has)
@@ -4130,12 +4634,23 @@ class EditorWindow(QMainWindow):
             self.setWindowTitle(BUILD_VERSION)
             self._refresh_history()
             return
-        name = getattr(self.doc, "original_filename", os.path.basename(self.doc.source_path))
+        name = (os.path.basename(self.doc.project_path) if self.doc.project_path
+                else getattr(self.doc, "original_filename",
+                             os.path.basename(self.doc.source_path)))
         dirty = " ●" if self.doc.is_dirty() else ""
         raw = " [RAW · RawTherapee]" if getattr(self.doc, "raw_source_path", "") else ""
         self.setWindowTitle(f"{name}{raw}{dirty}")
         self._refresh_history()
         self._refresh_actions()
+
+    def _document_stem(self):
+        """Name derivatives after a named project, otherwise after the source."""
+        remembered = str(getattr(self.doc, "output_title", "") or "").strip()
+        if remembered:
+            return remembered
+        path = self.doc.project_path if self.doc and self.doc.project_path else \
+            (self.doc.source_path if self.doc else "untitled")
+        return os.path.splitext(os.path.basename(path))[0]
 
     # --- Close guard --------------------------------------------------------
     def showEvent(self, event):  # noqa: N802 — Qt override
@@ -4153,15 +4668,26 @@ class EditorWindow(QMainWindow):
         _prefs.save(values)
 
     def _confirm_discard(self):
+        if (hasattr(self, "view") and self.act_crop.isChecked() and
+                self.view._crop_mode):
+            # The crop rectangle is only a proposal until Apply Crop. Restore
+            # the prior crop before autosaving, closing, or opening another
+            # photograph so the temporary uncropped state is never persisted.
+            self.act_crop.setChecked(False)
         if self.doc and self.doc.is_dirty():
             # Per-photo working state is persistent. Closing or moving to the
             # next photograph flushes immediately and never asks the user to
             # throw work away. Reset All remains the explicit way to clear it.
             self._recovery_timer.stop()
-            self._write_recovery()
+            self._write_recovery(force=True)
         return True
 
     def keyPressEvent(self, event):  # noqa: N802 — Qt override
+        if (self.free_perspective_btn.isChecked() and
+                event.key() in (Qt.Key_Return, Qt.Key_Enter)):
+            self._commit_free_perspective()
+            event.accept()
+            return
         if self.act_crop.isChecked():
             if event.key() in (Qt.Key_Return, Qt.Key_Enter):
                 self._commit_crop()

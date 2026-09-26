@@ -15,6 +15,8 @@ import re
 import tempfile
 import uuid
 
+import requests
+
 from PySide6.QtCore import Qt, QRect, Signal, QTimer
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen
 from PySide6.QtWidgets import (
@@ -188,11 +190,15 @@ class TakeMode(QWidget):
         brow = QHBoxLayout()
         add_btn = QPushButton("Add photos…")
         add_btn.clicked.connect(self._add_photos)
+        open_btn = QPushButton("Open published…")
+        open_btn.setToolTip("Bring an existing site post and its bucket into COLD TAKE")
+        open_btn.clicked.connect(self._open_published)
         ai_btn = QPushButton("✨ AI FILL")
         ai_btn.setToolTip("Uses this site's prompt to fill all supported metadata: "
                           "post fields from the lead photo and ALT for every photo.")
         ai_btn.clicked.connect(self._ai_fill)
         brow.addWidget(add_btn)
+        brow.addWidget(open_btn)
         brow.addWidget(ai_btn)
         brow.addStretch(1)
         self.photos_sec.add_layout(brow)
@@ -588,6 +594,119 @@ class TakeMode(QWidget):
         paths = pick_images(self, (self.app_config() or {}).get("url", ""))
         self._add_photo_paths(paths, insert=False)
 
+    def _open_published(self):
+        poster, _url = self._poster_and_url()
+        if poster is None:
+            return
+        try:
+            posts = poster.list_posts()
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.critical(self, "Could not load posts", str(exc))
+            return
+        if not posts:
+            QMessageBox.information(self, "No posts yet", "This site has no long-form posts to edit.")
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Open a published post")
+        dialog.resize(720, 520)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(hint("Choose a post. COLD SNAP will load its saved bucket and keep its original date."))
+        choices = QListWidget()
+        for post in posts:
+            label = f"{str(post.get('created_at') or '')[:10]}   {post.get('title') or 'Untitled'}   [{post.get('status') or 'draft'}]"
+            item = QListWidgetItem(label)
+            item.setData(Qt.UserRole, int(post.get("id") or 0))
+            choices.addItem(item)
+        if choices.count():
+            choices.setCurrentRow(0)
+        layout.addWidget(choices, 1)
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Open)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        choices.itemDoubleClicked.connect(lambda _item: dialog.accept())
+        layout.addWidget(buttons)
+        if dialog.exec() != QDialog.Accepted or not choices.currentItem():
+            return
+        post_id = int(choices.currentItem().data(Qt.UserRole) or 0)
+        try:
+            post = poster.get_post(post_id)
+            draft = self._draft_from_remote(post)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.critical(self, "Could not open post", str(exc))
+            return
+        session = self.rail.ensure_session()
+        session.add_draft(draft)
+        self._edit(draft)
+        self.save_state.setText("Published post loaded — changes will update this post")
+
+    def _draft_from_remote(self, post):
+        draft = O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK,
+                        mode=self.SUITE_MODE)
+        draft.remote_post_id = int(post.get("id") or 0)
+        draft.title = str(post.get("title") or "")
+        draft.caption = str(post.get("content") or "")
+        draft.img_status = str(post.get("status") or "draft")
+        draft.post_date = str(post.get("created_at") or "")
+        draft.tags = " ".join("#" + str(tag).lstrip("#") for tag in (post.get("tags") or []))
+        draft.category_ids = [int(value) for value in (post.get("cat_ids") or [])]
+        draft.album_ids = [int(value) for value in (post.get("album_ids") or [])]
+        cover_id = int(post.get("featured_image_id") or 0)
+        cache = os.path.join(tempfile.gettempdir(), "coldsnap-published",
+                             str(draft.remote_post_id))
+        os.makedirs(cache, exist_ok=True)
+        for pos, row in enumerate(post.get("bucket") or []):
+            image_id = int(row.get("id") or 0)
+            source_url = str(row.get("url") or row.get("thumb_url") or "")
+            filename = os.path.basename(source_url.split("?", 1)[0]) or f"image-{image_id}.jpg"
+            target = os.path.join(cache, f"{image_id}-{filename}")
+            if not os.path.isfile(target):
+                response = requests.get(source_url, timeout=90)
+                response.raise_for_status()
+                with open(target, "wb") as handle:
+                    handle.write(response.content)
+            draft.images.append(O.DraftImage(
+                local_path=target, original_path=target, filename=filename,
+                width=int(row.get("width") or 0), height=int(row.get("height") or 0),
+                alt=str(row.get("img_alt") or ""), title=str(row.get("img_title") or ""),
+                remote_path=str(row.get("img_file") or ""), remote_image_id=image_id,
+                sort_position=pos, is_cover=(image_id == cover_id)))
+        if draft.images and not any(image.is_cover for image in draft.images):
+            draft.images[0].is_cover = True
+        return draft
+
+    def accept_handoff(self, rows):
+        """Start a new COLD TAKE bucket from photographs selected in GYSS."""
+        self._clear()
+        cache = os.path.join(tempfile.gettempdir(), "coldsnap-gyss")
+        os.makedirs(cache, exist_ok=True)
+        bucket = []
+        try:
+            for pos, row in enumerate(rows):
+                image_id = int(row.get("id") or 0)
+                source_url = str(row.get("full_url") or row.get("thumb_url") or "")
+                filename = str(row.get("filename") or os.path.basename(source_url.split("?", 1)[0])
+                               or f"image-{image_id}.jpg")
+                target = os.path.join(cache, f"{image_id}-{filename}")
+                if not os.path.isfile(target):
+                    response = requests.get(source_url, timeout=90)
+                    response.raise_for_status()
+                    with open(target, "wb") as handle:
+                        handle.write(response.content)
+                bucket.append(O.DraftImage(
+                    local_path=target, original_path=target, filename=filename,
+                    width=int(row.get("width") or 0), height=int(row.get("height") or 0),
+                    alt=str(row.get("alt") or ""), remote_image_id=image_id,
+                    sort_position=pos, is_cover=(pos == 0)))
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.critical(self, "Could not receive photographs", str(exc))
+            return
+        self._bucket = bucket
+        self._cover_idx = 0
+        self._refresh_bucket()
+        self._changed()
+        self.save_state.setText(f"{len(bucket)} photographs received from GYSS")
+
     def _add_photo_paths(self, paths, *, insert=False):
         added = []
         for p in paths:
@@ -840,7 +959,7 @@ class TakeMode(QWidget):
             stored = snap_library.draft(site, draft.draft_id)
         known = {a["asset_uuid"] for a in stored["assets"]}
         for image in draft.images:
-            if image.asset_uuid not in known:
+            if image.asset_uuid not in known and not image.remote_image_id:
                 snap_library.absorb_draft_asset(
                     site, draft.draft_id, image.local_path, alt_text=image.alt,
                     caption=image.caption, asset_uuid=image.asset_uuid)

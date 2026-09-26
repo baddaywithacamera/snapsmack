@@ -244,4 +244,39 @@ test('mobile layout collapses to one image per row', () => {
     layout.items.forEach(item => assert.equal(item.width, 480));
 });
 
+test('a block never silently drops a photograph', () => {
+    const shapes = [
+        { width: 1200, height: 1800 }, { width: 1800, height: 1200 },
+        { width: 1400, height: 1400 }, { width: 2400, height: 1000 },
+        { width: 1000, height: 1500 }, { width: 1600, height: 1067 }
+    ];
+    const take = (n, offset) =>
+        Array.from({ length: n }, (_, i) => shapes[(i + offset) % shapes.length]);
+
+    for (let size = 1; size <= 6; size++) {
+        for (let offset = 0; offset < 6; offset++) {
+            const block = take(size, offset);
+            for (const width of [1920, 1440, 1200, 768, 390]) {
+                for (const gap of [0, 4, 25]) {
+                    for (const emphasis of ['natural', 'balanced', 'landscape', 'portrait']) {
+                        const layout = engine.computeLayout(block, width, gap, emphasis);
+                        assert.equal(layout.items.length, block.length,
+                            `block of ${size} at ${width}px, gap ${gap}, emphasis ${emphasis}`);
+                    }
+                }
+            }
+        }
+    }
+
+    for (const total of [7, 11, 12, 13, 17, 23, 45, 100, 200]) {
+        for (const width of [1920, 1440, 1200, 768, 390]) {
+            for (const emphasis of ['natural', 'balanced', 'landscape', 'portrait']) {
+                const layout = engine.computeLayout(take(total, 0), width, 4, emphasis);
+                assert.equal(layout.items.length, total,
+                    `archive of ${total} at ${width}px, emphasis ${emphasis}`);
+            }
+        }
+    }
+});
+
 // ===== SNAPSMACK EOF =====

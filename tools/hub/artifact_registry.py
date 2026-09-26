@@ -110,6 +110,17 @@ class ArtifactRegistry:
         record = ArtifactRecord(artifact_id, ArtifactKind(kind),
                                 os.path.abspath(os.fspath(path)), tuple(source_refs), "",
                                 bit_depth, colorspace, producer_build)
+        existing = self._records.get(artifact_id)
+        if existing is not None:
+            # Deterministic identity describes provenance, not a cache filename.
+            # The same RAW/profile result may be regenerated into a different
+            # content-addressed cache path after reopening a project.  Preserve
+            # its identity and relocate it when every provenance field agrees.
+            comparable_existing = replace(existing, path=record.path)
+            if comparable_existing != record:
+                raise ValueError(f"artifact ID is already assigned: {artifact_id}")
+            self._records[artifact_id] = record
+            return artifact_id
         self.add(record)
         return record.id
 

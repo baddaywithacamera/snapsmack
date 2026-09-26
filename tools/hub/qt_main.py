@@ -10,7 +10,7 @@ import sys
 
 import requests
 
-from PySide6.QtCore import QObject, QSettings, QThread, Qt, Signal, Slot
+from PySide6.QtCore import QObject, QSettings, QThread, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QGuiApplication, QIcon, QPixmap
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QFileDialog,
     QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
@@ -417,6 +417,20 @@ class Window(QMainWindow):
         self.migration = ToolSection("MIGRATION CENTRE", MIGRATION_ROSTER); self.body.addWidget(self.migration)
         self.body.setAlignment(Qt.AlignTop); scroll.setWidget(content); shell.addWidget(scroll, 1); self.setCentralWidget(root)
         self._scale = 1.0; self._apply_settings(); self._fit_to_screen()
+        geometry = self.settings.value("window/normal_geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+        self._restore_maximized = self.settings.value("window/maximized", False, type=bool)
+        if self._restore_maximized:
+            QTimer.singleShot(0, self.showMaximized)
+
+    def closeEvent(self, event):
+        if not self.isMinimized():
+            self.settings.setValue("window/maximized", self.isMaximized())
+            if not self.isMaximized():
+                self.settings.setValue("window/normal_geometry", self.saveGeometry())
+            self.settings.sync()
+        super().closeEvent(event)
 
     def _fit_to_screen(self):
         available = QGuiApplication.primaryScreen().availableGeometry()

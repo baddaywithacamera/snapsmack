@@ -58,15 +58,22 @@ if (!function_exists('snap_version_compare')) {
 }
 
 // ── AUTO-REPAIR MISSING MOBILE SKIN ──────────────────────────────────────────
-// If SNAPSMACK_MOBILE_SKIN is configured but the skin directory is absent
-// (e.g. pre-existing installs that ran before Photogram shipped via the
-// registry), silently fetch and install it from the skin registry now.
-// Non-fatal: failure is logged but does not block the update page.
-if (
-    defined('SNAPSMACK_MOBILE_SKIN') && SNAPSMACK_MOBILE_SKIN !== '' &&
-    !is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)
-) {
-    $mobile_slug    = SNAPSMACK_MOBILE_SKIN;
+// Repair the mobile renderer required by this site's content model:
+// TELEGRAM for SMACKTALK, PHOTOGRAM for SMACKONEOUT/GRAMOFSMACK, and none for
+// SMACKTHEMUP. Failure is logged but does not block the update page.
+try {
+    $mobile_site_mode = (string)($pdo->query(
+        "SELECT setting_val FROM snap_settings WHERE setting_key='site_mode' LIMIT 1"
+    )->fetchColumn() ?: 'photoblog');
+} catch (Throwable $e) {
+    $mobile_site_mode = 'photoblog';
+}
+$mobile_slug = match ($mobile_site_mode) {
+    'smacktalk'             => 'telegram',
+    'photoblog', 'carousel' => 'photogram',
+    default                 => '',
+};
+if ($mobile_slug !== '' && !is_dir(__DIR__ . '/skins/' . $mobile_slug)) {
     $registry_url   = SKIN_REGISTRY_DEFAULT_URL;
     $mobile_remote  = skin_registry_fetch($registry_url);
     $mobile_entry   = $mobile_remote['skins'][$mobile_slug] ?? null;

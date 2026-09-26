@@ -143,8 +143,18 @@ class CredentialMigrationTests(unittest.TestCase):
         self.sm_vault = mock.patch.object(sync_manager, "secret_vault", self.vault)
         self.cc_vault = mock.patch.object(cloud_client, "secret_vault", self.vault,
                                           create=True)
+        # SECAUDIT 058 D: list_profiles() calls sync_shared_profiles(), which
+        # imports the operator's REAL Hub profiles (with their real API keys)
+        # into PROFILES_DIR — the test's temp dir. That contaminated the vault
+        # tests with 24 live sites, put real keys in %TEMP% on every run, and
+        # moved the injected write-failure onto a save path that swallows
+        # errors, so two rollback tests went permanently red. Tests never touch
+        # the shared profile store.
+        self.pm_shared = mock.patch.object(profile_manager, "sync_shared_profiles",
+                                           lambda: 0)
         self.pm_dir.start(); self.pm_journal.start(); self.sm_dir.start(); self.cfg_path.start()
         self.pm_vault.start(); self.sm_vault.start(); self.cc_vault.start()
+        self.pm_shared.start(); self.addCleanup(self.pm_shared.stop)
         self.addCleanup(self.pm_dir.stop); self.addCleanup(self.pm_journal.stop)
         self.addCleanup(self.pm_vault.stop)
         self.addCleanup(self.sm_dir.stop); self.addCleanup(self.cfg_path.stop)
