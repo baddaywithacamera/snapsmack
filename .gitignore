@@ -187,6 +187,7 @@ _continuity/
 
 # Codex's session-continuity notes (separate private working memory)
 _codex_continuity/
+_continuity_codex/
 
 # Private spec / planning documents directory
 tools/_specs/
