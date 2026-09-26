@@ -16,6 +16,7 @@
 $root = dirname(__DIR__);
 $landing = file_get_contents($root . '/skins/instant-camera/landing.php');
 $profile = file_get_contents($root . '/skins/instant-camera/skin-profile.php');
+$mayhem = file_get_contents($root . '/assets/js/ss-engine-organized-mayhem.js');
 
 $failures = [];
 $expect = static function (bool $ok, string $message) use (&$failures): void {
@@ -28,8 +29,13 @@ $expect(!str_contains($landing, 'array_slice($grid_posts'), 'feed must not fetch
 $expect(str_contains($landing, '$_feed_total = $post_count;'), 'paging total must come from the count query');
 
 $expect(
-    str_contains($profile, "max(12, min(30, (int)(\$settings['mayhem_initial_count'] ?? 30)))"),
-    'INSTANT CAMERA decorative pool must be capped at 30 images'
+    str_contains($profile, "max(40, min(400, (int)(\$settings['mayhem_initial_count'] ?? 90)))"),
+    'INSTANT CAMERA decorative pool must preserve the configured tabletop density'
+);
+$expect(
+    str_contains($mayhem, 'var cardW = Math.max(cellW, cellH) * 1.7;')
+        && !str_contains($mayhem, 'var cardW = Math.min(maxWidth, Math.max(cellW, cellH) * 1.7);'),
+    'ambient Mayhem cards must expand to cover the viewport without gaps'
 );
 
 if ($failures) {
