@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.756D — 2026-09-26 — Known good
+
+- Instant Camera restores the complete Organized Mayhem engine byte-for-byte from the last known-good revision before the June coverage rewrite. No reconstructed sizing or density logic remains.
+
 ## 0.7.755D — 2026-09-26 — Original tabletop
 
 - Instant Camera removes the replacement coverage-grid backdrop and restores Organized Mayhem's original clustered, overlapping tabletop builder and continuous ambient drift.
