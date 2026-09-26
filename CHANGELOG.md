@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.757D — 2026-09-26 — Last week
+
+- Instant Camera restores the exact engine and pool wiring from September 19, immediately before the September 20 decorative-pool cap and the September 25 compensating width changes.
+
 ## 0.7.756D — 2026-09-26 — Known good
 
 - Instant Camera restores the complete Organized Mayhem engine byte-for-byte from the last known-good revision before the June coverage rewrite. No reconstructed sizing or density logic remains.
