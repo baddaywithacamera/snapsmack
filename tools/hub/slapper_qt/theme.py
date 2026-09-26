@@ -257,6 +257,20 @@ def stylesheet() -> str:
         font-size: 12px;
         font-weight: 600;
     }}
+    QDoubleSpinBox#ControlValue {{
+        background: transparent;
+        color: {INK};
+        border: 1px solid transparent;
+        border-radius: 3px;
+        padding: 1px 2px;
+        font-size: 12px;
+        font-weight: 600;
+    }}
+    QDoubleSpinBox#ControlValue:hover {{ border-color: {BORDER}; }}
+    QDoubleSpinBox#ControlValue:focus {{
+        background: {FIELD};
+        border-color: {ACCENT};
+    }}
 
     /* --- Sliders (green thumb on a dark track, admin range style) ------- */
     QSlider::groove:horizontal {{

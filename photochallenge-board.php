@@ -60,18 +60,8 @@ if (!function_exists('pc_enabled') || !pc_enabled($settings) || !pc_feed_enabled
 }
 
 $esc        = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
-$is_archive_feed = (string)($_GET['view'] ?? '') === 'previous';
-$win        = $is_archive_feed ? pc_previous_window($pdo, $settings) : pc_window($settings);
-$tag        = pc_tag($settings);
-try {
-    $tag_q = $pdo->prepare("SELECT tag FROM pc_prompts WHERE week_key=? LIMIT 1");
-    $tag_q->execute([(string)$win['week_key']]);
-    $round_tag = strtolower(trim((string)($tag_q->fetchColumn() ?: '')));
-    if ($round_tag !== '') $tag = $round_tag;
-} catch (Throwable $e) {
-}
-$state      = $win['open'] ? 'OPEN' : 'CLOSED';
-$page_title = $is_archive_feed ? 'Previous Challenge' : 'The Board';
+$rounds     = pc_board_windows($pdo, $settings);
+$page_title = 'The Board';
 $skin_path  = 'skins/' . $active_skin;
 
 if (function_exists('snapsmack_log_hit')) {
@@ -100,11 +90,22 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             <div class="static-content">
                 <h1 class="static-page-title"><?php echo $esc($page_title); ?></h1>
                 <div class="description">
-                    <p class="dim">
-                        <strong><?php echo $esc($state); ?></strong> &middot; <?php echo $esc($win['label']); ?>
-                        &mdash; post a photo tagged <code>#<?php echo $esc($tag); ?></code> and follow to join.
-                    </p>
-                    <?php echo pc_board_embed_html($pdo, $settings, $win); ?>
+                    <?php foreach ($rounds as $round_index => $win):
+                        $tag = trim((string)($win['tag'] ?? pc_tag($settings)));
+                        $prompt = trim((string)($win['prompt'] ?? ''));
+                        $state = !empty($win['open']) ? 'OPEN' : 'CLOSED';
+                        $heading = $round_index === 0 ? 'This Week' : ($prompt !== '' ? $prompt : (string)$win['label']);
+                    ?>
+                    <section class="pc-board-round">
+                        <h2><?php echo $esc($heading); ?></h2>
+                        <p class="dim">
+                            <strong><?php echo $esc($state); ?></strong> &middot; <?php echo $esc($win['label']); ?>
+                            <?php if ($round_index === 0 && $prompt !== ''): ?>&middot; <?php echo $esc($prompt); ?><?php endif; ?>
+                            &mdash; <code>#<?php echo $esc($tag); ?></code>
+                        </p>
+                        <?php echo pc_board_embed_html($pdo, $settings, $win, $round_index === 0); ?>
+                    </section>
+                    <?php endforeach; ?>
                 </div>
             </div>
 

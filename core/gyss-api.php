@@ -362,13 +362,9 @@ if ($resource === 'prompt' && $method === 'POST') {
 // =============================================================================
 if ($resource === 'photos' && $method === 'GET') {
 
-    // SMACKTALK (longform) has no sortable photo feed — its images live INSIDE
-    // essays via [mosaic:ID] post-body shortcodes plus one featured asset, so
-    // there is no per-image order to arrange. Refuse rather than hand back a list
-    // whose sort_order means nothing. (Longform is SmackPress's job.)
-    if (($settings['site_mode'] ?? 'photoblog') === 'smacktalk') {
-        gy_err('GYSS does not support SMACKTALK (longform) sites — images live inside essays and are not sortable. Use SmackPress to manage longform posts.', 409);
-    }
+    // SMACKTALK has no meaningful global image order, but its Gallery is still
+    // useful for culling and for handing a selection to COLD TAKE. Reads are
+    // therefore allowed; batch-update below remains fail-closed for this mode.
 
     $date_from   = $_GET['date_from']   ?? '';
     $date_to     = $_GET['date_to']     ?? '';
@@ -493,6 +489,7 @@ if ($resource === 'photos' && $method === 'GET') {
             'album_name'    => $row['album_name'],
             'filename'      => basename((string)$row['img_file']),
             'thumb_url'     => gy_thumb_url($row['img_file']),
+            'full_url'      => gy_media_url($row['img_file']),
             'source_page_url' => BASE_URL . ltrim((string)$row['img_slug'], '/'),
             'highres_download_url' => snap_api_safe_link((string)$row['download_url']),
         ];
@@ -582,10 +579,6 @@ if ($resource === 'meta' && $method === 'GET') {
 // =============================================================================
 if ($resource === 'library' && $method === 'GET') {
 
-    if (($settings['site_mode'] ?? 'photoblog') === 'smacktalk') {
-        gy_err('GYSS does not support SMACKTALK (longform) sites — images live inside essays and are not sortable.', 409);
-    }
-
     // Parse optional since. Value only ever reaches a prepared param, but we
     // normalise to a canonical datetime so a garbage string is a clean 400, not a
     // silent empty delta. Parsed literally (no timezone shift): the client sends
@@ -651,6 +644,7 @@ if ($resource === 'library' && $method === 'GET') {
                 'width'       => $row['img_width']  !== null ? (int)$row['img_width']  : null,
                 'height'      => $row['img_height'] !== null ? (int)$row['img_height'] : null,
                 'thumb_url'   => gy_thumb_url($row['img_file']),
+                'full_url'    => gy_media_url($row['img_file']),
             ];
         }
 

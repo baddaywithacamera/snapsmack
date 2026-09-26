@@ -7,7 +7,7 @@ network calls go through ``found_textures``; all compositing is local.
 
 import os
 
-from PySide6.QtCore import Qt, QObject, QRunnable, QThreadPool, Signal, QSize
+from PySide6.QtCore import Qt, QObject, QRunnable, QThreadPool, Signal, QSize, QTimer
 from PySide6.QtGui import QImage, QPixmap, QIcon
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QListWidget,
@@ -67,6 +67,33 @@ class _ThumbTask(QRunnable):
             _log.debug("texture thumb failed: %s", self.url, exc_info=True)
 
 
+class _SearchSignals(QObject):
+    ready = Signal(int, object, int)
+    failed = Signal(int, str)
+
+
+class _SearchTask(QRunnable):
+    def __init__(self, generation, site, key, query, rights, page, signals):
+        super().__init__()
+        self.generation = generation
+        self.site = site
+        self.key = key
+        self.query = query
+        self.rights = rights
+        self.page = page
+        self.signals = signals
+
+    def run(self):
+        try:
+            textures, total = found_textures.search_catalog(
+                self.site, self.key, query=self.query, rights=self.rights,
+                page=self.page)
+            self.signals.ready.emit(self.generation, textures, total)
+        except Exception as error:  # noqa: BLE001
+            _log.exception("Found Textures search failed")
+            self.signals.failed.emit(self.generation, str(error))
+
+
 class TexturesDialog(QDialog):
     def __init__(self, host, site_url, api_key):
         super().__init__(host)
@@ -78,9 +105,16 @@ class TexturesDialog(QDialog):
         self._pool = QThreadPool.globalInstance()
         self._signals = _ThumbSignals()
         self._signals.ready.connect(self._on_thumb)
+        self._search_signals = _SearchSignals()
+        self._search_signals.ready.connect(self._show_results)
+        self._search_signals.failed.connect(self._search_failed)
+        self._generation = 0
+        self._page = 1
+        self._total = 0
+        self._per_page = 40
 
         self.setWindowTitle("Found Textures")
-        self.resize(760, 560)
+        self.resize(980, 700)
         self.setStyleSheet(theme.stylesheet())
 
         layout = QVBoxLayout(self)
@@ -90,11 +124,11 @@ class TexturesDialog(QDialog):
         search_row = QHBoxLayout()
         self.search = QLineEdit()
         self.search.setPlaceholderText("Search textures (rust, paper, concrete…)")
-        self.search.returnPressed.connect(self.run_search)
+        self.search.returnPressed.connect(self.new_search)
         search_row.addWidget(self.search, 1)
         go = QPushButton("Search")
         go.setObjectName("LayerAddBtn")
-        go.clicked.connect(self.run_search)
+        go.clicked.connect(self.new_search)
         search_row.addWidget(go)
         self.rights = QComboBox()
         for label, value in RIGHTS_FILTERS:
@@ -102,7 +136,7 @@ class TexturesDialog(QDialog):
         self.rights.setToolTip(
             "Clear rights is the safe default. Unclear and unknown textures "
             "require confirmation before import.")
-        self.rights.currentIndexChanged.connect(self.run_search)
+        self.rights.currentIndexChanged.connect(self.new_search)
         search_row.addWidget(self.rights)
         layout.addLayout(search_row)
 
@@ -110,8 +144,17 @@ class TexturesDialog(QDialog):
         self.grid.setViewMode(QListWidget.IconMode)
         self.grid.setResizeMode(QListWidget.Adjust)
         self.grid.setMovement(QListWidget.Static)
-        self.grid.setIconSize(QSize(150, 150))
-        self.grid.setSpacing(8)
+        # Icon-mode items otherwise derive their width from the full title.
+        # Long catalogue descriptions then make Qt place the next row before
+        # the previous row's icon rectangle has ended, producing the pile of
+        # overlapping thumbnails seen in 0.8.06. Give every result a real,
+        # fixed card and elide the title inside it.
+        self.grid.setIconSize(QSize(180, 132))
+        self.grid.setGridSize(QSize(220, 190))
+        self.grid.setUniformItemSizes(True)
+        self.grid.setWordWrap(False)
+        self.grid.setTextElideMode(Qt.ElideRight)
+        self.grid.setSpacing(6)
         self.grid.itemDoubleClicked.connect(lambda _i: self.add_selected())
         layout.addWidget(self.grid, 1)
 
@@ -132,6 +175,12 @@ class TexturesDialog(QDialog):
         self.blend.setCurrentIndex(BLEND_MODES.index("overlay"))  # textures love overlay
         controls.addWidget(self.blend)
         controls.addStretch(1)
+        self.previous = QPushButton("‹ Previous")
+        self.previous.clicked.connect(self.previous_page)
+        controls.addWidget(self.previous)
+        self.next = QPushButton("Next ›")
+        self.next.clicked.connect(self.next_page)
+        controls.addWidget(self.next)
         self.status = QLabel("")
         self.status.setObjectName("TargetLabel")
         controls.addWidget(self.status)
@@ -140,6 +189,9 @@ class TexturesDialog(QDialog):
         add.clicked.connect(self.add_selected)
         controls.addWidget(add)
         layout.addLayout(controls)
+        self.previous.setEnabled(False)
+        self.next.setEnabled(False)
+        QTimer.singleShot(0, self.new_search)
 
     def _label(self, text):
         label = QLabel(text)
@@ -147,21 +199,48 @@ class TexturesDialog(QDialog):
         return label
 
     # --- Search -------------------------------------------------------------
+    def new_search(self):
+        self._page = 1
+        self.run_search()
+
+    def previous_page(self):
+        if self._page > 1:
+            self._page -= 1
+            self.run_search()
+
+    def next_page(self):
+        if self._page * self._per_page < self._total:
+            self._page += 1
+            self.run_search()
+
     def run_search(self):
         self.grid.clear()
         self._items.clear()
         self._textures.clear()
         self.status.setText("Searching…")
-        try:
-            textures, total = found_textures.search(
-                self.site_url, self.api_key, query=self.search.text().strip(),
-                rights=self.rights.currentData())
-        except Exception as error:  # noqa: BLE001
-            _log.exception("Found Textures search failed")
-            QMessageBox.critical(self, "Search failed", str(error))
-            self.status.setText("")
+        self.previous.setEnabled(False)
+        self.next.setEnabled(False)
+        self._generation += 1
+        self._pool.start(_SearchTask(
+            self._generation, self.site_url, self.api_key,
+            self.search.text().strip(), self.rights.currentData(), self._page,
+            self._search_signals))
+
+    def _search_failed(self, generation, message):
+        if generation != self._generation:
             return
-        self.status.setText(f"{len(textures)} of {total}")
+        QMessageBox.critical(self, "Search failed", message)
+        self.status.setText("")
+
+    def _show_results(self, generation, textures, total):
+        if generation != self._generation:
+            return
+        self._total = total
+        first = (self._page - 1) * self._per_page + 1 if textures else 0
+        last = first + len(textures) - 1 if textures else 0
+        self.status.setText(f"{first}–{last} of {total}")
+        self.previous.setEnabled(self._page > 1)
+        self.next.setEnabled(self._page * self._per_page < total)
         for texture in textures:
             thumb = texture.get("thumb_url")
             if not thumb:
@@ -174,6 +253,8 @@ class TexturesDialog(QDialog):
             item.setToolTip(
                 f"Rights: {badge}\nLicence: {texture.get('licence') or 'unknown'}")
             item.setData(Qt.UserRole, thumb)
+            item.setSizeHint(self.grid.gridSize())
+            item.setTextAlignment(Qt.AlignHCenter | Qt.AlignTop)
             self.grid.addItem(item)
             self._items[thumb] = item
             self._textures[thumb] = texture

@@ -55,7 +55,7 @@ $page_css = <<<'CSS'
 #was { padding: 64px 0; background: #2a2a2a; color: #ddd; border-top: 8px solid var(--red); }
 #was h2 { margin-bottom: 26px; color: var(--white); }
 #strip { padding-top: 56px; }
-.was-list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; margin: 0; padding: 0; list-style: none; }
+.was-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin: 0; padding: 0; list-style: none; }
 .was-list li { display: flex; flex-direction: column; margin: 0; padding-top: 14px; border-top: 3px solid var(--red); }
 .was-list strong { color: var(--white); font: 900 .95rem/1.2 Arial Black, Arial, sans-serif; text-transform: uppercase; }
 .was-list span { margin-top: 10px; color: #ddd; font-size: .9rem; line-height: 1.5; }
@@ -126,7 +126,11 @@ $page_css = <<<'CSS'
 #beta .wrap { max-width: 820px; }
 
 @media (max-width: 1100px) {
-    .was-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    /* Two, not three: with four cards a three-across row strands the fourth one
+       alone on a second row anywhere from ~700px to 1100px wide. Two gives a
+       clean 2x2. Measured: 1050px -> 474px cards, 900px -> 399px, 750px -> 331px,
+       no stranded card at any of them. (Was three when the list had five cards.) */
+    .was-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 850px) {
     .featured-skin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -188,8 +192,7 @@ require_once __DIR__ . '/includes/header.php';
                 <li><strong>The photoblog</strong><span>2003 to 2010. One photograph a day on one page, big, with the comments underneath and nothing else competing for the eye. Pixelpost, Photoblogs.org, a ring of people who looked at each other&rsquo;s work every morning and said so. It ran on your own domain, so when the ring dissolved, the work stayed put.</span><em>Again as <a href="features.php#modes">SMACKONEOUT</a></em></li>
                 <li><strong>Classic Instagram</strong><span>2010 to 2016. A square grid, three across, in the order you posted it, seen by the people who chose to follow you. Likes were a count, not a currency. No algorithm, no ads, no Reels, no shop tab, no video autoplaying between your photographs because a spreadsheet said it should.</span><em>Again as <a href="features.php#modes">GRAMOFSMACK</a></em></li>
                 <li><strong>Early blogging</strong><span>1999 onward. Blogger, then Greymatter in 2000 &mdash; Noah Grey was publishing his photographs with it from day one &mdash; then WordPress before it became a page builder. Writing with photographs in it, as long as you wanted, nobody&rsquo;s feed deciding whether it got read.</span><em>Again as <a href="features.php#modes">SMACKTALK</a></em></li>
-                <li><strong>Picasa Web Albums</strong><span>2006 to 2016. A free, friendly photo organizer that pushed your folders to the web as albums for friends and family. Send the link, no account needed to look, no &ldquo;suggested for you&rdquo; underneath. Friends and family, not followers: SMACKTHEMUP has no fediverse on purpose. Sharing simplified.</span><em>Again as <a href="features.php#modes">SMACKTHEMUP</a></em></li>
-                <li><strong>Flickr</strong><span>2004 to 2012. Photostreams, groups, meaningful comments. Explore before it was a slot machine. Not a way of publishing but the place everyone who published photos online met. Then Yahoo bought it and the community never recovered. The files are still there. The people aren&rsquo;t.</span><em>Again as <a href="features.php#modes">SMACKONEOUT</a></em></li>
+                <li><strong>Picasa Web Albums</strong><span>2006 to 2016. A free, friendly photo organizer that pushed your folders to the web as albums for friends and family. Send the link, no account needed to look, no &ldquo;suggested for you&rdquo; underneath. Friends and family, not followers: SMACKTHEMUP has no fediverse on purpose. Sharing simplified.</span><em>Again as <a href="features.php#modes">SMACKTHEMUP</a> + <a href="tool-snap-slapper.php">SNAP SLAPPER</a></em></li>
             </ul>
             <p class="was-closer">Everything was killed off, died off, or was walled off to prioritize profits over people.</p>
         </div>

@@ -5,13 +5,14 @@ screen shares one look and one behaviour instead of styling controls ad hoc.
 """
 
 from PySide6.QtCore import Qt, Signal, QRectF, QTimer
-from PySide6.QtGui import (QPainter, QPixmap, QImage, QColor, QPolygonF, QPen,
+from PySide6.QtGui import (QPainter, QPixmap, QColor, QPolygonF, QPen,
                            QFont, QTransform, QPainterPath, QCursor)
 from PySide6.QtCore import QPointF
 from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem,
     QGraphicsEllipseItem, QGraphicsPolygonItem, QGraphicsLineItem, QGraphicsPathItem,
     QWidget, QLabel, QSlider, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy,
+    QDoubleSpinBox, QAbstractSpinBox,
 )
 from PIL import Image
 
@@ -34,10 +35,14 @@ class ImageView(QGraphicsView):
     neutral_clicked = Signal(float, float)
     # emitted when a colour-range mask eyedropper samples the canvas
     colour_range_clicked = Signal(float, float)
+    vignette_colour_clicked = Signal(float, float)
     # normalized canvas movement for the selected movable layer
     layer_dragged = Signal(float, float, bool)
     # corner index, normalized x/y, and whether the drag has finished
     perspective_corner_dragged = Signal(int, float, float, bool)
+    # Enter applies the current four-corner correction even when the canvas,
+    # rather than the main window, owns keyboard focus.
+    perspective_commit_requested = Signal()
     # normalized x/y and stroke-finished state for full-canvas mask painting
     mask_painted = Signal(float, float, bool)
     gradient_drawn = Signal(float, float, float, float)
@@ -70,12 +75,15 @@ class ImageView(QGraphicsView):
         self._crop_drag_start = None
         self._crop_start_rect = None
         self._crop_aspect = None
+        self._crop_rebase_pending = False
+        self._crop_requested_normalized = None
         self._crop_shades = []
         self._crop_grid = []
         self._crop_handles = []
         self._retouch_mode = False
         self._neutral_mode = False
         self._colour_range_mode = False
+        self._vignette_colour_mode = False
         self._gradient_mode = False
         self._gradient_start = None
         self._gradient_line = None
@@ -83,10 +91,6 @@ class ImageView(QGraphicsView):
         self._gradient_points = None
         self._mask_paint_mode = False
         self._mask_painting = False
-        self._mask_overlay = QGraphicsPixmapItem()
-        self._mask_overlay.setZValue(7)
-        self._mask_overlay.setVisible(False)
-        self._scene.addItem(self._mask_overlay)
         self._layer_move_mode = False
         self._layer_drag_point = None
         self._perspective_mode = False
@@ -200,10 +204,12 @@ class ImageView(QGraphicsView):
             # losing the dense one-twentieth alignment guides.
             major = division % 5 == 0
             grid_pen = QPen(QColor(255, 255, 255, 165 if major else 82), 0)
-            top = points[0] + (points[1] - points[0]) * fraction
-            bottom = points[3] + (points[2] - points[3]) * fraction
-            left = points[0] + (points[3] - points[0]) * fraction
-            right = points[1] + (points[2] - points[1]) * fraction
+            # Keep the reference mesh fixed to the canvas. Only the photograph
+            # and green four-corner frame should move during correction.
+            top = QPointF(rect.left() + rect.width() * fraction, rect.top())
+            bottom = QPointF(top.x(), rect.bottom())
+            left = QPointF(rect.left(), rect.top() + rect.height() * fraction)
+            right = QPointF(rect.right(), left.y())
             for start, end in ((top, bottom), (left, right)):
                 line = QGraphicsLineItem(start.x(), start.y(), end.x(), end.y())
                 line.setPen(grid_pen)
@@ -239,6 +245,15 @@ class ImageView(QGraphicsView):
         self.setDragMode(QGraphicsView.NoDrag if enabled
                          else QGraphicsView.ScrollHandDrag)
         self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+
+    def set_vignette_colour_mode(self, enabled):
+        self._vignette_colour_mode = bool(enabled)
+        if enabled:
+            self.setDragMode(QGraphicsView.NoDrag)
+            self.viewport().setCursor(Qt.CrossCursor)
+        else:
+            self.setDragMode(QGraphicsView.ScrollHandDrag)
+            self.viewport().unsetCursor()
 
     def set_gradient_mode(self, enabled):
         """Let a graduated mask be drawn directly across the photograph."""
@@ -303,24 +318,6 @@ class ImageView(QGraphicsView):
         self.setDragMode(QGraphicsView.NoDrag if enabled
                          else QGraphicsView.ScrollHandDrag)
         self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
-        if not enabled:
-            self._mask_overlay.setVisible(False)
-
-    def set_mask_overlay(self, mask):
-        """Show black mask areas as a red overlay over the main photograph."""
-        if mask is None or self._item.pixmap().isNull():
-            self._mask_overlay.setVisible(False)
-            return
-        width, height = self._item.pixmap().width(), self._item.pixmap().height()
-        display = mask.convert("L").resize((width, height), Image.Resampling.BILINEAR)
-        alpha = display.point(lambda value: round((255 - value) * .48))
-        overlay = Image.new("RGBA", display.size, (225, 35, 35, 0))
-        overlay.putalpha(alpha)
-        data = overlay.tobytes("raw", "RGBA")
-        qimage = QImage(data, width, height, width * 4,
-                        QImage.Format_RGBA8888).copy()
-        self._mask_overlay.setPixmap(QPixmap.fromImage(qimage))
-        self._mask_overlay.setVisible(self._mask_paint_mode)
 
     def set_crop_mode(self, enabled, normalized_rect=None):
         self._crop_mode = enabled
@@ -330,8 +327,18 @@ class ImageView(QGraphicsView):
         self._crop_origin = None
         self._crop_drag = None
         if not enabled:
+            self._crop_rebase_pending = False
+            self._crop_requested_normalized = None
             self._clear_crop_overlay()
             return
+        # Entering crop causes the window to render the uncropped photograph
+        # asynchronously.  Until that frame arrives sceneRect still describes
+        # the old, already-cropped preview. Remember the normalized request so
+        # set_pixmap() can place it against the real full frame.
+        self._crop_rebase_pending = True
+        self._crop_requested_normalized = (
+            list(normalized_rect) if normalized_rect and len(normalized_rect) == 4
+            else [0.0, 0.0, 1.0, 1.0])
         scene = self._scene.sceneRect()
         if not (scene.width() and scene.height()):
             return
@@ -392,6 +399,10 @@ class ImageView(QGraphicsView):
         return True
 
     def keyPressEvent(self, event):
+        if self._perspective_mode and event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            self.perspective_commit_requested.emit()
+            event.accept()
+            return
         if self._crop_mode and self._crop_rect_item:
             directions = {
                 Qt.Key_Left: (-1, 0), Qt.Key_Right: (1, 0),
@@ -430,23 +441,23 @@ class ImageView(QGraphicsView):
         if not self._crop_rect_item:
             return
         scene, rect = self._scene.sceneRect(), self._crop_rect_item.rect()
-        shade_rects = (
-            QRectF(scene.left(), scene.top(), scene.width(), rect.top() - scene.top()),
-            QRectF(scene.left(), rect.bottom(), scene.width(), scene.bottom() - rect.bottom()),
-            QRectF(scene.left(), rect.top(), rect.left() - scene.left(), rect.height()),
-            QRectF(rect.right(), rect.top(), scene.right() - rect.right(), rect.height()))
         # Crop handles move on every mouse event. Keep the graphics items alive
-        # and update their geometry; deleting and recreating sixteen scene
-        # objects per event made the frame visibly trail the pointer.
-        while len(self._crop_shades) < 4:
-            item = QGraphicsRectItem()
+        # and update their geometry. One odd/even path provides the shaded
+        # surround and transparent crop opening. Four overlapping shade panels
+        # made Qt recalculate and repaint huge dirty regions on every pointer
+        # event, causing Windows to coalesce events into a visibly stepped drag.
+        if not self._crop_shades:
+            item = QGraphicsPathItem()
             item.setPen(QPen(Qt.NoPen))
             item.setBrush(QColor(0, 0, 0, 145))
             item.setZValue(18)
             self._scene.addItem(item)
             self._crop_shades.append(item)
-        for item, bounds in zip(self._crop_shades, shade_rects):
-            item.setRect(bounds.normalized())
+        shade = QPainterPath()
+        shade.setFillRule(Qt.OddEvenFill)
+        shade.addRect(scene)
+        shade.addRect(rect)
+        self._crop_shades[0].setPath(shade)
         grid_pen = QPen(QColor(255, 255, 255, 150), 0)
         grid_lines = []
         for fraction in (1 / 3, 2 / 3):
@@ -518,6 +529,15 @@ class ImageView(QGraphicsView):
             self._logical_image_rect = QRectF(pixmap.rect())
             self._scene.setSceneRect(self._logical_image_rect)
         self._has_image = True
+        if self._crop_mode and self._crop_rebase_pending and not stable_geometry:
+            scene = self._scene.sceneRect()
+            left, top, right, bottom = self._crop_requested_normalized
+            self._set_crop_rect(QRectF(
+                scene.left() + left * scene.width(),
+                scene.top() + top * scene.height(),
+                (right - left) * scene.width(),
+                (bottom - top) * scene.height()))
+            self._crop_rebase_pending = False
         self._update_perspective_overlay()
         if first or not keep_view or self._fitting:
             self.fit()
@@ -659,6 +679,14 @@ class ImageView(QGraphicsView):
                     (point.x() - scene.left()) / scene.width(),
                     (point.y() - scene.top()) / scene.height())
             return
+        if self._vignette_colour_mode and self._has_image and event.button() == Qt.LeftButton:
+            point = self.mapToScene(event.position().toPoint())
+            scene = self._scene.sceneRect()
+            if scene.contains(point) and scene.width() and scene.height():
+                self.vignette_colour_clicked.emit(
+                    (point.x() - scene.left()) / scene.width(),
+                    (point.y() - scene.top()) / scene.height())
+            return
         if self._mask_paint_mode and self._has_image and event.button() == Qt.LeftButton:
             point = self.mapToScene(event.position().toPoint())
             scene = self._scene.sceneRect()
@@ -676,6 +704,9 @@ class ImageView(QGraphicsView):
                                           point.y() / scene.height())
             return
         if self._crop_mode and self._has_image and event.button() == Qt.LeftButton:
+            # The user has taken control of the frame; a late asynchronous
+            # preview must not replace their drag with the entry rectangle.
+            self._crop_rebase_pending = False
             point = self.mapToScene(event.position().toPoint())
             self._crop_drag = self._crop_hit(point)
             self._crop_drag_start = point
@@ -757,12 +788,22 @@ class ImageView(QGraphicsView):
                 if "n" in hit: rect.setTop(current.y())
                 if "s" in hit: rect.setBottom(current.y())
                 rect = rect.normalized()
-            if self._crop_aspect and self._crop_drag != "move" and rect.width() > 0:
-                height = rect.width() / self._crop_aspect
-                if self._crop_drag and "n" in self._crop_drag:
-                    rect.setTop(rect.bottom() - height)
-                else:
-                    rect.setBottom(rect.top() + height)
+            if self._crop_aspect and self._crop_drag != "move":
+                # Horizontal/corner handles drive width; vertical-only handles
+                # drive height. Previously N/S immediately snapped back because
+                # their changed height was overwritten from the unchanged width.
+                hit = self._crop_drag or ""
+                if hit in {"n", "s"} and rect.height() > 0:
+                    width = rect.height() * self._crop_aspect
+                    centre_x = start.center().x()
+                    rect.setLeft(centre_x - width / 2)
+                    rect.setRight(centre_x + width / 2)
+                elif rect.width() > 0:
+                    height = rect.width() / self._crop_aspect
+                    if "n" in hit:
+                        rect.setTop(rect.bottom() - height)
+                    else:
+                        rect.setBottom(rect.top() + height)
             self._set_crop_rect(rect)
             return
         if self._layer_move_mode and self._layer_drag_point is not None and \
@@ -874,9 +915,12 @@ class ImageView(QGraphicsView):
         if interactive:
             # A live drag must win on latency.  The former 1100 px proxy was
             # large enough that a multi-layer document could take several
-            # seconds per frame, making the slider appear dead.  A 600 px
-            # working proxy is replaced by a crisp viewport render on release.
-            scale = min(1.0, 600.0 / max(width, height))
+            # seconds per frame, making the slider appear dead. On real TIFF
+            # input the decoder also has a sharp cost cliff above roughly 500
+            # px (about 230 ms at 600 versus 14 ms at 480). A 480 px working
+            # proxy stays interactive and is replaced by a crisp render on
+            # release.
+            scale = min(1.0, 480.0 / max(width, height))
             return (max(320, int(width * scale)),
                     max(320, int(height * scale)))
         # A little headroom so a zoom-in past fit still looks sharp.
@@ -999,10 +1043,17 @@ class SliderRow(QWidget):
         self.slider.sliderReleased.connect(self._commit_drag)
         row.addWidget(self.slider, 1)
 
-        self.value_label = QLabel(self._format(self.default))
+        self.value_label = QDoubleSpinBox()
         self.value_label.setObjectName("ControlValue")
-        self.value_label.setFixedWidth(40)
+        self.value_label.setRange(self.start, self.end)
+        self.value_label.setDecimals(self._decimals)
+        self.value_label.setSingleStep(self.resolution)
+        self.value_label.setValue(self.default)
+        self.value_label.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self.value_label.setKeyboardTracking(False)
+        self.value_label.setFixedWidth(52 if self._decimals else 44)
         self.value_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.value_label.editingFinished.connect(self._on_number_edited)
         row.addWidget(self.value_label)
 
         self._suppress = False
@@ -1022,13 +1073,32 @@ class SliderRow(QWidget):
 
     def _on_slider(self, step):
         value = self._from_step(step)
-        self.value_label.setText(self._format(value))
+        self.value_label.blockSignals(True)
+        self.value_label.setValue(value)
+        self.value_label.blockSignals(False)
         if not self._suppress:
             self.changed.emit(self.key, value)
             # Keyboard and groove-click changes have no sliderReleased signal.
             # Group key-repeat into one action, then create its own undo point.
             if not self.slider.isSliderDown():
                 self._commit_timer.start()
+
+    def _on_number_edited(self):
+        """Apply an exact typed value and create one undo step."""
+        # With keyboard tracking disabled, the spin box can finish editing
+        # while value() still exposes the previous committed number.
+        self.value_label.interpretText()
+        value = self._from_step(self._to_step(self.value_label.value()))
+        self._commit_timer.stop()
+        self.slider.blockSignals(True)
+        self.slider.setValue(self._to_step(value))
+        self.slider.blockSignals(False)
+        self.value_label.blockSignals(True)
+        self.value_label.setValue(value)
+        self.value_label.blockSignals(False)
+        if not self._suppress:
+            self.changed.emit(self.key, value)
+            self.committed.emit(self.key)
 
     def _cancel_deferred_commit(self):
         self._commit_timer.stop()
@@ -1042,7 +1112,7 @@ class SliderRow(QWidget):
         preset loads to sync the UI to the document)."""
         self._suppress = True
         self.slider.setValue(self._to_step(float(value)))
-        self.value_label.setText(self._format(float(value)))
+        self.value_label.setValue(float(value))
         self._suppress = False
 
     def mouseDoubleClickEvent(self, event):

@@ -153,7 +153,7 @@ def _safe_input_spec(path):
         image_input.close()
 
 
-def _read_direct(path):
+def _read_direct(path, maximum=None):
     """Decode inside the dedicated worker after the independent safety preflight."""
     source = oiio.ImageBuf(path)
     _raise_oiio(source, f"open of {path}")
@@ -163,6 +163,18 @@ def _read_direct(path):
     # Honour camera orientation before assigning stable working dimensions.
     oriented = oiio.ImageBufAlgo.reorient(source)
     _raise_oiio(oriented, "orientation")
+    if maximum:
+        bound_w, bound_h = (max(1, int(value)) for value in maximum)
+        oriented_spec = oriented.spec()
+        scale = min(bound_w / oriented_spec.width,
+                    bound_h / oriented_spec.height, 1.0)
+        if scale < 1.0:
+            width = max(1, round(oriented_spec.width * scale))
+            height = max(1, round(oriented_spec.height * scale))
+            roi = oiio.ROI(0, width, 0, height, 0, 1, 0,
+                           oriented_spec.nchannels)
+            oriented = oiio.ImageBufAlgo.resize(oriented, roi=roi)
+            _raise_oiio(oriented, "bounded preview resize")
     pixels = np.ascontiguousarray(oriented.get_pixels(oiio.FLOAT))
     if pixels.size == 0:
         raise OSError(f"OpenImageIO returned no pixels for: {path}")
@@ -177,11 +189,13 @@ def _read_direct(path):
                       str(spec.format), bytes(profile))
 
 
-def _worker_command(path, target):
+def _worker_command(path, target, maximum=None):
+    bounds = ([] if not maximum else
+              [str(max(1, int(maximum[0]))), str(max(1, int(maximum[1])))])
     if getattr(sys, "frozen", False):
-        return [sys.executable, "--highbit-decode-worker", path, target]
+        return [sys.executable, "--highbit-decode-worker", path, target] + bounds
     launcher = os.path.join(os.path.dirname(__file__), "run_slapper_qt.py")
-    return [sys.executable, launcher, "--highbit-decode-worker", path, target]
+    return [sys.executable, launcher, "--highbit-decode-worker", path, target] + bounds
 
 
 def read(path, maximum=None):
@@ -192,7 +206,8 @@ def read(path, maximum=None):
     os.close(descriptor)
     try:
         result = subprocess_limits.run(
-            _worker_command(path, target), timeout=180, memory_bytes=MAX_FLOAT_BYTES,
+            _worker_command(path, target, maximum), timeout=180,
+            memory_bytes=MAX_FLOAT_BYTES,
             capture_output=True, creationflags=(subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0))
         if result.returncode:
             detail = (result.stderr or result.stdout or b"decoder failed")
@@ -208,8 +223,7 @@ def read(path, maximum=None):
             raise OSError("Image decoder returned an invalid pixel buffer")
         if pixels.nbytes > MAX_FLOAT_BYTES:
             raise OSError("Image decoder exceeded the safe working-memory limit")
-        image = FloatImage(pixels, channels, source_format, profile)
-        return image.resized(maximum) if maximum else image
+        return FloatImage(pixels, channels, source_format, profile)
     finally:
         try:
             os.remove(target)
@@ -668,6 +682,22 @@ def luminance(rgb):
             rgb[:, :, 2] * np.float32(0.114))
 
 
+def invert(image, luminance_only=False):
+    """Invert RGB channels or luminance while preserving alpha.
+
+    Luminance-only inversion adds the same delta to all three channels. That
+    turns Y into 1-Y while leaving the two opponent-colour differences intact;
+    applying it twice therefore restores the original float values exactly.
+    """
+    rgb, alpha = _rgb(image)
+    if luminance_only:
+        tone = luminance(rgb)
+        result = rgb + (np.float32(1.0) - np.float32(2.0) * tone)[:, :, None]
+    else:
+        result = np.float32(1.0) - rgb
+    return _with_rgb(image, result.astype(np.float32), alpha)
+
+
 _HUE_BANDS = (("red", 0.0), ("orange", 30.0), ("yellow", 60.0),
               ("green", 120.0), ("aqua", 180.0), ("blue", 240.0),
               ("purple", 270.0), ("magenta", 300.0))
@@ -703,6 +733,76 @@ def _band_values(settings, prefix, hue, scale):
 def _smoothstep(edge0, edge1, value):
     amount = np.clip((value - edge0) / max(1e-6, edge1 - edge0), 0.0, 1.0)
     return amount * amount * (3.0 - 2.0 * amount)
+
+
+def _remap_luminance(rgb, source_luma, target_luma):
+    """Change luminance without independently bending the RGB channels.
+
+    Exposure/tone tools operate on scene luminance and scale the colour vector,
+    which keeps hue stable. Near black there is no colour vector to scale, so a
+    neutral target is the only defined result.
+    """
+    source = np.asarray(source_luma, dtype=np.float32)
+    target = np.asarray(target_luma, dtype=np.float32)
+    active = source > np.float32(1e-6)
+    ratio = np.ones_like(source, dtype=np.float32)
+    np.divide(target, source, out=ratio, where=active)
+    mapped = rgb * ratio[:, :, None]
+    return np.where(active[:, :, None], mapped, target[:, :, None]).astype(np.float32)
+
+
+def _wavelet_noise_reduction(rgb, luminance_amount=0.0, colour_amount=0.0):
+    """Edge-preserving multiscale luminance and opponent-colour denoising.
+
+    This is an independent à-trous-style implementation: fine-scale residuals
+    are soft-thresholded from a robust MAD noise estimate, while colour noise
+    receives a stronger edge-aware low-pass. Large residuals survive as real
+    detail instead of being blurred with the noise.
+    """
+    lum_strength = np.clip(float(luminance_amount) / 100.0, 0.0, 1.0)
+    colour_strength = np.clip(float(colour_amount) / 100.0, 0.0, 1.0)
+    if not lum_strength and not colour_strength:
+        return rgb
+
+    original_luma = luminance(rgb).astype(np.float32)
+    denoised_luma = original_luma
+    if lum_strength:
+        current = original_luma
+        details = []
+        for radius in (.65, 1.30, 2.60):
+            plane = FloatImage(current[:, :, None].astype(np.float32), ("Y",))
+            coarse = gaussian_blur(plane, radius).pixels[:, :, 0]
+            details.append(current - coarse)
+            current = coarse
+        finest = details[0]
+        centre = np.median(finest)
+        sigma = float(np.median(np.abs(finest - centre)) / .67448975)
+        # At 100, reject roughly five estimated sigmas on the finest scale;
+        # coarser bands use lower thresholds so shapes and texture survive.
+        threshold = sigma * (.35 + 4.65 * lum_strength)
+        restored = current
+        for detail, scale in zip(reversed(details), reversed((1.0, .62, .38))):
+            limit = threshold * scale
+            shrunk = np.sign(detail) * np.maximum(np.abs(detail) - limit, 0.0)
+            restored = restored + shrunk.astype(np.float32)
+        denoised_luma = (original_luma * (1.0 - lum_strength) +
+                          restored * lum_strength).astype(np.float32)
+
+    # Opponent colour is the RGB distance from luminance. Gaussian smoothing
+    # is acceptable here only behind a luminance-edge gate; this prevents
+    # colour bleeding across object boundaries.
+    chroma = rgb - original_luma[:, :, None]
+    if colour_strength:
+        chroma_image = FloatImage(chroma.astype(np.float32), ("R", "G", "B"))
+        soft_chroma, _ = _rgb(gaussian_blur(
+            chroma_image, .75 + colour_strength * 2.75))
+        gy, gx = np.gradient(original_luma)
+        edge = np.sqrt(gx * gx + gy * gy)
+        protection = np.clip(edge / (.012 + .045 * (1.0 - colour_strength)), 0.0, 1.0)
+        mix = colour_strength * (1.0 - protection * .90)
+        chroma = chroma * (1.0 - mix[:, :, None]) + soft_chroma * mix[:, :, None]
+
+    return (denoised_luma[:, :, None] + chroma).astype(np.float32)
 
 
 def _curve(values, points):
@@ -991,21 +1091,25 @@ def apply_adjustments(image, adjustments, defaults=None):
 
     exposure = np.float32(2.0 ** float(settings.get("exposure", 0.0)))
     rgb *= exposure
-    rgb += np.float32(float(settings.get("brightness", 0.0)) * 1.28 / 255.0)
-    tone = np.clip(luminance(rgb), 0.0, 1.0)
-    shadow_weight = 1.0 - _smoothstep(.15, .55, tone)
-    highlight_weight = _smoothstep(.55, .90, tone)
-    midtone_weight = 1.0 - _smoothstep(0.0, .32, np.abs(tone - .5))
-    delta = (float(settings.get("shadows", 0.0)) / 100.0 * 55.0 / 255.0 * shadow_weight +
+    tone = luminance(rgb).astype(np.float32)
+    target_tone = tone + np.float32(float(settings.get("brightness", 0.0)) * 1.28 / 255.0)
+    rgb = _remap_luminance(rgb, tone, target_tone)
+    tone = luminance(rgb).astype(np.float32)
+    mask_tone = np.clip(tone, 0.0, 1.0)
+    shadow_weight = (1.0 - _smoothstep(.10, .50, mask_tone)) ** 2
+    highlight_weight = _smoothstep(.50, .90, mask_tone) ** 2
+    midtone_weight = 1.0 - _smoothstep(0.0, .32, np.abs(mask_tone - .5))
+    delta = (float(settings.get("shadows", 0.0)) / 100.0 * 50.0 / 255.0 * shadow_weight +
              float(settings.get("midtones", 0.0)) / 100.0 * 55.0 / 255.0 * midtone_weight +
-             float(settings.get("highlights", 0.0)) / 100.0 * 55.0 / 255.0 * highlight_weight +
+             float(settings.get("highlights", 0.0)) / 100.0 * 50.0 / 255.0 * highlight_weight +
              float(settings.get("whites", 0.0)) / 100.0 * 45.0 / 255.0 *
-             np.maximum(0.0, (tone - .65) / .35) +
+             np.maximum(0.0, (mask_tone - .80) / .20) +
              float(settings.get("blacks", 0.0)) / 100.0 * 45.0 / 255.0 *
-             np.maximum(0.0, (.35 - tone) / .35))
-    rgb += delta[:, :, None].astype(np.float32)
+             np.maximum(0.0, (.20 - mask_tone) / .20))
+    rgb = _remap_luminance(rgb, tone, tone + delta.astype(np.float32))
     contrast = 1.0 + float(settings.get("contrast", 0.0)) / 100.0
-    rgb = (rgb - .5) * np.float32(contrast) + .5
+    tone = luminance(rgb).astype(np.float32)
+    rgb = _remap_luminance(rgb, tone, (tone - .5) * np.float32(contrast) + .5)
 
     black = float(settings.get("level_black", 0.0)) / 255.0
     white = max(black + 1.0 / 255.0, float(settings.get("level_white", 255.0)) / 255.0)
@@ -1062,17 +1166,10 @@ def apply_adjustments(image, adjustments, defaults=None):
         grey = luminance(rgb)[:, :, None]
         rgb = grey + (rgb - grey) * max(0.0, 1.0 + dehaze / 350.0)
 
-    # Fast screen proxy for the RAW developer's luminance denoise control.
-    # RawTherapee remains authoritative after commit/export; this approximation
-    # exists so a photographer can see the noise change while dragging.
-    raw_denoise = np.clip(float(settings.get("raw_noise_reduction", 0.0)) / 100.0,
-                          0.0, 1.0)
-    if raw_denoise:
-        working = _with_rgb(image, rgb.astype(np.float32), alpha)
-        softened, _ = _rgb(gaussian_blur(working, .55 + raw_denoise * 1.65))
-        luma = luminance(rgb)[:, :, None]
-        soft_luma = luminance(softened)[:, :, None]
-        rgb = rgb + (soft_luma - luma) * (raw_denoise * .88)
+    raw_denoise = float(settings.get("raw_noise_reduction", 0.0))
+    luma_denoise = max(raw_denoise, float(settings.get("noise_luminance", 0.0)))
+    colour_denoise = max(raw_denoise * .65, float(settings.get("noise_colour", 0.0)))
+    rgb = _wavelet_noise_reduction(rgb, luma_denoise, colour_denoise)
 
     sharpen = float(settings.get("sharpen", 0.0))
     if sharpen > 0:

@@ -1,7 +1,7 @@
 ================================================================================
 
                         SMACK PUBLIC LICENSE (SPL)
-                               Version 2.3
+                               Version 2.4
 
           Copyright (c) 2026 Sean McCormick (sean@baddaywithacamera.ca)
 
@@ -48,8 +48,16 @@ operator tools, and any tool added to the codebase after this version. A tool
 is covered by this license whether or not it is named here. Renaming a tool
 does not remove it from the Software.
 
-"Fork" means any derivative work, redistribution, rebranding, or hosted
-instance of the Software or any substantial portion thereof.
+"Fork" means any modified version, derivative work, or rebranding of the
+Software or any substantial portion thereof that is (a) distributed to
+others in any form, or (b) run as a hosted service for others. A Fork
+requires a change to the Software itself.
+
+Running the Software unchanged is not a Fork, whether for your own site or
+as a hosted service for others. Customising a site through the Software's
+own settings, skins, and admin tools is not a change to the Software.
+Modifications you make for your own site and do not distribute or offer to
+others as a service create no obligations under Section 3.
 
 "AI Co-Author" means any large language model or generative AI system that
 contributed to the production of code, documentation, or other creative
@@ -82,8 +90,7 @@ of the following conditions:
      charge.
 
   b) The Fork must be made available for free, under these exact license
-     terms or terms that are at least as permissive and open in every
-     respect.
+     terms.
 
   c) No technical measures may be applied that restrict a recipient's
      ability to read, inspect, or modify the source code.
@@ -95,6 +102,12 @@ of the following conditions:
 Transparency is a security requirement. People have the right to see the
 code they are running. Distributing this Software without its source, in
 whole or in part, is not permitted under any circumstances.
+
+Nothing in this license prevents anyone from charging for their own
+services around the Software, Fork or not -- including hosting, setup,
+support, design, and maintenance. Whether such services are good value is
+between the provider and their customer. What may not be charged for is the
+Software itself.
 
 
 --------------------------------------------------------------------------------

@@ -96,7 +96,7 @@ def _sniff_format(head: bytes) -> str | None:
     return None
 
 
-def check_bytes(data: bytes) -> str:
+def check_bytes(data: bytes, *, max_bytes=MAX_BYTES) -> str:
     """Validate an untrusted image blob WITHOUT decoding it.
 
     Returns the detected format name (one of ALLOWED_FORMATS) or raises
@@ -106,9 +106,9 @@ def check_bytes(data: bytes) -> str:
     """
     if not data:
         raise UnsafeImageError("empty image data")
-    if len(data) > MAX_BYTES:
+    if len(data) > max_bytes:
         raise UnsafeImageError(
-            f"image is {len(data)} bytes, over the {MAX_BYTES}-byte ceiling")
+            f"image is {len(data)} bytes, over the {max_bytes}-byte ceiling")
     fmt = _sniff_format(bytes(data[:16]))
     if fmt is None:
         raise UnsafeImageError("unrecognised image container (not on the allowlist)")
@@ -128,7 +128,7 @@ def _check_dimensions(size) -> None:
             f"image is {w}x{h} = {w * h} px, over the {MAX_IMAGE_PIXELS}-px ceiling")
 
 
-def safe_open(source, *, formats=None) -> Image.Image:
+def safe_open(source, *, formats=None, max_bytes=MAX_BYTES) -> Image.Image:
     """Open + fully load an untrusted image safely, or raise UnsafeImageError.
 
     `source` is a filesystem path or a bytes/bytes-like object. The image is
@@ -142,14 +142,14 @@ def safe_open(source, *, formats=None) -> Image.Image:
     if isinstance(source, (bytes, bytearray, memoryview)):
         raw = bytes(source)
         # Byte guard first: size cap + container sniff, no decoder involved.
-        check_bytes(raw)
+        check_bytes(raw, max_bytes=max_bytes)
         opener = lambda: Image.open(io.BytesIO(raw))
     else:
         path = os.fspath(source)
         if not os.path.isfile(path):
             raise UnsafeImageError(f"not a file: {path!r}")
-        if os.path.getsize(path) > MAX_BYTES:
-            raise UnsafeImageError(f"file over the {MAX_BYTES}-byte ceiling: {path!r}")
+        if os.path.getsize(path) > max_bytes:
+            raise UnsafeImageError(f"file over the {max_bytes}-byte ceiling: {path!r}")
         opener = lambda: Image.open(path)
 
     # Pass 1: verify structure + read the header (format, size) without decoding

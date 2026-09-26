@@ -290,8 +290,8 @@ $_show_static    = (($_ic_bgmode === 'static'   || $_ic_cycle) && $_tg_treat_img
      data-mayhem
      data-api-url="<?php echo BASE_URL; ?>?ajax=mayhem"
      data-pan="0" data-ambient="1"
-     data-initial-count="<?php echo (int)($settings['mayhem_initial_count'] ?? 90); ?>"
-     data-max-width="<?php echo (int)($settings['mayhem_max_width'] ?? 260); ?>"
+     data-initial-count="<?php echo max(40, min(400, (int)($settings['mayhem_initial_count'] ?? 90))); ?>"
+     data-max-width="<?php echo max(120, min(500, (int)($settings['mayhem_max_width'] ?? 260))); ?>"
      data-loading-label="Developing"></div>
 <?php endif; ?>
 <?php if ($_show_racetrack): ?>

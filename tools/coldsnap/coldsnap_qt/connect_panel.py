@@ -10,6 +10,10 @@ four credential boxes. Reuses config.py + profile_manager.py untouched.
 # Missing or different = truncated/corrupted. Restore before saving.
 """
 
+import concurrent.futures
+import threading
+
+from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
     QLineEdit, QMessageBox,
@@ -17,9 +21,15 @@ from PySide6.QtWidgets import (
 
 import config as cfg_module
 import profile_manager
+import snap_library
+from sumna_post import SumnaConnection
 
 from . import theme
 from .widgets import hint, field_label
+
+
+class _ModeProbeBridge(QObject):
+    finished = Signal(dict)
 
 
 class ConnectPanel(QWidget):
@@ -28,6 +38,13 @@ class ConnectPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.config = cfg_module.load()
+        self._suite_mode = None
+        self._mode_label = ""
+        self._selected_by_mode = {}
+        self._discovered_modes = {}
+        self._probing_modes = True
+        self._mode_bridge = _ModeProbeBridge(self)
+        self._mode_bridge.finished.connect(self._apply_discovered_modes)
         self.setObjectName("AppHeader")
 
         col = QVBoxLayout(self)
@@ -39,18 +56,6 @@ class ConnectPanel(QWidget):
         site_label.setObjectName("ChromeLabel")
         top.addWidget(site_label)
         self.profile_combo = QComboBox()
-        self.profile_combo.addItem("— pick a saved site —", "")
-        for name in profile_manager.list_profiles():
-            self.profile_combo.addItem(name, name)
-        # The combo must TELL THE TRUTH about which site is loaded: showing
-        # "pick a saved site" next to "connected to X" was two contradicting
-        # statements in one header. Select the profile the saved URL belongs to.
-        current = self._match_profile(self.config.get("url", ""))
-        if current:
-            self.profile_combo.blockSignals(True)
-            self.profile_combo.setCurrentIndex(
-                max(0, self.profile_combo.findData(current)))
-            self.profile_combo.blockSignals(False)
         self.profile_combo.currentIndexChanged.connect(self._on_profile)
         top.addWidget(self.profile_combo, 1)
 
@@ -97,7 +102,10 @@ class ConnectPanel(QWidget):
         self.details.setVisible(False)
         col.addWidget(self.details)
 
+        self._startup_profile = self._match_profile(self.config.get("url", ""))
+        self._rebuild_profile_combo()
         self._reflect_status()
+        self._start_mode_discovery()
 
     # -- behaviour ------------------------------------------------------------
     def _show_help(self):
@@ -124,6 +132,99 @@ class ConnectPanel(QWidget):
         self.details.setVisible(on)
         self.details_btn.setText("Connection details ▴" if on else "Connection details ▾")
 
+    @staticmethod
+    def _profile_mode(profile: dict) -> str:
+        """Return the install capability recorded by the shared profile."""
+        return str((profile or {}).get("site_mode", "")).strip().lower()
+
+    def set_suite_mode(self, suite_mode, label=""):
+        """Show only sites that can accept the selected posting mode.
+
+        ``None`` is used by COLD STORAGE, which can work with every site.
+        """
+        current = self.profile_combo.currentData()
+        if self._suite_mode and current:
+            self._selected_by_mode[self._suite_mode] = current
+        self._suite_mode = suite_mode
+        self._mode_label = label
+        self._rebuild_profile_combo()
+
+    def _compatible_profile_names(self):
+        names = []
+        for name in profile_manager.list_profiles():
+            profile = profile_manager.load_profile(name) or {}
+            mode = self._discovered_modes.get(name) or self._profile_mode(profile)
+            if not mode and profile.get("url"):
+                mode = str(snap_library.site_mode(profile["url"]) or "").strip().lower()
+            if self._suite_mode is None or mode == self._suite_mode:
+                names.append(name)
+        return names
+
+    def _start_mode_discovery(self):
+        """Verify every saved destination without blocking the Qt interface."""
+        profiles = []
+        for name in profile_manager.list_profiles():
+            profile = profile_manager.load_profile(name) or {}
+            if profile.get("url") and profile.get("api_key"):
+                profiles.append((name, profile.get("url"), profile.get("api_key")))
+
+        def run():
+            def probe(row):
+                name, url, key = row
+                try:
+                    mode, _reachable, _note = SumnaConnection(url, key).probe_site_mode(
+                        timeout=6)
+                except Exception:  # one offline site must not break the picker
+                    mode = ""
+                return name, mode
+
+            found = {}
+            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+                for name, mode in pool.map(probe, profiles):
+                    if mode in ("photoblog", "carousel", "smacktalk"):
+                        found[name] = mode
+            self._mode_bridge.finished.emit(found)
+
+        threading.Thread(target=run, daemon=True, name="coldsnap-site-modes").start()
+
+    def _apply_discovered_modes(self, modes):
+        self._discovered_modes.update(dict(modes or {}))
+        self._probing_modes = False
+        self._rebuild_profile_combo()
+
+    def _rebuild_profile_combo(self):
+        names = self._compatible_profile_names()
+        configured = self._match_profile(self.config.get("url", "")) or self._startup_profile
+        preferred = self._selected_by_mode.get(self._suite_mode) or configured
+        if preferred not in names:
+            preferred = names[0] if names else ""
+
+        self.profile_combo.blockSignals(True)
+        self.profile_combo.clear()
+        empty_text = "— pick a saved site —"
+        if self._suite_mode is not None and not names:
+            empty_text = ("— checking compatible saved sites… —" if self._probing_modes
+                          else f"— no {self._mode_label or 'compatible'} sites saved —")
+        self.profile_combo.addItem(empty_text, "")
+        for name in names:
+            self.profile_combo.addItem(name, name)
+        self.profile_combo.setCurrentIndex(
+            self.profile_combo.findData(preferred) if preferred else 0)
+        self.profile_combo.blockSignals(False)
+
+        if preferred:
+            self._on_profile(self.profile_combo.currentIndex())
+        else:
+            # Do not leave an incompatible destination active merely because
+            # it was selected on the previous tab.
+            self.config["url"] = ""
+            self.config["api_key"] = ""
+            self.config["smackpress_key"] = ""
+            self.url_edit.clear()
+            self.key_edit.clear()
+            self.press_edit.clear()
+            self._reflect_status()
+
     def _on_profile(self, idx: int):
         name = self.profile_combo.itemData(idx)
         if not name:
@@ -133,14 +234,20 @@ class ConnectPanel(QWidget):
             self.status_lbl.setText("Profile not found.")
             self.status_lbl.setStyleSheet(f"color: {theme.DANGER};")
             return
-        if prof.get("url"):
-            self.url_edit.setText(prof.get("url", ""))
-        if prof.get("api_key"):
-            self.key_edit.setText(prof.get("api_key", ""))
-        if prof.get("smackpress_key"):
-            self.press_edit.setText(prof.get("smackpress_key", ""))
+        self.url_edit.setText(prof.get("url", ""))
+        self.key_edit.setText(prof.get("api_key", ""))
+        self.press_edit.setText(prof.get("smackpress_key", ""))
         # Picking a site IS the intent — save immediately, no second APPLY step.
         self._save(silent=True)
+
+    def select_site(self, url: str) -> bool:
+        """Select a saved profile by URL for a sibling-app handoff."""
+        name = self._match_profile(url)
+        idx = self.profile_combo.findData(name) if name else -1
+        if idx < 0:
+            return False
+        self.profile_combo.setCurrentIndex(idx)
+        return True
 
     def _save(self, _=False, silent: bool = False):
         url = self.url_edit.text().strip()

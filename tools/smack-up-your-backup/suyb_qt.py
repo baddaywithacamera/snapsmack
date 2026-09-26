@@ -14,19 +14,20 @@ import threading
 import time
 from datetime import datetime
 
-from PySide6.QtCore import QObject, Qt, Signal, QTimer, QUrl
+from PySide6.QtCore import QObject, Qt, Signal, QTimer, QUrl, QSettings
 from PySide6.QtGui import QAction, QDesktopServices, QIcon, QFont, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QButtonGroup, QCheckBox, QComboBox,
     QDialog, QDialogButtonBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
     QLineEdit, QListWidget, QMainWindow, QMenu, QMessageBox, QProgressBar,
-    QPushButton, QScrollArea, QSizePolicy, QStackedWidget, QTextEdit,
+    QPushButton, QRadioButton, QScrollArea, QSizePolicy, QStackedWidget, QTextEdit,
     QSystemTrayIcon, QVBoxLayout, QWidget,
 )
 
 import backup_engine
 from checkpoint import BackupCheckpoint
 import config as config_module
+import ftps_pins
 import profile_manager
 import restore_engine
 from _version import BUILD_VERSION
@@ -97,7 +98,12 @@ def _card(title, body=""):
 
 class Bridge(QObject):
     progress = Signal(str, str, float)
-    stats = Signal(str, int, int, int, int, int, int)
+    # The last three are BYTE counts. PySide6 maps a bare `int` to C++ `int`,
+    # which is 32-bit: a site over 2,147,483,647 bytes (2.1 GB) wrapped to a
+    # NEGATIVE number and the cockpit read "-268704206 B complete" on a 12 GB
+    # backup (Sean, forever photographing, 2026-09-23). qint64 carries the real
+    # value. Counts stay `int` — 2.1 billion files is not a thing.
+    stats = Signal(str, int, int, int, 'qint64', 'qint64', 'qint64')
     log = Signal(str)
     finished = Signal(object)
     tested = Signal(bool, str)
@@ -129,6 +135,11 @@ class SuybWindow(QMainWindow):
         self.setWindowIcon(QIcon(_icon_path()))
         self.resize(1280, 840)
         self.setMinimumSize(1020, 680)
+        self._window_settings = QSettings("SnapSmack", "SMACK UP YOUR BACKUP")
+        geometry = self._window_settings.value("window/normal_geometry")
+        if geometry:
+            self.restoreGeometry(geometry)
+        self._restore_maximized = self._window_settings.value("window/maximized", False, type=bool)
         self.bridge = Bridge()
         self.bridge.progress.connect(self._on_progress)
         self.bridge.stats.connect(self._on_stats)
@@ -260,8 +271,22 @@ class SuybWindow(QMainWindow):
         for title, body in (("DATABASE", "Full SQL plus schema"), ("MEDIA", "Originals and site assets"), ("VERIFY", "Checksums before success")):
             card, col = _card(title, body); col.addStretch(1); actions.addWidget(card)
         layout.addLayout(actions)
-        run, rl = _card("Make a fresh backup", "Differential is fast and downloads only changed files. Full rechecks the complete site.")
-        opts = QHBoxLayout(); self.full_check = QCheckBox("Full backup"); opts.addWidget(self.full_check)
+        run, rl = _card("Make a fresh backup")
+        # Full vs differential is a two-way choice, so BOTH ways are named and on
+        # screen. It used to be a single "Full backup" tick-box: ticked told you
+        # what you were getting, cleared told you nothing at all, so there was no
+        # way to know that clearing it meant a differential run. The card's
+        # subtitle carried that explanation and the control contradicted it
+        # (Sean, 2026-09-23: "the display is a bit confusing, like picking full
+        # backup"). Differential stays the default, exactly as the cleared box was.
+        opts = QHBoxLayout()
+        self.mode_group = QButtonGroup(self); self.mode_group.setExclusive(True)
+        self.mode_diff = QRadioButton("Differential — only files that changed")
+        self.mode_full = QRadioButton("Full backup — recheck every file on the site")
+        self.mode_diff.setChecked(True)
+        for _b in (self.mode_diff, self.mode_full):
+            self.mode_group.addButton(_b); opts.addWidget(_b)
+        opts.addSpacing(18)
         # Exit package: TYSWY canonical archive + WordPress + Ghost, written into exit/
         # and zipped with the backup. Off by default — it can double a backup's size.
         self.exit_check = QCheckBox("Include exit package (WordPress + Ghost; larger)")
@@ -318,6 +343,8 @@ class SuybWindow(QMainWindow):
             col.addWidget(_label(label, "Muted")); col.addWidget(widget)
         buttons = QHBoxLayout(); buttons.addStretch(1)
         browse = QPushButton("Choose folder…"); browse.clicked.connect(self._choose_folder); buttons.addWidget(browse)
+        forget_cert = QPushButton("Forget FTPS certificate")
+        forget_cert.clicked.connect(self._forget_certificate); buttons.addWidget(forget_cert)
         save = QPushButton("Save connection"); save.setObjectName("Primary"); save.clicked.connect(self._save_profile); buttons.addWidget(save); col.addLayout(buttons)
         layout.addWidget(card); layout.addStretch(1); return page
 
@@ -382,8 +409,7 @@ class SuybWindow(QMainWindow):
         p = self.current_profile or {}
         self.name_edit.setText(str(p.get("name", ""))); self.url_edit.setText(str(p.get("site_url", "")))
         self.key_edit.setText(str(p.get("api_key", ""))); self.dir_edit.setText(str(p.get("backup_dir", "")))
-        shown = str(p.get("site_url", "")).replace("https://", "").rstrip("/")
-        self.site_summary.setText(f"{p.get('name', 'No site')}\n{shown or 'No URL'}\nLast successful run: {p.get('last_backup_date') or 'Not yet recorded'}")
+        self._render_site_summary()
         self.connection.setText("● Ready to verify" if p else "Choose a site")
         self.connection.setObjectName("StatusGood" if p else "StatusWarn"); self.connection.style().unpolish(self.connection); self.connection.style().polish(self.connection)
         self.run_btn.setEnabled(bool(p)); self._update_backup_selection(); self._refresh_backups()
@@ -413,11 +439,28 @@ class SuybWindow(QMainWindow):
         self.selected_profile_names = selected
         self._update_backup_selection()
 
+    def _render_site_summary(self):
+        """Draw the selected-site panel, including its "Last successful run" line.
+
+        Its own method because a finished backup writes a new last_backup_date to
+        the profile on disk and reloads self.current_profile, but nothing redrew
+        this label — with one site selected _update_backup_selection() returns
+        early. The panel kept showing a month-old date under a log that said
+        "Backup completed and verified", which reads as a failed backup and had
+        Sean asking whether he had to run the whole thing again (2026-09-23).
+        """
+        p = self.current_profile or {}
+        shown = str(p.get("site_url", "")).replace("https://", "").rstrip("/")
+        self.site_summary.setText(
+            f"{p.get('name', 'No site')}\n{shown or 'No URL'}\n"
+            f"Last successful run: {p.get('last_backup_date') or 'Not yet recorded'}")
+
     def _update_backup_selection(self):
         names = list(self.selected_profile_names)
         if len(names) <= 1:
             self.choose_sites_btn.setText("Choose sites…")
             self.run_btn.setText("BACK UP THIS SITE")
+            self._render_site_summary()
             return
         self.choose_sites_btn.setText(f"{len(names)} sites selected")
         self.run_btn.setText(f"BACK UP {len(names)} SITES")
@@ -489,7 +532,7 @@ class SuybWindow(QMainWindow):
                 cp.delete()
             else:
                 return
-        force_full = self.full_check.isChecked()
+        force_full = self.mode_full.isChecked()
         exit_package = self.exit_check.isChecked()
         global_cloud = self._global_cloud()
         self.log.clear(); self.run_btn.setEnabled(False); self.choose_sites_btn.setEnabled(False)
@@ -611,12 +654,12 @@ class SuybWindow(QMainWindow):
         if self.tray_pause_action:
             self.tray_pause_action.setEnabled(False)
             self.tray_pause_action.setText("Pause backup")
+        self.run_btn.setEnabled(True); self.choose_sites_btn.setEnabled(True)
+        ok = bool((result or {}).get("success")); self.progress.setValue(100 if ok else self.progress.value())
         if self.tray:
             self.tray.setToolTip(
                 "SMACK UP YOUR BACKUP — backup complete" if ok
                 else "SMACK UP YOUR BACKUP — backup needs attention")
-        self.run_btn.setEnabled(True); self.choose_sites_btn.setEnabled(True)
-        ok = bool((result or {}).get("success")); self.progress.setValue(100 if ok else self.progress.value())
         self.progress_text.setText("Backup completed and verified." if ok else "Backup needs attention. Details are above.")
         self._refresh_stats()
         for item in (result or {}).get("profiles", []):
@@ -630,6 +673,8 @@ class SuybWindow(QMainWindow):
             if refreshed: self.current_profile = refreshed
         self._update_backup_selection()
         if not ok:
+            if self._offer_certificate_change(result, self._run_backup):
+                return
             errors = "\n".join((result or {}).get("errors", [])) or "The backup did not complete."
             if self.isVisible():
                 QMessageBox.warning(self, "Backup needs attention", errors[:1800])
@@ -663,8 +708,66 @@ class SuybWindow(QMainWindow):
         if (result or {}).get("success"):
             QMessageBox.information(self, "Restore complete", "The site was restored and the operation completed successfully.")
         else:
+            if self._offer_certificate_change(result, self._run_restore):
+                return
             errors = "\n".join((result or {}).get("errors", [])) or "The restore did not complete."
             QMessageBox.warning(self, "Restore needs attention", errors[:1800])
+
+    @staticmethod
+    def _certificate_change(result):
+        direct = (result or {}).get("certificate_change")
+        if direct:
+            return direct
+        for item in (result or {}).get("profiles", []):
+            if item.get("certificate_change"):
+                return item["certificate_change"]
+        return None
+
+    def _offer_certificate_change(self, result, retry):
+        change = self._certificate_change(result)
+        if not change:
+            return False
+        box = QMessageBox(self)
+        box.setWindowTitle("FTPS certificate changed")
+        box.setIcon(QMessageBox.Warning)
+        box.setText(f"The FTPS certificate for {change['host']} changed.")
+        box.setInformativeText(
+            "SUYB stopped before sending the password. Accept this only if you "
+            "changed the server certificate or confirmed the change with your host.\n\n"
+            f"Why it stopped: {change['why']}\n\n"
+            f"Remembered:\n{change['old_fp']}\n\n"
+            f"Offered now:\n{change['new_fp']}"
+        )
+        accept = box.addButton("ACCEPT NEW CERTIFICATE AND RETRY", QMessageBox.AcceptRole)
+        cancel = box.addButton(QMessageBox.Cancel)
+        box.setDefaultButton(cancel)
+        box.exec()
+        if box.clickedButton() is not accept:
+            return True
+        ftps_pins.accept_change(
+            change["host"], int(change.get("port") or 21), change["new_fp"])
+        QTimer.singleShot(0, retry)
+        return True
+
+    def _forget_certificate(self):
+        profile = self.current_profile or {}
+        host = str(profile.get("ftp_host", "")).strip()
+        port = int(profile.get("ftp_port") or 21)
+        if not host:
+            QMessageBox.information(self, "No FTPS server", "The selected site has no FTPS server configured.")
+            return
+        store = ftps_pins.PinStore()
+        if not store.get(host, port):
+            QMessageBox.information(self, "No saved certificate", f"There is no saved FTPS certificate for {host}:{port}.")
+            return
+        if QMessageBox.question(
+                self, "Forget FTPS certificate?",
+                f"Forget the saved FTPS certificate for {host}:{port}?\n\n"
+                "The next connection will remember whatever certificate that server presents.",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+            return
+        store.forget(host, port)
+        QMessageBox.information(self, "Certificate forgotten", f"The saved FTPS certificate for {host}:{port} was removed.")
 
     def _refresh_backups(self):
         if not hasattr(self, "backup_list"): return
@@ -707,6 +810,11 @@ class SuybWindow(QMainWindow):
                 "Backup still running",
                 "SMACK UP YOUR BACKUP was minimized and remains available on the taskbar.")
             return
+        if not self.isMinimized():
+            self._window_settings.setValue("window/maximized", self.isMaximized())
+            if not self.isMaximized():
+                self._window_settings.setValue("window/normal_geometry", self.saveGeometry())
+            self._window_settings.sync()
         if self.tray:
             self.tray.hide()
         event.accept()
@@ -721,6 +829,8 @@ def run():
     app.setStyle("Fusion"); app.setStyleSheet(STYLE)
     font = QFont("Segoe UI", 10); app.setFont(font)
     window = SuybWindow(); window.show()
+    if window._restore_maximized:
+        QTimer.singleShot(0, window.showMaximized)
     return app.exec()
 
 # ===== SNAPSMACK EOF =====

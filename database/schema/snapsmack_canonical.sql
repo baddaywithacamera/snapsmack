@@ -185,6 +185,8 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
                       COMMENT 'Legacy hero image for longform posts — FK to snap_assets.id (Library). Superseded by featured_image_id (Gallery) as the cover source — migration 041',
   `featured_image_id` int unsigned   DEFAULT NULL
                       COMMENT 'Cover/featured image for longform posts — FK to snap_images.id (the Gallery). Drives the post banner + listing thumbnail (0.7.393). Gallery-sourced, like a GRAMOFSMACK cover.',
+  `show_featured_image` tinyint(1) NOT NULL DEFAULT 1
+                      COMMENT 'Whether the featured image is rendered inside the single post. It remains available to listings and social previews when hidden.',
   `trigram_id`        int unsigned   DEFAULT NULL
                       COMMENT 'FK to snap_trigrams.id — NULL = normal post cover',
   `cover_pos_x`       tinyint unsigned  NOT NULL DEFAULT 50

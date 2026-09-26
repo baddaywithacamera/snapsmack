@@ -654,10 +654,25 @@ class SmacktalkPoster:
             "featured_image_id": cover_id,
             "bucket_image_ids": list(image_ids),
             "tags": " ".join(t.lstrip("#") for t in (draft.tags or "").split() if t.strip()),
+            "cat_ids": [int(value) for value in (getattr(draft, "category_ids", []) or [])],
+            "album_ids": [int(value) for value in (getattr(draft, "album_ids", []) or [])],
         }
         if draft.post_date:
             payload["date"] = draft.post_date
+        if getattr(draft, "remote_post_id", 0):
+            payload["post_id"] = int(draft.remote_post_id)
         return payload
+
+    def list_posts(self, limit: int = 100) -> list:
+        r = self.session.get(self._route("smackpress/posts"),
+                             params={"limit": max(1, min(500, int(limit)))}, timeout=30)
+        r.raise_for_status()
+        return list(r.json().get("posts") or [])
+
+    def get_post(self, post_id: int) -> dict:
+        r = self.session.get(self._route(f"smackpress/posts/{int(post_id)}"), timeout=30)
+        r.raise_for_status()
+        return dict(r.json().get("post") or {})
 
     # A [mosaic] placeholder (optionally [mosaic:bucket]/[mosaic:new]/[mosaic:auto])
     # means "build an inline gallery from THIS essay's photos here." A numeric
@@ -771,6 +786,12 @@ class SmacktalkPoster:
         try:
             image_ids, cover_id = [], None
             for im in draft.images:
+                existing_id = int(getattr(im, "remote_image_id", 0) or 0)
+                if existing_id:
+                    image_ids.append(existing_id)
+                    if im.is_cover and cover_id is None:
+                        cover_id = existing_id
+                    continue
                 if not os.path.isfile(im.local_path):
                     return SyncResult(False, message=f"image missing: {im.local_path}")
                 iid = self._upload_one(im)
@@ -806,7 +827,8 @@ class SmacktalkPoster:
         # Producer: record the finished post + which Gallery images it used (ids only,
         # no photo files copied — originals stay on disk).
         self._record_to_library(draft, post_id, content, data, image_ids)
-        return SyncResult(True, remote_post_id=post_id, message="Posted")
+        return SyncResult(True, remote_post_id=post_id,
+                          message="Updated" if getattr(draft, "remote_post_id", 0) else "Posted")
 
     def verify(self, draft) -> bool:
         """Best-effort: pull the post back via GET smackpress/posts/{id}. Trust the

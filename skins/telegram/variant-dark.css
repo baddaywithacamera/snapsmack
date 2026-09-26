@@ -1,0 +1,19 @@
+/**
+ * SNAPSMACK - Default variant for the Alfred skin
+ * v1.0.0
+ *
+ * Alfred has a single 'default' variant (dark navigation, white content area).
+ * All visual rules live in style.css. This file exists to satisfy the skin
+ * variant loader in skin-meta.php and may carry micro-overrides in future.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be: /* ===== SNAPSMACK EOF ===== */
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+/* No overrides — style.css is the single source of truth for Alfred's palette. */
+
+/* ===== SNAPSMACK EOF ===== */

@@ -122,6 +122,7 @@ if (is_array($_gn_items) && count($_gn_items) > 0) {
         if (!is_array($_gn_item)) continue;
         if (isset($_gn_item['active']) && !$_gn_item['active']) continue;
         $_gn_type = $_gn_item['type'] ?? 'custom';
+        if ($_gn_type === 'challenge_feed') continue; // retired: history now lives on The Board
         $_gn_seen_required[$_gn_type] = true;
         if ($_gn_type === 'archive' && $_gn_archive_off) continue;   // archive disabled
 

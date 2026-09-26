@@ -124,10 +124,6 @@ if (empty($current_menu)) {
         $current_menu[] = ['id' => 'blogroll', 'type' => 'blogroll', 'label' => 'BLOGROLL', 'children' => []];
     }
 
-    if (($settings['photochallenge_feed_enabled'] ?? '0') === '1') {
-        $current_menu[] = ['id' => 'challenge_feed', 'type' => 'challenge_feed', 'label' => 'FEED', 'children' => []];
-    }
-
     // Load static pages
     try {
         $pg_rows = $pdo->query("SELECT id, title, slug FROM snap_pages WHERE is_active = 1 ORDER BY menu_order ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -159,9 +155,6 @@ $builtin_items = [
     ['id' => 'wall',     'type' => 'wall',     'label' => 'FLOATING GALLERY'],
     ['id' => 'blogroll', 'type' => 'blogroll', 'label' => 'BLOGROLL'],
 ];
-if (($settings['photochallenge_feed_enabled'] ?? '0') === '1') {
-    $builtin_items[] = ['id' => 'challenge_feed', 'type' => 'challenge_feed', 'label' => 'FEED'];
-}
 // When archive is disabled (Archive Appearance → Disabled), drop it from the
 // add-pool too so it can't be re-added as a dead link — matches the auto-build
 // skip above and the nav renderers.

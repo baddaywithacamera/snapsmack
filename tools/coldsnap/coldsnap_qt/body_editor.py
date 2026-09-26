@@ -40,8 +40,8 @@ class BodyEditor(QWidget):
 
         # -- the toggle ---------------------------------------------------------
         row = QHBoxLayout()
-        self.simple_btn = QPushButton("TWIGGY")
-        self.biggie_btn = QPushButton("BIGGIE — BLOCKS")
+        self.simple_btn = QPushButton("TWIGGY — TEXT")
+        self.biggie_btn = QPushButton("BIGGIE — VISUAL")
         for b in (self.simple_btn, self.biggie_btn):
             b.setObjectName("ScBtn")
             b.setCheckable(True)

@@ -306,10 +306,10 @@ pc_test(str_contains($admin, 'class="pc-file-picker__button"')
     'card chooser must use an external-CSS button beside a live filename field');
 pc_test(str_contains($admin, 'name="pc_feed_enabled"')
     && str_contains($photo, 'pc_sync_feed_menu')
-    && str_contains($menu, "'type' => 'challenge_feed'")
-    && str_contains($header, "case 'challenge_feed'")
+    && !str_contains($menu, "['id' => 'challenge_feed'")
+    && str_contains($header, "=== 'challenge_feed') continue")
     && str_contains($board, '!pc_feed_enabled($settings)'),
-    'feed-page switch must control /board and its built-in Menu Manager item');
+    'challenge switch must control /board while the retired Feed item stays out of navigation');
 // The board grid now renders via the shared pc_board_embed_html() (in
 // core/photochallenge.php) so both /board and the [board] shortcode honor the
 // layout choice; the layout class + external layout CSS are emitted there.

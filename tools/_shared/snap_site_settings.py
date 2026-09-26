@@ -40,6 +40,9 @@ SCHEMA = 2  # was 1; added max_long_edge canonical size field
 DEFAULT_MAX_LONG_EDGE = 3840  # fleet standard (Sean, 2026-09-01): symmetric 3840
 PORTABLE_DEFAULTS = {
     "prompt": "",
+    "prompt_presets": {},
+    "default_prompt_preset": "",
+    "last_prompt_preset": "",
     "max_long_edge": DEFAULT_MAX_LONG_EDGE,
     "max_width_landscape": 3840,
     "max_height_portrait": 2160,
@@ -79,6 +82,15 @@ def validate_portable(values):
         raise ValueError("unknown portable setting(s): " + ", ".join(sorted(unknown)))
     out.update(raw)
     out["prompt"] = str(out["prompt"] or "")
+    presets = out.get("prompt_presets")
+    if not isinstance(presets, dict):
+        raise ValueError("prompt_presets must be an object")
+    out["prompt_presets"] = {
+        str(name).strip(): str(text or "") for name, text in presets.items()
+        if str(name).strip()
+    }
+    out["default_prompt_preset"] = str(out.get("default_prompt_preset") or "").strip()
+    out["last_prompt_preset"] = str(out.get("last_prompt_preset") or "").strip()
 
     # --- size: canonical max_long_edge is the source of truth; pair is derived ---
     if raw.get("max_long_edge") not in (None, ""):

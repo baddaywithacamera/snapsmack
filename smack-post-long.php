@@ -53,6 +53,7 @@ try {
 // Library-only featured_asset_id.
 try {
     $pdo->exec("ALTER TABLE snap_posts ADD COLUMN IF NOT EXISTS featured_image_id INT UNSIGNED DEFAULT NULL");
+    $pdo->exec("ALTER TABLE snap_posts ADD COLUMN IF NOT EXISTS show_featured_image TINYINT(1) NOT NULL DEFAULT 1");
 } catch (PDOException $e) { /* older engine without IF NOT EXISTS — canonical sync handles it */ }
 
 // Defensive: per-post SMACKTALK cover pan/zoom (non-destructive; applied via
@@ -126,9 +127,18 @@ if (!empty($_GET['ajax']) && $_GET['ajax'] === 'bucket') {
 
     $post_id = (int)($_GET['post_id'] ?? 0);
     $q       = trim((string)($_GET['q'] ?? ''));
+    $unused  = !empty($_GET['unused']);
 
     $where  = ["img_status = 'published'"];
     $params = [];
+    if ($unused) {
+        // A bucket is reusable by design, but sometimes the useful editing view
+        // is the untouched pile. The current post's saved photos still return in
+        // `extra` below so its bucket strip never loses them.
+        $where[] = 'NOT EXISTS (
+            SELECT 1 FROM snap_bucket_items bi WHERE bi.image_id = snap_images.id
+        )';
+    }
     if ($q !== '') {
         $where[]  = '(img_title LIKE ? OR img_file LIKE ?)';
         $params[] = '%' . $q . '%';
@@ -180,6 +190,7 @@ if (!empty($_GET['ajax']) && $_GET['ajax'] === 'bucket') {
         'total'  => $total,
         'shown'  => count($images),
         'capped' => $total > count($images),
+        'unused' => $unused,
     ]);
     exit;
 }
@@ -257,6 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
     $status           = in_array($_POST['status'] ?? '', ['published','draft']) ? $_POST['status'] : 'published';
     $allow_comments   = (int)($_POST['allow_comments'] ?? 1);
     $featured_image   = !empty($_POST['featured_image_id']) ? (int)$_POST['featured_image_id'] : null;
+    $show_featured    = isset($_POST['show_featured_image']) ? 1 : 0;
     $cover_pos_x      = max(0,   min(100, (int)($_POST['cover_pos_x'] ?? 50)));
     $cover_pos_y      = max(0,   min(100, (int)($_POST['cover_pos_y'] ?? 50)));
     $cover_zoom       = max(100, min(300, (int)($_POST['cover_zoom']  ?? 100)));
@@ -300,11 +312,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
         $upd = $pdo->prepare("
             UPDATE snap_posts
             SET title=?, slug=?, content=?, status=?, allow_comments=?,
-                featured_image_id=?, cover_pos_x=?, cover_pos_y=?, cover_zoom=?" .
+                featured_image_id=?, show_featured_image=?, cover_pos_x=?, cover_pos_y=?, cover_zoom=?" .
                 ($custom_date ? ", created_at=?" : "") . "
             WHERE id=? AND post_type='longform'
         ");
-        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image, $cover_pos_x, $cover_pos_y, $cover_zoom];
+        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image, $show_featured, $cover_pos_x, $cover_pos_y, $cover_zoom];
         if ($custom_date) $params[] = $custom_date;
         $params[] = $post_id;
         $upd->execute($params);
@@ -327,12 +339,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_long'])) {
         // INSERT
         $ins = $pdo->prepare("
             INSERT INTO snap_posts
-                (title, slug, content, post_type, status, allow_comments, featured_image_id, cover_pos_x, cover_pos_y, cover_zoom" .
+                (title, slug, content, post_type, status, allow_comments, featured_image_id, show_featured_image, cover_pos_x, cover_pos_y, cover_zoom" .
                 ($custom_date ? ", created_at" : "") . ")
-            VALUES (?, ?, ?, 'longform', ?, ?, ?, ?, ?, ?" .
+            VALUES (?, ?, ?, 'longform', ?, ?, ?, ?, ?, ?, ?" .
                 ($custom_date ? ", ?" : "") . ")
         ");
-        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image, $cover_pos_x, $cover_pos_y, $cover_zoom];
+        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image, $show_featured, $cover_pos_x, $cover_pos_y, $cover_zoom];
         if ($custom_date) $params[] = $custom_date;
         $ins->execute($params);
         $new_id = (int)$pdo->lastInsertId();
@@ -580,6 +592,10 @@ include 'core/sidebar.php';
                         <input type="text" id="bucket-search" placeholder="Search by name" style="flex:1;max-width:280px;">
                         <button type="button" id="bucket-picker-close" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:18px;line-height:1;">×</button>
                     </div>
+                    <label style="display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim);margin:0 0 8px;cursor:pointer;">
+                        <input type="checkbox" id="bucket-hide-used">
+                        Hide photos used in any bucket
+                    </label>
                     <div id="bucket-count" style="font-size:11px;color:var(--dim);margin-bottom:2px;"></div>
                     <div style="font-size:11px;color:var(--dim);margin-bottom:8px;">Click a photo to pick it. <strong>Shift-click</strong> to grab everything between it and your last pick.</div>
                     <?php /* user-select:none — shift-click otherwise highlights the run of
@@ -705,7 +721,7 @@ include 'core/sidebar.php';
 
                     <!-- COVER IMAGE (from the Media Gallery — POST content, NOT the Library) -->
                     <div class="lens-input-wrapper mt-10">
-                        <label>COVER IMAGE <span class="field-tip" data-tip="The post's cover / featured image — shown as the banner on the post and as its thumbnail in the post listing. Chosen from your Media Gallery (post images), like a GRAMOFSMACK cover.">ⓘ</span></label>
+                        <label>DISPLAY IMAGE <span class="field-tip" data-tip="The post's featured image for post listings and social previews. You can choose whether it also appears at the top of the post.">ⓘ</span></label>
                         <input type="hidden" name="featured_image_id" id="long-cover-image-id"
                                value="<?php echo $featured_image_data ? (int)$featured_image_data['id'] : ''; ?>">
                         <div id="long-cover-preview" class="mt-6">
@@ -727,6 +743,12 @@ include 'core/sidebar.php';
                             </button>
                             <button type="button" id="long-cover-remove" class="btn-secondary" style="font-size:11px;padding:5px 12px;color:var(--dim);<?php echo $featured_image_data ? '' : 'display:none;'; ?>">REMOVE</button>
                         </div>
+                        <label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-size:11px;line-height:1.35;">
+                            <input type="checkbox" name="show_featured_image" value="1"
+                                   <?php echo ($edit_post && (!array_key_exists('show_featured_image', $edit_post) || (int)$edit_post['show_featured_image'] === 1)) ? 'checked' : ''; ?>
+                                   style="margin-top:2px;">
+                            <span>ALSO SHOW THIS IMAGE AT THE TOP OF THE POST<br><span class="dim" style="font-weight:normal;">Leave unchecked to use it only on listings, cards and social previews.</span></span>
+                        </label>
                         <?php
                         // Cover framing (pan/zoom). Non-destructive: object-position + scale,
                         // rendered identically by the SMACKTALK skins. The stage is framed to
@@ -971,6 +993,7 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
     var grid     = document.getElementById('bucket-grid');
     var countEl  = document.getElementById('bucket-count');
     var searchEl = document.getElementById('bucket-search');
+    var hideUsedEl = document.getElementById('bucket-hide-used');
 
     function esc(s) {
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -999,7 +1022,8 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
 
     function load(q) {
         var url = 'smack-post-long.php?ajax=bucket&post_id=' + POST_ID
-                + (q ? '&q=' + encodeURIComponent(q) : '');
+                + (q ? '&q=' + encodeURIComponent(q) : '')
+                + (hideUsedEl && hideUsedEl.checked ? '&unused=1' : '');
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url, true);
         xhr.onload = function () {
@@ -1025,8 +1049,8 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
             }
             // A capped list must never look like the whole list.
             countEl.textContent = resp.capped
-                ? 'Showing the ' + resp.shown + ' newest of ' + resp.total + ' photos — search by name to reach the rest.'
-                : 'Showing all ' + resp.total + ' photo' + (resp.total === 1 ? '' : 's') + '.';
+                ? 'Showing the ' + resp.shown + ' newest of ' + resp.total + (resp.unused ? ' unused' : '') + ' photos — search by name to reach the rest.'
+                : 'Showing all ' + resp.total + (resp.unused ? ' unused' : '') + ' photo' + (resp.total === 1 ? '' : 's') + '.';
             renderGrid();
             renderStrip();
         };
@@ -1133,6 +1157,11 @@ document.getElementById('mosaic-modal').addEventListener('click', function (e) {
         var q = searchEl.value.trim();
         searchTimer = setTimeout(function () { load(q); }, 250);
     });
+    if (hideUsedEl) {
+        hideUsedEl.addEventListener('change', function () {
+            load(searchEl.value.trim());
+        });
+    }
 
     document.getElementById('bucket-save-btn').addEventListener('click', function () {
         var btn = this;

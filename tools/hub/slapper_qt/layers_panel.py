@@ -17,7 +17,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox,
     QComboBox, QFileDialog, QSlider, QGridLayout, QInputDialog, QColorDialog,
-    QDialog, QDialogButtonBox, QDoubleSpinBox, QGroupBox,
+    QDialog, QDialogButtonBox, QDoubleSpinBox, QGroupBox, QSizePolicy,
 )
 
 import editor_engine
@@ -153,6 +153,8 @@ class LayersPanel(QWidget):
 
         stack_label = QLabel("LAYER STACK  ·  TOP LAYER FIRST")
         stack_label.setObjectName("LayerSectionLabel")
+        stack_label.setMinimumWidth(0)
+        stack_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         outer.addWidget(stack_label)
 
         # The list of layers (rebuilt on change)
@@ -381,6 +383,11 @@ class LayersPanel(QWidget):
 
         name = QPushButton(label)
         name.setObjectName("LayerName")
+        # Layer names are user content and can be arbitrarily long.  Their
+        # size hint must never widen the entire scroll-area widget beyond the
+        # fixed right rail (which clips every two-column control to its right).
+        name.setMinimumWidth(0)
+        name.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         name.setCursor(Qt.PointingHandCursor)
         if target == BASE:
             name.setToolTip("The original photograph. Click to edit it directly — "

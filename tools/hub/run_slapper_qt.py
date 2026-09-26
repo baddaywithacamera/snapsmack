@@ -27,6 +27,16 @@ if "--highbit-decode-worker" in sys.argv:
         _worker_status = 2
     raise SystemExit(_worker_status)
 
+if "--blog-copy-worker" in sys.argv:
+    from blog_copy_worker import main as _blog_copy_worker_main
+    _index = sys.argv.index("--blog-copy-worker")
+    try:
+        _worker_status = _blog_copy_worker_main(
+            [sys.argv[0]] + sys.argv[_index + 1:])
+    except Exception:
+        _worker_status = 2
+    raise SystemExit(_worker_status)
+
 from slapper_qt.app import main  # noqa: E402 — path must be set first
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 """Qt entry point for SMACK YOUR BATCH UP."""
 
+import os
 import sys
 
 
@@ -15,6 +16,11 @@ def main():
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    # PyInstaller's one-file parent waits for the embedded Python child.  Some
+    # optional libraries register shutdown workers that can keep that child
+    # alive after Qt has closed its final window.  The UI has already saved its
+    # state in closeEvent, so terminate the child deterministically once the Qt
+    # event loop returns; the parent then exits and releases the instance mutex.
+    os._exit(int(main() or 0))
 
 # ===== SNAPSMACK EOF =====
