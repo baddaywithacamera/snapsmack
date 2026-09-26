@@ -63,7 +63,9 @@ tg_check(strpos($tilez, 'ORDER BY p.created_at DESC, p.id DESC') !== false,
 tg_check(strpos($tilezHeader, '<ul class="main-menu">') !== false
     && strpos($tilezHeader, 'class="tilez-icon-nav"') !== false
     && strpos($tilezCss, '.navigation .main-menu,.tilez-icon-nav { display:none !important; }') === false
-    && preg_match('/font-size\s*:\s*21px/', $tilezCss) === 1,
+    && preg_match('/font-size\s*:\s*18px/', $tilezCss) === 1
+    && strpos($tilezCss, 'font-synthesis: none') !== false
+    && strpos($tilezCss, '.snap-inline-frame:has(+ .snap-inline-frame)') !== false,
     'TILEZ preserves its menu, adds round quick links, and keeps the readable post body');
 
 echo "TELEGRAM/TILEZ regression checks passed.\n";
