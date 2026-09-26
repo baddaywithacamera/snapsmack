@@ -582,11 +582,25 @@ if ($sub === 'images' && $method === 'POST') {
         snap_sync_tags($pdo, $image_id, $tag_string);
     }
 
+    // Post model: an imported photo is a post at birth, like one posted by hand
+    // (it used to arrive bare and wait for Maintenance → CONVERT PHOTOS TO POSTS).
+    // A failure here is reported, never hidden; the photo itself is already saved
+    // and the repair action can still wrap it.
+    require_once __DIR__ . '/post-model.php';
+    $post_id = 0; $post_warning = null;
+    try {
+        $post_id = snap_postmodel_wrap_image($pdo, $image_id);
+    } catch (Throwable $e) {
+        $post_warning = 'Photo imported but not wrapped in a post: ' . $e->getMessage();
+        error_log('FLKR FCKR post-model: ' . $post_warning);
+    }
+
     flkrfckr_ok([
         'image_id'  => $image_id,
         'img_slug'  => $slug,
         'duplicate' => false,
-    ]);
+        'post_id'   => $post_id,
+    ] + ($post_warning ? ['post_warning' => $post_warning] : []));
 }
 
 // ---------------------------------------------------------------------------

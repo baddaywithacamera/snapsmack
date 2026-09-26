@@ -574,6 +574,7 @@ CREATE TABLE IF NOT EXISTS `snap_community_tokens` (
   `token`      varchar(64)  COLLATE utf8mb4_unicode_ci NOT NULL,
   `type`       varchar(30)  COLLATE utf8mb4_unicode_ci NOT NULL,
   `expires_at` datetime     NOT NULL,
+  `used_at`    datetime     DEFAULT NULL,
   `created_at` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_token` (`token`),

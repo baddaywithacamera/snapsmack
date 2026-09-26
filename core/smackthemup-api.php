@@ -113,6 +113,9 @@ if ($resource === 'publish' && $method === 'POST') {
         $ins=$pdo->prepare('INSERT IGNORE INTO snap_image_album_map(image_id,album_id) SELECT ?,id FROM snap_albums WHERE id=?'); foreach($albums as $v)$ins->execute([$id,$v]);
         $ins=$pdo->prepare("INSERT IGNORE INTO snap_collection_items(collection_id,item_type,item_id,image_id) SELECT id,'image',?,? FROM snap_collections WHERE id=? AND published=1"); foreach($collections as $v)$ins->execute([$id,$id,$v]);
         if (!empty($b['tags'])) snap_sync_tags($pdo,$id,is_array($b['tags'])?implode(' ',$b['tags']):(string)$b['tags']);
+        // Post model: born a post, inside the same all-or-nothing transaction.
+        require_once __DIR__ . '/post-model.php';
+        snap_postmodel_wrap_image($pdo, $id);
         $pdo->commit();
     } catch(Throwable $e) { if($pdo->inTransaction())$pdo->rollBack(); stu_error('The photograph could not be published.',500); }
     stu_reply(['ok'=>true,'duplicate'=>false,'image_id'=>$id,'slug'=>$slug,'url'=>rtrim(BASE_URL,'/').'/'.$slug],201);

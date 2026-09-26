@@ -1,4 +1,12 @@
 <?php
+// SECAUDIT 050-B — direct-access guard: backend include, never a URL entry point.
+// Refuse a direct HTTP request regardless of web server (the Apache deny-list is
+// Apache-only and drifts). CLI and normal includes pass through untouched.
+if (PHP_SAPI !== 'cli' && !empty($_SERVER['SCRIPT_FILENAME'])
+    && @realpath($_SERVER['SCRIPT_FILENAME']) === @realpath(__FILE__)) {
+    http_response_code(404);
+    exit;
+}
 /**
  * SNAPSMACK - Core Updater Engine
  *
@@ -52,6 +60,12 @@ if (!defined('SNAPSMACK_RELEASE_PUBKEY')
     $_rpk_canonical = 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2';
     $_rpk_written = @file_put_contents($_rpk_file,
           "<?php\n"
+        // SECAUDIT 050-B: a self-healed copy keeps the direct-access guard too.
+        . "if (PHP_SAPI !== 'cli' && !empty(\$_SERVER['SCRIPT_FILENAME'])\n"
+        . "    && @realpath(\$_SERVER['SCRIPT_FILENAME']) === @realpath(__FILE__)) {\n"
+        . "    http_response_code(404);\n"
+        . "    exit;\n"
+        . "}\n"
         . "// Release verification public key — PUBLIC, safe to commit/ship.\n"
         . "// SNAPSMACK_EOF_HEADER — last non-empty line must be the EOF marker.\n"
         . "define('SNAPSMACK_RELEASE_PUBKEY', '{$_rpk_canonical}');\n"
@@ -238,6 +252,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-relay-ingest-jobs.sql',
     'migrate-game-scores-ledger.sql',
     'migrate-posts-featured-visibility.sql',
+    'migrate-community-token-hash.sql',
 ];
 
 // ─── DEPRECATED FILES ───────────────────────────────────────────────────────
