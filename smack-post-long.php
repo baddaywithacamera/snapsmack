@@ -899,6 +899,13 @@ include 'core/sidebar.php';
         </div>
         <input type="text" id="gallery-pick-search" placeholder="Search titles, descriptions, tags…"
                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--text);font-size:13px;margin-bottom:12px;box-sizing:border-box;">
+        <?php if ($edit_post): ?>
+        <div id="gallery-pick-scope" style="display:none;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 14px;" aria-label="Choose cover image source">
+            <span style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-right:3px;">Source</span>
+            <button type="button" class="gallery-orientation-filter is-active" data-scope="bucket" aria-pressed="true">THIS POST'S BUCKET</button>
+            <button type="button" class="gallery-orientation-filter" data-scope="all" aria-pressed="false">ALL GALLERY IMAGES</button>
+        </div>
+        <?php endif; ?>
         <div id="gallery-width-control" style="display:flex;align-items:center;gap:12px;margin:0 0 14px;">
             <label for="gallery-pick-width" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;">Display width</label>
             <input type="range" id="gallery-pick-width" min="20" max="100" step="5" value="100" style="flex:1;">
@@ -913,6 +920,7 @@ include 'core/sidebar.php';
         </div>
         <div id="gallery-pick-grid"
              data-base="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES); ?>"
+             data-post-id="<?php echo $edit_post ? (int)$edit_post['id'] : 0; ?>"
              style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:480px;overflow-y:auto;"></div>
         <p id="gallery-pick-empty" class="dim" style="font-size:12px;padding:10px;display:none;">
             No images in the Gallery yet. <a href="smack-gallery.php" target="_blank" style="color:var(--link);">Upload some →</a>

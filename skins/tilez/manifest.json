@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "TILEZ",
-    "version": "0.2.12",
+    "version": "0.2.13",
     "author": "Sean McCormick & Claude",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A quiet white SMACKTALK portfolio inspired by editorial design studios. Longform posts flow through a native-aspect three-column wall powered by SnapSmack's shared columns engine.",

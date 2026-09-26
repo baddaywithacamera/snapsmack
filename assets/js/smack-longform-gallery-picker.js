@@ -39,15 +39,19 @@
     var widthOut  = document.getElementById('gallery-pick-width-value');
     var widthWrap = document.getElementById('gallery-width-control');
     var titleEl   = document.getElementById('gallery-pick-title');
+    var scopeBar  = document.getElementById('gallery-pick-scope');
+    var scopeButtons = scopeBar ? scopeBar.querySelectorAll('[data-scope]') : [];
     var orientationBar = document.getElementById('gallery-pick-orientation');
     var orientationButtons = orientationBar ? orientationBar.querySelectorAll('[data-orientation]') : [];
     if (!modal || !grid) return;
 
     var base = grid.getAttribute('data-base') || '';
+    var postId = parseInt(grid.getAttribute('data-post-id'), 10) || 0;
     var searchTimer = null;
     var mode = 'insert'; // 'insert' (body shortcode) | 'cover' (featured image)
     var loadedImages = [];
     var orientationFilter = 'ALL';
+    var sourceScope = 'all';
 
     // ── MODAL ────────────────────────────────────────────────────────────────
     function openModal(m) {
@@ -55,6 +59,8 @@
         modal.style.display = 'block';
         if (titleEl) titleEl.textContent = mode === 'cover' ? 'SELECT COVER FROM GALLERY' : 'INSERT IMAGE FROM GALLERY';
         if (widthWrap) widthWrap.style.display = mode === 'cover' ? 'none' : 'flex';
+        if (scopeBar) scopeBar.style.display = mode === 'cover' ? 'flex' : 'none';
+        setSourceScope(mode === 'cover' && postId > 0 ? 'bucket' : 'all', false);
         search.value = '';
         setOrientationFilter('ALL');
         if (widthEl) widthEl.value = '100';
@@ -71,6 +77,9 @@
         grid.innerHTML = '<p class="dim" style="font-size:12px;padding:10px;grid-column:1/-1;">Loading…</p>';
 
         var url = 'smack-gallery.php?ajax=1&page=1&per_page=100' + (q ? '&q=' + encodeURIComponent(q) : '');
+        if (mode === 'cover' && sourceScope === 'bucket' && postId > 0) {
+            url += '&bucket_post_id=' + encodeURIComponent(postId);
+        }
         if (orientationFilter !== 'ALL') url += '&orientation=' + encodeURIComponent(orientationFilter.toLowerCase());
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url, true);
@@ -120,6 +129,16 @@
         renderFilteredGrid();
     }
 
+    function setSourceScope(next, reload) {
+        sourceScope = next === 'bucket' && postId > 0 ? 'bucket' : 'all';
+        Array.prototype.forEach.call(scopeButtons, function (button) {
+            var active = button.getAttribute('data-scope') === sourceScope;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        if (reload) fetchImages(search ? search.value.trim() : '');
+    }
+
     function renderFilteredGrid() {
         var images = loadedImages.filter(function (img) {
             return orientationFilter === 'ALL' || orientationLabel(img) === orientationFilter;
@@ -133,7 +152,9 @@
             if (emptyEl) {
                 emptyEl.innerHTML = filtered
                     ? 'No ' + orientationFilter.toLowerCase() + ' images match this view.'
-                    : 'No images in the Gallery yet. <a href="smack-gallery.php" target="_blank" style="color:var(--link);">Upload some →</a>';
+                    : (mode === 'cover' && sourceScope === 'bucket'
+                        ? 'This post\'s bucket has no matching images. Choose ALL GALLERY IMAGES or add photographs to the bucket.'
+                        : 'No images in the Gallery yet. <a href="smack-gallery.php" target="_blank" style="color:var(--link);">Upload some →</a>');
                 emptyEl.style.display = 'block';
             }
             return;
@@ -237,6 +258,11 @@
         button.addEventListener('click', function () {
             setOrientationFilter(button.getAttribute('data-orientation'));
             fetchImages(search ? search.value.trim() : '');
+        });
+    });
+    Array.prototype.forEach.call(scopeButtons, function (button) {
+        button.addEventListener('click', function () {
+            setSourceScope(button.getAttribute('data-scope'), true);
         });
     });
 
