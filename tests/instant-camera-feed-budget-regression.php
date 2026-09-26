@@ -33,9 +33,9 @@ $expect(
     'INSTANT CAMERA decorative pool must preserve the configured tabletop density'
 );
 $expect(
-    str_contains($mayhem, 'var cardW = Math.max(cellW, cellH) * 1.7;')
-        && !str_contains($mayhem, 'var cardW = Math.min(maxWidth, Math.max(cellW, cellH) * 1.7);'),
-    'ambient Mayhem cards must expand to cover the viewport without gaps'
+    str_contains($mayhem, 'var cardW = Math.min(maxWidth, Math.max(cellW, cellH) * 1.7);')
+        && str_contains($mayhem, 'var w = Math.min(maxWidth, cardW * rand(0.94, 1.12));'),
+    'ambient Mayhem cards must retain the configured print-size ceiling'
 );
 
 if ($failures) {

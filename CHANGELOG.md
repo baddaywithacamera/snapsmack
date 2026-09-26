@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.754D — 2026-09-26 — Tabletop restored
+
+- Instant Camera restores the original capped print sizing while keeping the larger 120-photo tabletop pool, eliminating oversized sparse prints without slowing the initial build.
+
 ## 0.7.753D — 2026-09-26 — Back on film
 
 - Completes the signed Instant Camera recovery by replacing the Organized Mayhem background asset through the repaired updater, restoring normal ownership, seamless overlapping prints, and the fast 30-print initial budget.
