@@ -71,7 +71,10 @@ foreach (['h-entry', 'p-name', 'e-content', 'dt-published', 'u-photo', 'p-author
 foreach (['alfred', 'tilez', 'stanley', 'writing-with-impact'] as $skin) {
     $preload = (string)file_get_contents($root . '/skins/' . $skin . '/preload.php');
     foreach (['h-entry', 'p-name', 'e-content', 'dt-published', 'u-photo', 'snapsmack_indieweb_longform_properties'] as $class) {
-        iw_assert(strpos($preload, $class) !== false, "{$skin} longform emits {$class}");
+        $shared_photo = $class === 'u-photo'
+            && strpos($preload, 'snapsmack_indieweb_longform_properties') !== false
+            && strpos((string)file_get_contents($root . '/core/indieweb.php'), 'class="u-photo"') !== false;
+        iw_assert(strpos($preload, $class) !== false || $shared_photo, "{$skin} longform emits {$class}");
     }
 }
 
