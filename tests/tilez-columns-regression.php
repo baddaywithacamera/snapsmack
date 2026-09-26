@@ -34,7 +34,10 @@ $assert(str_contains($header, "['label' => 'IMAGES'"), 'images menu label is pre
 $assert(str_contains($header, 'class="tilez-icon-nav"'), 'top-right icon navigation is present');
 $assert(str_contains($style, 'font-size: 20px;'), 'desktop text menu is doubled in size');
 $assert(!str_contains($preload, '<figure class="featured-media"'), 'single posts start with their title instead of repeating the archive cover');
-$assert(str_contains($style, '.post-title') && str_contains($style, 'font-size: 2.5em;'), 'single-post title uses the restrained original scale');
+$assert(str_contains($style, '.post-title') && str_contains($style, 'font-size: 3.333em;'), 'single-post title is one third larger than the restrained scale');
+$titlePos = strpos($preload, '<h1 class="post-title p-name">');
+$datePos = strpos($preload, '<p class="post-date">');
+$assert($titlePos !== false && $datePos !== false && $titlePos < $datePos, 'single-post date sits below the title');
 $assert(str_contains($style, '.post-gear-note'), 'closing equipment notes have a readable supporting style');
 $assert(str_contains($style, "font-family: 'Droid Serif', Georgia, 'Times New Roman', serif;"), 'longform body uses an editorial serif stack');
 $assert(str_contains($style, 'font-size: 18px;') && str_contains($style, 'font-weight: 400;'), 'desktop longform body is normal-weight and restrained');

@@ -262,8 +262,8 @@ if ($_alfred_post_slug || $_alfred_post_id) {
         <?php snapsmack_indieweb_longform_properties($_alfred_post, $settings); ?>
 
         <div class="post-header">
-            <p class="post-date"><time class="dt-published" datetime="<?php echo htmlspecialchars(date(DATE_ATOM, strtotime($_alfred_post['created_at']))); ?>"><?php echo date('F j, Y', strtotime($_alfred_post['created_at'])); ?></time></p>
             <h1 class="post-title p-name"><?php echo htmlspecialchars($_alfred_post['title']); ?></h1>
+            <p class="post-date"><time class="dt-published" datetime="<?php echo htmlspecialchars(date(DATE_ATOM, strtotime($_alfred_post['created_at']))); ?>"><?php echo date('F j, Y', strtotime($_alfred_post['created_at'])); ?></time></p>
         </div>
 
         <div class="post-inner">
