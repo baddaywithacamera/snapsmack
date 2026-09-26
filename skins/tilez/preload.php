@@ -318,6 +318,7 @@ if ($_alfred_post_slug || $_alfred_post_id) {
 <?php // MOSAIC render engine — packs [mosaic:ID] blocks (now expanded by the
       // parser into .snap-mosaic[data-mosaic]) into a justified tiled gallery.
       // Only needed on the single-post view, where post body content renders. ?>
+<script src="<?php echo BASE_URL; ?>skins/tilez/assets/js/tilez-mosaic-continuity.js?v=<?php echo rawurlencode((string)@filemtime(__DIR__ . '/assets/js/tilez-mosaic-continuity.js')); ?>"></script>
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 
 <?php include __DIR__ . '/skin-footer.php'; ?>
