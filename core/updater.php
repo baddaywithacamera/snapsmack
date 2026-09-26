@@ -2412,9 +2412,10 @@ function updater_check_skin_registry(PDO $pdo, bool $fast = false): array {
     }
 
     // ── AUTO-REPAIR / AUTO-UPDATE: mode-specific mobile skin ────────────────
-    // Longform SMACKTALK sites require TELEGRAM; the photo-oriented modes use
-    // PHOTOGRAM. These infrastructure skins are hidden from the normal gallery,
-    // so the updater installs or refreshes the one this site actually needs.
+    // Longform SMACKTALK sites require TELEGRAM. SMACKONEOUT photoblogs and
+    // GRAMOFSMACK carousel blogs require PHOTOGRAM. SMACKTHEMUP has no blog
+    // mobile renderer. These infrastructure skins are hidden from the normal
+    // gallery, so the updater installs or refreshes only the one this site needs.
     try {
         $site_mode = (string)($pdo->query(
             "SELECT setting_val FROM snap_settings WHERE setting_key = 'site_mode' LIMIT 1"
@@ -2422,14 +2423,16 @@ function updater_check_skin_registry(PDO $pdo, bool $fast = false): array {
     } catch (Throwable $e) {
         $site_mode = 'photoblog';
     }
-    $mobile_slug  = ($site_mode === 'smacktalk')
-        ? 'telegram'
-        : (defined('SNAPSMACK_MOBILE_SKIN') ? SNAPSMACK_MOBILE_SKIN : 'photogram');
+    $mobile_slug = match ($site_mode) {
+        'smacktalk'             => 'telegram',
+        'photoblog', 'carousel' => 'photogram',
+        default                 => '',
+    };
     $mobile_dir   = dirname(__DIR__) . '/skins/' . $mobile_slug;
     $mobile_entry = $remote['skins'][$mobile_slug] ?? null;
 
-    $mobile_missing  = !is_dir($mobile_dir);
-    $mobile_outdated = !$mobile_missing
+    $mobile_missing  = $mobile_slug !== '' && !is_dir($mobile_dir);
+    $mobile_outdated = $mobile_slug !== '' && !$mobile_missing
         && isset($mobile_entry['version'], $local[$mobile_slug]['version'])
         && snap_version_compare($mobile_entry['version'], $local[$mobile_slug]['version'], '>');
 
