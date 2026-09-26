@@ -36,7 +36,7 @@ from datetime import datetime, timezone
 
 import snap_home
 
-SCHEMA = 2  # was 1; added max_long_edge canonical size field
+SCHEMA = 3  # named per-site enrichment prompt presets
 DEFAULT_MAX_LONG_EDGE = 3840  # fleet standard (Sean, 2026-09-01): symmetric 3840
 PORTABLE_DEFAULTS = {
     "prompt": "",
@@ -84,13 +84,26 @@ def validate_portable(values):
     out["prompt"] = str(out["prompt"] or "")
     presets = out.get("prompt_presets")
     if not isinstance(presets, dict):
-        raise ValueError("prompt_presets must be an object")
-    out["prompt_presets"] = {
-        str(name).strip(): str(text or "") for name, text in presets.items()
-        if str(name).strip()
-    }
-    out["default_prompt_preset"] = str(out.get("default_prompt_preset") or "").strip()
-    out["last_prompt_preset"] = str(out.get("last_prompt_preset") or "").strip()
+        raise ValueError("prompt_presets must be an object of named prompts")
+    clean_presets = {}
+    for name, text in presets.items():
+        name = str(name or "").strip()
+        if not name:
+            raise ValueError("prompt preset names cannot be blank")
+        clean_presets[name] = str(text or "")
+    out["prompt_presets"] = clean_presets
+    default_prompt = str(out.get("default_prompt_preset") or "").strip()
+    last_prompt = str(out.get("last_prompt_preset") or "").strip()
+    if clean_presets:
+        if default_prompt not in clean_presets:
+            default_prompt = next(iter(clean_presets))
+        if last_prompt not in clean_presets:
+            last_prompt = default_prompt
+    else:
+        default_prompt = ""
+        last_prompt = ""
+    out["default_prompt_preset"] = default_prompt
+    out["last_prompt_preset"] = last_prompt
 
     # --- size: canonical max_long_edge is the source of truth; pair is derived ---
     if raw.get("max_long_edge") not in (None, ""):

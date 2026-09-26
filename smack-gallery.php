@@ -86,6 +86,21 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     $where   = [];
     $params  = [];
 
+    // The longform editor's visual image blocks resolve only the images that
+    // appear in the current post. Keeping this server-side avoids loading an
+    // entire large gallery merely to draw a handful of editor thumbnails.
+    $ids_raw = trim((string)($_GET['ids'] ?? ''));
+    if ($ids_raw !== '') {
+        $ids = array_values(array_unique(array_filter(array_map('intval', explode(',', $ids_raw)), static function ($id) {
+            return $id > 0;
+        })));
+        $ids = array_slice($ids, 0, 100);
+        if ($ids) {
+            $where[] = 'i.id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')';
+            array_push($params, ...$ids);
+        }
+    }
+
     // Full-text search across title, description, tags
     $search = trim($_GET['q'] ?? '');
     if ($search !== '') {
@@ -147,6 +162,24 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         $params[] = '%' . $colour . '%';
     }
 
+    // Filter by the image's natural shape. The two-percent tolerance matches
+    // the longform cover chooser's SQUARE label, so its filter and badges can
+    // never disagree. Old rows without dimensions fall back to the legacy
+    // orientation flag (0 landscape, 1 portrait, 2 square).
+    $orientation = strtolower(trim((string)($_GET['orientation'] ?? '')));
+    $known_size = '(COALESCE(i.img_width, 0) > 0 AND COALESCE(i.img_height, 0) > 0)';
+    $square_size = '(ABS(i.img_width - i.img_height) <= GREATEST(i.img_width, i.img_height) * 0.02)';
+    if ($orientation === 'portrait') {
+        $where[] = "(($known_size AND i.img_height > i.img_width AND NOT $square_size)
+                     OR (NOT $known_size AND i.img_orientation = 1))";
+    } elseif ($orientation === 'landscape') {
+        $where[] = "(($known_size AND i.img_width > i.img_height AND NOT $square_size)
+                     OR (NOT $known_size AND i.img_orientation = 0))";
+    } elseif ($orientation === 'square') {
+        $where[] = "(($known_size AND $square_size)
+                     OR (NOT $known_size AND i.img_orientation = 2))";
+    }
+
     $where_sql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
     // Count total
@@ -161,7 +194,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     // pivot is OR-ed in as belt-and-suspenders for gram layout rows. No extra
     // per-row query — it resolves inside the existing paginated SELECT.
     $sql = "SELECT i.id, i.img_title, i.img_alt, i.img_file, i.img_thumb_square, i.img_thumb_aspect,
-                   i.img_date, i.img_status, i.img_width, i.img_height, i.img_exif,
+                   i.img_date, i.img_status, i.img_width, i.img_height, i.img_orientation, i.img_exif,
                    i.img_display_options, i.post_id,
                    (i.post_id IS NOT NULL
                     OR EXISTS (SELECT 1 FROM snap_post_images pi WHERE pi.image_id = i.id)) AS is_used

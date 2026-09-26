@@ -29,6 +29,12 @@ ip_test(!snap_ip_is_bannable('127.0.0.1'), 'loopback address was bannable');
 ip_test(!snap_ip_is_bannable('10.2.3.4'), 'private address was bannable');
 ip_test(!snap_ip_is_bannable('not-an-ip'), 'malformed address was bannable');
 ip_test(snap_ip_is_bannable('8.8.8.8'), 'public address was not bannable');
+ip_test(snap_ip_is_cloudflare_proxy('172.64.10.20'), 'Cloudflare IPv4 range was not recognized');
+ip_test(snap_ip_is_cloudflare_proxy('2606:4700::1234'), 'Cloudflare IPv6 range was not recognized');
+ip_test(!snap_ip_is_bannable('172.64.10.20'), 'Cloudflare edge address was bannable');
+
+$_SERVER = ['REMOTE_ADDR' => '172.64.10.20', 'HTTP_CF_CONNECTING_IP' => '8.8.8.8'];
+ip_test(snap_trusted_client_ip() === '8.8.8.8', 'Cloudflare client address was not honored');
 
 $parsed = snap_parse_trusted_proxies('127.0.0.1, 10.20.0.0/16, broken, 2001:db8::/32');
 ip_test($parsed === ['127.0.0.1', '10.20.0.0/16', '2001:db8::/32'], 'proxy validation did not reject malformed entries');
@@ -66,6 +72,8 @@ foreach (['snap-in.php', 'probe-ban.php', 'core/flkrfckr-api.php'] as $file) {
 }
 $resolver = file_get_contents(__DIR__ . '/../core/client-ip.php');
 ip_test(str_contains($resolver, "reason LIKE 'auto:%'"), 'historical automatic-ban reset is missing');
+ip_test(str_contains($resolver, 'client_ip_cloudflare_repair_741d'), 'one-time Cloudflare client-ban repair is missing');
+ip_test(str_contains($resolver, "DELETE FROM snap_ip_bans WHERE reason LIKE 'auto:%'"), 'legacy automatic login bans are not cleared during repair');
 ip_test(str_contains($resolver, '$recent >= 250 || $total >= 10000'), 'ban-table insertion bounds are missing');
 ip_test(str_contains($resolver, 'snap_ip_send_owner_ban_alert'), 'owner lockout alert path is missing');
 

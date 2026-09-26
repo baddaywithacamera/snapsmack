@@ -418,6 +418,67 @@ class PortableArchive:
             'total_bytes': sum(v['bytes'] for v in self.inventory.values()),
         })
 
+    def write_fediverse(self, fedi):
+        """exit/fediverse/ — the people attached to the site (OPAUDIT 019).
+
+        JSON for the record, CSVs in the exact shapes Mastodon / Pixelfed / Holos
+        import, and a README that says what each server will and won't take.
+        `fedi` is the server's action=fediverse body, or None on an older site.
+        The private key is never here; _assert_no_secrets enforces it."""
+        if fedi is None:
+            self.warn('This site does not offer the fediverse export (older SnapSmack); '
+                      'followers / following / blocks are NOT in this archive.')
+            return []
+        actor = dict(fedi.get('actor') or {})
+        # Belt: the server sends only the public key, and the field name says so.
+        # Anything credential-shaped anywhere in the body stops the write.
+        _assert_no_secrets({'actor': actor, 'followers': fedi.get('followers') or [],
+                            'following': fedi.get('following') or []}, 'exit/fediverse')
+        written = []
+        written.append(self.write_json('exit/fediverse/actor.json', {
+            **actor, 'exported_at': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'enabled': bool(fedi.get('enabled')),
+        }))
+        written.append(self.write_json('exit/fediverse/followers.json', fedi.get('followers') or []))
+        written.append(self.write_json('exit/fediverse/following.json', fedi.get('following') or []))
+        written.append(self.write_json('exit/fediverse/blocks.json', {
+            'accounts': fedi.get('blocked_accounts') or [],
+            'domains':  fedi.get('blocked_domains') or [],
+        }))
+        for name, text in (fedi.get('csv') or {}).items():
+            if name in ('following.csv', 'blocked_accounts.csv', 'muted_accounts.csv', 'blocked_domains.csv'):
+                written.append(self.write_text('exit/fediverse/' + name, text or ''))
+        n_followers = len(fedi.get('followers') or [])
+        n_following = len(fedi.get('following') or [])
+        written.append(self.write_text('exit/fediverse/README.txt', f"""YOUR FEDIVERSE ACCOUNT — {actor.get('address') or actor.get('actor_url') or 'this site'}
+{n_followers} followers, {n_following} following.
+
+What each file is and where it goes:
+
+  following.csv         Who you follow. Mastodon: Preferences > Import > "Following list".
+                        Pixelfed and Holos: their Import page. (Header row is Mastodon's.)
+  blocked_accounts.csv  Accounts you blocked. Mastodon: Import > "Blocking list".
+  blocked_domains.csv   Servers you blocked. Mastodon: Import > "Domain blocking list".
+  muted_accounts.csv    Empty on purpose — SnapSmack has no mutes.
+  followers.json        Who follows you. FOR THE RECORD ONLY. No server on earth imports a
+                        follower list from a file. Followers follow you to a new account only
+                        when THIS site tells them to: FED UP > MOVING TO sends an ActivityPub
+                        "Move" to every one of them, and their servers re-follow the new
+                        account automatically. Do that BEFORE you switch this site off.
+  actor.json            Your public identity (address, public key, aliases). Public key only.
+
+What the other side will take:
+  Mastodon / GoToSocial / Holos   your people (Move + these CSVs). NOT your posts — they
+                                  import no posts from anyone, not even their own archive.
+  Pixelfed                        your people (Move + CSVs) AND your photos, via its
+                                  "Import from Instagram" (see exit/pixelfed/ when present).
+  WordPress + ActivityPub plugin  your people (Move) AND your writing (the WordPress
+                                  courtesy package in this archive), and it keeps federating.
+
+Your private signing key is NOT in this archive, on purpose. It only matters for
+restoring this exact site, and SMACK UP YOUR BACKUP keeps it in the database backup.
+"""))
+        return written
+
     def write_readme(self):
         name = self.site.get('site_name') or self.site.get('site_url') or 'your site'
         return self.write_text('README.txt', f"""\

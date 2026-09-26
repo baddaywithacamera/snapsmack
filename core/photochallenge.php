@@ -244,6 +244,49 @@ function pc_previous_window(PDO $pdo, array $settings): array {
     return $fallback ? $fallback + ['open' => false] : $current;
 }
 
+/** Use an explicitly advertised hashtag when the card intentionally shortens
+ * the prompt word (Reflection -> #PhotoFriReflect). */
+function pc_hashtag_for_prompt(string $prompt, string $prefix = 'PhotoFri', string $override = ''): array {
+    $generated = pc_hashtag_from_prompt($prompt, $prefix);
+    $raw = ltrim(trim($override), '#');
+    if ($raw === '') return $generated;
+    $display = preg_replace('/[^A-Za-z0-9_]/', '', $raw) ?: '';
+    $clean_prefix = preg_replace('/[^A-Za-z0-9]/', '', $prefix) ?: 'PhotoFri';
+    if ($display === '' || stripos($display, $clean_prefix) !== 0) return $generated;
+    return ['tag' => strtolower($display), 'display' => $display];
+}
+
+/** First branded hashtag in the authored caption is the advertised new round.
+ * Later tags may refer to the round that is just closing. */
+function pc_advertised_prompt_hashtag(string $caption, string $prefix = 'PhotoFri'): string {
+    $clean_prefix = preg_replace('/[^A-Za-z0-9]/', '', $prefix) ?: 'PhotoFri';
+    if (preg_match('/#(' . preg_quote($clean_prefix, '/') . '[A-Za-z0-9_]+)/i', $caption, $m)) {
+        return (string)$m[1];
+    }
+    return '';
+}
+
+/** A round keeps its own hashtag after the next prompt becomes live. */
+function pc_round_tag(PDO $pdo, array $settings, string $week_key): string {
+    try {
+        $q = $pdo->prepare("SELECT id,prompt,caption,tag,tag_display FROM pc_prompts WHERE week_key=? LIMIT 1");
+        $q->execute([$week_key]);
+        $row = $q->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $advertised = pc_advertised_prompt_hashtag((string)($row['caption'] ?? ''), pc_tag_prefix($settings));
+            $hash = pc_hashtag_for_prompt((string)($row['prompt'] ?? ''), pc_tag_prefix($settings),
+                $advertised !== '' ? $advertised : (string)($row['tag_display'] ?? $row['tag'] ?? ''));
+            if ($hash['tag'] !== strtolower((string)($row['tag'] ?? ''))) {
+                $pdo->prepare("UPDATE pc_prompts SET tag=?,tag_display=? WHERE id=?")
+                    ->execute([$hash['tag'],$hash['display'],(int)$row['id']]);
+            }
+            return $hash['tag'];
+        }
+    } catch (Throwable $e) {
+    }
+    return pc_tag($settings);
+}
+
 /**
  * Public board rounds, newest first: the live week followed by every earlier
  * scheduled week. The current window is always present, even before its prompt
@@ -765,7 +808,10 @@ function pc_reconcile_object(PDO $pdo, array $settings, string $object_id): void
     $tags = json_decode((string)($row['tags_json'] ?? '[]'), true) ?: [];
     $media = json_decode((string)($row['media_json'] ?? '[]'), true) ?: [];
     $videos = json_decode((string)($row['media_video_json'] ?? '[]'), true) ?: [];
-    $valid = in_array(pc_tag($settings), $tags, true) && count($media) === 1 && !$videos
+    $round_tag = $row['admission_id']
+        ? pc_round_tag($pdo, $settings, (string)$row['week_key'])
+        : pc_tag($settings);
+    $valid = in_array($round_tag, $tags, true) && count($media) === 1 && !$videos
         && empty($row['in_reply_to']) && (int)($row['sensitive'] ?? 0) === 0 && (int)$row['is_boost'] === 0;
     if (!$row['admission_id']) {
         if ($valid) pc_maybe_boost_entry($pdo, $settings, $object_id);
@@ -868,7 +914,7 @@ function pc_queue_prompt(PDO $pdo, array &$settings, array $data, array $file): 
         return ['ok' => false, 'msg' => 'The target challenge date must be a Friday.'];
     }
 
-    $hash = pc_hashtag_from_prompt($prompt, pc_tag_prefix($settings));
+    $hash = pc_hashtag_for_prompt($prompt, pc_tag_prefix($settings), (string)($data['hashtag'] ?? ''));
 
     $drop_at = trim((string)($data['drop_at'] ?? ''));
     if ($drop_at === '') {
@@ -987,7 +1033,7 @@ function pc_update_prompt(PDO $pdo, array &$settings, int $id, array $data): arr
     $dupe = $pdo->prepare("SELECT 1 FROM pc_prompts WHERE week_key=? AND id<>? AND status IN ('queued','live') LIMIT 1");
     $dupe->execute([$win['week_key'], $id]);
     if ($dupe->fetchColumn()) return ['ok' => false, 'msg' => 'Another prompt is already scheduled for that Friday.'];
-    $hash = pc_hashtag_from_prompt($prompt, pc_tag_prefix($settings));
+    $hash = pc_hashtag_for_prompt($prompt, pc_tag_prefix($settings), (string)($data['hashtag'] ?? ''));
     $body = pc_prompt_body($settings, $prompt, $caption, $hash['display']);
     $pdo->beginTransaction();
     try {
@@ -1055,16 +1101,41 @@ function pc_cancel_prompt(PDO $pdo, array &$settings, int $id): array {
  */
 function pc_sync_active_prompt_tag(PDO $pdo, array &$settings): bool {
     $active = $pdo->query(
-        "SELECT tag FROM pc_prompts
+        "SELECT id,prompt,caption,tag,tag_display FROM pc_prompts
          WHERE status IN ('live','done')
            AND submit_start<=UTC_TIMESTAMP()
          ORDER BY (submit_end>UTC_TIMESTAMP()) DESC, submit_start DESC
          LIMIT 1"
-    )->fetchColumn();
-    if (!is_string($active) || $active === '') return false;
-    if (pc_tag($settings) === strtolower($active)) return false;
-    sv_set_setting($pdo, $settings, 'photochallenge_tag', $active);
-    return true;
+    )->fetch(PDO::FETCH_ASSOC);
+    if (!$active) return false;
+    $advertised = pc_advertised_prompt_hashtag((string)($active['caption'] ?? ''), pc_tag_prefix($settings));
+    $hash = pc_hashtag_for_prompt((string)($active['prompt'] ?? ''), pc_tag_prefix($settings),
+        $advertised !== '' ? $advertised : (string)($active['tag_display'] ?? $active['tag'] ?? ''));
+    $changed = false;
+    if ($hash['tag'] !== strtolower((string)($active['tag'] ?? ''))) {
+        $pdo->prepare("UPDATE pc_prompts SET tag=?,tag_display=? WHERE id=?")
+            ->execute([$hash['tag'],$hash['display'],(int)$active['id']]);
+        $changed = true;
+    }
+    if (pc_tag($settings) !== $hash['tag']) {
+        sv_set_setting($pdo, $settings, 'photochallenge_tag', $hash['tag']);
+        $changed = true;
+    }
+    // A corrected live hashtag must also recover posts that already arrived
+    // while the board was listening for the wrong tag. This is deliberately
+    // bounded and runs only when the active tag changed.
+    if ($changed && function_exists('pc_maybe_boost_entry')) {
+        $win = pc_window($settings);
+        if ($win['open']) {
+            $q = $pdo->prepare("SELECT object_id FROM snap_ap_timeline
+                 WHERE published>=? AND published<? ORDER BY published DESC LIMIT 200");
+            $q->execute([$win['start'],$win['end']]);
+            foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $object_id) {
+                try { pc_maybe_boost_entry($pdo, $settings, (string)$object_id); } catch (Throwable $e) {}
+            }
+        }
+    }
+    return $changed;
 }
 
 function pc_activate_due_prompts(PDO $pdo, array &$settings): int {
@@ -1141,16 +1212,12 @@ function pc_refresh_prompt_pointers(PDO $pdo, array &$settings): void {
 function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit = 200): array {
     if (!pc_enabled($settings)) return [];
     $win = $window ?? pc_window($settings);
-    $tag = pc_tag($settings);
-    // Historical feeds must validate against that round's hashtag, not the
-    // currently-live prompt. Otherwise last week's valid entries all vanish.
-    try {
-        $tag_q = $pdo->prepare("SELECT tag FROM pc_prompts WHERE week_key=? LIMIT 1");
-        $tag_q->execute([(string)$win['week_key']]);
-        $round_tag = strtolower(trim((string)($tag_q->fetchColumn() ?: '')));
-        if ($round_tag !== '') $tag = $round_tag;
-    } catch (Throwable $e) {
-    }
+    $tag = pc_round_tag($pdo, $settings, (string)$win['week_key']);
+    // Older workers withdrew valid entries when the next prompt changed the
+    // global tag. A historical entry remains visible if the participant is
+    // active and the retained Note still carries its original round's tag.
+    $archived = (string)$win['end'] <= gmdate('Y-m-d H:i:s');
+    $admission_status = $archived ? "a.status IN ('active','withdrawn')" : "a.status='active'";
     $rows = [];
     try {
         $st = $pdo->prepare(
@@ -1159,7 +1226,7 @@ function pc_board(PDO $pdo, array $settings, ?array $window = null, int $limit =
                FROM pc_admissions a
                JOIN snap_ap_timeline t ON t.object_id=a.object_id
                JOIN pc_participants p ON p.actor_url=a.actor_url AND p.state='active'
-              WHERE a.week_key=:week_key AND a.status='active'
+              WHERE a.week_key=:week_key AND {$admission_status}
            ORDER BY a.admission_number ASC,a.admitted_at ASC LIMIT " . min(1000, max($limit, 1))
         );
         $st->execute([':week_key' => $win['week_key']]);
@@ -1318,12 +1385,12 @@ function pc_participant_recent_posts(array $actor, string $outbox, array $settin
 
     // Pixelfed <=0.12.6 can protect /api/v1/accounts/lookup while leaving its
     // logged-out profile/status feed public. Its actor avatar path contains the
-    // account snowflake in three-digit path chunks; use that vendor identifier
+    // account snowflake in three-digit path chunks or as one flat number; use that vendor identifier
     // only when the normal lookup returned no posts. This is not used for other
     // ActivityPub software and never changes the canonical object id.
     if (!$statuses && function_exists('sv_fetch_json') && function_exists('sv_masto_map_statuses')) {
         $icon = is_array($actor['icon'] ?? null) ? (string)($actor['icon']['url'] ?? '') : '';
-        if ($icon !== '' && preg_match('~/avatars/((?:[0-9]{3}/)+[0-9]{1,3})/~', $icon, $m)) {
+        if ($icon !== '' && preg_match('~/avatars/((?:[0-9]{3}/)+[0-9]{1,3}|[0-9]{8,20})/~', $icon, $m)) {
             $account_id = ltrim(str_replace('/', '', (string)$m[1]), '0');
             if ($account_id !== '') {
                 $limit = max(1, min($max, 40));
@@ -1356,15 +1423,18 @@ function pc_participant_recent_posts(array $actor, string $outbox, array $settin
  * @return array{actors:int,posts:int,recovered:int,errors:int}
  */
 function pc_rescan_participants(PDO $pdo, array &$settings, int $per_actor = 25,
-                                bool $collect_only = false, string $tag = ''): array {
+                                bool $collect_only = false, string $tag = '',
+                                int $actor_offset = 0, int $actor_limit = 0): array {
     $out = ['actors' => 0, 'posts' => 0, 'recovered' => 0, 'errors' => 0,
             'rows' => [], 'unreadable' => []];
     if (!pc_enabled($settings)) return $out;
     pc_ensure_tables($pdo);
     $per_actor = max(1, min(60, $per_actor));
     try {
-        $rows = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active'")->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Throwable $e) { return $out; }
+        $rows = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active' ORDER BY actor_url")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) { throw new RuntimeException('Could not list challenge participants for recovery.', 0, $e); }
+    $out['total_actors'] = count($rows);
+    if ($actor_limit > 0) $rows = array_slice($rows, max(0, $actor_offset), $actor_limit);
     foreach ($rows as $participant) {
         $actor_url = (string)($participant['actor_url'] ?? '');
         $actor_handle = trim((string)($participant['handle'] ?? ''));
@@ -1478,7 +1548,7 @@ function pc_text_has_tag(string $text, string $tag): bool {
 function pc_participant_recovery_rows(PDO $pdo, array $settings, string $tag, int $per_actor = 12): array {
     $rows = []; $actors = 0; $errors = 0;
     try {
-        $participants = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active' ORDER BY id")
+        $participants = $pdo->query("SELECT actor_url,handle FROM pc_participants WHERE state='active' ORDER BY actor_url")
             ->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) { return ['rows'=>[],'actors'=>0,'errors'=>1]; }
     foreach ($participants as $participant) {
@@ -1508,16 +1578,21 @@ function pc_participant_recovery_rows(PDO $pdo, array $settings, string $tag, in
 }
 
 /** Discover current-tag posts through search accounts AND participant outboxes, then recover them. */
-function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40): array {
+function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40,
+                                   int $actor_offset = 0, int $actor_limit = 0,
+                                   string $run_token = ''): array {
     pc_ensure_tables($pdo);
     $tag = pc_tag($settings); $win = pc_window($settings);
-    $run_token = bin2hex(random_bytes(8));
-    $rows = function_exists('sv_authed_hashtag_timeline') ? sv_authed_hashtag_timeline($pdo,$settings,$tag,$limit) : null;
-    if (!is_array($rows)) $rows = [];
-    if (!$rows && function_exists('sv_hashtag_timeline')) $rows = sv_hashtag_timeline('mastodon.social',$tag,$limit);
+    if ($run_token === '') $run_token = bin2hex(random_bytes(8));
+    $rows = [];
+    if ($actor_offset === 0) {
+        $rows = function_exists('sv_authed_hashtag_timeline') ? sv_authed_hashtag_timeline($pdo,$settings,$tag,$limit) : null;
+        if (!is_array($rows)) $rows = [];
+        if (!$rows && function_exists('sv_hashtag_timeline')) $rows = sv_hashtag_timeline('mastodon.social',$tag,$limit);
+    }
     // Wire the established participant-rescan/outbox reader in collection mode.
     // It returns raw Notes; admission below remains the one policy path.
-    $participant_scan = pc_rescan_participants($pdo,$settings,12,true,$tag);
+    $participant_scan = pc_rescan_participants($pdo,$settings,12,true,$tag,$actor_offset,$actor_limit);
     $merged = [];
     foreach (array_merge($rows, $participant_scan['rows']) as $row) {
         if (!is_array($row)) continue;
@@ -1526,7 +1601,8 @@ function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40): 
     }
     $rows = array_values($merged);
     $out = ['found'=>count($rows),'recovered'=>0,'already'=>0,'failed'=>0,'outside'=>0,
-        'actors'=>(int)$participant_scan['actors'],'scan_errors'=>(int)$participant_scan['errors'],'run_token'=>$run_token];
+        'actors'=>(int)$participant_scan['actors'],'scan_errors'=>(int)$participant_scan['errors'],
+        'total_actors'=>(int)($participant_scan['total_actors'] ?? 0),'run_token'=>$run_token];
     foreach ($participant_scan['unreadable'] as $miss) {
         $actor_url=(string)($miss['actor_url'] ?? '');
         pc_log_entry_failure($pdo,[
@@ -1894,14 +1970,8 @@ function pc_board_embed_html(PDO $pdo, array $settings, ?array $window = null, b
     $base   = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : '/';
     $ver    = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';
     $win    = $window ?? pc_window($settings);
-    $tag    = pc_tag($settings);
-    try {
-        $tag_q = $pdo->prepare("SELECT tag FROM pc_prompts WHERE week_key=? LIMIT 1");
-        $tag_q->execute([(string)$win['week_key']]);
-        $round_tag = strtolower(trim((string)($tag_q->fetchColumn() ?: '')));
-        if ($round_tag !== '') $tag = $round_tag;
-    } catch (Throwable $e) {
-    }
+    $tag    = pc_round_tag($pdo, $settings, (string)$win['week_key']);
+    $archived = (string)$win['end'] <= gmdate('Y-m-d H:i:s');
     $layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonry') ? 'masonry' : 'three';
     $rows   = pc_board_ranked($pdo, $settings, $win, 200);
 
@@ -1914,8 +1984,9 @@ function pc_board_embed_html(PDO $pdo, array $settings, ?array $window = null, b
     }
     $out .= '<div class="pc-board">';
     if (!$rows) {
-        $out .= '<p class="pc-board-empty">No entries yet. Post a photo tagged '
-              . '<code>#' . $esc($tag) . '</code> and follow to join.</p></div>';
+        $out .= '<p class="pc-board-empty">No entries for <code>#' . $esc($tag)
+              . '</code>' . ($archived ? ' in this round.' : ' yet. Post a photo and follow to join.')
+              . '</p></div>';
         return $out;
     }
     $out .= '<div class="grid grid--' . $esc($layout) . '">';

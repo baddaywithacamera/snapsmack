@@ -49,3 +49,5 @@ def test_both_desktop_apps_are_wired_to_the_shared_request():
     assert 'accept_handoff(selected)' in main
     assert '"photoblog": 0, "carousel": 1, "smacktalk": 2' in main
     assert "def select_site(self, url: str)" in connect
+
+# ===== SNAPSMACK EOF =====

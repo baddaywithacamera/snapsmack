@@ -45,21 +45,33 @@
     var lbDragging = false;
 
     function initLightbox() {
-        var img = document.getElementById('pg-post-image');
-        if (!img) return;
+        var images = document.querySelectorAll('[data-pg-lightbox]');
+        images.forEach(function (img) {
+            img.style.cursor = 'zoom-in';
 
-        img.style.cursor = 'zoom-in';
+            var lbTouched = false;
+            var touchX = 0;
+            var touchY = 0;
+            img.addEventListener('touchstart', function (e) {
+                var touch = e.changedTouches && e.changedTouches[0];
+                if (!touch) return;
+                touchX = touch.clientX;
+                touchY = touch.clientY;
+            }, { passive: true });
+            img.addEventListener('touchend', function (e) {
+                var touch = e.changedTouches && e.changedTouches[0];
+                if (!touch || Math.abs(touch.clientX - touchX) > 10 || Math.abs(touch.clientY - touchY) > 10) {
+                    return; // A carousel swipe or page scroll is not a tap.
+                }
+                e.preventDefault();
+                lbTouched = true;
+                openLightbox(img.currentSrc || img.src);
+            }, { passive: false });
 
-        var lbTouched = false;
-        img.addEventListener('touchend', function (e) {
-            e.preventDefault();
-            lbTouched = true;
-            openLightbox(img.src);
-        }, { passive: false });
-
-        img.addEventListener('click', function () {
-            if (lbTouched) { lbTouched = false; return; }
-            openLightbox(img.src);
+            img.addEventListener('click', function () {
+                if (lbTouched) { lbTouched = false; return; }
+                openLightbox(img.currentSrc || img.src);
+            });
         });
     }
 

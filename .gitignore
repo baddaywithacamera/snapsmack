@@ -64,6 +64,10 @@ desktop.ini
 error_log
 *.log
 
+# Generated desktop build/test artifacts
+tools/sybu/sybu_version_info.txt
+outputs/pytest-sybu-*/
+
 # Spec/setup documents that wound up at root — not part of source
 # If tracked, run: git rm --cached <filename>
 HIP-TO-BE-SQUARE-SPEC.docx
@@ -247,3 +251,4 @@ _harness/
 # COLD SNAP runtime export-derivative cache (size-capped/sharpened upload copies).
 # Regenerated on demand next to the module/exe; never source.
 tools/coldsnap/export_cache/
+tools/smackpress/smackpress.db
