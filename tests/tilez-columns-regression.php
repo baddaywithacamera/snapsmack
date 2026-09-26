@@ -10,7 +10,7 @@ $manifest = json_decode((string)file_get_contents($root . '/skins/tilez/manifest
 $preload  = (string)file_get_contents($root . '/skins/tilez/preload.php');
 $style    = (string)file_get_contents($root . '/skins/tilez/style.css');
 $header   = (string)file_get_contents($root . '/skins/tilez/skin-header.php');
-$continuity = (string)file_get_contents($root . '/skins/tilez/assets/js/tilez-mosaic-continuity.js');
+$mosaicEngine = (string)file_get_contents($root . '/assets/js/ss-engine-mosaic.js');
 
 $assert = static function (bool $ok, string $message): void {
     if (!$ok) {
@@ -45,8 +45,9 @@ $assert(str_contains($style, 'font-size: 21px;') && str_contains($style, 'font-w
 $assert(str_contains($style, 'font-size: 18px; line-height: 1.65;'), 'mobile longform body remains readable');
 $assert(str_contains($style, '.snap-inline-frame:has(+ .snap-inline-frame)'), 'consecutive standalone photographs form desktop pairs');
 $assert(str_contains($style, 'width: calc(50% - 6px) !important;'), 'desktop photograph pairs reserve room for inter-element whitespace');
-$assert(str_contains($preload, 'tilez-mosaic-continuity.js'), 'single posts load the TILEZ mosaic continuity pass');
-$assert(str_contains($continuity, "images = images.concat(mosaicData(cursor));"), 'consecutive mosaic bundles become one continuous image wall');
+$assert(str_contains($preload, 'data-merge-adjacent-mosaics'), 'TILEZ requests continuous adjacent mosaic rendering without shipping skin JavaScript');
+$assert(str_contains($mosaicEngine, 'function mergeAdjacentMosaics()'), 'the shared mosaic engine owns adjacent-bundle continuity');
+$assert(!is_file($root . '/skins/tilez/assets/js/tilez-mosaic-continuity.js'), 'TILEZ does not ship JavaScript');
 $assert(str_contains($style, '+ p:has(+ :is(.snap-inline-frame'), 'paragraphs between media receive symmetrical vertical spacing');
 $assert(str_contains($style, '--tilez-content-start: 40px;')
     && str_contains($style, 'padding-top: var(--tilez-content-start);')

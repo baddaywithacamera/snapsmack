@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.760D — 2026-09-26 — Continuity
+
+- **MOSAIC: adjacent saved bundles can render as one continuous wall.** The shared engine now merges consecutive MOSAIC blocks only when the page explicitly opts in, preserving image order and stopping at real text. TILEZ requests that engine behavior with markup; it ships no JavaScript.
+
 ## 0.7.759D — 2026-09-26 — Close out
 
 - **Security (SECAUDIT 050-B): the five sensitive core files refuse a direct web request.** `updater.php`, `release-pubkey.php`, `skin-registry.php`, `manifest-inventory.php` and `auth-smack.php` now answer a direct request with 404 on any web server, and the Apache block list names the real files (it listed dead `login`/`auth` names and missed `auth-smack.php`). This fix was written on 2026-08-20 and announced as released in 0.7.544, but it sat on an unmerged branch and never shipped. A live check of every fleet site on 2026-09-26 found nothing exposed: the web-server block list refused the four files and `auth-smack.php` only redirected to the login page. The updater's self-repair of `release-pubkey.php` keeps the guard.
