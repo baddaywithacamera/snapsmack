@@ -909,6 +909,34 @@ function updater_create_backup(string &$error = ''): string|false {
 // ─── EXTRACTION ─────────────────────────────────────────────────────────────
 
 /**
+ * Replace a release file through a same-directory temporary file.
+ *
+ * A prior manual upload can leave an individual file owned by a different
+ * account even though its containing directory remains writable by PHP. A
+ * direct write then fails forever. Staging the signed replacement beside the
+ * target and renaming it into place repairs that mismatch through the updater.
+ */
+function updater_replace_file(string $dest, string $content): bool {
+    $dir = dirname($dest);
+    $tmp = @tempnam($dir, '.snap-update-');
+    if ($tmp === false) return false;
+
+    $written = @file_put_contents($tmp, $content, LOCK_EX);
+    if ($written === false || $written !== strlen($content)) {
+        @unlink($tmp);
+        return false;
+    }
+
+    @chmod($tmp, 0644);
+    if (@rename($tmp, $dest)) return true;
+
+    if (is_file($dest) && @unlink($dest) && @rename($tmp, $dest)) return true;
+
+    @unlink($tmp);
+    return false;
+}
+
+/**
  * Extract an update package to the project root, respecting protected paths.
  * Returns an array of results:
  *   ['success' => bool, 'files_updated' => int, 'files_skipped' => int, 'errors' => [...]]
@@ -978,7 +1006,7 @@ function updater_extract(string $zip_path): array {
             continue;
         }
 
-        if (file_put_contents($dest, $content) === false) {
+        if (!updater_replace_file($dest, $content)) {
             $result['errors'][] = "Failed to write: {$relative}";
             $result['success'] = false;
             continue;
@@ -1102,44 +1130,15 @@ function updater_extract_chunk(string $zip_path, int $offset, int $time_limit_se
         $dest_dir = dirname($dest);
         if (!is_dir($dest_dir)) mkdir($dest_dir, 0755, true);
 
-        // Extract file — stream large files to avoid loading them fully into memory
-        $stat      = $zip->statIndex($i);
-        $file_size = $stat['size'] ?? 0;
-
-        if ($file_size > 102400) {
-            // > 100 KB: stream directly to disk via ZipArchive::getStream()
-            $src_stream = $zip->getStream($entry);
-            if ($src_stream === false) {
-                $result['errors'][] = "Failed to open stream: {$relative}";
-                continue;
-            }
-            $dest_fp = @fopen($dest, 'wb');
-            if ($dest_fp === false) {
-                fclose($src_stream);
-                $result['errors'][] = "Failed to open for write: {$relative}";
-                $result['success']  = false;
-                continue;
-            }
-            $bytes = stream_copy_to_stream($src_stream, $dest_fp);
-            fclose($src_stream);
-            fclose($dest_fp);
-            if ($bytes === false) {
-                $result['errors'][] = "Stream write failed: {$relative}";
-                $result['success']  = false;
-                continue;
-            }
-        } else {
-            // Small file: read into memory and write at once
-            $content = $zip->getFromIndex($i);
-            if ($content === false) {
-                $result['errors'][] = "Failed to read: {$relative}";
-                continue;
-            }
-            if (file_put_contents($dest, $content) === false) {
-                $result['errors'][] = "Failed to write: {$relative}";
-                $result['success']  = false;
-                continue;
-            }
+        $content = $zip->getFromIndex($i);
+        if ($content === false) {
+            $result['errors'][] = "Failed to read: {$relative}";
+            continue;
+        }
+        if (!updater_replace_file($dest, $content)) {
+            $result['errors'][] = "Failed to write: {$relative}";
+            $result['success']  = false;
+            continue;
         }
 
         $result['files_updated']++;
