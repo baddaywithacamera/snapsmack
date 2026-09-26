@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.752D — 2026-09-26 — Recovery bootstrap
+
+- Installs the signed updater ownership-recovery path without attempting to replace the already-correct Instant Camera background asset. This one-time bootstrap allows the next signed package to repair that asset through the updater itself.
+
 ## 0.7.751D — 2026-09-26 — Signed recovery
 
 - The signed updater can now recover a release file left with mismatched ownership by an earlier manual upload. It stages the verified replacement beside the target and atomically renames it into place, keeping repair inside the normal package, registry, and updater path.
