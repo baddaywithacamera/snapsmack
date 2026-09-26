@@ -431,13 +431,32 @@ function skin_registry_install(string $slug, string $download_url, string $signa
     }
     $expected_manifest_hash = hash_file('sha256', $source . '/manifest.json');
 
-    // If the skin directory already exists, remove it (update scenario)
+    // Transactional update: first move the live directory aside. Renaming an
+    // entry only requires write access to SKINS_DIR, so this also recovers a
+    // skin whose individual files were created by a different OS user and
+    // cannot be unlinked by PHP. The retired copy is hidden from the local skin
+    // scanner and remains available for rollback until validation succeeds.
+    $retired_dir = null;
     if (is_dir($target_dir)) {
-        if (!_skin_rmdir_recursive($target_dir) || file_exists($target_dir)) {
+        try {
+            $retired_suffix = bin2hex(random_bytes(6));
+        } catch (\Throwable $e) {
+            $retired_suffix = str_replace('.', '', uniqid('', true));
+        }
+        $candidate = SKINS_DIR . '/.snapsmack-retired-' . $slug . '-' . $retired_suffix;
+        if (@rename($target_dir, $candidate)) {
+            $retired_dir = $candidate;
+        } elseif (!_skin_rmdir_recursive($target_dir) || file_exists($target_dir)) {
             _skin_rmdir_recursive($staging);
-            return ['success' => false, 'message' => 'Installation failed — the existing skin directory could not be replaced. Check file ownership and permissions.'];
+            return ['success' => false, 'message' => 'Installation failed — the existing skin directory could not be moved or removed. Check ownership and permissions on the skins directory.'];
         }
     }
+
+    $restore_retired = static function () use (&$retired_dir, $target_dir): void {
+        if ($retired_dir === null || !is_dir($retired_dir)) return;
+        if (file_exists($target_dir)) _skin_rmdir_recursive($target_dir);
+        if (!file_exists($target_dir)) @rename($retired_dir, $target_dir);
+    };
 
     // Move staging into place.
     // rename() fails across filesystems (e.g. /tmp -> web root on a different device).
@@ -446,6 +465,7 @@ function skin_registry_install(string $slug, string $download_url, string $signa
         if (!_skin_copy_recursive($source, $target_dir)) {
             _skin_rmdir_recursive($target_dir);
             _skin_rmdir_recursive($staging);
+            $restore_retired();
             return ['success' => false, 'message' => 'Installation failed — one or more skin files could not be copied.'];
         }
     }
@@ -458,10 +478,16 @@ function skin_registry_install(string $slug, string $download_url, string $signa
     // Final check
     if (!file_exists($target_dir . '/manifest.json')
         || !hash_equals($expected_manifest_hash, hash_file('sha256', $target_dir . '/manifest.json'))) {
+        $restore_retired();
         return ['success' => false, 'message' => 'Installation failed — manifest.json not found after extraction.'];
     }
 
-    return ['success' => true, 'message' => 'Skin "' . $slug . '" installed successfully.'];
+    $cleanup_pending = $retired_dir !== null
+        && is_dir($retired_dir)
+        && !_skin_rmdir_recursive($retired_dir);
+
+    return ['success' => true, 'message' => 'Skin "' . $slug . '" installed successfully.'
+        . ($cleanup_pending ? ' The previous read-only directory was retained for server cleanup.' : '')];
 }
 
 /*
