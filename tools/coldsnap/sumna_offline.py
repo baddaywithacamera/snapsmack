@@ -216,6 +216,7 @@ class Draft:
     allow_comments: bool = True
     panorama_rows: int = 1                # 1-3 (panorama post_type only)
     post_type:  str = ""                  # '', 'single', 'carousel', 'panorama' (derived if blank)
+    slug:       str = ""                  # SMACKTALK: requested URL slug (imports keep old URLs); blank = from title
     # Images.
     images:     List[DraftImage] = field(default_factory=list)
     # Trigram grouping (KIND_GRAM_TRIGRAM only).

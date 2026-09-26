@@ -61,7 +61,7 @@ findstr /C:"['sybu_launcher.py']" %SPEC_FILE% >nul || (
     exit /b 1
 )
 REM ── Always the suite's own interpreter, never whatever pyinstaller is on PATH.
-C:\dev\snapsmack\.python-build\Scripts\pyinstaller.exe --clean %SPEC_FILE% --distpath "C:\snapsmack\sybu"
+C:\dev\snapsmack\.python-build\Scripts\pyinstaller.exe --clean %SPEC_FILE% --distpath "C:\snapsmack\sybu" || exit /b 1
 
 echo.
 if exist "C:\snapsmack\sybu\%EXE_NAME%" (

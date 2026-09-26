@@ -136,11 +136,12 @@
                 flushRow(h);
             }
         }
-        // Last, partial row: left-justified at the target height, never stretched
-        // wide across the whole width (that would blow a single photo up huge).
+        // An open-ended wall keeps its last partial row left-aligned so a short
+        // feed tail never becomes billboard-sized. A finite MOSAIC bundle is a
+        // closed composition and must reach the right edge like every other row.
         if (row.length) {
             var hLast = 2 * bw + (W - row.length * 2 * bw - gap * (row.length - 1)) / sumAsp;
-            flushRow(Math.min(targetH, hLast));
+            flushRow(grid.classList.contains('snap-mosaic-wall') ? hLast : Math.min(targetH, hLast));
         }
 
         var total = y > 0 ? y - gap : 0;

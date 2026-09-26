@@ -407,7 +407,7 @@ $all_posts  = $pdo->query(
 // Library. featured_image_id → snap_images.
 $featured_image_data = null;
 if ($edit_post && !empty($edit_post['featured_image_id'])) {
-    $fis = $pdo->prepare("SELECT id, img_title AS name, img_file, img_thumb_square FROM snap_images WHERE id = ?");
+    $fis = $pdo->prepare("SELECT id, img_title AS name, img_file, img_thumb_square, img_width, img_height, img_orientation FROM snap_images WHERE id = ?");
     $fis->execute([$edit_post['featured_image_id']]);
     $featured_image_data = $fis->fetch(PDO::FETCH_ASSOC) ?: null;
 }
@@ -507,6 +507,13 @@ include 'core/sidebar.php';
             <textarea id="long-content" name="content" rows="28"
                       style="width:100%;box-sizing:border-box;font-family:monospace;font-size:13px;"
                       placeholder="Write something worth saying. Blank lines become paragraph breaks. Embed image shortcodes and MOSAIC panels inline."><?php echo htmlspecialchars($edit_content ?? ($edit_post['content'] ?? '')); ?></textarea>
+            <section id="long-image-blocks" data-base="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES); ?>" style="margin-top:18px;display:none;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px;">
+                    <strong style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;">Image blocks</strong>
+                    <span class="dim" style="font-size:11px;">Drag a block edge or use its width slider. Text stays in the shortcode editor.</span>
+                </div>
+                <div id="long-image-block-list" style="display:grid;gap:12px;"></div>
+            </section>
         </div>
 
         <?php /* ── BUCKET ──────────────────────────────────────────────────────
@@ -537,6 +544,24 @@ include 'core/sidebar.php';
         #bucket-panel .bkt-save.is-dirty {
             background:var(--lens-accent,#39FF14); border-color:var(--lens-accent,#39FF14);
             color:var(--lens-bg,#141414); opacity:1; cursor:pointer;
+        }
+        .long-cover-actions { display:flex; gap:8px; margin-top:8px; align-items:center; }
+        .long-cover-actions .btn-smack,
+        .long-cover-actions .btn-smack-ghost,
+        #lc-recenter.btn-smack-ghost {
+            width:auto; min-height:34px; height:auto; margin:0; padding:7px 14px;
+            font-size:11px; line-height:1.2;
+        }
+        #gallery-pick-orientation { display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin:0 0 14px; }
+        #gallery-pick-orientation .gallery-orientation-filter {
+            appearance:none; border:1px solid var(--border,#333); border-radius:3px;
+            background:transparent; color:var(--text-primary,#ddd); cursor:pointer;
+            padding:7px 11px; font-size:10px; font-weight:700; letter-spacing:.06em;
+        }
+        #gallery-pick-orientation .gallery-orientation-filter:hover,
+        #gallery-pick-orientation .gallery-orientation-filter.is-active {
+            border-color:var(--lens-accent,#39FF14); color:var(--lens-accent,#39FF14);
+            background:color-mix(in srgb, var(--lens-accent,#39FF14) 10%, transparent);
         }
         #bucket-panel .bkt-link {
             display:inline-block; margin-top:12px; font-size:.72rem; letter-spacing:.04em;
@@ -731,17 +756,27 @@ include 'core/sidebar.php';
                                      style="width:100%;max-width:200px;height:auto;border-radius:3px;border:1px solid var(--border);"
                                      alt="">
                                 <span class="dim" style="display:block;font-size:11px;margin-top:4px;"><?php echo htmlspecialchars($featured_image_data['name'] ?? ''); ?></span>
+                                <?php
+                                $fw = (int)($featured_image_data['img_width'] ?? 0);
+                                $fh = (int)($featured_image_data['img_height'] ?? 0);
+                                if ($fw > 0 && $fh > 0) {
+                                    $fo = abs($fw - $fh) <= max($fw, $fh) * 0.02 ? 'SQUARE' : ($fh > $fw ? 'PORTRAIT' : 'LANDSCAPE');
+                                } else {
+                                    $fo = (int)($featured_image_data['img_orientation'] ?? 0) === 2 ? 'SQUARE' : ((int)($featured_image_data['img_orientation'] ?? 0) === 1 ? 'PORTRAIT' : 'LANDSCAPE');
+                                }
+                                ?>
+                                <span style="display:inline-block;margin-top:4px;padding:3px 6px;border:1px solid var(--border);border-radius:2px;font-size:9px;font-weight:700;letter-spacing:.06em;"><?php echo $fo; ?></span>
                             <?php else: ?>
                                 <div style="width:100%;max-width:200px;height:80px;background:var(--card-bg);border:1px dashed var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;">
                                     <span class="dim" style="font-size:10px;text-align:center;padding:4px;">NO COVER</span>
                                 </div>
                             <?php endif; ?>
                         </div>
-                        <div style="display:flex;gap:8px;margin-top:8px;">
-                            <button type="button" id="long-cover-btn" class="btn-secondary" style="font-size:11px;padding:5px 12px;">
+                        <div class="long-cover-actions">
+                            <button type="button" id="long-cover-btn" class="btn-smack btn-sm btn-mt-0">
                                 <?php echo $featured_image_data ? 'CHANGE' : 'SELECT COVER'; ?>
                             </button>
-                            <button type="button" id="long-cover-remove" class="btn-secondary" style="font-size:11px;padding:5px 12px;color:var(--dim);<?php echo $featured_image_data ? '' : 'display:none;'; ?>">REMOVE</button>
+                            <button type="button" id="long-cover-remove" class="btn-smack-ghost btn-sm" style="<?php echo $featured_image_data ? '' : 'display:none;'; ?>">REMOVE</button>
                         </div>
                         <label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-size:11px;line-height:1.35;">
                             <input type="checkbox" name="show_featured_image" value="1"
@@ -776,7 +811,7 @@ include 'core/sidebar.php';
                                 <label style="font-size:11px;display:flex;align-items:center;gap:6px;">ZOOM
                                     <input type="range" id="lc-zoom" min="100" max="300" step="1" value="<?php echo $cv_z; ?>" style="width:120px;">
                                 </label>
-                                <button type="button" id="lc-recenter" class="btn-secondary" style="font-size:11px;padding:4px 10px;">RE-CENTRE</button>
+                                <button type="button" id="lc-recenter" class="btn-smack-ghost btn-sm">RE-CENTRE</button>
                             </div>
                         </div>
                     </div>
@@ -859,11 +894,23 @@ include 'core/sidebar.php';
 <div id="gallery-pick-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9002;overflow-y:auto;">
     <div style="background:var(--bg);margin:40px auto;max-width:860px;border-radius:4px;border:1px solid var(--border);padding:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;">INSERT IMAGE FROM GALLERY</span>
+            <span id="gallery-pick-title" style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;">INSERT IMAGE FROM GALLERY</span>
             <button type="button" id="gallery-pick-close" style="background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;line-height:1;">×</button>
         </div>
         <input type="text" id="gallery-pick-search" placeholder="Search titles, descriptions, tags…"
                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:3px;background:var(--input-bg);color:var(--text);font-size:13px;margin-bottom:12px;box-sizing:border-box;">
+        <div id="gallery-width-control" style="display:flex;align-items:center;gap:12px;margin:0 0 14px;">
+            <label for="gallery-pick-width" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;">Display width</label>
+            <input type="range" id="gallery-pick-width" min="20" max="100" step="5" value="100" style="flex:1;">
+            <output id="gallery-pick-width-value" for="gallery-pick-width" style="min-width:42px;text-align:right;font-size:12px;">100%</output>
+        </div>
+        <div id="gallery-pick-orientation" aria-label="Filter images by orientation">
+            <span style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-right:3px;">Orientation</span>
+            <button type="button" class="gallery-orientation-filter is-active" data-orientation="ALL" aria-pressed="true">ALL</button>
+            <button type="button" class="gallery-orientation-filter" data-orientation="PORTRAIT" aria-pressed="false">PORTRAIT</button>
+            <button type="button" class="gallery-orientation-filter" data-orientation="LANDSCAPE" aria-pressed="false">LANDSCAPE</button>
+            <button type="button" class="gallery-orientation-filter" data-orientation="SQUARE" aria-pressed="false">SQUARE</button>
+        </div>
         <div id="gallery-pick-grid"
              data-base="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES); ?>"
              style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:480px;overflow-y:auto;"></div>
@@ -875,7 +922,8 @@ include 'core/sidebar.php';
 
 <script src="assets/js/smack-asset-picker.js"></script>
 <script src="assets/js/shortcode-toolbar.js"></script>
-<script src="assets/js/smack-longform-gallery-picker.js"></script>
+<script src="assets/js/smack-longform-gallery-picker.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
+<script src="assets/js/smack-longform-image-blocks.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <script src="assets/js/ss-engine-longform-cover-crop.js"></script>
 
 <script>

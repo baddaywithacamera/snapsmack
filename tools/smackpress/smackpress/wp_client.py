@@ -15,7 +15,21 @@ import urllib.request
 import urllib.parse
 import urllib.error
 
-import config
+from smackpress import config   # explicit: tools/coldsnap on sys.path also has a `config`
+
+
+class _RefuseRedirect(urllib.request.HTTPRedirectHandler):
+    """urllib re-sends EVERY header on a redirect, Authorization included, so a
+    credentialed request that gets 30x'd would hand the key to whatever host
+    Location names. Refuse instead (SECAUDIT 053 F / 054). requests already
+    strips the header cross-host; urllib does not."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url, code, "redirect refused: request carried a credential", headers, fp)
+
+
+_NO_REDIRECT = urllib.request.build_opener(_RefuseRedirect)
+
 
 
 class WPError(Exception):
@@ -30,6 +44,11 @@ def _headers() -> dict:
         "Authorization": f"Basic {creds}",
         "Accept": "application/json",
         "Content-Type": "application/json",
+        # Python's default urllib signature is blocked by common Cloudflare
+        # rules (Error 1010). Identify the application explicitly, just as
+        # the image downloader does, so protected WordPress sites remain
+        # reachable without pretending to be a web browser.
+        "User-Agent": "SmackPress/0.3 (+https://snapsmack.ca)",
     }
 
 
@@ -46,7 +65,7 @@ def _request(method: str, path: str, body: dict | None = None, params: dict | No
     data = json.dumps(body).encode() if body else None
     req  = urllib.request.Request(url, data=data, headers=_headers(), method=method)
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with _NO_REDIRECT.open(req, timeout=30) as resp:
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
         msg = e.read().decode()

@@ -177,6 +177,33 @@ function px_conversation_actor(PDO $pdo, string $conversationId): ?string {
     $q=$pdo->query('SELECT DISTINCT remote_actor_url FROM snap_ap_dms WHERE is_deleted=0');foreach($q->fetchAll(PDO::FETCH_COLUMN) as$actor){if(hash_equals(px_conversation_id((string)$actor),$conversationId))return (string)$actor;}return null;
 }
 
+/** Delete one GRAM post only when every attached image belongs to this OAuth authorization. */
+function px_delete_status(PDO $pdo, int $postId, array $token): ?array {
+    $status=px_status($pdo,$postId);if(!$status)return null;
+    $q=$pdo->prepare("SELECT pi.image_id,i.img_file,i.img_thumb_square,i.img_thumb_aspect,MAX(CASE WHEN om.token_id=? THEN 1 ELSE 0 END) owned
+        FROM snap_post_images pi JOIN snap_images i ON i.id=pi.image_id LEFT JOIN snap_oauth_media om ON om.image_id=i.id
+        WHERE pi.post_id=? GROUP BY pi.image_id,i.img_file,i.img_thumb_square,i.img_thumb_aspect ORDER BY pi.sort_position");
+    $q->execute([(int)$token['id'],$postId]);$images=$q->fetchAll(PDO::FETCH_ASSOC);if(!$images)return null;
+    foreach($images as$image)if(empty($image['owned']))px_json(['error'=>'This Pixelix authorization does not own that post'],403);
+
+    // Queue the public Delete while the post and its original Note identity still exist.
+    require_once __DIR__ . '/core/fediverse.php';
+    $p=$pdo->prepare('SELECT fedi_pushed_at FROM snap_posts WHERE id=? LIMIT 1');$p->execute([$postId]);$pushed=$p->fetchColumn();
+    if($pushed){$settings=$pdo->query('SELECT setting_key,setting_val FROM snap_settings')->fetchAll(PDO::FETCH_KEY_PAIR)?:[];if(sv_enabled($settings))sv_retract_note($pdo,$settings,sv_base($settings).'ap/note/p/'.$postId.sv_gen_suffix($settings));}
+
+    $files=[];$pdo->beginTransaction();
+    try {
+        $pdo->prepare('DELETE FROM snap_post_images WHERE post_id=?')->execute([$postId]);
+        foreach($images as$image){$id=(int)$image['image_id'];$r=$pdo->prepare('SELECT COUNT(*) FROM snap_post_images WHERE image_id=?');$r->execute([$id]);if((int)$r->fetchColumn()>0)continue;
+            $pdo->prepare('DELETE FROM snap_image_cat_map WHERE image_id=?')->execute([$id]);$pdo->prepare('DELETE FROM snap_image_album_map WHERE image_id=?')->execute([$id]);$pdo->prepare('DELETE FROM snap_comments WHERE img_id=?')->execute([$id]);$pdo->prepare('DELETE FROM snap_oauth_media WHERE image_id=?')->execute([$id]);$pdo->prepare('DELETE FROM snap_images WHERE id=?')->execute([$id]);
+            foreach(['img_file','img_thumb_square','img_thumb_aspect']as$key)if(!empty($image[$key]))$files[]=(string)$image[$key];
+        }
+        $pdo->prepare('DELETE FROM snap_trigrams WHERE post_id_1=? OR post_id_2=? OR post_id_3=?')->execute([$postId,$postId,$postId]);$pdo->prepare("DELETE FROM snap_collection_items WHERE item_type='post' AND item_id=?")->execute([$postId]);$pdo->prepare('DELETE FROM snap_posts WHERE id=?')->execute([$postId]);$pdo->commit();
+    } catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+    foreach(array_unique($files)as$file)snap_pixelix_unlink_upload(__DIR__,$file);
+    require_once __DIR__ . '/core/fediverse-kick.php';sv_kick_delivery();return $status;
+}
+
 $route=trim((string)($_GET['route']??''),'/'); $method=$_SERVER['REQUEST_METHOD']??'GET'; $base=px_base();
 try { snap_pixelix_lifecycle_maintenance($pdo,__DIR__,false,10); }
 catch (Throwable $e) { error_log('Pixelix lifecycle maintenance failed: '.$e->getMessage()); }
@@ -254,11 +281,10 @@ if (($route==='api/v1/media'||$route==='api/v2/media') && $method==='POST') {
 }
 if (preg_match('#^api/v1/media/(\d+)$#',$route,$m) && $method==='PUT') {
     px_gram_authoring_gate($pdo);px_offline_gate($pdo);px_require_scope($token,'write');$put=px_write_input();$alt=snap_sanitize_alt($put['description']??'');$iid=(int)$m[1];
-    // A write-scoped Pixelix token represents the sole site owner. Draft uploads
-    // remain token-owned, while an image already attached to one of this site's
-    // posts is editable regardless of which of the owner's refreshed OAuth tokens
-    // originally uploaded it. Check existence separately: MySQL reports zero
-    // changed rows when ALT text is unchanged, which used to become a false 404.
+    // Draft uploads stay token-owned. Once an image belongs to a published
+    // local post, any owner-approved write token may edit its ALT text. Check
+    // existence separately because an unchanged value has rowCount() zero and
+    // used to become Pixelix's misleading "Record not found" dialog.
     $q=$pdo->prepare('SELECT i.id FROM snap_images i LEFT JOIN snap_oauth_media om ON om.image_id=i.id AND om.token_id=? LEFT JOIN snap_post_images pi ON pi.image_id=i.id WHERE i.id=? AND (i.post_id IS NOT NULL OR pi.post_id IS NOT NULL OR om.image_id IS NOT NULL) LIMIT 1');$q->execute([(int)$token['id'],$iid]);
     if(!$q->fetchColumn())px_json(['error'=>'Record not found'],404);
     $pdo->prepare('UPDATE snap_images SET img_alt=? WHERE id=?')->execute([$alt,$iid]);px_json(px_media($pdo,$iid));
@@ -297,8 +323,8 @@ if (preg_match('#^api/v1/statuses/(\d+)$#',$route,$m) && $method==='PUT') {
             $a=$ids;$b=$current;sort($a);sort($b);if($a!==$b)throw new DomainException('Editing which images belong to a published post is not supported; reorder the existing images only.');
             $order=$pdo->prepare('UPDATE snap_post_images SET sort_position=?,is_cover=? WHERE post_id=? AND image_id=?');foreach($ids as$n=>$iid)$order->execute([$n,$n===0?1:0,$pid,$iid]);
         }
-        // Mastodon edit clients may submit ALT changes inline as
-        // media_attributes[][id,description] rather than calling PUT /media/:id.
+        // Some Mastodon clients send edited ALT text here instead of calling
+        // PUT /media/:id separately.
         $mediaAttrs=$input['media_attributes']??[];if(is_array($mediaAttrs)){
             $altUpdate=$pdo->prepare('UPDATE snap_images i JOIN snap_post_images pi ON pi.image_id=i.id SET i.img_alt=? WHERE pi.post_id=? AND i.id=?');
             foreach($mediaAttrs as$attr){if(!is_array($attr)||empty($attr['id']))continue;$altUpdate->execute([snap_sanitize_alt($attr['description']??''),$pid,(int)$attr['id']]);}
@@ -308,11 +334,14 @@ if (preg_match('#^api/v1/statuses/(\d+)$#',$route,$m) && $method==='PUT') {
         $pdo->commit();
     }catch(DomainException $e){if($pdo->inTransaction())$pdo->rollBack();px_json(['error'=>$e->getMessage()],422);}
     catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();error_log('Pixelix edit failed: '.$e->getMessage());px_json(['error'=>'Post could not be updated'],500);}
-    // Match the CMS editor: propagate an Update for an already-federated post,
-    // purge rendered pages, and start delivery immediately.
+    // Match the CMS editor: update remotes, flush rendered pages, and start the
+    // delivery worker immediately.
     require_once __DIR__.'/core/fediverse.php';$px_settings=$pdo->query('SELECT setting_key,setting_val FROM snap_settings')->fetchAll(PDO::FETCH_KEY_PAIR);if(function_exists('sv_federate_post_change'))sv_federate_post_change($pdo,$px_settings,$pid);
     require_once __DIR__.'/core/page-cache.php';page_cache_purge_all();require_once __DIR__.'/core/fediverse-kick.php';sv_kick_delivery();
     px_json(px_status($pdo,$pid));
+}
+if (preg_match('#^api/v1/statuses/(\d+)$#',$route,$m) && $method==='DELETE') {
+    px_gram_authoring_gate($pdo);px_require_scope($token,'write');$deleted=px_delete_status($pdo,(int)$m[1],$token);if(!$deleted)px_json(['error'=>'Record not found'],404);px_json($deleted);
 }
 if (preg_match('#^api/v1/statuses/(\d+)$#',$route,$m) && $method==='GET') { px_require_scope($token,'read');$s=px_status($pdo,(int)$m[1]);if(!$s)px_json(['error'=>'Record not found'],404);px_json($s); }
 if (preg_match('#^api/v1/statuses/(\d+)/context$#',$route) && $method==='GET') { px_require_scope($token,'read');px_json(['ancestors'=>[],'descendants'=>[]]); }

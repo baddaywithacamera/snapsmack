@@ -8,7 +8,9 @@ $gram = file_get_contents($root . '/core/gram-nav-links.php');
 $ht = file_get_contents($root . '/core/htaccess-template');
 $checks = [
     'chronological board window helper exists' => str_contains($photo, 'function pc_board_windows('),
-    'historical round uses its own prompt tag' => str_contains($photo, 'SELECT tag FROM pc_prompts WHERE week_key=?'),
+    'historical rounds carry their own prompt tags' =>
+        str_contains($photo, 'submit_end,prompt,tag')
+        && str_contains($photo, "pc_round_tag(\$pdo, \$settings, (string)\$row['week_key'])"),
     'embed accepts an explicit window' => str_contains($photo, 'array $settings, ?array $window = null'),
     'board renders every round in order' => str_contains($board, 'foreach ($rounds as $round_index => $win)'),
     'old human feed URL aliases the unified board' =>

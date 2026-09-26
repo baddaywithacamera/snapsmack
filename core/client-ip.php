@@ -34,6 +34,24 @@
 
 if (!function_exists('snap_trusted_proxies')) {
 
+/** Cloudflare's published proxy networks. */
+function snap_cloudflare_proxy_ranges(): array {
+    return [
+        '173.245.48.0/20', '103.21.244.0/22', '103.22.200.0/22',
+        '103.31.4.0/22', '141.101.64.0/18', '108.162.192.0/18',
+        '190.93.240.0/20', '188.114.96.0/20', '197.234.240.0/22',
+        '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13',
+        '104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22',
+        '2400:cb00::/32', '2606:4700::/32', '2803:f800::/32',
+        '2405:b500::/32', '2405:8100::/32', '2a06:98c0::/29',
+        '2c0f:f248::/32',
+    ];
+}
+
+function snap_ip_is_cloudflare_proxy(string $ip): bool {
+    return snap_ip_is_trusted_proxy($ip, snap_cloudflare_proxy_ranges());
+}
+
 /**
  * Addresses entitled to assert a forwarded client address.
  * Fails safe: any lookup problem keeps the loopback-only default rather than
@@ -116,6 +134,15 @@ function snap_trusted_client_ip(?PDO $pdo = null): string {
 
     $trusted = snap_trusted_proxies($pdo);
 
+    // Cloudflare's source networks are authoritative for CF-Connecting-IP.
+    // Without this, an install that has not copied those networks into its
+    // local settings rate-limits the shared edge address as one visitor.
+    if (snap_ip_is_cloudflare_proxy($peer)) {
+        $cf = trim((string)($_SERVER['HTTP_CF_CONNECTING_IP'] ?? ''));
+        if ($cf !== '' && filter_var($cf, FILTER_VALIDATE_IP)) return $cf;
+        return $peer;
+    }
+
     // Direct connection: the peer IS the client. Ignore anything it claims.
     if (!snap_ip_is_trusted_proxy($peer, $trusted)) return $peer;
 
@@ -152,6 +179,7 @@ function snap_trusted_client_ip(?PDO $pdo = null): string {
 function snap_ip_is_bannable(string $ip, ?PDO $pdo = null): bool {
     if (!filter_var($ip, FILTER_VALIDATE_IP)) return false;
     if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return false;
+    if (snap_ip_is_cloudflare_proxy($ip)) return false;
     if (snap_ip_is_trusted_proxy($ip, snap_trusted_proxies($pdo))) return false;
     return true;
 }
@@ -200,7 +228,46 @@ function snap_ip_ban_maintenance(PDO $pdo): void {
             }
         }
 
+        // 0.7.741D: the Cloudflare correction changes the selected address
+        // from the shared edge to the real visitor. A real address may still
+        // have an automatic login ban created while the old resolver was
+        // active, so clear legacy automatic bans once after upgrading. Manual
+        // moderation bans are deliberately preserved.
+        $cloudflare_repair = $pdo->prepare(
+            "INSERT IGNORE INTO snap_settings (setting_key, setting_val)
+             VALUES ('client_ip_cloudflare_repair_741d', 'running')"
+        );
+        $cloudflare_repair->execute();
+        if ($cloudflare_repair->rowCount() === 1) {
+            try {
+                $pdo->exec("DELETE FROM snap_ip_bans WHERE reason LIKE 'auto:%'");
+                $complete = $pdo->prepare(
+                    "UPDATE snap_settings SET setting_val = ?
+                     WHERE setting_key = 'client_ip_cloudflare_repair_741d'"
+                );
+                $complete->execute([gmdate('Y-m-d H:i:s')]);
+            } catch (Throwable $cleanup_error) {
+                $pdo->exec(
+                    "DELETE FROM snap_settings
+                     WHERE setting_key = 'client_ip_cloudflare_repair_741d'
+                       AND setting_val = 'running'"
+                );
+                throw $cleanup_error;
+            }
+        }
+
         $pdo->exec("DELETE FROM snap_ip_bans WHERE expires_at <= NOW()");
+        // Repair sites that previously mistook a Cloudflare edge for a visitor.
+        // Only automatic rows are removed; manual moderation is preserved.
+        $rows = $pdo->query(
+            "SELECT id, ip FROM snap_ip_bans WHERE reason LIKE 'auto:%'"
+        )->fetchAll(PDO::FETCH_ASSOC);
+        $delete = $pdo->prepare("DELETE FROM snap_ip_bans WHERE id = ?");
+        foreach ($rows as $row) {
+            if (snap_ip_is_cloudflare_proxy((string)$row['ip'])) {
+                $delete->execute([(int)$row['id']]);
+            }
+        }
         $pdo->exec(
             "DELETE FROM snap_rate_limits
              WHERE window_start < DATE_SUB(NOW(), INTERVAL 2 DAY)"

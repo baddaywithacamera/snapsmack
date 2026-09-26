@@ -267,6 +267,12 @@ class ConnectPanel(QWidget):
             self.status_lbl.setText(f"Save failed: {e}")
             self.status_lbl.setStyleSheet(f"color: {theme.DANGER};")
             return
+        if self.config.get("vault_warning"):
+            # SECAUDIT 054: vault is mandatory for keys — never written as base64.
+            # Non-modal: the status line says it, no extra click.
+            self.status_lbl.setText("Key not remembered: " + self.config["vault_warning"])
+            self.status_lbl.setStyleSheet(f"color: {theme.DANGER};")
+            return
         self._reflect_status()
 
     def _reflect_status(self):

@@ -174,6 +174,16 @@ try {
     $msg .= "Skin updates: " . count($skin_info['updated_skins']) . ".";
     echo $msg . "\n";
 
+    // One message per completed calendar month. Hubs summarize their fleet;
+    // spokes delegate to the hub; standalone sites summarize themselves.
+    try {
+        require_once "{$root}/core/monthly-activity-summary.php";
+        $monthly = snap_monthly_activity_maybe_send($pdo);
+        echo "Monthly activity: " . ($monthly['status'] ?? 'unknown') . ".\n";
+    } catch (Throwable $monthly_error) {
+        error_log('Monthly activity summary failed: ' . $monthly_error->getMessage());
+    }
+
 } catch (PDOException $e) {
     // CRONOMETER: best-effort record the failure so the fleet board shows a
     // recent FAILED run instead of a stale-green version_check row. If the DB
