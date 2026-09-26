@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.753D — 2026-09-26 — Back on film
+
+- Completes the signed Instant Camera recovery by replacing the Organized Mayhem background asset through the repaired updater, restoring normal ownership, seamless overlapping prints, and the fast 30-print initial budget.
+
 ## 0.7.752D — 2026-09-26 — Recovery bootstrap
 
 - Installs the signed updater ownership-recovery path without attempting to replace the already-correct Instant Camera background asset. This one-time bootstrap allows the next signed package to repair that asset through the updater itself.
