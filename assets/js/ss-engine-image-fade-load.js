@@ -68,11 +68,29 @@ function _ssImageFadeInit(root) {
     });
 }
 
+/* Chrome can complete an image while its tab is suspended without delivering
+   the load callback until much later (or at all). The element then retains the
+   engine's inline opacity:0 even though its pixels are ready. Reconcile that
+   state whenever the page returns to the foreground. */
+function _ssImageFadeRevealCompleted(root) {
+    root = root || document;
+    root.querySelectorAll(_ssImageFadeSelectors.join(',')).forEach(function (img) {
+        if (!img.complete) return;
+        img.style.opacity = '1';
+        if (img.naturalHeight !== 0) img.dataset._ssFadeDone = '1';
+    });
+}
+
 // Re-reveal images inside a GRAM modal once its content is injected.
 document.addEventListener('snapsmack:modal:opened', function (e) {
     var root = (e && e.target && e.target.querySelectorAll) ? e.target : document;
     _ssImageFadeInit(root);
 });
+
+document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) _ssImageFadeRevealCompleted(document);
+});
+window.addEventListener('pageshow', function () { _ssImageFadeRevealCompleted(document); });
 
 // Scripts load at end of <body> — DOMContentLoaded may have already fired.
 if (document.readyState === 'loading') {

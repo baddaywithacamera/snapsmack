@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.749D — 2026-09-25 — Welcome back
+
+- Images no longer remain black after switching away from a browser tab and returning. The shared fade engine now reconciles completed images on tab visibility restore and browser page restore, covering loads Chrome completed while the page was suspended without delivering the original callback.
+
 ## 0.7.748D — 2026-09-25 — Easy reading
 
 - TILEZ longform articles use a 21px editorial serif face at 1.7 line spacing on desktop and 18px at 1.65 on phones. Navigation, dates, captions, headings, and controls retain their sans serif treatment.
