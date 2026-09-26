@@ -201,8 +201,9 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
         </ul>
 
         <!-- Mobile toggle -->
-        <button class="nav-toggle" aria-label="Toggle navigation">
-            <div class="bars">
+        <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+            <span class="nav-toggle-label">MENU</span>
+            <div class="bars" aria-hidden="true">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
