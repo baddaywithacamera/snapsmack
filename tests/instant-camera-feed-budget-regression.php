@@ -33,9 +33,10 @@ $expect(
     'INSTANT CAMERA decorative pool must preserve the configured tabletop density'
 );
 $expect(
-    str_contains($mayhem, 'var cardW = Math.min(maxWidth, Math.max(cellW, cellH) * 1.7);')
-        && str_contains($mayhem, 'var w = Math.min(maxWidth, cardW * rand(0.94, 1.12));'),
-    'ambient Mayhem cards must retain the configured print-size ceiling'
+    !str_contains($mayhem, 'buildAmbientCoverage')
+        && !str_contains($mayhem, 'coverageMode')
+        && substr_count($mayhem, 'build();') >= 2,
+    'ambient Mayhem must use the original clustered tabletop builder, not a coverage grid'
 );
 
 if ($failures) {
