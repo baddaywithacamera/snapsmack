@@ -2382,7 +2382,10 @@ body.blog, body.single, body.archive { background: #fff; }
 .entry-content > .snap-inline-frame:has(+ .snap-inline-frame),
 .entry-content > .snap-inline-frame + .snap-inline-frame {
     display: inline-block;
-    width: calc(50% - 4px) !important;
+    /* Leave room for the HTML whitespace between inline-block siblings. The
+       article's larger type otherwise makes that whitespace wide enough to
+       wrap the second photograph onto a new line. */
+    width: calc(50% - 6px) !important;
     margin-top: 2.6em;
     margin-bottom: 2.6em;
     vertical-align: top;
