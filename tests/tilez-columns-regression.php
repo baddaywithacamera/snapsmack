@@ -44,6 +44,11 @@ $assert(str_contains($style, 'font-size: 18px;') && str_contains($style, 'font-w
 $assert(str_contains($style, 'font-size: 18px; line-height: 1.65;'), 'mobile longform body remains readable');
 $assert(str_contains($style, '.snap-inline-frame:has(+ .snap-inline-frame)'), 'consecutive standalone photographs form desktop pairs');
 $assert(str_contains($style, '+ p:has(+ :is(.snap-inline-frame'), 'paragraphs between media receive symmetrical vertical spacing');
+$assert(str_contains($style, '--tilez-content-start: 40px;')
+    && str_contains($style, 'padding-top: var(--tilez-content-start);')
+    && str_contains($style, 'padding: var(--tilez-content-start) 0 38px;')
+    && str_contains($style, 'margin: 0 0 40px;'),
+    'feed, archive, static pages, and single posts share one menu-to-content baseline');
 $assert(is_file($root . '/skins/tilez/assets/bad-day-masthead.png'), 'bundled masthead exists');
 
 echo "PASS: TILEZ white columns portfolio\n";
