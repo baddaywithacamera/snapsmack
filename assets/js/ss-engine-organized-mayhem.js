@@ -106,6 +106,8 @@
         var poolIdx = 0;
         var regions = {};             // key -> { rx, ry, cards: [] }
         var cardCount = 0;            // live model card count (across kept regions)
+        var coverageMode = false;     // ambient backdrop: one-shot full-coverage,
+                                      // each image used once, gentle bounded drift
 
         // ── DOM scaffold ─────────────────────────────────────────────────
         if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
@@ -257,11 +259,14 @@
             var a = document.createElement('a');
             a.className = 'om-card';
             a.href = card.url;
+            // HARD RULE: prints stay WHOLE. Only a 2D translate + rotate — no
+            // rotateX/rotateY 3D warp. The warp foreshortened each rectangle into
+            // a wedge, and overlapping wedges read as sliced/merged images. Flat
+            // rotated rectangles overlap cleanly, layered by z-index, never merge.
             a.style.cssText = 'position:absolute;left:0;top:0;display:block;width:' +
                 card.w.toFixed(0) + 'px;z-index:' + card.z + ';will-change:transform;text-decoration:none;' +
                 'transform:translate3d(' + card.x.toFixed(1) + 'px,' + card.y.toFixed(1) + 'px,0) rotate(' +
-                card.rot.toFixed(2) + 'deg)' + (budget.warp ? ' rotateX(' + card.warpX.toFixed(1) +
-                'deg) rotateY(' + card.warpY.toFixed(1) + 'deg)' : '') + ';';
+                card.rot.toFixed(2) + 'deg);';
 
             var img = document.createElement('img');
             img.src = card.src; img.alt = card.title;
@@ -458,7 +463,19 @@
                 var idle = ambient || ((now() - lastInteract) > driftDelay && !dragging);
                 setAlive(idle);
 
-                if (budget.drift && idle) {
+                if (coverageMode) {
+                    // Full-coverage backdrop: gentle bounded sway around origin
+                    // (always within the field margin) + a slow zoom-IN breath
+                    // (never zooms out past the edge). The field is built once and
+                    // fully covers the viewport, so NO region (re)generation runs.
+                    if (budget.drift) {
+                        var amp = Math.min(container.clientWidth, container.clientHeight) * 0.05;
+                        view.x = Math.sin(t / 11000) * amp;
+                        view.y = Math.cos(t / 13000) * amp;
+                        view.z = driftZ0 + (0.5 + 0.5 * Math.sin(t / 9000)) * 0.04;  // 1.00 → 1.04
+                        renderView();
+                    }
+                } else if (budget.drift && idle) {
                     view.x += driftVX * (dt / 16.7);
                     view.y += driftVY * (dt / 16.7);
                     view.z = driftZ0 + Math.sin(t / 9000) * 0.06;
@@ -519,6 +536,65 @@
             requestAnimationFrame(step);
         }
 
+        // ── Ambient backdrop: one-shot FULL COVERAGE (spec: instant-camera) ──
+        // Fixed (non-pannable) tabletop that must completely cover the viewport
+        // with NO gaps and NO repeats. Each pool image is placed exactly once on
+        // a jittered grid sized to the viewport (+ margin for the drift), with
+        // each print scaled larger than its cell so neighbours overlap into a
+        // solid pile. Few images => big cells => the prints zoom in to still
+        // cover. Many images => smaller prints, finer scatter. The loop applies
+        // only a gentle bounded sway, so the field never drifts off its edge.
+        function buildAmbientCoverage() {
+            // reset model
+            for (var k in regions) { if (!regions.hasOwnProperty(k)) continue;
+                var cz = regions[k].cards; for (var z = 0; z < cz.length; z++) unmount(cz[z]); }
+            regions = {}; cardCount = 0; poolIdx = 0;
+            view.x = 0; view.y = 0; view.z = 1; driftZ0 = 1;
+            renderView();
+
+            var reg = { rx: 0, ry: 0, cards: [] };
+            regions['0:0'] = reg;
+
+            var W = container.clientWidth || 1200, H = container.clientHeight || 800;
+            var MARGIN = 0.20;                                   // extra field beyond viewport for the sway
+            var fieldW = W * (1 + MARGIN * 2), fieldH = H * (1 + MARGIN * 2);
+            var ox = -W * MARGIN, oy = -H * MARGIN;              // field origin (view starts at 0,0)
+
+            // Each image once; cap for very large libraries so a backdrop never
+            // mounts thousands of nodes (still no repeats — just a subset).
+            var M = Math.max(1, Math.min(pool.length, 220));
+            var cols = Math.max(1, Math.round(Math.sqrt(M * fieldW / fieldH)));
+            var rows = Math.max(1, Math.ceil(M / cols));
+            cols = Math.ceil(M / rows);                          // cols*rows >= M, fills the field
+            var cellW = fieldW / cols, cellH = fieldH / rows;
+            // Print sized well over the cell so rotation + jitter never open a gap.
+            var cardW = Math.max(cellW, cellH) * 1.7;
+
+            budget.maxMounted = Math.max(budget.maxMounted, M + 4);
+
+            var idx = 0;
+            for (var r = 0; r < rows && idx < M; r++) {
+                for (var c = 0; c < cols && idx < M; c++) {
+                    var img = pool[idx++];                       // each image exactly once
+                    var cx = ox + (c + 0.5) * cellW + rand(-cellW * 0.16, cellW * 0.16);
+                    var cy = oy + (r + 0.5) * cellH + rand(-cellH * 0.16, cellH * 0.16);
+                    var w = cardW * rand(0.94, 1.12);
+                    var h = w * rand(0.92, 1.24);
+                    var card = {
+                        title: img.title || '', src: img.src || '', url: img.url || '#',
+                        x: cx - w / 2, y: cy - h / 2, w: w, h: h,
+                        z: 1 + ((r * cols + c) % 9),
+                        rot: rand(-16, 16), warpX: rand(-5, 5), warpY: rand(-5, 5),
+                        wob: rand(7, 12), del: rand(0, 6), node: null
+                    };
+                    reg.cards.push(card); cardCount++;
+                }
+            }
+            syncMounted();
+            hideOverlay();
+            startLoop();
+        }
+
         function reshuffle() {
             for (var key in regions) { if (!regions.hasOwnProperty(key)) continue; var cs = regions[key].cards; for (var i = 0; i < cs.length; i++) unmount(cs[i]); }
             regions = {}; cardCount = 0; poolIdx = 0;
@@ -528,7 +604,7 @@
                 var imgs = payload && payload.images;
                 pool = (imgs && imgs.length) ? imgs : pool;
                 applyVitals(payload && payload.vitals);
-                build();
+                if (ambient) { coverageMode = true; buildAmbientCoverage(); } else { build(); }
             }).catch(function (e) { fault('reshuffle', e); });
         }
         var reBtn = document.querySelector('[data-mayhem-reshuffle]');
@@ -554,7 +630,7 @@
             pool = (payload && payload.images) || [];
             if (!pool.length) { fault('empty pool', null); hideOverlay(); return; }
             applyVitals(payload && payload.vitals);
-            build();
+            if (ambient) { coverageMode = true; buildAmbientCoverage(); } else { build(); }
         }).catch(function (e) { fault('init', e); hideOverlay(); });
     }
 
@@ -568,9 +644,13 @@
         s.id = 'om-keyframes';
         s.textContent =
             '@keyframes om-flip{0%{transform:rotate(0)}50%{transform:rotate(180deg)}100%{transform:rotate(360deg)}}' +
-            '@keyframes om-wobble{from{transform:rotate(-0.6deg)}to{transform:rotate(0.6deg)}}' +
-            '.om-world{transform-style:preserve-3d}.om-card{perspective:900px}' +
-            '.om-alive .om-img{animation:om-wobble var(--om-w,9s) ease-in-out var(--om-d,0s) infinite alternate}' +
+            // Full cycle that STARTS and ENDS at the print's resting angle (0deg)
+            // so a staggered-delay wobble never snaps into place on first run.
+            '@keyframes om-wobble{0%{transform:rotate(0deg)}25%{transform:rotate(-0.6deg)}50%{transform:rotate(0deg)}75%{transform:rotate(0.6deg)}100%{transform:rotate(0deg)}}' +
+            // No preserve-3d / perspective: the tabletop is a flat 2D stack of
+            // whole prints layered by z-index. 3D context is what let the warp
+            // slice them.
+            '.om-alive .om-img{animation:om-wobble var(--om-w,9s) ease-in-out var(--om-d,0s) infinite}' +
             '@media (prefers-reduced-motion: reduce){.om-alive .om-img{animation:none}}';
         document.head.appendChild(s);
     }

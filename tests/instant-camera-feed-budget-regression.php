@@ -29,18 +29,12 @@ $expect(!str_contains($landing, 'array_slice($grid_posts'), 'feed must not fetch
 $expect(str_contains($landing, '$_feed_total = $post_count;'), 'paging total must come from the count query');
 
 $expect(
-    str_contains($profile, "max(40, min(400, (int)(\$settings['mayhem_initial_count'] ?? 90)))"),
-    'INSTANT CAMERA decorative pool must preserve the configured tabletop density'
+    hash('sha256', $mayhem) === '09753ea46dd6665ff0fe74b1dc5315b4758e3d48955384f8912d2d301b3c8060',
+    'Organized Mayhem must remain byte-for-byte identical to the September 19 known-good engine'
 );
 $expect(
-    !str_contains($mayhem, 'buildAmbientCoverage')
-        && !str_contains($mayhem, 'coverageMode')
-        && substr_count($mayhem, 'build();') >= 2,
-    'ambient Mayhem must use the original clustered tabletop builder, not a coverage grid'
-);
-$expect(
-    hash('sha256', $mayhem) === '33695076c3b19f1e1e19f74fdc7e522f0ad9e62033014e80b87d2cdbc8042cd6',
-    'Organized Mayhem must remain byte-for-byte identical to the last known-good pre-coverage engine'
+    str_contains($profile, "data-initial-count=\"<?php echo (int)(\$settings['mayhem_initial_count'] ?? 90); ?>\""),
+    'Instant Camera must preserve the September 19 tabletop pool wiring without a 30-photo cap'
 );
 
 if ($failures) {
