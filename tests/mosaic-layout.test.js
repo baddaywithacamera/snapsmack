@@ -75,7 +75,7 @@ test('portrait-led four-image section spans a three-image stack', () => {
     assert.ok(layout.items[1].y < layout.items[2].y && layout.items[2].y < layout.items[3].y);
 });
 
-test('an extreme portrait trio splits rather than violating hard size limits', () => {
+test('an extreme portrait trio stays edge-filled within hard size limits', () => {
     const images = [
         { width: 500, height: 1800 },
         { width: 900, height: 700 },
@@ -84,7 +84,7 @@ test('an extreme portrait trio splits rather than violating hard size limits', (
     const layout = engine.computeLayout(images, 1600, 6);
 
     assertCleanGeometry(layout, 1600);
-    assert.ok(layout.sections.length >= 2, 'an impossible full-width group is split');
+    assert.equal(layout.sections.length, 1, 'the saved bundle remains one composition');
     layout.sections.forEach((section, sectionIndex) => {
         assert.ok(section.height <= 900.02, `section ${sectionIndex} stays within the hard ceiling`);
     });
@@ -203,7 +203,7 @@ test('six-photo desktop blocks do not collapse into postage-stamp cells', () => 
         'supporting photographs remain substantial beside the hero');
 });
 
-test('an unsuitable six-photo group splits instead of bypassing useful-size rules', () => {
+test('an unsuitable six-photo group relaxes preferences before splitting', () => {
     const layout = engine.computeLayout([
         { width: 900, height: 1200 },
         { width: 900, height: 1200 },
@@ -214,7 +214,7 @@ test('an unsuitable six-photo group splits instead of bypassing useful-size rule
     ], 1688, 20, 'landscape');
 
     assertCleanGeometry(layout, 1688);
-    assert.ok(layout.sections.length >= 2, 'the incompatible group becomes smaller mosaics');
+    assert.equal(layout.sections.length, 1, 'the bundle remains edge-filled when hard limits permit it');
     assert.equal(layout.items.length, 6, 'splitting never drops a photograph');
 });
 
