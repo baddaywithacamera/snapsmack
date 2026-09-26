@@ -86,6 +86,18 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     $where   = [];
     $params  = [];
 
+    // Optional longform bucket scope. The cover picker uses this to show only
+    // the photographs belonging to the post being edited, while still letting
+    // the editor switch back to the complete Gallery.
+    $bucket_post_id = (int)($_GET['bucket_post_id'] ?? 0);
+    if ($bucket_post_id > 0) {
+        $where[] = 'EXISTS (
+            SELECT 1 FROM snap_bucket_items bi
+            WHERE bi.image_id = i.id AND bi.post_id = ?
+        )';
+        $params[] = $bucket_post_id;
+    }
+
     // The longform editor's visual image blocks resolve only the images that
     // appear in the current post. Keeping this server-side avoids loading an
     // entire large gallery merely to draw a handful of editor thumbnails.
