@@ -19,6 +19,15 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.48 — 2026-09-26
+
+- **Backup type is two big buttons.** DIFFERENTIAL and FULL, the chosen one lit
+  green. The radio buttons showed a tiny dot on the chosen one and nothing at all
+  on the other, so it was hard to see which was picked.
+- **Every radio button shows a ring**, filled green when chosen (Restore source,
+  backup method, and the rest).
+- A scheduled backup no longer changes the backup type shown on the Overview.
+
 ## 0.7.47 — 2026-09-25
 
 The Qt window (0.7.4x) shipped with 4 pages; the Tk window it replaced had 9 tabs

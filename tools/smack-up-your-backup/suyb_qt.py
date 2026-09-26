@@ -150,7 +150,6 @@ class SuybWindow(QMainWindow):
             self.selected_profile_names = names
         self._update_backup_selection()
         self._show_page(0)
-        self.mode_full.setChecked(bool(force_full)); self.mode_diff.setChecked(not force_full)
         return self._start_backup(names, force_full=force_full, unattended=unattended)
 
     # ── Tray ─────────────────────────────────────────────────────────────
@@ -307,13 +306,19 @@ class SuybWindow(QMainWindow):
         # subtitle carried that explanation and the control contradicted it
         # (Sean, 2026-09-23: "the display is a bit confusing, like picking full
         # backup"). Differential stays the default, exactly as the cleared box was.
-        opts = QHBoxLayout()
+        # 0.7.48: two big buttons, the chosen one lit green. Radio buttons in this
+        # theme showed a tiny dot on the chosen one and NOTHING on the other, so
+        # it was hard to see which was picked or that there was a choice at all
+        # (Sean, 2026-09-26: "you made it harder").
+        opts = QHBoxLayout(); opts.setSpacing(10)
+        opts.addWidget(_label("BACKUP TYPE", "Eyebrow"))
         self.mode_group = QButtonGroup(self); self.mode_group.setExclusive(True)
-        self.mode_diff = QRadioButton("Differential — only files that changed")
-        self.mode_full = QRadioButton("Full backup — recheck every file on the site")
-        self.mode_diff.setChecked(True)
+        self.mode_diff = QPushButton("DIFFERENTIAL" + chr(10) + "Only files that changed")
+        self.mode_full = QPushButton("FULL" + chr(10) + "Recheck every file on the site")
         for _b in (self.mode_diff, self.mode_full):
+            _b.setObjectName("Choice"); _b.setCheckable(True)
             self.mode_group.addButton(_b); opts.addWidget(_b)
+        self.mode_diff.setChecked(True)
         opts.addStretch(1)
         rl.addLayout(opts)
         extras = QHBoxLayout()
