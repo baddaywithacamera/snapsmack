@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.751D — 2026-09-26 — Signed recovery
+
+- The signed updater can now recover a release file left with mismatched ownership by an earlier manual upload. It stages the verified replacement beside the target and atomically renames it into place, keeping repair inside the normal package, registry, and updater path.
+
 ## 0.7.750D — 2026-09-26 — No shortcuts
 
 - INSTANT CAMERA's original fast, overlapping Organized Mayhem tabletop is delivered through the normal signed release and updater path. Ambient prints may grow beyond the interactive size cap so the background remains seamless without increasing the live site's 30-print loading budget.
