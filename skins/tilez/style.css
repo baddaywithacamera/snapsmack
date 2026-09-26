@@ -1066,12 +1066,17 @@ input[type="button"],
 }
 
 .post-title {
-    font-size: 2.5em;
+    font-size: 3.333em;
     font-weight: 700;
     line-height: 120%;
     margin: 0;
     text-align: center;
     text-transform: uppercase;
+}
+
+.post-title + .post-date {
+    margin-top: 14px;
+    margin-bottom: 0;
 }
 
 /* Post Inner */
