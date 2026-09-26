@@ -78,7 +78,7 @@ if ($action === 'verify') {
             WHERE t.token = ? AND t.type = 'verify_email'
             LIMIT 1
         ");
-        $stmt->execute([$token]);
+        $stmt->execute([community_token_hash($token)]);
         $tok = $stmt->fetch();
 
         if (!$tok) {
@@ -152,7 +152,7 @@ if ($action === 'signup' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->prepare("
                         INSERT INTO snap_community_tokens (user_id, token, type, expires_at)
                         VALUES (?, ?, 'verify_email', ?)
-                    ")->execute([$new_user_id, $verify_token, $expires]);
+                    ")->execute([$new_user_id, community_token_hash($verify_token), $expires]);
 
                     community_send_verification_email($email, $username, $verify_token, $settings);
                     $action  = 'signup-pending';
@@ -231,7 +231,7 @@ if ($action === 'reset' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare("
                     INSERT INTO snap_community_tokens (user_id, token, type, expires_at)
                     VALUES (?, ?, 'reset_password', ?)
-                ")->execute([$user['id'], $reset_token, $expires]);
+                ")->execute([$user['id'], community_token_hash($reset_token), $expires]);
 
                 community_send_reset_email($email, $user['username'], $reset_token, $settings);
             }
@@ -262,7 +262,7 @@ if ($action === 'reset-confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             WHERE t.token = ? AND t.type = 'reset_password'
             LIMIT 1
         ");
-        $stmt->execute([$token]);
+        $stmt->execute([community_token_hash($token)]);
         $tok = $stmt->fetch();
 
         if (!$tok || $tok['used_at']) {
