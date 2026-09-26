@@ -2338,8 +2338,8 @@ body.blog, body.single, body.archive { background: #fff; }
 .post-content,
 .entry-content {
     color: #282828;
-    font-family: 'Droid Serif', Georgia, 'Times New Roman', serif;
-    font-size: 18px;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 21px;
     font-weight: 400;
     line-height: 1.65;
     font-synthesis: none;
