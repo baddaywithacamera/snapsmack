@@ -22,6 +22,7 @@ import time
 import photo_manager
 import editor_engine
 import raw_preview
+import snap_home
 
 from PySide6.QtCore import (
     Qt, QObject, QRunnable, QThreadPool, Signal, QSize, QDir, QTimer,
@@ -203,26 +204,51 @@ def _human_size(num_bytes):
     return f"{value:.1f} GB"
 
 
+def _file_stamp(path):
+    """Return a stable cache version for a file without failing a scan."""
+    if not path:
+        return 0
+    try:
+        stat = os.stat(path)
+        return (stat.st_mtime_ns, stat.st_size)
+    except (OSError, ValueError, TypeError):
+        return 0
+
+
 class _ThumbSignals(QObject):
     ready = Signal(str, QImage, float)   # path, thumbnail, capture timestamp
+    failed = Signal(str, bool, int, str)  # path, is RAW, attempt, explanation
 
 
 class _ThumbTask(QRunnable):
     """Load one thumbnail (and its capture time) off the GUI thread."""
 
-    def __init__(self, path, signals):
+    def __init__(self, path, signals, attempt=0, recovery_path=""):
         super().__init__()
         self.path = path
         self.signals = signals
+        self.attempt = int(attempt)
+        self.recovery_path = recovery_path
 
     def run(self):
+        is_raw = os.path.splitext(self.path)[1].lower() in photo_manager.RAW_EXTENSIONS
         try:
-            is_raw = os.path.splitext(self.path)[1].lower() in photo_manager.RAW_EXTENSIONS
-            if is_raw:
+            if self.recovery_path and os.path.isfile(self.recovery_path):
+                try:
+                    image = editor_engine.project_thumbnail(self.recovery_path)
+                    stamp = _capture_timestamp(image, self.path)
+                except ValueError:
+                    # Projects created before embedded previews were added are
+                    # still valid. Fall through to the photograph rather than
+                    # leaving a permanently blank library tile.
+                    image = None
+            else:
+                image = None
+            if image is None and is_raw:
                 source = raw_preview.render(self.path)
                 stamp = _capture_timestamp(source, self.path)
                 image = ImageOps.exif_transpose(source).convert("RGBA")
-            else:
+            elif image is None:
                 with Image.open(self.path) as source:
                     stamp = _capture_timestamp(source, self.path)
                     image = ImageOps.exif_transpose(source).convert("RGBA")
@@ -230,9 +256,24 @@ class _ThumbTask(QRunnable):
             data = image.tobytes("raw", "RGBA")
             qimage = QImage(data, image.width, image.height,
                             image.width * 4, QImage.Format_RGBA8888).copy()
-            self.signals.ready.emit(self.path, qimage, stamp)
-        except Exception:  # noqa: BLE001 — a bad file just keeps its placeholder
-            _log.debug("thumbnail failed for %s", self.path, exc_info=True)
+            try:
+                self.signals.ready.emit(self.path, qimage, stamp)
+            except RuntimeError:
+                # The library may close while a decoder is finishing. Qt then
+                # deletes the signal source before this worker returns. A late
+                # thumbnail is disposable and must never keep the app alive.
+                return
+        except Exception as exc:  # noqa: BLE001 — report and let RAW retry
+            _log.warning("thumbnail failed for %s (attempt %s): %s",
+                         self.path, self.attempt + 1, exc, exc_info=True)
+            try:
+                self.signals.failed.emit(
+                    self.path, is_raw, self.attempt,
+                    str(exc) or type(exc).__name__)
+            except RuntimeError:
+                # Shutdown raced the worker. There is no window left to retry
+                # into, and raising here invokes the global modal error hook.
+                return
 
 
 class _ScanSignals(QObject):
@@ -293,10 +334,17 @@ class LibraryWindow(QMainWindow):
         self.resize(1180, 780)
         self._restricted = False
         self._pool = QThreadPool.globalInstance()
+        # RawTherapee's CLI and the credential-backed cache writer are external
+        # resources, not ordinary in-process JPEG decoders. Running several at
+        # once intermittently drops one result on Windows, leaving a permanent
+        # transparent tile. Keep RAW work serial without slowing normal thumbs.
+        self._raw_pool = QThreadPool(self)
+        self._raw_pool.setMaxThreadCount(1)
         self._scan_pool = QThreadPool(self)
         self._scan_pool.setMaxThreadCount(1)
         self._items = {}          # path -> QListWidgetItem
         self._icons = {}          # path -> QIcon (cached so re-sort never re-decodes)
+        self._icon_versions = {}  # path -> (source mtime, saved-edit mtime)
         self._stamps = {}         # path -> capture timestamp (float)
         self._paths = []          # all photo paths in the current folder
         self._folder = None
@@ -308,6 +356,7 @@ class LibraryWindow(QMainWindow):
         self._opening_editor_paths = set()  # suppress re-entrant activation while loading
         self._signals = _ThumbSignals()
         self._signals.ready.connect(self._on_thumb)
+        self._signals.failed.connect(self._on_thumb_failed)
         self._scan_signals = _ScanSignals()
         self._scan_signals.ready.connect(self._on_scan_ready)
         self._file_signals = _FileSignals()
@@ -1401,7 +1450,9 @@ class LibraryWindow(QMainWindow):
                 return
             end = min(offset + 150, len(paths))
             for path in paths[offset:end]:
-                icon = self._icons.get(path, placeholder)
+                version = self._thumbnail_version(path)
+                icon = (self._icons.get(path, placeholder)
+                        if self._icon_versions.get(path) == version else placeholder)
                 details = self.catalog.details(path)
                 badges = ("♥ " if details["favorite"] else "") + \
                     ("★" * details["rating"])
@@ -1413,8 +1464,8 @@ class LibraryWindow(QMainWindow):
                 item.setToolTip(path)
                 self.list.addItem(item)
                 self._items[path] = item
-                if path not in self._icons:
-                    self._pool.start(_ThumbTask(path, self._signals))
+                if path not in self._icons or self._icon_versions.get(path) != version:
+                    self._start_thumbnail(path)
             if end < len(paths):
                 self.status.showMessage(
                     f"Showing {end} of {len(paths)} photos…")
@@ -1467,9 +1518,16 @@ class LibraryWindow(QMainWindow):
         pixmap.fill(Qt.transparent)
         return QIcon(pixmap)
 
+    def _start_thumbnail(self, path, attempt=0):
+        recovery = self._recovery_path(path)
+        task = _ThumbTask(path, self._signals, attempt, recovery)
+        is_raw = os.path.splitext(path)[1].lower() in photo_manager.RAW_EXTENSIONS
+        (self._raw_pool if is_raw else self._pool).start(task)
+
     def _on_thumb(self, path, qimage, stamp):
         icon = QIcon(QPixmap.fromImage(qimage))
         self._icons[path] = icon
+        self._icon_versions[path] = self._thumbnail_version(path)
         self._stamps[path] = stamp
         item = self._items.get(path)
         if item is not None:
@@ -1478,6 +1536,31 @@ class LibraryWindow(QMainWindow):
         if self._sort in ("date_new", "date_old") and \
                 len(self._stamps) == len(self._paths) and self._paths:
             self._populate()
+
+    def _on_thumb_failed(self, path, is_raw, attempt, explanation):
+        # Ordinary corrupt/unsupported files retain their placeholder. A RAW
+        # conversion is an external process and can fail transiently, so retry
+        # once in its serial queue instead of silently abandoning the tile.
+        if path not in self._items:
+            return
+        if is_raw and attempt < 1:
+            self._start_thumbnail(path, 1)
+            self.status.showMessage(
+                f"Retrying RAW preview for {os.path.basename(path)}…")
+        else:
+            self.status.showMessage(
+                f"Could not make a preview for {os.path.basename(path)}: {explanation}")
+
+    @staticmethod
+    def _recovery_path(path):
+        directory = os.path.join(
+            snap_home.shared_library(), "snap_slapper", "edits")
+        candidate = photo_manager.recovery_path(directory, path)
+        return candidate if os.path.isfile(candidate) else ""
+
+    def _thumbnail_version(self, path):
+        recovery = self._recovery_path(path)
+        return (_file_stamp(path), _file_stamp(recovery) if recovery else 0.0)
 
     # --- Info on click ------------------------------------------------------
     def _show_info(self, item):
@@ -1592,6 +1675,12 @@ class LibraryWindow(QMainWindow):
                 QTimer.singleShot(0, self.showMaximized)
 
     def closeEvent(self, event):  # noqa: N802 — Qt override
+        # Stop work which has not started. Running decoders finish quietly;
+        # their guarded signal delivery above discards results after teardown.
+        if self._scan_token is not None:
+            self._scan_token.cancelled = True
+        self._scan_pool.clear()
+        self._raw_pool.clear()
         # Closing from the taskbar while minimized is not a request to reopen
         # small. Only remember a visible, intentional normal/maximized state.
         if not self.isMinimized():

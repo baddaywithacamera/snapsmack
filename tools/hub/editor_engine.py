@@ -30,6 +30,56 @@ import render_graph
 from artifact_registry import ArtifactKind, ArtifactRegistry
 import highbit_image as highbit
 
+_LAYER_IMAGE_CACHE = OrderedDict()
+_LAYER_IMAGE_CACHE_LOCK = threading.RLock()
+_LAYER_IMAGE_CACHE_LIMIT = 4
+_PREPARED_LAYER_CACHE = OrderedDict()
+_PREPARED_LAYER_CACHE_LIMIT = 8
+
+
+def _cached_layer_image(path):
+    """Decode a placed image once instead of once per preview revision."""
+    absolute = os.path.abspath(path)
+    stat = os.stat(absolute)
+    key = (absolute, stat.st_mtime_ns, stat.st_size)
+    with _LAYER_IMAGE_CACHE_LOCK:
+        cached = _LAYER_IMAGE_CACHE.get(key)
+        if cached is not None:
+            _LAYER_IMAGE_CACHE.move_to_end(key)
+            return cached
+    decoded = highbit.read(absolute)
+    with _LAYER_IMAGE_CACHE_LOCK:
+        _LAYER_IMAGE_CACHE[key] = decoded
+        _LAYER_IMAGE_CACHE.move_to_end(key)
+        while len(_LAYER_IMAGE_CACHE) > _LAYER_IMAGE_CACHE_LIMIT:
+            _LAYER_IMAGE_CACHE.popitem(last=False)
+    return decoded
+
+
+def _prepared_layer_image(path, canvas_size, fit, adjustments, svg_target=None):
+    """Cache expensive decode/fit/adjust work independent of layer toggles."""
+    absolute = os.path.abspath(path)
+    stat = os.stat(absolute)
+    key = (absolute, stat.st_mtime_ns, stat.st_size, tuple(canvas_size), fit,
+           render_graph.stable_identity(adjustments or {}))
+    with _LAYER_IMAGE_CACHE_LOCK:
+        cached = _PREPARED_LAYER_CACHE.get(key)
+        if cached is not None:
+            _PREPARED_LAYER_CACHE.move_to_end(key)
+            return cached
+    top = (highbit.from_pillow(_open_layer_image(path, svg_target))
+           if os.path.splitext(path)[1].lower() == ".svg" else
+           _cached_layer_image(path))
+    if fit in ("cover", "contain", "stretch", "tile"):
+        top = highbit.fit_layer(top, canvas_size, fit)
+    top = highbit.apply_adjustments(top, adjustments or {}, DEFAULT_ADJUSTMENTS)
+    with _LAYER_IMAGE_CACHE_LOCK:
+        _PREPARED_LAYER_CACHE[key] = top
+        _PREPARED_LAYER_CACHE.move_to_end(key)
+        while len(_PREPARED_LAYER_CACHE) > _PREPARED_LAYER_CACHE_LIMIT:
+            _PREPARED_LAYER_CACHE.popitem(last=False)
+    return top
+
 # SECAUDIT 054 chokepoint 1 (image ingress): importing snap_imgsafe pins
 # Image.MAX_IMAGE_PIXELS process-wide (decompression-bomb cap) for EVERY
 # Image.open in the editor, and _mask_from_text below routes .slapper-embedded
@@ -168,12 +218,25 @@ DEFAULT_ADJUSTMENTS = {
     # gaussian is the classic unsharp mask. Defaults keep sharpen off (0).
     "sharpen_radius": 1.2, "sharpen_reduce_noise": 0.0, "sharpen_mode": "lens",
     "raw_noise_reduction": 0.0,
+    # RAW-only geometry is performed by RawTherapee before the 16-bit master
+    # enters SNAP SLAPPER. These stay separate from the editor's later geometry
+    # so Free Corners, horizon correction, and final crop remain available.
+    "raw_rotation": 0.0,
+    "raw_perspective_horizontal": 0.0, "raw_perspective_vertical": 0.0,
+    "raw_lens_distortion": 0.0, "raw_defish": 0.0,
+    "raw_ca_red": 0.0, "raw_ca_blue": 0.0,
+    "raw_vignette_correction": 0.0,
+    "raw_lensfun": False, "raw_lensfun_distortion": True,
+    "raw_lensfun_vignette": True, "raw_lensfun_ca": True,
+    "noise_luminance": 0.0, "noise_colour": 0.0,
     "level_black": 0.0, "level_gamma": 1.0, "level_white": 255.0,
     "black_white": False, "vignette": 0.0, "grain": 0.0,
     # Vignette edge softness (50 == the classic look) and a darken-only grain
     # mode (False == the original soft-light grain). Defaults preserve every
     # existing LEWK and project unchanged.
-    "vignette_size": 70.0, "vignette_feather": 50.0, "grain_darken": False,
+    "vignette_size": 70.0, "vignette_feather": 50.0,
+    "vignette_color": [0, 0, 0], "vignette_blend": "normal",
+    "grain_darken": False,
     # Split toning — colour the shadows and highlights independently (the
     # teal-and-orange / warm-cool look most film emulations rely on). Both
     # amounts default to 0, so this is off until dialled up.
@@ -191,6 +254,9 @@ DEFAULT_ADJUSTMENTS = {
     "col_sat_red": 0.0, "col_sat_orange": 0.0, "col_sat_yellow": 0.0,
     "col_sat_green": 0.0, "col_sat_aqua": 0.0, "col_sat_blue": 0.0,
     "col_sat_purple": 0.0, "col_sat_magenta": 0.0,
+    "col_hue_red": 0.0, "col_hue_orange": 0.0, "col_hue_yellow": 0.0,
+    "col_hue_green": 0.0, "col_hue_aqua": 0.0, "col_hue_blue": 0.0,
+    "col_hue_purple": 0.0, "col_hue_magenta": 0.0,
     "col_lum_red": 0.0, "col_lum_orange": 0.0, "col_lum_yellow": 0.0,
     "col_lum_green": 0.0, "col_lum_aqua": 0.0, "col_lum_blue": 0.0,
     "col_lum_purple": 0.0, "col_lum_magenta": 0.0,
@@ -213,6 +279,11 @@ DEFAULT_ADJUSTMENTS = {
 RAW_DEVELOPMENT_KEYS = {
     "exposure", "brightness", "contrast", "highlights", "shadows",
     "temperature", "tint", "saturation", "raw_noise_reduction",
+    "raw_rotation", "raw_perspective_horizontal", "raw_perspective_vertical",
+    "raw_lens_distortion", "raw_defish", "raw_ca_red", "raw_ca_blue",
+    "raw_vignette_correction",
+    "raw_lensfun", "raw_lensfun_distortion", "raw_lensfun_vignette",
+    "raw_lensfun_ca",
 }
 
 
@@ -461,6 +532,24 @@ def _read_project_document(path):
         return json.load(handle, parse_constant=photo_manager.reject_json_constant)
 
 
+def project_thumbnail(path):
+    """Load the bounded flattened thumbnail embedded in a project/recovery."""
+    if not zipfile.is_zipfile(path):
+        raise ValueError("Legacy projects do not contain an embedded thumbnail")
+    try:
+        with zipfile.ZipFile(path, "r") as archive:
+            _validate_project_archive(archive)
+            info = archive.getinfo("previews/thumbnail.jpg")
+            if info.file_size > 8 * 1024 * 1024:
+                raise ValueError("Project thumbnail is unexpectedly large")
+            payload = archive.read(info)
+    except (zipfile.BadZipFile, KeyError) as exc:
+        raise ValueError("Project thumbnail is missing or invalid") from exc
+    if snap_imgsafe is None:
+        raise ValueError("Project thumbnail safety decoder is unavailable")
+    return snap_imgsafe.safe_open(payload, formats={"JPEG"}).convert("RGBA")
+
+
 def _validate_project_archive(archive):
     """Reject hostile ZIP structure before reading any project member."""
     entries = archive.infolist()
@@ -639,18 +728,18 @@ def _tonal_lut(adjustments):
     for source in range(256):
         value = source * exposure + brightness
         normalized = _clamp(value) / 255.0
-        # Three deliberately separated tonal bands.  Highlights and shadows
-        # have shoulders instead of leaking across the whole photograph;
-        # midtones form a smooth bell centred on middle grey.  The 55-level
-        # ceiling keeps even ±100 mappings monotonic and avoids tonal reversal.
-        shadow_weight = 1.0 - _smoothstep(.15, .55, normalized)
-        highlight_weight = _smoothstep(.55, .90, normalized)
+        # Three deliberately separated tonal bands. Squared shoulder masks
+        # make small weights disappear instead of visibly leaking into the
+        # neighbouring band. The 50-level shoulder ceiling remains monotonic
+        # even at ±100; midtones use a smooth bell centred on middle grey.
+        shadow_weight = (1.0 - _smoothstep(.10, .50, normalized)) ** 2
+        highlight_weight = _smoothstep(.50, .90, normalized) ** 2
         midtone_weight = 1.0 - _smoothstep(0.0, .32, abs(normalized - .5))
-        value += shadows * 55.0 * shadow_weight
+        value += shadows * 50.0 * shadow_weight
         value += midtones * 55.0 * midtone_weight
-        value += highlights * 55.0 * highlight_weight
-        value += whites * 45.0 * max(0.0, (normalized - .65) / .35)
-        value += blacks * 45.0 * max(0.0, (.35 - normalized) / .35)
+        value += highlights * 50.0 * highlight_weight
+        value += whites * 45.0 * max(0.0, (normalized - .80) / .20)
+        value += blacks * 45.0 * max(0.0, (.20 - normalized) / .20)
         value = (value - 127.5) * (1.0 + contrast) + 127.5
         normalized = max(0.0, min(1.0, (value - level_black) / (level_white - level_black)))
         value = 255.0 * normalized ** (1.0 / level_gamma)
@@ -829,13 +918,14 @@ def apply_adjustments(image, adjustments):
     vignette = float(settings["vignette"])
     if vignette:
         width, height = output.size
-        # Elliptical normalized radius: the effect is mathematically zero
-        # through the protected centre, then follows one continuous smoothstep
-        # to full edge strength. This avoids the clipped Gaussian halo and the
-        # unintended whole-frame dimming of the former oversized blur.
+        # A fourth-power superellipse follows the rectangular frame instead of
+        # advertising a distinct oval. It still rounds the corners enough to
+        # look photographic, while feather remains a softness control rather
+        # than an accidental shape control.
         yy, xx = np.ogrid[:height, :width]
-        radius = np.sqrt(((xx - (width - 1) / 2) / max(1, width / 2)) ** 2 +
-                         ((yy - (height - 1) / 2) / max(1, height / 2)) ** 2)
+        nx = np.abs((xx - (width - 1) / 2) / max(1, width / 2))
+        ny = np.abs((yy - (height - 1) / 2) / max(1, height / 2))
+        radius = (nx ** 4 + ny ** 4) ** .25
         size = max(0.0, min(200.0, float(settings.get("vignette_size", 70)))) / 100.0
         feather = max(0.0, min(200.0, float(
             settings.get("vignette_feather", 50)))) / 100.0
@@ -844,11 +934,21 @@ def apply_adjustments(image, adjustments):
         start = max(.08, midpoint - transition / 2)
         end = min(1.80, midpoint + transition / 2)
         weight = np.clip((radius - start) / max(.001, end - start), 0.0, 1.0)
-        weight = weight * weight * (3.0 - 2.0 * weight)
+        weight = weight ** 3 * (weight * (weight * 6.0 - 15.0) + 10.0)
         strength = abs(vignette) / 100.0
-        edge = Image.new("RGB", output.size, (0, 0, 0) if vignette < 0 else (255, 255, 255))
+        chosen = settings.get("vignette_color", [0, 0, 0])
+        colour = tuple(max(0, min(255, int(v))) for v in list(chosen)[:3])
+        if len(colour) != 3:
+            colour = (0, 0, 0)
+        # Positive values retain the historical white-vignette behaviour unless
+        # a colour has explicitly been selected.
+        if vignette > 0 and colour == (0, 0, 0):
+            colour = (255, 255, 255)
+        edge = Image.new("RGB", output.size, colour)
+        mode = str(settings.get("vignette_blend", "normal"))
+        effected = blend_images(output, edge, mode=mode, opacity=1.0).convert("RGB")
         effect_mask = Image.fromarray(np.uint8(np.rint(weight * strength * 255)), "L")
-        output = Image.composite(edge, output, effect_mask)
+        output = Image.composite(effected, output, effect_mask)
 
     grain = float(settings["grain"])
     if grain > 0:
@@ -897,9 +997,28 @@ def _colour_mix(image, settings):
     A pixel's hue picks its multiplier; all bands at 0 leaves the image alone."""
     sat_on = any(float(settings.get(f"col_sat_{n}", 0)) for n, _ in _HUE_BAND_DEG)
     lum_on = any(float(settings.get(f"col_lum_{n}", 0)) for n, _ in _HUE_BAND_DEG)
-    if not sat_on and not lum_on:
+    hue_on = any(float(settings.get(f"col_hue_{n}", 0)) for n, _ in _HUE_BAND_DEG)
+    if not sat_on and not lum_on and not hue_on:
         return image
     hue, sat, val = image.convert("HSV").split()
+    if hue_on:
+        base_centres = [(deg, float(settings.get(f"col_hue_{name}", 0)))
+                        for name, deg in _HUE_BAND_DEG]
+        centres = ([(deg - 360.0, value) for deg, value in base_centres] +
+                   base_centres +
+                   [(deg + 360.0, value) for deg, value in base_centres])
+        hue_lut = []
+        for index in range(256):
+            degrees = index * 360.0 / 255.0
+            below = max((item for item in centres if item[0] <= degrees),
+                        key=lambda item: item[0])
+            above = min((item for item in centres if item[0] >= degrees),
+                        key=lambda item: item[0])
+            span = above[0] - below[0]
+            amount = below[1] if span == 0 else (
+                below[1] + (above[1] - below[1]) * (degrees - below[0]) / span)
+            hue_lut.append(int(round(((degrees + amount) % 360.0) * 255.0 / 360.0)))
+        hue = hue.point(hue_lut)
     if sat_on:
         mult = hue.point(_band_multiplier_lut(settings, "col_sat", 0.9))
         sat = _image_math_eval(
@@ -1454,6 +1573,9 @@ class EditorDocument:
         self.recorded_source_path = self.source_path
         self.browse_source_path = self.source_path
         self.original_filename = os.path.basename(self.source_path)
+        # Human title reused by exports/publishing. It is deliberately separate
+        # from the immutable source filename and optional project filename.
+        self.output_title = ""
         self.artifacts = ArtifactRegistry()
         self.original_artifact_id = self.artifacts.assign(
             ArtifactKind.ORIGINAL_RASTER, self.source_path)
@@ -1548,7 +1670,27 @@ class EditorDocument:
         return {"adjustments": copy.deepcopy(self.adjustments),
                 "geometry": copy.deepcopy(self.geometry),
                 "layers": copy.deepcopy(self.layers), "retouched": copy.deepcopy(self.retouched),
-                "saved_selections": copy.deepcopy(self.saved_selections)}
+                "saved_selections": copy.deepcopy(self.saved_selections),
+                "output_title": self.output_title}
+
+    def detached_copy(self):
+        """Return a worker-safe document without copying its owning UI.
+
+        EditorWindow installs bound callbacks on an adopted document.  Generic
+        deepcopy() follows those methods back into Qt and fails because a live
+        window is not pickleable.  Background export/save work needs an
+        independent editing state, not a second window.
+        """
+        clone = copy.copy(self)
+        clone.restore(self.snapshot())
+        clone.history = copy.deepcopy(self.history)
+        clone.saved_snapshot = copy.deepcopy(self.saved_snapshot)
+        if hasattr(self, "_raw_developed_adjustments"):
+            clone._raw_developed_adjustments = copy.deepcopy(
+                self._raw_developed_adjustments)
+        clone.on_change = None
+        clone.history_limit_handler = None
+        return clone
 
     def restore(self, value):
         self.adjustments = copy.deepcopy(value["adjustments"])
@@ -1556,6 +1698,7 @@ class EditorDocument:
         self.layers = copy.deepcopy(value["layers"])
         self.retouched = copy.deepcopy(value.get("retouched", []))
         self.saved_selections = copy.deepcopy(value.get("saved_selections", {}))
+        self.output_title = str(value.get("output_title") or "")
 
     def record(self, label):
         state = self.snapshot()
@@ -2078,13 +2221,8 @@ class EditorDocument:
                 svg_target = image.size if (
                     os.path.splitext(path)[1].lower() == ".svg" and
                     fit in ("cover", "contain", "stretch")) else None
-                top = (highbit.from_pillow(_open_layer_image(path, svg_target))
-                       if os.path.splitext(path)[1].lower() == ".svg" else
-                       highbit.read(path))
-                top = highbit.apply_adjustments(top, layer.get("adjustments", {}),
-                                                DEFAULT_ADJUSTMENTS)
-                if fit in ("cover", "contain", "stretch", "tile"):
-                    top = highbit.fit_layer(top, image.size, fit)
+                top = _prepared_layer_image(
+                    path, image.size, fit, layer.get("adjustments", {}), svg_target)
             elif layer.get("type") == "paint":
                 fill = list(layer.get("fill", [0, 0, 0, 0]))
                 fill = (fill + [0, 0, 0, 0])[:4]
@@ -2097,6 +2235,10 @@ class EditorDocument:
                                                 DEFAULT_ADJUSTMENTS)
             else:
                 continue
+            if layer.get("invert_rgb", False):
+                top = highbit.invert(top)
+            if layer.get("invert_luminance", False):
+                top = highbit.invert(top, luminance_only=True)
             mask = (_mask_from_text(layer.get("mask", ""))
                     if layer.get("mask_enabled", True) else None)
             if layer.get("type") in {"image", "text"}:
@@ -2105,8 +2247,22 @@ class EditorDocument:
                 # A fit mode already sized the layer to the canvas; place it
                 # centred at scale 1 rather than re-applying the free transform.
                 fitted = layer.get("fit", "original") in ("cover", "contain", "stretch", "tile")
-                transform = self.default_transform() if fitted else layer.get("transform", {})
-                top = highbit.place_layer(top, image.size, transform, linked_mask)
+                if fitted and top.size == image.size:
+                    # fit_layer already returned a canvas-sized layer. Running
+                    # it through projective placement again costs hundreds of
+                    # milliseconds and changes nothing.
+                    if linked_mask is not None:
+                        values = top.pixels.copy()
+                        if values.shape[2] == 4:
+                            values[:, :, 3] *= linked_mask
+                            top = highbit.FloatImage(values, top.channel_names)
+                        else:
+                            top = highbit.FloatImage(
+                                np.concatenate((values, linked_mask[:, :, None]), axis=2),
+                                ("R", "G", "B", "A"))
+                else:
+                    transform = layer.get("transform", {})
+                    top = highbit.place_layer(top, image.size, transform, linked_mask)
                 if mask is not None and not layer.get("mask_linked", True):
                     mask_layer = highbit.place_layer(
                         highbit.FloatImage(self._float_mask(mask, mask.size)[:, :, None], ("Y",)),
@@ -2141,6 +2297,7 @@ class EditorDocument:
                  "artifacts": self.artifacts.value(),
                  "original_artifact_id": self.original_artifact_id,
                  "edit_source_artifact_id": self.edit_source_artifact_id,
+                 "output_title": self.output_title,
                  "adjustments": self.adjustments, "geometry": self.geometry,
                  "layers": self.layers, "retouched": self.retouched,
                  "saved_selections": self.saved_selections,
@@ -2158,8 +2315,16 @@ class EditorDocument:
         value = self.project_value()
         preview_document = self
         if getattr(self, "raw_source_path", ""):
-            preview_document = copy.deepcopy(self)
-            preview_document.raw_source_path = ""
+            # The UI attaches bound callbacks (including an EditorWindow) to
+            # the document.  A deep copy therefore tries to pickle the live Qt
+            # window and makes RAW project/recovery saves fail.  Rendering the
+            # baked developed master only needs an independent shell so a
+            # shallow copy is both sufficient and deliberately excludes that
+            # ownership boundary. Keep raw_source_path on the detached copy:
+            # render() must let RawTherapee apply RAW controls once. Clearing
+            # it rendered the old master and applied those controls a second
+            # time, producing severely clipped recovery thumbnails.
+            preview_document = self.detached_copy()
         _write_project_archive(path, value, archive_source,
                                embed_source=not bool(getattr(self, "raw_source_path", "")),
                                preview=preview_document.render((1600, 1600)))
@@ -2172,8 +2337,7 @@ class EditorDocument:
             raise ValueError("Recovery path resolves to the original photograph.")
         preview_document = self
         if getattr(self, "raw_source_path", ""):
-            preview_document = copy.deepcopy(self)
-            preview_document.raw_source_path = ""
+            preview_document = self.detached_copy()
         _write_project_archive(path, self.project_value(recovery=True), archive_source,
                                embed_source=not bool(getattr(self, "raw_source_path", "")),
                                preview=preview_document.render((1600, 1600)))
@@ -2262,6 +2426,7 @@ class EditorDocument:
                 document.attach_raw_source(raw_source_path, artifacts["master"],
                                            artifacts["profile"], artifacts["producer"])
         document.recorded_source_path = os.path.abspath(recorded_source_path)
+        document.output_title = str(value.get("output_title") or "")
         ingredient = value.get("source_ingredient")
         original_name = (ingredient.get("original_filename")
                          if isinstance(ingredient, dict) else None)

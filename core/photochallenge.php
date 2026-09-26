@@ -41,10 +41,7 @@ function pc_feed_enabled(array $settings): bool {
     return pc_enabled($settings);
 }
 
-/**
- * Keep Menu Manager's built-in FEED item in lockstep with the challenge switch.
- * Existing menu order is preserved; first enable appends FEED for later dragging.
- */
+/** Remove the retired standalone FEED item from saved menus. */
 function pc_sync_feed_menu(PDO $pdo, array &$settings, bool $enabled): void {
     $items = json_decode((string)($settings['nav_menu_json'] ?? '[]'), true);
     if (!is_array($items) || !$items) return; // legacy nav renders from the setting directly
@@ -68,12 +65,8 @@ function pc_sync_feed_menu(PDO $pdo, array &$settings, bool $enabled): void {
         return $out;
     };
 
-    if ($enabled) {
-        if ($contains($items)) return;
-        $items[] = ['id'=>'challenge_feed','type'=>'challenge_feed','label'=>'FEED','children'=>[]];
-    } else {
-        $items = $remove($items);
-    }
+    if (!$contains($items)) return;
+    $items = $remove($items);
     $json = json_encode($items, JSON_UNESCAPED_SLASHES);
     $pdo->prepare("INSERT INTO snap_settings(setting_key,setting_val) VALUES('nav_menu_json',?)
         ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$json]);
@@ -249,6 +242,59 @@ function pc_previous_window(PDO $pdo, array $settings): array {
     $anchor = new DateTimeImmutable((string)$current['start'], new DateTimeZone('UTC'));
     $fallback = pc_window_for_friday($anchor->modify('-7 days')->format('Y-m-d'));
     return $fallback ? $fallback + ['open' => false] : $current;
+}
+
+/**
+ * Public board rounds, newest first: the live week followed by every earlier
+ * scheduled week. The current window is always present, even before its prompt
+ * row is created, so the public board never loses the active round.
+ *
+ * @return array<int,array{start:string,end:string,open:bool,week_key:string,label:string,prompt:string,tag:string}>
+ */
+function pc_board_windows(PDO $pdo, array $settings, int $history_limit = 52): array {
+    $current = pc_window($settings);
+    $current['prompt'] = '';
+    $current['tag'] = pc_tag($settings);
+    $rounds = [(string)$current['week_key'] => $current];
+
+    try {
+        $limit = max(1, min(260, $history_limit + 1));
+        $q = $pdo->prepare(
+            "SELECT week_key,friday,submit_start,submit_end,prompt,tag
+               FROM pc_prompts
+              WHERE status IN ('live','done') AND submit_start<=UTC_TIMESTAMP()
+           ORDER BY submit_start DESC LIMIT {$limit}"
+        );
+        $q->execute();
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $week_key = (string)($row['week_key'] ?? '');
+            if ($week_key === '') continue;
+            $window = [
+                'start' => (string)$row['submit_start'],
+                'end' => (string)$row['submit_end'],
+                'open' => $week_key === (string)$current['week_key'] && (bool)$current['open'],
+                'week_key' => $week_key,
+                'label' => (new DateTimeImmutable((string)$row['friday'], new DateTimeZone('UTC')))->format('M j, Y'),
+                'prompt' => trim((string)($row['prompt'] ?? '')),
+                'tag' => strtolower(trim((string)($row['tag'] ?? ''))) ?: pc_tag($settings),
+            ];
+            if ($week_key === (string)$current['week_key']) {
+                $rounds[$week_key] = array_merge($current, $window);
+            } elseif (!isset($rounds[$week_key])) {
+                $rounds[$week_key] = $window;
+            }
+        }
+    } catch (Throwable $e) {
+        // Upgrade-safe fallback: retain the live round if prompt history is not
+        // available yet.
+    }
+
+    $current_key = (string)$current['week_key'];
+    $current_round = $rounds[$current_key];
+    unset($rounds[$current_key]);
+    $history = array_values($rounds);
+    usort($history, static fn(array $a, array $b): int => strcmp((string)$b['start'], (string)$a['start']));
+    return array_merge([$current_round], array_slice($history, 0, max(0, $history_limit)));
 }
 
 /**
@@ -1842,7 +1888,7 @@ function pc_participant_counts(PDO $pdo): array {
  * appearance in assets/css/photochallenge-board-embed.css (scoped under
  * .pc-board) — no inline CSS either way.
  */
-function pc_board_embed_html(PDO $pdo, array $settings, ?array $window = null): string {
+function pc_board_embed_html(PDO $pdo, array $settings, ?array $window = null, bool $include_assets = true): string {
     if (!pc_enabled($settings) || !pc_feed_enabled($settings)) return '';
     $esc    = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
     $base   = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : '/';
@@ -1861,8 +1907,11 @@ function pc_board_embed_html(PDO $pdo, array $settings, ?array $window = null): 
 
     // Geometry (three-across | masonry) from the external layouts CSS; card look
     // from the scoped embed CSS. Both files, no PHP-emitted style.
-    $out  = '<link rel="stylesheet" href="' . $esc($base) . 'assets/css/photochallenge-board-layouts.css?v=' . $esc($ver) . '">';
-    $out .= '<link rel="stylesheet" href="' . $esc($base) . 'assets/css/photochallenge-board-embed.css?v=' . $esc($ver) . '">';
+    $out = '';
+    if ($include_assets) {
+        $out .= '<link rel="stylesheet" href="' . $esc($base) . 'assets/css/photochallenge-board-layouts.css?v=' . $esc($ver) . '">';
+        $out .= '<link rel="stylesheet" href="' . $esc($base) . 'assets/css/photochallenge-board-embed.css?v=' . $esc($ver) . '">';
+    }
     $out .= '<div class="pc-board">';
     if (!$rows) {
         $out .= '<p class="pc-board-empty">No entries yet. Post a photo tagged '

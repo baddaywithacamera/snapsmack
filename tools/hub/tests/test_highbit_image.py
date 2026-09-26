@@ -103,6 +103,28 @@ def test_display_proxy_is_not_the_working_image():
     assert working.pixels.dtype == np.float32
 
 
+def test_rgb_inversion_is_reversible_and_preserves_alpha():
+    values = np.array([[[.1, .4, .9, .35], [1.2, -.1, .5, .8]]], dtype=np.float32)
+    image = highbit_image.FloatImage(values, ("R", "G", "B", "A"))
+    inverted = highbit_image.invert(image)
+    assert np.allclose(inverted.pixels[:, :, :3], 1.0 - values[:, :, :3])
+    assert np.allclose(inverted.pixels[:, :, 3], values[:, :, 3])
+    assert np.allclose(highbit_image.invert(inverted).pixels, values)
+
+
+def test_luminance_inversion_preserves_colour_differences_and_is_reversible():
+    values = np.array([[[.15, .35, .75], [.8, .3, .1]]], dtype=np.float32)
+    image = highbit_image.FloatImage(values, ("R", "G", "B"))
+    inverted = highbit_image.invert(image, luminance_only=True)
+    before_chroma = values[:, :, :2] - values[:, :, 1:3]
+    after_chroma = inverted.pixels[:, :, :2] - inverted.pixels[:, :, 1:3]
+    assert np.allclose(after_chroma, before_chroma)
+    assert np.allclose(highbit_image.luminance(inverted.pixels),
+                       1.0 - highbit_image.luminance(values))
+    restored = highbit_image.invert(inverted, luminance_only=True)
+    assert np.allclose(restored.pixels, values, atol=1e-6)
+
+
 def test_float_adjustments_preserve_values_above_display_white():
     values = np.array([[[0.25, 0.5, 0.75], [0.8, 0.9, 1.0]]], dtype=np.float32)
     source = highbit_image.FloatImage(values, ("R", "G", "B"))
@@ -124,6 +146,38 @@ def test_raw_noise_reduction_visibly_reduces_luminance_variation():
     after = np.std(highbit_image.luminance(reduced.pixels))
     assert after < before * .55
     assert reduced.pixels.dtype == np.float32
+
+
+def test_highlights_are_luminance_targeted_and_preserve_hue():
+    # Same colour ratio at middle and highlight luminance.
+    values = np.array([[[.25, .50, .75], [.45, .90, 1.35]]], dtype=np.float32)
+    source = highbit_image.FloatImage(values, ("R", "G", "B"))
+    reduced = highbit_image.apply_adjustments(source, {"highlights": -80})
+    before_y = highbit_image.luminance(values)
+    after_y = highbit_image.luminance(reduced.pixels)
+    assert abs(float(after_y[0, 0] - before_y[0, 0])) < .002
+    assert after_y[0, 1] < before_y[0, 1]
+    before_ratio = values[0, 1] / values[0, 1, 1]
+    after_ratio = reduced.pixels[0, 1] / reduced.pixels[0, 1, 1]
+    assert np.allclose(after_ratio, before_ratio, atol=1e-5)
+
+
+def test_colour_noise_reduction_removes_speckles_without_crossing_luma_edge():
+    rng = np.random.default_rng(91)
+    luma = np.full((96, 96), .22, dtype=np.float32)
+    luma[:, 48:] = .78
+    colour_noise = rng.normal(0, .08, (96, 96)).astype(np.float32)
+    # Opponent perturbation whose weighted luminance is zero.
+    values = np.repeat(luma[:, :, None], 3, axis=2)
+    values[:, :, 0] += colour_noise
+    values[:, :, 1] -= colour_noise * np.float32(.299 / .587)
+    source = highbit_image.FloatImage(values, ("R", "G", "B"))
+    reduced = highbit_image.apply_adjustments(source, {"noise_colour": 100})
+    before_chroma = values[:, :, 0] - values[:, :, 1]
+    after_chroma = reduced.pixels[:, :, 0] - reduced.pixels[:, :, 1]
+    assert np.std(after_chroma[:, 8:40]) < np.std(before_chroma[:, 8:40]) * .45
+    result_luma = highbit_image.luminance(reduced.pixels)
+    assert result_luma[:, 52:].mean() - result_luma[:, :44].mean() > .50
 
 
 def test_float_layer_blend_uses_masks_and_keeps_headroom():

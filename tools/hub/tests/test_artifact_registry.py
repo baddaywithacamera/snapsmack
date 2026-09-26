@@ -34,6 +34,14 @@ def test_developed_identity_comes_from_sources_not_path(tmp_path):
                                     source_refs=(raw_id, profile_id), producer_build="RT-5.12")
     assert first == second
 
+    # Reopening a saved RAW project can regenerate the same provenance into a
+    # different cache filename inside the already-restored registry.
+    again = registry.derive(
+        ArtifactKind.DEVELOPED_MASTER, tmp_path / "new-cache-key.tif",
+        source_refs=(raw_id, profile_id), producer_build="RT-5.12")
+    assert again == first
+    assert registry.get(first).path.endswith("new-cache-key.tif")
+
 
 def test_registry_round_trip_keeps_typed_provenance(tmp_path):
     registry = ArtifactRegistry()

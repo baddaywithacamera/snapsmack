@@ -142,7 +142,7 @@ in-memory credential retention for session re-login.
 | --- | --- | --- | --- |
 | 1 | Service-account key in repo directory | HIGH / open | **Closed** — never committed, removed, ignored |
 | 2 | Passwords stored as base64 | MEDIUM / open | **Closed** — scrypt + Fernet vault (037) |
-| 3 | FTPS cert verification off by default | MEDIUM / open | **Accepted** — documented 037 §7.1, TOFU pinning is the path |
+| 3 | FTPS cert verification off by default | MEDIUM / **CLOSED 2026-09-20** | Certificate memory built (SUYB 0.7.44, `ftps_pins.py`): first connection remembers the cert; a change that a public CA vouches for is a renewal (re-pinned silently); any other change stops BEFORE the password is sent, both fingerprints shown. Verification itself stays off by default — it is only used to tell a renewal from a swap, which is what makes this survive Let's Encrypt / AutoSSL rotation. Tests: `tests/test_ftps_pins.py` (7). |
 | 4 | Unescaped Drive query filter | LOW / open | **Closed** |
 | 5 | Unconditional debug log | LOW / open | **Closed** |
 

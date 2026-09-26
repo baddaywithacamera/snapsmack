@@ -3,8 +3,8 @@
 A layer mask is a grayscale image: white = the layer's effect shows, black =
 it's hidden. This widget lets the photographer paint that mask by hand with a
 round brush — white to reveal, black to hide — the way every editor does it.
-It shows the photo with the hidden areas tinted red so you can see what you're
-doing, and hands back a PIL ``L`` mask for the engine to store on the layer.
+It shows the mask itself in black and white and hands back a PIL ``L`` mask
+for the engine to store on the layer. The main canvas shows the photo result.
 """
 
 from PySide6.QtCore import Qt, Signal, QSize, QPoint, QRectF
@@ -50,7 +50,6 @@ class MaskBrushCanvas(QWidget):
         self.setObjectName("MaskBrushCanvas")
         self._photo = None        # QPixmap scaled to the display box
         self._mask = None         # QImage Grayscale8 at display size
-        self._overlay = None      # cached red tint of the hidden areas
         self._paint_white = False  # False = hide (black), True = reveal (white)
         self._radius = 22
         self._hardness = 70
@@ -83,7 +82,6 @@ class MaskBrushCanvas(QWidget):
             self._mask = QImage(width, height, QImage.Format_Grayscale8)
             self._mask.fill(255)
         self.setFixedSize(width, height)
-        self._rebuild_overlay()
         self.update()
 
     def set_paint_white(self, white):
@@ -107,7 +105,6 @@ class MaskBrushCanvas(QWidget):
         if self._mask is None:
             return
         self._mask.fill(255 if white else 0)
-        self._rebuild_overlay()
         self.update()
         self.mask_changed.emit()
 
@@ -147,24 +144,6 @@ class MaskBrushCanvas(QWidget):
             painter.setPen(pen)
             painter.drawLine(self._last, point)
         painter.end()
-        self._rebuild_overlay()
-
-    def _rebuild_overlay(self):
-        """Cache a red tint of the hidden (black) areas, built once per stroke
-        with PIL's fast per-band point() — never pixel-by-pixel in paintEvent."""
-        if self._mask is None:
-            self._overlay = None
-            return
-        mask_pil = qimage_l_to_pil(self._mask)
-        alpha = mask_pil.point(
-            (lambda v: int(v * 0.45)) if self._tint_white
-            else (lambda v: int((255 - v) * 0.45)))
-        red = Image.new("RGBA", mask_pil.size, (220, 40, 40, 0))
-        red.putalpha(alpha)
-        data = red.tobytes("raw", "RGBA")
-        qimg = QImage(data, red.width, red.height, red.width * 4,
-                      QImage.Format_RGBA8888).copy()
-        self._overlay = QPixmap.fromImage(qimg)
 
     def mousePressEvent(self, event):
         if self._mask is None or event.button() != Qt.LeftButton:
@@ -199,10 +178,8 @@ class MaskBrushCanvas(QWidget):
             painter.drawText(self.rect(), Qt.AlignCenter, "Open a photo")
             painter.end()
             return
-        painter.drawPixmap(0, 0, self._photo)
-        # tint the hidden (black) areas red so the mask is visible
-        if self._overlay is not None:
-            painter.drawPixmap(0, 0, self._overlay)
+        if self._mask is not None:
+            painter.drawImage(0, 0, self._mask)
         # brush cursor
         if self._hover is not None:
             painter.setPen(QPen(QColor(57, 255, 20), 1))

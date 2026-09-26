@@ -12,19 +12,66 @@ from PIL import Image
 
 import photo_manager
 import slapper_provenance
+import snap_site_settings
 
 
 CONTRACT_VERSION = 1
 
 
+def suggested_stem(document):
+    """Human filename suggestion, without project or image extensions."""
+    remembered = str(getattr(document, "output_title", "") or "").strip()
+    if remembered:
+        return remembered
+    naming_path = (getattr(document, "project_path", "") or
+                   getattr(document, "recorded_source_path", "") or
+                   document.source_path)
+    stem = os.path.splitext(os.path.basename(naming_path))[0]
+    # A project may have been named from an image as ``title.tif.slapper``.
+    # Do not offer the user a misleading ``title.tif.jpg`` blog filename.
+    nested, extension = os.path.splitext(stem)
+    if extension.lower() in {".jpg", ".jpeg", ".png", ".tif", ".tiff",
+                             ".webp", ".bmp", ".raw", ".dng", ".cr2",
+                             ".cr3", ".nef", ".orf", ".arw", ".rw2"}:
+        stem = nested
+    return stem or "blog-copy"
+
+
+def safe_filename_stem(value):
+    """Keep a human title while excluding Windows path/control characters."""
+    stem = "".join("_" if char in '<>:"/\\|?*' or ord(char) < 32 else char
+                   for char in str(value or "")).strip().rstrip(". ")
+    if not stem:
+        raise ValueError("Enter a filename for the blog copy.")
+    return stem
+
+
 def profile_policy(profile):
     extras = dict(profile.get("extras") or {})
     capabilities = dict(extras.get("capabilities") or {})
-    staging = (extras.get("local_uploads_dir") or
+    portable = dict(profile.get("portable") or {})
+    # The machine-local workflow belongs to SNAP HQ's shared site settings.
+    # SYBU already consumes this contract; SNAP SLAPPER must not look only for
+    # obsolete profile extras and incorrectly report the same blog unconfigured.
+    handoff = snap_site_settings.handoff_paths(
+        profile.get("site_url", ""), create=False)
+    staging = (handoff.get("upload") or
+               extras.get("local_uploads_dir") or
                extras.get("slapper_staging_dir") or "").strip()
-    width = int(capabilities.get("max_image_width") or extras.get("max_image_width") or 2048)
-    height = int(capabilities.get("max_image_height") or extras.get("max_image_height") or 2048)
-    quality = int(capabilities.get("preferred_quality") or extras.get("preferred_quality") or 90)
+    # Current blog/HUB profiles use the server's actual setting names.  Keep
+    # support for the proposed capability aliases, but never ignore the live
+    # portable mirror and silently substitute 2048/90.
+    width = int(capabilities.get("max_image_width") or
+                extras.get("max_image_width") or
+                portable.get("max_width_landscape") or
+                portable.get("max_long_edge") or 2048)
+    height = int(capabilities.get("max_image_height") or
+                 extras.get("max_image_height") or
+                 portable.get("max_height_portrait") or
+                 portable.get("max_long_edge") or 2048)
+    quality = int(capabilities.get("preferred_quality") or
+                  extras.get("preferred_quality") or
+                  portable.get("jpeg_quality") or 90)
     extension = str(capabilities.get("preferred_extension") or
                     extras.get("preferred_extension") or ".jpg").lower()
     if extension not in {".jpg", ".jpeg", ".png", ".webp"}:
@@ -38,6 +85,8 @@ def profile_policy(profile):
     return {
         "contract_version": contract,
         "staging_dir": os.path.abspath(staging) if staging else "",
+        "completed_dir": os.path.abspath(handoff.get("completed", ""))
+        if handoff.get("completed") else "",
         "max_width": max(1, min(30000, width)),
         "max_height": max(1, min(30000, height)),
         "quality": max(40, min(100, quality)),
@@ -51,7 +100,8 @@ def describe(profile):
     policy = profile_policy(profile)
     return (
         f"Blog: {profile.get('name') or profile.get('site_url')}\n"
-        f"Destination: {policy['staging_dir'] or '(not configured in THE HUB)'}\n"
+        f"Upload folder: {policy['staging_dir'] or '(not configured in SNAP HQ)'}\n"
+        f"Completed folder: {policy['completed_dir'] or '(not configured in SNAP HQ)'}\n"
         f"Copy: fits inside {policy['max_width']} × {policy['max_height']} px, "
         f"aspect ratio kept (no crop), "
         f"{policy['extension'].lstrip('.').upper()}, quality {policy['quality']}\n"
@@ -60,7 +110,8 @@ def describe(profile):
         f"{'removed' if policy['strip_gps'] else 'preserved'}")
 
 
-def prepare(document, profile, copyright_text="", destination_override=""):
+def prepare(document, profile, copyright_text="", destination_override="",
+            filename_stem=""):
     policy = profile_policy(profile)
     destination = os.path.abspath(destination_override) if destination_override else policy["staging_dir"]
     if not destination:
@@ -69,11 +120,15 @@ def prepare(document, profile, copyright_text="", destination_override=""):
         raise ValueError(f"The local uploads folder is unavailable: {destination}")
     if not os.access(destination, os.W_OK):
         raise ValueError(f"The local uploads folder is read-only: {destination}")
-    image = document.render()
+    # Render to the actual publishing ceiling. Rendering the full RAW master
+    # and only then shrinking it needlessly consumes enough memory/CPU to
+    # starve Qt and make Windows report the editor as unresponsive.
+    image = document.render((policy["max_width"], policy["max_height"]))
     image.thumbnail((policy["max_width"], policy["max_height"]), Image.Resampling.LANCZOS)
-    stem = os.path.splitext(os.path.basename(document.source_path))[0]
+    stem = safe_filename_stem(filename_stem) if filename_stem else \
+        safe_filename_stem(suggested_stem(document) + "_blog")
     target = photo_manager.unique_path(
-        os.path.join(destination, stem + "_blog" + policy["extension"]))
+        os.path.join(destination, stem + policy["extension"]))
     temporary = target + ".preparing"
     save_options = {}
     image_format = {".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG",

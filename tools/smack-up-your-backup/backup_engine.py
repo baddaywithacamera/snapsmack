@@ -55,6 +55,31 @@ from path_safety import contained_local_path
 # it refuses rather than warns — the line 039/040 drew.
 import os as _os
 import sys as _sys
+
+try:
+    import snap_site_scope   # X-Snap-Site header (mutual-auth A1, SECAUDIT 054)
+except Exception:  # noqa: BLE001
+    # tools/_shared may not be on sys.path yet at this point in the file (each
+    # tool adds it at a different spot). Find it from here; frozen exes bundle
+    # it next to the entry script.
+    import os as _sso, sys as _sss
+    _d = _sso.path.dirname(_sso.path.abspath(__file__))
+    for _up in range(4):
+        _cand = _sso.path.join(_d, "_shared")
+        if _sso.path.isdir(_cand):
+            if _cand not in _sss.path:
+                _sss.path.insert(0, _cand)
+            break
+        _d = _sso.path.dirname(_d)
+    try:
+        import snap_site_scope
+    except Exception:  # noqa: BLE001
+        snap_site_scope = None
+
+
+def _site_scope(site_url):
+    return snap_site_scope.header(site_url) if snap_site_scope else {}
+
 _SHARED_DIR = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', '_shared')
 if _os.path.isdir(_SHARED_DIR) and _SHARED_DIR not in _sys.path:
     _sys.path.insert(0, _SHARED_DIR)
@@ -123,6 +148,7 @@ class SnapSmackSession:
             # Bearer token — no login, no session to time out on long jobs.
             # Validated by core/api-auth.php against snap_ohsnap_keys (key_type).
             self.session.headers["Authorization"] = f"Bearer {self._api_key}"
+            self.session.headers.update(_site_scope(self.site_url))
             self._logged_in = True
 
     def login(self, username: str = "", password: str = "") -> None:
@@ -299,6 +325,7 @@ class SnapSmackSession:
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "User-Agent": "smack-up-your-backup/1.0",
+                **_site_scope(spoke_url),
             },
             stream=True,
             timeout=120,
@@ -656,6 +683,11 @@ class BackupEngine:
         cp        = self._resume_cp  # None for fresh run, populated for resume
         resuming  = cp is not None
 
+        # Bound here, not only inside the fresh-run branch below: Stage 1 (which
+        # creates the authenticated session) lives in the `else`, so a RESUMED run
+        # never set it. See the backup-complete ping at the end of this method.
+        http = None
+
         if resuming:
             # ── Restore state from checkpoint ────────────────────────
             timestamp       = cp.data["timestamp"]
@@ -828,8 +860,22 @@ class BackupEngine:
                     batch_size     = int(self.profile.get("batch_size", 0)),
                 )
             try:
+                if hasattr(ftp, "on_log"):
+                    ftp.on_log = self._log
                 ftp.connect()
             except Exception as e:
+                try:
+                    import ftps_pins
+                    if isinstance(e, ftps_pins.CertificateChanged):
+                        result["certificate_change"] = {
+                            "host": e.host,
+                            "port": int(self.profile.get("ftp_port") or 21),
+                            "old_fp": e.old_fp,
+                            "new_fp": e.new_fp,
+                            "why": e.why,
+                        }
+                except ImportError:
+                    pass
                 result["errors"].append(f"Connection failed: {e}")
                 return result
         else:
@@ -1280,6 +1326,22 @@ class BackupEngine:
             # no api_key, and if the re-login didn't stick the POST hit the
             # endpoint unauthenticated, got redirected to a 200 HTML login page,
             # and resp.json() blew up with "Expecting value: line 1 column 1".
+            # A resumed run whose media was already fully downloaded never built
+            # a session: Stage 1 only runs on a fresh run, and the HTTP media
+            # client is only created when files still need pulling. The ping then
+            # died with "cannot access local variable 'http'" and the site never
+            # learned the backup had finished — its dashboard kept showing a stale
+            # last-backup time for a backup that was actually good (Sean, 2026-09-23).
+            if http is None:
+                http = SnapSmackSession(
+                    self.profile["site_url"],
+                    config_module.effective_backup_key(self.profile),
+                    self.profile.get("login_slug", "snap-in"),
+                )
+                http.login(
+                    self.profile.get("snap_admin_user", ""),
+                    self.profile.get("snap_admin_pass", ""),
+                )
             http.report_backup_complete(status_str, size_b, dest)
             self._log(f"Reported backup status to site: {status_str}.")
         except Exception as e:

@@ -12,6 +12,11 @@ visible, so a hidden strip costs nothing.
 
 import os
 
+import editor_engine
+import photo_manager
+import raw_preview
+import snap_home
+
 from PySide6.QtCore import Qt, QObject, QPoint, QRunnable, QThreadPool, Signal, QSize, QTimer
 from PySide6.QtGui import QImage, QPixmap, QIcon
 from PySide6.QtWidgets import QListWidget, QListWidgetItem
@@ -25,7 +30,8 @@ except Exception:  # noqa: BLE001
     import logging
     _log = logging.getLogger("snapsmack.snap_slapper")
 
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp", ".bmp", ".gif"}
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp", ".bmp", ".gif"} | \
+    set(photo_manager.RAW_EXTENSIONS)
 THUMB_SOURCE = 160   # thumbnails are generated at this size, displayed smaller
 ICON = 84            # on-screen frame size
 STRIP_HEIGHT = 120   # fixed strip height (frame + a little chrome)
@@ -50,12 +56,25 @@ class _ThumbTask(QRunnable):
 
     def run(self):
         try:
-            with Image.open(self.path) as source:
+            recovery = photo_manager.recovery_path(
+                os.path.join(snap_home.shared_library(), "snap_slapper", "edits"),
+                self.path)
+            image = None
+            if os.path.isfile(recovery):
                 try:
-                    source.draft("RGB", (THUMB_SOURCE, THUMB_SOURCE))
-                except Exception:  # noqa: BLE001 — draft is a speed hint only
-                    pass
-                image = ImageOps.exif_transpose(source).convert("RGBA")
+                    image = editor_engine.project_thumbnail(recovery)
+                except ValueError:
+                    # Old recoveries predate embedded previews.
+                    image = None
+            if image is None and os.path.splitext(self.path)[1].lower() in photo_manager.RAW_EXTENSIONS:
+                image = ImageOps.exif_transpose(raw_preview.render(self.path)).convert("RGBA")
+            elif image is None:
+                with Image.open(self.path) as source:
+                    try:
+                        source.draft("RGB", (THUMB_SOURCE, THUMB_SOURCE))
+                    except Exception:  # noqa: BLE001 — draft is a speed hint only
+                        pass
+                    image = ImageOps.exif_transpose(source).convert("RGBA")
             image.thumbnail((THUMB_SOURCE, THUMB_SOURCE), Image.Resampling.LANCZOS)
             data = image.tobytes("raw", "RGBA")
             qimage = QImage(data, image.width, image.height,

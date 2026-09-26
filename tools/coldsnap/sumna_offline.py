@@ -128,6 +128,7 @@ class DraftImage:
     remote_path:  str = ""    # img_uploads/YYYY/MM/... assigned by the server on sync
     remote_thumb_square: str = ""   # server thumb path after upload
     remote_thumb_aspect: str = ""
+    remote_image_id: int = 0  # existing Gallery id when revising a published post
     alt:          str = ""    # per-image accessibility ALT — travels WITH the
                               # image (snap_images.img_alt), never the post
     # Complete per-image enrichment bundle.  Some post types and skins expose
@@ -200,6 +201,8 @@ class Draft:
     alt:        str = ""                  # accessibility ALT (screen-reader) -> img_alt
     color_mode: str = ""                  # 'color' | 'bw' | '' — search/filter tag -> img_color_mode
     tags:       str = ""                  # space-separated #hashtags
+    category_ids: List[int] = field(default_factory=list)  # preserve remote post groups
+    album_ids: List[int] = field(default_factory=list)
     post_date:  str = ""                  # "YYYY-MM-DD HH:MM:SS"; blank => now on sync
     img_status: str = "published"         # published | draft (server-side post status)
     # Solo extras (mirror smack-post-solo.php form fields).
@@ -269,7 +272,7 @@ class Draft:
             if len(self.images) > SMACKTALK_BUCKET_MAX:
                 problems.append(f"bucket has {len(self.images)} images (max {SMACKTALK_BUCKET_MAX})")
         for i, im in enumerate(self.images):
-            if not im.local_path or not os.path.isfile(im.local_path):
+            if (not im.local_path or not os.path.isfile(im.local_path)) and not im.remote_image_id:
                 problems.append(f"image {i + 1} missing on disk: {im.local_path}")
         if self.kind == KIND_GRAM_CAROUSEL and len(self.images) > CAROUSEL_MAX_IMAGES:
             problems.append(f"carousel has {len(self.images)} images (max {CAROUSEL_MAX_IMAGES})")

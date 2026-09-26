@@ -194,7 +194,7 @@ if ($_wwi_post_slug || $_wwi_post_id) {
     <article class="post-container h-entry">
         <?php snapsmack_indieweb_longform_properties($_wwi_post, $settings); ?>
 
-        <?php if (!empty($_wwi_post['featured_image_path'])):
+        <?php if (!empty($_wwi_post['featured_image_path']) && (int)($_wwi_post['show_featured_image'] ?? 1) === 1):
             // Cover framed to WRITING WITH IMPACT's shape (4:3) with the post's pan/zoom (must match manifest cover_aspect).
             $_cpx = isset($_wwi_post['cover_pos_x']) ? (int)$_wwi_post['cover_pos_x'] : 50;
             $_cpy = isset($_wwi_post['cover_pos_y']) ? (int)$_wwi_post['cover_pos_y'] : 50;

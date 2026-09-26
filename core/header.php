@@ -161,6 +161,7 @@ if (!function_exists('_snap_nav_render_items')) {
         $sep   = '<span class="sep">|</span>';
         foreach ($items as $item) {
             if (isset($item['active']) && !$item['active']) continue;
+            if (($item['type'] ?? '') === 'challenge_feed') continue; // retired: history now lives on The Board
             $children = array_filter($item['children'] ?? [], fn($c) => !isset($c['active']) || $c['active']);
             $has_kids = !empty($children) && $depth < 2;
             $li_class = $has_kids ? ' class="nav-has-children"' : '';
@@ -225,11 +226,6 @@ $_use_json_nav = is_array($_nav_items) && count($_nav_items) > 0;
         <?php if (($settings['blogroll_enabled'] ?? '1') == '1'): ?>
             <?php echo $sep; ?>
             <a href="<?php echo BASE_URL; ?>blogroll.php">BLOGROLL</a>
-        <?php endif; ?>
-
-        <?php if (($settings['photochallenge_feed_enabled'] ?? '0') === '1'): ?>
-            <?php echo $sep; ?>
-            <a href="<?php echo BASE_URL; ?>challenge-feed">FEED</a>
         <?php endif; ?>
 
         <?php if (!empty($dynamic_pages)): ?>

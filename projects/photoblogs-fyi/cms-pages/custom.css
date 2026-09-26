@@ -53,6 +53,15 @@ body.static-transmission .static-content {
 .page-slug-directory .static-content,
 .page-slug-feed .static-content { max-width: 72rem !important; }
 
+/* Give About room for its two paths while keeping paragraphs readable. */
+.page-slug-about .static-content { width: min(100%, 76rem) !important; max-width: 76rem !important; }
+.page-slug-about .description { width: 100% !important; max-width: 100% !important; }
+.page-slug-about .pbf-lede,
+.page-slug-about .pbf-sub,
+.page-slug-about .description > p:not(.pbf-kicker):not(.pbf-wordmark):not(.pbf-tagline) { max-width: 75ch; }
+.page-slug-about .pbf-how { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 620px) { .page-slug-about .pbf-how { grid-template-columns: 1fr; } }
+
 /* -------------------------------- directory page: old-Yahoo-style text index */
 .pbf-directory-head { padding:0 0 1.5rem;border-bottom:1px solid var(--pbf-line); }
 .pbf-directory-head h1 { margin:0;font:900 clamp(2.1rem,7vw,3.8rem)/.95 'Arial Black',Arial,sans-serif;text-transform:uppercase; }
@@ -67,15 +76,17 @@ body.static-transmission .static-content {
 .pbf-directory-topics a.on { color:#fff;background:var(--pbf-red);border-color:var(--pbf-red); }
 .pbf-directory-topics b { margin-left:.3rem;color:var(--pbf-muted);font-size:.8em; }
 .pbf-directory-table-wrap { width:100%;overflow-x:auto;border-top:1px solid var(--pbf-line); }
-.pbf-directory-table { width:100%;border-collapse:collapse;text-align:left; }
-.pbf-directory-table th,.pbf-directory-table td { padding:.8rem .7rem;border-bottom:1px dotted #3a3a3a;vertical-align:top; }
-.pbf-directory-table thead th { color:#777;font:700 .68rem/1 'Courier New',monospace;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap; }
-.pbf-directory-table tbody th { min-width:14rem;font:900 1rem/1.3 'Arial Black',Arial,sans-serif; }
+.pbf-directory-table { width:100%;border-collapse:collapse;text-align:left;table-layout:auto; }
+.pbf-directory-table th,.pbf-directory-table td { padding:1rem .85rem;border-bottom:1px dotted #3a3a3a;vertical-align:top; }
+.pbf-directory-table thead th { color:#999;font:700 .78rem/1.2 'Courier New',monospace;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap; }
+.pbf-directory-table tbody th { width:38%;min-width:16rem;font:900 1rem/1.35 'Arial Black',Arial,sans-serif; }
 .pbf-directory-table tbody th > a { color:var(--pbf-ink);text-decoration:underline;text-decoration-color:var(--pbf-red);text-underline-offset:3px; }
-.pbf-directory-table tbody th small { display:block;margin-top:.2rem;color:#777;font:400 .68rem/1.3 'Courier New',monospace; }
-.pbf-directory-table tbody td { color:#aaa;font:.72rem/1.5 'Courier New',monospace; }
-.pbf-directory-table tbody td a { color:#ccc;text-decoration:underline;text-decoration-color:#555; }
-.pbf-directory-number { text-align:right;white-space:nowrap; }
+.pbf-directory-table tbody th small { display:block;margin-top:.3rem;color:#888;font:400 .74rem/1.35 'Courier New',monospace;overflow-wrap:anywhere; }
+.pbf-directory-table tbody td { color:#bbb;font:.82rem/1.55 'Courier New',monospace; }
+.pbf-directory-table tbody td a { color:#ddd;text-decoration:underline;text-decoration-color:#666; }
+.pbf-directory-table tbody td:nth-child(2) { width:28%; }
+.pbf-directory-table tbody td:last-child { white-space:nowrap; }
+.pbf-directory-number { width:6rem;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums; }
 .pbf-directory-empty { padding:2rem 0;color:var(--pbf-muted); }
 .pbf-directory-join { margin:2.5rem 0 0;color:var(--pbf-muted);font-size:.92rem; }
 
@@ -217,13 +228,13 @@ body.static-transmission .description li { margin: 0 0 .5rem; }
   letter-spacing: .2em;
 }
 .pbf-how h3 {
-  font: 900 .92rem/1.2 'Arial Black', Arial, sans-serif;
+  font: 900 1.08rem/1.25 'Arial Black', Arial, sans-serif;
   text-transform: uppercase;
   letter-spacing: .03em;
   margin: 5px 0 7px;
   color: var(--pbf-ink);
 }
-.pbf-how p { font-size: .9rem; line-height: 1.55; color: var(--pbf-muted); margin: 0; }
+.pbf-how p { font-size: 1rem; line-height: 1.6; color: var(--pbf-muted); margin: 0; }
 
 .pbf-badge-line { margin: 2.75rem 0 0; }
 .pbf-badge {
@@ -299,10 +310,11 @@ body.homepage-static .pbf-how  { max-width: 48em; margin-left: auto; margin-righ
    footer to the old static reference (transparent, 3px red top rule, centred monospace grey).
    IDs + !important are needed to beat the skin's own id-scoped !important footer rules. */
 body.homepage-static #scroll-stage { display: flex !important; flex-direction: column !important; overflow-y: auto !important; }
-body.homepage-static #scroll-stage .static-content { flex: 0 0 auto !important; overflow: visible !important; max-width: 1060px !important; padding-top: 12px !important; padding-bottom: 10px !important; }
-body.homepage-static .pbf-lede { max-width: 44em !important; }
-body.homepage-static .pbf-sub  { max-width: 60em !important; }
-body.homepage-static .pbf-how  { max-width: 62em !important; margin-top: 2.0rem !important; }
+body.homepage-static #scroll-stage .static-content { flex: 0 0 auto !important; overflow: visible !important; width: min(calc(100% - 40px), 1200px) !important; max-width: 1200px !important; margin-top: 0 !important; padding-top: 12px !important; padding-bottom: 10px !important; }
+body.homepage-static .description { width: 100% !important; max-width: 100% !important; }
+body.homepage-static .pbf-lede { max-width: 58em !important; }
+body.homepage-static .pbf-sub  { max-width: 72em !important; }
+body.homepage-static .pbf-how  { max-width: none !important; margin-top: 1.25rem !important; }
 body.homepage-static .pbf-rule { margin-top: 1.3rem !important; margin-bottom: 1.3rem !important; }
 body.homepage-static .pbf-tagline { margin-top: 1.0rem !important; }
 body.homepage-static .pbf-kicker { margin-bottom: 1.35rem !important; }
