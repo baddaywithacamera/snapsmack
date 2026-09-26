@@ -84,6 +84,12 @@ RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    # HSTS + CSP were sent only by core/http-security-headers.php, and on many
+    # sites that PHP step was skipped for some responses (fleet check 2026-09-26:
+    # 12 of 28 sites without them, varying from one check to the next). The web
+    # server now sends them on every response too. Same values as the PHP file.
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    Header always set Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
     <FilesMatch "\.(sql|log|bak|inc|sh|env|json|sbc)$">
         Header set X-Robots-Tag "noindex, nofollow"
     </FilesMatch>

@@ -39,8 +39,12 @@ if (!preg_match('/<FilesMatch "\^\(db\|auth-smack\|constants\|release-pubkey\|up
 // 4. Live: no web-server rules at all, a direct request gets 404 and no body.
 $port = 18000 + random_int(0, 999);
 $php  = PHP_BINARY;
-$cmd  = sprintf('"%s" -S 127.0.0.1:%d -t "%s"', $php, $port, $root);
-$proc = proc_open($cmd, [0 => ['pipe', 'r'], 1 => ['file', 'NUL', 'w'], 2 => ['file', 'NUL', 'w']], $pipes);
+// Array form = no shell in between, so proc_terminate() stops the server itself.
+// (The string form ran it under cmd.exe on Windows; terminating killed only cmd,
+// the server lived on holding the output pipe, and every test run hung.)
+$null = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
+$proc = proc_open([$php, '-S', "127.0.0.1:$port", '-t', $root],
+                  [0 => ['pipe', 'r'], 1 => ['file', $null, 'w'], 2 => ['file', $null, 'w']], $pipes);
 if (!is_resource($proc)) {
     $failures[] = 'could not start the PHP test server';
 } else {
@@ -55,6 +59,7 @@ if (!is_resource($proc)) {
         if ($code !== 404) $failures[] = "direct request to core/$f.php returned $code, expected 404";
         if (trim((string)$body) !== '') $failures[] = "direct request to core/$f.php returned a body";
     }
+    foreach ($pipes as $p) { @fclose($p); }
     proc_terminate($proc);
     proc_close($proc);
 }
