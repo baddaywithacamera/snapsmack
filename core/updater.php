@@ -2384,8 +2384,8 @@ function updater_check_skin_registry(PDO $pdo, bool $fast = false): array {
     $updated_skins = [];
 
     foreach ($remote['skins'] as $slug => $skin) {
-        // Skip development skins
-        if (($skin['status'] ?? '') === 'development') continue;
+        // Skip development and self-managed mobile infrastructure skins.
+        if (($skin['status'] ?? '') === 'development' || !empty($skin['features']['mobile_only'])) continue;
 
         if (!isset($local[$slug])) {
             // Brand new skin not installed locally
@@ -2411,43 +2411,37 @@ function updater_check_skin_registry(PDO $pdo, bool $fast = false): array {
         }
     }
 
-    // ── AUTO-REPAIR / AUTO-UPDATE: mandatory mobile skin ─────────────────────
-    // The mobile skin (Photogram) is hidden from the gallery, so an admin can
-    // never click to install OR update it. The updater self-heals on every
-    // non-fast page load: it (re)installs the registry copy whenever the local
-    // skin is MISSING, or OLDER than the registry version. skin_registry_install()
-    // removes any existing dir first (see its "update scenario" branch), so this
-    // is a safe in-place overwrite. Because it's handled here, the skin is also
-    // dropped from the manual "update available" notifications below — there is
-    // no gallery row for the admin to act on anyway.
-    if (defined('SNAPSMACK_MOBILE_SKIN') && SNAPSMACK_MOBILE_SKIN !== '') {
-        $mobile_slug  = SNAPSMACK_MOBILE_SKIN;
-        $mobile_dir   = dirname(__DIR__) . '/skins/' . $mobile_slug;
-        $mobile_entry = $remote['skins'][$mobile_slug] ?? null;
+    // ── AUTO-REPAIR / AUTO-UPDATE: mode-specific mobile skin ────────────────
+    // Longform SMACKTALK sites require TELEGRAM; the photo-oriented modes use
+    // PHOTOGRAM. These infrastructure skins are hidden from the normal gallery,
+    // so the updater installs or refreshes the one this site actually needs.
+    try {
+        $site_mode = (string)($pdo->query(
+            "SELECT setting_val FROM snap_settings WHERE setting_key = 'site_mode' LIMIT 1"
+        )->fetchColumn() ?: 'photoblog');
+    } catch (Throwable $e) {
+        $site_mode = 'photoblog';
+    }
+    $mobile_slug  = ($site_mode === 'smacktalk')
+        ? 'telegram'
+        : (defined('SNAPSMACK_MOBILE_SKIN') ? SNAPSMACK_MOBILE_SKIN : 'photogram');
+    $mobile_dir   = dirname(__DIR__) . '/skins/' . $mobile_slug;
+    $mobile_entry = $remote['skins'][$mobile_slug] ?? null;
 
-        $mobile_missing  = !is_dir($mobile_dir);
-        $mobile_outdated = !$mobile_missing
-            && isset($mobile_entry['version'], $local[$mobile_slug]['version'])
-            && snap_version_compare($mobile_entry['version'], $local[$mobile_slug]['version'], '>');
+    $mobile_missing  = !is_dir($mobile_dir);
+    $mobile_outdated = !$mobile_missing
+        && isset($mobile_entry['version'], $local[$mobile_slug]['version'])
+        && snap_version_compare($mobile_entry['version'], $local[$mobile_slug]['version'], '>');
 
-        if (($mobile_missing || $mobile_outdated) && !empty($mobile_entry['download_url'])) {
-            skin_registry_install(
-                $mobile_slug,
-                $mobile_entry['download_url'],
-                $mobile_entry['signature'] ?? '',
-                defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : ''
-            );
-            // Recompile the mobile skin's option CSS against the fresh manifest
-            // (the skin is never active, so the normal save-time compiler never
-            // touches it — see core/skin-compile-mobile.php).
-            require_once __DIR__ . '/skin-compile-mobile.php';
-            try { snapsmack_compile_mobile_css($pdo); } catch (Throwable $e) { /* non-fatal */ }
-            // Self-handled — don't also surface it as a manual update notice.
-            $updated_skins = array_values(array_filter(
-                $updated_skins,
-                static fn(array $s): bool => ($s['slug'] ?? '') !== $mobile_slug
-            ));
-        }
+    if (($mobile_missing || $mobile_outdated) && !empty($mobile_entry['download_url'])) {
+        skin_registry_install(
+            $mobile_slug,
+            $mobile_entry['download_url'],
+            $mobile_entry['signature'] ?? '',
+            defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : ''
+        );
+        require_once __DIR__ . '/skin-compile-mobile.php';
+        try { snapsmack_compile_mobile_css($pdo, $mobile_slug); } catch (Throwable $e) { /* non-fatal */ }
     }
 
     return [

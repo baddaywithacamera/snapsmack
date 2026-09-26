@@ -23,7 +23,18 @@
 
         toggle.addEventListener('click', function () {
             var open = toggle.classList.toggle('active');
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
             drawer.style.display = open ? 'block' : 'none';
+        });
+
+        // Escape closes the drawer and returns focus to the menu button.
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && toggle.classList.contains('active')) {
+                toggle.classList.remove('active');
+                toggle.setAttribute('aria-expanded', 'false');
+                drawer.style.display = 'none';
+                toggle.focus();
+            }
         });
 
         // Close drawer on outside click
@@ -31,6 +42,7 @@
             if (!toggle.contains(e.target) && !drawer.contains(e.target)) {
                 if (toggle.classList.contains('active')) {
                     toggle.classList.remove('active');
+                    toggle.setAttribute('aria-expanded', 'false');
                     drawer.style.display = 'none';
                 }
             }

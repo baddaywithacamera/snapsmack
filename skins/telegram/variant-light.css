@@ -1,0 +1,20 @@
+/**
+ * SNAPSMACK - Light variant stub for the Alfred skin
+ * v1.0.0
+ *
+ * Alfred has no light variant. This file is a stub so that any generic
+ * skin loading code that constructs a variant-{active_variant}.css URL
+ * does not produce a 404. If a user somehow selects 'light', they get
+ * the same appearance as the default dark-nav skin.
+ */
+
+/*
+ * SNAPSMACK_EOF_HEADER
+ * Last non-empty line of this file MUST be: /* ===== SNAPSMACK EOF ===== */
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+
+/* No overrides — Alfred is always dark-nav / white-content. */
+
+/* ===== SNAPSMACK EOF ===== */
