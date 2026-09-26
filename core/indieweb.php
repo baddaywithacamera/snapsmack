@@ -101,6 +101,10 @@ function snapsmack_indieweb_longform_properties(array $post, array $settings): v
 
     echo '<span class="snapsmack-indieweb-properties" hidden aria-hidden="true">';
     echo '<a class="u-url" href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '"></a>';
+    $photo = ltrim(trim((string)($post['featured_image_path'] ?? '')), '/');
+    if ($photo !== '') {
+        echo '<a class="u-photo" href="' . htmlspecialchars($base . $photo, ENT_QUOTES, 'UTF-8') . '"></a>';
+    }
     echo '<span class="p-author h-card"><a class="p-name u-url" href="'
        . htmlspecialchars($base, ENT_QUOTES, 'UTF-8') . '">'
        . htmlspecialchars($site, ENT_QUOTES, 'UTF-8') . '</a></span>';
