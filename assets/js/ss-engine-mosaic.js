@@ -428,7 +428,55 @@
         }
     }
 
+    function mergeAdjacentMosaics() {
+        document.querySelectorAll('[data-merge-adjacent-mosaics]').forEach(function (scope) {
+            var mosaics = Array.prototype.slice.call(scope.children).filter(function (child) {
+                return child.matches('.snap-mosaic[data-mosaic]');
+            });
+
+            mosaics.forEach(function (first) {
+                if (!first.isConnected) return;
+
+                var images;
+                try {
+                    images = JSON.parse(first.getAttribute('data-mosaic') || '[]');
+                } catch (error) {
+                    return;
+                }
+                if (!Array.isArray(images)) return;
+
+                var cursor = first.nextElementSibling;
+                var emptyBridges = [];
+                while (cursor) {
+                    if (cursor.matches('p:empty')) {
+                        emptyBridges.push(cursor);
+                        cursor = cursor.nextElementSibling;
+                        continue;
+                    }
+                    if (!cursor.matches('.snap-mosaic[data-mosaic]')) break;
+
+                    try {
+                        var nextImages = JSON.parse(cursor.getAttribute('data-mosaic') || '[]');
+                        if (!Array.isArray(nextImages)) break;
+                        images = images.concat(nextImages);
+                    } catch (error) {
+                        break;
+                    }
+
+                    emptyBridges.forEach(function (bridge) { bridge.remove(); });
+                    emptyBridges = [];
+                    var merged = cursor;
+                    cursor = cursor.nextElementSibling;
+                    merged.remove();
+                }
+
+                first.setAttribute('data-mosaic', JSON.stringify(images));
+            });
+        });
+    }
+
     function initMosaics() {
+        mergeAdjacentMosaics();
         var containers = Array.prototype.slice.call(document.querySelectorAll('.snap-mosaic[data-mosaic]'));
         if (containers.length === 0) return;
 
