@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.761D — 2026-09-26 — Clean swap
+
+- **Skin updates recover from mismatched file ownership without manual server edits.** The signed registry installer now moves the existing skin directory aside, installs and validates the replacement, rolls back on failure, and then removes the retired copy when permissions allow. This repairs the PHOTOGRAM directory on Fauxlaroid through the supported updater path.
+
 ## 0.7.760D — 2026-09-26 — Continuity
 
 - **MOSAIC: adjacent saved bundles can render as one continuous wall.** The shared engine now merges consecutive MOSAIC blocks only when the page explicitly opts in, preserving image order and stopping at real text. TILEZ requests that engine behavior with markup; it ships no JavaScript.
