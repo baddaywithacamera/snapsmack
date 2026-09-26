@@ -12,6 +12,8 @@
 ## 0.7.749D — 2026-09-25 — Welcome back
 
 - Images no longer remain black after switching away from a browser tab and returning. The shared fade engine now reconciles completed images on tab visibility restore and browser page restore, covering loads Chrome completed while the page was suspended without delivering the original callback.
+- Longform cover selection defaults to the current post's image bucket and visibly offers a switch to all Gallery images.
+- TILEZ 0.2.13 preserves its established horizontal menu and adds SCROLL's round Home, About, Blogroll, and Search controls at the top right.
 
 ## 0.7.748D — 2026-09-25 — Easy reading
 

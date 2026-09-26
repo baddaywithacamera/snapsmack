@@ -174,12 +174,17 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
     <h1 class="blog-title"><a href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars($site_display_name); ?></a></h1>
 <?php endif; ?>
 <nav class="tilez-icon-nav" aria-label="Quick navigation">
-    <a href="<?php echo BASE_URL; ?>" title="Home" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></a>
-    <a href="https://old.baddaywithacamera.ca/the-idea/" title="The Idea" aria-label="The Idea"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.1"/></svg></a>
-    <a href="https://old.baddaywithacamera.ca/category/diary/" title="Diary" aria-label="Diary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></a>
-    <a href="<?php echo BASE_URL; ?>archive.php" title="Categories" aria-label="Categories"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="18" r="1"/><path d="M9 6h10M9 12h10M9 18h10"/></svg></a>
-    <a href="<?php echo BASE_URL; ?>albums.php" title="Albums" aria-label="Albums"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h7l2 2h9v11H3z"/></svg></a>
-    <a href="<?php echo BASE_URL; ?>?view=archive" title="Images" aria-label="Images"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><circle cx="9" cy="10" r="2"/><path d="m5 18 5-5 3 3 2-2 4 4"/></svg></a>
+    <a href="<?php echo BASE_URL; ?>" title="Home" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></a>
+    <a href="<?php echo BASE_URL; ?>about" title="About" aria-label="About"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="12" y1="11" x2="12" y2="16.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.05" fill="currentColor"/></svg></a>
+    <a href="<?php echo BASE_URL; ?>blogroll.php" title="Blogroll" aria-label="Blogroll"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="1.5" fill="currentColor"/><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="5" cy="18" r="1.5" fill="currentColor"/><path d="M9 6h11M9 12h11M9 18h11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></a>
+    <details class="tilez-nav-search">
+        <summary title="Search" aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m15.5 15.5 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></summary>
+        <form class="tilez-nav-search-panel" method="get" action="<?php echo BASE_URL; ?>archive.php">
+            <label class="screen-reader-text" for="tilez-nav-search-input">Search photographs</label>
+            <input id="tilez-nav-search-input" type="search" name="q" placeholder="<?php echo htmlspecialchars($settings['search_placeholder'] ?? 'Search or #tag…'); ?>" autocomplete="off">
+            <button type="submit">GO</button>
+        </form>
+    </details>
 </nav>
 <?php $alfred_tagline = trim($settings['site_tagline'] ?? ''); if ($alfred_tagline !== '' && ($settings['show_tagline'] ?? '1') === '1'): ?>
     <p class="blog-description"><?php echo htmlspecialchars($alfred_tagline); ?></p>
@@ -202,7 +207,6 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
 
         <!-- Mobile toggle -->
         <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
-            <span class="nav-toggle-label">MENU</span>
             <div class="bars" aria-hidden="true">
                 <span class="bar"></span>
                 <span class="bar"></span>
