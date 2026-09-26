@@ -63,7 +63,7 @@ function community_current_user(): ?array {
           AND u.status = 'active'
         LIMIT 1
     ");
-    $stmt->execute([$token]);
+    $stmt->execute([community_token_hash($token)]);
     $user = $stmt->fetch();
 
     if (!$user) {
@@ -128,7 +128,7 @@ function community_login(int $user_id): string {
     $pdo->prepare("
         INSERT INTO snap_community_sessions (user_id, token, expires_at, ip, user_agent)
         VALUES (?, ?, ?, ?, ?)
-    ")->execute([$user_id, $token, $expires, $ip, $ua]);
+    ")->execute([$user_id, community_token_hash($token), $expires, $ip, $ua]);
 
     community_set_cookie($token, $days);
 
@@ -147,7 +147,7 @@ function community_logout(): void {
     $token = $_COOKIE[COMMUNITY_COOKIE_NAME] ?? null;
     if ($token) {
         $pdo->prepare("DELETE FROM snap_community_sessions WHERE token = ?")
-            ->execute([$token]);
+            ->execute([community_token_hash($token)]);
     }
     community_clear_cookie();
 }
@@ -175,6 +175,21 @@ function community_logout_all(int $user_id): void {
 // ---------------------------------------------------------------------------
 function community_generate_token(): string {
     return bin2hex(random_bytes(64));
+}
+
+
+// ---------------------------------------------------------------------------
+// community_token_hash($raw)
+//
+// What the database stores for a session / email-link token: its SHA-256 hex.
+// The raw token lives only in the visitor's cookie or email link, so a leaked
+// database row cannot be replayed as a login (SECAUDIT 049, carried into 050,
+// closed 2026-09-26 — same scheme as snap_totp_devices). The hash is exactly
+// 64 characters, which is also the column width: the raw 128-character token
+// never fitted the varchar(64) column it was being written to.
+// ---------------------------------------------------------------------------
+function community_token_hash(string $raw): string {
+    return hash('sha256', $raw);
 }
 
 

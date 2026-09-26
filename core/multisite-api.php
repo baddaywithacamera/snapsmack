@@ -1470,6 +1470,10 @@ if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
 
     // Create the image record
     try {
+        // Photo + its post in one transaction (post model: a photo posted from
+        // the hub is a post at birth, like one posted on the spoke itself).
+        require_once __DIR__ . '/post-model.php';
+        $pdo->beginTransaction();
         $stmt = $pdo->prepare("
             INSERT INTO snap_images (
                 img_title, img_slug, img_file, img_description,
@@ -1483,7 +1487,10 @@ if ($resource === 'posts' && $sub_action === 'create' && $method === 'POST') {
             $img_w, $img_h,
         ]);
         $new_id = $pdo->lastInsertId();
-    } catch (\PDOException $e) {
+        snap_postmodel_wrap_image($pdo, (int)$new_id);
+        $pdo->commit();
+    } catch (\Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
         @unlink($filepath);  // Clean up saved image on DB failure
         ms_err('Database error: ' . $e->getMessage());
     }
