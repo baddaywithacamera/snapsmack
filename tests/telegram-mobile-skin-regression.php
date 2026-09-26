@@ -24,6 +24,7 @@ $tilezCss = file_get_contents($root . '/skins/tilez/style.css');
 $manifest = json_decode(file_get_contents($root . '/skins/telegram/manifest.json'), true);
 $installer = file_get_contents($root . '/projects/snapsmack-ca/install-manifest.php');
 $updater   = file_get_contents($root . '/core/updater.php');
+$updateUi  = file_get_contents($root . '/smack-update.php');
 $meta      = file_get_contents($root . '/core/meta.php');
 
 tg_check(strpos($index, "=== 'smacktalk'") !== false
@@ -31,11 +32,14 @@ tg_check(strpos($index, "=== 'smacktalk'") !== false
     'SMACKTALK selects TELEGRAM when it is installed');
 tg_check(strpos($index, '$_snapsmack_mobile_skin = SNAPSMACK_MOBILE_SKIN') !== false,
     'mobile routing retains the PHOTOGRAM fallback');
-tg_check(strpos($installer, "(\$mode === 'smacktalk') ? 'telegram' : 'photogram'") !== false,
-    'fresh installs receive the mobile skin for their content mode');
-tg_check(strpos($updater, "(\$site_mode === 'smacktalk')") !== false
-    && strpos($updater, "? 'telegram'") !== false,
-    'existing SMACKTALK installs self-repair TELEGRAM');
+tg_check(strpos($installer, "'smacktalk'            => 'telegram'") !== false
+    && strpos($installer, "'photoblog', 'carousel' => 'photogram'") !== false
+    && strpos($installer, "default                => ''") !== false,
+    'fresh installs map TELEGRAM and PHOTOGRAM only to their blog modes');
+tg_check(strpos($updater, "'smacktalk'             => 'telegram'") !== false
+    && strpos($updater, "'photoblog', 'carousel' => 'photogram'") !== false
+    && strpos($updateUi, "'smacktalk'             => 'telegram'") !== false,
+    'existing blog installs self-repair the correct mobile renderer');
 tg_check(strpos($meta, "'telegram'") !== false
     && strpos($meta, 'snapsmack_mobile_css_target_stamp($_mobile_render_slug)') !== false,
     'TELEGRAM receives mobile skin option CSS');
