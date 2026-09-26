@@ -418,7 +418,10 @@ class SnapSmackExport {
         $tables = [];
         $res = $this->pdo->query("SHOW TABLES");
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
-            if (str_starts_with($row[0], 'snap_')) {
+            // snap_ = the CMS; pc_ = PHOTOFRI.DAY challenge tables (core/photochallenge.php
+            // creates them). pc_ was left out, so no SUYB backup of a challenge site held
+            // its participants, rounds, hall of fame or admissions (found 2026-09-26).
+            if (str_starts_with($row[0], 'snap_') || str_starts_with($row[0], 'pc_')) {
                 $tables[] = $row[0];
             }
         }
