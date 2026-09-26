@@ -327,6 +327,13 @@
                 while (count >= 2 && !solved) {
                     sectionImages = images.slice(index, index + count);
                     solved = preferredBlock(sectionImages, y, containerWidth, gap, emphasis, template);
+                    /* One saved MOSAIC should remain one composition whenever its
+                       photographs fit the hard size ceiling. Relax aesthetic
+                       balance/emphasis preferences before splitting the bundle
+                       into ragged sections with visible empty rectangles. */
+                    if (!solved) {
+                        solved = solveBlock(sectionImages, y, containerWidth, gap, emphasis, false);
+                    }
                     if (!solved) count--;
                 }
                 if (!solved) {

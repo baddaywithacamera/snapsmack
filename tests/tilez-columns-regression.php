@@ -34,11 +34,13 @@ $assert(str_contains($header, "['label' => 'IMAGES'"), 'images menu label is pre
 $assert(str_contains($header, 'class="tilez-icon-nav"'), 'top-right icon navigation is present');
 $assert(str_contains($style, 'font-size: 20px;'), 'desktop text menu is doubled in size');
 $assert(!str_contains($preload, '<figure class="featured-media"'), 'single posts start with their title instead of repeating the archive cover');
-$assert(str_contains($style, 'font-size: clamp(3.25rem, 6vw, 6rem);'), 'single-post title is deliberately large');
+$assert(str_contains($style, '.post-title') && str_contains($style, 'font-size: 2.5em;'), 'single-post title uses the restrained original scale');
 $assert(str_contains($style, '.post-gear-note'), 'closing equipment notes have a readable supporting style');
 $assert(str_contains($style, "font-family: 'Droid Serif', Georgia, 'Times New Roman', serif;"), 'longform body uses an editorial serif stack');
-$assert(str_contains($style, 'font-size: 21px;'), 'desktop longform body is comfortably sized');
+$assert(str_contains($style, 'font-size: 18px;') && str_contains($style, 'font-weight: 400;'), 'desktop longform body is normal-weight and restrained');
 $assert(str_contains($style, 'font-size: 18px; line-height: 1.65;'), 'mobile longform body remains readable');
+$assert(str_contains($style, '.snap-inline-frame:has(+ .snap-inline-frame)'), 'consecutive standalone photographs form desktop pairs');
+$assert(str_contains($style, '+ p:has(+ :is(.snap-inline-frame'), 'paragraphs between media receive symmetrical vertical spacing');
 $assert(is_file($root . '/skins/tilez/assets/bad-day-masthead.png'), 'bundled masthead exists');
 
 echo "PASS: TILEZ white columns portfolio\n";

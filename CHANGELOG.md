@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.758D — 2026-09-26 — TILEZ longform rhythm
+
+- Restores TILEZ's original post-title scale and normal-weight body rhythm.
+- Pairs consecutive standalone photographs on desktop while preserving a single-column mobile layout.
+- Keeps saved MOSAIC bundles edge-filled by relaxing aesthetic preferences before splitting, without exceeding hard image-size limits.
+
 ## 0.7.757D — 2026-09-26 — Last week
 
 - Instant Camera restores the exact engine and pool wiring from September 19, immediately before the September 20 decorative-pool cap and the September 25 compensating width changes.
