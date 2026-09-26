@@ -62,7 +62,7 @@ RED = "#ff6b6b"
 #   QLabel:      Eyebrow, Title, PageTitle, CardTitle, Muted, StatusGood,
 #                StatusWarn, StatusBad
 #   QPushButton: Primary (the one loud action on a page), Danger (destructive),
-#                Nav (sidebar only)
+#                Choice (checkable option buttons, lit when chosen), Nav (sidebar only)
 #   QFrame:      Card
 STYLE = f"""
 QWidget {{ background: {BASE}; color: {INK}; font-family: 'Segoe UI'; font-size: 14px; }}
@@ -87,6 +87,9 @@ QPushButton#Primary:hover {{ background: #8cff65; }}
 QPushButton#Primary:disabled {{ color: #596259; background: #151a16; border-color: #232a24; }}
 QPushButton#Danger {{ color: {RED}; border-color: #6b2a2a; }}
 QPushButton#Danger:hover {{ background: #2a1414; border-color: {RED}; }}
+QPushButton#Choice {{ text-align: left; padding: 10px 18px; min-width: 230px; color: {BODY}; background: #111813; border: 2px solid #34463a; }}
+QPushButton#Choice:hover {{ border-color: {GREEN_DARK}; }}
+QPushButton#Choice:checked {{ color: #071006; background: {GREEN}; border-color: {GREEN}; font-weight: 800; }}
 QPushButton#Nav {{ text-align: left; background: transparent; border: 0; color: {BODY}; padding: 11px 14px; }}
 QPushButton#Nav:checked {{ color: {GREEN}; background: #152219; border-left: 3px solid {GREEN}; }}
 QLineEdit, QComboBox, QTextEdit, QPlainTextEdit, QListWidget, QTreeWidget, QTableWidget, QSpinBox, QTimeEdit, QDateEdit {{ background: #0c110e; border: 1px solid {BORDER}; border-radius: 7px; padding: 8px; selection-background-color: {GREEN_DARK}; }}
@@ -99,6 +102,8 @@ QCheckBox, QRadioButton {{ spacing: 8px; }}
 QCheckBox::indicator, QTreeView::indicator, QListView::indicator, QTableView::indicator {{ width: 18px; height: 18px; border: 2px solid {BODY}; border-radius: 4px; background: #0c110e; }}
 QCheckBox::indicator:checked, QTreeView::indicator:checked, QListView::indicator:checked, QTableView::indicator:checked {{ background: {GREEN}; border-color: {GREEN}; }}
 QCheckBox::indicator:disabled {{ border-color: #3a453c; }}
+QRadioButton::indicator {{ width: 16px; height: 16px; border: 2px solid {BODY}; border-radius: 10px; background: #0c110e; }}
+QRadioButton::indicator:checked {{ background: {GREEN}; border: 2px solid {GREEN}; }}
 """
 
 
