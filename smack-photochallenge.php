@@ -327,11 +327,11 @@ include 'core/sidebar.php';
             <div class="lens-input-wrapper">
                 <label class="pc-inline-check">
                     <input type="checkbox" name="pc_feed_enabled" value="1" <?php echo pc_feed_enabled($settings) ? 'checked' : ''; ?>>
-                    <span><strong>ENABLE PUBLIC FEED PAGE</strong></span>
+                    <span><strong>ENABLE PUBLIC BOARD</strong></span>
                 </label>
-                <p class="dim">Publishes the challenge feed at <code>/board</code>. Menu Manager adds a built-in
-                    <strong>FEED</strong> item to the public navigation; move it there if you want a different position.</p>
-                <label for="pc_feed_layout">FEED LAYOUT</label>
+                <p class="dim">Publishes <code>/board</code> with this week's challenge first, followed by previous
+                    weeks in reverse chronological order. Add the Board page to the public menu where you want it.</p>
+                <label for="pc_feed_layout">BOARD LAYOUT</label>
                 <?php $pc_feed_layout = (($settings['photochallenge_feed_layout'] ?? 'three') === 'masonry') ? 'masonry' : 'three'; ?>
                 <select name="pc_feed_layout" id="pc_feed_layout">
                     <option value="three" <?php echo $pc_feed_layout === 'three' ? 'selected' : ''; ?>>THREE ACROSS</option>

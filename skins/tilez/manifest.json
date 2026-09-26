@@ -1,20 +1,20 @@
 {
     "schema_version": 1,
     "name": "TILEZ",
-    "version": "0.1.5",
+    "version": "0.2.12",
     "author": "Sean McCormick & Claude",
     "author_email": "sean@baddaywithacamera.ca",
-    "description": "A TILEZ-style masonry skin for SMACKTALK sites. Reuses ALFRED's proven longform plumbing (preload.php routing: masonry feed, single post, prev/next, photo archive) but the index is a dynamic varied-tile masonry instead of the square grid. Writing and images at equal billing.",
+    "description": "A quiet white SMACKTALK portfolio inspired by editorial design studios. Longform posts flow through a native-aspect three-column wall powered by SnapSmack's shared columns engine.",
     "status": "beta",
     "modes": [
         "smacktalk"
     ],
     "skin_preload": "preload.php",
     "variants": {
-        "default": "Alfred (Dark Nav / White Content)"
+        "default": "TILEZ (White Editorial Portfolio)"
     },
     "default_variant": "default",
-    "cover_aspect": "1/1",
+    "cover_aspect": "3/2",
     "features": {
         "supports_wall": false,
         "has_landing": false,
@@ -30,6 +30,11 @@
     "require_scripts": [
         "smack-alfred-nav",
         "smack-footer",
+        "smack-image-fade-load",
+        "smack-lazyload",
+        "smack-columns",
+        "smack-rows",
+        "smack-lightbox",
         "smack-community"
     ],
     "community_comments": "1",

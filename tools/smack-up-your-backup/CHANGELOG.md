@@ -19,6 +19,57 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.45 — 2026-09-21
+
+- **A changed FTPS certificate has a complete desktop workflow.** Backup and
+  restore now show why the certificate was refused plus the remembered and new
+  SHA-256 fingerprints. **ACCEPT NEW CERTIFICATE AND RETRY** records the
+  operator's decision and retries the operation. The Connection page can
+  deliberately forget the selected site's saved FTPS certificate without
+  editing JSON beside the executable.
+
+## 0.7.44 — 2026-09-18
+
+### Added — security (SECAUDIT 004 / 037, the "scheduled" item)
+
+- **FTPS certificate memory.** The first time SUYB connects to a site over FTPS
+  it remembers the certificate it was shown. Later connections that show the
+  same certificate carry on. If the certificate is different, SUYB makes one
+  extra connection with full checking turned on: if a public authority vouches
+  for the new certificate, it is a renewal (cheap hosts renew every 60–90 days)
+  and SUYB remembers it quietly, one line in the log. If not — a self-signed
+  certificate swapped for a different one, or something sitting in the middle —
+  SUYB stops BEFORE sending your password and shows you both fingerprints. If
+  you changed the certificate yourself, delete that host's line in
+  `suyb_ftps_pins.json` (next to `suyb.exe`) and connect again. Certificate
+  checking stays off by default, as before; this is memory, not validation.
+  This is the FTPS twin of the SFTP host-key memory from 0.7.18.
+  Tests: `tests/test_ftps_pins.py` (7 checks).
+
+### Fixed — security (SECAUDIT 058 B + D)
+
+- **RESTORE no longer unpacks a backup package blind.** Before touching the
+  disk, every entry in the ZIP is checked: unsafe names (absolute, `..`,
+  drive letters), links/devices, more than 250,000 entries, any single file
+  over 8 GB, or a file that expands more than 200:1 is refused with a plain
+  message. The total expanded size is compared with the free space on the
+  drive (keeping 512 MB spare) before extraction starts. Files are streamed
+  out one at a time under the staging folder, and the staging folder is
+  always deleted afterwards — whether the restore succeeded or failed.
+  Previously a damaged or crafted package could fill the disk before SUYB
+  even looked at the manifest, and left the half-unpacked folder behind.
+- **Tests no longer touch your real Hub profiles.** The credential-vault
+  rollback tests were pulling the operator's real site profiles (real API
+  keys) into a temp folder on every run, which also masked two failing
+  assertions. Isolated; both tests now pass for the right reason.
+  Test file: `tests/test_restore_zip_bounds.py` (10 checks).
+
+## 0.7.43 — 2026-09-13
+
+- Exit package (WordPress / Ghost import files + TYSWY archive) can ride
+  inside every backup — opt-in, off by default. See the root CHANGELOG entry
+  for 0.7.711D.
+
 ## 0.7.42 — 2026-09-13
 
 ### Added — in-app help

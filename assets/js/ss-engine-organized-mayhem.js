@@ -567,8 +567,10 @@
             var rows = Math.max(1, Math.ceil(M / cols));
             cols = Math.ceil(M / rows);                          // cols*rows >= M, fills the field
             var cellW = fieldW / cols, cellH = fieldH / rows;
-            // Print sized well over the cell so rotation + jitter never open a gap.
-            var cardW = Math.max(cellW, cellH) * 1.7;
+            // Size prints from the coverage grid, but respect the skin's
+            // configured maximum.  Ambient mode previously ignored maxWidth,
+            // so a smaller photo pool made prints balloon on wide screens.
+            var cardW = Math.min(maxWidth, Math.max(cellW, cellH) * 1.7);
 
             budget.maxMounted = Math.max(budget.maxMounted, M + 4);
 
@@ -578,7 +580,7 @@
                     var img = pool[idx++];                       // each image exactly once
                     var cx = ox + (c + 0.5) * cellW + rand(-cellW * 0.16, cellW * 0.16);
                     var cy = oy + (r + 0.5) * cellH + rand(-cellH * 0.16, cellH * 0.16);
-                    var w = cardW * rand(0.94, 1.12);
+                    var w = Math.min(maxWidth, cardW * rand(0.94, 1.12));
                     var h = w * rand(0.92, 1.24);
                     var card = {
                         title: img.title || '', src: img.src || '', url: img.url || '#',

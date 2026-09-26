@@ -22,15 +22,9 @@
 
 // --- Skin options ---
 $alfred_header_image = trim($settings['header_image'] ?? '');
-// ALFRED honours its own header_logo skin option first, then falls back to the
-// shared Global Vibe logo settings (header_logo_url, then the masthead site_logo)
-// so a logo uploaded in Global Vibe actually shows — matching photogram and
-// new-horizon, which read header_logo_url. Previously ALFRED read only its own
-// key, so a Global Vibe logo upload had no effect on it.
-// Use ?: (not ??) so an EMPTY skin-option default falls through to the Global Vibe
-// keys. header_logo defaults to '' and ?? only skips null, so the old chain stopped
-// at '' and never read an uploaded header_logo_url/site_logo — logo never showed. (0.7.399)
-$alfred_header_logo  = trim(($settings['header_logo'] ?? '') ?: ($settings['header_logo_url'] ?? '') ?: ($settings['site_logo'] ?? ''));
+// TILEZ ships with the site's commissioned masthead. Do not inherit a logo
+// saved by the previously active skin.
+$alfred_header_logo  = 'skins/tilez/assets/bad-day-masthead.png';
 $alfred_retina_logo  = ($settings['retina_logo'] ?? '0') === '1';
 
 // Build header-image inline style
@@ -146,34 +140,52 @@ if (!function_exists('_alfred_nav_render_items')) {
 // Default nav item builder
 function _alfred_default_nav_items(array $settings, array $alfred_pages): array {
     $base = defined('BASE_URL') ? BASE_URL : '/';
-    $items = [['label' => 'HOME', 'url' => $base]];
-
-    if (($settings['homepage_mode'] ?? 'latest_post') === 'static_page') {
-        $items[] = ['label' => 'BLOG', 'url' => $base . 'blog.php'];
-    }
-
-    $archive_enabled = ($settings['archive_layout'] ?? 'square') !== 'none';
-    if ($archive_enabled) {
-        // ALFRED's ARCHIVE is a grid of INDIVIDUAL PHOTOGRAPHS (snap_images),
-        // rendered by its own preload.php archive branch — not core archive.php
-        // (which shows the generic layout). Route to ALFRED's own view.
-        $items[] = ['label' => 'ARCHIVE', 'url' => $base . '?view=archive'];
-    }
-
-    if (($settings['blogroll_enabled'] ?? '1') == '1') {
-        $items[] = ['label' => 'BLOGROLL', 'url' => $base . 'blogroll.php'];
-    }
-
-    foreach ($alfred_pages as $page) {
-        $items[] = [
-            'label' => strtoupper($page['title']),
-            'url'   => $base . 'page.php?slug=' . rawurlencode($page['slug']),
-        ];
-    }
-
-    return $items;
+    // Keep A Bad Day With A Camera's established navigation during migration.
+    // The three informational destinations stay on the WordPress archive until
+    // their pages are imported; Home and Images already have native TILEZ views.
+    return [
+        ['label' => 'HOME',       'url' => $base],
+        ['label' => 'THE IDEA',   'url' => 'https://old.baddaywithacamera.ca/the-idea/'],
+        ['label' => 'DIARY',      'url' => 'https://old.baddaywithacamera.ca/category/diary/'],
+        ['label' => 'CATEGORIES', 'url' => $base . 'archive.php'],
+        ['label' => 'ALBUMS',     'url' => $base . 'albums.php'],
+        ['label' => 'IMAGES',     'url' => $base . '?view=archive'],
+    ];
 }
 ?>
+<!-- Blog title / logo. TILEZ explicitly opts out of the shared sticky-header
+     engine so the masthead scrolls away naturally with the page. -->
+<header class="header section-inner" data-sticky-header="false">
+<?php if ($alfred_header_logo !== ''): ?>
+    <?php
+    $logo_url = (preg_match('#^https?://#', $alfred_header_logo))
+        ? $alfred_header_logo
+        : BASE_URL . ltrim($alfred_header_logo, '/');
+    ?>
+    <a href="<?php echo BASE_URL; ?>" class="custom-logo-link blog-logo">
+        <img src="<?php echo htmlspecialchars($logo_url); ?>"
+             alt="<?php echo htmlspecialchars($site_display_name); ?>"
+             class="custom-logo"
+             <?php if ($alfred_retina_logo): ?>
+             style="width: auto; max-width: 100%;"
+             <?php endif; ?>>
+    </a>
+<?php else: ?>
+    <h1 class="blog-title"><a href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars($site_display_name); ?></a></h1>
+<?php endif; ?>
+<nav class="tilez-icon-nav" aria-label="Quick navigation">
+    <a href="<?php echo BASE_URL; ?>" title="Home" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></a>
+    <a href="https://old.baddaywithacamera.ca/the-idea/" title="The Idea" aria-label="The Idea"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.1"/></svg></a>
+    <a href="https://old.baddaywithacamera.ca/category/diary/" title="Diary" aria-label="Diary"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg></a>
+    <a href="<?php echo BASE_URL; ?>archive.php" title="Categories" aria-label="Categories"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="6" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="18" r="1"/><path d="M9 6h10M9 12h10M9 18h10"/></svg></a>
+    <a href="<?php echo BASE_URL; ?>albums.php" title="Albums" aria-label="Albums"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h7l2 2h9v11H3z"/></svg></a>
+    <a href="<?php echo BASE_URL; ?>?view=archive" title="Images" aria-label="Images"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><circle cx="9" cy="10" r="2"/><path d="m5 18 5-5 3 3 2-2 4 4"/></svg></a>
+</nav>
+<?php $alfred_tagline = trim($settings['site_tagline'] ?? ''); if ($alfred_tagline !== '' && ($settings['show_tagline'] ?? '1') === '1'): ?>
+    <p class="blog-description"><?php echo htmlspecialchars($alfred_tagline); ?></p>
+<?php endif; ?>
+</header><!-- /.header -->
+
 <nav class="navigation" role="navigation">
     <div class="section-inner">
 
@@ -189,8 +201,9 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
         </ul>
 
         <!-- Mobile toggle -->
-        <button class="nav-toggle" aria-label="Toggle navigation">
-            <div class="bars">
+        <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+            <span class="nav-toggle-label">MENU</span>
+            <div class="bars" aria-hidden="true">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
@@ -216,27 +229,4 @@ function _alfred_default_nav_items(array $settings, array $alfred_pages): array 
 <!-- Full-viewport header image -->
 <div class="header-image"<?php echo $header_image_style; ?>></div>
 
-<!-- Blog title / logo -->
-<header class="header section-inner">
-<?php if ($alfred_header_logo !== ''): ?>
-    <?php
-    $logo_url = (preg_match('#^https?://#', $alfred_header_logo))
-        ? $alfred_header_logo
-        : BASE_URL . ltrim($alfred_header_logo, '/');
-    ?>
-    <a href="<?php echo BASE_URL; ?>" class="custom-logo-link blog-logo">
-        <img src="<?php echo htmlspecialchars($logo_url); ?>"
-             alt="<?php echo htmlspecialchars($site_display_name); ?>"
-             class="custom-logo"
-             <?php if ($alfred_retina_logo): ?>
-             style="width: auto; max-width: 100%;"
-             <?php endif; ?>>
-    </a>
-<?php else: ?>
-    <h1 class="blog-title"><a href="<?php echo BASE_URL; ?>"><?php echo htmlspecialchars($site_display_name); ?></a></h1>
-<?php endif; ?>
-<?php $alfred_tagline = trim($settings['site_tagline'] ?? ''); if ($alfred_tagline !== '' && ($settings['show_tagline'] ?? '1') === '1'): ?>
-    <p class="blog-description"><?php echo htmlspecialchars($alfred_tagline); ?></p>
-<?php endif; ?>
-</header><!-- /.header -->
 <?php // ===== SNAPSMACK EOF =====

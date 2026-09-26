@@ -40,7 +40,7 @@ def test_qt_queue_exposes_review_fields():
     source = open(os.path.join(TOOL, "sybu_qt.py"), encoding="utf-8").read()
     for heading in ("PREVIEW", "CAPTION", "ALT TEXT", "COLOUR / B&W", "ORIENTATION"):
         assert heading in source
-    assert "SAVE TO SNAP HQ" in source
+    assert "SAVE PRESET" in source
     assert "USE FOR THIS RUN" in source
 
 # ===== SNAPSMACK EOF =====

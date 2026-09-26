@@ -53,4 +53,21 @@ class BuiltInLewksTests(unittest.TestCase):
         self.assertEqual(high["lewk"]["provenance"], "built-in")
         self.assertEqual(high["layers"][0]["opacity"], 1)
 
+    def test_cross_examined_uses_opposing_channel_cross_process(self):
+        adjustments = built_in_lewks.get("cross-examined")["adjustments"]
+        identity = [[0, 0], [255, 255]]
+        self.assertNotEqual(adjustments["curve_red"], identity)
+        self.assertNotEqual(adjustments["curve_green"], identity)
+        self.assertNotEqual(adjustments["curve_blue"], identity)
+        self.assertGreater(adjustments["curve_blue"][0][1],
+                           adjustments["curve_red"][0][1])
+        self.assertLess(adjustments["curve_blue"][-1][1],
+                        adjustments["curve_red"][-1][1])
+        self.assertGreater(adjustments["split_shadow_amount"], 0)
+        self.assertGreater(adjustments["split_highlight_amount"], 0)
+        # The colour channels, not crushed luminance, provide the drama.
+        self.assertLessEqual(adjustments["contrast"], 10)
+        self.assertGreaterEqual(adjustments["curve"][0][1], 5)
+        self.assertGreaterEqual(adjustments["curve_blue"][0][1], 25)
+
 # ===== SNAPSMACK EOF =====

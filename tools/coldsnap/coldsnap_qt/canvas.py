@@ -1068,30 +1068,45 @@ class CanvasBar(QWidget):
     def __init__(self, canvas: BiggieCanvas, parent=None):
         super().__init__(parent)
         self.canvas = canvas
-        row = QHBoxLayout(self)
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(4)
-        self._btn(row, "¶", "Plain paragraph", lambda: canvas.set_kind("para"))
-        self._btn(row, "H2", "Heading", lambda: canvas.set_kind("h2"))
-        self._btn(row, "H3", "Sub-heading", lambda: canvas.set_kind("h3"))
-        self._btn(row, "BQ", "Quote", lambda: canvas.set_kind("quote"))
-        self._btn(row, "PULL", "Pull quote — words lifted out large", lambda: canvas.set_kind("pullquote"))
-        self._btn(row, "DROP", "Drop cap — a big first letter on this paragraph", canvas.toggle_dropcap)
-        self._sep(row)
-        self._btn(row, "UL", "Bullet list", lambda: canvas.set_list(False))
-        self._btn(row, "OL", "Numbered list", lambda: canvas.set_list(True))
-        self._sep(row)
-        self._btn(row, "IMG", "One image from this site's Media Gallery — pick it by picture", canvas._edit_image)
-        self._btn(row, "COL 2", "Two columns side by side", lambda: canvas.insert_columns(2))
-        self._btn(row, "COL 3", "Three columns", lambda: canvas.insert_columns(3))
-        self._btn(row, "HR", "A divider line", canvas.insert_hr)
-        self._btn(row, "GAP", "A vertical gap", canvas._edit_spacer)
-        self._sep(row)
-        self._btn(row, "RAW", "Raw — shortcodes/HTML kept exactly as typed", lambda: canvas.set_kind("raw"))
-        self._sep(row)
-        self._btn(row, "DESKTOP", "Preview at desktop essay width", lambda: canvas.set_preview_width(760))
-        self._btn(row, "PHONE", "Preview responsive wrapping at phone width", lambda: canvas.set_preview_width(360))
-        row.addStretch(1)
+        column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(4)
+        writing = QHBoxLayout()
+        media = QHBoxLayout()
+        for row in (writing, media):
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(4)
+        self._label(writing, "WRITE")
+        self._btn(writing, "Paragraph", "Plain paragraph", lambda: canvas.set_kind("para"))
+        self._btn(writing, "Heading", "Large heading", lambda: canvas.set_kind("h2"))
+        self._btn(writing, "Subhead", "Smaller heading", lambda: canvas.set_kind("h3"))
+        self._btn(writing, "Quote", "Quoted passage", lambda: canvas.set_kind("quote"))
+        self._btn(writing, "Pull quote", "Words lifted out large", lambda: canvas.set_kind("pullquote"))
+        self._btn(writing, "Drop cap", "A big first letter on this paragraph", canvas.toggle_dropcap)
+        self._btn(writing, "Bullets", "Bullet list", lambda: canvas.set_list(False))
+        self._btn(writing, "Numbers", "Numbered list", lambda: canvas.set_list(True))
+        writing.addStretch(1)
+
+        self._label(media, "PLACE")
+        self._btn(media, "Image", "Pick one image from this site's Media Gallery", canvas._edit_image)
+        self._btn(media, "2 columns", "Two columns side by side", lambda: canvas.insert_columns(2))
+        self._btn(media, "3 columns", "Three columns", lambda: canvas.insert_columns(3))
+        self._btn(media, "Divider", "A divider line", canvas.insert_hr)
+        self._btn(media, "Space", "A vertical gap", canvas._edit_spacer)
+        self._btn(media, "Raw", "Shortcodes or HTML kept exactly as typed", lambda: canvas.set_kind("raw"))
+        self._sep(media)
+        self._btn(media, "Desktop", "Preview at desktop essay width", lambda: canvas.set_preview_width(760))
+        self._btn(media, "Phone", "Preview responsive wrapping at phone width", lambda: canvas.set_preview_width(360))
+        media.addStretch(1)
+        column.addLayout(writing)
+        column.addLayout(media)
+        self._host_row = media
+
+    def _label(self, row, text):
+        label = QLabel(text)
+        label.setObjectName("ChromeLabel")
+        label.setMinimumWidth(48)
+        row.addWidget(label)
 
     def _sep(self, row):
         s = QLabel("·")
@@ -1109,13 +1124,13 @@ class CanvasBar(QWidget):
 
     def add_button(self, label: str, tip: str, callback) -> QPushButton:
         """Host-supplied buttons (COLD TAKE adds MOSAIC)."""
-        row = self.layout()
+        row = self._host_row
         b = QPushButton(label)
         b.setObjectName("ScBtn")
         b.setToolTip(tip)
         b.setFocusPolicy(Qt.NoFocus)
         b.clicked.connect(callback)
-        row.insertWidget(row.count() - 1, b)
+        row.insertWidget(max(1, row.count() - 3), b)
         return b
 
 # ===== SNAPSMACK EOF =====

@@ -35,7 +35,7 @@ def test_known_install_wins_over_path_binary(monkeypatch, tmp_path):
     assert raw_preview.find_rawtherapee(cli=True) == str(installed)
 
 
-def test_raw_preview_command_uses_fast_external_pipeline(monkeypatch, tmp_path):
+def test_raw_preview_command_uses_quality_external_pipeline(monkeypatch, tmp_path):
     from PIL import Image
 
     raw = tmp_path / "camera.orf"
@@ -56,10 +56,12 @@ def test_raw_preview_command_uses_fast_external_pipeline(monkeypatch, tmp_path):
     preview = raw_preview.render(raw)
     assert preview.size == (800, 600)
     assert seen["command"][-2:] == ["-c", str(raw)]
-    assert "-f" in seen["command"]
+    assert "-f" not in seen["command"]
+    assert "-j90" in seen["command"]
+    assert "-js3" in seen["command"]
 
 
-def test_raw_preview_uses_900_pixel_medium_thumbnail(monkeypatch, tmp_path):
+def test_raw_preview_uses_1200_pixel_quality_thumbnail(monkeypatch, tmp_path):
     from PIL import Image
 
     raw = tmp_path / "camera.nef"
@@ -76,7 +78,54 @@ def test_raw_preview_uses_900_pixel_medium_thumbnail(monkeypatch, tmp_path):
     monkeypatch.setattr(raw_preview.snap_home, "config_dir", lambda _tool: str(tmp_path / "config"))
     monkeypatch.setattr(raw_preview.subprocess_limits, "run", fake_run)
     preview = raw_preview.render(raw)
-    assert preview.size == (900, 600)
+    assert preview.size == (1200, 800)
+
+
+def test_dark_raw_library_preview_is_lifted_without_resizing():
+    from PIL import Image, ImageStat
+
+    source = Image.new("RGB", (40, 20), (35, 45, 55))
+    preview = raw_preview._visible_library_preview(source)
+    assert preview.size == source.size
+    assert ImageStat.Stat(preview).mean[1] > ImageStat.Stat(source).mean[1]
+
+
+def test_dark_raw_library_preview_protects_small_bright_regions():
+    from PIL import Image
+
+    source = Image.new("RGB", (100, 100), (40, 40, 40))
+    source.paste((180, 170, 160), (0, 0, 10, 10))
+    preview = raw_preview._visible_library_preview(source)
+    assert max(preview.getpixel((5, 5))) <= 225
+    assert preview.getpixel((50, 50))[0] > 40
+
+
+def test_raw_development_uses_derivative_size_ceiling(monkeypatch, tmp_path):
+    from PIL import Image
+
+    raw = tmp_path / "camera.cr3"
+    raw.write_bytes(b"raw")
+    executable = tmp_path / "rawtherapee-cli.exe"
+    executable.write_bytes(b"exe")
+    seen = []
+
+    def fake_run(command, **_kwargs):
+        Image.new("RGB", (20, 12), "grey").save(
+            command[command.index("-o") + 1], "TIFF")
+        return type("Result", (), {"returncode": 0, "stderr": "", "stdout": ""})()
+
+    real_safe_open = raw_preview.snap_imgsafe.safe_open
+
+    def recording_safe_open(source, **kwargs):
+        seen.append(kwargs.get("max_bytes"))
+        return real_safe_open(source, **kwargs)
+
+    monkeypatch.setattr(raw_preview, "find_rawtherapee", lambda cli=True: str(executable))
+    monkeypatch.setattr(raw_preview.snap_home, "config_dir", lambda _tool: str(tmp_path / "config"))
+    monkeypatch.setattr(raw_preview.subprocess_limits, "run", fake_run)
+    monkeypatch.setattr(raw_preview.snap_imgsafe, "safe_open", recording_safe_open)
+    raw_preview.develop(raw)
+    assert raw_preview.RAW_DEVELOPMENT_MAX_BYTES in seen
 
 
 def test_development_returns_explicit_persistent_artifacts(monkeypatch, tmp_path):

@@ -4,12 +4,13 @@ import glob
 import hashlib
 import hmac
 import json
+import math
 import os
 import secrets
 import shutil
 import subprocess
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 import snap_home
 import snap_imgsafe
@@ -18,6 +19,10 @@ import subprocess_limits
 
 
 RAW_DECODER_MEMORY_BYTES = 4 * 1024 * 1024 * 1024
+# A 45 MP camera can produce a 270 MB uncompressed 16-bit TIFF. These files
+# are local RawTherapee outputs and still pass the format and 512 MP pixel
+# checks; only the generic 128 MiB download-size limit is inappropriate here.
+RAW_DEVELOPMENT_MAX_BYTES = 1024 * 1024 * 1024
 CACHE_INTEGRITY_SECRET = "snap_slapper_raw_cache_hmac_v1"
 
 
@@ -110,7 +115,7 @@ def find_rawtherapee(cli=True):
 
 def _cache_path(path):
     details = os.stat(path)
-    identity = "\n".join(("medium-thumb-v2-900", os.path.abspath(path),
+    identity = "\n".join(("quality-thumb-v6-shadow-curve-1200", os.path.abspath(path),
                             str(details.st_size), str(details.st_mtime_ns)))
     digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
     folder = os.path.join(snap_home.config_dir("snap_slapper"), "raw_thumbnails")
@@ -130,6 +135,37 @@ def _development_cache_path(path, adjustments):
     return os.path.join(folder, digest + ".tif")
 
 
+def _visible_library_preview(image):
+    """Lift a dark neutral RAW rendering for contact-sheet visibility only."""
+    rgb = image.convert("RGB")
+    histogram = ImageOps.grayscale(rgb).histogram()
+    total = sum(histogram)
+
+    def percentile(fraction):
+        threshold = total * fraction
+        running = 0
+        for value, count in enumerate(histogram):
+            running += count
+            if running >= threshold:
+                return value
+        return 255
+
+    median = percentile(0.50)
+    # RawTherapee's neutral render is intentionally conservative and can make
+    # correctly exposed camera files nearly black at thumbnail size. This does
+    # not alter the RAW or developed master; it only makes the browser useful.
+    # Lift shadows with a gamma curve instead of multiplying every pixel. This
+    # makes a conservative RAW contact sheet readable while preserving small
+    # bright subjects that a linear lift would blow out.
+    if 0 < median < 80:
+        gamma = math.log(80.0 / 255.0) / math.log(median / 255.0)
+        gamma = max(0.55, min(1.0, gamma))
+        table = [round(255.0 * ((value / 255.0) ** gamma))
+                 for value in range(256)]
+        rgb = rgb.point(table * 3)
+    return rgb
+
+
 def _pp3_text(adjustments):
     """Translate SNAP SLAPPER's base RAW controls into a RawTherapee profile."""
     exposure = max(-5.0, min(12.0, float(adjustments.get("exposure", 0.0))))
@@ -142,6 +178,27 @@ def _pp3_text(adjustments):
     tint = max(-100, min(100, float(adjustments.get("tint", 0.0))))
     noise_reduction = round(max(
         0, min(100, float(adjustments.get("raw_noise_reduction", 0.0)))))
+    rotation = max(-45.0, min(45.0, float(adjustments.get("raw_rotation", 0.0))))
+    perspective_h = max(-100.0, min(
+        100.0, float(adjustments.get("raw_perspective_horizontal", 0.0))))
+    perspective_v = max(-100.0, min(
+        100.0, float(adjustments.get("raw_perspective_vertical", 0.0))))
+    # RawTherapee's Distortion Amount is -0.5..0.5; the UI presents the same
+    # correction as an easier-to-read -50..50 scale.
+    distortion = max(-0.5, min(
+        0.5, float(adjustments.get("raw_lens_distortion", 0.0)) / 100.0))
+    defish = max(0.0, min(100.0, float(adjustments.get("raw_defish", 0.0))))
+    # RawTherapee's defish uses focal length as its strength control: 25 mm is
+    # gentle and 0.5 mm is strongest.
+    defish_focal = 25.0 - (24.5 * defish / 100.0)
+    ca_red = max(-4.0, min(4.0, float(adjustments.get("raw_ca_red", 0.0))))
+    ca_blue = max(-4.0, min(4.0, float(adjustments.get("raw_ca_blue", 0.0))))
+    vignette = round(max(-100, min(
+        100, float(adjustments.get("raw_vignette_correction", 0.0)))))
+    lensfun = bool(adjustments.get("raw_lensfun", False))
+    lensfun_distortion = bool(adjustments.get("raw_lensfun_distortion", True))
+    lensfun_vignette = bool(adjustments.get("raw_lensfun_vignette", True))
+    lensfun_ca = bool(adjustments.get("raw_lensfun_ca", True))
     # The UI values are deliberately relative.  6504 K / green 1.0 is
     # RawTherapee's neutral daylight centre; the ranges remain useful without
     # pretending the camera's as-shot multipliers are absolute UI values.
@@ -162,7 +219,23 @@ def _pp3_text(adjustments):
             "Method=Lab\nLMethod=SLI\nCMethod=AUT\nC2Method=AUTO\n"
             "SMethod=shal\nMedMethod=55\nRGBMethod=soft\nMethodMed=Lpab\n"
             "Redchro=0\nBluechro=0\nGamma=1.7\nPasses=1\n"
-            "LCurve=0;\nCCCurve=0;\n")
+            "LCurve=0;\nCCCurve=0;\n\n"
+            "[Common Properties for Transformations]\n"
+            "Method=log\nAutoFill=true\n\n"
+            f"[Rotation]\nDegree={rotation:.4f}\n\n"
+            f"[Distortion]\nAmount={distortion:.6f}\n"
+            f"Defish={'true' if defish else 'false'}\n"
+            f"FocalLength={defish_focal:.4f}\n\n"
+            f"[Perspective]\nHorizontal={perspective_h:.4f}\n"
+            f"Vertical={perspective_v:.4f}\n\n"
+            f"[CACorrection]\nRed={ca_red:.4f}\nBlue={ca_blue:.4f}\n\n"
+            "[LensProfile]\n"
+            f"LcMode={'lfauto' if lensfun else 'none'}\nLCPFile=\n"
+            f"UseDistortion={'true' if lensfun_distortion else 'false'}\n"
+            f"UseVignette={'true' if lensfun_vignette else 'false'}\n"
+            f"UseCA={'true' if lensfun_ca else 'false'}\n\n"
+            "[Vignetting Correction]\n"
+            f"Amount={vignette}\nRadius=50\nStrength=1\nCenterX=0\nCenterY=0\n")
 
 
 def develop(path, adjustments=None, timeout=300):
@@ -175,7 +248,8 @@ def develop(path, adjustments=None, timeout=300):
     target = _development_cache_path(path, adjustments)
     profile = os.path.splitext(target)[0] + ".pp3"
     if _cache_is_authentic(target, profile):
-        snap_imgsafe.safe_open(target, formats={"TIFF"})
+        snap_imgsafe.safe_open(target, formats={"TIFF"},
+                               max_bytes=RAW_DEVELOPMENT_MAX_BYTES)
         return target
     temporary = target + ".new.tif"
     flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
@@ -193,7 +267,8 @@ def develop(path, adjustments=None, timeout=300):
             raise RuntimeError(detail)
         # safe_open performs a structural verification and a complete second
         # decode before the derivative becomes visible to the editor.
-        snap_imgsafe.safe_open(temporary, formats={"TIFF"})
+        snap_imgsafe.safe_open(temporary, formats={"TIFF"},
+                               max_bytes=RAW_DEVELOPMENT_MAX_BYTES)
         os.replace(temporary, target)
         _write_cache_integrity(target, profile)
         complete = True
@@ -222,7 +297,7 @@ def development_artifacts(path, adjustments=None, timeout=300):
 
 
 def render(path, timeout=180):
-    """Return a loaded, validated preview developed by RawTherapee's fast pipeline."""
+    """Return a quality cached preview developed by RawTherapee."""
     cli = find_rawtherapee(cli=True)
     if not cli:
         raise RuntimeError("RawTherapee is not installed or could not be found")
@@ -234,7 +309,7 @@ def render(path, timeout=180):
     flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
     try:
         result = subprocess_limits.run(
-            [cli, "-q", "-f", "-j85", "-js2", "-Y", "-o", temporary,
+            [cli, "-q", "-j90", "-js3", "-Y", "-o", temporary,
              "-c", path], capture_output=True, text=True, timeout=timeout,
             memory_bytes=RAW_DECODER_MEMORY_BYTES, creationflags=flags)
         if result.returncode or not os.path.isfile(temporary):
@@ -242,9 +317,9 @@ def render(path, timeout=180):
             raise RuntimeError(detail)
         image = snap_imgsafe.safe_open(temporary, formats={"JPEG"})
         exif = image.info.get("exif", b"")
-        image.thumbnail((900, 900), Image.Resampling.LANCZOS)
-        image.convert("RGB").save(temporary, "JPEG", quality=86, optimize=True,
-                                  exif=exif)
+        image.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
+        image = _visible_library_preview(image)
+        image.save(temporary, "JPEG", quality=90, optimize=True, exif=exif)
         os.replace(temporary, target)
         _write_cache_integrity(target)
         return snap_imgsafe.safe_open(target, formats={"JPEG"})

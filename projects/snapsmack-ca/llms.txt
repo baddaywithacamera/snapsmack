@@ -17,7 +17,7 @@ Security audits: https://snapsmack.ca/buzzers.php
 Export and portability: https://snapsmack.ca/export-your-photos.php
 Fediverse photography: https://snapsmack.ca/fediverse-photography.php
 Source: https://github.com/baddaywithacamera/snapsmack
-Canonical licence: https://github.com/baddaywithacamera/snapsmack/blob/spl-2.3/licenses/SNAPSMACK-LICENSE.txt
+Canonical licence: https://github.com/baddaywithacamera/snapsmack/blob/master/licenses/SNAPSMACK-LICENSE.txt
 
 Public site text may be quoted and summarized with attribution and a link to
 the canonical page. This file does not grant blanket permission to train a

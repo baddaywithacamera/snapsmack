@@ -437,14 +437,18 @@ if (!empty($skin_variant_url)): ?>
 // core/skin-compile-mobile.php) and emit ONLY when the mobile skin serves.
 // Version-stamped self-heal: a skin update (or a blob that has never been
 // compiled) mismatches the target stamp → recompile inline, once.
-if (defined('SNAPSMACK_MOBILE_SKIN') && SNAPSMACK_MOBILE_SKIN !== ''
-    && (($active_skin ?? '') === SNAPSMACK_MOBILE_SKIN) && isset($pdo)) {
+$_mobile_renderers = array_filter([
+    defined('SNAPSMACK_MOBILE_SKIN') ? SNAPSMACK_MOBILE_SKIN : '',
+    'telegram',
+]);
+if (in_array(($active_skin ?? ''), $_mobile_renderers, true) && isset($pdo)) {
     require_once __DIR__ . '/skin-compile-mobile.php';
-    $_mob_target = snapsmack_mobile_css_target_stamp();
+    $_mobile_render_slug = (string)$active_skin;
+    $_mob_target = snapsmack_mobile_css_target_stamp($_mobile_render_slug);
     if ($_mob_target !== '' && (($settings['custom_css_mobile_stamp'] ?? '') !== $_mob_target
                                 || ($settings['custom_css_mobile'] ?? '') === '')) {
         try {
-            if (snapsmack_compile_mobile_css($pdo)) {
+            if (snapsmack_compile_mobile_css($pdo, $_mobile_render_slug)) {
                 $settings['custom_css_mobile'] = $pdo->query(
                     "SELECT setting_val FROM snap_settings WHERE setting_key = 'custom_css_mobile'"
                 )->fetchColumn() ?: '';

@@ -73,18 +73,28 @@ $registry  = json_decode(file_get_contents($registry_path), true);
 $reg_skins = $registry['skins'] ?? [];
 
 // Install ONLY the mode's default skin (the one that becomes active_skin), plus
-// any required mobile-only infrastructure skin (e.g. photogram, the mobile
-// renderer). EVERY other registered skin is OPTIONAL and installed later from the
+// the mobile renderer for that content model. SMACKTALK uses TELEGRAM for
+// longform reading; SMACKONEOUT photo blogs and GRAMOFSMACK carousel blogs use
+// PHOTOGRAM. SMACKTHEMUP does not receive a blog mobile skin. EVERY other
+// registered skin is OPTIONAL and installed later from the
 // in-CMS skin gallery — never shipped to a fresh install. Installing unused skins
 // wastes shared-host space without the owner's consent and is needless attack
 // surface. "Only ever install the skin you will use." (Sean, 2026-06-18.)
 // This is what stops a non-default skin (e.g. AURORA) auto-landing on every
 // GRAMOFSMACK/carousel install just because it lists the mode.
+$mobile_skin = match ($mode) {
+    'smacktalk'            => 'telegram',
+    'photoblog', 'carousel' => 'photogram',
+    default                => '',
+};
+
 $result = [];
 foreach ($reg_skins as $slug => $s) {
-    $is_mobile_only = !empty($s['features']['mobile_only']);
-    $is_default     = ($slug === $default_skin);
-    if (!$is_default && !$is_mobile_only) continue;
+    $is_required_mobile = $mobile_skin !== ''
+        && ($slug === $mobile_skin)
+        && !empty($s['features']['mobile_only']);
+    $is_default         = ($slug === $default_skin);
+    if (!$is_default && !$is_required_mobile) continue;
     $result[] = [
         'slug'         => $slug,
         'download_url' => $s['download_url'] ?? '',
