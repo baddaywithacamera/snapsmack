@@ -1066,7 +1066,7 @@ input[type="button"],
 }
 
 .post-title {
-    font-size: clamp(3.25rem, 6vw, 6rem);
+    font-size: 2.5em;
     font-weight: 700;
     line-height: 120%;
     margin: 0;
@@ -2327,9 +2327,10 @@ body.blog, body.single, body.archive { background: #fff; }
 .entry-content {
     color: #282828;
     font-family: 'Droid Serif', Georgia, 'Times New Roman', serif;
-    font-size: 21px;
+    font-size: 18px;
     font-weight: 400;
-    line-height: 1.7;
+    line-height: 1.65;
+    font-synthesis: none;
 }
 .entry-content > p,
 .entry-content > h2,
@@ -2352,9 +2353,30 @@ body.blog, body.single, body.archive { background: #fff; }
 .entry-content > ol {
     margin-bottom: 1.7em;
 }
+/* A text passage framed by media gets the same breathing room on both sides.
+   Adjacent block margins collapse to this shared value, so image/paragraph and
+   paragraph/image transitions remain optically even. */
+.entry-content > :is(.snap-inline-frame, .snap-mosaic, .snap-mosaic-wall, .snapsmack-columns)
+    + p:has(+ :is(.snap-inline-frame, .snap-mosaic, .snap-mosaic-wall, .snapsmack-columns)) {
+    margin-top: 2.6em;
+    margin-bottom: 2.6em;
+}
 .entry-content > .snap-inline-frame {
     margin-top: 2.6em;
     margin-bottom: 2.6em;
+}
+/* Consecutive standalone photographs are an intentional pair. Keep them on
+   one row on desktop instead of turning the essay into two full-width panels. */
+.entry-content > .snap-inline-frame:has(+ .snap-inline-frame),
+.entry-content > .snap-inline-frame + .snap-inline-frame {
+    display: inline-block;
+    width: calc(50% - 4px) !important;
+    margin-top: 2.6em;
+    margin-bottom: 2.6em;
+    vertical-align: top;
+}
+.entry-content > .snap-inline-frame:has(+ .snap-inline-frame) {
+    margin-right: 4px;
 }
 .entry-content > .snap-mosaic,
 .entry-content > .snap-mosaic-wall {
@@ -2415,6 +2437,12 @@ body.blog, body.single, body.archive { background: #fff; }
     .featured-media, .post-header { width: calc(100% - 28px); }
     .post-content,
     .entry-content { font-size: 18px; line-height: 1.65; }
+    .entry-content > .snap-inline-frame:has(+ .snap-inline-frame),
+    .entry-content > .snap-inline-frame + .snap-inline-frame {
+        display: block;
+        width: 100% !important;
+        margin-right: 0;
+    }
 }
 
 /* ===== SNAPSMACK EOF ===== */
