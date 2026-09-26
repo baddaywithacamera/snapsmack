@@ -28,7 +28,7 @@
 
 
 // Only intercept when Alfred is actually the active skin
-if (($settings['active_skin'] ?? '') !== 'tilez') return;
+if (($settings['active_skin'] ?? '') !== 'telegram') return;
 
 // ============================================================
 //  ARCHIVE VIEW  (grid of INDIVIDUAL PHOTOGRAPHS → lightbox)
@@ -355,7 +355,7 @@ try {
          FROM snap_posts p
          LEFT JOIN snap_images i ON i.id = p.featured_image_id
          WHERE p.post_type = 'longform' AND p.status = 'published'
-         ORDER BY p.created_at DESC, p.id DESC
+         ORDER BY p.id DESC
          LIMIT ? OFFSET ?"
     );
     $feed_stmt->execute([$_alfred_per_page, $_alfred_offset]);

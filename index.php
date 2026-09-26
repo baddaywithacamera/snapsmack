@@ -112,9 +112,18 @@ try {
     $_snapsmack_pwa_shell = $_snapsmack_explicit_pwa
         || ((($_COOKIE['snapsmack_pwa'] ?? '') === '1') && !$_snapsmack_desktop_hint);
 
-    // Force PHOTOGRAM on phones and in the installed phone/tablet shell.
-    if ((snapsmack_is_mobile() || $_snapsmack_pwa_shell) && SNAPSMACK_MOBILE_SKIN !== '' && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)) {
-        $active_skin = SNAPSMACK_MOBILE_SKIN;
+    // Choose the phone presentation by content model. PHOTOGRAM serves photo
+    // and carousel sites; TELEGRAM gives SMACKTALK essays a proper reading view.
+    // The PHOTOGRAM fallback keeps older installs usable until TELEGRAM arrives.
+    $_snapsmack_mobile_skin = SNAPSMACK_MOBILE_SKIN;
+    if (($settings['site_mode'] ?? 'photoblog') === 'smacktalk'
+        && is_dir(__DIR__ . '/skins/telegram')) {
+        $_snapsmack_mobile_skin = 'telegram';
+    }
+    if ((snapsmack_is_mobile() || $_snapsmack_pwa_shell)
+        && $_snapsmack_mobile_skin !== ''
+        && is_dir(__DIR__ . '/skins/' . $_snapsmack_mobile_skin)) {
+        $active_skin = $_snapsmack_mobile_skin;
     }
 
     // Overlay skin-scoped settings so each skin retains its own customizations
@@ -164,7 +173,7 @@ try {
     // an Instagram-style mobile feed never shows a static front page. Force
     // latest_post whenever the mobile skin is active so the scroll is never
     // intercepted by a configured landing page.
-    if ($active_skin === SNAPSMACK_MOBILE_SKIN && (snapsmack_is_mobile() || !empty($_snapsmack_pwa_shell))) {
+    if ($active_skin === $_snapsmack_mobile_skin && (snapsmack_is_mobile() || !empty($_snapsmack_pwa_shell))) {
         $homepage_mode = 'latest_post';
     }
     $blog_slug        = trim($settings['blog_slug'] ?? 'blog', '/');
@@ -309,7 +318,7 @@ try {
                 </div>
                 <?php
                 // Load global JS engines (social dock, sticky header, etc.) unless using Photogram
-                if ($active_skin !== 'photogram') {
+                if (!in_array($active_skin, ['photogram', 'telegram'], true)) {
                     include __DIR__ . '/core/footer-scripts.php';
                 }
                 ?>
@@ -334,7 +343,7 @@ try {
             include $hashtag_template;
             ?></div><?php
             // Load global JS engines (social dock, sticky header, etc.) unless using Photogram
-            if ($active_skin !== 'photogram') {
+            if (!in_array($active_skin, ['photogram', 'telegram'], true)) {
                 include __DIR__ . '/core/footer-scripts.php';
             }
             ?></body></html><?php
@@ -590,7 +599,7 @@ if ($requested_slug && $img) {
 <?php
 // Load global JS engines (social dock, sticky header, etc.) unless using Photogram,
 // which has its own mobile-optimized UI and doesn't need these overlays.
-if ($active_skin !== 'photogram') {
+if (!in_array($active_skin, ['photogram', 'telegram'], true)) {
     include __DIR__ . '/core/footer-scripts.php';
 }
 ?>

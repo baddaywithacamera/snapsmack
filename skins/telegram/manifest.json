@@ -1,10 +1,10 @@
 {
     "schema_version": 1,
-    "name": "TILEZ",
-    "version": "0.2.12",
-    "author": "Sean McCormick & Claude",
+    "name": "TELEGRAM",
+    "version": "0.1.0",
+    "author": "Sean McCormick & Codex",
     "author_email": "sean@baddaywithacamera.ca",
-    "description": "A quiet white SMACKTALK portfolio inspired by editorial design studios. Longform posts flow through a native-aspect three-column wall powered by SnapSmack's shared columns engine.",
+    "description": "A phone-first reading skin for SMACKTALK longform posts. It preserves editorial image and mosaic order in a narrow reading column, with tap-to-enlarge photographs and a persistent top-right text menu.",
     "status": "beta",
     "modes": [
         "smacktalk"
@@ -14,7 +14,7 @@
         "default": "TILEZ (White Editorial Portfolio)"
     },
     "default_variant": "default",
-    "cover_aspect": "3/2",
+    "cover_aspect": "16/9",
     "features": {
         "supports_wall": false,
         "has_landing": false,
@@ -25,7 +25,8 @@
         "carousel": false,
         "community": [
             "comments"
-        ]
+        ],
+        "mobile_only": true
     },
     "require_scripts": [
         "smack-alfred-nav",

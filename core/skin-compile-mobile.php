@@ -33,10 +33,10 @@
  *
  * @return bool true when a CSS blob was compiled + stored.
  */
-function snapsmack_compile_mobile_css(PDO $pdo): bool
+function snapsmack_compile_mobile_css(PDO $pdo, ?string $mobile_slug = null): bool
 {
-    if (!defined('SNAPSMACK_MOBILE_SKIN') || SNAPSMACK_MOBILE_SKIN === '') return false;
-    $slug    = SNAPSMACK_MOBILE_SKIN;
+    $slug = $mobile_slug ?? (defined('SNAPSMACK_MOBILE_SKIN') ? SNAPSMACK_MOBILE_SKIN : '');
+    if ($slug === '' || !preg_match('/^[a-z0-9_-]+$/', $slug)) return false;
     $mf_path = dirname(__DIR__) . '/skins/' . $slug . '/manifest.json';
     if (!is_file($mf_path)) return false;
     $manifest = snapsmack_load_manifest($mf_path);
@@ -119,12 +119,13 @@ function snapsmack_compile_mobile_css(PDO $pdo): bool
  * The stamp custom_css_mobile SHOULD carry for the currently installed
  * mobile skin — '' when no mobile skin/manifest exists.
  */
-function snapsmack_mobile_css_target_stamp(): string
+function snapsmack_mobile_css_target_stamp(?string $mobile_slug = null): string
 {
-    if (!defined('SNAPSMACK_MOBILE_SKIN') || SNAPSMACK_MOBILE_SKIN === '') return '';
-    $mf_path = dirname(__DIR__) . '/skins/' . SNAPSMACK_MOBILE_SKIN . '/manifest.json';
+    $slug = $mobile_slug ?? (defined('SNAPSMACK_MOBILE_SKIN') ? SNAPSMACK_MOBILE_SKIN : '');
+    if ($slug === '' || !preg_match('/^[a-z0-9_-]+$/', $slug)) return '';
+    $mf_path = dirname(__DIR__) . '/skins/' . $slug . '/manifest.json';
     if (!is_file($mf_path)) return '';
     $manifest = snapsmack_load_manifest($mf_path);
-    return SNAPSMACK_MOBILE_SKIN . '@' . (string)(is_array($manifest) ? ($manifest['version'] ?? '0') : '0');
+    return $slug . '@' . (string)(is_array($manifest) ? ($manifest['version'] ?? '0') : '0');
 }
 // ===== SNAPSMACK EOF =====

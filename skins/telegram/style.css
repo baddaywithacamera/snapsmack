@@ -2389,20 +2389,24 @@ body.blog, body.single, body.archive { background: #fff; }
     .entry-content { font-size: 18px; line-height: 1.65; }
 }
 
-/* Persistent labelled menu — the full navigation is always one obvious tap away. */
-.navigation { background:transparent; min-height:0; position:relative; z-index:10000; }
-.navigation > .section-inner { max-width:none; width:100%; }
-.navigation .main-menu,.tilez-icon-nav { display:none !important; }
-.nav-toggle { align-items:center; appearance:none; background:#1d1d1d; border:2px solid #fff; border-radius:3px; box-shadow:0 4px 20px rgba(0,0,0,.28); color:#fff; display:flex !important; gap:10px; padding:13px 16px; position:fixed; right:max(18px,env(safe-area-inset-right)); top:max(18px,env(safe-area-inset-top)); width:auto; z-index:10002; }
-.nav-toggle-label { font-size:1rem; font-weight:800; letter-spacing:.12em; line-height:1; }
-.nav-toggle .bars { height:14px; margin:0; position:relative; width:22px; }
-.nav-toggle .bar { background:currentColor; height:2px; left:0; position:absolute; right:0; }
-.nav-toggle .bar:nth-child(1) { top:1px; }
-.nav-toggle .bar:nth-child(2) { top:6px; }
-.nav-toggle .bar:nth-child(3) { top:11px; }
-.mobile-navigation { background:#1d1d1d; border:1px solid rgba(255,255,255,.22); box-shadow:0 12px 40px rgba(0,0,0,.42); display:none; max-height:calc(100vh - 92px); overflow:auto; position:fixed; right:max(18px,env(safe-area-inset-right)); top:max(76px,calc(env(safe-area-inset-top) + 76px)); width:min(360px,calc(100vw - 36px)); z-index:10001; }
-.mobile-navigation .mobile-menu,.mobile-navigation .mobile-menu ul { list-style:none; margin:0; padding:8px; }
-.mobile-navigation .mobile-menu a,.mobile-navigation .mobile-menu span { color:#fff; display:block; font-size:1.08rem; font-weight:700; letter-spacing:.04em; padding:15px 16px; text-decoration:none; text-transform:uppercase; }
-.mobile-navigation .mobile-menu a:hover,.mobile-navigation .mobile-menu a:focus { background:var(--alfred-accent,#1e73be); color:#fff; }
+/* TELEGRAM: phone-first longform reading without changing editorial order. */
+:root { --telegram-column:46rem; }
+html,body { background:#fff; }
+.header { max-width:var(--telegram-column); padding:72px 0 24px; width:calc(100% - 36px); }
+.header-image { display:none; }
+.header .blog-logo { max-width:320px; }
+.content > .section-inner,.post-inner,.post-header,.featured-media { max-width:var(--telegram-column); width:calc(100% - 36px) !important; }
+.featured-media { aspect-ratio:16/9 !important; }
+.post-header { padding:34px 0 25px; }
+.post-title { font-family:Georgia,'Times New Roman',serif; font-size:clamp(2.1rem,9vw,3.7rem); line-height:1.04; text-transform:none; }
+.post-content,.entry-content { font-family:Georgia,'Times New Roman',serif; font-size:clamp(1.13rem,4.5vw,1.32rem); line-height:1.72; }
+.post-content p,.entry-content p { margin:0 0 1.35em; }
+.post-content h2,.post-content h3,.post-content h4 { font-family:Arial,Helvetica,sans-serif; line-height:1.15; }
+.post-content img,.snap-mosaic .mosaic-item img { cursor:zoom-in; }
+.entry-content > .snap-mosaic,.entry-content > .snap-mosaic-wall { margin:1.7em 0; max-width:100%; width:100%; }
+.snap-mosaic .mosaic-item { background:#161616; }
+.posts.ss-masonry { --ss-cols:1; display:grid; grid-template-columns:1fr; }
+.archive-post-title { font-size:clamp(1.3rem,7vw,2.1rem); }
+@media(max-width:560px){ .header{padding-top:68px}.post-inner,.post-header,.featured-media{width:calc(100% - 28px)!important} }
 
 /* ===== SNAPSMACK EOF ===== */
