@@ -9,11 +9,6 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.750D — 2026-09-25 — One board
-
-- PHOTOFRI's public Board now begins with the active challenge and continues through prior challenge weeks in reverse chronological order. The redundant human Feed menu item is retired, while the old `/challenge-feed` URL remains a compatibility alias for the unified Board.
-- Includes the accumulated CMS, desktop companion, security-report, and skin work in the local integration checkout, including the new TELEGRAM mobile longform skin and the latest TILEZ, Instant Camera, Alfred, Stanley, and Writing With Impact updates.
-
 ## 0.7.749D — 2026-09-25 — Welcome back
 
 - Images no longer remain black after switching away from a browser tab and returning. The shared fade engine now reconciles completed images on tab visibility restore and browser page restore, covering loads Chrome completed while the page was suspended without delivering the original callback.
@@ -27,6 +22,8 @@
 
 - TILEZ equipment notes use a readable supporting size and generous line spacing beneath the author's graphic signature. They remain visually secondary without reverting to the tiny type used by the old WordPress theme.
 - TILEZ skin version 0.2.10 includes the equipment-note treatment.
+- PHOTOFRI's public Board now begins with the active challenge and continues through prior challenge weeks in reverse chronological order. The redundant human Feed menu item is retired, while the old `/challenge-feed` URL remains a compatibility alias for the unified Board.
+- Includes the accumulated CMS, desktop companion, security-report, and skin work in the integration checkout, including the new TELEGRAM mobile longform skin and the latest TILEZ, Instant Camera, Alfred, Stanley, and Writing With Impact updates.
 
 ## 0.7.746D — 2026-09-25 — Put it together
 
