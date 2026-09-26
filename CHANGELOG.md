@@ -15,6 +15,7 @@
 
 ## 0.7.748D — 2026-09-25 — Easy reading
 
+- INSTANT CAMERA restores its fast, gap-free Organized Mayhem tabletop. The decorative pool again honours the configured density, while ambient prints expand beyond the interactive size limit when needed to cover wide screens completely.
 - TILEZ longform articles use a 21px editorial serif face at 1.7 line spacing on desktop and 18px at 1.65 on phones. Navigation, dates, captions, headings, and controls retain their sans serif treatment.
 - TILEZ skin version 0.2.11 includes the longform reading typography.
 
