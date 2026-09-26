@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.755D — 2026-09-26 — Original tabletop
+
+- Instant Camera removes the replacement coverage-grid backdrop and restores Organized Mayhem's original clustered, overlapping tabletop builder and continuous ambient drift.
+
 ## 0.7.754D — 2026-09-26 — Tabletop restored
 
 - Instant Camera restores the original capped print sizing while keeping the larger 120-photo tabletop pool, eliminating oversized sparse prints without slowing the initial build.
