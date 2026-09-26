@@ -78,8 +78,8 @@ $stats = (string)file_get_contents($root . '/core/stats-logger.php');
 $ok(str_contains($stats, "['carousel', 'smackthemup']"),
     'scroll-stats track the smackthemup landing feed');
 $idx = (string)file_get_contents($root . '/index.php');
-$ok(!str_contains($idx, 'site_mode'),
-    'public landing stays mode-agnostic (renders via the active skin, no site_mode branch)');
+$ok(!str_contains($idx, "=== 'smackthemup'"),
+    'public landing keeps SMACKTHEMUP mode-agnostic and renders it through the active skin');
 
 // --- Fail-closed writes: no other tool can create on a smackthemup site (§5.2) -
 $sp = (string)file_get_contents($root . '/core/smackpress-api.php');
