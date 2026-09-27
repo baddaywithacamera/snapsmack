@@ -45,7 +45,10 @@ $assert($titlePos !== false && $datePos !== false && $titlePos < $datePos, 'sing
 $assert(str_contains($preload, '<dt>Photos</dt>') && str_contains($preload, '<dt>Words</dt>'), 'post record includes photo and word counts');
 $assert(str_contains($preload, '<dt>Category</dt>') && str_contains($preload, '<dt>Album</dt>') && str_contains($preload, '<dt>Author</dt>'), 'post record includes taxonomy and author');
 $assert(str_contains($preload, '$_alfred_gear_note') && str_contains($style, '.post-mobile-gear'), 'camera notes move to the record and follow the essay on mobile');
-$assert(str_contains($preload, '$legacy_is_colophon') && str_contains($preload, 'main camera|camera used|shot'), 'legacy closing equipment paragraphs are recognized as the post colophon');
+$assert(str_contains($preload, '$legacy_is_colophon')
+    && str_contains($preload, 'photos? (?:taken|made|shot) with')
+    && str_contains($preload, 'count($legacy_equipment_terms) >= 3'),
+    'varied legacy closing equipment paragraphs are recognized as recurring post colophons');
 $assert(str_contains($style, '.post-gear-note'), 'closing equipment notes have a readable supporting style');
 $assert(str_contains($style, "font-family: Georgia, 'Times New Roman', serif;"), 'longform body uses a lighter editorial serif stack');
 $assert(str_contains($style, 'font-size: 21px;') && str_contains($style, 'font-weight: 400;'), 'desktop longform body is larger and normal-weight');
