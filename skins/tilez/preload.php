@@ -297,8 +297,13 @@ if ($_alfred_post_slug || $_alfred_post_id) {
     // already published essay.
     if ($_alfred_gear_note === '' && preg_match('~(<p\b[^>]*>.*?</p>)\s*$~is', $_alfred_rendered, $legacy_match)) {
         $legacy_text = mb_strtolower(trim(html_entity_decode(strip_tags($legacy_match[1]), ENT_QUOTES | ENT_HTML5)));
-        $legacy_is_colophon = preg_match('/\b(?:main camera|camera used|shot (?:on|with)|also used|equipment used)\b/u', $legacy_text)
-            && preg_match('/\b(?:camera|lens|lenses|film|drone|cellphone|phone)\b/u', $legacy_text);
+        $legacy_has_lead = preg_match(
+            '/\b(?:main camera|camera used|also used|equipment used|shot (?:on|with)|taken with|photos? (?:taken|made|shot) with|images? (?:taken|made|shot) with|photographed with)\b/u',
+            $legacy_text
+        );
+        preg_match_all('/\b(?:camera|body|lens|lenses|film|film stock|drone|cellphone|phone|iphone|galaxy|pixel|canon|nikon|sony|fujifilm|fuji|olympus|pentax|leica|hasselblad|dji|kodak|ilford|helios|eos)\b/u', $legacy_text, $legacy_equipment_matches);
+        $legacy_equipment_terms = array_unique($legacy_equipment_matches[0] ?? []);
+        $legacy_is_colophon = (bool)$legacy_has_lead || count($legacy_equipment_terms) >= 3;
         if ($legacy_is_colophon) {
             $_alfred_gear_note = preg_replace('/^<p\b(?![^>]*\bclass=)/i', '<p class="post-gear-note"', $legacy_match[1], 1);
             $_alfred_rendered = substr($_alfred_rendered, 0, (int)strrpos($_alfred_rendered, $legacy_match[1]));
