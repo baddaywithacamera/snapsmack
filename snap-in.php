@@ -19,6 +19,7 @@ require_once 'core/db.php';
 require_once 'core/auth-recovery.php';
 require_once 'core/totp.php';
 require_once 'core/client-ip.php';
+require_once 'core/login-route.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LOGIN PROTECTION HELPERS
@@ -80,7 +81,7 @@ function snap_login_is_rate_limited(PDO $pdo, string $ip): bool {
 // If the request URI ends in snap-in.php, the user bypassed the slug rewrite.
 // Allow only if a valid recovery key is provided — redirect them to the slug.
 // Everyone else gets a 403.
-$_snap_uri = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
+$_snap_uri = snapsmack_login_requested_path($_SERVER);
 if (preg_match('#/snap-in\.php$#i', $_snap_uri)) {
     $provided = trim($_GET['key'] ?? '');
     if ($provided !== '') {
