@@ -291,6 +291,19 @@ if ($_alfred_post_slug || $_alfred_post_id) {
         $_alfred_gear_note = $gear_match[0];
         $_alfred_rendered = str_replace($gear_match[0], '', $_alfred_rendered);
     }
+    // WordPress imports predate the explicit .post-gear-note marker. When the
+    // final paragraph clearly inventories the equipment used for the shoot,
+    // treat it as the legacy colophon instead of making the author re-edit an
+    // already published essay.
+    if ($_alfred_gear_note === '' && preg_match('~(<p\b[^>]*>.*?</p>)\s*$~is', $_alfred_rendered, $legacy_match)) {
+        $legacy_text = mb_strtolower(trim(html_entity_decode(strip_tags($legacy_match[1]), ENT_QUOTES | ENT_HTML5)));
+        $legacy_is_colophon = preg_match('/\b(?:main camera|camera used|shot (?:on|with)|also used|equipment used)\b/u', $legacy_text)
+            && preg_match('/\b(?:camera|lens|lenses|film|drone|cellphone|phone)\b/u', $legacy_text);
+        if ($legacy_is_colophon) {
+            $_alfred_gear_note = preg_replace('/^<p\b(?![^>]*\bclass=)/i', '<p class="post-gear-note"', $legacy_match[1], 1);
+            $_alfred_rendered = substr($_alfred_rendered, 0, (int)strrpos($_alfred_rendered, $legacy_match[1]));
+        }
+    }
 
     $_alfred_photo_count = preg_match_all('/<img\b/i', $_alfred_rendered, $photo_matches);
     if (preg_match_all('/\bdata-mosaic=(?:"([^"]*)"|\'([^\']*)\')/i', $_alfred_rendered, $mosaic_matches, PREG_SET_ORDER)) {
