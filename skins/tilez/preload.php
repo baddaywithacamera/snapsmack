@@ -388,6 +388,12 @@ if ($_alfred_post_slug || $_alfred_post_id) {
         <div class="post-inner">
             <div class="post-content entry-content e-content" data-merge-adjacent-mosaics>
                 <?php echo $_alfred_rendered; ?>
+                <?php if ($_alfred_signature): ?>
+                <div class="post-signature post-signature--closing">
+                    <img src="<?php echo htmlspecialchars(BASE_URL . ltrim((string)$_alfred_signature['img_file'], '/'), ENT_QUOTES); ?>"
+                         alt="<?php echo htmlspecialchars((string)($_alfred_signature['img_alt'] ?: $_alfred_signature['img_title']), ENT_QUOTES); ?>">
+                </div>
+                <?php endif; ?>
             </div>
 
             <aside class="post-record" aria-label="Post details">
@@ -402,34 +408,18 @@ if ($_alfred_post_slug || $_alfred_post_id) {
                     <?php if ($_alfred_albums): ?><div><dt>Album</dt><dd><?php echo htmlspecialchars(implode(', ', $_alfred_albums)); ?></dd></div><?php endif; ?>
                     <?php if ($_alfred_author !== ''): ?><div><dt>Author</dt><dd class="p-author"><?php echo htmlspecialchars($_alfred_author); ?></dd></div><?php endif; ?>
                 </dl>
-                <?php if ($_alfred_signature || $_alfred_gear_note !== ''): ?>
+                <?php if ($_alfred_gear_note !== ''): ?>
                 <div class="post-record-gear">
-                    <?php if ($_alfred_signature): ?>
-                    <div class="post-signature">
-                        <img src="<?php echo htmlspecialchars(BASE_URL . ltrim((string)$_alfred_signature['img_file'], '/'), ENT_QUOTES); ?>"
-                             alt="<?php echo htmlspecialchars((string)($_alfred_signature['img_alt'] ?: $_alfred_signature['img_title']), ENT_QUOTES); ?>">
-                    </div>
-                    <?php endif; ?>
-                    <?php if ($_alfred_gear_note !== ''): ?>
                     <h2>Camera notes</h2>
                     <?php echo $_alfred_gear_note; ?>
-                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
             </aside>
 
-            <?php if ($_alfred_signature || $_alfred_gear_note !== ''): ?>
+            <?php if ($_alfred_gear_note !== ''): ?>
             <div class="post-mobile-gear">
-                <?php if ($_alfred_signature): ?>
-                <div class="post-signature">
-                    <img src="<?php echo htmlspecialchars(BASE_URL . ltrim((string)$_alfred_signature['img_file'], '/'), ENT_QUOTES); ?>"
-                         alt="<?php echo htmlspecialchars((string)($_alfred_signature['img_alt'] ?: $_alfred_signature['img_title']), ENT_QUOTES); ?>">
-                </div>
-                <?php endif; ?>
-                <?php if ($_alfred_gear_note !== ''): ?>
                 <h2>Camera notes</h2>
                 <?php echo $_alfred_gear_note; ?>
-                <?php endif; ?>
             </div>
             <?php endif; ?>
         </div><!-- /.post-inner -->
