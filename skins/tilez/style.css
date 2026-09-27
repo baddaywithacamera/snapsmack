@@ -2318,8 +2318,8 @@ body.blog, body.single, body.archive { background: #fff; }
 .archive-post-date { font-size: 10px; letter-spacing: .08em; }
 .archive-post-title { margin: 4px 0 0; font-size: clamp(15px, 1.4vw, 22px); line-height: 1.15; }
 
-/* Longform pages share one clean editorial canvas. Text and MOSAIC bundles
-   use the same outside edges so a post reads as one deliberate composition. */
+/* Longform pages use an editorial split: the photo essay owns the wide left
+   column, while its publication record stays close at hand on the right. */
 .post-container { background: #fff; }
 .featured-media {
     width: min(900px, calc(100% - 48px));
@@ -2327,14 +2327,82 @@ body.blog, body.single, body.archive { background: #fff; }
     aspect-ratio: 3 / 2 !important;
     background: #f3f3f3;
 }
-.post-header {
-    width: min(900px, calc(100% - 48px));
-    padding: var(--tilez-content-start) 0 38px;
-}
 .post-inner {
     width: min(var(--tilez-page), calc(100% - 48px)) !important;
     max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 300px);
+    grid-template-areas: "essay record" "mobile-gear mobile-gear";
+    gap: 0 clamp(48px, 5vw, 82px);
+    align-items: start;
+    padding-top: var(--tilez-content-start);
 }
+.post-content { grid-area: essay; min-width: 0; }
+.post-record {
+    grid-area: record;
+    position: sticky;
+    top: 32px;
+    padding-top: 4px;
+}
+.post-record .post-header {
+    width: auto;
+    margin: 0;
+    padding: 0 0 30px;
+}
+.post-record .post-title {
+    font-size: clamp(2rem, 3.1vw, 3.2rem);
+    line-height: 1.03;
+    text-align: left;
+}
+.post-record .post-date {
+    margin: 16px 0 0;
+    text-align: left;
+}
+.post-facts {
+    margin: 0;
+    border-top: 1px solid #d8d8d8;
+}
+.post-facts > div {
+    display: grid;
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #e5e5e5;
+}
+.post-facts dt,
+.post-facts dd {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+}
+.post-facts dt {
+    color: #777;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+.post-facts dd { color: #222; }
+.post-record-gear,
+.post-mobile-gear {
+    margin-top: 34px;
+    padding-top: 18px;
+    border-top: 1px solid #d8d8d8;
+}
+.post-record-gear h2,
+.post-mobile-gear h2 {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.post-record-gear .post-gear-note,
+.post-mobile-gear .post-gear-note {
+    margin: 0;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 14px;
+    line-height: 1.6;
+}
+.post-mobile-gear { display: none; grid-area: mobile-gear; }
 .post-content,
 .entry-content {
     color: #282828;
@@ -2440,6 +2508,20 @@ body.blog, body.single, body.archive { background: #fff; }
     .main-menu { display: none; }
     .nav-toggle { display: block; }
     .tilez-icon-nav { display: none; }
+    .post-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+    .post-record {
+        position: static;
+        order: -1;
+        width: 100%;
+        margin-bottom: 44px;
+    }
+    .post-record .post-title { max-width: 18ch; }
+    .post-record-gear { display: none; }
+    .post-mobile-gear { display: block; order: 2; }
 }
 
 @media (max-width: 560px) {
