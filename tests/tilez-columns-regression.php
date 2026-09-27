@@ -35,10 +35,14 @@ $assert(str_contains($header, "['label' => 'IMAGES'"), 'images menu label is pre
 $assert(str_contains($header, 'class="tilez-icon-nav"'), 'top-right icon navigation is present');
 $assert(str_contains($style, 'font-size: 20px;'), 'desktop text menu is doubled in size');
 $assert(!str_contains($preload, '<figure class="featured-media"'), 'single posts start with their title instead of repeating the archive cover');
-$assert(str_contains($style, '.post-title') && str_contains($style, 'font-size: 3.333em;'), 'single-post title is one third larger than the restrained scale');
+$assert(str_contains($style, 'grid-template-areas: "essay record"'), 'single posts use the editorial essay-and-record split');
+$assert(str_contains($style, '.post-record') && str_contains($style, 'position: sticky;'), 'desktop post record remains visible beside the essay');
 $titlePos = strpos($preload, '<h1 class="post-title p-name">');
 $datePos = strpos($preload, '<p class="post-date">');
 $assert($titlePos !== false && $datePos !== false && $titlePos < $datePos, 'single-post date sits below the title');
+$assert(str_contains($preload, '<dt>Photos</dt>') && str_contains($preload, '<dt>Words</dt>'), 'post record includes photo and word counts');
+$assert(str_contains($preload, '<dt>Category</dt>') && str_contains($preload, '<dt>Album</dt>') && str_contains($preload, '<dt>Author</dt>'), 'post record includes taxonomy and author');
+$assert(str_contains($preload, '$_alfred_gear_note') && str_contains($style, '.post-mobile-gear'), 'camera notes move to the record and follow the essay on mobile');
 $assert(str_contains($style, '.post-gear-note'), 'closing equipment notes have a readable supporting style');
 $assert(str_contains($style, "font-family: Georgia, 'Times New Roman', serif;"), 'longform body uses a lighter editorial serif stack');
 $assert(str_contains($style, 'font-size: 21px;') && str_contains($style, 'font-weight: 400;'), 'desktop longform body is larger and normal-weight');
@@ -51,7 +55,6 @@ $assert(!is_file($root . '/skins/tilez/assets/js/tilez-mosaic-continuity.js'), '
 $assert(str_contains($style, '+ p:has(+ :is(.snap-inline-frame'), 'paragraphs between media receive symmetrical vertical spacing');
 $assert(str_contains($style, '--tilez-content-start: 40px;')
     && str_contains($style, 'padding-top: var(--tilez-content-start);')
-    && str_contains($style, 'padding: var(--tilez-content-start) 0 38px;')
     && str_contains($style, 'margin: 0 0 40px;'),
     'feed, archive, static pages, and single posts share one menu-to-content baseline');
 $assert(is_file($root . '/skins/tilez/assets/bad-day-masthead.png'), 'bundled masthead exists');
