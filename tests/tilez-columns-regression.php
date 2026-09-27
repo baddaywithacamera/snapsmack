@@ -37,7 +37,7 @@ $assert(str_contains($style, 'font-size: 20px;'), 'desktop text menu is doubled 
 $assert(!str_contains($preload, '<figure class="featured-media"'), 'single posts start with their title instead of repeating the archive cover');
 $assert(str_contains($style, 'grid-template-areas: "essay record"'), 'single posts use the editorial essay-and-record split');
 $assert(str_contains($style, 'minmax(320px, 370px)'), 'the editorial record is wide enough for a composed title');
-$assert(str_contains($style, '2.15vw, 2.25rem'), 'record title uses a restrained scale that avoids one-word lines');
+$assert(str_contains($style, '2.6vw, 2.7rem'), 'record title keeps the approved editorial scale');
 $assert(str_contains($style, '.post-record') && str_contains($style, 'position: sticky;'), 'desktop post record remains visible beside the essay');
 $titlePos = strpos($preload, '<h1 class="post-title p-name">');
 $datePos = strpos($preload, '<p class="post-date">');
@@ -53,6 +53,9 @@ $assert(str_contains($style, '.snap-inline-frame:has(+ .snap-inline-frame)'), 'c
 $assert(str_contains($style, 'width: calc(50% - 6px) !important;'), 'desktop photograph pairs reserve room for inter-element whitespace');
 $assert(str_contains($preload, 'data-merge-adjacent-mosaics'), 'TILEZ requests continuous adjacent mosaic rendering without shipping skin JavaScript');
 $assert(str_contains($mosaicEngine, 'function mergeAdjacentMosaics()'), 'the shared mosaic engine owns adjacent-bundle continuity');
+$assert(str_contains($mosaicEngine, ".snap-mosaic[data-mosaic], .snap-mosaic-wall")
+    && str_contains($mosaicEngine, "while (cursor.firstChild) first.appendChild(cursor.firstChild)"),
+    'shared continuity also joins adjacent column, row, and square MOSAIC walls');
 $assert(!is_file($root . '/skins/tilez/assets/js/tilez-mosaic-continuity.js'), 'TILEZ does not ship JavaScript');
 $assert(str_contains($style, '+ p:has(+ :is(.snap-inline-frame'), 'paragraphs between media receive symmetrical vertical spacing');
 $assert(str_contains($style, '--tilez-content-start: 40px;')
