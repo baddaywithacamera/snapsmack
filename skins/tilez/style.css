@@ -2331,9 +2331,9 @@ body.blog, body.single, body.archive { background: #fff; }
     width: min(var(--tilez-page), calc(100% - 48px)) !important;
     max-width: none;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(250px, 300px);
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 370px);
     grid-template-areas: "essay record" "mobile-gear mobile-gear";
-    gap: 0 clamp(48px, 5vw, 82px);
+    gap: 0 clamp(42px, 4vw, 64px);
     align-items: start;
     padding-top: var(--tilez-content-start);
 }
@@ -2350,8 +2350,8 @@ body.blog, body.single, body.archive { background: #fff; }
     padding: 0 0 30px;
 }
 .post-record .post-title {
-    font-size: clamp(2rem, 3.1vw, 3.2rem);
-    line-height: 1.03;
+    font-size: clamp(2rem, 2.6vw, 2.7rem);
+    line-height: 1.06;
     text-align: left;
 }
 .post-record .post-date {
