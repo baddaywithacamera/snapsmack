@@ -244,6 +244,69 @@ if ($_alfred_post_slug || $_alfred_post_id) {
     // --- OG / page title for meta ---
     $page_title = htmlspecialchars($_alfred_post['title']);
 
+    // Assemble the quiet editorial record shown beside the photo essay.
+    $_alfred_categories = [];
+    $_alfred_albums = [];
+    $_alfred_author = trim((string)($settings['site_author'] ?? ''));
+    try {
+        $meta_stmt = $pdo->prepare(
+            "SELECT c.cat_name
+             FROM snap_post_cat_map pcm
+             JOIN snap_categories c ON c.id = pcm.cat_id
+             WHERE pcm.post_id = ? ORDER BY c.cat_name"
+        );
+        $meta_stmt->execute([(int)$_alfred_post['id']]);
+        $_alfred_categories = $meta_stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        $meta_stmt = $pdo->prepare(
+            "SELECT a.album_name
+             FROM snap_post_album_map pam
+             JOIN snap_albums a ON a.id = pam.album_id
+             WHERE pam.post_id = ? ORDER BY a.album_name"
+        );
+        $meta_stmt->execute([(int)$_alfred_post['id']]);
+        $_alfred_albums = $meta_stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (!empty($_alfred_post['user_id'])) {
+            $meta_stmt = $pdo->prepare("SELECT username FROM snap_users WHERE id = ? LIMIT 1");
+            $meta_stmt->execute([(int)$_alfred_post['user_id']]);
+            $_alfred_author = trim((string)($meta_stmt->fetchColumn() ?: $_alfred_author));
+        }
+    } catch (PDOException $e) {
+        // Older installs may not have every relationship table yet. The record
+        // remains useful with the metadata that is available.
+    }
+    if ($_alfred_author === '') {
+        $_alfred_author = (string)($settings['site_name'] ?? '');
+    }
+
+    require_once dirname(__DIR__, 2) . '/core/parser.php';
+    $_alfred_parser = new SnapSmack($pdo);
+    $_alfred_rendered = $_alfred_parser->parseContent($_alfred_post['content'] ?? '');
+
+    // Camera/equipment copy is authored as part of the post, but TILEZ presents
+    // it as publication ephemera rather than leaving it stranded at the bottom.
+    $_alfred_gear_note = '';
+    if (preg_match('~<(p|div)\b[^>]*class=(?:"[^"]*\bpost-gear-note\b[^"]*"|\'[^\']*\bpost-gear-note\b[^\']*\')[^>]*>.*?</\1>~is', $_alfred_rendered, $gear_match)) {
+        $_alfred_gear_note = $gear_match[0];
+        $_alfred_rendered = str_replace($gear_match[0], '', $_alfred_rendered);
+    }
+
+    $_alfred_photo_count = preg_match_all('/<img\b/i', $_alfred_rendered, $photo_matches);
+    if (preg_match_all('/\bdata-mosaic=(?:"([^"]*)"|\'([^\']*)\')/i', $_alfred_rendered, $mosaic_matches, PREG_SET_ORDER)) {
+        foreach ($mosaic_matches as $mosaic_match) {
+            $mosaic_json = html_entity_decode((string)($mosaic_match[1] !== '' ? $mosaic_match[1] : $mosaic_match[2]), ENT_QUOTES | ENT_HTML5);
+            $mosaic_items = json_decode($mosaic_json, true);
+            if (is_array($mosaic_items)) {
+                $_alfred_photo_count += count($mosaic_items);
+            }
+        }
+    }
+    $_alfred_plain_words = preg_replace('/\[[^\]]+\]/', ' ', (string)($_alfred_post['content'] ?? ''));
+    $_alfred_plain_words = html_entity_decode(strip_tags((string)$_alfred_plain_words), ENT_QUOTES | ENT_HTML5);
+    preg_match_all('/[\p{L}\p{N}]+(?:[’\'\-][\p{L}\p{N}]+)*/u', $_alfred_plain_words, $word_matches);
+    $_alfred_word_count = count($word_matches[0]);
+
     ?><!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars($settings['site_language'] ?? 'en'); ?>">
 <head>
@@ -261,28 +324,37 @@ if ($_alfred_post_slug || $_alfred_post_id) {
     <article class="post-container h-entry">
         <?php snapsmack_indieweb_longform_properties($_alfred_post, $settings); ?>
 
-        <div class="post-header">
-            <h1 class="post-title p-name"><?php echo htmlspecialchars($_alfred_post['title']); ?></h1>
-            <p class="post-date"><time class="dt-published" datetime="<?php echo htmlspecialchars(date(DATE_ATOM, strtotime($_alfred_post['created_at']))); ?>"><?php echo date('F j, Y', strtotime($_alfred_post['created_at'])); ?></time></p>
-        </div>
-
         <div class="post-inner">
             <div class="post-content entry-content e-content" data-merge-adjacent-mosaics>
-                <?php
-                // Run the post body through the shortcode parser — [img:], [mosaic:],
-                // [columns], [dropcap], [spacer:], data shortcodes, etc. Without this
-                // the published post shows raw [...] bracket text (the save side
-                // deliberately leaves shortcodes literal for the renderer to expand;
-                // ALFRED was echoing them unparsed, so only PREVIEW rendered them).
-                require_once dirname(__DIR__, 2) . '/core/parser.php';
-                $_alfred_parser = new SnapSmack($pdo);
-                echo $_alfred_parser->parseContent($_alfred_post['content'] ?? '');
-                ?>
+                <?php echo $_alfred_rendered; ?>
             </div>
 
-            <div class="post-meta">
-                <p><?php echo date('F j, Y', strtotime($_alfred_post['created_at'])); ?></p>
+            <aside class="post-record" aria-label="Post details">
+                <div class="post-header">
+                    <h1 class="post-title p-name"><?php echo htmlspecialchars($_alfred_post['title']); ?></h1>
+                    <p class="post-date"><time class="dt-published" datetime="<?php echo htmlspecialchars(date(DATE_ATOM, strtotime($_alfred_post['created_at']))); ?>"><?php echo date('F j, Y', strtotime($_alfred_post['created_at'])); ?></time></p>
+                </div>
+                <dl class="post-facts">
+                    <div><dt>Photos</dt><dd><?php echo number_format($_alfred_photo_count); ?></dd></div>
+                    <div><dt>Words</dt><dd><?php echo number_format($_alfred_word_count); ?></dd></div>
+                    <?php if ($_alfred_categories): ?><div><dt>Category</dt><dd><?php echo htmlspecialchars(implode(', ', $_alfred_categories)); ?></dd></div><?php endif; ?>
+                    <?php if ($_alfred_albums): ?><div><dt>Album</dt><dd><?php echo htmlspecialchars(implode(', ', $_alfred_albums)); ?></dd></div><?php endif; ?>
+                    <?php if ($_alfred_author !== ''): ?><div><dt>Author</dt><dd class="p-author"><?php echo htmlspecialchars($_alfred_author); ?></dd></div><?php endif; ?>
+                </dl>
+                <?php if ($_alfred_gear_note !== ''): ?>
+                <div class="post-record-gear">
+                    <h2>Camera notes</h2>
+                    <?php echo $_alfred_gear_note; ?>
+                </div>
+                <?php endif; ?>
+            </aside>
+
+            <?php if ($_alfred_gear_note !== ''): ?>
+            <div class="post-mobile-gear">
+                <h2>Camera notes</h2>
+                <?php echo $_alfred_gear_note; ?>
             </div>
+            <?php endif; ?>
         </div><!-- /.post-inner -->
 
     </article><!-- /.post-container -->
