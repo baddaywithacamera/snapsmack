@@ -431,19 +431,32 @@
     function mergeAdjacentMosaics() {
         document.querySelectorAll('[data-merge-adjacent-mosaics]').forEach(function (scope) {
             var mosaics = Array.prototype.slice.call(scope.children).filter(function (child) {
-                return child.matches('.snap-mosaic[data-mosaic]');
+                return child.matches('.snap-mosaic[data-mosaic], .snap-mosaic-wall');
             });
+
+            function wallKind(element) {
+                if (element.matches('.snap-mosaic[data-mosaic]')) return 'asymmetric';
+                if (element.matches('.snap-mosaic-wall.ss-masonry')) return 'columns';
+                if (element.matches('.snap-mosaic-wall.ss-scroll-wall')) return 'rows';
+                if (element.matches('.snap-mosaic-wall.ss-square-wall')) return 'square';
+                return '';
+            }
 
             mosaics.forEach(function (first) {
                 if (!first.isConnected) return;
 
-                var images;
-                try {
-                    images = JSON.parse(first.getAttribute('data-mosaic') || '[]');
-                } catch (error) {
-                    return;
+                var kind = wallKind(first);
+                if (!kind) return;
+
+                var images = [];
+                if (kind === 'asymmetric') {
+                    try {
+                        images = JSON.parse(first.getAttribute('data-mosaic') || '[]');
+                    } catch (error) {
+                        return;
+                    }
+                    if (!Array.isArray(images)) return;
                 }
-                if (!Array.isArray(images)) return;
 
                 var cursor = first.nextElementSibling;
                 var emptyBridges = [];
@@ -453,14 +466,23 @@
                         cursor = cursor.nextElementSibling;
                         continue;
                     }
-                    if (!cursor.matches('.snap-mosaic[data-mosaic]')) break;
+                    if (wallKind(cursor) !== kind) break;
 
-                    try {
-                        var nextImages = JSON.parse(cursor.getAttribute('data-mosaic') || '[]');
-                        if (!Array.isArray(nextImages)) break;
-                        images = images.concat(nextImages);
-                    } catch (error) {
-                        break;
+                    if (kind === 'asymmetric') {
+                        try {
+                            var nextImages = JSON.parse(cursor.getAttribute('data-mosaic') || '[]');
+                            if (!Array.isArray(nextImages)) break;
+                            images = images.concat(nextImages);
+                        } catch (error) {
+                            break;
+                        }
+                    } else {
+                        // Column, row, and square MOSAIC bundles already contain
+                        // their tiles as DOM children. Moving them into the first
+                        // wall lets the shared layout engine place every tile in
+                        // one continuous composition instead of leaving an open
+                        // tail at the end of each separately saved bundle.
+                        while (cursor.firstChild) first.appendChild(cursor.firstChild);
                     }
 
                     emptyBridges.forEach(function (bridge) { bridge.remove(); });
@@ -470,7 +492,9 @@
                     merged.remove();
                 }
 
-                first.setAttribute('data-mosaic', JSON.stringify(images));
+                if (kind === 'asymmetric') {
+                    first.setAttribute('data-mosaic', JSON.stringify(images));
+                }
             });
         });
     }

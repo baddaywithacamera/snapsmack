@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.762D — 2026-09-27 — Close the gap
+
+- **MOSAIC continuity now includes column, row, and square bundles.** Consecutive wall-layout MOSAIC blocks inside an opted-in longform post are joined before their shared layout engine runs. A five-photo columns bundle followed by another bundle therefore continues filling the open columns instead of ending in a large white hole. Asymmetric continuity remains unchanged.
+
 ## 0.7.761D — 2026-09-26 — Clean swap
 
 - **Skin updates recover from mismatched file ownership without manual server edits.** The signed registry installer now moves the existing skin directory aside, installs and validates the replacement, rolls back on failure, and then removes the retired copy when permissions allow. This repairs the PHOTOGRAM directory on Fauxlaroid through the supported updater path.
