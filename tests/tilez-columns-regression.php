@@ -34,9 +34,16 @@ $assert(str_contains($header, "['label' => 'ALBUMS'"), 'albums menu label is pre
 $assert(str_contains($header, "['label' => 'IMAGES'"), 'images menu label is present');
 $assert(str_contains($header, 'class="tilez-icon-nav"'), 'top-right icon navigation is present');
 $assert(str_contains($style, 'font-size: 16px;'), 'desktop text menu remains secondary to the masthead');
-$assert(str_contains($style, 'bottom: -42px;')
+$assert(str_contains($style, '.navigation .section-inner { position: relative;')
     && str_contains($style, 'justify-content: flex-start;'),
     'round controls and text links share one uncrowded navigation row');
+$navStart = strpos($header, '<nav class="navigation"');
+$iconStart = strpos($header, '<div class="tilez-icon-nav"');
+$assert($navStart !== false && $iconStart !== false && $iconStart > $navStart,
+    'round controls live inside the navigation layer so their hit areas remain clickable');
+$assert(str_contains($style, 'color: #b3261e;')
+    && str_contains($style, 'content: attr(aria-label);'),
+    'text and round navigation have visible hover feedback and named hints');
 $assert(!str_contains($preload, '<figure class="featured-media"'), 'single posts start with their title instead of repeating the archive cover');
 $assert(str_contains($style, 'grid-template-areas: "essay record"'), 'single posts use the editorial essay-and-record split');
 $assert(str_contains($style, 'minmax(320px, 370px)'), 'the editorial record is wide enough for a composed title');
