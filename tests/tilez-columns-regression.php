@@ -45,6 +45,13 @@ $assert($titlePos !== false && $datePos !== false && $titlePos < $datePos, 'sing
 $assert(str_contains($preload, '<dt>Photos</dt>') && str_contains($preload, '<dt>Words</dt>'), 'post record includes photo and word counts');
 $assert(str_contains($preload, '<dt>Category</dt>') && str_contains($preload, '<dt>Album</dt>') && str_contains($preload, '<dt>Author</dt>'), 'post record includes taxonomy and author');
 $assert(str_contains($preload, '$_alfred_gear_note') && str_contains($style, '.post-mobile-gear'), 'camera notes move to the record and follow the essay on mobile');
+$assert(str_contains($preload, '$_alfred_signature')
+    && str_contains($preload, 'sean-mccormick-black-low-res')
+    && str_contains($style, '.post-signature'),
+    'the imported handwritten signature is restored to the desktop and mobile colophon');
+$assert(str_contains($preload, "LOWER(img_title) NOT LIKE '%signature%'")
+    && str_contains($preload, "LOWER(img_title) NOT LIKE '%sean-mccormick-black-low-res%'"),
+    'decorative signatures do not appear as black photograph tiles in the archive');
 $assert(str_contains($preload, '$legacy_is_colophon')
     && str_contains($preload, 'photos? (?:taken|made|shot) with')
     && str_contains($preload, 'count($legacy_equipment_terms) >= 3'),
