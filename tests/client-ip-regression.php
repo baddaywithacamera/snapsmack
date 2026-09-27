@@ -43,7 +43,7 @@ ip_test(!snap_ip_is_trusted_proxy('10.21.4.9', $parsed), 'IPv4 CIDR trust escape
 ip_test(snap_ip_is_trusted_proxy('2001:db8::2', $parsed), 'IPv6 CIDR trust failed');
 
 $sources = [
-    'snap-in.php' => ['snap_trusted_client_ip', 'snap_ip_is_bannable'],
+    'snap-in.php' => ['snap_trusted_client_ip'],
     'probe-ban.php' => ['snap_trusted_client_ip', 'snap_ip_is_bannable'],
     'core/flkrfckr-api.php' => ['snap_trusted_client_ip', 'snap_ip_is_bannable'],
     // The signed-activity inbox deliberately stopped writing shared-IP bans in
@@ -65,15 +65,20 @@ foreach (['core/flkrfckr-api.php'] as $file) {
     ip_test(str_contains($body, "require_once __DIR__ . '/client-ip.php'"), "{$file} does not require the security component");
 }
 
-foreach (['snap-in.php', 'probe-ban.php', 'core/flkrfckr-api.php'] as $file) {
+foreach (['probe-ban.php', 'core/flkrfckr-api.php'] as $file) {
     $body = file_get_contents(__DIR__ . '/../' . $file);
     ip_test(str_contains($body, 'snap_ip_record_ban'), "{$file} bypasses the bounded fixed-lifetime ban writer");
     ip_test(!str_contains($body, 'INTO snap_ip_bans'), "{$file} still writes the ban table directly");
 }
+$login = file_get_contents(__DIR__ . '/../snap-in.php');
+ip_test(!str_contains($login, 'snap_ip_record_ban($pdo, $ip, \'auto:brute_force\''), 'login failures still create a site-wide IP ban');
+ip_test(str_contains($login, 'snap_login_is_rate_limited'), 'login-only cooldown is missing');
+ip_test(str_contains($login, 'http_response_code(429)'), 'login cooldown does not return the correct status');
 $resolver = file_get_contents(__DIR__ . '/../core/client-ip.php');
 ip_test(str_contains($resolver, "reason LIKE 'auto:%'"), 'historical automatic-ban reset is missing');
 ip_test(str_contains($resolver, 'client_ip_cloudflare_repair_741d'), 'one-time Cloudflare client-ban repair is missing');
 ip_test(str_contains($resolver, "DELETE FROM snap_ip_bans WHERE reason LIKE 'auto:%'"), 'legacy automatic login bans are not cleared during repair');
+ip_test(str_contains($resolver, "DELETE FROM snap_ip_bans WHERE reason = 'auto:brute_force'"), 'obsolete seven-day login lockouts are not retired');
 ip_test(str_contains($resolver, '$recent >= 250 || $total >= 10000'), 'ban-table insertion bounds are missing');
 ip_test(str_contains($resolver, 'snap_ip_send_owner_ban_alert'), 'owner lockout alert path is missing');
 
