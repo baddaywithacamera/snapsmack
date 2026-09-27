@@ -2350,8 +2350,8 @@ body.blog, body.single, body.archive { background: #fff; }
     padding: 0 0 30px;
 }
 .post-record .post-title {
-    font-size: clamp(2rem, 2.6vw, 2.7rem);
-    line-height: 1.06;
+    font-size: clamp(1.9rem, 2.15vw, 2.25rem);
+    line-height: 1.08;
     text-align: left;
 }
 .post-record .post-date {
