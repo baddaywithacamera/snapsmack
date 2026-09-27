@@ -2171,7 +2171,7 @@ body.alfred-lb-open { overflow: hidden; }
     --tilez-muted: #777;
     --tilez-gap: 18px;
     --tilez-page: 1180px;
-    --tilez-content-start: 40px;
+    --tilez-content-start: 24px;
 }
 
 html, body { background: #fff; color: var(--tilez-ink); }
@@ -2185,7 +2185,7 @@ body.blog, body.single, body.archive { background: #fff; }
     width: min(var(--tilez-page), calc(100% - 48px));
     min-height: 0;
     margin: 0 auto;
-    padding: 28px 0 14px;
+    padding: 28px 0 4px;
     text-align: left;
 }
 .header .blog-logo {
@@ -2197,11 +2197,12 @@ body.blog, body.single, body.archive { background: #fff; }
 .header .blog-description { display: none; }
 .tilez-icon-nav {
     position: absolute;
-    top: 50%;
+    top: auto;
     right: 0;
+    bottom: 4px;
     display: flex;
     gap: 9px;
-    transform: translateY(-50%);
+    transform: none;
 }
 .tilez-icon-nav a {
     display: grid;
@@ -2258,10 +2259,11 @@ body.blog, body.single, body.archive { background: #fff; }
 .main-menu { display: flex; width: auto; max-width: none; gap: 18px; white-space: nowrap; }
 .main-menu > li > a, .main-menu > li > span {
     color: var(--tilez-ink);
-    font-size: 20px;
+    font-size: 17px;
     font-weight: 500;
-    letter-spacing: .11em;
+    letter-spacing: .1em;
 }
+.main-menu > li > a { padding-top: 18px; padding-bottom: 18px; }
 .nav-toggle .bar { background: var(--tilez-ink); }
 
 .content > .section-inner {
