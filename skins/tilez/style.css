@@ -2199,7 +2199,8 @@ body.blog, body.single, body.archive { background: #fff; }
     position: absolute;
     top: auto;
     right: 0;
-    bottom: 4px;
+    bottom: -42px;
+    z-index: 30;
     display: flex;
     gap: 9px;
     transform: none;
@@ -2256,14 +2257,14 @@ body.blog, body.single, body.archive { background: #fff; }
     border: 0;
 }
 .navigation .section-inner { width: 100%; }
-.main-menu { display: flex; width: auto; max-width: none; gap: 18px; white-space: nowrap; }
+.main-menu { display: flex; width: auto; max-width: none; gap: 14px; white-space: nowrap; justify-content: flex-start; }
 .main-menu > li > a, .main-menu > li > span {
     color: var(--tilez-ink);
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 500;
     letter-spacing: .1em;
 }
-.main-menu > li > a { padding-top: 18px; padding-bottom: 18px; }
+.main-menu > li > a { padding-top: 15px; padding-bottom: 15px; }
 .nav-toggle .bar { background: var(--tilez-ink); }
 
 .content > .section-inner {
@@ -2399,6 +2400,9 @@ body.blog, body.single, body.archive { background: #fff; }
 }
 .post-signature {
     margin: 0 0 24px;
+}
+.post-signature--closing {
+    margin: 44px 0 0;
 }
 .post-signature img {
     display: block;

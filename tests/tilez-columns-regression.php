@@ -33,8 +33,10 @@ $assert(str_contains($header, "['label' => 'CATEGORIES'"), 'categories menu labe
 $assert(str_contains($header, "['label' => 'ALBUMS'"), 'albums menu label is present');
 $assert(str_contains($header, "['label' => 'IMAGES'"), 'images menu label is present');
 $assert(str_contains($header, 'class="tilez-icon-nav"'), 'top-right icon navigation is present');
-$assert(str_contains($style, 'font-size: 17px;'), 'desktop text menu remains secondary to the masthead');
-$assert(str_contains($style, 'bottom: 4px;') && str_contains($style, 'transform: none;'), 'round controls align with the masthead baseline');
+$assert(str_contains($style, 'font-size: 16px;'), 'desktop text menu remains secondary to the masthead');
+$assert(str_contains($style, 'bottom: -42px;')
+    && str_contains($style, 'justify-content: flex-start;'),
+    'round controls and text links share one uncrowded navigation row');
 $assert(!str_contains($preload, '<figure class="featured-media"'), 'single posts start with their title instead of repeating the archive cover');
 $assert(str_contains($style, 'grid-template-areas: "essay record"'), 'single posts use the editorial essay-and-record split');
 $assert(str_contains($style, 'minmax(320px, 370px)'), 'the editorial record is wide enough for a composed title');
@@ -48,8 +50,9 @@ $assert(str_contains($preload, '<dt>Category</dt>') && str_contains($preload, '<
 $assert(str_contains($preload, '$_alfred_gear_note') && str_contains($style, '.post-mobile-gear'), 'camera notes move to the record and follow the essay on mobile');
 $assert(str_contains($preload, '$_alfred_signature')
     && str_contains($preload, 'sean-mccormick-black-low-res')
-    && str_contains($style, '.post-signature'),
-    'the imported handwritten signature is restored to the desktop and mobile colophon');
+    && str_contains($preload, 'post-signature post-signature--closing')
+    && str_contains($style, '.post-signature--closing'),
+    'the imported handwritten signature closes the essay instead of appearing in the sidebar record');
 $assert(str_contains($preload, "LOWER(img_title) NOT LIKE '%signature%'")
     && str_contains($preload, "LOWER(img_title) NOT LIKE '%sean-mccormick-black-low-res%'"),
     'decorative signatures do not appear as black photograph tiles in the archive');
