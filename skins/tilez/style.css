@@ -2171,7 +2171,7 @@ body.alfred-lb-open { overflow: hidden; }
     --tilez-muted: #777;
     --tilez-gap: 18px;
     --tilez-page: 1180px;
-    --tilez-content-start: 24px;
+    --tilez-content-start: 44px;
 }
 
 html, body { background: #fff; color: var(--tilez-ink); }
