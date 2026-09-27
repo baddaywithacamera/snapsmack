@@ -9,11 +9,9 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.764D — 2026-09-27 — Open door
+## 0.7.763D — 2026-09-27 — Fresh page
 
 - **Failed logins can no longer make the login page disappear for seven days.** Five failures now impose a login-submission-only cooldown for the remainder of the ten-minute window; ordinary GET access to the login and recovery interface remains available. The update also retires existing `auto:brute_force` rows from the site-wide IP-ban table, clearing the bare `/snap-in` 403 without weakening manual IP blocks or the probe shield. (`snap-in.php`, `core/client-ip.php`.)
-
-## 0.7.763D — 2026-09-27 — Fresh page
 
 - **Posts made from the desktop tools show up on the front page right away.** With the page cache on, the admin posting pages cleared the saved pages after publishing, but the APIs the desktop tools post through never did. A 13-photo SMACK YOUR BATCH UP batch on theschoolofhardnocks.ca left visitors on a front page saved partway through, with the 7 newest posts missing until it expired. A successful write from SYBU, COLD SNAP, GYSS, FLKR FCKR, SMACKTHEMUP, SMACKPRESS, TAKE YOUR SHIT WITH YOU or hub posting now clears the saved pages. Heartbeats and other background traffic do not.
 - **SMACK YOUR BATCH UP 0.7.72: already-enriched photos are not enriched again.** The queue called a photo enriched if it had a title or tags; the enricher skipped only photos with a title or caption. A photo with tags but no caption showed "enriched" and was sent to the AI again — paid for twice and its text replaced. One rule now covers both, and if some ticked photos are already enriched SYBU asks: **SKIP THOSE** (the default) or **ENRICH THEM AGAIN**.
