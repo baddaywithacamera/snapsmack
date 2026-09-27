@@ -257,6 +257,10 @@ function snap_ip_ban_maintenance(PDO $pdo): void {
         }
 
         $pdo->exec("DELETE FROM snap_ip_bans WHERE expires_at <= NOW()");
+        // Older login code promoted five failures into a seven-day global ban,
+        // hiding even the login and recovery pages behind a bare 403. Login
+        // throttling is now scoped to POST attempts, so retire those lockouts.
+        $pdo->exec("DELETE FROM snap_ip_bans WHERE reason = 'auto:brute_force'");
         // Repair sites that previously mistook a Cloudflare edge for a visitor.
         // Only automatic rows are removed; manual moderation is preserved.
         $rows = $pdo->query(

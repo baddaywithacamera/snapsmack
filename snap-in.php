@@ -44,12 +44,13 @@ function snap_client_ip(): string {
 
 /**
  * Record a failed login attempt for the given IP.
- * If the failure count reaches the threshold within the window, auto-ban
- * the IP for 7 days and clear the rate limit counter.
+ * The counter is enforced only on login submissions. It must never write the
+ * address into the site-wide ban table: doing that made the login page itself
+ * return 403 for seven days and locked the owner out of the recovery UI.
  *
  * Threshold : 5 failures
  * Window    : 10 minutes
- * Ban length: 7 days
+ * Cooldown   : remainder of the 10-minute window
  */
 function snap_record_login_failure(PDO $pdo, string $ip): void {
     // Upsert failure counter — reset if the existing window is stale
@@ -61,23 +62,18 @@ function snap_record_login_failure(PDO $pdo, string $ip): void {
            window_start = IF(window_start < DATE_SUB(NOW(), INTERVAL 10 MINUTE), NOW(), window_start)"
     )->execute([$ip]);
 
-    // Fetch current count within the active window
+}
+
+/** Is this address still inside the short login-only cooldown? */
+function snap_login_is_rate_limited(PDO $pdo, string $ip): bool {
     $row = $pdo->prepare(
         "SELECT count FROM snap_rate_limits
          WHERE ip = ? AND action = 'login_fail'
-           AND window_start >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
+           AND window_start >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+         LIMIT 1"
     );
     $row->execute([$ip]);
-    $fail_count = (int)($row->fetchColumn() ?: 0);
-
-    if ($fail_count >= 5 && snap_ip_is_bannable($ip, $pdo)) {
-        // Fixed seven-day lifetime. A duplicate does not renew the clock.
-        snap_ip_record_ban($pdo, $ip, 'auto:brute_force', 7 * 86400, true);
-        // Clear the counter so it doesn't re-fire on every subsequent page hit
-        $pdo->prepare(
-            "DELETE FROM snap_rate_limits WHERE ip = ? AND action = 'login_fail'"
-        )->execute([$ip]);
-    }
+    return (int)($row->fetchColumn() ?: 0) >= 5;
 }
 
 // --- DIRECT ACCESS PROTECTION ---
@@ -205,7 +201,10 @@ if (($_GET['err'] ?? '') === '2fa_locked') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $login_type = $_POST['login_type'] ?? 'password';
 
-    if ($login_type === 'password') {
+    if (snap_login_is_rate_limited($pdo, $_snap_ip)) {
+        http_response_code(429);
+        $error = "TOO MANY ATTEMPTS: Wait ten minutes before trying again.";
+    } elseif ($login_type === 'password') {
         $active_tab = 'password';
         $user_input = trim($_POST['username'] ?? '');
         $pass_input = $_POST['password'] ?? '';
