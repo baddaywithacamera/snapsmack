@@ -33,7 +33,8 @@ $assert(str_contains($header, "['label' => 'CATEGORIES'"), 'categories menu labe
 $assert(str_contains($header, "['label' => 'ALBUMS'"), 'albums menu label is present');
 $assert(str_contains($header, "['label' => 'IMAGES'"), 'images menu label is present');
 $assert(str_contains($header, 'class="tilez-icon-nav"'), 'top-right icon navigation is present');
-$assert(str_contains($style, 'font-size: 20px;'), 'desktop text menu is doubled in size');
+$assert(str_contains($style, 'font-size: 17px;'), 'desktop text menu remains secondary to the masthead');
+$assert(str_contains($style, 'bottom: 4px;') && str_contains($style, 'transform: none;'), 'round controls align with the masthead baseline');
 $assert(!str_contains($preload, '<figure class="featured-media"'), 'single posts start with their title instead of repeating the archive cover');
 $assert(str_contains($style, 'grid-template-areas: "essay record"'), 'single posts use the editorial essay-and-record split');
 $assert(str_contains($style, 'minmax(320px, 370px)'), 'the editorial record is wide enough for a composed title');
@@ -69,7 +70,7 @@ $assert(str_contains($mosaicEngine, ".snap-mosaic[data-mosaic], .snap-mosaic-wal
     'shared continuity also joins adjacent column, row, and square MOSAIC walls');
 $assert(!is_file($root . '/skins/tilez/assets/js/tilez-mosaic-continuity.js'), 'TILEZ does not ship JavaScript');
 $assert(str_contains($style, '+ p:has(+ :is(.snap-inline-frame'), 'paragraphs between media receive symmetrical vertical spacing');
-$assert(str_contains($style, '--tilez-content-start: 40px;')
+$assert(str_contains($style, '--tilez-content-start: 24px;')
     && str_contains($style, 'padding-top: var(--tilez-content-start);')
     && str_contains($style, 'margin: 0 0 40px;'),
     'feed, archive, static pages, and single posts share one menu-to-content baseline');
