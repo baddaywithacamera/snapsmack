@@ -57,6 +57,9 @@ if (($_GET['view'] ?? '') === 'archive') {
             "SELECT id, img_title, img_file, img_thumb_square, img_thumb_aspect
              FROM snap_images
              WHERE img_status = 'published'
+               AND LOWER(img_title) NOT LIKE '%signature%'
+               AND LOWER(img_title) NOT LIKE '%autograph%'
+               AND LOWER(img_title) NOT LIKE '%sean-mccormick-black-low-res%'
              ORDER BY sort_order ASC, id DESC"
         );
         $_alfred_images = $_alfred_arch_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -247,6 +250,7 @@ if ($_alfred_post_slug || $_alfred_post_id) {
     // Assemble the quiet editorial record shown beside the photo essay.
     $_alfred_categories = [];
     $_alfred_albums = [];
+    $_alfred_signature = null;
     $_alfred_author = trim((string)($settings['site_author'] ?? ''));
     try {
         $meta_stmt = $pdo->prepare(
@@ -271,6 +275,37 @@ if ($_alfred_post_slug || $_alfred_post_id) {
             $meta_stmt = $pdo->prepare("SELECT username FROM snap_users WHERE id = ? LIMIT 1");
             $meta_stmt->execute([(int)$_alfred_post['user_id']]);
             $_alfred_author = trim((string)($meta_stmt->fetchColumn() ?: $_alfred_author));
+        }
+
+        // WordPress treated the author's handwritten signature as one of the
+        // post images. The importer kept the file and its post relationship,
+        // but intentionally omitted the decorative image from the prose. Put
+        // it back where it belongs: in the post colophon beside the essay.
+        $meta_stmt = $pdo->prepare(
+            "SELECT i.img_file, i.img_alt, i.img_title
+             FROM snap_post_images pi
+             JOIN snap_images i ON i.id = pi.image_id
+             WHERE pi.post_id = ?
+               AND (LOWER(i.img_title) LIKE '%signature%'
+                    OR LOWER(i.img_title) LIKE '%autograph%'
+                    OR LOWER(i.img_title) LIKE '%sean-mccormick-black-low-res%')
+             ORDER BY pi.sort_position DESC
+             LIMIT 1"
+        );
+        $meta_stmt->execute([(int)$_alfred_post['id']]);
+        $_alfred_signature = $meta_stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        if (!$_alfred_signature) {
+            $meta_stmt = $pdo->query(
+                "SELECT img_file, img_alt, img_title
+                 FROM snap_images
+                 WHERE img_status = 'published'
+                   AND (LOWER(img_title) LIKE '%signature%'
+                        OR LOWER(img_title) LIKE '%autograph%'
+                        OR LOWER(img_title) LIKE '%sean-mccormick-black-low-res%')
+                 ORDER BY id DESC
+                 LIMIT 1"
+            );
+            $_alfred_signature = $meta_stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         }
     } catch (PDOException $e) {
         // Older installs may not have every relationship table yet. The record
@@ -359,18 +394,34 @@ if ($_alfred_post_slug || $_alfred_post_id) {
                     <?php if ($_alfred_albums): ?><div><dt>Album</dt><dd><?php echo htmlspecialchars(implode(', ', $_alfred_albums)); ?></dd></div><?php endif; ?>
                     <?php if ($_alfred_author !== ''): ?><div><dt>Author</dt><dd class="p-author"><?php echo htmlspecialchars($_alfred_author); ?></dd></div><?php endif; ?>
                 </dl>
-                <?php if ($_alfred_gear_note !== ''): ?>
+                <?php if ($_alfred_signature || $_alfred_gear_note !== ''): ?>
                 <div class="post-record-gear">
+                    <?php if ($_alfred_signature): ?>
+                    <div class="post-signature">
+                        <img src="<?php echo htmlspecialchars(BASE_URL . ltrim((string)$_alfred_signature['img_file'], '/'), ENT_QUOTES); ?>"
+                             alt="<?php echo htmlspecialchars((string)($_alfred_signature['img_alt'] ?: $_alfred_signature['img_title']), ENT_QUOTES); ?>">
+                    </div>
+                    <?php endif; ?>
+                    <?php if ($_alfred_gear_note !== ''): ?>
                     <h2>Camera notes</h2>
                     <?php echo $_alfred_gear_note; ?>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
             </aside>
 
-            <?php if ($_alfred_gear_note !== ''): ?>
+            <?php if ($_alfred_signature || $_alfred_gear_note !== ''): ?>
             <div class="post-mobile-gear">
+                <?php if ($_alfred_signature): ?>
+                <div class="post-signature">
+                    <img src="<?php echo htmlspecialchars(BASE_URL . ltrim((string)$_alfred_signature['img_file'], '/'), ENT_QUOTES); ?>"
+                         alt="<?php echo htmlspecialchars((string)($_alfred_signature['img_alt'] ?: $_alfred_signature['img_title']), ENT_QUOTES); ?>">
+                </div>
+                <?php endif; ?>
+                <?php if ($_alfred_gear_note !== ''): ?>
                 <h2>Camera notes</h2>
                 <?php echo $_alfred_gear_note; ?>
+                <?php endif; ?>
             </div>
             <?php endif; ?>
         </div><!-- /.post-inner -->

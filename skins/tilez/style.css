@@ -2395,6 +2395,14 @@ body.blog, body.single, body.archive { background: #fff; }
     letter-spacing: .08em;
     text-transform: uppercase;
 }
+.post-signature {
+    margin: 0 0 24px;
+}
+.post-signature img {
+    display: block;
+    width: min(220px, 100%);
+    height: auto;
+}
 .post-record-gear .post-gear-note,
 .post-mobile-gear .post-gear-note {
     margin: 0;
