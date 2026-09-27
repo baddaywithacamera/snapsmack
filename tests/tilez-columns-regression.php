@@ -85,7 +85,7 @@ $assert(str_contains($mosaicEngine, ".snap-mosaic[data-mosaic], .snap-mosaic-wal
     'shared continuity also joins adjacent column, row, and square MOSAIC walls');
 $assert(!is_file($root . '/skins/tilez/assets/js/tilez-mosaic-continuity.js'), 'TILEZ does not ship JavaScript');
 $assert(str_contains($style, '+ p:has(+ :is(.snap-inline-frame'), 'paragraphs between media receive symmetrical vertical spacing');
-$assert(str_contains($style, '--tilez-content-start: 24px;')
+$assert(str_contains($style, '--tilez-content-start: 44px;')
     && str_contains($style, 'padding-top: var(--tilez-content-start);')
     && str_contains($style, 'margin: 0 0 40px;'),
     'feed, archive, static pages, and single posts share one menu-to-content baseline');
