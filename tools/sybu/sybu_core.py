@@ -524,6 +524,18 @@ class Engine:
         if not (0 <= index < len(self.entries)):
             raise RuntimeError("Row out of range.")
         path = os.path.join(self.image_folder, self.entries[index].file)
+        # A posted photo is moved to <site>/completed (0.7.68), sometimes renamed
+        # "name (2).jpg" to avoid overwriting — the preview went blank after
+        # posting because it only looked in upload/ (Sean, 2026-09-27).
+        if not os.path.isfile(path):
+            moved = self.rowstate[index].get('archived_path', '') if index < len(self.rowstate) else ''
+            if moved and os.path.isfile(moved):
+                path = moved
+            else:
+                completed = self.completed_dir_for(self.image_folder)
+                guess = os.path.join(completed, os.path.basename(self.entries[index].file)) if completed else ''
+                if guess and os.path.isfile(guess):
+                    path = guess
         return thumb_data_uri(path, (size, size))
 
     # ────────────────────────────────────────────────────────────────────────
@@ -580,7 +592,25 @@ class Engine:
     # ────────────────────────────────────────────────────────────────────────
     # ENRICH
     # ────────────────────────────────────────────────────────────────────────
-    def enrich_start(self, api_key: str, custom_prompt: str) -> dict:
+    def _already_enriched(self, i: int) -> bool:
+        """One rule for "this photo is done", used by the table AND the enricher.
+
+        The table called a row enriched when it had a title OR TAGS; the enricher
+        skipped only rows with a title OR CAPTION. A row with tags but no caption
+        showed "enriched" and was sent to Gemini again — paid for twice, and its
+        text overwritten (Sean, 2026-09-27).
+        """
+        e = self.entries[i]
+        if self.rowstate[i].get('status') in ('enriched', 'ok', 'warning'):
+            return True
+        return bool((e.title or '').strip() or (e.caption or '').strip() or str(e.tags or '').strip())
+
+    def selected_already_enriched(self) -> int:
+        """How many ticked rows are already enriched (the window asks before redoing them)."""
+        return sum(1 for i in range(len(self.entries))
+                   if self.rowstate[i]['selected'] and self._already_enriched(i))
+
+    def enrich_start(self, api_key: str, custom_prompt: str, redo: bool = False) -> dict:
         api_key = (api_key or '').strip()
         if not api_key:
             raise RuntimeError("Enter a Gemini API key first.")
@@ -591,6 +621,10 @@ class Engine:
         sel = [(i, self.entries[i]) for i in range(len(self.entries)) if self.rowstate[i]['selected']]
         if not sel:
             raise RuntimeError("Tick at least one image to enrich.")
+        if not redo:
+            sel = [(i, e) for i, e in sel if not self._already_enriched(i)]
+            if not sel:
+                raise RuntimeError("Every ticked image is already enriched. Nothing to do.")
         self.ensure_recovery(self.image_folder)
         id_to_index = {id(e): i for i, e in enumerate(self.entries)}
         sel_entries = [e for _, e in sel]
@@ -629,7 +663,7 @@ class Engine:
                 categories=cats,
                 albums=albums,
                 on_progress=on_progress,
-                skip_filled=True,
+                skip_filled=not redo,
                 custom_prompt=custom_prompt or '',
                 cat_descriptions=getattr(sd, 'cat_descriptions', None),
                 album_descriptions=getattr(sd, 'album_descriptions', None),
@@ -791,6 +825,8 @@ class Engine:
                 if i is not None:
                     self.rowstate[i]['status'] = status
                     self.rowstate[i]['message'] = result.message
+                    if getattr(result, 'archived_path', ''):
+                        self.rowstate[i]['archived_path'] = result.archived_path
                 op.events.append({'type': 'progress', 'index': i, 'current': current,
                                   'total': total, 'success': result.success,
                                   'status': status, 'message': result.message,

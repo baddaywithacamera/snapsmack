@@ -97,6 +97,7 @@ class PostResult:
     exif_ok:   bool = True  # False if EXIF embedding failed
     post_id:   int  = 0     # canonical snap_posts.id returned by the server
     image_id:  int  = 0     # canonical snap_images.id returned by the server
+    archived_path: str = ''  # where the original went in completed/ (it may be renamed "name (2).jpg")
 
 
 @dataclass
@@ -826,6 +827,7 @@ def _archive_success(result: PostResult, image_folder: str, completed_dir: str) 
             number += 1
         shutil.move(source, target)
         result.message += ' + moved to completed'
+        result.archived_path = target
         return target
     except Exception as exc:
         result.exif_ok = False

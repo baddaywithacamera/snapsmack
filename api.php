@@ -36,6 +36,33 @@ require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/api-site-scope.php';
 snap_api_site_scope_check($pdo);
 
+// --- PAGE CACHE: desktop-tool writes clear it, like admin publishing does ---
+// The admin posting pages call page_cache_purge_all() after publishing; the
+// APIs the desktop tools post through never did. A SYBU batch of 13 grams left
+// visitors on a front page saved at 17:25:22, mid-batch, with 7 of the 13
+// missing (theschoolofhardnocks.ca, 2026-09-27). Any successful write on a
+// content route now clears the saved pages when the request finishes. Heartbeats
+// and other background multisite traffic are excluded so the cache still works.
+if (!in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD', 'OPTIONS'], true)
+    && snap_api_route_changes_content($route)) {
+    register_shutdown_function(static function () {
+        $code = http_response_code();
+        if ($code >= 200 && $code < 300) {
+            require_once __DIR__ . '/core/page-cache.php';
+            page_cache_purge_all();
+        }
+    });
+}
+
+/** Routes whose writes can add, change or remove what visitors see. */
+function snap_api_route_changes_content(string $route): bool {
+    foreach (['ohsnap', 'smackpress', 'bloggerflogger', 'flkrfckr', 'gyss', 'smackthemup',
+              'threeacross', 'unzucker', 'tyswy', 'multisite/posts'] as $prefix) {
+        if (strpos($route, $prefix) === 0) return true;
+    }
+    return false;
+}
+
 // --- MULTISITE ROUTES ---
 // Route all /api/multisite/* requests to the multisite API handler
 if (strpos($route, 'multisite') === 0) {
