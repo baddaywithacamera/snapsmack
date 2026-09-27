@@ -57,6 +57,11 @@ $assert(str_contains($preload, '$legacy_is_colophon')
     && str_contains($preload, 'photos? (?:taken|made|shot) with')
     && str_contains($preload, 'count($legacy_equipment_terms) >= 3'),
     'varied legacy closing equipment paragraphs are recognized as recurring post colophons');
+$legacyFixture = '<div class="initial-letter"><p>Opening paragraph.</p><div><img src="photo.jpg"></div><p>The main camera was a Canon EOS 7D with a Helios lens and DJI drone.</p></div>';
+$legacyPattern = '~(<p\b[^>]*>(?:(?!<p\b).)*?</p>)(?:\s*</div>\s*)*$~is';
+$assert(preg_match($legacyPattern, $legacyFixture, $legacyMatch, PREG_OFFSET_CAPTURE) === 1
+    && $legacyMatch[1][0] === '<p>The main camera was a Canon EOS 7D with a Helios lens and DJI drone.</p>',
+    'legacy colophon matching captures only the final paragraph, never the whole wrapped article');
 $assert(str_contains($style, '.post-gear-note'), 'closing equipment notes have a readable supporting style');
 $assert(str_contains($style, "font-family: Georgia, 'Times New Roman', serif;"), 'longform body uses a lighter editorial serif stack');
 $assert(str_contains($style, 'font-size: 21px;') && str_contains($style, 'font-weight: 400;'), 'desktop longform body is larger and normal-weight');
