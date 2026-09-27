@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.764D — 2026-09-27 — Front door
+
+- **The clean `/snap-in` login route no longer 403s after Apache internally rewrites it to `snap-in.php`.** Direct-file protection now evaluates the browser's original HTTP request line rather than a server-mutated `REQUEST_URI`. A genuine request for `/snap-in.php` remains refused, while `/snap-in` and custom login slugs reach the login page. Live verification on baddaywithacamera.ca established that Troll Control contained zero bans, ruling out IP Shield before this correction. (`core/login-route.php`, `snap-in.php`.)
+
 ## 0.7.763D — 2026-09-27 — Fresh page
 
 - **Failed logins can no longer make the login page disappear for seven days.** Five failures now impose a login-submission-only cooldown for the remainder of the ten-minute window; ordinary GET access to the login and recovery interface remains available. The update also retires existing `auto:brute_force` rows from the site-wide IP-ban table, clearing the bare `/snap-in` 403 without weakening manual IP blocks or the probe shield. (`snap-in.php`, `core/client-ip.php`.)
