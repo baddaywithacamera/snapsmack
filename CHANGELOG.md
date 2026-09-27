@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.763D — 2026-09-27 — Fresh page
+
+- **Posts made from the desktop tools show up on the front page right away.** With the page cache on, the admin posting pages cleared the saved pages after publishing, but the APIs the desktop tools post through never did. A 13-photo SMACK YOUR BATCH UP batch on theschoolofhardnocks.ca left visitors on a front page saved partway through, with the 7 newest posts missing until it expired. A successful write from SYBU, COLD SNAP, GYSS, FLKR FCKR, SMACKTHEMUP, SMACKPRESS, TAKE YOUR SHIT WITH YOU or hub posting now clears the saved pages. Heartbeats and other background traffic do not.
+- **SMACK YOUR BATCH UP 0.7.72: already-enriched photos are not enriched again.** The queue called a photo enriched if it had a title or tags; the enricher skipped only photos with a title or caption. A photo with tags but no caption showed "enriched" and was sent to the AI again — paid for twice and its text replaced. One rule now covers both, and if some ticked photos are already enriched SYBU asks: **SKIP THOSE** (the default) or **ENRICH THEM AGAIN**.
+- **SMACK YOUR BATCH UP 0.7.72: previews stay after posting.** Posted photos move to the site's `completed` folder, sometimes renamed "name (2).jpg"; the preview only looked in `upload`, so every posted row said "No preview". It now follows the photo.
+
 ## 0.7.762D — 2026-09-27 — Close the gap
 
 - **MOSAIC continuity now includes column, row, and square bundles.** Consecutive wall-layout MOSAIC blocks inside an opted-in longform post are joined before their shared layout engine runs. A five-photo columns bundle followed by another bundle therefore continues filling the open columns instead of ending in a large white hole. Asymmetric continuity remains unchanged.
