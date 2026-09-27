@@ -429,12 +429,26 @@ class Window(QMainWindow):
 
     def _enrich(self):
         try:
-            self._sync_queue(); self.engine.enrich_start(self.gemini.text(),self.prompt.text()); self.poll_seen['enrich']=0; self.progress.setValue(0); self.stop_btn.setEnabled(True)
+            self._sync_queue()
+            # Already-enriched rows are skipped unless Sean says redo; the default
+            # (and Esc / closing the box) is SKIP, so a misclick never pays twice.
+            done=self.engine.selected_already_enriched(); redo=False
+            ticked=sum(1 for r in range(self.table.rowCount()) if self.table.item(r,0).checkState()==Qt.Checked)
+            if done:
+                box=QMessageBox(self); box.setWindowTitle("Some are already enriched"); box.setIcon(QMessageBox.Question)
+                box.setText(f"{done} of the {ticked} ticked images already have a caption, title or tags.")
+                box.setInformativeText("Skip them and enrich only the rest? Enriching them again costs another AI request each and replaces what they have now.")
+                skip=box.addButton(f"SKIP THOSE {done}",QMessageBox.AcceptRole); again=box.addButton("ENRICH THEM AGAIN",QMessageBox.DestructiveRole); box.addButton(QMessageBox.Cancel)
+                box.setDefaultButton(skip); box.exec()
+                if box.clickedButton() is again: redo=True
+                elif box.clickedButton() is not skip: return
+            self.engine.enrich_start(self.gemini.text(),self.prompt.text(),redo=redo); self.poll_seen['enrich']=0; self.progress.setValue(0); self.stop_btn.setEnabled(True)
             # Stay on the queue: the rows themselves show progress (STATUS
             # column + counter) instead of a bar on another page.
-            self._enrich_total=sum(1 for r in range(self.table.rowCount()) if self.table.item(r,0).checkState()==Qt.Checked); self._enrich_done=0
+            skipped=set() if redo else {r for r in range(self.table.rowCount()) if self.engine._already_enriched(r)}
+            self._enrich_total=sum(1 for r in range(self.table.rowCount()) if self.table.item(r,0).checkState()==Qt.Checked and r not in skipped); self._enrich_done=0
             for r in range(self.table.rowCount()):
-                if self.table.item(r,0).checkState()==Qt.Checked and self.table.item(r,11): self.table.item(r,11).setText("enriching…")
+                if self.table.item(r,0).checkState()==Qt.Checked and r not in skipped and self.table.item(r,11): self.table.item(r,11).setText("enriching…")
             # One place for progress: the bar + its label at the bottom (Sean 2026-09-18).
             self.progress_text.setText(f"Enriching 0/{self._enrich_total}…")
         except Exception as e:self._error(str(e))
