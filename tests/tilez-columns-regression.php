@@ -37,6 +37,7 @@ $assert(str_contains($style, 'font-size: 20px;'), 'desktop text menu is doubled 
 $assert(!str_contains($preload, '<figure class="featured-media"'), 'single posts start with their title instead of repeating the archive cover');
 $assert(str_contains($style, 'grid-template-areas: "essay record"'), 'single posts use the editorial essay-and-record split');
 $assert(str_contains($style, 'minmax(320px, 370px)'), 'the editorial record is wide enough for a composed title');
+$assert(str_contains($style, '2.15vw, 2.25rem'), 'record title uses a restrained scale that avoids one-word lines');
 $assert(str_contains($style, '.post-record') && str_contains($style, 'position: sticky;'), 'desktop post record remains visible beside the essay');
 $titlePos = strpos($preload, '<h1 class="post-title p-name">');
 $datePos = strpos($preload, '<p class="post-date">');
