@@ -75,9 +75,13 @@ $assert(preg_match($legacyPattern, $legacyFixture, $legacyMatch, PREG_OFFSET_CAP
     && $legacyMatch[1][0] === '<p>The main camera was a Canon EOS 7D with a Helios lens and DJI drone.</p>',
     'legacy colophon matching captures only the final paragraph, never the whole wrapped article');
 $assert(str_contains($style, '.post-gear-note'), 'closing equipment notes have a readable supporting style');
-$assert(str_contains($style, "font-family: Georgia, 'Times New Roman', serif;"), 'longform body uses a lighter editorial serif stack');
+$assert(str_contains($style, "font-family: 'Droid Serif', Georgia, serif;"), 'longform body uses the bundled editorial reading face');
 $assert(str_contains($style, 'font-size: 21px;') && str_contains($style, 'font-weight: 400;'), 'desktop longform body is larger and normal-weight');
 $assert(str_contains($style, 'font-size: 18px; line-height: 1.65;'), 'mobile longform body remains readable');
+$assert(str_contains($style, 'width: min(340px, 72%);'), 'the closing signature has the intended handwritten presence');
+$assert(str_contains($preload, "'class=\"ss-masonry snap-mosaic-wall\"'")
+    && str_contains($preload, "'class=\"ss-scroll-wall snap-mosaic-wall\"'"),
+    'rigid column MOSAIC bundles become justified TILEZ rows without blank tracks');
 $assert(str_contains($style, '.snap-inline-frame:has(+ .snap-inline-frame)'), 'consecutive standalone photographs form desktop pairs');
 $assert(str_contains($style, 'width: calc(50% - 6px) !important;'), 'desktop photograph pairs reserve room for inter-element whitespace');
 $assert(str_contains($preload, 'data-merge-adjacent-mosaics'), 'TILEZ requests continuous adjacent mosaic rendering without shipping skin JavaScript');
