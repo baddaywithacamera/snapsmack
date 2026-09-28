@@ -2420,6 +2420,7 @@ body.blog, body.single, body.archive { background: #fff; }
     padding: 12px 0;
     border-bottom: 1px solid #e5e5e5;
 }
+.post-facts > div:last-child { border-bottom: 0; }
 .post-facts dt,
 .post-facts dd {
     margin: 0;
