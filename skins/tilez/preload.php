@@ -319,6 +319,16 @@ if ($_alfred_post_slug || $_alfred_post_id) {
     $_alfred_parser = new SnapSmack($pdo);
     $_alfred_rendered = $_alfred_parser->parseContent($_alfred_post['content'] ?? '');
 
+    // TILEZ is an editorial wall, not a rigid contact sheet. Column MOSAIC
+    // bundles otherwise leave empty tracks whenever their image count is not
+    // divisible by the saved column count. The shared rows engine justifies
+    // every row and lets the photographs vary naturally in size.
+    $_alfred_rendered = str_replace(
+        'class="ss-masonry snap-mosaic-wall"',
+        'class="ss-scroll-wall snap-mosaic-wall"',
+        $_alfred_rendered
+    );
+
     // Camera/equipment copy is authored as part of the post, but TILEZ presents
     // it as publication ephemera rather than leaving it stranded at the bottom.
     $_alfred_gear_note = '';
