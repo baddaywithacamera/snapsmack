@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.765D — 2026-09-27 — No bouncer
+
+- **The login and recovery form can no longer be hidden by silent filename or User-Agent heuristics.** Live inspection of baddaywithacamera.ca on 0.7.764D showed zero IP bans while a normal Chrome GET to `/snap-in` still received an empty 403, proving the refusal occurred before authentication. Both pre-auth heuristics are removed: `/snap-in` and `/snap-in.php` reach the same login form, while actual credential submissions retain the ten-minute failure throttle and manually banned addresses remain blocked. (`snap-in.php`.)
+
 ## 0.7.764D — 2026-09-27 — Front door
 
 - **The clean `/snap-in` login route no longer 403s after Apache internally rewrites it to `snap-in.php`.** Direct-file protection now evaluates the browser's original HTTP request line rather than a server-mutated `REQUEST_URI`. A genuine request for `/snap-in.php` remains refused, while `/snap-in` and custom login slugs reach the login page. Live verification on baddaywithacamera.ca established that Troll Control contained zero bans, ruling out IP Shield before this correction. (`core/login-route.php`, `snap-in.php`.)
