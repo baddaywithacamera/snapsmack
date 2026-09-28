@@ -75,13 +75,12 @@ $assert(preg_match($legacyPattern, $legacyFixture, $legacyMatch, PREG_OFFSET_CAP
     && $legacyMatch[1][0] === '<p>The main camera was a Canon EOS 7D with a Helios lens and DJI drone.</p>',
     'legacy colophon matching captures only the final paragraph, never the whole wrapped article');
 $assert(str_contains($style, '.post-gear-note'), 'closing equipment notes have a readable supporting style');
-$assert(str_contains($style, "font-family: 'Droid Serif', Georgia, serif;"), 'longform body uses the bundled editorial reading face');
-$assert(str_contains($style, 'font-size: 21px;') && str_contains($style, 'font-weight: 400;'), 'desktop longform body is larger and normal-weight');
-$assert(str_contains($style, 'font-size: 18px; line-height: 1.65;'), 'mobile longform body remains readable');
+$assert(str_contains($style, "font-family: Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif;"), 'longform body uses the lighter editorial sans face');
+$assert(str_contains($style, 'font-size: 19px;') && str_contains($style, 'font-weight: 400;'), 'desktop longform body is readable and normal-weight');
+$assert(str_contains($style, 'font-size: 17px; line-height: 1.7;'), 'mobile longform body remains readable');
 $assert(str_contains($style, 'width: min(340px, 72%);'), 'the closing signature has the intended handwritten presence');
-$assert(str_contains($preload, "'class=\"ss-masonry snap-mosaic-wall\"'")
-    && str_contains($preload, "'class=\"ss-scroll-wall snap-mosaic-wall\"'"),
-    'rigid column MOSAIC bundles become justified TILEZ rows without blank tracks');
+$assert(!str_contains($preload, "'class=\"ss-scroll-wall snap-mosaic-wall\"'"),
+    'TILEZ preserves native-aspect masonry rather than stretching short rows into oversized panels');
 $assert(str_contains($style, '.snap-inline-frame:has(+ .snap-inline-frame)'), 'consecutive standalone photographs form desktop pairs');
 $assert(str_contains($style, 'width: calc(50% - 6px) !important;'), 'desktop photograph pairs reserve room for inter-element whitespace');
 $assert(str_contains($preload, 'data-merge-adjacent-mosaics'), 'TILEZ requests continuous adjacent mosaic rendering without shipping skin JavaScript');
@@ -98,9 +97,13 @@ $assert(str_contains($style, '--tilez-content-start: 64px;')
 $assert(str_contains($style, 'filter: brightness(.66);')
     && str_contains($style, 'transform: scale(1.065);'),
     'landing tiles zoom and darken decisively on hover and keyboard focus');
+$assert(str_contains($style, 'background: transparent;')
+    && str_contains($style, 'background: rgba(0,0,0,.48);')
+    && str_contains($style, 'background: rgba(0,0,0,.76);'),
+    'landing photographs stay bright while persistent white title labels strengthen on interaction');
 $assert(str_contains($style, 'opacity: 1;')
-    && str_contains($style, 'rgba(0,0,0,.72)'),
-    'landing titles remain visible over a restrained dark gradient');
+    && str_contains($style, '.archive-post-header {'),
+    'landing titles remain visible without dimming the complete photograph');
 $assert(is_file($root . '/skins/tilez/assets/bad-day-masthead.png'), 'bundled masthead exists');
 
 echo "PASS: TILEZ white columns portfolio\n";

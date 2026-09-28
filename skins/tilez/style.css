@@ -2344,17 +2344,26 @@ body.blog, body.single, body.archive { background: #fff; }
     display: flex;
     align-items: flex-end;
     padding: 18px;
-    background: linear-gradient(to top, rgba(0,0,0,.72), rgba(0,0,0,.08) 60%);
+    background: transparent;
     opacity: 1;
     transition: background-color .25s ease;
 }
 .posts .post:hover .post-overlay,
 .posts .post:focus-visible .post-overlay {
-    background: rgba(0,0,0,.34);
+    background: rgba(0,0,0,.30);
 }
-.archive-post-header { color: #fff; }
+.archive-post-header {
+    width: fit-content;
+    max-width: 100%;
+    padding: 10px 12px;
+    color: #fff;
+    background: rgba(0,0,0,.48);
+    transition: background-color .25s ease;
+}
+.posts .post:hover .archive-post-header,
+.posts .post:focus-visible .archive-post-header { background: rgba(0,0,0,.76); }
 .archive-post-date { font-size: 10px; letter-spacing: .08em; }
-.archive-post-title { margin: 4px 0 0; font-size: clamp(15px, 1.4vw, 22px); line-height: 1.15; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+.archive-post-title { margin: 4px 0 0; font-size: clamp(15px, 1.4vw, 22px); line-height: 1.15; text-shadow: 0 1px 4px rgba(0,0,0,.45); }
 
 /* Longform pages use an editorial split: the photo essay owns the wide left
    column, while its publication record stays close at hand on the right. */
@@ -2455,10 +2464,10 @@ body.blog, body.single, body.archive { background: #fff; }
 .post-content,
 .entry-content {
     color: #282828;
-    font-family: 'Droid Serif', Georgia, serif;
-    font-size: 21px;
+    font-family: Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 19px;
     font-weight: 400;
-    line-height: 1.65;
+    line-height: 1.72;
     font-synthesis: none;
 }
 .entry-content > p,
@@ -2582,7 +2591,7 @@ body.blog, body.single, body.archive { background: #fff; }
     .post-inner { width: calc(100% - 28px) !important; }
     .featured-media, .post-header { width: calc(100% - 28px); }
     .post-content,
-    .entry-content { font-size: 18px; line-height: 1.65; }
+    .entry-content { font-size: 17px; line-height: 1.7; }
     .entry-content > .snap-inline-frame:has(+ .snap-inline-frame),
     .entry-content > .snap-inline-frame + .snap-inline-frame {
         display: block;

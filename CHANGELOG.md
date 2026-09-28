@@ -9590,4 +9590,10 @@ _Internal bump. See 0.7.5b for the full feature set._
 - `ss-engine-photogram.js`: Photogram engine — bottom sheet with touch drag-to-dismiss, double-tap image to like with heart burst animation, like button optimistic UI, nav tab state.
 - Photogram design document (`photogram-design-document.docx`): full Phase 1/2 spec including screen inventory, CSS architecture, JS requirements, phase build plan, and open questions.
 - Carousel posting infrastructure (dormant until a skin declares `post_page` in its manifest
+
+## 0.7.770D — 2026-09-28
+
+- Restored TILEZ longform mosaics to the native-aspect masonry engine so short final rows stay proportional instead of becoming oversized panels.
+- Replaced the heavy longform serif treatment with a lighter Montserrat reading face and calmer desktop/mobile sizing.
+- Restored full-brightness landing images at rest while keeping titles legible in restrained translucent labels that strengthen on hover.
 <!-- ===== SNAPSMACK EOF ===== -->
