@@ -94,6 +94,22 @@ class RewriteTests(unittest.TestCase):
         self.assertIn('<p class="has-large-font-size">Words worth keeping.</p>', body)
         self.assertIn("[img:bucket:1]", body)
 
+    def test_full_image_plus_two_columns_becomes_three_image_mosaic(self):
+        content = (
+            '<!-- wp:image --><figure><img src="%s/grille.png"></figure><!-- /wp:image -->'
+            '<!-- wp:columns --><div class="wp-block-columns">'
+            '<!-- wp:column --><div class="wp-block-column">'
+            '<!-- wp:image --><figure><img src="%s/badge.png"></figure><!-- /wp:image -->'
+            '</div><!-- /wp:column -->'
+            '<!-- wp:column --><div class="wp-block-column">'
+            '<!-- wp:image --><figure><img src="%s/third.png"></figure><!-- /wp:image -->'
+            '</div><!-- /wp:column --></div><!-- /wp:columns -->'
+        ) % (WP, WP, WP)
+        body, ordered = wp_source.rewrite_body(content, POST["images"])
+        self.assertIn("[mosaic=1,2,3 layout=one-top]", body)
+        self.assertNotIn("[img:bucket:", body)
+        self.assertEqual(ordered[-1]["url"], f"{WP}/third.png")
+
 
 class DraftTests(unittest.TestCase):
     def setUp(self):
