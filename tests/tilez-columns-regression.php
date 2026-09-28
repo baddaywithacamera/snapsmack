@@ -22,9 +22,11 @@ $assert = static function (bool $ok, string $message): void {
 $assert(in_array('smack-columns', $manifest['require_scripts'] ?? [], true), 'shared columns engine is required');
 $assert(in_array('smack-rows', $manifest['require_scripts'] ?? [], true), 'rows engine is required for row MOSAIC bundles');
 $assert(in_array('smack-image-fade-load', $manifest['require_scripts'] ?? [], true), 'images can be revealed after loading');
+$assert(($manifest['cover_aspect'] ?? '') === 'native', 'TILEZ editor framing follows the selected image rather than imposing a landscape crop');
 $assert(str_contains($preload, 'img_thumb_aspect'), 'feed uses native-aspect thumbnails');
 $assert(str_contains($preload, 'class="posts ss-masonry tilez-posts"'), 'feed exposes the columns-engine container');
 $assert(str_contains($preload, 'data-w="<?php echo $tile_w; ?>"'), 'tiles publish source dimensions');
+$assert(str_contains($preload, 'getimagesize($tile_asset)'), 'tile geometry is verified against the rendered thumbnail');
 $assert(str_contains($style, '--ss-cols: 3'), 'desktop feed has three columns');
 $assert(str_contains($style, '.header-image { display: none !important; }'), 'legacy full-screen backdrop is disabled');
 $assert(str_contains($header, 'skins/tilez/assets/bad-day-masthead.png'), 'bundled masthead is the TILEZ fallback');
