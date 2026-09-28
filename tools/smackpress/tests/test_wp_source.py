@@ -76,6 +76,24 @@ class RewriteTests(unittest.TestCase):
         hot = [o for o in ordered if "elsewhere" in o["url"]][0]
         self.assertEqual(hot["alt"], "borrowed")
 
+    def test_gutenberg_scaffolding_is_not_imported_as_content(self):
+        content = (
+            '<!-- wp:paragraph {"fontSize":"large"} -->\n'
+            '<p class="has-large-font-size">Words worth keeping.</p>\n'
+            '<!-- /wp:paragraph -->\n'
+            '<!-- wp:columns --><div class="wp-block-columns">'
+            '<!-- wp:column --><div class="wp-block-column">'
+            f'<figure class="wp-block-image"><img src="{WP}/grille.png"></figure>'
+            '</div><!-- /wp:column --></div><!-- /wp:columns -->\n'
+            '<!-- wp:spacer --><div style="height:40px" class="wp-block-spacer"></div><!-- /wp:spacer -->'
+        )
+        body, _ = wp_source.rewrite_body(content, POST["images"])
+        self.assertNotIn("<!--", body)
+        self.assertNotIn("wp-block", body)
+        self.assertNotIn("<div", body)
+        self.assertIn('<p class="has-large-font-size">Words worth keeping.</p>', body)
+        self.assertIn("[img:bucket:1]", body)
+
 
 class DraftTests(unittest.TestCase):
     def setUp(self):
