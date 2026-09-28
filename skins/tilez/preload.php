@@ -529,6 +529,18 @@ $_alfred_total_pages = (int)ceil($_alfred_total / $_alfred_per_page);
             $tile_class = 'post' . ($has_thumb ? ' has-post-thumbnail' : '');
             $tile_w = max(1, (int)($_p['featured_width'] ?? 3));
             $tile_h = max(1, (int)($_p['featured_height'] ?? 2));
+            // The rendered asset is authoritative. Imported or EXIF-rotated
+            // photographs can carry stale database dimensions; using those
+            // would turn a portrait into a landscape tile even though TILEZ is
+            // explicitly a native-aspect portfolio wall.
+            if ($has_thumb) {
+                $tile_asset = dirname(__DIR__, 2) . '/' . ltrim((string)$_p['featured_image_path'], '/');
+                $tile_size = @getimagesize($tile_asset);
+                if (is_array($tile_size) && ($tile_size[0] ?? 0) > 0 && ($tile_size[1] ?? 0) > 0) {
+                    $tile_w = (int)$tile_size[0];
+                    $tile_h = (int)$tile_size[1];
+                }
+            }
         ?>
             <a href="<?php echo BASE_URL . '?post=' . rawurlencode($_p['slug']); ?>"
                class="<?php echo $tile_class; ?> ss-masonry-item"
