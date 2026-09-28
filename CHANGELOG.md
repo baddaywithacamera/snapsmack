@@ -9,9 +9,9 @@
 -->
 
 # SnapSmack Changelog
-## 0.7.766D — 2026-09-27 — Native format
+## 0.7.767D — 2026-09-28 — Native format
 
-- **TILEZ once again presents longform posts as the native-aspect three-column editorial wall it was designed to be.** Its editor no longer imposes a 3:2 landscape frame on portrait display images, switching the preview to each selected image's real shape. The landing wall now verifies its geometry against the actual aspect-preserving thumbnail rather than trusting potentially stale imported or EXIF-rotated database dimensions, so portrait work remains portrait on the page. TILEZ skin version 0.2.33. (`smack-post-long.php`, `assets/js/ss-engine-longform-cover-crop.js`, `skins/tilez/`.)
+- **TILEZ once again presents longform posts as the native-aspect three-column editorial wall it was designed to be.** Its editor no longer imposes a 3:2 landscape frame on portrait display images, switching the preview to each selected image's real shape. The landing wall now verifies its geometry against the actual aspect-preserving thumbnail rather than trusting potentially stale imported or EXIF-rotated database dimensions, so portrait work remains portrait on the page. TILEZ skin version 0.2.34. (`smack-post-long.php`, `assets/js/ss-engine-longform-cover-crop.js`, `skins/tilez/`.)
 
 ## 0.7.765D — 2026-09-27 — No bouncer
 
