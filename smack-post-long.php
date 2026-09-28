@@ -792,6 +792,12 @@ include 'core/sidebar.php';
                         $_ck_mf     = __DIR__ . '/skins/' . $_ck_skin . '/manifest.json';
                         $cover_aspect = '1/1';
                         if (is_file($_ck_mf)) { $_m = snapsmack_load_manifest($_ck_mf); if (!empty($_m['cover_aspect'])) $cover_aspect = (string)$_m['cover_aspect']; }
+                        $cover_is_native = strtolower(trim($cover_aspect)) === 'native';
+                        if ($cover_is_native) {
+                            $native_w = max(1, (int)($featured_image_data['img_width'] ?? 1));
+                            $native_h = max(1, (int)($featured_image_data['img_height'] ?? 1));
+                            $cover_aspect = $native_w . '/' . $native_h;
+                        }
                         $cv_px = isset($edit_post['cover_pos_x']) ? (int)$edit_post['cover_pos_x'] : 50;
                         $cv_py = isset($edit_post['cover_pos_y']) ? (int)$edit_post['cover_pos_y'] : 50;
                         $cv_z  = isset($edit_post['cover_zoom'])  ? (int)$edit_post['cover_zoom']  : 100;
@@ -800,6 +806,7 @@ include 'core/sidebar.php';
                         <div id="long-cover-crop-wrap" style="margin-top:10px;<?php echo $featured_image_data ? '' : 'display:none;'; ?>">
                             <label style="font-size:11px;">COVER FRAMING <span class="dim" style="font-weight:normal;">(drag to position, slide to zoom)</span></label>
                             <div id="lc-stage" data-aspect="<?php echo htmlspecialchars($cover_aspect, ENT_QUOTES); ?>"
+                                 data-native-aspect="<?php echo $cover_is_native ? '1' : '0'; ?>"
                                  style="position:relative;width:100%;max-width:260px;aspect-ratio:<?php echo htmlspecialchars($cover_aspect, ENT_QUOTES); ?>;overflow:hidden;background:#111;border-radius:4px;border:1px solid var(--border);cursor:grab;touch-action:none;user-select:none;margin-top:4px;">
                                 <img id="lc-cover-img" src="<?php echo htmlspecialchars($cover_full, ENT_QUOTES); ?>" alt=""
                                      style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:<?php echo $cv_px; ?>% <?php echo $cv_py; ?>%;transform-origin:<?php echo $cv_px; ?>% <?php echo $cv_py; ?>%;transform:scale(<?php echo number_format($cv_z / 100, 3); ?>);pointer-events:none;">

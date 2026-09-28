@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.766D — 2026-09-27 — Native format
+
+- **TILEZ once again presents longform posts as the native-aspect three-column editorial wall it was designed to be.** Its editor no longer imposes a 3:2 landscape frame on portrait display images, switching the preview to each selected image's real shape. The landing wall now verifies its geometry against the actual aspect-preserving thumbnail rather than trusting potentially stale imported or EXIF-rotated database dimensions, so portrait work remains portrait on the page. TILEZ skin version 0.2.33. (`smack-post-long.php`, `assets/js/ss-engine-longform-cover-crop.js`, `skins/tilez/`.)
+
 ## 0.7.765D — 2026-09-27 — No bouncer
 
 - **The login and recovery form can no longer be hidden by silent filename or User-Agent heuristics.** Live inspection of baddaywithacamera.ca on 0.7.764D showed zero IP bans while a normal Chrome GET to `/snap-in` still received an empty 403, proving the refusal occurred before authentication. Both pre-auth heuristics are removed: `/snap-in` and `/snap-in.php` reach the same login form, while actual credential submissions retain the ten-minute failure throttle and manually banned addresses remain blocked. (`snap-in.php`.)

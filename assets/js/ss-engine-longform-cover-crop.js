@@ -9,7 +9,9 @@
  * (cover_pos_x / cover_pos_y / cover_zoom).
  *
  * Exposes window.SnapLongCoverCrop { setImage(url), reset(), show(), hide() } so
- * the Gallery cover picker can re-point it when the cover image changes.
+ * the Gallery cover picker can re-point it when the cover image changes. Skins
+ * may declare cover_aspect "native"; in that mode the stage follows the chosen
+ * image instead of imposing a crop.
  *
  * SNAPSMACK_EOF_HEADER
  *     // ===== SNAPSMACK EOF =====
@@ -50,6 +52,18 @@
         if (String(zoom.value) !== String(Math.round(z * 100))) zoom.value = Math.round(z * 100);
     }
 
+    function applyNativeAspect() {
+        if (stage.getAttribute('data-native-aspect') !== '1') return;
+        var w = img.naturalWidth || 0;
+        var h = img.naturalHeight || 0;
+        if (!(w > 0 && h > 0)) return;
+        stage.style.aspectRatio = w + ' / ' + h;
+        stage.setAttribute('data-aspect', w + '/' + h);
+    }
+
+    img.addEventListener('load', applyNativeAspect);
+    if (img.complete) applyNativeAspect();
+
     // ── Drag to pan ─────────────────────────────────────────────────────────
     // Dragging the image right reveals more of its LEFT, so object-position-x
     // decreases. A full-width drag pans the full 0-100% range (predictable at
@@ -79,7 +93,11 @@
 
     // Public API for the Gallery cover picker.
     window.SnapLongCoverCrop = {
-        setImage: function (url) { if (url) img.src = url; },
+        setImage: function (url) {
+            if (!url) return;
+            img.src = url;
+            if (img.complete) applyNativeAspect();
+        },
         reset:    function () { posX = 50; posY = 50; z = 1; apply(); },
         show:     function () { if (wrap) wrap.style.display = ''; },
         hide:     function () { if (wrap) wrap.style.display = 'none'; }
