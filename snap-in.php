@@ -19,7 +19,6 @@ require_once 'core/db.php';
 require_once 'core/auth-recovery.php';
 require_once 'core/totp.php';
 require_once 'core/client-ip.php';
-require_once 'core/login-route.php';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LOGIN PROTECTION HELPERS
@@ -77,43 +76,11 @@ function snap_login_is_rate_limited(PDO $pdo, string $ip): bool {
     return (int)($row->fetchColumn() ?: 0) >= 5;
 }
 
-// --- DIRECT ACCESS PROTECTION ---
-// If the request URI ends in snap-in.php, the user bypassed the slug rewrite.
-// Allow only if a valid recovery key is provided — redirect them to the slug.
-// Everyone else gets a 403.
-$_snap_uri = snapsmack_login_requested_path($_SERVER);
-if (preg_match('#/snap-in\.php$#i', $_snap_uri)) {
-    $provided = trim($_GET['key'] ?? '');
-    if ($provided !== '') {
-        require_once __DIR__ . '/core/secret-store.php';
-        $recovery_key = $pdo->query(
-            "SELECT setting_val FROM snap_settings WHERE setting_key = 'login_recovery_key' LIMIT 1"
-        )->fetchColumn();
-        $login_slug = $pdo->query(
-            "SELECT setting_val FROM snap_settings WHERE setting_key = 'login_slug' LIMIT 1"
-        )->fetchColumn() ?: 'snap-in';
-        if ($recovery_key && hash_equals(secret_decrypt((string)$recovery_key), $provided)) {
-            header('Location: /' . ltrim($login_slug, '/'));
-            exit;
-        }
-    }
-    http_response_code(403);
-    exit;
-}
-
-// --- USER-AGENT FILTER ---
-// Reject blank or obviously scripted UAs — no real browser omits a UA or
-// identifies itself as curl/python/etc. Do this silently (403, no body).
-$_snap_ua = trim($_SERVER['HTTP_USER_AGENT'] ?? '');
-$_ua_bot_rx = '#^$|curl/|python-?requests?/|python/\d|Go-http-client/|'
-            . 'libwww-perl/|Wget/|Scrapy/|mechanize|Java/\d|Nikto|'
-            . 'masscan|sqlmap|Nmap|DirBuster|zgrab|Hydra|WPScan|'
-            . 'nuclei|zgrab|dirsearch|gobuster|ffuf#i';
-if (preg_match($_ua_bot_rx, $_snap_ua)) {
-    http_response_code(403);
-    exit;
-}
-unset($_ua_bot_rx);
+// Do not refuse GET access based on the requested filename or User-Agent.
+// Those heuristics provided no credential protection and could hide the login
+// and recovery form behind an unexplained 403 on legitimate browsers. Actual
+// authentication attempts are rate-limited below; manual IP bans remain
+// enforced by the following gate.
 
 // --- IP BAN GATE ---
 // Resolve client IP and check for an active ban before doing anything else.
