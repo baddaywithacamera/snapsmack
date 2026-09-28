@@ -110,6 +110,22 @@ class RewriteTests(unittest.TestCase):
         self.assertNotIn("[img:bucket:", body)
         self.assertEqual(ordered[-1]["url"], f"{WP}/third.png")
 
+    def test_two_columns_plus_following_image_wins_over_preceding_image(self):
+        content = (
+            '<!-- wp:image --><figure><img src="%s/before.png"></figure><!-- /wp:image -->'
+            '<!-- wp:columns --><div class="wp-block-columns">'
+            '<!-- wp:column --><div class="wp-block-column">'
+            '<!-- wp:image --><figure><img src="%s/grille.png"></figure><!-- /wp:image -->'
+            '</div><!-- /wp:column -->'
+            '<!-- wp:column --><div class="wp-block-column">'
+            '<!-- wp:image --><figure><img src="%s/badge.png"></figure><!-- /wp:image -->'
+            '</div><!-- /wp:column --></div><!-- /wp:columns -->'
+            '<!-- wp:image --><figure><img src="%s/after.png"></figure><!-- /wp:image -->'
+        ) % (WP, WP, WP, WP)
+        body, _ = wp_source.rewrite_body(content, POST["images"])
+        self.assertIn("[img:bucket:3]", body)
+        self.assertIn("[mosaic=1,2,4 layout=one-top]", body)
+
 
 class DraftTests(unittest.TestCase):
     def setUp(self):
