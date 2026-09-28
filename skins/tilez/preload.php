@@ -410,7 +410,7 @@ if ($_alfred_post_slug || $_alfred_post_id) {
                 </dl>
                 <?php if ($_alfred_gear_note !== ''): ?>
                 <div class="post-record-gear">
-                    <h2>Camera notes</h2>
+                    <h2>Colophon</h2>
                     <?php echo $_alfred_gear_note; ?>
                 </div>
                 <?php endif; ?>
@@ -418,7 +418,7 @@ if ($_alfred_post_slug || $_alfred_post_id) {
 
             <?php if ($_alfred_gear_note !== ''): ?>
             <div class="post-mobile-gear">
-                <h2>Camera notes</h2>
+                <h2>Colophon</h2>
                 <?php echo $_alfred_gear_note; ?>
             </div>
             <?php endif; ?>
