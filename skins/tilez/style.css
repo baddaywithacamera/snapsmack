@@ -2171,7 +2171,7 @@ body.alfred-lb-open { overflow: hidden; }
     --tilez-muted: #777;
     --tilez-gap: 18px;
     --tilez-page: 1180px;
-    --tilez-content-start: 44px;
+    --tilez-content-start: 64px;
 }
 
 html, body { background: #fff; color: var(--tilez-ink); }
@@ -2204,22 +2204,30 @@ body.blog, body.single, body.archive { background: #fff; }
     display: flex;
     gap: 9px;
     transform: translateY(-50%);
+    pointer-events: auto;
 }
-.tilez-icon-nav a {
+.tilez-icon-nav a,
+.tilez-icon-nav summary {
     position: relative;
+    z-index: 2;
     display: grid;
     width: 38px;
     height: 38px;
     place-items: center;
     color: var(--tilez-ink);
+    background: #fff;
     border: 1px solid #aaa;
     border-radius: 50%;
     text-decoration: none;
+    cursor: pointer;
+    transition: color .15s ease, background-color .15s ease, border-color .15s ease, transform .15s ease;
 }
 .tilez-icon-nav a:hover,
 .tilez-icon-nav a:focus-visible,
 .tilez-icon-nav summary:hover,
-.tilez-icon-nav summary:focus-visible { color: #b3261e; background: #f2f2f2; border-color: #b3261e; outline: none; }
+.tilez-icon-nav summary:focus-visible { color: #b3261e; background: #f2f2f2; border-color: #b3261e; outline: none; transform: translateY(-2px); }
+.tilez-icon-nav a:active,
+.tilez-icon-nav summary:active { transform: translateY(0) scale(.94); }
 .tilez-icon-nav a::after,
 .tilez-icon-nav summary::after {
     content: attr(aria-label);
@@ -2244,18 +2252,9 @@ body.blog, body.single, body.archive { background: #fff; }
 .tilez-icon-nav a:focus-visible::after,
 .tilez-icon-nav summary:hover::after,
 .tilez-icon-nav summary:focus-visible::after { opacity: 1; transform: translate(-50%, 0); }
-.tilez-icon-nav svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tilez-icon-nav svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .tilez-nav-search { position: relative; }
 .tilez-nav-search > summary {
-    position: relative;
-    display: grid;
-    width: 38px;
-    height: 38px;
-    place-items: center;
-    color: var(--tilez-ink);
-    border: 1px solid #aaa;
-    border-radius: 50%;
-    cursor: pointer;
     list-style: none;
 }
 .tilez-nav-search > summary::-webkit-details-marker { display: none; }
@@ -2284,8 +2283,8 @@ body.blog, body.single, body.archive { background: #fff; }
     background: transparent;
     border: 0;
 }
-.navigation .section-inner { position: relative; width: 100%; }
-.main-menu { display: flex; width: auto; max-width: none; gap: 14px; white-space: nowrap; justify-content: flex-start; }
+.navigation .section-inner { position: relative; width: 100%; overflow: visible; isolation: isolate; }
+.main-menu { position: relative; z-index: 1; display: flex; width: auto; max-width: none; gap: 14px; white-space: nowrap; justify-content: flex-start; }
 .main-menu > li > a, .main-menu > li > span {
     color: var(--tilez-ink);
     font-size: 16px;
@@ -2330,10 +2329,14 @@ body.blog, body.single, body.archive { background: #fff; }
     height: 100%;
     max-width: none;
     object-fit: fill;
-    transition: opacity .3s ease, transform .25s ease;
+    filter: brightness(1);
+    transition: filter .3s ease, transform .35s ease;
 }
 .posts .post.ss-masonry-item:hover > img,
-.posts .post.ss-masonry-item:focus-visible > img { transform: scale(1.012); }
+.posts .post.ss-masonry-item:focus-visible > img {
+    filter: brightness(.66);
+    transform: scale(1.065);
+}
 
 .posts .post-overlay {
     position: absolute;
@@ -2341,16 +2344,17 @@ body.blog, body.single, body.archive { background: #fff; }
     display: flex;
     align-items: flex-end;
     padding: 18px;
-    background: linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,0) 52%);
-    opacity: 0;
-    transition: opacity .2s ease;
+    background: linear-gradient(to top, rgba(0,0,0,.72), rgba(0,0,0,.08) 60%);
+    opacity: 1;
+    transition: background-color .25s ease;
 }
 .posts .post:hover .post-overlay,
-.posts .post:focus-visible .post-overlay,
-.show-preview-titles .posts .post-overlay { opacity: 1; }
+.posts .post:focus-visible .post-overlay {
+    background: rgba(0,0,0,.34);
+}
 .archive-post-header { color: #fff; }
 .archive-post-date { font-size: 10px; letter-spacing: .08em; }
-.archive-post-title { margin: 4px 0 0; font-size: clamp(15px, 1.4vw, 22px); line-height: 1.15; }
+.archive-post-title { margin: 4px 0 0; font-size: clamp(15px, 1.4vw, 22px); line-height: 1.15; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
 
 /* Longform pages use an editorial split: the photo essay owns the wide left
    column, while its publication record stays close at hand on the right. */
