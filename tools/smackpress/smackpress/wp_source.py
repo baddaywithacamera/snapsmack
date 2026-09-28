@@ -113,6 +113,12 @@ _WRAPPED   = re.compile(
     r"(?:<figure\b[^>]*>\s*)?(?:<a\b[^>]*>\s*)?(<img\b[^>]*>)(?:\s*</a>)?"
     r"(?:\s*<figcaption\b[^>]*>.*?</figcaption>)?(?:\s*</figure>)?", re.I | re.S)
 _EMPTY_P   = re.compile(r"<p\b[^>]*>\s*(\[img:bucket:\d+\])\s*</p>", re.I)
+_WP_BLOCK_COMMENT = re.compile(r"<!--\s*/?wp:[\s\S]*?-->", re.I)
+_WP_SPACER = re.compile(
+    r'<div\b[^>]*class=["\'][^"\']*\bwp-block-spacer\b[^"\']*["\'][^>]*>.*?</div>',
+    re.I | re.S,
+)
+_DIV_TAG = re.compile(r"</?div\b[^>]*>", re.I)
 
 
 def _norm(url: str) -> str:
@@ -162,6 +168,15 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
     body = _WRAPPED.sub(lambda m: token_for_tag(m.group(1)), body)   # <img> with figure / a / caption
     body = _IMG_TAG.sub(lambda m: token_for_tag(m.group(0)), body)   # any bare <img> left over
     body = _EMPTY_P.sub(r"\n\1\n", body)
+    # Gutenberg comments are editor metadata, not post content.  Leaving the
+    # opening comment in place also defeats the destination API's "already
+    # HTML" check, causing the entire post (including its <p> tags) to be
+    # escaped as visible text.  Columns are layout wrappers WordPress owns;
+    # TILEZ lays adjacent imported images out itself, so unwrap them here.
+    body = _WP_SPACER.sub("\n", body)
+    body = _WP_BLOCK_COMMENT.sub("\n", body)
+    body = _DIV_TAG.sub("\n", body)
+    body = re.sub(r"<p\b[^>]*>\s*</p>", "\n", body, flags=re.I)
     body = re.sub(r"\n{3,}", "\n\n", body).strip()
     return body, ordered
 
