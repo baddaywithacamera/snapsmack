@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.771D — 2026-09-28 — Visible mosaic
+
+- **Dynamically rendered mosaic photographs can no longer remain invisible as black panels.** Mosaic tiles now opt out of the global image fade-loader's initial opacity rule, which could strand cached or lazily loaded images at zero opacity even though their files loaded successfully. The fix applies to existing mosaics without changing their saved records. (`assets/css/ss-engine-mosaic.css`.)
+
 ## 0.7.769D — 2026-09-28 — Finish the wall
 
 - **TILEZ article mosaics now fill their full width instead of exposing empty column tracks.** Saved column bundles are presented through the shared justified-row engine, allowing photographs to grow or shrink naturally while every row closes cleanly. The handwritten closing signature regains an appropriate scale, and longform copy uses TILEZ's bundled Droid Serif rather than the harsher browser Georgia override. TILEZ skin version 0.2.36. (`skins/tilez/preload.php`, `skins/tilez/style.css`, `skins/tilez/manifest.json`.)
