@@ -119,14 +119,14 @@ _WP_SPACER = re.compile(
     re.I | re.S,
 )
 _DIV_TAG = re.compile(r"</?div\b[^>]*>", re.I)
-_THREE_IMAGE_CLUSTER = re.compile(
-    r"(\[img:bucket:\d+\])\s*"
-    r"<!--\s*/wp:image\s*-->\s*"
-    r"<!--\s*wp:columns\b[\s\S]*?-->"
-    r"([\s\S]*?)"
-    r"<!--\s*/wp:columns\s*-->",
-    re.I,
-)
+_WP_COLUMNS_BLOCK = re.compile(
+    r"<!--\s*wp:columns\b[^>]*-->(.*?)<!--\s*/wp:columns\s*-->", re.I | re.S)
+_FOLLOWING_IMAGE_BLOCK = re.compile(
+    r"^\s*<!--\s*wp:image\b[^>]*-->\s*(\[img:bucket:\d+\])\s*"
+    r"<!--\s*/wp:image\s*-->", re.I)
+_PRECEDING_IMAGE_BLOCK = re.compile(
+    r"<!--\s*wp:image\b[^>]*-->\s*(\[img:bucket:\d+\])\s*"
+    r"<!--\s*/wp:image\s*-->\s*$", re.I)
 _BUCKET_TOKEN = re.compile(r"\[img:bucket:(\d+)\]", re.I)
 
 
@@ -183,15 +183,26 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
     # cluster, not three unrelated pictures.  Carry that intent across as the
     # native SMACKTALK mosaic placeholder; the poster resolves bucket positions
     # to permanent image ids and creates the mosaic during sync.
-    def three_image_mosaic(match):
-        first = _BUCKET_TOKEN.search(match.group(1))
-        pair = _BUCKET_TOKEN.findall(match.group(2))
-        if not first or len(pair) != 2:
-            return match.group(0)
-        positions = [first.group(1), pair[0], pair[1]]
-        return "\n[mosaic=%s layout=one-top]\n" % ",".join(positions)
+    # Work one exact Gutenberg columns block at a time. A single broad regex can
+    # backtrack across paragraphs into a later columns block and silently group
+    # the wrong photographs.
+    for columns in reversed(list(_WP_COLUMNS_BLOCK.finditer(body))):
+        pair = _BUCKET_TOKEN.findall(columns.group(1))
+        following = _FOLLOWING_IMAGE_BLOCK.match(body[columns.end():])
+        if len(pair) == 2 and following:
+            last = _BUCKET_TOKEN.search(following.group(1)).group(1)
+            token = "\n[mosaic=%s layout=one-top]\n" % ",".join([pair[0], pair[1], last])
+            body = body[:columns.start()] + token + body[columns.end() + following.end():]
 
-    body = _THREE_IMAGE_CLUSTER.sub(three_image_mosaic, body)
+    # For any two-column pair without a directly following image, use the
+    # directly preceding full-width image instead.
+    for columns in reversed(list(_WP_COLUMNS_BLOCK.finditer(body))):
+        pair = _BUCKET_TOKEN.findall(columns.group(1))
+        preceding = _PRECEDING_IMAGE_BLOCK.search(body[:columns.start()])
+        if len(pair) == 2 and preceding:
+            first = _BUCKET_TOKEN.search(preceding.group(1)).group(1)
+            token = "\n[mosaic=%s layout=one-top]\n" % ",".join([first, pair[0], pair[1]])
+            body = body[:preceding.start()] + token + body[columns.end():]
     # Gutenberg comments are editor metadata, not post content.  Leaving the
     # opening comment in place also defeats the destination API's "already
     # HTML" check, causing the entire post (including its <p> tags) to be
