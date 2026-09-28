@@ -119,6 +119,15 @@ _WP_SPACER = re.compile(
     re.I | re.S,
 )
 _DIV_TAG = re.compile(r"</?div\b[^>]*>", re.I)
+_THREE_IMAGE_CLUSTER = re.compile(
+    r"(\[img:bucket:\d+\])\s*"
+    r"<!--\s*/wp:image\s*-->\s*"
+    r"<!--\s*wp:columns\b[\s\S]*?-->"
+    r"([\s\S]*?)"
+    r"<!--\s*/wp:columns\s*-->",
+    re.I,
+)
+_BUCKET_TOKEN = re.compile(r"\[img:bucket:(\d+)\]", re.I)
 
 
 def _norm(url: str) -> str:
@@ -168,6 +177,21 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
     body = _WRAPPED.sub(lambda m: token_for_tag(m.group(1)), body)   # <img> with figure / a / caption
     body = _IMG_TAG.sub(lambda m: token_for_tag(m.group(0)), body)   # any bare <img> left over
     body = _EMPTY_P.sub(r"\n\1\n", body)
+
+    # A common Gutenberg gallery idiom in Sean's archive is one normal image
+    # immediately followed by a two-column image block.  It is one visual
+    # cluster, not three unrelated pictures.  Carry that intent across as the
+    # native SMACKTALK mosaic placeholder; the poster resolves bucket positions
+    # to permanent image ids and creates the mosaic during sync.
+    def three_image_mosaic(match):
+        first = _BUCKET_TOKEN.search(match.group(1))
+        pair = _BUCKET_TOKEN.findall(match.group(2))
+        if not first or len(pair) != 2:
+            return match.group(0)
+        positions = [first.group(1), pair[0], pair[1]]
+        return "\n[mosaic=%s layout=one-top]\n" % ",".join(positions)
+
+    body = _THREE_IMAGE_CLUSTER.sub(three_image_mosaic, body)
     # Gutenberg comments are editor metadata, not post content.  Leaving the
     # opening comment in place also defeats the destination API's "already
     # HTML" check, causing the entire post (including its <p> tags) to be
