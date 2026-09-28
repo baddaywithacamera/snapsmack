@@ -87,10 +87,16 @@ $assert(str_contains($mosaicEngine, ".snap-mosaic[data-mosaic], .snap-mosaic-wal
     'shared continuity also joins adjacent column, row, and square MOSAIC walls');
 $assert(!is_file($root . '/skins/tilez/assets/js/tilez-mosaic-continuity.js'), 'TILEZ does not ship JavaScript');
 $assert(str_contains($style, '+ p:has(+ :is(.snap-inline-frame'), 'paragraphs between media receive symmetrical vertical spacing');
-$assert(str_contains($style, '--tilez-content-start: 44px;')
+$assert(str_contains($style, '--tilez-content-start: 64px;')
     && str_contains($style, 'padding-top: var(--tilez-content-start);')
     && str_contains($style, 'margin: 0 0 40px;'),
     'feed, archive, static pages, and single posts share one menu-to-content baseline');
+$assert(str_contains($style, 'filter: brightness(.66);')
+    && str_contains($style, 'transform: scale(1.065);'),
+    'landing tiles zoom and darken decisively on hover and keyboard focus');
+$assert(str_contains($style, 'opacity: 1;')
+    && str_contains($style, 'rgba(0,0,0,.72)'),
+    'landing titles remain visible over a restrained dark gradient');
 $assert(is_file($root . '/skins/tilez/assets/bad-day-masthead.png'), 'bundled masthead exists');
 
 echo "PASS: TILEZ white columns portfolio\n";

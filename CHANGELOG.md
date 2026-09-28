@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.768D — 2026-09-28 — Responsive controls
+
+- **TILEZ gives its text menu another 20px of breathing room and makes every circular quick-navigation control unmistakably interactive.** The icon controls now sit above the text-menu hit area, retain visible white circular targets, turn red and lift on hover or keyboard focus, depress on activation, expose their labels as tooltips, and keep SVG artwork from intercepting clicks. Landing-page titles remain visible over a restrained gradient; hover and keyboard focus deepen the image shading and zoom decisively so the title treatment becomes more solid without disappearing. TILEZ skin version 0.2.35. (`skins/tilez/style.css`, `skins/tilez/manifest.json`.)
+
 ## 0.7.767D — 2026-09-28 — Native format
 
 - **TILEZ once again presents longform posts as the native-aspect three-column editorial wall it was designed to be.** Its editor no longer imposes a 3:2 landscape frame on portrait display images, switching the preview to each selected image's real shape. The landing wall now verifies its geometry against the actual aspect-preserving thumbnail rather than trusting potentially stale imported or EXIF-rotated database dimensions, so portrait work remains portrait on the page. TILEZ skin version 0.2.34. (`smack-post-long.php`, `assets/js/ss-engine-longform-cover-crop.js`, `skins/tilez/`.)
