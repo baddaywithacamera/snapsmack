@@ -59,9 +59,10 @@ $assert(str_contains($preload, '<dt>Category</dt>') && str_contains($preload, '<
 $assert(str_contains($preload, '$_alfred_gear_note') && str_contains($style, '.post-mobile-gear'), 'camera notes move to the record and follow the essay on mobile');
 $assert(str_contains($preload, '$_alfred_signature')
     && str_contains($preload, 'sean-mccormick-black-low-res')
+    && str_contains($preload, '$signature_pattern')
     && str_contains($preload, 'post-signature post-signature--closing')
     && str_contains($style, '.post-signature--closing'),
-    'the imported handwritten signature closes the essay instead of appearing in the sidebar record');
+    'the imported handwritten signature is removed from prose and restored once at the essay close');
 $assert(str_contains($preload, "LOWER(img_title) NOT LIKE '%signature%'")
     && str_contains($preload, "LOWER(img_title) NOT LIKE '%sean-mccormick-black-low-res%'"),
     'decorative signatures do not appear as black photograph tiles in the archive');
@@ -69,11 +70,11 @@ $assert(str_contains($preload, '$legacy_is_colophon')
     && str_contains($preload, 'photos? (?:taken|made|shot) with')
     && str_contains($preload, 'count($legacy_equipment_terms) >= 3'),
     'varied legacy closing equipment paragraphs are recognized as recurring post colophons');
-$legacyFixture = '<div class="initial-letter"><p>Opening paragraph.</p><div><img src="photo.jpg"></div><p>The main camera was a Canon EOS 7D with a Helios lens and DJI drone.</p></div>';
-$legacyPattern = '~(<p\b[^>]*>(?:(?!<p\b).)*?</p>)(?:\s*</div>\s*)*$~is';
+$legacyFixture = "<div class=\"initial-letter\"><p>Opening paragraph.</p><div><img src=\"photo.jpg\"></div><p>The main camera was a Canon EOS 7D with a Helios lens and DJI drone.</p></div>\n\n";
+$legacyPattern = '~(<p\b[^>]*>(?:(?!<p\b).)*?</p>)(?:\s*</div>)*\s*$~is';
 $assert(preg_match($legacyPattern, $legacyFixture, $legacyMatch, PREG_OFFSET_CAPTURE) === 1
     && $legacyMatch[1][0] === '<p>The main camera was a Canon EOS 7D with a Helios lens and DJI drone.</p>',
-    'legacy colophon matching captures only the final paragraph, never the whole wrapped article');
+    'legacy colophon matching captures only the final paragraph, including imports with trailing whitespace');
 $assert(str_contains($style, '.post-gear-note'), 'closing equipment notes have a readable supporting style');
 $assert(str_contains($style, "font-family: Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif;"), 'longform body uses the lighter editorial sans face');
 $assert(str_contains($style, 'font-size: 19px;') && str_contains($style, 'font-weight: 400;'), 'desktop longform body is readable and normal-weight');

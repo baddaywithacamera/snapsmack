@@ -319,6 +319,17 @@ if ($_alfred_post_slug || $_alfred_post_id) {
     $_alfred_parser = new SnapSmack($pdo);
     $_alfred_rendered = $_alfred_parser->parseContent($_alfred_post['content'] ?? '');
 
+    // Some WordPress posts carried the handwritten signature as an ordinary
+    // final image. The relationship lookup above already gives TILEZ the same
+    // file for its proper closing-signature treatment, so remove the imported
+    // inline frame instead of displaying the autograph twice.
+    if ($_alfred_signature && !empty($_alfred_signature['img_file'])) {
+        $signature_src = BASE_URL . ltrim((string)$_alfred_signature['img_file'], '/');
+        $signature_pattern = '~<div\b[^>]*\bsnap-inline-frame\b[^>]*>\s*<div\b[^>]*>\s*<img\b[^>]*\bsrc=(?:"'
+            . preg_quote($signature_src, '~') . '"|\'' . preg_quote($signature_src, '~') . '\')[^>]*>\s*</div>\s*</div>~is';
+        $_alfred_rendered = preg_replace($signature_pattern, '', $_alfred_rendered, 1);
+    }
+
     // Camera/equipment copy is authored as part of the post, but TILEZ presents
     // it as publication ephemera rather than leaving it stranded at the bottom.
     $_alfred_gear_note = '';
@@ -331,7 +342,7 @@ if ($_alfred_post_slug || $_alfred_post_id) {
     // treat it as the legacy colophon instead of making the author re-edit an
     // already published essay.
     if ($_alfred_gear_note === '' && preg_match(
-        '~(<p\b[^>]*>(?:(?!<p\b).)*?</p>)(?:\s*</div>\s*)*$~is',
+        '~(<p\b[^>]*>(?:(?!<p\b).)*?</p>)(?:\s*</div>)*\s*$~is',
         $_alfred_rendered,
         $legacy_match,
         PREG_OFFSET_CAPTURE
