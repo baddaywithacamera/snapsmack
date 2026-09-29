@@ -431,6 +431,15 @@ function skin_registry_install(string $slug, string $download_url, string $signa
         _skin_rmdir_recursive($staging);
         return ['success' => false, 'message' => 'Invalid skin package: no manifest.json found inside the zip.'];
     }
+    // Apply the same authority boundary used by development and packaging
+    // before executable files can enter the live skins directory.
+    require_once __DIR__ . '/skin-security-policy.php';
+    $legacy_policy = require __DIR__ . '/skin-security-legacy.php';
+    $policy_findings = snapsmack_skin_security_gate($source, $legacy_policy);
+    if ($policy_findings) {
+        _skin_rmdir_recursive($staging);
+        return ['success' => false, 'message' => 'Skin install refused: package violates the skin security policy.'];
+    }
     $expected_manifest_hash = hash_file('sha256', $source . '/manifest.json');
 
     // Transactional update: first move the live directory aside. Renaming an
