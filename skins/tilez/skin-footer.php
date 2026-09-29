@@ -23,21 +23,7 @@ if (!defined('SNAPSMACK_SKIN_RENDER')) return;
 // old hardcoded .credits bar duplicated two slots and hid the rest, so the
 // footer configuration never showed; removed.
 
-// Load manifest-required scripts
-$skin_manifest = load_skin_manifest(basename(__DIR__));
-$requested     = $skin_manifest['require_scripts'] ?? [];
-
-if (!empty($requested)) {
-    $inventory = include dirname(__DIR__, 2) . '/core/manifest-inventory.php';
-    if (isset($inventory['scripts'])) {
-        foreach ($requested as $handle) {
-            if (isset($inventory['scripts'][$handle])) {
-                $script = $inventory['scripts'][$handle];
-                echo '<script src="' . BASE_URL . $script['path'] . '?v=' . SNAPSMACK_VERSION_SHORT . '"></script>' . "\n";
-            }
-        }
-    }
-}
+snapsmack_render_skin_scripts(basename(__DIR__));
 
 include_once dirname(__DIR__, 2) . '/core/footer.php';
 
