@@ -14,6 +14,19 @@ if (str_contains($rendered, 'javascript:') || !str_contains($rendered, '&lt;Admi
     throw new RuntimeException('Shared component failed context escaping.');
 }
 if (snap_render_html(snap_render_component('unknown', [])) !== '') throw new RuntimeException('Unknown component did not fail closed.');
+$page = snap_render_html(snap_render_component('smacktalk-page', [
+    'site' => ['site_name' => '<Site>', 'tagline' => '<Tag>'],
+    'response' => [
+        'kind' => 'single', 'navigation' => [],
+        'post' => ['title' => '<Story>', 'created_at' => '2026-09-28', 'featured_image_path' => ''],
+        'rendered_content' => snapsmack_trusted_html('<p>CMS HTML</p>'),
+        'comments_enabled' => true,
+        'comments' => [['comment_author' => '<Reader>', 'comment_text' => '<script>no</script>']],
+    ],
+]));
+if (!str_contains($page, '<p>CMS HTML</p>') || str_contains($page, '<script>') || !str_contains($page, '&lt;Story&gt;')) {
+    throw new RuntimeException('Shared SMACKTALK page crossed its trust boundary.');
+}
 if (snap_route_url('unknown') !== '') throw new RuntimeException('Unknown route did not fail closed.');
 if (snap_asset_url('../evil') !== '') throw new RuntimeException('Unknown/traversal asset handle was accepted.');
 

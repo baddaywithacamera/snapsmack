@@ -1,5 +1,6 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
+    "security_policy": 2,
     "name": "TILEZ",
     "version": "0.2.44",
     "author": "Sean McCormick & Claude",
@@ -9,11 +10,14 @@
     "modes": [
         "smacktalk"
     ],
-    "skin_preload": "preload.php",
     "cms_controller": "smacktalk",
-    "view_model": "smacktalk.public.v1",
+    "view_model": "snapsmack.public.v1",
     "templates": {
-        "public": "preload.php"
+        "single": "layout.php",
+        "feed": "layout.php",
+        "archive": "layout.php",
+        "not_found": "layout.php",
+        "default": "layout.php"
     },
     "capabilities": [
         "navigation",

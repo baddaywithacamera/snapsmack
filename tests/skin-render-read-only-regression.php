@@ -27,10 +27,10 @@ try {
     if (is_file($tmp)) unlink($tmp);
 }
 
-$stanley = (string)file_get_contents($root . '/skins/stanley/skin-header.php');
+$stanleyLegacy = $root . '/skins/stanley/skin-header.php';
 $cms = (string)file_get_contents($root . '/core/skin-view-model.php');
-if (str_contains($stanley, 'snap_assets') || str_contains($stanley, 'stanley__stanley_2024_hero')) {
-    $failures[] = 'STANLEY still owns hero lookup or persistence.';
+if (is_file($stanleyLegacy)) {
+    $failures[] = 'STANLEY still has a legacy executable header.';
 }
 if (!str_contains($cms, 'function snapsmack_initialize_skin_media_slots(')
     || !str_contains($cms, 'snapsmack_resolve_skin_media_slot($pdo, $settings, $slot, false)')) {
