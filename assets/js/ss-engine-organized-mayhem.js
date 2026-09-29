@@ -83,6 +83,12 @@
         //   data-ambient="1" → always drift, not just when idle (backdrop)
         var panEnabled   = d.pan !== '0';
         var ambient      = d.ambient === '1';
+        if (ambient) {
+            container.style.position = 'fixed';
+            container.style.inset = '0';
+            container.style.zIndex = '-1';
+            container.style.pointerEvents = 'none';
+        }
         var prefersReduced = window.matchMedia &&
             window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 

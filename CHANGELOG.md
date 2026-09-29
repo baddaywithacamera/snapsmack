@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.780D — 2026-09-29 — Mayhem mounted
+
+- **ORGANIZED MAYHEM is mounted by the CMS for every presentation that declares the shared engine.** The strict public renderer now emits the bounded, inert engine mount and central JSON endpoint; ambient mode makes that mount a fixed, non-interactive background. INSTANT CAMERA therefore regains its drifting tabletop without skin-owned PHP or JavaScript. (`core/skin-render-helpers.php`, `assets/js/ss-engine-organized-mayhem.js`.)
+
 ## 0.7.779D — 2026-09-29 — Catalogue authority
 
 - **Source-review builds validate legacy asset handles against the public catalogue without requiring deployed asset files.** The runtime inventory still removes handles whose files are absent on an installation. In an explicitly rooted skin-policy review, the same map skips only that physical-installation check and every resulting handle remains cross-checked against `ASSET-INVENTORY.json` public scope. (`core/skin-security-policy.php`, `core/manifest-inventory.php`.)
