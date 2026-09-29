@@ -218,6 +218,11 @@ function sc_extract_skins(string $ref): array {
         @mkdir($tmp_dir . 'core', 0755, true);
         file_put_contents($tmp_dir . 'core/' . $core_file, $body);
     }
+    $asset_catalog = $src->getFromName($prefix . 'assets/ASSET-INVENTORY.json');
+    if ($asset_catalog !== false) {
+        @mkdir($tmp_dir . 'assets', 0755, true);
+        file_put_contents($tmp_dir . 'assets/ASSET-INVENTORY.json', $asset_catalog);
+    }
 
     $src->close();
     @unlink($tmp_zip);
@@ -284,6 +289,17 @@ function sc_extract_one_skin(string $ref, string $slug): array {
             if ($core_body === false) continue;
             @mkdir($tmp_dir . 'core', 0755, true);
             file_put_contents($tmp_dir . 'core/' . $core_file, $core_body);
+        }
+    }
+    $catalog_entry = sc_github_get(
+        'repos/' . SNAPSMACK_GITHUB_REPO
+        . '/contents/assets/ASSET-INVENTORY.json?ref=' . rawurlencode($ref)
+    );
+    if (is_array($catalog_entry) && ($catalog_entry['type'] ?? '') === 'file') {
+        $catalog_body = sc_http_raw((string)($catalog_entry['download_url'] ?? ''), [], 30);
+        if ($catalog_body !== false) {
+            @mkdir($tmp_dir . 'assets', 0755, true);
+            file_put_contents($tmp_dir . 'assets/ASSET-INVENTORY.json', $catalog_body);
         }
     }
 
