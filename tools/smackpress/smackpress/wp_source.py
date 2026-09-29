@@ -21,10 +21,9 @@ secure.
     draft = draft_from_wp(full_post, workdir)      # full_post = companion's post JSON
     SmacktalkPoster(site_url, key).sync_smacktalk(draft)
 
-What travels: title, body (HTML — the server's sanitiser accepts it), every
-image, alt text, tags, first category name, original date, original slug
-(old URLs keep working), featured image first so it becomes the cover.
-What does not: comments (separate route, later), excerpt (SMACKTALK has none).
+What travels: authored words (title, body and image alt text), every image,
+and the original publication date. WordPress URLs, directory structure, slug,
+taxonomy, comments, excerpt and attachment metadata do not cross the boundary.
 """
 
 # SNAPSMACK_EOF_HEADER
@@ -257,11 +256,6 @@ def extract_wordpress_ephemera(body: str, ordered: List[dict]) -> Tuple[str, str
 
 
 # ── the adapter ───────────────────────────────────────────────────────────────
-def _tag_token(name: str) -> str:
-    t = re.sub(r"[^A-Za-z0-9]+", "", (name or "").lower())
-    return "#" + t if t else ""
-
-
 def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
                   status: str = "draft", on_progress: Callable[[str], None] = None) -> Draft:
     """Turn the companion's full post JSON into a COLD SNAP Draft with every
@@ -289,14 +283,12 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
         except Exception as e:  # noqa: BLE001
             raise ImportError_(f"Picture {n} could not be brought across ({url}): {e}") from e
         draft_images.append(DraftImage(
-            local_path=path, original_path=url, filename=os.path.basename(path),
+            local_path=path, original_path=path, filename=os.path.basename(path),
             width=int(im.get("width") or 0), height=int(im.get("height") or 0),
             alt=(im.get("alt") or im.get("caption") or "")[:255],
             is_signature=n in signature_slots,
         ))
 
-    tags = " ".join(t for t in (_tag_token(x) for x in (full_post.get("tags") or [])) if t)
-    cats = full_post.get("categories") or []
     date = (full_post.get("date") or "")[:19].replace("T", " ")
 
     return Draft(
@@ -305,11 +297,11 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
         title=html.unescape(full_post.get("title") or ""),
         caption=body,
         colophon=colophon,
-        tags=tags,
+        tags="",
         post_date=date,
         img_status=status,
-        category=(cats[0].get("name") if cats and isinstance(cats[0], dict) else "") or "",
-        slug=(full_post.get("slug") or ""),
+        category="",
+        slug="",
         images=draft_images,
     )
 

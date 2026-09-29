@@ -132,18 +132,19 @@ class DraftTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
 
-    def test_draft_carries_everything_and_pictures_are_local(self):
+    def test_draft_keeps_creative_work_and_discards_wordpress_structure(self):
         d = wp_source.draft_from_wp(POST, self.tmp.name, fetch=fake_fetch)
         self.assertEqual(d.kind, "smacktalk")
         self.assertEqual(d.title, "Rust & Chrome")
-        self.assertEqual(d.slug, "rust-and-chrome")
+        self.assertEqual(d.slug, "")
         self.assertEqual(d.post_date, "2024-05-06 14:22:00")
-        self.assertEqual(d.tags, "#usedcarparts #v8")
-        self.assertEqual(d.category, "Engines")
+        self.assertEqual(d.tags, "")
+        self.assertEqual(d.category, "")
         self.assertEqual(d.img_status, "draft")
         self.assertEqual(len(d.images), 4)
         self.assertTrue(all(os.path.isfile(im.local_path) for im in d.images))
         self.assertTrue(all(im.local_path.startswith(self.tmp.name) for im in d.images))
+        self.assertTrue(all(im.original_path == im.local_path for im in d.images))
         self.assertEqual(d.images[0].filename, "cover.png", "featured image leads → becomes the cover")
         self.assertEqual(d.images[1].alt, "grille")
         self.assertNotIn("<img", d.caption.lower())
@@ -156,16 +157,20 @@ class DraftTests(unittest.TestCase):
             wp_source.draft_from_wp(post, self.tmp.name, fetch=fake_fetch)
         self.assertIn("missing.png", str(cm.exception))
 
-    def test_poster_payload_keeps_the_old_slug(self):
+    def test_poster_payload_keeps_date_but_not_wordpress_structure(self):
         sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "coldsnap"))
         import sumna_post
         d = wp_source.draft_from_wp(POST, self.tmp.name, fetch=fake_fetch)
         poster = sumna_post.SmacktalkPoster.__new__(sumna_post.SmacktalkPoster)
         payload = poster.build_payload(d, [101, 102, 103, 104], 101)
-        self.assertEqual(payload["slug"], "rust-and-chrome")
+        self.assertNotIn("slug", payload)
         self.assertEqual(payload["featured_image_id"], 101)
         self.assertEqual(payload["date"], "2024-05-06 14:22:00")
-        self.assertEqual(payload["tags"], "usedcarparts v8")
+        self.assertEqual(payload["tags"], "")
+        self.assertEqual(payload["cat_ids"], [])
+        self.assertEqual(payload["album_ids"], [])
+        self.assertNotIn("wp-content", repr(payload))
+        self.assertNotIn("old-blog.example", repr(payload))
         self.assertEqual(payload["status"], "draft")
 
     def test_wordpress_ephemera_becomes_explicit_post_data(self):
