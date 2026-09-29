@@ -50,7 +50,7 @@ if (($_GET['view'] ?? '') === 'archive') {
              WHERE p.post_type = 'longform'
                AND p.status = 'published'
                AND i.img_status = 'published'
-             ORDER BY p.id DESC"
+              AND p.created_at <= NOW() AND i.img_date <= NOW() ORDER BY p.id DESC"
         );
         $_st_archive_posts = $_st_stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -137,7 +137,7 @@ $_st_post_id   = isset($_GET['id']) ? (int)$_GET['id'] : null;
 
 if (empty($_st_post_slug) && !empty($requested_slug)) {
     try {
-        $chk = $pdo->prepare("SELECT id FROM snap_posts WHERE slug = ? AND post_type = 'longform' AND status = 'published' LIMIT 1");
+        $chk = $pdo->prepare("SELECT id FROM snap_posts WHERE slug = ? AND post_type = 'longform' AND status = 'published'  AND created_at <= NOW() LIMIT 1");
         $chk->execute([$requested_slug]);
         if ($chk->fetchColumn()) $_st_post_slug = $requested_slug;
     } catch (PDOException $e) { /* fall through */ }
@@ -152,15 +152,15 @@ if ($_st_post_slug || $_st_post_id) {
         if ($_st_post_slug) {
             $stmt = $pdo->prepare(
                 "SELECT p.*, i.img_file AS featured_image_path
-                 FROM snap_posts p LEFT JOIN snap_images i ON i.id = p.featured_image_id
-                 WHERE p.slug = ? AND p.post_type = 'longform' AND p.status = 'published' LIMIT 1"
+                 FROM snap_posts p LEFT JOIN snap_images i ON i.id = p.featured_image_id AND i.img_status = 'published' AND i.img_date <= NOW()
+                 WHERE p.slug = ? AND p.post_type = 'longform' AND p.status = 'published' AND p.created_at <= NOW() LIMIT 1"
             );
             $stmt->execute([$_st_post_slug]);
         } else {
             $stmt = $pdo->prepare(
                 "SELECT p.*, i.img_file AS featured_image_path
-                 FROM snap_posts p LEFT JOIN snap_images i ON i.id = p.featured_image_id
-                 WHERE p.id = ? AND p.post_type = 'longform' AND p.status = 'published' LIMIT 1"
+                 FROM snap_posts p LEFT JOIN snap_images i ON i.id = p.featured_image_id AND i.img_status = 'published' AND i.img_date <= NOW()
+                 WHERE p.id = ? AND p.post_type = 'longform' AND p.status = 'published' AND p.created_at <= NOW() LIMIT 1"
             );
             $stmt->execute([$_st_post_id]);
         }
@@ -184,10 +184,10 @@ if ($_st_post_slug || $_st_post_id) {
 
     // Prev / Next
     try {
-        $ns = $pdo->prepare("SELECT slug, title FROM snap_posts WHERE post_type='longform' AND status='published' AND id < ? ORDER BY id DESC LIMIT 1");
+        $ns = $pdo->prepare("SELECT slug, title FROM snap_posts WHERE post_type='longform' AND status='published' AND id < ?  AND created_at <= NOW() ORDER BY id DESC LIMIT 1");
         $ns->execute([$_st_post['id']]);
         $_st_prev = $ns->fetch(PDO::FETCH_ASSOC);
-        $ns = $pdo->prepare("SELECT slug, title FROM snap_posts WHERE post_type='longform' AND status='published' AND id > ? ORDER BY id ASC LIMIT 1");
+        $ns = $pdo->prepare("SELECT slug, title FROM snap_posts WHERE post_type='longform' AND status='published' AND id > ?  AND created_at <= NOW() ORDER BY id ASC LIMIT 1");
         $ns->execute([$_st_post['id']]);
         $_st_next = $ns->fetch(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -277,13 +277,13 @@ $_st_page     = max(1, (int)($_GET['page'] ?? 1));
 $_st_offset   = ($_st_page - 1) * $_st_per_page;
 
 try {
-    $_st_total = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts WHERE post_type='longform' AND status='published'")->fetchColumn();
+    $_st_total = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts WHERE post_type='longform' AND status='published' AND created_at <= NOW() ")->fetchColumn();
     $fs = $pdo->prepare(
         "SELECT p.id, p.title, p.slug, p.created_at, p.content,
                 COALESCE(i.img_thumb_square, i.img_file) AS featured_image_path
-         FROM snap_posts p LEFT JOIN snap_images i ON i.id = p.featured_image_id
+         FROM snap_posts p LEFT JOIN snap_images i ON i.id = p.featured_image_id AND i.img_status = 'published' AND i.img_date <= NOW()
          WHERE p.post_type = 'longform' AND p.status = 'published'
-         ORDER BY p.id DESC LIMIT ? OFFSET ?"
+          AND p.created_at <= NOW() ORDER BY p.id DESC LIMIT ? OFFSET ?"
     );
     $fs->execute([$_st_per_page, $_st_offset]);
     $_st_posts = $fs->fetchAll(PDO::FETCH_ASSOC);

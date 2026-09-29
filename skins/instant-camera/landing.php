@@ -133,7 +133,7 @@ $grid_stmt = $pdo->prepare("
     LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
     WHERE p.status = 'published'
       AND p.created_at <= :feed_now
-    ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
+     AND i.img_status = 'published' AND i.img_date <= NOW() ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
              p.sort_order ASC,
              p.id DESC
     LIMIT :feed_limit OFFSET :feed_offset

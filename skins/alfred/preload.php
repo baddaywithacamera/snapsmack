@@ -57,7 +57,7 @@ if (($_GET['view'] ?? '') === 'archive') {
             "SELECT id, img_title, img_file, img_thumb_square, img_thumb_aspect
              FROM snap_images
              WHERE img_status = 'published'
-             ORDER BY sort_order ASC, id DESC"
+              AND img_date <= NOW() ORDER BY sort_order ASC, id DESC"
         );
         $_alfred_images = $_alfred_arch_stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -164,7 +164,7 @@ if (empty($_alfred_post_slug) && !empty($requested_slug)) {
     // If not, fall through so index.php can try it as an image.
     try {
         $_alfred_slug_check = $pdo->prepare(
-            "SELECT id FROM snap_posts WHERE slug = ? AND post_type = 'longform' AND status = 'published' LIMIT 1"
+            "SELECT id FROM snap_posts WHERE slug = ? AND post_type = 'longform' AND status = 'published'  AND created_at <= NOW() LIMIT 1"
         );
         $_alfred_slug_check->execute([$requested_slug]);
         if ($_alfred_slug_check->fetchColumn()) {
@@ -184,18 +184,18 @@ if ($_alfred_post_slug || $_alfred_post_id) {
             $stmt = $pdo->prepare(
                 "SELECT p.*, i.img_file AS featured_image_path
                  FROM snap_posts p
-                 LEFT JOIN snap_images i ON i.id = p.featured_image_id
+                 LEFT JOIN snap_images i ON i.id = p.featured_image_id AND i.img_status = 'published' AND i.img_date <= NOW()
                  WHERE p.slug = ? AND p.post_type = 'longform' AND p.status = 'published'
-                 LIMIT 1"
+                  AND p.created_at <= NOW() LIMIT 1"
             );
             $stmt->execute([$_alfred_post_slug]);
         } else {
             $stmt = $pdo->prepare(
                 "SELECT p.*, i.img_file AS featured_image_path
                  FROM snap_posts p
-                 LEFT JOIN snap_images i ON i.id = p.featured_image_id
+                 LEFT JOIN snap_images i ON i.id = p.featured_image_id AND i.img_status = 'published' AND i.img_date <= NOW()
                  WHERE p.id = ? AND p.post_type = 'longform' AND p.status = 'published'
-                 LIMIT 1"
+                  AND p.created_at <= NOW() LIMIT 1"
             );
             $stmt->execute([$_alfred_post_id]);
         }
@@ -225,7 +225,7 @@ if ($_alfred_post_slug || $_alfred_post_id) {
         $nav_stmt = $pdo->prepare(
             "SELECT slug, title FROM snap_posts
              WHERE post_type = 'longform' AND status = 'published' AND id < ?
-             ORDER BY id DESC LIMIT 1"
+              AND created_at <= NOW() ORDER BY id DESC LIMIT 1"
         );
         $nav_stmt->execute([$_alfred_post['id']]);
         $_alfred_prev = $nav_stmt->fetch(PDO::FETCH_ASSOC);
@@ -233,7 +233,7 @@ if ($_alfred_post_slug || $_alfred_post_id) {
         $nav_stmt = $pdo->prepare(
             "SELECT slug, title FROM snap_posts
              WHERE post_type = 'longform' AND status = 'published' AND id > ?
-             ORDER BY id ASC LIMIT 1"
+              AND created_at <= NOW() ORDER BY id ASC LIMIT 1"
         );
         $nav_stmt->execute([$_alfred_post['id']]);
         $_alfred_next = $nav_stmt->fetch(PDO::FETCH_ASSOC);
@@ -356,7 +356,7 @@ $_alfred_show_titles = ($settings['show_post_titles'] ?? '0') === '1';
 
 try {
     $count_stmt = $pdo->query(
-        "SELECT COUNT(*) FROM snap_posts WHERE post_type = 'longform' AND status = 'published'"
+        "SELECT COUNT(*) FROM snap_posts WHERE post_type = 'longform' AND status = 'published' AND created_at <= NOW() "
     );
     $_alfred_total = (int)$count_stmt->fetchColumn();
 
@@ -364,9 +364,9 @@ try {
         "SELECT p.id, p.title, p.slug, p.created_at,
                 COALESCE(i.img_thumb_square, i.img_file) AS featured_image_path
          FROM snap_posts p
-         LEFT JOIN snap_images i ON i.id = p.featured_image_id
+         LEFT JOIN snap_images i ON i.id = p.featured_image_id AND i.img_status = 'published' AND i.img_date <= NOW()
          WHERE p.post_type = 'longform' AND p.status = 'published'
-         ORDER BY p.id DESC
+          AND p.created_at <= NOW() ORDER BY p.id DESC
          LIMIT ? OFFSET ?"
     );
     $feed_stmt->execute([$_alfred_per_page, $_alfred_offset]);

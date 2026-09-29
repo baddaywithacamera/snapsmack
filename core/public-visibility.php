@@ -31,9 +31,9 @@ function snapsmack_skin_visibility_query_findings(string $path, string $relative
         $sql = $token[1];
         if (!preg_match('/\bSELECT\b/i', $sql)) continue;
         $checks = [
-            'post' => [preg_match('/\bsnap_posts\b/i', $sql), '/\bstatus\s*=\s*["\']published["\']/i', '/\bcreated_at\s*<=/i'],
-            'image' => [preg_match('/\bsnap_images\b/i', $sql), '/\bimg_status\s*=\s*["\']published["\']/i', '/\bimg_date\s*<=/i'],
-            'page' => [preg_match('/\bsnap_pages\b/i', $sql), '/\bis_active\s*=\s*1\b/i', null],
+            'post' => [preg_match('/\b(?:FROM|JOIN)\s+snap_posts\b/i', $sql), '/\bstatus\s*=\s*["\']published["\']/i', '/\bcreated_at\s*<=/i'],
+            'image' => [preg_match('/\b(?:FROM|JOIN)\s+snap_images\b/i', $sql), '/\bimg_status\s*=\s*["\']published["\']/i', '/\bimg_date\s*<=/i'],
+            'page' => [preg_match('/\b(?:FROM|JOIN)\s+snap_pages\b/i', $sql), '/\bis_active\s*=\s*1\b/i', null],
         ];
         foreach ($checks as $kind => [$mentions, $status_pattern, $date_pattern]) {
             if (!$mentions) continue;

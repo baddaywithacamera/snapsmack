@@ -67,7 +67,7 @@ $avatar_initials = strtoupper(substr($site_display, 0, 1));
 $cover_url = '';
 $cover_id  = (int)($settings['slickr_cover_image_id'] ?? 0);
 if ($cover_id > 0) {
-    $cs = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ? AND img_status = 'published'");
+    $cs = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ? AND img_status = 'published' AND img_date <= NOW() ");
     $cs->execute([$cover_id]);
     $cf = $cs->fetchColumn();
     if ($cf) $cover_url = BASE_URL . ltrim($cf, '/');
