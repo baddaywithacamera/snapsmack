@@ -166,6 +166,8 @@ try {
     // request parsing, data access, redirects and status; the skin receives a
     // bounded view model and renders markup only.
     $_active_manifest = load_skin_manifest($active_skin);
+    require_once __DIR__ . '/core/asset-registry.php';
+    $_registered_skin_assets = snapsmack_skin_declared_assets($_active_manifest);
     if (($_active_manifest['cms_controller'] ?? '') === 'smacktalk') {
         require_once __DIR__ . '/core/smacktalk-public-controller.php';
         $_smacktalk = snapsmack_smacktalk_request($pdo, $settings, [
@@ -197,6 +199,7 @@ try {
                     'owner_name' => (string)($settings['site_author'] ?? ''),
                     'skin_style_url' => (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin) . '/style.css',
                     'owner_custom_code' => snapsmack_owner_custom_code($settings),
+                    'registered_assets' => $_registered_skin_assets,
                 ]);
                 $_template_map = is_array($_active_manifest['templates'] ?? null) ? $_active_manifest['templates'] : [];
                 $_strict_template = (string)($_template_map[$_smacktalk['kind'] ?? ''] ?? $_template_map['default'] ?? '');
@@ -229,6 +232,7 @@ try {
             'owner_name' => (string)($settings['site_author'] ?? ''),
             'skin_style_url' => (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin) . '/style.css',
             'owner_custom_code' => snapsmack_owner_custom_code($settings),
+            'registered_assets' => $_registered_skin_assets,
         ]);
         $_template_map = is_array($_active_manifest['templates'] ?? null) ? $_active_manifest['templates'] : [];
         $_strict_template = (string)($_template_map[$_public['kind'] ?? ''] ?? $_template_map['default'] ?? '');

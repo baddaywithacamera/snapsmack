@@ -68,15 +68,8 @@ foreach (['h-entry', 'p-name', 'e-content', 'dt-published', 'u-photo', 'p-author
     iw_assert(strpos($publicPost, $class) !== false, "ActivityPub public post emits {$class}");
 }
 
-foreach (['alfred', 'tilez', 'stanley', 'writing-with-impact'] as $skin) {
-    $preload = (string)file_get_contents($root . '/skins/' . $skin . '/preload.php');
-    foreach (['h-entry', 'p-name', 'e-content', 'dt-published', 'u-photo', 'snapsmack_indieweb_longform_properties'] as $class) {
-        $shared_photo = $class === 'u-photo'
-            && strpos($preload, 'snapsmack_indieweb_longform_properties') !== false
-            && strpos((string)file_get_contents($root . '/core/indieweb.php'), 'class="u-photo"') !== false;
-        iw_assert(strpos($preload, $class) !== false || $shared_photo, "{$skin} longform emits {$class}");
-    }
-}
+$helpers=(string)file_get_contents($root.'/core/skin-render-helpers.php');
+foreach(['h-entry','p-name','e-content','dt-published','u-photo','p-author h-card'] as $class)iw_assert(strpos($helpers,$class)!==false,"CMS skin renderer emits {$class}");
 
 echo "IndieWeb semantic regression checks passed.\n";
 
