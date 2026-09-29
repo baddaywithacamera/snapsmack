@@ -936,6 +936,7 @@ $inventory = [
 // This is defence in depth for updates that remove dead assets before every
 // historical catalogue entry has been physically compacted.
 foreach (($inventory['scripts'] ?? []) as $_snapsmack_inventory_handle => $_snapsmack_inventory_entry) {
+    if (!empty($snapsmack_manifest_inventory_catalogue_mode)) break;
     foreach (['path', 'css'] as $_snapsmack_inventory_field) {
         if (isset($_snapsmack_inventory_entry[$_snapsmack_inventory_field]) && !is_file(dirname(__DIR__) . '/' . $_snapsmack_inventory_entry[$_snapsmack_inventory_field])) {
             unset($inventory['scripts'][$_snapsmack_inventory_handle]);

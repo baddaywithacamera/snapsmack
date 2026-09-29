@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.779D — 2026-09-29 — Catalogue authority
+
+- **Source-review builds validate legacy asset handles against the public catalogue without requiring deployed asset files.** The runtime inventory still removes handles whose files are absent on an installation. In an explicitly rooted skin-policy review, the same map skips only that physical-installation check and every resulting handle remains cross-checked against `ASSET-INVENTORY.json` public scope. (`core/skin-security-policy.php`, `core/manifest-inventory.php`.)
+
 ## 0.7.778D — 2026-09-29 — Explicit authority
 
 - **The shared skin gate accepts an explicit authority root for isolated tooling.** Runtime callers retain the installed CMS root by default, while SMACK CENTRAL passes its selected-ref build root directly. Asset-handle validation therefore uses the catalogue and legacy map that belong to the exact skin source under review, independent of where the policy file itself was loaded. (`core/skin-security-policy.php`, `smack-central/sc-skins.php`, `tests/skin-package-lifecycle-regression.php`.)
