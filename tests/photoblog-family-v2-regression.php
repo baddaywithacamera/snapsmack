@@ -6,7 +6,8 @@ require_once dirname(__DIR__) . '/core/skin-render-helpers.php';
 require_once dirname(__DIR__) . '/core/skin-view-contract.php';
 
 $root=dirname(__DIR__);
-$skins=['50-shades-of-noah-grey','52-card-pickup','chaplin','full-monty','galleria','glide','hip-to-be-square'];
+$skins=['50-shades-of-noah-grey','52-card-pickup','chaplin','full-monty','galleria','glide','hip-to-be-square',
+ 'impact-printer','new-horizon','rational-geo','scroll','show-n-tell','slickr','true-grit'];
 $response=['status'=>200,'kind'=>'photo','item'=>['id'=>1,'img_title'=>'Photo','img_file'=>'/media/photo.jpg','img_description'=>snapsmack_trusted_html('<p>Caption</p>')],'comments'=>[],'navigation'=>[]];
 foreach($skins as $skin){
  $dir=$root.'/skins/'.$skin;$m=json_decode((string)file_get_contents($dir.'/manifest.json'),true,512,JSON_THROW_ON_ERROR);

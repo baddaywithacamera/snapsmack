@@ -1,5 +1,5 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "name": "NEW HORIZON",
     "oh_snap_ready": true,
     "version": "1.3.5",
@@ -931,10 +931,10 @@
             "type": "select",
             "label": "Tagline Under Site Name",
             "default": "0",
-            "options": {
-                "0": "Hidden",
-                "1": "Show (Settings -> Tagline)"
-            }
+            "options": [
+                "Hidden",
+                "Show (Settings -> Tagline)"
+            ]
         },
         "tagline_font_size": {
             "section": "HEADER & NAV",
@@ -1255,5 +1255,22 @@
             "selector": ":root",
             "property": "--masonry-border-color"
         }
+    },
+    "security_policy": 2,
+    "cms_controller": "public",
+    "view_model": "snapsmack.public.v1",
+    "templates": {
+        "landing": "layout.php",
+        "photo": "layout.php",
+        "post": "layout.php",
+        "archive": "layout.php",
+        "page": "layout.php",
+        "search": "layout.php",
+        "hashtag": "layout.php",
+        "albums": "layout.php",
+        "collections": "layout.php",
+        "collection": "layout.php",
+        "not_found": "layout.php",
+        "default": "layout.php"
     }
 }
