@@ -1,33 +1,1123 @@
 <?php
-/** Generated 2026-09-28. Counts are ceilings, never allowances for new work. */
-return [
- '50-shades-of-noah-grey'=>['direct-script-tag'=>1,'php-include'=>16],
- '52-card-pickup'=>['database-api'=>1,'database-handle'=>1,'direct-script-tag'=>1,'php-include'=>17,'request-global'=>1,'sql-statement'=>1],
- 'alfred'=>['database-api'=>7,'database-handle'=>18,'direct-script-tag'=>3,'php-declaration'=>3,'php-include'=>16,'request-global'=>5,'response-control'=>3,'sql-statement'=>11],
- 'aurora'=>['database-api'=>6,'database-handle'=>12,'direct-script-tag'=>1,'inline-script'=>1,'php-declaration'=>2,'php-include'=>29,'request-global'=>7,'sql-statement'=>13],
- 'chaplin'=>['database-api'=>1,'database-handle'=>1,'direct-script-tag'=>5,'filesystem-access'=>1,'inline-script'=>1,'php-declaration'=>4,'php-include'=>19,'remote-script'=>4,'sql-statement'=>1],
- 'full-monty'=>['direct-script-tag'=>1,'php-include'=>8,'request-global'=>1],
- 'galleria'=>['database-api'=>2,'database-handle'=>2,'direct-script-tag'=>1,'php-include'=>18,'sql-statement'=>2],
- 'game-on'=>['database-api'=>8,'database-handle'=>14,'direct-script-tag'=>1,'inline-script'=>1,'php-declaration'=>4,'php-include'=>30,'request-global'=>8,'sql-statement'=>15],
- 'glide'=>['database-api'=>2,'database-handle'=>1,'direct-script-tag'=>1,'php-declaration'=>1,'php-include'=>8,'sql-statement'=>1],
- 'heuristic'=>['database-api'=>6,'database-handle'=>12,'direct-script-tag'=>1,'inline-script'=>1,'php-declaration'=>2,'php-include'=>28,'request-global'=>4,'sql-statement'=>12],
- 'hip-to-be-square'=>['database-api'=>2,'database-handle'=>2,'direct-script-tag'=>1,'php-include'=>17,'sql-statement'=>2],
- 'impact-printer'=>['direct-script-tag'=>1,'php-include'=>12],
- 'instant-camera'=>['database-api'=>8,'database-handle'=>12,'direct-script-tag'=>1,'inline-script'=>1,'php-declaration'=>3,'php-include'=>30,'request-global'=>8,'sql-statement'=>13],
- 'jive-turkey'=>['database-api'=>6,'database-handle'=>12,'direct-script-tag'=>1,'inline-script'=>1,'php-declaration'=>3,'php-include'=>29,'request-global'=>7,'sql-statement'=>13],
- 'new-horizon'=>['direct-script-tag'=>2,'php-include'=>15,'request-global'=>6],
- 'onyx'=>['database-api'=>3,'database-handle'=>2,'direct-script-tag'=>1,'php-declaration'=>1,'php-include'=>17,'request-global'=>4,'response-control'=>1,'sql-statement'=>2],
- 'parade'=>['database-api'=>6,'database-handle'=>12,'direct-script-tag'=>1,'inline-script'=>1,'php-declaration'=>4,'php-include'=>30,'request-global'=>7,'sql-statement'=>12],
- 'photogram'=>['database-api'=>15,'database-handle'=>33,'direct-script-tag'=>1,'php-declaration'=>5,'php-include'=>30,'request-global'=>9,'response-control'=>3,'sql-statement'=>22],
- 'rational-geo'=>['direct-script-tag'=>1,'php-include'=>12,'sql-statement'=>1],
- 'scroll'=>['database-api'=>7,'database-handle'=>15,'direct-script-tag'=>6,'php-declaration'=>4,'php-include'=>21,'request-global'=>4,'response-control'=>1,'sql-statement'=>13],
- 'show-n-tell'=>['database-api'=>3,'database-handle'=>6,'direct-script-tag'=>1,'php-include'=>13,'request-global'=>1,'sql-statement'=>5],
- 'slickr'=>['database-api'=>3,'database-handle'=>16,'direct-script-tag'=>2,'inline-script'=>1,'php-declaration'=>1,'php-include'=>13,'request-global'=>2,'sql-statement'=>16],
- 'sliders'=>['database-api'=>7,'database-handle'=>13,'direct-script-tag'=>1,'inline-script'=>1,'php-declaration'=>3,'php-include'=>30,'request-global'=>8,'sql-statement'=>13],
- 'stanley'=>['database-api'=>8,'database-handle'=>18,'direct-script-tag'=>2,'php-declaration'=>4,'php-include'=>15,'request-global'=>5,'response-control'=>2,'sql-statement'=>12],
- 'sudden-impact'=>['database-api'=>6,'database-handle'=>12,'direct-script-tag'=>1,'inline-script'=>1,'php-declaration'=>2,'php-include'=>29,'request-global'=>8,'sql-statement'=>13],
- 'telegram'=>['database-api'=>7,'database-handle'=>18,'direct-script-tag'=>3,'php-declaration'=>3,'php-include'=>16,'request-global'=>5,'response-control'=>3,'sql-statement'=>11],
- 'the-grid'=>['database-api'=>6,'database-handle'=>12,'direct-script-tag'=>1,'inline-script'=>1,'php-declaration'=>2,'php-include'=>29,'request-global'=>8,'sql-statement'=>13],
- 'true-grit'=>['database-api'=>2,'database-handle'=>3,'direct-script-tag'=>1,'php-include'=>15,'request-global'=>1,'sql-statement'=>2],
- 'writing-with-impact'=>['database-api'=>8,'database-handle'=>18,'direct-script-tag'=>2,'php-declaration'=>4,'php-include'=>16,'request-global'=>5,'response-control'=>2,'sql-statement'=>12],
-];
+/** Generated legacy debt snapshot. Counts are ceilings and may only shrink. */
+return array (
+  '50-shades-of-noah-grey' =>
+  array (
+    'layout.php' =>
+    array (
+      'php-include' => 6,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'php-include' => 2,
+    ),
+  ),
+  '52-card-pickup' =>
+  array (
+    'landing.php' =>
+    array (
+      'php-include' => 3,
+    ),
+    'layout.php' =>
+    array (
+      'php-include' => 7,
+    ),
+    'search.php' =>
+    array (
+      'php-include' => 3,
+      'request-global' => 1,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 2,
+    ),
+    'skin-header.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+  ),
+  'alfred' =>
+  array (
+    'layout.php' =>
+    array (
+      'response-control' => 1,
+    ),
+    'preload.php' =>
+    array (
+      'database-api' => 5,
+      'database-handle' => 9,
+      'direct-script-tag' => 2,
+      'php-include' => 1,
+      'request-global' => 5,
+      'response-control' => 2,
+      'sql-statement' => 8,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 9,
+      'php-declaration' => 3,
+      'sql-statement' => 3,
+    ),
+  ),
+  'aurora' =>
+  array (
+    'archive-layout.php' =>
+    array (
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'hashtag.php' =>
+    array (
+      'database-api' => 3,
+      'database-handle' => 3,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'help.php' =>
+    array (
+      'sql-statement' => 1,
+    ),
+    'landing.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 3,
+      'php-declaration' => 1,
+      'php-include' => 1,
+      'sql-statement' => 3,
+    ),
+    'layout.php' =>
+    array (
+      'database-handle' => 2,
+      'php-declaration' => 1,
+      'php-include' => 2,
+      'request-global' => 2,
+      'sql-statement' => 2,
+    ),
+    'search.php' =>
+    array (
+      'php-include' => 2,
+      'request-global' => 1,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'inline-script' => 1,
+      'php-include' => 2,
+    ),
+    'skin-page.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'skin-profile.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 2,
+      'php-include' => 1,
+      'request-global' => 3,
+      'sql-statement' => 2,
+    ),
+  ),
+  'chaplin' =>
+  array (
+    'frame-deco.php' =>
+    array (
+      'filesystem-access' => 1,
+      'php-declaration' => 3,
+    ),
+    'landing.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'php-include' => 1,
+      'sql-statement' => 1,
+    ),
+    'layout.php' =>
+    array (
+      'php-include' => 4,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'php-declaration' => 1,
+      'php-include' => 2,
+    ),
+  ),
+  'full-monty' =>
+  array (
+    'layout.php' =>
+    array (
+      'php-include' => 2,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'php-include' => 1,
+      'request-global' => 1,
+    ),
+  ),
+  'galleria' =>
+  array (
+    'landing.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'php-include' => 2,
+      'sql-statement' => 1,
+    ),
+    'layout.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'php-include' => 6,
+      'sql-statement' => 1,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'php-include' => 2,
+    ),
+  ),
+  'game-on' =>
+  array (
+    'archive-layout.php' =>
+    array (
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'hashtag.php' =>
+    array (
+      'database-api' => 3,
+      'database-handle' => 3,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'help.php' =>
+    array (
+      'sql-statement' => 1,
+    ),
+    'landing.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 4,
+      'php-declaration' => 2,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 4,
+    ),
+    'layout.php' =>
+    array (
+      'database-handle' => 2,
+      'php-declaration' => 1,
+      'php-include' => 2,
+      'request-global' => 2,
+      'sql-statement' => 2,
+    ),
+    'puzzle-field.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'php-declaration' => 1,
+      'sql-statement' => 1,
+    ),
+    'search.php' =>
+    array (
+      'php-include' => 2,
+      'request-global' => 1,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'inline-script' => 1,
+      'php-include' => 2,
+    ),
+    'skin-page.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'skin-profile.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 2,
+      'php-include' => 1,
+      'request-global' => 3,
+      'sql-statement' => 2,
+    ),
+  ),
+  'glide' =>
+  array (
+    'landing.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 1,
+      'php-declaration' => 1,
+      'sql-statement' => 1,
+    ),
+    'layout.php' =>
+    array (
+      'php-include' => 1,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'php-include' => 1,
+    ),
+    'skin-meta.php' =>
+    array (
+      'php-include' => 1,
+    ),
+    'skin-page.php' =>
+    array (
+      'php-include' => 1,
+    ),
+  ),
+  'heuristic' =>
+  array (
+    'archive-layout.php' =>
+    array (
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'hashtag.php' =>
+    array (
+      'database-api' => 3,
+      'database-handle' => 3,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'landing.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 4,
+      'php-declaration' => 1,
+      'php-include' => 1,
+      'sql-statement' => 4,
+    ),
+    'layout.php' =>
+    array (
+      'database-handle' => 2,
+      'php-declaration' => 1,
+      'php-include' => 2,
+      'request-global' => 2,
+      'sql-statement' => 2,
+    ),
+    'search.php' =>
+    array (
+      'php-include' => 2,
+      'request-global' => 1,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'inline-script' => 1,
+      'php-include' => 2,
+    ),
+    'skin-page.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'skin-profile.php' =>
+    array (
+      'database-handle' => 1,
+      'php-include' => 1,
+      'sql-statement' => 1,
+    ),
+  ),
+  'hip-to-be-square' =>
+  array (
+    'landing.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'php-include' => 2,
+      'sql-statement' => 1,
+    ),
+    'layout.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'php-include' => 6,
+      'sql-statement' => 1,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'php-include' => 1,
+    ),
+  ),
+  'impact-printer' =>
+  array (
+    'layout.php' =>
+    array (
+      'php-include' => 6,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'php-include' => 2,
+    ),
+  ),
+  'instant-camera' =>
+  array (
+    'archive-layout.php' =>
+    array (
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'hashtag.php' =>
+    array (
+      'database-api' => 3,
+      'database-handle' => 3,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'help.php' =>
+    array (
+      'sql-statement' => 1,
+    ),
+    'landing.php' =>
+    array (
+      'database-api' => 3,
+      'database-handle' => 3,
+      'php-declaration' => 1,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'layout.php' =>
+    array (
+      'database-handle' => 2,
+      'php-declaration' => 1,
+      'php-include' => 2,
+      'request-global' => 2,
+      'sql-statement' => 2,
+    ),
+    'search.php' =>
+    array (
+      'php-include' => 2,
+      'request-global' => 1,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'inline-script' => 1,
+      'php-declaration' => 1,
+      'php-include' => 2,
+    ),
+    'skin-page.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'skin-profile.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 2,
+      'php-include' => 2,
+      'request-global' => 3,
+      'sql-statement' => 2,
+    ),
+  ),
+  'jive-turkey' =>
+  array (
+    'archive-layout.php' =>
+    array (
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'hashtag.php' =>
+    array (
+      'database-api' => 3,
+      'database-handle' => 3,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'help.php' =>
+    array (
+      'sql-statement' => 1,
+    ),
+    'landing.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 3,
+      'php-declaration' => 1,
+      'php-include' => 1,
+      'sql-statement' => 3,
+    ),
+    'layout.php' =>
+    array (
+      'database-handle' => 2,
+      'php-declaration' => 1,
+      'php-include' => 2,
+      'request-global' => 2,
+      'sql-statement' => 2,
+    ),
+    'search.php' =>
+    array (
+      'php-include' => 2,
+      'request-global' => 1,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'inline-script' => 1,
+      'php-include' => 2,
+    ),
+    'skin-page.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'skin-profile.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 2,
+      'php-declaration' => 1,
+      'php-include' => 1,
+      'request-global' => 3,
+      'sql-statement' => 2,
+    ),
+  ),
+  'new-horizon' =>
+  array (
+    'footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+    ),
+    'header.php' =>
+    array (
+      'php-include' => 1,
+    ),
+    'layout.php' =>
+    array (
+      'php-include' => 6,
+    ),
+    'meta.php' =>
+    array (
+      'request-global' => 6,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'php-include' => 2,
+    ),
+  ),
+  'onyx' =>
+  array (
+    'landing.php' =>
+    array (
+      'database-api' => 3,
+      'database-handle' => 2,
+      'php-declaration' => 1,
+      'request-global' => 4,
+      'response-control' => 1,
+      'sql-statement' => 2,
+    ),
+    'layout.php' =>
+    array (
+      'php-include' => 6,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'php-include' => 1,
+    ),
+  ),
+  'parade' =>
+  array (
+    'archive-layout.php' =>
+    array (
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'hashtag.php' =>
+    array (
+      'database-api' => 3,
+      'database-handle' => 3,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'landing.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 3,
+      'php-declaration' => 1,
+      'php-include' => 1,
+      'sql-statement' => 3,
+    ),
+    'layout.php' =>
+    array (
+      'database-handle' => 2,
+      'php-declaration' => 1,
+      'php-include' => 2,
+      'request-global' => 2,
+      'sql-statement' => 2,
+    ),
+    'search.php' =>
+    array (
+      'php-include' => 2,
+      'request-global' => 1,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'inline-script' => 1,
+      'php-include' => 2,
+    ),
+    'skin-page.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'skin-profile.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 2,
+      'php-declaration' => 2,
+      'php-include' => 2,
+      'request-global' => 3,
+      'sql-statement' => 2,
+    ),
+  ),
+  'photogram' =>
+  array (
+    'archive-layout.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+    ),
+    'feed.php' =>
+    array (
+      'database-api' => 8,
+      'database-handle' => 12,
+      'php-declaration' => 3,
+      'php-include' => 2,
+      'request-global' => 4,
+      'response-control' => 1,
+      'sql-statement' => 3,
+    ),
+    'hashtag.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 2,
+      'request-global' => 1,
+      'sql-statement' => 2,
+    ),
+    'landing.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 7,
+      'php-declaration' => 2,
+      'php-include' => 1,
+      'request-global' => 3,
+      'response-control' => 1,
+      'sql-statement' => 7,
+    ),
+    'layout.php' =>
+    array (
+      'database-handle' => 4,
+      'php-include' => 4,
+      'sql-statement' => 4,
+    ),
+    'search.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 4,
+      'request-global' => 1,
+      'response-control' => 1,
+      'sql-statement' => 4,
+    ),
+    'skin-footer.php' =>
+    array (
+      'database-handle' => 3,
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+      'sql-statement' => 2,
+    ),
+  ),
+  'rational-geo' =>
+  array (
+    'help.php' =>
+    array (
+      'sql-statement' => 1,
+    ),
+    'layout.php' =>
+    array (
+      'php-include' => 6,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'php-include' => 2,
+    ),
+  ),
+  'scroll' =>
+  array (
+    'layout.php' =>
+    array (
+      'php-include' => 5,
+    ),
+    'nav-filter.php' =>
+    array (
+      'database-handle' => 5,
+      'direct-script-tag' => 1,
+      'sql-statement' => 5,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'php-include' => 1,
+    ),
+    'skin-meta.php' =>
+    array (
+      'php-include' => 1,
+    ),
+    'wall.php' =>
+    array (
+      'database-api' => 7,
+      'database-handle' => 10,
+      'direct-script-tag' => 4,
+      'php-declaration' => 4,
+      'php-include' => 1,
+      'request-global' => 4,
+      'response-control' => 1,
+      'sql-statement' => 8,
+    ),
+  ),
+  'show-n-tell' =>
+  array (
+    'help.php' =>
+    array (
+      'sql-statement' => 1,
+    ),
+    'landing.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 5,
+      'php-include' => 2,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'layout.php' =>
+    array (
+      'php-include' => 8,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+  ),
+  'slickr' =>
+  array (
+    'landing.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 5,
+      'request-global' => 1,
+      'sql-statement' => 5,
+    ),
+    'layout.php' =>
+    array (
+      'php-include' => 6,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 2,
+      'inline-script' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 11,
+      'php-declaration' => 1,
+      'request-global' => 1,
+      'sql-statement' => 11,
+    ),
+  ),
+  'sliders' =>
+  array (
+    'archive-layout.php' =>
+    array (
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'hashtag.php' =>
+    array (
+      'database-api' => 3,
+      'database-handle' => 3,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'landing.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 3,
+      'php-declaration' => 1,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'layout.php' =>
+    array (
+      'database-handle' => 2,
+      'php-declaration' => 1,
+      'php-include' => 2,
+      'request-global' => 2,
+      'sql-statement' => 2,
+    ),
+    'search.php' =>
+    array (
+      'php-include' => 2,
+      'request-global' => 1,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'inline-script' => 1,
+      'php-declaration' => 1,
+      'php-include' => 2,
+    ),
+    'skin-page.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'skin-profile.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 3,
+      'php-include' => 2,
+      'request-global' => 3,
+      'sql-statement' => 3,
+    ),
+  ),
+  'stanley' =>
+  array (
+    'layout.php' =>
+    array (
+      'response-control' => 1,
+    ),
+    'preload.php' =>
+    array (
+      'database-api' => 5,
+      'database-handle' => 9,
+      'direct-script-tag' => 1,
+      'php-declaration' => 1,
+      'php-include' => 1,
+      'request-global' => 5,
+      'response-control' => 1,
+      'sql-statement' => 8,
+    ),
+    'skin-footer.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 2,
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+      'sql-statement' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 7,
+      'php-declaration' => 3,
+      'sql-statement' => 3,
+    ),
+  ),
+  'sudden-impact' =>
+  array (
+    'archive-layout.php' =>
+    array (
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'hashtag.php' =>
+    array (
+      'database-api' => 3,
+      'database-handle' => 3,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'help.php' =>
+    array (
+      'sql-statement' => 1,
+    ),
+    'landing.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 3,
+      'php-declaration' => 1,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'layout.php' =>
+    array (
+      'database-handle' => 2,
+      'php-declaration' => 1,
+      'php-include' => 2,
+      'request-global' => 2,
+      'sql-statement' => 2,
+    ),
+    'search.php' =>
+    array (
+      'php-include' => 2,
+      'request-global' => 1,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'inline-script' => 1,
+      'php-include' => 2,
+    ),
+    'skin-meta.php' =>
+    array (
+      'php-include' => 1,
+    ),
+    'skin-page.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'skin-profile.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 2,
+      'request-global' => 3,
+      'sql-statement' => 2,
+    ),
+  ),
+  'telegram' =>
+  array (
+    'layout.php' =>
+    array (
+      'response-control' => 1,
+    ),
+    'preload.php' =>
+    array (
+      'database-api' => 5,
+      'database-handle' => 9,
+      'direct-script-tag' => 2,
+      'php-include' => 1,
+      'request-global' => 5,
+      'response-control' => 2,
+      'sql-statement' => 8,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 9,
+      'php-declaration' => 3,
+      'sql-statement' => 3,
+    ),
+  ),
+  'the-grid' =>
+  array (
+    'archive-layout.php' =>
+    array (
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'hashtag.php' =>
+    array (
+      'database-api' => 3,
+      'database-handle' => 3,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'help.php' =>
+    array (
+      'sql-statement' => 1,
+    ),
+    'landing.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 3,
+      'php-declaration' => 1,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 3,
+    ),
+    'layout.php' =>
+    array (
+      'database-handle' => 2,
+      'php-declaration' => 1,
+      'php-include' => 2,
+      'request-global' => 2,
+      'sql-statement' => 2,
+    ),
+    'search.php' =>
+    array (
+      'php-include' => 2,
+      'request-global' => 1,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'inline-script' => 1,
+      'php-include' => 2,
+    ),
+    'skin-page.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 1,
+      'sql-statement' => 1,
+    ),
+    'skin-profile.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 2,
+      'php-include' => 1,
+      'request-global' => 3,
+      'sql-statement' => 2,
+    ),
+  ),
+  'true-grit' =>
+  array (
+    'hashtag.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 2,
+      'php-include' => 1,
+      'request-global' => 1,
+      'sql-statement' => 2,
+    ),
+    'layout.php' =>
+    array (
+      'database-handle' => 1,
+      'php-include' => 7,
+    ),
+    'skin-footer.php' =>
+    array (
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'php-include' => 1,
+    ),
+  ),
+  'writing-with-impact' =>
+  array (
+    'layout.php' =>
+    array (
+      'response-control' => 1,
+    ),
+    'preload.php' =>
+    array (
+      'database-api' => 5,
+      'database-handle' => 9,
+      'direct-script-tag' => 1,
+      'php-declaration' => 1,
+      'php-include' => 1,
+      'request-global' => 5,
+      'response-control' => 1,
+      'sql-statement' => 8,
+    ),
+    'skin-footer.php' =>
+    array (
+      'database-api' => 1,
+      'database-handle' => 2,
+      'direct-script-tag' => 1,
+      'php-include' => 1,
+      'sql-statement' => 1,
+    ),
+    'skin-header.php' =>
+    array (
+      'database-api' => 2,
+      'database-handle' => 7,
+      'php-declaration' => 3,
+      'sql-statement' => 3,
+    ),
+    'skin-meta.php' =>
+    array (
+      'php-include' => 1,
+    ),
+  ),
+);

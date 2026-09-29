@@ -147,6 +147,8 @@ function snapsmack_skin_security_findings(string $skin_dir): array {
         if (!$file->isFile()) continue;
         $path = str_replace('\\', '/', $file->getPathname());
         $rel = ltrim(substr($path, strlen($skin_dir)), '/');
+        // Reference material explicitly marked gitignored is not packaged.
+        if (stripos($rel, 'gitignore') !== false) continue;
         $ext = strtolower($file->getExtension());
         if ($ext === 'js') {
             $findings[] = snapsmack_skin_policy_finding($rel, 0, 'bundled-javascript', 'Skin packages may not ship JavaScript.');
@@ -183,9 +185,10 @@ function snapsmack_skin_security_gate(string $skin_dir, array $legacy_baseline =
     $seen = [];
     $excess = [];
     foreach ($findings as $finding) {
+        $file = $finding['file'];
         $type = $finding['type'];
-        $seen[$type] = ($seen[$type] ?? 0) + 1;
-        if ($seen[$type] > (int)($allowed[$type] ?? 0)) $excess[] = $finding;
+        $seen[$file][$type] = ($seen[$file][$type] ?? 0) + 1;
+        if ($seen[$file][$type] > (int)($allowed[$file][$type] ?? 0)) $excess[] = $finding;
     }
     return $excess;
 }
