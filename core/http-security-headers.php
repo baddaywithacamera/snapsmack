@@ -39,7 +39,7 @@ if (!defined('SNAPSMACK_SECURITY_HEADERS_EMITTED')) {
         $entry=basename((string)($_SERVER['SCRIPT_NAME']??''));
         $admin=str_starts_with($entry,'smack-')||in_array($entry,['login.php','install.php','password-reset.php','break-glass.php'],true);
         header('Content-Security-Policy: '.($admin
-            ? "object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+            ? "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
             : snapsmack_public_csp(false)));
     }
 }
