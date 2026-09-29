@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * GAME ON living puzzle background for non-landing templates.
  * Keep the eligibility rules identical to landing.php: no carousel covers and

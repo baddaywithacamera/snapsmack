@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK - Fallback layout for the WRITING WITH IMPACT skin
  * v1.0.0

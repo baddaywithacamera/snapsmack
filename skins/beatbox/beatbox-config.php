@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK — BEATBOX Palette & EQ Registry
  * skins/beatbox/beatbox-config.php

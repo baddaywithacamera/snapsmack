@@ -39,6 +39,11 @@ php_value max_execution_time 120
 # in lockstep with UPDATER_DEPRECATED_DIRS + SMACKBACK dev dirs.
 RewriteRule ^(tests|wip|smack-central|core/tests)(/|$) - [R=404,L]
 
+# Skin templates and CMS internals are include-only PHP. Refuse direct HTTP
+# execution at the server before routing; the in-file guard below skins/ is an
+# independent second layer for hosts that ignore .htaccess.
+RewriteRule ^(?:skins|core)(?:/.*)?\.php$ - [R=404,L,NC]
+
 # ─── CLEAN URL ROUTER ────────────────────────────────────────
 RewriteBase /
 

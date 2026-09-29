@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK — SCROLL production landing wall.
  * Each layout uses the EXISTING working code, not a new engine:

@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK - Slickr Single Image View Flow
  * Spec v0.1 — Flickr visual idiom clone for archive migrations.
