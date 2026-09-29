@@ -104,6 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
             $skin_dir = __DIR__ . '/skins/' . $slug;
             if ($slug === '' || !is_dir($skin_dir) || !is_file($skin_dir . '/manifest.json')) {
                 $gallery_err = 'That skin is not installed.';
+            } elseif (!skin_registry_verify_installed_provenance($pdo, $slug, $_provenance_reason)) {
+                $gallery_err = 'That skin cannot be activated: ' . $_provenance_reason . '.';
             } else {
                 $_candidate = load_skin_manifest($slug);
                 $_candidate_modes = is_array($_candidate['modes'] ?? null) ? array_values($_candidate['modes']) : [];
@@ -398,6 +400,15 @@ if (isset($_POST['save_skin_settings'])) {
     // at a non-existent skin. From here on use only the sanitized slug.
     if (!is_file($_requested_manifest)) {
         $_SESSION['gallery_flash'] = 'That skin is not installed. No skin or setting was changed.';
+        header('Location: smack-skin.php?s=' . urlencode((string)($settings['active_skin'] ?? '')));
+        exit;
+    }
+
+    // A directory on disk is not an installed skin. Require the exact package
+    // accepted through the signed registry before any setting, upload, mode, or
+    // active-skin mutation is allowed.
+    if (!skin_registry_verify_installed_provenance($pdo, $_requested_skin, $_provenance_reason)) {
+        $_SESSION['gallery_flash'] = 'That skin cannot be activated: ' . $_provenance_reason . '. No skin or setting was changed.';
         header('Location: smack-skin.php?s=' . urlencode((string)($settings['active_skin'] ?? '')));
         exit;
     }

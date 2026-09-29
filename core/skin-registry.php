@@ -67,6 +67,81 @@ if (!defined('SKIN_REGISTRY_DEFAULT_URL')) {
 // Where skins live on disk
 if (!defined('SKINS_DIR')) define('SKINS_DIR', dirname(__DIR__) . '/skins');
 
+/** Prove that a skin is the unchanged result of a signed registry install. */
+function skin_registry_verify_installed_provenance(PDO $pdo, string $slug, ?string &$reason = null): bool {
+    $reason = null;
+    if (!preg_match('/^[a-z0-9_-]+$/', $slug)) {
+        $reason = 'invalid skin identifier';
+        return false;
+    }
+    try {
+        $stmt = $pdo->prepare('SELECT file_path, expected_hash FROM snap_file_manifest WHERE skin_id = ?');
+        $stmt->execute([$slug]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        $reason = 'signed-package integrity records are unavailable';
+        return false;
+    }
+    if (!$rows) {
+        $reason = 'no signed-package integrity record exists';
+        return false;
+    }
+    $root = realpath(SKINS_DIR . '/' . $slug);
+    $skins_root = realpath(SKINS_DIR);
+    $root_normal = $root === false ? '' : rtrim(str_replace('\\', '/', $root), '/');
+    $skins_normal = $skins_root === false ? '' : rtrim(str_replace('\\', '/', $skins_root), '/');
+    if ($root === false || $skins_root === false || !str_starts_with($root_normal . '/', $skins_normal . '/')) {
+        $reason = 'skin directory is missing or outside the skin root';
+        return false;
+    }
+
+    $expected = [];
+    $prefix = 'skins/' . $slug . '/';
+    foreach ($rows as $row) {
+        $path = str_replace('\\', '/', (string)($row['file_path'] ?? ''));
+        $hash = strtolower((string)($row['expected_hash'] ?? ''));
+        if (!str_starts_with($path, $prefix) || !preg_match('/^[a-f0-9]{64}$/', $hash)) {
+            $reason = 'integrity record contains an invalid path or hash';
+            return false;
+        }
+        $relative = substr($path, strlen($prefix));
+        if ($relative === '' || str_contains($relative, "\0") || in_array('..', explode('/', $relative), true)) {
+            $reason = 'integrity record escapes the skin package';
+            return false;
+        }
+        $absolute = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative);
+        if (is_link($absolute) || !is_file($absolute)) {
+            $reason = 'a signed package file is missing or is a symbolic link';
+            return false;
+        }
+        $real = realpath($absolute);
+        $real_normal = $real === false ? '' : str_replace('\\', '/', $real);
+        if ($real === false || !str_starts_with($real_normal, $root_normal . '/')) {
+            $reason = 'a package file resolves outside the skin directory';
+            return false;
+        }
+        $actual_hash = hash_file('sha256', $absolute);
+        if ($actual_hash === false || !hash_equals($hash, strtolower($actual_hash))) {
+            $reason = 'a signed package file has changed';
+            return false;
+        }
+        $expected[$real_normal] = true;
+    }
+
+    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+    foreach ($iterator as $file) {
+        if ($file->isLink()) {
+            $reason = 'skin package contains a symbolic link';
+            return false;
+        }
+        if ($file->isFile() && !isset($expected[str_replace('\\', '/', $file->getRealPath())])) {
+            $reason = 'skin package contains a file absent from its signed integrity record';
+            return false;
+        }
+    }
+    return true;
+}
+
 /**
  * May this skin be offered on THIS install?
  *
@@ -409,12 +484,6 @@ function skin_registry_install(string $slug, string $download_url, string $signa
     $zip->extractTo($staging);
     $zip->close();
 
-    // SMACKBACK: load file hash manifest from ZIP before deleting it
-    require_once __DIR__ . '/smackback.php';
-    smackback_init_skin_manifest($tmp_zip, $slug);
-
-    @unlink($tmp_zip);
-
     // If there's a wrapper folder, the actual skin files are inside it
     $source = $staging;
     if ($top_folder && is_dir($staging . '/' . $top_folder . '/manifest.json') === false
@@ -429,6 +498,7 @@ function skin_registry_install(string $slug, string $download_url, string $signa
     // left behind by a failed replacement can never masquerade as success.
     if (!file_exists($source . '/manifest.json')) {
         _skin_rmdir_recursive($staging);
+        @unlink($tmp_zip);
         return ['success' => false, 'message' => 'Invalid skin package: no manifest.json found inside the zip.'];
     }
     // Apply the same authority boundary used by development and packaging
@@ -438,6 +508,7 @@ function skin_registry_install(string $slug, string $download_url, string $signa
     $policy_findings = snapsmack_skin_security_gate($source, $legacy_policy);
     if ($policy_findings) {
         _skin_rmdir_recursive($staging);
+        @unlink($tmp_zip);
         return ['success' => false, 'message' => 'Skin install refused: package violates the skin security policy.'];
     }
     $expected_manifest_hash = hash_file('sha256', $source . '/manifest.json');
@@ -459,6 +530,7 @@ function skin_registry_install(string $slug, string $download_url, string $signa
             $retired_dir = $candidate;
         } elseif (!_skin_rmdir_recursive($target_dir) || file_exists($target_dir)) {
             _skin_rmdir_recursive($staging);
+            @unlink($tmp_zip);
             return ['success' => false, 'message' => 'Installation failed — the existing skin directory could not be moved or removed. Check ownership and permissions on the skins directory.'];
         }
     }
@@ -477,6 +549,7 @@ function skin_registry_install(string $slug, string $download_url, string $signa
             _skin_rmdir_recursive($target_dir);
             _skin_rmdir_recursive($staging);
             $restore_retired();
+            @unlink($tmp_zip);
             return ['success' => false, 'message' => 'Installation failed — one or more skin files could not be copied.'];
         }
     }
@@ -490,8 +563,20 @@ function skin_registry_install(string $slug, string $download_url, string $signa
     if (!file_exists($target_dir . '/manifest.json')
         || !hash_equals($expected_manifest_hash, hash_file('sha256', $target_dir . '/manifest.json'))) {
         $restore_retired();
+        @unlink($tmp_zip);
         return ['success' => false, 'message' => 'Installation failed — manifest.json not found after extraction.'];
     }
+
+    // Trust is recorded only after the policy-clean package is live. If that
+    // record cannot be established, remove it and restore the prior package.
+    require_once __DIR__ . '/smackback.php';
+    if (!smackback_init_skin_manifest($tmp_zip, $slug)) {
+        _skin_rmdir_recursive($target_dir);
+        $restore_retired();
+        @unlink($tmp_zip);
+        return ['success' => false, 'message' => 'Installation failed — signed-package integrity records could not be established.'];
+    }
+    @unlink($tmp_zip);
 
     $cleanup_pending = $retired_dir !== null
         && is_dir($retired_dir)
