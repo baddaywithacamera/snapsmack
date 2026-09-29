@@ -27,6 +27,21 @@ function snapsmack_owner_custom_code(array $settings): SnapOwnerCode
     return SnapOwnerCode::__snapsmackCmsOnly(snapsmack_owner_custom_head($settings));
 }
 
+/**
+ * Return the CMS-compiled public skin CSS as an opaque render token.
+ *
+ * Strict skins never receive the settings array and cannot manufacture this
+ * value. Escaping every literal "<" prevents a saved CSS value from closing
+ * the style element and becoming executable markup.
+ */
+function snapsmack_skin_custom_style(array $settings): SnapTrustedHtml
+{
+    $css = str_replace("\0", '', (string)($settings['custom_css_public'] ?? ''));
+    if (trim($css) === '') return SnapTrustedHtml::__snapsmackCmsOnly('');
+    $css = str_replace('<', '\\3C ', $css);
+    return SnapTrustedHtml::__snapsmackCmsOnly('<style id="snapsmack-dynamic-css">' . $css . '</style>');
+}
+
 function snapsmack_public_csp(bool $ownerCustomCode=false): string
 {
     $script=$ownerCustomCode?"'self' 'unsafe-inline' https:":"'self'";

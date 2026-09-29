@@ -1,12 +1,13 @@
 <?php
 declare(strict_types=1);
+require_once dirname(__DIR__) . '/core/trusted-html.php';
 require_once dirname(__DIR__) . '/core/skin-view-contract.php';
 
 $response = [
     'status' => 200, 'kind' => 'post', 'item' => ['id' => 7, 'title' => 'Public'],
     'pdo' => 'secret', 'settings' => ['secret' => 'no'], 'request' => ['token' => 'no'],
 ];
-$presentation = ['site_name' => 'Example', 'base_url' => '/', 'database_password' => 'no'];
+$presentation = ['site_name' => 'Example', 'base_url' => '/', 'skin_custom_style' => snapsmack_trusted_html('<p>style-token</p>'), 'database_password' => 'no'];
 $view = snapsmack_build_skin_view($response, $presentation);
 if (isset($view['response']['pdo'], $view['response']['settings'], $view['response']['request'])
     || isset($view['site']['database_password'])) {
@@ -14,6 +15,7 @@ if (isset($view['response']['pdo'], $view['response']['settings'], $view['respon
 }
 $reason = null;
 if (!snapsmack_validate_skin_view($view, $reason)) throw new RuntimeException('Valid view model was rejected.');
+if (!isset($view['site']['skin_custom_style'])) throw new RuntimeException('CMS skin-style token was stripped from the bounded presentation model.');
 $bad = $view; $bad['version'] = 999;
 if (snapsmack_validate_skin_view($bad, $reason)) throw new RuntimeException('Unknown view-model version was accepted.');
 $bad = $view; $bad['response']['object'] = new stdClass();
