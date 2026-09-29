@@ -208,7 +208,7 @@ require_once __DIR__ . '/includes/header.php';
                     <h3>Are you honest about what it is?</h3>
                     <p>Yes. The provenance is published on <a href="the-reckoning.php">THE RECKONING</a> down to the line count. The failures are published on <a href="ding-dong-bell.php">DING DONG BELL</a>. Nothing about how this was made is hidden, because hiding it would be the actual risk.</p>
                 </div>
-                <p class="defence-line">Don&rsquo;t trust my typing &mdash; judge the artifact. The code is AI-produced, which is exactly why I don&rsquo;t just trust it. That&rsquo;s what the audits, the pen tests, and the disclosure policy are for.</p>
+                <p class="defence-line">Don&rsquo;t trust my typing &mdash; judge the artifact. The code is AI-produced, which is exactly why I don&rsquo;t just trust it. That&rsquo;s what the documented internal reviews, adversarial regression tests, and disclosure policy are for. They are not independent certification or an independent penetration test.</p>
                 <p>And the part that answers the fear underneath the question &mdash; <em>could it turn on the network?</em> &mdash; is the first rule on this page. SnapSmack cannot remotely control anybody&rsquo;s site. Not Sean, not the network, not a compromised central server. A warning network, not a botnet. The lack of a kill switch isn&rsquo;t a missing feature. It&rsquo;s the feature.</p>
             </div>
         </div>

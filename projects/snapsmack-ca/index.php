@@ -287,7 +287,7 @@ require_once __DIR__ . '/includes/header.php';
     <section id="whodat">
         <div class="wrap">
             <h2>Who&rsquo;s Responsible for All This?!?</h2>
-            <p class="whodat-honest"><strong>Said up front:</strong> the code is AI-written, under the direction of a photographer who is not a programmer. That is not hidden anywhere on this site &mdash; <a href="the-reckoning.php">THE RECKONING</a> counts every line. It is also exactly why the software is audited, pen-tested, and held to a public disclosure policy instead of being trusted on faith.</p>
+            <p class="whodat-honest"><strong>Said up front:</strong> the code is AI-written, under the direction of a photographer who is not a programmer. That is not hidden anywhere on this site &mdash; <a href="the-reckoning.php">THE RECKONING</a> counts every line. It is also exactly why the software is subjected to documented internal reviews and adversarial regression tests, and held to a public disclosure policy instead of being trusted on faith. These checks are not independent certification or an independent penetration test.</p>
             <div class="whodat-grid">
                 <article class="whodat-card">
                     <div class="whodat-portrait"><img src="img/whodat-sean.png" alt="Sean McCormick" width="686" height="784" loading="lazy"></div>
