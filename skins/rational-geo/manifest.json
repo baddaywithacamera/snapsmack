@@ -1,5 +1,5 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "name": "RATIONAL GEO",
     "version": "2.1.8",
     "author": "Sean McCormick",
@@ -818,5 +818,22 @@
             "selector": ".blogroll-canvas",
             "property": "max-width"
         }
+    },
+    "security_policy": 2,
+    "cms_controller": "public",
+    "view_model": "snapsmack.public.v1",
+    "templates": {
+        "landing": "layout.php",
+        "photo": "layout.php",
+        "post": "layout.php",
+        "archive": "layout.php",
+        "page": "layout.php",
+        "search": "layout.php",
+        "hashtag": "layout.php",
+        "albums": "layout.php",
+        "collections": "layout.php",
+        "collection": "layout.php",
+        "not_found": "layout.php",
+        "default": "layout.php"
     }
 }
