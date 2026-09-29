@@ -1,5 +1,5 @@
 {
-    "schema_version": 2,
+    "schema_version": 1,
     "name": "TILEZ",
     "version": "0.2.44",
     "author": "Sean McCormick & Claude",
