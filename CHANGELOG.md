@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.781D — 2026-09-29 — Instant Camera grid restored
+
+- **INSTANT CAMERA once again receives its real photo-grid presentation from the CMS.** The strict renderer now selects the bounded central INSTANT CAMERA component by the skin slug and emits image tiles from the public-only view model. This repairs the blank link-only shell introduced by the schema-v2 conversion without returning SQL, filesystem access, JavaScript, or other authority to the skin. (`core/skin-render-helpers.php`, `core/skin-view-contract.php`, `index.php`.)
+
 ## 0.7.780D — 2026-09-29 — Mayhem mounted
 
 - **ORGANIZED MAYHEM is mounted by the CMS for every presentation that declares the shared engine.** The strict public renderer now emits the bounded, inert engine mount and central JSON endpoint; ambient mode makes that mount a fixed, non-interactive background. INSTANT CAMERA therefore regains its drifting tabletop without skin-owned PHP or JavaScript. (`core/skin-render-helpers.php`, `assets/js/ss-engine-organized-mayhem.js`.)

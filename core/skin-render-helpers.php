@@ -60,7 +60,55 @@ function snap_route_url(string $route, array $parameters = []): string {
 /** Render fixed shared chrome from bounded data; components cannot execute code. */
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
-    if ($name === 'public-page') {
+    if ($name === 'public-page' && (($data['site']['skin_slug'] ?? '') === 'instant-camera')) {
+        $name = 'instant-camera-page';
+    }
+    if ($name === 'instant-camera-page') {
+        $response = is_array($data['response'] ?? null) ? $data['response'] : [];
+        $site = is_array($data['site'] ?? null) ? $data['site'] : [];
+        $kind = (string)($response['kind'] ?? 'not_found');
+        $registered = is_array($site['registered_assets'] ?? null) ? $site['registered_assets'] : [];
+        foreach (($registered['scripts'] ?? []) as $script_url) {
+            if (is_string($script_url) && str_contains($script_url, 'ss-engine-organized-mayhem.js')) {
+                $html .= '<div id="organized-mayhem" aria-hidden="true" data-mayhem data-api-url="?ajax=mayhem" data-pan="0" data-ambient="1" data-initial-count="120" data-max-mounted="180"></div>';
+                break;
+            }
+        }
+        $siteName = (string)($site['site_name'] ?? '');
+        $html .= '<div class="tg-content-wrap landing-feed"><header class="tg-profile"><div class="tg-profile-info"><h1 class="tg-profile-name">'
+            . snap_escape_html($siteName) . '</h1>';
+        if (!empty($site['tagline'])) $html .= '<p class="tg-profile-bio">' . snap_escape_html($site['tagline']) . '</p>';
+        $html .= '</div></header><nav class="tg-sticky-nav" aria-label="Primary"><div class="tg-sticky-nav-inner">'
+            . snap_render_html(snap_render_component('navigation', ['items' => $response['navigation'] ?? []])) . '</div></nav>';
+        if (in_array($kind, ['landing', 'archive', 'hashtag'], true)) {
+            $html .= '<main><div id="browse-grid" class="tg-grid public-grid h-feed archive-grid">';
+            foreach (($response['items'] ?? []) as $item) {
+                if (!is_array($item)) continue;
+                $title = (string)($item['img_title'] ?? $item['title'] ?? '');
+                $url = (string)($item['url'] ?? '');
+                if ($url === '' && (string)($item['img_slug'] ?? '') !== '') $url = snap_route_url('photo', ['slug' => $item['img_slug']]);
+                $image = (string)($item['img_thumb_aspect'] ?? $item['img_thumb_square'] ?? $item['img_file'] ?? '');
+                if ($image === '') continue;
+                $html .= '<article class="tg-tile"><a href="' . snap_escape_url($url) . '" title="' . snap_escape_attr($title) . '">'
+                    . snap_render_html(snap_render_component('image', ['url' => $image, 'alt' => $item['img_alt'] ?? $title]))
+                    . '</a></article>';
+            }
+            $html .= '</div></main>';
+        } elseif (in_array($kind, ['photo', 'post'], true)) {
+            $item = is_array($response['item'] ?? null) ? $response['item'] : [];
+            $title = (string)($item['img_title'] ?? $item['title'] ?? '');
+            $image = (string)($item['img_file'] ?? $item['featured_image_path'] ?? '');
+            $html .= '<main><article class="tg-post-ig"><div class="tg-post-ig-image">';
+            if ($image !== '') $html .= snap_render_html(snap_render_component('image', ['url' => $image, 'alt' => $item['img_alt'] ?? $title, 'class' => 'tg-single-img']));
+            $html .= '</div><div class="tg-post-ig-info"><div class="tg-post-ig-body"><h1>' . snap_escape_html($title) . '</h1><div class="tg-post-caption-block">'
+                . snap_render_html($item['content'] ?? $item['description'] ?? $item['img_description'] ?? '') . '</div></div></div></article></main>';
+        } else {
+            $html .= '<main><section class="tg-grid-empty"><h1>Not found</h1></section></main>';
+        }
+        $html .= '<footer id="system-footer" class="site-footer"><div id="footer"><p id="sig-text">' . snap_escape_html($siteName)
+            . '</p></div></footer></div>' . snap_render_html(snap_render_component('registered-assets', ['assets' => $registered]))
+            . snap_render_html($site['owner_custom_code'] ?? '');
+    } elseif ($name === 'public-page') {
         $response = is_array($data['response'] ?? null) ? $data['response'] : [];
         $site = is_array($data['site'] ?? null) ? $data['site'] : [];
         $kind = (string)($response['kind'] ?? 'not_found');
