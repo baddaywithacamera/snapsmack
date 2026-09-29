@@ -22,6 +22,9 @@ function snapsmack_skin_policy_scan_php(string $path, string $rel): array {
     $source = @file_get_contents($path);
     if ($source === false) return [];
     $findings = [];
+    if (!preg_match('/\A<\?php\s+defined\(\s*["\']SNAPSMACK_SKIN_RENDER["\']\s*\)\s*\|\|\s*exit\s*;/i', $source)) {
+        $findings[] = snapsmack_skin_policy_finding($rel, 1, 'template-render-guard', 'Missing first-statement render guard.');
+    }
     $tokens = token_get_all($source);
     $source_lines = preg_split('/\R/', $source);
     $line = 1;

@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK — SCROLL shared navigation filter popup.
  * Used by non-landing headers so the funnel behaves exactly like the landing

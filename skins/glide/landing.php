@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /* SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
 /** SNAPSMACK — GLIDE kinetic wall landing. */
 // 200 photographs, drawn at RANDOM from the whole archive on every load. The

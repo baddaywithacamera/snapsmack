@@ -1,5 +1,4 @@
-<?php
-if (!defined('SNAPSMACK_SKIN_RENDER')) return;
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK - Fallback layout for the Alfred skin
  * v1.0.0

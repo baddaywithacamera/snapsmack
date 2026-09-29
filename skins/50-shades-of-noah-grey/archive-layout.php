@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK - 50 Shades of Noah Grey Archive Layout
  * Alpha v0.7.9c

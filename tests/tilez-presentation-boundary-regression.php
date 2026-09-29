@@ -11,7 +11,7 @@ $patterns = [
 ];
 foreach (glob($root . '/skins/tilez/*.php') as $file) {
     $source = (string)file_get_contents($file);
-    if (strpos($source, "if (!defined('SNAPSMACK_SKIN_RENDER')) return;") === false) {
+    if (strpos($source, "defined('SNAPSMACK_SKIN_RENDER') || exit;") === false) {
         $violations[] = basename($file) . ': missing direct-execution guard';
     }
     foreach ($patterns as $label => $pattern) {
