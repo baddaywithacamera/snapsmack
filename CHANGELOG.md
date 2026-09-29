@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.775D — 2026-09-29 — Signed skin chain
+
+- **SMACK CENTRAL now publishes the complete signed-skin integrity contract.** Browser-built skin packages use the same slug-wrapped layout as the local build tools and include a root `smackback-manifest.json` containing every packaged file's hash and size. The spoke installer can therefore establish SMACKBACK records transactionally after policy validation instead of safely rolling back an otherwise valid skin because the publisher omitted its integrity manifest. (`smack-central/sc-skins.php`, `tests/skin-package-lifecycle-regression.php`.)
+
 ## 0.7.774D — 2026-09-29 — Complete catalog
 
 - **Strict skins can be installed without weakening their security gate.** Core release packages now force-include the machine-readable CMS asset inventory used by the schema-v2 skin validator. The 0.7.773D artifact omitted that JSON file, so updated spokes correctly refused every presentation-only skin that requested a centrally approved script or stylesheet. The release regression suite now pins the inventory as required runtime data. (`smack-central/sc-release.php`, `assets/ASSET-INVENTORY.json`, `tests/release-flow-regression.php`.)
