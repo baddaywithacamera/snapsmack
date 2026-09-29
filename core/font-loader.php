@@ -4,7 +4,7 @@
  *
  * Provides snapsmack_emit_font_tags() — a shared helper for any skin that
  * has font pickers. Replaces per-skin hardcoded Google Fonts <link> tags
- * with a dynamic loader that responds to what the user actually selected.
+ * with a local-only loader that responds to what the user actually selected.
  *
  * Usage in a skin's skin-header.php:
  *
@@ -30,8 +30,7 @@
  *   - Local fonts  (inventory['local_fonts']): emits a @font-face <style> block.
  *                  The font file is served from BASE_URL, so the TTF ships with
  *                  the install (assets/fonts/).
- *   - Google Fonts (inventory['fonts']):        emits a single Google Fonts
- *                  API request covering all selected Google families.
+ *   - Remote font names: ignored. Public rendering never contacts a font CDN.
  *   - System fonts (monospace, serif, Georgia, etc.): silently skipped —
  *                  no loading needed.
  *
@@ -47,12 +46,10 @@ function snapsmack_emit_font_tags(array $font_keys, string $base_url): void {
 
     // ── Load inventory once per request ──────────────────────────────────────
     static $local_fonts = null;
-    static $google_fonts = null;
 
     if ($local_fonts === null) {
         $inv         = include __DIR__ . '/manifest-inventory.php';
         $local_fonts  = $inv['local_fonts'] ?? [];
-        $google_fonts = $inv['fonts']        ?? [];
     }
 
     // ── Normalise input: de-dupe, drop empty, drop font stack suffixes ────────
@@ -73,32 +70,11 @@ function snapsmack_emit_font_tags(array $font_keys, string $base_url): void {
 
     // ── Classify each font key ────────────────────────────────────────────────
     $local_to_load  = [];   // key => $local_fonts[$key]
-    $google_to_load = [];   // [] of family name strings
-
     foreach ($clean as $fk) {
         if (isset($local_fonts[$fk])) {
             $local_to_load[$fk] = $local_fonts[$fk];
-        } elseif (isset($google_fonts[$fk])) {
-            $google_to_load[] = $fk;
         }
         // else: system font (monospace, Georgia, serif…) — no loading needed
-    }
-
-    // ── Google Fonts ──────────────────────────────────────────────────────────
-    // One request covers all selected Google Font families.
-    // Axis spec: wght@300;400;500;600;700;900 — broad enough for all skins.
-    // The API silently skips weights a given family doesn't have.
-    if (!empty($google_to_load)) {
-        $parts = [];
-        foreach ($google_to_load as $family) {
-            $parts[] = 'family=' . urlencode($family) . ':wght@300;400;500;600;700;900';
-        }
-        $gf_url = 'https://fonts.googleapis.com/css2?' . implode('&', $parts) . '&display=swap';
-        ?>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="<?php echo htmlspecialchars($gf_url, ENT_QUOTES, 'UTF-8'); ?>" rel="stylesheet">
-        <?php
     }
 
     // ── Local fonts (@font-face) ──────────────────────────────────────────────
