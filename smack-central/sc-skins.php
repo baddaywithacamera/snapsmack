@@ -524,37 +524,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                 $meta         = $repo_skins[$slug];
                 $skin_dir     = rtrim($tmp_dir, '/') . '/skins/' . $slug;
 
-                // ── Gallery cleanliness gate (no JS in skins) ─────────────────
-                // Signing proves WHO built a skin; this proves it's CLEAN. A
-                // gallery skin must ship zero executable JavaScript — no bundled
-                // .js, no inline onclick=, no inline <script>, no external script.
-                // All JS lives in the shared, vetted assets/js library. Refuse to
-                // package (and therefore sign + publish) any skin that fails.
-                // The scanner lives OUTSIDE smack-central/, so the SC self-updater
-                // (which only deploys smack-central/) can leave it absent. Guard the
-                // require so a partial deploy skips the gate instead of fataling —
-                // never let a missing lint tool 500 the packager.
-                $sc_scanner = dirname(__DIR__) . '/tools/skin-scan.php';
-                if (is_file($sc_scanner)) {
-                    require_once $sc_scanner;
-                    $scan     = snapsmack_scan_skin($skin_dir);
-                    $blockers = array_values(array_filter(
-                        $scan, static fn($f) => $f['severity'] === 'block'));
-                    if ($blockers) {
-                        $detail = array_map(static fn($f) =>
-                            $f['type'] . ' @ ' . $f['file']
-                            . ($f['line'] ? ':' . $f['line'] : ''),
-                            array_slice($blockers, 0, 8));
-                        $build_results[] = [
-                            'slug' => $slug, 'ok' => false,
-                            'msg'  => 'BLOCKED — ships JavaScript/nasties ('
-                                    . count($blockers) . '): ' . implode('; ', $detail)
-                                    . '. Move JS to assets/js and remove inline handlers.',
-                        ];
-                        continue;
-                    }
+                // ── Shared skin authority gate ────────────────────────────────
+                // Missing policy code is a hard failure: signing proves origin,
+                // not safety, and the publisher may never silently skip review.
+                $sc_policy = dirname(__DIR__) . '/core/skin-security-policy.php';
+                $sc_legacy = dirname(__DIR__) . '/core/skin-security-legacy.php';
+                if (!is_file($sc_policy) || !is_file($sc_legacy)) {
+                    $build_results[] = ['slug' => $slug, 'ok' => false,
+                        'msg' => 'BLOCKED — skin security policy is unavailable.'];
+                    continue;
                 }
-                // else: scanner not deployed — gate skipped, skin packaged unscanned.
+                require_once $sc_policy;
+                $legacy_policy = require $sc_legacy;
+                $blockers = snapsmack_skin_security_gate($skin_dir, $legacy_policy);
+                if ($blockers) {
+                    $detail = array_map(static fn($f) =>
+                        $f['type'] . ' @ ' . $f['file']
+                        . ($f['line'] ? ':' . $f['line'] : ''),
+                        array_slice($blockers, 0, 8));
+                    $build_results[] = [
+                        'slug' => $slug, 'ok' => false,
+                        'msg'  => 'BLOCKED — violates skin authority policy ('
+                                . count($blockers) . '): ' . implode('; ', $detail)
+                                . '. Move behaviour into CMS-owned code.',
+                    ];
+                    continue;
+                }
 
                 $version      = $meta['version'];
                 $zip_name     = $slug . '-' . $version . '.zip';
