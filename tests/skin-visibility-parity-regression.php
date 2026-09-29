@@ -18,6 +18,7 @@ foreach ($skins as $manifest) {
 if (!$skins) throw new RuntimeException('No skins participated in visibility parity fixtures.');
 
 $baseline = require $root . '/core/skin-visibility-legacy.php';
+if ($baseline !== []) throw new RuntimeException('Visibility query debt remains; appearance can still broaden public content.');
 $current = [];
 foreach ($skins as $manifest) {
     $dir = dirname($manifest);
@@ -31,4 +32,9 @@ foreach ($skins as $manifest) {
     }
 }
 if ($current !== $baseline) throw new RuntimeException('Visibility query inventory changed; regenerate only after reviewing and repairing the difference.');
+$controllerFindings = snapsmack_skin_visibility_query_findings(
+    $root . '/core/smacktalk-public-controller.php',
+    'core/smacktalk-public-controller.php'
+);
+if ($controllerFindings !== []) throw new RuntimeException('CMS SMACKTALK controller has a public visibility query gap.');
 echo 'Visibility parity fixtures passed across ' . count($skins) . " skins ({$checks} decisions); query debt inventory is stable.\n";

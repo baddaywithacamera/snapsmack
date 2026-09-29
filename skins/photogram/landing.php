@@ -104,7 +104,7 @@ if ($_pg_carousel_site) {
         JOIN snap_images i       ON i.id = pi.image_id
         LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
         WHERE p.status = 'published' AND p.created_at <= ?
-        ORDER BY CASE WHEN p.sort_order > 0 THEN 0 ELSE 1 END ASC,
+         AND i.img_status = 'published' AND i.img_date <= NOW() ORDER BY CASE WHEN p.sort_order > 0 THEN 0 ELSE 1 END ASC,
                  p.sort_order ASC, p.created_at DESC
     ");
     $grid_stmt->execute([$now_local]);

@@ -139,7 +139,7 @@ $grid_stmt = $pdo->prepare("
     LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
     WHERE p.status = 'published'
       AND p.created_at <= ?
-    ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
+     AND i.img_status = 'published' AND i.img_date <= NOW() ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
              p.sort_order ASC,
              p.id DESC
 ");
@@ -200,7 +200,7 @@ if ($_go_puzzle_mode !== 'off') {
                AND (SELECT COUNT(*) FROM snap_post_images spi
                      WHERE spi.post_id = p.id AND spi.sort_position >= 0) > 1
            )
-         ORDER BY i.id DESC
+          AND i.img_status = 'published' AND i.img_date <= NOW() ORDER BY i.id DESC
     ");
     $_go_pool_stmt->execute([$now_local]);
     $_go_puzzle_pool = $_go_pool_stmt->fetchAll(PDO::FETCH_ASSOC);
