@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.777D — 2026-09-29 — Complete context
+
+- **The isolated skin build gate receives the complete central authority context.** Both full-repository and one-skin packaging now copy the selected ref's machine-readable asset catalogue alongside its security policy and PHP manifest inventory. Shared CMS asset handles can be verified without granting the standalone publisher access to a live CMS tree; absence or mismatch still blocks signing. (`smack-central/sc-skins.php`, `tests/skin-package-lifecycle-regression.php`.)
+
 ## 0.7.776D — 2026-09-29 — Same authority
 
 - **Skin packages are judged by the policy from the exact source ref being packaged.** SMACK CENTRAL now extracts both the shared asset inventory and the central skin-security policy into its isolated build workspace for full-repository and single-skin builds. It no longer depends on a non-shipping `core/` sibling beside the standalone SMACK CENTRAL deployment, while a missing policy still fails closed. (`smack-central/sc-skins.php`, `tests/skin-package-lifecycle-regression.php`.)
