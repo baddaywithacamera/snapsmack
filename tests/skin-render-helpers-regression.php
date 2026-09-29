@@ -27,6 +27,11 @@ $page = snap_render_html(snap_render_component('smacktalk-page', [
 if (!str_contains($page, '<p>CMS HTML</p>') || str_contains($page, '<script>') || !str_contains($page, '&lt;Story&gt;')) {
     throw new RuntimeException('Shared SMACKTALK page crossed its trust boundary.');
 }
+$public = snap_render_html(snap_render_component('public-page', [
+    'site' => ['site_name' => 'Site'],
+    'response' => ['kind' => 'photo', 'navigation' => [], 'item' => ['img_title' => '<Photo>', 'img_description' => snapsmack_trusted_html('<p>CMS caption</p>')], 'comments' => []],
+]));
+if (!str_contains($public, '<p>CMS caption</p>') || !str_contains($public, '&lt;Photo&gt;')) throw new RuntimeException('Public component trust boundary failed.');
 if (snap_route_url('unknown') !== '') throw new RuntimeException('Unknown route did not fail closed.');
 if (snap_asset_url('../evil') !== '') throw new RuntimeException('Unknown/traversal asset handle was accepted.');
 
