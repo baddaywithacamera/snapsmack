@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.782D — 2026-09-29 — Instant Camera presentation restored
+
+- **The central INSTANT CAMERA renderer now reproduces the skin's actual presentation contract rather than a compatibility approximation.** CMS-owned markup restores the profile/avatar/tagline/bio block, post count, skin navigation hooks, full-viewport MAYHEM carrier, configurable scrim/panel layers, and framed grid structure while continuing to consume only the bounded public view model. (`core/public-controller.php`, `core/public-repository.php`, `core/skin-render-helpers.php`, `core/skin-view-contract.php`, `index.php`.)
+- **Installed schema-v1 skins retain their inert CMS asset declarations during migration.** Core 0.7.773D–0.7.781D normalized schema-v1 manifests to an empty object, silently removing central engines from still-installed skins: GAME ON rendered 144 empty puzzle controls and PARADE lost its declared motion/interaction engines. Runtime normalization now accepts schema 1 and 2 as bounded data; the package installer and security gate still require policy/schema v2, so this does not reopen installation of executable legacy skins. (`core/skin-manifest.php`, `tests/skin-picker-strict-regression.php`.)
+
 ## 0.7.781D — 2026-09-29 — Instant Camera grid restored
 
 - **INSTANT CAMERA once again receives its real photo-grid presentation from the CMS.** The strict renderer now selects the bounded central INSTANT CAMERA component by the skin slug and emits image tiles from the public-only view model. This repairs the blank link-only shell introduced by the schema-v2 conversion without returning SQL, filesystem access, JavaScript, or other authority to the skin. (`core/skin-render-helpers.php`, `core/skin-view-contract.php`, `index.php`.)

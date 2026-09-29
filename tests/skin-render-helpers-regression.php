@@ -47,13 +47,13 @@ $mayhem = snap_render_html(snap_render_component('public-page', [
 ]));
 if (!str_contains($mayhem, 'data-mayhem') || !str_contains($mayhem, 'data-api-url="?ajax=mayhem"')) throw new RuntimeException('CMS did not mount the declared Organized Mayhem engine.');
 $instant = snap_render_html(snap_render_component('public-page', [
-    'site' => ['site_name' => 'Camera', 'skin_slug' => 'instant-camera', 'registered_assets' => ['scripts' => ['/assets/js/ss-engine-organized-mayhem.js']]],
+    'site' => ['site_name' => 'Camera', 'tagline' => 'Tag', 'site_description' => 'Bio', 'avatar_url' => '/avatar.jpg', 'skin_slug' => 'instant-camera', 'registered_assets' => ['scripts' => ['/assets/js/ss-engine-organized-mayhem.js']]],
     'response' => ['kind' => 'landing', 'navigation' => [], 'items' => [[
         'img_slug' => 'sample', 'img_title' => '<Photo>', 'img_alt' => 'Alt',
         'img_file' => 'img_uploads/photo.jpg', 'img_thumb_aspect' => 'img_uploads/thumbs/a_photo.jpg',
     ]]],
 ]));
-foreach (['class="tg-content-wrap landing-feed"', 'id="browse-grid" class="tg-grid', 'class="tg-tile"', 'img_uploads/thumbs/a_photo.jpg', '&lt;Photo&gt;', 'data-mayhem'] as $hook) {
+foreach (['class="ic-bg ic-bg-mayhem"', 'class="ic-scrim"', 'class="ic-panel"', 'class="tg-content-wrap landing-feed"', 'class="tg-profile-avatar"', 'class="tg-profile-username"', 'class="tg-sticky-nav-links"', 'id="browse-grid" class="tg-grid', 'class="tg-tile"', 'img_uploads/thumbs/a_photo.jpg', '&lt;Photo&gt;', 'data-mayhem'] as $hook) {
     if (!str_contains($instant, $hook)) throw new RuntimeException("INSTANT CAMERA CMS renderer lost hook: {$hook}");
 }
 if (snap_route_url('unknown') !== '') throw new RuntimeException('Unknown route did not fail closed.');

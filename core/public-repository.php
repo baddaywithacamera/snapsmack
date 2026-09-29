@@ -101,6 +101,13 @@ final class SnapPublicRepository
         );
     }
 
+    public function publishedPhotographCount(): int {
+        $stmt = $this->pdo->query(
+            "SELECT COUNT(id) FROM snap_images WHERE img_status='published' AND img_date <= NOW()"
+        );
+        return (int)$stmt->fetchColumn();
+    }
+
     public function longformLanding(int $limit, int $offset = 0): array {
         return $this->all(
             "SELECT p.id,p.title,p.slug,p.description,p.created_at,p.updated_at,p.featured_image_id,
