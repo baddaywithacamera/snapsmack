@@ -1847,6 +1847,7 @@
                 "core/asset-security-reviews.php",
                 "core/mayhem-data.php",
                 "core/ohsnap-api.php",
+                "core/skin-render-helpers.php",
                 "skins/52-card-pickup/manifest.json",
                 "skins/instant-camera/manifest.json",
                 "52-card-pickup",
