@@ -90,6 +90,31 @@ function snapsmack_skin_policy_scan_php(string $path, string $rel): array {
     return $findings;
 }
 
+/** Reject state mutation during skin rendering, including legacy skins. */
+function snapsmack_skin_policy_scan_mutations(string $path, string $rel): array {
+    $source = @file_get_contents($path);
+    if ($source === false) return [];
+    $findings = [];
+    $mutators = array_fill_keys([
+        'file_put_contents', 'fwrite', 'fputs', 'ftruncate', 'unlink', 'rename',
+        'copy', 'mkdir', 'rmdir', 'touch', 'chmod', 'chown', 'chgrp', 'symlink',
+        'link', 'setcookie', 'setrawcookie', 'session_start', 'session_regenerate_id',
+        'session_destroy', 'exec', 'shell_exec', 'system', 'passthru', 'proc_open',
+        'popen', 'mail',
+    ], true);
+    foreach (token_get_all($source) as $token) {
+        if (!is_array($token)) continue;
+        [$id, $text, $line] = $token;
+        if ($id === T_STRING && isset($mutators[strtolower($text)])) {
+            $findings[] = snapsmack_skin_policy_finding($rel, $line, 'render-time-mutation', $text);
+        } elseif ($id === T_CONSTANT_ENCAPSED_STRING
+            && preg_match('/\b(?:INSERT\s+INTO|UPDATE\s+[`a-z_]|DELETE\s+FROM|REPLACE\s+INTO|ALTER\s+TABLE|CREATE\s+TABLE|DROP\s+TABLE|TRUNCATE\s+TABLE)\b/i', $text)) {
+            $findings[] = snapsmack_skin_policy_finding($rel, $line, 'render-time-mutation', substr($text, 0, 160));
+        }
+    }
+    return $findings;
+}
+
 /**
  * Schema-v2 templates use a deliberately tiny PHP language. This is a policy
  * validator, not a sandbox: files that do not match the complete allowlist are
@@ -279,6 +304,7 @@ function snapsmack_skin_security_findings(string $skin_dir): array {
             continue;
         }
         if ($ext === 'php' || $ext === 'phtml' || $ext === 'inc') {
+            array_push($findings, ...snapsmack_skin_policy_scan_mutations($path, $rel));
             if (is_array($manifest) && (int)($manifest['schema_version'] ?? 0) >= 2) {
                 array_push($findings, ...snapsmack_skin_policy_scan_template_v2($path, $rel));
             } else {
