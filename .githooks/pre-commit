@@ -39,6 +39,26 @@ for path in php_files:
 
 blocked = bool(null_dirty or syntax_dirty)
 
+# Skin policy changes and staged skin files must pass the repository ratchet.
+skin_policy_dirty = []
+staged = result.stdout.splitlines()
+needs_skin_gate = any(
+    p.startswith('skins/') or p in {
+        'core/skin-security-policy.php', 'core/skin-security-legacy.php'
+    } for p in staged
+)
+if needs_skin_gate:
+    if not php_available:
+        skin_policy_dirty.append('php is unavailable; skin policy cannot be verified')
+    else:
+        gate = subprocess.run(
+            ['php', 'tests/skin-security-ratchet-regression.php'],
+            capture_output=True, text=True
+        )
+        if gate.returncode != 0:
+            skin_policy_dirty.append(gate.stderr.strip() or gate.stdout.strip())
+blocked = blocked or bool(skin_policy_dirty)
+
 if null_dirty:
     print('\n\033[31m[pre-commit] NULL BYTES DETECTED — commit blocked\033[0m')
     print('Files with null bytes (Cowork VM edit artifact):')
@@ -55,6 +75,11 @@ if syntax_dirty:
         print(f'  {f}')
         for line in err.splitlines()[:3]:
             print(f'    {line}')
+
+if skin_policy_dirty:
+    print('\n\033[31m[pre-commit] SKIN SECURITY POLICY FAILED — commit blocked\033[0m')
+    for err in skin_policy_dirty:
+        print(err)
 
 if not php_available:
     print('\n\033[33m[pre-commit] php not found in PATH — syntax check skipped\033[0m')

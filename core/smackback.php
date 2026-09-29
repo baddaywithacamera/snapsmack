@@ -338,12 +338,25 @@ function smackback_scan_skin_js(bool $allow_custom = false): array {
  */
 function smackback_run_skin_js_scan(): array {
     global $pdo;
-
-    $allow_custom = ($pdo->query(
-        "SELECT setting_val FROM snap_settings WHERE setting_key = 'skin_allow_custom_js'"
-    )->fetchColumn() ?: '0') === '1';
-
-    $findings  = smackback_scan_skin_js($allow_custom);
+    // The former custom-JS toggle merely downgraded labels and exempted base
+    // skins/hosts. Runtime reporting now uses the same non-negotiable policy as
+    // packaging and installation; owner custom JS is not a skin permission.
+    require_once __DIR__ . '/skin-security-policy.php';
+    $legacy = require __DIR__ . '/skin-security-legacy.php';
+    $findings = [];
+    foreach (glob(SNAPSMACK_ROOT . '/skins/*/manifest.json') ?: [] as $manifest) {
+        $dir = dirname($manifest);
+        foreach (snapsmack_skin_security_gate($dir, $legacy) as $finding) {
+            $findings[] = [
+                'skin' => basename($dir),
+                'file' => 'skins/' . basename($dir) . '/' . $finding['file'],
+                'line' => $finding['line'],
+                'type' => $finding['type'],
+                'detail' => $finding['excerpt'],
+                'severity' => 'violation',
+            ];
+        }
+    }
     $now       = date('Y-m-d H:i:s');
 
     $violations = count(array_filter($findings, fn($f) => $f['severity'] === 'violation'));
