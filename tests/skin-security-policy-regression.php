@@ -75,8 +75,7 @@ PHP);
         unlink($path);
     }
 
-    $baseline = ['snapsmack-skin-policy-' . basename($tmp) => []];
-    if (snapsmack_skin_security_gate($tmp, $baseline) === []) {
+    if (snapsmack_skin_security_gate($tmp) === []) {
         throw new RuntimeException('Schema version 2 did not fail closed.');
     }
     echo "Skin security policy regression: PASS\n";

@@ -274,7 +274,9 @@ function snapsmack_skin_security_findings(string $skin_dir): array {
     $findings = [];
     $manifest_path = $skin_dir . '/manifest.json';
     $manifest = json_decode((string)@file_get_contents($manifest_path), true);
-    if (is_array($manifest) && (int)($manifest['schema_version'] ?? 0) >= 2) {
+    if (!is_array($manifest) || (int)($manifest['schema_version'] ?? 0) !== 2) {
+        $findings[] = snapsmack_skin_policy_finding('manifest.json', 0, 'manifest-schema-version', 'Manifest schema version 2 is required.');
+    } else {
         foreach (['cms_controller', 'view_model', 'templates', 'security_policy'] as $required) {
             if (!isset($manifest[$required]) || $manifest[$required] === '' || $manifest[$required] === []) {
                 $findings[] = snapsmack_skin_policy_finding('manifest.json', 0, 'manifest-contract', "Missing {$required}");
@@ -305,7 +307,7 @@ function snapsmack_skin_security_findings(string $skin_dir): array {
         }
         if ($ext === 'php' || $ext === 'phtml' || $ext === 'inc') {
             array_push($findings, ...snapsmack_skin_policy_scan_mutations($path, $rel));
-            if (is_array($manifest) && (int)($manifest['schema_version'] ?? 0) >= 2) {
+            if (is_array($manifest) && (int)($manifest['schema_version'] ?? 0) === 2) {
                 array_push($findings, ...snapsmack_skin_policy_scan_template_v2($path, $rel));
             } else {
                 array_push($findings, ...snapsmack_skin_policy_scan_php($path, $rel));
@@ -326,25 +328,11 @@ function snapsmack_skin_security_findings(string $skin_dir): array {
 function snapsmack_skin_security_strict(string $skin_dir): bool {
     $manifest_path = rtrim($skin_dir, '/\\') . '/manifest.json';
     $manifest = json_decode((string)@file_get_contents($manifest_path), true);
-    return is_array($manifest) && (int)($manifest['schema_version'] ?? 0) >= 2;
+    return is_array($manifest) && (int)($manifest['schema_version'] ?? 0) === 2;
 }
 
-function snapsmack_skin_security_gate(string $skin_dir, array $legacy_baseline = []): array {
-    $findings = snapsmack_skin_security_findings($skin_dir);
-    $slug = basename(rtrim(str_replace('\\', '/', $skin_dir), '/'));
-    if (snapsmack_skin_security_strict($skin_dir) || !isset($legacy_baseline[$slug])) {
-        return $findings;
-    }
-    $allowed = $legacy_baseline[$slug];
-    $seen = [];
-    $excess = [];
-    foreach ($findings as $finding) {
-        $file = $finding['file'];
-        $type = $finding['type'];
-        $seen[$file][$type] = ($seen[$file][$type] ?? 0) + 1;
-        if ($seen[$file][$type] > (int)($allowed[$file][$type] ?? 0)) $excess[] = $finding;
-    }
-    return $excess;
+function snapsmack_skin_security_gate(string $skin_dir): array {
+    return snapsmack_skin_security_findings($skin_dir);
 }
 
 // ===== SNAPSMACK EOF =====

@@ -215,16 +215,6 @@ foreach ($skin_dirs as $dir) {
         if (!$is_carousel && !$is_smacktalk
             && ($skin_is_carousel || $skin_is_smacktalk))           continue; // SmackOneOut: exclude both
         $available_skins[$slug] = $temp['name'] ?? ucfirst($slug);
-    } elseif (!$is_carousel && !$is_smacktalk) {
-        // LEGACY skin build — installed before skins carried manifest.json.
-        // Still a real, working skin (PHP templates render without a manifest;
-        // it just has no options panel). It MUST stay listed: on a box where
-        // every installed skin is a legacy build, requiring a manifest emptied
-        // this list and the page fataled on a null slug (foundtextures,
-        // 2026-09-05) — locking the admin out of the one page that can update
-        // the skins. Legacy builds predate carousel/smacktalk, so they only
-        // list in photoblog mode.
-        $available_skins[$slug] = ucfirst($slug) . ' (legacy — update it from the gallery)';
     }
 }
 
@@ -241,10 +231,6 @@ if (empty($available_skins)) {
             // so a FEDISTRUCTURE install never falls back to listing blog skins.
             if (!snapsmack_skin_allowed_distribution($temp)) continue;
             $available_skins[$slug] = $temp['name'] ?? ucfirst($slug);
-        } else {
-            // Legacy pre-manifest skin build — keep the page reachable (see the
-            // legacy branch in the main loop above).
-            $available_skins[$slug] = ucfirst($slug) . ' (legacy — update it from the gallery)';
         }
     }
 }
