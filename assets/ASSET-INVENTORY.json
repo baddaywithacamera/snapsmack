@@ -2690,8 +2690,8 @@
         {
             "file": "assets/css/admin-theme-geometry-master.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:admin-theme-geometry-master",
+            "scope": "public",
+            "registry_handle": "asset:public:admin-theme-geometry-master",
             "legacy_handle": null,
             "callers": [
                 "smack-2fa-verify.php",
@@ -2716,8 +2716,8 @@
         {
             "file": "assets/css/columns.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:columns",
+            "scope": "public",
+            "registry_handle": "asset:public:columns",
             "legacy_handle": null,
             "callers": [
                 "smack-preview-ajax.php",
@@ -2740,8 +2740,8 @@
         {
             "file": "assets/css/fjGallery.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:fjGallery",
+            "scope": "public",
+            "registry_handle": "asset:public:fjGallery",
             "legacy_handle": "smack-justified-lib:css",
             "callers": [
                 "skins/new-horizon/manifest.json",
@@ -2763,8 +2763,8 @@
         {
             "file": "assets/css/page-archive.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:page-archive",
+            "scope": "public",
+            "registry_handle": "asset:public:page-archive",
             "legacy_handle": null,
             "callers": [
                 "core/asset-security-reviews.php",
@@ -2786,8 +2786,8 @@
         {
             "file": "assets/css/page-blogroll.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:page-blogroll",
+            "scope": "public",
+            "registry_handle": "asset:public:page-blogroll",
             "legacy_handle": null,
             "callers": [
                 "core/meta.php"
@@ -2800,8 +2800,8 @@
         {
             "file": "assets/css/page-collection.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:page-collection",
+            "scope": "public",
+            "registry_handle": "asset:public:page-collection",
             "legacy_handle": null,
             "callers": [
                 "core/meta.php"
@@ -2814,8 +2814,8 @@
         {
             "file": "assets/css/page-eatmeclaude.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:page-eatmeclaude",
+            "scope": "public",
+            "registry_handle": "asset:public:page-eatmeclaude",
             "legacy_handle": null,
             "callers": [
                 "eatmeclaude.php"
@@ -2828,8 +2828,8 @@
         {
             "file": "assets/css/page-static.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:page-static",
+            "scope": "public",
+            "registry_handle": "asset:public:page-static",
             "legacy_handle": null,
             "callers": [
                 "core/meta.php"
@@ -2842,8 +2842,8 @@
         {
             "file": "assets/css/photochallenge-board-embed.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:photochallenge-board-embed",
+            "scope": "public",
+            "registry_handle": "asset:public:photochallenge-board-embed",
             "legacy_handle": null,
             "callers": [
                 "core/photochallenge.php"
@@ -2856,8 +2856,8 @@
         {
             "file": "assets/css/photochallenge-board-layouts.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:photochallenge-board-layouts",
+            "scope": "public",
+            "registry_handle": "asset:public:photochallenge-board-layouts",
             "legacy_handle": null,
             "callers": [
                 "core/photochallenge.php"
@@ -2870,8 +2870,8 @@
         {
             "file": "assets/css/public-base.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:public-base",
+            "scope": "public",
+            "registry_handle": "asset:public:public-base",
             "legacy_handle": null,
             "callers": [
                 "core/asset-security-reviews.php",
@@ -2893,8 +2893,8 @@
         {
             "file": "assets/css/public-download-overlay.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:public-download-overlay",
+            "scope": "public",
+            "registry_handle": "asset:public:public-download-overlay",
             "legacy_handle": null,
             "callers": [
                 "core/footer-scripts.php"
@@ -2907,8 +2907,8 @@
         {
             "file": "assets/css/public-facing.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:public-facing",
+            "scope": "public",
+            "registry_handle": "asset:public:public-facing",
             "legacy_handle": null,
             "callers": [
                 "blogroll.php",
@@ -2925,8 +2925,8 @@
         {
             "file": "assets/css/shortcodes.css",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:shortcodes",
+            "scope": "public",
+            "registry_handle": "asset:public:shortcodes",
             "legacy_handle": null,
             "callers": [
                 "smack-shortcodes.php",
