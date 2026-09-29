@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.773D — 2026-09-28 — Presentation boundary
+
+- **TILEZ is now a presentation-only skin.** Request interpretation, publication checks, SQL, content parsing, archive/feed construction, pagination, derived counts, filesystem image inspection, redirects, and response status now live in the reusable CMS SMACKTALK controller. TILEZ receives a bounded display model and contains no PDO, SQL, request globals, response control, filesystem access, networking, or process execution. Navigation resolution is centralized in the CMS and TILEZ's temporary WordPress-era links are gone; its default navigation is declarative manifest data. TILEZ skin version 0.2.43. (`core/smacktalk-public-controller.php`, `core/skin-view-model.php`, `skins/tilez/`.)
+- **Parked desktop skins evaporate after a successful skin switch.** The CMS removes the previously active skin directory, retains all skin-scoped settings for a future reinstall, preserves the new active skin and required mobile renderer, and surfaces deletion failures. This restores the intended rule that unused executable skin code does not remain on the web server. (`core/skin-registry.php`, `smack-skin.php`.)
+- **STANLEY's hero initialization is centrally controlled.** Public rendering no longer queries for or persists a default hero. The reusable CMS media-slot service resolves display data and may initialize an empty slot only during authenticated, CSRF-protected skin activation. The tracked skin architecture contract now states the enforceable direction: skins present; the CMS decides and acts. (`core/skin-view-model.php`, `skins/stanley/`, `docs/skin-architecture-contract.md`.)
+
 ## 0.7.772D — 2026-09-28 — Clean contract
 
 - **Longform colophons and closing signatures are now first-class post data instead of TILEZ guesses.** `snap_posts` gains canonical `colophon` and `signature_image_id` fields; the SMACKPRESS API accepts, sanitizes, stores, and returns both. The WordPress adapter alone translates old closing equipment paragraphs and signature filenames while importing. COLD SNAP carries the resulting semantics in its draft and posting contract. TILEZ now contains no WordPress-specific prose or filename recognition: it only presents the canonical fields, and excludes signature images from its photograph archive by their assigned role. TILEZ skin version 0.2.42. (`database/schema/snapsmack_canonical.sql`, `core/smackpress-api.php`, `tools/smackpress/`, `tools/coldsnap/`, `skins/tilez/`.)

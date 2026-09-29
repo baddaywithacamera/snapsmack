@@ -1,15 +1,11 @@
 <?php
+if (!defined('SNAPSMACK_SKIN_RENDER')) return;
 /**
  * SNAPSMACK - Fallback layout for the Alfred skin
  * v1.0.0
  *
- * Alfred is SmackTalk-only. preload.php intercepts all valid Alfred requests
- * and exit()s before index.php reaches this file. layout.php should therefore
- * never be called during normal operation.
- *
- * If it IS called, the most likely cause is that someone selected Alfred as
- * their skin but hasn't switched the site to SmackTalk mode, or preload.php
- * fell through on an unrecognised request. Redirect to the feed.
+ * TILEZ is SMACKTALK-only. Core normally selects preload.php through the
+ * reusable SMACKTALK controller. This inert template is only a visual fallback.
  */
 
 /**
@@ -20,12 +16,6 @@
  */
 
 
-// Redirect to the homepage feed — safest no-crash fallback.
-if (!headers_sent()) {
-    $base = defined('BASE_URL') ? BASE_URL : '/';
-    header('Location: ' . $base, true, 302);
-    exit();
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">

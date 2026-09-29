@@ -1,4 +1,5 @@
 <?php
+if (!defined('SNAPSMACK_SKIN_RENDER')) return;
 /**
  * SNAPSMACK - Meta tags and stylesheet loader for the Alfred skin
  * v1.0.0

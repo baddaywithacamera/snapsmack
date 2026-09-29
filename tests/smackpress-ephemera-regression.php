@@ -10,6 +10,7 @@ $root = dirname(__DIR__);
 $api = (string)file_get_contents($root . '/core/smackpress-api.php');
 $schema = (string)file_get_contents($root . '/database/schema/snapsmack_canonical.sql');
 $skin = (string)file_get_contents($root . '/skins/tilez/preload.php');
+$controller = (string)file_get_contents($root . '/core/smacktalk-public-controller.php');
 
 $assert = static function (bool $ok, string $message): void {
     if (!$ok) {
@@ -27,9 +28,10 @@ $assert(str_contains($api, 'smackpress_sanitize_html(smack_autop_long($raw_colop
     'API sanitizes colophon HTML independently');
 $assert(str_contains($api, 'SELECT id,colophon,signature_image_id FROM snap_posts'),
     'older clients preserve existing ephemera during updates');
-$assert(str_contains($skin, "\$_alfred_post['colophon']")
-    && str_contains($skin, "\$_alfred_post['signature_image_id']"),
-    'TILEZ reads only canonical post semantics');
+$assert(str_contains($skin, "\$view['colophon']")
+    && str_contains($skin, "\$view['signature']")
+    && str_contains($controller, 'signature_image_id'),
+    'CMS supplies canonical post semantics and TILEZ only presents them');
 $assert(!str_contains($skin, 'legacy_is_colophon') && !str_contains($skin, 'LOWER(img_title)'),
     'TILEZ does not infer semantics from prose or filenames');
 
