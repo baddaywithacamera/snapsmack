@@ -32,6 +32,8 @@ if (php_sapi_name() !== 'cli') {
 
 $project_root = dirname(__DIR__, 2);
 $skins_dir    = $project_root . '/skins';
+require_once $project_root . '/core/skin-security-policy.php';
+$skin_security_legacy = require $project_root . '/core/skin-security-legacy.php';
 
 // ─── ARGUMENT PARSING ───────────────────────────────────────────────────────
 
@@ -89,6 +91,12 @@ $results = [];
 
 foreach ($skins as $skin) {
     $skin_path = $skins_dir . '/' . $skin;
+
+    $policy_findings = snapsmack_skin_security_gate($skin_path, $skin_security_legacy);
+    if ($policy_findings) {
+        echo "  BLOCKED: {$skin} fails the skin security policy (" . count($policy_findings) . " new/strict findings)\n";
+        continue;
+    }
 
     // Read skin metadata from manifest
     $manifest_path = $skin_path . '/manifest.json';

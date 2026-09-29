@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__) . '/core/skin-security-policy.php';
 /**
  * SNAPSMACK — skin-scan.php
  *
@@ -92,6 +93,17 @@ function snapsmack_scan_skin(string $skinDir, array $vetted = []): array {
                 ];
             }
         }
+    }
+    // The core policy is the canonical server-authority gate shared with the
+    // installer and package builders. Keep this tool's older, more descriptive
+    // browser checks while adding every non-browser core finding.
+    $browser_types = [
+        'bundled-javascript', 'inline-event-handler', 'javascript-uri',
+        'active-embed', 'inline-script', 'remote-script', 'direct-script-tag',
+        'remote-css-resource',
+    ];
+    foreach (snapsmack_skin_security_findings($skinDir) as $finding) {
+        if (!in_array($finding['type'], $browser_types, true)) $findings[] = $finding;
     }
     return $findings;
 }
