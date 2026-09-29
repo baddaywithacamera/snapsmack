@@ -1,7 +1,7 @@
 {
     "schema_version": 1,
     "name": "TILEZ",
-    "version": "0.2.42",
+    "version": "0.2.43",
     "author": "Sean McCormick & Claude",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A quiet white SMACKTALK portfolio inspired by editorial design studios. Longform posts flow through a native-aspect three-column wall powered by SnapSmack's shared columns engine.",
@@ -10,6 +10,15 @@
         "smacktalk"
     ],
     "skin_preload": "preload.php",
+    "cms_controller": "smacktalk",
+    "cms_navigation": [
+        {"type": "home", "label": "HOME"},
+        {"type": "page", "slug": "about", "label": "ABOUT"},
+        {"type": "blogroll", "label": "BLOGROLL"},
+        {"type": "archive", "label": "CATEGORIES"},
+        {"type": "albums", "label": "ALBUMS"},
+        {"type": "image_archive", "label": "IMAGES"}
+    ],
     "variants": {
         "default": "TILEZ (White Editorial Portfolio)"
     },

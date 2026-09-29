@@ -100,12 +100,12 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
     $string_keys = [
         'name', 'version', 'author', 'author_email', 'support', 'description',
         'status', 'demo_url', 'default_variant', 'edit_page', 'post_page',
-        'skin_preload', 'cover_aspect',
+        'skin_preload', 'cover_aspect', 'cms_controller',
     ];
     $array_keys = [
         'features', 'variants', 'allowed_fonts', 'require_scripts',
         'hide_controls', 'options', 'admin_styling', 'css_variables',
-        'incompatible', 'modes', 'social_dock', 'cms_media_slots',
+        'incompatible', 'modes', 'social_dock', 'cms_media_slots', 'cms_navigation',
     ];
     $boolean_keys = [
         'community_comments', 'community_likes', 'community_reactions',

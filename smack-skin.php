@@ -123,6 +123,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
                 $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
                     ->execute([$slug, $slug]);
                 $gallery_msg = 'Skin "' . $slug . '" is now active.';
+                $keep_skins = defined('SNAPSMACK_MOBILE_SKIN') ? [SNAPSMACK_MOBILE_SKIN] : [];
+                $evaporated = skin_registry_evaporate_parked((string)$active, $slug, $keep_skins);
+                if (empty($evaporated['success'])) {
+                    $gallery_err = 'The new skin is active, but the parked skin could not be removed: ' . $evaporated['message'];
+                } elseif (!empty($evaporated['removed'])) {
+                    $gallery_msg .= ' The parked skin was removed; its saved settings were retained.';
+                }
 
                 // Keep site_mode in lockstep with the activated skin — same rule
                 // as the Customize-tab activation: a single-mode skin whose mode
@@ -501,9 +508,17 @@ if (isset($_POST['save_skin_settings'])) {
             ->execute([$_POST['active_skin_variant'], $_POST['active_skin_variant']]);
     }
 
+    $_parked_skin = (string)($settings['active_skin'] ?? '');
     $active_skin = $_requested_skin; // SECAUDIT 047 — sanitized, validated slug only
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
         ->execute([$active_skin, $active_skin]);
+    $keep_skins = defined('SNAPSMACK_MOBILE_SKIN') ? [SNAPSMACK_MOBILE_SKIN] : [];
+    $evaporated = skin_registry_evaporate_parked($_parked_skin, $active_skin, $keep_skins);
+    if (empty($evaporated['success'])) {
+        $_SESSION['gallery_flash'] = 'The new skin is active, but the parked skin could not be removed: ' . $evaporated['message'];
+    } elseif (!empty($evaporated['removed'])) {
+        $_SESSION['gallery_flash'] = 'Skin activated. The parked skin was removed; its saved settings were retained.';
+    }
 
     // Keep site_mode in lockstep with the activated skin. Each skin declares the
     // mode(s) it's built for in its manifest ('modes'). When a skin supports

@@ -60,10 +60,12 @@ require_once __DIR__ . '/skin-manifest.php';
 // }
 
 // Default registry URL — can be overridden via snap_settings.skin_registry_url
-define('SKIN_REGISTRY_DEFAULT_URL', 'https://snapsmack.ca/releases/skins/registry.json');
+if (!defined('SKIN_REGISTRY_DEFAULT_URL')) {
+    define('SKIN_REGISTRY_DEFAULT_URL', 'https://snapsmack.ca/releases/skins/registry.json');
+}
 
 // Where skins live on disk
-define('SKINS_DIR', dirname(__DIR__) . '/skins');
+if (!defined('SKINS_DIR')) define('SKINS_DIR', dirname(__DIR__) . '/skins');
 
 /**
  * May this skin be offered on THIS install?
@@ -559,6 +561,30 @@ function skin_registry_remove(string $slug, string $active_skin): array {
     smackback_remove_skin_manifest($slug);
 
     return ['success' => true, 'message' => 'Skin "' . $slug . '" removed.'];
+}
+
+/**
+ * Evaporate a skin after it has been parked by a successful switch.
+ * Skin-scoped snap_settings rows are deliberately retained for reinstall.
+ */
+function skin_registry_evaporate_parked(string $parked_slug, string $active_skin, array $keep = []): array {
+    $parked_slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $parked_slug);
+    $active_skin = preg_replace('/[^a-zA-Z0-9_-]/', '', $active_skin);
+    $keep = array_values(array_filter(array_map(
+        fn($slug) => preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$slug),
+        $keep
+    )));
+
+    if ($parked_slug === '' || $parked_slug === $active_skin || in_array($parked_slug, $keep, true)) {
+        return ['success' => true, 'message' => '', 'removed' => false];
+    }
+    if (!is_dir(SKINS_DIR . '/' . $parked_slug)) {
+        return ['success' => true, 'message' => '', 'removed' => false];
+    }
+
+    $result = skin_registry_remove($parked_slug, $active_skin);
+    $result['removed'] = !empty($result['success']);
+    return $result;
 }
 
 

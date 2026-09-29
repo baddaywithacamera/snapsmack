@@ -158,7 +158,35 @@ try {
         }
     }
 
-    // --- SKIN PRELOAD HOOK ---
+    // --- CMS-OWNED PUBLIC CONTROLLER ---
+    // Presentation-only skins may opt into a reusable controller. Core owns
+    // request parsing, data access, redirects and status; the skin receives a
+    // bounded view model and renders markup only.
+    $_active_manifest = load_skin_manifest($active_skin);
+    if (($_active_manifest['cms_controller'] ?? '') === 'smacktalk') {
+        require_once __DIR__ . '/core/smacktalk-public-controller.php';
+        $_smacktalk = snapsmack_smacktalk_request($pdo, $settings, [
+            'view' => $_GET['view'] ?? '',
+            'post_slug' => $_GET['post'] ?? '',
+            'post_id' => $_GET['id'] ?? 0,
+            'page' => $_GET['page'] ?? 1,
+            'requested_slug' => $requested_slug ?? '',
+        ]);
+        if (!empty($_smacktalk['handled'])) {
+            if (!empty($_smacktalk['redirect'])) {
+                header('Location: ' . $_smacktalk['redirect'], true, 302);
+                exit;
+            }
+            if (($_smacktalk['kind'] ?? '') === 'not_found') http_response_code(404);
+            $skin_view['smacktalk'] = $_smacktalk;
+            $page_title = (string)($_smacktalk['page_title'] ?? $site_name);
+            $skin_template = __DIR__ . '/skins/' . $active_skin . '/' . ($_active_manifest['skin_preload'] ?? 'preload.php');
+            if (is_file($skin_template)) include $skin_template;
+            exit;
+        }
+    }
+
+    // --- LEGACY SKIN PRELOAD HOOK ---
     // Allows a skin to intercept the request before image routing fires.
     // Alfred uses this to render its SmackTalk feed and single-post views.
     // The included file may call exit() to short-circuit all remaining logic.
