@@ -20,7 +20,7 @@
 // header changes. Kept at the top so headers are set before any output.
 require_once __DIR__ . '/http-security-headers.php';
 
-const SNAPSMACK_MANIFEST_SCHEMA_VERSION = 1;
+const SNAPSMACK_MANIFEST_SCHEMA_VERSION = 2;
 
 /**
  * Cosmetic core controls a skin may suppress. Security, account, update,
@@ -100,12 +100,13 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
     $string_keys = [
         'name', 'version', 'author', 'author_email', 'support', 'description',
         'status', 'demo_url', 'default_variant', 'edit_page', 'post_page',
-        'skin_preload', 'cover_aspect', 'cms_controller',
+        'skin_preload', 'cover_aspect', 'cms_controller', 'view_model',
     ];
     $array_keys = [
         'features', 'variants', 'allowed_fonts', 'require_scripts',
         'hide_controls', 'options', 'admin_styling', 'css_variables',
         'incompatible', 'modes', 'social_dock', 'cms_media_slots', 'cms_navigation',
+        'templates', 'capabilities', 'require_styles',
     ];
     $boolean_keys = [
         'community_comments', 'community_likes', 'community_reactions',
@@ -117,16 +118,18 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
         $boolean_keys
     ));
 
-    $out = ['schema_version' => SNAPSMACK_MANIFEST_SCHEMA_VERSION];
+    $schema_version = (int)($input['schema_version'] ?? 1);
+    if (!in_array($schema_version, [1, SNAPSMACK_MANIFEST_SCHEMA_VERSION], true)) {
+        error_log("SnapSmack: unsupported manifest schema for {$slug}");
+        $schema_version = 1;
+    }
+    $out = ['schema_version' => $schema_version];
     foreach ($input as $key => $value) {
         if (!is_string($key) || !isset($known[$key])) {
             error_log("SnapSmack: ignored unknown manifest key {$key} for {$slug}");
             continue;
         }
         if ($key === 'schema_version') {
-            if ((int)$value !== SNAPSMACK_MANIFEST_SCHEMA_VERSION) {
-                error_log("SnapSmack: unsupported manifest schema for {$slug}");
-            }
             continue;
         }
         if (in_array($key, $string_keys, true)) {

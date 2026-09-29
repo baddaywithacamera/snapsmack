@@ -734,6 +734,11 @@ return [
             'css'          => 'assets/css/ss-engine-mosaic.css',
             'has_settings' => false,
         ],
+        'smack-alfred-archive' => [
+            'label'        => 'Alfred-family archive viewer',
+            'path'         => 'assets/js/ss-engine-alfred-archive.js',
+            'has_settings' => false,
+        ],
         'smack-carousel-post' => [
             'label'        => 'Carousel Post Engine (Multi-image upload strip with drag-reorder)',
             'path'         => 'assets/js/ss-engine-carousel-post.js',

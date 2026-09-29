@@ -41,36 +41,6 @@ if ($alfred_header_image !== '') {
 $site_display_name = $settings['site_name'] ?? 'SNAPSMACK';
 $tilez_nav_items = $skin_view['navigation'] ?? [];
 
-/**
- * Render one level of Alfred nav items into <li> elements for ul.main-menu.
- * URLs and activation policy are already resolved by the CMS.
- */
-if (!function_exists('_tilez_nav_render_items')) {
-    function _tilez_nav_render_items(array $items, int $depth = 0): void {
-        foreach ($items as $item) {
-            $children = $item['children'] ?? [];
-            $has_kids = !empty($children) && $depth < 2;
-            $li_class = $has_kids ? ' class="menu-item-has-children"' : '';
-            echo '<li' . $li_class . '>';
-            $url    = (string)($item['url'] ?? '');
-            $label  = htmlspecialchars($item['label'] ?? '');
-            $target = (!empty($item['target']) && $item['target'] === '_blank')
-                      ? ' target="_blank" rel="noopener noreferrer"' : '';
-            if ($url === '') {
-                echo '<span>' . $label . '</span>';
-            } else {
-                echo '<a href="' . htmlspecialchars($url) . '"' . $target . '>' . $label . '</a>';
-            }
-            if ($has_kids) {
-                echo '<ul class="menu-item-has-children">';
-                _tilez_nav_render_items(array_values($children), $depth + 1);
-                echo '</ul>';
-            }
-            echo '</li>';
-        }
-    }
-}
-
 ?>
 <!-- Blog title / logo. TILEZ explicitly opts out of the shared sticky-header
      engine so the masthead scrolls away naturally with the page. -->
@@ -102,7 +72,7 @@ if (!function_exists('_tilez_nav_render_items')) {
 
         <!-- Desktop nav -->
         <ul class="main-menu">
-        <?php _tilez_nav_render_items($tilez_nav_items); ?>
+        <?php snapsmack_render_navigation_items($tilez_nav_items); ?>
         </ul>
 
         <div class="tilez-icon-nav" role="navigation" aria-label="Quick navigation">
@@ -131,7 +101,7 @@ if (!function_exists('_tilez_nav_render_items')) {
         <!-- Mobile drawer -->
         <div class="mobile-navigation">
             <ul class="mobile-menu">
-            <?php _tilez_nav_render_items($tilez_nav_items); ?>
+            <?php snapsmack_render_navigation_items($tilez_nav_items); ?>
             </ul>
         </div>
 
