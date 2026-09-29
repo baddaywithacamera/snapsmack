@@ -19,28 +19,6 @@
 
     let dedicationShown = false;
     let bearsActive     = false;
-    let thomasPinged    = false;
-
-    // --- THOMAS PING ---
-    // One silent ping per browser session when Thomas is first found.
-    // Uses window.ssUid — a random anonymous ID stored per install in snap_settings.
-    // Not derived from site URL; cannot be reverse-engineered to identify the site.
-    // &s=1 marks the first find in this browser session (sessionStorage flag)
-    // for unique-finder counting. No personal data leaves the browser.
-    // type: 'y' = bear spawned, 'z' = Noah modal opened
-    function pingThomas(type) {
-        var uid = (window.ssUid || '').replace(/[^a-f0-9]/gi, '').toLowerCase().substring(0, 32);
-        if (!uid || uid.length !== 32) return;
-        var firstSession = false;
-        try {
-            firstSession = !sessionStorage.getItem('ss_thomas');
-            if (firstSession) sessionStorage.setItem('ss_thomas', '1');
-        } catch (e) { firstSession = true; }
-        var img = new Image();
-        img.src = 'https://snapsmack.ca/releases/thomas-ping.php?uid='
-                + encodeURIComponent(uid) + '&t=' + (type || 'y') + '&s=' + (firstSession ? 1 : 0);
-    }
-
     // --- BEAR REMOVAL ---
     // Clear all bears with fade-out animation
     function clearAllBears() {
@@ -194,7 +172,6 @@
             if (!dedicationShown) {
                 showDedication();
                 dedicationShown = true;
-                pingThomas('y'); // first bear spawned
             }
             buildBear();
         }
@@ -203,7 +180,6 @@
         if (e.ctrlKey && e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
             e.preventDefault();
             showNoahModal();
-            pingThomas('z'); // Noah modal opened
         }
 
         // Clear bears with X or ESC; also close Noah modal on ESC

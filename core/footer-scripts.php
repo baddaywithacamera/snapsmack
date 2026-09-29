@@ -36,27 +36,6 @@
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-comms.js?v=<?php echo time(); ?>"></script>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-thomas.css">
-<?php
-// Expose Thomas UID to JS for the Easter egg discover ping.
-// Random 32-char hex generated once and stored in snap_settings — not derived
-// from site URL and cannot be reverse-engineered to identify this install.
-$_ss_uid = '';
-try {
-    if ($pdo instanceof PDO) {
-        $_ss_uid = $pdo->query(
-            "SELECT setting_val FROM snap_settings WHERE setting_key = 'thomas_uid' LIMIT 1"
-        )->fetchColumn() ?: '';
-        if ($_ss_uid === '' || strlen($_ss_uid) !== 32) {
-            $_ss_uid = bin2hex(random_bytes(16));
-            $pdo->prepare(
-                "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('thomas_uid', ?)
-                 ON DUPLICATE KEY UPDATE setting_val = setting_val"
-            )->execute([$_ss_uid]);
-        }
-    }
-} catch (Throwable $_ss_e) {}
-?>
-<script>window.ssUid='<?php echo htmlspecialchars($_ss_uid, ENT_QUOTES); ?>';</script>
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-thomas.js?v=<?php echo time(); ?>"></script>
 
 <?php include __DIR__ . '/social-dock.php'; ?>
