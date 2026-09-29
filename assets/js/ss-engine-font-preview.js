@@ -3,7 +3,7 @@
  *
  * Handles live font previews on the skin admin panel.
  * Listens for change events on <select data-font-preview="1"> elements,
- * loads the chosen font (local TTF via @font-face or Google Fonts CDN),
+ * previews the chosen locally installed font via the CMS-owned @font-face rules,
  * then updates the sibling .font-preview-text spans.
  */
 
@@ -17,31 +17,6 @@
 
 (function () {
     'use strict';
-
-    // Google Fonts <link> tags we've already injected (avoid duplicates)
-    var loadedGoogleFonts = {};
-
-    /**
-     * Inject a Google Fonts <link> into <head> for the given family.
-     * Returns a Promise that resolves when the font is ready.
-     */
-    function loadGoogleFont(family) {
-        if (loadedGoogleFonts[family]) {
-            return Promise.resolve();
-        }
-        loadedGoogleFonts[family] = true;
-
-        return new Promise(function (resolve) {
-            var link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = 'https://fonts.googleapis.com/css2?family='
-                + encodeURIComponent(family).replace(/%20/g, '+')
-                + ':wght@400;700&display=swap';
-            link.onload = resolve;
-            link.onerror = resolve; // resolve anyway so preview still updates
-            document.head.appendChild(link);
-        });
-    }
 
     /**
      * Update all .font-preview-text spans inside the preview container.
@@ -64,29 +39,15 @@
     /**
      * Handle a font select change event.
      *
-     * Strategy: always update immediately (handles local @font-face fonts)
-     * AND always try loading from Google Fonts CDN (handles remote fonts).
-     * Google returns an empty/error for local-only families — harmless.
-     * Once the Google <link> loads, a second render pass shows the real face.
+     * Font previews are deliberately local-only. The admin must not contact a
+     * third-party font service merely because an owner opens a settings page.
      */
     function onFontChange(e) {
         var select = e.target;
         var family = select.value;
         if (!family) return;
 
-        // Instant update — renders correctly for local TTF fonts that already
-        // have @font-face declarations on the page. For Google fonts this will
-        // briefly show the fallback until the CDN stylesheet arrives below.
         updatePreview(select, family);
-
-        // Also fire off a Google Fonts load. If the family is local-only,
-        // Google returns a 400 and we silently ignore it. If it IS a Google
-        // font, the <link> loads and we re-render to swap in the real face.
-        loadGoogleFont(family).then(function () {
-            setTimeout(function () {
-                updatePreview(select, family);
-            }, 150);
-        });
     }
 
     /**

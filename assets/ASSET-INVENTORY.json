@@ -988,9 +988,7 @@
             "callers": [
                 "CMS runtime"
             ],
-            "security_signals": [
-                "remote-url"
-            ],
+            "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -2111,8 +2109,7 @@
                 "parade"
             ],
             "security_signals": [
-                "html-sink",
-                "remote-url"
+                "html-sink"
             ],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
