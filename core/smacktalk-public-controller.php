@@ -78,14 +78,18 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
     try {
         if ($slug !== '') {
             $stmt = $pdo->prepare(
-                "SELECT p.*, i.img_file AS featured_image_path FROM snap_posts p
+                "SELECT p.id,p.title,p.slug,p.content,p.colophon,p.signature_image_id,p.user_id,
+                        p.allow_comments,p.created_at,p.updated_at,p.featured_image_id,
+                        i.img_file AS featured_image_path FROM snap_posts p
                  LEFT JOIN snap_images i ON i.id = p.featured_image_id
                  WHERE p.slug = ? AND p.post_type = 'longform' AND p.status = 'published' LIMIT 1"
             );
             $stmt->execute([$slug]);
         } else {
             $stmt = $pdo->prepare(
-                "SELECT p.*, i.img_file AS featured_image_path FROM snap_posts p
+                "SELECT p.id,p.title,p.slug,p.content,p.colophon,p.signature_image_id,p.user_id,
+                        p.allow_comments,p.created_at,p.updated_at,p.featured_image_id,
+                        i.img_file AS featured_image_path FROM snap_posts p
                  LEFT JOIN snap_images i ON i.id = p.featured_image_id
                  WHERE p.id = ? AND p.post_type = 'longform' AND p.status = 'published' LIMIT 1"
             );
