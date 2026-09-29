@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.778D — 2026-09-29 — Explicit authority
+
+- **The shared skin gate accepts an explicit authority root for isolated tooling.** Runtime callers retain the installed CMS root by default, while SMACK CENTRAL passes its selected-ref build root directly. Asset-handle validation therefore uses the catalogue and legacy map that belong to the exact skin source under review, independent of where the policy file itself was loaded. (`core/skin-security-policy.php`, `smack-central/sc-skins.php`, `tests/skin-package-lifecycle-regression.php`.)
+
 ## 0.7.777D — 2026-09-29 — Complete context
 
 - **The isolated skin build gate receives the complete central authority context.** Both full-repository and one-skin packaging now copy the selected ref's machine-readable asset catalogue alongside its security policy and PHP manifest inventory. Shared CMS asset handles can be verified without granting the standalone publisher access to a live CMS tree; absence or mismatch still blocks signing. (`smack-central/sc-skins.php`, `tests/skin-package-lifecycle-regression.php`.)
