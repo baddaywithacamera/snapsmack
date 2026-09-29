@@ -124,11 +124,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
                     ->execute([$slug, $slug]);
                 $gallery_msg = 'Skin "' . $slug . '" is now active.';
                 $keep_skins = defined('SNAPSMACK_MOBILE_SKIN') ? [SNAPSMACK_MOBILE_SKIN] : [];
-                $evaporated = skin_registry_evaporate_parked((string)$active, $slug, $keep_skins);
+                $evaporated = skin_registry_evaporate_inactive($slug, $keep_skins);
                 if (empty($evaporated['success'])) {
-                    $gallery_err = 'The new skin is active, but the parked skin could not be removed: ' . $evaporated['message'];
-                } elseif (!empty($evaporated['removed'])) {
-                    $gallery_msg .= ' The parked skin was removed; its saved settings were retained.';
+                    $gallery_err = 'The new skin is active, but some inactive skins could not be removed: ' . implode(' ', $evaporated['failed']);
+                } elseif (count($evaporated['removed']) > 0) {
+                    $gallery_msg .= ' Inactive skins were removed; their saved settings were retained.';
                 }
 
                 // Keep site_mode in lockstep with the activated skin — same rule
@@ -513,11 +513,11 @@ if (isset($_POST['save_skin_settings'])) {
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
         ->execute([$active_skin, $active_skin]);
     $keep_skins = defined('SNAPSMACK_MOBILE_SKIN') ? [SNAPSMACK_MOBILE_SKIN] : [];
-    $evaporated = skin_registry_evaporate_parked($_parked_skin, $active_skin, $keep_skins);
+    $evaporated = skin_registry_evaporate_inactive($active_skin, $keep_skins);
     if (empty($evaporated['success'])) {
-        $_SESSION['gallery_flash'] = 'The new skin is active, but the parked skin could not be removed: ' . $evaporated['message'];
-    } elseif (!empty($evaporated['removed'])) {
-        $_SESSION['gallery_flash'] = 'Skin activated. The parked skin was removed; its saved settings were retained.';
+        $_SESSION['gallery_flash'] = 'The new skin is active, but some inactive skins could not be removed: ' . implode(' ', $evaporated['failed']);
+    } elseif (count($evaporated['removed']) > 0) {
+        $_SESSION['gallery_flash'] = 'Skin activated. Inactive skins were removed; their saved settings were retained.';
     }
 
     // Keep site_mode in lockstep with the activated skin. Each skin declares the
