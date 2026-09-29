@@ -1,25 +1,34 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "name": "HEURISTIC",
     "version": "0.1.3",
     "author": "Sean McCormick with Claude and OpenAI Codex",
     "support": "sean@baddaywithacamera.ca",
     "description": "A GRAMOFSMACK skin inspired by the logical memory and infomatic displays of serious old science fiction. Photographs remain photographs until HAL requires the screen.",
     "status": "experimental",
-    "modes": ["carousel"],
+    "modes": [
+        "carousel"
+    ],
     "post_page": "gram",
     "edit_page": "carousel",
     "features": {
         "supports_wall": false,
         "masonry_supported": false,
-        "archive_layouts": ["square"],
+        "archive_layouts": [
+            "square"
+        ],
         "supports_slider": false,
         "has_landing": true,
-        "post_modes": ["image"],
+        "post_modes": [
+            "image"
+        ],
         "instagram_mode": true,
         "carousel": true,
         "mobile_only": false,
-        "community": ["likes", "comments"]
+        "community": [
+            "likes",
+            "comments"
+        ]
     },
     "require_scripts": [
         "smack-keyboard",
@@ -80,7 +89,10 @@
             "type": "select",
             "label": "Optical Memory Activity",
             "default": "1",
-            "options": {"1": "On", "0": "Off"}
+            "options": {
+                "1": "On",
+                "0": "Off"
+            }
         },
         "he_memory_red": {
             "section": "LOGIC MEMORY CENTRE",
@@ -93,14 +105,20 @@
             "type": "select",
             "label": "Tile Infomatics",
             "default": "1",
-            "options": {"1": "On", "0": "Off"}
+            "options": {
+                "1": "On",
+                "0": "Off"
+            }
         },
         "he_classic_fallback": {
             "section": "INFOMATICS",
             "type": "select",
             "label": "Classic Automatic Screens",
             "default": "1",
-            "options": {"1": "On", "0": "Mapped posts only"},
+            "options": {
+                "1": "On",
+                "0": "Mapped posts only"
+            },
             "hint": "When enabled, unmapped photographs occasionally display a classic system screen."
         },
         "he_first_delay": {
@@ -168,35 +186,54 @@
             "type": "select",
             "label": "Profile Header",
             "default": "1",
-            "options": {"1": "Show", "0": "Hide"}
+            "options": {
+                "1": "Show",
+                "0": "Hide"
+            }
         },
         "he_show_tagline": {
             "section": "PROFILE",
             "type": "select",
             "label": "Tagline",
             "default": "1",
-            "options": {"1": "Show", "0": "Hide"}
+            "options": {
+                "1": "Show",
+                "0": "Hide"
+            }
         },
         "he_carousel_indicator": {
             "section": "GRID",
             "type": "select",
             "label": "Carousel Indicator",
             "default": "icon",
-            "options": {"icon": "Stack icon", "count": "Image count", "none": "None"}
+            "options": {
+                "icon": "Stack icon",
+                "count": "Image count",
+                "none": "None"
+            }
         },
         "he_hover_overlay": {
             "section": "GRID",
             "type": "select",
             "label": "Hover Information",
             "default": "title",
-            "options": {"title": "Post title", "count": "Image count", "dark": "Darken only", "none": "None"}
+            "options": {
+                "title": "Post title",
+                "count": "Image count",
+                "dark": "Darken only",
+                "none": "None"
+            }
         },
         "he_customize_level": {
             "section": "IMAGE FRAMES",
             "type": "select",
             "label": "Frame Source",
             "default": "per_grid",
-            "options": {"per_grid": "One frame for this grid", "per_carousel": "Per post", "per_image": "Per image"}
+            "options": {
+                "per_grid": "One frame for this grid",
+                "per_carousel": "Per post",
+                "per_image": "Per image"
+            }
         },
         "he_frame_size_pct": {
             "section": "IMAGE FRAMES",
@@ -235,7 +272,29 @@
             "type": "select",
             "label": "Frame Shadow",
             "default": "0",
-            "options": {"0": "None", "1": "Light", "2": "Medium", "3": "Heavy"}
+            "options": [
+                "None",
+                "Light",
+                "Medium",
+                "Heavy"
+            ]
         }
+    },
+    "security_policy": 2,
+    "cms_controller": "public",
+    "view_model": "snapsmack.public.v1",
+    "templates": {
+        "landing": "layout.php",
+        "photo": "layout.php",
+        "post": "layout.php",
+        "archive": "layout.php",
+        "page": "layout.php",
+        "search": "layout.php",
+        "hashtag": "layout.php",
+        "albums": "layout.php",
+        "collections": "layout.php",
+        "collection": "layout.php",
+        "not_found": "layout.php",
+        "default": "layout.php"
     }
 }

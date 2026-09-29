@@ -1,5 +1,5 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "name": "JIVE TURKEY",
     "version": "0.1.27",
     "author": "Sean McCormick",
@@ -1323,5 +1323,22 @@
             "unit": "%",
             "hint": "Centre = none. Drag left to darken the background, right to lighten it."
         }
+    },
+    "security_policy": 2,
+    "cms_controller": "public",
+    "view_model": "snapsmack.public.v1",
+    "templates": {
+        "landing": "layout.php",
+        "photo": "layout.php",
+        "post": "layout.php",
+        "archive": "layout.php",
+        "page": "layout.php",
+        "search": "layout.php",
+        "hashtag": "layout.php",
+        "albums": "layout.php",
+        "collections": "layout.php",
+        "collection": "layout.php",
+        "not_found": "layout.php",
+        "default": "layout.php"
     }
 }
