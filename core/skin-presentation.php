@@ -57,7 +57,9 @@ function snapsmack_instant_camera_presentation(array $settings): array
         $hex = ltrim(snapsmack_skin_hex($settings, 'ic_navline_shadow_color', '#000000'), '#');
         [$r,$g,$b] = [hexdec(substr($hex,0,2)),hexdec(substr($hex,2,2)),hexdec(substr($hex,4,2))];
         $n = $lineShadowSize;
-        $lineShadow = sprintf('0 %1$dpx %1$dpx -%1$dpx rgba(%2$d,%3$d,%4$d,%.2F),inset 0 %1$dpx %1$dpx -%1$dpx rgba(%2$d,%3$d,%4$d,%.2F)', $n,$r,$g,$b,$lineShadowOpacity/100,$lineShadowOpacity/100);
+        $alpha = number_format($lineShadowOpacity / 100, 2, '.', '');
+        $lineShadow = "0 {$n}px {$n}px -{$n}px rgba({$r},{$g},{$b},{$alpha}),"
+            . "inset 0 {$n}px {$n}px -{$n}px rgba({$r},{$g},{$b},{$alpha})";
     }
     $vars = [
         '--ic-tile-aspect'=>$aspect,

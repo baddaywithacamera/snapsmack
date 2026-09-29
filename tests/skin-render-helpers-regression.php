@@ -60,6 +60,7 @@ $instantPresentation = snapsmack_instant_camera_presentation([
     'ic_scrim' => '85', 'ic_panel_color' => '#abcdef', 'ic_panel_opacity' => '65',
     'ic_format' => 'polaroid', 'mayhem_initial_count' => '90', 'mayhem_max_width' => '180',
     'mayhem_overlap_max' => '70', 'mayhem_drift' => '0', 'mayhem_warp' => '1',
+    'ic_navline_shadow_color' => '#102030', 'ic_navline_shadow_size' => '2', 'ic_navline_shadow_opacity' => '80',
 ]);
 $instant = snap_render_html(snap_render_component('public-page', [
     'site' => ['site_name' => 'Camera', 'tagline' => 'Tag', 'site_description' => 'Bio', 'avatar_url' => '/avatar.jpg', 'skin_slug' => 'instant-camera', 'skin_custom_style' => $compiledStyle, 'skin_presentation' => $instantPresentation, 'registered_assets' => ['scripts' => ['/assets/js/ss-engine-organized-mayhem.js']]],
@@ -68,7 +69,7 @@ $instant = snap_render_html(snap_render_component('public-page', [
         'img_file' => 'img_uploads/photo.jpg', 'img_thumb_aspect' => 'img_uploads/thumbs/a_photo.jpg',
     ]]],
 ]));
-foreach (['id="snapsmack-dynamic-css"', '--saved:#123456', 'id="snapsmack-skin-presentation"', '--ic-scrim:0.85', '--panel-bg:rgba(171,205,239,0.65)', '--ic-tile-aspect:823 / 1000', 'class="ic-bg ic-bg-mayhem"', 'data-initial-count="90"', 'data-max-width="180"', 'data-overlap-max="0.70"', 'data-drift="0"', 'data-warp="1"', 'class="ic-scrim"', 'class="ic-panel"', 'class="tg-content-wrap landing-feed"', 'class="tg-profile-avatar"', 'class="tg-profile-username"', 'class="tg-sticky-nav-links"', 'id="browse-grid" class="tg-grid', 'class="tg-tile"', 'img_uploads/thumbs/a_photo.jpg', '&lt;Photo&gt;', 'data-mayhem'] as $hook) {
+foreach (['id="snapsmack-dynamic-css"', '--saved:#123456', 'id="snapsmack-skin-presentation"', '--ic-scrim:0.85', '--panel-bg:rgba(171,205,239,0.65)', '--ic-tile-aspect:823 / 1000', '--ic-navline-shadow:0 2px 2px -2px rgba(16,32,48,0.80),inset 0 2px 2px -2px rgba(16,32,48,0.80)', 'class="ic-bg ic-bg-mayhem"', 'data-initial-count="90"', 'data-max-width="180"', 'data-overlap-max="0.70"', 'data-drift="0"', 'data-warp="1"', 'class="ic-scrim"', 'class="ic-panel"', 'class="tg-content-wrap landing-feed"', 'class="tg-profile-avatar"', 'class="tg-profile-username"', 'class="tg-sticky-nav-links"', 'id="browse-grid" class="tg-grid', 'class="tg-tile"', 'img_uploads/thumbs/a_photo.jpg', '&lt;Photo&gt;', 'data-mayhem'] as $hook) {
     if (!str_contains($instant, $hook)) throw new RuntimeException("INSTANT CAMERA CMS renderer lost hook: {$hook}");
 }
 if (snap_route_url('unknown') !== '') throw new RuntimeException('Unknown route did not fail closed.');
