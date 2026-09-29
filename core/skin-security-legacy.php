@@ -28,7 +28,6 @@ return [
  'sudden-impact'=>['database-api'=>6,'database-handle'=>12,'direct-script-tag'=>1,'inline-script'=>1,'php-declaration'=>2,'php-include'=>29,'request-global'=>8,'sql-statement'=>13],
  'telegram'=>['database-api'=>7,'database-handle'=>18,'direct-script-tag'=>3,'php-declaration'=>3,'php-include'=>16,'request-global'=>5,'response-control'=>3,'sql-statement'=>11],
  'the-grid'=>['database-api'=>6,'database-handle'=>12,'direct-script-tag'=>1,'inline-script'=>1,'php-declaration'=>2,'php-include'=>29,'request-global'=>8,'sql-statement'=>13],
- 'tilez'=>['direct-script-tag'=>3,'php-declaration'=>1,'php-include'=>8],
  'true-grit'=>['database-api'=>2,'database-handle'=>3,'direct-script-tag'=>1,'php-include'=>15,'request-global'=>1,'sql-statement'=>2],
  'writing-with-impact'=>['database-api'=>8,'database-handle'=>18,'direct-script-tag'=>2,'php-declaration'=>4,'php-include'=>16,'request-global'=>5,'response-control'=>2,'sql-statement'=>12],
 ];

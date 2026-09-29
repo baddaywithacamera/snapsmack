@@ -1,7 +1,7 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "name": "TILEZ",
-    "version": "0.2.43",
+    "version": "0.2.44",
     "author": "Sean McCormick & Claude",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A quiet white SMACKTALK portfolio inspired by editorial design studios. Longform posts flow through a native-aspect three-column wall powered by SnapSmack's shared columns engine.",
@@ -11,6 +11,16 @@
     ],
     "skin_preload": "preload.php",
     "cms_controller": "smacktalk",
+    "view_model": "smacktalk.public.v1",
+    "templates": {
+        "public": "preload.php"
+    },
+    "capabilities": [
+        "navigation",
+        "longform",
+        "image-archive",
+        "comments"
+    ],
     "cms_navigation": [
         {"type": "home", "label": "HOME"},
         {"type": "page", "slug": "about", "label": "ABOUT"},
@@ -44,7 +54,9 @@
         "smack-columns",
         "smack-rows",
         "smack-lightbox",
-        "smack-community"
+        "smack-community",
+        "smack-mosaic",
+        "smack-alfred-archive"
     ],
     "community_comments": "1",
     "community_likes": "0",

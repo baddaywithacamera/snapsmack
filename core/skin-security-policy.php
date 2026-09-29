@@ -21,6 +21,7 @@ function snapsmack_skin_policy_scan_php(string $path, string $rel): array {
     if ($source === false) return [];
     $findings = [];
     $tokens = token_get_all($source);
+    $source_lines = preg_split('/\R/', $source);
     $line = 1;
     $dangerous_calls = [
         'header' => 'response-control', 'setcookie' => 'cookie-access',
@@ -60,7 +61,18 @@ function snapsmack_skin_policy_scan_php(string $path, string $rel): array {
                 $findings[] = snapsmack_skin_policy_finding($rel, $line, 'database-api', $text);
             }
         } elseif (in_array($id, [T_INCLUDE, T_INCLUDE_ONCE, T_REQUIRE, T_REQUIRE_ONCE], true)) {
-            $findings[] = snapsmack_skin_policy_finding($rel, $line, 'php-include', trim($text));
+            $statement = (string)($source_lines[$line - 1] ?? '');
+            $local_template = preg_match(
+                '#\b(?:include|require)(?:_once)?\s*(?:\(\s*)?__DIR__\s*\.\s*["\']/[a-zA-Z0-9._-]+["\']#',
+                $statement
+            );
+            $approved_core = preg_match(
+                '#/core/(?:meta|footer|footer-scripts|community-component)\.php["\']#',
+                $statement
+            );
+            if (!$local_template && !$approved_core) {
+                $findings[] = snapsmack_skin_policy_finding($rel, $line, 'php-include', trim($text));
+            }
         } elseif (in_array($id, [T_FUNCTION, T_CLASS, T_TRAIT, T_INTERFACE], true)) {
             $findings[] = snapsmack_skin_policy_finding($rel, $line, 'php-declaration', trim($text));
         } elseif ($id === T_EVAL) {
@@ -114,6 +126,20 @@ function snapsmack_skin_security_findings(string $skin_dir): array {
         return [snapsmack_skin_policy_finding('', 0, 'not-a-directory', $skin_dir)];
     }
     $findings = [];
+    $manifest_path = $skin_dir . '/manifest.json';
+    $manifest = json_decode((string)@file_get_contents($manifest_path), true);
+    if (is_array($manifest) && (int)($manifest['schema_version'] ?? 0) >= 2) {
+        foreach (['cms_controller', 'view_model', 'templates'] as $required) {
+            if (!isset($manifest[$required]) || $manifest[$required] === '' || $manifest[$required] === []) {
+                $findings[] = snapsmack_skin_policy_finding('manifest.json', 0, 'manifest-contract', "Missing {$required}");
+            }
+        }
+        foreach (($manifest['templates'] ?? []) as $template) {
+            if (!is_string($template) || !preg_match('/^[a-zA-Z0-9._-]+\.php$/', $template)) {
+                $findings[] = snapsmack_skin_policy_finding('manifest.json', 0, 'manifest-template-path', (string)$template);
+            }
+        }
+    }
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($skin_dir, FilesystemIterator::SKIP_DOTS)
     );
