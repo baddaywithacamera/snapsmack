@@ -46,6 +46,16 @@ $mayhem = snap_render_html(snap_render_component('public-page', [
     'response' => ['kind' => 'landing', 'navigation' => [], 'items' => []],
 ]));
 if (!str_contains($mayhem, 'data-mayhem') || !str_contains($mayhem, 'data-api-url="?ajax=mayhem"')) throw new RuntimeException('CMS did not mount the declared Organized Mayhem engine.');
+$instant = snap_render_html(snap_render_component('public-page', [
+    'site' => ['site_name' => 'Camera', 'skin_slug' => 'instant-camera', 'registered_assets' => ['scripts' => ['/assets/js/ss-engine-organized-mayhem.js']]],
+    'response' => ['kind' => 'landing', 'navigation' => [], 'items' => [[
+        'img_slug' => 'sample', 'img_title' => '<Photo>', 'img_alt' => 'Alt',
+        'img_file' => 'img_uploads/photo.jpg', 'img_thumb_aspect' => 'img_uploads/thumbs/a_photo.jpg',
+    ]]],
+]));
+foreach (['class="tg-content-wrap landing-feed"', 'id="browse-grid" class="tg-grid', 'class="tg-tile"', 'img_uploads/thumbs/a_photo.jpg', '&lt;Photo&gt;', 'data-mayhem'] as $hook) {
+    if (!str_contains($instant, $hook)) throw new RuntimeException("INSTANT CAMERA CMS renderer lost hook: {$hook}");
+}
 if (snap_route_url('unknown') !== '') throw new RuntimeException('Unknown route did not fail closed.');
 if (snap_asset_url('../evil') !== '') throw new RuntimeException('Unknown/traversal asset handle was accepted.');
 
