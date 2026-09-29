@@ -223,11 +223,21 @@ try {
         require_once __DIR__ . '/core/skin-render-helpers.php';
         require_once __DIR__ . '/core/skin-view-contract.php';
         require_once __DIR__ . '/core/skin-presentation.php';
+        $_public_settings = $settings;
+        if ($active_skin === 'instant-camera') {
+            // This grid's shared progressive-reveal engine folds the complete
+            // lazy-image DOM in batches; it cannot reveal rows omitted server-side.
+            $_public_settings['_cms_full_landing'] = true;
+            $_public_settings['posts_per_page'] = 5000;
+        }
         $_public = snapsmack_public_runtime($pdo, [
             'view' => $_GET['view'] ?? '', 'query' => $_GET['q'] ?? '',
             'tag' => $_GET['tag'] ?? '', 'slug' => $requested_slug ?? ($_GET['slug'] ?? ''),
             'id' => $_GET['id'] ?? 0, 'page' => $_GET['page'] ?? 1,
-        ], $settings);
+        ], $_public_settings);
+        if (!empty($skin_view['navigation']) && is_array($skin_view['navigation'])) {
+            $_public['navigation'] = $skin_view['navigation'];
+        }
         http_response_code((int)($_public['status'] ?? 500));
         $_strict_view = snapsmack_build_skin_view($_public, [
             'site_name' => (string)($settings['site_name'] ?? ''),
