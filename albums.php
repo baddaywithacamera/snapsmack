@@ -31,6 +31,7 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/parser.php';
 require_once __DIR__ . '/core/skin-settings.php';
+require_once __DIR__ . '/core/skin-view-model.php';
 
 // SMACKBACK: silent stat check on public page loads
 try {
@@ -73,6 +74,7 @@ try {
 
     // Overlay skin-scoped settings
     snapsmack_apply_skin_settings($settings, $active_skin);
+    $skin_view = snapsmack_prepare_skin_view($pdo, $settings, $active_skin);
 
     // --- ALBUM QUERY ---
     // Fetch all albums that contain at least one published image.

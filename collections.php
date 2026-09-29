@@ -22,6 +22,7 @@
 
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/skin-settings.php';
+require_once __DIR__ . '/core/skin-view-model.php';
 
 // SMACKBACK: silent stat check on public page loads
 try {
@@ -50,6 +51,7 @@ if (snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)
     $active_skin = SNAPSMACK_MOBILE_SKIN;
 }
 snapsmack_apply_skin_settings($settings, $active_skin);
+$skin_view = snapsmack_prepare_skin_view($pdo, $settings, $active_skin);
 
 // Sort resolution: URL → cookie → admin setting → 'manual'.
 $valid_sorts = ['manual', 'alphabetical', 'newest', 'oldest'];
