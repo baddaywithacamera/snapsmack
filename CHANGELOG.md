@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.784D — 2026-09-29 — Complete Instant Camera settings bridge
+
+- **INSTANT CAMERA's remaining saved controls now cross the strict presentation boundary through the CMS.** The schema-v2 conversion had removed skin-owned PHP correctly, but 0.7.783D restored only the compiled CSS blob; legacy PHP-derived values such as the white scrim opacity, panel/nav translucency, print aspect and shadow, text glows, and ORGANIZED MAYHEM sizing were still absent or hardcoded. A central CMS presentation helper now validates and transforms those stored values into an opaque trusted-style token and bounded inert engine attributes. With an 85% saved scrim, core emits `--ic-scrim:0.85`; saved Mayhem count, maximum print width, overlap, drift, and warp settings replace the renderer defaults. The skin receives no PHP, SQL, filesystem, network, or execution authority. (`core/skin-presentation.php`, `core/skin-render-helpers.php`, `core/skin-view-contract.php`, `index.php`, `tests/skin-render-helpers-regression.php`.)
+
 ## 0.7.783D — 2026-09-29 — Saved skin settings restored
 
 - **Presentation-only skins once again receive their saved visual settings.** The strict controller path loaded skin-scoped settings but failed to emit the CMS-compiled `custom_css_public` block, so every configured colour, opacity, size, type, spacing, and frame control silently fell back to the skin default. Core now creates an opaque, CMS-only style token, neutralizes literal `<` characters so saved CSS cannot escape into executable markup, admits only that token through the bounded view contract, and renders it through the shared component used by all strict skins. The settings remain central and skins gain no database, PHP, filesystem, or arbitrary execution authority. (`core/custom-code-policy.php`, `core/skin-render-helpers.php`, `core/skin-view-contract.php`, `index.php`, `tests/skin-render-helpers-regression.php`, `tests/skin-view-contract-regression.php`.)

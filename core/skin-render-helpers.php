@@ -67,11 +67,13 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $response = is_array($data['response'] ?? null) ? $data['response'] : [];
         $site = is_array($data['site'] ?? null) ? $data['site'] : [];
         $html .= snap_render_html($site['skin_custom_style'] ?? '');
+        $presentation = is_array($site['skin_presentation'] ?? null) ? $site['skin_presentation'] : [];
+        $html .= snap_render_html($presentation['style'] ?? '');
         $kind = (string)($response['kind'] ?? 'not_found');
         $registered = is_array($site['registered_assets'] ?? null) ? $site['registered_assets'] : [];
         foreach (($registered['scripts'] ?? []) as $script_url) {
             if (is_string($script_url) && str_contains($script_url, 'ss-engine-organized-mayhem.js')) {
-                $html .= '<div id="organized-mayhem" class="ic-bg ic-bg-mayhem" aria-hidden="true" data-mayhem data-api-url="?ajax=mayhem" data-pan="0" data-ambient="1" data-initial-count="120" data-max-mounted="180"></div>';
+                $html .= '<div id="organized-mayhem" class="ic-bg ic-bg-mayhem" aria-hidden="true" data-mayhem data-api-url="?ajax=mayhem" data-pan="0" data-ambient="1" data-initial-count="' . (int)($presentation['mayhem_initial_count'] ?? 120) . '" data-max-width="' . (int)($presentation['mayhem_max_width'] ?? 300) . '" data-overlap-max="' . snap_escape_attr($presentation['mayhem_overlap_max'] ?? '0.85') . '" data-drift="' . (!empty($presentation['mayhem_drift']) ? '1' : '0') . '" data-warp="' . (!empty($presentation['mayhem_warp']) ? '1' : '0') . '"></div>';
                 break;
             }
         }
