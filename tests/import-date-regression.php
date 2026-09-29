@@ -18,7 +18,7 @@ id_check('repair script is CLI only', strpos($rep, "php_sapi_name() !== 'cli'") 
 id_check('repair script is dry-run unless --apply', strpos($rep, "\$apply  = array_key_exists('apply', \$opts);") !== false && strpos($rep, 'Dry run only. Re-run with --apply') !== false);
 id_check('repair script never touches sort_order', strpos($rep, 'sort_order') !== false && strpos($rep, "UPDATE snap_images SET img_date = ? WHERE id = ?") !== false && strpos($rep, 'SET sort_order') === false);
 id_check('repair script requires a window', strpos($rep, 'Give the window: --since=') !== false);
-$sl = file_get_contents(__DIR__ . '/../skins/slickr/landing.php');
-id_check('SLICKR stream: manual order, then photo date, newest first', strpos($sl, "ORDER BY sort_order ASC, img_date DESC, id DESC") !== false);
+$repo = file_get_contents(__DIR__ . '/../core/public-repository.php');
+id_check('CMS stream preserves manual order before newest fallback', strpos($repo, 'CASE WHEN sort_order>0 THEN 1 ELSE 0 END ASC,sort_order ASC,id DESC') !== false);
 echo "PASS: import date regression\n";
 // ===== SNAPSMACK EOF =====
