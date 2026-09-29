@@ -587,6 +587,21 @@ function skin_registry_evaporate_parked(string $parked_slug, string $active_skin
     return $result;
 }
 
+/** Remove every inactive installed skin after a successful switch. */
+function skin_registry_evaporate_inactive(string $active_skin, array $keep = []): array {
+    $removed = [];
+    $failed = [];
+    $dirs = array_filter(glob(SKINS_DIR . '/*') ?: [], 'is_dir');
+    foreach ($dirs as $dir) {
+        $slug = basename($dir);
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $slug)) continue;
+        $result = skin_registry_evaporate_parked((string)$slug, $active_skin, $keep);
+        if (empty($result['success'])) $failed[$slug] = (string)($result['message'] ?? 'Removal failed.');
+        elseif (!empty($result['removed'])) $removed[] = $slug;
+    }
+    return ['success' => !$failed, 'removed' => $removed, 'failed' => $failed];
+}
+
 
 // --- INTERNAL HELPERS ---
 
