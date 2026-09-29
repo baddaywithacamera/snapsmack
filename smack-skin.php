@@ -25,6 +25,7 @@
 require_once 'core/auth-smack.php';
 require_once 'core/skin-registry.php';
 require_once 'core/skin-settings.php';
+require_once 'core/skin-view-model.php';
 require_once 'core/mode-guard.php';
 
 // --- SETTINGS BOOTSTRAP ---
@@ -118,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gallery_action'])) {
                 } elseif ($_min_refusal !== null) {
                     $gallery_err = $_min_refusal . ' No skin was changed.';
                 } else {
+                snapsmack_initialize_skin_media_slots($pdo, $settings, $slug);
                 $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('active_skin', ?) ON DUPLICATE KEY UPDATE setting_val = ?")
                     ->execute([$slug, $slug]);
                 $gallery_msg = 'Skin "' . $slug . '" is now active.';
