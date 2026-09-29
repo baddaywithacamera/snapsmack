@@ -56,25 +56,18 @@ $datePos = strpos($preload, '<p class="post-date">');
 $assert($titlePos !== false && $datePos !== false && $titlePos < $datePos, 'single-post date sits below the title');
 $assert(str_contains($preload, '<dt>Photos</dt>') && str_contains($preload, '<dt>Words</dt>'), 'post record includes photo and word counts');
 $assert(str_contains($preload, '<dt>Category</dt>') && str_contains($preload, '<dt>Album</dt>') && str_contains($preload, '<dt>Author</dt>'), 'post record includes taxonomy and author');
-$assert(str_contains($preload, '$_alfred_gear_note') && str_contains($style, '.post-mobile-gear'), 'camera notes move to the record and follow the essay on mobile');
+$assert(str_contains($preload, "\$_alfred_post['colophon']") && str_contains($style, '.post-mobile-gear'), 'the canonical colophon is presented in the record and follows the essay on mobile');
 $assert(str_contains($preload, '$_alfred_signature')
-    && str_contains($preload, 'sean-mccormick-black-low-res')
-    && str_contains($preload, '$signature_pattern')
+    && str_contains($preload, "\$_alfred_post['signature_image_id']")
     && str_contains($preload, 'post-signature post-signature--closing')
     && str_contains($style, '.post-signature--closing'),
-    'the imported handwritten signature is removed from prose and restored once at the essay close');
-$assert(str_contains($preload, "LOWER(img_title) NOT LIKE '%signature%'")
-    && str_contains($preload, "LOWER(img_title) NOT LIKE '%sean-mccormick-black-low-res%'"),
-    'decorative signatures do not appear as black photograph tiles in the archive');
-$assert(str_contains($preload, '$legacy_is_colophon')
-    && str_contains($preload, 'photos? (?:from|(?:taken|made|shot) with)')
-    && str_contains($preload, 'count($legacy_equipment_terms) >= 3'),
-    'varied legacy closing equipment paragraphs are recognized as recurring post colophons');
-$legacyFixture = "<div class=\"initial-letter\"><p>Opening paragraph.</p><div><img src=\"photo.jpg\"></div><p>The main camera was a Canon EOS 7D with a Helios lens and DJI drone.</p></div>\n\n";
-$legacyPattern = '~(<p\b[^>]*>(?:(?!<p\b).)*?</p>)(?:\s*</div>)*\s*$~is';
-$assert(preg_match($legacyPattern, $legacyFixture, $legacyMatch, PREG_OFFSET_CAPTURE) === 1
-    && $legacyMatch[1][0] === '<p>The main camera was a Canon EOS 7D with a Helios lens and DJI drone.</p>',
-    'legacy colophon matching captures only the final paragraph, including imports with trailing whitespace');
+    'the canonical signature image is presented once at the essay close');
+$assert(str_contains($preload, 'SELECT signature_image_id FROM snap_posts'),
+    'semantic signature images, rather than filename guesses, stay out of the photograph archive');
+$assert(!str_contains($preload, 'legacy_is_colophon')
+    && !str_contains($preload, 'sean-mccormick-black-low-res')
+    && !str_contains($preload, 'LOWER(img_title)'),
+    'TILEZ contains no WordPress-era prose or filename inference');
 $assert(str_contains($style, '.post-gear-note'), 'closing equipment notes have a readable supporting style');
 $assert(str_contains($style, "font-family: Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif;"), 'longform body uses the lighter editorial sans face');
 $assert(str_contains($style, 'font-size: 19px;') && str_contains($style, 'font-weight: 400;'), 'desktop longform body is readable and normal-weight');
@@ -99,8 +92,8 @@ $assert(str_contains($style, 'filter: brightness(.66);')
     && str_contains($style, 'transform: scale(1.065);'),
     'landing tiles zoom and darken decisively on hover and keyboard focus');
 $assert(str_contains($style, 'background: transparent;')
-    && str_contains($style, 'background: rgba(0,0,0,.48);')
-    && str_contains($style, 'background: rgba(0,0,0,.76);'),
+    && str_contains($style, 'background: rgba(0,0,0,.30);')
+    && str_contains($style, 'background: rgba(0,0,0,.72);'),
     'landing photographs stay bright while persistent white title labels strengthen on interaction');
 $assert(str_contains($style, 'opacity: 1;')
     && str_contains($style, '.archive-post-header {'),

@@ -148,6 +148,7 @@ class DraftImage:
     sensitive:    str = "no"
     sort_position: int = 0    # carousel order (0-based)
     is_cover:     bool = False
+    is_signature: bool = False  # semantic closing mark; importer/UI sets it explicitly
     # Per-image GRAM controls — map 1:1 to snap_post_images columns. These are
     # EXACTLY the controls the web gram poster (smack-post-gram.php) exposes.
     crop_mode:    str = "fit"      # 'fit' (image-in-tile) | 'fill' (square cover-crop)
@@ -195,6 +196,7 @@ class Draft:
     # Post fields (superset; only the ones relevant to `kind` are used on sync).
     title:      str = ""
     caption:    str = ""                  # body / description — ALWAYS the synced truth
+    colophon:   str = ""                  # optional post-production/equipment note
     body_blocks: str = ""                 # BIGGIE authoring blocks (JSON array); caption
                                           # is recomputed from these on every save, so a
                                           # BIGGIE-off build always reads a correct body
