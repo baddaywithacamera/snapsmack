@@ -60,6 +60,9 @@ try {
     $settings_stmt = $pdo->query("SELECT setting_key, setting_val FROM snap_settings");
     $settings = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
+    require_once __DIR__ . '/core/custom-code-policy.php';
+    snapsmack_emit_public_csp(snapsmack_owner_custom_code_enabled($settings));
+
     require_once __DIR__ . '/core/maintenance-gate.php';
 
     // ── Organized Mayhem JSON endpoint (early intercept) ──────────────────
@@ -194,6 +197,7 @@ try {
                     'direction' => 'ltr',
                     'owner_name' => (string)($settings['site_author'] ?? ''),
                     'skin_style_url' => (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin) . '/style.css',
+                    'owner_custom_code' => snapsmack_owner_custom_code($settings),
                 ]);
                 $_template_map = is_array($_active_manifest['templates'] ?? null) ? $_active_manifest['templates'] : [];
                 $_strict_template = (string)($_template_map[$_smacktalk['kind'] ?? ''] ?? $_template_map['default'] ?? '');
@@ -232,6 +236,7 @@ try {
             'language' => 'en', 'direction' => 'ltr',
             'owner_name' => (string)($settings['site_author'] ?? ''),
             'skin_style_url' => (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin) . '/style.css',
+            'owner_custom_code' => snapsmack_owner_custom_code($settings),
         ]);
         $_template_map = is_array($_active_manifest['templates'] ?? null) ? $_active_manifest['templates'] : [];
         $_strict_template = (string)($_template_map[$_public['kind'] ?? ''] ?? $_template_map['default'] ?? '');

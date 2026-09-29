@@ -12,7 +12,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
         'albums', 'author', 'colophon', 'photo_count', 'word_count', 'comments_enabled',
         'show_titles'];
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
-        'direction', 'brand_logo', 'owner_name', 'skin_style_url'];
+        'direction', 'brand_logo', 'owner_name', 'skin_style_url', 'owner_custom_code'];
     return [
         'model' => 'snapsmack.public',
         'version' => SNAPSMACK_SKIN_VIEW_MODEL_VERSION,
@@ -32,7 +32,7 @@ function snapsmack_validate_skin_view(array $view, ?string &$reason = null): boo
         return false;
     }
     $walk = static function ($value) use (&$walk): bool {
-        if (is_null($value) || is_scalar($value) || $value instanceof SnapTrustedHtml) return true;
+        if (is_null($value) || is_scalar($value) || $value instanceof SnapTrustedHtml || $value instanceof SnapOwnerCode) return true;
         if (!is_array($value)) return false;
         foreach ($value as $key => $child) {
             if (!is_int($key) && !is_string($key)) return false;

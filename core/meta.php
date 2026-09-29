@@ -25,6 +25,9 @@
 if (defined('SNAPSMACK_META_EMITTED')) { return; }
 define('SNAPSMACK_META_EMITTED', true);
 
+require_once __DIR__ . '/custom-code-policy.php';
+snapsmack_emit_public_csp(snapsmack_owner_custom_code_enabled($settings ?? []));
+
 require_once __DIR__ . '/indieweb.php';
 
 // --- CSS VARIABLES (GRID GAP) ---
@@ -524,9 +527,9 @@ if (!empty($_smack_js_config)):
 // Head scripts stored in a file so SMACKBACK can watch for tampering.
 // Falls back to DB for installs that have not yet re-saved via smack-scripts.php.
 $_custom_head_file = dirname(__DIR__) . '/data/custom-head.html';
-if (file_exists($_custom_head_file) && ($__head = file_get_contents($_custom_head_file)) !== false && trim($__head) !== ''):
+if (snapsmack_owner_custom_code_enabled($settings ?? []) && file_exists($_custom_head_file) && ($__head = file_get_contents($_custom_head_file)) !== false && trim($__head) !== ''):
     echo $__head;
-elseif (!empty($settings['custom_head_scripts'])):
+elseif (snapsmack_owner_custom_code_enabled($settings ?? []) && !empty($settings['custom_head_scripts'])):
     echo $settings['custom_head_scripts'];
 endif;
 unset($_custom_head_file, $__head);
