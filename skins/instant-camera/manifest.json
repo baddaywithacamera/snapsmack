@@ -1,5 +1,5 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "name": "INSTANT CAMERA",
     "version": "1.0.37",
     "min_images": 200,
@@ -1328,5 +1328,22 @@
             "default": "#262626",
             "hint": "Colour of the magnifying-glass icon. PHP-handled → --gsd-glass-color."
         }
+    },
+    "security_policy": 2,
+    "cms_controller": "public",
+    "view_model": "snapsmack.public.v1",
+    "templates": {
+        "landing": "layout.php",
+        "photo": "layout.php",
+        "post": "layout.php",
+        "archive": "layout.php",
+        "page": "layout.php",
+        "search": "layout.php",
+        "hashtag": "layout.php",
+        "albums": "layout.php",
+        "collections": "layout.php",
+        "collection": "layout.php",
+        "not_found": "layout.php",
+        "default": "layout.php"
     }
 }
