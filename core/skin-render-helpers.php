@@ -64,7 +64,14 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $response = is_array($data['response'] ?? null) ? $data['response'] : [];
         $site = is_array($data['site'] ?? null) ? $data['site'] : [];
         $kind = (string)($response['kind'] ?? 'not_found');
-        $html = '<header id="header" class="site-header" data-sticky-header><div class="inside"><a class="site-title logo-area" href="' . snap_route_url('home') . '"><span class="site-title-text">' . snap_escape_html($site['site_name'] ?? '') . '</span></a>'
+        $registered = is_array($site['registered_assets'] ?? null) ? $site['registered_assets'] : [];
+        foreach (($registered['scripts'] ?? []) as $script_url) {
+            if (is_string($script_url) && str_contains($script_url, 'ss-engine-organized-mayhem.js')) {
+                $html .= '<div id="organized-mayhem" aria-hidden="true" data-mayhem data-api-url="?ajax=mayhem" data-pan="0" data-ambient="1" data-initial-count="120" data-max-mounted="180"></div>';
+                break;
+            }
+        }
+        $html .= '<header id="header" class="site-header" data-sticky-header><div class="inside"><a class="site-title logo-area" href="' . snap_route_url('home') . '"><span class="site-title-text">' . snap_escape_html($site['site_name'] ?? '') . '</span></a>'
             . snap_render_html(snap_render_component('navigation', ['items' => $response['navigation'] ?? []])) . '</div></header><main id="scroll-stage" class="public-content kind-' . snap_escape_attr($kind) . '">';
         if (in_array($kind, ['photo', 'post', 'page', 'collection'], true)) {
             $item = is_array($response['item'] ?? null) ? $response['item'] : [];
