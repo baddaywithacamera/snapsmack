@@ -58,7 +58,43 @@ function snap_route_url(string $route, array $parameters = []): string {
 /** Render fixed shared chrome from bounded data; components cannot execute code. */
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
-    if ($name === 'smacktalk-page') {
+    if ($name === 'public-page') {
+        $response = is_array($data['response'] ?? null) ? $data['response'] : [];
+        $site = is_array($data['site'] ?? null) ? $data['site'] : [];
+        $kind = (string)($response['kind'] ?? 'not_found');
+        $html = '<header class="site-header"><a class="site-title" href="' . snap_route_url('home') . '">' . snap_escape_html($site['site_name'] ?? '') . '</a>'
+            . snap_render_html(snap_render_component('navigation', ['items' => $response['navigation'] ?? []])) . '</header><main class="public-content kind-' . snap_escape_attr($kind) . '">';
+        if (in_array($kind, ['photo', 'post', 'page', 'collection'], true)) {
+            $item = is_array($response['item'] ?? null) ? $response['item'] : [];
+            $title = $item['img_title'] ?? $item['title'] ?? $item['name'] ?? '';
+            $html .= '<article><h1>' . snap_escape_html($title) . '</h1>';
+            $image = $item['img_file'] ?? $item['featured_image_path'] ?? '';
+            if ($image !== '') $html .= snap_render_html(snap_render_component('image', ['url' => $image, 'alt' => $item['img_alt'] ?? $title]));
+            $content = $item['content'] ?? $item['description'] ?? $item['img_description'] ?? '';
+            $html .= '<div class="entry-content">' . snap_render_html($content) . '</div></article>';
+        } elseif ($kind === 'search') {
+            $html .= '<h1>Search</h1>';
+            $results = is_array($response['results'] ?? null) ? $response['results'] : [];
+            foreach ($results as $group) foreach ((is_array($group) ? $group : []) as $item) {
+                if (!is_array($item)) continue;
+                $html .= '<article><h2>' . snap_escape_html($item['img_title'] ?? $item['title'] ?? '') . '</h2></article>';
+            }
+        } elseif (in_array($kind, ['landing', 'archive', 'hashtag', 'albums', 'collections'], true)) {
+            $html .= '<section class="public-grid">';
+            foreach (($response['items'] ?? []) as $item) {
+                if (!is_array($item)) continue;
+                $title = $item['img_title'] ?? $item['title'] ?? $item['name'] ?? '';
+                $url = (string)($item['url'] ?? '');
+                if ($url === '' && (string)($item['img_slug'] ?? '') !== '') $url = snap_route_url('photo', ['slug' => $item['img_slug']]);
+                $html .= '<article><a href="' . snap_escape_url($url) . '"><h2>' . snap_escape_html($title) . '</h2></a></article>';
+            }
+            $html .= '</section>';
+        } else {
+            $html .= '<section class="not-found"><h1>Not found</h1></section>';
+        }
+        if (!empty($response['comments'])) $html .= snap_render_html(snap_render_component('comments', ['items' => $response['comments']]));
+        $html .= '</main><footer class="site-footer"><p>' . snap_escape_html($site['site_name'] ?? '') . '</p></footer>';
+    } elseif ($name === 'smacktalk-page') {
         $response = is_array($data['response'] ?? null) ? $data['response'] : [];
         $site = is_array($data['site'] ?? null) ? $data['site'] : [];
         $html = '<header class="site-header"><a class="site-title" href="' . snap_route_url('home') . '">'

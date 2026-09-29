@@ -214,6 +214,33 @@ try {
         }
     }
 
+    if (($_active_manifest['cms_controller'] ?? '') === 'public'
+        && (int)($_active_manifest['schema_version'] ?? 1) >= 2) {
+        require_once __DIR__ . '/core/public-runtime.php';
+        require_once __DIR__ . '/core/skin-render-helpers.php';
+        require_once __DIR__ . '/core/skin-view-contract.php';
+        $_public = snapsmack_public_runtime($pdo, [
+            'view' => $_GET['view'] ?? '', 'query' => $_GET['q'] ?? '',
+            'tag' => $_GET['tag'] ?? '', 'slug' => $requested_slug ?? ($_GET['slug'] ?? ''),
+            'id' => $_GET['id'] ?? 0, 'page' => $_GET['page'] ?? 1,
+        ], $settings);
+        http_response_code((int)($_public['status'] ?? 500));
+        $_strict_view = snapsmack_build_skin_view($_public, [
+            'site_name' => (string)($settings['site_name'] ?? ''),
+            'tagline' => (string)($settings['site_tagline'] ?? ''),
+            'base_url' => defined('BASE_URL') ? BASE_URL : '/',
+            'language' => 'en', 'direction' => 'ltr',
+            'owner_name' => (string)($settings['site_author'] ?? ''),
+            'skin_style_url' => (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin) . '/style.css',
+        ]);
+        $_template_map = is_array($_active_manifest['templates'] ?? null) ? $_active_manifest['templates'] : [];
+        $_strict_template = (string)($_template_map[$_public['kind'] ?? ''] ?? $_template_map['default'] ?? '');
+        if ($_strict_template !== '' && snapsmack_render_strict_skin_template(__DIR__ . '/skins/' . $active_skin, $_strict_template, $_strict_view)) exit;
+        http_response_code(500);
+        echo '<!doctype html><meta charset="utf-8"><title>SnapSmack</title><p>Presentation unavailable.</p>';
+        exit;
+    }
+
     // --- LEGACY SKIN PRELOAD HOOK ---
     // Allows a skin to intercept the request before image routing fires.
     // Alfred uses this to render its SmackTalk feed and single-post views.

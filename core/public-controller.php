@@ -7,7 +7,7 @@ require_once __DIR__ . '/public-repository.php';
 function snapsmack_public_parse_request(array $input): array
 {
     $route = is_string($input['route'] ?? null) ? strtolower(trim($input['route'])) : 'landing';
-    $allowed = ['landing', 'photo', 'post', 'archive', 'page', 'search', 'hashtag', 'albums', 'collections', 'collection'];
+    $allowed = ['landing', 'resolve', 'photo', 'post', 'archive', 'page', 'search', 'hashtag', 'albums', 'collections', 'collection'];
     if (!in_array($route, $allowed, true)) $route = 'not_found';
     $slug = is_string($input['slug'] ?? null) ? trim($input['slug']) : '';
     if ($slug !== '' && !preg_match('/^[a-z0-9][a-z0-9_-]{0,199}$/i', $slug)) $slug = '';
@@ -35,6 +35,16 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
     $perPage = max(1, min(100, (int)($settings['posts_per_page'] ?? 24)));
     $offset = ($page - 1) * $perPage;
     $navigation = $repository->activePages();
+
+    if ($route === 'resolve') {
+        $item = $slug !== '' ? $repository->photographBySlug($slug) : null;
+        if ($item !== null) return ['status' => 200, 'kind' => 'photo', 'item' => $item,
+            'comments' => $repository->approvedComments((int)$item['id'], null), 'navigation' => $navigation];
+        $pageItem = $slug !== '' ? $repository->activePageBySlug($slug) : null;
+        return $pageItem === null
+            ? ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation]
+            : ['status' => 200, 'kind' => 'page', 'item' => $pageItem, 'navigation' => $navigation];
+    }
 
     if ($route === 'landing') {
         $mode = (string)($settings['site_mode'] ?? 'photoblog');
