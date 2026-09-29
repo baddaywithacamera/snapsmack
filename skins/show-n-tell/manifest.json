@@ -1,5 +1,5 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "name": "SHOW N TELL",
     "version": "1.2.2",
     "author": "Sean McCormick",
@@ -593,5 +593,22 @@
             "property": "--masonry-border-color"
         }
     },
-    "admin_styling": "\r\n        .control-group-flex { display: flex; align-items: center; gap: 20px; }\r\n        .control-group-flex input { flex: 1; }\r\n        .active-val { width: 50px; text-align: right; font-family: monospace; }\r\n    "
+    "admin_styling": "\r\n        .control-group-flex { display: flex; align-items: center; gap: 20px; }\r\n        .control-group-flex input { flex: 1; }\r\n        .active-val { width: 50px; text-align: right; font-family: monospace; }\r\n    ",
+    "security_policy": 2,
+    "cms_controller": "public",
+    "view_model": "snapsmack.public.v1",
+    "templates": {
+        "landing": "layout.php",
+        "photo": "layout.php",
+        "post": "layout.php",
+        "archive": "layout.php",
+        "page": "layout.php",
+        "search": "layout.php",
+        "hashtag": "layout.php",
+        "albums": "layout.php",
+        "collections": "layout.php",
+        "collection": "layout.php",
+        "not_found": "layout.php",
+        "default": "layout.php"
+    }
 }
