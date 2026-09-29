@@ -52,7 +52,8 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             ? $repository->longformLanding($perPage, $offset)
             : $repository->photographLanding($perPage, $offset);
         return ['status' => 200, 'kind' => 'landing', 'mode' => $mode, 'items' => $items,
-            'navigation' => $navigation, 'page' => $page];
+            'navigation' => $navigation, 'page' => $page,
+            'photo_count' => $mode === 'smacktalk' ? 0 : $repository->publishedPhotographCount()];
     }
     if ($route === 'photo') {
         $item = $slug !== '' ? $repository->photographBySlug($slug) : $repository->photographById($id);

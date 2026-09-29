@@ -21,6 +21,7 @@
 require_once __DIR__ . '/http-security-headers.php';
 
 const SNAPSMACK_MANIFEST_SCHEMA_VERSION = 2;
+const SNAPSMACK_MANIFEST_RUNTIME_SCHEMAS = [1, 2];
 
 /**
  * Cosmetic core controls a skin may suppress. Security, account, update,
@@ -119,7 +120,11 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
     ));
 
     $schema_version = (int)($input['schema_version'] ?? 0);
-    if ($schema_version !== SNAPSMACK_MANIFEST_SCHEMA_VERSION) {
+    // Installed schema-v1 skins remain inert declarative data and must keep
+    // their CMS asset declarations while the fleet migrates. Package install
+    // and the security gate still require schema v2; this compatibility path
+    // grants no installation or executable authority.
+    if (!in_array($schema_version, SNAPSMACK_MANIFEST_RUNTIME_SCHEMAS, true)) {
         error_log("SnapSmack: unsupported manifest schema for {$slug}");
         return ['schema_version' => 0, 'features' => [], 'variants' => [], 'require_scripts' => [], 'options' => []];
     }
