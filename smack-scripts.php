@@ -28,8 +28,12 @@ define('CUSTOM_HEAD_FILE', __DIR__ . '/data/custom-head.html');
 
 if (isset($_POST['save_scripts'])) {
 
+    csrf_verify();
+
     $head_scripts = trim($_POST['head_scripts'] ?? '');
     $embed_codes  = trim($_POST['embed_codes'] ?? '');
+    $custom_enabled = ($_POST['owner_custom_code_enabled'] ?? '0') === '1' ? '1' : '0';
+    $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('owner_custom_code_enabled', ?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$custom_enabled]);
 
     // Head scripts — written to a file, not the DB, so SMACKBACK can watch it.
     // A DB-injection attack cannot alter file-based content.
@@ -69,6 +73,7 @@ if (file_exists(CUSTOM_HEAD_FILE)) {
 $stmt2 = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'custom_embed_codes'");
 $stmt2->execute();
 $embed_codes = $stmt2->fetchColumn() ?: '';
+$custom_enabled = (($settings['owner_custom_code_enabled'] ?? '0') === '1');
 
 $page_title = "Third-Party Scripts";
 include 'core/admin-header.php';
@@ -84,9 +89,12 @@ include 'core/sidebar.php';
     <?php endif; ?>
 
     <form method="POST">
+        <?php csrf_field(); ?>
 
         <!-- HEAD SCRIPTS -->
         <div class="box">
+            <label><input type="checkbox" name="owner_custom_code_enabled" value="1"<?php echo $custom_enabled ? ' checked' : ''; ?>> ENABLE OWNER CUSTOM CODE</label>
+            <p class="dim"><strong>This is arbitrary code execution in every visitor's browser.</strong> It is off by default, belongs to the site owner—not a skin—and relaxes the public script policy only while enabled. Saved code is retained when disabled.</p>
             <div class="lens-input-wrapper">
                 <label>HEAD SCRIPTS <span class="field-tip" data-tip="Injected before &lt;/head&gt; on every public page. Use for analytics, tracking pixels, or universal loaders (e.g. MailerLite, Google Analytics).">ⓘ</span></label>
                 <textarea name="head_scripts" class="css-override-textarea" spellcheck="false" placeholder="<!-- Paste your tracking scripts here -->"><?php echo htmlspecialchars($head_scripts); ?></textarea>

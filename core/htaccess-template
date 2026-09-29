@@ -94,7 +94,6 @@ RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
     # 12 of 28 sites without them, varying from one check to the next). The web
     # server now sends them on every response too. Same values as the PHP file.
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
-    Header always set Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
     <FilesMatch "\.(sql|log|bak|inc|sh|env|json|sbc)$">
         Header set X-Robots-Tag "noindex, nofollow"
     </FilesMatch>
