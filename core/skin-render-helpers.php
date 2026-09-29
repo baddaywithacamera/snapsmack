@@ -26,6 +26,8 @@ function snap_asset_url(string $handle): string {
     static $paths = null;
     if ($paths === null) {
         $paths = [];
+        require_once __DIR__ . '/asset-registry.php';
+        foreach (snapsmack_asset_registry() as $name => $entry) if (($entry['scope'] ?? '') === 'public') $paths[$name] = $entry['path'];
         $inventory = require __DIR__ . '/manifest-inventory.php';
         foreach (($inventory['scripts'] ?? []) as $name => $entry) {
             if (is_string($name) && is_array($entry) && is_string($entry['path'] ?? null)) $paths[$name] = $entry['path'];
