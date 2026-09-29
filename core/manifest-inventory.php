@@ -37,7 +37,7 @@ if (PHP_SAPI !== 'cli' && !empty($_SERVER['SCRIPT_FILENAME'])
 
 
 
-return [
+$inventory = [
 
     /* =========================================================
        LOCAL FONT LIBRARY
@@ -1091,4 +1091,17 @@ return [
         ],
     ]
 ];
+
+// A deleted shared asset must not remain requestable through an old handle.
+// This is defence in depth for updates that remove dead assets before every
+// historical catalogue entry has been physically compacted.
+foreach (($inventory['scripts'] ?? []) as $handle => $entry) {
+    foreach (['path', 'css'] as $field) {
+        if (isset($entry[$field]) && !is_file(dirname(__DIR__) . '/' . $entry[$field])) {
+            unset($inventory['scripts'][$handle]);
+            break;
+        }
+    }
+}
+return $inventory;
 // ===== SNAPSMACK EOF =====
