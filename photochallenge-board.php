@@ -23,6 +23,7 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/parser.php';
 require_once __DIR__ . '/core/skin-settings.php';
+require_once __DIR__ . '/core/skin-view-model.php';
 require_once __DIR__ . '/core/stats-logger.php';   // snapsmack_log_hit()
 require_once __DIR__ . '/core/fediverse.php';      // pulls core/photochallenge.php (pc_*)
 
@@ -46,6 +47,7 @@ try {
     }
     if (function_exists('snapsmack_apply_skin_settings')) {
         snapsmack_apply_skin_settings($settings, $active_skin);
+        $skin_view = snapsmack_prepare_skin_view($pdo, $settings, $active_skin);
     }
 } catch (Throwable $e) {
     error_log('BOARD_TRANSMISSION_ERROR: ' . $e->getMessage());

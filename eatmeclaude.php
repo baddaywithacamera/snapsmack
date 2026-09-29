@@ -14,6 +14,7 @@
 
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/skin-settings.php';
+require_once __DIR__ . '/core/skin-view-model.php';
 
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 if (!defined('BASE_URL')) {
@@ -22,6 +23,7 @@ if (!defined('BASE_URL')) {
 
 $active_skin = $settings['active_skin'] ?? 'scroll';
 snapsmack_apply_skin_settings($settings, $active_skin);
+$skin_view = snapsmack_prepare_skin_view($pdo, $settings, $active_skin);
 $site_name = $settings['site_name'] ?? 'SnapSmack';
 $page_title = 'EAT ME, CLAUDE';
 

@@ -18,30 +18,7 @@ $stanley_header_image = trim($settings['header_image'] ?? '');
 $stanley_header_logo  = trim(($settings['header_logo'] ?? '') ?: ($settings['header_logo_url'] ?? '') ?: ($settings['site_logo'] ?? ''));
 $site_display_name    = $settings['site_name'] ?? 'SNAPSMACK';
 $stanley_tagline      = trim($settings['site_tagline'] ?? '');
-$stanley_2024_hero    = trim($settings['stanley_2024_hero'] ?? '');
-
-// Seed the alternate reality once from the owner's own Asset Repository. The
-// persisted choice never rotates behind their back and can be changed in admin.
-if ($stanley_2024_hero === '') {
-    try {
-        $hero_stmt = $pdo->query(
-            "SELECT asset_path FROM snap_assets
-             WHERE LOWER(asset_path) REGEXP '\\.(jpe?g|png|gif|webp|avif)$'
-             ORDER BY created_at DESC, id DESC LIMIT 1"
-        );
-        $stanley_2024_hero = trim((string)$hero_stmt->fetchColumn());
-        if ($stanley_2024_hero !== '') {
-            $pdo->prepare(
-                "INSERT INTO snap_settings (setting_key, setting_val)
-                 VALUES ('stanley__stanley_2024_hero', ?)
-                 ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
-            )->execute([$stanley_2024_hero]);
-            $settings['stanley_2024_hero'] = $stanley_2024_hero;
-        }
-    } catch (Throwable $e) {
-        // Older installs without the Asset Repository retain the CSS fallback.
-    }
-}
+$stanley_2024_hero    = trim((string)($skin_view['media_slots']['hero_2024'] ?? ''));
 
 $banner_style = '';
 $banner_vars = [];
