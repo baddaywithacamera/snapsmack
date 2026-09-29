@@ -222,6 +222,7 @@ try {
         require_once __DIR__ . '/core/public-runtime.php';
         require_once __DIR__ . '/core/skin-render-helpers.php';
         require_once __DIR__ . '/core/skin-view-contract.php';
+        require_once __DIR__ . '/core/skin-presentation.php';
         $_public = snapsmack_public_runtime($pdo, [
             'view' => $_GET['view'] ?? '', 'query' => $_GET['q'] ?? '',
             'tag' => $_GET['tag'] ?? '', 'slug' => $requested_slug ?? ($_GET['slug'] ?? ''),
@@ -239,6 +240,7 @@ try {
             'skin_slug' => (string)$active_skin,
             'skin_style_url' => (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin) . '/style.css',
             'skin_custom_style' => snapsmack_skin_custom_style($settings),
+            'skin_presentation' => $active_skin === 'instant-camera' ? snapsmack_instant_camera_presentation($settings) : [],
             'owner_custom_code' => snapsmack_owner_custom_code($settings),
             'registered_assets' => $_registered_skin_assets,
         ]);

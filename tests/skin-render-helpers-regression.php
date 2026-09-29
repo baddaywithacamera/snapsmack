@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/core/custom-code-policy.php';
+require_once dirname(__DIR__) . '/core/skin-presentation.php';
 require_once dirname(__DIR__) . '/core/skin-render-helpers.php';
 
 $compiledStyle = snapsmack_skin_custom_style(['custom_css_public' => ':root{--saved:#123456} </style><script>alert(1)</script>']);
@@ -55,14 +56,19 @@ $mayhem = snap_render_html(snap_render_component('public-page', [
     'response' => ['kind' => 'landing', 'navigation' => [], 'items' => []],
 ]));
 if (!str_contains($mayhem, 'data-mayhem') || !str_contains($mayhem, 'data-api-url="?ajax=mayhem"')) throw new RuntimeException('CMS did not mount the declared Organized Mayhem engine.');
+$instantPresentation = snapsmack_instant_camera_presentation([
+    'ic_scrim' => '85', 'ic_panel_color' => '#abcdef', 'ic_panel_opacity' => '65',
+    'ic_format' => 'polaroid', 'mayhem_initial_count' => '90', 'mayhem_max_width' => '180',
+    'mayhem_overlap_max' => '70', 'mayhem_drift' => '0', 'mayhem_warp' => '1',
+]);
 $instant = snap_render_html(snap_render_component('public-page', [
-    'site' => ['site_name' => 'Camera', 'tagline' => 'Tag', 'site_description' => 'Bio', 'avatar_url' => '/avatar.jpg', 'skin_slug' => 'instant-camera', 'skin_custom_style' => $compiledStyle, 'registered_assets' => ['scripts' => ['/assets/js/ss-engine-organized-mayhem.js']]],
+    'site' => ['site_name' => 'Camera', 'tagline' => 'Tag', 'site_description' => 'Bio', 'avatar_url' => '/avatar.jpg', 'skin_slug' => 'instant-camera', 'skin_custom_style' => $compiledStyle, 'skin_presentation' => $instantPresentation, 'registered_assets' => ['scripts' => ['/assets/js/ss-engine-organized-mayhem.js']]],
     'response' => ['kind' => 'landing', 'navigation' => [], 'items' => [[
         'img_slug' => 'sample', 'img_title' => '<Photo>', 'img_alt' => 'Alt',
         'img_file' => 'img_uploads/photo.jpg', 'img_thumb_aspect' => 'img_uploads/thumbs/a_photo.jpg',
     ]]],
 ]));
-foreach (['id="snapsmack-dynamic-css"', '--saved:#123456', 'class="ic-bg ic-bg-mayhem"', 'class="ic-scrim"', 'class="ic-panel"', 'class="tg-content-wrap landing-feed"', 'class="tg-profile-avatar"', 'class="tg-profile-username"', 'class="tg-sticky-nav-links"', 'id="browse-grid" class="tg-grid', 'class="tg-tile"', 'img_uploads/thumbs/a_photo.jpg', '&lt;Photo&gt;', 'data-mayhem'] as $hook) {
+foreach (['id="snapsmack-dynamic-css"', '--saved:#123456', 'id="snapsmack-skin-presentation"', '--ic-scrim:0.85', '--panel-bg:rgba(171,205,239,0.65)', '--ic-tile-aspect:823 / 1000', 'class="ic-bg ic-bg-mayhem"', 'data-initial-count="90"', 'data-max-width="180"', 'data-overlap-max="0.70"', 'data-drift="0"', 'data-warp="1"', 'class="ic-scrim"', 'class="ic-panel"', 'class="tg-content-wrap landing-feed"', 'class="tg-profile-avatar"', 'class="tg-profile-username"', 'class="tg-sticky-nav-links"', 'id="browse-grid" class="tg-grid', 'class="tg-tile"', 'img_uploads/thumbs/a_photo.jpg', '&lt;Photo&gt;', 'data-mayhem'] as $hook) {
     if (!str_contains($instant, $hook)) throw new RuntimeException("INSTANT CAMERA CMS renderer lost hook: {$hook}");
 }
 if (snap_route_url('unknown') !== '') throw new RuntimeException('Unknown route did not fail closed.');
