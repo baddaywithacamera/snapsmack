@@ -85,6 +85,122 @@ function snapsmack_skin_policy_scan_php(string $path, string $rel): array {
     return $findings;
 }
 
+/**
+ * Schema-v2 templates use a deliberately tiny PHP language. This is a policy
+ * validator, not a sandbox: files that do not match the complete allowlist are
+ * refused rather than searched for a list of known-dangerous calls.
+ */
+function snapsmack_skin_policy_scan_template_v2(string $path, string $rel): array {
+    $source = @file_get_contents($path);
+    if ($source === false) return [snapsmack_skin_policy_finding($rel, 0, 'template-unreadable', '')];
+    if (!preg_match('/\A<\?php\s+defined\(\s*["\']SNAPSMACK_SKIN_RENDER["\']\s*\)\s*\|\|\s*exit\s*;/i', $source)) {
+        return [snapsmack_skin_policy_finding($rel, 1, 'template-render-guard', 'Missing first-statement render guard.')];
+    }
+
+    $tokens = token_get_all($source);
+    $loop_variables = [];
+    $in_foreach_header = false;
+    $after_as = false;
+    foreach ($tokens as $token) {
+        if (!is_array($token)) {
+            if ($in_foreach_header && ($token === ':' || $token === '{')) {
+                $in_foreach_header = false;
+                $after_as = false;
+            }
+            continue;
+        }
+        if ($token[0] === T_FOREACH) $in_foreach_header = true;
+        elseif ($in_foreach_header && $token[0] === T_AS) $after_as = true;
+        elseif ($in_foreach_header && $after_as && $token[0] === T_VARIABLE) $loop_variables[$token[1]] = true;
+    }
+
+    $allowed_variables = ['$view' => true] + $loop_variables;
+    $helpers = array_fill_keys([
+        'defined', 'snap_escape_html', 'snap_escape_attr', 'snap_escape_url',
+        'snap_render_html', 'snap_render_component', 'snap_asset_url', 'snap_route_url',
+    ], true);
+    $allowed_ids = array_fill_keys([
+        T_OPEN_TAG, T_CLOSE_TAG, T_OPEN_TAG_WITH_ECHO, T_INLINE_HTML,
+        T_WHITESPACE, T_COMMENT, T_DOC_COMMENT, T_ECHO,
+        T_FOREACH, T_ENDFOREACH, T_AS, T_IF, T_ELSEIF, T_ELSE, T_ENDIF,
+        T_ISSET, T_EMPTY, T_EXIT, T_LNUMBER, T_DNUMBER, T_CONSTANT_ENCAPSED_STRING,
+        T_BOOLEAN_AND, T_BOOLEAN_OR, T_LOGICAL_AND, T_LOGICAL_OR,
+        T_IS_EQUAL, T_IS_NOT_EQUAL, T_IS_IDENTICAL, T_IS_NOT_IDENTICAL,
+        T_IS_SMALLER_OR_EQUAL, T_IS_GREATER_OR_EQUAL, T_COALESCE, T_DOUBLE_ARROW,
+    ], true);
+    $allowed_chars = array_fill_keys(str_split('()[],:;?!<>'), true);
+    $lines = preg_split('/\R/', $source);
+    $findings = [];
+    $reported = [];
+    $output_helpers = array_fill_keys([
+        'snap_escape_html', 'snap_escape_attr', 'snap_escape_url',
+        'snap_render_html', 'snap_render_component', 'snap_asset_url', 'snap_route_url',
+    ], true);
+    $current_line = 1;
+    foreach ($tokens as $index => $token) {
+        if (!is_array($token)) {
+            if ($token === '.') {
+                $statement = trim((string)($lines[$current_line - 1] ?? ''));
+                if (preg_match('#^<\?php\s+(?:include|require)(?:_once)?\s+__DIR__\s*\.\s*["\']/[a-zA-Z0-9._-]+\.php["\']\s*;\s*(?:\?>)?$#', $statement)) {
+                    continue;
+                }
+            }
+            if (!isset($allowed_chars[$token])) {
+                $key = 'char:' . $token;
+                if (!isset($reported[$key])) {
+                    $findings[] = snapsmack_skin_policy_finding($rel, 0, 'template-token', $token);
+                    $reported[$key] = true;
+                }
+            }
+            continue;
+        }
+        [$id, $text, $line] = $token;
+        $current_line = $line;
+        if ($id === T_ECHO || $id === T_OPEN_TAG_WITH_ECHO) {
+            $next = null;
+            for ($look = $index + 1; $look < count($tokens); $look++) {
+                if (is_array($tokens[$look]) && in_array($tokens[$look][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) continue;
+                $next = $tokens[$look];
+                break;
+            }
+            $safe_output = is_array($next) && $next[0] === T_STRING
+                && isset($output_helpers[strtolower($next[1])]);
+            if (!$safe_output) {
+                $findings[] = snapsmack_skin_policy_finding($rel, $line, 'template-unescaped-output', trim($text));
+            }
+        }
+        if ($id === T_VARIABLE) {
+            if (!isset($allowed_variables[$text])) {
+                $findings[] = snapsmack_skin_policy_finding($rel, $line, 'template-variable', $text);
+            }
+            continue;
+        }
+        if ($id === T_STRING) {
+            $name = strtolower($text);
+            if (!isset($helpers[$name]) && !in_array($name, ['true', 'false', 'null'], true)) {
+                $findings[] = snapsmack_skin_policy_finding($rel, $line, 'template-call', $text);
+            }
+            continue;
+        }
+        if (in_array($id, [T_INCLUDE, T_INCLUDE_ONCE, T_REQUIRE, T_REQUIRE_ONCE, T_DIR], true)) {
+            $statement = trim((string)($lines[$line - 1] ?? ''));
+            if (!preg_match('#^<\?php\s+(?:include|require)(?:_once)?\s+__DIR__\s*\.\s*["\']/[a-zA-Z0-9._-]+\.php["\']\s*;\s*(?:\?>)?$#', $statement)) {
+                $findings[] = snapsmack_skin_policy_finding($rel, $line, 'template-include', $statement);
+            }
+            continue;
+        }
+        if (!isset($allowed_ids[$id])) {
+            $name = token_name($id);
+            $key = $line . ':' . $name;
+            if (!isset($reported[$key])) {
+                $findings[] = snapsmack_skin_policy_finding($rel, $line, 'template-token', $name);
+                $reported[$key] = true;
+            }
+        }
+    }
+    return $findings;
+}
+
 function snapsmack_skin_policy_scan_markup(string $path, string $rel): array {
     $source = @file_get_contents($path);
     if ($source === false) return [];
@@ -155,7 +271,11 @@ function snapsmack_skin_security_findings(string $skin_dir): array {
             continue;
         }
         if ($ext === 'php' || $ext === 'phtml' || $ext === 'inc') {
-            array_push($findings, ...snapsmack_skin_policy_scan_php($path, $rel));
+            if (is_array($manifest) && (int)($manifest['schema_version'] ?? 0) >= 2) {
+                array_push($findings, ...snapsmack_skin_policy_scan_template_v2($path, $rel));
+            } else {
+                array_push($findings, ...snapsmack_skin_policy_scan_php($path, $rel));
+            }
             array_push($findings, ...snapsmack_skin_policy_scan_markup($path, $rel));
         } elseif ($ext === 'html' || $ext === 'htm') {
             array_push($findings, ...snapsmack_skin_policy_scan_markup($path, $rel));
