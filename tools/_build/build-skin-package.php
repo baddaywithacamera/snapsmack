@@ -115,8 +115,9 @@ foreach ($skins as $skin) {
         continue;
     }
 
-    // All files go inside skins/{skin-name}/ so users can extract at web root
-    $wrapper = "skins/{$skin}/";
+    // Registry packages use one top-level slug. The server extracts into a
+    // staging directory and moves that verified directory into skins/ itself.
+    $wrapper = "{$skin}/";
     $file_count = 0;
 
     $iterator = new RecursiveIteratorIterator(
@@ -136,19 +137,15 @@ foreach ($skins as $skin) {
         $zip->addFile($file->getRealPath(), $zip_path_in_zip);
         $file_count++;
 
-        // Collect hash for SMACKBACK manifest (PHP/CSS/JS only, no minified)
-        $ext = strtolower(pathinfo($relative, PATHINFO_EXTENSION));
-        if (in_array($ext, ['php', 'css', 'js'], true)
-            && !str_ends_with($relative, '.min.js')
-            && !str_ends_with($relative, '.min.css')) {
-            $content = file_get_contents($file->getRealPath());
-            if ($content !== false) {
-                $smackback_files[$zip_path_in_zip] = [
-                    'hash'          => hash('sha256', $content),
-                    'size'          => strlen($content),
-                    'eof_signature' => smackback_build_eof_signature($content),
-                ];
-            }
+        // Every packaged file participates in activation provenance, including
+        // manifest.json and minified browser assets.
+        $content = file_get_contents($file->getRealPath());
+        if ($content !== false) {
+            $smackback_files[$zip_path_in_zip] = [
+                'hash'          => hash('sha256', $content),
+                'size'          => strlen($content),
+                'eof_signature' => smackback_build_eof_signature($content),
+            ];
         }
     }
 

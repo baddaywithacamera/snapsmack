@@ -205,7 +205,7 @@ function add_directory_to_zip(ZipArchive $zip, string $source, string $zip_prefi
         }
 
         // Relative path inside the skin directory
-        $relative = substr($item->getPathname(), strlen($source) + 1);
+        $relative = str_replace('\\', '/', substr($item->getPathname(), strlen($source) + 1));
         $zip_path = $zip_prefix . '/' . $relative;
 
         if ($item->isDir()) {
@@ -220,7 +220,7 @@ function add_directory_to_zip(ZipArchive $zip, string $source, string $zip_prefi
 }
 
 /**
- * Collect SHA-256 hashes of all monitored skin files for the SMACKBACK manifest.
+ * Collect SHA-256 hashes of every packaged skin file for activation provenance.
  * Returns array keyed by zip-relative path (e.g. "slug/header.php").
  *
  * @param  string   $source      Absolute path to skin directory on disk.
@@ -240,16 +240,6 @@ function collect_smackback_hashes(string $source, string $zip_prefix, array $exc
             continue;
         }
         if (in_array($item->getBasename(), $exclude, true)) {
-            continue;
-        }
-
-        $ext = strtolower($item->getExtension());
-        if (!in_array($ext, ['php', 'css', 'js'], true)) {
-            continue;
-        }
-
-        $basename = $item->getBasename();
-        if (str_ends_with($basename, '.min.js') || str_ends_with($basename, '.min.css')) {
             continue;
         }
 
