@@ -1393,10 +1393,11 @@ body { background: transparent !important; }      /* let the fixed layers show *
     pointer-events: none;
 }
 .tg-grid        { background: transparent !important; }
-/* Navbar background (Navbar Colour + Opacity) applies ONLY to the stuck state —
-   the bar pinned to the top as you scroll (.profile-hidden). At rest (inline on
-   the landing) it stays transparent so the tabletop shows through. */
-.tg-sticky-nav                 { background: transparent !important; }
+/* Navbar Colour + Opacity is a direct presentation control: apply it both at
+   rest and after the bar sticks. Suppressing the saved background until
+   .profile-hidden made a non-zero admin setting appear to do nothing on the
+   landing page and left dropdown navigation without a readable parent bar. */
+.tg-sticky-nav,
 .tg-sticky-nav.profile-hidden  { background: var(--ic-nav-bg, transparent) !important; }
 
 /* ===== SNAPSMACK EOF ===== */
