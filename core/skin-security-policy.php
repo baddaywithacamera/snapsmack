@@ -6,6 +6,8 @@
  * registry code, installers, and tests can all apply the same rules.
  */
 
+const SNAPSMACK_SKIN_POLICY_VERSION = 2;
+
 function snapsmack_skin_policy_finding(string $file, int $line, string $type, string $excerpt): array {
     return [
         'file' => str_replace('\\', '/', $file),
@@ -245,10 +247,13 @@ function snapsmack_skin_security_findings(string $skin_dir): array {
     $manifest_path = $skin_dir . '/manifest.json';
     $manifest = json_decode((string)@file_get_contents($manifest_path), true);
     if (is_array($manifest) && (int)($manifest['schema_version'] ?? 0) >= 2) {
-        foreach (['cms_controller', 'view_model', 'templates'] as $required) {
+        foreach (['cms_controller', 'view_model', 'templates', 'security_policy'] as $required) {
             if (!isset($manifest[$required]) || $manifest[$required] === '' || $manifest[$required] === []) {
                 $findings[] = snapsmack_skin_policy_finding('manifest.json', 0, 'manifest-contract', "Missing {$required}");
             }
+        }
+        if ((int)($manifest['security_policy'] ?? 0) !== SNAPSMACK_SKIN_POLICY_VERSION) {
+            $findings[] = snapsmack_skin_policy_finding('manifest.json', 0, 'manifest-policy-version', 'Unsupported or missing security policy version.');
         }
         foreach (($manifest['templates'] ?? []) as $template) {
             if (!is_string($template) || !preg_match('/^[a-zA-Z0-9._-]+\.php$/', $template)) {

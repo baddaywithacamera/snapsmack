@@ -9,6 +9,7 @@ try {
         'cms_controller' => 'public',
         'view_model' => 'public.v1',
         'templates' => ['public' => 'template.php'],
+        'security_policy' => 2,
     ]));
     file_put_contents($tmp . '/template.php', <<<'PHP'
 <?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
@@ -20,6 +21,15 @@ PHP);
     if (snapsmack_skin_security_findings($tmp) !== []) {
         throw new RuntimeException('A presentation-only template was rejected.');
     }
+    $manifest = json_decode(file_get_contents($tmp . '/manifest.json'), true);
+    unset($manifest['security_policy']);
+    file_put_contents($tmp . '/manifest.json', json_encode($manifest));
+    $missing_policy = array_column(snapsmack_skin_security_findings($tmp), 'type');
+    if (!in_array('manifest-policy-version', $missing_policy, true)) {
+        throw new RuntimeException('A v2 manifest without a policy version did not fail closed.');
+    }
+    $manifest['security_policy'] = 2;
+    file_put_contents($tmp . '/manifest.json', json_encode($manifest));
     file_put_contents($tmp . '/include-test.php', <<<'PHP'
 <?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
 <?php include __DIR__ . '/template.php'; ?>
@@ -41,6 +51,7 @@ PHP);
     file_put_contents($tmp . '/manifest.json', json_encode([
         'schema_version' => 2, 'cms_controller' => 'public',
         'view_model' => 'public.v1', 'templates' => ['public' => 'template.php'],
+        'security_policy' => 2,
     ]));
     $attacks = [
         'global' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; global $x;',
