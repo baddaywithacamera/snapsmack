@@ -29,6 +29,14 @@ if (!is_dir($tmp . '/active')) $fail('active skin was removed');
 $result = skin_registry_evaporate_parked('mobile', 'active', ['mobile']);
 if (empty($result['success']) || !empty($result['removed']) || !is_dir($tmp . '/mobile')) $fail('required mobile skin was not retained');
 
+$registry = (string)file_get_contents(dirname(__DIR__) . '/core/skin-registry.php');
+$start = strpos($registry, 'function skin_registry_evaporate_parked');
+$end = strpos($registry, '// --- INTERNAL HELPERS ---', $start ?: 0);
+$evaporation = $start === false ? '' : substr($registry, $start, ($end === false ? null : $end - $start));
+if (stripos($evaporation, 'DELETE FROM snap_settings') !== false) $fail('evaporation deletes retained skin settings');
+$admin = (string)file_get_contents(dirname(__DIR__) . '/smack-skin.php');
+if (substr_count($admin, 'skin_registry_evaporate_inactive(') < 2) $fail('one activation path does not evaporate inactive skins');
+
 _skin_rmdir_recursive($tmp);
 echo "PASS: parked skins evaporate while active and required skins remain.\n";
 // ===== SNAPSMACK EOF =====
