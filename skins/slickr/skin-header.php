@@ -74,7 +74,7 @@ $_seed_rows = $pdo->query(
 $_seed = function (string $k, int $fallback = 0) use ($_seed_rows): int {
     return isset($_seed_rows[$k]) && $_seed_rows[$k] !== '' ? (int)$_seed_rows[$k] : $fallback;
 };
-$_sum_img_seed   = (int)$pdo->query("SELECT COALESCE(SUM(img_view_seed),0) FROM snap_images WHERE img_status='published'")->fetchColumn();
+$_sum_img_seed   = (int)$pdo->query("SELECT COALESCE(SUM(img_view_seed),0) FROM snap_images WHERE img_status='published' AND img_date <= NOW() ")->fetchColumn();
 $_sum_album_seed = (int)$pdo->query("SELECT COALESCE(SUM(view_count),0) FROM snap_albums")->fetchColumn();
 
 $sl_seed_photo   = $_seed('flickr_seed_photo_views',       $_sum_img_seed);
@@ -93,7 +93,7 @@ $sl_total_views  = $sl_seed_photo  + $sl_native_image;   // headline "VIEWS" (ph
 $sl_stream_views = $sl_seed_stream + $sl_native_stream;  // photostream / feed views
 $sl_album_views  = $sl_seed_album;                       // album page views not yet tracked natively
 $sl_grand_total  = ($sl_seed_photo + $sl_seed_stream + $sl_seed_album + $sl_seed_collect + $sl_seed_gallery) + $sl_native_all;
-$_since_year     = $pdo->query("SELECT MIN(YEAR(img_date)) FROM snap_images WHERE img_status='published' AND img_date >= '1990-01-01'")->fetchColumn();
+$_since_year     = $pdo->query("SELECT MIN(YEAR(img_date)) FROM snap_images WHERE img_status='published' AND img_date >= '1990-01-01' AND img_date <= NOW() ")->fetchColumn();
 $sl_since_year   = $_since_year ? (int)$_since_year : 0;
 
 // ── Avatar (same source as The Grid) ───────────────────────────────────────
@@ -106,7 +106,7 @@ $sl_av_init    = strtoupper(substr($sl_site, 0, 1));
 $sl_cover = '';
 $_cid = (int)($settings['slickr_cover_image_id'] ?? 0);
 if ($_cid > 0) {
-    $q = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ? AND img_status = 'published'");
+    $q = $pdo->prepare("SELECT img_file FROM snap_images WHERE id = ? AND img_status = 'published' AND img_date <= NOW() ");
     $q->execute([$_cid]);
     $f = $q->fetchColumn();
     if ($f) $sl_cover = BASE_URL . ltrim($f, '/');

@@ -71,7 +71,7 @@ include dirname(__DIR__, 2) . '/core/meta.php';
                 JOIN snap_post_images pi ON pi.post_id = p.id AND pi.is_cover = 1
                 JOIN snap_images i ON i.id = pi.image_id
                 WHERE p.id = ?
-            ");
+             AND p.status = 'published' AND p.created_at <= NOW() AND i.img_status = 'published' AND i.img_date <= NOW() ");
             $cover_stmt->execute([$img_row['post_id']]);
             $tile = $cover_stmt->fetch();
             if ($tile) $tiles[] = $tile;

@@ -39,7 +39,7 @@ $post = null;
 $post_images = [];
 
 if (!empty($img['post_id'])) {
-    $post_stmt = $pdo->prepare("SELECT * FROM snap_posts WHERE id = ?");
+    $post_stmt = $pdo->prepare("SELECT * FROM snap_posts WHERE id = ? AND status = 'published' AND created_at <= NOW() ");
     $post_stmt->execute([$img['post_id']]);
     $post = $post_stmt->fetch();
 }
@@ -53,7 +53,7 @@ if ($post) {
         FROM snap_post_images pi
         JOIN snap_images i ON i.id = pi.image_id
         WHERE pi.post_id = ? AND pi.sort_position >= 0
-        ORDER BY pi.sort_position ASC
+         AND i.img_status = 'published' AND i.img_date <= NOW() ORDER BY pi.sort_position ASC
     ");
     $pi_stmt->execute([$post['id']]);
     $post_images = $pi_stmt->fetchAll();
