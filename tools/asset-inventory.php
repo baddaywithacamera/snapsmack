@@ -45,7 +45,7 @@
  * (renamed/removed fields), MINOR when adding fields. Consumers refuse an unknown
  * MAJOR and accept a newer MINOR forward-compatibly.
  */
-const INV_SCHEMA_VERSION = '1.1';
+const INV_SCHEMA_VERSION = '1.2';
 
 $root      = dirname(__DIR__);
 $js_dir    = $root . '/assets/js';
