@@ -325,8 +325,9 @@ if ($_alfred_post_slug || $_alfred_post_id) {
     // inline frame instead of displaying the autograph twice.
     if ($_alfred_signature && !empty($_alfred_signature['img_file'])) {
         $signature_src = BASE_URL . ltrim((string)$_alfred_signature['img_file'], '/');
-        $signature_pattern = '~<div\b[^>]*\bsnap-inline-frame\b[^>]*>\s*<div\b[^>]*>\s*<img\b[^>]*\bsrc=(?:"'
-            . preg_quote($signature_src, '~') . '"|\'' . preg_quote($signature_src, '~') . '\')[^>]*>\s*</div>\s*</div>~is';
+        $signature_pattern = '~<div\b[^>]*\bsnap-inline-frame\b[^>]*>\s*<div\b[^>]*>\s*<img\b(?=[^>]*(?:\bsrc=(?:"'
+            . preg_quote($signature_src, '~') . '"|\'' . preg_quote($signature_src, '~')
+            . '\')|\balt=["\'][^"\']*(?:signature|autograph|sean-mccormick-black-low-res)[^"\']*["\']))[^>]*>\s*</div>\s*</div>~is';
         $_alfred_rendered = preg_replace($signature_pattern, '', $_alfred_rendered, 1);
     }
 
@@ -351,7 +352,7 @@ if ($_alfred_post_slug || $_alfred_post_id) {
         $legacy_offset = $legacy_match[1][1];
         $legacy_text = mb_strtolower(trim(html_entity_decode(strip_tags($legacy_paragraph), ENT_QUOTES | ENT_HTML5)));
         $legacy_has_lead = preg_match(
-            '/\b(?:main camera|camera used|also used|equipment used|shot (?:on|with)|taken with|photos? (?:taken|made|shot) with|images? (?:taken|made|shot) with|photographed with)\b/u',
+            '/\b(?:main camera|camera used|also used|equipment used|shot (?:on|with)|taken with|photos? (?:from|(?:taken|made|shot) with)|images? (?:from|(?:taken|made|shot) with)|photographed with)\b/u',
             $legacy_text
         );
         preg_match_all('/\b(?:camera|body|lens|lenses|film|film stock|drone|cellphone|phone|iphone|galaxy|pixel|canon|nikon|sony|fujifilm|fuji|olympus|pentax|leica|hasselblad|dji|kodak|ilford|helios|eos)\b/u', $legacy_text, $legacy_equipment_matches);
