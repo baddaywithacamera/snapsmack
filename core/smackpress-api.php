@@ -492,6 +492,8 @@ if ($sub === 'posts' && $method === 'POST') {
     $title          = trim($body['title'] ?? '');
     $slug           = trim($body['slug'] ?? '');
     $raw_content    = $body['content'] ?? $body['content_raw'] ?? '';
+    $has_colophon   = array_key_exists('colophon', $body);
+    $raw_colophon   = $body['colophon'] ?? '';
     $status         = in_array($body['status'] ?? '', ['published','draft']) ? $body['status'] : 'draft';
     $allow_comments = (int)($body['allow_comments'] ?? 0);
     // Cover: prefer featured_image_id (Gallery / snap_images). Legacy callers may
@@ -499,6 +501,8 @@ if ($sub === 'posts' && $method === 'POST') {
     // id is also a snap_images id, so we treat it as the cover too.
     $featured_image = !empty($body['featured_image_id']) ? (int)$body['featured_image_id']
                     : (!empty($body['featured_asset_id']) ? (int)$body['featured_asset_id'] : null);
+    $has_signature_image = array_key_exists('signature_image_id', $body);
+    $signature_image = !empty($body['signature_image_id']) ? (int)$body['signature_image_id'] : null;
     $manual_tags    = trim($body['tags'] ?? '');
     $selected_cats  = array_map('intval', $body['cat_ids'] ?? []);
     if (empty($selected_cats) && !empty($body['category_id'])) {
@@ -515,17 +519,29 @@ if ($sub === 'posts' && $method === 'POST') {
     // Sanitise imported HTML (strip WP-plugin scripts/styles/iframes/handlers)
     // before it is ever stored — this content renders on the public site.
     $content_html = smackpress_sanitize_html(smack_autop_long($raw_content));
+    $colophon_html = $raw_colophon !== ''
+        ? smackpress_sanitize_html(smack_autop_long($raw_colophon))
+        : null;
+
+    if ($signature_image) {
+        $image_check = $pdo->prepare("SELECT id FROM snap_images WHERE id=? LIMIT 1");
+        $image_check->execute([$signature_image]);
+        if (!$image_check->fetchColumn()) smackpress_error(422, 'Signature image was not found.');
+    }
 
     if ($post_id) {
         // UPDATE
-        $stmt = $pdo->prepare("SELECT id FROM snap_posts WHERE id = ? AND post_type = 'longform'");
+        $stmt = $pdo->prepare("SELECT id,colophon,signature_image_id FROM snap_posts WHERE id = ? AND post_type = 'longform'");
         $stmt->execute([$post_id]);
-        if (!$stmt->fetch()) smackpress_error(404, 'Post not found.');
+        $existing_post = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$existing_post) smackpress_error(404, 'Post not found.');
+        if (!$has_colophon) $colophon_html = $existing_post['colophon'];
+        if (!$has_signature_image) $signature_image = $existing_post['signature_image_id'];
 
-        $sql = "UPDATE snap_posts SET title=?, slug=?, content=?, status=?, allow_comments=?, featured_image_id=?"
+        $sql = "UPDATE snap_posts SET title=?, slug=?, content=?, colophon=?, signature_image_id=?, status=?, allow_comments=?, featured_image_id=?"
              . ($custom_date ? ", created_at=?" : "")
              . " WHERE id=? AND post_type='longform'";
-        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image];
+        $params = [$title, $slug, $content_html, $colophon_html, $signature_image, $status, $allow_comments, $featured_image];
         if ($custom_date) $params[] = $custom_date;
         $params[] = $post_id;
         $pdo->prepare($sql)->execute($params);
@@ -548,11 +564,11 @@ if ($sub === 'posts' && $method === 'POST') {
             if (!$check->fetch()) break;
             $slug = $base_slug . '-' . (++$n);
         }
-        $sql = "INSERT INTO snap_posts (title,slug,content,post_type,status,allow_comments,featured_image_id"
+        $sql = "INSERT INTO snap_posts (title,slug,content,colophon,signature_image_id,post_type,status,allow_comments,featured_image_id"
              . ($custom_date ? ",created_at" : "")
-             . ") VALUES(?,?,?,'longform',?,?,?"
+             . ") VALUES(?,?,?,?,?,'longform',?,?,?"
              . ($custom_date ? ",?" : "") . ")";
-        $params = [$title, $slug, $content_html, $status, $allow_comments, $featured_image];
+        $params = [$title, $slug, $content_html, $colophon_html, $signature_image, $status, $allow_comments, $featured_image];
         if ($custom_date) $params[] = $custom_date;
         $pdo->prepare($sql)->execute($params);
         $new_id = (int)$pdo->lastInsertId();
@@ -577,7 +593,7 @@ if ($sub === 'posts' && $method === 'POST') {
 // =====================================================================
 if (preg_match('#^posts/(\d+)$#', $sub, $m) && $method === 'GET') {
     $post_id = (int)$m[1];
-    $stmt = $pdo->prepare("SELECT id,title,slug,content,status,allow_comments,created_at,
+    $stmt = $pdo->prepare("SELECT id,title,slug,content,colophon,signature_image_id,status,allow_comments,created_at,
                                   featured_image_id
                              FROM snap_posts WHERE id=? AND post_type='longform'");
     $stmt->execute([$post_id]);
@@ -625,6 +641,7 @@ if (preg_match('#^posts/(\d+)$#', $sub, $m) && $method === 'GET') {
     }
     $post['id'] = (int)$post['id'];
     $post['featured_image_id'] = (int)($post['featured_image_id'] ?? 0);
+    $post['signature_image_id'] = (int)($post['signature_image_id'] ?? 0);
     $post['url'] = $base_url . 'post/' . $post['slug'];
     smackpress_ok(['post' => $post]);
 }

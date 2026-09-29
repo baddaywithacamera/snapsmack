@@ -181,6 +181,10 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
   `post_shadow`       tinyint unsigned NOT NULL DEFAULT 0,
   `content`           longtext       COLLATE utf8mb4_unicode_ci DEFAULT NULL
                       COMMENT 'Body content for longform (SmackTalk) posts — migration 041',
+  `colophon`          longtext       COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                      COMMENT 'Optional post ephemera such as camera, materials, or production notes.',
+  `signature_image_id` int unsigned  DEFAULT NULL
+                      COMMENT 'Optional closing signature image — FK to snap_images.id.',
   `featured_asset_id` int unsigned   DEFAULT NULL
                       COMMENT 'Legacy hero image for longform posts — FK to snap_assets.id (Library). Superseded by featured_image_id (Gallery) as the cover source — migration 041',
   `featured_image_id` int unsigned   DEFAULT NULL

@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
   `post_bg_color`     char(7)        COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#ffffff',
   `post_shadow`       tinyint unsigned NOT NULL DEFAULT 0,
   `content`           longtext       COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `colophon`          longtext       COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `signature_image_id` int unsigned  DEFAULT NULL,
   `featured_asset_id` int unsigned   DEFAULT NULL,
   `trigram_id`        int unsigned   DEFAULT NULL,
   `sort_order`        int            NOT NULL DEFAULT 0,
