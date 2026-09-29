@@ -527,8 +527,7 @@ function skin_registry_install(string $slug, string $download_url, string $signa
     }
     // Apply the same authority boundary used by development and packaging
     // before executable files can enter the live skins directory.
-    $legacy_policy = require __DIR__ . '/skin-security-legacy.php';
-    $policy_findings = snapsmack_skin_security_gate($source, $legacy_policy);
+    $policy_findings = snapsmack_skin_security_gate($source);
     if ($policy_findings) {
         _skin_rmdir_recursive($staging);
         @unlink($tmp_zip);

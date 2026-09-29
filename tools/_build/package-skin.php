@@ -33,7 +33,6 @@ if (php_sapi_name() !== 'cli') {
 $project_root = dirname(__DIR__, 2);
 $skins_dir    = $project_root . '/skins';
 require_once $project_root . '/core/skin-security-policy.php';
-$skin_security_legacy = require $project_root . '/core/skin-security-legacy.php';
 
 // Files/dirs excluded from the zip
 $exclude = ['.git', '.DS_Store', 'Thumbs.db', '.gitkeep', '__MACOSX'];
@@ -106,7 +105,7 @@ foreach ($slugs as $slug) {
         $errors++;
         continue;
     }
-    $policy_findings = snapsmack_skin_security_gate($skin_path, $skin_security_legacy);
+    $policy_findings = snapsmack_skin_security_gate($skin_path);
     if ($policy_findings) {
         echo "  BLOCK {$slug} — skin security policy failed (" . count($policy_findings) . " new/strict findings)\n";
         $errors++;

@@ -181,7 +181,6 @@ try {
                 exit;
             }
             if (($_smacktalk['kind'] ?? '') === 'not_found') http_response_code(404);
-            if ((int)($_active_manifest['schema_version'] ?? 1) >= 2) {
                 require_once __DIR__ . '/core/trusted-html.php';
                 require_once __DIR__ . '/core/skin-render-helpers.php';
                 require_once __DIR__ . '/core/skin-view-contract.php';
@@ -209,17 +208,10 @@ try {
                 http_response_code(500);
                 echo '<!doctype html><meta charset="utf-8"><title>SnapSmack</title><p>Presentation unavailable.</p>';
                 exit;
-            }
-            $skin_view['smacktalk'] = $_smacktalk;
-            $page_title = (string)($_smacktalk['page_title'] ?? $site_name);
-            $skin_template = __DIR__ . '/skins/' . $active_skin . '/' . ($_active_manifest['skin_preload'] ?? 'preload.php');
-            if (is_file($skin_template)) include $skin_template;
-            exit;
         }
     }
 
-    if (($_active_manifest['cms_controller'] ?? '') === 'public'
-        && (int)($_active_manifest['schema_version'] ?? 1) >= 2) {
+    if (($_active_manifest['cms_controller'] ?? '') === 'public') {
         require_once __DIR__ . '/core/public-runtime.php';
         require_once __DIR__ . '/core/skin-render-helpers.php';
         require_once __DIR__ . '/core/skin-view-contract.php';
@@ -244,15 +236,6 @@ try {
         http_response_code(500);
         echo '<!doctype html><meta charset="utf-8"><title>SnapSmack</title><p>Presentation unavailable.</p>';
         exit;
-    }
-
-    // --- LEGACY SKIN PRELOAD HOOK ---
-    // Allows a skin to intercept the request before image routing fires.
-    // Alfred uses this to render its SmackTalk feed and single-post views.
-    // The included file may call exit() to short-circuit all remaining logic.
-    $skin_preload = __DIR__ . '/skins/' . $active_skin . '/preload.php';
-    if (file_exists($skin_preload)) {
-        include $skin_preload;
     }
 
     $homepage_mode    = $settings['homepage_mode'] ?? 'latest_post';

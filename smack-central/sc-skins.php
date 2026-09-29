@@ -528,15 +528,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                 // Missing policy code is a hard failure: signing proves origin,
                 // not safety, and the publisher may never silently skip review.
                 $sc_policy = dirname(__DIR__) . '/core/skin-security-policy.php';
-                $sc_legacy = dirname(__DIR__) . '/core/skin-security-legacy.php';
-                if (!is_file($sc_policy) || !is_file($sc_legacy)) {
+                if (!is_file($sc_policy)) {
                     $build_results[] = ['slug' => $slug, 'ok' => false,
                         'msg' => 'BLOCKED — skin security policy is unavailable.'];
                     continue;
                 }
                 require_once $sc_policy;
-                $legacy_policy = require $sc_legacy;
-                $blockers = snapsmack_skin_security_gate($skin_dir, $legacy_policy);
+                $blockers = snapsmack_skin_security_gate($skin_dir);
                 if ($blockers) {
                     $detail = array_map(static fn($f) =>
                         $f['type'] . ' @ ' . $f['file']
