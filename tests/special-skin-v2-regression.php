@@ -18,5 +18,4 @@ if(empty($photogram['features']['mobile_only']))throw new RuntimeException('PHOT
 foreach(['smack-photogram','smack-photogram-feed'] as $handle)if(empty($inventory['scripts'][$handle]['path']))throw new RuntimeException("{$handle} is not CMS registered.");
 $onyx=json_decode((string)file_get_contents($root.'/skins/onyx/manifest.json'),true,512,JSON_THROW_ON_ERROR);
 if(empty($onyx['features']['fedistructure_only']))throw new RuntimeException('ONYX lost its service role.');
-$legacy=require $root.'/core/skin-security-legacy.php';if($legacy!==[])throw new RuntimeException('Legacy skin inventory is not empty.');
 echo "Special-role schema-v2 skin regression passed.\n";

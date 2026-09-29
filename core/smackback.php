@@ -342,11 +342,10 @@ function smackback_run_skin_js_scan(): array {
     // skins/hosts. Runtime reporting now uses the same non-negotiable policy as
     // packaging and installation; owner custom JS is not a skin permission.
     require_once __DIR__ . '/skin-security-policy.php';
-    $legacy = require __DIR__ . '/skin-security-legacy.php';
     $findings = [];
     foreach (glob(SNAPSMACK_ROOT . '/skins/*/manifest.json') ?: [] as $manifest) {
         $dir = dirname($manifest);
-        foreach (snapsmack_skin_security_gate($dir, $legacy) as $finding) {
+        foreach (snapsmack_skin_security_gate($dir) as $finding) {
             $findings[] = [
                 'skin' => basename($dir),
                 'file' => 'skins/' . basename($dir) . '/' . $finding['file'],
