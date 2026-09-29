@@ -25,7 +25,6 @@ $kind = (string)($view['kind'] ?? 'not_found');
 <?php endforeach; ?></div><?php endif; ?>
 </section></main>
 <div id="alfred-archive-lightbox" class="alfred-lightbox" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="Photograph viewer"><button type="button" class="alfred-lb-close" aria-label="Close">&#10005;</button><button type="button" class="alfred-lb-prev" aria-label="Previous photograph">&#8249;</button><img class="alfred-lb-img" src="" alt=""><button type="button" class="alfred-lb-next" aria-label="Next photograph">&#8250;</button><p class="alfred-lb-caption"></p></div>
-<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-alfred-archive.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 
 <?php elseif ($kind === 'single'): $post = $view['post']; ?>
 <main class="content" role="main">
@@ -49,7 +48,6 @@ $kind = (string)($view['kind'] ?? 'not_found');
 </nav><?php endif; ?>
 <?php if (!empty($view['comments_enabled'])): $img = $post; ?><div class="comments-container"><?php include dirname(__DIR__, 2) . '/core/community-component.php'; ?></div><?php endif; ?>
 </main>
-<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 
 <?php elseif ($kind === 'feed'): ?>
 <main class="content" role="main"><section class="section-inner">

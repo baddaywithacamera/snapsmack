@@ -126,6 +126,44 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
     return $out;
 }
 
+/** Render CMS-resolved navigation. No routing or data access occurs here. */
+function snapsmack_render_navigation_items(array $items, int $depth = 0): void
+{
+    foreach ($items as $item) {
+        $children = is_array($item['children'] ?? null) ? $item['children'] : [];
+        $has_children = $children && $depth < 2;
+        echo '<li' . ($has_children ? ' class="menu-item-has-children"' : '') . '>';
+        $label = htmlspecialchars((string)($item['label'] ?? ''), ENT_QUOTES);
+        $url = (string)($item['url'] ?? '');
+        if ($url === '') {
+            echo '<span>' . $label . '</span>';
+        } else {
+            $target = (($item['target'] ?? '') === '_blank')
+                ? ' target="_blank" rel="noopener noreferrer"' : '';
+            echo '<a href="' . htmlspecialchars($url, ENT_QUOTES) . '"' . $target . '>' . $label . '</a>';
+        }
+        if ($has_children) {
+            echo '<ul class="menu-item-has-children">';
+            snapsmack_render_navigation_items(array_values($children), $depth + 1);
+            echo '</ul>';
+        }
+        echo '</li>';
+    }
+}
+
+/** Emit only CMS-registered browser engines declared by the active manifest. */
+function snapsmack_render_skin_scripts(string $skin_slug): void
+{
+    $manifest = load_skin_manifest($skin_slug);
+    $inventory = require __DIR__ . '/manifest-inventory.php';
+    foreach (($manifest['require_scripts'] ?? []) as $handle) {
+        $script = $inventory['scripts'][$handle] ?? null;
+        if (!is_array($script) || empty($script['path'])) continue;
+        echo '<script src="' . htmlspecialchars(BASE_URL . $script['path'], ENT_QUOTES)
+            . '?v=' . rawurlencode(SNAPSMACK_VERSION_SHORT) . '"></script>' . "\n";
+    }
+}
+
 /**
  * Persist declared defaults only during an explicit CMS activation action.
  * Public rendering must never call this function.
