@@ -35,12 +35,12 @@ if (!defined('SNAPSMACK_SECURITY_HEADERS_EMITTED')) {
         // Keep browsers on HTTPS once seen over TLS. Harmless over plain HTTP
         // (browsers ignore HSTS on non-secure responses).
         header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
-        // Conservative CSP: blocks plugin/object embeds, <base> hijacking, and
-        // third-party framing — none of which SnapSmack uses — WITHOUT restricting
-        // img/script/form sources, so federated remote images, inline config
-        // scripts, and remote-follow forms keep working. A stricter script/img
-        // policy needs live testing against federated content before enforcement.
-        header("Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
+        require_once __DIR__ . '/custom-code-policy.php';
+        $entry=basename((string)($_SERVER['SCRIPT_NAME']??''));
+        $admin=str_starts_with($entry,'smack-')||in_array($entry,['login.php','install.php','password-reset.php','break-glass.php'],true);
+        header('Content-Security-Policy: '.($admin
+            ? "object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+            : snapsmack_public_csp(false)));
     }
 }
 // ===== SNAPSMACK EOF =====

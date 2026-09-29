@@ -19,7 +19,7 @@ function snap_escape_url(mixed $value): string {
 }
 
 function snap_render_html(mixed $value): string {
-    return $value instanceof SnapTrustedHtml ? (string)$value : snap_escape_html($value);
+    return $value instanceof SnapTrustedHtml || $value instanceof SnapOwnerCode ? (string)$value : snap_escape_html($value);
 }
 
 function snap_asset_url(string $handle): string {
@@ -95,7 +95,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             $html .= '<section class="not-found"><h1>Not found</h1></section>';
         }
         if (!empty($response['comments'])) $html .= snap_render_html(snap_render_component('comments', ['items' => $response['comments']]));
-        $html .= '</main><footer class="site-footer"><p>' . snap_escape_html($site['site_name'] ?? '') . '</p></footer>';
+        $html .= '</main><footer class="site-footer"><p>' . snap_escape_html($site['site_name'] ?? '') . '</p></footer>' . snap_render_html($site['owner_custom_code'] ?? '');
     } elseif ($name === 'smacktalk-page') {
         $response = is_array($data['response'] ?? null) ? $data['response'] : [];
         $site = is_array($data['site'] ?? null) ? $data['site'] : [];
@@ -137,7 +137,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         } else {
             $html .= '<section class="not-found"><h1>Not found</h1></section>';
         }
-        $html .= '</main><footer class="site-footer"><p>' . snap_escape_html($site['site_name'] ?? '') . '</p></footer>';
+        $html .= '</main><footer class="site-footer"><p>' . snap_escape_html($site['site_name'] ?? '') . '</p></footer>' . snap_render_html($site['owner_custom_code'] ?? '');
     } elseif ($name === 'navigation') {
         $html = '<nav aria-label="Primary"><ul>';
         foreach (($data['items'] ?? []) as $item) {
