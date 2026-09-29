@@ -9,6 +9,7 @@
             "registry_handle": "asset:public:fjGallery.min",
             "legacy_handle": "smack-justified-lib",
             "callers": [
+                "core/asset-security-reviews.php",
                 "new-horizon",
                 "onyx",
                 "show-n-tell",
@@ -18,6 +19,13 @@
             "security_signals": [
                 "remote-url"
             ],
+            "security_review": {
+                "signals": [
+                    "remote-url"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed vendor header citations only; no remote request is made."
+            },
             "enable": "loaded by the CMS where needed",
             "family": "Third-party libraries",
             "vendor": true,
@@ -27,20 +35,29 @@
         {
             "file": "assets/js/shortcode-toolbar.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:shortcode-toolbar",
+            "scope": "tool",
+            "registry_handle": "asset:tool:shortcode-toolbar",
             "legacy_handle": null,
             "callers": [
                 "smack-edit-carousel.php",
                 "smack-edit.php",
                 "smack-pages.php",
                 "smack-post-long.php",
-                "smack-post-solo.php"
+                "smack-post-solo.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "remote-url"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "remote-url"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed URL-field placeholder value only; no remote request is made. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "loaded by the CMS where needed",
             "family": "Other",
             "vendor": false,
@@ -57,6 +74,7 @@
                 "smack-2fa.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "loaded by the CMS where needed",
             "family": "Admin & tool scripts (smack-*) \u2014 the CMS back office",
             "vendor": false,
@@ -70,11 +88,19 @@
             "registry_handle": "asset:admin:smack-app",
             "legacy_handle": null,
             "callers": [
-                "core/admin-footer.php"
+                "core/admin-footer.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "loaded by the CMS where needed",
             "family": "Admin & tool scripts (smack-*) \u2014 the CMS back office",
             "vendor": false,
@@ -90,11 +116,19 @@
             "callers": [
                 "smack-pages.php",
                 "smack-post-long.php",
-                "smack-skin.php"
+                "smack-skin.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "loaded by the CMS where needed",
             "family": "Admin & tool scripts (smack-*) \u2014 the CMS back office",
             "vendor": false,
@@ -111,6 +145,7 @@
                 "smack-2fa-verify.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "loaded by the CMS where needed",
             "family": "Admin & tool scripts (smack-*) \u2014 the CMS back office",
             "vendor": false,
@@ -124,12 +159,21 @@
             "registry_handle": "asset:admin:smack-longform-gallery-picker",
             "legacy_handle": null,
             "callers": [
-                "smack-post-long.php"
+                "smack-post-long.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "loaded by the CMS where needed",
             "family": "Admin & tool scripts (smack-*) \u2014 the CMS back office",
             "vendor": false,
@@ -143,12 +187,21 @@
             "registry_handle": "asset:admin:smack-longform-image-blocks",
             "legacy_handle": null,
             "callers": [
-                "smack-post-long.php"
+                "smack-post-long.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "loaded by the CMS where needed",
             "family": "Admin & tool scripts (smack-*) \u2014 the CMS back office",
             "vendor": false,
@@ -165,6 +218,7 @@
                 "smack-change-password.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "loaded by the CMS where needed",
             "family": "Admin & tool scripts (smack-*) \u2014 the CMS back office",
             "vendor": false,
@@ -181,6 +235,7 @@
                 "smack-photochallenge.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "loaded by the CMS where needed",
             "family": "Admin & tool scripts (smack-*) \u2014 the CMS back office",
             "vendor": false,
@@ -199,6 +254,7 @@
                 "core/meta.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "loaded by the CMS where needed",
             "family": "Admin & tool scripts (smack-*) \u2014 the CMS back office",
             "vendor": false,
@@ -212,11 +268,19 @@
             "registry_handle": "asset:admin:smack-qr.min",
             "legacy_handle": null,
             "callers": [
-                "smack-2fa.php"
+                "smack-2fa.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "remote-url"
             ],
+            "security_review": {
+                "signals": [
+                    "remote-url"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed licence/documentation URLs and the SVG namespace literal only; no remote request is made."
+            },
             "enable": "loaded by the CMS where needed",
             "family": "Third-party libraries",
             "vendor": true,
@@ -233,6 +297,7 @@
                 "smack-central/sc-forum.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "loaded by the CMS where needed",
             "family": "Admin & tool scripts (smack-*) \u2014 the CMS back office",
             "vendor": false,
@@ -242,15 +307,23 @@
         {
             "file": "assets/js/ss-ai-spendcap.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-ai-spendcap",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-ai-spendcap",
             "legacy_handle": null,
             "callers": [
-                "smack-settings.php"
+                "smack-settings.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin."
+            },
             "enable": "loaded by the CMS where needed",
             "family": "Shared front-end helpers (ss-*)",
             "vendor": false,
@@ -268,6 +341,7 @@
                 "52-card-pickup"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -279,17 +353,25 @@
         {
             "file": "assets/js/ss-engine-admin-csrf.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-admin-csrf",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-admin-csrf",
             "legacy_handle": null,
             "callers": [
                 "smack-post-long.php",
                 "core/admin-footer.php",
+                "core/asset-security-reviews.php",
                 "core/csrf.php"
             ],
             "security_signals": [
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -299,8 +381,8 @@
         {
             "file": "assets/js/ss-engine-admin-ui.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-admin-ui",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-admin-ui",
             "legacy_handle": null,
             "callers": [
                 "smack-edit-carousel.php",
@@ -308,11 +390,19 @@
                 "smack-post-gram.php",
                 "smack-post-solo.php",
                 "smack-settings.php",
-                "smack-swap.php"
+                "smack-swap.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -322,20 +412,29 @@
         {
             "file": "assets/js/ss-engine-ai-enrichment.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-ai-enrichment",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-ai-enrichment",
             "legacy_handle": null,
             "callers": [
                 "smack-edit-carousel.php",
                 "smack-edit.php",
                 "smack-post-gram.php",
                 "smack-post-long.php",
-                "smack-post-solo.php"
+                "smack-post-solo.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -345,16 +444,25 @@
         {
             "file": "assets/js/ss-engine-ai.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-ai",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-ai",
             "legacy_handle": null,
             "callers": [
-                "smack-post-solo.php"
+                "smack-post-solo.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -372,6 +480,7 @@
                 "tilez"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -393,6 +502,7 @@
                 "tilez"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -409,6 +519,7 @@
                 "archive.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -428,6 +539,7 @@
                 "onyx"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -442,6 +554,7 @@
             "legacy_handle": "smack-archive-toggle",
             "callers": [
                 "archive.php",
+                "core/asset-security-reviews.php",
                 "skins/chaplin/manifest.json",
                 "skins/rational-geo/manifest.json",
                 "skins/slickr/manifest.json",
@@ -452,6 +565,13 @@
             "security_signals": [
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -465,12 +585,20 @@
             "registry_handle": "asset:public:ss-engine-aurora-bg",
             "legacy_handle": "smack-aurora-bg",
             "callers": [
+                "core/asset-security-reviews.php",
                 "skins/aurora/manifest.json",
                 "aurora"
             ],
             "security_signals": [
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -490,6 +618,7 @@
                 "parade"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -505,6 +634,7 @@
             "callers": [
                 "api-calendar.php",
                 "archive.php",
+                "core/asset-security-reviews.php",
                 "tools/_build/build-spec-080.js",
                 "50-shades-of-noah-grey",
                 "rational-geo",
@@ -514,6 +644,14 @@
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -523,15 +661,23 @@
         {
             "file": "assets/js/ss-engine-carousel-edit.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-carousel-edit",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-carousel-edit",
             "legacy_handle": null,
             "callers": [
-                "smack-edit-carousel.php"
+                "smack-edit-carousel.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -545,6 +691,7 @@
             "registry_handle": "asset:public:ss-engine-carousel-view",
             "legacy_handle": "smack-carousel-view",
             "callers": [
+                "core/asset-security-reviews.php",
                 "skins/aurora/manifest.json",
                 "skins/game-on/manifest.json",
                 "skins/heuristic/manifest.json",
@@ -567,6 +714,13 @@
             "security_signals": [
                 "html-sink"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -584,6 +738,7 @@
                 "chaplin"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -598,6 +753,7 @@
             "legacy_handle": "smack-columns",
             "callers": [
                 "smack-mosaics.php",
+                "core/asset-security-reviews.php",
                 "core/meta.php",
                 "core/ohsnap-api.php",
                 "core/parser.php",
@@ -616,6 +772,14 @@
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -629,6 +793,7 @@
             "registry_handle": "asset:public:ss-engine-comms",
             "legacy_handle": "smack-keyboard",
             "callers": [
+                "core/asset-security-reviews.php",
                 "core/footer-scripts.php",
                 "50-shades-of-noah-grey",
                 "52-card-pickup",
@@ -658,6 +823,13 @@
             "security_signals": [
                 "html-sink"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -671,6 +843,7 @@
             "registry_handle": "asset:public:ss-engine-community",
             "legacy_handle": "smack-community",
             "callers": [
+                "core/asset-security-reviews.php",
                 "core/community-component.php",
                 "core/community-dock.php",
                 "50-shades-of-noah-grey",
@@ -708,6 +881,14 @@
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -727,6 +908,7 @@
                 "core/footer-scripts.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -740,6 +922,7 @@
             "registry_handle": "asset:public:ss-engine-contact",
             "legacy_handle": "smack-contact",
             "callers": [
+                "core/asset-security-reviews.php",
                 "core/contact-form.php",
                 "core/parser.php",
                 "skins/show-n-tell/manifest.json",
@@ -748,6 +931,13 @@
             "security_signals": [
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -766,6 +956,7 @@
                 "onyx"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -782,6 +973,7 @@
                 "smack-multisite-crosspost.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -791,18 +983,27 @@
         {
             "file": "assets/js/ss-engine-featured-picker.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-featured-picker",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-featured-picker",
             "legacy_handle": null,
             "callers": [
                 "smack-albums.php",
                 "smack-cats.php",
-                "smack-collections.php"
+                "smack-collections.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -820,6 +1021,7 @@
                 "core/updater.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -837,6 +1039,7 @@
                 "chaplin"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -853,6 +1056,7 @@
                 "process-community-comment.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -870,6 +1074,7 @@
                 "parade"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -886,6 +1091,7 @@
                 "smack-skin.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -937,6 +1143,7 @@
                 "writing-with-impact"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -954,6 +1161,7 @@
                 "full-monty"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -963,16 +1171,25 @@
         {
             "file": "assets/js/ss-engine-gallery.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-gallery",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-gallery",
             "legacy_handle": null,
             "callers": [
-                "smack-gallery.php"
+                "smack-gallery.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -986,12 +1203,21 @@
             "registry_handle": "asset:public:ss-engine-game-on",
             "legacy_handle": "smack-game-on",
             "callers": [
+                "core/asset-security-reviews.php",
                 "game-on"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1011,6 +1237,7 @@
                 "sliders"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1020,16 +1247,25 @@
         {
             "file": "assets/js/ss-engine-gram-post.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-gram-post",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-gram-post",
             "legacy_handle": null,
             "callers": [
-                "smack-post-gram.php"
+                "smack-post-gram.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1056,6 +1292,7 @@
                 "the-grid"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1093,6 +1330,7 @@
                 "the-grid"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1106,6 +1344,7 @@
             "registry_handle": "asset:public:ss-engine-grid-modal",
             "legacy_handle": "smack-grid-modal",
             "callers": [
+                "core/asset-security-reviews.php",
                 "skins/aurora/manifest.json",
                 "skins/game-on/manifest.json",
                 "skins/heuristic/manifest.json",
@@ -1129,6 +1368,14 @@
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1154,6 +1401,7 @@
                 "the-grid"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1171,6 +1419,7 @@
                 "heuristic"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1238,6 +1487,7 @@
                 "true-grit"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1255,6 +1505,7 @@
                 "jive-turkey"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1268,12 +1519,20 @@
             "registry_handle": "asset:public:ss-engine-jive-turkey",
             "legacy_handle": "smack-jive-turkey-bg",
             "callers": [
+                "core/asset-security-reviews.php",
                 "skins/jive-turkey/manifest.json",
                 "jive-turkey"
             ],
             "security_signals": [
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1299,6 +1558,7 @@
                 "true-grit"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1324,6 +1584,7 @@
                 "tilez"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1389,6 +1650,7 @@
                 "true-grit"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1398,16 +1660,25 @@
         {
             "file": "assets/js/ss-engine-lighttable.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-lighttable",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-lighttable",
             "legacy_handle": null,
             "callers": [
-                "smack-lighttable.php"
+                "smack-lighttable.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1424,6 +1695,7 @@
                 "smack-post-long.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1440,6 +1712,7 @@
                 "smack-masthead.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1449,15 +1722,23 @@
         {
             "file": "assets/js/ss-engine-media-library.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-media-library",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-media-library",
             "legacy_handle": null,
             "callers": [
-                "smack-media.php"
+                "smack-media.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1467,15 +1748,23 @@
         {
             "file": "assets/js/ss-engine-menu-builder.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-menu-builder",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-menu-builder",
             "legacy_handle": null,
             "callers": [
-                "smack-menu.php"
+                "smack-menu.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1489,11 +1778,19 @@
             "registry_handle": "asset:public:ss-engine-mosaic-feed",
             "legacy_handle": null,
             "callers": [
-                "eatmeclaude.php"
+                "eatmeclaude.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1514,6 +1811,7 @@
                 "tilez"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1530,6 +1828,7 @@
                 "core/footer.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1545,6 +1844,7 @@
             "callers": [
                 "index.php",
                 "tools/asset-inventory.php",
+                "core/asset-security-reviews.php",
                 "core/mayhem-data.php",
                 "core/ohsnap-api.php",
                 "skins/52-card-pickup/manifest.json",
@@ -1555,6 +1855,13 @@
             "security_signals": [
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1572,6 +1879,7 @@
                 "stanley"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1595,6 +1903,7 @@
                 "show-n-tell"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1611,6 +1920,7 @@
                 "smack-pages.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1620,18 +1930,27 @@
         {
             "file": "assets/js/ss-engine-photo-editor.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-photo-editor",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-photo-editor",
             "legacy_handle": "smack-photo-editor",
             "callers": [
                 "smack-edit-carousel.php",
                 "smack-edit.php",
+                "core/asset-security-reviews.php",
                 "core/photo-editor-save.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1645,6 +1964,7 @@
             "registry_handle": "asset:public:ss-engine-photogram-feed",
             "legacy_handle": "smack-photogram-feed",
             "callers": [
+                "core/asset-security-reviews.php",
                 "skins/photogram/manifest.json",
                 "photogram"
             ],
@@ -1652,6 +1972,14 @@
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1665,6 +1993,7 @@
             "registry_handle": "asset:public:ss-engine-photogram",
             "legacy_handle": "smack-photogram",
             "callers": [
+                "core/asset-security-reviews.php",
                 "skins/photogram/manifest.json",
                 "photogram"
             ],
@@ -1672,6 +2001,14 @@
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1685,6 +2022,7 @@
             "registry_handle": "asset:public:ss-engine-progressive-reveal",
             "legacy_handle": "smack-progressive-reveal",
             "callers": [
+                "core/asset-security-reviews.php",
                 "skins/aurora/manifest.json",
                 "skins/game-on/manifest.json",
                 "skins/heuristic/manifest.json",
@@ -1709,6 +2047,13 @@
             "security_signals": [
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1725,6 +2070,7 @@
                 "core/footer.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1741,6 +2087,7 @@
                 "core/footer.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1755,6 +2102,7 @@
             "legacy_handle": "smack-rows",
             "callers": [
                 "smack-mosaics.php",
+                "core/asset-security-reviews.php",
                 "core/meta.php",
                 "skins/50-shades-of-noah-grey/manifest.json",
                 "skins/telegram/manifest.json",
@@ -1767,6 +2115,14 @@
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1783,6 +2139,7 @@
                 "smack-post-gram.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1792,16 +2149,25 @@
         {
             "file": "assets/js/ss-engine-scan-upload.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-scan-upload",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-scan-upload",
             "legacy_handle": null,
             "callers": [
-                "smack-skin.php"
+                "smack-skin.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1815,11 +2181,19 @@
             "registry_handle": "asset:public:ss-engine-scrolltime",
             "legacy_handle": null,
             "callers": [
+                "core/asset-security-reviews.php",
                 "core/stats-logger.php"
             ],
             "security_signals": [
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1836,6 +2210,7 @@
                 "core/admin-footer.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1845,16 +2220,25 @@
         {
             "file": "assets/js/ss-engine-slicer.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-slicer",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-slicer",
             "legacy_handle": null,
             "callers": [
-                "smack-slicer.php"
+                "smack-slicer.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1868,6 +2252,7 @@
             "registry_handle": "asset:public:ss-engine-slider",
             "legacy_handle": "smack-slider",
             "callers": [
+                "core/asset-security-reviews.php",
                 "aurora",
                 "galleria",
                 "game-on",
@@ -1885,6 +2270,13 @@
             "security_signals": [
                 "html-sink"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1901,6 +2293,7 @@
                 "core/footer-scripts.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1918,6 +2311,7 @@
                 "core/sticky-header.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1931,6 +2325,7 @@
             "registry_handle": "asset:public:ss-engine-tag-infinite",
             "legacy_handle": "smack-tag-infinite",
             "callers": [
+                "core/asset-security-reviews.php",
                 "skins/aurora/manifest.json",
                 "skins/game-on/manifest.json",
                 "skins/heuristic/manifest.json",
@@ -1956,6 +2351,14 @@
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1969,6 +2372,7 @@
             "registry_handle": "asset:public:ss-engine-thomas",
             "legacy_handle": "smack-thomas",
             "callers": [
+                "core/asset-security-reviews.php",
                 "core/footer-scripts.php",
                 "projects/snapsmack-ca/assets/js/ss-engine-thomas.js",
                 "projects/snapsmack-ca/index.php",
@@ -1979,6 +2383,13 @@
             "security_signals": [
                 "html-sink"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -1988,16 +2399,25 @@
         {
             "file": "assets/js/ss-engine-updater.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-updater",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-updater",
             "legacy_handle": null,
             "callers": [
-                "core/admin-footer.php"
+                "core/admin-footer.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -2011,12 +2431,21 @@
             "registry_handle": "asset:public:ss-engine-wall",
             "legacy_handle": null,
             "callers": [
-                "gallery-wall.php"
+                "gallery-wall.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
@@ -2031,6 +2460,7 @@
             "legacy_handle": null,
             "callers": [
                 "pixel.php",
+                "core/asset-security-reviews.php",
                 "core/fediverse.php"
             ],
             "security_signals": [
@@ -2038,6 +2468,15 @@
                 "network",
                 "remote-url"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network",
+                    "remote-url"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed CMS-facing calls; normal public CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "loaded by the CMS where needed",
             "family": "Shared front-end helpers (ss-*)",
             "vendor": false,
@@ -2047,16 +2486,25 @@
         {
             "file": "assets/js/ss-pixelfed-client.js",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-pixelfed-client",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-pixelfed-client",
             "legacy_handle": null,
             "callers": [
-                "smack-pixelfed.php"
+                "smack-pixelfed.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "html-sink",
                 "network"
             ],
+            "security_review": {
+                "signals": [
+                    "html-sink",
+                    "network"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed authenticated CMS/admin calls; admin CSP restricts connections to same-origin. Reviewed DOM construction: fixed markup, escaped scalar values, or CMS-rendered same-origin fragments; script CSP blocks inline and remote execution."
+            },
             "enable": "loaded by the CMS where needed",
             "family": "Shared front-end helpers (ss-*)",
             "vendor": false,
@@ -2242,18 +2690,26 @@
         {
             "file": "assets/css/admin-theme-geometry-master.css",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:admin-theme-geometry-master",
+            "scope": "tool",
+            "registry_handle": "asset:tool:admin-theme-geometry-master",
             "legacy_handle": null,
             "callers": [
                 "smack-2fa-verify.php",
                 "smack-help.php",
                 "snap-in.php",
-                "core/admin-header.php"
+                "core/admin-header.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "Admin theme master geometry file Pure geometry and layout."
         },
@@ -2265,11 +2721,19 @@
             "legacy_handle": null,
             "callers": [
                 "smack-preview-ajax.php",
+                "core/asset-security-reviews.php",
                 "core/meta.php"
             ],
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "SNAPSMACK \u2014 Multi-Column Layout Shortcode: [columns=N] ..."
         },
@@ -2292,6 +2756,7 @@
                 "true-grit"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "fjGallery layout stylesheet, the CSS half of the Flickr Justified Gallery engine (fjGallery.min.js)."
         },
@@ -2302,11 +2767,19 @@
             "registry_handle": "asset:tool:page-archive",
             "legacy_handle": null,
             "callers": [
+                "core/asset-security-reviews.php",
                 "core/meta.php"
             ],
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "Archive Page Styles Loaded only on archive.php."
         },
@@ -2320,6 +2793,7 @@
                 "core/meta.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Blogroll Page Styles Loaded only on blogroll.php."
         },
@@ -2333,6 +2807,7 @@
                 "core/meta.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Collection / Collections Page Styles Loaded on collection.php (per-collection landing) and collections.php (collections index)."
         },
@@ -2346,6 +2821,7 @@
                 "eatmeclaude.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "SCROLL MOSAIC feed experiment."
         },
@@ -2359,6 +2835,7 @@
                 "core/meta.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Static / Page Styles Loaded by core/meta.php on static pages (page.php and index.php pretty-URL pages) for EVERY skin."
         },
@@ -2372,6 +2849,7 @@
                 "core/photochallenge.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Photo-Challenge board CARD appearance (0.7.621D) Scoped under .pc-board so it never touches the host page's theme."
         },
@@ -2385,6 +2863,7 @@
                 "core/photochallenge.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "PHOTO CHALLENGE public feed layouts Layout choices for /board."
         },
@@ -2395,11 +2874,19 @@
             "registry_handle": "asset:tool:public-base",
             "legacy_handle": null,
             "callers": [
+                "core/asset-security-reviews.php",
                 "core/meta.php"
             ],
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "Public Base Styles Loaded on every public-facing page."
         },
@@ -2413,6 +2900,7 @@
                 "core/footer-scripts.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Download overlay with fixed button Provides a fixed download button overlaid on media content."
         },
@@ -2430,6 +2918,7 @@
                 "core/meta.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Public-facing CSS (DEPRECATION SHIM, 0.7.81) This file used to be the single global stylesheet for the public side."
         },
@@ -2444,6 +2933,7 @@
                 "core/meta.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Shortcode Base Styles"
         },
@@ -2454,11 +2944,19 @@
             "registry_handle": "asset:admin:smack-app",
             "legacy_handle": null,
             "callers": [
-                "core/admin-header.php"
+                "core/admin-header.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "SMACK THAT APP UP composer styling."
         },
@@ -2469,6 +2967,7 @@
             "registry_handle": "asset:public:ss-community",
             "legacy_handle": "smack-community:css",
             "callers": [
+                "core/asset-security-reviews.php",
                 "core/community-component.php",
                 "core/community-dock.php",
                 "skins/50-shades-of-noah-grey/manifest.json",
@@ -2535,6 +3034,13 @@
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "Community Component + Dock Styles Two distinct blocks: 1."
         },
@@ -2549,25 +3055,34 @@
                 "52-card-pickup"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "SNAPSMACK ===== \u2014 52 PICKUP interaction layer base styles."
         },
         {
             "file": "assets/css/ss-engine-ai-enrichment.css",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-ai-enrichment",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-ai-enrichment",
             "legacy_handle": null,
             "callers": [
                 "smack-edit-carousel.php",
                 "smack-edit.php",
                 "smack-post-gram.php",
                 "smack-post-long.php",
-                "smack-post-solo.php"
+                "smack-post-solo.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "AI metadata enrichment controls Shared geometry for title, caption/body, and hashtag enrichment."
         },
@@ -2580,6 +3095,7 @@
             "callers": [
                 "archive.php",
                 "smack-help.php",
+                "core/asset-security-reviews.php",
                 "core/meta.php",
                 "skins/50-shades-of-noah-grey/manifest.json",
                 "skins/rational-geo/manifest.json",
@@ -2592,6 +3108,13 @@
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "Archive Calendar Engine Styles Panel slides in from the right when the archive layout is 'croppedwithcalendar'."
         },
@@ -2653,6 +3176,7 @@
                 "true-grit"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Communications and hotkey HUD styles Help modals, notifications, and system hints overlays."
         },
@@ -2666,23 +3190,32 @@
                 "core/footer-scripts.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Storage Consent Banner Minimal full-width bottom banner for storage consent."
         },
         {
             "file": "assets/css/ss-engine-featured-picker.css",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-engine-featured-picker",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-engine-featured-picker",
             "legacy_handle": null,
             "callers": [
                 "smack-albums.php",
                 "smack-cats.php",
-                "smack-collections.php"
+                "smack-collections.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "Featured Image Picker Engine Styles Shared modal picker used by smack-albums.php and smack-collections.php (and any future page that needs to pick a post as a \"featured image\")."
         },
@@ -2696,6 +3229,7 @@
                 "smack-gallery.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Media Gallery Engine CSS Layout and styling for the admin media gallery grid, filter bar, quick-edit panel, and bulk actions bar."
         },
@@ -2706,12 +3240,20 @@
             "registry_handle": "asset:public:ss-engine-game-on",
             "legacy_handle": "smack-game-on:css",
             "callers": [
+                "core/asset-security-reviews.php",
                 "skins/game-on/manifest.json",
                 "game-on"
             ],
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "GAME ON engine styles \u2014 the living fifteen-puzzle field, the playable modal, and the scoreboard."
         },
@@ -2725,6 +3267,7 @@
                 "core/asset-sync.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Glitch effect animations Visual distortion and glitch effects for chaotic moments."
         },
@@ -2758,6 +3301,7 @@
                 "the-grid"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Floating Search Dock + Search Results styles Powers the bottom-left magnifier dock (core/gram-search-dock.php) and the shared results partial (core/gram-search-results.php)."
         },
@@ -2768,6 +3312,7 @@
             "registry_handle": "asset:public:ss-engine-grid-nav",
             "legacy_handle": "smack-grid-nav:css",
             "callers": [
+                "core/asset-security-reviews.php",
                 "skins/aurora/manifest.json",
                 "skins/game-on/manifest.json",
                 "skins/heuristic/manifest.json",
@@ -2792,6 +3337,13 @@
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "Shared Grid Sticky Navigation Structural geometry only; skins own the visual treatment."
         },
@@ -2809,6 +3361,7 @@
                 "tilez"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Mosaic Engine CSS Styles for [mosaic:ID] shortcode renders (public-facing) and the admin builder live preview in smack-mosaics.php."
         },
@@ -2823,6 +3376,7 @@
                 "smack-edit.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Photo Editor Engine CSS Full-screen overlay editor for crop, rotate, brightness, contrast, sharpen, flip, and B&W."
         },
@@ -2837,6 +3391,7 @@
                 "core/meta.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "SCROLL wall (three-layout) CSS bundle."
         },
@@ -2876,6 +3431,7 @@
                 "the-grid"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "SnapSmack Gallery Slider Styles Minimal, clean styling for the SnapSlider component"
         },
@@ -2886,11 +3442,19 @@
             "registry_handle": "asset:public:ss-engine-social-dock",
             "legacy_handle": null,
             "callers": [
+                "core/asset-security-reviews.php",
                 "core/footer-scripts.php"
             ],
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "Social Profile Dock Floating dock of social profile links styled as independent circles matching the download button aesthetic."
         },
@@ -2901,11 +3465,19 @@
             "registry_handle": "asset:public:ss-engine-sticky-header",
             "legacy_handle": null,
             "callers": [
+                "core/asset-security-reviews.php",
                 "core/footer-scripts.php"
             ],
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "Sticky Header Engine Makes the site header stick to the top on scroll with a glass-morphism transparency effect."
         },
@@ -2926,6 +3498,7 @@
                 "parade"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "SNAPSMACK ENGINE: Thomas the Bear ========================================================================== Real Thomas image + dedication banner."
         },
@@ -2939,21 +3512,30 @@
                 "gallery-wall.php"
             ],
             "security_signals": [],
+            "security_review": null,
             "requires": [],
             "purpose": "Floating Gallery Engine 3D perspective gallery with zoom, smooth physics, and metadata display."
         },
         {
             "file": "assets/css/ss-gram-pwa-composer.css",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-gram-pwa-composer",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-gram-pwa-composer",
             "legacy_handle": null,
             "callers": [
-                "smack-post-gram.php"
+                "smack-post-gram.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "GRAMOFSMACK phone/tablet composer."
         },
@@ -2964,26 +3546,42 @@
             "registry_handle": "asset:public:ss-pixel",
             "legacy_handle": null,
             "callers": [
-                "pixel.php"
+                "pixel.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "SNAPSMACK \u2014 FEDIVERSE : Standalone Pixelfed-compatible client () ORIGINAL code."
         },
         {
             "file": "assets/css/ss-pixelfed-client.css",
             "owner": "cms",
-            "scope": "admin",
-            "registry_handle": "asset:admin:ss-pixelfed-client",
+            "scope": "public",
+            "registry_handle": "asset:public:ss-pixelfed-client",
             "legacy_handle": null,
             "callers": [
-                "smack-pixelfed.php"
+                "smack-pixelfed.php",
+                "core/asset-security-reviews.php"
             ],
             "security_signals": [
                 "concealment"
             ],
+            "security_review": {
+                "signals": [
+                    "concealment"
+                ],
+                "reviewer": "SECAUDIT-059",
+                "review": "Reviewed presentation-state visibility rules only; CSS is not used as an authorization boundary."
+            },
             "requires": [],
             "purpose": "FEDIVERSE Pixelfed Client (faithful pixelfed.ca look)"
         }

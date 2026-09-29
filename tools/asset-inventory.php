@@ -51,6 +51,7 @@ $root      = dirname(__DIR__);
 $js_dir    = $root . '/assets/js';
 $css_dir   = $root . '/assets/css';
 $fonts_dir = $root . '/assets/fonts';
+$securityReviews = require $root . '/core/asset-security-reviews.php';
 
 /** Tidy one raw comment block down to a single "purpose" sentence ('' if none). */
 function inv_tidy(string $text, string $base): string {
@@ -193,6 +194,7 @@ foreach (glob($js_dir . '/*.js') ?: [] as $f) {
     $d = inv_describe($f);
     $callers=array_values(array_unique(array_merge($sourceCallers[$name]??[],$skinCallers[$handlesByPath['assets/js/'.$name]??'']??[])));
     $scope=inv_scope_from_callers($name,$callers);
+    $signals=inv_security_signals($f);
     $catalog['javascript'][] = [
         'file'    => 'assets/js/' . $name,
         'owner'   => 'cms',
@@ -200,7 +202,8 @@ foreach (glob($js_dir . '/*.js') ?: [] as $f) {
         'registry_handle' => 'asset:'.$scope.':'.pathinfo($name, PATHINFO_FILENAME),
         'legacy_handle' => $handlesByPath['assets/js/'.$name] ?? null,
         'callers' => $callers,
-        'security_signals' => inv_security_signals($f),
+        'security_signals' => $signals,
+        'security_review' => $securityReviews['assets/js/'.$name]??null,
         'enable'  => str_starts_with($name, 'ss-engine-') ? 'declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php' : 'loaded by the CMS where needed',
         'family'  => inv_js_family($name),
         'vendor'  => $d['vendor'],
@@ -232,6 +235,7 @@ foreach (glob($css_dir . '/*.css') ?: [] as $f) {
     $cssScriptHandle=is_string($cssLegacyHandle)?preg_replace('/:css\\z/','',$cssLegacyHandle):null;
     $callers=array_values(array_unique(array_merge($sourceCallers[$name]??[],is_string($cssScriptHandle)?($skinCallers[$cssScriptHandle]??[]):[])));
     $scope=inv_scope_from_callers($name,$callers);
+    $signals=inv_security_signals($f,true);
     $catalog['css'][] = [
         'file'    => 'assets/css/' . $name,
         'owner'   => 'cms',
@@ -239,7 +243,8 @@ foreach (glob($css_dir . '/*.css') ?: [] as $f) {
         'registry_handle' => 'asset:'.$scope.':'.pathinfo($name, PATHINFO_FILENAME),
         'legacy_handle' => $handlesByPath['assets/css/'.$name] ?? null,
         'callers' => $callers,
-        'security_signals' => inv_security_signals($f, true),
+        'security_signals' => $signals,
+        'security_review' => $securityReviews['assets/css/'.$name]??null,
         'requires'=> inv_requires($f),
         'purpose' => $d['desc'] !== '' ? $d['desc'] : 'NEEDS-DESCRIPTION (no purpose line in the file header)',
     ];
@@ -268,6 +273,7 @@ foreach ($catalog['javascript'] as $e) {
         if ($inv_blank($e[$field] ?? '')) $errors[] = "{$f}: missing {$field} (add it to the file header, then re-run)";
     }
     if(($e['callers']??[])===[])$errors[]="{$f}: no runtime caller (remove the dead asset or name an exact caller)";
+    if(($e['security_signals']??[])!==[]&&(!is_array($e['security_review']??null)||($e['security_review']['signals']??null)!==$e['security_signals']||trim((string)($e['security_review']['review']??''))===''))$errors[]="{$f}: security signals lack an exact explicit review";
     foreach ($e['requires'] as $dep) {
         if (empty($known[$dep])) $errors[] = "{$f}: requires '{$dep}', which is not an asset in the catalogue";
     }
@@ -277,6 +283,7 @@ foreach ($catalog['css'] as $e) {
     if ($inv_blank($e['purpose'] ?? '')) $errors[] = "{$f}: missing purpose (add a description to the file header, then re-run)";
     foreach (['owner','scope'] as $field) if ($inv_blank($e[$field] ?? '')) $errors[] = "{$f}: missing {$field}";
     if(($e['callers']??[])===[])$errors[]="{$f}: no runtime caller (remove the dead asset or name an exact caller)";
+    if(($e['security_signals']??[])!==[]&&(!is_array($e['security_review']??null)||($e['security_review']['signals']??null)!==$e['security_signals']||trim((string)($e['security_review']['review']??''))===''))$errors[]="{$f}: security signals lack an exact explicit review";
     foreach ($e['requires'] as $dep) {
         if (empty($known[$dep])) $errors[] = "{$f}: requires '{$dep}', which is not an asset in the catalogue";
     }
