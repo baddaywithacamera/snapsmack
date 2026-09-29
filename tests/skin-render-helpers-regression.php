@@ -72,6 +72,10 @@ $instant = snap_render_html(snap_render_component('public-page', [
 foreach (['id="snapsmack-dynamic-css"', '--saved:#123456', 'id="snapsmack-skin-presentation"', '--ic-scrim:0.85', '--panel-bg:rgba(171,205,239,0.65)', '--ic-tile-aspect:823 / 1000', '--ic-navline-shadow:0 2px 2px -2px rgba(16,32,48,0.80),inset 0 2px 2px -2px rgba(16,32,48,0.80)', 'class="nav-has-children"', 'class="nav-submenu"', '/page.php?slug=about', 'ss-engine-nav-dropdown.js', 'class="ic-bg ic-bg-mayhem"', 'data-initial-count="90"', 'data-max-width="180"', 'data-overlap-max="0.70"', 'data-drift="0"', 'data-warp="1"', 'class="ic-scrim"', 'class="ic-panel"', 'class="tg-content-wrap landing-feed"', 'class="tg-profile-avatar"', 'class="tg-profile-username"', 'class="tg-sticky-nav-links"', 'id="browse-grid" class="tg-grid', 'class="tg-tile"', 'img_uploads/thumbs/a_photo.jpg', '&lt;Photo&gt;', 'data-mayhem'] as $hook) {
     if (!str_contains($instant, $hook)) throw new RuntimeException("INSTANT CAMERA CMS renderer lost hook: {$hook}");
 }
+$instantCss = file_get_contents(dirname(__DIR__) . '/skins/instant-camera/style.css');
+if (!str_contains((string)$instantCss, '.tg-sticky-nav.profile-hidden  { background: var(--ic-nav-bg, transparent) !important; }')) {
+    throw new RuntimeException('INSTANT CAMERA resting/sticky navbar no longer honours the CMS opacity value.');
+}
 if (snap_route_url('unknown') !== '') throw new RuntimeException('Unknown route did not fail closed.');
 if (snap_asset_url('../evil') !== '') throw new RuntimeException('Unknown/traversal asset handle was accepted.');
 
