@@ -15,14 +15,15 @@ $fail = static function (string $message) use ($tmp): void {
     exit(1);
 };
 
-foreach (['parked', 'active', 'mobile'] as $slug) {
+foreach (['parked', 'spare', 'active', 'mobile'] as $slug) {
     mkdir($tmp . '/' . $slug, 0700, true);
     file_put_contents($tmp . '/' . $slug . '/manifest.json', '{}');
 }
 
-$result = skin_registry_evaporate_parked('parked', 'active', ['mobile']);
-if (empty($result['success']) || empty($result['removed'])) $fail('parked skin was not reported removed');
+$result = skin_registry_evaporate_inactive('active', ['mobile']);
+if (empty($result['success']) || count($result['removed']) !== 2) $fail('inactive skins were not reported removed');
 if (is_dir($tmp . '/parked')) $fail('parked skin code remains on disk');
+if (is_dir($tmp . '/spare')) $fail('older inactive skin code remains on disk');
 if (!is_dir($tmp . '/active')) $fail('active skin was removed');
 
 $result = skin_registry_evaporate_parked('mobile', 'active', ['mobile']);
