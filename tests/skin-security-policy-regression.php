@@ -10,17 +10,60 @@ try {
         'view_model' => 'public.v1',
         'templates' => ['public' => 'template.php'],
     ]));
-    file_put_contents($tmp . '/template.php', '<?php echo htmlspecialchars($view["title"]);');
+    file_put_contents($tmp . '/template.php', <<<'PHP'
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
+<h1><?= snap_escape_html($view['title']) ?></h1>
+<?php foreach ($view['items'] as $item): ?>
+<span><?= snap_escape_html($item['label']) ?></span>
+<?php endforeach; ?>
+PHP);
     if (snapsmack_skin_security_findings($tmp) !== []) {
         throw new RuntimeException('A presentation-only template was rejected.');
     }
+    file_put_contents($tmp . '/include-test.php', <<<'PHP'
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
+<?php include __DIR__ . '/template.php'; ?>
+PHP);
+    if (snapsmack_skin_policy_scan_template_v2($tmp . '/include-test.php', 'include-test.php') !== []) {
+        throw new RuntimeException('A literal same-package template include was rejected.');
+    }
+    unlink($tmp . '/include-test.php');
 
+    // Legacy detection remains available for the shrinking schema-v1 inventory.
+    file_put_contents($tmp . '/manifest.json', '{"schema_version":1}');
     file_put_contents($tmp . '/bad.php', '<?php $x=$_GET["x"]; $pdo->query("SELECT id FROM secrets"); header("X: y");');
     file_put_contents($tmp . '/bad.js', 'alert(1)');
     $types = array_column(snapsmack_skin_security_findings($tmp), 'type');
     foreach (['request-global', 'database-handle', 'sql-statement', 'response-control', 'bundled-javascript'] as $type) {
         if (!in_array($type, $types, true)) throw new RuntimeException("Did not detect {$type}.");
     }
+    // Schema v2 is default-deny: representative unlisted PHP mechanisms fail.
+    file_put_contents($tmp . '/manifest.json', json_encode([
+        'schema_version' => 2, 'cms_controller' => 'public',
+        'view_model' => 'public.v1', 'templates' => ['public' => 'template.php'],
+    ]));
+    $attacks = [
+        'global' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; global $x;',
+        'globals' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; echo $GLOBALS["x"];',
+        'variable-call' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; $fn($view);',
+        'variable-variable' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; echo $$name;',
+        'reflection' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; new ReflectionClass("X");',
+        'dynamic-include' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; include $view["path"];',
+        'backticks' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; echo `id`;',
+        'namespace' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; namespace Bad;',
+        'construction' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; new stdClass();',
+        'assignment' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; $x = 1;',
+        'raw-output' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; echo $view["title"];',
+    ];
+    foreach ($attacks as $name => $source) {
+        $path = $tmp . '/attack-' . $name . '.php';
+        file_put_contents($path, $source);
+        if (snapsmack_skin_policy_scan_template_v2($path, basename($path)) === []) {
+            throw new RuntimeException("Default-deny grammar accepted {$name}.");
+        }
+        unlink($path);
+    }
+
     $baseline = ['snapsmack-skin-policy-' . basename($tmp) => []];
     if (snapsmack_skin_security_gate($tmp, $baseline) === []) {
         throw new RuntimeException('Schema version 2 did not fail closed.');
