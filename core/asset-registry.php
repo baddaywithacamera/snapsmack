@@ -20,3 +20,12 @@ function snapsmack_asset_by_handle(string $handle): ?array
 {
     return snapsmack_asset_registry()[$handle]??null;
 }
+
+/** Resolve a skin's declarative legacy handles to bounded same-origin asset URLs. */
+function snapsmack_skin_declared_assets(array $manifest): array
+{
+    $inventory=require __DIR__.'/manifest-inventory.php';$base=defined('BASE_URL')?rtrim((string)BASE_URL,'/').'/':'/';$scripts=[];$styles=[];
+    foreach(($manifest['require_scripts']??[]) as $handle){$entry=$inventory['scripts'][$handle]??null;if(!is_array($entry))continue;if(is_string($entry['path']??null))$scripts[]=$base.ltrim($entry['path'],'/');if(is_string($entry['css']??null))$styles[]=$base.ltrim($entry['css'],'/');}
+    foreach(($manifest['require_styles']??[]) as $handle){$entry=snapsmack_asset_by_handle((string)$handle);if(($entry['scope']??'')==='public'&&($entry['type']??'')==='style')$styles[]=$base.ltrim($entry['path'],'/');}
+    return ['scripts'=>array_values(array_unique($scripts)),'styles'=>array_values(array_unique($styles))];
+}
