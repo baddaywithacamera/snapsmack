@@ -534,6 +534,10 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
     // can fall back to the on-disk copy when the remote URL is unavailable.
     $always_include = [
         'database/schema/snapsmack_canonical.sql',
+        // The schema-v2 skin installer builds its CMS asset allowlist from this
+        // catalog. Omitting it makes the fail-closed policy reject every skin
+        // that declares a shared script or stylesheet.
+        'assets/ASSET-INVENTORY.json',
         // Runtime files that are NOT an allowlisted extension (gate below) but
         // must ship: the updater reads protected_paths.json (core/updater.php,
         // UPDATER_PROTECTED_PATHS_FILE); install.php builds the live .htaccess

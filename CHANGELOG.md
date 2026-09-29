@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.774D — 2026-09-29 — Complete catalog
+
+- **Strict skins can be installed without weakening their security gate.** Core release packages now force-include the machine-readable CMS asset inventory used by the schema-v2 skin validator. The 0.7.773D artifact omitted that JSON file, so updated spokes correctly refused every presentation-only skin that requested a centrally approved script or stylesheet. The release regression suite now pins the inventory as required runtime data. (`smack-central/sc-release.php`, `assets/ASSET-INVENTORY.json`, `tests/release-flow-regression.php`.)
+
 ## 0.7.773D — 2026-09-28 — Presentation boundary
 
 - **TILEZ is now a presentation-only skin.** Request interpretation, publication checks, SQL, content parsing, archive/feed construction, pagination, derived counts, filesystem image inspection, redirects, and response status now live in the reusable CMS SMACKTALK controller. TILEZ receives a bounded display model and contains no PDO, SQL, request globals, response control, filesystem access, networking, or process execution. Navigation resolution is centralized in the CMS and TILEZ's temporary WordPress-era links are gone; its default navigation is declarative manifest data. TILEZ skin version 0.2.43. (`core/smacktalk-public-controller.php`, `core/skin-view-model.php`, `skins/tilez/`.)
