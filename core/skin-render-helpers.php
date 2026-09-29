@@ -70,16 +70,31 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $registered = is_array($site['registered_assets'] ?? null) ? $site['registered_assets'] : [];
         foreach (($registered['scripts'] ?? []) as $script_url) {
             if (is_string($script_url) && str_contains($script_url, 'ss-engine-organized-mayhem.js')) {
-                $html .= '<div id="organized-mayhem" aria-hidden="true" data-mayhem data-api-url="?ajax=mayhem" data-pan="0" data-ambient="1" data-initial-count="120" data-max-mounted="180"></div>';
+                $html .= '<div id="organized-mayhem" class="ic-bg ic-bg-mayhem" aria-hidden="true" data-mayhem data-api-url="?ajax=mayhem" data-pan="0" data-ambient="1" data-initial-count="120" data-max-mounted="180"></div>';
                 break;
             }
         }
         $siteName = (string)($site['site_name'] ?? '');
-        $html .= '<div class="tg-content-wrap landing-feed"><header class="tg-profile"><div class="tg-profile-info"><h1 class="tg-profile-name">'
-            . snap_escape_html($siteName) . '</h1>';
-        if (!empty($site['tagline'])) $html .= '<p class="tg-profile-bio">' . snap_escape_html($site['tagline']) . '</p>';
-        $html .= '</div></header><nav class="tg-sticky-nav" aria-label="Primary"><div class="tg-sticky-nav-inner">'
-            . snap_render_html(snap_render_component('navigation', ['items' => $response['navigation'] ?? []])) . '</div></nav>';
+        $html .= '<div class="ic-scrim" aria-hidden="true"></div><div class="ic-panel" aria-hidden="true"></div>'
+            . '<div class="tg-content-wrap landing-feed"><header class="tg-profile">';
+        $avatar = (string)($site['avatar_url'] ?? '');
+        if ($avatar !== '') {
+            $html .= '<div class="tg-profile-avatar"><img src="' . snap_escape_url($avatar) . '" alt=""></div>';
+        } else {
+            $html .= '<div class="tg-profile-avatar tg-profile-avatar-initials">' . snap_escape_html(strtoupper(substr($siteName !== '' ? $siteName : 'S', 0, 1))) . '</div>';
+        }
+        $html .= '<div class="tg-profile-info"><div class="tg-profile-nameline"><h1 class="tg-profile-username">' . snap_escape_html($siteName) . '</h1>';
+        if (!empty($site['tagline'])) $html .= '<span class="tg-profile-tagline-sep">/</span><p class="tg-profile-tagline">' . snap_escape_html($site['tagline']) . '</p>';
+        $html .= '</div><div class="tg-profile-stats"><span class="tg-profile-stat"><strong class="tg-profile-stat-num">'
+            . (int)($response['photo_count'] ?? count($response['items'] ?? [])) . '</strong><span class="tg-profile-stat-label">posts</span></span></div>';
+        if (!empty($site['site_description'])) $html .= '<p class="tg-profile-bio">' . nl2br(snap_escape_html($site['site_description']), false) . '</p>';
+        $html .= '</div></header><nav class="tg-sticky-nav" aria-label="Primary"><div class="tg-sticky-nav-inner"><ul class="tg-sticky-nav-links">'
+            . '<li><a class="active" href="' . snap_route_url('home') . '">Home</a></li>';
+        foreach (($response['navigation'] ?? []) as $navItem) {
+            if (!is_array($navItem)) continue;
+            $html .= '<li><a href="' . snap_escape_url($navItem['url'] ?? '') . '">' . snap_escape_html($navItem['label'] ?? $navItem['title'] ?? '') . '</a></li>';
+        }
+        $html .= '</ul></div></nav>';
         if (in_array($kind, ['landing', 'archive', 'hashtag'], true)) {
             $html .= '<main><div id="browse-grid" class="tg-grid public-grid h-feed archive-grid">';
             foreach (($response['items'] ?? []) as $item) {
