@@ -1,5 +1,5 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
     "name": "PHOTOGRAM",
     "version": "2.0.18",
     "author": "Sean McCormick",
@@ -443,5 +443,22 @@
     },
     "community_comments": "1",
     "community_likes": "1",
-    "community_reactions": "0"
+    "community_reactions": "0",
+    "security_policy": 2,
+    "cms_controller": "public",
+    "view_model": "snapsmack.public.v1",
+    "templates": {
+        "landing": "layout.php",
+        "photo": "layout.php",
+        "post": "layout.php",
+        "archive": "layout.php",
+        "page": "layout.php",
+        "search": "layout.php",
+        "hashtag": "layout.php",
+        "albums": "layout.php",
+        "collections": "layout.php",
+        "collection": "layout.php",
+        "not_found": "layout.php",
+        "default": "layout.php"
+    }
 }
