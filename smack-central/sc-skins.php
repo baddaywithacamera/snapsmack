@@ -209,13 +209,14 @@ function sc_extract_skins(string $ref): array {
         if ($content !== false) file_put_contents($dest, $content);
     }
 
-    // Skin manifests include dirname(__DIR__, 2) . '/core/manifest-inventory.php'.
-    // Drop that file into the run dir's core/ so the include resolves during a
-    // build instead of warning on a missing /tmp/core/ (the old 502 cause).
-    $inv = $src->getFromName($prefix . 'core/manifest-inventory.php');
-    if ($inv !== false) {
+    // Packaging must use the authority and inventory from the selected ref,
+    // not whatever happens to be installed beside SMACK CENTRAL. Keep both in
+    // the isolated run directory so a missing file fails the build closed.
+    foreach (['manifest-inventory.php', 'skin-security-policy.php'] as $core_file) {
+        $body = $src->getFromName($prefix . 'core/' . $core_file);
+        if ($body === false) continue;
         @mkdir($tmp_dir . 'core', 0755, true);
-        file_put_contents($tmp_dir . 'core/manifest-inventory.php', $inv);
+        file_put_contents($tmp_dir . 'core/' . $core_file, $body);
     }
 
     $src->close();
@@ -272,16 +273,17 @@ function sc_extract_one_skin(string $ref, string $slug): array {
         return ['ok' => false, 'msg' => "Could not fetch skins/{$slug} from {$ref}."];
     }
 
-    // Manifests may consult the shared engine inventory during packaging.
-    $inv = sc_github_get(
-        'repos/' . SNAPSMACK_GITHUB_REPO
-        . '/contents/core/manifest-inventory.php?ref=' . rawurlencode($ref)
-    );
-    if (is_array($inv) && ($inv['type'] ?? '') === 'file') {
-        $inv_body = sc_http_raw((string)($inv['download_url'] ?? ''), [], 30);
-        if ($inv_body !== false) {
+    // Fetch the selected ref's shared inventory and authority policy too.
+    foreach (['manifest-inventory.php', 'skin-security-policy.php'] as $core_file) {
+        $core_entry = sc_github_get(
+            'repos/' . SNAPSMACK_GITHUB_REPO
+            . '/contents/core/' . $core_file . '?ref=' . rawurlencode($ref)
+        );
+        if (is_array($core_entry) && ($core_entry['type'] ?? '') === 'file') {
+            $core_body = sc_http_raw((string)($core_entry['download_url'] ?? ''), [], 30);
+            if ($core_body === false) continue;
             @mkdir($tmp_dir . 'core', 0755, true);
-            file_put_contents($tmp_dir . 'core/manifest-inventory.php', $inv_body);
+            file_put_contents($tmp_dir . 'core/' . $core_file, $core_body);
         }
     }
 
@@ -527,7 +529,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                 // ── Shared skin authority gate ────────────────────────────────
                 // Missing policy code is a hard failure: signing proves origin,
                 // not safety, and the publisher may never silently skip review.
-                $sc_policy = dirname(__DIR__) . '/core/skin-security-policy.php';
+                $sc_policy = rtrim($tmp_dir, '/') . '/core/skin-security-policy.php';
                 if (!is_file($sc_policy)) {
                     $build_results[] = ['slug' => $slug, 'ok' => false,
                         'msg' => 'BLOCKED — skin security policy is unavailable.'];

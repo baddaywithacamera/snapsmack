@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.776D — 2026-09-29 — Same authority
+
+- **Skin packages are judged by the policy from the exact source ref being packaged.** SMACK CENTRAL now extracts both the shared asset inventory and the central skin-security policy into its isolated build workspace for full-repository and single-skin builds. It no longer depends on a non-shipping `core/` sibling beside the standalone SMACK CENTRAL deployment, while a missing policy still fails closed. (`smack-central/sc-skins.php`, `tests/skin-package-lifecycle-regression.php`.)
+
 ## 0.7.775D — 2026-09-29 — Signed skin chain
 
 - **SMACK CENTRAL now publishes the complete signed-skin integrity contract.** Browser-built skin packages use the same slug-wrapped layout as the local build tools and include a root `smackback-manifest.json` containing every packaged file's hash and size. The spoke installer can therefore establish SMACKBACK records transactionally after policy validation instead of safely rolling back an otherwise valid skin because the publisher omitted its integrity manifest. (`smack-central/sc-skins.php`, `tests/skin-package-lifecycle-regression.php`.)
