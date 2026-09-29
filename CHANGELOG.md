@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.787D — 2026-09-29 — Completed images cannot remain faded
+
+- **The shared public image-fade engine now performs a bounded post-load reconciliation.** A healthy SCROLL JPEG could download and decode successfully while remaining at the initial faded opacity when a resumed browser missed the image `load`, visibility, and `pageshow` callbacks. The engine now rechecks once after 1.5 seconds and reveals any completed image. This is central CMS functionality shared by every declaring skin; no skin code or per-site workaround is added. (`assets/js/ss-engine-image-fade-load.js`.)
+
 ## 0.7.786D — 2026-09-29 — Complete grid feed and dropdown navigation
 
 - **Strict INSTANT CAMERA pages once again receive the complete lazy/folded feed and Menu Manager tree.** The central public controller capped the landing response at 24 items even though the shared progressive-reveal engine operates on the complete lazy-image DOM, so a 1,266-post site stopped permanently after its first batch. Core now permits this presentation to request a bounded full landing set (maximum 5,000), which the existing engine folds and reveals in browser-sized batches. The strict entry point also replaces the repository's flat active-page list with the already CMS-resolved, depth-limited Menu Manager model. The shared renderer emits escaped two-level dropdown markup, centralized presentation CSS, and the registered public dropdown engine; skins regain no routing, SQL, PHP, or executable authority. (`core/public-controller.php`, `core/skin-presentation.php`, `core/skin-render-helpers.php`, `index.php`, `tests/skin-render-helpers-regression.php`.)
