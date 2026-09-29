@@ -57,6 +57,23 @@ function snap_route_url(string $route, array $parameters = []): string {
     return snap_escape_url($base . $path . ($allowed ? '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986) : ''));
 }
 
+function snap_render_navigation_tree(array $items, int $depth = 0): string {
+    $html = '';
+    foreach ($items as $item) {
+        if (!is_array($item)) continue;
+        $children = is_array($item['children'] ?? null) && $depth < 2 ? $item['children'] : [];
+        $hasChildren = $children !== [];
+        $html .= '<li' . ($hasChildren ? ' class="nav-has-children"' : '') . '>';
+        $label = snap_escape_html($item['label'] ?? $item['title'] ?? '');
+        $url = (string)($item['url'] ?? '');
+        if ($url === '') $html .= '<span>' . $label . '</span>';
+        else $html .= '<a href="' . snap_escape_url($url) . '"' . (($item['target'] ?? '') === '_blank' ? ' target="_blank" rel="noopener noreferrer"' : '') . '>' . $label . '</a>';
+        if ($hasChildren) $html .= '<ul class="nav-submenu">' . snap_render_navigation_tree($children, $depth + 1) . '</ul>';
+        $html .= '</li>';
+    }
+    return $html;
+}
+
 /** Render fixed shared chrome from bounded data; components cannot execute code. */
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
@@ -91,12 +108,11 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $html .= '</div><div class="tg-profile-stats"><span class="tg-profile-stat"><strong class="tg-profile-stat-num">'
             . (int)($response['photo_count'] ?? count($response['items'] ?? [])) . '</strong><span class="tg-profile-stat-label">posts</span></span></div>';
         if (!empty($site['site_description'])) $html .= '<p class="tg-profile-bio">' . nl2br(snap_escape_html($site['site_description']), false) . '</p>';
-        $html .= '</div></header><nav class="tg-sticky-nav" aria-label="Primary"><div class="tg-sticky-nav-inner"><ul class="tg-sticky-nav-links">'
-            . '<li><a class="active" href="' . snap_route_url('home') . '">Home</a></li>';
-        foreach (($response['navigation'] ?? []) as $navItem) {
-            if (!is_array($navItem)) continue;
-            $html .= '<li><a href="' . snap_escape_url($navItem['url'] ?? '') . '">' . snap_escape_html($navItem['label'] ?? $navItem['title'] ?? '') . '</a></li>';
-        }
+        $navigation = is_array($response['navigation'] ?? null) ? $response['navigation'] : [];
+        $html .= '</div></header><nav class="tg-sticky-nav" aria-label="Primary"><div class="tg-sticky-nav-inner"><ul class="tg-sticky-nav-links">';
+        $html .= $navigation !== []
+            ? snap_render_navigation_tree($navigation)
+            : '<li><a class="active" href="' . snap_route_url('home') . '">Home</a></li>';
         $html .= '</ul></div></nav>';
         if (in_array($kind, ['landing', 'archive', 'hashtag'], true)) {
             $html .= '<main><div id="browse-grid" class="tg-grid public-grid h-feed archive-grid">';
@@ -125,6 +141,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         }
         $html .= '<footer id="system-footer" class="site-footer"><div id="footer"><p id="sig-text">' . snap_escape_html($siteName)
             . '</p></div></footer></div>' . snap_render_html(snap_render_component('registered-assets', ['assets' => $registered]))
+            . '<script src="' . snap_asset_url('asset:public:ss-engine-nav-dropdown') . '" defer></script>'
             . snap_render_html($site['owner_custom_code'] ?? '');
     } elseif ($name === 'public-page') {
         $response = is_array($data['response'] ?? null) ? $data['response'] : [];
