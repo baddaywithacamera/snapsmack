@@ -679,8 +679,8 @@ function updater_load_protected_paths(): array {
     $file = UPDATER_PROTECTED_PATHS_FILE;
     if (!file_exists($file)) {
         // Sensible defaults if the file is missing.
-        // Note: skins/ is intentionally NOT protected — stock skins must be
-        // updatable. Non-stock skins are safe because they're never in the zip.
+        // Skins are always protected. They update only through the signed skin
+        // registry, which applies the independent strict policy after extraction.
         // NOTE: core/constants.php is intentionally NOT protected (SECAUDIT 048
         // follow-up, 2026-08-15). It holds no per-install data; protecting it
         // blocked every constants.php code change from reaching upgraded installs.
@@ -691,6 +691,7 @@ function updater_load_protected_paths(): array {
             'img_uploads/',
             'media_assets/',
             'assets/img/',
+            'skins/',
             'backups/',
             '.htaccess',
             'robots.txt',
@@ -706,6 +707,7 @@ function updater_load_protected_paths(): array {
  * Handles both exact file matches and directory prefix matches (trailing /).
  */
 function updater_is_protected(string $relative_path, array $protected): bool {
+    if ($relative_path === 'skins' || str_starts_with($relative_path, 'skins/')) return true;
     foreach ($protected as $rule) {
         // Directory rule (e.g., "skins/")
         if (str_ends_with($rule, '/')) {
