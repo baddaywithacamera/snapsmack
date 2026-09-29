@@ -1,5 +1,15 @@
 {
-    "schema_version": 1,
+    "schema_version": 2,
+    "security_policy": 2,
+    "cms_controller": "smacktalk",
+    "view_model": "snapsmack.public.v1",
+    "templates": {
+        "single": "layout.php",
+        "feed": "layout.php",
+        "archive": "layout.php",
+        "not_found": "layout.php",
+        "default": "layout.php"
+    },
     "name": "STANLEY",
     "version": "1.1.1",
     "author": "Sean McCormick",
@@ -9,7 +19,6 @@
     "modes": [
         "smacktalk"
     ],
-    "skin_preload": "preload.php",
     "variants": {
         "retro-flicker": "STANLEY — THE OTHER SIDE occasionally breaks through",
         "retro-stable": "STANLEY — Stable",
