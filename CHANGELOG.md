@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.785D — 2026-09-29 — Symmetric navigation line shadow
+
+- **INSTANT CAMERA's upper and lower navigation dividers now receive the same validated shadow opacity.** The 0.7.784D central presentation bridge used a malformed positional formatter, turning a saved 80% black shadow into an effectively solid lower shadow and transparent upper inset. Core now emits `0.80` for both the outset and inset components, with regression coverage for the complete declaration. (`core/skin-presentation.php`, `tests/skin-render-helpers-regression.php`.)
+
 ## 0.7.784D — 2026-09-29 — Complete Instant Camera settings bridge
 
 - **INSTANT CAMERA's remaining saved controls now cross the strict presentation boundary through the CMS.** The schema-v2 conversion had removed skin-owned PHP correctly, but 0.7.783D restored only the compiled CSS blob; legacy PHP-derived values such as the white scrim opacity, panel/nav translucency, print aspect and shadow, text glows, and ORGANIZED MAYHEM sizing were still absent or hardcoded. A central CMS presentation helper now validates and transforms those stored values into an opaque trusted-style token and bounded inert engine attributes. With an 85% saved scrim, core emits `--ic-scrim:0.85`; saved Mayhem count, maximum print width, overlap, drift, and warp settings replace the renderer defaults. The skin receives no PHP, SQL, filesystem, network, or execution authority. (`core/skin-presentation.php`, `core/skin-render-helpers.php`, `core/skin-view-contract.php`, `index.php`, `tests/skin-render-helpers-regression.php`.)
