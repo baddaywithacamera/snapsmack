@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK - PARADE Help Topics
  * Alpha v0.7.9

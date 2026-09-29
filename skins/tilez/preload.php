@@ -1,5 +1,4 @@
-<?php
-if (!defined('SNAPSMACK_SKIN_RENDER')) return;
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /** SNAPSMACK — TILEZ presentation templates. CMS supplies $skin_view['smacktalk']. */
 $view = $skin_view['smacktalk'] ?? ['kind' => 'not_found'];
 $kind = (string)($view['kind'] ?? 'not_found');

@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK - Skin Help Topics: True Grit
  * Alpha v0.7.8

@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK - Chaplin skin header
  * v2.5

@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK - Footer scripts for the 50-shades-of-noah-grey skin
  * Alpha v0.7.9c

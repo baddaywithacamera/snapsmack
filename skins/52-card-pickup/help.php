@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 
 /**
  * SNAPSMACK_EOF_HEADER
