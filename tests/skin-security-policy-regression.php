@@ -21,6 +21,9 @@ PHP);
     if (snapsmack_skin_security_findings($tmp) !== []) {
         throw new RuntimeException('A presentation-only template was rejected.');
     }
+    $manifest=json_decode(file_get_contents($tmp.'/manifest.json'),true);$manifest['require_scripts']=['asset:admin:ss-engine-admin-ui'];$manifest['require_styles']=['asset:admin:admin-theme-geometry-master'];file_put_contents($tmp.'/manifest.json',json_encode($manifest));
+    $assetTypes=array_column(snapsmack_skin_security_findings($tmp),'type');if(count(array_filter($assetTypes,fn($type)=>$type==='manifest-asset-handle'))!==2)throw new RuntimeException('A strict skin could request admin or unknown asset handles.');
+    unset($manifest['require_scripts'],$manifest['require_styles']);file_put_contents($tmp.'/manifest.json',json_encode($manifest));
     $manifest = json_decode(file_get_contents($tmp . '/manifest.json'), true);
     unset($manifest['security_policy']);
     file_put_contents($tmp . '/manifest.json', json_encode($manifest));

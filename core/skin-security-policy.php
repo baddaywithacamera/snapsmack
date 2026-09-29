@@ -8,6 +8,27 @@
 
 const SNAPSMACK_SKIN_POLICY_VERSION = 2;
 
+/** Build fail-closed manifest asset allowlists without loading the CMS runtime. */
+function snapsmack_skin_policy_public_asset_handles(): array {
+    static $allowed=null;if($allowed!==null)return $allowed;
+    $allowed=['scripts'=>[],'styles'=>[]];$root=dirname(__DIR__);
+    $catalog=json_decode((string)@file_get_contents($root.'/assets/ASSET-INVENTORY.json'),true);
+    if(!is_array($catalog))return $allowed;
+    $publicPaths=[];
+    foreach(['javascript'=>'scripts','css'=>'styles'] as $group=>$bucket){foreach(($catalog[$group]??[]) as $entry){
+        if(!is_array($entry)||($entry['scope']??'')!=='public'||!is_string($entry['file']??null))continue;
+        $publicPaths[$entry['file']]=true;
+        $allowed[$bucket]['asset:public:'.pathinfo($entry['file'],PATHINFO_FILENAME)]=true;
+    }}
+    $legacyPath=$root.'/core/manifest-inventory.php';$legacy=is_file($legacyPath)?include $legacyPath:[];
+    foreach(($legacy['scripts']??[]) as $handle=>$entry){
+        if(!is_string($handle)||!is_array($entry)||!is_string($entry['path']??null)||!isset($publicPaths[$entry['path']]))continue;
+        if(isset($entry['css'])&&(!is_string($entry['css'])||!isset($publicPaths[$entry['css']])))continue;
+        $allowed['scripts'][$handle]=true;
+    }
+    return $allowed;
+}
+
 function snapsmack_skin_policy_finding(string $file, int $line, string $type, string $excerpt): array {
     return [
         'file' => str_replace('\\', '/', $file),
@@ -288,6 +309,16 @@ function snapsmack_skin_security_findings(string $skin_dir): array {
         foreach (($manifest['templates'] ?? []) as $template) {
             if (!is_string($template) || !preg_match('/^[a-zA-Z0-9._-]+\.php$/', $template)) {
                 $findings[] = snapsmack_skin_policy_finding('manifest.json', 0, 'manifest-template-path', (string)$template);
+            }
+        }
+        $assetHandles=snapsmack_skin_policy_public_asset_handles();
+        foreach(['require_scripts'=>'scripts','require_styles'=>'styles'] as $field=>$bucket){
+            if(isset($manifest[$field])&&!is_array($manifest[$field])){
+                $findings[]=snapsmack_skin_policy_finding('manifest.json',0,'manifest-asset-declaration',"{$field} must be an array");
+                continue;
+            }
+            foreach(($manifest[$field]??[]) as $handle){
+                if(!is_string($handle)||!isset($assetHandles[$bucket][$handle]))$findings[]=snapsmack_skin_policy_finding('manifest.json',0,'manifest-asset-handle',(string)$handle);
             }
         }
     }

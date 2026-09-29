@@ -137,6 +137,13 @@ function inv_scope(string $name): string {
     return 'tool';
 }
 
+function inv_scope_from_callers(string $name, array $callers): string {
+    $adminPattern='~^(?:smack-|login\.php$|snap-in\.php$|community-auth\.php$|core/(?:admin|csrf|photo-editor|ai-|update|skin-admin))~';
+    if($callers!==[]&&count(array_filter($callers,fn($caller)=>is_string($caller)&&preg_match($adminPattern,$caller)))===count($callers))return 'admin';
+    if($callers!==[]&&count(array_filter($callers,fn($caller)=>is_string($caller)&&str_starts_with($caller,'tools/')))===count($callers))return 'tool';
+    return inv_scope($name);
+}
+
 function inv_security_signals(string $path, bool $css = false): array {
     $raw = (string)file_get_contents($path);
     $patterns = $css
@@ -184,13 +191,15 @@ foreach (glob($js_dir . '/*.js') ?: [] as $f) {
     if (str_ends_with($f, '.bak')) continue;
     $name = basename($f);
     $d = inv_describe($f);
+    $callers=array_values(array_unique(array_merge($sourceCallers[$name]??[],$skinCallers[$handlesByPath['assets/js/'.$name]??'']??[])));
+    $scope=inv_scope_from_callers($name,$callers);
     $catalog['javascript'][] = [
         'file'    => 'assets/js/' . $name,
         'owner'   => 'cms',
-        'scope'   => inv_scope($name),
-        'registry_handle' => 'asset:'.inv_scope($name).':'.pathinfo($name, PATHINFO_FILENAME),
+        'scope'   => $scope,
+        'registry_handle' => 'asset:'.$scope.':'.pathinfo($name, PATHINFO_FILENAME),
         'legacy_handle' => $handlesByPath['assets/js/'.$name] ?? null,
-        'callers' => array_values(array_unique(array_merge($sourceCallers[$name]??[],$skinCallers[$handlesByPath['assets/js/'.$name]??'']??[]))),
+        'callers' => $callers,
         'security_signals' => inv_security_signals($f),
         'enable'  => str_starts_with($name, 'ss-engine-') ? 'declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php' : 'loaded by the CMS where needed',
         'family'  => inv_js_family($name),
@@ -221,13 +230,15 @@ foreach (glob($css_dir . '/*.css') ?: [] as $f) {
     $d = inv_describe($f);
     $cssLegacyHandle=$handlesByPath['assets/css/'.$name]??null;
     $cssScriptHandle=is_string($cssLegacyHandle)?preg_replace('/:css\\z/','',$cssLegacyHandle):null;
+    $callers=array_values(array_unique(array_merge($sourceCallers[$name]??[],is_string($cssScriptHandle)?($skinCallers[$cssScriptHandle]??[]):[])));
+    $scope=inv_scope_from_callers($name,$callers);
     $catalog['css'][] = [
         'file'    => 'assets/css/' . $name,
         'owner'   => 'cms',
-        'scope'   => str_starts_with($name, 'smack-') ? 'admin' : 'public',
-        'registry_handle' => 'asset:'.(str_starts_with($name, 'smack-') ? 'admin' : 'public').':'.pathinfo($name, PATHINFO_FILENAME),
+        'scope'   => $scope,
+        'registry_handle' => 'asset:'.$scope.':'.pathinfo($name, PATHINFO_FILENAME),
         'legacy_handle' => $handlesByPath['assets/css/'.$name] ?? null,
-        'callers' => array_values(array_unique(array_merge($sourceCallers[$name]??[],is_string($cssScriptHandle)?($skinCallers[$cssScriptHandle]??[]):[]))),
+        'callers' => $callers,
         'security_signals' => inv_security_signals($f, true),
         'requires'=> inv_requires($f),
         'purpose' => $d['desc'] !== '' ? $d['desc'] : 'NEEDS-DESCRIPTION (no purpose line in the file header)',
