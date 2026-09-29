@@ -41,6 +41,11 @@ $feed = snap_render_html(snap_render_component('public-page', [
     'response' => ['kind' => 'landing', 'navigation' => [], 'items' => []],
 ]));
 if (!str_contains($feed, 'id="browse-grid"')) throw new RuntimeException('Public feed lost its CMS-owned grid hook.');
+$mayhem = snap_render_html(snap_render_component('public-page', [
+    'site' => ['site_name' => 'Site', 'registered_assets' => ['scripts' => ['/assets/js/ss-engine-organized-mayhem.js']]],
+    'response' => ['kind' => 'landing', 'navigation' => [], 'items' => []],
+]));
+if (!str_contains($mayhem, 'data-mayhem') || !str_contains($mayhem, 'data-api-url="?ajax=mayhem"')) throw new RuntimeException('CMS did not mount the declared Organized Mayhem engine.');
 if (snap_route_url('unknown') !== '') throw new RuntimeException('Unknown route did not fail closed.');
 if (snap_asset_url('../evil') !== '') throw new RuntimeException('Unknown/traversal asset handle was accepted.');
 
