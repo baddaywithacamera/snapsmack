@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.772D — 2026-09-28 — Clean contract
+
+- **Longform colophons and closing signatures are now first-class post data instead of TILEZ guesses.** `snap_posts` gains canonical `colophon` and `signature_image_id` fields; the SMACKPRESS API accepts, sanitizes, stores, and returns both. The WordPress adapter alone translates old closing equipment paragraphs and signature filenames while importing. COLD SNAP carries the resulting semantics in its draft and posting contract. TILEZ now contains no WordPress-specific prose or filename recognition: it only presents the canonical fields, and excludes signature images from its photograph archive by their assigned role. TILEZ skin version 0.2.42. (`database/schema/snapsmack_canonical.sql`, `core/smackpress-api.php`, `tools/smackpress/`, `tools/coldsnap/`, `skins/tilez/`.)
+
 ## 0.7.771D — 2026-09-28 — Visible mosaic
 
 - **Dynamically rendered mosaic photographs can no longer remain invisible as black panels.** Mosaic tiles now opt out of the global image fade-loader's initial opacity rule, which could strand cached or lazily loaded images at zero opacity even though their files loaded successfully. The fix applies to existing mosaics without changing their saved records. (`assets/css/ss-engine-mosaic.css`.)

@@ -216,6 +216,46 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
     return body, ordered
 
 
+_WP_SIGNATURE_HINT = re.compile(r"(?:signature|autograph|sean[-_ ]?mccormick[-_ ]?black[-_ ]?low[-_ ]?res)", re.I)
+_WP_COLOPHON_LEAD = re.compile(
+    r"\b(?:main camera|camera used|also used|equipment used|shot (?:on|with)|taken with|"
+    r"photos? (?:from|(?:taken|made|shot) with)|images? (?:from|(?:taken|made|shot) with)|photographed with)\b",
+    re.I,
+)
+_WP_EQUIPMENT = re.compile(
+    r"\b(?:camera|body|lens|lenses|film|film stock|drone|cellphone|phone|iphone|galaxy|pixel|"
+    r"canon|nikon|sony|fujifilm|fuji|olympus|pentax|leica|hasselblad|dji|kodak|ilford|helios|eos)\b",
+    re.I,
+)
+
+
+def extract_wordpress_ephemera(body: str, ordered: List[dict]) -> Tuple[str, str, set]:
+    """Translate recurring WordPress-era conventions into explicit post data.
+
+    This deliberately belongs to the WordPress adapter. The CMS and skins never
+    inspect prose, filenames, or old editor markup to guess what content means.
+    Returns cleaned body, colophon HTML, and 1-based signature image positions.
+    """
+    signature_slots = set()
+    for position, image in enumerate(ordered, 1):
+        haystack = " ".join(str(image.get(key) or "") for key in
+                            ("filename", "title", "alt", "caption", "url"))
+        if _WP_SIGNATURE_HINT.search(haystack):
+            signature_slots.add(position)
+            body = re.sub(r"(?:^|\n)\s*\[img:bucket:%d\]\s*(?=\n|$)" % position, "\n", body)
+
+    colophon = ""
+    final = re.search(r"(<p\b[^>]*>(?:(?!<p\b).)*?</p>)\s*$", body, re.I | re.S)
+    if final:
+        plain = html.unescape(re.sub(r"<[^>]+>", " ", final.group(1)))
+        terms = {m.group(0).lower() for m in _WP_EQUIPMENT.finditer(plain)}
+        if _WP_COLOPHON_LEAD.search(plain) or len(terms) >= 3:
+            colophon = final.group(1)
+            body = body[:final.start()].rstrip()
+
+    return re.sub(r"\n{3,}", "\n\n", body).strip(), colophon, signature_slots
+
+
 # ── the adapter ───────────────────────────────────────────────────────────────
 def _tag_token(name: str) -> str:
     t = re.sub(r"[^A-Za-z0-9]+", "", (name or "").lower())
@@ -238,6 +278,7 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
         images = [feat] + [im for im in images if _norm(im.get("url", "")) != _norm(feat["url"])]
 
     body, ordered = rewrite_body(content, images)
+    body, colophon, signature_slots = extract_wordpress_ephemera(body, ordered)
 
     draft_images: List[DraftImage] = []
     for n, im in enumerate(ordered, 1):
@@ -251,6 +292,7 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
             local_path=path, original_path=url, filename=os.path.basename(path),
             width=int(im.get("width") or 0), height=int(im.get("height") or 0),
             alt=(im.get("alt") or im.get("caption") or "")[:255],
+            is_signature=n in signature_slots,
         ))
 
     tags = " ".join(t for t in (_tag_token(x) for x in (full_post.get("tags") or [])) if t)
@@ -262,6 +304,7 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
         kind=KIND_SMACKTALK, mode=MODE_SMACKTALK,
         title=html.unescape(full_post.get("title") or ""),
         caption=body,
+        colophon=colophon,
         tags=tags,
         post_date=date,
         img_status=status,

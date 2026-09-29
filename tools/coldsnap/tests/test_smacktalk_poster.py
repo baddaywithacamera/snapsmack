@@ -80,7 +80,8 @@ def _checks():
     draft.images = [
         DraftImage(local_path=p1, filename="a.jpg", sort_position=0, is_cover=False),
         DraftImage(local_path=p2, filename="b.jpg", sort_position=1, is_cover=True),
-        DraftImage(local_path=p3, filename="c.jpg", sort_position=2, is_cover=False),
+        DraftImage(local_path=p3, filename="c.jpg", sort_position=2, is_cover=False,
+                   is_signature=True),
     ]
 
     # 1. Happy path: all 3 uploaded, post created, success + post_id.
@@ -99,6 +100,8 @@ def _checks():
     assert body["title"] == "Photo Essay" and body["content"] == "the body text", body
     assert body["status"] == "published", body
     assert body["tags"] == "street night", body["tags"]  # # stripped, whitespace-normalised
+    assert body["signature_image_id"] == 103, body
+    assert body["colophon"] == "", body
     n += 1
 
     # 3. build_payload cover-leads + no explicit cover -> first image.

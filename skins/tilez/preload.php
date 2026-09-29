@@ -57,9 +57,10 @@ if (($_GET['view'] ?? '') === 'archive') {
             "SELECT id, img_title, img_file, img_thumb_square, img_thumb_aspect
              FROM snap_images
              WHERE img_status = 'published'
-               AND LOWER(img_title) NOT LIKE '%signature%'
-               AND LOWER(img_title) NOT LIKE '%autograph%'
-               AND LOWER(img_title) NOT LIKE '%sean-mccormick-black-low-res%'
+               AND id NOT IN (
+                   SELECT signature_image_id FROM snap_posts
+                   WHERE signature_image_id IS NOT NULL
+               )
              ORDER BY sort_order ASC, id DESC"
         );
         $_alfred_images = $_alfred_arch_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -277,34 +278,9 @@ if ($_alfred_post_slug || $_alfred_post_id) {
             $_alfred_author = trim((string)($meta_stmt->fetchColumn() ?: $_alfred_author));
         }
 
-        // WordPress treated the author's handwritten signature as one of the
-        // post images. The importer kept the file and its post relationship,
-        // but intentionally omitted the decorative image from the prose. Put
-        // it back where it belongs: in the post colophon beside the essay.
-        $meta_stmt = $pdo->prepare(
-            "SELECT i.img_file, i.img_alt, i.img_title
-             FROM snap_post_images pi
-             JOIN snap_images i ON i.id = pi.image_id
-             WHERE pi.post_id = ?
-               AND (LOWER(i.img_title) LIKE '%signature%'
-                    OR LOWER(i.img_title) LIKE '%autograph%'
-                    OR LOWER(i.img_title) LIKE '%sean-mccormick-black-low-res%')
-             ORDER BY pi.sort_position DESC
-             LIMIT 1"
-        );
-        $meta_stmt->execute([(int)$_alfred_post['id']]);
-        $_alfred_signature = $meta_stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        if (!$_alfred_signature) {
-            $meta_stmt = $pdo->query(
-                "SELECT img_file, img_alt, img_title
-                 FROM snap_images
-                 WHERE img_status = 'published'
-                   AND (LOWER(img_title) LIKE '%signature%'
-                        OR LOWER(img_title) LIKE '%autograph%'
-                        OR LOWER(img_title) LIKE '%sean-mccormick-black-low-res%')
-                 ORDER BY id DESC
-                 LIMIT 1"
-            );
+        if (!empty($_alfred_post['signature_image_id'])) {
+            $meta_stmt = $pdo->prepare("SELECT img_file, img_alt, img_title FROM snap_images WHERE id = ? LIMIT 1");
+            $meta_stmt->execute([(int)$_alfred_post['signature_image_id']]);
             $_alfred_signature = $meta_stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         }
     } catch (PDOException $e) {
@@ -319,51 +295,7 @@ if ($_alfred_post_slug || $_alfred_post_id) {
     $_alfred_parser = new SnapSmack($pdo);
     $_alfred_rendered = $_alfred_parser->parseContent($_alfred_post['content'] ?? '');
 
-    // Some WordPress posts carried the handwritten signature as an ordinary
-    // final image. The relationship lookup above already gives TILEZ the same
-    // file for its proper closing-signature treatment, so remove the imported
-    // inline frame instead of displaying the autograph twice.
-    if ($_alfred_signature && !empty($_alfred_signature['img_file'])) {
-        $signature_src = BASE_URL . ltrim((string)$_alfred_signature['img_file'], '/');
-        $signature_pattern = '~<div\b[^>]*\bsnap-inline-frame\b[^>]*>\s*<div\b[^>]*>\s*<img\b(?=[^>]*(?:\bsrc=(?:"'
-            . preg_quote($signature_src, '~') . '"|\'' . preg_quote($signature_src, '~')
-            . '\')|\balt=["\'][^"\']*(?:signature|autograph|sean-mccormick-black-low-res)[^"\']*["\']))[^>]*>\s*</div>\s*</div>~is';
-        $_alfred_rendered = preg_replace($signature_pattern, '', $_alfred_rendered, 1);
-    }
-
-    // Camera/equipment copy is authored as part of the post, but TILEZ presents
-    // it as publication ephemera rather than leaving it stranded at the bottom.
-    $_alfred_gear_note = '';
-    if (preg_match('~<(p|div)\b[^>]*class=(?:"[^"]*\bpost-gear-note\b[^"]*"|\'[^\']*\bpost-gear-note\b[^\']*\')[^>]*>.*?</\1>~is', $_alfred_rendered, $gear_match)) {
-        $_alfred_gear_note = $gear_match[0];
-        $_alfred_rendered = str_replace($gear_match[0], '', $_alfred_rendered);
-    }
-    // WordPress imports predate the explicit .post-gear-note marker. When the
-    // final paragraph clearly inventories the equipment used for the shoot,
-    // treat it as the legacy colophon instead of making the author re-edit an
-    // already published essay.
-    if ($_alfred_gear_note === '' && preg_match(
-        '~(<p\b[^>]*>(?:(?!<p\b).)*?</p>)(?:\s*</div>)*\s*$~is',
-        $_alfred_rendered,
-        $legacy_match,
-        PREG_OFFSET_CAPTURE
-    )) {
-        $legacy_paragraph = $legacy_match[1][0];
-        $legacy_offset = $legacy_match[1][1];
-        $legacy_text = mb_strtolower(trim(html_entity_decode(strip_tags($legacy_paragraph), ENT_QUOTES | ENT_HTML5)));
-        $legacy_has_lead = preg_match(
-            '/\b(?:main camera|camera used|also used|equipment used|shot (?:on|with)|taken with|photos? (?:from|(?:taken|made|shot) with)|images? (?:from|(?:taken|made|shot) with)|photographed with)\b/u',
-            $legacy_text
-        );
-        preg_match_all('/\b(?:camera|body|lens|lenses|film|film stock|drone|cellphone|phone|iphone|galaxy|pixel|canon|nikon|sony|fujifilm|fuji|olympus|pentax|leica|hasselblad|dji|kodak|ilford|helios|eos)\b/u', $legacy_text, $legacy_equipment_matches);
-        $legacy_equipment_terms = array_unique($legacy_equipment_matches[0] ?? []);
-        $legacy_is_colophon = (bool)$legacy_has_lead || count($legacy_equipment_terms) >= 3;
-        if ($legacy_is_colophon) {
-            $_alfred_gear_note = preg_replace('/^<p\b(?![^>]*\bclass=)/i', '<p class="post-gear-note"', $legacy_paragraph, 1);
-            $_alfred_rendered = substr($_alfred_rendered, 0, $legacy_offset)
-                . substr($_alfred_rendered, $legacy_offset + strlen($legacy_paragraph));
-        }
-    }
+    $_alfred_gear_note = trim((string)($_alfred_post['colophon'] ?? ''));
 
     $_alfred_photo_count = preg_match_all('/<img\b/i', $_alfred_rendered, $photo_matches);
     if (preg_match_all('/\bdata-mosaic=(?:"([^"]*)"|\'([^\']*)\')/i', $_alfred_rendered, $mosaic_matches, PREG_SET_ORDER)) {

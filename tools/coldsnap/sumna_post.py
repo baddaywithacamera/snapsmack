@@ -689,7 +689,11 @@ class SmacktalkPoster:
             "tags": " ".join(t.lstrip("#") for t in (draft.tags or "").split() if t.strip()),
             "cat_ids": [int(value) for value in (getattr(draft, "category_ids", []) or [])],
             "album_ids": [int(value) for value in (getattr(draft, "album_ids", []) or [])],
+            "colophon": getattr(draft, "colophon", "") or "",
         }
+        signature_ids = [image_ids[n] for n, image in enumerate(draft.images)
+                         if n < len(image_ids) and getattr(image, "is_signature", False)]
+        payload["signature_image_id"] = int(signature_ids[0]) if signature_ids else 0
         if draft.post_date:
             payload["date"] = draft.post_date
         # An imported post keeps its old URL slug (SMACKPRESS / BLOGGER FLOGGER);
