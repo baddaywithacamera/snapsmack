@@ -112,7 +112,7 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
         'community_comments', 'community_likes', 'community_reactions',
     ];
     $known = array_flip(array_merge(
-        ['schema_version'],
+        ['schema_version', 'security_policy'],
         $string_keys,
         $array_keys,
         $boolean_keys
@@ -130,6 +130,10 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
             continue;
         }
         if ($key === 'schema_version') {
+            continue;
+        }
+        if ($key === 'security_policy') {
+            if (is_int($value)) $out[$key] = $value;
             continue;
         }
         if (in_array($key, $string_keys, true)) {
