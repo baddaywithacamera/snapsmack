@@ -42,6 +42,13 @@
     "community_comments": "1",
     "community_likes": "0",
     "community_reactions": "0",
+    "cms_media_slots": {
+        "hero_2024": {
+            "setting": "stanley_2024_hero",
+            "fallback": "latest_asset_image",
+            "initialize_on_activation": true
+        }
+    },
     "options": {
         "other_side_test_mode": {
             "section": "THE OTHER SIDE",
@@ -60,7 +67,7 @@
             "label": "STANLEY 2024 Hero Image",
             "default": "",
             "accept": "image",
-            "help": "Choose the modern reality's masthead photograph from the Asset Repository. On first use STANLEY chooses an existing image so THE OTHER SIDE never arrives empty; your selection then remains fixed until you change it."
+            "help": "Choose the modern reality's masthead photograph from the Asset Repository. When STANLEY is activated, the CMS can initialize an empty slot from an existing image; your selection then remains fixed until you change it."
         },
         "header_image": {
             "section": "HEADER",

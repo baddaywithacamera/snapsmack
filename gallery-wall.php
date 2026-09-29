@@ -17,6 +17,7 @@
 
 require_once 'core/db.php';
 require_once 'core/skin-settings.php';
+require_once 'core/skin-view-model.php';
 
 // SMACKBACK: silent stat check on public page loads
 try {
@@ -58,6 +59,7 @@ if (snapsmack_is_mobile()) {
 // --- SKIN MANIFEST & SUPPORT CHECK ---
 $active_skin = $settings['active_skin'] ?? '';
 snapsmack_apply_skin_settings($settings, $active_skin);
+$skin_view = snapsmack_prepare_skin_view($pdo, $settings, $active_skin);
 $manifest = [];
 if ($active_skin && skin_manifest_exists($active_skin)) {
     $manifest = load_skin_manifest($active_skin);
