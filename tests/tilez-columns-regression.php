@@ -67,7 +67,7 @@ $assert(str_contains($preload, "LOWER(img_title) NOT LIKE '%signature%'")
     && str_contains($preload, "LOWER(img_title) NOT LIKE '%sean-mccormick-black-low-res%'"),
     'decorative signatures do not appear as black photograph tiles in the archive');
 $assert(str_contains($preload, '$legacy_is_colophon')
-    && str_contains($preload, 'photos? (?:taken|made|shot) with')
+    && str_contains($preload, 'photos? (?:from|(?:taken|made|shot) with)')
     && str_contains($preload, 'count($legacy_equipment_terms) >= 3'),
     'varied legacy closing equipment paragraphs are recognized as recurring post colophons');
 $legacyFixture = "<div class=\"initial-letter\"><p>Opening paragraph.</p><div><img src=\"photo.jpg\"></div><p>The main camera was a Canon EOS 7D with a Helios lens and DJI drone.</p></div>\n\n";
