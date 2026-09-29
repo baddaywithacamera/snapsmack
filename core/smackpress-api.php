@@ -132,6 +132,44 @@ if (!function_exists('long_slugify')) {
     }
 }
 
+if (!function_exists('smackpress_reject_migration_residue')) {
+    function smackpress_reject_migration_residue(string $value): void {
+        $forbidden = [
+            '#<\?(?:php|=)?#i',
+            '#<!--\s*/?wp:#i',
+            '#\[(?:gallery|caption|embed|audio|video|playlist|wp_[a-z0-9_-]+)\b#i',
+            '#(?:^|["\'\s(])(?:https?:)?//[^"\'\s)]*/wp-(?:content|includes|admin)(?:/|\b)#i',
+            '#(?:^|["\'\s(/])(?:wp-login\.php|xmlrpc\.php)(?:[?"\'\s)]|$)#i',
+        ];
+        foreach ($forbidden as $pattern) {
+            if (preg_match($pattern, $value)) {
+                smackpress_error(422, 'Imported content still contains WordPress executable or directory syntax.');
+            }
+        }
+    }
+}
+
+if (!function_exists('smackpress_import_date')) {
+    function smackpress_import_date(PDO $pdo, $value): ?string {
+        $value = trim((string)$value);
+        if ($value === '') return null;
+        $tz_name = (string)($pdo->query(
+            "SELECT setting_val FROM snap_settings WHERE setting_key='timezone' LIMIT 1"
+        )->fetchColumn() ?: 'UTC');
+        try { $tz = new DateTimeZone($tz_name); }
+        catch (Exception $e) { $tz = new DateTimeZone('UTC'); }
+        try {
+            // An offset/Z in the value defines the instant. Legacy naive values
+            // are interpreted in the destination site's configured timezone.
+            $source = new DateTimeImmutable($value, $tz);
+            return $source->setTimezone($tz)->format('Y-m-d H:i:s');
+        } catch (Exception $e) {
+            smackpress_error(422, 'Publication date is invalid.');
+        }
+        return null;
+    }
+}
+
 if (!function_exists('smackpress_sanitize_html')) {
     /**
      * DOM-based allowlist sanitiser for imported WordPress content.
@@ -509,12 +547,16 @@ if ($sub === 'posts' && $method === 'POST') {
         $selected_cats = [(int)$body['category_id']];   // single-category alias
     }
     $selected_albums= array_map('intval', $body['album_ids'] ?? []);
-    $custom_date    = !empty($body['created_at']) ? $body['created_at']
-                    : (!empty($body['date']) ? $body['date'] : null);
+    $custom_date    = smackpress_import_date($pdo, $body['created_at'] ?? ($body['date'] ?? null));
 
     if ($title === '') smackpress_error(422, 'Title is required.');
 
     $slug = $slug !== '' ? long_slugify($slug) : long_slugify($title);
+
+    // Refuse migration residue before sanitising it. Sanitising remains the XSS
+    // backstop; rejection makes a bypassed/modified desktop client fail closed.
+    smackpress_reject_migration_residue((string)$raw_content);
+    smackpress_reject_migration_residue((string)$raw_colophon);
 
     // Sanitise imported HTML (strip WP-plugin scripts/styles/iframes/handlers)
     // before it is ever stored — this content renders on the public site.
