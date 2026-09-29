@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.783D — 2026-09-29 — Saved skin settings restored
+
+- **Presentation-only skins once again receive their saved visual settings.** The strict controller path loaded skin-scoped settings but failed to emit the CMS-compiled `custom_css_public` block, so every configured colour, opacity, size, type, spacing, and frame control silently fell back to the skin default. Core now creates an opaque, CMS-only style token, neutralizes literal `<` characters so saved CSS cannot escape into executable markup, admits only that token through the bounded view contract, and renders it through the shared component used by all strict skins. The settings remain central and skins gain no database, PHP, filesystem, or arbitrary execution authority. (`core/custom-code-policy.php`, `core/skin-render-helpers.php`, `core/skin-view-contract.php`, `index.php`, `tests/skin-render-helpers-regression.php`, `tests/skin-view-contract-regression.php`.)
+
 ## 0.7.782D — 2026-09-29 — Instant Camera presentation restored
 
 - **The central INSTANT CAMERA renderer now reproduces the skin's actual presentation contract rather than a compatibility approximation.** CMS-owned markup restores the profile/avatar/tagline/bio block, post count, skin navigation hooks, full-viewport MAYHEM carrier, configurable scrim/panel layers, and framed grid structure while continuing to consume only the bounded public view model. (`core/public-controller.php`, `core/public-repository.php`, `core/skin-render-helpers.php`, `core/skin-view-contract.php`, `index.php`.)

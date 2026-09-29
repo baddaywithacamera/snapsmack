@@ -201,6 +201,7 @@ try {
                     'avatar_url' => !empty($settings['skin_avatar']) ? (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['skin_avatar'], '/') : '',
                     'skin_slug' => (string)$active_skin,
                     'skin_style_url' => (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin) . '/style.css',
+                    'skin_custom_style' => snapsmack_skin_custom_style($settings),
                     'owner_custom_code' => snapsmack_owner_custom_code($settings),
                     'registered_assets' => $_registered_skin_assets,
                 ]);
@@ -237,6 +238,7 @@ try {
             'avatar_url' => !empty($settings['skin_avatar']) ? (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['skin_avatar'], '/') : '',
             'skin_slug' => (string)$active_skin,
             'skin_style_url' => (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin) . '/style.css',
+            'skin_custom_style' => snapsmack_skin_custom_style($settings),
             'owner_custom_code' => snapsmack_owner_custom_code($settings),
             'registered_assets' => $_registered_skin_assets,
         ]);
