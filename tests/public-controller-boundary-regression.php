@@ -1,0 +1,27 @@
+<?php
+declare(strict_types=1);
+require_once dirname(__DIR__) . '/core/public-controller.php';
+
+$source = (string)file_get_contents(dirname(__DIR__) . '/core/public-controller.php');
+foreach (['$_GET', '$_POST', '$_REQUEST', '$_SERVER', 'header(', 'http_response_code(', 'setcookie(', '$pdo'] as $forbidden) {
+    if (str_contains($source, $forbidden)) throw new RuntimeException("Public controller owns ambient authority: {$forbidden}");
+}
+foreach (['landing', 'photo', 'post', 'archive', 'page', 'search', 'hashtag', 'albums', 'collections', 'collection'] as $route) {
+    if (!str_contains($source, "'{$route}'")) throw new RuntimeException("Public route is not centralized: {$route}");
+}
+
+$parsed = snapsmack_public_parse_request([
+    'route' => ['not-a-string'], 'slug' => '../../etc/passwd', 'id' => -4,
+    'page' => PHP_INT_MAX, 'query' => str_repeat('x', 500),
+]);
+if ($parsed['route'] !== 'landing' || $parsed['slug'] !== '' || $parsed['id'] !== 0 || $parsed['page'] !== 100000) {
+    throw new RuntimeException('Request parser did not fail closed and bound numeric input.');
+}
+if (strlen($parsed['query']) > 200) throw new RuntimeException('Search input is unbounded.');
+$missing = snapsmack_public_parse_request(['route' => 'made-up']);
+if ($missing['route'] !== 'not_found') throw new RuntimeException('Unknown route did not become not_found.');
+$valid = snapsmack_public_parse_request(['route' => 'post', 'slug' => 'hello-world', 'id' => '7', 'page' => '2']);
+if ($valid !== ['route' => 'post', 'slug' => 'hello-world', 'id' => 7, 'page' => 2, 'query' => '']) {
+    throw new RuntimeException('Valid request normalization changed unexpectedly.');
+}
+echo "Public service/controller boundary regression passed.\n";
