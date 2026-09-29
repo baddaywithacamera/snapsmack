@@ -44,35 +44,6 @@ return array (
       'sql-statement' => 1,
     ),
   ),
-  'alfred' =>
-  array (
-    'layout.php' =>
-    array (
-      'response-control' => 1,
-    ),
-    'preload.php' =>
-    array (
-      'database-api' => 5,
-      'database-handle' => 9,
-      'direct-script-tag' => 2,
-      'php-include' => 1,
-      'request-global' => 5,
-      'response-control' => 2,
-      'sql-statement' => 8,
-    ),
-    'skin-footer.php' =>
-    array (
-      'direct-script-tag' => 1,
-      'php-include' => 1,
-    ),
-    'skin-header.php' =>
-    array (
-      'database-api' => 2,
-      'database-handle' => 9,
-      'php-declaration' => 3,
-      'sql-statement' => 3,
-    ),
-  ),
   'aurora' =>
   array (
     'archive-layout.php' =>
@@ -869,39 +840,6 @@ return array (
       'sql-statement' => 3,
     ),
   ),
-  'stanley' =>
-  array (
-    'layout.php' =>
-    array (
-      'response-control' => 1,
-    ),
-    'preload.php' =>
-    array (
-      'database-api' => 5,
-      'database-handle' => 9,
-      'direct-script-tag' => 1,
-      'php-declaration' => 1,
-      'php-include' => 1,
-      'request-global' => 5,
-      'response-control' => 1,
-      'sql-statement' => 8,
-    ),
-    'skin-footer.php' =>
-    array (
-      'database-api' => 1,
-      'database-handle' => 2,
-      'direct-script-tag' => 1,
-      'php-include' => 1,
-      'sql-statement' => 1,
-    ),
-    'skin-header.php' =>
-    array (
-      'database-api' => 2,
-      'database-handle' => 7,
-      'php-declaration' => 3,
-      'sql-statement' => 3,
-    ),
-  ),
   'sudden-impact' =>
   array (
     'archive-layout.php' =>
@@ -1050,43 +988,6 @@ return array (
       'php-include' => 1,
     ),
     'skin-header.php' =>
-    array (
-      'php-include' => 1,
-    ),
-  ),
-  'writing-with-impact' =>
-  array (
-    'layout.php' =>
-    array (
-      'response-control' => 1,
-    ),
-    'preload.php' =>
-    array (
-      'database-api' => 5,
-      'database-handle' => 9,
-      'direct-script-tag' => 1,
-      'php-declaration' => 1,
-      'php-include' => 1,
-      'request-global' => 5,
-      'response-control' => 1,
-      'sql-statement' => 8,
-    ),
-    'skin-footer.php' =>
-    array (
-      'database-api' => 1,
-      'database-handle' => 2,
-      'direct-script-tag' => 1,
-      'php-include' => 1,
-      'sql-statement' => 1,
-    ),
-    'skin-header.php' =>
-    array (
-      'database-api' => 2,
-      'database-handle' => 7,
-      'php-declaration' => 3,
-      'sql-statement' => 3,
-    ),
-    'skin-meta.php' =>
     array (
       'php-include' => 1,
     ),
