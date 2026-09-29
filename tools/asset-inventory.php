@@ -134,6 +134,7 @@ function inv_js_family(string $name): string {
 
 function inv_scope(string $name): string {
     if (str_starts_with($name, 'smack-')) return 'admin';
+    if (str_ends_with($name, '.css')) return 'public';
     if (str_starts_with($name, 'ss-') || str_starts_with($name, 'ss-engine-') || str_ends_with($name, '.min.js')) return 'public';
     return 'tool';
 }
