@@ -598,6 +598,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                 }
 
                 $file_count = 0;
+                $smackback_files = [];
+                // Registry packages use one top-level slug. The installer moves
+                // that verified directory into skins/ and the integrity loader
+                // requires the same prefix on every recorded path.
+                $zip->addEmptyDir($slug);
                 $rit = new RecursiveIteratorIterator(
                     new RecursiveDirectoryIterator($skin_dir, RecursiveDirectoryIterator::SKIP_DOTS),
                     RecursiveIteratorIterator::LEAVES_ONLY
@@ -606,10 +611,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                     if ($file->isFile()) {
                         $real_path = $file->getRealPath();
                         $relative  = str_replace('\\', '/', substr($real_path, strlen($skin_dir) + 1));
-                        $zip->addFile($real_path, $relative);
+                        $zip_path_in_zip = $slug . '/' . $relative;
+                        $zip->addFile($real_path, $zip_path_in_zip);
+                        $content = file_get_contents($real_path);
+                        if ($content !== false) {
+                            $smackback_files[$zip_path_in_zip] = [
+                                'hash' => hash('sha256', $content),
+                                'size' => strlen($content),
+                                'eof_signature' => null,
+                            ];
+                        }
                         $file_count++;
                     }
                 }
+
+                $zip->addFromString('smackback-manifest.json', json_encode([
+                    'smackback_version' => 1,
+                    'package_version' => $version,
+                    'skin_id' => $slug,
+                    'generated_at' => gmdate('Y-m-d\\TH:i:s\\Z'),
+                    'files' => $smackback_files,
+                ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
                 $zip->close();
 
