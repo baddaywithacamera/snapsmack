@@ -397,6 +397,21 @@ function skin_registry_compare(array $registry, array $local): array {
  * @param string $public_key   Hex-encoded Ed25519 public key (from settings)
  * @return array  ['success' => bool, 'message' => string]
  */
+function snapsmack_skin_zip_safety_findings(ZipArchive $zip): array {
+    $findings=[];$total=0;
+    for($i=0;$i<$zip->numFiles;$i++){
+        $stat=$zip->statIndex($i);$entry=str_replace('\\','/',(string)($stat['name']??''));$parts=explode('/',$entry);
+        $size=(int)($stat['size']??0);$total+=$size;
+        if($entry===''||str_contains($entry,"\0")||str_starts_with($entry,'/')||preg_match('/^[a-zA-Z]:\//',$entry)||in_array('..',$parts,true))$findings[]="unsafe path: {$entry}";
+        if($size>5000000)$findings[]="oversized file: {$entry}";
+        $opsys=0;$attr=0;
+        if($zip->getExternalAttributesIndex($i,$opsys,$attr)&&(($attr>>16)&0170000)===0120000)$findings[]="symbolic link: {$entry}";
+    }
+    if($zip->numFiles>1000)$findings[]='too many files';
+    if($total>25000000)$findings[]='package is too large';
+    return $findings;
+}
+
 function skin_registry_install(string $slug, string $download_url, string $signature = '', string $public_key = ''): array {
 
     // Sanitize slug — alphanumeric, hyphens, underscores only
@@ -458,15 +473,10 @@ function skin_registry_install(string $slug, string $download_url, string $signa
         return ['success' => false, 'message' => 'Failed to open the downloaded zip. It may be corrupted.'];
     }
 
-    for ($i = 0; $i < $zip->numFiles; $i++) {
-        $entry = str_replace('\\', '/', (string)$zip->getNameIndex($i));
-        $parts = explode('/', $entry);
-        if ($entry === '' || str_contains($entry, "\0") || str_starts_with($entry, '/')
-            || preg_match('/^[a-zA-Z]:\//', $entry) || in_array('..', $parts, true)) {
-            $zip->close();
-            @unlink($tmp_zip);
-            return ['success' => false, 'message' => 'Skin install refused: unsafe path in ZIP archive.'];
-        }
+    if (snapsmack_skin_zip_safety_findings($zip)) {
+        $zip->close();
+        @unlink($tmp_zip);
+        return ['success' => false, 'message' => 'Skin install refused: unsafe ZIP archive.'];
     }
 
     // Determine the top-level folder inside the zip.
@@ -501,9 +511,22 @@ function skin_registry_install(string $slug, string $download_url, string $signa
         @unlink($tmp_zip);
         return ['success' => false, 'message' => 'Invalid skin package: no manifest.json found inside the zip.'];
     }
+    require_once __DIR__ . '/skin-security-policy.php';
+    $package_manifest=json_decode((string)file_get_contents($source.'/manifest.json'),true);
+    if(!is_array($package_manifest)||($package_manifest['schema_version']??0)!==2||($package_manifest['security_policy']??0)!==SNAPSMACK_SKIN_POLICY_VERSION){
+        _skin_rmdir_recursive($staging);@unlink($tmp_zip);
+        return ['success'=>false,'message'=>'Skin install refused: unsupported manifest or security policy version.'];
+    }
+    $source_real=realpath($source);
+    foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source,FilesystemIterator::SKIP_DOTS)) as $entry){
+        $real=$entry->getRealPath();
+        if($entry->isLink()||$source_real===false||$real===false||!str_starts_with(str_replace('\\','/',$real),rtrim(str_replace('\\','/',$source_real),'/').'/')){
+            _skin_rmdir_recursive($staging);@unlink($tmp_zip);
+            return ['success'=>false,'message'=>'Skin install refused: staged package escaped its root.'];
+        }
+    }
     // Apply the same authority boundary used by development and packaging
     // before executable files can enter the live skins directory.
-    require_once __DIR__ . '/skin-security-policy.php';
     $legacy_policy = require __DIR__ . '/skin-security-legacy.php';
     $policy_findings = snapsmack_skin_security_gate($source, $legacy_policy);
     if ($policy_findings) {
