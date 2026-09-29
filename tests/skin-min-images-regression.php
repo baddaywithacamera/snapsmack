@@ -40,11 +40,9 @@ $src = file_get_contents(dirname(__DIR__) . '/smack-skin.php');
 $check('gallery ACTIVATE path checks the minimum', substr_count($src, 'snap_skin_min_images_conflict(') >= 2);
 $check('save-settings path checks the minimum before persisting active_skin',
     strpos($src, 'snap_skin_min_images_conflict($pdo, is_array($_requested_data)') < strpos($src, "->execute([\$active_skin, \$active_skin]);"));
-// The wall draws 200 at random from the whole archive; no small-archive fill.
-$check('GLIDE wall is random, 200', str_contains(file_get_contents(dirname(__DIR__) . '/skins/glide/landing.php'), 'ORDER BY RAND()') && str_contains(file_get_contents(dirname(__DIR__) . '/skins/glide/landing.php'), '$limit = 200;'));
-$check('SLIDERS wall is random, 200', str_contains(file_get_contents(dirname(__DIR__) . '/skins/sliders/skin-profile.php'), 'ORDER BY RAND() LIMIT 200'));
-$check('GLIDE wall has no inventory-cycling fill', !str_contains(file_get_contents(dirname(__DIR__) . '/skins/glide/landing.php'), '% $n]'));
-$check('SLIDERS wall has no inventory-cycling fill', !str_contains(file_get_contents(dirname(__DIR__) . '/skins/sliders/skin-profile.php'), '%$_sl_n]'));
+// Selection behavior is CMS-owned; skins only declare the minimum and engines.
+$repo=file_get_contents(dirname(__DIR__).'/core/public-repository.php');
+$check('public feed selection is centralized and bounded',str_contains($repo,'function photographLanding(')&&str_contains($repo,'LIMIT ? OFFSET ?'));
 
 // ── ORGANIZED MAYHEM pool: random across the WHOLE archive, not the oldest N ──
 define('BASE_URL', 'https://x.test/');

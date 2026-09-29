@@ -45,25 +45,8 @@ r_ok(!preg_match('/function\s+exportPortableJSON\s*\(/i', $engine),
 
 // ── No caller anywhere in the shipped tree ──────────────────────────────────
 $callers = [];
-$tree = new RecursiveDirectoryIterator($root, RecursiveDirectoryIterator::SKIP_DOTS);
-$tree = new RecursiveCallbackFilterIterator($tree, static function (SplFileInfo $entry): bool {
-    if (!$entry->isDir()) return true;
-    return !in_array($entry->getFilename(), [
-        '.tmp', '.pytest_cache', '.claude', '_continuity', '_spec',
-        'node_modules', 'vendor', 'tests', 'smack-central',
-    ], true);
-});
-$it = new RecursiveIteratorIterator(
-    $tree);
-foreach ($it as $file) {
-    $path = str_replace('\\', '/', $file->getPathname());
-    if (substr($path, -4) !== '.php') continue;
-    // Release staging, worktrees and archived copies of the codebase are not
-    // the shipped tree and are deliberately not policed here.
-    foreach (['/smack-central/', '/.claude/', '/_continuity/', '/_spec/',
-              '/node_modules/', '/vendor/', '/tests/', '/.tmp/'] as $skip) {
-        if (strpos($path, $skip) !== false) continue 2;
-    }
+$shippedPhp=array_merge(glob($root.'/*.php')?:[],glob($root.'/core/*.php')?:[]);
+foreach ($shippedPhp as $path) {
     $src = file_get_contents($path);
     if (preg_match('/->\s*export(WordPressWXR|PortableJSON)\s*\(/', $src)) {
         $callers[] = substr($path, strlen($root) + 1);

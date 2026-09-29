@@ -69,11 +69,13 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         if (in_array($kind, ['photo', 'post', 'page', 'collection'], true)) {
             $item = is_array($response['item'] ?? null) ? $response['item'] : [];
             $title = $item['img_title'] ?? $item['title'] ?? $item['name'] ?? '';
-            $html .= '<article><h1>' . snap_escape_html($title) . '</h1>';
+            $html .= '<article class="h-entry"><h1 class="p-name">' . snap_escape_html($title) . '</h1>';
+            $date=$item['img_date']??$item['created_at']??'';if($date!=='')$html.='<time class="dt-published" datetime="'.snap_escape_attr($date).'">'.snap_escape_html($date).'</time>';
+            if(!empty($site['owner_name']))$html.='<span class="p-author h-card"><span class="p-name">'.snap_escape_html($site['owner_name']).'</span></span>';
             $image = $item['img_file'] ?? $item['featured_image_path'] ?? '';
-            if ($image !== '') $html .= snap_render_html(snap_render_component('image', ['url' => $image, 'alt' => $item['img_alt'] ?? $title]));
+            if ($image !== '') $html .= '<div class="u-photo">'.snap_render_html(snap_render_component('image', ['url' => $image, 'alt' => $item['img_alt'] ?? $title])).'</div>';
             $content = $item['content'] ?? $item['description'] ?? $item['img_description'] ?? '';
-            $html .= '<div class="entry-content">' . snap_render_html($content) . '</div></article>';
+            $html .= '<div class="entry-content e-content">' . snap_render_html($content) . '</div></article>';
         } elseif ($kind === 'search') {
             $html .= '<h1>Search</h1>';
             $results = is_array($response['results'] ?? null) ? $response['results'] : [];
@@ -82,7 +84,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 $html .= '<article><h2>' . snap_escape_html($item['img_title'] ?? $item['title'] ?? '') . '</h2></article>';
             }
         } elseif (in_array($kind, ['landing', 'archive', 'hashtag', 'albums', 'collections'], true)) {
-            $html .= '<section class="public-grid">';
+            $html .= '<section class="public-grid h-feed">';
             foreach (($response['items'] ?? []) as $item) {
                 if (!is_array($item)) continue;
                 $title = $item['img_title'] ?? $item['title'] ?? $item['name'] ?? '';
@@ -95,7 +97,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             $html .= '<section class="not-found"><h1>Not found</h1></section>';
         }
         if (!empty($response['comments'])) $html .= snap_render_html(snap_render_component('comments', ['items' => $response['comments']]));
-        $html .= '</main><footer class="site-footer"><p>' . snap_escape_html($site['site_name'] ?? '') . '</p></footer>' . snap_render_html($site['owner_custom_code'] ?? '');
+        $html .= '</main><footer class="site-footer"><p>' . snap_escape_html($site['site_name'] ?? '') . '</p></footer>' . snap_render_html(snap_render_component('registered-assets', ['assets'=>$site['registered_assets']??[]])) . snap_render_html($site['owner_custom_code'] ?? '');
     } elseif ($name === 'smacktalk-page') {
         $response = is_array($data['response'] ?? null) ? $data['response'] : [];
         $site = is_array($data['site'] ?? null) ? $data['site'] : [];
@@ -106,12 +108,14 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $html .= '<main class="post-inner reading-column">';
         if (($response['kind'] ?? '') === 'single') {
             $post = is_array($response['post'] ?? null) ? $response['post'] : [];
-            $html .= '<article class="smacktalk-post"><h1>' . snap_escape_html($post['title'] ?? '') . '</h1>'
+            $html .= '<article class="smacktalk-post h-entry"><h1 class="p-name">' . snap_escape_html($post['title'] ?? '') . '</h1>'
                 . '<p class="post-date">' . snap_escape_html($post['created_at'] ?? '') . '</p>';
+            if(!empty($post['created_at']))$html.='<time class="dt-published" datetime="'.snap_escape_attr($post['created_at']).'"></time>';
+            if(!empty($site['owner_name']))$html.='<span class="p-author h-card"><span class="p-name">'.snap_escape_html($site['owner_name']).'</span></span>';
             if (!empty($post['featured_image_path'])) {
                 $html .= snap_render_html(snap_render_component('image', ['url' => $post['featured_image_path'], 'alt' => $post['title'] ?? '']));
             }
-            $html .= '<div class="post-content">' . snap_render_html($response['rendered_content'] ?? '') . '</div>';
+            $html .= '<div class="post-content e-content">' . snap_render_html($response['rendered_content'] ?? '') . '</div>';
             if (!empty($response['colophon'])) $html .= '<aside class="post-colophon">' . snap_escape_html($response['colophon']) . '</aside>';
             if (!empty($response['comments_enabled'])) {
                 $html .= snap_render_html(snap_render_component('comments', ['items' => $response['comments'] ?? []]));
@@ -137,7 +141,11 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         } else {
             $html .= '<section class="not-found"><h1>Not found</h1></section>';
         }
-        $html .= '</main><footer class="site-footer"><p>' . snap_escape_html($site['site_name'] ?? '') . '</p></footer>' . snap_render_html($site['owner_custom_code'] ?? '');
+        $html .= '</main><footer class="site-footer"><p>' . snap_escape_html($site['site_name'] ?? '') . '</p></footer>' . snap_render_html(snap_render_component('registered-assets', ['assets'=>$site['registered_assets']??[]])) . snap_render_html($site['owner_custom_code'] ?? '');
+    } elseif ($name === 'registered-assets') {
+        $assets=is_array($data['assets']??null)?$data['assets']:[];
+        foreach(($assets['styles']??[]) as $url)$html.='<link rel="stylesheet" href="'.snap_escape_url($url).'">';
+        foreach(($assets['scripts']??[]) as $url)$html.='<script src="'.snap_escape_url($url).'" defer></script>';
     } elseif ($name === 'navigation') {
         $html = '<nav aria-label="Primary"><ul>';
         foreach (($data['items'] ?? []) as $item) {
