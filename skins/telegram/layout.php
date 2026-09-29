@@ -1,43 +1,64 @@
-<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
-/**
- * SNAPSMACK - Fallback layout for the Alfred skin
- * v1.0.0
- *
- * Alfred is SmackTalk-only. preload.php intercepts all valid Alfred requests
- * and exit()s before index.php reaches this file. layout.php should therefore
- * never be called during normal operation.
- *
- * If it IS called, the most likely cause is that someone selected Alfred as
- * their skin but hasn't switched the site to SmackTalk mode, or preload.php
- * fell through on an unrecognised request. Redirect to the feed.
- */
-
-/**
- * SNAPSMACK_EOF_HEADER
- *     <?php // ===== SNAPSMACK EOF =====
- * Last non-empty line of this file MUST match the line above.
- * Missing or different = truncated/corrupted. Restore before saving.
- */
-
-
-// Redirect to the homepage feed — safest no-crash fallback.
-if (!headers_sent()) {
-    $base = defined('BASE_URL') ? BASE_URL : '/';
-    header('Location: ' . $base, true, 302);
-    exit();
-}
-?>
-<!DOCTYPE html>
-<html lang="en">
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
+<!doctype html>
+<html lang="<?php echo snap_escape_attr($view['site']['language']); ?>" dir="<?php echo snap_escape_attr($view['site']['direction']); ?>">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ALFRED &mdash; SMACKTALK</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title><?php echo snap_escape_html($view['response']['page_title'] ?? $view['site']['site_name']); ?></title>
+    <link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['skin_style_url']); ?>">
 </head>
-<body style="background:#1d1d1d;color:#fff;font-family:sans-serif;text-align:center;padding:4rem;">
-    <h1 style="text-transform:uppercase;letter-spacing:.1em;">ALFRED</h1>
-    <p style="color:#999;">This skin requires SMACKTALK mode.</p>
-    <p><a href="<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>" style="color:#1e73be;">Return to front</a></p>
+<body class="telegram-v2">
+<header class="site-header">
+    <a class="site-title" href="<?php echo snap_route_url('home'); ?>"><?php echo snap_escape_html($view['site']['site_name']); ?></a>
+    <?php if (!empty($view['site']['tagline'])): ?>
+        <p class="site-tagline"><?php echo snap_escape_html($view['site']['tagline']); ?></p>
+    <?php endif; ?>
+    <?php echo snap_render_html(snap_render_component('navigation', ['items' => $view['response']['navigation']])); ?>
+</header>
+
+<main class="post-inner telegram-reading-column">
+<?php if ($view['response']['kind'] === 'single'): ?>
+    <article class="telegram-post">
+        <h1><?php echo snap_escape_html($view['response']['post']['title']); ?></h1>
+        <p class="telegram-date"><?php echo snap_escape_html($view['response']['post']['created_at']); ?></p>
+        <?php if (!empty($view['response']['post']['featured_image_path'])): ?>
+            <?php echo snap_render_html(snap_render_component('image', ['url' => $view['response']['post']['featured_image_path'], 'alt' => $view['response']['post']['title']])); ?>
+        <?php endif; ?>
+        <div class="telegram-content"><?php echo snap_render_html($view['response']['rendered_content']); ?></div>
+        <?php if (!empty($view['response']['colophon'])): ?>
+            <aside class="telegram-colophon"><?php echo snap_escape_html($view['response']['colophon']); ?></aside>
+        <?php endif; ?>
+        <?php if (!empty($view['response']['comments_enabled'])): ?>
+            <?php echo snap_render_html(snap_render_component('comments', ['items' => $view['response']['comments']])); ?>
+        <?php endif; ?>
+    </article>
+<?php elseif ($view['response']['kind'] === 'feed'): ?>
+    <section class="telegram-feed">
+        <?php foreach ($view['response']['posts'] as $post): ?>
+            <article class="telegram-feed-item">
+                <a href="<?php echo snap_escape_url($post['url']); ?>">
+                    <?php if (!empty($post['image_url'])): ?>
+                        <?php echo snap_render_html(snap_render_component('image', ['url' => $post['image_url'], 'alt' => $post['title']])); ?>
+                    <?php endif; ?>
+                    <h2><?php echo snap_escape_html($post['title']); ?></h2>
+                </a>
+            </article>
+        <?php endforeach; ?>
+    </section>
+<?php elseif ($view['response']['kind'] === 'archive'): ?>
+    <section class="telegram-archive">
+        <h1><?php echo snap_escape_html($view['response']['page_title']); ?></h1>
+        <?php foreach ($view['response']['tiles'] as $tile): ?>
+            <a href="<?php echo snap_escape_url($tile['full']); ?>">
+                <?php echo snap_render_html(snap_render_component('image', ['url' => $tile['thumb'], 'alt' => $tile['title']])); ?>
+            </a>
+        <?php endforeach; ?>
+    </section>
+<?php else: ?>
+    <section class="telegram-not-found"><h1>Not found</h1></section>
+<?php endif; ?>
+</main>
+
+<footer class="site-footer"><p><?php echo snap_escape_html($view['site']['site_name']); ?></p></footer>
 </body>
 </html>
-<?php // ===== SNAPSMACK EOF =====

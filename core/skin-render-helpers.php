@@ -73,8 +73,8 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $html = '<ol class="snap-comments">';
         foreach (($data['items'] ?? []) as $comment) {
             if (!is_array($comment)) continue;
-            $html .= '<li><strong>' . snap_escape_html($comment['author'] ?? '') . '</strong><p>'
-                . nl2br(snap_escape_html($comment['text'] ?? ''), false) . '</p></li>';
+            $html .= '<li><strong>' . snap_escape_html($comment['author'] ?? $comment['comment_author'] ?? '') . '</strong><p>'
+                . nl2br(snap_escape_html($comment['text'] ?? $comment['comment_text'] ?? ''), false) . '</p></li>';
         }
         $html .= '</ol>';
     }

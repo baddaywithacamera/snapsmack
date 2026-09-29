@@ -16,8 +16,7 @@ function tg_check(bool $ok, string $label): void {
 
 $root     = dirname(__DIR__);
 $index    = file_get_contents($root . '/index.php');
-$preload  = file_get_contents($root . '/skins/telegram/preload.php');
-$header   = file_get_contents($root . '/skins/telegram/skin-header.php');
+$layout   = file_get_contents($root . '/skins/telegram/layout.php');
 $style    = file_get_contents($root . '/skins/telegram/style.css');
 $tilez    = file_get_contents($root . '/core/public-repository.php');
 $tilezCss = file_get_contents($root . '/skins/tilez/style.css');
@@ -49,12 +48,21 @@ tg_check(($manifest['features']['mobile_only'] ?? false) === true
     'TELEGRAM declares mobile-only longform support');
 tg_check(in_array('smack-lightbox', $manifest['require_scripts'] ?? [], true),
     'TELEGRAM loads the shared tap-to-enlarge lightbox');
-tg_check(strpos($preload, "!== 'telegram'") !== false
-    && strpos($preload, 'ss-engine-mosaic.js') !== false,
-    'TELEGRAM claims its route and renders the shared mosaic engine');
-tg_check(strpos($header, 'nav-toggle-label">MENU') !== false
+tg_check(($manifest['schema_version'] ?? 0) === 2
+    && ($manifest['security_policy'] ?? 0) === 2
+    && ($manifest['cms_controller'] ?? '') === 'smacktalk'
+    && ($manifest['view_model'] ?? '') === 'snapsmack.public.v1'
+    && !is_file($root . '/skins/telegram/preload.php'),
+    'TELEGRAM uses the strict CMS controller and has no legacy preload');
+tg_check(strpos($layout, "snap_render_html(\$view['response']['rendered_content'])") !== false
+    && in_array('smack-rows', $manifest['require_scripts'] ?? [], true),
+    'TELEGRAM renders CMS-sanitized rich content and shared mosaic engines');
+tg_check(strpos($layout, "snap_render_component('comments'") !== false
+    && strpos($index, "=== 'not_found'") !== false,
+    'TELEGRAM renders moderated CMS comments and the CMS owns error status');
+tg_check(strpos($layout, "snap_render_component('navigation'") !== false
     && preg_match('/position\s*:\s*fixed/', $style) === 1,
-    'TELEGRAM exposes the labelled fixed top-right menu');
+    'TELEGRAM exposes CMS-owned navigation with its fixed mobile presentation');
 tg_check(strpos($style, '--telegram-column:46rem') !== false
     && strpos($style, '.snap-mosaic') !== false,
     'TELEGRAM constrains essays and mosaics to its reading column');

@@ -178,6 +178,34 @@ try {
                 exit;
             }
             if (($_smacktalk['kind'] ?? '') === 'not_found') http_response_code(404);
+            if ((int)($_active_manifest['schema_version'] ?? 1) >= 2) {
+                require_once __DIR__ . '/core/trusted-html.php';
+                require_once __DIR__ . '/core/skin-render-helpers.php';
+                require_once __DIR__ . '/core/skin-view-contract.php';
+                if (isset($_smacktalk['rendered_content'])) {
+                    $_smacktalk['rendered_content'] = snapsmack_trusted_html((string)$_smacktalk['rendered_content']);
+                }
+                $_smacktalk['navigation'] = $skin_view['navigation'] ?? [];
+                $_strict_view = snapsmack_build_skin_view($_smacktalk, [
+                    'site_name' => (string)($settings['site_name'] ?? ''),
+                    'tagline' => (string)($settings['site_tagline'] ?? ''),
+                    'base_url' => defined('BASE_URL') ? BASE_URL : '/',
+                    'language' => 'en',
+                    'direction' => 'ltr',
+                    'owner_name' => (string)($settings['site_author'] ?? ''),
+                    'skin_style_url' => (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin) . '/style.css',
+                ]);
+                $_template_map = is_array($_active_manifest['templates'] ?? null) ? $_active_manifest['templates'] : [];
+                $_strict_template = (string)($_template_map[$_smacktalk['kind'] ?? ''] ?? $_template_map['default'] ?? '');
+                if ($_strict_template !== '' && snapsmack_render_strict_skin_template(
+                    __DIR__ . '/skins/' . $active_skin,
+                    $_strict_template,
+                    $_strict_view
+                )) exit;
+                http_response_code(500);
+                echo '<!doctype html><meta charset="utf-8"><title>SnapSmack</title><p>Presentation unavailable.</p>';
+                exit;
+            }
             $skin_view['smacktalk'] = $_smacktalk;
             $page_title = (string)($_smacktalk['page_title'] ?? $site_name);
             $skin_template = __DIR__ . '/skins/' . $active_skin . '/' . ($_active_manifest['skin_preload'] ?? 'preload.php');
