@@ -65,6 +65,13 @@ function _ssImageFadeInit(root) {
 
         // Safari/Firefox: image may have loaded synchronously after addEventListener.
         if (img.complete && img.naturalHeight !== 0) { fadeIn(); }
+        // Some browsers complete an image while the page/tab is being resumed
+        // without delivering the load callback or a visibility/pageshow event.
+        // Do one bounded reconciliation so a healthy decoded image cannot stay
+        // permanently washed out at the CSS initial opacity.
+        window.setTimeout(function () {
+            if (img.complete) fadeIn();
+        }, 1500);
     });
 }
 
