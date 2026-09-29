@@ -21,7 +21,9 @@ function snapsmack_skin_policy_public_asset_handles(?string $authority_root=null
         $publicPaths[$entry['file']]=true;
         $allowed[$bucket]['asset:public:'.pathinfo($entry['file'],PATHINFO_FILENAME)]=true;
     }}
-    $legacyPath=$root.'/core/manifest-inventory.php';$legacy=is_file($legacyPath)?include $legacyPath:[];
+    $legacyPath=$root.'/core/manifest-inventory.php';
+    $snapsmack_manifest_inventory_catalogue_mode=$authority_root!==null;
+    $legacy=is_file($legacyPath)?include $legacyPath:[];
     foreach(($legacy['scripts']??[]) as $handle=>$entry){
         if(!is_string($handle)||!is_array($entry)||!is_string($entry['path']??null)||!isset($publicPaths[$entry['path']]))continue;
         if(isset($entry['css'])&&(!is_string($entry['css'])||!isset($publicPaths[$entry['css']])))continue;
