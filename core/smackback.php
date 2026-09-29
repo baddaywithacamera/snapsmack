@@ -921,8 +921,19 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
     // smackback_verify_all(). Treat a missing manifest table as "nothing to
     // baseline here" and let the update proceed; the schema sync creates the
     // table and SMACKBACK initialises on the next arm/verify.
+    $owns_transaction = false;
     try {
         smackback_ensure_origin_column($pdo);
+        if (!$pdo->inTransaction()) {
+            $pdo->beginTransaction();
+            $owns_transaction = true;
+        }
+        if ($skin_id !== null) {
+            if (!preg_match('/^[a-z0-9_-]+$/', $skin_id)) {
+                throw new RuntimeException('Invalid skin identifier in integrity manifest.');
+            }
+            $pdo->prepare("DELETE FROM snap_file_manifest WHERE skin_id = ?")->execute([$skin_id]);
+        }
         $stmt = $pdo->prepare(
             "INSERT INTO snap_file_manifest
                  (file_path, expected_hash, file_size, eof_signature, skin_id, baseline_set, last_status, baseline_origin)
@@ -944,11 +955,19 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
             if (empty($info['hash']) || !isset($info['size'])) {
                 continue;
             }
+            $path = str_replace('\\', '/', (string)$path);
+            // Skin ZIPs store files beneath their top-level slug; database paths
+            // are always relative to the SnapSmack root.
+            if ($skin_id !== null && str_starts_with($path, $skin_id . '/')) {
+                $path = 'skins/' . $path;
+            }
             // Defence in depth: a CORE package manifest must never carry skin rows.
             // Skins are monitored via their own skin_id rows (Skin Packager); a stray
             // skins/ path here is exactly what false-breached the fleet on a core update.
-            if (str_starts_with($path, 'skins/')) {
-                continue;
+            if ($skin_id === null) {
+                if (str_starts_with($path, 'skins/')) continue;
+            } elseif (!str_starts_with($path, 'skins/' . $skin_id . '/')) {
+                throw new RuntimeException('Skin integrity manifest contains a path outside its package.');
             }
             // Never-trust dev dirs (SECAUDIT 055): even if a package carries
             // them, they are refused a baseline row — presence gets reported by
@@ -992,12 +1011,16 @@ function smackback_init_manifest(string $zip_path, ?string $skin_id = null): boo
         // the recurring fleet lockout. Purge them so every update leaves a clean,
         // skin-free core manifest. (init_from_disk already prunes; this aligns the
         // update path.)
-        $pdo->exec("DELETE FROM snap_file_manifest WHERE file_path LIKE 'skins/%'");
+        if ($skin_id === null) {
+            $pdo->exec("DELETE FROM snap_file_manifest WHERE file_path LIKE 'skins/%'");
+        }
 
         // Same for never-trust dev dirs: rows a pre-055 baseline laundered in
         // must not survive the update (SECAUDIT 055).
         smackback_prune_dev_dir_rows();
-    } catch (PDOException $e) {
+        if ($owns_transaction) $pdo->commit();
+    } catch (Throwable $e) {
+        if ($owns_transaction && $pdo->inTransaction()) $pdo->rollBack();
         error_log('SMACKBACK: init_manifest skipped — ' . $e->getMessage());
         return false;
     }
