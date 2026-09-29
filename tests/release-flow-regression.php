@@ -24,6 +24,9 @@ $guard = file_get_contents($root . '/tools/release-flow.php') ?: '';
 $constants = file_get_contents($root . '/core/constants.php') ?: '';
 $changelog = file_get_contents($root . '/CHANGELOG.md') ?: '';
 
+rel_expect(str_contains($packager, "'assets/ASSET-INVENTORY.json'"),
+    'release packages must include the runtime asset inventory used by the fail-closed skin policy');
+
 rel_expect(str_contains($policy, 'All ordinary implementation pushes go to `dev` only'),
     'policy must make dev the ordinary push branch');
 rel_expect(str_contains($policy, 'Never create the plain and `D` tags together'),
