@@ -1,0 +1,14 @@
+{
+  "now": "2026-09-28 12:00:00",
+  "cases": [
+    {"name": "published", "kind": "post", "row": {"status": "published", "created_at": "2026-09-27 12:00:00"}, "visible": true},
+    {"name": "draft", "kind": "post", "row": {"status": "draft", "created_at": "2026-09-27 12:00:00"}, "visible": false},
+    {"name": "scheduled", "kind": "post", "row": {"status": "published", "created_at": "2026-09-29 12:00:00"}, "visible": false},
+    {"name": "private", "kind": "post", "row": {"status": "private", "created_at": "2026-09-27 12:00:00"}, "visible": false},
+    {"name": "missing", "kind": "post", "row": null, "visible": false},
+    {"name": "published-image", "kind": "image", "row": {"img_status": "published", "img_date": "2026-09-27 12:00:00"}, "visible": true},
+    {"name": "draft-image", "kind": "image", "row": {"img_status": "draft", "img_date": "2026-09-27 12:00:00"}, "visible": false},
+    {"name": "scheduled-image", "kind": "image", "row": {"img_status": "published", "img_date": "2026-09-29 12:00:00"}, "visible": false},
+    {"name": "inactive-page", "kind": "page", "row": {"is_active": 0}, "visible": false}
+  ]
+}
