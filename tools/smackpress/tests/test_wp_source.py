@@ -168,6 +168,29 @@ class DraftTests(unittest.TestCase):
         self.assertEqual(payload["tags"], "usedcarparts v8")
         self.assertEqual(payload["status"], "draft")
 
+    def test_wordpress_ephemera_becomes_explicit_post_data(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "coldsnap"))
+        import sumna_post
+        post = dict(POST)
+        post["images"] = POST["images"] + [{
+            "id": 12, "url": f"{WP}/sean-mccormick-black-low-res.png",
+            "filename": "sean-mccormick-black-low-res.png", "alt": "Sean's signature",
+        }]
+        post["content_expanded"] = (
+            "<p>The essay ends here.</p>"
+            f'<figure><img src="{WP}/sean-mccormick-black-low-res.png" alt="Sean\'s signature"></figure>'
+            "<p>Images made with a Canon EOS R5, a Helios lens, and a DJI drone.</p>"
+        )
+        d = wp_source.draft_from_wp(post, self.tmp.name, fetch=fake_fetch)
+        self.assertEqual(d.caption, "<p>The essay ends here.</p>")
+        self.assertIn("Canon EOS R5", d.colophon)
+        self.assertEqual(sum(1 for image in d.images if image.is_signature), 1)
+        poster = sumna_post.SmacktalkPoster.__new__(sumna_post.SmacktalkPoster)
+        payload = poster.build_payload(d, list(range(101, 101 + len(d.images))), 101)
+        signature_position = next(i for i, image in enumerate(d.images) if image.is_signature)
+        self.assertEqual(payload["signature_image_id"], 101 + signature_position)
+        self.assertIn("Canon EOS R5", payload["colophon"])
+
 
 if __name__ == "__main__":
     unittest.main()
