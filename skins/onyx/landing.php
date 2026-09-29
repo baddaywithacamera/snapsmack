@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /** ONYX — native-aspect masonry landing wall, using the SCROLL columns engine. */
 
 $_onyx_page_size = max(12, min(60, (int)($settings['onyx_wall_page_size'] ?? 36)));

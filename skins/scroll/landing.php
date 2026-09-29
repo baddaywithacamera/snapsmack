@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK — SCROLL landing page.
  * The production wall renderer supports Columns, Rows, and MOSAIC layouts.

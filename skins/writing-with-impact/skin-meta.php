@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK - Meta tags + stylesheet loader for the WRITING WITH IMPACT skin
  * v1.1.0

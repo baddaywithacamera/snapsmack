@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /** FULL MONTY single photograph: the image is both environment and navigation. */
 
 /**

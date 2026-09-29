@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK - STANLEY skin SMACKTALK router (preload hook)
  * v1.1.0

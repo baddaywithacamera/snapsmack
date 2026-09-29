@@ -1,4 +1,4 @@
-<?php
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
 /**
  * SNAPSMACK - Meta tags + palette loader for the ONYX skin
  * ONYX 0.1.9
