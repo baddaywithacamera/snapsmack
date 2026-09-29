@@ -1,0 +1,28 @@
+{
+  "palettes": {
+    "classic": {"label":"Classic LED — green / gold / red","g":["#00FF41","#003B0F"],"y":["#FFD700","#3B2F00"],"r":["#FF2020","#3B0000"],"viz":["#00FF41","#FFD700","#FF2020"]},
+    "neon": {"label":"Neon — cyan / magenta / violet","g":["#00E5FF","#04313A"],"y":["#FF00E5","#3A0034"],"r":["#7C4DFF","#1B1140"],"viz":["#00E5FF","#FF00E5","#7C4DFF"]},
+    "fire": {"label":"Fire — gold / orange / red","g":["#FFE24D","#3A3300"],"y":["#FF8A00","#3A2000"],"r":["#FF1E1E","#3A0000"],"viz":["#FFE24D","#FF8A00","#FF1E1E"]},
+    "ice": {"label":"Ice — pale cyan / cyan / blue","g":["#CFFAFE","#0B3A40"],"y":["#67E8F9","#083A44"],"r":["#3B82F6","#0A1E4A"],"viz":["#CFFAFE","#67E8F9","#3B82F6"]}
+  },
+  "band_hz": [[4000,20000],[800,4000],[250,800],[80,250],[20,80]],
+  "thresholds": [0.25,0.55,0.80],
+  "defaults": {
+    "intensity":3,
+    "intensity_cap":10,
+    "palette":"classic",
+    "border_width":2,
+    "bg_mode":"off",
+    "viz_mode":"spectrum",
+    "viz_intensity":3,
+    "reaction_mode":"simultaneous",
+    "ripple_speed":"medium",
+    "collage_opacity":15,
+    "collage_sat":20,
+    "scale_on_hit":105,
+    "loop":1,
+    "player_position":"bottom",
+    "tile_gap":3,
+    "bg_color":"#111111"
+  }
+}
