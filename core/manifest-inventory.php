@@ -11,17 +11,16 @@ if (PHP_SAPI !== 'cli' && !empty($_SERVER['SCRIPT_FILENAME'])
  * SNAPSMACK - System Inventory
  *
  * Single source of truth for all available system resources: local fonts,
- * Google Fonts, and JavaScript engines. Skins request assets from this list
+ * legacy font-family choices, and JavaScript engines. Skins request assets from this list
  * via their individual manifest.json.
  *
  * LOCAL FONTS: Hosted in assets/fonts/ on the server. Output automatically
  *              as @font-face blocks. Skin manifests may declare allowed_fonts[]
  *              to restrict the font picker to a curated subset.
  *
- * GOOGLE FONTS: Loaded on demand via Google CDN. Key = exact Google Fonts
- *               family name (used in API URL). Value = friendly label shown
- *               in the UI. Inter and Roboto deliberately excluded—they are
- *               everywhere and add nothing distinctive to a photoblog.
+ * LEGACY FONT CHOICES: Family names retained for saved appearance settings.
+ *               Public rendering never contacts a font CDN; an unavailable
+ *               family falls through to the skin's local/system CSS stack.
  *
  * SCRIPTS: JavaScript engines (lightbox, glitch, keyboard, etc.) that skins
  *          can declare via require_scripts[].
@@ -363,8 +362,9 @@ $inventory = [
 
 
     /* =========================================================
-       GOOGLE FONTS LIBRARY
-       ~90 fonts across 7 categories.
+       LEGACY FONT-FAMILY CHOICES
+       ~90 saved-setting choices across 7 categories. These names do not
+       authorize a network load; public rendering is local-only.
        Inter and Roboto deliberately omitted — ubiquitous and
        actively harmful to a distinctive photoblog aesthetic.
        ========================================================= */
