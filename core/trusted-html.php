@@ -19,7 +19,8 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         'p' => [], 'br' => [], 'strong' => [], 'em' => [], 'b' => [], 'i' => [], 'u' => [], 's' => [],
         'blockquote' => [], 'ul' => [], 'ol' => [], 'li' => [], 'code' => [], 'pre' => [],
         'h1' => [], 'h2' => [], 'h3' => [], 'h4' => [], 'h5' => [], 'h6' => [],
-        'figure' => [], 'figcaption' => [],
+        'div' => ['class', 'id', 'data-mosaic'], 'span' => ['class'], 'section' => ['class', 'id'],
+        'figure' => ['class'], 'figcaption' => ['class'],
         'a' => ['href', 'title'],
         'img' => ['src', 'alt', 'title', 'width', 'height', 'loading'],
     ];
