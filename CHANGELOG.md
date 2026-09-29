@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.786D — 2026-09-29 — Complete grid feed and dropdown navigation
+
+- **Strict INSTANT CAMERA pages once again receive the complete lazy/folded feed and Menu Manager tree.** The central public controller capped the landing response at 24 items even though the shared progressive-reveal engine operates on the complete lazy-image DOM, so a 1,266-post site stopped permanently after its first batch. Core now permits this presentation to request a bounded full landing set (maximum 5,000), which the existing engine folds and reveals in browser-sized batches. The strict entry point also replaces the repository's flat active-page list with the already CMS-resolved, depth-limited Menu Manager model. The shared renderer emits escaped two-level dropdown markup, centralized presentation CSS, and the registered public dropdown engine; skins regain no routing, SQL, PHP, or executable authority. (`core/public-controller.php`, `core/skin-presentation.php`, `core/skin-render-helpers.php`, `index.php`, `tests/skin-render-helpers-regression.php`.)
+
 ## 0.7.785D — 2026-09-29 — Symmetric navigation line shadow
 
 - **INSTANT CAMERA's upper and lower navigation dividers now receive the same validated shadow opacity.** The 0.7.784D central presentation bridge used a malformed positional formatter, turning a saved 80% black shadow into an effectively solid lower shadow and transparent upper inset. Core now emits `0.80` for both the outset and inset components, with regression coverage for the complete declaration. (`core/skin-presentation.php`, `tests/skin-render-helpers-regression.php`.)

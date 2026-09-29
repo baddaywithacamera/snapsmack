@@ -32,7 +32,8 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
     $slug = (string)($request['slug'] ?? '');
     $id = max(0, (int)($request['id'] ?? 0));
     $page = max(1, (int)($request['page'] ?? 1));
-    $perPage = max(1, min(100, (int)($settings['posts_per_page'] ?? 24)));
+    $perPageCap = !empty($settings['_cms_full_landing']) ? 5000 : 100;
+    $perPage = max(1, min($perPageCap, (int)($settings['posts_per_page'] ?? 24)));
     $offset = ($page - 1) * $perPage;
     $navigation = $repository->activePages();
 
