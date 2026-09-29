@@ -14,7 +14,7 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-/* ---- palette tokens (mirror beatbox-config.php; class set on the carrier) ---- */
+/* ---- palette tokens (mirror beatbox-config.json; class set on the carrier) ---- */
 [data-beatbox]{
   --bb-g-on:#00FF41; --bb-g-off:#003B0F;   /* col 1 — green  (thr .25) */
   --bb-y-on:#FFD700; --bb-y-off:#3B2F00;   /* col 2 — yellow (thr .55) */
