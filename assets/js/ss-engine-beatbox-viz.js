@@ -32,7 +32,7 @@
 
     function fault(where, err) { try { if (window.console && console.error) console.error('[beatbox-viz] ' + where, err); } catch (e) {} }
 
-    // Canvas viz palettes (mirror beatbox-config.php; Layer 1 colours live in skin CSS)
+    // Canvas viz palettes (mirror beatbox-config.json; Layer 1 colours live in skin CSS)
     var VIZ = {
         classic: ['#00FF41', '#FFD700', '#FF2020'],
         neon:    ['#00E5FF', '#FF00E5', '#7C4DFF'],

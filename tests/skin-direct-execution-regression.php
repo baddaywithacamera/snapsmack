@@ -10,6 +10,21 @@ $files = new RecursiveIteratorIterator(
 $checked = 0;
 foreach ($files as $file) {
     if (!$file->isFile() || !in_array(strtolower($file->getExtension()), ['php', 'phtml', 'inc'], true)) continue;
+    $skinDir = $file->getPath();
+    $manifestPath = $skinDir . '/manifest.json';
+    if (!is_file($manifestPath)) {
+        $failures[] = str_replace('\\', '/', substr($file->getPathname(), strlen($root) + 1))
+            . ' is executable skin code outside a manifested package';
+    } else {
+        $manifest = json_decode((string)file_get_contents($manifestPath), true);
+        $templates = is_array($manifest['templates'] ?? null)
+            ? array_values(array_unique(array_filter($manifest['templates'], 'is_string')))
+            : [];
+        if (($manifest['schema_version'] ?? null) !== 2 || !in_array($file->getFilename(), $templates, true)) {
+            $failures[] = str_replace('\\', '/', substr($file->getPathname(), strlen($root) + 1))
+                . ' is not a declared schema-v2 presentation template';
+        }
+    }
     $source = (string)file_get_contents($file->getPathname());
     if (!preg_match($guard, $source)) {
         $failures[] = str_replace('\\', '/', substr($file->getPathname(), strlen($root) + 1))
