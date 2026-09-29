@@ -25,31 +25,17 @@
             "purpose": "Flickr's Justified Gallery [fjGallery] v2.2.0 (https://flickr-justified-gallery.nkdev.info) Copyright 2024 nK <https://nkdev.info> Licensed under MIT (https://github.com/nk-o/flickr-justified-galle..."
         },
         {
-            "file": "assets/js/formatting-toolbar.js",
-            "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:formatting-toolbar",
-            "legacy_handle": null,
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [
-                "network"
-            ],
-            "enable": "loaded by the CMS where needed",
-            "family": "Other",
-            "vendor": false,
-            "requires": [],
-            "purpose": "Formatting Toolbar Lightweight vanilla JS toolbar for the transmission editor."
-        },
-        {
             "file": "assets/js/shortcode-toolbar.js",
             "owner": "cms",
             "scope": "tool",
             "registry_handle": "asset:tool:shortcode-toolbar",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-edit-carousel.php",
+                "smack-edit.php",
+                "smack-pages.php",
+                "smack-post-long.php",
+                "smack-post-solo.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -68,7 +54,7 @@
             "registry_handle": "asset:admin:smack-admin-2fa",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-2fa.php"
             ],
             "security_signals": [],
             "enable": "loaded by the CMS where needed",
@@ -84,7 +70,7 @@
             "registry_handle": "asset:admin:smack-app",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/admin-footer.php"
             ],
             "security_signals": [
                 "html-sink"
@@ -102,7 +88,9 @@
             "registry_handle": "asset:admin:smack-asset-picker",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-pages.php",
+                "smack-post-long.php",
+                "smack-skin.php"
             ],
             "security_signals": [
                 "html-sink"
@@ -120,7 +108,7 @@
             "registry_handle": "asset:admin:smack-login",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-2fa-verify.php"
             ],
             "security_signals": [],
             "enable": "loaded by the CMS where needed",
@@ -136,7 +124,7 @@
             "registry_handle": "asset:admin:smack-longform-gallery-picker",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-post-long.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -155,7 +143,7 @@
             "registry_handle": "asset:admin:smack-longform-image-blocks",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-post-long.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -174,7 +162,7 @@
             "registry_handle": "asset:admin:smack-passphrase",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-change-password.php"
             ],
             "security_signals": [],
             "enable": "loaded by the CMS where needed",
@@ -190,7 +178,7 @@
             "registry_handle": "asset:admin:smack-prompt-schedule",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-photochallenge.php"
             ],
             "security_signals": [],
             "enable": "loaded by the CMS where needed",
@@ -206,7 +194,9 @@
             "registry_handle": "asset:admin:smack-pwa",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "offline.php",
+                "core/admin-footer.php",
+                "core/meta.php"
             ],
             "security_signals": [],
             "enable": "loaded by the CMS where needed",
@@ -222,7 +212,7 @@
             "registry_handle": "asset:admin:smack-qr.min",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-2fa.php"
             ],
             "security_signals": [
                 "remote-url"
@@ -240,7 +230,7 @@
             "registry_handle": "asset:admin:smack-sc-forum",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-central/sc-forum.php"
             ],
             "security_signals": [],
             "enable": "loaded by the CMS where needed",
@@ -256,7 +246,7 @@
             "registry_handle": "asset:public:ss-ai-spendcap",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-settings.php"
             ],
             "security_signals": [
                 "network"
@@ -274,6 +264,7 @@
             "registry_handle": "asset:public:ss-engine-52-pickup",
             "legacy_handle": "smack-52-pickup",
             "callers": [
+                "tools/asset-inventory.php",
                 "52-card-pickup"
             ],
             "security_signals": [],
@@ -292,7 +283,9 @@
             "registry_handle": "asset:public:ss-engine-admin-csrf",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-post-long.php",
+                "core/admin-footer.php",
+                "core/csrf.php"
             ],
             "security_signals": [
                 "network"
@@ -310,7 +303,12 @@
             "registry_handle": "asset:public:ss-engine-admin-ui",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-edit-carousel.php",
+                "smack-edit.php",
+                "smack-post-gram.php",
+                "smack-post-solo.php",
+                "smack-settings.php",
+                "smack-swap.php"
             ],
             "security_signals": [
                 "network"
@@ -328,7 +326,11 @@
             "registry_handle": "asset:public:ss-engine-ai-enrichment",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-edit-carousel.php",
+                "smack-edit.php",
+                "smack-post-gram.php",
+                "smack-post-long.php",
+                "smack-post-solo.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -347,7 +349,7 @@
             "registry_handle": "asset:public:ss-engine-ai",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-post-solo.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -366,6 +368,7 @@
             "registry_handle": "asset:public:ss-engine-alfred-archive",
             "legacy_handle": "smack-alfred-archive",
             "callers": [
+                "skins/tilez/manifest.json",
                 "tilez"
             ],
             "security_signals": [],
@@ -382,6 +385,9 @@
             "registry_handle": "asset:public:ss-engine-alfred-nav",
             "legacy_handle": "smack-alfred-nav",
             "callers": [
+                "skins/alfred/manifest.json",
+                "skins/telegram/manifest.json",
+                "skins/tilez/manifest.json",
                 "alfred",
                 "telegram",
                 "tilez"
@@ -394,29 +400,13 @@
             "purpose": "Alfred skin mobile navigation toggle v1.0.0 Wires the .nav-toggle hamburger button to show/hide .mobile-navigation."
         },
         {
-            "file": "assets/js/ss-engine-anaglyph.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-anaglyph",
-            "legacy_handle": "smack-anaglyph",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "Anaglyph 3D Engine Red/cyan stereoscopic channel separation for text and image frames."
-        },
-        {
             "file": "assets/js/ss-engine-archive-filter.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-archive-filter",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "archive.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -432,6 +422,8 @@
             "registry_handle": "asset:public:ss-engine-archive-grid-switch",
             "legacy_handle": "smack-archive-grid-switch",
             "callers": [
+                "skins/50-shades-of-noah-grey/manifest.json",
+                "skins/onyx/manifest.json",
                 "50-shades-of-noah-grey",
                 "onyx"
             ],
@@ -449,6 +441,10 @@
             "registry_handle": "asset:public:ss-engine-archive-toggle",
             "legacy_handle": "smack-archive-toggle",
             "callers": [
+                "archive.php",
+                "skins/chaplin/manifest.json",
+                "skins/rational-geo/manifest.json",
+                "skins/slickr/manifest.json",
                 "chaplin",
                 "rational-geo",
                 "slickr"
@@ -463,28 +459,13 @@
             "purpose": "Archive Layout Toggle Engine (0.7.79) Intercepts clicks on the [Thumbs] and [Masonry] segmented buttons in the archive header so they switch layouts in-place (no full-page reload, no visible blip),..."
         },
         {
-            "file": "assets/js/ss-engine-ascii-borders.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-ascii-borders",
-            "legacy_handle": "smack-ascii-borders",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "ASCII Border Engine Generates text-character borders around images using configurable styles."
-        },
-        {
             "file": "assets/js/ss-engine-aurora-bg.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-aurora-bg",
             "legacy_handle": "smack-aurora-bg",
             "callers": [
+                "skins/aurora/manifest.json",
                 "aurora"
             ],
             "security_signals": [
@@ -503,6 +484,8 @@
             "registry_handle": "asset:public:ss-engine-aurora-wave",
             "legacy_handle": "smack-aurora-wave",
             "callers": [
+                "skins/aurora/manifest.json",
+                "skins/parade/manifest.json",
                 "aurora",
                 "parade"
             ],
@@ -514,83 +497,15 @@
             "purpose": "Grid-family Tile Border Wave (Layer 2, shared engine) Conic-gradient ring border, ported from _spec/aurora-prototype.html."
         },
         {
-            "file": "assets/js/ss-engine-beatbox-bg.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-beatbox-bg",
-            "legacy_handle": null,
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [
-                "html-sink",
-                "network"
-            ],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [
-                "ss-engine-beatbox.js"
-            ],
-            "purpose": "BEATBOX background collage (Layer 3): ORGANIZED MAYHEM BEATBOX A beat-reactive fork of ORGANIZED MAYHEM's image model."
-        },
-        {
-            "file": "assets/js/ss-engine-beatbox-viz.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-beatbox-viz",
-            "legacy_handle": null,
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [
-                "ss-engine-beatbox.js"
-            ],
-            "purpose": "BEATBOX visualiser engine (Layer 1 + Layer 2) Consumes the shared data bus (window.SnapBeatbox) owned by ss-engine-beatbox.js."
-        },
-        {
-            "file": "assets/js/ss-engine-beatbox.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-beatbox",
-            "legacy_handle": null,
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "BEATBOX shared audio engine (Layer 0 / data bus) The GRAMOFSMACK BEATBOX skin's audio core (spec: _spec/beatbox-skin-spec-v0_3.docx)."
-        },
-        {
-            "file": "assets/js/ss-engine-bg-cycle.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-bg-cycle",
-            "legacy_handle": "smack-bg-cycle",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "Background cycle crossfader () For INSTANT CAMERA's \"Cycle all\" background mode."
-        },
-        {
             "file": "assets/js/ss-engine-calendar.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-calendar",
             "legacy_handle": "smack-calendar",
             "callers": [
+                "api-calendar.php",
+                "archive.php",
+                "tools/_build/build-spec-080.js",
                 "50-shades-of-noah-grey",
                 "rational-geo",
                 "slickr"
@@ -612,7 +527,7 @@
             "registry_handle": "asset:public:ss-engine-carousel-edit",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-edit-carousel.php"
             ],
             "security_signals": [
                 "html-sink"
@@ -624,31 +539,21 @@
             "purpose": "SnapSmack Carousel Edit Engine Manages the image strip UI on smack-edit-carousel.php."
         },
         {
-            "file": "assets/js/ss-engine-carousel-post.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-carousel-post",
-            "legacy_handle": "smack-carousel-post",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [
-                "html-sink",
-                "network"
-            ],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "Carousel Post Engine JavaScript engine for the multi-image carousel posting page (smack-post-carousel.php)."
-        },
-        {
             "file": "assets/js/ss-engine-carousel-view.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-carousel-view",
             "legacy_handle": "smack-carousel-view",
             "callers": [
+                "skins/aurora/manifest.json",
+                "skins/game-on/manifest.json",
+                "skins/heuristic/manifest.json",
+                "skins/instant-camera/manifest.json",
+                "skins/jive-turkey/manifest.json",
+                "skins/parade/manifest.json",
+                "skins/sliders/manifest.json",
+                "skins/sudden-impact/manifest.json",
+                "skins/the-grid/manifest.json",
                 "aurora",
                 "game-on",
                 "heuristic",
@@ -675,6 +580,7 @@
             "registry_handle": "asset:public:ss-engine-cinema-overlay",
             "legacy_handle": "smack-cinema-overlay",
             "callers": [
+                "skins/chaplin/manifest.json",
                 "chaplin"
             ],
             "security_signals": [],
@@ -691,6 +597,15 @@
             "registry_handle": "asset:public:ss-engine-columns",
             "legacy_handle": "smack-columns",
             "callers": [
+                "smack-mosaics.php",
+                "core/meta.php",
+                "core/ohsnap-api.php",
+                "core/parser.php",
+                "skins/50-shades-of-noah-grey/manifest.json",
+                "skins/onyx/manifest.json",
+                "skins/scroll/manifest.json",
+                "skins/telegram/manifest.json",
+                "skins/tilez/manifest.json",
                 "50-shades-of-noah-grey",
                 "onyx",
                 "scroll",
@@ -714,6 +629,7 @@
             "registry_handle": "asset:public:ss-engine-comms",
             "legacy_handle": "smack-keyboard",
             "callers": [
+                "core/footer-scripts.php",
                 "50-shades-of-noah-grey",
                 "52-card-pickup",
                 "aurora",
@@ -755,6 +671,8 @@
             "registry_handle": "asset:public:ss-engine-community",
             "legacy_handle": "smack-community",
             "callers": [
+                "core/community-component.php",
+                "core/community-dock.php",
                 "50-shades-of-noah-grey",
                 "52-card-pickup",
                 "alfred",
@@ -805,7 +723,8 @@
             "registry_handle": "asset:public:ss-engine-consent",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/consent-banner.php",
+                "core/footer-scripts.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -821,6 +740,9 @@
             "registry_handle": "asset:public:ss-engine-contact",
             "legacy_handle": "smack-contact",
             "callers": [
+                "core/contact-form.php",
+                "core/parser.php",
+                "skins/show-n-tell/manifest.json",
                 "show-n-tell"
             ],
             "security_signals": [
@@ -839,6 +761,8 @@
             "registry_handle": "asset:public:ss-engine-countdown",
             "legacy_handle": "smack-countdown",
             "callers": [
+                "skins/onyx/manifest.json",
+                "projects/photofri-day/cms-pages/home.html",
                 "onyx"
             ],
             "security_signals": [],
@@ -855,7 +779,7 @@
             "registry_handle": "asset:public:ss-engine-crosspost",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-multisite-crosspost.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -865,29 +789,15 @@
             "purpose": "Cross-Post Engine Form validation and image picker interaction for the multisite cross-post page."
         },
         {
-            "file": "assets/js/ss-engine-drawer.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-drawer",
-            "legacy_handle": "smack-drawer",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "Dual Drawer Controller Rational Geo drawer engine: - Comments slide DOWN from below the header (position:absolute overlay)."
-        },
-        {
             "file": "assets/js/ss-engine-featured-picker.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-featured-picker",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-albums.php",
+                "smack-cats.php",
+                "smack-collections.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -906,7 +816,8 @@
             "registry_handle": "asset:public:ss-engine-fediverse-admin",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-fediverse-portal.php",
+                "core/updater.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -916,28 +827,13 @@
             "purpose": "FEDIVERSE admin page engine One job: live-preview the fediverse address as the handle is typed."
         },
         {
-            "file": "assets/js/ss-engine-film-damage.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-film-damage",
-            "legacy_handle": "smack-film-damage",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "Chaplin Skin / Film Damage Engine"
-        },
-        {
             "file": "assets/js/ss-engine-film.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-film",
             "legacy_handle": "smack-film",
             "callers": [
+                "skins/chaplin/manifest.json",
                 "chaplin"
             ],
             "security_signals": [],
@@ -954,7 +850,7 @@
             "registry_handle": "asset:public:ss-engine-fingerprint",
             "legacy_handle": "smack-fingerprint",
             "callers": [
-                "CMS runtime"
+                "process-community-comment.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -970,6 +866,7 @@
             "registry_handle": "asset:public:ss-engine-flag-wave",
             "legacy_handle": "smack-flag-wave",
             "callers": [
+                "skins/parade/manifest.json",
                 "parade"
             ],
             "security_signals": [],
@@ -986,7 +883,7 @@
             "registry_handle": "asset:public:ss-engine-font-preview",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-skin.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -1002,6 +899,24 @@
             "registry_handle": "asset:public:ss-engine-footer",
             "legacy_handle": "smack-footer",
             "callers": [
+                "skins/50-shades-of-noah-grey/manifest.json",
+                "skins/52-card-pickup/manifest.json",
+                "skins/alfred/manifest.json",
+                "skins/galleria/manifest.json",
+                "skins/glide/manifest.json",
+                "skins/hip-to-be-square/manifest.json",
+                "skins/impact-printer/manifest.json",
+                "skins/new-horizon/manifest.json",
+                "skins/onyx/manifest.json",
+                "skins/rational-geo/manifest.json",
+                "skins/scroll/manifest.json",
+                "skins/show-n-tell/manifest.json",
+                "skins/slickr/manifest.json",
+                "skins/stanley/manifest.json",
+                "skins/telegram/manifest.json",
+                "skins/tilez/manifest.json",
+                "skins/true-grit/manifest.json",
+                "skins/writing-with-impact/manifest.json",
                 "50-shades-of-noah-grey",
                 "52-card-pickup",
                 "alfred",
@@ -1029,28 +944,13 @@
             "purpose": "Footer Controller Manages animated footer panes: info, comments, and help."
         },
         {
-            "file": "assets/js/ss-engine-fsog-layout-toggle.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-fsog-layout-toggle",
-            "legacy_handle": "fsog-layout-toggle",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "50 Shades of Noah Grey: Archive Layout Toggle Engine Handles three-way archive toggle: square / cropped / justified."
-        },
-        {
             "file": "assets/js/ss-engine-full-monty.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-full-monty",
             "legacy_handle": "smack-full-monty",
             "callers": [
+                "skins/full-monty/manifest.json",
                 "full-monty"
             ],
             "security_signals": [],
@@ -1061,31 +961,13 @@
             "purpose": "FULL MONTY adaptive atmosphere."
         },
         {
-            "file": "assets/js/ss-engine-fullscreen.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-fullscreen",
-            "legacy_handle": "smack-fullscreen",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [
-                "html-sink"
-            ],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "Fullscreen Engine True browser fullscreen (requestFullscreen API) for distraction-free image viewing."
-        },
-        {
             "file": "assets/js/ss-engine-gallery.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-gallery",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-gallery.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -1123,6 +1005,8 @@
             "registry_handle": "asset:public:ss-engine-glide",
             "legacy_handle": "smack-glide",
             "callers": [
+                "skins/glide/manifest.json",
+                "skins/sliders/manifest.json",
                 "glide",
                 "sliders"
             ],
@@ -1134,29 +1018,13 @@
             "purpose": "GLIDE Engine. A kinetic photo wall whose rows drag and slide along a chosen axis (horizontal, vertical or diagonal), with pointer-drag plus momentum, and it honours prefers-reduced-motion."
         },
         {
-            "file": "assets/js/ss-engine-glitch.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-glitch",
-            "legacy_handle": "smack-glitch",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "Glitch Engine Random chaos effects on page elements."
-        },
-        {
             "file": "assets/js/ss-engine-gram-post.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-gram-post",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-post-gram.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -1175,6 +1043,7 @@
             "registry_handle": "asset:public:ss-engine-gram-search",
             "legacy_handle": "smack-gram-search",
             "callers": [
+                "core/gram-search-dock.php",
                 "52-card-pickup",
                 "aurora",
                 "game-on",
@@ -1200,6 +1069,17 @@
             "registry_handle": "asset:public:ss-engine-grid-lightbox",
             "legacy_handle": "smack-grid-lightbox",
             "callers": [
+                "skins/aurora/manifest.json",
+                "skins/game-on/manifest.json",
+                "skins/heuristic/manifest.json",
+                "skins/instant-camera/manifest.json",
+                "skins/jive-turkey/manifest.json",
+                "skins/parade/manifest.json",
+                "skins/scroll/manifest.json",
+                "skins/slickr/manifest.json",
+                "skins/sliders/manifest.json",
+                "skins/sudden-impact/manifest.json",
+                "skins/the-grid/manifest.json",
                 "aurora",
                 "game-on",
                 "heuristic",
@@ -1226,6 +1106,15 @@
             "registry_handle": "asset:public:ss-engine-grid-modal",
             "legacy_handle": "smack-grid-modal",
             "callers": [
+                "skins/aurora/manifest.json",
+                "skins/game-on/manifest.json",
+                "skins/heuristic/manifest.json",
+                "skins/instant-camera/manifest.json",
+                "skins/jive-turkey/manifest.json",
+                "skins/parade/manifest.json",
+                "skins/sliders/manifest.json",
+                "skins/sudden-impact/manifest.json",
+                "skins/the-grid/manifest.json",
                 "aurora",
                 "game-on",
                 "heuristic",
@@ -1278,6 +1167,7 @@
             "registry_handle": "asset:public:ss-engine-heuristic",
             "legacy_handle": "smack-heuristic",
             "callers": [
+                "skins/heuristic/manifest.json",
                 "heuristic"
             ],
             "security_signals": [],
@@ -1294,6 +1184,32 @@
             "registry_handle": "asset:public:ss-engine-image-fade-load",
             "legacy_handle": "smack-image-fade-load",
             "callers": [
+                "skins/50-shades-of-noah-grey/manifest.json",
+                "skins/52-card-pickup/manifest.json",
+                "skins/aurora/manifest.json",
+                "skins/chaplin/manifest.json",
+                "skins/galleria/manifest.json",
+                "skins/game-on/manifest.json",
+                "skins/glide/manifest.json",
+                "skins/heuristic/manifest.json",
+                "skins/hip-to-be-square/manifest.json",
+                "skins/impact-printer/manifest.json",
+                "skins/instant-camera/manifest.json",
+                "skins/jive-turkey/manifest.json",
+                "skins/new-horizon/manifest.json",
+                "skins/onyx/manifest.json",
+                "skins/parade/manifest.json",
+                "skins/photogram/manifest.json",
+                "skins/rational-geo/manifest.json",
+                "skins/scroll/manifest.json",
+                "skins/show-n-tell/manifest.json",
+                "skins/slickr/manifest.json",
+                "skins/sliders/manifest.json",
+                "skins/sudden-impact/manifest.json",
+                "skins/telegram/manifest.json",
+                "skins/the-grid/manifest.json",
+                "skins/tilez/manifest.json",
+                "skins/true-grit/manifest.json",
                 "50-shades-of-noah-grey",
                 "52-card-pickup",
                 "aurora",
@@ -1335,6 +1251,7 @@
             "registry_handle": "asset:public:ss-engine-jive-border",
             "legacy_handle": "smack-jive-border",
             "callers": [
+                "skins/jive-turkey/manifest.json",
                 "jive-turkey"
             ],
             "security_signals": [],
@@ -1351,6 +1268,7 @@
             "registry_handle": "asset:public:ss-engine-jive-turkey",
             "legacy_handle": "smack-jive-turkey-bg",
             "callers": [
+                "skins/jive-turkey/manifest.json",
                 "jive-turkey"
             ],
             "security_signals": [
@@ -1369,6 +1287,11 @@
             "registry_handle": "asset:public:ss-engine-justified",
             "legacy_handle": "smack-justified",
             "callers": [
+                "skins/new-horizon/manifest.json",
+                "skins/onyx/manifest.json",
+                "skins/show-n-tell/manifest.json",
+                "skins/slickr/manifest.json",
+                "skins/true-grit/manifest.json",
                 "new-horizon",
                 "onyx",
                 "show-n-tell",
@@ -1389,6 +1312,11 @@
             "registry_handle": "asset:public:ss-engine-lazyload",
             "legacy_handle": "smack-lazyload",
             "callers": [
+                "skins/glide/manifest.json",
+                "skins/scroll/manifest.json",
+                "skins/slickr/manifest.json",
+                "skins/telegram/manifest.json",
+                "skins/tilez/manifest.json",
                 "glide",
                 "scroll",
                 "slickr",
@@ -1409,6 +1337,32 @@
             "registry_handle": "asset:public:ss-engine-lightbox",
             "legacy_handle": "smack-lightbox",
             "callers": [
+                "core/asset-sync.php",
+                "core/meta.php",
+                "skins/50-shades-of-noah-grey/manifest.json",
+                "skins/52-card-pickup/manifest.json",
+                "skins/aurora/manifest.json",
+                "skins/chaplin/manifest.json",
+                "skins/galleria/manifest.json",
+                "skins/glide/manifest.json",
+                "skins/heuristic/manifest.json",
+                "skins/hip-to-be-square/manifest.json",
+                "skins/impact-printer/manifest.json",
+                "skins/instant-camera/manifest.json",
+                "skins/jive-turkey/manifest.json",
+                "skins/new-horizon/manifest.json",
+                "skins/onyx/manifest.json",
+                "skins/parade/manifest.json",
+                "skins/rational-geo/manifest.json",
+                "skins/scroll/manifest.json",
+                "skins/show-n-tell/manifest.json",
+                "skins/slickr/manifest.json",
+                "skins/sliders/manifest.json",
+                "skins/sudden-impact/manifest.json",
+                "skins/telegram/manifest.json",
+                "skins/the-grid/manifest.json",
+                "skins/tilez/manifest.json",
+                "skins/true-grit/manifest.json",
                 "50-shades-of-noah-grey",
                 "52-card-pickup",
                 "aurora",
@@ -1448,7 +1402,7 @@
             "registry_handle": "asset:public:ss-engine-lighttable",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-lighttable.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -1461,29 +1415,13 @@
             "purpose": "Light Table Engine () Handles desktop detection, left-rail slide-in, accordion expand/collapse, fjGallery grid, multi-select, drag-and-drop, drop handlers, visual feedback, membership badges, colle..."
         },
         {
-            "file": "assets/js/ss-engine-logo.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-logo",
-            "legacy_handle": "smack-logo",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "Logo Glitch Engine Idle animation loop for .snapsmack-logo."
-        },
-        {
             "file": "assets/js/ss-engine-longform-cover-crop.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-longform-cover-crop",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-post-long.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -1493,29 +1431,13 @@
             "purpose": "Longform cover pan/zoom cropper Drives the COVER FRAMING widget on smack-post-long.php."
         },
         {
-            "file": "assets/js/ss-engine-masonry.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-masonry",
-            "legacy_handle": "smack-masonry",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "Masonry Grid Engine () JUSTIFIED photo wall (v3)."
-        },
-        {
             "file": "assets/js/ss-engine-masthead-crop.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-masthead-crop",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-masthead.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -1525,29 +1447,13 @@
             "purpose": "Masthead cover position / zoom editor Drives the Slickr masthead cover editor in smack-masthead.php: drag the cover to pan (object-position), slide to zoom (transform scale), live WYSIWYG."
         },
         {
-            "file": "assets/js/ss-engine-matrix-rain.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-matrix-rain",
-            "legacy_handle": "smack-matrix-rain",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "Matrix Rain (background effect) Salvaged from the retired Pimpotron/KIOSK engine \u2014 the one self-contained, reusable piece."
-        },
-        {
             "file": "assets/js/ss-engine-media-library.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-media-library",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-media.php"
             ],
             "security_signals": [
                 "network"
@@ -1565,7 +1471,7 @@
             "registry_handle": "asset:public:ss-engine-menu-builder",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-menu.php"
             ],
             "security_signals": [
                 "html-sink"
@@ -1583,7 +1489,7 @@
             "registry_handle": "asset:public:ss-engine-mosaic-feed",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "eatmeclaude.php"
             ],
             "security_signals": [
                 "network"
@@ -1601,6 +1507,10 @@
             "registry_handle": "asset:public:ss-engine-mosaic",
             "legacy_handle": "smack-mosaic",
             "callers": [
+                "eatmeclaude.php",
+                "smack-mosaics.php",
+                "core/meta.php",
+                "core/parser.php",
                 "tilez"
             ],
             "security_signals": [],
@@ -1617,7 +1527,7 @@
             "registry_handle": "asset:public:ss-engine-nav-dropdown",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/footer.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -1633,6 +1543,12 @@
             "registry_handle": "asset:public:ss-engine-organized-mayhem",
             "legacy_handle": "smack-organized-mayhem",
             "callers": [
+                "index.php",
+                "tools/asset-inventory.php",
+                "core/mayhem-data.php",
+                "core/ohsnap-api.php",
+                "skins/52-card-pickup/manifest.json",
+                "skins/instant-camera/manifest.json",
                 "52-card-pickup",
                 "instant-camera"
             ],
@@ -1652,6 +1568,7 @@
             "registry_handle": "asset:public:ss-engine-other-side",
             "legacy_handle": "smack-other-side",
             "callers": [
+                "skins/stanley/manifest.json",
                 "stanley"
             ],
             "security_signals": [],
@@ -1668,6 +1585,10 @@
             "registry_handle": "asset:public:ss-engine-overlay",
             "legacy_handle": "smack-overlay",
             "callers": [
+                "skins/52-card-pickup/manifest.json",
+                "skins/galleria/manifest.json",
+                "skins/hip-to-be-square/manifest.json",
+                "skins/show-n-tell/manifest.json",
                 "52-card-pickup",
                 "galleria",
                 "hip-to-be-square",
@@ -1687,7 +1608,7 @@
             "registry_handle": "asset:public:ss-engine-page-import",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-pages.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -1697,29 +1618,15 @@
             "purpose": "Page HTML Import (admin editor helper) Loads a local .html file straight into the page-content textarea, entirely client-side (FileReader \u2014 nothing is uploaded, no server round-trip, no stored file)."
         },
         {
-            "file": "assets/js/ss-engine-parade-fireworks.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-parade-fireworks",
-            "legacy_handle": "smack-parade-fireworks",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "PARADE Layer 1: slow-motion flag FIREWORKS (canvas) VERBATIM port of _continuity/parade-fireworks-prototype.html (Sean's canonical prototype \u2014 \"EXACTLY like the prototype\")."
-        },
-        {
             "file": "assets/js/ss-engine-photo-editor.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-photo-editor",
             "legacy_handle": "smack-photo-editor",
             "callers": [
-                "CMS runtime"
+                "smack-edit-carousel.php",
+                "smack-edit.php",
+                "core/photo-editor-save.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -1738,6 +1645,7 @@
             "registry_handle": "asset:public:ss-engine-photogram-feed",
             "legacy_handle": "smack-photogram-feed",
             "callers": [
+                "skins/photogram/manifest.json",
                 "photogram"
             ],
             "security_signals": [
@@ -1757,6 +1665,7 @@
             "registry_handle": "asset:public:ss-engine-photogram",
             "legacy_handle": "smack-photogram",
             "callers": [
+                "skins/photogram/manifest.json",
                 "photogram"
             ],
             "security_signals": [
@@ -1776,6 +1685,16 @@
             "registry_handle": "asset:public:ss-engine-progressive-reveal",
             "legacy_handle": "smack-progressive-reveal",
             "callers": [
+                "skins/aurora/manifest.json",
+                "skins/game-on/manifest.json",
+                "skins/heuristic/manifest.json",
+                "skins/instant-camera/manifest.json",
+                "skins/jive-turkey/manifest.json",
+                "skins/parade/manifest.json",
+                "skins/slickr/manifest.json",
+                "skins/sliders/manifest.json",
+                "skins/sudden-impact/manifest.json",
+                "skins/the-grid/manifest.json",
                 "aurora",
                 "game-on",
                 "heuristic",
@@ -1803,7 +1722,7 @@
             "registry_handle": "asset:public:ss-engine-public-help",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/footer.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -1819,7 +1738,7 @@
             "registry_handle": "asset:public:ss-engine-public-share",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/footer.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -1829,46 +1748,17 @@
             "purpose": "SMACKTHEMUP public sharing helpers."
         },
         {
-            "file": "assets/js/ss-engine-racetrack.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-racetrack",
-            "legacy_handle": "smack-racetrack",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [
-                "network"
-            ],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "RACETRACK ambient background (photos, opposing-lane drift) Reuses the ORGANIZED MAYHEM photo pool \u2014 the SAME generated photos, moved a different way, and deliberately NOT Mayhem's rotated tabletop."
-        },
-        {
-            "file": "assets/js/ss-engine-rainfall.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-rainfall",
-            "legacy_handle": "smack-rainfall",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "RAINFALL ambient background (canvas) Rain on the window: falling streaks with wind angle, three parallax depth layers (nearer drops run faster, thicker, brighter), and subtle splash ticks where dro..."
-        },
-        {
             "file": "assets/js/ss-engine-rows.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-rows",
             "legacy_handle": "smack-rows",
             "callers": [
+                "smack-mosaics.php",
+                "core/meta.php",
+                "skins/50-shades-of-noah-grey/manifest.json",
+                "skins/telegram/manifest.json",
+                "skins/tilez/manifest.json",
                 "50-shades-of-noah-grey",
                 "telegram",
                 "tilez"
@@ -1890,7 +1780,7 @@
             "registry_handle": "asset:public:ss-engine-scan-align",
             "legacy_handle": "smack-scan-align",
             "callers": [
-                "CMS runtime"
+                "smack-post-gram.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -1906,7 +1796,7 @@
             "registry_handle": "asset:public:ss-engine-scan-upload",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-skin.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -1919,49 +1809,13 @@
             "purpose": "Instant Camera scan-upload UX"
         },
         {
-            "file": "assets/js/ss-engine-scroll-feed.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-scroll-feed",
-            "legacy_handle": "smack-scroll-feed",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [
-                "network"
-            ],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "SCROLL feed engine. CMS-owned and loaded through manifest-inventory.php."
-        },
-        {
-            "file": "assets/js/ss-engine-scroll-top.js",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-scroll-top",
-            "legacy_handle": "smack-scroll-top",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [
-                "html-sink"
-            ],
-            "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
-            "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
-            "vendor": false,
-            "requires": [],
-            "purpose": "Scroll-to-Top Engine Injects a floating back-to-top button that appears after scrolling past a configurable threshold."
-        },
-        {
             "file": "assets/js/ss-engine-scrolltime.js",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-scrolltime",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/stats-logger.php"
             ],
             "security_signals": [
                 "network"
@@ -1979,7 +1833,7 @@
             "registry_handle": "asset:public:ss-engine-sidebar",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/admin-footer.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -1995,7 +1849,7 @@
             "registry_handle": "asset:public:ss-engine-slicer",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-slicer.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -2044,7 +1898,7 @@
             "registry_handle": "asset:public:ss-engine-social-dock",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/footer-scripts.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -2060,7 +1914,8 @@
             "registry_handle": "asset:public:ss-engine-sticky-header",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/footer-scripts.php",
+                "core/sticky-header.php"
             ],
             "security_signals": [],
             "enable": "declare in the skin manifest require_scripts, or it loads via core/footer-scripts.php",
@@ -2076,6 +1931,16 @@
             "registry_handle": "asset:public:ss-engine-tag-infinite",
             "legacy_handle": "smack-tag-infinite",
             "callers": [
+                "skins/aurora/manifest.json",
+                "skins/game-on/manifest.json",
+                "skins/heuristic/manifest.json",
+                "skins/instant-camera/manifest.json",
+                "skins/jive-turkey/manifest.json",
+                "skins/parade/manifest.json",
+                "skins/slickr/manifest.json",
+                "skins/sliders/manifest.json",
+                "skins/sudden-impact/manifest.json",
+                "skins/the-grid/manifest.json",
                 "aurora",
                 "game-on",
                 "heuristic",
@@ -2104,6 +1969,9 @@
             "registry_handle": "asset:public:ss-engine-thomas",
             "legacy_handle": "smack-thomas",
             "callers": [
+                "core/footer-scripts.php",
+                "projects/snapsmack-ca/assets/js/ss-engine-thomas.js",
+                "projects/snapsmack-ca/index.php",
                 "game-on",
                 "heuristic",
                 "parade"
@@ -2124,7 +1992,7 @@
             "registry_handle": "asset:public:ss-engine-updater",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/admin-footer.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -2143,7 +2011,7 @@
             "registry_handle": "asset:public:ss-engine-wall",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "gallery-wall.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -2162,7 +2030,8 @@
             "registry_handle": "asset:public:ss-pixel",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "pixel.php",
+                "core/fediverse.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -2182,7 +2051,7 @@
             "registry_handle": "asset:public:ss-pixelfed-client",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-pixelfed.php"
             ],
             "security_signals": [
                 "html-sink",
@@ -2193,25 +2062,6 @@
             "vendor": false,
             "requires": [],
             "purpose": "FEDIVERSE Pixelfed Client"
-        },
-        {
-            "file": "assets/js/wall-engine.js",
-            "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:wall-engine",
-            "legacy_handle": null,
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [
-                "html-sink",
-                "network"
-            ],
-            "enable": "loaded by the CMS where needed",
-            "family": "Other",
-            "vendor": false,
-            "requires": [],
-            "purpose": "Wall Engine 3D perspective wall gallery with physics-driven panning, touch gestures, infinite scroll, and zoomable image viewer."
         }
     ],
     "fonts": [
@@ -2396,7 +2246,10 @@
             "registry_handle": "asset:public:admin-theme-geometry-master",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-2fa-verify.php",
+                "smack-help.php",
+                "snap-in.php",
+                "core/admin-header.php"
             ],
             "security_signals": [
                 "concealment"
@@ -2411,7 +2264,8 @@
             "registry_handle": "asset:public:columns",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-preview-ajax.php",
+                "core/meta.php"
             ],
             "security_signals": [
                 "concealment"
@@ -2426,26 +2280,20 @@
             "registry_handle": "asset:public:fjGallery",
             "legacy_handle": "smack-justified-lib:css",
             "callers": [
-                "CMS runtime"
+                "skins/new-horizon/manifest.json",
+                "skins/onyx/manifest.json",
+                "skins/show-n-tell/manifest.json",
+                "skins/slickr/manifest.json",
+                "skins/true-grit/manifest.json",
+                "new-horizon",
+                "onyx",
+                "show-n-tell",
+                "slickr",
+                "true-grit"
             ],
             "security_signals": [],
             "requires": [],
             "purpose": "fjGallery layout stylesheet, the CSS half of the Flickr Justified Gallery engine (fjGallery.min.js)."
-        },
-        {
-            "file": "assets/css/formatting-toolbar.css",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:formatting-toolbar",
-            "legacy_handle": null,
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [
-                "concealment"
-            ],
-            "requires": [],
-            "purpose": "SNAPSMACK \u2014 Formatting Toolbar Styles Follows admin-theme-geometry-master conventions."
         },
         {
             "file": "assets/css/page-archive.css",
@@ -2454,7 +2302,7 @@
             "registry_handle": "asset:public:page-archive",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/meta.php"
             ],
             "security_signals": [
                 "concealment"
@@ -2469,7 +2317,7 @@
             "registry_handle": "asset:public:page-blogroll",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/meta.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2482,7 +2330,7 @@
             "registry_handle": "asset:public:page-collection",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/meta.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2495,7 +2343,7 @@
             "registry_handle": "asset:public:page-eatmeclaude",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "eatmeclaude.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2508,7 +2356,7 @@
             "registry_handle": "asset:public:page-static",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/meta.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2521,7 +2369,7 @@
             "registry_handle": "asset:public:photochallenge-board-embed",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/photochallenge.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2534,7 +2382,7 @@
             "registry_handle": "asset:public:photochallenge-board-layouts",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/photochallenge.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2547,7 +2395,7 @@
             "registry_handle": "asset:public:public-base",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/meta.php"
             ],
             "security_signals": [
                 "concealment"
@@ -2562,7 +2410,7 @@
             "registry_handle": "asset:public:public-download-overlay",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/footer-scripts.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2575,7 +2423,11 @@
             "registry_handle": "asset:public:public-facing",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "blogroll.php",
+                "collection.php",
+                "collections.php",
+                "gallery-wall.php",
+                "core/meta.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2588,7 +2440,8 @@
             "registry_handle": "asset:public:shortcodes",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-shortcodes.php",
+                "core/meta.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2601,7 +2454,7 @@
             "registry_handle": "asset:admin:smack-app",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/admin-header.php"
             ],
             "security_signals": [
                 "concealment"
@@ -2616,7 +2469,68 @@
             "registry_handle": "asset:public:ss-community",
             "legacy_handle": "smack-community:css",
             "callers": [
-                "CMS runtime"
+                "core/community-component.php",
+                "core/community-dock.php",
+                "skins/50-shades-of-noah-grey/manifest.json",
+                "skins/52-card-pickup/manifest.json",
+                "skins/alfred/manifest.json",
+                "skins/aurora/manifest.json",
+                "skins/chaplin/manifest.json",
+                "skins/full-monty/manifest.json",
+                "skins/galleria/manifest.json",
+                "skins/game-on/manifest.json",
+                "skins/glide/manifest.json",
+                "skins/heuristic/manifest.json",
+                "skins/hip-to-be-square/manifest.json",
+                "skins/impact-printer/manifest.json",
+                "skins/instant-camera/manifest.json",
+                "skins/jive-turkey/manifest.json",
+                "skins/new-horizon/manifest.json",
+                "skins/onyx/manifest.json",
+                "skins/parade/manifest.json",
+                "skins/photogram/manifest.json",
+                "skins/rational-geo/manifest.json",
+                "skins/scroll/manifest.json",
+                "skins/show-n-tell/manifest.json",
+                "skins/slickr/manifest.json",
+                "skins/sliders/manifest.json",
+                "skins/stanley/manifest.json",
+                "skins/sudden-impact/manifest.json",
+                "skins/telegram/manifest.json",
+                "skins/the-grid/manifest.json",
+                "skins/tilez/manifest.json",
+                "skins/true-grit/manifest.json",
+                "skins/writing-with-impact/manifest.json",
+                "50-shades-of-noah-grey",
+                "52-card-pickup",
+                "alfred",
+                "aurora",
+                "chaplin",
+                "full-monty",
+                "galleria",
+                "game-on",
+                "glide",
+                "heuristic",
+                "hip-to-be-square",
+                "impact-printer",
+                "instant-camera",
+                "jive-turkey",
+                "new-horizon",
+                "onyx",
+                "parade",
+                "photogram",
+                "rational-geo",
+                "scroll",
+                "show-n-tell",
+                "slickr",
+                "sliders",
+                "stanley",
+                "sudden-impact",
+                "telegram",
+                "the-grid",
+                "tilez",
+                "true-grit",
+                "writing-with-impact"
             ],
             "security_signals": [
                 "concealment"
@@ -2631,7 +2545,8 @@
             "registry_handle": "asset:public:ss-engine-52-pickup",
             "legacy_handle": "smack-52-pickup:css",
             "callers": [
-                "CMS runtime"
+                "skins/52-card-pickup/manifest.json",
+                "52-card-pickup"
             ],
             "security_signals": [],
             "requires": [],
@@ -2644,7 +2559,11 @@
             "registry_handle": "asset:public:ss-engine-ai-enrichment",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-edit-carousel.php",
+                "smack-edit.php",
+                "smack-post-gram.php",
+                "smack-post-long.php",
+                "smack-post-solo.php"
             ],
             "security_signals": [
                 "concealment"
@@ -2653,26 +2572,22 @@
             "purpose": "AI metadata enrichment controls Shared geometry for title, caption/body, and hashtag enrichment."
         },
         {
-            "file": "assets/css/ss-engine-anaglyph.css",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-anaglyph",
-            "legacy_handle": "smack-anaglyph:css",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "requires": [],
-            "purpose": "Anaglyph 3D Engine Red/cyan stereoscopic channel separation for text elements."
-        },
-        {
             "file": "assets/css/ss-engine-calendar.css",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-calendar",
             "legacy_handle": "smack-calendar:css",
             "callers": [
-                "CMS runtime"
+                "archive.php",
+                "smack-help.php",
+                "core/meta.php",
+                "skins/50-shades-of-noah-grey/manifest.json",
+                "skins/rational-geo/manifest.json",
+                "skins/slickr/manifest.json",
+                "tools/_build/build-spec-080.js",
+                "50-shades-of-noah-grey",
+                "rational-geo",
+                "slickr"
             ],
             "security_signals": [
                 "concealment"
@@ -2687,7 +2602,55 @@
             "registry_handle": "asset:public:ss-engine-comms",
             "legacy_handle": "smack-keyboard:css",
             "callers": [
-                "CMS runtime"
+                "core/footer-scripts.php",
+                "skins/50-shades-of-noah-grey/manifest.json",
+                "skins/52-card-pickup/manifest.json",
+                "skins/aurora/manifest.json",
+                "skins/chaplin/manifest.json",
+                "skins/full-monty/manifest.json",
+                "skins/galleria/manifest.json",
+                "skins/game-on/manifest.json",
+                "skins/glide/manifest.json",
+                "skins/heuristic/manifest.json",
+                "skins/hip-to-be-square/manifest.json",
+                "skins/impact-printer/manifest.json",
+                "skins/instant-camera/manifest.json",
+                "skins/jive-turkey/manifest.json",
+                "skins/new-horizon/manifest.json",
+                "skins/onyx/manifest.json",
+                "skins/parade/manifest.json",
+                "skins/rational-geo/manifest.json",
+                "skins/scroll/manifest.json",
+                "skins/show-n-tell/manifest.json",
+                "skins/slickr/manifest.json",
+                "skins/sliders/manifest.json",
+                "skins/sudden-impact/manifest.json",
+                "skins/the-grid/manifest.json",
+                "skins/true-grit/manifest.json",
+                "50-shades-of-noah-grey",
+                "52-card-pickup",
+                "aurora",
+                "chaplin",
+                "full-monty",
+                "galleria",
+                "game-on",
+                "glide",
+                "heuristic",
+                "hip-to-be-square",
+                "impact-printer",
+                "instant-camera",
+                "jive-turkey",
+                "new-horizon",
+                "onyx",
+                "parade",
+                "rational-geo",
+                "scroll",
+                "show-n-tell",
+                "slickr",
+                "sliders",
+                "sudden-impact",
+                "the-grid",
+                "true-grit"
             ],
             "security_signals": [],
             "requires": [],
@@ -2700,7 +2663,7 @@
             "registry_handle": "asset:public:ss-engine-consent",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/footer-scripts.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2713,7 +2676,9 @@
             "registry_handle": "asset:public:ss-engine-featured-picker",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-albums.php",
+                "smack-cats.php",
+                "smack-collections.php"
             ],
             "security_signals": [
                 "concealment"
@@ -2728,7 +2693,7 @@
             "registry_handle": "asset:public:ss-engine-gallery",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-gallery.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2741,7 +2706,8 @@
             "registry_handle": "asset:public:ss-engine-game-on",
             "legacy_handle": "smack-game-on:css",
             "callers": [
-                "CMS runtime"
+                "skins/game-on/manifest.json",
+                "game-on"
             ],
             "security_signals": [
                 "concealment"
@@ -2754,9 +2720,9 @@
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-glitch",
-            "legacy_handle": "smack-glitch:css",
+            "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/asset-sync.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2769,7 +2735,27 @@
             "registry_handle": "asset:public:ss-engine-gram-search",
             "legacy_handle": "smack-gram-search:css",
             "callers": [
-                "CMS runtime"
+                "core/gram-search-results.php",
+                "skins/52-card-pickup/manifest.json",
+                "skins/aurora/manifest.json",
+                "skins/game-on/manifest.json",
+                "skins/heuristic/manifest.json",
+                "skins/instant-camera/manifest.json",
+                "skins/jive-turkey/manifest.json",
+                "skins/parade/manifest.json",
+                "skins/sliders/manifest.json",
+                "skins/sudden-impact/manifest.json",
+                "skins/the-grid/manifest.json",
+                "52-card-pickup",
+                "aurora",
+                "game-on",
+                "heuristic",
+                "instant-camera",
+                "jive-turkey",
+                "parade",
+                "sliders",
+                "sudden-impact",
+                "the-grid"
             ],
             "security_signals": [],
             "requires": [],
@@ -2782,7 +2768,26 @@
             "registry_handle": "asset:public:ss-engine-grid-nav",
             "legacy_handle": "smack-grid-nav:css",
             "callers": [
-                "CMS runtime"
+                "skins/aurora/manifest.json",
+                "skins/game-on/manifest.json",
+                "skins/heuristic/manifest.json",
+                "skins/instant-camera/manifest.json",
+                "skins/jive-turkey/manifest.json",
+                "skins/parade/manifest.json",
+                "skins/scroll/manifest.json",
+                "skins/sliders/manifest.json",
+                "skins/sudden-impact/manifest.json",
+                "skins/the-grid/manifest.json",
+                "aurora",
+                "game-on",
+                "heuristic",
+                "instant-camera",
+                "jive-turkey",
+                "parade",
+                "scroll",
+                "sliders",
+                "sudden-impact",
+                "the-grid"
             ],
             "security_signals": [
                 "concealment"
@@ -2791,39 +2796,17 @@
             "purpose": "Shared Grid Sticky Navigation Structural geometry only; skins own the visual treatment."
         },
         {
-            "file": "assets/css/ss-engine-hotkey.css",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-hotkey",
-            "legacy_handle": null,
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "requires": [],
-            "purpose": "Hotkey and HUD engine styles Help modals, notifications, and system hint displays."
-        },
-        {
-            "file": "assets/css/ss-engine-logo.css",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-logo",
-            "legacy_handle": "smack-logo:css",
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [],
-            "requires": [],
-            "purpose": "Logo glitch and effect animations Dynamic text and logo transformations with glitch effects."
-        },
-        {
             "file": "assets/css/ss-engine-mosaic.css",
             "owner": "cms",
             "scope": "public",
             "registry_handle": "asset:public:ss-engine-mosaic",
             "legacy_handle": "smack-mosaic:css",
             "callers": [
-                "CMS runtime"
+                "eatmeclaude.php",
+                "smack-mosaics.php",
+                "core/meta.php",
+                "skins/tilez/manifest.json",
+                "tilez"
             ],
             "security_signals": [],
             "requires": [],
@@ -2836,7 +2819,8 @@
             "registry_handle": "asset:public:ss-engine-photo-editor",
             "legacy_handle": "smack-photo-editor:css",
             "callers": [
-                "CMS runtime"
+                "smack-edit-carousel.php",
+                "smack-edit.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2849,7 +2833,8 @@
             "registry_handle": "asset:public:ss-engine-scroll-wall",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-mosaics.php",
+                "core/meta.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2862,7 +2847,33 @@
             "registry_handle": "asset:public:ss-engine-slider",
             "legacy_handle": "smack-slider:css",
             "callers": [
-                "CMS runtime"
+                "smack-skin.php",
+                "skins/aurora/manifest.json",
+                "skins/galleria/manifest.json",
+                "skins/game-on/manifest.json",
+                "skins/heuristic/manifest.json",
+                "skins/hip-to-be-square/manifest.json",
+                "skins/instant-camera/manifest.json",
+                "skins/jive-turkey/manifest.json",
+                "skins/parade/manifest.json",
+                "skins/photogram/manifest.json",
+                "skins/show-n-tell/manifest.json",
+                "skins/sliders/manifest.json",
+                "skins/sudden-impact/manifest.json",
+                "skins/the-grid/manifest.json",
+                "aurora",
+                "galleria",
+                "game-on",
+                "heuristic",
+                "hip-to-be-square",
+                "instant-camera",
+                "jive-turkey",
+                "parade",
+                "photogram",
+                "show-n-tell",
+                "sliders",
+                "sudden-impact",
+                "the-grid"
             ],
             "security_signals": [],
             "requires": [],
@@ -2875,7 +2886,7 @@
             "registry_handle": "asset:public:ss-engine-social-dock",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/footer-scripts.php"
             ],
             "security_signals": [
                 "concealment"
@@ -2890,7 +2901,7 @@
             "registry_handle": "asset:public:ss-engine-sticky-header",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "core/footer-scripts.php"
             ],
             "security_signals": [
                 "concealment"
@@ -2905,26 +2916,18 @@
             "registry_handle": "asset:public:ss-engine-thomas",
             "legacy_handle": "smack-thomas:css",
             "callers": [
-                "CMS runtime"
+                "core/footer-scripts.php",
+                "skins/game-on/manifest.json",
+                "skins/heuristic/manifest.json",
+                "skins/parade/manifest.json",
+                "projects/snapsmack-ca/index.php",
+                "game-on",
+                "heuristic",
+                "parade"
             ],
             "security_signals": [],
             "requires": [],
             "purpose": "SNAPSMACK ENGINE: Thomas the Bear ========================================================================== Real Thomas image + dedication banner."
-        },
-        {
-            "file": "assets/css/ss-engine-updater.css",
-            "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-updater",
-            "legacy_handle": null,
-            "callers": [
-                "CMS runtime"
-            ],
-            "security_signals": [
-                "concealment"
-            ],
-            "requires": [],
-            "purpose": "Update Manager Modal"
         },
         {
             "file": "assets/css/ss-engine-wall.css",
@@ -2933,7 +2936,7 @@
             "registry_handle": "asset:public:ss-engine-wall",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "gallery-wall.php"
             ],
             "security_signals": [],
             "requires": [],
@@ -2946,7 +2949,7 @@
             "registry_handle": "asset:public:ss-gram-pwa-composer",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-post-gram.php"
             ],
             "security_signals": [
                 "concealment"
@@ -2961,7 +2964,7 @@
             "registry_handle": "asset:public:ss-pixel",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "pixel.php"
             ],
             "security_signals": [
                 "concealment"
@@ -2976,7 +2979,7 @@
             "registry_handle": "asset:public:ss-pixelfed-client",
             "legacy_handle": null,
             "callers": [
-                "CMS runtime"
+                "smack-pixelfed.php"
             ],
             "security_signals": [
                 "concealment"
