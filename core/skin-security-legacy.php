@@ -967,35 +967,6 @@ return array (
       'sql-statement' => 2,
     ),
   ),
-  'telegram' =>
-  array (
-    'layout.php' =>
-    array (
-      'response-control' => 1,
-    ),
-    'preload.php' =>
-    array (
-      'database-api' => 5,
-      'database-handle' => 9,
-      'direct-script-tag' => 2,
-      'php-include' => 1,
-      'request-global' => 5,
-      'response-control' => 2,
-      'sql-statement' => 8,
-    ),
-    'skin-footer.php' =>
-    array (
-      'direct-script-tag' => 1,
-      'php-include' => 1,
-    ),
-    'skin-header.php' =>
-    array (
-      'database-api' => 2,
-      'database-handle' => 9,
-      'php-declaration' => 3,
-      'sql-statement' => 3,
-    ),
-  ),
   'the-grid' =>
   array (
     'archive-layout.php' =>

@@ -123,6 +123,7 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         'categories' => $categories, 'albums' => $albums, 'author' => $author,
         'colophon' => trim((string)($post['colophon'] ?? '')), 'photo_count' => $photo_count,
         'word_count' => count($words[0]), 'comments_enabled' => !empty($post['allow_comments']),
+        'comments' => $repository->approvedComments(null, (int)$post['id']),
     ];
 }
 
