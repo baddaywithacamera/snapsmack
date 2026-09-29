@@ -583,34 +583,6 @@ $inventory = [
                 ]
             ]
         ],
-        'smack-glitch' => [
-            'label'        => 'Visual Glitch FX',
-            'path'         => 'assets/js/ss-engine-glitch.js',
-            'css'          => 'assets/css/ss-engine-glitch.css',
-            'has_settings' => true,
-            'controls'     => [
-                'glitch_enabled' => [
-                    'type'    => 'select',
-                    'label'   => 'Chaos Engine',
-                    'default' => '1',
-                    'options' => ['1' => 'Enabled', '0' => 'Disabled']
-                ],
-                'glitch_intensity' => [
-                    'type'    => 'range',
-                    'label'   => 'Displacement Intensity',
-                    'default' => '10',
-                    'min'     => '0',
-                    'max'     => '50'
-                ],
-                'glitch_speed' => [
-                    'type'    => 'range',
-                    'label'   => 'Refresh Speed (ms)',
-                    'default' => '200',
-                    'min'     => '50',
-                    'max'     => '1000'
-                ]
-            ]
-        ],
         'smack-other-side' => [
             'label'        => 'The Other Side reality bleed',
             'path'         => 'assets/js/ss-engine-other-side.js',
@@ -621,25 +593,6 @@ $inventory = [
             'path'         => 'assets/js/ss-engine-comms.js',
             'css'          => 'assets/css/ss-engine-comms.css',
             'has_settings' => false
-        ],
-        'smack-logo' => [
-            'label'        => 'Logo Glitch Engine',
-            'path'         => 'assets/js/ss-engine-logo.js',
-            'css'          => 'assets/css/ss-engine-logo.css',
-            'has_settings' => true,
-            'controls'     => [
-                'logo_glitch_enabled'   => ['type' => 'select', 'label' => 'Logo Glitch',               'default' => '1',      'options' => ['1' => 'Enabled', '0' => 'Disabled']],
-                'logo_frequency'        => ['type' => 'select', 'label' => 'Frequency',                 'default' => 'normal', 'options' => ['low' => 'Low', 'normal' => 'Normal', 'high' => 'High', 'chaos' => 'Chaos']],
-                'logo_split_position'   => ['type' => 'range',  'label' => 'Colour Split Position (%)', 'default' => '50',     'min' => '10', 'max' => '90'],
-                'logo_split_drift'      => ['type' => 'select', 'label' => 'Split Drift on Hit',        'default' => '1',      'options' => ['1' => 'Enabled', '0' => 'Disabled']],
-                'logo_font_blackcasper' => ['type' => 'select', 'label' => 'BlackCasper Hits',          'default' => '1',      'options' => ['1' => 'Enabled', '0' => 'Disabled']],
-                'logo_font_courier'     => ['type' => 'select', 'label' => 'Courier Intrusion Hits',    'default' => '1',      'options' => ['1' => 'Enabled', '0' => 'Disabled']],
-            ]
-        ],
-        'smack-matrix-rain' => [
-            'label'        => 'Matrix Rain background effect (canvas)',
-            'path'         => 'assets/js/ss-engine-matrix-rain.js',
-            'has_settings' => false,
         ],
         'smack-thomas' => [
             'label'        => 'Thomas the Bear (Easter Egg)',
@@ -653,11 +606,6 @@ $inventory = [
             'css'          => 'assets/css/fjGallery.css',
             'has_settings' => false
         ],
-        'smack-ascii-borders' => [
-            'label'        => 'ASCII Border Frame Engine',
-            'path'         => 'assets/js/ss-engine-ascii-borders.js',
-            'has_settings' => false
-        ],
         'smack-justified' => [
             'label'        => 'Justified Grid Engine',
             'path'         => 'assets/js/ss-engine-justified.js',
@@ -666,11 +614,6 @@ $inventory = [
         'smack-countdown' => [
             'label'        => 'Countdown Engine (live counters to a date via .smack-countdown[data-until])',
             'path'         => 'assets/js/ss-engine-countdown.js',
-            'has_settings' => false
-        ],
-        'fsog-layout-toggle' => [
-            'label'        => '50 Shades Archive Layout Toggle',
-            'path'         => 'assets/js/ss-engine-fsog-layout-toggle.js',
             'has_settings' => false
         ],
         'smack-slider' => [
@@ -739,11 +682,6 @@ $inventory = [
             'path'         => 'assets/js/ss-engine-alfred-archive.js',
             'has_settings' => false,
         ],
-        'smack-carousel-post' => [
-            'label'        => 'Carousel Post Engine (Multi-image upload strip with drag-reorder)',
-            'path'         => 'assets/js/ss-engine-carousel-post.js',
-            'has_settings' => false,
-        ],
         'smack-scan-align' => [
             'label'        => 'Scan Align (posting-interface ±5° rotate + crop-to-fill; INSTANT CAMERA)',
             'path'         => 'assets/js/ss-engine-scan-align.js',
@@ -808,44 +746,6 @@ $inventory = [
             'css'          => 'assets/css/ss-engine-52-pickup.css',
             'has_settings' => false,
         ],
-        'smack-anaglyph' => [
-            'label'        => 'Anaglyph 3D Engine (Red/Cyan stereoscopic)',
-            'path'         => 'assets/js/ss-engine-anaglyph.js',
-            'css'          => 'assets/css/ss-engine-anaglyph.css',
-            'has_settings' => true,
-            'controls'     => [
-                'anaglyph_text_depth' => [
-                    'type'    => 'range',
-                    'label'   => 'Text Depth (px)',
-                    'default' => '3',
-                    'min'     => '1',
-                    'max'     => '8',
-                ],
-                'anaglyph_frame_depth' => [
-                    'type'    => 'range',
-                    'label'   => 'Frame Depth (px)',
-                    'default' => '4',
-                    'min'     => '1',
-                    'max'     => '12',
-                ],
-                'anaglyph_animation' => [
-                    'type'    => 'select',
-                    'label'   => 'Animation Mode',
-                    'default' => 'none',
-                    'options' => [
-                        'none'   => 'Static',
-                        'pulse'  => 'Depth Pulse (breathing)',
-                        'drift'  => 'Channel Drift (wandering)',
-                        'glitch' => 'Glitch (random snaps)',
-                    ],
-                ],
-            ],
-        ],
-        'smack-drawer' => [
-            'label'        => 'Dual Drawer Controller (Top/Bottom drawers)',
-            'path'         => 'assets/js/ss-engine-drawer.js',
-            'has_settings' => false,
-        ],
         'smack-carousel-view' => [
             'label'        => 'Carousel View Engine (EXIF panel sync)',
             'path'         => 'assets/js/ss-engine-carousel-view.js',
@@ -865,11 +765,6 @@ $inventory = [
         'smack-grid-lightbox' => [
             'label'        => 'Grid-family avatar lightbox (shared)',
             'path'         => 'assets/js/ss-engine-grid-lightbox.js',
-            'has_settings' => false,
-        ],
-        'smack-masonry' => [
-            'label'        => 'Asymmetric masonry wall (landscapes wide, portraits capped to 85%)',
-            'path'         => 'assets/js/ss-engine-masonry.js',
             'has_settings' => false,
         ],
         'smack-columns' => [
@@ -917,11 +812,6 @@ $inventory = [
             'path'         => 'assets/js/ss-engine-archive-grid-switch.js',
             'has_settings' => false,
         ],
-        'smack-parade-fireworks' => [
-            'label'        => 'PARADE Layer 1 slow-motion fireworks (canvas)',
-            'path'         => 'assets/js/ss-engine-parade-fireworks.js',
-            'has_settings' => false,
-        ],
         'smack-flag-wave' => [
             'label'        => 'Flag Wave (full-viewport waving flag background, canvas; data-driven flags)',
             'path'         => 'assets/js/ss-engine-flag-wave.js',
@@ -936,21 +826,6 @@ $inventory = [
             'label'        => 'GAME ON living fifteen-puzzle field and playable modal',
             'path'         => 'assets/js/ss-engine-game-on.js',
             'css'          => 'assets/css/ss-engine-game-on.css',
-            'has_settings' => false,
-        ],
-        'smack-racetrack' => [
-            'label'        => 'RACETRACK (long-exposure light trails lapping a circuit, canvas)',
-            'path'         => 'assets/js/ss-engine-racetrack.js',
-            'has_settings' => false,
-        ],
-        'smack-rainfall' => [
-            'label'        => 'RAINFALL (falling rain streaks + splashes, canvas)',
-            'path'         => 'assets/js/ss-engine-rainfall.js',
-            'has_settings' => false,
-        ],
-        'smack-bg-cycle' => [
-            'label'        => 'Background cycle crossfader (rotates stacked bg layers on a timer)',
-            'path'         => 'assets/js/ss-engine-bg-cycle.js',
             'has_settings' => false,
         ],
         'smack-calendar' => [
@@ -1032,16 +907,6 @@ $inventory = [
                 ]
             ]
         ],
-        'smack-scroll-feed' => [
-            'label'        => 'SCROLL Native-Aspect Feed Engine',
-            'path'         => 'assets/js/ss-engine-scroll-feed.js',
-            'has_settings' => false,
-        ],
-        'smack-fullscreen' => [
-            'label'        => 'Fullscreen Engine (Distraction-free image viewing)',
-            'path'         => 'assets/js/ss-engine-fullscreen.js',
-            'has_settings' => false,
-        ],
         'smack-image-fade-load' => [
             'label'        => 'Image Fade-Load Engine (Graceful image fade-in on load)',
             'path'         => 'assets/js/ss-engine-image-fade-load.js',
@@ -1057,31 +922,6 @@ $inventory = [
             'label'        => 'Contact Form Engine',
             'path'         => 'assets/js/ss-engine-contact.js',
             'has_settings' => false
-        ],
-        'smack-scroll-top' => [
-            'label'        => 'Scroll-to-Top Button',
-            'path'         => 'assets/js/ss-engine-scroll-top.js',
-            'has_settings' => true,
-            'controls'     => [
-                'scroll_top_threshold' => [
-                    'type'    => 'range',
-                    'label'   => 'Show After Scrolling (px)',
-                    'default' => '400',
-                    'min'     => '100',
-                    'max'     => '1000'
-                ],
-                'scroll_top_position' => [
-                    'type'    => 'select',
-                    'label'   => 'Button Position',
-                    'default' => 'right',
-                    'options' => ['right' => 'Bottom Right', 'left' => 'Bottom Left']
-                ]
-            ]
-        ],
-        'smack-film-damage' => [
-            'label'        => 'Film Damage Overlay (scratches, dust, hair, gate weave)',
-            'path'         => 'assets/js/ss-engine-film-damage.js',
-            'has_settings' => false,
         ],
         'smack-gram-search' => [
             'label'        => 'Floating Search Dock (bottom-left magnifier → expanding search box; gated on search_enabled)',
