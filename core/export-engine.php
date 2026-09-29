@@ -88,7 +88,6 @@ class SnapSmackExport {
                 'total_pages'    => 0,
                 'branding_files' => 0,
                 'media_files'    => 0,
-                'skin_files'     => 0,
                 'upload_files'   => 0,
                 'total_media_bytes' => 0,
             ],
@@ -133,17 +132,7 @@ class SnapSmackExport {
             );
         }
 
-        // --- 4. ACTIVE SKIN inventory ---
-        $skinSlug = $this->settings['active_skin'] ?? '50-shades-of-noah-grey';
-        $skinDir  = $this->baseDir . '/skins/' . $skinSlug;
-        if (is_dir($skinDir)) {
-            $manifest = $this->inventoryDirectory(
-                $skinDir, "skins/{$skinSlug}",
-                $manifest, 'skin_files'
-            );
-        }
-
-        // --- 5. IMAGE UPLOADS inventory (img_uploads/) ---
+        // --- 4. IMAGE UPLOADS inventory (img_uploads/) ---
         $uploadsDir = $this->baseDir . '/img_uploads';
         if (is_dir($uploadsDir)) {
             $manifest = $this->inventoryDirectory(
@@ -237,7 +226,6 @@ class SnapSmackExport {
                 'total_pages'    => 0,
                 'branding_files' => 0,
                 'media_files'    => 0,
-                'skin_files'     => 0,
                 'upload_files'   => 0,
                 'total_media_bytes' => 0,
             ],
@@ -263,11 +251,6 @@ class SnapSmackExport {
         $mediaDir = $this->baseDir . '/media_assets';
         if (is_dir($mediaDir)) {
             $manifest = $this->inventoryDirectory($mediaDir, 'media_assets', $manifest, 'media_files', false);
-        }
-        $skinSlug = $this->settings['active_skin'] ?? '50-shades-of-noah-grey';
-        $skinDir  = $this->baseDir . '/skins/' . $skinSlug;
-        if (is_dir($skinDir)) {
-            $manifest = $this->inventoryDirectory($skinDir, "skins/{$skinSlug}", $manifest, 'skin_files', false);
         }
         $uploadsDir = $this->baseDir . '/img_uploads';
         if (is_dir($uploadsDir)) {

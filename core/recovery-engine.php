@@ -530,6 +530,11 @@ class SnapSmackRecovery {
             // Apache's AddHandler matches ".php" anywhere in the name, so a
             // double extension like "shell.php.jpg" would otherwise execute.
             $nameTokens = explode('.', $baseName);
+            if (str_starts_with($relTarget, 'skins/') || str_starts_with($relSource, 'skins/')) {
+                $result['errors'][] = "Rejected skin code in recovery archive: {$restoreTo}";
+                $this->streamProgress("BLOCKED skin code restore: {$restoreTo}", 'warn');
+                continue;
+            }
             if ($relTarget === '' || $relSource === ''
                 || strpos($relTarget, "\0") !== false || strpos($relSource, "\0") !== false
                 || strpos($relTarget, '..') !== false || strpos($relSource, '..') !== false
