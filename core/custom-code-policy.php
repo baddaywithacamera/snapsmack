@@ -30,7 +30,8 @@ function snapsmack_owner_custom_code(array $settings): SnapOwnerCode
 function snapsmack_public_csp(bool $ownerCustomCode=false): string
 {
     $script=$ownerCustomCode?"'self' 'unsafe-inline' https:":"'self'";
-    return "default-src 'self'; script-src {$script}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; media-src 'self' https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'";
+    $connect=$ownerCustomCode?"'self' https:":"'self'";
+    return "default-src 'self'; script-src {$script}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src {$connect}; media-src 'self' https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'";
 }
 
 function snapsmack_emit_public_csp(bool $ownerCustomCode=false): void
