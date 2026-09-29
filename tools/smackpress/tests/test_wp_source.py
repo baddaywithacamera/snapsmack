@@ -25,7 +25,8 @@ WP = "https://old-blog.example/wp-content/uploads/2024/05"
 
 POST = {
     "id": 42, "title": "Rust &amp; Chrome", "slug": "rust-and-chrome",
-    "date": "2024-05-06T14:22:00", "tags": ["Used Car Parts", "V8"],
+    "date": "2024-05-06T08:22:00", "date_gmt": "2024-05-06T14:22:00",
+    "link": "https://old-blog.example/rust-and-chrome/", "tags": ["Used Car Parts", "V8"],
     "categories": [{"id": 3, "name": "Engines", "slug": "engines"}],
     "featured_image": {"id": 9, "url": f"{WP}/cover.png", "alt": "the cover", "filename": "cover.png"},
     "images": [
@@ -75,6 +76,15 @@ class RewriteTests(unittest.TestCase):
         _, ordered = wp_source.rewrite_body(POST["content_expanded"], POST["images"])
         hot = [o for o in ordered if "elsewhere" in o["url"]][0]
         self.assertEqual(hot["alt"], "borrowed")
+
+    def test_source_site_links_are_unwrapped_but_their_words_survive(self):
+        content = ('<p><a href="https://old-blog.example/old-page/">kept words</a> '
+                   '<a href="https://example.net/reference">external reference</a></p>')
+        body, _ = wp_source.rewrite_body(content, [])
+        body = wp_source._discard_source_links(body, POST["link"])
+        self.assertIn("kept words", body)
+        self.assertNotIn("old-blog.example", body)
+        self.assertIn("https://example.net/reference", body)
 
     def test_gutenberg_scaffolding_is_not_imported_as_content(self):
         content = (
@@ -137,7 +147,7 @@ class DraftTests(unittest.TestCase):
         self.assertEqual(d.kind, "smacktalk")
         self.assertEqual(d.title, "Rust & Chrome")
         self.assertEqual(d.slug, "")
-        self.assertEqual(d.post_date, "2024-05-06 14:22:00")
+        self.assertEqual(d.post_date, "2024-05-06T14:22:00Z")
         self.assertEqual(d.tags, "")
         self.assertEqual(d.category, "")
         self.assertEqual(d.img_status, "draft")
@@ -165,7 +175,7 @@ class DraftTests(unittest.TestCase):
         payload = poster.build_payload(d, [101, 102, 103, 104], 101)
         self.assertNotIn("slug", payload)
         self.assertEqual(payload["featured_image_id"], 101)
-        self.assertEqual(payload["date"], "2024-05-06 14:22:00")
+        self.assertEqual(payload["date"], "2024-05-06T14:22:00Z")
         self.assertEqual(payload["tags"], "")
         self.assertEqual(payload["cat_ids"], [])
         self.assertEqual(payload["album_ids"], [])
