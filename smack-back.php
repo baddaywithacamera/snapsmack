@@ -197,16 +197,6 @@ if ($action === 'run_skin_js_scan' || ($_SERVER['REQUEST_METHOD'] === 'POST' && 
     exit;
 }
 
-// SAVE SKIN JS SETTINGS
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['save_skin_js_settings'] ?? '') === '1') {
-    $allow = ($_POST['skin_allow_custom_js'] ?? '0') === '1' ? '1' : '0';
-    $pdo->prepare(
-        "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('skin_allow_custom_js', ?)
-         ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
-    )->execute([$allow]);
-    header('Location: smack-back.php?msg=Skin+JS+settings+saved.');
-    exit;
-}
 
 // DISMISS ONE INCIDENT (remove a single resolved-incident row from the log)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['dismiss_incident'] ?? '') !== '') {
@@ -402,7 +392,7 @@ $skin_js_findings_json   = $settings['skin_js_violations_json']  ?? '[]';
 $skin_js_scan_at         = $settings['skin_js_scan_at']           ?? '';
 $skin_js_violation_count = (int)($settings['skin_js_violation_count'] ?? 0);
 $skin_js_findings        = json_decode($skin_js_findings_json, true) ?? [];
-$skin_allow_custom_js    = ($settings['skin_allow_custom_js'] ?? '0') === '1';
+$skin_allow_custom_js    = false;
 
 require_once 'core/network-alert.php';
 $na = nalert_get_local();
@@ -1048,22 +1038,7 @@ include 'core/sidebar.php';
             <p class="msg mb-16">✓ No findings — all installed skins are clean.</p>
         <?php endif; ?>
 
-        <form method="post" class="mt-16">
-            <?php csrf_field(); ?>
-            <input type="hidden" name="save_skin_js_settings" value="1">
-            <div class="dash-grid">
-                <div class="lens-input-wrapper">
-                    <label>
-                        <input type="checkbox" name="skin_allow_custom_js" value="1"<?php echo $skin_allow_custom_js ? ' checked' : ''; ?>>
-                        ALLOW CUSTOM JS IN SKINS
-                    </label>
-                    <span class="dim text-0-82">Permits inline scripts and external JS in third-party skins. <code>eval()</code> is always flagged regardless.</span>
-                </div>
-            </div>
-            <div class="form-action-row">
-                <button type="submit" class="master-update-btn">SAVE SKIN JS SETTINGS</button>
-            </div>
-        </form>
+        <p class="dim mt-16">Skins cannot carry or enable JavaScript. Owner-authorized custom code is controlled separately in SMACK YOUR SCRIPTS UP and never weakens package validation.</p>
     </div>
 
     <!-- ── RE-INITIALISE BASELINE ────────────────────────────────────────── -->
