@@ -66,6 +66,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
     if ($name === 'instant-camera-page') {
         $response = is_array($data['response'] ?? null) ? $data['response'] : [];
         $site = is_array($data['site'] ?? null) ? $data['site'] : [];
+        $html .= snap_render_html($site['skin_custom_style'] ?? '');
         $kind = (string)($response['kind'] ?? 'not_found');
         $registered = is_array($site['registered_assets'] ?? null) ? $site['registered_assets'] : [];
         foreach (($registered['scripts'] ?? []) as $script_url) {
@@ -126,6 +127,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
     } elseif ($name === 'public-page') {
         $response = is_array($data['response'] ?? null) ? $data['response'] : [];
         $site = is_array($data['site'] ?? null) ? $data['site'] : [];
+        $html .= snap_render_html($site['skin_custom_style'] ?? '');
         $kind = (string)($response['kind'] ?? 'not_found');
         $registered = is_array($site['registered_assets'] ?? null) ? $site['registered_assets'] : [];
         foreach (($registered['scripts'] ?? []) as $script_url) {
@@ -171,7 +173,8 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
     } elseif ($name === 'smacktalk-page') {
         $response = is_array($data['response'] ?? null) ? $data['response'] : [];
         $site = is_array($data['site'] ?? null) ? $data['site'] : [];
-        $html = '<header id="header" class="site-header" data-sticky-header><div class="inside"><a class="site-title logo-area" href="' . snap_route_url('home') . '"><span class="site-title-text">'
+        $html .= snap_render_html($site['skin_custom_style'] ?? '');
+        $html .= '<header id="header" class="site-header" data-sticky-header><div class="inside"><a class="site-title logo-area" href="' . snap_route_url('home') . '"><span class="site-title-text">'
             . snap_escape_html($site['site_name'] ?? '') . '</span></a>';
         if (!empty($site['tagline'])) $html .= '<p class="site-tagline">' . snap_escape_html($site['tagline']) . '</p>';
         $html .= snap_render_html(snap_render_component('navigation', ['items' => $response['navigation'] ?? []])) . '</div></header>';
