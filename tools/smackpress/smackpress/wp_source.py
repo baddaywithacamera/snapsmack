@@ -37,6 +37,7 @@ import html
 import os
 import re
 import sys
+from datetime import datetime, timezone
 import urllib.parse
 import urllib.request
 import uuid
@@ -127,6 +128,44 @@ _PRECEDING_IMAGE_BLOCK = re.compile(
     r"<!--\s*wp:image\b[^>]*-->\s*(\[img:bucket:\d+\])\s*"
     r"<!--\s*/wp:image\s*-->\s*$", re.I)
 _BUCKET_TOKEN = re.compile(r"\[img:bucket:(\d+)\]", re.I)
+
+
+def _discard_source_links(body: str, source_url: str) -> str:
+    """Keep link text, but do not carry links back to the retired WP site."""
+    source_host = (urllib.parse.urlparse(source_url or "").hostname or "").lower()
+    if not source_host:
+        return body
+
+    anchor = re.compile(
+        r'<a\b([^>]*)\bhref\s*=\s*(["\'])(.*?)\2([^>]*)>(.*?)</a>', re.I | re.S)
+
+    def replace(match):
+        host = (urllib.parse.urlparse(html.unescape(match.group(3))).hostname or "").lower()
+        return match.group(5) if host == source_host else match.group(0)
+
+    return anchor.sub(replace, body)
+
+
+def _publication_instant(full_post: dict) -> str:
+    """Return an unambiguous UTC instant when WordPress supplied one."""
+    gmt = str(full_post.get("date_gmt") or "").strip()
+    if gmt and not gmt.startswith("0000-00-00"):
+        try:
+            parsed = datetime.fromisoformat(gmt.replace(" ", "T").replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+        except ValueError as exc:
+            raise ImportError_("WordPress returned an invalid GMT publication date") from exc
+
+    local = str(full_post.get("date") or "").strip()
+    if not local:
+        return ""
+    try:
+        parsed = datetime.fromisoformat(local.replace(" ", "T"))
+    except ValueError as exc:
+        raise ImportError_("WordPress returned an invalid publication date") from exc
+    return parsed.isoformat(timespec="seconds")
 
 
 def _norm(url: str) -> str:
@@ -272,6 +311,7 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
         images = [feat] + [im for im in images if _norm(im.get("url", "")) != _norm(feat["url"])]
 
     body, ordered = rewrite_body(content, images)
+    body = _discard_source_links(body, full_post.get("link") or "")
     body, colophon, signature_slots = extract_wordpress_ephemera(body, ordered)
 
     draft_images: List[DraftImage] = []
@@ -289,7 +329,7 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
             is_signature=n in signature_slots,
         ))
 
-    date = (full_post.get("date") or "")[:19].replace("T", " ")
+    date = _publication_instant(full_post)
 
     return Draft(
         draft_id=str(uuid.uuid4()),
