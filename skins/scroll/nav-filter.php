@@ -33,7 +33,7 @@ try {
             "SELECT u.id, u.username FROM snap_users u
              WHERE EXISTS (
                 SELECT 1 FROM snap_images i2
-                WHERE i2.user_id = u.id AND i2.img_status = 'published'
+                WHERE i2.user_id = u.id AND i2.img_status = 'published' AND i2.img_date <= NOW()
              )
              ORDER BY u.username ASC"
         )->fetchAll();

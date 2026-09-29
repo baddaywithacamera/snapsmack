@@ -203,7 +203,7 @@ $af_collections = $pdo->query("SELECT id, title FROM snap_collections ORDER BY t
 $af_authors     = [];
 try {
     if ($pdo->query("SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'snap_images' AND COLUMN_NAME = 'user_id' LIMIT 1")->fetchColumn()) {
-        $af_authors = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE EXISTS (SELECT 1 FROM snap_images i2 WHERE i2.user_id = u.id AND i2.img_status = 'published') ORDER BY u.username ASC")->fetchAll();
+        $af_authors = $pdo->query("SELECT u.id, u.username FROM snap_users u WHERE EXISTS (SELECT 1 FROM snap_images i2 WHERE i2.user_id = u.id AND i2.img_status = 'published' AND i2.img_date <= NOW()) ORDER BY u.username ASC")->fetchAll();
     }
 } catch (Throwable $e) {
     $af_authors = [];

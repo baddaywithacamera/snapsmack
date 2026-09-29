@@ -18,7 +18,7 @@ $wwi_show_sidebar = ($settings['show_sidebar'] ?? '1') === '1';
         </div><!-- /#wwi-content -->
 <?php if ($wwi_show_sidebar):
     try {
-        $wwi_recent = $pdo->query("SELECT title, slug FROM snap_posts WHERE post_type = 'longform' AND status = 'published' ORDER BY id DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
+        $wwi_recent = $pdo->query("SELECT title, slug FROM snap_posts WHERE post_type = 'longform' AND status = 'published'  AND created_at <= NOW() ORDER BY id DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) { $wwi_recent = []; }
     $wwi_about = trim($settings['site_tagline'] ?? '');
 ?>

@@ -52,7 +52,10 @@ function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base): array
             "SELECT id, img_title, img_file, img_thumb_square, img_thumb_aspect
              FROM snap_images
              WHERE img_status = 'published'
-               AND id NOT IN (SELECT signature_image_id FROM snap_posts WHERE signature_image_id IS NOT NULL)
+               AND img_date <= NOW()
+               AND id NOT IN (SELECT signature_image_id FROM snap_posts
+                              WHERE signature_image_id IS NOT NULL
+                                AND status = 'published' AND created_at <= NOW())
              ORDER BY sort_order ASC, id DESC"
         );
         $images = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -82,7 +85,9 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
                         p.allow_comments,p.created_at,p.updated_at,p.featured_image_id,
                         i.img_file AS featured_image_path FROM snap_posts p
                  LEFT JOIN snap_images i ON i.id = p.featured_image_id
-                 WHERE p.slug = ? AND p.post_type = 'longform' AND p.status = 'published' LIMIT 1"
+                   AND i.img_status = 'published' AND i.img_date <= NOW()
+                 WHERE p.slug = ? AND p.post_type = 'longform' AND p.status = 'published'
+                   AND p.created_at <= NOW() LIMIT 1"
             );
             $stmt->execute([$slug]);
         } else {
@@ -91,7 +96,9 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
                         p.allow_comments,p.created_at,p.updated_at,p.featured_image_id,
                         i.img_file AS featured_image_path FROM snap_posts p
                  LEFT JOIN snap_images i ON i.id = p.featured_image_id
-                 WHERE p.id = ? AND p.post_type = 'longform' AND p.status = 'published' LIMIT 1"
+                   AND i.img_status = 'published' AND i.img_date <= NOW()
+                 WHERE p.id = ? AND p.post_type = 'longform' AND p.status = 'published'
+                   AND p.created_at <= NOW() LIMIT 1"
             );
             $stmt->execute([$id]);
         }
@@ -104,9 +111,9 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
     $signature = null;
     $author = trim((string)($settings['site_author'] ?? ''));
     try {
-        $stmt = $pdo->prepare("SELECT slug,title FROM snap_posts WHERE post_type='longform' AND status='published' AND id < ? ORDER BY id DESC LIMIT 1");
+        $stmt = $pdo->prepare("SELECT slug,title FROM snap_posts WHERE post_type='longform' AND status='published' AND created_at <= NOW() AND id < ? ORDER BY id DESC LIMIT 1");
         $stmt->execute([(int)$post['id']]); $previous = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        $stmt = $pdo->prepare("SELECT slug,title FROM snap_posts WHERE post_type='longform' AND status='published' AND id > ? ORDER BY id ASC LIMIT 1");
+        $stmt = $pdo->prepare("SELECT slug,title FROM snap_posts WHERE post_type='longform' AND status='published' AND created_at <= NOW() AND id > ? ORDER BY id ASC LIMIT 1");
         $stmt->execute([(int)$post['id']]); $next = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
         $stmt = $pdo->prepare("SELECT c.cat_name FROM snap_post_cat_map m JOIN snap_categories c ON c.id=m.cat_id WHERE m.post_id=? ORDER BY c.cat_name");
         $stmt->execute([(int)$post['id']]); $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -118,7 +125,7 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
             $author = trim((string)($stmt->fetchColumn() ?: $author));
         }
         if (!empty($post['signature_image_id'])) {
-            $stmt = $pdo->prepare('SELECT img_file,img_alt,img_title FROM snap_images WHERE id=? LIMIT 1');
+            $stmt = $pdo->prepare("SELECT img_file,img_alt,img_title FROM snap_images WHERE id=? AND img_status='published' AND img_date <= NOW() LIMIT 1");
             $stmt->execute([(int)$post['signature_image_id']]);
             $image = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
             if ($image) $signature = ['url' => $base . ltrim((string)$image['img_file'], '/'),
@@ -155,13 +162,14 @@ function snapsmack_smacktalk_feed(PDO $pdo, array $settings, string $base, int $
     $per_page = max(1, min(100, (int)($settings['posts_per_page'] ?? 12)));
     $offset = ($page - 1) * $per_page;
     try {
-        $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts WHERE post_type='longform' AND status='published'")->fetchColumn();
+        $total = (int)$pdo->query("SELECT COUNT(*) FROM snap_posts WHERE post_type='longform' AND status='published' AND created_at <= NOW()")->fetchColumn();
         $stmt = $pdo->prepare(
             "SELECT p.id,p.title,p.slug,p.created_at,COALESCE(i.img_thumb_aspect,i.img_file) AS featured_image_path,
                     i.img_width AS featured_width,i.img_height AS featured_height
              FROM snap_posts p LEFT JOIN snap_images i ON i.id=p.featured_image_id
-             WHERE p.post_type='longform' AND p.status='published'
-             ORDER BY p.created_at DESC,p.id DESC LIMIT ? OFFSET ?"
+               AND i.img_status='published' AND i.img_date <= NOW()
+             WHERE p.post_type='longform' AND p.status='published' AND p.created_at <= NOW()
+             ORDER BY p.created_at DESC, p.id DESC LIMIT ? OFFSET ?"
         );
         $stmt->execute([$per_page, $offset]);
         $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);

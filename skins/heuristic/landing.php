@@ -129,7 +129,7 @@ $grid_stmt = $pdo->prepare("
     LEFT JOIN snap_trigrams tg ON tg.id = p.trigram_id
     WHERE p.status = 'published'
       AND p.created_at <= ?
-    ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
+     AND i.img_status = 'published' AND i.img_date <= NOW() ORDER BY CASE WHEN p.sort_order > 0 THEN 1 ELSE 0 END ASC,
              p.sort_order ASC,
              p.id DESC
 ");
@@ -164,7 +164,7 @@ if ($grid_posts) {
              JOIN snap_images i ON i.id = pi.image_id
              JOIN snap_image_cat_map cm ON cm.image_id = i.id
              JOIN snap_categories c ON c.id = cm.cat_id
-             WHERE pi.is_cover = 1"
+             WHERE pi.is_cover = 1 AND i.img_status = 'published' AND i.img_date <= NOW() "
         )->fetchAll(PDO::FETCH_ASSOC);
         foreach ($_he_cat_rows as $_he_cat_row) {
             $_he_pid = (int) $_he_cat_row['post_id'];
