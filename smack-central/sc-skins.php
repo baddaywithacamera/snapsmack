@@ -552,7 +552,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                     continue;
                 }
                 require_once $sc_policy;
-                $blockers = snapsmack_skin_security_gate($skin_dir);
+                $blockers = snapsmack_skin_security_gate($skin_dir, rtrim($tmp_dir, '/'));
                 if ($blockers) {
                     $detail = array_map(static fn($f) =>
                         $f['type'] . ' @ ' . $f['file']
