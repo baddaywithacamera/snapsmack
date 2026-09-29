@@ -32,6 +32,15 @@ $public = snap_render_html(snap_render_component('public-page', [
     'response' => ['kind' => 'photo', 'navigation' => [], 'item' => ['img_title' => '<Photo>', 'img_description' => snapsmack_trusted_html('<p>CMS caption</p>')], 'comments' => []],
 ]));
 if (!str_contains($public, '<p>CMS caption</p>') || !str_contains($public, '&lt;Photo&gt;')) throw new RuntimeException('Public component trust boundary failed.');
+$presentationHooks = ['id="header"', 'class="site-title-text"', 'class="nav-menu"', 'id="scroll-stage"', 'id="photobox"', 'id="infobox"', 'id="system-footer"', 'id="sig-text"'];
+foreach ($presentationHooks as $hook) {
+    if (!str_contains($public, $hook)) throw new RuntimeException("Public component lost presentation hook: {$hook}");
+}
+$feed = snap_render_html(snap_render_component('public-page', [
+    'site' => ['site_name' => 'Site'],
+    'response' => ['kind' => 'landing', 'navigation' => [], 'items' => []],
+]));
+if (!str_contains($feed, 'id="browse-grid"')) throw new RuntimeException('Public feed lost its CMS-owned grid hook.');
 if (snap_route_url('unknown') !== '') throw new RuntimeException('Unknown route did not fail closed.');
 if (snap_asset_url('../evil') !== '') throw new RuntimeException('Unknown/traversal asset handle was accepted.');
 
