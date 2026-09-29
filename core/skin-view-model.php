@@ -8,6 +8,7 @@
  */
 
 require_once __DIR__ . '/skin-manifest.php';
+if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
 
 function snapsmack_latest_asset_image(PDO $pdo): string
 {
@@ -40,7 +41,7 @@ function snapsmack_resolve_skin_media_slot(PDO $pdo, array $settings, array $slo
 
 function snapsmack_prepare_skin_view(PDO $pdo, array $settings, string $skin_slug): array
 {
-    $view = ['media_slots' => []];
+    $view = ['media_slots' => [], 'navigation' => []];
     $slug = preg_replace('/[^a-zA-Z0-9_\-]/', '', $skin_slug);
     if ($slug === '') return $view;
 
@@ -59,7 +60,70 @@ function snapsmack_prepare_skin_view(PDO $pdo, array $settings, string $skin_slu
         // activation or owner choice initializes them.
         $view['media_slots'][$safe_name] = snapsmack_resolve_skin_media_slot($pdo, $settings, $slot, false);
     }
+    $view['navigation'] = snapsmack_prepare_skin_navigation($pdo, $settings, $manifest);
     return $view;
+}
+
+function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $manifest): array
+{
+    $configured = json_decode((string)($settings['nav_menu_json'] ?? '[]'), true);
+    $items = is_array($configured) && $configured ? $configured : ($manifest['cms_navigation'] ?? []);
+    if (!is_array($items)) return [];
+
+    $base = defined('BASE_URL') ? BASE_URL : '/';
+    $resolve = function (array $item) use (&$resolve, $pdo, $base): ?array {
+        if (isset($item['active']) && !$item['active']) return null;
+        $type = (string)($item['type'] ?? 'custom');
+        $url = (string)($item['url'] ?? '');
+        switch ($type) {
+            case 'container': $url = ''; break;
+            case 'home': $url = $base; break;
+            case 'archive': $url = $base . 'archive.php'; break;
+            case 'image_archive': $url = $base . '?view=archive'; break;
+            case 'albums': $url = $base . 'albums.php'; break;
+            case 'collections': $url = $base . 'collections.php'; break;
+            case 'wall': $url = $base . 'gallery-wall.php'; break;
+            case 'blogroll': $url = $base . 'blogroll.php'; break;
+            case 'blog': $url = $base . 'blog.php'; break;
+            case 'page':
+                $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($item['slug'] ?? ''));
+                if ($slug === '' && !empty($item['target_id'])) {
+                    try {
+                        $stmt = $pdo->prepare('SELECT slug FROM snap_pages WHERE id = ? AND is_active = 1 LIMIT 1');
+                        $stmt->execute([(int)$item['target_id']]);
+                        $slug = (string)($stmt->fetchColumn() ?: '');
+                    } catch (Throwable $e) { $slug = ''; }
+                }
+                $url = $slug !== '' ? $base . 'page.php?slug=' . rawurlencode($slug) : '';
+                break;
+            case 'album':
+            case 'category':
+            case 'collection':
+                $url = !empty($item['target_id'])
+                    ? $base . 'archive.php?' . $type . '=' . (int)$item['target_id'] : $url;
+                break;
+        }
+        $children = [];
+        foreach (($item['children'] ?? []) as $child) {
+            if (!is_array($child)) continue;
+            $resolved = $resolve($child);
+            if ($resolved !== null) $children[] = $resolved;
+        }
+        return [
+            'label' => (string)($item['label'] ?? ''),
+            'url' => $url,
+            'target' => (($item['target'] ?? '') === '_blank') ? '_blank' : '',
+            'children' => $children,
+        ];
+    };
+
+    $out = [];
+    foreach ($items as $item) {
+        if (!is_array($item)) continue;
+        $resolved = $resolve($item);
+        if ($resolved !== null) $out[] = $resolved;
+    }
+    return $out;
 }
 
 /**

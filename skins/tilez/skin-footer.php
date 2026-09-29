@@ -1,4 +1,5 @@
 <?php
+if (!defined('SNAPSMACK_SKIN_RENDER')) return;
 /**
  * SNAPSMACK - Skin footer for the Alfred skin
  * v1.0.0
