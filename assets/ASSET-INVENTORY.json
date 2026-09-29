@@ -27,8 +27,8 @@
         {
             "file": "assets/js/shortcode-toolbar.js",
             "owner": "cms",
-            "scope": "tool",
-            "registry_handle": "asset:tool:shortcode-toolbar",
+            "scope": "admin",
+            "registry_handle": "asset:admin:shortcode-toolbar",
             "legacy_handle": null,
             "callers": [
                 "smack-edit-carousel.php",
@@ -242,8 +242,8 @@
         {
             "file": "assets/js/ss-ai-spendcap.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-ai-spendcap",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-ai-spendcap",
             "legacy_handle": null,
             "callers": [
                 "smack-settings.php"
@@ -279,8 +279,8 @@
         {
             "file": "assets/js/ss-engine-admin-csrf.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-admin-csrf",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-admin-csrf",
             "legacy_handle": null,
             "callers": [
                 "smack-post-long.php",
@@ -299,8 +299,8 @@
         {
             "file": "assets/js/ss-engine-admin-ui.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-admin-ui",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-admin-ui",
             "legacy_handle": null,
             "callers": [
                 "smack-edit-carousel.php",
@@ -322,8 +322,8 @@
         {
             "file": "assets/js/ss-engine-ai-enrichment.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-ai-enrichment",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-ai-enrichment",
             "legacy_handle": null,
             "callers": [
                 "smack-edit-carousel.php",
@@ -345,8 +345,8 @@
         {
             "file": "assets/js/ss-engine-ai.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-ai",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-ai",
             "legacy_handle": null,
             "callers": [
                 "smack-post-solo.php"
@@ -523,8 +523,8 @@
         {
             "file": "assets/js/ss-engine-carousel-edit.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-carousel-edit",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-carousel-edit",
             "legacy_handle": null,
             "callers": [
                 "smack-edit-carousel.php"
@@ -775,8 +775,8 @@
         {
             "file": "assets/js/ss-engine-crosspost.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-crosspost",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-crosspost",
             "legacy_handle": null,
             "callers": [
                 "smack-multisite-crosspost.php"
@@ -791,8 +791,8 @@
         {
             "file": "assets/js/ss-engine-featured-picker.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-featured-picker",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-featured-picker",
             "legacy_handle": null,
             "callers": [
                 "smack-albums.php",
@@ -812,8 +812,8 @@
         {
             "file": "assets/js/ss-engine-fediverse-admin.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-fediverse-admin",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-fediverse-admin",
             "legacy_handle": null,
             "callers": [
                 "smack-fediverse-portal.php",
@@ -879,8 +879,8 @@
         {
             "file": "assets/js/ss-engine-font-preview.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-font-preview",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-font-preview",
             "legacy_handle": null,
             "callers": [
                 "smack-skin.php"
@@ -963,8 +963,8 @@
         {
             "file": "assets/js/ss-engine-gallery.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-gallery",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-gallery",
             "legacy_handle": null,
             "callers": [
                 "smack-gallery.php"
@@ -1020,8 +1020,8 @@
         {
             "file": "assets/js/ss-engine-gram-post.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-gram-post",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-gram-post",
             "legacy_handle": null,
             "callers": [
                 "smack-post-gram.php"
@@ -1398,8 +1398,8 @@
         {
             "file": "assets/js/ss-engine-lighttable.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-lighttable",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-lighttable",
             "legacy_handle": null,
             "callers": [
                 "smack-lighttable.php"
@@ -1417,8 +1417,8 @@
         {
             "file": "assets/js/ss-engine-longform-cover-crop.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-longform-cover-crop",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-longform-cover-crop",
             "legacy_handle": null,
             "callers": [
                 "smack-post-long.php"
@@ -1433,8 +1433,8 @@
         {
             "file": "assets/js/ss-engine-masthead-crop.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-masthead-crop",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-masthead-crop",
             "legacy_handle": null,
             "callers": [
                 "smack-masthead.php"
@@ -1449,8 +1449,8 @@
         {
             "file": "assets/js/ss-engine-media-library.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-media-library",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-media-library",
             "legacy_handle": null,
             "callers": [
                 "smack-media.php"
@@ -1467,8 +1467,8 @@
         {
             "file": "assets/js/ss-engine-menu-builder.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-menu-builder",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-menu-builder",
             "legacy_handle": null,
             "callers": [
                 "smack-menu.php"
@@ -1604,8 +1604,8 @@
         {
             "file": "assets/js/ss-engine-page-import.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-page-import",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-page-import",
             "legacy_handle": null,
             "callers": [
                 "smack-pages.php"
@@ -1620,8 +1620,8 @@
         {
             "file": "assets/js/ss-engine-photo-editor.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-photo-editor",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-photo-editor",
             "legacy_handle": "smack-photo-editor",
             "callers": [
                 "smack-edit-carousel.php",
@@ -1776,8 +1776,8 @@
         {
             "file": "assets/js/ss-engine-scan-align.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-scan-align",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-scan-align",
             "legacy_handle": "smack-scan-align",
             "callers": [
                 "smack-post-gram.php"
@@ -1792,8 +1792,8 @@
         {
             "file": "assets/js/ss-engine-scan-upload.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-scan-upload",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-scan-upload",
             "legacy_handle": null,
             "callers": [
                 "smack-skin.php"
@@ -1829,8 +1829,8 @@
         {
             "file": "assets/js/ss-engine-sidebar.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-sidebar",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-sidebar",
             "legacy_handle": null,
             "callers": [
                 "core/admin-footer.php"
@@ -1845,8 +1845,8 @@
         {
             "file": "assets/js/ss-engine-slicer.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-slicer",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-slicer",
             "legacy_handle": null,
             "callers": [
                 "smack-slicer.php"
@@ -1988,8 +1988,8 @@
         {
             "file": "assets/js/ss-engine-updater.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-updater",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-updater",
             "legacy_handle": null,
             "callers": [
                 "core/admin-footer.php"
@@ -2047,8 +2047,8 @@
         {
             "file": "assets/js/ss-pixelfed-client.js",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-pixelfed-client",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-pixelfed-client",
             "legacy_handle": null,
             "callers": [
                 "smack-pixelfed.php"
@@ -2242,8 +2242,8 @@
         {
             "file": "assets/css/admin-theme-geometry-master.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:admin-theme-geometry-master",
+            "scope": "admin",
+            "registry_handle": "asset:admin:admin-theme-geometry-master",
             "legacy_handle": null,
             "callers": [
                 "smack-2fa-verify.php",
@@ -2260,8 +2260,8 @@
         {
             "file": "assets/css/columns.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:columns",
+            "scope": "tool",
+            "registry_handle": "asset:tool:columns",
             "legacy_handle": null,
             "callers": [
                 "smack-preview-ajax.php",
@@ -2276,8 +2276,8 @@
         {
             "file": "assets/css/fjGallery.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:fjGallery",
+            "scope": "tool",
+            "registry_handle": "asset:tool:fjGallery",
             "legacy_handle": "smack-justified-lib:css",
             "callers": [
                 "skins/new-horizon/manifest.json",
@@ -2298,8 +2298,8 @@
         {
             "file": "assets/css/page-archive.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:page-archive",
+            "scope": "tool",
+            "registry_handle": "asset:tool:page-archive",
             "legacy_handle": null,
             "callers": [
                 "core/meta.php"
@@ -2313,8 +2313,8 @@
         {
             "file": "assets/css/page-blogroll.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:page-blogroll",
+            "scope": "tool",
+            "registry_handle": "asset:tool:page-blogroll",
             "legacy_handle": null,
             "callers": [
                 "core/meta.php"
@@ -2326,8 +2326,8 @@
         {
             "file": "assets/css/page-collection.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:page-collection",
+            "scope": "tool",
+            "registry_handle": "asset:tool:page-collection",
             "legacy_handle": null,
             "callers": [
                 "core/meta.php"
@@ -2339,8 +2339,8 @@
         {
             "file": "assets/css/page-eatmeclaude.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:page-eatmeclaude",
+            "scope": "tool",
+            "registry_handle": "asset:tool:page-eatmeclaude",
             "legacy_handle": null,
             "callers": [
                 "eatmeclaude.php"
@@ -2352,8 +2352,8 @@
         {
             "file": "assets/css/page-static.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:page-static",
+            "scope": "tool",
+            "registry_handle": "asset:tool:page-static",
             "legacy_handle": null,
             "callers": [
                 "core/meta.php"
@@ -2365,8 +2365,8 @@
         {
             "file": "assets/css/photochallenge-board-embed.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:photochallenge-board-embed",
+            "scope": "tool",
+            "registry_handle": "asset:tool:photochallenge-board-embed",
             "legacy_handle": null,
             "callers": [
                 "core/photochallenge.php"
@@ -2378,8 +2378,8 @@
         {
             "file": "assets/css/photochallenge-board-layouts.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:photochallenge-board-layouts",
+            "scope": "tool",
+            "registry_handle": "asset:tool:photochallenge-board-layouts",
             "legacy_handle": null,
             "callers": [
                 "core/photochallenge.php"
@@ -2391,8 +2391,8 @@
         {
             "file": "assets/css/public-base.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:public-base",
+            "scope": "tool",
+            "registry_handle": "asset:tool:public-base",
             "legacy_handle": null,
             "callers": [
                 "core/meta.php"
@@ -2406,8 +2406,8 @@
         {
             "file": "assets/css/public-download-overlay.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:public-download-overlay",
+            "scope": "tool",
+            "registry_handle": "asset:tool:public-download-overlay",
             "legacy_handle": null,
             "callers": [
                 "core/footer-scripts.php"
@@ -2419,8 +2419,8 @@
         {
             "file": "assets/css/public-facing.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:public-facing",
+            "scope": "tool",
+            "registry_handle": "asset:tool:public-facing",
             "legacy_handle": null,
             "callers": [
                 "blogroll.php",
@@ -2436,8 +2436,8 @@
         {
             "file": "assets/css/shortcodes.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:shortcodes",
+            "scope": "tool",
+            "registry_handle": "asset:tool:shortcodes",
             "legacy_handle": null,
             "callers": [
                 "smack-shortcodes.php",
@@ -2555,8 +2555,8 @@
         {
             "file": "assets/css/ss-engine-ai-enrichment.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-ai-enrichment",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-ai-enrichment",
             "legacy_handle": null,
             "callers": [
                 "smack-edit-carousel.php",
@@ -2672,8 +2672,8 @@
         {
             "file": "assets/css/ss-engine-featured-picker.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-featured-picker",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-featured-picker",
             "legacy_handle": null,
             "callers": [
                 "smack-albums.php",
@@ -2689,8 +2689,8 @@
         {
             "file": "assets/css/ss-engine-gallery.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-gallery",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-gallery",
             "legacy_handle": null,
             "callers": [
                 "smack-gallery.php"
@@ -2815,8 +2815,8 @@
         {
             "file": "assets/css/ss-engine-photo-editor.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-engine-photo-editor",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-engine-photo-editor",
             "legacy_handle": "smack-photo-editor:css",
             "callers": [
                 "smack-edit-carousel.php",
@@ -2945,8 +2945,8 @@
         {
             "file": "assets/css/ss-gram-pwa-composer.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-gram-pwa-composer",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-gram-pwa-composer",
             "legacy_handle": null,
             "callers": [
                 "smack-post-gram.php"
@@ -2975,8 +2975,8 @@
         {
             "file": "assets/css/ss-pixelfed-client.css",
             "owner": "cms",
-            "scope": "public",
-            "registry_handle": "asset:public:ss-pixelfed-client",
+            "scope": "admin",
+            "registry_handle": "asset:admin:ss-pixelfed-client",
             "legacy_handle": null,
             "callers": [
                 "smack-pixelfed.php"
