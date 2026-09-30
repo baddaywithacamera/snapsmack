@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.791D — 2026-09-30 — Instant Camera backdrop scrim restored
+
+- **INSTANT CAMERA's saved white-scrim opacity is visible over its full background again.** The strict-renderer conversion preserved the scrim element, setting, and CSS but moved them into a document structure where the legacy negative backdrop layers escaped behind the root canvas. The skin now establishes an isolated stacking context, restoring the intended background → scrim → panel → content order without a per-site override. A grid-family regression locks the complete layer contract. (`skins/instant-camera/style.css`, `tests/grid-family-v2-regression.php`.)
+- **Privileged HTML wrappers can only be constructed through their reviewed factories.** Production construction sites are inventoried and count-locked; cloning is blocked so a valid capability cannot be duplicated outside its factory boundary. (`core/trusted-html.php`, `tests/privileged-wrapper-construction-regression.php`.)
+- **Privileged wrappers reject every PHP reconstruction path.** Serialization, unserialization, wakeup, and exported-state reconstruction now fail closed, with regression coverage for forged payloads and stale scalar markup. (`core/trusted-html.php`, `tests/reconstruction-boundary-regression.php`.)
+
 ## 0.7.790D — 2026-09-29 — Progressive feeds no longer stop at the first batch
 
 - **Every skin declaring the shared progressive-reveal engine now receives the bounded complete landing feed that engine requires.** The earlier restoration was hard-coded to INSTANT CAMERA, leaving GAME ON on `theschoolofhardnocks.ca` with only its first 120 visible photographs out of 4,322 before the footer. The CMS entry point now grants the existing 5,000-item ceiling by audited manifest capability instead of skin name, covering GAME ON and the other grid-family skins without returning query or executable authority to them. (`index.php`, `tests/public-controller-boundary-regression.php`.)
