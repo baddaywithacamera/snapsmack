@@ -1189,6 +1189,9 @@ body.au-modal-open { overflow: hidden; }
     background-position: center center;
     background-repeat: no-repeat;
     background-attachment: fixed;
+    background-color: var(--au-treatment-color, transparent);
+    background-image: var(--au-treatment-image, none);
+    background-position: var(--au-treatment-position, center center);
 }
 
 .au-treatment-overlay {
@@ -1196,7 +1199,10 @@ body.au-modal-open { overflow: hidden; }
     inset: 0;
     z-index: -1;
     pointer-events: none;
+    background: var(--au-treatment-overlay, transparent);
 }
+
+body:not(.route-landing) .au-sticky-nav { background: var(--au-navbar-bg-inner, var(--au-navbar-bg, transparent)); }
 
 /* When a treatment is present, the content column reads as a card floating
    over the background. */
