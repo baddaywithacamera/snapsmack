@@ -325,21 +325,41 @@ function snapsmack_skin_security_findings(string $skin_dir, ?string $authority_r
             }
         }
     }
+    $declared_templates = [];
+    if (is_array($manifest['templates'] ?? null)) {
+        foreach ($manifest['templates'] as $template) if (is_string($template)) $declared_templates[$template] = true;
+    }
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($skin_dir, FilesystemIterator::SKIP_DOTS)
     );
     foreach ($iterator as $file) {
-        if (!$file->isFile()) continue;
         $path = str_replace('\\', '/', $file->getPathname());
         $rel = ltrim(substr($path, strlen($skin_dir)), '/');
+        if ($file->isLink()) {
+            $findings[] = snapsmack_skin_policy_finding($rel, 0, 'package-symlink', 'Skin packages may not contain symlinks.');
+            continue;
+        }
+        if (!$file->isFile()) continue;
         // Reference material explicitly marked gitignored is not packaged.
         if (stripos($rel, 'gitignore') !== false) continue;
         $ext = strtolower($file->getExtension());
+        $base = strtolower($file->getBasename());
+        if (in_array($base, ['.htaccess', '.user.ini', 'web.config'], true)) {
+            $findings[] = snapsmack_skin_policy_finding($rel, 0, 'server-configuration', 'Skin packages may not alter web-server configuration.');
+            continue;
+        }
+        if (in_array($ext, ['php3','php4','php5','php7','php8','phar','phps','pht','phtm','phtmls','shtml','cgi','pl'], true)) {
+            $findings[] = snapsmack_skin_policy_finding($rel, 0, 'executable-file-type', $ext);
+            continue;
+        }
         if ($ext === 'js') {
             $findings[] = snapsmack_skin_policy_finding($rel, 0, 'bundled-javascript', 'Skin packages may not ship JavaScript.');
             continue;
         }
         if ($ext === 'php' || $ext === 'phtml' || $ext === 'inc') {
+            if (!isset($declared_templates[$rel])) {
+                $findings[] = snapsmack_skin_policy_finding($rel, 0, 'undeclared-php-template', 'Every PHP file must be a manifest-declared presentation template.');
+            }
             array_push($findings, ...snapsmack_skin_policy_scan_mutations($path, $rel));
             if (is_array($manifest) && (int)($manifest['schema_version'] ?? 0) === 2) {
                 array_push($findings, ...snapsmack_skin_policy_scan_template_v2($path, $rel));
