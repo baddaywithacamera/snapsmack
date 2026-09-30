@@ -40,5 +40,29 @@ foreach (['alfred','telegram','tilez','stanley','writing-with-impact'] as $skin)
 }
 $writing = snapsmack_skin_presentation(['paper_style'=>'greenbar'], 'writing-with-impact');
 if (($writing['writing']['paper'] ?? '') !== 'greenbar') throw new RuntimeException('Writing paper control is inert.');
+$manifestDefaults = snapsmack_skin_presentation([], 'writing-with-impact');
+if (($manifestDefaults['options']['paper_style'] ?? null) !== 'plain'
+    || ($manifestDefaults['writing']['paper'] ?? null) !== 'plain') {
+    throw new RuntimeException('Writing paper default no longer originates in its manifest.');
+}
+$helperSource = (string)file_get_contents($root . '/core/public-skin-presentation.php');
+foreach (["?? 'yellow'", ": 'landscape'", ": 'plain'", 'bool $default=true'] as $duplicate) {
+    if (str_contains($helperSource, $duplicate)) throw new RuntimeException('Presentation helper duplicated a manifest default: ' . $duplicate);
+}
+$rationalOff = snapsmack_skin_presentation(['show_map_background'=>'0','single_show_description'=>'0','single_show_signals'=>'0','hero_border_width'=>'999','image_border_color'=>'none'], 'rational-geo')['rational'];
+if ($rationalOff['show_map'] || $rationalOff['show_description'] || $rationalOff['show_signals']
+    || $rationalOff['border_width'] !== 30 || $rationalOff['border_color'] !== 'transparent') {
+    throw new RuntimeException('Rational Geo min/max/on/off model failed.');
+}
+$slickrOff = snapsmack_skin_presentation(['single_show_description'=>'0','show_exif_panel'=>'0','show_geo_link'=>'0','show_provenance_footer'=>'0'], 'slickr')['slickr'];
+if (array_filter($slickrOff)) throw new RuntimeException('Slickr off controls failed.');
+foreach (['photogram'=>'discover','rational-geo'=>'rational','scroll'=>'scroll','slickr'=>'slickr'] as $skin=>$model) {
+    $layout = (string)file_get_contents($root . '/skins/' . $skin . '/layout.php');
+    if (!str_contains($layout, "['skin_presentation']['{$model}']")) throw new RuntimeException($skin . ' does not consume its bounded presentation model.');
+}
+$runtime = (string)file_get_contents($root . '/core/public-runtime.php');
+foreach (['img_exif', 'geo_url', 'FILTER_VALIDATE_FLOAT'] as $needle) {
+    if (!str_contains($runtime, $needle)) throw new RuntimeException('Slickr CMS metadata model missing: ' . $needle);
+}
 
 echo "Remaining public control authority regression passed.\n";
