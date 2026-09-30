@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/trusted-html.php';
 require_once __DIR__ . '/menu-presentation.php';
+require_once __DIR__ . '/public-skin-presentation.php';
 
 function snapsmack_skin_int(array $settings, string $key, int $default, int $min, int $max): int
 {
@@ -139,6 +140,7 @@ function snapsmack_declared_skin_options(array $settings, string $skinSlug): arr
 function snapsmack_skin_presentation(array $settings, string $skinSlug): array
 {
     $presentation = ['options' => snapsmack_declared_skin_options($settings, $skinSlug)];
+    $presentation += snapsmack_public_skin_presentation($skinSlug, $presentation['options']);
     if ($skinSlug === 'instant-camera' || $skinSlug === 'sliders') {
         $presentation += snapsmack_instant_camera_presentation($presentation['options'], $settings);
     }
