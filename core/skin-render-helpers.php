@@ -139,6 +139,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         } else {
             $html .= '<main><section class="tg-grid-empty"><h1>Not found</h1></section></main>';
         }
+        $html .= snap_render_html(snap_render_component('gram-search-dock', ['dock' => $site['search_dock'] ?? []]));
         $html .= '<footer id="system-footer" class="site-footer"><div id="footer"><p id="sig-text">' . snap_escape_html($siteName)
             . '</p></div></footer></div>' . snap_render_html(snap_render_component('registered-assets', ['assets' => $registered]))
             . '<script src="' . snap_asset_url('asset:public:ss-engine-nav-dropdown') . '" defer></script>'
@@ -234,6 +235,20 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             $html .= '<section class="not-found"><h1>Not found</h1></section>';
         }
         $html .= '</main><footer id="system-footer" class="site-footer"><div id="footer" class="inside"><p id="sig-text">' . snap_escape_html($site['site_name'] ?? '') . '</p></div></footer>' . snap_render_html(snap_render_component('registered-assets', ['assets'=>$site['registered_assets']??[]])) . snap_render_html($site['owner_custom_code'] ?? '');
+    } elseif ($name === 'gram-search-dock') {
+        $dock = is_array($data['dock'] ?? null) ? $data['dock'] : [];
+        if (!empty($dock['enabled'])) {
+            $disc = preg_match('/^#[0-9a-f]{6}$/i', (string)($dock['disc_color'] ?? '')) ? strtolower((string)$dock['disc_color']) : '#ffffff';
+            $glass = preg_match('/^#[0-9a-f]{6}$/i', (string)($dock['glass_color'] ?? '')) ? strtolower((string)$dock['glass_color']) : '#262626';
+            $opacity = max(0, min(100, (int)($dock['disc_opacity'] ?? 100)));
+            $hex = ltrim($disc, '#');
+            $rgba = sprintf('rgba(%d,%d,%d,%.2F)', hexdec(substr($hex,0,2)), hexdec(substr($hex,2,2)), hexdec(substr($hex,4,2)), $opacity / 100);
+            $html = '<div class="gram-search-dock" data-gram-search-dock style="--gsd-disc-bg:' . snap_escape_attr($rgba) . ';--gsd-glass-color:' . snap_escape_attr($glass) . '">'
+                . '<form class="gsd-form" method="GET" action="' . snap_route_url('home') . '" role="search">'
+                . '<button type="button" class="gsd-toggle" aria-label="Search" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>'
+                . '<input type="search" name="q" class="gsd-input" placeholder="' . snap_escape_attr($dock['placeholder'] ?? 'Search or #tag…') . '" autocomplete="off" aria-label="Search photos or tags" tabindex="-1">'
+                . '</form></div>';
+        }
     } elseif ($name === 'registered-assets') {
         $assets=is_array($data['assets']??null)?$data['assets']:[];
         foreach(($assets['styles']??[]) as $url)$html.='<link rel="stylesheet" href="'.snap_escape_url($url).'">';

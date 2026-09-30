@@ -13,7 +13,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
         'show_titles'];
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
-        'skin_style_url', 'skin_custom_style', 'skin_presentation', 'owner_custom_code', 'registered_assets'];
+        'skin_style_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets'];
     return [
         'model' => 'snapsmack.public',
         'version' => SNAPSMACK_SKIN_VIEW_MODEL_VERSION,

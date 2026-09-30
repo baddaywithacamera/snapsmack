@@ -251,6 +251,7 @@ try {
             'skin_style_url' => (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin) . '/style.css',
             'skin_custom_style' => snapsmack_skin_custom_style($settings),
             'skin_presentation' => $active_skin === 'instant-camera' ? snapsmack_instant_camera_presentation($settings) : [],
+            'search_dock' => $active_skin === 'instant-camera' ? snapsmack_gram_search_dock_presentation($settings) : [],
             'owner_custom_code' => snapsmack_owner_custom_code($settings),
             'registered_assets' => $_registered_skin_assets,
         ]);
