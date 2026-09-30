@@ -102,8 +102,13 @@ function rf_require_next_dev_version(string $version): void {
             $prefix = $m[1];
         }
     }
-    if ($latest >= 0 && $version !== $prefix . '.' . ($latest + 1)) {
-        rf_fail("next dev candidate must be {$prefix}." . ($latest + 1)
+    $next = $latest + 1;
+    $reservationsPath = __DIR__ . '/release-reservations.json';
+    $reservations = is_file($reservationsPath) ? json_decode((string)file_get_contents($reservationsPath), true) : [];
+    if (!is_array($reservations)) rf_fail('release reservation ledger is invalid');
+    while (isset($reservations[$prefix . '.' . $next])) $next++;
+    if ($latest >= 0 && $version !== $prefix . '.' . $next) {
+        rf_fail("next dev candidate must be {$prefix}.{$next}"
             . '; do not skip or reuse a tag number');
     }
 }
