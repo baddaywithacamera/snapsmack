@@ -24,4 +24,17 @@ if ($bounded['initial_count'] !== 400 || $bounded['max_width'] !== 120 || $bound
     throw new RuntimeException('52 Card Pickup mayhem controls are not bounded by the CMS.');
 }
 
+$engine = file_get_contents(dirname(__DIR__) . '/assets/js/ss-engine-organized-mayhem.js');
+if (!is_string($engine) || $engine === '') {
+    throw new RuntimeException('Organized Mayhem engine could not be inspected.');
+}
+foreach (['om-wobble', 'om-alive', '--om-w', '--om-d'] as $retired_motion) {
+    if (strpos($engine, $retired_motion) !== false) {
+        throw new RuntimeException('Organized Mayhem reintroduced independent per-print motion: ' . $retired_motion);
+    }
+}
+if (strpos($engine, "world.style.transform = 'scale('") === false) {
+    throw new RuntimeException('Organized Mayhem lost its shared tabletop world transform.');
+}
+
 echo "52 Card Pickup mayhem presentation regression passed.\n";

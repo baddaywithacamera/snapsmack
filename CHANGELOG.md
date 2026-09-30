@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.796D — 2026-09-30 — Organized Mayhem moves as one tabletop
+
+- **Organized Mayhem no longer rotates individual prints independently.** The unrequested per-image “alive wobble,” its randomized timing data, and its injected animation CSS have been removed from the shared CMS engine. The background can still pan and breathe through its existing drift control, but every print now stays fixed relative to the tabletop so the whole arrangement moves as one coherent surface.
+
 ## 0.7.795D — 2026-09-30 — Updated skins cannot keep serving stale CSS
 
 - **Strict public pages now version each skin stylesheet URL with the installed skin manifest version.** Signed skin updates already replaced `style.css`, but the public controller kept linking the same unversioned URL, allowing browser and edge caches to preserve obsolete stacking and opacity rules after a successful install. Both strict controller paths now hand layouts a bounded `style.css?v=<skin-version>` URL, so installing a new skin version immediately selects its matching presentation rules across every schema-v2 skin.
