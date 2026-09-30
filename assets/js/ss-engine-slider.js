@@ -654,7 +654,22 @@
     if (this.totalSlides < 2) return; // no dots for single-image posts
 
     var self = this;
-    var wrap = document.createElement('div');
+    var wrap = document.querySelector('[data-slider-indicators]');
+
+    // Schema-v2 skins render their bounded indicator count with the slide
+    // markup. Reuse that audited markup instead of creating a second strip.
+    if (wrap) {
+      Array.prototype.forEach.call(wrap.querySelectorAll('.ss-slider-dot'), function(dot) {
+        var idx = parseInt(dot.getAttribute('data-slide-index'), 10);
+        if (!Number.isNaN(idx) && idx >= 0 && idx < self.totalSlides) {
+          dot.addEventListener('click', function() { self.goTo(idx); });
+        }
+      });
+      this.dotsElement = wrap;
+      return;
+    }
+
+    wrap = document.createElement('div');
     wrap.className = 'ss-slider-dots';
 
     for (var i = 0; i < this.totalSlides; i++) {

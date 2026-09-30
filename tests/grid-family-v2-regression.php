@@ -11,6 +11,10 @@ $skins = ['the-grid','aurora','sudden-impact','parade','jive-turkey','heuristic'
 $responses = [
     ['status'=>200,'kind'=>'landing','items'=>[['img_title'=>'Photo','img_slug'=>'photo','img_thumb_aspect'=>'/media/thumb.jpg']],'navigation'=>[]],
     ['status'=>200,'kind'=>'photo','item'=>['id'=>1,'img_title'=>'Photo','img_file'=>'/media/photo.jpg','img_description'=>snapsmack_trusted_html('<p>Caption</p>')],'comments'=>[['comment_author'=>'Reader','comment_text'=>'<script>no</script>']],'navigation'=>[]],
+    ['status'=>200,'kind'=>'post','item'=>['id'=>2,'title'=>'Carousel','content'=>snapsmack_trusted_html('<p>Carousel caption</p>')],'photographs'=>[
+        ['id'=>11,'img_title'=>'First','img_alt'=>'First slide','img_file'=>'/media/first.jpg','is_framed'=>true,'frame_style'=>'--slide-bg:#abcdef'],
+        ['id'=>12,'img_title'=>'Second','img_alt'=>'Second & slide','img_file'=>'/media/second.jpg','is_framed'=>false,'frame_style'=>''],
+    ],'navigation'=>[]],
     ['status'=>200,'kind'=>'search','results'=>['photographs'=>[['img_title'=>'Match']],'posts'=>[]],'navigation'=>[]],
     ['status'=>404,'kind'=>'not_found','navigation'=>[]],
 ];
@@ -33,6 +37,12 @@ foreach($skins as $skin){
         if(!str_contains($html,'class="'.$prefix.'-content-wrap')) throw new RuntimeException("{$skin}/{$response['kind']} lost its family content hook.");
         foreach(['id="'.$prefix.'-modal-overlay"','id="'.$prefix.'-modal-frame"','id="'.$prefix.'-lightbox"'] as $modalHook)if(!str_contains($html,$modalHook))throw new RuntimeException("{$skin}/{$response['kind']} lost route modal/lightbox hook: {$modalHook}");
         if(($response['kind']??'')==='landing'&&!str_contains($html,'class="'.$prefix.'-tile')) throw new RuntimeException("{$skin} lost its tile contract.");
+        if(($response['kind']??'')==='post'){
+            if(!str_contains($html,'id="tg-carousel" class="ss-slider"')||substr_count($html,'class="slider-slide')!==2)throw new RuntimeException("{$skin} post route lost its CMS photograph carousel.");
+            if(substr_count($html,'class="ss-slider-dot')!==3||substr_count($html,'data-slide-index=')!==2)throw new RuntimeException("{$skin} post carousel indicator count drifted from its photographs.");
+            foreach(['/media/first.jpg','/media/second.jpg'] as $source)if(!str_contains($html,'data-lightbox-src="'.$source.'"'))throw new RuntimeException("{$skin} post carousel lost its escaped lightbox source.");
+            if(!str_contains($html,'alt="Second &amp; slide"'))throw new RuntimeException("{$skin} post carousel alt text escaped its render boundary.");
+        }
         if($skin!=='instant-camera'&&$skin!=='sliders'&&(str_contains($html,'class="ic-scrim"')||str_contains($html,'class="ic-panel"'))) throw new RuntimeException("{$skin} received INSTANT CAMERA structure.");
         if($skin==='instant-camera'&&(!str_contains($html,'class="ic-scrim"')||!str_contains($html,'class="ic-panel"'))) throw new RuntimeException('INSTANT CAMERA layout no longer owns its backdrop structure.');
         if($skin==='sliders'&&(!str_contains($html,'class="ic-bg sl-glide-bg"')||!str_contains($html,'class="ic-scrim"')||!str_contains($html,'data-glide-wall'))) throw new RuntimeException('SLIDERS layout no longer owns its moving-wall and controlled scrim structure.');

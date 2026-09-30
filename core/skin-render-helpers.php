@@ -107,8 +107,9 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $html .= '</ul></nav>';
     } elseif ($name === 'image') {
         $class = trim((string)($data['class'] ?? ''));
+        $lightboxSource = trim((string)($data['attributes']['data-lightbox-src'] ?? ''));
         $html = '<img' . ($class !== '' ? ' class="' . snap_escape_attr($class) . '"' : '') . ' src="' . snap_escape_url($data['url'] ?? '') . '" alt="'
-            . snap_escape_attr($data['alt'] ?? '') . '" loading="lazy">';
+            . snap_escape_attr($data['alt'] ?? '') . '"' . ($lightboxSource !== '' ? ' data-lightbox-src="' . snap_escape_url($lightboxSource) . '"' : '') . ' loading="lazy">';
     } elseif ($name === 'comments') {
         $html = '<ol class="snap-comments">';
         foreach (($data['items'] ?? []) as $comment) {
