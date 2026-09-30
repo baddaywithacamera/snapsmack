@@ -186,6 +186,7 @@ try {
                 require_once __DIR__ . '/core/trusted-html.php';
                 require_once __DIR__ . '/core/skin-render-helpers.php';
                 require_once __DIR__ . '/core/skin-view-contract.php';
+                require_once __DIR__ . '/core/skin-presentation.php';
                 if (isset($_smacktalk['rendered_content'])) {
                     $_smacktalk['rendered_content'] = snapsmack_trusted_html((string)$_smacktalk['rendered_content']);
                 }
@@ -202,6 +203,7 @@ try {
                     'skin_slug' => (string)$active_skin,
                     'skin_style_url' => (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin) . '/style.css',
                     'skin_custom_style' => snapsmack_skin_custom_style($settings),
+                    'skin_presentation' => snapsmack_skin_presentation($settings, (string)$active_skin),
                     'owner_custom_code' => snapsmack_owner_custom_code($settings),
                     'registered_assets' => $_registered_skin_assets,
                 ]);
