@@ -18,8 +18,8 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
-require_once 'core/auth-smack.php';
-require_once 'core/menu-presentation.php';
+require_once __DIR__ . '/core/auth-smack.php';
+require_once __DIR__ . '/core/menu-presentation.php';
 
 $menu_is_gramofsmack = (($settings['site_mode'] ?? 'photoblog') === 'carousel');
 
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_nav_menu'])) {
 }
 
 // ── LOAD CURRENT SETTINGS ─────────────────────────────────────────────────
-$dropdown_appearance = snapsmack_menu_appearance($settings);
+$dropdown_appearance = snapsmack_menu_appearance(is_array($settings ?? null) ? $settings : []);
 $dd_bg      = $dropdown_appearance['nav_dropdown_bg'];
 $dd_opacity = $dropdown_appearance['nav_dropdown_opacity'];
 $dd_text    = $dropdown_appearance['nav_dropdown_text'];

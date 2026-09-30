@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.794D — 2026-09-30 — Opacity controls reach the visible layers
+
+- **INSTANT CAMERA’s white scrim now occupies an explicit positive layer between the animated background and the content.** The saved slider still supplies `--ic-scrim`, but the consuming layer can no longer disappear behind the document canvas because of a negative stacking context.
+- **Dropdown opacity is now carried by the CMS-generated `--nav-dropdown-bg` colour itself.** The Menu Manager’s saved opacity is converted to bounded RGBA and the submenu consumes that variable directly; no presentation rule contains a fixed percentage. Menu Manager also loads its shared presentation helper through an absolute, idempotent include so the control page remains available after an update.
+
 ## 0.7.793D — 2026-09-30 — Strict skins render through the audited gate
 
 - **Schema-v2 layouts now receive their render authority from the strict CMS template entry point itself.** The `0.7.792D` package correctly kept every skin layout guarded, but the production public-controller path did not establish that guard before including the layout; the live site therefore returned only an empty HTML shell. The authority marker remains CMS-owned and is created only after the bounded view model, declared filename, real path, symlink, and package-boundary checks pass. A production-path regression renders a guarded template without relying on the fixture-only bootstrap. (`core/skin-view-contract.php`, `tests/skin-render-entrypoint-regression.php`.)
