@@ -126,6 +126,17 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
     if ($skinSlug === 'instant-camera') {
         $presentation['background'] = [
             'mode' => (string)($presentation['options']['ic_bg_mode'] ?? ''),
+            'cycle' => snapsmack_declared_option_int($presentation['options'], 'ic_cycle_secs', 3, 120),
+            'racetrack_speed' => snapsmack_declared_option_int($presentation['options'], 'ic_rt_speed', 1, 100),
+            'racetrack_count' => snapsmack_declared_option_int($presentation['options'], 'ic_rt_count', 1, 200),
+            'racetrack_size' => snapsmack_declared_option_int($presentation['options'], 'ic_rt_size', 40, 500),
+            'racetrack_opacity' => snapsmack_declared_option_int($presentation['options'], 'ic_rt_opacity', 0, 100),
+            'rainfall_density' => snapsmack_declared_option_int($presentation['options'], 'ic_rf_density', 1, 100),
+            'rainfall_speed' => snapsmack_declared_option_int($presentation['options'], 'ic_rf_speed', 1, 100),
+            'rainfall_angle' => snapsmack_declared_option_int($presentation['options'], 'ic_rf_angle', -90, 90),
+            'rainfall_thickness' => snapsmack_declared_option_int($presentation['options'], 'ic_rf_thickness', 1, 20),
+            'rainfall_color' => snapsmack_declared_option_hex($presentation['options'], 'ic_rf_color'),
+            'rainfall_opacity' => snapsmack_declared_option_int($presentation['options'], 'ic_rf_opacity', 0, 100),
             'initial_count' => $presentation['mayhem_initial_count'],
             'max_width' => $presentation['mayhem_max_width'],
             'overlap_max' => $presentation['mayhem_overlap_max'],
@@ -135,6 +146,21 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
     }
     if ($skinSlug === 'parade') {
         $presentation += snapsmack_parade_presentation($presentation['options']);
+    }
+    if ($skinSlug === 'aurora') {
+        $presentation += snapsmack_aurora_presentation($presentation['options']);
+    }
+    if ($skinSlug === 'jive-turkey') {
+        $presentation += snapsmack_jive_turkey_presentation($presentation['options']);
+    }
+    if ($skinSlug === 'heuristic') {
+        $presentation += snapsmack_heuristic_presentation($presentation['options']);
+    }
+    if ($skinSlug === 'game-on') {
+        $presentation += snapsmack_game_on_presentation($presentation['options']);
+    }
+    if ($skinSlug === 'chaplin') {
+        $presentation += snapsmack_chaplin_presentation($presentation['options']);
     }
     $framePrefixes = ['the-grid'=>'tg','sudden-impact'=>'tg','instant-camera'=>'ic','sliders'=>'ic',
         'aurora'=>'au','parade'=>'pa','jive-turkey'=>'jt','heuristic'=>'he','game-on'=>'go'];
@@ -146,6 +172,151 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
         }
     }
     return $presentation;
+}
+
+/** Append a bounded, CMS-created custom-property block to a strict presentation. */
+function snapsmack_presentation_style(array &$presentation, string $id, array $vars): void
+{
+    $css = ':root{';
+    foreach ($vars as $name => $value) $css .= $name . ':' . $value . ';';
+    $css .= '}';
+    $existing = isset($presentation['style']) ? (string)$presentation['style'] : '';
+    $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly(
+        $existing . '<style id="' . $id . '">' . str_replace('<', '\\3C ', $css) . '</style>'
+    );
+}
+
+function snapsmack_aurora_presentation(array $options): array
+{
+    $palettes = [
+        'aurora'=>['#56e86a','#7df06a','#56e86a','#2fe6a0','#56e86a','#39b6f0','#56e86a','#9bf25a','#56e86a','#2f7fe0','#56e86a','#f2d24a','#56e86a','#ff5566','#56e86a','#46c0c0'],
+        'borealis-ice'=>['#7cffcb','#00cec9','#4899f0','#9bd7ff','#7cffcb'],
+        'solar'=>['#61e96e','#d6f15a','#f0b429','#f0653e','#d6336c','#61e96e'],
+    ];
+    $key = (string)($options['au_palette'] ?? 'aurora');
+    $panelOpacity = snapsmack_declared_option_int($options, 'au_panel_opacity', 0, 100);
+    $navOpacity = snapsmack_declared_option_int($options, 'au_navbar_opacity', 0, 100);
+    $borderStyle = (string)($options['au_border_style'] ?? 'circle');
+    $radius = ['square'=>'0px','rounded'=>'8px','circle'=>'50%','auto'=>'0px'][$borderStyle] ?? '50%';
+    $result = ['aurora'=>[
+        'palette'=>json_encode($palettes[$key] ?? $palettes['aurora'], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+        'cycle'=>snapsmack_declared_option_int($options, 'au_cycle_time', 15, 240),
+        'opacity'=>number_format(snapsmack_declared_option_int($options, 'au_l1_opacity', 5, 100) / 100, 2, '.', ''),
+        'sky'=>(string)($options['au_sky'] ?? '#000000'),
+        'border_style'=>$borderStyle,
+        'border_dir'=>(string)($options['au_wave_direction'] ?? 'ltr'),
+        'border_rhythm'=>(string)($options['au_wave_rhythm'] ?? 'breath'),
+        'border_cycle'=>snapsmack_declared_option_int($options, 'au_wave_speed', 20, 600),
+    ]];
+    snapsmack_presentation_style($result, 'snapsmack-aurora-presentation', [
+        '--au-sky'=>snapsmack_declared_option_hex($options, 'au_sky'),
+        '--tile-bw'=>snapsmack_declared_option_int($options, 'au_border_width', 0, 40).'px',
+        '--tile-radius'=>$radius,
+        '--ring-op'=>number_format(snapsmack_declared_option_int($options, 'au_border_opacity', 0, 100)/100, 2, '.', ''),
+        '--profile-text-glow'=>snapsmack_declared_option_glow($options, 'au_glow'),
+        '--nav-text-glow'=>snapsmack_declared_option_glow($options, 'au_nav_glow'),
+        '--posts-glow'=>snapsmack_declared_option_glow($options, 'au_posts_glow'),
+        '--post-count-color'=>snapsmack_declared_option_hex($options, 'au_posts_color'),
+        '--panel-bg'=>$panelOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'au_panel_color'), $panelOpacity) : 'transparent',
+        '--panel-extend'=>snapsmack_declared_option_int($options, 'au_panel_extend', 0, 100).'px',
+        '--au-navbar-bg'=>$navOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'au_navbar_color'), $navOpacity) : 'transparent',
+        '--nav-line-opacity'=>number_format(snapsmack_declared_option_int($options, 'au_nav_line_opacity', 0, 100)/100, 2, '.', ''),
+        '--nav-line-underline-display'=>(string)($options['au_nav_underline'] ?? '1') === '1' ? 'block' : 'none',
+    ]);
+    return $result;
+}
+
+function snapsmack_jive_turkey_presentation(array $options): array
+{
+    $palettes = [
+        'HARVEST'=>['#d99a2b','#bd4e1f','#6b3f24','#e7be59'],
+        'PEACOCK'=>['#087e8b','#0b3954','#bfd7ea','#ff5a5f'],
+        'DISCO'=>['#ff2e93','#7b2cff','#00d4ff','#f9f871'],
+    ];
+    $key = strtoupper((string)($options['jt_palette'] ?? 'HARVEST'));
+    $colors = $palettes[$key] ?? $palettes['HARVEST'];
+    $panelOpacity = snapsmack_declared_option_int($options, 'jt_panel_opacity', 0, 100);
+    $navOpacity = snapsmack_declared_option_int($options, 'jt_navbar_opacity', 0, 100);
+    $footerOpacity = snapsmack_declared_option_int($options, 'jt_footer_opacity', 0, 100);
+    $result = ['jive'=>[
+        'mode'=>(string)($options['jt_mode'] ?? 'surprise'), 'scrolls_axis'=>(string)($options['jt_scrolls_axis'] ?? 'down'),
+        'scrolls_fade'=>(string)($options['jt_scrolls_colour'] ?? 'fade'), 'colourway'=>$key,
+        'palette'=>json_encode($colors, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), 'field'=>'#f2e2c0',
+        'speed'=>snapsmack_declared_option_int($options, 'jt_speed', 1, 100), 'cycle'=>snapsmack_declared_option_int($options, 'jt_cycle_time', 6, 120),
+        'random'=>(string)($options['jt_random_colour'] ?? '1') === '1' ? '1' : '0', 'border'=>(string)($options['jt_border_on'] ?? '1') === '1' ? '1' : '0',
+        'border_width'=>snapsmack_declared_option_int($options, 'jt_border_width', 0, 40), 'border_speed'=>snapsmack_declared_option_int($options, 'jt_border_speed', 1, 100),
+        'border_wave'=>snapsmack_declared_option_int($options, 'jt_border_wave', 0, 100), 'border_trans'=>snapsmack_declared_option_int($options, 'jt_border_trans', 0, 100),
+        'border_dir'=>(string)($options['jt_border_dir'] ?? 'dtlbr'),
+    ]];
+    snapsmack_presentation_style($result, 'snapsmack-jive-presentation', [
+        '--panel-bg'=>$panelOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'jt_panel_color'), $panelOpacity) : 'transparent',
+        '--panel-extend'=>snapsmack_declared_option_int($options, 'jt_panel_extend', 0, 100).'px',
+        '--jt-navbar-bg'=>$navOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'jt_navbar_color'), $navOpacity) : 'transparent',
+        '--footer-gap'=>snapsmack_declared_option_int($options, 'jt_footer_gap', 0, 200).'px',
+        '--jt-footer-bg'=>$footerOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'jt_footer_color'), $footerOpacity) : 'transparent',
+        '--profile-text-glow'=>snapsmack_declared_option_glow($options, 'jt_glow'), '--nav-text-glow'=>snapsmack_declared_option_glow($options, 'jt_nav_glow'),
+        '--posts-glow'=>snapsmack_declared_option_glow($options, 'jt_posts_glow'), '--post-count-color'=>snapsmack_declared_option_hex($options, 'jt_posts_color'),
+        '--jt-solo-scrim'=>snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'jt_solo_scrim_color'), snapsmack_declared_option_int($options, 'jt_solo_scrim_opacity', 0, 100)),
+        '--jt-solo-pad'=>snapsmack_declared_option_int($options, 'jt_solo_pad', 0, 200).'px',
+    ]);
+    return $result;
+}
+
+function snapsmack_heuristic_presentation(array $options): array
+{
+    $result = ['heuristic'=>[
+        'mode'=>(string)($options['he_system_mode'] ?? 'live'), 'memory'=>($options['he_memory_activity'] ?? '1') ? '1' : '0',
+        'infomatics'=>($options['he_infomatics'] ?? '1') ? '1' : '0', 'classic_fallback'=>($options['he_classic_fallback'] ?? '1') ? '1' : '0',
+        'first_delay'=>snapsmack_declared_option_int($options, 'he_first_delay', 0, 120), 'hold'=>snapsmack_declared_option_int($options, 'he_hold_seconds', 1, 120),
+        'rest'=>snapsmack_declared_option_int($options, 'he_rest_seconds', 1, 120), 'pulses'=>snapsmack_declared_option_int($options, 'he_pulse_count', 0, 3),
+    ]];
+    snapsmack_presentation_style($result, 'snapsmack-heuristic-presentation', [
+        '--he-memory-red'=>snapsmack_declared_option_hex($options, 'he_memory_red'), '--he-calm'=>snapsmack_declared_option_hex($options, 'he_calm_color'),
+        '--he-fault'=>snapsmack_declared_option_hex($options, 'he_fault_color'),
+    ]);
+    return $result;
+}
+
+function snapsmack_game_on_presentation(array $options): array
+{
+    $overlay = snapsmack_declared_option_int($options, 'go_treatment_overlay', -100, 100);
+    $tone = $overlay < 0 ? snapsmack_skin_rgba('#000000', abs($overlay)) : ($overlay > 0 ? snapsmack_skin_rgba('#ffffff', $overlay) : 'transparent');
+    $result = [];
+    snapsmack_presentation_style($result, 'snapsmack-game-on-presentation', [
+        '--go-puzzle-tone'=>$tone, '--tile-radius'=>snapsmack_declared_option_int($options, 'go_border_radius', 0, 100).'px',
+    ]);
+    return $result;
+}
+
+function snapsmack_chaplin_presentation(array $options): array
+{
+    $count = snapsmack_declared_option_int($options, 'chap_line_count', 0, 3);
+    $widths = [snapsmack_declared_option_int($options, 'chap_line_1_width', 1, 20), snapsmack_declared_option_int($options, 'chap_line_2_width', 1, 20), snapsmack_declared_option_int($options, 'chap_line_3_width', 1, 20)];
+    $gap = snapsmack_declared_option_int($options, 'chap_line_gap', 0, 40);
+    $total = $count > 0 ? array_sum(array_slice($widths, 0, $count)) + $gap * max(0, $count - 1) : 0;
+    $stops = []; $at = 0;
+    for ($i = 0; $i < $count; $i++) {
+        if ($i > 0) { $stops[] = 'transparent '.$at.'px'; $at += $gap; $stops[] = 'transparent '.$at.'px'; }
+        $stops[] = '#f0f0f0 '.$at.'px'; $at += $widths[$i]; $stops[] = '#f0f0f0 '.$at.'px';
+    }
+    $stripe = $stops ? implode(',', $stops) : 'transparent 0';
+    $result = ['chaplin'=>[
+        'line_count'=>$count,
+        'ornament_style'=>(string)($options['chap_ornament_style'] ?? 'A'),
+        'corners'=>(string)($options['chap_corner_ornaments'] ?? '1') === '1',
+        'mid_tb'=>(string)($options['chap_mid_top_bot'] ?? '0') === '1',
+        'mid_lr'=>(string)($options['chap_mid_left_right'] ?? '0') === '1',
+        'title_position'=>(string)($options['chap_title_position'] ?? 'below_photo'),
+        'card_style'=>(string)($options['chap_card_style'] ?? 'card'),
+        'show_description'=>(string)($options['single_show_description'] ?? '1') === '1',
+    ]];
+    snapsmack_presentation_style($result, 'snapsmack-chaplin-presentation', [
+        '--chap-grain-opacity'=>number_format(snapsmack_declared_option_int($options, 'chap_grain_intensity', 0, 20)/100, 2, '.', ''),
+        '--chap-frame-gap'=>snapsmack_declared_option_int($options, 'chap_frame_gap', 0, 80).'px', '--chap-orn-gap'=>snapsmack_declared_option_int($options, 'chap_ornament_gap', 0, 80).'px',
+        '--chap-photo-pad-v'=>snapsmack_declared_option_int($options, 'chap_photo_pad_v', 0, 200).'px',
+        '--chap-frame-total'=>$total.'px', '--chap-frame-stripes'=>'linear-gradient(to bottom,'.$stripe.')',
+    ]);
+    return $result;
 }
 
 /** Map manifest-owned grid frame controls to the variables consumed by skin CSS. */
@@ -211,6 +382,11 @@ function snapsmack_parade_presentation(array $options): array
             'speed' => snapsmack_declared_option_int($options, 'pa_flag_speed', 1, 100),
             'amplitude' => snapsmack_declared_option_int($options, 'pa_flag_amplitude', 1, 100),
             'opacity' => snapsmack_declared_option_int($options, 'pa_flag_opacity', 0, 100),
+            'border_style' => (string)($options['pa_border_style'] ?? 'circle'),
+            'border_dir' => (string)($options['pa_border_dir'] ?? 'dtlbr'),
+            'border_rhythm' => (string)($options['pa_border_rhythm'] ?? 'breath'),
+            'border_cycle' => snapsmack_declared_option_int($options, 'pa_wave_speed', 20, 600),
+            'border_minl' => snapsmack_declared_option_int($options, 'pa_border_opacity', 0, 100),
         ],
     ];
 }
