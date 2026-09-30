@@ -20,7 +20,8 @@
  *        mounted, hard-capped by budget.maxMounted (watchdog-tunable).
  *     3. The update pass is CHANGE-DRIVEN — full scans run only when the view
  *        actually moved or new regions are pending, never idly at 60fps.
- *   Idle "alive" wobble is a CSS animation (GPU/compositor), not per-frame JS.
+ *   Individual prints remain fixed within the tabletop. Only the shared world
+ *   transform moves, so the arrangement drifts as one coherent surface.
  *
  * DATA CONTRACT
  *   Mount on a container carrying [data-mayhem] plus:
@@ -97,8 +98,7 @@
             maxMounted: clampInt(d.maxMounted, 30, 600, 180),
             warp: warpOn && !prefersReduced,
             perspective: !prefersReduced,
-            drift: driftOn && !prefersReduced,
-            wobble: !prefersReduced
+            drift: driftOn && !prefersReduced
         };
 
         // ── World / view state ───────────────────────────────────────────
@@ -232,7 +232,7 @@
                 title: img.title || '', src: img.src || '', url: img.url || '#',
                 x: x, y: y, w: w, h: h, z: z,
                 rot: rand(0, 360), warpX: rand(-7, 7), warpY: rand(-7, 7),
-                wob: rand(6, 12), del: rand(0, 6), node: null
+                node: null
             };
             reg.cards.push(card);
             cardCount++;
@@ -280,9 +280,6 @@
             img.className = 'om-img';
             img.style.cssText = 'display:block;width:100%;height:auto;box-shadow:' + shadowFor(card.z) +
                 ';background:rgba(127,127,127,.12);';
-            // Per-tile idle wobble parameters (consumed by the CSS animation).
-            img.style.setProperty('--om-w', card.wob.toFixed(1) + 's');
-            img.style.setProperty('--om-d', card.del.toFixed(1) + 's');
             img.addEventListener('error', function () { fault('img', card.src); a.style.display = 'none'; });
             a.appendChild(img);
             a.addEventListener('click', function (e) { if (dragMoved) e.preventDefault(); });
@@ -374,14 +371,9 @@
             hgTimer = setTimeout(function () { hourglass.style.display = 'none'; }, 320);
         }
 
-        // ── Idle "alive" wobble = CSS class toggle (no per-frame JS) ──────
-        function setAlive(on) {
-            container.classList.toggle('om-alive', !!(on && budget.drift && budget.wobble));
-        }
-
         // ── Pan / drag (mouse + touch) ───────────────────────────────────
         var dragging = false, dragMoved = false, lastX = 0, lastY = 0, lastInteract = now();
-        function pointerDown(px, py) { if (!panEnabled) return; dragging = true; dragMoved = false; lastX = px; lastY = py; container.style.cursor = 'grabbing'; lastInteract = now(); setAlive(false); }
+        function pointerDown(px, py) { if (!panEnabled) return; dragging = true; dragMoved = false; lastX = px; lastY = py; container.style.cursor = 'grabbing'; lastInteract = now(); }
         function pointerMove(px, py) {
             if (!dragging) return;
             var dx = (px - lastX) / view.z, dy = (py - lastY) / view.z;
@@ -401,7 +393,7 @@
             view.z = Math.max(minZoom, Math.min(maxZoom, view.z * factor));
             view.x = wx - px / view.z; view.y = wy - py / view.z;
             renderView(); update();
-            lastInteract = now(); setAlive(false);
+            lastInteract = now();
         }
 
         container.addEventListener('wheel', function (e) { e.preventDefault(); zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.12 : 0.89); }, { passive: false });
@@ -433,7 +425,7 @@
         }
         function scaleDown(reason) {
             tier++;
-            if (tier >= 1) { budget.warp = false; budget.wobble = false; setAlive(false); }
+            if (tier >= 1) { budget.warp = false; }
             if (tier >= 2) { budget.maxMounted = Math.max(40, Math.round(budget.maxMounted * 0.6)); syncMounted(); }
             if (tier >= 3) { budget.drift = false; }
             fault('watchdog: scaled to tier ' + tier + ' (' + (reason || '') + ')', null);
@@ -467,8 +459,6 @@
                 if (document.hidden) { raf = requestAnimationFrame(loop); return; }
                 watchdog(dt);
                 var idle = ambient || ((now() - lastInteract) > driftDelay && !dragging);
-                setAlive(idle);
-
                 if (coverageMode) {
                     // Full-coverage backdrop: gentle bounded sway around origin
                     // (always within the field margin) + a slow zoom-IN breath
@@ -591,7 +581,7 @@
                         x: cx - w / 2, y: cy - h / 2, w: w, h: h,
                         z: 1 + ((r * cols + c) % 9),
                         rot: rand(-16, 16), warpX: rand(-5, 5), warpY: rand(-5, 5),
-                        wob: rand(7, 12), del: rand(0, 6), node: null
+                        node: null
                     };
                     reg.cards.push(card); cardCount++;
                 }
@@ -648,16 +638,10 @@
         if (document.getElementById('om-keyframes')) return;
         var s = document.createElement('style');
         s.id = 'om-keyframes';
+        // Only the loading indicator animates. Prints themselves stay fixed
+        // inside the world and inherit movement solely from the world transform.
         s.textContent =
-            '@keyframes om-flip{0%{transform:rotate(0)}50%{transform:rotate(180deg)}100%{transform:rotate(360deg)}}' +
-            // Full cycle that STARTS and ENDS at the print's resting angle (0deg)
-            // so a staggered-delay wobble never snaps into place on first run.
-            '@keyframes om-wobble{0%{transform:rotate(0deg)}25%{transform:rotate(-0.6deg)}50%{transform:rotate(0deg)}75%{transform:rotate(0.6deg)}100%{transform:rotate(0deg)}}' +
-            // No preserve-3d / perspective: the tabletop is a flat 2D stack of
-            // whole prints layered by z-index. 3D context is what let the warp
-            // slice them.
-            '.om-alive .om-img{animation:om-wobble var(--om-w,9s) ease-in-out var(--om-d,0s) infinite}' +
-            '@media (prefers-reduced-motion: reduce){.om-alive .om-img{animation:none}}';
+            '@keyframes om-flip{0%{transform:rotate(0)}50%{transform:rotate(180deg)}100%{transform:rotate(360deg)}}';
         document.head.appendChild(s);
     }
 
