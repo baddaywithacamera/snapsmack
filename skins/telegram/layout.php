@@ -10,10 +10,10 @@
 </head>
 <body class="telegram-v2">
 <nav class="navigation" aria-label="Primary"><div class="section-inner"><ul class="main-menu"><?php echo snap_render_html(snap_render_component('navigation-tree', ['items' => $view['response']['navigation'] ?? []])); ?></ul><button class="nav-toggle" type="button" aria-label="Toggle navigation"><span class="bars"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span></button><div class="mobile-navigation"><ul class="mobile-menu"><?php echo snap_render_html(snap_render_component('navigation-tree', ['items' => $view['response']['navigation'] ?? []])); ?></ul></div></div></nav>
-<div class="header-image" aria-hidden="true"></div>
+<div class="header-image" aria-hidden="true"><?php if (!empty($view['site']['skin_presentation']['header_media']['image'])): ?><img class="header-media-image" src="<?php echo snap_escape_url($view['site']['skin_presentation']['header_media']['image']); ?>" alt=""><?php endif; ?></div>
 <header class="site-header header section-inner">
-    <a class="site-title" href="<?php echo snap_route_url('home'); ?>"><?php echo snap_escape_html($view['site']['site_name']); ?></a>
-    <?php if (!empty($view['site']['tagline'])): ?>
+    <a class="site-title" href="<?php echo snap_route_url('home'); ?>"><?php if (!empty($view['site']['skin_presentation']['header_media']['logo'])): ?><img class="site-logo<?php if (!empty($view['site']['skin_presentation']['header_media']['retina'])): ?> site-logo-retina<?php endif; ?>" src="<?php echo snap_escape_url($view['site']['skin_presentation']['header_media']['logo']); ?>" alt="<?php echo snap_escape_attr($view['site']['site_name']); ?>"><?php else: ?><?php echo snap_escape_html($view['site']['site_name']); ?><?php endif; ?></a>
+    <?php if (!empty($view['site']['skin_presentation']['header_media']['show_tagline']) && !empty($view['site']['tagline'])): ?>
         <p class="site-tagline blog-description"><?php echo snap_escape_html($view['site']['tagline']); ?></p>
     <?php endif; ?>
 </header>
@@ -66,3 +66,4 @@
 <?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?>
 </body>
 </html>
+
