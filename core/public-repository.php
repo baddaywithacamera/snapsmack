@@ -114,6 +114,21 @@ final class SnapPublicRepository
         );
     }
 
+    public function publicAssetsByIds(array $ids): array {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0)));
+        if (!$ids) return [];
+        $ids = array_slice($ids, 0, 50);
+        $rows = $this->all(
+            'SELECT id,asset_name,asset_path FROM snap_assets WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
+            $ids
+        );
+        $byId = [];
+        foreach ($rows as $row) $byId[(int)$row['id']] = $row;
+        $ordered = [];
+        foreach ($ids as $assetId) if (isset($byId[$assetId])) $ordered[] = $byId[$assetId];
+        return $ordered;
+    }
+
     /** CMS-owned GAME ON pool: no trigram members and no carousel cover images. */
     public function gameOnPuzzlePhotographs(int $limit = 400): array {
         return $this->all(
