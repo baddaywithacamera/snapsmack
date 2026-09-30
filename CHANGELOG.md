@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.792D — 2026-09-30 — Skins present; the CMS decides and acts
+
+- **All 30 packaged skins now own their constrained presentation layouts without regaining CMS authority.** The conversion no longer delegates complete skin-family document skeletons to a generic core renderer. Database access, routing, settings validation, asset registration, and trusted-content construction remain CMS-owned; layouts receive only the bounded view model and registered public assets.
+- **INSTANT CAMERA restores its controlled white background scrim, panel, navbar, and dropdown opacity.** Saved control-panel values win, Menu Manager appearance defaults have one central source, and minimum/default/maximum regression sweeps cover both the scrim and navigation layers.
+- **GAME ON and PARADE no longer receive INSTANT CAMERA markup.** Their background and interaction carriers live in their own constrained layouts, with cross-skin contamination tests covering the grid family.
+- **Release gates bind approval to the exact packaged skin inventory and exact commit.** The retired `0.7.791` identifier is recorded and cannot be silently reused; `0.7.792D` is the next permitted development candidate.
+
 ## 0.7.790D — 2026-09-29 — Progressive feeds no longer stop at the first batch
 
 - **Every skin declaring the shared progressive-reveal engine now receives the bounded complete landing feed that engine requires.** The earlier restoration was hard-coded to INSTANT CAMERA, leaving GAME ON on `theschoolofhardnocks.ca` with only its first 120 visible photographs out of 4,322 before the footer. The CMS entry point now grants the existing 5,000-item ceiling by audited manifest capability instead of skin name, covering GAME ON and the other grid-family skins without returning query or executable authority to them. (`index.php`, `tests/public-controller-boundary-regression.php`.)
