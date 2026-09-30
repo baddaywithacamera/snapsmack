@@ -22,6 +22,36 @@ function snapsmack_public_parse_request(array $input): array
     ];
 }
 
+function snapsmack_heuristic_map(string $raw): array
+{
+    $map = [];
+    foreach (preg_split('/\s*;\s*/', trim($raw)) ?: [] as $rule) {
+        if ($rule === '' || !str_contains($rule, '=')) continue;
+        [$key,$value] = array_map('trim', explode('=', $rule, 2));
+        $parts = array_map('trim', explode('|', $value));
+        $key = strtolower(substr(preg_replace('/[^a-zA-Z0-9:_-]/', '', $key), 0, 80));
+        $code = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $parts[0] ?? ''), 0, 3));
+        if ($key === '' || $code === '') continue;
+        $map[$key] = ['code'=>$code,'label'=>substr($parts[1] ?? 'HEURISTIC ANALYSIS',0,48),
+            'colour'=>in_array($parts[2] ?? '', ['calm','fault','blue','violet'], true) ? $parts[2] : 'calm',
+            'counter'=>strtolower(substr($parts[3] ?? 'total',0,24))];
+    }
+    return $map;
+}
+
+function snapsmack_heuristic_items(array $items, string $raw): array
+{
+    $map = snapsmack_heuristic_map($raw); $total = count($items);
+    foreach ($items as $index => $item) {
+        $rule = $map['post:' . (int)($item['post_id'] ?? 0)] ?? $map[strtolower((string)($item['img_slug'] ?? ''))] ?? null;
+        if ($rule === null) { $items[$index]['heuristic'] = []; continue; }
+        $counter = $rule['counter'];
+        $value = $counter === 'total' ? (string)$total : ($counter === 'ordinal' ? (string)($index + 1) : ($counter === 'post' ? (string)(int)($item['post_id'] ?? 0) : ($counter === 'none' ? '' : substr($counter,0,12))));
+        $items[$index]['heuristic'] = ['code'=>$rule['code'],'label'=>$rule['label'],'colour'=>$rule['colour'],'value'=>$value,'post'=>(int)($item['post_id'] ?? 0)];
+    }
+    return $items;
+}
+
 /**
  * CMS-owned public routing and response modelling. It never emits headers or
  * markup and never reads globals; the entry point applies the returned status.
@@ -33,7 +63,10 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
     $id = max(0, (int)($request['id'] ?? 0));
     $page = max(1, (int)($request['page'] ?? 1));
     $perPageCap = !empty($settings['_cms_full_landing']) ? 5000 : 100;
-    $perPage = max(1, min($perPageCap, (int)($settings['posts_per_page'] ?? 24)));
+    $skin = (string)($settings['active_skin'] ?? '');
+    $pageSizeKey = ['onyx'=>'onyx_wall_page_size', 'scroll'=>'scroll_page_size',
+        'show-n-tell'=>'htbs_grid_per_page'][$skin] ?? 'posts_per_page';
+    $perPage = max(1, min($perPageCap, (int)($settings[$pageSizeKey] ?? 24)));
     $offset = ($page - 1) * $perPage;
     $navigation = $repository->activePages();
 
@@ -49,13 +82,13 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
 
     if ($route === 'landing') {
         $mode = (string)($settings['site_mode'] ?? 'photoblog');
-        $skin = (string)($settings['active_skin'] ?? '');
         $items = $skin === 'glide'
             ? $repository->randomPhotographs(200)
             : ($mode === 'smacktalk'
             ? $repository->longformLanding($perPage, $offset)
             : $repository->photographLanding($perPage, $offset));
         $rows = [];
+        if ($skin === 'heuristic') $items = snapsmack_heuristic_items($items, (string)($settings['he_infomatic_map'] ?? ''));
         if ($skin === 'glide') {
             $rows = array_fill(0, 9, []);
             foreach ($items as $index => $item) {
@@ -67,6 +100,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             }
         }
         return ['status' => 200, 'kind' => 'landing', 'mode' => $mode, 'items' => $items,
+            'puzzle_items' => $skin === 'game-on' ? $repository->gameOnPuzzlePhotographs() : [],
             'rows' => $rows, 'navigation' => $navigation, 'page' => $page,
             'photo_count' => $mode === 'smacktalk' ? 0 : $repository->publishedPhotographCount()];
     }
