@@ -22,6 +22,8 @@ foreach($skins as $skin){
     if(($manifest['schema_version']??0)!==2||($manifest['security_policy']??0)!==2||($manifest['cms_controller']??'')!=='public') throw new RuntimeException("{$skin} manifest boundary failed.");
     $php=glob($dir.'/*.php')?:[];
     if(count($php)!==1||basename($php[0])!=='layout.php') throw new RuntimeException("{$skin} retains legacy PHP.");
+    $layoutSource=(string)file_get_contents($dir.'/layout.php');
+    if(str_contains($layoutSource,"snap_render_component('public-page'")) throw new RuntimeException("{$skin} still delegates its document skeleton to the CMS.");
     $styles[$skin]=hash_file('sha256',$dir.'/style.css');
     foreach($responses as $response){
         $view=snapsmack_build_skin_view($response,['site_name'=>'Example','tagline'=>'Tag','language'=>'en','direction'=>'ltr','skin_slug'=>$skin,'skin_style_url'=>'/skins/'.$skin.'/style.css','skin_presentation'=>snapsmack_skin_presentation([], $skin)]);
@@ -37,6 +39,8 @@ foreach($skins as $skin){
     }
 }
 if(count(array_unique($styles))!==count($styles)) throw new RuntimeException('Grid-family presentations are not distinct.');
+$renderHelpers=(string)file_get_contents($root.'/core/skin-render-helpers.php');
+foreach(['gram-page','ic-scrim','pa-parade-bg','go-puzzle-field'] as $leakedSkeleton)if(str_contains($renderHelpers,$leakedSkeleton))throw new RuntimeException("CMS render helpers retain grid-family skeleton: {$leakedSkeleton}");
 $instantCameraCss=(string)file_get_contents($root.'/skins/instant-camera/style.css');
 if(!preg_match('/body\s*\{[^}]*isolation:\s*isolate\s*;/s',$instantCameraCss)) throw new RuntimeException('Instant Camera lost the stacking context that keeps its negative backdrop layers visible.');
 foreach(['.ic-bg'=>-3,'.ic-scrim'=>-2,'.ic-panel'=>-1] as $selector=>$layer){
