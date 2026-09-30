@@ -26,6 +26,14 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
         foreach (['content', 'description', 'img_description'] as $field) {
             if (isset($item[$field]) && is_string($item[$field])) $item[$field] = snapsmack_trusted_html($item[$field]);
         }
+        $exif = json_decode((string)($item['img_exif'] ?? ''), true);
+        $item['exif'] = is_array($exif) ? $exif : [];
+        $lat = filter_var($item['exif']['latitude'] ?? null, FILTER_VALIDATE_FLOAT);
+        $lon = filter_var($item['exif']['longitude'] ?? null, FILTER_VALIDATE_FLOAT);
+        $item['geo_url'] = ($lat !== false && $lon !== false && $lat >= -90 && $lat <= 90 && $lon >= -180 && $lon <= 180)
+            ? 'https://www.openstreetmap.org/?mlat=' . rawurlencode((string)$lat) . '&mlon=' . rawurlencode((string)$lon)
+            : '';
+        unset($item['img_exif']);
         return $item;
     };
     if (is_array($response['item'] ?? null)) $response['item'] = $trustItem($response['item']);

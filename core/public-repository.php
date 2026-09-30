@@ -28,7 +28,10 @@ final class SnapPublicRepository
             "SELECT id,img_title,img_slug,img_description,img_alt,img_film,img_license,img_date,
                     img_file,img_download_url,img_width,img_height,img_orientation,allow_comments,
                     allow_download,download_url,img_thumb_square,img_thumb_aspect,img_display_options,
-                    img_color_mode,post_id,sort_order,is_sensitive,content_warning
+                    img_color_mode,img_exif,img_source_file,img_source_url,post_id,sort_order,is_sensitive,content_warning,
+                    (SELECT pi.img_focus_x FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_focus_x,
+                    (SELECT pi.img_focus_y FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_focus_y,
+                    (SELECT pi.img_zoom FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_zoom
              FROM snap_images
              WHERE img_slug=? AND img_status='published' AND img_date <= NOW() LIMIT 1",
             [$slug]
@@ -40,7 +43,10 @@ final class SnapPublicRepository
             "SELECT id,img_title,img_slug,img_description,img_alt,img_film,img_license,img_date,
                     img_file,img_download_url,img_width,img_height,img_orientation,allow_comments,
                     allow_download,download_url,img_thumb_square,img_thumb_aspect,img_display_options,
-                    img_color_mode,post_id,sort_order,is_sensitive,content_warning
+                    img_color_mode,img_exif,img_source_file,img_source_url,post_id,sort_order,is_sensitive,content_warning,
+                    (SELECT pi.img_focus_x FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_focus_x,
+                    (SELECT pi.img_focus_y FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_focus_y,
+                    (SELECT pi.img_zoom FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_zoom
              FROM snap_images
              WHERE id=? AND img_status='published' AND img_date <= NOW() LIMIT 1",
             [$id]
@@ -92,7 +98,18 @@ final class SnapPublicRepository
     public function photographLanding(int $limit, int $offset = 0): array {
         return $this->all(
             "SELECT id,img_title,img_slug,img_description,img_alt,img_date,img_file,img_width,img_height,
-                    img_thumb_square,img_thumb_aspect,img_color_mode,post_id,sort_order
+                    img_thumb_square,img_thumb_aspect,img_color_mode,post_id,sort_order,
+                    (SELECT pi.img_size_pct FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_size_pct,
+                    (SELECT pi.img_border_px FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_border_px,
+                    (SELECT pi.img_border_color FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_border_color,
+                    (SELECT pi.img_bg_color FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_bg_color,
+                    (SELECT pi.img_shadow FROM snap_post_images pi WHERE pi.image_id=snap_images.id ORDER BY pi.is_cover DESC,pi.sort_position ASC LIMIT 1) AS img_shadow,
+                    (SELECT p.post_img_size_pct FROM snap_posts p WHERE p.id=snap_images.post_id AND p.status='published' AND p.created_at <= NOW() LIMIT 1) AS post_img_size_pct,
+                    (SELECT p.post_border_px FROM snap_posts p WHERE p.id=snap_images.post_id AND p.status='published' AND p.created_at <= NOW() LIMIT 1) AS post_border_px,
+                    (SELECT p.post_border_color FROM snap_posts p WHERE p.id=snap_images.post_id AND p.status='published' AND p.created_at <= NOW() LIMIT 1) AS post_border_color,
+                    (SELECT p.post_bg_color FROM snap_posts p WHERE p.id=snap_images.post_id AND p.status='published' AND p.created_at <= NOW() LIMIT 1) AS post_bg_color,
+                    (SELECT p.post_shadow FROM snap_posts p WHERE p.id=snap_images.post_id AND p.status='published' AND p.created_at <= NOW() LIMIT 1) AS post_shadow,
+                    (SELECT COUNT(*) FROM snap_post_images pi WHERE pi.post_id=snap_images.post_id AND pi.sort_position >= 0) AS image_count
              FROM snap_images
              WHERE img_status='published' AND img_date <= NOW()
              ORDER BY CASE WHEN sort_order>0 THEN 1 ELSE 0 END ASC,sort_order ASC,id DESC
