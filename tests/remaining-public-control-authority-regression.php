@@ -54,6 +54,11 @@ if ($rationalOff['show_map'] || $rationalOff['show_description'] || $rationalOff
     || $rationalOff['border_width'] !== 30 || $rationalOff['border_color'] !== 'transparent') {
     throw new RuntimeException('Rational Geo min/max/on/off model failed.');
 }
+$rationalMin = snapsmack_skin_presentation(['infobox_height'=>'30'], 'rational-geo')['rational'];
+$rationalMax = snapsmack_skin_presentation(['infobox_height'=>'100'], 'rational-geo')['rational'];
+if ($rationalMin['infobox_height'] !== 30 || $rationalMax['infobox_height'] !== 100) {
+    throw new RuntimeException('Rational Geo infobox height endpoints are not authoritative.');
+}
 $slickrOff = snapsmack_skin_presentation(['single_show_description'=>'0','show_exif_panel'=>'0','show_geo_link'=>'0','show_provenance_footer'=>'0'], 'slickr')['slickr'];
 if (array_filter($slickrOff)) throw new RuntimeException('Slickr off controls failed.');
 foreach (['photogram'=>'discover','rational-geo'=>'rational','scroll'=>'scroll','slickr'=>'slickr'] as $skin=>$model) {
