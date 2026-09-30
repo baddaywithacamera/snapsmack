@@ -38,6 +38,22 @@ $nav = [
     ['label' => 'Archive', 'url' => '/archive'],
     ['label' => 'About', 'url' => '/page/about'],
 ];
+$requestedKind = preg_replace('/[^a-z_]/', '', strtolower((string)($_GET['kind'] ?? '')));
+$fixtureImage = '/skins/' . $slug . '/screenshot-landing.png';
+$fixtureItems = [];
+for ($i = 1; $i <= 9; $i++) {
+    $fixtureItems[] = [
+        'img_title' => 'Fixture photograph ' . $i,
+        'img_slug' => 'fixture-' . $i,
+        'img_alt' => 'Deterministic visual fixture photograph ' . $i,
+        'img_file' => $fixtureImage,
+        'img_thumb_aspect' => $fixtureImage,
+        'img_thumb_square' => $fixtureImage,
+        'url' => '/photo/fixture-' . $i,
+        'width' => 1600,
+        'height' => 1000,
+    ];
+}
 $site = [
     'site_name' => 'SNAPSMACK VISUAL CHECK',
     'owner_name' => 'Example Photographer',
@@ -66,15 +82,23 @@ if (($manifest['cms_controller'] ?? '') === 'smacktalk') {
         'comments' => [['comment_author' => 'Reader', 'comment_text' => 'The presentation remains distinct.']],
     ];
 } else {
+    $kind = in_array($requestedKind, ['landing', 'archive', 'hashtag', 'photo', 'page'], true)
+        ? $requestedKind : 'photo';
     $response = [
-        'kind' => 'photo',
+        'kind' => $kind,
         'status' => 200,
         'page_title' => 'A secure presentation boundary',
         'navigation' => $nav,
+        'items' => $fixtureItems,
+        'photo_count' => count($fixtureItems),
         'item' => [
             'img_title' => 'A secure presentation boundary',
             'img_date' => '2026-09-29',
             'img_alt' => 'Neutral visual fixture placeholder',
+            'img_file' => $fixtureImage,
+            'img_thumb_aspect' => $fixtureImage,
+            'width' => 1600,
+            'height' => 1000,
             'img_description' => snapsmack_trusted_html('<p>This representative photograph caption is rendered by the CMS and arranged by the selected skin.</p>'),
         ],
         'comments' => [['comment_author' => 'Reader', 'comment_text' => 'The presentation remains distinct.']],
