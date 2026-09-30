@@ -12,7 +12,7 @@ $contracts = [
     '50-shades-of-noah-grey' => ['fsog-header', 'fsog-header-inside', 'fsog-photobox', 'fsog-photo-wrap', 'fsog-image'],
     'rational-geo' => ['rg-header', 'rg-header-inner', 'rg-photobox', 'rg-photo-wrap', 'rg-image'],
     '52-card-pickup' => ['pickup-header', 'pickup-photo-wrap', 'pickup-image', 'pickup-tabletop', 'data-mayhem', 'pickup-ghost-footer'],
-    'true-grit' => ['tg-header', 'tg-header-inside', 'tg-photobox', 'tg-photo-wrap', 'tg-image'],
+    'true-grit' => ['tg-header', 'tg-header-inside', 'tg-photobox', 'tg-photo-wrap', 'tg-image', 'tg-pagination', 'previous_page', 'next_page'],
 ];
 
 foreach ($contracts as $skin => $needles) {
