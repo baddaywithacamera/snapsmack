@@ -78,7 +78,7 @@ function snap_render_navigation_tree(array $items, int $depth = 0): string {
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
     $gramProfiles = [
-        'the-grid'=>'tg', 'sudden-impact'=>'tg', 'instant-camera'=>'tg', 'sliders'=>'tg',
+        'the-grid'=>'tg', 'sudden-impact'=>'tg', 'sliders'=>'tg',
         'aurora'=>'au', 'parade'=>'pa', 'jive-turkey'=>'jt', 'heuristic'=>'he', 'game-on'=>'go',
     ];
     $skinSlug = (string)($data['site']['skin_slug'] ?? '');
@@ -132,8 +132,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             $html .= '<div class="go-puzzle-tone" aria-hidden="true"></div><div class="go-puzzle-edge-mask" aria-hidden="true"></div></div>';
         }
         $siteName = (string)($site['site_name'] ?? '');
-        $html .= '<div class="ic-scrim" aria-hidden="true"></div><div class="ic-panel" aria-hidden="true"></div>'
-            . '<div class="' . $prefix . '-content-wrap landing-feed"><header class="' . $prefix . '-profile">';
+        $html .= '<div class="' . $prefix . '-content-wrap landing-feed"><header class="' . $prefix . '-profile">';
         $avatar = (string)($site['avatar_url'] ?? '');
         if ($avatar !== '') {
             $html .= '<div class="' . $prefix . '-profile-avatar"><img src="' . snap_escape_url($avatar) . '" alt=""></div>';
@@ -282,6 +281,8 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         }
         $footerId = $skin === 'stanley' ? 'stanley-footer' : ($skin === 'writing-with-impact' ? 'wwi-skin-footer' : 'system-footer');
         $html .= '</main></div><footer id="' . $footerId . '" class="site-footer"><div id="footer" class="inside"><p id="sig-text">' . snap_escape_html($site['site_name'] ?? '') . '</p></div></footer></div>' . snap_render_html(snap_render_component('registered-assets', ['assets'=>$site['registered_assets']??[]])) . snap_render_html($site['owner_custom_code'] ?? '');
+    } elseif ($name === 'navigation-tree') {
+        $html = snap_render_navigation_tree(is_array($data['items'] ?? null) ? $data['items'] : []);
     } elseif ($name === 'gram-search-dock') {
         $dock = is_array($data['dock'] ?? null) ? $data['dock'] : [];
         if (!empty($dock['enabled'])) {
