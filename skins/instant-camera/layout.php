@@ -36,7 +36,7 @@
 <main><div id="browse-grid" class="tg-grid public-grid h-feed archive-grid">
 <?php foreach (($view['response']['items'] ?? []) as $item): ?>
 <?php if (!empty($item['img_thumb_aspect']) || !empty($item['img_thumb_square']) || !empty($item['img_file'])): ?>
-<article class="tg-tile"><a href="<?php echo snap_escape_url($item['url'] ?? snap_route_url('photo', ['slug' => $item['img_slug'] ?? ''])); ?>" title="<?php echo snap_escape_attr($item['img_title'] ?? $item['title'] ?? ''); ?>"><?php echo snap_render_html(snap_render_component('image', ['url' => $item['img_thumb_aspect'] ?? $item['img_thumb_square'] ?? $item['img_file'], 'alt' => $item['img_alt'] ?? $item['img_title'] ?? ''])); ?></a></article>
+<article class="tg-tile<?php if (!empty($item['is_framed'])): ?> tg-tile--framed<?php endif; ?>" style="<?php echo snap_escape_attr($item['frame_style'] ?? ''); ?>"><a href="<?php echo snap_escape_url($item['url'] ?? snap_route_url('photo', ['slug' => $item['img_slug'] ?? ''])); ?>" title="<?php echo snap_escape_attr($item['img_title'] ?? $item['title'] ?? ''); ?>"><?php echo snap_render_html(snap_render_component('image', ['url' => $item['img_thumb_aspect'] ?? $item['img_thumb_square'] ?? $item['img_file'], 'alt' => $item['img_alt'] ?? $item['img_title'] ?? ''])); ?></a></article>
 <?php endif; ?>
 <?php endforeach; ?>
 </div></main>
@@ -50,6 +50,7 @@
 <?php echo snap_render_html(snap_render_component('gram-search-dock', ['dock' => $view['site']['search_dock'] ?? []])); ?>
 <footer id="system-footer" class="site-footer"><div id="footer"><p id="sig-text"><?php echo snap_escape_html($view['site']['site_name']); ?></p></div></footer>
 </div>
+<div id="tg-modal-overlay" class="tg-modal-overlay" hidden data-grid-url="<?php echo snap_route_url('home'); ?>"><div class="tg-modal-backdrop"></div><div id="tg-modal-frame" class="tg-modal-frame"></div></div><div id="tg-lightbox" class="tg-lightbox" hidden><button type="button" class="tg-lightbox-close" aria-label="Close">&times;</button><img class="tg-lightbox-img" src="" alt=""></div>
 <?php echo snap_render_html(snap_render_component('registered-assets', ['assets' => $view['site']['registered_assets'] ?? []])); ?>
 <?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?>
 </body></html>

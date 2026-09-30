@@ -218,8 +218,8 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
 function snapsmack_sliders_presentation(array $options): array
 {
     return ['sliders'=>[
-        'flow_axis'=>(string)($options['sl_flow_axis'] ?? 'diagonal_up'),
-        'travel'=>number_format((float)($options['sl_travel'] ?? 0.55), 2, '.', ''),
+        'flow_axis'=>(string)($options['sl_flow_axis'] ?? ''),
+        'travel'=>number_format((float)($options['sl_travel'] ?? 0), 2, '.', ''),
     ]];
 }
 
@@ -242,23 +242,23 @@ function snapsmack_aurora_presentation(array $options): array
         'borealis-ice'=>['#7cffcb','#00cec9','#4899f0','#9bd7ff','#7cffcb'],
         'solar'=>['#61e96e','#d6f15a','#f0b429','#f0653e','#d6336c','#61e96e'],
     ];
-    $key = (string)($options['au_palette'] ?? 'aurora');
+    $key = (string)($options['au_palette'] ?? '');
     $panelOpacity = snapsmack_declared_option_int($options, 'au_panel_opacity', 0, 100);
     $navOpacity = snapsmack_declared_option_int($options, 'au_navbar_opacity', 0, 100);
-    $borderStyle = (string)($options['au_border_style'] ?? 'circle');
-    $radius = ['square'=>'0px','rounded'=>'8px','circle'=>'50%','auto'=>'0px'][$borderStyle] ?? '50%';
-    $treatmentMode = (string)($options['au_treatment_mode'] ?? 'none');
+    $borderStyle = (string)($options['au_border_style'] ?? '');
+    $radius = ['square'=>'0px','rounded'=>'8px','circle'=>'50%','auto'=>'0px'][$borderStyle] ?? '0px';
+    $treatmentMode = (string)($options['au_treatment_mode'] ?? '');
     $treatmentImage = snapsmack_declared_media_url($options, 'au_treatment_image');
     $result = ['aurora'=>[
-        'palette'=>json_encode($palettes[$key] ?? $palettes['aurora'], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+        'palette'=>json_encode($palettes[$key] ?? [], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
         'cycle'=>snapsmack_declared_option_int($options, 'au_cycle_time', 15, 240),
         'opacity'=>number_format(snapsmack_declared_option_int($options, 'au_l1_opacity', 5, 100) / 100, 2, '.', ''),
-        'sky'=>(string)($options['au_sky'] ?? '#000000'),
+        'sky'=>(string)($options['au_sky'] ?? ''),
         'border_style'=>$borderStyle,
-        'border_dir'=>(string)($options['au_wave_direction'] ?? 'ltr'),
-        'border_rhythm'=>(string)($options['au_wave_rhythm'] ?? 'breath'),
+        'border_dir'=>(string)($options['au_wave_direction'] ?? ''),
+        'border_rhythm'=>(string)($options['au_wave_rhythm'] ?? ''),
         'border_cycle'=>snapsmack_declared_option_int($options, 'au_wave_speed', 20, 600),
-    ], 'treatment'=>['enabled'=>$treatmentMode === 'color' || ($treatmentMode === 'image' && $treatmentImage !== ''), 'mode'=>$treatmentMode, 'image'=>$treatmentImage, 'position'=>(string)($options['au_treatment_position'] ?? 'center')]];
+    ], 'treatment'=>['enabled'=>$treatmentMode === 'color' || ($treatmentMode === 'image' && $treatmentImage !== ''), 'mode'=>$treatmentMode, 'image'=>$treatmentImage, 'position'=>(string)($options['au_treatment_position'] ?? '')]];
     snapsmack_presentation_style($result, 'snapsmack-aurora-presentation', [
         '--au-sky'=>snapsmack_declared_option_hex($options, 'au_sky'),
         '--tile-bw'=>snapsmack_declared_option_int($options, 'au_border_width', 0, 40).'px',
@@ -274,7 +274,7 @@ function snapsmack_aurora_presentation(array $options): array
         '--au-navbar-bg-inner'=>snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'au_navbar_color'), snapsmack_declared_option_int($options, 'au_navbar_opacity_inner', 0, 100)),
         '--au-navline-shadow'=>snapsmack_declared_option_shadow($options, 'au_navline_shadow'),
         '--nav-line-opacity'=>number_format(snapsmack_declared_option_int($options, 'au_nav_line_opacity', 0, 100)/100, 2, '.', ''),
-        '--nav-line-underline-display'=>(string)($options['au_nav_underline'] ?? '1') === '1' ? 'block' : 'none',
+        '--nav-line-underline-display'=>(string)($options['au_nav_underline'] ?? '') === '1' ? 'block' : 'none',
         '--au-treatment-color'=>snapsmack_declared_option_hex($options, 'au_treatment_color'),
         '--au-treatment-image'=>$treatmentImage !== '' ? 'url("'.$treatmentImage.'")' : 'none',
         '--au-treatment-position'=>['top'=>'center top','bottom'=>'center bottom'][(string)($options['au_treatment_position'] ?? '')] ?? 'center center',
@@ -291,24 +291,24 @@ function snapsmack_jive_turkey_presentation(array $options): array
         'GROOVY'=>['cream'=>'#f2e7d6','colors'=>['#7b3f9e','#e368a4','#3f7cc4'],'centre'=>'#e368a4','dark'=>'#2b2340'],
         'HARVEST'=>['cream'=>'#f2e2c0','colors'=>['#d99a2b','#bd4e1f','#6b3f24'],'centre'=>'#d99a2b','dark'=>'#38220f'],
     ];
-    $key = strtoupper((string)($options['jt_palette'] ?? 'HARVEST'));
-    $active = $colourways[$key] ?? $colourways['HARVEST'];
+    $key = strtoupper((string)($options['jt_palette'] ?? ''));
+    $active = $colourways[$key] ?? ['cream'=>'transparent','colors'=>[]];
     $panelOpacity = snapsmack_declared_option_int($options, 'jt_panel_opacity', 0, 100);
     $navOpacity = snapsmack_declared_option_int($options, 'jt_navbar_opacity', 0, 100);
     $footerOpacity = snapsmack_declared_option_int($options, 'jt_footer_opacity', 0, 100);
-    $treatmentMode = (string)($options['jt_treatment_mode'] ?? 'none');
+    $treatmentMode = (string)($options['jt_treatment_mode'] ?? '');
     $treatmentImage = snapsmack_declared_media_url($options, 'jt_treatment_image');
     $result = ['jive'=>[
-        'mode'=>(string)($options['jt_mode'] ?? 'surprise'), 'scrolls_axis'=>(string)($options['jt_scrolls_axis'] ?? 'down'),
-        'scrolls_fade'=>(string)($options['jt_scrolls_colour'] ?? 'fade'), 'colourway'=>$key,
+        'mode'=>(string)($options['jt_mode'] ?? ''), 'scrolls_axis'=>(string)($options['jt_scrolls_axis'] ?? ''),
+        'scrolls_fade'=>(string)($options['jt_scrolls_colour'] ?? ''), 'colourway'=>$key,
         'colourways'=>json_encode($colourways, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
         'palette'=>json_encode($active['colors'], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), 'field'=>$active['cream'],
         'speed'=>snapsmack_declared_option_int($options, 'jt_speed', 1, 100), 'cycle'=>snapsmack_declared_option_int($options, 'jt_cycle_time', 6, 120),
-        'random'=>(string)($options['jt_random_colour'] ?? '1') === '1' ? '1' : '0', 'border'=>(string)($options['jt_border_on'] ?? '1') === '1' ? '1' : '0',
+        'random'=>(string)($options['jt_random_colour'] ?? '') === '1' ? '1' : '0', 'border'=>(string)($options['jt_border_on'] ?? '') === '1' ? '1' : '0',
         'border_width'=>snapsmack_declared_option_int($options, 'jt_border_width', 0, 40), 'border_speed'=>snapsmack_declared_option_int($options, 'jt_border_speed', 1, 100),
         'border_wave'=>snapsmack_declared_option_int($options, 'jt_border_wave', 0, 100), 'border_trans'=>snapsmack_declared_option_int($options, 'jt_border_trans', 0, 100),
-        'border_dir'=>(string)($options['jt_border_dir'] ?? 'dtlbr'),
-    ], 'treatment'=>['enabled'=>$treatmentMode === 'color' || ($treatmentMode === 'image' && $treatmentImage !== ''), 'mode'=>$treatmentMode, 'image'=>$treatmentImage, 'position'=>(string)($options['jt_treatment_position'] ?? 'center')]];
+        'border_dir'=>(string)($options['jt_border_dir'] ?? ''),
+    ], 'treatment'=>['enabled'=>$treatmentMode === 'color' || ($treatmentMode === 'image' && $treatmentImage !== ''), 'mode'=>$treatmentMode, 'image'=>$treatmentImage, 'position'=>(string)($options['jt_treatment_position'] ?? '')]];
     snapsmack_presentation_style($result, 'snapsmack-jive-presentation', [
         '--panel-bg'=>$panelOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'jt_panel_color'), $panelOpacity) : 'transparent',
         '--panel-extend'=>snapsmack_declared_option_int($options, 'jt_panel_extend', 0, 100).'px',
@@ -334,8 +334,8 @@ function snapsmack_jive_turkey_presentation(array $options): array
 function snapsmack_heuristic_presentation(array $options): array
 {
     $result = ['heuristic'=>[
-        'mode'=>(string)($options['he_system_mode'] ?? 'live'), 'memory'=>($options['he_memory_activity'] ?? '1') ? '1' : '0',
-        'infomatics'=>($options['he_infomatics'] ?? '1') ? '1' : '0', 'classic_fallback'=>($options['he_classic_fallback'] ?? '1') ? '1' : '0',
+        'mode'=>(string)($options['he_system_mode'] ?? ''), 'memory'=>($options['he_memory_activity'] ?? false) ? '1' : '0',
+        'infomatics'=>($options['he_infomatics'] ?? false) ? '1' : '0', 'classic_fallback'=>($options['he_classic_fallback'] ?? false) ? '1' : '0',
         'first_delay'=>snapsmack_declared_option_int($options, 'he_first_delay', 0, 120), 'hold'=>snapsmack_declared_option_int($options, 'he_hold_seconds', 1, 120),
         'rest'=>snapsmack_declared_option_int($options, 'he_rest_seconds', 1, 120), 'pulses'=>snapsmack_declared_option_int($options, 'he_pulse_count', 0, 3),
     ]];
@@ -369,19 +369,19 @@ function snapsmack_chaplin_presentation(array $options): array
         $stops[] = '#f0f0f0 '.$at.'px'; $at += $widths[$i]; $stops[] = '#f0f0f0 '.$at.'px';
     }
     $stripe = $stops ? implode(',', $stops) : 'transparent 0';
-    $ornament = (string)($options['chap_ornament_style'] ?? 'A');
+    $ornament = (string)($options['chap_ornament_style'] ?? '');
     $base = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
     $assetBase = $base . 'skins/chaplin/assets/svg/' . (in_array($ornament, ['A','B','C','D'], true) ? $ornament : 'A');
     $result = ['chaplin'=>[
         'line_count'=>$count,
         'ornament_style'=>$ornament,
         'corner_asset'=>$assetBase . '-corner.svg', 'top_asset'=>$assetBase . '-top.svg', 'side_asset'=>$assetBase . '-side.svg',
-        'corners'=>(string)($options['chap_corner_ornaments'] ?? '1') === '1',
-        'mid_tb'=>(string)($options['chap_mid_top_bot'] ?? '0') === '1',
-        'mid_lr'=>(string)($options['chap_mid_left_right'] ?? '0') === '1',
-        'title_position'=>(string)($options['chap_title_position'] ?? 'below_photo'),
-        'card_style'=>(string)($options['chap_card_style'] ?? 'card'),
-        'show_description'=>(string)($options['single_show_description'] ?? '1') === '1',
+        'corners'=>(string)($options['chap_corner_ornaments'] ?? '') === '1',
+        'mid_tb'=>(string)($options['chap_mid_top_bot'] ?? '') === '1',
+        'mid_lr'=>(string)($options['chap_mid_left_right'] ?? '') === '1',
+        'title_position'=>(string)($options['chap_title_position'] ?? ''),
+        'card_style'=>(string)($options['chap_card_style'] ?? ''),
+        'show_description'=>(string)($options['single_show_description'] ?? '') === '1',
     ]];
     snapsmack_presentation_style($result, 'snapsmack-chaplin-presentation', [
         '--chap-grain-opacity'=>number_format(snapsmack_declared_option_int($options, 'chap_grain_intensity', 0, 20)/100, 2, '.', ''),
@@ -458,9 +458,9 @@ function snapsmack_parade_presentation(array $options): array
             'speed' => snapsmack_declared_option_int($options, 'pa_flag_speed', 1, 100),
             'amplitude' => snapsmack_declared_option_int($options, 'pa_flag_amplitude', 1, 100),
             'opacity' => snapsmack_declared_option_int($options, 'pa_flag_opacity', 0, 100),
-            'border_style' => (string)($options['pa_border_style'] ?? 'circle'),
-            'border_dir' => (string)($options['pa_border_dir'] ?? 'dtlbr'),
-            'border_rhythm' => (string)($options['pa_border_rhythm'] ?? 'breath'),
+            'border_style' => (string)($options['pa_border_style'] ?? ''),
+            'border_dir' => (string)($options['pa_border_dir'] ?? ''),
+            'border_rhythm' => (string)($options['pa_border_rhythm'] ?? ''),
             'border_cycle' => snapsmack_declared_option_int($options, 'pa_wave_speed', 20, 600),
             'border_minl' => snapsmack_declared_option_int($options, 'pa_border_opacity', 0, 100),
         ],

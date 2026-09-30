@@ -52,6 +52,34 @@ function snapsmack_heuristic_items(array $items, string $raw): array
     return $items;
 }
 
+function snapsmack_game_on_focus_item(array $item): array
+{
+    $item['img_focus_x'] = max(0, min(100, is_numeric($item['img_focus_x'] ?? null) ? (float)$item['img_focus_x'] : 50));
+    $item['img_focus_y'] = max(0, min(100, is_numeric($item['img_focus_y'] ?? null) ? (float)$item['img_focus_y'] : 50));
+    $item['img_zoom'] = max(100, min(500, is_numeric($item['img_zoom'] ?? null) ? (float)$item['img_zoom'] : 100));
+    return $item;
+}
+
+function snapsmack_grid_frame_items(array $items, array $settings, string $skin): array
+{
+    $prefixes = ['the-grid'=>'tg','aurora'=>'au','sudden-impact'=>'tg','parade'=>'pa','jive-turkey'=>'jt','heuristic'=>'he','instant-camera'=>'ic','game-on'=>'go','sliders'=>'ic'];
+    $prefix = $prefixes[$skin] ?? ''; if ($prefix === '') return $items;
+    $level = (string)($settings[$prefix.'_customize_level'] ?? 'per_grid');
+    $shadowMap = ['0'=>'none','1'=>'3px 3px 8px rgba(0,0,0,.20)','2'=>'6px 6px 18px rgba(0,0,0,.40)','3'=>'12px 12px 32px rgba(0,0,0,.60)'];
+    foreach ($items as $index => $item) {
+        $source = $level === 'per_image' ? 'img_' : ($level === 'per_carousel' ? 'post_' : '');
+        if ($source === '') { $items[$index]['frame_style']=''; $items[$index]['is_framed']=false; continue; }
+        $size=max(1,min(100,(int)($item[$source.($source==='img_'?'size_pct':'img_size_pct')]??100)));
+        $border=max(0,min(100,(int)($item[$source.'border_px']??0)));
+        $color=(string)($item[$source.'border_color']??'#000000'); if(!preg_match('/^#[0-9a-f]{6}$/i',$color))$color='#000000';
+        $bg=(string)($item[$source.'bg_color']??'#ffffff'); if(!preg_match('/^#[0-9a-f]{6}$/i',$bg))$bg='#ffffff';
+        $shadow=$shadowMap[(string)($item[$source.'shadow']??'0')]??'none';
+        $items[$index]['frame_style']="--tile-img-size:{$size}%;--tile-border-w:{$border}px;--tile-border-c:{$color};--tile-bg:{$bg};--tile-shadow:{$shadow};";
+        $items[$index]['is_framed']=$size<100||$border>0||$shadow!=='none';
+    }
+    return $items;
+}
+
 /**
  * CMS-owned public routing and response modelling. It never emits headers or
  * markup and never reads globals; the entry point applies the returned status.
@@ -72,7 +100,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
 
     if ($route === 'resolve') {
         $item = $slug !== '' ? $repository->photographBySlug($slug) : null;
-        if ($item !== null) return ['status' => 200, 'kind' => 'photo', 'item' => $item,
+        if ($item !== null) return ['status' => 200, 'kind' => 'photo', 'item' => snapsmack_game_on_focus_item($item),
             'comments' => $repository->approvedComments((int)$item['id'], null), 'navigation' => $navigation];
         $pageItem = $slug !== '' ? $repository->activePageBySlug($slug) : null;
         return $pageItem === null
@@ -87,6 +115,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             : ($mode === 'smacktalk'
             ? $repository->longformLanding($perPage, $offset)
             : $repository->photographLanding($perPage, $offset));
+        $items = snapsmack_grid_frame_items($items, $settings, $skin);
         $rows = [];
         if ($skin === 'heuristic') $items = snapsmack_heuristic_items($items, (string)($settings['he_infomatic_map'] ?? ''));
         if ($skin === 'glide') {
@@ -115,14 +144,14 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             }
         }
         return ['status' => 200, 'kind' => 'landing', 'mode' => $mode, 'items' => $items,
-            'puzzle_items' => $skin === 'game-on' ? $repository->gameOnPuzzlePhotographs() : [],
+            'puzzle_items' => $skin === 'game-on' ? array_map('snapsmack_game_on_focus_item', $repository->gameOnPuzzlePhotographs()) : [],
             'rows' => $rows, 'slider_items' => $sliderItems, 'navigation' => $navigation, 'page' => $page,
             'photo_count' => $mode === 'smacktalk' ? 0 : $repository->publishedPhotographCount()];
     }
     if ($route === 'photo') {
         $item = $slug !== '' ? $repository->photographBySlug($slug) : $repository->photographById($id);
         if ($item === null) return ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation];
-        return ['status' => 200, 'kind' => 'photo', 'item' => $item,
+        return ['status' => 200, 'kind' => 'photo', 'item' => snapsmack_game_on_focus_item($item),
             'comments' => $repository->approvedComments((int)$item['id'], null), 'navigation' => $navigation];
     }
     if ($route === 'post') {
