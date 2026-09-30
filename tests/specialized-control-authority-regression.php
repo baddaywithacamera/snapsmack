@@ -5,11 +5,12 @@ require_once dirname(__DIR__) . '/core/trusted-html.php';
 require_once dirname(__DIR__) . '/core/skin-render-helpers.php';
 require_once dirname(__DIR__) . '/core/skin-view-contract.php';
 require_once dirname(__DIR__) . '/core/skin-presentation.php';
+require_once dirname(__DIR__) . '/core/public-controller.php';
 
 function special_check(bool $ok, string $message): void { if (!$ok) throw new RuntimeException($message); }
 function special_render(string $skin, array $settings, string $kind = 'landing'): string {
     $response = $kind === 'photo'
-        ? ['kind'=>'photo','photo_count'=>1,'navigation'=>[],'item'=>['img_title'=>'Photo','img_slug'=>'photo','img_file'=>'/photo.jpg','img_description'=>snapsmack_trusted_html('<p>Description</p>')]]
+        ? ['kind'=>'photo','photo_count'=>1,'navigation'=>[],'item'=>['img_title'=>'Photo','img_slug'=>'photo','img_file'=>'/photo.jpg','img_focus_x'=>17,'img_focus_y'=>83,'img_zoom'=>240,'img_description'=>snapsmack_trusted_html('<p>Description</p>')]]
         : ['kind'=>'landing','photo_count'=>1,'navigation'=>[],'items'=>[['img_title'=>'Photo','img_slug'=>'photo','img_thumb_square'=>'/thumb.jpg','img_file'=>'/photo.jpg']]];
     $view = snapsmack_build_skin_view($response, ['site_name'=>'Example','language'=>'en','direction'=>'ltr','skin_style_url'=>'/skin.css','skin_presentation'=>snapsmack_skin_presentation($settings, $skin)]);
     ob_start(); special_check(snapsmack_render_strict_skin_template(dirname(__DIR__).'/skins/'.$skin, 'layout.php', $view), "{$skin} did not render"); return (string)ob_get_clean();
@@ -25,12 +26,26 @@ foreach (['data-jt-mode="flow"','data-jt-speed="72"','data-jt-cycle="29"','--pan
 $jiveTreatment = special_render('jive-turkey', ['jt_treatment_mode'=>'color','jt_treatment_color'=>'#123456','jt_treatment_overlay'=>'35','jt_navbar_opacity_inner'=>'79','jt_navline_shadow_size'=>'2','jt_navline_shadow_opacity'=>'75'], 'photo');
 foreach (['class="jt-treatment-bg"','--jt-treatment-color:#123456','--jt-treatment-overlay:rgba(255,255,255,0.35)','--jt-navbar-bg-inner:rgba(255,255,255,0.79)','--jt-navline-shadow:0 2px 2px -2px'] as $value) special_check(str_contains($jiveTreatment, $value), "JIVE TURKEY treatment/nav control missing: {$value}");
 special_check(snapsmack_declared_media_url(['x'=>'../config.php'], 'x') === '', 'Treatment media path traversal was accepted.');
+$heuristicItems = snapsmack_heuristic_items([['post_id'=>7,'img_slug'=>'sample']], 'post:7=HAL|MEMORY BANK|fault|ordinal');
+special_check(($heuristicItems[0]['heuristic'] ?? []) === ['code'=>'HAL','label'=>'MEMORY BANK','colour'=>'fault','value'=>'1','post'=>7], 'HEURISTIC CMS infomatic enrichment failed.');
 
 $heuristic = special_render('heuristic', ['he_system_mode'=>'quiet','he_first_delay'=>'31','he_hold_seconds'=>'11','he_rest_seconds'=>'22','he_pulse_count'=>'2','he_memory_red'=>'#123456']);
 foreach (['data-mode="quiet"','data-first-delay="31"','data-hold="11"','data-rest="22"','data-pulses="2"','--he-memory-red:#123456','data-heuristic-memory'] as $value) special_check(str_contains($heuristic, $value), "HEURISTIC control missing: {$value}");
 
 $game = special_render('game-on', ['go_treatment_overlay'=>'-42','go_border_radius'=>'17']);
 foreach (['--go-puzzle-tone:rgba(0,0,0,0.42)','--tile-radius:17px','data-game-on'] as $value) special_check(str_contains($game, $value), "GAME ON control missing: {$value}");
+$gameSolo = special_render('game-on', [], 'photo');
+foreach (['data-play-as-puzzle','data-focus-x="17"','data-focus-y="83"','data-zoom="240"'] as $value) special_check(str_contains($gameSolo, $value), "GAME ON solo puzzle action missing: {$value}");
+$boundedFocus = snapsmack_game_on_focus_item(['img_focus_x'=>-5,'img_focus_y'=>150,'img_zoom'=>999]);
+special_check($boundedFocus['img_focus_x'] === 0 && $boundedFocus['img_focus_y'] === 100 && $boundedFocus['img_zoom'] === 500, 'GAME ON focus/zoom bounds failed.');
+$defaultFocus = snapsmack_game_on_focus_item([]);
+special_check($defaultFocus['img_focus_x'] === 50 && $defaultFocus['img_focus_y'] === 50 && $defaultFocus['img_zoom'] === 100, 'GAME ON CMS focus/zoom defaults failed.');
+special_check(!str_contains((string)file_get_contents(dirname(__DIR__).'/skins/game-on/layout.php'), "['img_focus_x'] ?? 50"), 'GAME ON skin duplicated the CMS focus control default.');
+$perImageFrame = snapsmack_grid_frame_items([['img_size_pct'=>82,'img_border_px'=>6,'img_border_color'=>'#123456','img_bg_color'=>'#abcdef','img_shadow'=>'2']], ['go_customize_level'=>'per_image'], 'game-on');
+foreach (['--tile-img-size:82%','--tile-border-w:6px','--tile-border-c:#123456','--tile-bg:#abcdef','--tile-shadow:6px 6px 18px'] as $value) special_check(str_contains($perImageFrame[0]['frame_style'], $value), "Per-image frame override missing: {$value}");
+special_check($perImageFrame[0]['is_framed'] === true, 'Per-image framed state missing.');
+$perCarouselFrame = snapsmack_grid_frame_items([['post_img_size_pct'=>91,'post_border_px'=>3,'post_border_color'=>'#654321','post_bg_color'=>'#fedcba','post_shadow'=>'1']], ['ic_customize_level'=>'per_carousel'], 'instant-camera');
+foreach (['--tile-img-size:91%','--tile-border-w:3px','--tile-border-c:#654321','--tile-bg:#fedcba','--tile-shadow:3px 3px 8px'] as $value) special_check(str_contains($perCarouselFrame[0]['frame_style'], $value), "Per-carousel frame override missing: {$value}");
 
 $parade = special_render('parade', ['pa_border_style'=>'sweep','pa_border_dir'=>'rtl','pa_border_rhythm'=>'constant','pa_wave_speed'=>'91','pa_border_opacity'=>'44']);
 foreach (['data-pa-border-style="sweep"','data-pa-border-dir="rtl"','data-pa-border-rhythm="constant"','data-pa-border-cycle="91"','data-pa-border-minl="44"'] as $value) special_check(str_contains($parade, $value), "PARADE control missing: {$value}");
@@ -50,5 +65,10 @@ foreach (['--ic-scrim:0.00','--sl-layer-color:#123456','--sl-wall-opacity:0.15']
 foreach (['--ic-scrim:0.95','--sl-layer-color:#abcdef','--sl-wall-opacity:1.00'] as $value) special_check(str_contains((string)$slidersMax['style'], $value), "SLIDERS maximum control missing: {$value}");
 special_check(($slidersMin['sliders']['flow_axis'] ?? '') === 'horizontal' && ($slidersMin['sliders']['travel'] ?? '') === '0.20', 'SLIDERS minimum movement model failed.');
 special_check(($slidersMax['sliders']['flow_axis'] ?? '') === 'vertical' && ($slidersMax['sliders']['travel'] ?? '') === '1.50', 'SLIDERS maximum movement model failed.');
+
+$presentationSource = (string)file_get_contents(dirname(__DIR__).'/core/skin-presentation.php');
+foreach (["['au_palette'] ?? 'aurora'","['jt_palette'] ?? 'HARVEST'","['jt_mode'] ?? 'surprise'","['he_system_mode'] ?? 'live'","['chap_card_style'] ?? 'card'","['pa_border_style'] ?? 'circle'","['sl_flow_axis'] ?? 'diagonal_up'"] as $duplicateDefault) {
+    special_check(!str_contains($presentationSource, $duplicateDefault), "Renderer duplicated manifest control default: {$duplicateDefault}");
+}
 
 echo "Specialized control authority regression passed.\n";
