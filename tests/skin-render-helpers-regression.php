@@ -26,18 +26,19 @@ if (str_contains($rendered, 'javascript:') || !str_contains($rendered, '&lt;Admi
     throw new RuntimeException('Shared component failed context escaping.');
 }
 if (snap_render_html(snap_render_component('unknown', [])) !== '') throw new RuntimeException('Unknown component did not fail closed.');
-$page = snap_render_html(snap_render_component('smacktalk-page', [
-    'site' => ['site_name' => '<Site>', 'tagline' => '<Tag>'],
-    'response' => [
-        'kind' => 'single', 'navigation' => [],
-        'post' => ['title' => '<Story>', 'created_at' => '2026-09-28', 'featured_image_path' => ''],
-        'rendered_content' => snapsmack_trusted_html('<p>CMS HTML</p>'),
-        'comments_enabled' => true,
-        'comments' => [['comment_author' => '<Reader>', 'comment_text' => '<script>no</script>']],
-    ],
-]));
+$smacktalkView = snapsmack_build_skin_view([
+    'kind' => 'single', 'navigation' => [],
+    'post' => ['title' => '<Story>', 'created_at' => '2026-09-28', 'featured_image_path' => ''],
+    'rendered_content' => snapsmack_trusted_html('<p>CMS HTML</p>'),
+    'comments_enabled' => true,
+    'comments' => [['comment_author' => '<Reader>', 'comment_text' => '<script>no</script>']],
+], ['site_name' => '<Site>', 'tagline' => '<Tag>', 'language' => 'en', 'direction' => 'ltr', 'skin_style_url' => '/skin.css']);
+ob_start();
+$smacktalkRendered = snapsmack_render_strict_skin_template(dirname(__DIR__) . '/skins/alfred', 'layout.php', $smacktalkView);
+$page = (string)ob_get_clean();
+if (!$smacktalkRendered) throw new RuntimeException('SMACKTALK strict layout did not render.');
 if (!str_contains($page, '<p>CMS HTML</p>') || str_contains($page, '<script>') || !str_contains($page, '&lt;Story&gt;')) {
-    throw new RuntimeException('Shared SMACKTALK page crossed its trust boundary.');
+    throw new RuntimeException('SMACKTALK layout crossed its trust boundary.');
 }
 $publicView = snapsmack_build_skin_view(
     ['kind' => 'photo', 'navigation' => [], 'item' => ['img_title' => '<Photo>', 'img_description' => snapsmack_trusted_html('<p>CMS caption</p>')], 'comments' => []],

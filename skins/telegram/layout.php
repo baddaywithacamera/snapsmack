@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title><?php echo snap_escape_html($view['response']['page_title'] ?? $view['site']['site_name']); ?></title>
     <link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['skin_style_url']); ?>">
+    <?php echo snap_render_html($view['site']['skin_custom_style'] ?? ''); ?>
 </head>
 <body class="telegram-v2">
 <header class="site-header">
@@ -60,5 +61,7 @@
 </main>
 
 <footer class="site-footer"><p><?php echo snap_escape_html($view['site']['site_name']); ?></p></footer>
+<?php echo snap_render_html(snap_render_component('registered-assets', ['assets' => $view['site']['registered_assets'] ?? []])); ?>
+<?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?>
 </body>
 </html>
