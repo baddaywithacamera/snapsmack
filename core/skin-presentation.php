@@ -96,4 +96,17 @@ function snapsmack_instant_camera_presentation(array $settings): array
         'mayhem_warp' => (($settings['mayhem_warp'] ?? '1') === '1'),
     ];
 }
+
+/** CMS-owned, bounded presentation data for the shared floating search dock. */
+function snapsmack_gram_search_dock_presentation(array $settings): array
+{
+    if (($settings['search_enabled'] ?? '0') !== '1') return ['enabled' => false];
+    return [
+        'enabled' => true,
+        'placeholder' => substr(trim((string)($settings['search_placeholder'] ?? 'Search or #tag…')), 0, 120),
+        'disc_color' => snapsmack_skin_hex($settings, 'gsd_disc_color', '#ffffff'),
+        'disc_opacity' => snapsmack_skin_int($settings, 'gsd_disc_opacity', 100, 0, 100),
+        'glass_color' => snapsmack_skin_hex($settings, 'gsd_glass_color', '#262626'),
+    ];
+}
 // ===== SNAPSMACK EOF =====
