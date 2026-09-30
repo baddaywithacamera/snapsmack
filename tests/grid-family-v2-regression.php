@@ -33,6 +33,11 @@ foreach($skins as $skin){
     }
 }
 if(count(array_unique($styles))!==count($styles)) throw new RuntimeException('Grid-family presentations are not distinct.');
+$instantCameraCss=(string)file_get_contents($root.'/skins/instant-camera/style.css');
+if(!preg_match('/body\s*\{[^}]*isolation:\s*isolate\s*;/s',$instantCameraCss)) throw new RuntimeException('Instant Camera lost the stacking context that keeps its negative backdrop layers visible.');
+foreach(['.ic-bg'=>-3,'.ic-scrim'=>-2,'.ic-panel'=>-1] as $selector=>$layer){
+    if(!preg_match('/'.preg_quote($selector,'/').'\s*\{[^}]*z-index:\s*'.preg_quote((string)$layer,'/').'\s*;/s',$instantCameraCss)) throw new RuntimeException("Instant Camera backdrop layer {$selector} lost its z-index contract.");
+}
 $game=snapsmack_skin_presentation(['go_puzzle_mode'=>'moving','go_puzzle_density'=>'500','go_modal_theme'=>'invalid'],'game-on');
 if(($game['options']['go_puzzle_mode']??'')!=='moving'||($game['options']['go_puzzle_density']??-1)!==100.0||($game['options']['go_modal_theme']??'')==='invalid') throw new RuntimeException('GAME ON options escaped central manifest validation.');
 echo "Grid-family schema-v2 regression passed.\n";
