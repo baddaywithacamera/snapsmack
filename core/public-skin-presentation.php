@@ -19,6 +19,7 @@ function snapsmack_public_skin_presentation(string $skin, array $options): array
         $colours=['yellow'=>'#ffcc00','white'=>'#ffffff','black'=>'#000000','grey'=>'#808080','none'=>'transparent'];
         $choice=(string)($options['image_border_color'] ?? '');
         $out['rational']=[
+            'infobox_height'=>snapsmack_declared_option_int($options,'infobox_height',30,100),
             'border_color'=>$colours[$choice] ?? 'transparent',
             'border_width'=>snapsmack_declared_option_int($options,'hero_border_width',0,80),
             'frame_style'=>'border:var(--rg-hero-inner,4px) solid #ffffff;outline:' . snapsmack_declared_option_int($options,'hero_border_width',0,80) . 'px solid ' . ($colours[$choice] ?? 'transparent'),
