@@ -31,6 +31,7 @@ require_once $root . '/core/trusted-html.php';
 require_once $root . '/core/skin-render-helpers.php';
 require_once $root . '/core/skin-view-contract.php';
 require_once $root . '/core/asset-registry.php';
+require_once $root . '/core/skin-presentation.php';
 
 $nav = [
     ['label' => 'Home', 'url' => '/'],
@@ -41,10 +42,14 @@ $site = [
     'site_name' => 'SNAPSMACK VISUAL CHECK',
     'owner_name' => 'Example Photographer',
     'tagline' => 'The CMS decides and acts. The skin presents.',
+    'site_description' => 'A deterministic local fixture for skin parity review.',
     'base_url' => '/',
     'language' => 'en',
     'direction' => 'ltr',
     'skin_style_url' => '/skins/' . $slug . '/style.css',
+    'skin_slug' => $slug,
+    'skin_presentation' => snapsmack_skin_presentation([], $slug),
+    'search_dock' => ['enabled' => false],
     'registered_assets' => snapsmack_skin_declared_assets($manifest),
 ];
 
