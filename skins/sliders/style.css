@@ -1365,7 +1365,7 @@ body { background: transparent !important; }      /* let the fixed layers show *
     opacity: var(--ic-scrim, 0.6);
     pointer-events: none;
 }
-.sl-glide-bg { filter: blur(var(--sl-blur,1px)); transform: scale(1.025); }
+.sl-glide-bg { opacity: var(--sl-wall-opacity, .72); filter: blur(var(--sl-blur,1px)); transform: scale(1.025); }
 .sl-glide-bg[data-flow-axis="horizontal"] { --sl-axis-angle:0deg; }
 .sl-glide-bg[data-flow-axis="vertical"] { --sl-axis-angle:90deg; }
 .sl-glide-bg[data-flow-axis="diagonal_down"] { --sl-axis-angle:45deg; }
