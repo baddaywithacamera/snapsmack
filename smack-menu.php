@@ -19,6 +19,7 @@
  */
 
 require_once 'core/auth-smack.php';
+require_once 'core/menu-presentation.php';
 
 $menu_is_gramofsmack = (($settings['site_mode'] ?? 'photoblog') === 'carousel');
 
@@ -39,11 +40,7 @@ function smack_menu_without_archive(array $items): array {
 
 // ── SETTINGS WE MANAGE ────────────────────────────────────────────────────
 // Dropdown appearance settings stored as flat keys in snap_settings.
-$dropdown_keys = [
-    'nav_dropdown_bg'       => '#000000',
-    'nav_dropdown_opacity'  => '88',
-    'nav_dropdown_text'     => '#ffffff',
-];
+$dropdown_keys = snapsmack_menu_appearance_defaults();
 
 // ── POST HANDLER ──────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_nav_menu'])) {
@@ -77,9 +74,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_nav_menu'])) {
 }
 
 // ── LOAD CURRENT SETTINGS ─────────────────────────────────────────────────
-$dd_bg      = $settings['nav_dropdown_bg']      ?? '#000000';
-$dd_opacity = (int)($settings['nav_dropdown_opacity'] ?? 88);
-$dd_text    = $settings['nav_dropdown_text']    ?? '#ffffff';
+$dropdown_appearance = snapsmack_menu_appearance($settings);
+$dd_bg      = $dropdown_appearance['nav_dropdown_bg'];
+$dd_opacity = $dropdown_appearance['nav_dropdown_opacity'];
+$dd_text    = $dropdown_appearance['nav_dropdown_text'];
 
 // ── LOAD CURRENT MENU JSON ────────────────────────────────────────────────
 $menu_json_raw = $settings['nav_menu_json'] ?? '';
