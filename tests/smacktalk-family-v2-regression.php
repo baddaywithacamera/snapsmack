@@ -38,4 +38,22 @@ foreach ($skins as $skin) {
     }
 }
 if (count(array_unique($styles)) !== count($skins)) throw new RuntimeException('SMACKTALK family no longer has distinct presentation styles.');
+
+foreach (['stanley' => 'stanley-sidebar', 'writing-with-impact' => 'wwi-sidebar'] as $skin => $sidebarId) {
+    $dir = $root . '/skins/' . $skin;
+    foreach ([false, true] as $enabled) {
+        $view = snapsmack_build_skin_view($cases['feed'], [
+            'site_name' => 'Example', 'tagline' => 'Tagline', 'base_url' => '/',
+            'language' => 'en', 'direction' => 'ltr', 'skin_slug' => $skin,
+            'skin_style_url' => '/skins/' . $skin . '/style.css',
+            'skin_presentation' => ['options' => ['show_sidebar' => $enabled]],
+        ]);
+        ob_start();
+        $ok = snapsmack_render_strict_skin_template($dir, 'layout.php', $view);
+        $html = (string)ob_get_clean();
+        if (!$ok || (str_contains($html, 'id="' . $sidebarId . '"') !== $enabled)) {
+            throw new RuntimeException("{$skin} ignored the saved sidebar control.");
+        }
+    }
+}
 echo "SMACKTALK schema-v2 family regression passed.\n";
