@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/core/skin-security-policy.php';
+if (!defined('SNAPSMACK_ROOT')) define('SNAPSMACK_ROOT', dirname(__DIR__));
+if (!defined('SKINS_DIR')) define('SKINS_DIR', dirname(__DIR__) . '/skins');
+require_once dirname(__DIR__) . '/core/skin-registry.php';
 
 $root = dirname(__DIR__);
 $publisher = (string)file_get_contents($root . '/smack-central/sc-skins.php');
@@ -23,18 +26,22 @@ try {
     ]));
     file_put_contents($tmp . '/layout.php', '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; ?>');
     $illegal = [
-        'functions.php' => '<?php function tilez_query() {}',
-        'database.php' => '<?php $pdo->query("SELECT id FROM snap_posts");',
-        'request.php' => '<?php echo $_GET["page"];',
-        'payload.php5' => '<?php echo "executable";',
-        '.htaccess' => 'AddHandler application/x-httpd-php .jpg',
-        'skin.js' => 'fetch("/admin")',
+        'sql' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; $pdo->query("SELECT id FROM snap_posts");',
+        'request' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; echo $_GET["page"];',
+        'helper-function' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; function tilez_columns() {}',
+        'variable-function' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; $fn($view);',
+        'globals' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; echo $GLOBALS["settings"];',
+        'dynamic-include' => '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; include $view["template"];',
     ];
     foreach ($illegal as $name => $body) {
-        file_put_contents($tmp . '/' . $name, $body);
-        if (snapsmack_skin_security_gate($tmp, $root) === []) throw new RuntimeException("Illegal skin file {$name} passed the package gate.");
-        unlink($tmp . '/' . $name);
+        file_put_contents($tmp . '/layout.php', $body);
+        if (snapsmack_skin_security_gate($tmp, $root) === []) throw new RuntimeException("Illegal declared template {$name} passed the package gate.");
+        if (snapsmack_skin_validate_staged_package($tmp) === null) throw new RuntimeException("Installer accepted illegal declared template {$name}.");
     }
+    // TILEZ-style mixed helper: reusable function, request state, and SQL in
+    // the one declared template must be rejected by both lifecycle gates.
+    file_put_contents($tmp . '/layout.php', '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; function tilez_columns(){ global $pdo; return $pdo->query("SELECT * FROM snap_posts WHERE id=".(int)$_GET["id"]); }');
+    if (snapsmack_skin_security_gate($tmp, $root) === [] || snapsmack_skin_validate_staged_package($tmp) === null) throw new RuntimeException('TILEZ-style executable template passed a lifecycle gate.');
     echo "Illegal skin packaging regression passed.\n";
 } finally {
     foreach (glob($tmp . '/*') ?: [] as $file) unlink($file);
