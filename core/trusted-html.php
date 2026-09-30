@@ -5,6 +5,7 @@ declare(strict_types=1);
 final class SnapTrustedHtml
 {
     private function __construct(private string $html) {}
+    private function __clone(): void {}
     public static function __snapsmackCmsOnly(string $sanitized): self { return new self($sanitized); }
     public function __toString(): string { return $this->html; }
 }
