@@ -8,6 +8,7 @@
 
 $root = dirname(__DIR__);
 $banner = file_get_contents($root . '/core/consent-banner.php');
+$consent = file_get_contents($root . '/assets/js/ss-engine-consent.js');
 $stats = file_get_contents($root . '/core/stats-logger.php');
 $privacy = file_get_contents($root . '/smack-privacy.php');
 $install = file_get_contents($root . '/install.php');
@@ -16,6 +17,8 @@ $checks = [
     'banner no longer makes the false no-analytics claim' => strpos($banner, 'No tracking or analytics') === false,
     'banner explains unavoidable limited first-party statistics' => strpos($banner, 'recorded whether or not preferences are allowed') !== false,
     'preference choice labels are specific' => strpos($banner, 'Allow preferences') !== false && strpos($banner, 'Continue without') !== false,
+    'cached consent banner is removed when a valid choice cookie exists' => strpos($consent, "if (state !== '1' && state !== '0') state = null") !== false
+        && strpos($consent, "removeChild(staleBanner)") !== false,
     'built-in privacy policy is linked when published' => strpos($banner, "privacy-policy.php") !== false,
     'new visits do not retain full referrers' => strpos($stats, 'null, // never retain the full referring URL') !== false,
     'new visits do not retain full user agents' => strpos($stats, 'null, // parse broad browser/OS') !== false,
