@@ -114,6 +114,26 @@ final class SnapPublicRepository
         );
     }
 
+    /** CMS-owned GAME ON pool: no trigram members and no carousel cover images. */
+    public function gameOnPuzzlePhotographs(int $limit = 400): array {
+        return $this->all(
+            "SELECT i.id,i.img_title,i.img_slug,i.img_file,i.img_thumb_square,i.img_thumb_aspect,
+                    pi.img_focus_x,pi.img_focus_y,pi.img_zoom,p.id AS post_id,p.title AS post_title,
+                    COALESCE(ci.img_slug,i.img_slug) AS post_img_slug
+             FROM snap_posts p
+             JOIN snap_post_images pi ON pi.post_id=p.id AND pi.sort_position >= 0
+             JOIN snap_images i ON i.id=pi.image_id
+             LEFT JOIN snap_post_images cpi ON cpi.post_id=p.id AND cpi.is_cover=1
+             LEFT JOIN snap_images ci ON ci.id=cpi.image_id
+             WHERE p.status='published' AND p.created_at <= NOW() AND p.trigram_id IS NULL
+               AND i.img_status='published' AND i.img_date <= NOW()
+               AND i.img_thumb_square IS NOT NULL AND i.img_thumb_square <> ''
+               AND NOT (pi.is_cover=1 AND (SELECT COUNT(*) FROM snap_post_images spi WHERE spi.post_id=p.id AND spi.sort_position >= 0)>1)
+             ORDER BY i.id DESC LIMIT ?",
+            [max(1, min(1000, $limit))]
+        );
+    }
+
     public function publishedPhotographCount(): int {
         $stmt = $this->pdo->query(
             "SELECT COUNT(id) FROM snap_images WHERE img_status='published' AND img_date <= NOW()"
