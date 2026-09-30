@@ -35,4 +35,8 @@ foreach (['game-on', 'instant-camera'] as $skin) {
         throw new RuntimeException("{$skin} no longer declares the shared progressive-reveal capability.");
     }
 }
+$repository = (string)file_get_contents(dirname(__DIR__) . '/core/public-repository.php');
+if (!str_contains($repository, '[max(1, min(5000, $limit)), max(0, $offset)]')) {
+    throw new RuntimeException('Public repository collapses a controller-approved progressive feed below 5,000.');
+}
 echo "Public service/controller boundary regression passed.\n";
