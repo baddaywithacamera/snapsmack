@@ -77,62 +77,7 @@ function snap_render_navigation_tree(array $items, int $depth = 0): string {
 /** Render fixed shared chrome from bounded data; components cannot execute code. */
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
-    if ($name === 'smacktalk-page') {
-        $response = is_array($data['response'] ?? null) ? $data['response'] : [];
-        $site = is_array($data['site'] ?? null) ? $data['site'] : [];
-        $skin = (string)($site['skin_slug'] ?? '');
-        $legacyFamily = in_array($skin, ['alfred','telegram','tilez'], true);
-        $pageId = $skin === 'stanley' ? 'stanley-page' : ($skin === 'writing-with-impact' ? 'wwi-page' : 'page');
-        $headerId = $skin === 'stanley' ? 'stanley-header' : ($skin === 'writing-with-impact' ? 'wwi-header' : 'header');
-        $contentId = $skin === 'stanley' ? 'stanley-content' : ($skin === 'writing-with-impact' ? 'wwi-content' : 'content');
-        $feedClass = $skin === 'stanley' ? 'stanley-posts' : ($skin === 'writing-with-impact' ? 'wwi-posts' : 'posts ss-masonry tilez-posts');
-        $feedItemClass = $skin === 'stanley' ? 'stanley-post-summary' : ($skin === 'writing-with-impact' ? 'wwi-post-summary' : 'post');
-        $html .= snap_render_html($site['skin_custom_style'] ?? '');
-        $html .= '<div id="' . $pageId . '" class="' . snap_escape_attr($skin) . '"><header id="' . $headerId . '" class="site-header header section-inner" data-sticky-header="false"><div class="inside"><a class="site-title logo-area blog-title" href="' . snap_route_url('home') . '"><span class="site-title-text">'
-            . snap_escape_html($site['site_name'] ?? '') . '</span></a>';
-        if (!empty($site['tagline'])) $html .= '<p class="site-tagline">' . snap_escape_html($site['tagline']) . '</p>';
-        $html .= snap_render_html(snap_render_component('navigation', ['items' => $response['navigation'] ?? []])) . '</div></header>';
-        $html .= '<div id="' . $contentId . '"><main id="scroll-stage" class="content post-inner reading-column longform" role="main">';
-        if (($response['kind'] ?? '') === 'single') {
-            $post = is_array($response['post'] ?? null) ? $response['post'] : [];
-            $html .= '<article class="smacktalk-post post-container h-entry"><div class="post-header"><h1 class="post-title p-name">' . snap_escape_html($post['title'] ?? '') . '</h1>'
-                . '<p class="post-date">' . snap_escape_html($post['created_at'] ?? '') . '</p>';
-            if(!empty($post['created_at']))$html.='<time class="dt-published" datetime="'.snap_escape_attr($post['created_at']).'"></time>';
-            if(!empty($site['owner_name']))$html.='<span class="p-author h-card"><span class="p-name">'.snap_escape_html($site['owner_name']).'</span></span>';
-            $html .= '</div><div class="post-inner">';
-            if (!empty($post['featured_image_path'])) {
-                $html .= snap_render_html(snap_render_component('image', ['url' => $post['featured_image_path'], 'alt' => $post['title'] ?? '']));
-            }
-            $html .= '<div class="post-content entry-content e-content">' . snap_render_html($response['rendered_content'] ?? '') . '</div>';
-            if (!empty($response['colophon'])) $html .= '<aside class="post-colophon">' . snap_escape_html($response['colophon']) . '</aside>';
-            if (!empty($response['comments_enabled'])) {
-                $html .= snap_render_html(snap_render_component('comments', ['items' => $response['comments'] ?? []]));
-            }
-            $html .= '</div></article>';
-        } elseif (($response['kind'] ?? '') === 'feed') {
-            $html .= '<section class="section-inner"><div id="browse-grid" class="' . $feedClass . ' smacktalk-feed public-grid h-feed">';
-            foreach (($response['posts'] ?? []) as $post) {
-                if (!is_array($post)) continue;
-                $html .= '<article class="' . $feedItemClass . ' smacktalk-feed-item"><a href="' . snap_escape_url($post['url'] ?? '') . '">';
-                if (!empty($post['image_url'])) $html .= snap_render_html(snap_render_component('image', ['url' => $post['image_url'], 'alt' => $post['title'] ?? '']));
-                $html .= '<h2>' . snap_escape_html($post['title'] ?? '') . '</h2></a></article>';
-            }
-            $html .= '</div></section>';
-        } elseif (($response['kind'] ?? '') === 'archive') {
-            $archiveClass = $skin === 'stanley' ? 'stanley-archive-grid' : ($skin === 'writing-with-impact' ? 'wwi-archive-grid' : 'alfred-archive-grid');
-            $html .= '<section class="section-inner smacktalk-archive"><h1>' . snap_escape_html($response['page_title'] ?? 'Archive') . '</h1><div class="' . $archiveClass . '">';
-            foreach (($response['tiles'] ?? []) as $tile) {
-                if (!is_array($tile)) continue;
-                $html .= '<a href="' . snap_escape_url($tile['full'] ?? '') . '">'
-                    . snap_render_html(snap_render_component('image', ['url' => $tile['thumb'] ?? '', 'alt' => $tile['title'] ?? ''])) . '</a>';
-            }
-            $html .= '</div></section>';
-        } else {
-            $html .= '<section class="not-found"><h1>Not found</h1></section>';
-        }
-        $footerId = $skin === 'stanley' ? 'stanley-footer' : ($skin === 'writing-with-impact' ? 'wwi-skin-footer' : 'system-footer');
-        $html .= '</main></div><footer id="' . $footerId . '" class="site-footer"><div id="footer" class="inside"><p id="sig-text">' . snap_escape_html($site['site_name'] ?? '') . '</p></div></footer></div>' . snap_render_html(snap_render_component('registered-assets', ['assets'=>$site['registered_assets']??[]])) . snap_render_html($site['owner_custom_code'] ?? '');
-    } elseif ($name === 'navigation-tree') {
+    if ($name === 'navigation-tree') {
         $html = snap_render_navigation_tree(is_array($data['items'] ?? null) ? $data['items'] : []);
     } elseif ($name === 'gram-search-dock') {
         $dock = is_array($data['dock'] ?? null) ? $data['dock'] : [];
