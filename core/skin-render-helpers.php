@@ -102,7 +102,6 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         }
         $options = is_array($presentation['options'] ?? null) ? $presentation['options'] : [];
         if ($skinSlug === 'aurora') $html .= '<div class="au-aurora-bg" aria-hidden="true"></div>';
-        if ($skinSlug === 'parade') $html .= '<div class="pa-parade-bg" aria-hidden="true"></div>';
         if ($skinSlug === 'jive-turkey') $html .= '<div class="jt-jive-turkey-bg" aria-hidden="true"></div>';
         if ($skinSlug === 'heuristic') $html .= '<div class="he-heuristic-bg" aria-hidden="true"></div>';
         if ($skinSlug === 'sliders') $html .= '<div class="sl-glide-bg" aria-hidden="true"><div class="sl-glide-field"></div></div>';
