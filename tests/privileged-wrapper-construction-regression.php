@@ -116,10 +116,11 @@ $approved = [
     'core/trusted-html.php|snapsmack_trusted_html|SnapTrustedHtml::factory' => 3,
     'core/custom-code-policy.php|snapsmack_owner_custom_code|SnapOwnerCode::factory' => 1,
     'core/custom-code-policy.php|snapsmack_skin_custom_style|SnapTrustedHtml::factory' => 2,
+    'core/skin-presentation.php|snapsmack_grid_common_presentation|SnapTrustedHtml::factory' => 1,
     'core/skin-presentation.php|snapsmack_instant_camera_presentation|SnapTrustedHtml::factory' => 1,
     'core/skin-presentation.php|snapsmack_parade_presentation|SnapTrustedHtml::factory' => 1,
     'core/skin-presentation.php|snapsmack_presentation_style|SnapTrustedHtml::factory' => 1,
-    'core/skin-presentation.php|snapsmack_skin_presentation|SnapTrustedHtml::factory' => 2,
+    'core/skin-presentation.php|snapsmack_skin_presentation|SnapTrustedHtml::factory' => 3,
     'core/skin-render-helpers.php|snap_render_component|SnapTrustedHtml::factory' => 1,
 ];
 ksort($approved);
