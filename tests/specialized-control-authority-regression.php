@@ -34,4 +34,11 @@ foreach (['data-rainfall','data-density="66"','data-speed="77"','data-angle="-23
 $chaplin = snapsmack_skin_presentation(['chap_line_count'=>'3','chap_line_1_width'=>'2','chap_line_2_width'=>'3','chap_line_3_width'=>'4','chap_line_gap'=>'5','chap_grain_intensity'=>'7'], 'chaplin');
 foreach (['--chap-frame-total:19px','--chap-grain-opacity:0.07','--chap-frame-stripes:linear-gradient'] as $value) special_check(str_contains((string)$chaplin['style'], $value), "CHAPLIN control missing: {$value}");
 
+$slidersMin = snapsmack_skin_presentation(['sl_opacity'=>'0','sl_layer_color'=>'#123456','sl_wall_opacity'=>'15','sl_flow_axis'=>'horizontal','sl_travel'=>'0.2'], 'sliders');
+$slidersMax = snapsmack_skin_presentation(['sl_opacity'=>'95','sl_layer_color'=>'#abcdef','sl_wall_opacity'=>'100','sl_flow_axis'=>'vertical','sl_travel'=>'1.5'], 'sliders');
+foreach (['--ic-scrim:0.00','--sl-layer-color:#123456','--sl-wall-opacity:0.15'] as $value) special_check(str_contains((string)$slidersMin['style'], $value), "SLIDERS minimum control missing: {$value}");
+foreach (['--ic-scrim:0.95','--sl-layer-color:#abcdef','--sl-wall-opacity:1.00'] as $value) special_check(str_contains((string)$slidersMax['style'], $value), "SLIDERS maximum control missing: {$value}");
+special_check(($slidersMin['sliders']['flow_axis'] ?? '') === 'horizontal' && ($slidersMin['sliders']['travel'] ?? '') === '0.20', 'SLIDERS minimum movement model failed.');
+special_check(($slidersMax['sliders']['flow_axis'] ?? '') === 'vertical' && ($slidersMax['sliders']['travel'] ?? '') === '1.50', 'SLIDERS maximum movement model failed.');
+
 echo "Specialized control authority regression passed.\n";
