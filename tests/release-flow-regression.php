@@ -49,8 +49,10 @@ rel_expect(str_contains($guard, "if (\$command === 'promote-stable')"),
     'release guard must provide guarded stable promotion');
 rel_expect(substr_count($guard, 'rf_require_release_gate();') === 2,
     'both development tagging and stable promotion must require the exact-commit release gate');
-rel_expect(str_contains($guard, "'skin_count' => 30") || str_contains($guard, "['skin_count'] ?? null) !== 30"),
-    'release gate must require parity evidence for all 30 packaged skins');
+rel_expect(str_contains($guard, "glob(dirname(__DIR__) . '/skins/*/manifest.json')"),
+    'release gate must derive the complete packaged skin inventory');
+rel_expect(str_contains($guard, "['skin_inventory_sha256']"),
+    'release gate must bind parity evidence to the exact packaged skin inventory');
 rel_expect(str_contains($guard, "'authority_review' => 'approved'"),
     'release gate must require explicit authority review approval');
 rel_expect(str_contains($packager, 'sc_release_identifier_used'),

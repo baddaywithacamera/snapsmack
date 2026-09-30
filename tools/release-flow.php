@@ -113,7 +113,7 @@ function rf_require_release_gate(): void {
     $ref = 'refs/notes/release-gates';
     exec('git notes --ref=' . escapeshellarg($ref) . ' show ' . escapeshellarg($head) . ' 2>&1', $lines, $code);
     if ($code !== 0) {
-        rf_fail("commit {$head} has no release-gate note; security, 30-skin parity, and authority review must pass before tagging");
+        rf_fail("commit {$head} has no release-gate note; security, full skin parity, and authority review must pass before tagging");
     }
     $raw = trim(implode("\n", $lines));
     $gate = json_decode($raw, true);
@@ -129,8 +129,16 @@ function rf_require_release_gate(): void {
             rf_fail("release-gate note field {$field} must be " . json_encode($expected));
         }
     }
-    if (($gate['skin_count'] ?? null) !== 30) {
-        rf_fail('release-gate note must record all 30 packaged skins');
+    $skinDirs = glob(dirname(__DIR__) . '/skins/*/manifest.json') ?: [];
+    $skinNames = array_map(static fn (string $manifest): string => basename(dirname($manifest)), $skinDirs);
+    sort($skinNames, SORT_STRING);
+    $skinCount = count($skinNames);
+    $inventoryHash = hash('sha256', implode("\n", $skinNames));
+    if (($gate['skin_count'] ?? null) !== $skinCount) {
+        rf_fail("release-gate note must record all {$skinCount} packaged skins");
+    }
+    if (($gate['skin_inventory_sha256'] ?? null) !== $inventoryHash) {
+        rf_fail('release-gate note skin inventory does not match the packaged skins');
     }
 }
 
