@@ -32,8 +32,9 @@ foreach($skins as $skin){
         $prefix=$prefixes[$skin];
         if(!str_contains($html,'class="'.$prefix.'-content-wrap')) throw new RuntimeException("{$skin}/{$response['kind']} lost its family content hook.");
         if(($response['kind']??'')==='landing'&&!str_contains($html,'class="'.$prefix.'-tile')) throw new RuntimeException("{$skin} lost its tile contract.");
-        if($skin!=='instant-camera'&&(str_contains($html,'class="ic-scrim"')||str_contains($html,'class="ic-panel"'))) throw new RuntimeException("{$skin} received INSTANT CAMERA structure.");
+        if($skin!=='instant-camera'&&$skin!=='sliders'&&(str_contains($html,'class="ic-scrim"')||str_contains($html,'class="ic-panel"'))) throw new RuntimeException("{$skin} received INSTANT CAMERA structure.");
         if($skin==='instant-camera'&&(!str_contains($html,'class="ic-scrim"')||!str_contains($html,'class="ic-panel"'))) throw new RuntimeException('INSTANT CAMERA layout no longer owns its backdrop structure.');
+        if($skin==='sliders'&&(!str_contains($html,'class="ic-bg sl-glide-bg"')||!str_contains($html,'class="ic-scrim"')||!str_contains($html,'data-glide-wall'))) throw new RuntimeException('SLIDERS layout no longer owns its moving-wall and controlled scrim structure.');
         if($skin==='parade'&&(!str_contains($html,'class="pa-parade-bg pa-flag-bg"')||!str_contains($html,'class="pa-panel"'))) throw new RuntimeException('PARADE layout no longer owns its backdrop structure.');
         if($skin!=='parade'&&(str_contains($html,'class="pa-parade-bg')||str_contains($html,'class="pa-panel"'))) throw new RuntimeException("{$skin} received PARADE structure.");
     }
