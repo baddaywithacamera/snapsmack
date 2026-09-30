@@ -30,6 +30,8 @@ foreach($skins as $skin){
         $prefix=$prefixes[$skin];
         if(!str_contains($html,'class="'.$prefix.'-content-wrap')) throw new RuntimeException("{$skin}/{$response['kind']} lost its family content hook.");
         if(($response['kind']??'')==='landing'&&!str_contains($html,'class="'.$prefix.'-tile')) throw new RuntimeException("{$skin} lost its tile contract.");
+        if($skin!=='instant-camera'&&(str_contains($html,'class="ic-scrim"')||str_contains($html,'class="ic-panel"'))) throw new RuntimeException("{$skin} received INSTANT CAMERA structure.");
+        if($skin==='instant-camera'&&(!str_contains($html,'class="ic-scrim"')||!str_contains($html,'class="ic-panel"'))) throw new RuntimeException('INSTANT CAMERA layout no longer owns its backdrop structure.');
     }
 }
 if(count(array_unique($styles))!==count($styles)) throw new RuntimeException('Grid-family presentations are not distinct.');
@@ -40,4 +42,15 @@ foreach(['.ic-bg'=>-3,'.ic-scrim'=>-2,'.ic-panel'=>-1] as $selector=>$layer){
 }
 $game=snapsmack_skin_presentation(['go_puzzle_mode'=>'moving','go_puzzle_density'=>'500','go_modal_theme'=>'invalid'],'game-on');
 if(($game['options']['go_puzzle_mode']??'')!=='moving'||($game['options']['go_puzzle_density']??-1)!==100.0||($game['options']['go_modal_theme']??'')==='invalid') throw new RuntimeException('GAME ON options escaped central manifest validation.');
+$instantManifest=json_decode((string)file_get_contents($root.'/skins/instant-camera/manifest.json'),true,512,JSON_THROW_ON_ERROR);
+$defaultScrim=(float)$instantManifest['options']['ic_scrim']['default'];
+$instantDefault=snapsmack_skin_presentation([],'instant-camera');
+$instantMinimum=snapsmack_skin_presentation(['ic_scrim'=>'10','ic_panel_opacity'=>'0'],'instant-camera');
+$instantMaximum=snapsmack_skin_presentation(['ic_scrim'=>'90','ic_panel_opacity'=>'100'],'instant-camera');
+foreach([[$instantDefault,number_format($defaultScrim/100,2,'.','')],[$instantMinimum,'0.10'],[$instantMaximum,'0.90']] as [$presentation,$expected]){
+    if(!str_contains((string)$presentation['style'],'--ic-scrim:'.$expected)) throw new RuntimeException('INSTANT CAMERA scrim control did not own its rendered value.');
+}
+if(!str_contains((string)$instantMinimum['style'],'--panel-bg:transparent')||!str_contains((string)$instantMaximum['style'],'--panel-bg:rgba(255,255,255,1.00)')) throw new RuntimeException('INSTANT CAMERA panel opacity control sweep failed.');
+$presentationSource=(string)file_get_contents($root.'/core/skin-presentation.php');
+if(preg_match('/snapsmack_instant_camera_presentation[\s\S]*?\$settings\s*\[\s*[\'\"]ic_/', $presentationSource)) throw new RuntimeException('INSTANT CAMERA presentation bypasses its manifest-declared controls.');
 echo "Grid-family schema-v2 regression passed.\n";
