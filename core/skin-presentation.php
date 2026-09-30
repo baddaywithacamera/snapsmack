@@ -283,13 +283,14 @@ function snapsmack_aurora_presentation(array $options): array
 
 function snapsmack_jive_turkey_presentation(array $options): array
 {
-    $palettes = [
-        'HARVEST'=>['#d99a2b','#bd4e1f','#6b3f24','#e7be59'],
-        'PEACOCK'=>['#087e8b','#0b3954','#bfd7ea','#ff5a5f'],
-        'DISCO'=>['#ff2e93','#7b2cff','#00d4ff','#f9f871'],
+    $colourways = [
+        'BARF'=>['cream'=>'#efe7cf','colors'=>['#c9b23a','#6e7f39','#6b4a2a'],'centre'=>'#c9b23a','dark'=>'#40301c'],
+        'BLECH'=>['cream'=>'#efe3cd','colors'=>['#6a3b86','#dd7328','#c39a3f'],'centre'=>'#c39a3f','dark'=>'#33223e'],
+        'GROOVY'=>['cream'=>'#f2e7d6','colors'=>['#7b3f9e','#e368a4','#3f7cc4'],'centre'=>'#e368a4','dark'=>'#2b2340'],
+        'HARVEST'=>['cream'=>'#f2e2c0','colors'=>['#d99a2b','#bd4e1f','#6b3f24'],'centre'=>'#d99a2b','dark'=>'#38220f'],
     ];
     $key = strtoupper((string)($options['jt_palette'] ?? 'HARVEST'));
-    $colors = $palettes[$key] ?? $palettes['HARVEST'];
+    $active = $colourways[$key] ?? $colourways['HARVEST'];
     $panelOpacity = snapsmack_declared_option_int($options, 'jt_panel_opacity', 0, 100);
     $navOpacity = snapsmack_declared_option_int($options, 'jt_navbar_opacity', 0, 100);
     $footerOpacity = snapsmack_declared_option_int($options, 'jt_footer_opacity', 0, 100);
@@ -298,7 +299,8 @@ function snapsmack_jive_turkey_presentation(array $options): array
     $result = ['jive'=>[
         'mode'=>(string)($options['jt_mode'] ?? 'surprise'), 'scrolls_axis'=>(string)($options['jt_scrolls_axis'] ?? 'down'),
         'scrolls_fade'=>(string)($options['jt_scrolls_colour'] ?? 'fade'), 'colourway'=>$key,
-        'palette'=>json_encode($colors, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), 'field'=>'#f2e2c0',
+        'colourways'=>json_encode($colourways, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+        'palette'=>json_encode($active['colors'], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), 'field'=>$active['cream'],
         'speed'=>snapsmack_declared_option_int($options, 'jt_speed', 1, 100), 'cycle'=>snapsmack_declared_option_int($options, 'jt_cycle_time', 6, 120),
         'random'=>(string)($options['jt_random_colour'] ?? '1') === '1' ? '1' : '0', 'border'=>(string)($options['jt_border_on'] ?? '1') === '1' ? '1' : '0',
         'border_width'=>snapsmack_declared_option_int($options, 'jt_border_width', 0, 40), 'border_speed'=>snapsmack_declared_option_int($options, 'jt_border_speed', 1, 100),
