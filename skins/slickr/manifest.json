@@ -147,6 +147,8 @@
             "type": "select",
             "label": "Blogroll Columns",
             "default": "1",
+            "selector": ".blogroll-grid",
+            "property": "custom-cols",
             "options": {
                 "1": "Single Column",
                 "2": "Two Columns",
