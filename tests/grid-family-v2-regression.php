@@ -59,4 +59,8 @@ foreach([[$instantDefault,number_format($defaultScrim/100,2,'.','')],[$instantMi
 if(!str_contains((string)$instantMinimum['style'],'--panel-bg:transparent')||!str_contains((string)$instantMaximum['style'],'--panel-bg:rgba(255,255,255,1.00)')) throw new RuntimeException('INSTANT CAMERA panel opacity control sweep failed.');
 $presentationSource=(string)file_get_contents($root.'/core/skin-presentation.php');
 if(preg_match('/snapsmack_instant_camera_presentation[\s\S]*?\$settings\s*\[\s*[\'\"]ic_/', $presentationSource)) throw new RuntimeException('INSTANT CAMERA presentation bypasses its manifest-declared controls.');
+$paradeMinimum=snapsmack_skin_presentation(['pa_panel_opacity'=>'0','pa_navbar_opacity'=>'0','pa_flag_opacity'=>'0','pa_flag_speed'=>'1'],'parade');
+$paradeMaximum=snapsmack_skin_presentation(['pa_panel_opacity'=>'100','pa_navbar_opacity'=>'100','pa_flag_opacity'=>'100','pa_flag_speed'=>'100'],'parade');
+if(!str_contains((string)$paradeMinimum['style'],'--panel-bg:transparent')||!str_contains((string)$paradeMaximum['style'],'--panel-bg:rgba(255,255,255,1.00)'))throw new RuntimeException('PARADE panel opacity control sweep failed.');
+if(($paradeMinimum['flag']['opacity']??-1)!==0||($paradeMaximum['flag']['opacity']??-1)!==100||($paradeMinimum['flag']['speed']??-1)!==1||($paradeMaximum['flag']['speed']??-1)!==100)throw new RuntimeException('PARADE flag controls did not own their rendered values.');
 echo "Grid-family schema-v2 regression passed.\n";
