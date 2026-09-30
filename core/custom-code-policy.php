@@ -5,6 +5,7 @@ require_once __DIR__ . '/trusted-html.php';
 final class SnapOwnerCode
 {
     private function __construct(private string $value) {}
+    private function __clone(): void {}
     public static function __snapsmackCmsOnly(string $value): self { return new self($value); }
     public function __toString(): string { return $this->value; }
 }
