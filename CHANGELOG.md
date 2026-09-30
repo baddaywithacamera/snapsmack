@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.790D — 2026-09-29 — Progressive feeds no longer stop at the first batch
+
+- **Every skin declaring the shared progressive-reveal engine now receives the bounded complete landing feed that engine requires.** The earlier restoration was hard-coded to INSTANT CAMERA, leaving GAME ON on `theschoolofhardnocks.ca` with only its first 120 visible photographs out of 4,322 before the footer. The CMS entry point now grants the existing 5,000-item ceiling by audited manifest capability instead of skin name, covering GAME ON and the other grid-family skins without returning query or executable authority to them. (`index.php`, `tests/public-controller-boundary-regression.php`.)
+
 ## 0.7.789D — 2026-09-29 — Instant Camera search dock restored
 
 - **The bottom-left floating search dock is restored to strict INSTANT CAMERA pages.** The security-boundary conversion kept the shared search CSS and JavaScript registered but omitted the CMS-rendered dock markup. Core now passes only bounded presentation data—enabled state, placeholder, and validated colours/opacity—and renders the shared component centrally. Search routing and behaviour remain CMS-owned; no PHP or executable authority returns to the skin. (`core/skin-presentation.php`, `core/skin-view-contract.php`, `core/skin-render-helpers.php`, `index.php`, `tests/skin-render-helpers-regression.php`.)

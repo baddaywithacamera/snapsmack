@@ -24,4 +24,15 @@ $valid = snapsmack_public_parse_request(['route' => 'post', 'slug' => 'hello-wor
 if ($valid !== ['route' => 'post', 'slug' => 'hello-world', 'id' => 7, 'page' => 2, 'query' => '']) {
     throw new RuntimeException('Valid request normalization changed unexpectedly.');
 }
+$entry = (string)file_get_contents(dirname(__DIR__) . '/index.php');
+if (!str_contains($entry, "in_array(\n            'smack-progressive-reveal'")
+    || str_contains($entry, "if (\$active_skin === 'instant-camera')")) {
+    throw new RuntimeException('Full progressive feed is not granted by declared shared-engine capability.');
+}
+foreach (['game-on', 'instant-camera'] as $skin) {
+    $manifest = json_decode((string)file_get_contents(dirname(__DIR__) . '/skins/' . $skin . '/manifest.json'), true);
+    if (!in_array('smack-progressive-reveal', $manifest['require_scripts'] ?? [], true)) {
+        throw new RuntimeException("{$skin} no longer declares the shared progressive-reveal capability.");
+    }
+}
 echo "Public service/controller boundary regression passed.\n";
