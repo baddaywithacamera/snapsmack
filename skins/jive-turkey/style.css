@@ -1245,6 +1245,9 @@ body.jt-modal-open { overflow: hidden; }
     background-position: center center;
     background-repeat: no-repeat;
     background-attachment: fixed;
+    background-color: var(--jt-treatment-color, transparent);
+    background-image: var(--jt-treatment-image, none);
+    background-position: var(--jt-treatment-position, center center);
 }
 
 .jt-treatment-overlay {
@@ -1252,7 +1255,10 @@ body.jt-modal-open { overflow: hidden; }
     inset: 0;
     z-index: -1;
     pointer-events: none;
+    background: var(--jt-treatment-overlay, transparent);
 }
+
+body:not(.route-landing) .jt-sticky-nav { background: var(--jt-navbar-bg-inner, var(--jt-navbar-bg, transparent)); }
 
 /* When a treatment is present, the content column reads as a card floating
    over the background. */
@@ -1592,4 +1598,3 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 .jt-grid .jt-tile--phantom .jt-ring { display: none; }
 
 /* ===== SNAPSMACK EOF ===== */
-

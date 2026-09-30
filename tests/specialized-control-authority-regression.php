@@ -17,9 +17,14 @@ function special_render(string $skin, array $settings, string $kind = 'landing')
 
 $aurora = special_render('aurora', ['au_l1_opacity'=>'83','au_cycle_time'=>'37','au_panel_opacity'=>'64','au_navbar_opacity'=>'27','au_border_width'=>'9']);
 foreach (['data-au-opacity="0.83"','data-au-cycle="37"','--panel-bg:rgba(10,14,26,0.64)','--au-navbar-bg:rgba(10,14,26,0.27)','--tile-bw:9px','class="au-panel"'] as $value) special_check(str_contains($aurora, $value), "AURORA control missing: {$value}");
+$auroraTreatment = special_render('aurora', ['au_treatment_mode'=>'image','au_treatment_image'=>'img_uploads/backdrop.jpg','au_treatment_position'=>'top','au_treatment_overlay'=>'-55','au_navbar_opacity_inner'=>'83'], 'photo');
+foreach (['class="au-treatment-bg"','data-image="/img_uploads/backdrop.jpg"','--au-treatment-image:url("/img_uploads/backdrop.jpg")','--au-treatment-position:center top','--au-treatment-overlay:rgba(0,0,0,0.55)','--au-navbar-bg-inner:rgba(10,14,26,0.83)'] as $value) special_check(str_contains($auroraTreatment, $value), "AURORA treatment/nav control missing: {$value}");
 
 $jive = special_render('jive-turkey', ['jt_mode'=>'flow','jt_speed'=>'72','jt_cycle_time'=>'29','jt_panel_opacity'=>'61','jt_navbar_opacity'=>'24','jt_solo_scrim_opacity'=>'73']);
 foreach (['data-jt-mode="flow"','data-jt-speed="72"','data-jt-cycle="29"','--panel-bg:rgba(255,255,255,0.61)','--jt-navbar-bg:rgba(255,255,255,0.24)','--jt-solo-scrim:rgba(0,0,0,0.73)','class="jt-panel"'] as $value) special_check(str_contains($jive, $value), "JIVE TURKEY control missing: {$value}");
+$jiveTreatment = special_render('jive-turkey', ['jt_treatment_mode'=>'color','jt_treatment_color'=>'#123456','jt_treatment_overlay'=>'35','jt_navbar_opacity_inner'=>'79','jt_navline_shadow_size'=>'2','jt_navline_shadow_opacity'=>'75'], 'photo');
+foreach (['class="jt-treatment-bg"','--jt-treatment-color:#123456','--jt-treatment-overlay:rgba(255,255,255,0.35)','--jt-navbar-bg-inner:rgba(255,255,255,0.79)','--jt-navline-shadow:0 2px 2px -2px'] as $value) special_check(str_contains($jiveTreatment, $value), "JIVE TURKEY treatment/nav control missing: {$value}");
+special_check(snapsmack_declared_media_url(['x'=>'../config.php'], 'x') === '', 'Treatment media path traversal was accepted.');
 
 $heuristic = special_render('heuristic', ['he_system_mode'=>'quiet','he_first_delay'=>'31','he_hold_seconds'=>'11','he_rest_seconds'=>'22','he_pulse_count'=>'2','he_memory_red'=>'#123456']);
 foreach (['data-mode="quiet"','data-first-delay="31"','data-hold="11"','data-rest="22"','data-pulses="2"','--he-memory-red:#123456','data-heuristic-memory'] as $value) special_check(str_contains($heuristic, $value), "HEURISTIC control missing: {$value}");
