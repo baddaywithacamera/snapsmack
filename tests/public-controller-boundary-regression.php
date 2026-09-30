@@ -25,6 +25,9 @@ if ($valid !== ['route' => 'post', 'slug' => 'hello-world', 'id' => 7, 'page' =>
     throw new RuntimeException('Valid request normalization changed unexpectedly.');
 }
 $entry = (string)file_get_contents(dirname(__DIR__) . '/index.php');
+if (!str_contains($entry, "'/style.css?v=' . rawurlencode(\$_active_skin_version)")) {
+    throw new RuntimeException('Strict skin stylesheet URL is not versioned by the installed skin manifest.');
+}
 if (!str_contains($entry, "in_array(\n            'smack-progressive-reveal'")
     || str_contains($entry, "if (\$active_skin === 'instant-camera')")) {
     throw new RuntimeException('Full progressive feed is not granted by declared shared-engine capability.');

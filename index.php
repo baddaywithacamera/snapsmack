@@ -166,6 +166,10 @@ try {
     // request parsing, data access, redirects and status; the skin receives a
     // bounded view model and renders markup only.
     $_active_manifest = load_skin_manifest($active_skin);
+    $_active_skin_version = preg_replace('/[^A-Za-z0-9._-]/', '', (string)($_active_manifest['version'] ?? ''));
+    if ($_active_skin_version === '') $_active_skin_version = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';
+    $_active_skin_style_url = (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin)
+        . '/style.css?v=' . rawurlencode($_active_skin_version);
     require_once __DIR__ . '/core/asset-registry.php';
     $_registered_skin_assets = snapsmack_skin_declared_assets($_active_manifest);
     if (($_active_manifest['cms_controller'] ?? '') === 'smacktalk') {
@@ -201,7 +205,7 @@ try {
                     'site_description' => (string)($settings['site_description'] ?? ''),
                     'avatar_url' => !empty($settings['skin_avatar']) ? (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['skin_avatar'], '/') : '',
                     'skin_slug' => (string)$active_skin,
-                    'skin_style_url' => (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin) . '/style.css',
+                    'skin_style_url' => $_active_skin_style_url,
                     'skin_custom_style' => snapsmack_skin_custom_style($settings),
                     'skin_presentation' => snapsmack_skin_presentation($settings, (string)$active_skin),
                     'owner_custom_code' => snapsmack_owner_custom_code($settings),
@@ -256,7 +260,7 @@ try {
             'site_description' => (string)($settings['site_description'] ?? ''),
             'avatar_url' => !empty($settings['skin_avatar']) ? (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['skin_avatar'], '/') : '',
             'skin_slug' => (string)$active_skin,
-            'skin_style_url' => (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin) . '/style.css',
+            'skin_style_url' => $_active_skin_style_url,
             'skin_custom_style' => snapsmack_skin_custom_style($settings),
             'skin_presentation' => snapsmack_skin_presentation($settings, (string)$active_skin),
             'search_dock' => snapsmack_gram_search_dock_presentation($settings),
