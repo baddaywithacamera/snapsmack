@@ -2,7 +2,8 @@
 <!doctype html>
 <html lang="<?php echo snap_escape_attr($view['site']['language']); ?>" dir="<?php echo snap_escape_attr($view['site']['direction']); ?>">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?php echo snap_escape_html($view['response']['page_title'] ?? $view['site']['site_name']); ?></title><link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['skin_style_url']); ?>"><?php echo snap_render_html($view['site']['skin_custom_style'] ?? ''); ?><?php echo snap_render_html($view['site']['skin_presentation']['style'] ?? ''); ?></head>
-<body class="sudden-impact-v2">
+<body class="sudden-impact-v2" data-carousel-indicator="<?php echo snap_escape_attr($view['site']['skin_presentation']['grid']['carousel_indicator'] ?? ''); ?>" data-hover-overlay="<?php echo snap_escape_attr($view['site']['skin_presentation']['grid']['hover_overlay'] ?? ''); ?>" data-nav-line-mode="<?php echo snap_escape_attr($view['site']['skin_presentation']['grid']['nav_line_mode'] ?? ''); ?>">
+<?php if (!empty($view['site']['skin_presentation']['treatment']['enabled'])): ?><div class="tg-treatment-bg" aria-hidden="true"></div><div class="tg-treatment-overlay" aria-hidden="true"></div><?php endif; ?>
 <div class="tg-content-wrap landing-feed">
 <?php if (($view['site']['skin_presentation']['options']['tg_profile_header'] ?? '') === '1'): ?><section class="tg-profile">
 <?php if (!empty($view['site']['avatar_url'])): ?><div class="tg-profile-avatar tg-profile-avatar--zoom"><img src="<?php echo snap_escape_url($view['site']['avatar_url']); ?>" alt="Profile avatar"></div><?php else: ?><div class="tg-profile-avatar"><span class="tg-profile-avatar-initials"><?php echo snap_escape_html($view['site']['site_name']); ?></span></div><?php endif; ?>
