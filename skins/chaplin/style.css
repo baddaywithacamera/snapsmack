@@ -469,6 +469,9 @@ body:not(.archive-page):not(.static-transmission) .chap-img-frame .post-image {
   right: var(--chap-line-h-inset, 0px);
 }
 
+.chap-line-top, .chap-line-bot { height: var(--chap-frame-total, 2px); background: var(--chap-frame-stripes); }
+.chap-line-lft, .chap-line-rgt { width: var(--chap-frame-total, 2px); background: var(--chap-frame-stripes); }
+
 .chap-line-bot {
   bottom: 0;
   left:  var(--chap-line-h-inset, 0px);
