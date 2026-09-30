@@ -492,12 +492,6 @@
             "selector": ":root",
             "property": "--chap-footer-color",
             "is_greyscale": true
-        },
-        "chap_presets": {
-            "section": "PRESETS",
-            "type": "hidden",
-            "label": "Saved Presets (JSON)",
-            "default": "[]"
         }
     },
     "admin_styling": "\r\n        .control-group-flex { display: flex; align-items: center; gap: 20px; }\r\n        .control-group-flex input { flex: 1; }\r\n        .active-val { width: 50px; text-align: right; font-family: monospace; }\r\n    ",

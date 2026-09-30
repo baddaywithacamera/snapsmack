@@ -52,6 +52,31 @@ foreach (['data-pa-border-style="sweep"','data-pa-border-dir="rtl"','data-pa-bor
 
 $instant = special_render('instant-camera', ['ic_bg_mode'=>'rainfall','ic_rf_density'=>'66','ic_rf_speed'=>'77','ic_rf_angle'=>'-23','ic_rf_thickness'=>'4','ic_rf_color'=>'#123456','ic_rf_opacity'=>'81']);
 foreach (['data-rainfall','data-density="66"','data-speed="77"','data-angle="-23"','data-thickness="4"','data-color="#123456"','data-opacity="81"'] as $value) special_check(str_contains($instant, $value), "INSTANT CAMERA control missing: {$value}");
+$instantControls=special_render('instant-camera',['ic_nav_opacity_inner'=>'37','ic_carousel_indicator'=>'none','ic_hover_overlay'=>'none','ic_treatment_mode'=>'image','ic_treatment_image'=>'img_uploads/ic.jpg','ic_treatment_position'=>'bottom','ic_treatment_overlay'=>'-31'],'photo');
+foreach(['--ic-nav-bg-inner:rgba(255,255,255,0.37)','class="tg-treatment-bg"','--ic-treatment-image:url("/img_uploads/ic.jpg")','--ic-treatment-position:center bottom','--ic-treatment-overlay:rgba(0,0,0,0.31)','.ss-slider-dots{display:none}','[class$="-tile"]:hover img{opacity:1;filter:none}'] as $value)special_check(str_contains($instantControls,$value),"INSTANT CAMERA remaining control missing: {$value}");
+
+foreach(['white'=>'#ffffff','soft'=>'#fafafa','warm'=>'#fff7ed','wash'=>'color-mix(in srgb,var(--accent-color) 8%,#ffffff)'] as $mode=>$colour){$p=snapsmack_skin_presentation(['pa_background'=>$mode],'parade');special_check(str_contains((string)$p['style'],'--pa-bg:'.$colour),"PARADE background {$mode} failed.");}
+$paradeControls=snapsmack_skin_presentation(['pa_border_width'=>'10','pa_tile_glow'=>'17','pa_tile_glow_strength'=>'62','pa_tile_corners'=>'rounded','pa_nav_line_mode'=>'track','pa_navbar_opacity_inner'=>'41','pa_footer_gap'=>'73','pa_footer_bg_color'=>'#123456','pa_footer_bg_opacity'=>'58','pa_text_color'=>'#111111','pa_muted_color'=>'#222222','pa_accent_color'=>'#333333','pa_glow_size'=>'2','pa_glow_opacity'=>'50','pa_nav_glow_size'=>'3','pa_nav_glow_opacity'=>'60','pa_posts_glow_size'=>'4','pa_posts_glow_opacity'=>'70','pa_footer_glow_size'=>'5','pa_footer_glow_opacity'=>'80'],'parade');
+foreach(['--tile-border-w:10px','--tile-radius:14px','--text-primary:#111111','--text-secondary:#222222','--accent-color:#333333','--footer-gap:73px','--pa-footer-bg:rgba(18,52,86,0.58)','--pa-navbar-bg-inner:rgba(255,255,255,0.41)','[class$="-sticky-nav"]{border-color:var(--accent-color)}'] as $value)special_check(str_contains((string)$paradeControls['style'],$value),"PARADE remaining control missing: {$value}");
+
+$jiveSolo=snapsmack_skin_presentation(['jt_gap'=>'19','jt_nav_tile_gap'=>'34','jt_nav_line_color'=>'#123456','jt_nav_line_mode'=>'track','jt_solo_backdrop_source'=>'image','jt_solo_backdrop_image'=>'img_uploads/jive.jpg','jt_solo_backdrop_image_pos'=>'top','jt_solo_card_color'=>'#234567','jt_solo_text_color'=>'#345678','jt_solo_text_secondary_color'=>'#456789'],'jive-turkey');
+foreach(['--grid-gap:19px','--nav-tile-gap:34px','--jt-nav-line:#123456','--jt-solo-backdrop-image:url("/img_uploads/jive.jpg")','--jt-solo-backdrop-position:center top','--jt-solo-card:#234567','--jt-solo-text:#345678','--jt-solo-text-secondary:#456789'] as $value)special_check(str_contains((string)$jiveSolo['style'],$value),"JIVE remaining control missing: {$value}");
+special_check(($jiveSolo['grid']['solo_backdrop_source']??'')==='image','JIVE backdrop source model missing.');
+$jiveSkin=snapsmack_skin_presentation(['jt_solo_backdrop_source'=>'skin','jt_solo_backdrop_image'=>'img_uploads/ignored.jpg'],'jive-turkey');
+special_check(str_contains((string)$jiveSkin['style'],'--jt-solo-backdrop-image:none'),'JIVE skin backdrop source did not suppress image.');
+
+$auroraControls=snapsmack_skin_presentation(['au_tile_corners'=>'rounded','au_nav_line_color'=>'#abcdef','au_nav_line_mode'=>'aurora','au_carousel_indicator'=>'count','au_hover_overlay'=>'title'],'aurora');
+foreach(['--tile-radius:14px','--au-nav-line:#abcdef','.ss-slider-dots{counter-reset:slides}','[class$="-sticky-nav"]{border-color:var(--accent-color)}','[class$="-tile-overlay"]{display:block}'] as $value)special_check(str_contains((string)$auroraControls['style'],$value),"AURORA remaining control missing: {$value}");
+
+foreach(['the-grid','sudden-impact'] as $skin){$tg=special_render($skin,['tg_treatment_mode'=>'color','tg_treatment_color'=>'#123456','tg_treatment_position'=>'top','tg_treatment_overlay'=>'25','tg_carousel_indicator'=>'none','tg_hover_overlay'=>'none']);foreach(['class="tg-treatment-bg"','--tg-treatment-color:#123456','--tg-treatment-position:center top','--tg-treatment-overlay:rgba(255,255,255,0.25)','.ss-slider-dots{display:none}'] as $value)special_check(str_contains($tg,$value),"{$skin} shared treatment/control missing: {$value}");}
+$gridModeCases=[
+    'the-grid'=>['tg_carousel_indicator'=>'count','tg_hover_overlay'=>'title'], 'sudden-impact'=>['tg_carousel_indicator'=>'count','tg_hover_overlay'=>'title'],
+    'instant-camera'=>['ic_carousel_indicator'=>'count','ic_hover_overlay'=>'title'], 'sliders'=>['ic_carousel_indicator'=>'count','ic_hover_overlay'=>'title'],
+    'aurora'=>['au_carousel_indicator'=>'count','au_hover_overlay'=>'title'], 'parade'=>['pa_carousel_indicator'=>'count','pa_hover_overlay'=>'title'],
+    'jive-turkey'=>['jt_carousel_indicator'=>'count','jt_hover_overlay'=>'title'], 'heuristic'=>['he_carousel_indicator'=>'count','he_hover_overlay'=>'title'],
+    'game-on'=>['go_carousel_indicator'=>'count','go_hover_overlay'=>'title'],
+];
+foreach($gridModeCases as $skin=>$settings){$html=special_render($skin,$settings);foreach(['data-carousel-indicator="count"','data-hover-overlay="title"'] as $value)special_check(str_contains($html,$value),"{$skin} did not consume shared grid mode: {$value}");}
 
 $chaplin = snapsmack_skin_presentation(['chap_line_count'=>'3','chap_line_1_width'=>'2','chap_line_2_width'=>'3','chap_line_3_width'=>'4','chap_line_gap'=>'5','chap_grain_intensity'=>'7'], 'chaplin');
 foreach (['--chap-frame-total:19px','--chap-grain-opacity:0.07','--chap-frame-stripes:linear-gradient'] as $value) special_check(str_contains((string)$chaplin['style'], $value), "CHAPLIN control missing: {$value}");

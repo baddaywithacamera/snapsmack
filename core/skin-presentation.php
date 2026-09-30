@@ -212,7 +212,95 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
             $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly($existing . $frameStyle);
         }
     }
+    $gridPrefixes = ['the-grid'=>'tg','sudden-impact'=>'tg','instant-camera'=>'ic','sliders'=>'ic','aurora'=>'au','parade'=>'pa','jive-turkey'=>'jt','heuristic'=>'he','game-on'=>'go'];
+    if (isset($gridPrefixes[$skinSlug])) {
+        $common = snapsmack_grid_common_presentation($presentation['options'], $gridPrefixes[$skinSlug]);
+        $presentation['grid'] = $common['grid'];
+        $existing = isset($presentation['style']) ? (string)$presentation['style'] : '';
+        $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly($existing . (string)$common['style']);
+        if (isset($common['treatment'])) $presentation['treatment'] = $common['treatment'];
+    }
     return $presentation;
+}
+
+/** Bind the common grid-family controls without granting skins authority. */
+function snapsmack_grid_common_presentation(array $options, string $prefix): array
+{
+    $indicator = (string)($options[$prefix . '_carousel_indicator'] ?? '');
+    $hover = (string)($options[$prefix . '_hover_overlay'] ?? '');
+    $vars = [];
+    $gapKey=$prefix.'_gap'; $navGapKey=$prefix.'_nav_tile_gap';
+    $textKey=$prefix.($prefix==='pa'?'_text_color':'_text_primary');
+    $mutedKey=$prefix.($prefix==='pa'?'_muted_color':'_text_secondary');
+    $accentKey=$prefix.($prefix==='pa'?'_accent_color':'_accent');
+    if (array_key_exists($gapKey,$options)) $vars['--grid-gap']=snapsmack_declared_option_int($options,$gapKey,0,100).'px';
+    if (array_key_exists($navGapKey,$options)) $vars['--nav-tile-gap']=snapsmack_declared_option_int($options,$navGapKey,0,100).'px';
+    if (array_key_exists($textKey,$options)) $vars['--text-primary']=snapsmack_declared_option_hex($options,$textKey);
+    if (array_key_exists($mutedKey,$options)) $vars['--text-secondary']=snapsmack_declared_option_hex($options,$mutedKey);
+    if (array_key_exists($accentKey,$options)) $vars['--accent-color']=snapsmack_declared_option_hex($options,$accentKey);
+    if ($prefix === 'ic') {
+        $vars['--ic-nav-bg-inner'] = snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'ic_nav_color'), snapsmack_declared_option_int($options, 'ic_nav_opacity_inner', 0, 100));
+    }
+    if ($prefix === 'au') {
+        $corners = (string)($options['au_tile_corners'] ?? '');
+        $vars['--tile-radius'] = ['square'=>'0','rounded'=>'14px','auto'=>'calc(var(--tile-bw) * 1.5)'][$corners] ?? '0';
+        $vars['--au-nav-line'] = snapsmack_declared_option_hex($options, 'au_nav_line_color');
+    }
+    if ($prefix === 'pa') {
+        $corners = (string)($options['pa_tile_corners'] ?? '');
+        $footerOpacity = snapsmack_declared_option_int($options, 'pa_footer_bg_opacity', 0, 100);
+        $vars += [
+            '--pa-bg'=>['white'=>'#ffffff','soft'=>'#fafafa','warm'=>'#fff7ed','wash'=>'color-mix(in srgb,var(--accent-color) 8%,#ffffff)'][(string)($options['pa_background'] ?? '')] ?? 'transparent',
+            '--tile-border-w'=>snapsmack_declared_option_int($options, 'pa_border_width', 0, 40).'px',
+            '--tile-radius'=>['square'=>'0','rounded'=>'14px','auto'=>'calc(var(--tile-border-w) * 1.5)'][$corners] ?? '0',
+            '--tile-shadow'=>'0 0 '.snapsmack_declared_option_int($options, 'pa_tile_glow', 0, 40).'px '.snapsmack_skin_rgba('#ffffff', snapsmack_declared_option_int($options, 'pa_tile_glow_strength', 0, 100)),
+            '--profile-text-glow'=>snapsmack_declared_option_glow($options, 'pa_glow'), '--nav-text-glow'=>snapsmack_declared_option_glow($options, 'pa_nav_glow'),
+            '--posts-glow'=>snapsmack_declared_option_glow($options, 'pa_posts_glow'), '--footer-text-glow'=>snapsmack_declared_option_glow($options, 'pa_footer_glow'),
+            '--footer-gap'=>snapsmack_declared_option_int($options, 'pa_footer_gap', 0, 200).'px',
+            '--pa-footer-bg'=>$footerOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'pa_footer_bg_color'), $footerOpacity) : 'transparent',
+            '--pa-navbar-bg-inner'=>snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'pa_navbar_color'), snapsmack_declared_option_int($options, 'pa_navbar_opacity_inner', 0, 100)),
+        ];
+    }
+    if ($prefix === 'jt') {
+        $vars += [
+            '--jt-nav-line'=>snapsmack_declared_option_hex($options, 'jt_nav_line_color'),
+            '--jt-solo-card'=>snapsmack_declared_option_hex($options, 'jt_solo_card_color'),
+            '--jt-solo-text'=>snapsmack_declared_option_hex($options, 'jt_solo_text_color'),
+            '--jt-solo-text-secondary'=>snapsmack_declared_option_hex($options, 'jt_solo_text_secondary_color'),
+        ];
+        $soloSource=(string)($options['jt_solo_backdrop_source'] ?? '');
+        $soloImage = $soloSource === 'image' ? snapsmack_declared_media_url($options, 'jt_solo_backdrop_image') : '';
+        $vars['--jt-solo-backdrop-image'] = $soloImage !== '' ? 'url("'.$soloImage.'")' : 'none';
+        $vars['--jt-solo-backdrop-position'] = ['top'=>'center top','bottom'=>'center bottom'][(string)($options['jt_solo_backdrop_image_pos'] ?? '')] ?? 'center center';
+    }
+    $css = ':root{'; foreach ($vars as $name=>$value) $css .= $name.':'.$value.';'; $css .= '}';
+    if ($indicator === 'none') $css .= '.ss-slider-dots{display:none}';
+    if ($indicator === 'count') $css .= '.ss-slider-dots{counter-reset:slides}.ss-slider-dot{counter-increment:slides;display:none}.ss-slider-dots:after{content:counter(slides)}';
+    if ($hover === 'none') $css .= '[class$="-tile"]:hover img{opacity:1;filter:none}';
+    if ($hover === 'title') $css .= '[class$="-tile-overlay"]{display:block}';
+    $lineMode=(string)($options[$prefix.'_nav_line_mode'] ?? '');
+    if ($lineMode === 'track' || $lineMode === 'aurora' || $lineMode === 'jive-turkey') $css .= '[class$="-sticky-nav"]{border-color:var(--accent-color)}';
+    if ($lineMode === 'fixed' && $prefix === 'pa') $css .= '.pa-sticky-nav{border-color:var(--pa-nav-line)}';
+    if ($lineMode === 'static' && $prefix === 'au') $css .= '.au-sticky-nav{border-color:var(--au-nav-line)}';
+    if ($lineMode === 'static' && $prefix === 'jt') $css .= '.jt-sticky-nav{border-color:var(--jt-nav-line)}';
+    if ($prefix === 'ic') $css .= 'body:has(.tg-post-ig) .tg-sticky-nav{background:var(--ic-nav-bg-inner)}.tg-treatment-bg{background-color:var(--ic-treatment-color);background-image:var(--ic-treatment-image);background-position:var(--ic-treatment-position);background-size:cover}.tg-treatment-overlay{background:var(--ic-treatment-overlay)}';
+    if ($prefix === 'tg') $css .= '.tg-treatment-bg{position:fixed;inset:0;background-color:var(--tg-treatment-color);background-image:var(--tg-treatment-image);background-position:var(--tg-treatment-position);background-size:cover;z-index:-3}.tg-treatment-overlay{position:fixed;inset:0;background:var(--tg-treatment-overlay);z-index:-2}';
+    if ($prefix === 'pa') $css .= '#system-footer{margin-top:var(--footer-gap);background:var(--pa-footer-bg);text-shadow:var(--footer-text-glow)}body:has(.pa-post-ig) .pa-sticky-nav{background:var(--pa-navbar-bg-inner)}';
+    if ($prefix === 'jt') $css .= 'body.route-photo,body.route-post{background-color:var(--jt-solo-card);color:var(--jt-solo-text);background-image:var(--jt-solo-backdrop-image);background-position:var(--jt-solo-backdrop-position);background-size:cover}.jt-post-ig-info{color:var(--jt-solo-text-secondary)}';
+    $result = ['grid'=>['carousel_indicator'=>$indicator,'hover_overlay'=>$hover,'nav_line_mode'=>(string)($options[$prefix.'_nav_line_mode'] ?? ''), 'slide_count'=>0],
+        'style'=>SnapTrustedHtml::__snapsmackCmsOnly('<style id="snapsmack-grid-common-presentation">'.str_replace('<','\\3C ',$css).'</style>')];
+    if ($prefix === 'jt') $result['grid']['solo_backdrop_source']=(string)($options['jt_solo_backdrop_source'] ?? '');
+    if (array_key_exists($prefix.'_treatment_mode', $options)) {
+        $mode=(string)($options[$prefix.'_treatment_mode'] ?? ''); $image=snapsmack_declared_media_url($options,$prefix.'_treatment_image');
+        $result['treatment']=['enabled'=>$mode==='color'||($mode==='image'&&$image!==''),'mode'=>$mode,'image'=>$image,'position'=>(string)($options[$prefix.'_treatment_position'] ?? '')];
+        snapsmack_presentation_style($result, 'snapsmack-'.$prefix.'-treatment', [
+            '--'.$prefix.'-treatment-color'=>snapsmack_declared_option_hex($options,$prefix.'_treatment_color'),
+            '--'.$prefix.'-treatment-image'=>$image!==''?'url("'.$image.'")':'none',
+            '--'.$prefix.'-treatment-position'=>['top'=>'center top','bottom'=>'center bottom'][(string)($options[$prefix.'_treatment_position'] ?? '')] ?? 'center center',
+            '--'.$prefix.'-treatment-overlay'=>($o=snapsmack_declared_option_int($options,$prefix.'_treatment_overlay',-100,100))<0?snapsmack_skin_rgba('#000000',abs($o)):snapsmack_skin_rgba('#ffffff',$o),
+        ]);
+    }
+    return $result;
 }
 
 function snapsmack_sliders_presentation(array $options): array
