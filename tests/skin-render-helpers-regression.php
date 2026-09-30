@@ -48,7 +48,7 @@ ob_start();
 $publicRendered = snapsmack_render_strict_skin_template(dirname(__DIR__) . '/skins/slickr', 'layout.php', $publicView);
 $public = (string)ob_get_clean();
 if (!$publicRendered || !str_contains($public, '<p>CMS caption</p>') || !str_contains($public, '&lt;Photo&gt;')) throw new RuntimeException('Public skin trust boundary failed.');
-$presentationHooks = ['id="header"', 'class="site-title-text"', 'class="nav-menu"', 'id="scroll-stage"', 'id="photobox"', 'id="infobox"', 'id="system-footer"', 'id="sig-text"'];
+$presentationHooks = ['class="sl-masthead"', 'class="sl-cover"', 'class="sl-profile-inner"', 'class="sl-profile-tabs"', 'class="sl-single-flow h-entry"', 'id="sl-photobox"', 'class="sl-sidebar"', 'id="system-footer"'];
 foreach ($presentationHooks as $hook) {
     if (!str_contains($public, $hook)) throw new RuntimeException("Public layout lost presentation hook: {$hook}");
 }
