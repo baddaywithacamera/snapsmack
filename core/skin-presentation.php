@@ -40,7 +40,7 @@ function snapsmack_skin_glow(array $settings, string $prefix, int $defaultOpacit
 function snapsmack_declared_option_int(array $options, string $key, int $min, int $max): int
 {
     $value = $options[$key] ?? null;
-    return is_int($value) || is_float($value) ? max($min, min($max, (int)$value)) : $min;
+    return is_numeric($value) ? max($min, min($max, (int)$value)) : $min;
 }
 
 function snapsmack_declared_option_hex(array $options, string $key): string
@@ -135,7 +135,39 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
     if ($skinSlug === 'parade') {
         $presentation += snapsmack_parade_presentation($presentation['options']);
     }
+    $framePrefixes = ['the-grid'=>'tg','sudden-impact'=>'tg','instant-camera'=>'ic','sliders'=>'ic',
+        'aurora'=>'au','parade'=>'pa','jive-turkey'=>'jt','heuristic'=>'he','game-on'=>'go'];
+    if (isset($framePrefixes[$skinSlug])) {
+        $frameStyle = snapsmack_grid_frame_presentation($presentation['options'], $framePrefixes[$skinSlug]);
+        if ($frameStyle !== '') {
+            $existing = isset($presentation['style']) ? (string)$presentation['style'] : '';
+            $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly($existing . $frameStyle);
+        }
+    }
     return $presentation;
+}
+
+/** Map manifest-owned grid frame controls to the variables consumed by skin CSS. */
+function snapsmack_grid_frame_presentation(array $options, string $prefix): string
+{
+    $sizeKey = $prefix . '_frame_size_pct';
+    if (!array_key_exists($sizeKey, $options)) return '';
+    $borderKey = $prefix . '_frame_border_px';
+    $colorKey = $prefix . '_frame_border_color';
+    $backgroundKey = $prefix . '_frame_bg_color';
+    $shadowKey = $prefix . '_frame_shadow';
+    $shadowMap = ['0'=>'none','1'=>'3px 3px 8px rgba(0,0,0,.20)','2'=>'6px 6px 18px rgba(0,0,0,.40)','3'=>'12px 12px 32px rgba(0,0,0,.60)'];
+    $size = snapsmack_declared_option_int($options, $sizeKey, 1, 100) . '%';
+    $border = snapsmack_declared_option_int($options, $borderKey, 0, 100) . 'px';
+    $color = snapsmack_declared_option_hex($options, $colorKey);
+    $background = snapsmack_declared_option_hex($options, $backgroundKey);
+    $shadow = $shadowMap[(string)($options[$shadowKey] ?? '')] ?? 'none';
+    $css = ':root{--tile-img-size:' . $size . ';--slide-img-size:' . $size
+        . ';--tile-border-w:' . $border . ';--slide-border-w:' . $border
+        . ';--tile-border-c:' . $color . ';--slide-border-c:' . $color
+        . ';--tile-bg:' . $background . ';--slide-bg:' . $background
+        . ';--tile-shadow:' . $shadow . ';--slide-shadow:' . $shadow . ';}';
+    return '<style id="snapsmack-grid-frame-presentation">' . $css . '</style>';
 }
 
 /** CMS-owned interpretation of PARADE controls and inert flag geometry. */

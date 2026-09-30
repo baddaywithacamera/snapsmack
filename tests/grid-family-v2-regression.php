@@ -63,4 +63,8 @@ $paradeMinimum=snapsmack_skin_presentation(['pa_panel_opacity'=>'0','pa_navbar_o
 $paradeMaximum=snapsmack_skin_presentation(['pa_panel_opacity'=>'100','pa_navbar_opacity'=>'100','pa_flag_opacity'=>'100','pa_flag_speed'=>'100'],'parade');
 if(!str_contains((string)$paradeMinimum['style'],'--panel-bg:transparent')||!str_contains((string)$paradeMaximum['style'],'--panel-bg:rgba(255,255,255,1.00)'))throw new RuntimeException('PARADE panel opacity control sweep failed.');
 if(($paradeMinimum['flag']['opacity']??-1)!==0||($paradeMaximum['flag']['opacity']??-1)!==100||($paradeMinimum['flag']['speed']??-1)!==1||($paradeMaximum['flag']['speed']??-1)!==100)throw new RuntimeException('PARADE flag controls did not own their rendered values.');
+$frameMinimum=snapsmack_skin_presentation(['go_frame_size_pct'=>'75','go_frame_border_px'=>'0','go_frame_border_color'=>'#123456','go_frame_bg_color'=>'#abcdef','go_frame_shadow'=>'0'],'game-on');
+$frameMaximum=snapsmack_skin_presentation(['go_frame_size_pct'=>'100','go_frame_border_px'=>'20','go_frame_border_color'=>'#654321','go_frame_bg_color'=>'#fedcba','go_frame_shadow'=>'3'],'game-on');
+foreach(['--tile-img-size:75%','--tile-border-w:0px','--tile-border-c:#123456','--tile-bg:#abcdef','--tile-shadow:none'] as $expected)if(!str_contains((string)$frameMinimum['style'],$expected))throw new RuntimeException("Grid frame minimum control lost: {$expected}");
+foreach(['--tile-img-size:100%','--tile-border-w:20px','--tile-border-c:#654321','--tile-bg:#fedcba','--tile-shadow:12px 12px 32px'] as $expected)if(!str_contains((string)$frameMaximum['style'],$expected))throw new RuntimeException("Grid frame maximum control lost: {$expected}");
 echo "Grid-family schema-v2 regression passed.\n";
