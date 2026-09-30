@@ -54,8 +54,8 @@ if(count(array_unique($styles))!==count($styles)) throw new RuntimeException('Gr
 $renderHelpers=(string)file_get_contents($root.'/core/skin-render-helpers.php');
 foreach(['gram-page','ic-scrim','pa-parade-bg','go-puzzle-field'] as $leakedSkeleton)if(str_contains($renderHelpers,$leakedSkeleton))throw new RuntimeException("CMS render helpers retain grid-family skeleton: {$leakedSkeleton}");
 $instantCameraCss=(string)file_get_contents($root.'/skins/instant-camera/style.css');
-if(!preg_match('/body\s*\{[^}]*isolation:\s*isolate\s*;/s',$instantCameraCss)) throw new RuntimeException('Instant Camera lost the stacking context that keeps its negative backdrop layers visible.');
-foreach(['.ic-bg'=>-3,'.ic-scrim'=>-2,'.ic-panel'=>-1] as $selector=>$layer){
+if(!preg_match('/body\s*\{[^}]*isolation:\s*isolate\s*;/s',$instantCameraCss)) throw new RuntimeException('Instant Camera lost its bounded stacking context.');
+foreach(['.ic-bg'=>0,'.ic-scrim'=>1,'.ic-panel'=>2,'.tg-content-wrap'=>3] as $selector=>$layer){
     if(!preg_match('/'.preg_quote($selector,'/').'\s*\{[^}]*z-index:\s*'.preg_quote((string)$layer,'/').'\s*;/s',$instantCameraCss)) throw new RuntimeException("Instant Camera backdrop layer {$selector} lost its z-index contract.");
 }
 $game=snapsmack_skin_presentation(['go_puzzle_mode'=>'moving','go_puzzle_density'=>'500','go_modal_theme'=>'invalid'],'game-on');

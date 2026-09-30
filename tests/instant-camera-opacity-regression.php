@@ -18,7 +18,9 @@ foreach ([0, 50, 100] as $opacity) {
     if (!str_contains($style, $expectedNav)) {
         throw new RuntimeException("Navbar opacity control failed at {$opacity}.");
     }
-    if (!str_contains($style, 'var(--nav-dropdown-bg) ' . $opacity . '%,transparent')) {
+    $expectedDropdown = 'rgba(0,0,0,' . number_format($opacity / 100, 2, '.', '') . ')';
+    if (!str_contains($style, '--nav-dropdown-bg:' . $expectedDropdown)
+        || !str_contains($style, 'background:var(--nav-dropdown-bg)')) {
         throw new RuntimeException("Dropdown opacity control failed at {$opacity}.");
     }
 }
@@ -26,6 +28,12 @@ foreach ([0, 50, 100] as $opacity) {
 $layout = (string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/layout.php');
 $css = (string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/style.css');
 if (!str_contains($layout, 'class="ic-scrim"')) throw new RuntimeException('Scrim layer is absent from the owned layout.');
+if (!preg_match('/\.ic-bg\s*\{[^}]*z-index:\s*0/s', $css)
+    || !preg_match('/\.ic-scrim\s*\{[^}]*z-index:\s*1[^}]*opacity:\s*var\(--ic-scrim/s', $css)
+    || !preg_match('/\.ic-panel\s*\{[^}]*z-index:\s*2/s', $css)
+    || !preg_match('/\.tg-content-wrap\s*\{[^}]*z-index:\s*3/s', $css)) {
+    throw new RuntimeException('Scrim is not visibly stacked between the background and content.');
+}
 if (!preg_match('/\.tg-sticky-nav,\s*\.tg-sticky-nav\.profile-hidden\s*\{\s*background:\s*var\(--ic-nav-bg/s', $css)) {
     throw new RuntimeException('Navbar opacity is not applied both before and after sticky activation.');
 }

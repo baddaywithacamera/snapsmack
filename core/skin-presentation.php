@@ -600,10 +600,9 @@ function snapsmack_instant_camera_presentation(array $options, array $settings =
     $css = ':root{';
     foreach ($vars as $name => $value) $css .= $name . ':' . $value . ';';
     $menuAppearance = snapsmack_menu_appearance($settings);
-    $css .= '--nav-dropdown-bg:' . $menuAppearance['nav_dropdown_bg'] . ';'
+    $css .= '--nav-dropdown-bg:' . snapsmack_skin_rgba($menuAppearance['nav_dropdown_bg'], (int)$menuAppearance['nav_dropdown_opacity']) . ';'
         . '--nav-dropdown-text:' . $menuAppearance['nav_dropdown_text'] . ';}'
-        . '.nav-has-children{position:relative}.nav-submenu{display:none;position:absolute;z-index:1000;top:100%;left:0;min-width:180px;margin:0;padding:8px 0;list-style:none;background:color-mix(in srgb,var(--nav-dropdown-bg) '
-        . $menuAppearance['nav_dropdown_opacity'] . '%,transparent)}'
+        . '.nav-has-children{position:relative}.nav-submenu{display:none;position:absolute;z-index:1000;top:100%;left:0;min-width:180px;margin:0;padding:8px 0;list-style:none;background:var(--nav-dropdown-bg)}'
         . '.nav-has-children:hover>.nav-submenu,.nav-has-children.open>.nav-submenu{display:block}.nav-submenu li{display:block}.nav-submenu a,.nav-submenu span{display:block;padding:8px 14px;white-space:nowrap;color:var(--nav-dropdown-text)}'
         . '.nav-submenu .nav-submenu{top:0;left:100%}';
     return [
