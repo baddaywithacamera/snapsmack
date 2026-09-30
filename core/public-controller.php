@@ -99,9 +99,24 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
                 $rows[$index % 9][] = $item;
             }
         }
+        $sliderItems = [];
+        if ($skin === 'show-n-tell' && (($settings['htbs_slider_enabled'] ?? '1') === '1')) {
+            $assetIds = json_decode((string)($settings['htbs_slider_assets'] ?? '[]'), true);
+            $sliderMax = max(1, min(30, (int)($settings['htbs_slider_max'] ?? 10)));
+            $assets = $repository->publicAssetsByIds(is_array($assetIds) ? array_slice($assetIds, 0, $sliderMax) : []);
+            $imageOverlay = (($settings['htbs_overlay_source'] ?? 'global') === 'image');
+            foreach ($assets as $asset) {
+                $sliderItems[] = [
+                    'img_file' => (string)($asset['asset_path'] ?? ''),
+                    'img_alt' => (string)($asset['asset_name'] ?? ''),
+                    'overlay_name' => $imageOverlay ? (string)($asset['asset_name'] ?? '') : (string)($settings['htbs_overlay_name'] ?? ''),
+                    'overlay_tagline' => $imageOverlay ? '' : (string)($settings['htbs_overlay_tagline'] ?? ''),
+                ];
+            }
+        }
         return ['status' => 200, 'kind' => 'landing', 'mode' => $mode, 'items' => $items,
             'puzzle_items' => $skin === 'game-on' ? $repository->gameOnPuzzlePhotographs() : [],
-            'rows' => $rows, 'navigation' => $navigation, 'page' => $page,
+            'rows' => $rows, 'slider_items' => $sliderItems, 'navigation' => $navigation, 'page' => $page,
             'photo_count' => $mode === 'smacktalk' ? 0 : $repository->publishedPhotographCount()];
     }
     if ($route === 'photo') {
