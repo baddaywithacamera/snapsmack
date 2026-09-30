@@ -42,7 +42,8 @@ if (!str_contains($page, '<p>CMS HTML</p>') || str_contains($page, '<script>') |
 }
 $publicView = snapsmack_build_skin_view(
     ['kind' => 'photo', 'navigation' => [], 'item' => ['img_title' => '<Photo>', 'img_description' => snapsmack_trusted_html('<p>CMS caption</p>')], 'comments' => []],
-    ['site_name' => 'Site', 'language' => 'en', 'direction' => 'ltr', 'skin_style_url' => '/skin.css']
+    ['site_name' => 'Site', 'language' => 'en', 'direction' => 'ltr', 'skin_style_url' => '/skin.css',
+        'skin_presentation' => snapsmack_skin_presentation([], 'slickr')]
 );
 ob_start();
 $publicRendered = snapsmack_render_strict_skin_template(dirname(__DIR__) . '/skins/slickr', 'layout.php', $publicView);
