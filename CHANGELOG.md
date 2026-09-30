@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.793D — 2026-09-30 — Strict skins render through the audited gate
+
+- **Schema-v2 layouts now receive their render authority from the strict CMS template entry point itself.** The `0.7.792D` package correctly kept every skin layout guarded, but the production public-controller path did not establish that guard before including the layout; the live site therefore returned only an empty HTML shell. The authority marker remains CMS-owned and is created only after the bounded view model, declared filename, real path, symlink, and package-boundary checks pass. A production-path regression renders a guarded template without relying on the fixture-only bootstrap. (`core/skin-view-contract.php`, `tests/skin-render-entrypoint-regression.php`.)
+
 ## 0.7.792D — 2026-09-30 — Skins present; the CMS decides and acts
 
 - **All 30 packaged skins now own their constrained presentation layouts without regaining CMS authority.** The conversion no longer delegates complete skin-family document skeletons to a generic core renderer. Database access, routing, settings validation, asset registration, and trusted-content construction remain CMS-owned; layouts receive only the bounded view model and registered public assets.

@@ -68,6 +68,10 @@ function snapsmack_render_strict_skin_template(string $skinDir, string $template
         || !str_starts_with(str_replace('\\', '/', $candidate), rtrim(str_replace('\\', '/', $root), '/') . '/')) {
         return false;
     }
+    // The guard is deliberately established at the audited CMS include point.
+    // Strict-controller requests do not load the legacy skin-view bootstrap,
+    // so relying on that bootstrap leaves every guarded schema-v2 layout blank.
+    if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
     (static function (string $__snapsmack_template, array $view): void {
         include $__snapsmack_template;
     })($candidate, $view);
