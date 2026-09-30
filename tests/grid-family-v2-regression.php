@@ -31,6 +31,7 @@ foreach($skins as $skin){
         if(!$ok||!str_contains($html,'<!doctype html>')||stripos($html,'<script>no</script>')!==false) throw new RuntimeException("{$skin}/{$response['kind']} render boundary failed.");
         $prefix=$prefixes[$skin];
         if(!str_contains($html,'class="'.$prefix.'-content-wrap')) throw new RuntimeException("{$skin}/{$response['kind']} lost its family content hook.");
+        foreach(['id="'.$prefix.'-modal-overlay"','id="'.$prefix.'-modal-frame"','id="'.$prefix.'-lightbox"'] as $modalHook)if(!str_contains($html,$modalHook))throw new RuntimeException("{$skin}/{$response['kind']} lost route modal/lightbox hook: {$modalHook}");
         if(($response['kind']??'')==='landing'&&!str_contains($html,'class="'.$prefix.'-tile')) throw new RuntimeException("{$skin} lost its tile contract.");
         if($skin!=='instant-camera'&&$skin!=='sliders'&&(str_contains($html,'class="ic-scrim"')||str_contains($html,'class="ic-panel"'))) throw new RuntimeException("{$skin} received INSTANT CAMERA structure.");
         if($skin==='instant-camera'&&(!str_contains($html,'class="ic-scrim"')||!str_contains($html,'class="ic-panel"'))) throw new RuntimeException('INSTANT CAMERA layout no longer owns its backdrop structure.');
