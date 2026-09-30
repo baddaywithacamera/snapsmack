@@ -37,6 +37,29 @@ function snapsmack_skin_glow(array $settings, string $prefix, int $defaultOpacit
         $size, $r, $g, $b, $opacity / 100, $size * 2, $r, $g, $b, $opacity / 200);
 }
 
+function snapsmack_declared_option_int(array $options, string $key, int $min, int $max): int
+{
+    $value = $options[$key] ?? null;
+    return is_int($value) || is_float($value) ? max($min, min($max, (int)$value)) : $min;
+}
+
+function snapsmack_declared_option_hex(array $options, string $key): string
+{
+    $value = (string)($options[$key] ?? '');
+    return preg_match('/^#[0-9a-f]{6}$/i', $value) ? strtolower($value) : '#000000';
+}
+
+function snapsmack_declared_option_glow(array $options, string $prefix): string
+{
+    $size = snapsmack_declared_option_int($options, $prefix . '_size', 0, 40);
+    $opacity = snapsmack_declared_option_int($options, $prefix . '_opacity', 0, 100);
+    if ($size === 0 || $opacity === 0) return 'none';
+    $hex = ltrim(snapsmack_declared_option_hex($options, $prefix . '_color'), '#');
+    [$r, $g, $b] = [hexdec(substr($hex, 0, 2)), hexdec(substr($hex, 2, 2)), hexdec(substr($hex, 4, 2))];
+    return sprintf('0 0 %dpx rgba(%d,%d,%d,%.2F),0 0 %dpx rgba(%d,%d,%d,%.2F)',
+        $size, $r, $g, $b, $opacity / 100, $size * 2, $r, $g, $b, $opacity / 200);
+}
+
 /**
  * Validate the inert option vocabulary declared by a schema-v2 skin.
  *
@@ -97,29 +120,39 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
 {
     $presentation = ['options' => snapsmack_declared_skin_options($settings, $skinSlug)];
     if ($skinSlug === 'instant-camera' || $skinSlug === 'sliders') {
-        $presentation += snapsmack_instant_camera_presentation($settings);
+        $presentation += snapsmack_instant_camera_presentation($presentation['options'], $settings);
+    }
+    if ($skinSlug === 'instant-camera') {
+        $presentation['background'] = [
+            'mode' => (string)($presentation['options']['ic_bg_mode'] ?? ''),
+            'initial_count' => $presentation['mayhem_initial_count'],
+            'max_width' => $presentation['mayhem_max_width'],
+            'overlap_max' => $presentation['mayhem_overlap_max'],
+            'drift' => $presentation['mayhem_drift'] ? '1' : '0',
+            'warp' => $presentation['mayhem_warp'] ? '1' : '0',
+        ];
     }
     return $presentation;
 }
 
 /** CMS-owned, presentation-only interpretation of INSTANT CAMERA settings. */
-function snapsmack_instant_camera_presentation(array $settings): array
+function snapsmack_instant_camera_presentation(array $options, array $settings = []): array
 {
     $ratios = ['polaroid'=>'823 / 1000','sx70'=>'1 / 1','go'=>'47 / 60','instax_mini'=>'62 / 46','instax_wide'=>'99 / 62','instax_square'=>'1 / 1'];
-    $format = (string)($settings['ic_format'] ?? 'instax_square');
+    $format = (string)($options['ic_format'] ?? '');
     $aspect = $ratios[$format] ?? '1 / 1';
-    if ($format === 'custom' && preg_match('/^\s*(\d{1,4})\s*[:\/xX]\s*(\d{1,4})\s*$/', (string)($settings['ic_custom_ratio'] ?? ''), $m) && (int)$m[1] > 0 && (int)$m[2] > 0) {
+    if ($format === 'custom' && preg_match('/^\s*(\d{1,4})\s*[:\/xX]\s*(\d{1,4})\s*$/', (string)($options['ic_custom_ratio'] ?? ''), $m) && (int)$m[1] > 0 && (int)$m[2] > 0) {
         $aspect = (int)$m[1] . ' / ' . (int)$m[2];
     }
     $shadowMap = ['0'=>'none','1'=>'3px 3px 8px rgba(0,0,0,.20)','2'=>'6px 6px 18px rgba(0,0,0,.40)','3'=>'12px 12px 32px rgba(0,0,0,.60)'];
-    $panelOpacity = snapsmack_skin_int($settings, 'ic_panel_opacity', 50, 0, 100);
-    $navOpacity = snapsmack_skin_int($settings, 'ic_nav_opacity', 50, 0, 100);
-    $soloOpacity = snapsmack_skin_int($settings, 'ic_solo_bg_opacity', 100, 0, 100);
-    $lineShadowSize = snapsmack_skin_int($settings, 'ic_navline_shadow_size', 0, 0, 3);
-    $lineShadowOpacity = snapsmack_skin_int($settings, 'ic_navline_shadow_opacity', 40, 0, 100);
+    $panelOpacity = snapsmack_declared_option_int($options, 'ic_panel_opacity', 0, 100);
+    $navOpacity = snapsmack_declared_option_int($options, 'ic_nav_opacity', 0, 100);
+    $soloOpacity = snapsmack_declared_option_int($options, 'ic_solo_bg_opacity', 0, 100);
+    $lineShadowSize = snapsmack_declared_option_int($options, 'ic_navline_shadow_size', 0, 3);
+    $lineShadowOpacity = snapsmack_declared_option_int($options, 'ic_navline_shadow_opacity', 0, 100);
     $lineShadow = 'none';
     if ($lineShadowSize > 0 && $lineShadowOpacity > 0) {
-        $hex = ltrim(snapsmack_skin_hex($settings, 'ic_navline_shadow_color', '#000000'), '#');
+        $hex = ltrim(snapsmack_declared_option_hex($options, 'ic_navline_shadow_color'), '#');
         [$r,$g,$b] = [hexdec(substr($hex,0,2)),hexdec(substr($hex,2,2)),hexdec(substr($hex,4,2))];
         $n = $lineShadowSize;
         $alpha = number_format($lineShadowOpacity / 100, 2, '.', '');
@@ -128,21 +161,21 @@ function snapsmack_instant_camera_presentation(array $settings): array
     }
     $vars = [
         '--ic-tile-aspect'=>$aspect,
-        '--ic-tile-shadow'=>$shadowMap[(string)($settings['ic_frame_shadow'] ?? '0')] ?? 'none',
-        '--ic-scrim'=>number_format(snapsmack_skin_int($settings, 'ic_scrim', 60, 10, 90) / 100, 2, '.', ''),
+        '--ic-tile-shadow'=>$shadowMap[(string)($options['ic_frame_shadow'] ?? '')] ?? 'none',
+        '--ic-scrim'=>number_format(snapsmack_declared_option_int($options, 'ic_scrim', 10, 90) / 100, 2, '.', ''),
         '--tile-radius'=>'0px',
-        '--profile-text-glow'=>snapsmack_skin_glow($settings, 'ic_glow'),
-        '--bio-text-glow'=>snapsmack_skin_glow($settings, 'ic_bio_glow'),
-        '--nav-text-glow'=>snapsmack_skin_glow($settings, 'ic_nav_glow', 45),
-        '--panel-bg'=>$panelOpacity ? snapsmack_skin_rgba(snapsmack_skin_hex($settings, 'ic_panel_color', '#ffffff'), $panelOpacity) : 'transparent',
-        '--panel-extend'=>snapsmack_skin_int($settings, 'ic_panel_extend', 0, 0, 100) . 'px',
-        '--ic-nav-bg'=>$navOpacity ? snapsmack_skin_rgba(snapsmack_skin_hex($settings, 'ic_nav_color', '#ffffff'), $navOpacity) : 'transparent',
-        '--posts-color'=>snapsmack_skin_hex($settings, 'ic_posts_color', '#777777'),
-        '--posts-glow'=>snapsmack_skin_glow($settings, 'ic_posts_glow'),
-        '--ic-navline-color'=>snapsmack_skin_hex($settings, 'ic_navline_color', '#e0e0e0'),
-        '--ic-navline-opacity'=>(string)snapsmack_skin_int($settings, 'ic_navline_opacity', 100, 0, 100),
+        '--profile-text-glow'=>snapsmack_declared_option_glow($options, 'ic_glow'),
+        '--bio-text-glow'=>snapsmack_declared_option_glow($options, 'ic_bio_glow'),
+        '--nav-text-glow'=>snapsmack_declared_option_glow($options, 'ic_nav_glow'),
+        '--panel-bg'=>$panelOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'ic_panel_color'), $panelOpacity) : 'transparent',
+        '--panel-extend'=>snapsmack_declared_option_int($options, 'ic_panel_extend', 0, 100) . 'px',
+        '--ic-nav-bg'=>$navOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'ic_nav_color'), $navOpacity) : 'transparent',
+        '--posts-color'=>snapsmack_declared_option_hex($options, 'ic_posts_color'),
+        '--posts-glow'=>snapsmack_declared_option_glow($options, 'ic_posts_glow'),
+        '--ic-navline-color'=>snapsmack_declared_option_hex($options, 'ic_navline_color'),
+        '--ic-navline-opacity'=>(string)snapsmack_declared_option_int($options, 'ic_navline_opacity', 0, 100),
         '--ic-navline-shadow'=>$lineShadow,
-        '--post-bg'=>snapsmack_skin_rgba(snapsmack_skin_hex($settings, 'ic_solo_bg_color', '#000000'), $soloOpacity),
+        '--post-bg'=>snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'ic_solo_bg_color'), $soloOpacity),
     ];
     $css = ':root{';
     foreach ($vars as $name => $value) $css .= $name . ':' . $value . ';';

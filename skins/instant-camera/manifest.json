@@ -43,7 +43,8 @@
         "smack-tag-infinite",
         "smack-image-fade-load",
         "smack-lightbox",
-        "smack-gram-search"
+        "smack-gram-search",
+        "asset:public:ss-engine-nav-dropdown"
     ],
     "community_comments": true,
     "community_likes": true,
