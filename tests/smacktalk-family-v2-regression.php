@@ -21,6 +21,9 @@ foreach ($skins as $skin) {
     if (($manifest['schema_version'] ?? 0) !== 2 || ($manifest['security_policy'] ?? 0) !== 2 || ($manifest['cms_controller'] ?? '') !== 'smacktalk' || ($manifest['view_model'] ?? '') !== 'snapsmack.public.v1') throw new RuntimeException("{$skin} is not schema-v2.");
     $php = glob($dir . '/*.php') ?: [];
     if (count($php) !== 1 || basename($php[0]) !== 'layout.php') throw new RuntimeException("{$skin} retains executable PHP outside its strict layout.");
+    $layoutSource = (string)file_get_contents($dir . '/layout.php');
+    if (str_contains($layoutSource, "snap_render_component('smacktalk-page'")) throw new RuntimeException("{$skin} still delegates its document skeleton to the CMS.");
+    if (!str_contains($layoutSource, "snap_render_component('registered-assets'")) throw new RuntimeException("{$skin} does not mount registered CMS behavior assets.");
     $styles[$skin] = hash_file('sha256', $dir . '/style.css');
     foreach ($cases as $kind => $response) {
         $view = snapsmack_build_skin_view($response, ['site_name' => 'Example', 'tagline' => 'Tagline', 'base_url' => '/', 'language' => 'en', 'direction' => 'ltr', 'skin_slug'=>$skin, 'skin_style_url' => '/skins/' . $skin . '/style.css']);
