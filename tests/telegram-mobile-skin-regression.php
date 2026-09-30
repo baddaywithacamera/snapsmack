@@ -60,7 +60,9 @@ tg_check(strpos($layout, "snap_render_html(\$view['response']['rendered_content'
 tg_check(strpos($layout, "snap_render_component('comments'") !== false
     && strpos($index, "=== 'not_found'") !== false,
     'TELEGRAM renders moderated CMS comments and the CMS owns error status');
-tg_check(strpos($layout, "snap_render_component('navigation'") !== false
+tg_check(strpos($layout, "snap_render_component('navigation-tree'") !== false
+    && strpos($layout, 'class="main-menu"') !== false
+    && strpos($layout, 'class="mobile-navigation"') !== false
     && preg_match('/position\s*:\s*fixed/', $style) === 1,
     'TELEGRAM exposes CMS-owned navigation with its fixed mobile presentation');
 tg_check(strpos($style, '--telegram-column:46rem') !== false
@@ -68,7 +70,8 @@ tg_check(strpos($style, '--telegram-column:46rem') !== false
     'TELEGRAM constrains essays and mosaics to its reading column');
 tg_check(strpos($tilez, 'ORDER BY p.created_at DESC, p.id DESC') !== false,
     'TILEZ orders imported posts by publication date');
-tg_check(strpos($tilezLayout, "snap_render_component('navigation'") !== false
+tg_check(strpos($tilezLayout, "snap_render_component('navigation-tree'") !== false
+    && strpos($tilezLayout, 'class="main-menu"') !== false
     && strpos($tilezCss, 'font-synthesis: none') !== false
     && strpos($tilezCss, '.snap-inline-frame:has(+ .snap-inline-frame)') !== false,
     'TILEZ receives CMS navigation and keeps its readable presentation');
