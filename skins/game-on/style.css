@@ -1418,5 +1418,6 @@ body:has(.go-puzzle-field) {
 }
 .go-content-wrap a,
 .go-content-wrap button { pointer-events: auto; }
+.go-puzzle-tone { background: var(--go-puzzle-tone, transparent); }
 
 /* ===== SNAPSMACK EOF ===== */
