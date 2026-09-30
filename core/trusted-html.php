@@ -6,6 +6,10 @@ final class SnapTrustedHtml
 {
     private function __construct(private string $html) {}
     private function __clone(): void {}
+    public function __serialize(): array { throw new LogicException('Trusted HTML cannot be serialized.'); }
+    public function __unserialize(array $data): void { throw new LogicException('Trusted HTML cannot be reconstructed.'); }
+    public function __wakeup(): void { throw new LogicException('Trusted HTML cannot be reconstructed.'); }
+    public static function __set_state(array $properties): self { throw new LogicException('Trusted HTML cannot be exported.'); }
     public static function __snapsmackCmsOnly(string $sanitized): self { return new self($sanitized); }
     public function __toString(): string { return $this->html; }
 }

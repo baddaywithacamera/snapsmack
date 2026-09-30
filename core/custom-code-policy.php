@@ -6,6 +6,10 @@ final class SnapOwnerCode
 {
     private function __construct(private string $value) {}
     private function __clone(): void {}
+    public function __serialize(): array { throw new LogicException('Owner code cannot be serialized.'); }
+    public function __unserialize(array $data): void { throw new LogicException('Owner code cannot be reconstructed.'); }
+    public function __wakeup(): void { throw new LogicException('Owner code cannot be reconstructed.'); }
+    public static function __set_state(array $properties): self { throw new LogicException('Owner code cannot be exported.'); }
     public static function __snapsmackCmsOnly(string $value): self { return new self($value); }
     public function __toString(): string { return $this->value; }
 }
