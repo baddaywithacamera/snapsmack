@@ -108,6 +108,32 @@ function rf_require_next_dev_version(string $version): void {
     }
 }
 
+function rf_require_release_gate(): void {
+    $head = rf_git(['rev-parse', 'HEAD']);
+    $ref = 'refs/notes/release-gates';
+    exec('git notes --ref=' . escapeshellarg($ref) . ' show ' . escapeshellarg($head) . ' 2>&1', $lines, $code);
+    if ($code !== 0) {
+        rf_fail("commit {$head} has no release-gate note; security, 30-skin parity, and authority review must pass before tagging");
+    }
+    $raw = trim(implode("\n", $lines));
+    $gate = json_decode($raw, true);
+    if (!is_array($gate)) rf_fail("release-gate note for {$head} is not valid JSON");
+    $required = [
+        'commit' => $head,
+        'security' => 'pass',
+        'parity' => 'pass',
+        'authority_review' => 'approved',
+    ];
+    foreach ($required as $field => $expected) {
+        if (($gate[$field] ?? null) !== $expected) {
+            rf_fail("release-gate note field {$field} must be " . json_encode($expected));
+        }
+    }
+    if (($gate['skin_count'] ?? null) !== 30) {
+        rf_fail('release-gate note must record all 30 packaged skins');
+    }
+}
+
 function rf_tests(): void {
     foreach (glob(__DIR__ . '/../tests/*regression.php') ?: [] as $test) {
         rf_run([PHP_BINARY, $test]);
@@ -149,6 +175,7 @@ if ($command === 'tag-dev') {
     if (rf_tag_target($tag) !== '') rf_fail("tag {$tag} already exists; use the next version");
     rf_require_next_dev_version($version);
     rf_tests();
+    rf_require_release_gate();
     rf_git(['tag', $tag]);
     rf_git(['push', 'Github', 'dev'], false);
     rf_git(['push', 'Github', $tag], false);
@@ -176,6 +203,7 @@ if ($command === 'promote-stable') {
     if (rf_tag_target($stable_tag) !== '') rf_fail("stable tag {$stable_tag} already exists");
     rf_git(['merge-base', '--is-ancestor', 'master', 'HEAD']);
     rf_tests();
+    rf_require_release_gate();
     rf_git(['push', 'Github', 'HEAD:master'], false);
     rf_git(['tag', $stable_tag]);
     rf_git(['push', 'Github', $stable_tag], false);
