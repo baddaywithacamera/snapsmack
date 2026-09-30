@@ -57,6 +57,7 @@
 
     var COOKIE_NAME = 'snap_consent';
     var state = getCookie(COOKIE_NAME); // '1', '0', or null
+    if (state !== '1' && state !== '0') state = null;
 
     // --- Public API ---
 
@@ -106,6 +107,16 @@
 
     // Wire up buttons once DOM is ready
     document.addEventListener('DOMContentLoaded', function () {
+        // Public page cache entries may have been generated before this browser
+        // made its choice and can therefore still contain stale banner markup.
+        // The first-party choice cookie is authoritative: remove that cached UI
+        // immediately instead of asking again on every cached page.
+        if (state !== null) {
+            var staleBanner = document.getElementById('snap-consent-banner');
+            if (staleBanner && staleBanner.parentNode) staleBanner.parentNode.removeChild(staleBanner);
+            document.dispatchEvent(new CustomEvent('snap:consent-resolved'));
+            return;
+        }
         var acceptBtn  = document.getElementById('snap-consent-accept');
         var declineBtn = document.getElementById('snap-consent-decline');
 
