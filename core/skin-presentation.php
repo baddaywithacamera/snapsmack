@@ -37,6 +37,71 @@ function snapsmack_skin_glow(array $settings, string $prefix, int $defaultOpacit
         $size, $r, $g, $b, $opacity / 100, $size * 2, $r, $g, $b, $opacity / 200);
 }
 
+/**
+ * Validate the inert option vocabulary declared by a schema-v2 skin.
+ *
+ * The resulting values are display data, not authority: unknown settings are
+ * discarded, strings are bounded, colours are validated, numbers are clamped,
+ * and selects cannot escape their manifest choices.
+ */
+function snapsmack_declared_skin_options(array $settings, string $skinSlug): array
+{
+    $skinSlug = preg_replace('/[^a-z0-9-]/', '', strtolower($skinSlug));
+    if ($skinSlug === '') return [];
+    $path = dirname(__DIR__) . '/skins/' . $skinSlug . '/manifest.json';
+    if (!is_file($path)) return [];
+    try {
+        $manifest = json_decode((string)file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+    } catch (Throwable $e) {
+        return [];
+    }
+    if (($manifest['schema_version'] ?? 0) !== 2 || !is_array($manifest['options'] ?? null)) return [];
+
+    $out = [];
+    foreach ($manifest['options'] as $key => $definition) {
+        if (!is_string($key) || !preg_match('/^[a-zA-Z0-9_-]{1,100}$/', $key) || !is_array($definition)) continue;
+        $value = $settings[$key] ?? ($definition['default'] ?? '');
+        $type = strtolower((string)($definition['type'] ?? 'text'));
+        if (in_array($type, ['checkbox', 'toggle', 'boolean'], true)) {
+            $out[$key] = in_array((string)$value, ['1', 'true', 'on', 'yes'], true);
+            continue;
+        }
+        if (in_array($type, ['range', 'range_numeric', 'number'], true)) {
+            $min = is_numeric($definition['min'] ?? null) ? (float)$definition['min'] : -100000;
+            $max = is_numeric($definition['max'] ?? null) ? (float)$definition['max'] : 100000;
+            $number = is_numeric($value) ? (float)$value : (is_numeric($definition['default'] ?? null) ? (float)$definition['default'] : 0.0);
+            $out[$key] = max($min, min($max, $number));
+            continue;
+        }
+        if ($type === 'select' && is_array($definition['options'] ?? null)) {
+            $allowed = array_map('strval', array_keys($definition['options']));
+            $candidate = (string)$value;
+            $fallback = (string)($definition['default'] ?? ($allowed[0] ?? ''));
+            $out[$key] = in_array($candidate, $allowed, true) ? $candidate : $fallback;
+            continue;
+        }
+        if (in_array($type, ['color', 'colour'], true)) {
+            $candidate = trim((string)$value);
+            $fallback = trim((string)($definition['default'] ?? '#000000'));
+            $out[$key] = preg_match('/^#[0-9a-f]{6}$/i', $candidate) ? strtolower($candidate)
+                : (preg_match('/^#[0-9a-f]{6}$/i', $fallback) ? strtolower($fallback) : '#000000');
+            continue;
+        }
+        $out[$key] = substr(trim((string)$value), 0, 500);
+    }
+    return $out;
+}
+
+/** CMS-owned presentation model shared by every strict skin. */
+function snapsmack_skin_presentation(array $settings, string $skinSlug): array
+{
+    $presentation = ['options' => snapsmack_declared_skin_options($settings, $skinSlug)];
+    if ($skinSlug === 'instant-camera' || $skinSlug === 'sliders') {
+        $presentation += snapsmack_instant_camera_presentation($settings);
+    }
+    return $presentation;
+}
+
 /** CMS-owned, presentation-only interpretation of INSTANT CAMERA settings. */
 function snapsmack_instant_camera_presentation(array $settings): array
 {
