@@ -61,6 +61,25 @@ function snapsmack_declared_option_glow(array $options, string $prefix): string
         $size, $r, $g, $b, $opacity / 100, $size * 2, $r, $g, $b, $opacity / 200);
 }
 
+function snapsmack_declared_option_shadow(array $options, string $prefix): string
+{
+    $size = snapsmack_declared_option_int($options, $prefix . '_size', 0, 3);
+    $opacity = snapsmack_declared_option_int($options, $prefix . '_opacity', 0, 100);
+    if ($size === 0 || $opacity === 0) return 'none';
+    $hex = ltrim(snapsmack_declared_option_hex($options, $prefix . '_color'), '#');
+    [$r,$g,$b] = [hexdec(substr($hex,0,2)),hexdec(substr($hex,2,2)),hexdec(substr($hex,4,2))];
+    $alpha = number_format($opacity / 100, 2, '.', '');
+    return "0 {$size}px {$size}px -{$size}px rgba({$r},{$g},{$b},{$alpha}),inset 0 {$size}px {$size}px -{$size}px rgba({$r},{$g},{$b},{$alpha})";
+}
+
+function snapsmack_declared_media_url(array $options, string $key): string
+{
+    $path = trim((string)($options[$key] ?? ''));
+    if ($path === '' || str_contains($path, '..') || preg_match('#^(?:[a-z]+:|/)#i', $path) || !preg_match('#^[A-Za-z0-9._/\-]+$#', $path)) return '';
+    $base = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
+    return $base . ltrim($path, '/');
+}
+
 /**
  * Validate the inert option vocabulary declared by a schema-v2 skin.
  *
@@ -226,6 +245,8 @@ function snapsmack_aurora_presentation(array $options): array
     $navOpacity = snapsmack_declared_option_int($options, 'au_navbar_opacity', 0, 100);
     $borderStyle = (string)($options['au_border_style'] ?? 'circle');
     $radius = ['square'=>'0px','rounded'=>'8px','circle'=>'50%','auto'=>'0px'][$borderStyle] ?? '50%';
+    $treatmentMode = (string)($options['au_treatment_mode'] ?? 'none');
+    $treatmentImage = snapsmack_declared_media_url($options, 'au_treatment_image');
     $result = ['aurora'=>[
         'palette'=>json_encode($palettes[$key] ?? $palettes['aurora'], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
         'cycle'=>snapsmack_declared_option_int($options, 'au_cycle_time', 15, 240),
@@ -235,7 +256,7 @@ function snapsmack_aurora_presentation(array $options): array
         'border_dir'=>(string)($options['au_wave_direction'] ?? 'ltr'),
         'border_rhythm'=>(string)($options['au_wave_rhythm'] ?? 'breath'),
         'border_cycle'=>snapsmack_declared_option_int($options, 'au_wave_speed', 20, 600),
-    ]];
+    ], 'treatment'=>['enabled'=>$treatmentMode === 'color' || ($treatmentMode === 'image' && $treatmentImage !== ''), 'mode'=>$treatmentMode, 'image'=>$treatmentImage, 'position'=>(string)($options['au_treatment_position'] ?? 'center')]];
     snapsmack_presentation_style($result, 'snapsmack-aurora-presentation', [
         '--au-sky'=>snapsmack_declared_option_hex($options, 'au_sky'),
         '--tile-bw'=>snapsmack_declared_option_int($options, 'au_border_width', 0, 40).'px',
@@ -248,8 +269,14 @@ function snapsmack_aurora_presentation(array $options): array
         '--panel-bg'=>$panelOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'au_panel_color'), $panelOpacity) : 'transparent',
         '--panel-extend'=>snapsmack_declared_option_int($options, 'au_panel_extend', 0, 100).'px',
         '--au-navbar-bg'=>$navOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'au_navbar_color'), $navOpacity) : 'transparent',
+        '--au-navbar-bg-inner'=>snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'au_navbar_color'), snapsmack_declared_option_int($options, 'au_navbar_opacity_inner', 0, 100)),
+        '--au-navline-shadow'=>snapsmack_declared_option_shadow($options, 'au_navline_shadow'),
         '--nav-line-opacity'=>number_format(snapsmack_declared_option_int($options, 'au_nav_line_opacity', 0, 100)/100, 2, '.', ''),
         '--nav-line-underline-display'=>(string)($options['au_nav_underline'] ?? '1') === '1' ? 'block' : 'none',
+        '--au-treatment-color'=>snapsmack_declared_option_hex($options, 'au_treatment_color'),
+        '--au-treatment-image'=>$treatmentImage !== '' ? 'url("'.$treatmentImage.'")' : 'none',
+        '--au-treatment-position'=>['top'=>'center top','bottom'=>'center bottom'][(string)($options['au_treatment_position'] ?? '')] ?? 'center center',
+        '--au-treatment-overlay'=>snapsmack_declared_option_int($options, 'au_treatment_overlay', -100, 100) < 0 ? snapsmack_skin_rgba('#000000', abs(snapsmack_declared_option_int($options, 'au_treatment_overlay', -100, 100))) : snapsmack_skin_rgba('#ffffff', snapsmack_declared_option_int($options, 'au_treatment_overlay', -100, 100)),
     ]);
     return $result;
 }
@@ -266,6 +293,8 @@ function snapsmack_jive_turkey_presentation(array $options): array
     $panelOpacity = snapsmack_declared_option_int($options, 'jt_panel_opacity', 0, 100);
     $navOpacity = snapsmack_declared_option_int($options, 'jt_navbar_opacity', 0, 100);
     $footerOpacity = snapsmack_declared_option_int($options, 'jt_footer_opacity', 0, 100);
+    $treatmentMode = (string)($options['jt_treatment_mode'] ?? 'none');
+    $treatmentImage = snapsmack_declared_media_url($options, 'jt_treatment_image');
     $result = ['jive'=>[
         'mode'=>(string)($options['jt_mode'] ?? 'surprise'), 'scrolls_axis'=>(string)($options['jt_scrolls_axis'] ?? 'down'),
         'scrolls_fade'=>(string)($options['jt_scrolls_colour'] ?? 'fade'), 'colourway'=>$key,
@@ -275,17 +304,25 @@ function snapsmack_jive_turkey_presentation(array $options): array
         'border_width'=>snapsmack_declared_option_int($options, 'jt_border_width', 0, 40), 'border_speed'=>snapsmack_declared_option_int($options, 'jt_border_speed', 1, 100),
         'border_wave'=>snapsmack_declared_option_int($options, 'jt_border_wave', 0, 100), 'border_trans'=>snapsmack_declared_option_int($options, 'jt_border_trans', 0, 100),
         'border_dir'=>(string)($options['jt_border_dir'] ?? 'dtlbr'),
-    ]];
+    ], 'treatment'=>['enabled'=>$treatmentMode === 'color' || ($treatmentMode === 'image' && $treatmentImage !== ''), 'mode'=>$treatmentMode, 'image'=>$treatmentImage, 'position'=>(string)($options['jt_treatment_position'] ?? 'center')]];
     snapsmack_presentation_style($result, 'snapsmack-jive-presentation', [
         '--panel-bg'=>$panelOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'jt_panel_color'), $panelOpacity) : 'transparent',
         '--panel-extend'=>snapsmack_declared_option_int($options, 'jt_panel_extend', 0, 100).'px',
         '--jt-navbar-bg'=>$navOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'jt_navbar_color'), $navOpacity) : 'transparent',
+        '--jt-navbar-bg-inner'=>snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'jt_navbar_color'), snapsmack_declared_option_int($options, 'jt_navbar_opacity_inner', 0, 100)),
+        '--jt-navline-shadow'=>snapsmack_declared_option_shadow($options, 'jt_navline_shadow'),
+        '--nav-line-opacity'=>number_format(snapsmack_declared_option_int($options, 'jt_nav_line_opacity', 0, 100)/100, 2, '.', ''),
+        '--nav-line-underline-display'=>(string)($options['jt_nav_underline'] ?? '0') === '1' ? 'block' : 'none',
         '--footer-gap'=>snapsmack_declared_option_int($options, 'jt_footer_gap', 0, 200).'px',
         '--jt-footer-bg'=>$footerOpacity ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'jt_footer_color'), $footerOpacity) : 'transparent',
         '--profile-text-glow'=>snapsmack_declared_option_glow($options, 'jt_glow'), '--nav-text-glow'=>snapsmack_declared_option_glow($options, 'jt_nav_glow'),
         '--posts-glow'=>snapsmack_declared_option_glow($options, 'jt_posts_glow'), '--post-count-color'=>snapsmack_declared_option_hex($options, 'jt_posts_color'),
         '--jt-solo-scrim'=>snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'jt_solo_scrim_color'), snapsmack_declared_option_int($options, 'jt_solo_scrim_opacity', 0, 100)),
         '--jt-solo-pad'=>snapsmack_declared_option_int($options, 'jt_solo_pad', 0, 200).'px',
+        '--jt-treatment-color'=>snapsmack_declared_option_hex($options, 'jt_treatment_color'),
+        '--jt-treatment-image'=>$treatmentImage !== '' ? 'url("'.$treatmentImage.'")' : 'none',
+        '--jt-treatment-position'=>['top'=>'center top','bottom'=>'center bottom'][(string)($options['jt_treatment_position'] ?? '')] ?? 'center center',
+        '--jt-treatment-overlay'=>snapsmack_declared_option_int($options, 'jt_treatment_overlay', -100, 100) < 0 ? snapsmack_skin_rgba('#000000', abs(snapsmack_declared_option_int($options, 'jt_treatment_overlay', -100, 100))) : snapsmack_skin_rgba('#ffffff', snapsmack_declared_option_int($options, 'jt_treatment_overlay', -100, 100)),
     ]);
     return $result;
 }
