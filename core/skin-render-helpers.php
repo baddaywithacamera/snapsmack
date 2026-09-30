@@ -77,53 +77,7 @@ function snap_render_navigation_tree(array $items, int $depth = 0): string {
 /** Render fixed shared chrome from bounded data; components cannot execute code. */
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
-    if ($name === 'public-page') {
-        $response = is_array($data['response'] ?? null) ? $data['response'] : [];
-        $site = is_array($data['site'] ?? null) ? $data['site'] : [];
-        $html .= snap_render_html($site['skin_custom_style'] ?? '');
-        $kind = (string)($response['kind'] ?? 'not_found');
-        $registered = is_array($site['registered_assets'] ?? null) ? $site['registered_assets'] : [];
-        foreach (($registered['scripts'] ?? []) as $script_url) {
-            if (is_string($script_url) && str_contains($script_url, 'ss-engine-organized-mayhem.js')) {
-                $html .= '<div id="organized-mayhem" aria-hidden="true" data-mayhem data-api-url="?ajax=mayhem" data-pan="0" data-ambient="1" data-initial-count="120" data-max-mounted="180"></div>';
-                break;
-            }
-        }
-        $html .= '<header id="header" class="site-header" data-sticky-header><div class="inside"><a class="site-title logo-area" href="' . snap_route_url('home') . '"><span class="site-title-text">' . snap_escape_html($site['site_name'] ?? '') . '</span></a>'
-            . snap_render_html(snap_render_component('navigation', ['items' => $response['navigation'] ?? []])) . '</div></header><main id="scroll-stage" class="public-content kind-' . snap_escape_attr($kind) . '">';
-        if (in_array($kind, ['photo', 'post', 'page', 'collection'], true)) {
-            $item = is_array($response['item'] ?? null) ? $response['item'] : [];
-            $title = $item['img_title'] ?? $item['title'] ?? $item['name'] ?? '';
-            $html .= '<article id="photobox" class="h-entry single-image-page"><h1 class="p-name photo-title-footer">' . snap_escape_html($title) . '</h1>';
-            $date=$item['img_date']??$item['created_at']??'';if($date!=='')$html.='<time class="dt-published" datetime="'.snap_escape_attr($date).'">'.snap_escape_html($date).'</time>';
-            if(!empty($site['owner_name']))$html.='<span class="p-author h-card"><span class="p-name">'.snap_escape_html($site['owner_name']).'</span></span>';
-            $image = $item['img_file'] ?? $item['featured_image_path'] ?? '';
-            if ($image !== '') $html .= '<div class="u-photo post-image-wrap">'.snap_render_html(snap_render_component('image', ['url' => $image, 'alt' => $item['img_alt'] ?? $title, 'class' => 'post-image'])).'</div>';
-            $content = $item['content'] ?? $item['description'] ?? $item['img_description'] ?? '';
-            $html .= '<div id="infobox" class="entry-content e-content static-transmission">' . snap_render_html($content) . '</div></article>';
-        } elseif ($kind === 'search') {
-            $html .= '<h1>Search</h1>';
-            $results = is_array($response['results'] ?? null) ? $response['results'] : [];
-            foreach ($results as $group) foreach ((is_array($group) ? $group : []) as $item) {
-                if (!is_array($item)) continue;
-                $html .= '<article><h2>' . snap_escape_html($item['img_title'] ?? $item['title'] ?? '') . '</h2></article>';
-            }
-        } elseif (in_array($kind, ['landing', 'archive', 'hashtag', 'albums', 'collections'], true)) {
-            $html .= '<section id="browse-grid" class="public-grid h-feed archive-grid">';
-            foreach (($response['items'] ?? []) as $item) {
-                if (!is_array($item)) continue;
-                $title = $item['img_title'] ?? $item['title'] ?? $item['name'] ?? '';
-                $url = (string)($item['url'] ?? '');
-                if ($url === '' && (string)($item['img_slug'] ?? '') !== '') $url = snap_route_url('photo', ['slug' => $item['img_slug']]);
-                $html .= '<article><a href="' . snap_escape_url($url) . '"><h2>' . snap_escape_html($title) . '</h2></a></article>';
-            }
-            $html .= '</section>';
-        } else {
-            $html .= '<section class="not-found"><h1>Not found</h1></section>';
-        }
-        if (!empty($response['comments'])) $html .= snap_render_html(snap_render_component('comments', ['items' => $response['comments']]));
-        $html .= '</main><footer id="system-footer" class="site-footer"><div id="footer" class="inside"><p id="sig-text">' . snap_escape_html($site['site_name'] ?? '') . '</p></div></footer>' . snap_render_html(snap_render_component('registered-assets', ['assets'=>$site['registered_assets']??[]])) . snap_render_html($site['owner_custom_code'] ?? '');
-    } elseif ($name === 'smacktalk-page') {
+    if ($name === 'smacktalk-page') {
         $response = is_array($data['response'] ?? null) ? $data['response'] : [];
         $site = is_array($data['site'] ?? null) ? $data['site'] : [];
         $skin = (string)($site['skin_slug'] ?? '');

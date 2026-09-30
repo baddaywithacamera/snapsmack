@@ -1,7 +1,17 @@
+<?php
+declare(strict_types=1);
+
+$root = dirname(__DIR__, 2);
+$skins = [
+    '50-shades-of-noah-grey', '52-card-pickup', 'chaplin', 'full-monty', 'galleria', 'glide',
+    'hip-to-be-square', 'impact-printer', 'new-horizon', 'onyx', 'photogram', 'rational-geo',
+    'scroll', 'show-n-tell', 'slickr', 'true-grit',
+];
+$template = <<<'PHP'
 <?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
 <!doctype html><html lang="<?php echo snap_escape_attr($view['site']['language']); ?>" dir="<?php echo snap_escape_attr($view['site']['direction']); ?>">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?php echo snap_escape_html($view['response']['page_title'] ?? $view['site']['site_name']); ?></title><link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['skin_style_url']); ?>"><?php echo snap_render_html($view['site']['skin_custom_style'] ?? ''); ?></head>
-<body class="photogram-v2"><header id="header" class="site-header" data-sticky-header><div class="inside"><a class="site-title logo-area" href="<?php echo snap_route_url('home'); ?>"><span class="site-title-text"><?php echo snap_escape_html($view['site']['site_name']); ?></span></a><?php echo snap_render_html(snap_render_component('navigation', ['items' => $view['response']['navigation'] ?? []])); ?></div></header>
+<body class="{{BODY_CLASS}}"><header id="header" class="site-header" data-sticky-header><div class="inside"><a class="site-title logo-area" href="<?php echo snap_route_url('home'); ?>"><span class="site-title-text"><?php echo snap_escape_html($view['site']['site_name']); ?></span></a><?php echo snap_render_html(snap_render_component('navigation', ['items' => $view['response']['navigation'] ?? []])); ?></div></header>
 <main id="scroll-stage" class="public-content">
 <?php if (($view['response']['kind'] ?? '') === 'photo' || ($view['response']['kind'] ?? '') === 'post' || ($view['response']['kind'] ?? '') === 'page' || ($view['response']['kind'] ?? '') === 'collection'): ?>
 <article id="photobox" class="h-entry single-image-page"><h1 class="p-name photo-title-footer"><?php echo snap_escape_html($view['response']['item']['img_title'] ?? $view['response']['item']['title'] ?? $view['response']['item']['name'] ?? ''); ?></h1>
@@ -13,3 +23,9 @@
 <?php if (!empty($view['response']['comments'])): ?><?php echo snap_render_html(snap_render_component('comments', ['items' => $view['response']['comments']])); ?><?php endif; ?></main>
 <footer id="system-footer" class="site-footer"><div id="footer" class="inside"><p id="sig-text"><?php echo snap_escape_html($view['site']['site_name']); ?></p></div></footer><?php echo snap_render_html(snap_render_component('registered-assets', ['assets' => $view['site']['registered_assets'] ?? []])); ?><?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?>
 </body></html>
+PHP;
+
+foreach ($skins as $skin) {
+    file_put_contents($root . '/skins/' . $skin . '/layout.php', str_replace('{{BODY_CLASS}}', $skin . '-v2', $template) . "\n");
+}
+echo 'Restored layout ownership for ' . count($skins) . " public skins.\n";
