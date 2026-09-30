@@ -68,8 +68,8 @@ foreach (['h-entry', 'p-name', 'e-content', 'dt-published', 'u-photo', 'p-author
     iw_assert(strpos($publicPost, $class) !== false, "ActivityPub public post emits {$class}");
 }
 
-$helpers=(string)file_get_contents($root.'/core/skin-render-helpers.php');
-foreach(['h-entry','p-name','e-content','dt-published','u-photo','p-author h-card'] as $class)iw_assert(strpos($helpers,$class)!==false,"CMS skin renderer emits {$class}");
+$strictLayouts='';foreach(glob($root.'/skins/*/layout.php')?:[] as $skinLayout)$strictLayouts.=(string)file_get_contents($skinLayout);
+foreach(['h-entry','p-name','e-content','dt-published','u-photo','p-author h-card'] as $class)iw_assert(strpos($strictLayouts,$class)!==false,"strict skin layouts emit {$class}");
 
 echo "IndieWeb semantic regression checks passed.\n";
 
