@@ -412,6 +412,25 @@ function snapsmack_skin_zip_safety_findings(ZipArchive $zip): array {
     return $findings;
 }
 
+/** Validate an extracted package before any files enter the live skin tree. */
+function snapsmack_skin_validate_staged_package(string $source): ?string {
+    if (!file_exists($source . '/manifest.json')) return 'Invalid skin package: no manifest.json found inside the zip.';
+    require_once __DIR__ . '/skin-security-policy.php';
+    $package_manifest=json_decode((string)file_get_contents($source.'/manifest.json'),true);
+    if(!is_array($package_manifest)||($package_manifest['schema_version']??0)!==2||($package_manifest['security_policy']??0)!==SNAPSMACK_SKIN_POLICY_VERSION){
+        return 'Skin install refused: unsupported manifest or security policy version.';
+    }
+    $source_real=realpath($source);
+    foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source,FilesystemIterator::SKIP_DOTS)) as $entry){
+        $real=$entry->getRealPath();
+        if($entry->isLink()||$source_real===false||$real===false||!str_starts_with(str_replace('\\','/',$real),rtrim(str_replace('\\','/',$source_real),'/').'/')){
+            return 'Skin install refused: staged package escaped its root.';
+        }
+    }
+    return snapsmack_skin_security_gate($source)
+        ? 'Skin install refused: package violates the skin security policy.' : null;
+}
+
 function skin_registry_install(string $slug, string $download_url, string $signature = '', string $public_key = ''): array {
 
     // Sanitize slug — alphanumeric, hyphens, underscores only
@@ -506,32 +525,11 @@ function skin_registry_install(string $slug, string $download_url, string $signa
 
     // Validate: manifest.json must exist. Keep its exact bytes so an old skin
     // left behind by a failed replacement can never masquerade as success.
-    if (!file_exists($source . '/manifest.json')) {
+    $staged_error = snapsmack_skin_validate_staged_package($source);
+    if ($staged_error !== null) {
         _skin_rmdir_recursive($staging);
         @unlink($tmp_zip);
-        return ['success' => false, 'message' => 'Invalid skin package: no manifest.json found inside the zip.'];
-    }
-    require_once __DIR__ . '/skin-security-policy.php';
-    $package_manifest=json_decode((string)file_get_contents($source.'/manifest.json'),true);
-    if(!is_array($package_manifest)||($package_manifest['schema_version']??0)!==2||($package_manifest['security_policy']??0)!==SNAPSMACK_SKIN_POLICY_VERSION){
-        _skin_rmdir_recursive($staging);@unlink($tmp_zip);
-        return ['success'=>false,'message'=>'Skin install refused: unsupported manifest or security policy version.'];
-    }
-    $source_real=realpath($source);
-    foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source,FilesystemIterator::SKIP_DOTS)) as $entry){
-        $real=$entry->getRealPath();
-        if($entry->isLink()||$source_real===false||$real===false||!str_starts_with(str_replace('\\','/',$real),rtrim(str_replace('\\','/',$source_real),'/').'/')){
-            _skin_rmdir_recursive($staging);@unlink($tmp_zip);
-            return ['success'=>false,'message'=>'Skin install refused: staged package escaped its root.'];
-        }
-    }
-    // Apply the same authority boundary used by development and packaging
-    // before executable files can enter the live skins directory.
-    $policy_findings = snapsmack_skin_security_gate($source);
-    if ($policy_findings) {
-        _skin_rmdir_recursive($staging);
-        @unlink($tmp_zip);
-        return ['success' => false, 'message' => 'Skin install refused: package violates the skin security policy.'];
+        return ['success' => false, 'message' => $staged_error];
     }
     $expected_manifest_hash = hash_file('sha256', $source . '/manifest.json');
 
