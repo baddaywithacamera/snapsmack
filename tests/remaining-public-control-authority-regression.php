@@ -27,4 +27,18 @@ foreach (["['response']['slider_items']", "['overlay_name']", "['overlay_tagline
     if (!str_contains($show, $needle)) throw new RuntimeException('Show-N-Tell layout model missing: ' . $needle);
 }
 
+require_once $root . '/core/skin-presentation.php';
+$media = snapsmack_skin_presentation(['header_image'=>'media/header.jpg','header_logo'=>'media/logo.png','retina_logo'=>'1','show_tagline'=>'0'], 'alfred');
+if (($media['header_media'] ?? null) !== ['image'=>'/media/header.jpg','logo'=>'/media/logo.png','retina'=>true,'show_tagline'=>false]) {
+    throw new RuntimeException('Header media controls did not cross the bounded CMS model.');
+}
+foreach (['alfred','telegram','tilez','stanley','writing-with-impact'] as $skin) {
+    $layout = (string)file_get_contents($root . '/skins/' . $skin . '/layout.php');
+    foreach (['header_media', "['logo']", "['show_tagline']"] as $needle) {
+        if (!str_contains($layout, $needle)) throw new RuntimeException($skin . ' header control missing: ' . $needle);
+    }
+}
+$writing = snapsmack_skin_presentation(['paper_style'=>'greenbar'], 'writing-with-impact');
+if (($writing['writing']['paper'] ?? '') !== 'greenbar') throw new RuntimeException('Writing paper control is inert.');
+
 echo "Remaining public control authority regression passed.\n";

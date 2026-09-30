@@ -43,6 +43,9 @@
     --alfred-accent: #1e73be;
 }
 
+.header-media-image { display:block; width:100%; height:100%; object-fit:var(--telegram-header-fit,cover); }
+.site-logo-retina { width:auto; max-width:50%; }
+
 
 /* -------------------------------------------------------------------------- */
 /*  1. CSS Reset                                                               */
