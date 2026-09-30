@@ -104,6 +104,16 @@ final class SnapPublicRepository
         );
     }
 
+    public function randomPhotographs(int $limit): array {
+        return $this->all(
+            "SELECT id,img_title,img_slug,img_alt,img_file,img_width,img_height,img_thumb_square,img_thumb_aspect
+             FROM snap_images
+             WHERE img_status='published' AND img_date <= NOW()
+             ORDER BY RAND() LIMIT ?",
+            [max(1, min(400, $limit))]
+        );
+    }
+
     public function publishedPhotographCount(): int {
         $stmt = $this->pdo->query(
             "SELECT COUNT(id) FROM snap_images WHERE img_status='published' AND img_date <= NOW()"
