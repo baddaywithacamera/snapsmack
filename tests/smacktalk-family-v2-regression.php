@@ -6,7 +6,7 @@ require_once dirname(__DIR__) . '/core/skin-render-helpers.php';
 require_once dirname(__DIR__) . '/core/skin-view-contract.php';
 
 $root = dirname(__DIR__);
-$skins = ['alfred', 'stanley', 'writing-with-impact', 'tilez'];
+$skins = ['alfred', 'stanley', 'writing-with-impact', 'tilez', 'telegram'];
 $base = ['page_title' => 'Test', 'navigation' => [['label' => 'Home', 'url' => '/']], 'status' => 200];
 $cases = [
     'single' => $base + ['kind' => 'single', 'post' => ['title' => 'Story', 'created_at' => '2026-09-28', 'featured_image_path' => '/media/cover.jpg'], 'rendered_content' => snapsmack_trusted_html('<p>CMS content</p>'), 'colophon' => 'Notes', 'comments_enabled' => true, 'comments' => [['comment_author' => '<Reader>', 'comment_text' => '<script>no</script>']]],
@@ -23,13 +23,15 @@ foreach ($skins as $skin) {
     if (count($php) !== 1 || basename($php[0]) !== 'layout.php') throw new RuntimeException("{$skin} retains executable PHP outside its strict layout.");
     $styles[$skin] = hash_file('sha256', $dir . '/style.css');
     foreach ($cases as $kind => $response) {
-        $view = snapsmack_build_skin_view($response, ['site_name' => 'Example', 'tagline' => 'Tagline', 'base_url' => '/', 'language' => 'en', 'direction' => 'ltr', 'skin_style_url' => '/skins/' . $skin . '/style.css']);
+        $view = snapsmack_build_skin_view($response, ['site_name' => 'Example', 'tagline' => 'Tagline', 'base_url' => '/', 'language' => 'en', 'direction' => 'ltr', 'skin_slug'=>$skin, 'skin_style_url' => '/skins/' . $skin . '/style.css']);
         ob_start();
         $ok = snapsmack_render_strict_skin_template($dir, 'layout.php', $view);
         $html = (string)ob_get_clean();
         if (!$ok || !str_contains($html, '<!doctype html>')) throw new RuntimeException("{$skin}/{$kind} did not render.");
         if (stripos($html, '<script>no</script>') !== false) throw new RuntimeException("{$skin}/{$kind} emitted untrusted HTML.");
         if ($kind === 'single' && (!str_contains($html, 'CMS content') || !str_contains($html, 'snap-comments'))) throw new RuntimeException("{$skin} lost CMS content or comments.");
+        $hook = $skin === 'stanley' ? 'id="stanley-page"' : ($skin === 'writing-with-impact' ? 'id="wwi-page"' : ($skin === 'telegram' ? 'telegram-' : 'header section-inner'));
+        if (!str_contains($html, $hook)) throw new RuntimeException("{$skin}/{$kind} lost its presentation structure.");
     }
 }
 if (count(array_unique($styles)) !== count($skins)) throw new RuntimeException('SMACKTALK family no longer has distinct presentation styles.');
