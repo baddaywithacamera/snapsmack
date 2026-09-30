@@ -132,7 +132,54 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
             'warp' => $presentation['mayhem_warp'] ? '1' : '0',
         ];
     }
+    if ($skinSlug === 'parade') {
+        $presentation += snapsmack_parade_presentation($presentation['options']);
+    }
     return $presentation;
+}
+
+/** CMS-owned interpretation of PARADE controls and inert flag geometry. */
+function snapsmack_parade_presentation(array $options): array
+{
+    $palettes = [
+        'rainbow'=>['#e40303','#ff8c00','#ffed00','#008026','#004dff','#750787'],
+        'trans'=>['#5bcffb','#f5abb9','#ffffff','#f5abb9','#5bcffb'],
+        'bi'=>['#d60270','#d60270','#9b4f96','#0038a8','#0038a8'],
+        'nonbinary'=>['#fff430','#ffffff','#9c59d1','#000000'],
+        'pan'=>['#ff218c','#ffd800','#21b1ff'],
+        'lesbian'=>['#d52d00','#ef7627','#ff9a56','#ffffff','#d162a4','#b55690','#a30262'],
+        'asexual'=>['#000000','#a3a3a3','#ffffff','#800080'],
+        'aromantic'=>['#3da542','#a7d379','#ffffff','#a9a9a9','#000000'],
+        'genderfluid'=>['#ff75a2','#ffffff','#be18d6','#000000','#333ebd'],
+        'genderqueer'=>['#b57edc','#ffffff','#4a8123'],
+        'progress'=>['#e40303','#ff8c00','#ffed00','#008026','#004dff','#750787'],
+        'two-spirit'=>['#e40303','#ff8c00','#ffed00','#008026','#004dff','#750787'],
+    ];
+    $paletteKey = (string)($options['pa_palette'] ?? '');
+    $colors = $palettes[$paletteKey] ?? [];
+    $panelOpacity = snapsmack_declared_option_int($options, 'pa_panel_opacity', 0, 100);
+    $navOpacity = snapsmack_declared_option_int($options, 'pa_navbar_opacity', 0, 100);
+    $vars = [
+        '--panel-bg' => $panelOpacity > 0 ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'pa_panel_color'), $panelOpacity) : 'transparent',
+        '--panel-extend' => snapsmack_declared_option_int($options, 'pa_panel_extend', 0, 100) . 'px',
+        '--pa-navbar-bg' => $navOpacity > 0 ? snapsmack_skin_rgba(snapsmack_declared_option_hex($options, 'pa_navbar_color'), $navOpacity) : 'transparent',
+        '--post-count-color' => snapsmack_declared_option_hex($options, 'pa_posts_color'),
+        '--pa-nav-line' => snapsmack_declared_option_hex($options, 'pa_nav_line_color'),
+        '--nav-line-opacity' => number_format(snapsmack_declared_option_int($options, 'pa_nav_line_opacity', 0, 100) / 100, 2, '.', ''),
+    ];
+    $css = ':root{';
+    foreach ($vars as $name => $value) $css .= $name . ':' . $value . ';';
+    $css .= '}';
+    return [
+        'style' => SnapTrustedHtml::__snapsmackCmsOnly('<style id="snapsmack-parade-presentation">' . $css . '</style>'),
+        'flag' => [
+            'stripes' => json_encode($colors, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+            'orientation' => 'horizontal',
+            'speed' => snapsmack_declared_option_int($options, 'pa_flag_speed', 1, 100),
+            'amplitude' => snapsmack_declared_option_int($options, 'pa_flag_amplitude', 1, 100),
+            'opacity' => snapsmack_declared_option_int($options, 'pa_flag_opacity', 0, 100),
+        ],
+    ];
 }
 
 /** CMS-owned, presentation-only interpretation of INSTANT CAMERA settings. */
