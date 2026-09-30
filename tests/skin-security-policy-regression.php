@@ -21,6 +21,20 @@ PHP);
     if (snapsmack_skin_security_findings($tmp) !== []) {
         throw new RuntimeException('A presentation-only template was rejected.');
     }
+    // TILEZ-style functionality must be rejected even if it is parked in an
+    // otherwise valid schema-v2 package or disguised with another extension.
+    file_put_contents($tmp . '/helper.php', '<?php defined("SNAPSMACK_SKIN_RENDER") || exit; ?>');
+    $types = array_column(snapsmack_skin_security_gate($tmp), 'type');
+    if (!in_array('undeclared-php-template', $types, true)) throw new RuntimeException('Undeclared skin PHP was packageable.');
+    unlink($tmp . '/helper.php');
+    file_put_contents($tmp . '/helper.php5', '<?php echo "code";');
+    $types = array_column(snapsmack_skin_security_gate($tmp), 'type');
+    if (!in_array('executable-file-type', $types, true)) throw new RuntimeException('Alternate PHP extension was packageable.');
+    unlink($tmp . '/helper.php5');
+    file_put_contents($tmp . '/.htaccess', 'AddType application/x-httpd-php .jpg');
+    $types = array_column(snapsmack_skin_security_gate($tmp), 'type');
+    if (!in_array('server-configuration', $types, true)) throw new RuntimeException('Skin server configuration was packageable.');
+    unlink($tmp . '/.htaccess');
     $manifest=json_decode(file_get_contents($tmp.'/manifest.json'),true);$manifest['require_scripts']=['asset:admin:ss-engine-admin-ui'];$manifest['require_styles']=['asset:admin:admin-theme-geometry-master'];file_put_contents($tmp.'/manifest.json',json_encode($manifest));
     $assetTypes=array_column(snapsmack_skin_security_findings($tmp),'type');if(count(array_filter($assetTypes,fn($type)=>$type==='manifest-asset-handle'))!==2)throw new RuntimeException('A strict skin could request admin or unknown asset handles.');
     unset($manifest['require_scripts'],$manifest['require_styles']);file_put_contents($tmp.'/manifest.json',json_encode($manifest));

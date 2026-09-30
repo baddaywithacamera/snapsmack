@@ -545,14 +545,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                 // ── Shared skin authority gate ────────────────────────────────
                 // Missing policy code is a hard failure: signing proves origin,
                 // not safety, and the publisher may never silently skip review.
-                $sc_policy = rtrim($tmp_dir, '/') . '/core/skin-security-policy.php';
+                // The candidate ref must never supply the rules used to judge
+                // itself. Use Smack Central's deployed policy and asset
+                // inventory as the trusted authority root.
+                $sc_authority_root = dirname(__DIR__);
+                $sc_policy = $sc_authority_root . '/core/skin-security-policy.php';
                 if (!is_file($sc_policy)) {
                     $build_results[] = ['slug' => $slug, 'ok' => false,
                         'msg' => 'BLOCKED — skin security policy is unavailable.'];
                     continue;
                 }
                 require_once $sc_policy;
-                $blockers = snapsmack_skin_security_gate($skin_dir, rtrim($tmp_dir, '/'));
+                $blockers = snapsmack_skin_security_gate($skin_dir, $sc_authority_root);
                 if ($blockers) {
                     $detail = array_map(static fn($f) =>
                         $f['type'] . ' @ ' . $f['file']
