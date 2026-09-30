@@ -224,9 +224,15 @@ try {
         require_once __DIR__ . '/core/skin-view-contract.php';
         require_once __DIR__ . '/core/skin-presentation.php';
         $_public_settings = $settings;
-        if ($active_skin === 'instant-camera') {
-            // This grid's shared progressive-reveal engine folds the complete
-            // lazy-image DOM in batches; it cannot reveal rows omitted server-side.
+        $_uses_progressive_reveal = in_array(
+            'smack-progressive-reveal',
+            is_array($_active_manifest['require_scripts'] ?? null) ? $_active_manifest['require_scripts'] : [],
+            true
+        );
+        if ($_uses_progressive_reveal) {
+            // The shared progressive-reveal engine folds the complete lazy-image
+            // DOM in batches; it cannot reveal rows omitted server-side. Grant
+            // the bounded full feed by declared capability, never by skin name.
             $_public_settings['_cms_full_landing'] = true;
             $_public_settings['posts_per_page'] = 5000;
         }
