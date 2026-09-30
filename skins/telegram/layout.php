@@ -9,12 +9,13 @@
     <?php echo snap_render_html($view['site']['skin_custom_style'] ?? ''); ?>
 </head>
 <body class="telegram-v2">
-<header class="site-header">
+<nav class="navigation" aria-label="Primary"><div class="section-inner"><ul class="main-menu"><?php echo snap_render_html(snap_render_component('navigation-tree', ['items' => $view['response']['navigation'] ?? []])); ?></ul><button class="nav-toggle" type="button" aria-label="Toggle navigation"><span class="bars"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span></button><div class="mobile-navigation"><ul class="mobile-menu"><?php echo snap_render_html(snap_render_component('navigation-tree', ['items' => $view['response']['navigation'] ?? []])); ?></ul></div></div></nav>
+<div class="header-image" aria-hidden="true"></div>
+<header class="site-header header section-inner">
     <a class="site-title" href="<?php echo snap_route_url('home'); ?>"><?php echo snap_escape_html($view['site']['site_name']); ?></a>
     <?php if (!empty($view['site']['tagline'])): ?>
-        <p class="site-tagline"><?php echo snap_escape_html($view['site']['tagline']); ?></p>
+        <p class="site-tagline blog-description"><?php echo snap_escape_html($view['site']['tagline']); ?></p>
     <?php endif; ?>
-    <?php echo snap_render_html(snap_render_component('navigation', ['items' => $view['response']['navigation']])); ?>
 </header>
 
 <main class="post-inner telegram-reading-column">
