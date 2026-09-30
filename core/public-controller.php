@@ -70,9 +70,14 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             'comments' => $repository->approvedComments(null, (int)$item['id']), 'navigation' => $navigation];
     }
     if ($route === 'archive') {
+        $total = $repository->publishedPhotographCount();
         return ['status' => 200, 'kind' => 'archive',
             'items' => $repository->archivePhotographs($perPage, $offset),
-            'navigation' => $navigation, 'page' => $page];
+            'navigation' => $navigation, 'page' => $page, 'per_page' => $perPage,
+            'total_count' => $total, 'total_pages' => (int)ceil($total / $perPage),
+            'has_more' => ($offset + $perPage) < $total,
+            'previous_page' => $page > 1 ? $page - 1 : null,
+            'next_page' => ($offset + $perPage) < $total ? $page + 1 : null];
     }
     if ($route === 'page') {
         $item = $slug !== '' ? $repository->activePageBySlug($slug) : null;
@@ -87,9 +92,14 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             'navigation' => $navigation];
     }
     if ($route === 'hashtag') {
+        $total = $slug === '' ? 0 : $repository->hashtagPhotographCount($slug);
         return ['status' => 200, 'kind' => 'hashtag', 'slug' => $slug,
             'items' => $slug === '' ? [] : $repository->hashtagPhotographs($slug, $perPage, $offset),
-            'navigation' => $navigation, 'page' => $page];
+            'navigation' => $navigation, 'page' => $page, 'per_page' => $perPage,
+            'total_count' => $total, 'total_pages' => (int)ceil($total / $perPage),
+            'has_more' => ($offset + $perPage) < $total,
+            'previous_page' => $page > 1 ? $page - 1 : null,
+            'next_page' => ($offset + $perPage) < $total ? $page + 1 : null];
     }
     if ($route === 'albums') return ['status' => 200, 'kind' => 'albums', 'items' => $repository->publicAlbums(), 'navigation' => $navigation];
     if ($route === 'collections') return ['status' => 200, 'kind' => 'collections', 'items' => $repository->publicCollections(), 'navigation' => $navigation];

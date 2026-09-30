@@ -186,6 +186,17 @@ final class SnapPublicRepository
         );
     }
 
+    public function hashtagPhotographCount(string $slug): int {
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(i.id)
+             FROM snap_tags t JOIN snap_image_tags it ON it.tag_id=t.id
+             JOIN snap_images i ON i.id=it.image_id
+             WHERE t.slug=? AND i.img_status='published' AND i.img_date <= NOW()"
+        );
+        $stmt->execute([$slug]);
+        return (int)$stmt->fetchColumn();
+    }
+
     public function adjacentPosts(int $id, string $type, bool $next): ?array {
         $op = $next ? '>' : '<';
         $direction = $next ? 'ASC' : 'DESC';
