@@ -58,7 +58,13 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         $rows = [];
         if ($skin === 'glide') {
             $rows = array_fill(0, 9, []);
-            foreach ($items as $index => $item) $rows[$index % 9][] = $item;
+            foreach ($items as $index => $item) {
+                $width = max(1, (int)($item['img_width'] ?? 3));
+                $height = max(1, (int)($item['img_height'] ?? 2));
+                $item['presentation_aspect'] = $width . '/' . $height;
+                $items[$index] = $item;
+                $rows[$index % 9][] = $item;
+            }
         }
         return ['status' => 200, 'kind' => 'landing', 'mode' => $mode, 'items' => $items,
             'rows' => $rows, 'navigation' => $navigation, 'page' => $page,
