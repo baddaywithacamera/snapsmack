@@ -328,9 +328,13 @@ function snapsmack_chaplin_presentation(array $options): array
         $stops[] = '#f0f0f0 '.$at.'px'; $at += $widths[$i]; $stops[] = '#f0f0f0 '.$at.'px';
     }
     $stripe = $stops ? implode(',', $stops) : 'transparent 0';
+    $ornament = (string)($options['chap_ornament_style'] ?? 'A');
+    $base = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
+    $assetBase = $base . 'skins/chaplin/assets/svg/' . (in_array($ornament, ['A','B','C','D'], true) ? $ornament : 'A');
     $result = ['chaplin'=>[
         'line_count'=>$count,
-        'ornament_style'=>(string)($options['chap_ornament_style'] ?? 'A'),
+        'ornament_style'=>$ornament,
+        'corner_asset'=>$assetBase . '-corner.svg', 'top_asset'=>$assetBase . '-top.svg', 'side_asset'=>$assetBase . '-side.svg',
         'corners'=>(string)($options['chap_corner_ornaments'] ?? '1') === '1',
         'mid_tb'=>(string)($options['chap_mid_top_bot'] ?? '0') === '1',
         'mid_lr'=>(string)($options['chap_mid_left_right'] ?? '0') === '1',
@@ -343,6 +347,9 @@ function snapsmack_chaplin_presentation(array $options): array
         '--chap-frame-gap'=>snapsmack_declared_option_int($options, 'chap_frame_gap', 0, 80).'px', '--chap-orn-gap'=>snapsmack_declared_option_int($options, 'chap_ornament_gap', 0, 80).'px',
         '--chap-photo-pad-v'=>snapsmack_declared_option_int($options, 'chap_photo_pad_v', 0, 200).'px',
         '--chap-frame-total'=>$total.'px', '--chap-frame-stripes'=>'linear-gradient(to bottom,'.$stripe.')',
+        '--chap-line-1'=>snapsmack_declared_option_int($options, 'chap_line_1_width', 1, 20).'px',
+        '--chap-line-2'=>snapsmack_declared_option_int($options, 'chap_line_2_width', 1, 20).'px',
+        '--chap-line-3'=>snapsmack_declared_option_int($options, 'chap_line_3_width', 1, 20).'px',
     ]);
     return $result;
 }
