@@ -49,11 +49,19 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
 
     if ($route === 'landing') {
         $mode = (string)($settings['site_mode'] ?? 'photoblog');
-        $items = $mode === 'smacktalk'
+        $skin = (string)($settings['active_skin'] ?? '');
+        $items = $skin === 'glide'
+            ? $repository->randomPhotographs(200)
+            : ($mode === 'smacktalk'
             ? $repository->longformLanding($perPage, $offset)
-            : $repository->photographLanding($perPage, $offset);
+            : $repository->photographLanding($perPage, $offset));
+        $rows = [];
+        if ($skin === 'glide') {
+            $rows = array_fill(0, 9, []);
+            foreach ($items as $index => $item) $rows[$index % 9][] = $item;
+        }
         return ['status' => 200, 'kind' => 'landing', 'mode' => $mode, 'items' => $items,
-            'navigation' => $navigation, 'page' => $page,
+            'rows' => $rows, 'navigation' => $navigation, 'page' => $page,
             'photo_count' => $mode === 'smacktalk' ? 0 : $repository->publishedPhotographCount()];
     }
     if ($route === 'photo') {
