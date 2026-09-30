@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.795D — 2026-09-30 — Updated skins cannot keep serving stale CSS
+
+- **Strict public pages now version each skin stylesheet URL with the installed skin manifest version.** Signed skin updates already replaced `style.css`, but the public controller kept linking the same unversioned URL, allowing browser and edge caches to preserve obsolete stacking and opacity rules after a successful install. Both strict controller paths now hand layouts a bounded `style.css?v=<skin-version>` URL, so installing a new skin version immediately selects its matching presentation rules across every schema-v2 skin.
+
 ## 0.7.794D — 2026-09-30 — Opacity controls reach the visible layers
 
 - **INSTANT CAMERA’s white scrim now occupies an explicit positive layer between the animated background and the content.** The saved slider still supplies `--ic-scrim`, but the consuming layer can no longer disappear behind the document canvas because of a negative stacking context.
