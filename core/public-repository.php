@@ -97,7 +97,10 @@ final class SnapPublicRepository
              WHERE img_status='published' AND img_date <= NOW()
              ORDER BY CASE WHEN sort_order>0 THEN 1 ELSE 0 END ASC,sort_order ASC,id DESC
              LIMIT ? OFFSET ?",
-            [max(1, min(100, $limit)), max(0, $offset)]
+            // The controller owns the route-specific ceiling (100 normally,
+            // 5,000 for a declared progressive-reveal feed). Do not silently
+            // collapse that validated full-feed request back to 100 here.
+            [max(1, min(5000, $limit)), max(0, $offset)]
         );
     }
 
