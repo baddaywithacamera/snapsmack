@@ -1346,7 +1346,11 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 
 /* ── Background layers (spec §6.3): bottom = Organized Mayhem / static image,
       middle = white scrim, top = grid + chrome. ───────────────────────────── */
-body { background: transparent !important; }      /* let the fixed layers show */
+body {
+    background: transparent !important;           /* let the fixed layers show */
+    position: relative;
+    isolation: isolate;                            /* contain the -3/-2/-1 backdrop stack */
+}
 .ic-bg {
     position: fixed; inset: 0;
     z-index: -3;
