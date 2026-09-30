@@ -144,6 +144,16 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
             'warp' => $presentation['mayhem_warp'] ? '1' : '0',
         ];
     }
+    if ($skinSlug === 'sliders') {
+        $presentation += snapsmack_sliders_presentation($presentation['options']);
+        $opacity = snapsmack_declared_option_int($presentation['options'], 'sl_opacity', 0, 95);
+        $wallOpacity = snapsmack_declared_option_int($presentation['options'], 'sl_wall_opacity', 15, 100);
+        $existing = isset($presentation['style']) ? (string)$presentation['style'] : '';
+        $css = ':root{--ic-scrim:' . number_format($opacity / 100, 2, '.', '')
+            . ';--sl-layer-color:' . snapsmack_declared_option_hex($presentation['options'], 'sl_layer_color')
+            . ';--sl-wall-opacity:' . number_format($wallOpacity / 100, 2, '.', '') . ';}';
+        $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly($existing . '<style id="snapsmack-sliders-presentation">' . $css . '</style>');
+    }
     if ($skinSlug === 'parade') {
         $presentation += snapsmack_parade_presentation($presentation['options']);
     }
@@ -162,6 +172,16 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
     if ($skinSlug === 'chaplin') {
         $presentation += snapsmack_chaplin_presentation($presentation['options']);
     }
+    if ($skinSlug === '52-card-pickup') {
+        $presentation['mayhem'] = [
+            'api_url' => '?ajax=mayhem',
+            'initial_count' => snapsmack_skin_int($settings, 'mayhem_initial_count', 120, 40, 400),
+            'max_width' => snapsmack_skin_int($settings, 'mayhem_max_width', 300, 120, 500),
+            'overlap_max' => number_format(snapsmack_skin_int($settings, 'mayhem_overlap_max', 85, 40, 95) / 100, 2, '.', ''),
+            'drift' => (($settings['mayhem_drift'] ?? '1') === '1') ? '1' : '0',
+            'warp' => (($settings['mayhem_warp'] ?? '1') === '1') ? '1' : '0',
+        ];
+    }
     $framePrefixes = ['the-grid'=>'tg','sudden-impact'=>'tg','instant-camera'=>'ic','sliders'=>'ic',
         'aurora'=>'au','parade'=>'pa','jive-turkey'=>'jt','heuristic'=>'he','game-on'=>'go'];
     if (isset($framePrefixes[$skinSlug])) {
@@ -172,6 +192,14 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
         }
     }
     return $presentation;
+}
+
+function snapsmack_sliders_presentation(array $options): array
+{
+    return ['sliders'=>[
+        'flow_axis'=>(string)($options['sl_flow_axis'] ?? 'diagonal_up'),
+        'travel'=>number_format((float)($options['sl_travel'] ?? 0.55), 2, '.', ''),
+    ]];
 }
 
 /** Append a bounded, CMS-created custom-property block to a strict presentation. */
