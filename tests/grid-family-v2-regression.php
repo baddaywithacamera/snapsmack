@@ -32,6 +32,8 @@ foreach($skins as $skin){
         if(($response['kind']??'')==='landing'&&!str_contains($html,'class="'.$prefix.'-tile')) throw new RuntimeException("{$skin} lost its tile contract.");
         if($skin!=='instant-camera'&&(str_contains($html,'class="ic-scrim"')||str_contains($html,'class="ic-panel"'))) throw new RuntimeException("{$skin} received INSTANT CAMERA structure.");
         if($skin==='instant-camera'&&(!str_contains($html,'class="ic-scrim"')||!str_contains($html,'class="ic-panel"'))) throw new RuntimeException('INSTANT CAMERA layout no longer owns its backdrop structure.');
+        if($skin==='parade'&&(!str_contains($html,'class="pa-parade-bg pa-flag-bg"')||!str_contains($html,'class="pa-panel"'))) throw new RuntimeException('PARADE layout no longer owns its backdrop structure.');
+        if($skin!=='parade'&&(str_contains($html,'class="pa-parade-bg')||str_contains($html,'class="pa-panel"'))) throw new RuntimeException("{$skin} received PARADE structure.");
     }
 }
 if(count(array_unique($styles))!==count($styles)) throw new RuntimeException('Grid-family presentations are not distinct.');
