@@ -20,7 +20,7 @@ $layout   = file_get_contents($root . '/skins/telegram/layout.php');
 $style    = file_get_contents($root . '/skins/telegram/style.css');
 $tilez    = file_get_contents($root . '/core/public-repository.php');
 $tilezCss = file_get_contents($root . '/skins/tilez/style.css');
-$helpers = file_get_contents($root . '/core/skin-render-helpers.php');
+$tilezLayout = file_get_contents($root . '/skins/tilez/layout.php');
 $manifest = json_decode(file_get_contents($root . '/skins/telegram/manifest.json'), true);
 $installer = file_get_contents($root . '/projects/snapsmack-ca/install-manifest.php');
 $updater   = file_get_contents($root . '/core/updater.php');
@@ -68,7 +68,7 @@ tg_check(strpos($style, '--telegram-column:46rem') !== false
     'TELEGRAM constrains essays and mosaics to its reading column');
 tg_check(strpos($tilez, 'ORDER BY p.created_at DESC, p.id DESC') !== false,
     'TILEZ orders imported posts by publication date');
-tg_check(strpos($helpers, "snap_render_component('navigation'") !== false
+tg_check(strpos($tilezLayout, "snap_render_component('navigation'") !== false
     && strpos($tilezCss, 'font-synthesis: none') !== false
     && strpos($tilezCss, '.snap-inline-frame:has(+ .snap-inline-frame)') !== false,
     'TILEZ receives CMS navigation and keeps its readable presentation');
