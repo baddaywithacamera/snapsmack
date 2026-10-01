@@ -3,7 +3,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QSlider, QLineEdit,
-    QCheckBox, QLabel, QPushButton, QFileDialog, QWidget,
+    QCheckBox, QLabel, QPushButton, QFileDialog, QWidget, QComboBox,
 )
 
 from . import theme, prefs
@@ -52,6 +52,28 @@ class PreferencesDialog(QDialog):
         form.addRow("", self.strip_gps)
 
         root.addLayout(form)
+
+        performance_title = QLabel("PERFORMANCE")
+        performance_title.setObjectName("ControlName")
+        root.addWidget(performance_title)
+        performance = QFormLayout()
+        self.render_device = QComboBox()
+        self.render_device.addItem("Automatic (use NVIDIA GPU when available)", "auto")
+        self.render_device.addItem("NVIDIA GPU", "gpu")
+        self.render_device.addItem("CPU", "cpu")
+        selected = self.render_device.findData(self._values.get("render_device", "auto"))
+        self.render_device.setCurrentIndex(max(0, selected))
+        performance.addRow("Image processing", self.render_device)
+        try:
+            import gpu_acceleration
+            gpu_acceleration.configure(self.render_device.currentData())
+            self.gpu_status = QLabel(gpu_acceleration.status()["label"])
+        except Exception as exc:  # noqa: BLE001
+            self.gpu_status = QLabel(f"CPU fallback — {exc}")
+        self.gpu_status.setWordWrap(True)
+        self.gpu_status.setObjectName("ControlValue")
+        performance.addRow("Detected", self.gpu_status)
+        root.addLayout(performance)
 
         folders_title = QLabel("FILES AND FOLDERS")
         folders_title.setObjectName("ControlName")
@@ -117,8 +139,14 @@ class PreferencesDialog(QDialog):
             "projects_folder": self.projects_folder.text().strip(),
             "exports_folder": self.exports_folder.text().strip(),
             "library_include_subfolders": self.include_subfolders.isChecked(),
+            "render_device": self.render_device.currentData(),
         })
         prefs.save(self._values)
+        try:
+            import gpu_acceleration
+            gpu_acceleration.configure(self.render_device.currentData())
+        except Exception:  # noqa: BLE001
+            pass
         self.accept()
 
 # ===== SNAPSMACK EOF =====
