@@ -269,6 +269,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pull'
                 : ['warn', 'Could not deploy tools/skin-scan.php — gate will be skipped'];
         }
 
+        // 3a. Deploy the skin packager's trusted CMS authority files. The
+        // packager deliberately evaluates candidates against the installed
+        // release, never against policy supplied by the candidate skin/ref.
+        // These files live outside smack-central/, so omitting them makes the
+        // fail-closed gate unavailable and prevents every skin publication.
+        $authority_files = [
+            'core/skin-security-policy.php',
+            'core/manifest-inventory.php',
+            'assets/ASSET-INVENTORY.json',
+        ];
+        $authority_root = dirname(__DIR__);
+        foreach ($authority_files as $authority_rel) {
+            $authority_src = $wrapper . $authority_rel;
+            $authority_dst = $authority_root . '/' . $authority_rel;
+            if (!is_file($authority_src)) {
+                throw new RuntimeException("Trusted skin authority file missing from release: {$authority_rel}");
+            }
+            if (!is_dir(dirname($authority_dst)) && !@mkdir(dirname($authority_dst), 0755, true)) {
+                throw new RuntimeException("Could not create trusted authority directory for {$authority_rel}");
+            }
+            if (!copy($authority_src, $authority_dst)) {
+                throw new RuntimeException("Could not deploy trusted skin authority file: {$authority_rel}");
+            }
+        }
+        $result_log[] = ['ok', 'Trusted skin authority deployed (policy + inventories)'];
+
         // 3a. Write sc-version.php from the pulled tag ────────────────────────
         // sc-version.php in git is never updated (would require a commit per release).
         // We derive the version string from the tag and write it explicitly so
