@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+if(!defined('SNAPSMACK_VERSION_SHORT'))define('SNAPSMACK_VERSION_SHORT','asset-regression');
 $root=dirname(__DIR__);$catalog=json_decode((string)file_get_contents($root.'/assets/ASSET-INVENTORY.json'),true,512,JSON_THROW_ON_ERROR);require_once $root.'/core/asset-registry.php';
 if(($catalog['schema_version']??'')!=='1.2')throw new RuntimeException('Asset security inventory schema is stale.');
 $fjCss=array_values(array_filter($catalog['css']??[],static fn($entry):bool=>($entry['file']??'')==='assets/css/fjGallery.css'));
@@ -10,4 +11,6 @@ $missing=array_diff_key($expected,$seen);if($missing)throw new RuntimeException(
 $adminOnly='~^(?:smack-|login\.php$|snap-in\.php$|community-auth\.php$|core/(?:admin|csrf|photo-editor|ai-|update|skin-admin))~';foreach(['javascript','css'] as $group){foreach($catalog[$group]??[] as $entry){$callers=$entry['callers']??[];if($callers!==[]&&count(array_filter($callers,fn($caller)=>is_string($caller)&&preg_match($adminOnly,$caller)))===count($callers)&&($entry['scope']??'')!=='admin')throw new RuntimeException(($entry['file']??'asset').' exposes an admin-only asset as '.($entry['scope']??'unknown'));}}
 $legacy=require $root.'/core/manifest-inventory.php';foreach(($legacy['scripts']??[]) as $handle=>$entry){foreach(['path','css'] as $field){if(!isset($entry[$field]))continue;$path=(string)$entry[$field];if(!is_file($root.'/'.$path))throw new RuntimeException("Stale asset handle {$handle} points to missing {$path}");}}
 if(snapsmack_skin_declared_assets(['require_scripts'=>['asset:admin:ss-engine-admin-ui'],'require_styles'=>['asset:admin:admin-theme-geometry-master']])!==['scripts'=>[],'styles'=>[]])throw new RuntimeException('Strict skin asset resolution crossed into admin scope.');
+$versioned=snapsmack_skin_declared_assets(['require_scripts'=>['smack-organized-mayhem']]);
+if(($versioned['scripts'][0]??'')!=='/assets/js/ss-engine-organized-mayhem.js?v=asset-regression')throw new RuntimeException('Strict public engine URL is not versioned with the installed CMS release.');
 echo "Complete JS/CSS security inventory regression passed.\n";
