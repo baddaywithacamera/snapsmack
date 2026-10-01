@@ -39,7 +39,8 @@ from slapper_qt.library_window import (                  # noqa: E402
     LibraryWindow, _ThumbTask, _transfer_photo_files,
 )
 from slapper_qt.layers_panel import BASE                 # noqa: E402
-from slapper_qt.engine_bridge import render_pixmap, original_pixmap  # noqa: E402
+from slapper_qt.engine_bridge import (render_pixmap, original_pixmap,
+                                      display_thumbnail)  # noqa: E402
 from slapper_qt.output_tools import create_contact_sheet, SlideshowDialog  # noqa: E402
 from slapper_qt.source_colour import inspect_source, workspace_label       # noqa: E402
 
@@ -90,6 +91,23 @@ def test_thumbnail_worker_ignores_signal_teardown_during_shutdown():
     _ThumbTask(_image("shutdown-thumb.jpg"), _DeletedSignals()).run()
     _ThumbTask(os.path.join(TMP, "missing-shutdown-thumb.jpg"),
                _DeletedSignals()).run()
+
+
+def test_high_bit_tiff_thumbnail_uses_authoritative_decoder(monkeypatch):
+    path = _image("high-bit-library.tif", (640, 480), (31, 87, 143))
+    calls = []
+
+    class _Decoded:
+        def display_proxy(self):
+            return Image.new("RGB", (160, 120), (31, 87, 143))
+
+    import highbit_image
+    monkeypatch.setattr(
+        highbit_image, "read",
+        lambda source, maximum=None: calls.append((source, maximum)) or _Decoded())
+    thumbnail = display_thumbnail(path, (256, 256))
+    assert calls == [(path, (256, 256))]
+    assert thumbnail.size == (160, 120)
 
 
 def test_restricted_library_remains_browser_and_propagates_gate():
@@ -1706,6 +1724,7 @@ def test_library_scan_and_open():
 def test_library_serializes_raw_thumbnails_and_retries_once(monkeypatch):
     lib = LibraryWindow()
     assert lib._raw_pool.maxThreadCount() == 1
+    assert lib._tiff_pool.maxThreadCount() == 1
 
     raw = os.path.join(TMP, "retry.ORF")
     item = QListWidgetItem()

@@ -41,6 +41,7 @@ from PIL import Image, ImageOps
 
 from . import theme
 from . import BUILD_VERSION
+from .engine_bridge import display_thumbnail
 from .editor_window import EditorWindow
 from .catalog import Catalog
 from .organizer_ops import import_photos, batch_rename
@@ -249,9 +250,17 @@ class _ThumbTask(QRunnable):
                 stamp = _capture_timestamp(source, self.path)
                 image = ImageOps.exif_transpose(source).convert("RGBA")
             elif image is None:
-                with Image.open(self.path) as source:
-                    stamp = _capture_timestamp(source, self.path)
-                    image = ImageOps.exif_transpose(source).convert("RGBA")
+                # Metadata is best-effort and independent from display decode.
+                # High-bit/compressed TIFFs use the editor's OIIO boundary;
+                # Pillow may understand their tags while not understanding
+                # their pixels.
+                try:
+                    with Image.open(self.path) as source:
+                        stamp = _capture_timestamp(source, self.path)
+                except Exception:  # noqa: BLE001 — mtime fallback is valid
+                    stamp = _capture_timestamp(None, self.path)
+                image = display_thumbnail(
+                    self.path, (THUMB_SOURCE, THUMB_SOURCE)).convert("RGBA")
             image.thumbnail((THUMB_SOURCE, THUMB_SOURCE), Image.Resampling.LANCZOS)
             data = image.tobytes("raw", "RGBA")
             qimage = QImage(data, image.width, image.height,
@@ -340,6 +349,12 @@ class LibraryWindow(QMainWindow):
         # transparent tile. Keep RAW work serial without slowing normal thumbs.
         self._raw_pool = QThreadPool(self)
         self._raw_pool.setMaxThreadCount(1)
+        # High-bit TIFF previews use the isolated OpenImageIO worker.  Starting
+        # one full-resolution decoder per visible tile can exhaust RAM and make
+        # the whole laptop crawl; one bounded decoder keeps the UI responsive
+        # and fills the contact sheet steadily.
+        self._tiff_pool = QThreadPool(self)
+        self._tiff_pool.setMaxThreadCount(1)
         self._scan_pool = QThreadPool(self)
         self._scan_pool.setMaxThreadCount(1)
         self._items = {}          # path -> QListWidgetItem
@@ -1521,8 +1536,14 @@ class LibraryWindow(QMainWindow):
     def _start_thumbnail(self, path, attempt=0):
         recovery = self._recovery_path(path)
         task = _ThumbTask(path, self._signals, attempt, recovery)
-        is_raw = os.path.splitext(path)[1].lower() in photo_manager.RAW_EXTENSIONS
-        (self._raw_pool if is_raw else self._pool).start(task)
+        extension = os.path.splitext(path)[1].lower()
+        if extension in photo_manager.RAW_EXTENSIONS:
+            pool = self._raw_pool
+        elif extension in {".tif", ".tiff"}:
+            pool = self._tiff_pool
+        else:
+            pool = self._pool
+        pool.start(task)
 
     def _on_thumb(self, path, qimage, stamp):
         icon = QIcon(QPixmap.fromImage(qimage))
