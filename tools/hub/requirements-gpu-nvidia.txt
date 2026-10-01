@@ -1,0 +1,2 @@
+# Optional NVIDIA/CUDA 12 acceleration. The normal build remains CPU-compatible.
+cupy-cuda12x>=13.6,<14
