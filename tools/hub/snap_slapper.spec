@@ -2,7 +2,7 @@
 # Standalone SNAP SLAPPER (Qt / PySide6) build recipe.
 import os
 import sys
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 _src = SPECPATH
 _shared_dir = os.path.normpath(os.path.join(_src, '..', '_shared'))
@@ -13,7 +13,7 @@ for _path in (_src, _shared_dir):
 
 _hidden = collect_submodules('slapper_qt') + [
     'editor_engine', 'built_in_lewks', 'found_textures', 'texture_assets',
-    'highbit_image', 'highbit_decode_worker', 'blog_copy_worker', 'subprocess_limits', 'render_graph',
+    'highbit_image', 'gpu_acceleration', 'highbit_decode_worker', 'blog_copy_worker', 'subprocess_limits', 'render_graph',
     'core_release_gate',
     'photo_manager', 'raw_preview', 'hdr_processor', 'slapper_filters', 'lewk_again', 'gemini_image_edit',
     'slapper_qt.external_edit',
@@ -24,12 +24,16 @@ _hidden = collect_submodules('slapper_qt') + [
     'PIL', 'PIL.Image', 'PIL.TiffImagePlugin', 'psd_tools',
     'numpy', 'OpenImageIO',
 ]
+_gpu_datas, _gpu_binaries = [], []
+if os.environ.get('SNAP_SLAPPER_NVIDIA_BUILD') == '1':
+    _gpu_datas, _gpu_binaries, _gpu_hidden = collect_all('cupy')
+    _hidden += _gpu_hidden
 
 a = Analysis(
     [os.path.join(_src, 'run_slapper_qt.py')],
     pathex=[_src, _shared_dir],
-    binaries=[],
-    datas=[(_license_dir, 'licenses')] +
+    binaries=_gpu_binaries,
+    datas=_gpu_datas + [(_license_dir, 'licenses')] +
            [(os.path.join(_src, 'local_ai', name), 'local_ai') for name in
             ('install_local_fill.py', 'local_fill_runner.py')],
     hiddenimports=_hidden,

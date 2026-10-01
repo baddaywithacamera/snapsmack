@@ -27,6 +27,7 @@ DEFAULTS = {
     "library_splitter_sizes": [260, 920],  # remembered folder/grid widths
     "projects_folder": "",         # initial location for .slapper projects
     "exports_folder": "",          # initial location for rendered copies
+    "render_device": "auto",      # auto / gpu / cpu; GPU always fails safely to CPU
     "panomerge_xpano_path": "", # separately installed XPANO executable
     "luminance_hdr_path": "", # separately installed Luminance HDR CLI
     "generative_notice_acknowledged": False,  # non-personal first-run UI state

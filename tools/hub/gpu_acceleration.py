@@ -1,0 +1,134 @@
+"""Optional NVIDIA acceleration for SNAP SLAPPER's float compositor.
+
+CuPy is deliberately optional.  A missing package, unsupported driver, small
+image, or runtime CUDA error returns control to the existing NumPy path.
+"""
+
+from __future__ import annotations
+
+import os
+import threading
+
+import numpy as np
+
+
+_MODE = "auto"
+_CUPY = None
+_PROBED = False
+_ERROR = ""
+_LOCK = threading.Lock()
+MIN_GPU_PIXELS = 900_000
+
+
+def configure(mode="auto"):
+    """Select auto, gpu, or cpu without ever making rendering depend on CUDA."""
+    global _MODE
+    value = str(mode or "auto").lower()
+    _MODE = value if value in {"auto", "gpu", "cpu"} else "auto"
+
+
+def _cupy():
+    global _CUPY, _PROBED, _ERROR
+    if _MODE == "cpu":
+        return None
+    with _LOCK:
+        if not _PROBED:
+            _PROBED = True
+            try:
+                import cupy as cp
+                if cp.cuda.runtime.getDeviceCount() < 1:
+                    raise RuntimeError("no CUDA device was found")
+                # Force driver/context validation now, not in the middle of a render.
+                cp.zeros(1, dtype=cp.float32).sum().get()
+                _CUPY = cp
+            except Exception as exc:  # noqa: BLE001 - fallback is the contract
+                _ERROR = str(exc)
+                _CUPY = None
+    return _CUPY
+
+
+def status():
+    if _MODE == "cpu":
+        return {"mode": _MODE, "available": False, "label": "CPU selected"}
+    cp = _cupy()
+    if cp is None:
+        detail = _ERROR or "NVIDIA acceleration add-on is not installed"
+        return {"mode": _MODE, "available": False, "label": f"CPU fallback — {detail}"}
+    try:
+        device = cp.cuda.Device()
+        props = cp.cuda.runtime.getDeviceProperties(device.id)
+        name = props.get("name", b"NVIDIA GPU")
+        if isinstance(name, bytes):
+            name = name.decode("utf-8", "replace")
+        return {"mode": _MODE, "available": True, "label": str(name)}
+    except Exception:  # pragma: no cover - context already validated above
+        return {"mode": _MODE, "available": True, "label": "NVIDIA GPU"}
+
+
+def _eligible(shape):
+    return (_MODE != "cpu" and
+            int(shape[0]) * int(shape[1]) >= MIN_GPU_PIXELS and
+            _cupy() is not None)
+
+
+def resample(source, source_x, source_y, *, transparent=True):
+    """Return a CPU float32 result, or None to request the NumPy implementation."""
+    if not _eligible(source_x.shape):
+        return None
+    cp = _cupy()
+    try:
+        pixels = cp.asarray(source, dtype=cp.float32)
+        sx = cp.asarray(source_x, dtype=cp.float32)
+        sy = cp.asarray(source_y, dtype=cp.float32)
+        alpha_added = transparent and pixels.shape[2] in (1, 3)
+        if alpha_added:
+            pixels = cp.concatenate((pixels, cp.ones((*pixels.shape[:2], 1), cp.float32)), axis=2)
+        height, width = pixels.shape[:2]
+        valid = (sx >= 0) & (sx <= width - 1) & (sy >= 0) & (sy <= height - 1)
+        clipped_x = cp.clip(sx, 0, width - 1)
+        clipped_y = cp.clip(sy, 0, height - 1)
+        x0 = cp.floor(clipped_x).astype(cp.int32); y0 = cp.floor(clipped_y).astype(cp.int32)
+        x1 = cp.minimum(x0 + 1, width - 1); y1 = cp.minimum(y0 + 1, height - 1)
+        wx = (clipped_x - x0)[:, :, None]; wy = (clipped_y - y0)[:, :, None]
+        top = pixels[y0, x0] * (1 - wx) + pixels[y0, x1] * wx
+        bottom = pixels[y1, x0] * (1 - wx) + pixels[y1, x1] * wx
+        result = top * (1 - wy) + bottom * wy
+        if transparent:
+            result *= valid[:, :, None]
+        return np.ascontiguousarray(cp.asnumpy(result), dtype=np.float32)
+    except Exception:  # noqa: BLE001 - a render must survive CUDA loss/OOM
+        return None
+
+
+def blend(bottom, upper, upper_alpha, mode, opacity, mask):
+    """GPU blend result as (rgb, alpha), or None for the NumPy path."""
+    if not _eligible(bottom.shape):
+        return None
+    cp = _cupy()
+    try:
+        low = cp.asarray(bottom, dtype=cp.float32)
+        high = cp.asarray(upper, dtype=cp.float32)
+        if mode == "multiply": mixed = low * high
+        elif mode == "screen": mixed = 1 - (1 - low) * (1 - high)
+        elif mode == "overlay": mixed = cp.where(low <= .5, 2 * low * high, 1 - 2 * (1 - low) * (1 - high))
+        elif mode == "hard_light": mixed = cp.where(high <= .5, 2 * low * high, 1 - 2 * (1 - low) * (1 - high))
+        elif mode == "soft_light":
+            safe = cp.clip(low, 0, None)
+            d = cp.where(safe <= .25, ((16 * safe - 12) * safe + 4) * safe, cp.sqrt(safe))
+            mixed = cp.where(high <= .5, low - (1 - 2 * high) * low * (1 - low), low + (2 * high - 1) * (d - low))
+        elif mode == "darken": mixed = cp.minimum(low, high)
+        elif mode == "lighten": mixed = cp.maximum(low, high)
+        elif mode == "difference": mixed = cp.abs(low - high)
+        elif mode in {"color", "luminosity"}:
+            low_luma = low[:, :, 0] * .299 + low[:, :, 1] * .587 + low[:, :, 2] * .114
+            high_luma = high[:, :, 0] * .299 + high[:, :, 1] * .587 + high[:, :, 2] * .114
+            mixed = high + (low_luma - high_luma)[:, :, None] if mode == "color" else low + (high_luma - low_luma)[:, :, None]
+        else: mixed = high
+        alpha = cp.asarray(upper_alpha, dtype=cp.float32) if upper_alpha is not None else cp.ones((*high.shape[:2], 1), cp.float32)
+        if mask is not None:
+            alpha *= cp.asarray(mask, dtype=cp.float32).reshape((*high.shape[:2], 1))
+        alpha = cp.clip(alpha * float(opacity), 0, 1)
+        out = low * (1 - alpha) + mixed * alpha
+        return np.ascontiguousarray(cp.asnumpy(out), dtype=np.float32), np.ascontiguousarray(cp.asnumpy(alpha), dtype=np.float32)
+    except Exception:  # noqa: BLE001
+        return None
