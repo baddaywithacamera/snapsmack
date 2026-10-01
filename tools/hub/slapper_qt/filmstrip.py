@@ -16,6 +16,7 @@ import editor_engine
 import photo_manager
 import raw_preview
 import snap_home
+from .engine_bridge import display_thumbnail
 
 from PySide6.QtCore import Qt, QObject, QPoint, QRunnable, QThreadPool, Signal, QSize, QTimer
 from PySide6.QtGui import QImage, QPixmap, QIcon
@@ -69,12 +70,8 @@ class _ThumbTask(QRunnable):
             if image is None and os.path.splitext(self.path)[1].lower() in photo_manager.RAW_EXTENSIONS:
                 image = ImageOps.exif_transpose(raw_preview.render(self.path)).convert("RGBA")
             elif image is None:
-                with Image.open(self.path) as source:
-                    try:
-                        source.draft("RGB", (THUMB_SOURCE, THUMB_SOURCE))
-                    except Exception:  # noqa: BLE001 — draft is a speed hint only
-                        pass
-                    image = ImageOps.exif_transpose(source).convert("RGBA")
+                image = display_thumbnail(
+                    self.path, (THUMB_SOURCE, THUMB_SOURCE)).convert("RGBA")
             image.thumbnail((THUMB_SOURCE, THUMB_SOURCE), Image.Resampling.LANCZOS)
             data = image.tobytes("raw", "RGBA")
             qimage = QImage(data, image.width, image.height,

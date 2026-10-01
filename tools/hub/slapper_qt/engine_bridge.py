@@ -40,4 +40,27 @@ def original_pixmap(source_path, max_size=None) -> QPixmap:
         image.thumbnail(max_size, Image.Resampling.LANCZOS)
     return pil_to_qpixmap(image)
 
+
+def display_thumbnail(source_path, max_size):
+    """Decode a bounded UI thumbnail, including high-bit TIFF variants.
+
+    Pillow remains the quick path for ordinary web images.  TIFF is routed
+    through the editor's authoritative OpenImageIO decoder: camera, HDR, and
+    external-editor TIFFs can use compressions/sample depths which the Pillow
+    build bundled with the desktop app cannot display.  Only the disposable
+    8-bit proxy crosses back into Qt; the source file is never rewritten.
+    """
+    extension = __import__("os").path.splitext(source_path)[1].lower()
+    if extension in {".tif", ".tiff"}:
+        import highbit_image
+        return highbit_image.read(source_path, maximum=max_size).display_proxy()
+    with Image.open(source_path) as source:
+        try:
+            source.draft("RGB", tuple(max_size))
+        except Exception:  # draft is an optional JPEG acceleration hint
+            pass
+        image = ImageOps.exif_transpose(source).convert("RGBA")
+    image.thumbnail(tuple(max_size), Image.Resampling.LANCZOS)
+    return image
+
 # ===== SNAPSMACK EOF =====
