@@ -21,7 +21,7 @@ _hidden = collect_submodules('slapper_qt') + [
     'snap_home', 'snap_log', 'snap_profiles', 'snap_creds', 'snap_vault',
     'snap_device_auth', 'snap_native_creds', 'cryptography',
     'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets',
-    'PIL', 'PIL.Image', 'psd_tools',
+    'PIL', 'PIL.Image', 'PIL.TiffImagePlugin', 'psd_tools',
     'numpy', 'OpenImageIO',
 ]
 
