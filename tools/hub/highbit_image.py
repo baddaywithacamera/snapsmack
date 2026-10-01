@@ -18,6 +18,7 @@ import OpenImageIO as oiio
 import tifffile
 
 import subprocess_limits
+import gpu_acceleration
 
 
 READ_EXTENSIONS = {".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
@@ -255,6 +256,12 @@ def resample_coordinates(image, source_x, source_y, *, transparent=True):
     if sx.shape != sy.shape or sx.ndim != 2:
         raise ValueError("coordinate maps must be matching two-dimensional arrays")
     source = image.pixels
+    accelerated = gpu_acceleration.resample(
+        source, sx, sy, transparent=transparent)
+    if accelerated is not None:
+        names = (("R", "G", "B", "A") if accelerated.shape[2] == 4 else
+                 ("Y", "A") if accelerated.shape[2] == 2 else image.channel_names)
+        return FloatImage(accelerated, names, image.source_format, image.icc_profile)
     alpha_added = transparent and source.shape[2] in (1, 3)
     if alpha_added:
         source = np.concatenate((source,
@@ -868,6 +875,14 @@ def blend(base, top, mode="normal", opacity=1.0, mask=None):
     upper, upper_alpha = _rgb(top)
     if bottom.shape != upper.shape:
         raise ValueError("Float blend inputs must have identical dimensions")
+    amount = np.float32(max(0.0, min(1.0, float(opacity))))
+    accelerated = gpu_acceleration.blend(
+        bottom, upper, upper_alpha, mode, amount, mask)
+    if accelerated is not None:
+        out_rgb, alpha = accelerated
+        out_alpha = (None if bottom_alpha is None else
+                     bottom_alpha + alpha * (1.0 - bottom_alpha))
+        return _with_rgb(base, out_rgb, out_alpha)
     if mode == "multiply":
         mixed = bottom * upper
     elif mode == "screen":
@@ -892,7 +907,6 @@ def blend(base, top, mode="normal", opacity=1.0, mask=None):
         mixed = bottom + (luminance(upper) - luminance(bottom))[:, :, None]
     else:
         mixed = upper
-    amount = np.float32(max(0.0, min(1.0, float(opacity))))
     alpha = upper_alpha if upper_alpha is not None else np.ones((*upper.shape[:2], 1), np.float32)
     if mask is not None:
         alpha = alpha * np.asarray(mask, dtype=np.float32).reshape((*upper.shape[:2], 1))

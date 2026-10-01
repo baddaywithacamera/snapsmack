@@ -1,6 +1,8 @@
 # SNAPSMACK_EOF_HEADER
 [CmdletBinding()]
-param()
+param(
+    [switch]$NvidiaGpu
+)
 
 $ErrorActionPreference = 'Stop'
 $pythonVersion = '3.12.10'
@@ -41,6 +43,11 @@ try {
 
     & $pythonPath -m pip install --disable-pip-version-check -r (Join-Path $PSScriptRoot 'requirements.txt')
     if ($LASTEXITCODE -ne 0) { throw 'Could not install the SNAP SLAPPER build requirements.' }
+    if ($NvidiaGpu) {
+        & $pythonPath -m pip install --disable-pip-version-check -r (Join-Path $PSScriptRoot 'requirements-gpu-nvidia.txt')
+        if ($LASTEXITCODE -ne 0) { throw 'Could not install the optional NVIDIA acceleration runtime.' }
+        [Environment]::SetEnvironmentVariable('SNAP_SLAPPER_NVIDIA_BUILD', '1', 'Process')
+    }
 
     & $pythonPath -c 'from PySide6.QtWidgets import QApplication; app=QApplication([]); app.quit()'
     if ($LASTEXITCODE -ne 0) { throw 'The isolated runtime was installed, but its Qt runtime did not start.' }

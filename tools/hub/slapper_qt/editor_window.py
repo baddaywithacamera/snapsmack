@@ -556,6 +556,11 @@ class EditorWindow(QMainWindow):
         self._recovery_jobs = set()
         from . import prefs as _prefs
         stored_prefs = _prefs.load()
+        try:
+            import gpu_acceleration
+            gpu_acceleration.configure(stored_prefs.get("render_device", "auto"))
+        except Exception:  # noqa: BLE001 - CPU rendering remains authoritative
+            pass
         self._filmstrip_visible = bool(stored_prefs.get("filmstrip_visible", True))
         self._restore_maximized = bool(stored_prefs.get("editor_maximized", False))
         self._histogram_locked = bool(stored_prefs.get("histogram_locked", True))
