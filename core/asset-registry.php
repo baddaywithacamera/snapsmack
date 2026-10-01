@@ -25,7 +25,9 @@ function snapsmack_asset_by_handle(string $handle): ?array
 function snapsmack_skin_declared_assets(array $manifest): array
 {
     $inventory=require __DIR__.'/manifest-inventory.php';$base=defined('BASE_URL')?rtrim((string)BASE_URL,'/').'/':'/';$scripts=[];$styles=[];$registry=snapsmack_asset_registry();$byPath=[];foreach($registry as $asset)$byPath[$asset['path']]=$asset;
-    foreach(($manifest['require_scripts']??[]) as $handle){$entry=$inventory['scripts'][$handle]??null;if(!is_array($entry))continue;if(is_string($entry['path']??null)&&(($byPath[$entry['path']]['scope']??'')==='public')&&(($byPath[$entry['path']]['type']??'')==='script'))$scripts[]=$base.ltrim($entry['path'],'/');if(is_string($entry['css']??null)&&(($byPath[$entry['css']]['scope']??'')==='public')&&(($byPath[$entry['css']]['type']??'')==='style'))$styles[]=$base.ltrim($entry['css'],'/');}
-    foreach(($manifest['require_styles']??[]) as $handle){$entry=snapsmack_asset_by_handle((string)$handle);if(($entry['scope']??'')==='public'&&($entry['type']??'')==='style')$styles[]=$base.ltrim($entry['path'],'/');}
+    $version=defined('SNAPSMACK_VERSION_SHORT')?preg_replace('/[^A-Za-z0-9._-]/','',(string)SNAPSMACK_VERSION_SHORT):'';
+    $versioned=static function(string $path)use($base,$version):string{$url=$base.ltrim($path,'/');return $version!==''?$url.'?v='.rawurlencode($version):$url;};
+    foreach(($manifest['require_scripts']??[]) as $handle){$entry=$inventory['scripts'][$handle]??null;if(!is_array($entry))continue;if(is_string($entry['path']??null)&&(($byPath[$entry['path']]['scope']??'')==='public')&&(($byPath[$entry['path']]['type']??'')==='script'))$scripts[]=$versioned($entry['path']);if(is_string($entry['css']??null)&&(($byPath[$entry['css']]['scope']??'')==='public')&&(($byPath[$entry['css']]['type']??'')==='style'))$styles[]=$versioned($entry['css']);}
+    foreach(($manifest['require_styles']??[]) as $handle){$entry=snapsmack_asset_by_handle((string)$handle);if(($entry['scope']??'')==='public'&&($entry['type']??'')==='style')$styles[]=$versioned($entry['path']);}
     return ['scripts'=>array_values(array_unique($scripts)),'styles'=>array_values(array_unique($styles))];
 }
