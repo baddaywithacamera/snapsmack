@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.797D — 2026-09-30 — Shared skin engines cannot remain stale
+
+- **Every audited public engine and companion stylesheet requested by a strict skin now receives the installed CMS version in its URL.** The signed `0.7.796D` package removed Organized Mayhem’s individual print wobble, but an already-cached unversioned engine could continue executing in the browser after installation. The CMS asset registry now cache-busts all bounded shared skin assets together, so engine changes take effect immediately without bypassing the signed update path.
+
 ## 0.7.796D — 2026-09-30 — Organized Mayhem moves as one tabletop
 
 - **Organized Mayhem no longer rotates individual prints independently.** The unrequested per-image “alive wobble,” its randomized timing data, and its injected animation CSS have been removed from the shared CMS engine. The background can still pan and breathe through its existing drift control, but every print now stays fixed relative to the tabletop so the whole arrangement moves as one coherent surface.
