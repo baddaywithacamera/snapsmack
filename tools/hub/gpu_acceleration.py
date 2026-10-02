@@ -38,8 +38,16 @@ def _cupy():
                 import cupy as cp
                 if cp.cuda.runtime.getDeviceCount() < 1:
                     raise RuntimeError("no CUDA device was found")
-                # Force driver/context validation now, not in the middle of a render.
-                cp.zeros(1, dtype=cp.float32).sum().get()
+                # Force driver/context validation now, not in the middle of a
+                # render. A reduction is not enough: it runs a kernel CuPy ships
+                # precompiled, so it succeeds on an install that is missing the
+                # runtime compiler and cannot execute a single line of the
+                # arithmetic below. Prove an elementwise kernel compiles and
+                # runs, which is what resample and blend are made of, or the
+                # Preferences dialog names a card it will never use.
+                probe = (cp.zeros(4, dtype=cp.float32) + cp.float32(1.0)) * cp.float32(2.0)
+                if float(probe.sum().get()) != 8.0:
+                    raise RuntimeError("the GPU returned the wrong arithmetic result")
                 _CUPY = cp
             except Exception as exc:  # noqa: BLE001 - fallback is the contract
                 _ERROR = str(exc)
