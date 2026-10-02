@@ -13,7 +13,7 @@
  *
  * REQUIREMENTS:
  *   - Run from within the SnapSmack git repository
- *   - PHP 8.0+ with ZipArchive
+ *   - PHP 8.3+ with ZipArchive
  */
 
 /**

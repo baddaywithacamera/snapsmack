@@ -124,7 +124,10 @@ Options -Indexes
 # auto-ban list — without this rule, scanner traffic doesn't
 # get caught.
 RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^(wp-login\.php|wp-admin|xmlrpc\.php|\.env|\.git/config|phpmyadmin|pma|adminer|shell\.php|c99\.php|r57\.php|eval-stdin\.php|uploadify\.php|setup\.php|config\.php\.bak|install\.php\.bak|wp-config\.php|wp-includes|wp-content|\.DS_Store|cgi-bin|actuator|\.aws|\.ssh|boaform|solr|hudson)(.*)$ probe-ban.php [L]
+# Do not include wp-content here. Legacy imports, migrated posts, browser tools,
+# and owner diagnostics legitimately request old WordPress asset URLs. Treating
+# a missing image as an exploit locked the site owner out for 30 days.
+RewriteRule ^(wp-login\.php|wp-admin|xmlrpc\.php|\.env|\.git/config|phpmyadmin|pma|adminer|shell\.php|c99\.php|r57\.php|eval-stdin\.php|uploadify\.php|setup\.php|config\.php\.bak|install\.php\.bak|wp-config\.php|wp-includes|\.DS_Store|cgi-bin|actuator|\.aws|\.ssh|boaform|solr|hudson)(.*)$ probe-ban.php [L]
 
 # ─── STATIC ASSET CACHING ────────────────────────────────────
 <IfModule mod_expires.c>

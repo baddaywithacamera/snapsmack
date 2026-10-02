@@ -32,7 +32,7 @@ if (is_file($fedup_target . '/core/fedistructure-package.php')
 
 $fedup_error = '';
 $fedup_has_fetch = function_exists('curl_init') || (bool)ini_get('allow_url_fopen');
-$fedup_ready = PHP_VERSION_ID >= 80000
+$fedup_ready = PHP_VERSION_ID >= 80300
             && class_exists('ZipArchive')
             && function_exists('sodium_crypto_sign_verify_detached')
             && $fedup_has_fetch;
@@ -209,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy']) && $fedup_r
 <p style="font-size:.85rem;color:#728293;margin-top:-8px">Bootstrap: <strong style="color:#8cff66"><?php echo htmlspecialchars(FEDUP_BOOTSTRAP_VERSION, ENT_QUOTES, 'UTF-8'); ?></strong> · Channel: <strong style="color:#00ffff"><?php echo strtoupper($fedup_track); ?></strong><?php echo $fedup_track === 'dev' ? ' — current development build' : ' — frozen stable feed'; ?></p>
 <?php if ($fedup_error !== ''): ?><div class="status error"><?php echo $fedup_error; ?></div><?php endif; ?>
 <ul class="checks">
-<li><span>PHP 8+</span><strong class="<?php echo PHP_VERSION_ID >= 80000 ? 'ok' : 'bad'; ?>"><?php echo PHP_VERSION; ?></strong></li>
+<li><span>PHP 8.3+</span><strong class="<?php echo PHP_VERSION_ID >= 80300 ? 'ok' : 'bad'; ?>"><?php echo PHP_VERSION; ?></strong></li>
 <li><span>HTTPS download</span><strong class="<?php echo $fedup_has_fetch ? 'ok' : 'bad'; ?>"><?php echo $fedup_has_fetch ? 'READY' : 'MISSING'; ?></strong></li>
 <li><span>ZIP extraction</span><strong class="<?php echo class_exists('ZipArchive') ? 'ok' : 'bad'; ?>"><?php echo class_exists('ZipArchive') ? 'READY' : 'MISSING'; ?></strong></li>
 <li><span>Ed25519 verification</span><strong class="<?php echo function_exists('sodium_crypto_sign_verify_detached') ? 'ok' : 'bad'; ?>"><?php echo function_exists('sodium_crypto_sign_verify_detached') ? 'READY' : 'MISSING'; ?></strong></li>
