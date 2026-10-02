@@ -49,12 +49,30 @@ echo Building SNAP HQ...
 if not exist C:\snapsmack\hub mkdir C:\snapsmack\hub
 "%BUILD_PYTHON%" -m PyInstaller --clean hub.spec --distpath "C:\snapsmack\hub"
 
+for /f "tokens=2 delims==" %%v in ('findstr /b "BUILD_VERSION" slapper_qt\__init__.py') do set "SNAP_SLAPPER_VERSION=%%~v"
+set "SNAP_SLAPPER_VERSION=%SNAP_SLAPPER_VERSION: =%"
+set "SNAP_SLAPPER_VERSION=%SNAP_SLAPPER_VERSION:"=%"
+if "%SNAP_SLAPPER_VERSION%"=="" (
+    echo ERROR: Could not read BUILD_VERSION from slapper_qt\__init__.py.
+    exit /b 1
+)
+
 echo.
-echo Building standalone SNAP SLAPPER...
+echo Building standalone SNAP SLAPPER... %SNAP_SLAPPER_VERSION%
 if not exist "dist\snap_slapper" mkdir "dist\snap_slapper"
 "%BUILD_PYTHON%" -m PyInstaller --noconfirm --clean snap_slapper.spec --distpath "dist\snap_slapper"
 if errorlevel 1 (
     echo ERROR: SNAP SLAPPER packaging failed.
+    pause
+    exit /b 1
+)
+
+REM The build gate. SYBU 0.7.67 shipped the tkinter app with the right version
+REM number on it, which is why the entry script is checked and not just the
+REM version. SNAP SLAPPER had never been run through this.
+"%BUILD_PYTHON%" "%~dp0..\_build\verify_exe.py" "dist\snap_slapper\SNAP SLAPPER.exe" --entry run_slapper_qt --no-tk --version %SNAP_SLAPPER_VERSION%
+if errorlevel 1 (
+    echo ERROR: SNAP SLAPPER failed its build gate. Nothing was installed.
     pause
     exit /b 1
 )
