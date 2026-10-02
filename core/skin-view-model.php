@@ -103,7 +103,11 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
                         $slug = (string)($stmt->fetchColumn() ?: '');
                     } catch (Throwable $e) { $slug = ''; }
                 }
-                $url = $slug !== '' ? $base . '?view=page&slug=' . rawurlencode($slug) : '';
+                // Static pages use the bounded public page route.  Keep menu
+                // links on that canonical route instead of rebuilding the
+                // controller query by hand; the latter is not accepted by
+                // every front-controller/web-server combination.
+                $url = $slug !== '' ? $base . 'page?slug=' . rawurlencode($slug) : '';
                 break;
             case 'album':
             case 'category':
