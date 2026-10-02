@@ -9,8 +9,8 @@ $root = dirname(__DIR__);
 $skins = ['alfred', 'stanley', 'writing-with-impact', 'tilez', 'telegram'];
 $base = ['page_title' => 'Test', 'navigation' => [['label' => 'Home', 'url' => '/']], 'status' => 200];
 $cases = [
-    'single' => $base + ['kind' => 'single', 'post' => ['title' => 'Story', 'created_at' => '2026-09-28', 'featured_image_path' => '/media/cover.jpg'], 'rendered_content' => snapsmack_trusted_html('<p>CMS content</p>'), 'colophon' => 'Notes', 'comments_enabled' => true, 'comments' => [['comment_author' => '<Reader>', 'comment_text' => '<script>no</script>']]],
-    'feed' => $base + ['kind' => 'feed', 'posts' => [['title' => 'Story', 'slug' => 'story', 'url' => '/?post=story', 'image_url' => '/media/cover.jpg']]],
+    'single' => $base + ['kind' => 'single', 'post' => ['title' => 'Story', 'created_at' => '2026-09-28', 'featured_image_path' => '/media/cover.jpg'], 'rendered_content' => snapsmack_trusted_html('<p>CMS content</p>'), 'signature' => ['url' => '/media/signature.png', 'alt' => 'Signature'], 'photo_count' => 3, 'word_count' => 250, 'categories' => ['Diary'], 'albums' => ['Ray'], 'author' => 'Sean', 'colophon' => 'Notes', 'previous' => ['title' => 'Earlier', 'slug' => 'earlier'], 'next' => ['title' => 'Later', 'slug' => 'later'], 'comments_enabled' => true, 'comments' => [['comment_author' => '<Reader>', 'comment_text' => '<script>no</script>']]],
+    'feed' => $base + ['kind' => 'feed', 'show_titles' => true, 'posts' => [['title' => 'Story', 'slug' => 'story', 'url' => '/?post=story', 'image_url' => '/media/cover.jpg', 'width' => 1600, 'height' => 1200, 'created_label' => 'Sep 28, 2026']]],
     'archive' => $base + ['kind' => 'archive', 'tiles' => [['full' => '/media/full.jpg', 'thumb' => '/media/thumb.jpg', 'title' => 'Photo']]],
     'not_found' => $base + ['kind' => 'not_found'],
 ];
@@ -35,6 +35,15 @@ foreach ($skins as $skin) {
         if ($kind === 'single' && (!str_contains($html, 'CMS content') || !str_contains($html, 'snap-comments'))) throw new RuntimeException("{$skin} lost CMS content or comments.");
         if ($skin === 'tilez' && $kind === 'feed' && (!str_contains($html, 'ss-masonry-item') || !str_contains($html, 'post-overlay'))) {
             throw new RuntimeException('TILEZ feed items no longer satisfy the shared columns-engine markup contract.');
+        }
+        if ($skin === 'tilez' && $kind === 'feed' && (!str_contains($html, 'data-w="1600"') || !str_contains($html, 'archive-post-date') || !str_contains($html, 'show-preview-titles'))) {
+            throw new RuntimeException('TILEZ feed lost native-aspect metadata, dates, or its saved title mode.');
+        }
+        if ($skin === 'tilez' && $kind === 'single' && (!str_contains($html, 'post-record') || !str_contains($html, 'post-facts') || !str_contains($html, 'post-signature--closing') || !str_contains($html, 'post-navigation'))) {
+            throw new RuntimeException('TILEZ single view lost its editorial record, signature, facts, or adjacent navigation.');
+        }
+        if ($skin === 'tilez' && (!str_contains($html, 'tilez-icon-nav') || !str_contains($html, 'custom-logo-link'))) {
+            throw new RuntimeException('TILEZ lost its commissioned masthead or quick-navigation structure.');
         }
         $hook = $skin === 'stanley' ? 'id="stanley-page"' : ($skin === 'writing-with-impact' ? 'id="wwi-page"' : ($skin === 'telegram' ? 'telegram-' : 'header section-inner'));
         if (!str_contains($html, $hook)) throw new RuntimeException("{$skin}/{$kind} lost its presentation structure.");
