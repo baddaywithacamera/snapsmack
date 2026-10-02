@@ -71,7 +71,8 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
     if (!is_array($items)) return [];
 
     $base = defined('BASE_URL') ? BASE_URL : '/';
-    $resolve = function (array $item) use (&$resolve, $pdo, $base): ?array {
+    $strict_smacktalk = (($manifest['cms_controller'] ?? '') === 'smacktalk');
+    $resolve = function (array $item) use (&$resolve, $pdo, $base, $strict_smacktalk): ?array {
         if (isset($item['active']) && !$item['active']) return null;
         $type = (string)($item['type'] ?? 'custom');
         $url = (string)($item['url'] ?? '');
@@ -83,7 +84,7 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
             case 'albums': $url = $base . 'albums.php'; break;
             case 'collections': $url = $base . 'collections.php'; break;
             case 'wall': $url = $base . 'gallery-wall.php'; break;
-            case 'blogroll': $url = $base . 'blogroll.php'; break;
+            case 'blogroll': $url = $strict_smacktalk ? $base . '?view=blogroll' : $base . 'blogroll.php'; break;
             case 'blog': $url = $base . 'blog.php'; break;
             case 'page':
                 $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($item['slug'] ?? ''));

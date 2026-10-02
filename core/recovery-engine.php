@@ -7,7 +7,7 @@
  * directory to the correct img_uploads/YYYY/MM/ structure, regenerate
  * missing thumbnails, compute checksums, and restore branding assets.
  *
- * No external dependencies — vanilla PHP 8.0+ with GD.
+ * No external dependencies — vanilla PHP 8.3+ with GD.
  */
 
 /**

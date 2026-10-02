@@ -17,7 +17,7 @@
  * of shell history).
  *
  * REQUIREMENTS:
- *   - PHP 8.0+ with libsodium (built-in)
+ *   - PHP 8.3+ with libsodium (built-in)
  *   - Your Ed25519 secret key (128 hex characters)
  */
 

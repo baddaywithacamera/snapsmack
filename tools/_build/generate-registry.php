@@ -98,7 +98,7 @@ foreach ($manifest_files as $manifest_path) {
         'download_url'        => $package_base . '/' . $slug . '-' . $version . '.zip',
         'download_size'       => 0,
         'signature'           => '',
-        'requires_php'        => $manifest['requires_php'] ?? '8.0',
+        'requires_php'        => $manifest['requires_php'] ?? '8.3',
         'requires_snapsmack'  => $manifest['requires_snapsmack'] ?? '0.7',
         'features'            => $features,
     ];

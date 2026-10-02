@@ -66,7 +66,7 @@ function can_fetch_url(): bool {
 }
 
 $checks = [
-    'PHP 8.0+'      => version_compare(PHP_VERSION, '8.0.0', '>='),
+    'PHP 8.3+'      => version_compare(PHP_VERSION, '8.3.0', '>='),
     'pdo_mysql'     => extension_loaded('pdo_mysql'),
     'libsodium'     => function_exists('sodium_crypto_sign_keypair'),
     'ZipArchive'    => class_exists('ZipArchive'),
@@ -530,7 +530,7 @@ body {
         <span style="flex:1"><?php echo htmlspecialchars($label); ?></span>
         <?php if (!$pass): ?>
         <span style="font-size:.72rem;color:var(--danger)"><?php echo match($label) {
-            'PHP 8.0+'     => 'Running PHP ' . PHP_VERSION . '. Need 8.0+.',
+            'PHP 8.3+'     => 'Running PHP ' . PHP_VERSION . '. Need 8.3+.',
             'pdo_mysql'    => 'Install the php-mysql / pdo_mysql extension.',
             'libsodium'    => 'Install the php-sodium extension.',
             'ZipArchive'   => 'Install the php-zip extension.',

@@ -45,7 +45,7 @@ SNAPSMACK generates `robots.txt`, `llms.txt`, `security.txt` (RFC 9116), and an 
 
 ## Requirements
 
-- PHP 8+
+- PHP 8.3+
 - MySQL / MariaDB
 - Any shared or VPS host — no special stack required to run it.
 
