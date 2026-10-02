@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.807D — 2026-10-02 — One photograph, one archive tile
+
+- Corrects SMACKPRESS media canonicalization so WordPress originals, `-scaled`, and dimension-suffixed derivatives become one imported photograph and the largest available source wins.
+- Reconciles already-imported SMACKTALK archives at the CMS boundary: derivative rows collapse to their largest version and signature graphics remain post chrome instead of Gallery photographs. Skins still receive bounded presentation data only.
+
 ## 0.7.806D — 2026-10-02 — Put static-page menus on the live route
 
 - Routes CMS-owned static-page menu items through the same bounded `/page?slug=` endpoint already used successfully by public pages, fixing the live-only 404 caused by the previous hand-built front-controller query URL.

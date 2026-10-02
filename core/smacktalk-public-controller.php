@@ -124,7 +124,12 @@ function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base): array
     } catch (Throwable $e) { return []; }
 
     $tiles = [];
+    $canonical = [];
     foreach ($images as $image) {
+        $identity = strtolower(trim((string)($image['img_title'] ?? '')));
+        $identity = preg_replace('/(?:-scaled|-\d{2,5}x\d{2,5})$/i', '', $identity);
+        // SMACKPRESS signatures are post chrome, never Gallery photographs.
+        if (preg_match('/(?:signature|autograph|sean[-_ ]?mccormick[-_ ]?black[-_ ]?low[-_ ]?res)/i', $identity)) continue;
         $full = ltrim((string)($image['img_file'] ?? ''), '/');
         if ($full === '' || !is_file(dirname(__DIR__) . '/' . $full)) continue;
         $thumb = '';
@@ -136,11 +141,18 @@ function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base): array
             }
         }
         if ($thumb === '') continue;
-        $tiles[] = ['full' => $base . $full, 'thumb' => $base . $thumb,
+        $tile = ['full' => $base . $full, 'thumb' => $base . $thumb,
             'title' => (string)($image['img_title'] ?? ''),
             'width' => max(1, (int)($image['img_width'] ?? 3)),
             'height' => max(1, (int)($image['img_height'] ?? 2))];
+        $key = $identity !== '' ? $identity : strtolower(pathinfo($full, PATHINFO_FILENAME));
+        $area = $tile['width'] * $tile['height'];
+        if (!isset($canonical[$key]) || $area > $canonical[$key]['area']) {
+            $canonical[$key] = ['area' => $area, 'tile' => $tile, 'order' => count($canonical)];
+        }
     }
+    uasort($canonical, static fn(array $a, array $b): int => $a['order'] <=> $b['order']);
+    foreach ($canonical as $entry) $tiles[] = $entry['tile'];
     return $tiles;
 }
 

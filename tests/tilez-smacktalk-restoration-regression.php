@@ -29,6 +29,11 @@ foreach (["page?slug=", 'snapsmack_smacktalk_page', "'page_slug'"] as $hook) {
         throw new RuntimeException("Strict CMS page route missing: {$hook}");
     }
 }
+foreach (["-scaled|-\\d{2,5}x\\d{2,5}", 'sean[-_ ]?mccormick', '$area > $canonical'] as $hook) {
+    if (!str_contains($controller, $hook)) {
+        throw new RuntimeException("SMACKPRESS archive reconciliation missing: {$hook}");
+    }
+}
 foreach (['archive_columns', 'archive_gap'] as $key) {
     if (!isset($manifest['options'][$key])) throw new RuntimeException("TILEZ archive control missing: {$key}");
 }
