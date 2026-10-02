@@ -24,7 +24,7 @@ foreach (["kind'] ?? '') === 'page'", "snap_render_component('footer'", 'footer-
         throw new RuntimeException("TILEZ page/footer restoration missing: {$hook}");
     }
 }
-foreach (["view=page&slug=", 'snapsmack_smacktalk_page', "'page_slug'"] as $hook) {
+foreach (["page?slug=", 'snapsmack_smacktalk_page', "'page_slug'"] as $hook) {
     if (!str_contains($viewModel . $controller . file_get_contents($root . '/index.php'), $hook)) {
         throw new RuntimeException("Strict CMS page route missing: {$hook}");
     }

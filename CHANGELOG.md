@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.806D — 2026-10-02 — Put static-page menus on the live route
+
+- Routes CMS-owned static-page menu items through the same bounded `/page?slug=` endpoint already used successfully by public pages, fixing the live-only 404 caused by the previous hand-built front-controller query URL.
+
 ## 0.7.805D — 2026-10-02 — Complete the TILEZ public contract
 
 - Restores CMS-owned static pages to strict SMACKTALK skins and routes TILEZ page links through the bounded public controller instead of the retired standalone endpoint.
