@@ -19,6 +19,16 @@ foreach (["img_thumb_aspect", "is_file(dirname(__DIR__)", "'width'", "'height'"]
 foreach (['alfred-archive-grid ss-masonry', 'alfred-archive-tile ss-masonry-item', 'data-w=', 'data-h='] as $hook) {
     if (!str_contains($layout, $hook)) throw new RuntimeException("TILEZ archive lost shared columns hook: {$hook}");
 }
+foreach (["kind'] ?? '') === 'page'", "snap_render_component('footer'", 'footer-metadata-bar'] as $hook) {
+    if (!str_contains($layout . file_get_contents($root . '/core/skin-render-helpers.php'), $hook)) {
+        throw new RuntimeException("TILEZ page/footer restoration missing: {$hook}");
+    }
+}
+foreach (["view=page&slug=", 'snapsmack_smacktalk_page', "'page_slug'"] as $hook) {
+    if (!str_contains($viewModel . $controller . file_get_contents($root . '/index.php'), $hook)) {
+        throw new RuntimeException("Strict CMS page route missing: {$hook}");
+    }
+}
 foreach (['archive_columns', 'archive_gap'] as $key) {
     if (!isset($manifest['options'][$key])) throw new RuntimeException("TILEZ archive control missing: {$key}");
 }
@@ -30,4 +40,3 @@ if (!str_contains($css, '.alfred-archive-grid {') || !str_contains($css, '--ss-c
 }
 
 echo "TILEZ SMACKTALK restoration regression passed\n";
-
