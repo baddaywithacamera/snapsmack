@@ -59,7 +59,7 @@ final class SnapPublicRepository
         return $this->one(
             "SELECT id,title,slug,description,post_type,created_at,updated_at,allow_comments,
                     allow_download,download_url,panorama_rows,content,colophon,signature_image_id,
-                    featured_image_id,show_featured_image,trigram_id
+                    featured_image_id
              FROM snap_posts
              WHERE slug=?{$typeSql} AND status='published' AND created_at <= NOW() LIMIT 1",
             $params
@@ -72,7 +72,7 @@ final class SnapPublicRepository
         return $this->one(
             "SELECT id,title,slug,description,post_type,created_at,updated_at,allow_comments,
                     allow_download,download_url,panorama_rows,content,colophon,signature_image_id,
-                    featured_image_id,show_featured_image,trigram_id
+                    featured_image_id
              FROM snap_posts
              WHERE id=?{$typeSql} AND status='published' AND created_at <= NOW() LIMIT 1",
             $params
@@ -191,6 +191,17 @@ final class SnapPublicRepository
         );
         $stmt->execute($type === null ? [] : [$type]);
         return (int)$stmt->fetchColumn();
+    }
+
+    /** Public blogroll presentation data; provenance and administrative fields stay private. */
+    public function blogrollPeers(): array {
+        return $this->all(
+            "SELECT b.peer_name,b.peer_url,b.peer_desc,c.cat_name
+             FROM snap_blogroll b
+             LEFT JOIN snap_blogroll_cats c ON c.id=b.cat_id
+             WHERE b.peer_url IS NOT NULL AND b.peer_url<>''
+             ORDER BY c.cat_name,b.peer_name"
+        );
     }
 
     public function activePages(): array {

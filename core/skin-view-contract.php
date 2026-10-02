@@ -10,10 +10,11 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
         'comments', 'navigation', 'results', 'query', 'slug', 'page', 'total_pages',
         'page_title', 'rendered_content', 'signature', 'previous', 'next', 'categories',
         'albums', 'categories_label', 'albums_label', 'author', 'colophon', 'photo_count', 'word_count', 'comments_enabled',
-        'show_titles'];
+        'show_titles', 'blogroll_groups'];
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
-        'skin_style_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets'];
+        'skin_style_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',
+        'favicon_url'];
     return [
         'model' => 'snapsmack.public',
         'version' => SNAPSMACK_SKIN_VIEW_MODEL_VERSION,

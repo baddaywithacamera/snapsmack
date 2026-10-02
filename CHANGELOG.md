@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.801D — 2026-10-01 — Migrated SMACKTALK sites stay whole
+
+- **SMACKTALK detail routes no longer require featured-visibility or trigram columns that the reader does not consume.** This closes the remaining false-404 path on migrated longform blogs whose landing cards already rendered correctly.
+- **Blogrolls now travel through the bounded SMACKTALK controller and skin view model.** Strict skins present public peer names, links, descriptions, and groups without regaining database or request authority; TILEZ no longer falls into the unstyled legacy page.
+- **The CMS now carries the configured site favicon across the strict presentation boundary.** TILEZ consumes that bounded URL, restoring each site's own icon without hard-coding it into the skin.
+
 ## 0.7.800D — 2026-10-01 — Published stories remain findable
 
 - **SMACKTALK post pages no longer turn valid legacy stories into false 404s.** The public repository now requests only the post fields the reader actually uses instead of requiring unrelated optional columns introduced after older blogs were created. TILEZ landing cards and their detail routes therefore share the same supported publication contract without moving database logic into the skin.
