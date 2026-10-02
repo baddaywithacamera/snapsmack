@@ -2015,9 +2015,11 @@ p.comment-form-author { margin-right: 5%; }
    ============================================================ */
 
 .alfred-archive-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    grid-gap: 4px;
+    --ss-cols: 5;
+    --ss-gap: 4px;
+    position: relative;
+    display: block;
+    width: 100%;
     margin: 0 0 40px;
 }
 
@@ -2025,7 +2027,6 @@ p.comment-form-author { margin-right: 5%; }
     position: relative;
     display: block;
     overflow: hidden;
-    aspect-ratio: 1 / 1;
     background: #111;
     cursor: pointer;
 }
@@ -2034,7 +2035,7 @@ p.comment-form-author { margin-right: 5%; }
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: fill;
     transition: transform 0.4s ease, opacity 0.3s ease;
 }
 
@@ -2594,6 +2595,7 @@ body.blog, body.single, body.archive { background: #fff; }
 .blogroll-group p { margin: 7px 0 0; color: #555; font-size: 15px; line-height: 1.55; }
 
 @media (max-width: 900px) {
+    .alfred-archive-grid { --ss-cols: 3; }
     .posts.ss-masonry { --ss-cols: 2; }
     .navigation { position: relative; top: auto; }
     .main-menu { display: none; }
@@ -2616,6 +2618,7 @@ body.blog, body.single, body.archive { background: #fff; }
 }
 
 @media (max-width: 560px) {
+    .alfred-archive-grid { --ss-cols: 2; }
     :root { --tilez-gap: 10px; }
     .header, .content > .section-inner { width: calc(100% - 28px); }
     .header { padding: 58px 0 20px; }

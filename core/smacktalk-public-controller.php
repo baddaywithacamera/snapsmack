@@ -96,14 +96,20 @@ function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base): array
     $tiles = [];
     foreach ($images as $image) {
         $full = ltrim((string)($image['img_file'] ?? ''), '/');
-        if ($full === '') continue;
-        $thumb = ltrim((string)($image['img_thumb_square'] ?? $image['img_thumb_aspect'] ?? ''), '/');
-        if ($thumb === '') {
-            $dir = trim(str_replace(basename($full), '', $full), '/');
-            $thumb = ($dir !== '' ? $dir . '/' : '') . 'thumbs/t_' . basename($full);
+        if ($full === '' || !is_file(dirname(__DIR__) . '/' . $full)) continue;
+        $thumb = '';
+        foreach ([$image['img_thumb_aspect'] ?? '', $image['img_thumb_square'] ?? '', $full] as $candidate) {
+            $candidate = ltrim((string)$candidate, '/');
+            if ($candidate !== '' && is_file(dirname(__DIR__) . '/' . $candidate)) {
+                $thumb = $candidate;
+                break;
+            }
         }
+        if ($thumb === '') continue;
         $tiles[] = ['full' => $base . $full, 'thumb' => $base . $thumb,
-            'title' => (string)($image['img_title'] ?? '')];
+            'title' => (string)($image['img_title'] ?? ''),
+            'width' => max(1, (int)($image['img_width'] ?? 3)),
+            'height' => max(1, (int)($image['img_height'] ?? 2))];
     }
     return $tiles;
 }

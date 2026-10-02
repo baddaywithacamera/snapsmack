@@ -76,6 +76,14 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
         if (isset($item['active']) && !$item['active']) return null;
         $type = (string)($item['type'] ?? 'custom');
         $url = (string)($item['url'] ?? '');
+        // Existing owner menus may predate the strict SMACKTALK controller and
+        // still store the old public PHP endpoint as a custom URL. Keep the
+        // owner's label/order but route that known CMS destination through the
+        // bounded controller just like a newly-created Blogroll item.
+        if ($strict_smacktalk && $type === 'custom'
+            && preg_match('#(?:^|/)blogroll\.php(?:[?#].*)?$#i', trim($url))) {
+            $type = 'blogroll';
+        }
         switch ($type) {
             case 'container': $url = ''; break;
             case 'home': $url = $base; break;
