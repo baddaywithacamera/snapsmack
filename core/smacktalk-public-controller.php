@@ -18,6 +18,14 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     $post_id = max(0, (int)($request['post_id'] ?? 0));
     $requested_slug = trim((string)($request['requested_slug'] ?? ''));
 
+    if ($view === 'blogroll') {
+        if (($settings['blogroll_enabled'] ?? '1') !== '1') {
+            return ['handled' => true, 'redirect' => $base];
+        }
+        return ['handled' => true, 'kind' => 'blogroll', 'page_title' => 'BLOGROLL']
+            + snapsmack_smacktalk_blogroll($pdo);
+    }
+
     if ($view === 'archive') {
         if (($settings['archive_layout'] ?? 'square') === 'none') {
             return ['handled' => true, 'redirect' => $base];
@@ -44,6 +52,39 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     if ($requested_slug !== '') return ['handled' => false];
     return ['handled' => true, 'kind' => 'feed']
         + snapsmack_smacktalk_feed($pdo, $settings, $base, max(1, (int)($request['page'] ?? 1)));
+}
+
+function snapsmack_smacktalk_blogroll(PDO $pdo): array
+{
+    try {
+        $rows = (new SnapPublicRepository($pdo))->blogrollPeers();
+    } catch (Throwable $e) { $rows = []; }
+
+    $groups = [];
+    $seen = [];
+    foreach ($rows as $row) {
+        $url = trim((string)($row['peer_url'] ?? ''));
+        if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $url)) continue;
+        $key = strtolower(rtrim($url, '/'));
+        if (isset($seen[$key])) continue;
+        $seen[$key] = true;
+
+        $category = trim((string)($row['cat_name'] ?? ''));
+        $category = preg_replace('/^Hub:\s*/i', '', $category);
+        if ($category === '' || preg_match('/^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/i', $category)) {
+            $category = 'THE NETWORK';
+        }
+        if (!isset($groups[$category])) $groups[$category] = [];
+        $groups[$category][] = [
+            'name' => trim((string)($row['peer_name'] ?? '')) ?: $url,
+            'url' => $url,
+            'description' => trim((string)($row['peer_desc'] ?? '')),
+        ];
+    }
+
+    $bounded = [];
+    foreach ($groups as $label => $items) $bounded[] = ['label' => $label, 'items' => $items];
+    return ['blogroll_groups' => $bounded];
 }
 
 function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base): array

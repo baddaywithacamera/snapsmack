@@ -4,12 +4,14 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title><?php echo snap_escape_html($view['response']['page_title'] ?? $view['site']['site_name']); ?></title>
+<?php if (!empty($view['site']['favicon_url'])): ?><link rel="icon" href="<?php echo snap_escape_url($view['site']['favicon_url']); ?>"><?php endif; ?>
 <link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['skin_style_url']); ?>">
 <?php echo snap_render_html($view['site']['skin_custom_style'] ?? ''); ?>
 </head>
 <?php if (($view['response']['kind'] ?? '') === 'feed'): ?><body class="blog<?php if (!empty($view['response']['show_titles'])): ?> show-preview-titles<?php endif; ?> tilez-v2">
 <?php elseif (($view['response']['kind'] ?? '') === 'archive'): ?><body class="archive alfred-archive tilez-v2">
 <?php elseif (($view['response']['kind'] ?? '') === 'single'): ?><body class="single tilez-v2">
+<?php elseif (($view['response']['kind'] ?? '') === 'blogroll'): ?><body class="blogroll tilez-v2">
 <?php else: ?><body class="not-found tilez-v2"><?php endif; ?>
 <div id="page" class="tilez">
 <header id="header" class="site-header header section-inner" data-sticky-header="false"><div class="inside">
@@ -47,6 +49,8 @@
 <?php elseif (($view['response']['kind'] ?? '') === 'archive'): ?>
 <main class="content" role="main"><section class="section-inner"><div class="alfred-archive-grid"><?php foreach (($view['response']['tiles'] ?? []) as $tile): ?><a class="alfred-archive-tile" href="<?php echo snap_escape_url($tile['full'] ?? ''); ?>" data-full="<?php echo snap_escape_attr($tile['full'] ?? ''); ?>" data-title="<?php echo snap_escape_attr($tile['title'] ?? ''); ?>"><?php echo snap_render_html(snap_render_component('image', ['url' => $tile['thumb'] ?? '', 'alt' => $tile['title'] ?? ''])); ?></a><?php endforeach; ?></div></section></main>
 <div id="alfred-archive-lightbox" class="alfred-lightbox" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="Photograph viewer"><button type="button" class="alfred-lb-close" aria-label="Close">✕</button><button type="button" class="alfred-lb-prev" aria-label="Previous photograph">‹</button><img class="alfred-lb-img" src="" alt=""><button type="button" class="alfred-lb-next" aria-label="Next photograph">›</button><p class="alfred-lb-caption"></p></div>
+<?php elseif (($view['response']['kind'] ?? '') === 'blogroll'): ?>
+<main class="content tilez-blogroll" role="main"><section class="section-inner"><header class="blogroll-heading"><h1><?php echo snap_escape_html($view['response']['page_title'] ?? 'BLOGROLL'); ?></h1></header><div class="blogroll-grid"><?php foreach (($view['response']['blogroll_groups'] ?? []) as $group): ?><section class="blogroll-group"><h2><?php echo snap_escape_html($group['label'] ?? ''); ?></h2><ul><?php foreach (($group['items'] ?? []) as $peer): ?><li><a href="<?php echo snap_escape_url($peer['url'] ?? ''); ?>" target="_blank" rel="noopener noreferrer"><?php echo snap_escape_html($peer['name'] ?? ''); ?></a><?php if (!empty($peer['description'])): ?><p><?php echo snap_escape_html($peer['description']); ?></p><?php endif; ?></li><?php endforeach; ?></ul></section><?php endforeach; ?></div></section></main>
 <?php else: ?><main class="content not-found" role="main"><section class="section-inner"><h1>Not found</h1><p><a href="<?php echo snap_route_url('home'); ?>">Back to the front</a></p></section></main><?php endif; ?>
 
 <footer id="system-footer" class="site-footer"><div id="footer" class="inside"><p id="sig-text"><?php echo snap_escape_html($view['site']['site_name']); ?></p></div></footer>
