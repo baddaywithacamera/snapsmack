@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.800D — 2026-10-01 — Published stories remain findable
+
+- **SMACKTALK post pages no longer turn valid legacy stories into false 404s.** The public repository now requests only the post fields the reader actually uses instead of requiring unrelated optional columns introduced after older blogs were created. TILEZ landing cards and their detail routes therefore share the same supported publication contract without moving database logic into the skin.
+
 ## 0.7.799D — 2026-10-01 — TILEZ gets its picture back
 
 - **TILEZ again receives its configured commissioned masthead, navigation labels, archive dates, metadata, and adjacent-post links through the bounded CMS view model.** The skin remains presentation-only: routing, database access, media resolution, and trusted content construction stay in core.
