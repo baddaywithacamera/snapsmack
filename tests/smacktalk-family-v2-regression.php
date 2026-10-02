@@ -51,6 +51,24 @@ foreach ($skins as $skin) {
 }
 if (count(array_unique($styles)) !== count($skins)) throw new RuntimeException('SMACKTALK family no longer has distinct presentation styles.');
 
+$tilezBlogroll = snapsmack_build_skin_view($base + [
+    'kind' => 'blogroll',
+    'blogroll_groups' => [['label' => 'Friends', 'items' => [[
+        'name' => 'Away With A Camera', 'url' => 'https://awaywithacamera.com/',
+        'description' => 'Local day trips and fine photographs.',
+    ]]]],
+], [
+    'site_name' => 'Example', 'tagline' => 'Tagline', 'base_url' => '/',
+    'language' => 'en', 'direction' => 'ltr', 'skin_slug' => 'tilez',
+    'skin_style_url' => '/skins/tilez/style.css', 'favicon_url' => '/media/adorable.ico',
+]);
+ob_start();
+$tilezBlogrollOk = snapsmack_render_strict_skin_template($root . '/skins/tilez', 'layout.php', $tilezBlogroll);
+$tilezBlogrollHtml = (string)ob_get_clean();
+foreach (['class="content tilez-blogroll"', 'Away With A Camera', 'Local day trips and fine photographs.', 'rel="icon" href="/media/adorable.ico"', '/?view=blogroll'] as $hook) {
+    if (!$tilezBlogrollOk || !str_contains($tilezBlogrollHtml, $hook)) throw new RuntimeException("TILEZ blogroll/favicon presentation missing: {$hook}");
+}
+
 foreach (['stanley' => 'stanley-sidebar', 'writing-with-impact' => 'wwi-sidebar'] as $skin => $sidebarId) {
     $dir = $root . '/skins/' . $skin;
     foreach ([false, true] as $enabled) {

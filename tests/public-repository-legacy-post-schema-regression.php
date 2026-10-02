@@ -19,7 +19,7 @@ foreach (['content', 'colophon', 'signature_image_id', 'featured_image_id'] as $
     }
 }
 
-foreach (['cover_pos_x', 'cover_pos_y', 'cover_zoom', 'user_id,is_sensitive,content_warning'] as $optional) {
+foreach (['show_featured_image', 'trigram_id', 'cover_pos_x', 'cover_pos_y', 'cover_zoom', 'user_id,is_sensitive,content_warning'] as $optional) {
     if (str_contains($lookups, $optional)) {
         throw new RuntimeException("Public post lookup still requires unrelated optional field(s): {$optional}");
     }
