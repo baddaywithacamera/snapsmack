@@ -170,8 +170,19 @@ def _publication_instant(full_post: dict) -> str:
 
 def _norm(url: str) -> str:
     u = html.unescape((url or "").strip())
-    # WordPress serves resized variants like name-1024x768.jpg; match the original too.
-    return re.sub(r"-\d{2,4}x\d{2,4}(\.[a-z0-9]+)$", r"\1", u, flags=re.I).lower()
+    # WordPress serves the same attachment as name.jpg, name-scaled.jpg and
+    # name-1024x768.jpg. They are variants of one photograph, not three media
+    # records in SnapSmack.
+    return re.sub(r"(?:-scaled|-\d{2,5}x\d{2,5})(\.[a-z0-9]+)$", r"\1", u, flags=re.I).lower()
+
+
+def _variant_rank(image: dict) -> tuple:
+    """Prefer the largest known WordPress variant, then its original URL."""
+    width = max(0, int(image.get("width") or 0))
+    height = max(0, int(image.get("height") or 0))
+    url = html.unescape(str(image.get("url") or ""))
+    derivative = bool(re.search(r"(?:-scaled|-\d{2,5}x\d{2,5})(?:\.[a-z0-9]+)$", url, re.I))
+    return (width * height, 0 if derivative else 1)
 
 
 def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
@@ -187,7 +198,13 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
     def slot(url: str, alt: str = "", extra: Optional[dict] = None) -> int:
         key = _norm(url)
         if key in by_url:
-            return by_url[key]
+            position = by_url[key]
+            candidate = dict(extra or {})
+            candidate.setdefault("url", html.unescape(url))
+            candidate.setdefault("alt", alt)
+            if _variant_rank(candidate) > _variant_rank(ordered[position - 1]):
+                ordered[position - 1] = candidate
+            return position
         img = dict(extra or {})
         img.setdefault("url", html.unescape(url))
         img.setdefault("alt", alt)

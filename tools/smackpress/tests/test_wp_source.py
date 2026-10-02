@@ -120,6 +120,18 @@ class RewriteTests(unittest.TestCase):
         self.assertNotIn("[img:bucket:", body)
         self.assertEqual(ordered[-1]["url"], f"{WP}/third.png")
 
+    def test_wordpress_derivatives_collapse_to_largest_variant(self):
+        images = [
+            {"url": f"{WP}/lake-1024x683.jpg", "width": 1024, "height": 683},
+            {"url": f"{WP}/lake-scaled.jpg", "width": 2560, "height": 1707},
+            {"url": f"{WP}/lake.jpg", "width": 6000, "height": 4000},
+        ]
+        body, ordered = wp_source.rewrite_body(
+            f'<img src="{WP}/lake-1024x683.jpg">', images)
+        self.assertEqual(len(ordered), 1)
+        self.assertEqual(ordered[0]["url"], f"{WP}/lake.jpg")
+        self.assertIn("[img:bucket:1]", body)
+
     def test_two_columns_plus_following_image_wins_over_preceding_image(self):
         content = (
             '<!-- wp:image --><figure><img src="%s/before.png"></figure><!-- /wp:image -->'
