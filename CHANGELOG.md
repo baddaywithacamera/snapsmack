@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.803D — 2026-10-02 — The fleet gets the whole update
+
+- **Hub-driven fleet updates now reconcile every spoke against the signed canonical database schema on every release, even when there are no loose migration files.** The fleet path had incorrectly skipped canonical synchronization when `updater_find_migrations()` returned an empty list, allowing a site to report the new software version while retaining an incomplete data model. The repair uses the release manifest's signed canonical schema URLs and keeps existing content intact.
+
 ## 0.7.802D — 2026-10-01 — Story covers cannot erase their stories
 
 - **Opening a SMACKTALK post now resolves its cover through a minimal, universally supported image lookup.** A valid post can no longer become a false 404 merely because the full photograph record includes newer optional image or post-image fields unavailable on an older installation.
