@@ -59,8 +59,7 @@ final class SnapPublicRepository
         return $this->one(
             "SELECT id,title,slug,description,post_type,created_at,updated_at,allow_comments,
                     allow_download,download_url,panorama_rows,content,colophon,signature_image_id,
-                    featured_image_id,show_featured_image,trigram_id,cover_pos_x,cover_pos_y,
-                    cover_zoom,sort_order,user_id,is_sensitive,content_warning
+                    featured_image_id,show_featured_image,trigram_id
              FROM snap_posts
              WHERE slug=?{$typeSql} AND status='published' AND created_at <= NOW() LIMIT 1",
             $params
@@ -73,8 +72,7 @@ final class SnapPublicRepository
         return $this->one(
             "SELECT id,title,slug,description,post_type,created_at,updated_at,allow_comments,
                     allow_download,download_url,panorama_rows,content,colophon,signature_image_id,
-                    featured_image_id,show_featured_image,trigram_id,cover_pos_x,cover_pos_y,
-                    cover_zoom,sort_order,user_id,is_sensitive,content_warning
+                    featured_image_id,show_featured_image,trigram_id
              FROM snap_posts
              WHERE id=?{$typeSql} AND status='published' AND created_at <= NOW() LIMIT 1",
             $params
