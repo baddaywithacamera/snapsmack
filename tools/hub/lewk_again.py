@@ -176,7 +176,13 @@ def _safe_adjustments(values):
             low, high = (-3.0, 3.0) if key == "exposure" else (-100.0, 100.0)
             if key in {"level_black", "level_white"}: low, high = 0.0, 255.0
             if key == "level_gamma": low, high = 0.1, 3.0
-            if key in {"vignette_size", "vignette_feather", "glow_x", "glow_y", "glow_size"}: low, high = 0.0, 100.0
+            # The vignette sliders run to 200, and a soft vignette needs
+            # the upper half: feather 100 still ramps in 0.46 of the
+            # radius against 0.80 at 180. Clamping these to 100 boxed
+            # every generated LEWK into the hard-edged half of the control.
+            if key in {"vignette_size", "vignette_feather"}: low, high = 0.0, 200.0
+            if key in {"glow_x", "glow_y"}: low, high = 0.0, 100.0
+            if key == "glow_size": low, high = 5.0, 100.0
             safe[key] = _bounded_number(value, default, low, high)
         elif isinstance(default, list):
             if not isinstance(value, list) or len(value) > 32:
