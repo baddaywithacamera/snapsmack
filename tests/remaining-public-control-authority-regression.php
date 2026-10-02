@@ -32,6 +32,10 @@ $media = snapsmack_skin_presentation(['header_image'=>'media/header.jpg','header
 if (($media['header_media'] ?? null) !== ['image'=>'/media/header.jpg','logo'=>'/media/logo.png','retina'=>true,'show_tagline'=>false]) {
     throw new RuntimeException('Header media controls did not cross the bounded CMS model.');
 }
+$tilezDefault = snapsmack_skin_presentation([], 'tilez');
+if (($tilezDefault['header_media']['logo'] ?? '') !== '/skins/tilez/assets/bad-day-masthead.png') {
+    throw new RuntimeException('TILEZ lost its commissioned default masthead.');
+}
 foreach (['alfred','telegram','tilez','stanley','writing-with-impact'] as $skin) {
     $layout = (string)file_get_contents($root . '/skins/' . $skin . '/layout.php');
     foreach (['header_media', "['logo']", "['show_tagline']"] as $needle) {

@@ -378,7 +378,7 @@ function sc_read_manifests(string $skins_dir): array {
             'author'             => $manifest['author']             ?? 'Unknown',
             'description'        => $manifest['description']        ?? '',
             'features'           => $manifest['features']           ?? [],
-            'requires_php'       => $manifest['requires_php']       ?? '8.0',
+            'requires_php'       => $manifest['requires_php']       ?? '8.3',
             'requires_snapsmack' => $manifest['requires_snapsmack'] ?? '0.7',
         ];
     }
