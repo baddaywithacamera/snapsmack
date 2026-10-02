@@ -10,6 +10,7 @@
 $root = dirname(__DIR__);
 $gallery = file_get_contents($root . '/smack-skin.php') ?: '';
 $packager = file_get_contents($root . '/smack-central/sc-skins.php') ?: '';
+$updater = file_get_contents($root . '/smack-update.php') ?: '';
 $failures = [];
 
 $expect = static function (bool $condition, string $message) use (&$failures): void {
@@ -24,6 +25,9 @@ $expect(str_contains($gallery, 'skin_registry_fetch('), 'gallery must retain reg
 $expect(str_contains($packager, 'function sc_extract_one_skin('), 'Skin Packager must support fetching one directory');
 $expect(str_contains($packager, 'name="fetch_one_skin"'), 'Skin Packager must expose the one-skin fetch action');
 $expect(str_contains($packager, "['master', 'dev']"), 'one-skin fetch must offer stable and dev branches');
+$expect(!str_contains($updater, "setting_key='update_public_key'"), 'skin updates must not depend on a nonexistent database key');
+$expect(substr_count($updater, "defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : ''") >= 2,
+    'manual and automatic skin updates must use the protected installed release key');
 
 if ($failures) {
     foreach ($failures as $failure) fwrite(STDERR, "FAIL: {$failure}\n");

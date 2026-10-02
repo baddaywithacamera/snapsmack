@@ -9,6 +9,31 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.803D — 2026-10-02 — The fleet gets the whole update
+
+- **Hub-driven fleet updates now reconcile every spoke against the signed canonical database schema on every release, even when there are no loose migration files.** The fleet path had incorrectly skipped canonical synchronization when `updater_find_migrations()` returned an empty list, allowing a site to report the new software version while retaining an incomplete data model. The repair uses the release manifest's signed canonical schema URLs and keeps existing content intact.
+
+## 0.7.802D — 2026-10-01 — Story covers cannot erase their stories
+
+- **Opening a SMACKTALK post now resolves its cover through a minimal, universally supported image lookup.** A valid post can no longer become a false 404 merely because the full photograph record includes newer optional image or post-image fields unavailable on an older installation.
+
+## 0.7.801D — 2026-10-01 — Migrated SMACKTALK sites stay whole
+
+- **SMACKTALK detail routes no longer require featured-visibility or trigram columns that the reader does not consume.** This closes the remaining false-404 path on migrated longform blogs whose landing cards already rendered correctly.
+- **Blogrolls now travel through the bounded SMACKTALK controller and skin view model.** Strict skins present public peer names, links, descriptions, and groups without regaining database or request authority; TILEZ no longer falls into the unstyled legacy page.
+- **The CMS now carries the configured site favicon across the strict presentation boundary.** TILEZ consumes that bounded URL, restoring each site's own icon without hard-coding it into the skin.
+
+## 0.7.800D — 2026-10-01 — Published stories remain findable
+
+- **SMACKTALK post pages no longer turn valid legacy stories into false 404s.** The public repository now requests only the post fields the reader actually uses instead of requiring unrelated optional columns introduced after older blogs were created. TILEZ landing cards and their detail routes therefore share the same supported publication contract without moving database logic into the skin.
+
+## 0.7.799D — 2026-10-01 — TILEZ gets its picture back
+
+- **TILEZ again receives its configured commissioned masthead, navigation labels, archive dates, metadata, and adjacent-post links through the bounded CMS view model.** The skin remains presentation-only: routing, database access, media resolution, and trusted content construction stay in core.
+- **Manual and automatic skin updates use the protected installed Ed25519 release key.** They no longer depend on a nonexistent database copy of the public key.
+- **The supported runtime floor is now consistently PHP 8.3.** Installer, updater, release tooling, documentation, and regressions agree on the same requirement.
+- **Legacy `wp-content` image requests are no longer treated as hostile probes.** Migrated media and owner diagnostics cannot trigger an IP lockdown merely by requesting an old WordPress asset path.
+
 ## 0.7.798D — 2026-10-01 — Central carries its trusted skin authority
 
 - **Smack Central self-updates now deploy the CMS-owned skin security policy and both audited asset inventories beside the packager.** The skin publisher continues to fail closed and never trusts policy from the candidate skin or selected Git ref, while a normal signed Central update now provides the authority files required to package strict skins with their signed integrity manifest.

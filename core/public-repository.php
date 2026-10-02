@@ -53,14 +53,23 @@ final class SnapPublicRepository
         );
     }
 
+    /** Minimal cover lookup used by story routing on every supported schema. */
+    public function photographPathById(int $id): string {
+        $row = $this->one(
+            "SELECT img_file FROM snap_images
+             WHERE id=? AND img_status='published' AND img_date <= NOW() LIMIT 1",
+            [$id]
+        );
+        return trim((string)($row['img_file'] ?? ''));
+    }
+
     public function postBySlug(string $slug, ?string $type = null): ?array {
         $typeSql = $type === null ? '' : ' AND post_type=?';
         $params = $type === null ? [$slug] : [$slug, $type];
         return $this->one(
             "SELECT id,title,slug,description,post_type,created_at,updated_at,allow_comments,
                     allow_download,download_url,panorama_rows,content,colophon,signature_image_id,
-                    featured_image_id,show_featured_image,trigram_id,cover_pos_x,cover_pos_y,
-                    cover_zoom,sort_order,user_id,is_sensitive,content_warning
+                    featured_image_id
              FROM snap_posts
              WHERE slug=?{$typeSql} AND status='published' AND created_at <= NOW() LIMIT 1",
             $params
@@ -73,8 +82,7 @@ final class SnapPublicRepository
         return $this->one(
             "SELECT id,title,slug,description,post_type,created_at,updated_at,allow_comments,
                     allow_download,download_url,panorama_rows,content,colophon,signature_image_id,
-                    featured_image_id,show_featured_image,trigram_id,cover_pos_x,cover_pos_y,
-                    cover_zoom,sort_order,user_id,is_sensitive,content_warning
+                    featured_image_id
              FROM snap_posts
              WHERE id=?{$typeSql} AND status='published' AND created_at <= NOW() LIMIT 1",
             $params
@@ -193,6 +201,17 @@ final class SnapPublicRepository
         );
         $stmt->execute($type === null ? [] : [$type]);
         return (int)$stmt->fetchColumn();
+    }
+
+    /** Public blogroll presentation data; provenance and administrative fields stay private. */
+    public function blogrollPeers(): array {
+        return $this->all(
+            "SELECT b.peer_name,b.peer_url,b.peer_desc,c.cat_name
+             FROM snap_blogroll b
+             LEFT JOIN snap_blogroll_cats c ON c.id=b.cat_id
+             WHERE b.peer_url IS NOT NULL AND b.peer_url<>''
+             ORDER BY c.cat_name,b.peer_name"
+        );
     }
 
     public function activePages(): array {

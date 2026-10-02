@@ -2317,8 +2317,8 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
         $all_pass = true;
 
         // PHP Version
-        $php_ok = version_compare(PHP_VERSION, '8.0.0', '>=');
-        $checks[] = ['PHP Version (' . PHP_VERSION . ')', $php_ok, 'Requires 8.0+'];
+        $php_ok = version_compare(PHP_VERSION, '8.3.0', '>=');
+        $checks[] = ['PHP Version (' . PHP_VERSION . ')', $php_ok, 'Requires 8.3+'];
         if (!$php_ok) $all_pass = false;
 
         // PDO MySQL

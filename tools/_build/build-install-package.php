@@ -17,7 +17,7 @@
  *
  * REQUIREMENTS:
  *   - Run from within the SnapSmack git repository
- *   - PHP 8.0+ with ZipArchive
+ *   - PHP 8.3+ with ZipArchive
  */
 
 /**
@@ -265,7 +265,7 @@ $manifest = [
     'checksum_sha256' => $checksum,
     'signature'       => '',
     'download_size'   => $filesize,
-    'requires_php'    => '8.0',
+    'requires_php'    => '8.3',
     'requires_mysql'  => '5.7',
     'schema_changes'  => false,
     'changelog'       => ['Initial public release'],
