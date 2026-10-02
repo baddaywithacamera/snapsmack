@@ -1882,10 +1882,16 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
 
     // 7. Run migrations
     $migration_files = updater_find_migrations($pdo);
-    $mig_result = [];
-    if (!empty($migration_files)) {
-        $mig_result = updater_run_migrations($pdo, $migration_files);
-    }
+    // Canonical reconciliation is not conditional on loose migration files.
+    // A release may add canonical columns without shipping a one-off SQL file;
+    // skipping this call in that case leaves a spoke reporting the new version
+    // while still running an older database contract.
+    $mig_result = updater_run_migrations(
+        $pdo,
+        $migration_files,
+        (string)($release_info['canonical_schema_url'] ?? ''),
+        (string)($release_info['canonical_schema_sig'] ?? '')
+    );
 
     // 8. Release lock (version already stamped in step 6b, before the baseline)
     updater_release_lock();
