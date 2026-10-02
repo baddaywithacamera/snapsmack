@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.804D — 2026-10-02 — Finish the SMACKPRESS landing
+
+- SMACKTALK image archives now exclude signature-only media, discard missing files, prefer native-aspect derivatives, and provide native dimensions to the shared columns engine. TILEZ 0.2.50 renders the archive as a smaller asymmetric wall with owner-controlled column count and gap instead of a cropped square grid.
+- Existing owner navigation that still stores the former `blogroll.php` destination is normalized into the bounded SMACKTALK Blogroll route, preserving the configured label and order without sending TILEZ around its CMS controller.
+
 ## 0.7.803D — 2026-10-02 — The fleet gets the whole update
 
 - **Hub-driven fleet updates now reconcile every spoke against the signed canonical database schema on every release, even when there are no loose migration files.** The fleet path had incorrectly skipped canonical synchronization when `updater_find_migrations()` returned an empty list, allowing a site to report the new software version while retaining an incomplete data model. The repair uses the release manifest's signed canonical schema URLs and keeps existing content intact.
