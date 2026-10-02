@@ -7,7 +7,7 @@
  * verifies the SHA-256 checksum and Ed25519 signature, then hands off to
  * install.php for database setup.
  *
- * Requirements: PHP 8.0+, cURL or allow_url_fopen, ZipArchive, sodium.
+ * Requirements: PHP 8.3+, cURL or allow_url_fopen, ZipArchive, sodium.
  * This file self-deletes after a successful deploy.
  */
 

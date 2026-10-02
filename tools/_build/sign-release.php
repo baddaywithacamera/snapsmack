@@ -22,7 +22,7 @@
  *   update server at https://snapsmack.ca/releases/latest.json
  *
  * REQUIREMENTS:
- *   - PHP 8.0+ with libsodium (built-in)
+ *   - PHP 8.3+ with libsodium (built-in)
  *   - Your Ed25519 secret key (128 hex characters)
  *
  * INSTALL PHP ON WINDOWS:
@@ -169,7 +169,7 @@ $json = [
     'checksum_sha256' => $checksum,
     'signature'       => $signature,
     'download_size'   => $filesize,
-    'requires_php'    => '8.0',
+    'requires_php'    => '8.3',
     'requires_mysql'  => '5.7',
     'schema_changes'  => false,
     'changelog'       => [
