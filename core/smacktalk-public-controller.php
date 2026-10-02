@@ -86,6 +86,12 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
     try {
         $previous = $repository->adjacentPosts((int)$post['id'], 'longform', false);
         $next = $repository->adjacentPosts((int)$post['id'], 'longform', true);
+        foreach (['previous' => &$previous, 'next' => &$next] as &$adjacent) {
+            if (is_array($adjacent) && !empty($adjacent['slug'])) {
+                $adjacent['url'] = $base . '?post=' . rawurlencode((string)$adjacent['slug']);
+            }
+        }
+        unset($adjacent);
         $stmt = $pdo->prepare("SELECT c.cat_name FROM snap_post_cat_map m JOIN snap_categories c ON c.id=m.cat_id WHERE m.post_id=? ORDER BY c.cat_name");
         $stmt->execute([(int)$post['id']]); $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
         $stmt = $pdo->prepare("SELECT a.album_name FROM snap_post_album_map m JOIN snap_albums a ON a.id=m.album_id WHERE m.post_id=? ORDER BY a.album_name");
@@ -120,7 +126,8 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
     return [
         'page_title' => (string)$post['title'], 'post' => $post, 'rendered_content' => $rendered,
         'signature' => $signature, 'previous' => $previous, 'next' => $next,
-        'categories' => $categories, 'albums' => $albums, 'author' => $author,
+        'categories' => $categories, 'albums' => $albums,
+        'categories_label' => implode(', ', $categories), 'albums_label' => implode(', ', $albums), 'author' => $author,
         'colophon' => trim((string)($post['colophon'] ?? '')), 'photo_count' => $photo_count,
         'word_count' => count($words[0]), 'comments_enabled' => !empty($post['allow_comments']),
         'comments' => $repository->approvedComments(null, (int)$post['id']),
@@ -142,6 +149,7 @@ function snapsmack_smacktalk_feed(PDO $pdo, array $settings, string $base, int $
         $post['image_url'] = !empty($post['featured_image_path']) ? $base . ltrim((string)$post['featured_image_path'], '/') : '';
         $post['width'] = max(1, (int)($post['featured_width'] ?? 3));
         $post['height'] = max(1, (int)($post['featured_height'] ?? 2));
+        $post['created_label'] = !empty($post['created_at']) ? date('M j, Y', strtotime((string)$post['created_at'])) : '';
         if ($post['image_url'] !== '') {
             $path = dirname(__DIR__) . '/' . ltrim((string)$post['featured_image_path'], '/');
             $size = @getimagesize($path);

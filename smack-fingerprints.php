@@ -249,6 +249,14 @@ include 'core/admin-header.php';
 include 'core/sidebar.php';
 $total_bans  = (int)$pdo->query("SELECT COUNT(*) FROM snap_ban_list")->fetchColumn();
 $active_bans = $total_bans; // All rows in snap_ban_list are active; deleted bans are removed entirely
+$active_ip_bans = 0;
+try {
+    $active_ip_bans = (int)$pdo->query(
+        "SELECT COUNT(*) FROM snap_ip_bans WHERE expires_at > NOW()"
+    )->fetchColumn();
+} catch (PDOException $e) {
+    // Older installs may not have the IP-ban table yet.
+}
 
 $settings       = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $is_hub         = ($settings['multisite_role'] ?? '') === 'hub';
@@ -266,7 +274,7 @@ if ($is_hub) {
 <div class="main">
     <div class="header-row header-row--ruled">
         <h2>FINGERPRINTS & BAN MANAGER</h2>
-        <span class="dim"><?php echo $active_bans; ?> active bans (<?php echo $total_bans; ?> total)</span>
+        <span class="dim"><?php echo $active_bans; ?> moderation bans; <?php echo $active_ip_bans; ?> active IP bans</span>
     </div>
 
     <!-- ── TAB SELECTOR ──────────────────────────────────────────────────────── -->

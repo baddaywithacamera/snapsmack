@@ -23,7 +23,7 @@ $faq_qas = <<<'HTML'
 
             <div class="qa" id="q-resources">
                 <h3>Resources needed?</h3>
-                <p>PHP 8.1 or newer. MySQL 5.7 or MariaDB equivalent or newer. Enough disk space for your image archive. Modest RAM — SnapSmack runs comfortably on the cheapest shared-host plans.</p>
+                <p>PHP 8.3 or newer. MySQL 5.7 or MariaDB equivalent or newer. Enough disk space for your image archive. Modest RAM — SnapSmack runs comfortably on the cheapest shared-host plans.</p>
                 <p>A fresh SnapSmack install is approximately 6MB. With a full skin library loaded it stays under 10MB. The software footprint is negligible — plan your disk around your image archive, not the CMS. A prolific photographer running a busy site for a year can easily hit 15GB of images. That's on you and your hosting plan, not us.</p>
                 <p>No Docker. No Node. No build step. No Composer. No package manager. No CI pipeline. Upload, configure, go.</p>
                 <p>If your host runs WordPress, it runs SnapSmack. If your host runs WordPress badly, odds are it will still run SnapSmack well.</p>
@@ -31,7 +31,7 @@ $faq_qas = <<<'HTML'
 
             <div class="qa" id="q-platforms">
                 <h3>Platforms supported?</h3>
-                <p><strong>Server.</strong> LAMP. Linux, Apache, MySQL/MariaDB, PHP 8.1 or newer. Nginx with PHP-FPM works in principle and several testers run it. Officially supported once it's been through enough cycles to call it tested. WIMP — Windows, IIS, MySQL, PHP — can go eat a bag of dicks. Not supported. Not going to be. Don't file bug reports. See "Does SnapSmack run on macOS?" for the other platform we don't build for, and why.</p>
+                <p><strong>Server.</strong> LAMP. Linux, Apache, MySQL/MariaDB, PHP 8.3 or newer. Nginx with PHP-FPM works in principle and several testers run it. Officially supported once it's been through enough cycles to call it tested. WIMP — Windows, IIS, MySQL, PHP — can go eat a bag of dicks. Not supported. Not going to be. Don't file bug reports. See "Does SnapSmack run on macOS?" for the other platform we don't build for, and why.</p>
                 <p><strong>Desktop Companion Apps.</strong> Windows 10 and up. Any recent Linux distribution. The Linux builds have also been found to work on macOS, entirely by accident, but macOS remains unsupported. See "Does SnapSmack run on macOS?" before getting excited.</p>
             </div>
 

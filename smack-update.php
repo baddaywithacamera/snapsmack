@@ -82,9 +82,9 @@ if ($mobile_slug !== '' && !is_dir(__DIR__ . '/skins/' . $mobile_slug)) {
             $mobile_slug,
             $mobile_entry['download_url'],
             $mobile_entry['signature'] ?? '',
-            // Skins are signed with the SKIN-registry key (settings: update_public_key),
-            // NOT the core release pubkey — wrong key = Ed25519 verify fails.
-            (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='update_public_key' LIMIT 1")->fetchColumn() ?: '')
+            // Skin packages and core releases are signed by the same release key.
+            // Use the installed, protected key file; no database mirror is created.
+            defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : ''
         );
     }
 }
@@ -193,7 +193,7 @@ function _normalise_update_array(array $u): array {
         'file_changes'    => [],
         'schema_changes'  => false,
         'download_size'   => 0,
-        'requires_php'    => '8.0',
+        'requires_php'    => '8.3',
         'download_url'    => '',
         'checksum_sha256' => '',
         'signature'       => '',
@@ -432,7 +432,7 @@ if ($action === 'reapply') {
                 'file_changes'    => $release_info['file_changes']    ?? [],
                 'schema_changes'  => $release_info['schema_changes']  ?? false,
                 'download_size'   => $release_info['download_size']   ?? 0,
-                'requires_php'    => $release_info['requires_php']    ?? '8.0',
+                'requires_php'    => $release_info['requires_php']    ?? '8.3',
                 'download_url'    => $release_info['download_url']    ?? '',
                 'checksum_sha256' => $release_info['checksum_sha256'] ?? '',
                 'signature'       => $release_info['signature']       ?? '',
@@ -449,10 +449,9 @@ if ($action === 'skin_update') {
     $slug         = $_POST['skin_slug']    ?? '';
     $download_url = $_POST['download_url'] ?? '';
     $signature    = $_POST['signature']    ?? '';
-    // Skins are signed with the SKIN-registry key (settings: update_public_key),
-    // not the core release pubkey — the gallery uses this; the update page must too.
-    // This is why the gallery's skin-update worked and this one silently failed.
-    $public_key   = (string)($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key='update_public_key' LIMIT 1")->fetchColumn() ?: '');
+    // Skin packages and core releases are signed by the same release key.
+    // release-pubkey.php is protected across updates and loaded by core/updater.php.
+    $public_key   = defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : '';
 
     if (empty($slug) || empty($download_url)) {
         $flash_msg  = 'SKIN UPDATE FAILED: MISSING DATA. TRY CHECKING FOR UPDATES AGAIN.';
@@ -574,7 +573,7 @@ if ($action === 'check_ajax') {
                 'file_changes'    => $release_info_ax['file_changes']    ?? [],
                 'schema_changes'  => $release_info_ax['schema_changes']  ?? false,
                 'download_size'   => $release_info_ax['download_size']   ?? 0,
-                'requires_php'    => $release_info_ax['requires_php']    ?? '8.0',
+                'requires_php'    => $release_info_ax['requires_php']    ?? '8.3',
                 'download_url'    => $release_info_ax['download_url']    ?? '',
                 'checksum_sha256' => $release_info_ax['checksum_sha256'] ?? '',
                 'signature'       => $release_info_ax['signature']       ?? '',
@@ -649,7 +648,7 @@ if ($action === 'check') {
             'file_changes'    => $release_info['file_changes']    ?? [],
             'schema_changes'  => $release_info['schema_changes']  ?? false,
             'download_size'   => $release_info['download_size']   ?? 0,
-            'requires_php'    => $release_info['requires_php']    ?? '8.0',
+            'requires_php'    => $release_info['requires_php']    ?? '8.3',
             'download_url'    => $release_info['download_url']    ?? '',
             'checksum_sha256' => $release_info['checksum_sha256'] ?? '',
             'signature'       => $release_info['signature']       ?? '',
@@ -833,7 +832,7 @@ if (empty($_stage_download_update) && !empty($_SESSION['update_state']['update']
 }
 if ($action === 'stage_download' && !empty($_stage_download_update)) {
     $update       = $_stage_download_update;
-    $required_php = $update['requires_php'] ?? '8.0';
+    $required_php = $update['requires_php'] ?? '8.3';
 
     if (version_compare(PHP_VERSION, $required_php, '<')) {
         $flash_msg  = "UPDATE REQUIRES PHP {$required_php}+. YOU ARE RUNNING " . PHP_VERSION . ".";

@@ -49,7 +49,7 @@ require_once __DIR__ . '/skin-manifest.php';
 //       "download_url": "https://url/to/skin-slug-5.5.zip",
 //       "download_size": 245000,        // bytes (optional)
 //       "signature": "hex-ed25519-sig", // optional until signing is live
-//       "requires_php": "8.0",
+//       "requires_php": "8.3",
 //       "requires_snapsmack": "0.7",
 //       "features": {
 //         "supports_wall": true,

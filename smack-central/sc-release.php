@@ -1084,7 +1084,7 @@ if ($action === 'build' && $preflight_ok) {
     $version        = trim($_POST['version']        ?? '');
     $version_full   = trim($_POST['version_full']   ?? '');
     $released       = trim($_POST['released']       ?? date('Y-m-d'));
-    $requires_php   = trim($_POST['requires_php']   ?? '8.0');
+    $requires_php   = trim($_POST['requires_php']   ?? '8.3');
     $requires_mysql = trim($_POST['requires_mysql'] ?? '5.7');
     $schema_changes = !empty($_POST['schema_changes']);
     $codename       = trim($_POST['codename']       ?? '');
@@ -1437,7 +1437,7 @@ if ($action === 'build_dev' && $preflight_ok) {
         $version_full .= 'D';
     }
     $released       = trim($_POST['released']       ?? date('Y-m-d'));
-    $requires_php   = trim($_POST['requires_php']   ?? '8.0');
+    $requires_php   = trim($_POST['requires_php']   ?? '8.3');
     $requires_mysql = trim($_POST['requires_mysql'] ?? '5.7');
     $codename       = trim($_POST['codename']       ?? '');
     $changelog_raw  = trim($_POST['changelog'] ?? '');
@@ -1858,7 +1858,7 @@ require __DIR__ . '/sc-layout-top.php';
             <div style="display:flex; gap:12px;">
               <div class="sc-field" style="flex:1;">
                 <label>Min PHP</label>
-                <input type="text" name="requires_php" value="8.0" style="width:100%;">
+                <input type="text" name="requires_php" value="8.3" style="width:100%;">
               </div>
               <div class="sc-field" style="flex:1;">
                 <label>Min MySQL</label>
@@ -1963,7 +1963,7 @@ require __DIR__ . '/sc-layout-top.php';
             <div style="display:flex; gap:12px;">
               <div class="sc-field" style="flex:1;">
                 <label>Min PHP</label>
-                <input type="text" name="requires_php" value="8.0" style="width:100%;">
+                <input type="text" name="requires_php" value="8.3" style="width:100%;">
               </div>
               <div class="sc-field" style="flex:1;">
                 <label>Min MySQL</label>
