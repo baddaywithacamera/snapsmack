@@ -33,6 +33,9 @@ foreach ($skins as $skin) {
         if (!$ok || !str_contains($html, '<!doctype html>')) throw new RuntimeException("{$skin}/{$kind} did not render.");
         if (stripos($html, '<script>no</script>') !== false) throw new RuntimeException("{$skin}/{$kind} emitted untrusted HTML.");
         if ($kind === 'single' && (!str_contains($html, 'CMS content') || !str_contains($html, 'snap-comments'))) throw new RuntimeException("{$skin} lost CMS content or comments.");
+        if ($skin === 'tilez' && $kind === 'feed' && (!str_contains($html, 'ss-masonry-item') || !str_contains($html, 'post-overlay'))) {
+            throw new RuntimeException('TILEZ feed items no longer satisfy the shared columns-engine markup contract.');
+        }
         $hook = $skin === 'stanley' ? 'id="stanley-page"' : ($skin === 'writing-with-impact' ? 'id="wwi-page"' : ($skin === 'telegram' ? 'telegram-' : 'header section-inner'));
         if (!str_contains($html, $hook)) throw new RuntimeException("{$skin}/{$kind} lost its presentation structure.");
     }
