@@ -67,9 +67,8 @@ final class SnapPublicRepository
         $typeSql = $type === null ? '' : ' AND post_type=?';
         $params = $type === null ? [$slug] : [$slug, $type];
         return $this->one(
-            "SELECT id,title,slug,description,post_type,created_at,updated_at,allow_comments,
-                    allow_download,download_url,panorama_rows,content,colophon,signature_image_id,
-                    featured_image_id
+            "SELECT id,title,slug,post_type,created_at,allow_comments,content,colophon,
+                    signature_image_id,featured_image_id
              FROM snap_posts
              WHERE slug=?{$typeSql} AND status='published' AND created_at <= NOW() LIMIT 1",
             $params
@@ -80,9 +79,8 @@ final class SnapPublicRepository
         $typeSql = $type === null ? '' : ' AND post_type=?';
         $params = $type === null ? [$id] : [$id, $type];
         return $this->one(
-            "SELECT id,title,slug,description,post_type,created_at,updated_at,allow_comments,
-                    allow_download,download_url,panorama_rows,content,colophon,signature_image_id,
-                    featured_image_id
+            "SELECT id,title,slug,post_type,created_at,allow_comments,content,colophon,
+                    signature_image_id,featured_image_id
              FROM snap_posts
              WHERE id=?{$typeSql} AND status='published' AND created_at <= NOW() LIMIT 1",
             $params
