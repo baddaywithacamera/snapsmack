@@ -849,15 +849,26 @@ def _oiio_result(image, operation, *args, **kwargs):
 
 
 def gaussian_blur(image, radius):
+    """Blur as two 1-D passes rather than one square kernel.
+
+    A Gaussian is separable, so a horizontal pass followed by a vertical pass
+    gives the same result as the (2r+1) x (2r+1) kernel for a fraction of the
+    work: 2(2r+1) multiply-adds per pixel instead of (2r+1) squared. Clarity
+    asks for radius 7.5 on a fitted preview, where that is 32 operations per
+    pixel instead of 256. Blur sits under Clarity, Texture, Sharpen and Noise
+    Reduction, so this is the difference between those sliders being usable and
+    not.
+    """
     radius = max(0.0, float(radius))
     if radius == 0.0:
         return image
-    kernel = oiio.ImageBufAlgo.make_kernel("gaussian", radius * 2.0 + 1.0,
-                                           radius * 2.0 + 1.0)
-    source = oiio.ImageBuf(np.ascontiguousarray(image.pixels))
-    result = oiio.ImageBufAlgo.convolve(source, kernel)
-    _raise_oiio(result, "Gaussian blur")
-    return FloatImage(np.ascontiguousarray(result.get_pixels(oiio.FLOAT)),
+    span = radius * 2.0 + 1.0
+    buffer = oiio.ImageBuf(np.ascontiguousarray(image.pixels))
+    for width, height in ((span, 1.0), (1.0, span)):
+        kernel = oiio.ImageBufAlgo.make_kernel("gaussian", width, height)
+        buffer = oiio.ImageBufAlgo.convolve(buffer, kernel)
+        _raise_oiio(buffer, "Gaussian blur")
+    return FloatImage(np.ascontiguousarray(buffer.get_pixels(oiio.FLOAT)),
                       image.channel_names, image.source_format, image.icc_profile)
 
 
@@ -1096,65 +1107,140 @@ def apply_styles(image, styles):
     return result
 
 
+_IDENTITY_CURVE = ((0.0, 0.0), (255.0, 255.0))
+
+
+def _is_identity_curve(points):
+    """True when a curve is the straight line, so its whole pass can be skipped."""
+    try:
+        return tuple(tuple(map(float, point)) for point in points) == _IDENTITY_CURVE
+    except (TypeError, ValueError):
+        return False
+
+
+def _neutral_luminance_pass(rgb):
+    """Exactly what a tone stage does when its own sliders sit at neutral.
+
+    _remap_luminance with target == source divides each luma by itself, so every
+    ordinary pixel comes back bit-identical and only pixels with no usable
+    luminance (true black, or negative channels left behind by an earlier
+    stage's float headroom) collapse onto their luma. Tone stages always ran, so
+    that collapse is part of the established look and is reproduced here without
+    the divide and multiply across the whole frame. An image with usable
+    luminance everywhere needs no pass at all.
+    """
+    tone = luminance(rgb).astype(np.float32)
+    active = tone > np.float32(1e-6)
+    if active.all():
+        return rgb
+    return np.where(active[:, :, None], rgb, tone[:, :, None]).astype(np.float32)
+
+
 def apply_adjustments(image, adjustments, defaults=None):
-    """Apply the photographic correction controls in float32 working space."""
+    """Apply the photographic correction controls in float32 working space.
+
+    Every stage is skipped when its own controls sit at their neutral value.
+    A neutral stage still costs tens to hundreds of milliseconds per megapixel,
+    so this is not a rounding error: it is the difference between a slider that
+    tracks the mouse and one that looks dead.
+    """
     settings = dict(defaults or {})
     settings.update(adjustments or {})
     rgb, alpha = _rgb(image)
     rgb = rgb.copy()
 
-    exposure = np.float32(2.0 ** float(settings.get("exposure", 0.0)))
-    rgb *= exposure
-    tone = luminance(rgb).astype(np.float32)
-    target_tone = tone + np.float32(float(settings.get("brightness", 0.0)) * 1.28 / 255.0)
-    rgb = _remap_luminance(rgb, tone, target_tone)
-    tone = luminance(rgb).astype(np.float32)
-    mask_tone = np.clip(tone, 0.0, 1.0)
-    shadow_weight = (1.0 - _smoothstep(.10, .50, mask_tone)) ** 2
-    highlight_weight = _smoothstep(.50, .90, mask_tone) ** 2
-    midtone_weight = 1.0 - _smoothstep(0.0, .32, np.abs(mask_tone - .5))
-    delta = (float(settings.get("shadows", 0.0)) / 100.0 * 50.0 / 255.0 * shadow_weight +
-             float(settings.get("midtones", 0.0)) / 100.0 * 55.0 / 255.0 * midtone_weight +
-             float(settings.get("highlights", 0.0)) / 100.0 * 50.0 / 255.0 * highlight_weight +
-             float(settings.get("whites", 0.0)) / 100.0 * 45.0 / 255.0 *
-             np.maximum(0.0, (mask_tone - .80) / .20) +
-             float(settings.get("blacks", 0.0)) / 100.0 * 45.0 / 255.0 *
-             np.maximum(0.0, (.20 - mask_tone) / .20))
-    rgb = _remap_luminance(rgb, tone, tone + delta.astype(np.float32))
+    exposure_stops = float(settings.get("exposure", 0.0))
+    if exposure_stops:
+        rgb *= np.float32(2.0 ** exposure_stops)
+
+    brightness = float(settings.get("brightness", 0.0))
+    if brightness:
+        tone = luminance(rgb).astype(np.float32)
+        target_tone = tone + np.float32(brightness * 1.28 / 255.0)
+        rgb = _remap_luminance(rgb, tone, target_tone)
+    else:
+        rgb = _neutral_luminance_pass(rgb)
+
+    shadows = float(settings.get("shadows", 0.0))
+    midtones = float(settings.get("midtones", 0.0))
+    highlights = float(settings.get("highlights", 0.0))
+    whites = float(settings.get("whites", 0.0))
+    blacks = float(settings.get("blacks", 0.0))
+    if shadows or midtones or highlights or whites or blacks:
+        tone = luminance(rgb).astype(np.float32)
+        mask_tone = np.clip(tone, 0.0, 1.0)
+        delta = np.zeros_like(mask_tone)
+        if shadows:
+            delta += (shadows / 100.0 * 50.0 / 255.0 *
+                      (1.0 - _smoothstep(.10, .50, mask_tone)) ** 2)
+        if midtones:
+            delta += (midtones / 100.0 * 55.0 / 255.0 *
+                      (1.0 - _smoothstep(0.0, .32, np.abs(mask_tone - .5))))
+        if highlights:
+            delta += (highlights / 100.0 * 50.0 / 255.0 *
+                      _smoothstep(.50, .90, mask_tone) ** 2)
+        if whites:
+            delta += (whites / 100.0 * 45.0 / 255.0 *
+                      np.maximum(0.0, (mask_tone - .80) / .20))
+        if blacks:
+            delta += (blacks / 100.0 * 45.0 / 255.0 *
+                      np.maximum(0.0, (.20 - mask_tone) / .20))
+        rgb = _remap_luminance(rgb, tone, tone + delta.astype(np.float32))
+    else:
+        rgb = _neutral_luminance_pass(rgb)
+
+    # Contrast is the one tone stage that is not skippable at neutral. Its
+    # target is (tone - .5) * 1.0 + .5, and in float32 that round trip does not
+    # return tone for very dark pixels, so the established render shifts them
+    # very slightly. Skipping the stage would change those pixels, so it runs.
     contrast = 1.0 + float(settings.get("contrast", 0.0)) / 100.0
     tone = luminance(rgb).astype(np.float32)
     rgb = _remap_luminance(rgb, tone, (tone - .5) * np.float32(contrast) + .5)
 
     black = float(settings.get("level_black", 0.0)) / 255.0
     white = max(black + 1.0 / 255.0, float(settings.get("level_white", 255.0)) / 255.0)
-    rgb = (rgb - black) / (white - black)
+    if black or white != 1.0:
+        rgb = (rgb - black) / (white - black)
     gamma = max(.1, float(settings.get("level_gamma", 1.0)))
-    positive = np.maximum(rgb, 0.0)
-    rgb = np.where(rgb >= 0.0, np.power(positive, 1.0 / gamma), rgb).astype(np.float32)
+    if gamma != 1.0:
+        positive = np.maximum(rgb, 0.0)
+        rgb = np.where(rgb >= 0.0, np.power(positive, 1.0 / gamma), rgb).astype(np.float32)
 
     temperature = float(settings.get("temperature", 0.0)) / 100.0
     tint = float(settings.get("tint", 0.0)) / 100.0
-    rgb *= np.asarray((1.0 + temperature * .22 + tint * .06,
-                       1.0 - abs(tint) * .05,
-                       1.0 - temperature * .22 + tint * .06), dtype=np.float32)
+    if temperature or tint:
+        rgb *= np.asarray((1.0 + temperature * .22 + tint * .06,
+                           1.0 - abs(tint) * .05,
+                           1.0 - temperature * .22 + tint * .06), dtype=np.float32)
 
-    grey = luminance(rgb)[:, :, None]
+    # The saturation lerp stays unconditional. At neutral it is a no-op only to
+    # within float rounding, and a degenerate Levels window (black above white)
+    # multiplies the working value by 255, which would turn that rounding into a
+    # visible difference. It is one of the cheap stages, so it is not worth it.
     saturation = max(0.0, 1.0 + float(settings.get("saturation", 0.0)) / 100.0)
+    grey = luminance(rgb)[:, :, None]
     rgb = grey + (rgb - grey) * np.float32(saturation)
     vibrance = float(settings.get("vibrance", 0.0)) / 100.0
     if vibrance:
+        # Vibrance deliberately reuses the pre-saturation grey, as it always has.
         chroma = np.max(rgb, axis=2) - np.min(rgb, axis=2)
         boost = 1.0 + vibrance * 1.4 * np.clip(1.0 - chroma, 0.0, 1.0)
         rgb = grey + (rgb - grey) * boost[:, :, None]
 
-    hue, hue_saturation = _hue_saturation(rgb)
-    if any(float(settings.get(f"col_sat_{name}", 0.0)) for name, _ in _HUE_BANDS):
-        multiplier = np.maximum(0.0, _band_values(settings, "col_sat", hue, .9))
-        grey = luminance(rgb)[:, :, None]
-        rgb = grey + (rgb - grey) * multiplier[:, :, None]
-    if any(float(settings.get(f"col_lum_{name}", 0.0)) for name, _ in _HUE_BANDS):
-        multiplier = np.maximum(0.0, _band_values(settings, "col_lum", hue, .5))
-        rgb *= multiplier[:, :, None]
+    colour_saturation = any(float(settings.get(f"col_sat_{name}", 0.0))
+                            for name, _ in _HUE_BANDS)
+    colour_luminance = any(float(settings.get(f"col_lum_{name}", 0.0))
+                           for name, _ in _HUE_BANDS)
+    if colour_saturation or colour_luminance:
+        # One hue pass feeds both bands, and both read the same pre-band hue.
+        hue, _band_unused = _hue_saturation(rgb)
+        if colour_saturation:
+            multiplier = np.maximum(0.0, _band_values(settings, "col_sat", hue, .9))
+            grey = luminance(rgb)[:, :, None]
+            rgb = grey + (rgb - grey) * multiplier[:, :, None]
+        if colour_luminance:
+            multiplier = np.maximum(0.0, _band_values(settings, "col_lum", hue, .5))
+            rgb *= multiplier[:, :, None]
 
     working = _with_rgb(image, rgb.astype(np.float32), alpha)
     clarity = float(settings.get("clarity", 0.0))
@@ -1206,8 +1292,10 @@ def apply_adjustments(image, adjustments, defaults=None):
         else:
             rgb = sharp_rgb
 
-    rgb = _curve(rgb, settings.get("curve") or [[0, 0], [255, 255]])
     identity = [[0, 0], [255, 255]]
+    master_curve = settings.get("curve") or identity
+    if not _is_identity_curve(master_curve):
+        rgb = _curve(rgb, master_curve)
     for channel, key in enumerate(("curve_red", "curve_green", "curve_blue")):
         points = settings.get(key) or identity
         if points != identity:
@@ -1232,17 +1320,24 @@ def apply_adjustments(image, adjustments, defaults=None):
             candidate += luminance(rgb)[:, :, None] - candidate_luma
         rgb = candidate
 
-    luma = np.clip(luminance(rgb), 0.0, 1.0)
-    for prefix, default_colour, weight in (
-            ("split_shadow", [60, 90, 150], (1.0 - luma)),
-            ("split_midtone", [128, 128, 128], np.maximum(0.0, 1.0 - np.abs(luma - .5) * 2.0)),
-            ("split_highlight", [255, 200, 120], luma)):
-        amount = max(0.0, float(settings.get(prefix + "_amount", 0.0)) / 100.0) * .6
-        if amount:
-            colour = np.asarray(settings.get(prefix, default_colour)[:3], dtype=np.float32) / 255.0
-            toned = _soft_light(rgb, colour.reshape((1, 1, 3)))
-            mix = (weight * amount)[:, :, None]
-            rgb = toned * mix + rgb * (1.0 - mix)
+    split_bands = (("split_shadow", [60, 90, 150]),
+                   ("split_midtone", [128, 128, 128]),
+                   ("split_highlight", [255, 200, 120]))
+    split_amounts = [max(0.0, float(settings.get(prefix + "_amount", 0.0)) / 100.0) * .6
+                     for prefix, _default in split_bands]
+    if any(split_amounts):
+        luma = np.clip(luminance(rgb), 0.0, 1.0)
+        split_weights = (1.0 - luma,
+                         np.maximum(0.0, 1.0 - np.abs(luma - .5) * 2.0),
+                         luma)
+        for (prefix, default_colour), amount, weight in zip(
+                split_bands, split_amounts, split_weights):
+            if amount:
+                colour = np.asarray(settings.get(prefix, default_colour)[:3],
+                                    dtype=np.float32) / 255.0
+                toned = _soft_light(rgb, colour.reshape((1, 1, 3)))
+                mix = (weight * amount)[:, :, None]
+                rgb = toned * mix + rgb * (1.0 - mix)
 
     glow_amount = max(0.0, float(settings.get("glow_amount", 0.0)) / 100.0)
     if glow_amount:
