@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.802D — 2026-10-01 — Story covers cannot erase their stories
+
+- **Opening a SMACKTALK post now resolves its cover through a minimal, universally supported image lookup.** A valid post can no longer become a false 404 merely because the full photograph record includes newer optional image or post-image fields unavailable on an older installation.
+
 ## 0.7.801D — 2026-10-01 — Migrated SMACKTALK sites stay whole
 
 - **SMACKTALK detail routes no longer require featured-visibility or trigram columns that the reader does not consume.** This closes the remaining false-404 path on migrated longform blogs whose landing cards already rendered correctly.

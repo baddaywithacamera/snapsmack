@@ -53,6 +53,16 @@ final class SnapPublicRepository
         );
     }
 
+    /** Minimal cover lookup used by story routing on every supported schema. */
+    public function photographPathById(int $id): string {
+        $row = $this->one(
+            "SELECT img_file FROM snap_images
+             WHERE id=? AND img_status='published' AND img_date <= NOW() LIMIT 1",
+            [$id]
+        );
+        return trim((string)($row['img_file'] ?? ''));
+    }
+
     public function postBySlug(string $slug, ?string $type = null): ?array {
         $typeSql = $type === null ? '' : ' AND post_type=?';
         $params = $type === null ? [$slug] : [$slug, $type];

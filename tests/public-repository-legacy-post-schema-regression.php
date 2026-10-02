@@ -25,6 +25,14 @@ foreach (['show_featured_image', 'trigram_id', 'cover_pos_x', 'cover_pos_y', 'co
     }
 }
 
+$controller = (string)file_get_contents(__DIR__ . '/../core/smacktalk-public-controller.php');
+$singleStart = strpos($controller, 'function snapsmack_smacktalk_single');
+$singleEnd = strpos($controller, 'function snapsmack_smacktalk_feed');
+$single = substr($controller, $singleStart, $singleEnd - $singleStart);
+if (!str_contains($single, 'photographPathById') || preg_match('/featured\s*=.*photographById/', $single)) {
+    throw new RuntimeException('Story routing still expands a cover through the optional full photograph schema.');
+}
+
 echo "PASS: public post lookup does not require unrelated optional post columns.\n";
 
 // ===== SNAPSMACK EOF =====
