@@ -1136,7 +1136,79 @@ def _neutral_luminance_pass(rgb):
     return np.where(active[:, :, None], rgb, tone[:, :, None]).astype(np.float32)
 
 
-def apply_adjustments(image, adjustments, defaults=None):
+class Frame:
+    """Where a tile sits inside the whole photograph.
+
+    Zoomed to actual pixels, only a small part of a 24 MP frame is on screen,
+    and rendering all of it costs seconds per slider move. A tile can be
+    rendered instead, but several stages are not local: Clarity picks its radius
+    from the frame's short side, Vignette and Glow are positioned from the
+    frame's centre, and Grain is one noise field across the frame. Those read
+    their geometry from here so a tile comes out identical to the matching crop
+    of the full render, instead of a differently-vignetted, differently-grained
+    piece that happens to be faster.
+
+    Noise Reduction is deliberately absent: it thresholds against the median of
+    the whole frame's finest detail, so it cannot be tiled without changing the
+    result, and tile_is_exact() refuses the tile instead of guessing.
+    """
+
+    __slots__ = ("width", "height", "left", "top")
+
+    def __init__(self, width, height, left=0, top=0):
+        self.width = int(width)
+        self.height = int(height)
+        self.left = int(left)
+        self.top = int(top)
+
+    @property
+    def is_whole_frame(self):
+        return self.left == 0 and self.top == 0
+
+    def rows_columns(self, tile_height, tile_width):
+        """Pixel coordinates of this tile, in the whole frame's grid."""
+        return (np.arange(self.top, self.top + tile_height)[:, None],
+                np.arange(self.left, self.left + tile_width)[None, :])
+
+
+def tile_margin(settings, frame_width, frame_height):
+    """How much surrounding image a tile needs so its blurs come out right.
+
+    Clarity, Texture and Sharpen each blur, and a blur reads pixels outside the
+    tile. Rendering a tile padded by the sum of those radii and then trimming
+    the padding gives the same pixels as the full-frame render. The radii are
+    small next to a viewport-sized tile, so the padding is cheap.
+    """
+    margin = 0.0
+    if float(settings.get("clarity", 0.0) or 0.0):
+        margin += max(2.0, min(int(frame_width), int(frame_height)) / 180.0)
+    texture = float(settings.get("texture", 0.0) or 0.0)
+    if texture > 0:
+        margin += .65
+    elif texture < 0:
+        margin += min(2.0, abs(texture) / 45.0)
+    if float(settings.get("sharpen", 0.0) or 0.0) > 0:
+        margin += max(.1, min(6.0, float(settings.get("sharpen_radius", 1.2))))
+    # Three times the summed radii, so a truncated Gaussian's tail cannot reach
+    # past the padding even with the stages compounding.
+    return int(margin * 3.0) + 2
+
+
+def tile_is_exact(settings):
+    """True when every active stage can be rendered a tile at a time.
+
+    Noise Reduction estimates its threshold from the median of the whole
+    frame's finest detail plane, so a tile would be denoised against its own
+    local statistics and would not match the rest of the picture. When that is
+    on, the caller renders the whole frame as before.
+    """
+    for key in ("raw_noise_reduction", "noise_luminance", "noise_colour"):
+        if float(settings.get(key, 0.0) or 0.0):
+            return False
+    return True
+
+
+def apply_adjustments(image, adjustments, defaults=None, frame=None):
     """Apply the photographic correction controls in float32 working space.
 
     Every stage is skipped when its own controls sit at their neutral value.
@@ -1148,6 +1220,8 @@ def apply_adjustments(image, adjustments, defaults=None):
     settings.update(adjustments or {})
     rgb, alpha = _rgb(image)
     rgb = rgb.copy()
+    if frame is None:
+        frame = Frame(rgb.shape[1], rgb.shape[0])
 
     exposure_stops = float(settings.get("exposure", 0.0))
     if exposure_stops:
@@ -1245,7 +1319,7 @@ def apply_adjustments(image, adjustments, defaults=None):
     working = _with_rgb(image, rgb.astype(np.float32), alpha)
     clarity = float(settings.get("clarity", 0.0))
     if clarity:
-        radius = max(2.0, min(working.size) / 180.0)
+        radius = max(2.0, min(frame.width, frame.height) / 180.0)
         blurred, _ = _rgb(gaussian_blur(working, radius))
         detail = rgb - blurred
         rgb = rgb + detail * np.float32(clarity / 35.0)
@@ -1341,8 +1415,8 @@ def apply_adjustments(image, adjustments, defaults=None):
 
     glow_amount = max(0.0, float(settings.get("glow_amount", 0.0)) / 100.0)
     if glow_amount:
-        height, width = rgb.shape[:2]
-        yy, xx = np.ogrid[:height, :width]
+        width, height = frame.width, frame.height
+        yy, xx = frame.rows_columns(*rgb.shape[:2])
         cx = float(settings.get("glow_x", 50.0)) / 100.0 * width
         cy = float(settings.get("glow_y", 40.0)) / 100.0 * height
         reach = max(1.0, max(width, height) * float(settings.get("glow_size", 45.0)) / 100.0)
@@ -1355,8 +1429,8 @@ def apply_adjustments(image, adjustments, defaults=None):
 
     vignette = float(settings.get("vignette", 0.0))
     if vignette:
-        height, width = rgb.shape[:2]
-        yy, xx = np.ogrid[:height, :width]
+        width, height = frame.width, frame.height
+        yy, xx = frame.rows_columns(*rgb.shape[:2])
         radius = np.sqrt(((xx - (width - 1) / 2) / max(1, width / 2)) ** 2 +
                          ((yy - (height - 1) / 2) / max(1, height / 2)) ** 2)
         size = np.clip(float(settings.get("vignette_size", 70.0)) / 100.0, 0.0, 2.0)
@@ -1374,7 +1448,13 @@ def apply_adjustments(image, adjustments, defaults=None):
     if grain:
         rng = np.random.default_rng(int(settings.get("grain_seed", 7319)))
         noise = rng.normal(0.0, grain / 100.0 * 32.0 / 255.0,
-                           rgb.shape[:2]).astype(np.float32)
+                           (frame.height, frame.width)).astype(np.float32)
+        if not (frame.height, frame.width) == rgb.shape[:2]:
+            # The field is drawn for the whole frame so the tile carries the
+            # same grain it would have had in a full render, then cropped.
+            height, width = rgb.shape[:2]
+            noise = noise[frame.top:frame.top + height,
+                          frame.left:frame.left + width]
         if settings.get("grain_darken"):
             rgb *= (1.0 - np.maximum(0.0, -noise)[:, :, None])
         else:
