@@ -2369,8 +2369,22 @@ body.blog, body.single, body.archive { background: #fff; }
     background: rgba(0,0,0,.72);
     text-shadow: 0 1px 4px rgba(0,0,0,.65);
 }
-.posts .archive-post-date { color: rgba(255,255,255,.76); font-size: 10px; letter-spacing: .08em; }
-.posts .archive-post-title { color: #fff; margin: 4px 0 0; font-size: clamp(15px, 1.4vw, 22px); line-height: 1.15; text-shadow: inherit; }
+.posts .archive-post-date {
+    display: block;
+    margin: 0 0 5px;
+    color: rgba(255,255,255,.76);
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: .08em;
+}
+.posts .archive-post-title {
+    display: block;
+    color: #fff;
+    margin: 0;
+    font-size: clamp(15px, 1.4vw, 22px);
+    line-height: 1.15;
+    text-shadow: inherit;
+}
 
 /* Longform pages use an editorial split: the photo essay owns the wide left
    column, while its publication record stays close at hand on the right. */
