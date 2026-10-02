@@ -103,7 +103,7 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
                         $slug = (string)($stmt->fetchColumn() ?: '');
                     } catch (Throwable $e) { $slug = ''; }
                 }
-                $url = $slug !== '' ? $base . 'page.php?slug=' . rawurlencode($slug) : '';
+                $url = $slug !== '' ? $base . '?view=page&slug=' . rawurlencode($slug) : '';
                 break;
             case 'album':
             case 'category':
@@ -133,6 +133,45 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
         if ($resolved !== null) $out[] = $resolved;
     }
     return $out;
+}
+
+/** Build the bounded, display-only footer model used by strict skins. */
+function snapsmack_prepare_public_footer(array $settings, array $manifest): array
+{
+    $slots = [];
+    $custom = static function (string $key) use ($settings): string {
+        return trim((string)($settings[$key] ?? ''));
+    };
+    $mode = static function (string $key) use ($settings): string {
+        return (string)($settings[$key] ?? 'on');
+    };
+    $site = (string)($settings['site_name'] ?? 'SnapSmack');
+
+    if ($mode('footer_slot_copyright') === 'on') {
+        $slots[] = ['kind' => 'copyright', 'year' => date('Y'), 'site_name' => $site];
+    } elseif ($mode('footer_slot_copyright') === 'custom' && ($text = $custom('footer_slot_copyright_custom')) !== '') {
+        $slots[] = ['kind' => 'text', 'text' => strtr($text, ['{year}' => date('Y'), '{site_name}' => $site])];
+    }
+    if ($mode('footer_slot_email') === 'on' && ($email = trim((string)($settings['site_email'] ?? ''))) !== '') {
+        $slots[] = ['kind' => 'email', 'email' => $email];
+    } elseif ($mode('footer_slot_email') === 'custom' && ($text = $custom('footer_slot_email_custom')) !== '') {
+        $slots[] = ['kind' => 'text', 'text' => $text];
+    }
+    if ($mode('footer_slot_theme') === 'on') {
+        $slots[] = ['kind' => 'theme', 'name' => mb_strtoupper((string)($manifest['name'] ?? $settings['active_skin'] ?? ''), 'UTF-8')];
+    } elseif ($mode('footer_slot_theme') === 'custom' && ($text = $custom('footer_slot_theme_custom')) !== '') {
+        $slots[] = ['kind' => 'text', 'text' => $text];
+    }
+    if ($mode('footer_slot_powered') === 'on') {
+        $slots[] = ['kind' => 'powered', 'version' => defined('SNAPSMACK_VERSION') ? SNAPSMACK_VERSION : ''];
+    } elseif ($mode('footer_slot_powered') === 'custom' && ($text = $custom('footer_slot_powered_custom')) !== '') {
+        $slots[] = ['kind' => 'text', 'text' => $text];
+    }
+    if (($settings['privacy_policy_enabled'] ?? '0') === '1') {
+        $slots[] = ['kind' => 'link', 'label' => (string)($settings['privacy_policy_title'] ?? 'Privacy Policy'), 'url' => (defined('BASE_URL') ? BASE_URL : '/') . 'privacy-policy.php'];
+    }
+    $slots[] = ['kind' => 'link', 'label' => 'RSS', 'url' => (defined('BASE_URL') ? BASE_URL : '/') . 'feed'];
+    return ['lowercase' => (($settings['footer_lowercase'] ?? '0') === '1'), 'slots' => $slots];
 }
 
 /** Render CMS-resolved navigation. No routing or data access occurs here. */

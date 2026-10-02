@@ -14,7 +14,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
         'skin_style_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',
-        'favicon_url'];
+        'favicon_url', 'footer'];
     return [
         'model' => 'snapsmack.public',
         'version' => SNAPSMACK_SKIN_VIEW_MODEL_VERSION,
