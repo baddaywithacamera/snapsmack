@@ -204,6 +204,7 @@ try {
                     'owner_name' => (string)($settings['site_author'] ?? ''),
                     'site_description' => (string)($settings['site_description'] ?? ''),
                     'avatar_url' => !empty($settings['skin_avatar']) ? (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['skin_avatar'], '/') : '',
+                    'favicon_url' => !empty($settings['favicon_url']) ? (preg_match('#^https?://#i', (string)$settings['favicon_url']) ? (string)$settings['favicon_url'] : (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['favicon_url'], '/')) : '',
                     'skin_slug' => (string)$active_skin,
                     'skin_style_url' => $_active_skin_style_url,
                     'skin_custom_style' => snapsmack_skin_custom_style($settings),
