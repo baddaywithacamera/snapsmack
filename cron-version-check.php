@@ -86,7 +86,7 @@ if ($core_status === 'update_available') {
         'changelog'       => $release_info['changelog']       ?? [],
         'schema_changes'  => $release_info['schema_changes']  ?? false,
         'download_size'   => $release_info['download_size']   ?? 0,
-        'requires_php'    => $release_info['requires_php']    ?? '8.0',
+        'requires_php'    => $release_info['requires_php']    ?? '8.3',
         'download_url'    => $release_info['download_url']    ?? '',
         'checksum_sha256' => $release_info['checksum_sha256'] ?? '',
         'signature'       => $release_info['signature']       ?? '',

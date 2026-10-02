@@ -352,7 +352,7 @@ const UPDATER_DEPRECATED_DIRS = [
  *   "changelog": ["Added updater system", "Fixed XSS in skin gallery"],
  *   "file_changes": {"added": [...], "modified": [...], "removed": [...]},
  *   "schema_changes": true,
- *   "requires_php": "8.0",
+ *   "requires_php": "8.3",
  *   "requires_mysql": "5.7",
  *   "download_size": 2450000
  * }

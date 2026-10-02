@@ -241,7 +241,7 @@ The individual runners import shared utilities from `util.py` and can also be ca
 |---|---|---|
 | Python 3.11+ | Everything | `python --version` |
 | Git | All targets | `git --version` |
-| PHP 8.0+ | Site + skin packaging | `php --version` |
+| PHP 8.3+ | Site + skin packaging | `php --version` |
 | PyInstaller | App builds | `pyinstaller --version` |
 | colorama | Colour output on Windows | installed via pip |
 

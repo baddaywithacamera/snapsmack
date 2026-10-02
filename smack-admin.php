@@ -118,7 +118,7 @@ try {
                 'changelog'       => $_release['changelog']       ?? [],
                 'schema_changes'  => $_release['schema_changes']  ?? false,
                 'download_size'   => $_release['download_size']   ?? 0,
-                'requires_php'    => $_release['requires_php']    ?? '8.0',
+                'requires_php'    => $_release['requires_php']    ?? '8.3',
                 'download_url'    => $_release['download_url']    ?? '',
                 'checksum_sha256' => $_release['checksum_sha256'] ?? '',
                 'signature'       => $_release['signature']       ?? '',

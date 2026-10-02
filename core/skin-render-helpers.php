@@ -44,7 +44,8 @@ function snap_route_url(string $route, array $parameters = []): string {
     $routes = [
         'home' => '', 'archive' => 'archive', 'search' => 'search', 'hashtag' => 'tag',
         'post' => 'post', 'photo' => 'photo', 'page' => 'page', 'albums' => 'albums',
-        'collections' => 'collections', 'collection' => 'collection', 'game-scores' => 'game-on-scores.php',
+        'collections' => 'collections', 'collection' => 'collection', 'blogroll' => 'blogroll.php',
+        'game-scores' => 'game-on-scores.php',
     ];
     if (!array_key_exists($route, $routes)) return '';
     $allowed = array_intersect_key($parameters, array_flip(['slug', 'id', 'page', 'query']));

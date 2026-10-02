@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.799D — 2026-10-01 — TILEZ gets its picture back
+
+- **TILEZ again receives its configured commissioned masthead, navigation labels, archive dates, metadata, and adjacent-post links through the bounded CMS view model.** The skin remains presentation-only: routing, database access, media resolution, and trusted content construction stay in core.
+- **Manual and automatic skin updates use the protected installed Ed25519 release key.** They no longer depend on a nonexistent database copy of the public key.
+- **The supported runtime floor is now consistently PHP 8.3.** Installer, updater, release tooling, documentation, and regressions agree on the same requirement.
+- **Legacy `wp-content` image requests are no longer treated as hostile probes.** Migrated media and owner diagnostics cannot trigger an IP lockdown merely by requesting an old WordPress asset path.
+
 ## 0.7.798D — 2026-10-01 — Central carries its trusted skin authority
 
 - **Smack Central self-updates now deploy the CMS-owned skin security policy and both audited asset inventories beside the packager.** The skin publisher continues to fail closed and never trusts policy from the candidate skin or selected Git ref, while a normal signed Central update now provides the authority files required to package strict skins with their signed integrity manifest.
