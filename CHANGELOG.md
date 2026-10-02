@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.805D — 2026-10-02 — Complete the TILEZ public contract
+
+- Restores CMS-owned static pages to strict SMACKTALK skins and routes TILEZ page links through the bounded public controller instead of the retired standalone endpoint.
+- Restores the configured global footer slots through a bounded display-only component; no settings, PHP, JavaScript, or database access enters the skin.
+- Narrows single-post reads to the canonical fields the public story renderer actually consumes, preventing unrelated post columns from turning valid published stories into false 404s.
+- Adds end-to-end regressions for TILEZ pages, posts, blogroll, archive, favicon, and footer presentation.
+
 ## 0.7.804D — 2026-10-02 — Finish the SMACKPRESS landing
 
 - SMACKTALK image archives now exclude signature-only media, discard missing files, prefer native-aspect derivatives, and provide native dimensions to the shared columns engine. TILEZ 0.2.50 renders the archive as a smaller asymmetric wall with owner-controlled column count and gap instead of a cropped square grid.

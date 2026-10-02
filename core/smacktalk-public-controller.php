@@ -16,6 +16,7 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     $view = trim((string)($request['view'] ?? ''));
     $post_slug = trim((string)($request['post_slug'] ?? ''));
     $post_id = max(0, (int)($request['post_id'] ?? 0));
+    $page_slug = trim((string)($request['page_slug'] ?? ''));
     $requested_slug = trim((string)($request['requested_slug'] ?? ''));
 
     if ($view === 'blogroll') {
@@ -32,6 +33,19 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
         }
         return ['handled' => true, 'kind' => 'archive', 'page_title' => 'ARCHIVE',
             'tiles' => snapsmack_smacktalk_archive_tiles($pdo, $base)];
+    }
+
+    if ($view === 'page' && $page_slug !== '') {
+        return ['handled' => true] + snapsmack_smacktalk_page($pdo, $page_slug);
+    }
+
+    // Pretty page URLs arrive as a requested path. Resolve an active CMS page
+    // before treating that path as a post slug; pages and posts remain ordinary
+    // canonical SnapSmack records, not skin-owned compatibility content.
+    if ($requested_slug !== '' && $post_slug === '' && $post_id === 0) {
+        try { $page = (new SnapPublicRepository($pdo))->activePageBySlug($requested_slug); }
+        catch (Throwable $e) { $page = null; }
+        if ($page) return ['handled' => true] + snapsmack_smacktalk_page($pdo, $requested_slug, $page);
     }
 
     $candidate_from_path = false;
@@ -52,6 +66,22 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     if ($requested_slug !== '') return ['handled' => false];
     return ['handled' => true, 'kind' => 'feed']
         + snapsmack_smacktalk_feed($pdo, $settings, $base, max(1, (int)($request['page'] ?? 1)));
+}
+
+function snapsmack_smacktalk_page(PDO $pdo, string $slug, ?array $page = null): array
+{
+    try {
+        $page = $page ?? (new SnapPublicRepository($pdo))->activePageBySlug($slug);
+    } catch (Throwable $e) { $page = null; }
+    if (!$page) return ['kind' => 'not_found', 'page_title' => '404 — Not Found'];
+
+    $parser = new SnapSmack($pdo);
+    return [
+        'kind' => 'page',
+        'page_title' => (string)($page['title'] ?? ''),
+        'item' => $page,
+        'rendered_content' => $parser->parseContent((string)($page['content'] ?? '')),
+    ];
 }
 
 function snapsmack_smacktalk_blogroll(PDO $pdo): array

@@ -69,6 +69,24 @@ foreach (['class="content tilez-blogroll"', 'Away With A Camera', 'Local day tri
     if (!$tilezBlogrollOk || !str_contains($tilezBlogrollHtml, $hook)) throw new RuntimeException("TILEZ blogroll/favicon presentation missing: {$hook}");
 }
 
+$tilezPage = snapsmack_build_skin_view($base + [
+    'kind' => 'page', 'page_title' => 'About', 'item' => ['title' => 'About'],
+    'rendered_content' => snapsmack_trusted_html('<p>Page body</p>'),
+], [
+    'site_name' => 'Example', 'base_url' => '/', 'language' => 'en', 'direction' => 'ltr',
+    'skin_slug' => 'tilez', 'skin_style_url' => '/skins/tilez/style.css',
+    'footer' => ['slots' => [
+        ['kind' => 'copyright', 'year' => '2026', 'site_name' => 'Example'],
+        ['kind' => 'link', 'label' => 'RSS', 'url' => '/feed'],
+    ]],
+]);
+ob_start();
+$tilezPageOk = snapsmack_render_strict_skin_template($root . '/skins/tilez', 'layout.php', $tilezPage);
+$tilezPageHtml = (string)ob_get_clean();
+foreach (['class="content tilez-page"', '<h1>About</h1>', '<p>Page body</p>', 'footer-metadata-bar', '&copy; 2026', '>RSS</a>'] as $hook) {
+    if (!$tilezPageOk || !str_contains($tilezPageHtml, $hook)) throw new RuntimeException("TILEZ page/footer presentation missing: {$hook}");
+}
+
 foreach (['stanley' => 'stanley-sidebar', 'writing-with-impact' => 'wwi-sidebar'] as $skin => $sidebarId) {
     $dir = $root . '/skins/' . $skin;
     foreach ([false, true] as $enabled) {
