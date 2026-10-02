@@ -230,7 +230,20 @@ final class SnapPublicRepository
     }
 
     public function archivePhotographs(int $limit, int $offset = 0): array {
-        return $this->photographLanding($limit, $offset);
+        return $this->all(
+            "SELECT i.id,i.img_title,i.img_slug,i.img_alt,i.img_file,i.img_width,i.img_height,
+                    i.img_thumb_square,i.img_thumb_aspect
+             FROM snap_images i
+             WHERE i.img_status='published' AND i.img_date <= NOW()
+               AND NOT EXISTS (
+                    SELECT 1 FROM snap_posts p
+                    WHERE p.signature_image_id=i.id
+                      AND p.status='published' AND p.created_at <= NOW()
+               )
+             ORDER BY CASE WHEN i.sort_order>0 THEN 1 ELSE 0 END ASC,i.sort_order ASC,i.id DESC
+             LIMIT ? OFFSET ?",
+            [max(1, min(5000, $limit)), max(0, $offset)]
+        );
     }
 
     public function search(string $term, int $limit = 50): array {

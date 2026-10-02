@@ -2,7 +2,7 @@
     "schema_version": 2,
     "security_policy": 2,
     "name": "TILEZ",
-    "version": "0.2.49",
+    "version": "0.2.50",
     "author": "Sean McCormick & Claude",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A quiet white SMACKTALK portfolio inspired by editorial design studios. Longform posts flow through a native-aspect three-column wall powered by SnapSmack's shared columns engine.",
@@ -173,6 +173,29 @@
             "default": "12",
             "min": "4",
             "max": "40"
+        },
+        "archive_columns": {
+            "section": "LAYOUT",
+            "type": "range",
+            "label": "Image Archive Columns",
+            "default": "5",
+            "min": "2",
+            "max": "8",
+            "selector": ".alfred-archive-grid",
+            "property": "--ss-cols",
+            "help": "Number of smaller native-aspect columns in the Images archive."
+        },
+        "archive_gap": {
+            "section": "LAYOUT",
+            "type": "range",
+            "label": "Image Archive Gap",
+            "default": "4",
+            "min": "0",
+            "max": "24",
+            "unit": "px",
+            "selector": ".alfred-archive-grid",
+            "property": "--ss-gap",
+            "help": "Space between photographs in the Images archive."
         }
     }
 }
