@@ -11,6 +11,8 @@ $manifest = (string)file_get_contents($root . '/skins/tilez/manifest.json');
 $menuBuilder = (string)file_get_contents($root . '/assets/js/ss-engine-menu-builder.js');
 $routes = (string)file_get_contents($root . '/core/skin-render-helpers.php');
 $assetRegistry = (string)file_get_contents($root . '/core/asset-registry.php');
+$smackpressApi = (string)file_get_contents($root . '/core/smackpress-api.php');
+$coldSnapPoster = (string)file_get_contents($root . '/tools/coldsnap/sumna_post.py');
 
 $expect = static function (bool $ok, string $message): void {
     if (!$ok) throw new RuntimeException($message);
@@ -52,6 +54,26 @@ $expect(str_contains($repository, 'signaturePhotographForPost')
 $expect(str_contains($controller, "if (\$colophon === ''")
     && str_contains($controller, 'images? (?:made|taken|shot) with'),
     'Imported equipment notes no longer move into the post colophon.');
+$expect(str_contains($repository, 'menu_order,created_at')
+    && str_contains($controller, "'publication_date'")
+    && str_contains($controller, "'photo_count'")
+    && str_contains($controller, "'word_count'")
+    && str_contains($layout, 'page-record post-record')
+    && str_contains($layout, '<dt>Photos</dt>')
+    && str_contains($layout, '<dt>Words</dt>'),
+    'Static pages no longer expose their publication record beside the content.');
+$expect(str_contains($layout, 'taxonomy-split')
+    && str_contains($layout, 'taxonomy-record')
+    && str_contains($layout, 'taxonomy-links')
+    && str_contains($style, '.taxonomy-split { display: grid;'),
+    'Category and album directories lost their linked image-and-list split.');
+$expect(str_contains($smackpressApi, "\$body['created_at'] ?? (\$body['date'] ?? null)")
+    && str_contains($coldSnapPoster, 'payload["date"] = draft.post_date'),
+    'SMACKPRESS pages no longer retain the source publication date.');
+$expect(str_contains($style, '.blogroll-heading h1 {')
+    && str_contains($style, 'font-size: clamp(2rem, 2.6vw, 2.7rem);')
+    && str_contains($style, 'font-weight: 700;'),
+    'The BLOGROLL title no longer matches post-title typography.');
 
 echo "TILEZ public completion regression passed.\n";
 

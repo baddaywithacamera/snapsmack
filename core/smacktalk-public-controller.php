@@ -106,11 +106,26 @@ function snapsmack_smacktalk_page(PDO $pdo, string $slug, ?array $page = null): 
     if (!$page) return ['kind' => 'not_found', 'page_title' => '404 — Not Found'];
 
     $parser = new SnapSmack($pdo);
+    $rendered = $parser->parseContent((string)($page['content'] ?? ''));
+    $photo_count = preg_match_all('/<img\b/i', $rendered);
+    if (preg_match_all('/\bdata-mosaic=(?:"([^"]*)"|\'([^\']*)\')/i', $rendered, $mosaics, PREG_SET_ORDER)) {
+        foreach ($mosaics as $mosaic) {
+            $json = html_entity_decode((string)($mosaic[1] !== '' ? $mosaic[1] : $mosaic[2]), ENT_QUOTES | ENT_HTML5);
+            $items = json_decode($json, true);
+            if (is_array($items)) $photo_count += count($items);
+        }
+    }
+    $plain = preg_replace('/\[[^\]]+\]/', ' ', (string)($page['content'] ?? ''));
+    $plain = html_entity_decode(strip_tags((string)$plain), ENT_QUOTES | ENT_HTML5);
+    preg_match_all('/[\p{L}\p{N}]+(?:[’\'\-][\p{L}\p{N}]+)*/u', $plain, $words);
     return [
         'kind' => 'page',
         'page_title' => (string)($page['title'] ?? ''),
         'item' => $page,
-        'rendered_content' => $parser->parseContent((string)($page['content'] ?? '')),
+        'rendered_content' => $rendered,
+        'publication_date' => (string)($page['created_at'] ?? ''),
+        'photo_count' => $photo_count,
+        'word_count' => count($words[0]),
     ];
 }
 
