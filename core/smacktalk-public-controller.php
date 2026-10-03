@@ -19,6 +19,15 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     $page_slug = trim((string)($request['page_slug'] ?? ''));
     $requested_slug = trim((string)($request['requested_slug'] ?? ''));
 
+    // Old controller-style links remain valid, but they are no longer the
+    // public address. Send browsers and crawlers to the readable root slug.
+    if ($view === 'page' && $page_slug !== '') {
+        return ['handled' => true, 'redirect' => snapsmack_smacktalk_slug_url($base, $page_slug), 'redirect_status' => 301];
+    }
+    if ($post_slug !== '' && $post_id === 0) {
+        return ['handled' => true, 'redirect' => snapsmack_smacktalk_slug_url($base, $post_slug), 'redirect_status' => 301];
+    }
+
     if ($view === 'categories' || $view === 'albums') {
         try {
             $repo = new SnapPublicRepository($pdo);
@@ -54,10 +63,6 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
             )];
     }
 
-    if ($view === 'page' && $page_slug !== '') {
-        return ['handled' => true] + snapsmack_smacktalk_page($pdo, $page_slug);
-    }
-
     // Pretty page URLs arrive as a requested path. Resolve an active CMS page
     // before treating that path as a post slug; pages and posts remain ordinary
     // canonical SnapSmack records, not skin-owned compatibility content.
@@ -85,6 +90,12 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     if ($requested_slug !== '') return ['handled' => false];
     return ['handled' => true, 'kind' => 'feed']
         + snapsmack_smacktalk_feed($pdo, $settings, $base, max(1, (int)($request['page'] ?? 1)));
+}
+
+function snapsmack_smacktalk_slug_url(string $base, string $slug): string
+{
+    $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', trim($slug));
+    return rtrim($base, '/') . '/' . rawurlencode($slug);
 }
 
 function snapsmack_smacktalk_page(PDO $pdo, string $slug, ?array $page = null): array
@@ -195,7 +206,7 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         $next = $repository->adjacentPosts((int)$post['id'], 'longform', true);
         foreach (['previous' => &$previous, 'next' => &$next] as &$adjacent) {
             if (is_array($adjacent) && !empty($adjacent['slug'])) {
-                $adjacent['url'] = $base . '?post=' . rawurlencode((string)$adjacent['slug']);
+                $adjacent['url'] = snapsmack_smacktalk_slug_url($base, (string)$adjacent['slug']);
             }
         }
         unset($adjacent);
@@ -281,7 +292,7 @@ function snapsmack_smacktalk_feed(PDO $pdo, array $settings, string $base, int $
     } catch (Throwable $e) { $total = 0; $posts = []; }
 
     foreach ($posts as &$post) {
-        $post['url'] = $base . '?post=' . rawurlencode((string)$post['slug']);
+        $post['url'] = snapsmack_smacktalk_slug_url($base, (string)$post['slug']);
         $post['image_url'] = !empty($post['featured_image_path']) ? $base . ltrim((string)$post['featured_image_path'], '/') : '';
         $post['width'] = max(1, (int)($post['featured_width'] ?? 3));
         $post['height'] = max(1, (int)($post['featured_height'] ?? 2));
