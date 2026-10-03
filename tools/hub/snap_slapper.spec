@@ -34,6 +34,21 @@ _gpu_excludes = ['cupy', 'cupy_backends', 'cupyx', 'fastrlock']
 if os.environ.get('SNAP_SLAPPER_NVIDIA_BUILD') == '1':
     _gpu_datas, _gpu_binaries, _gpu_hidden = collect_all('cupy')
     _hidden += _gpu_hidden
+    # CuPy alone is not enough. The runtime compiler and the CUDA headers live
+    # in their own wheels under nvidia/, and without them CuPy imports, names
+    # the card, and then fails on the first instruction. gpu_acceleration puts
+    # these folders on the search path at startup.
+    for _package in ('nvidia.cuda_nvrtc', 'nvidia.cuda_runtime'):
+        try:
+            _extra_datas, _extra_binaries, _extra_hidden = collect_all(_package)
+        except Exception:
+            raise SystemExit(
+                'snap_slapper.spec: SNAP_SLAPPER_NVIDIA_BUILD is set but '
+                '%s is not installed. Run bootstrap-build-runtime.ps1 '
+                '-NvidiaGpu.' % _package)
+        _gpu_datas += _extra_datas
+        _gpu_binaries += _extra_binaries
+        _hidden += _extra_hidden
     _gpu_excludes = []
 
 a = Analysis(

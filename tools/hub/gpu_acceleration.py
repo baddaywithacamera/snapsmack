@@ -7,9 +7,52 @@ image, or runtime CUDA error returns control to the existing NumPy path.
 from __future__ import annotations
 
 import os
+import sys
 import threading
 
 import numpy as np
+
+
+def _register_cuda_libraries():
+    """Put CuPy's CUDA DLLs and headers where it can find them.
+
+    The CUDA runtime compiler and headers arrive as their own wheels, in
+    site-packages/nvidia/, and nothing adds those to the DLL search path. Without
+    this CuPy imports, reports the card, and then fails on the first real
+    instruction, which is how an RTX 3050 sat unused while Preferences named it.
+    In a packaged build PyInstaller puts the same folders beside the executable.
+    """
+    if os.name != "nt":
+        return
+    roots = []
+    for base in (os.path.dirname(os.path.abspath(sys.executable)),
+                 getattr(sys, "_MEIPASS", ""), ""):
+        if base:
+            roots.append(os.path.join(base, "nvidia"))
+    for path in sys.path:
+        if path:
+            roots.append(os.path.join(path, "nvidia"))
+    for root in roots:
+        nvrtc = os.path.join(root, "cuda_nvrtc", "bin")
+        if not os.path.isdir(nvrtc):
+            continue
+        try:
+            os.add_dll_directory(nvrtc)
+        except (OSError, AttributeError):
+            pass
+        # nvrtc loads its own builtins by bare name, which ignores
+        # add_dll_directory, so it has to be on PATH as well.
+        if nvrtc not in os.environ.get("PATH", "").split(os.pathsep):
+            os.environ["PATH"] = nvrtc + os.pathsep + os.environ.get("PATH", "")
+        runtime = os.path.join(root, "cuda_runtime")
+        if os.path.isdir(os.path.join(runtime, "include")) and \
+                not os.environ.get("CUDA_PATH"):
+            # CuPy compiles kernels that #include <cuda_fp16.h>.
+            os.environ["CUDA_PATH"] = runtime
+        return
+
+
+_register_cuda_libraries()
 
 
 _MODE = "auto"
@@ -71,6 +114,51 @@ def status():
         return {"mode": _MODE, "available": True, "label": str(name)}
     except Exception:  # pragma: no cover - context already validated above
         return {"mode": _MODE, "available": True, "label": "NVIDIA GPU"}
+
+
+def array_module(reference=None):
+    """CuPy when this array lives on the card, NumPy otherwise.
+
+    Every helper in the adjustment chain dispatches through this, so one
+    implementation serves both paths and the CPU result cannot drift from the
+    GPU one by being written twice.
+    """
+    if reference is not None:
+        module = type(reference).__module__
+        if module.startswith("cupy"):
+            return _CUPY if _CUPY is not None else np
+        return np
+    return _cupy() or np
+
+
+def is_device_array(value):
+    return type(value).__module__.startswith("cupy")
+
+
+def to_device(array):
+    """Move a frame onto the card, or return it unchanged if it cannot go."""
+    cp = _cupy()
+    if cp is None:
+        return array
+    try:
+        return cp.asarray(array)
+    except Exception:  # noqa: BLE001 - the CPU path is always valid
+        return array
+
+
+def to_host(array):
+    """Bring a frame back, whichever side it is on."""
+    if not is_device_array(array):
+        return array
+    cp = _cupy()
+    if cp is None:
+        return array
+    return np.ascontiguousarray(cp.asnumpy(array))
+
+
+def chain_is_worth_offloading(pixel_count):
+    """Below this the transfer costs more than the maths saves."""
+    return _MODE != "cpu" and pixel_count >= MIN_GPU_PIXELS and _cupy() is not None
 
 
 def _eligible(shape):

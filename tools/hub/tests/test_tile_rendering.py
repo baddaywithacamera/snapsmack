@@ -25,7 +25,22 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import editor_engine
+import gpu_acceleration
 import highbit_image
+
+
+@pytest.fixture(autouse=True)
+def _pin_to_the_processor():
+    """Compare tiling against tiling, not one device against another.
+
+    A full frame is large enough to be offloaded to the graphics card while a
+    viewport tile is not, so with the card enabled these two renders would run
+    on different hardware and could not be bit-identical. That parity is covered
+    by test_device_parity.py; here the tiling maths is what is under test.
+    """
+    gpu_acceleration.configure("cpu")
+    yield
+    gpu_acceleration.configure("auto")
 
 
 FRAME_WIDTH, FRAME_HEIGHT = 1300, 900
