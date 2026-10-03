@@ -14,6 +14,7 @@ import io
 import json
 import numpy as np
 import shutil
+import time
 import subprocess
 import tempfile
 
@@ -128,6 +129,9 @@ class _PreviewJob(QRunnable):
         self.raw_source_path = raw_source_path
         self.raw_baseline = dict(raw_baseline or {})
         self.document_revision = int(document_revision)
+        # Filled in by run(), read back to size the next drag frame.
+        self.elapsed_ms = 0.0
+        self.rendered_megapixels = 0.0
         self.signals = _PreviewSignals()
 
     def run(self):
@@ -162,7 +166,11 @@ class _PreviewJob(QRunnable):
                         document.adjustments[key] = editor_engine.DEFAULT_ADJUSTMENTS[key]
                     else:
                         document.adjustments[key] = delta
+            started = time.perf_counter()
             rendered = document.render(max_size=self.max_size)
+            self.elapsed_ms = (time.perf_counter() - started) * 1000.0
+            self.rendered_megapixels = max(
+                1e-6, (rendered.width * rendered.height) / 1e6)
             try:
                 self.signals.ready.emit(self.token, rendered)
             except RuntimeError:
@@ -503,6 +511,10 @@ IMAGE_FILTER = ("Images (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp);;"
 
 # Normal mode (Picasa/Snapseed-simple) shows a curated subset; Advanced shows
 # everything. These name what stays visible in Normal.
+# A live drag frame aims to land inside this, so the preview tracks the
+# mouse. Above roughly 50 ms a drag stops feeling attached to the pointer.
+DRAG_FRAME_BUDGET_MS = 50.0
+
 NORMAL_SECTIONS = {"LIGHT", "COLOUR", "EFFECTS", "BLACK + WHITE", "GEOMETRY", "IMPROVE"}
 NORMAL_ROWS = {"brightness", "contrast", "highlights", "midtones", "shadows",
                "temperature", "tint", "saturation", "vibrance",
@@ -526,6 +538,10 @@ class EditorWindow(QMainWindow):
         self._zoom_actual = False
         self._interactive_render = False
         self._geometry_preview_mode = None
+        # Measured cost of the live drag preview, in milliseconds per
+        # megapixel, averaged over recent frames. None until the first
+        # frame has been rendered and timed.
+        self._drag_cost_per_megapixel = None
         self._preview_generation = 0
         self._preview_jobs = set()
         self._open_generation = 0
@@ -4341,7 +4357,7 @@ class EditorWindow(QMainWindow):
                         if raw_source else {})
         job = _PreviewJob(
             token, self.doc.source_path, state,
-            self.view.viewport_target(interactive=True),
+            self._interactive_target(),
             raw_baseline=raw_baseline, document_revision=document_revision)
         self._preview_jobs.add(job)
         job.signals.ready.connect(
@@ -4411,15 +4427,55 @@ class EditorWindow(QMainWindow):
             "RAW development updated" if getattr(self.doc, "raw_source_path", "")
             else "Preview updated")
 
+    def _note_drag_cost(self, job):
+        """Remember what the last drag frame cost, per megapixel."""
+        if not (job.elapsed_ms > 0.0 and job.rendered_megapixels > 0.0):
+            return
+        cost = job.elapsed_ms / job.rendered_megapixels
+        previous = self._drag_cost_per_megapixel
+        # Follow a document getting heavier quickly, and a document getting
+        # lighter slowly, so turning Clarity on drops the resolution at once
+        # while turning it off does not immediately overshoot.
+        if previous is None:
+            self._drag_cost_per_megapixel = cost
+        elif cost > previous:
+            self._drag_cost_per_megapixel = cost
+        else:
+            self._drag_cost_per_megapixel = previous * .7 + cost * .3
+
+    def _interactive_target(self):
+        """The largest live drag preview this photograph can afford.
+
+        A fixed 480 px proxy sized every document for the worst one. One
+        exposure slider costs 9 ms at 480 px and 33 ms at 800 px, so a light
+        edit was shown at a quarter of the detail it had time for. Size the
+        next frame from what the last one actually cost, never below the old
+        floor and never above what the window can show.
+        """
+        floor = self.view.viewport_target(interactive=True)
+        ceiling = self.view.viewport_target()
+        cost = self._drag_cost_per_megapixel
+        if not cost or cost <= 0.0:
+            return floor     # nothing measured yet: start safe
+        affordable = (DRAG_FRAME_BUDGET_MS / cost) * 1e6
+        widest = max(1, ceiling[0] * ceiling[1])
+        scale = min(1.0, (affordable / widest) ** .5)
+        width = int(ceiling[0] * scale)
+        height = int(ceiling[1] * scale)
+        if width <= floor[0] or height <= floor[1]:
+            return floor
+        return width, height
+
     def _accept_proxy(self, generation, rendered, job):
         self._preview_jobs.discard(job)
         self._interactive_job_active = False
+        self._note_drag_cost(job)
         if (generation != self._preview_generation or not self._interactive_render or
                 not self.doc or job.document_revision != self.doc.revision):
             self._dispatch_pending_interactive()
             return
         self._show_rendered(rendered, keep_view=True,
-                            max_size=self.view.viewport_target(interactive=True),
+                            max_size=job.max_size,
                             stable_geometry=True)
         self._dispatch_pending_interactive()
 
