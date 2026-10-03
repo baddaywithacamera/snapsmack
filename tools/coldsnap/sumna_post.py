@@ -704,6 +704,18 @@ class SmacktalkPoster:
             payload["post_id"] = int(draft.remote_post_id)
         return payload
 
+    def build_page_payload(self, draft, content=None) -> dict:
+        """Static WordPress Pages belong in snap_pages, never snap_posts."""
+        payload = {
+            "title": draft.title,
+            "slug": getattr(draft, "slug", "") or "",
+            "content": content if content is not None else (draft.caption or ""),
+            "status": "published" if draft.img_status == "published" else "draft",
+        }
+        if getattr(draft, "remote_post_id", 0):
+            payload["page_id"] = int(draft.remote_post_id)
+        return payload
+
     def list_posts(self, limit: int = 100) -> list:
         r = self.session.get(self._route("smackpress/posts"),
                              params={"limit": max(1, min(500, int(limit)))}, timeout=30)
@@ -820,7 +832,8 @@ class SmacktalkPoster:
     def sync_smacktalk(self, draft) -> SyncResult:
         if not self.key:
             return SyncResult(False, message="No SMACKTALK key set for this site (needs a 'smackpress' API key).")
-        if not draft.images:
+        is_page = getattr(draft, "destination_type", "post") == "page"
+        if not draft.images and not is_page:
             return SyncResult(False, message="no images on draft")
         if not (draft.title or "").strip():
             return SyncResult(False, message="a SMACKTALK post needs a title")
@@ -849,8 +862,10 @@ class SmacktalkPoster:
             content = self._resolve_mosaics(draft.caption or "", image_ids, draft)[0]
             content = self._resolve_bucket_images(content, image_ids)
 
-            r = self.session.post(self._route("smackpress/posts"),
-                                  json=self.build_payload(draft, image_ids, cover_id, content=content),
+            route = "smackpress/pages" if is_page else "smackpress/posts"
+            payload = (self.build_page_payload(draft, content=content) if is_page
+                       else self.build_payload(draft, image_ids, cover_id, content=content))
+            r = self.session.post(self._route(route), json=payload,
                                   timeout=120)
             if r.status_code in (401, 403, 429):
                 return SyncResult(False, message=_resp_msg(
@@ -862,12 +877,13 @@ class SmacktalkPoster:
         except Exception as e:
             return SyncResult(False, message=str(e))
 
-        post_id = int(data.get("post_id") or 0)
+        post_id = int(data.get("page_id" if is_page else "post_id") or 0)
         if not post_id:
             return SyncResult(False, message=data.get("error") or "server did not confirm the post")
         # Producer: record the finished post + which Gallery images it used (ids only,
         # no photo files copied — originals stay on disk).
-        self._record_to_library(draft, post_id, content, data, image_ids)
+        if not is_page:
+            self._record_to_library(draft, post_id, content, data, image_ids)
         return SyncResult(True, remote_post_id=post_id,
                           message="Updated" if getattr(draft, "remote_post_id", 0) else "Posted")
 
@@ -877,6 +893,11 @@ class SmacktalkPoster:
         pid = getattr(draft, "remote_post_id", 0)
         if not pid:
             return False
+        # The pages endpoint confirms creation with page_id but intentionally
+        # has no read-by-id route.  Do not verify a static page against the
+        # long-form posts endpoint (which can only return a false 404).
+        if getattr(draft, "destination_type", "post") == "page":
+            return True
         try:
             r = self.session.get(self._route(f"smackpress/posts/{int(pid)}"), timeout=20)
             if r.status_code == 200:
