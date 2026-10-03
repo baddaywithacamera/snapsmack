@@ -220,6 +220,7 @@ class Draft:
     post_type:  str = ""                  # '', 'single', 'carousel', 'panorama' (derived if blank)
     slug:       str = ""                  # SMACKTALK: requested URL slug (imports keep old URLs); blank = from title
     destination_type: str = "post"        # SMACKPRESS import: post | page
+    destination_url: str = ""              # site selected when an import draft was created
     # Images.
     images:     List[DraftImage] = field(default_factory=list)
     # Trigram grouping (KIND_GRAM_TRIGRAM only).

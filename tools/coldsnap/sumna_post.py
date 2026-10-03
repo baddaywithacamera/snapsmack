@@ -724,6 +724,12 @@ class SmacktalkPoster:
         r.raise_for_status()
         return list(r.json().get("posts") or [])
 
+    def list_pages(self, limit: int = 500) -> list:
+        r = self.session.get(self._route("smackpress/pages"),
+                             params={"limit": max(1, min(500, int(limit)))}, timeout=30)
+        r.raise_for_status()
+        return list(r.json().get("pages") or [])
+
     def get_post(self, post_id: int) -> dict:
         r = self.session.get(self._route(f"smackpress/posts/{int(post_id)}"), timeout=30)
         r.raise_for_status()

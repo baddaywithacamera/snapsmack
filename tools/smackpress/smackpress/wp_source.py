@@ -285,7 +285,15 @@ _WP_EQUIPMENT = re.compile(
 )
 
 
-def extract_wordpress_ephemera(body: str, ordered: List[dict]) -> Tuple[str, str, set]:
+def _profile_markers(profile: Optional[dict], key: str) -> List[str]:
+    values = (profile or {}).get(key) or []
+    if isinstance(values, str):
+        values = [values]
+    return [str(value).strip() for value in values if str(value).strip()]
+
+
+def extract_wordpress_ephemera(body: str, ordered: List[dict],
+                               profile: Optional[dict] = None) -> Tuple[str, str, set]:
     """Translate recurring WordPress-era conventions into explicit post data.
 
     This deliberately belongs to the WordPress adapter. The CMS and skins never
@@ -293,10 +301,13 @@ def extract_wordpress_ephemera(body: str, ordered: List[dict]) -> Tuple[str, str
     Returns cleaned body, colophon HTML, and 1-based signature image positions.
     """
     signature_slots = set()
+    signature_markers = _profile_markers(profile, "signature_markers")
     for position, image in enumerate(ordered, 1):
         haystack = " ".join(str(image.get(key) or "") for key in
                             ("filename", "title", "alt", "caption", "url"))
-        if _WP_SIGNATURE_HINT.search(haystack):
+        profiled_signature = any(marker.casefold() in haystack.casefold()
+                                 for marker in signature_markers)
+        if _WP_SIGNATURE_HINT.search(haystack) or profiled_signature:
             signature_slots.add(position)
             body = re.sub(r"(?:^|\n)\s*\[img:bucket:%d\]\s*(?=\n|$)" % position, "\n", body)
 
@@ -305,7 +316,10 @@ def extract_wordpress_ephemera(body: str, ordered: List[dict]) -> Tuple[str, str
     if final:
         plain = html.unescape(re.sub(r"<[^>]+>", " ", final.group(1)))
         terms = {m.group(0).lower() for m in _WP_EQUIPMENT.finditer(plain)}
-        if _WP_COLOPHON_LEAD.search(plain) or len(terms) >= 3:
+        colophon_markers = _profile_markers(profile, "colophon_markers")
+        profiled_colophon = any(marker.casefold() in plain.casefold()
+                                for marker in colophon_markers)
+        if _WP_COLOPHON_LEAD.search(plain) or len(terms) >= 3 or profiled_colophon:
             colophon = final.group(1)
             body = body[:final.start()].rstrip()
 
@@ -314,7 +328,8 @@ def extract_wordpress_ephemera(body: str, ordered: List[dict]) -> Tuple[str, str
 
 # ── the adapter ───────────────────────────────────────────────────────────────
 def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
-                  status: str = "draft", on_progress: Callable[[str], None] = None) -> Draft:
+                  status: str = "draft", on_progress: Callable[[str], None] = None,
+                  profile: Optional[dict] = None) -> Draft:
     """Turn the companion's full post JSON into a COLD SNAP Draft with every
     picture downloaded into `workdir`. Raises ImportError_ naming the picture
     if one cannot be brought across — a post with a missing picture is not
@@ -338,7 +353,7 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
         colophon, signature_slots = "", set()
     else:
         body = _discard_source_links(body, full_post.get("link") or "")
-        body, colophon, signature_slots = extract_wordpress_ephemera(body, ordered)
+        body, colophon, signature_slots = extract_wordpress_ephemera(body, ordered, profile)
 
     draft_images: List[DraftImage] = []
     for n, im in enumerate(ordered, 1):
