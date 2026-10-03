@@ -726,6 +726,24 @@ if ($sub === 'mosaics' && $method === 'POST') {
 }
 
 // =====================================================================
+// ROUTE: GET smackpress/pages — list static pages for idempotent repair
+// =====================================================================
+if ($sub === 'pages' && $method === 'GET') {
+    $limit = max(1, min(500, (int)($_GET['limit'] ?? 500)));
+    $stmt = $pdo->query(
+        "SELECT id,title,slug,is_active,created_at FROM snap_pages "
+        . "ORDER BY created_at DESC,id DESC LIMIT " . $limit
+    );
+    $pages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($pages as &$page) {
+        $page['id'] = (int)$page['id'];
+        $page['is_active'] = (int)$page['is_active'];
+    }
+    unset($page);
+    smackpress_ok(['pages' => $pages]);
+}
+
+// =====================================================================
 // ROUTE: POST smackpress/pages — create or update a static page (snap_pages)
 // =====================================================================
 if ($sub === 'pages' && $method === 'POST') {
@@ -781,7 +799,7 @@ if ($sub === 'pages' && $method === 'POST') {
         $chk->execute([$page_id]);
         if (!$chk->fetch()) smackpress_error(404, 'Page not found.');
 
-        $pdo->prepare(
+        $stmt = $pdo->prepare(
             "UPDATE snap_pages SET title=?, slug=?, content=?, image_asset=?, image_size=?, image_align=?, image_shadow=?, is_active=?, menu_order=?"
             . ($custom_date ? ", created_at=?" : "") . " WHERE id=?"
         );

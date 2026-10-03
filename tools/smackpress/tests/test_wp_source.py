@@ -217,7 +217,10 @@ class DraftTests(unittest.TestCase):
             f'<figure><img src="{WP}/sean-mccormick-black-low-res.png" alt="Sean\'s signature"></figure>'
             "<p>Images made with a Canon EOS R5, a Helios lens, and a DJI drone.</p>"
         )
-        d = wp_source.draft_from_wp(post, self.tmp.name, fetch=fake_fetch)
+        d = wp_source.draft_from_wp(
+            post, self.tmp.name, fetch=fake_fetch,
+            profile={"signature_markers": ["sean-mccormick-black-low-res"]},
+        )
         self.assertEqual(d.caption, "<p>The essay ends here.</p>")
         self.assertIn("Canon EOS R5", d.colophon)
         self.assertEqual(sum(1 for image in d.images if image.is_signature), 1)
@@ -226,6 +229,26 @@ class DraftTests(unittest.TestCase):
         signature_position = next(i for i, image in enumerate(d.images) if image.is_signature)
         self.assertEqual(payload["signature_image_id"], 101 + signature_position)
         self.assertIn("Canon EOS R5", payload["colophon"])
+
+    def test_source_profile_can_describe_another_sites_recurring_chrome(self):
+        post = dict(POST)
+        post["images"] = POST["images"] + [{
+            "id": 13, "url": f"{WP}/closing-flourish.png",
+            "filename": "closing-flourish.png", "alt": "the author's mark",
+        }]
+        post["content_expanded"] = (
+            "<p>The authored story.</p>"
+            f'<img src="{WP}/closing-flourish.png" alt="the author\'s mark">'
+            "<p>Made on the road with the travelling kit.</p>"
+        )
+        profile = {
+            "signature_markers": ["closing-flourish"],
+            "colophon_markers": ["travelling kit"],
+        }
+        d = wp_source.draft_from_wp(post, self.tmp.name, fetch=fake_fetch, profile=profile)
+        self.assertEqual(d.caption, "<p>The authored story.</p>")
+        self.assertIn("travelling kit", d.colophon)
+        self.assertEqual(sum(1 for image in d.images if image.is_signature), 1)
 
 
 if __name__ == "__main__":
