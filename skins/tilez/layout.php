@@ -12,6 +12,7 @@
 <?php elseif (($view['response']['kind'] ?? '') === 'archive'): ?><body class="archive alfred-archive tilez-v2">
 <?php elseif (($view['response']['kind'] ?? '') === 'single'): ?><body class="single tilez-v2">
 <?php elseif (($view['response']['kind'] ?? '') === 'blogroll'): ?><body class="blogroll tilez-v2">
+<?php elseif (($view['response']['kind'] ?? '') === 'page'): ?><body class="page tilez-page-view tilez-v2">
 <?php else: ?><body class="not-found tilez-v2"><?php endif; ?>
 <div id="page" class="tilez">
 <header id="header" class="site-header header section-inner" data-sticky-header="false"><div class="inside">

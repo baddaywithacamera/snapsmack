@@ -83,7 +83,7 @@ $tilezPage = snapsmack_build_skin_view($base + [
 ob_start();
 $tilezPageOk = snapsmack_render_strict_skin_template($root . '/skins/tilez', 'layout.php', $tilezPage);
 $tilezPageHtml = (string)ob_get_clean();
-foreach (['class="content tilez-page"', '<h1>About</h1>', '<p>Page body</p>', 'footer-metadata-bar', '&copy; 2026', '>RSS</a>'] as $hook) {
+foreach (['class="page tilez-page-view tilez-v2"', 'class="content tilez-page"', '<h1>About</h1>', '<p>Page body</p>', 'footer-metadata-bar', '&copy; 2026', '>RSS</a>'] as $hook) {
     if (!$tilezPageOk || !str_contains($tilezPageHtml, $hook)) throw new RuntimeException("TILEZ page/footer presentation missing: {$hook}");
 }
 

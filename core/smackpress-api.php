@@ -799,7 +799,11 @@ if ($sub === 'pages' && $method === 'POST') {
         bloggerflogger_finish($pdo);
     }
 
-    $page_url = $base_url . 'page.php?slug=' . rawurlencode($slug);
+    // Static pages on controller-backed SMACKTALK skins must enter through the
+    // front controller so the active skin, footer, assets, and security model
+    // are applied.  page.php remains a compatibility entry point for older
+    // skins, but it is not the canonical URL returned to importers.
+    $page_url = $base_url . '?view=page&slug=' . rawurlencode($slug);
     smackpress_ok(['page_id' => $pid, 'slug' => $slug, 'url' => $page_url, 'is_active' => $is_active]);
 }
 
