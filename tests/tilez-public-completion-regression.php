@@ -11,6 +11,7 @@ $manifest = (string)file_get_contents($root . '/skins/tilez/manifest.json');
 $menuBuilder = (string)file_get_contents($root . '/assets/js/ss-engine-menu-builder.js');
 $routes = (string)file_get_contents($root . '/core/skin-render-helpers.php');
 $assetRegistry = (string)file_get_contents($root . '/core/asset-registry.php');
+$presentation = (string)file_get_contents($root . '/core/public-skin-presentation.php');
 $smackpressApi = (string)file_get_contents($root . '/core/smackpress-api.php');
 $coldSnapPoster = (string)file_get_contents($root . '/tools/coldsnap/sumna_post.py');
 
@@ -18,9 +19,6 @@ $expect = static function (bool $ok, string $message): void {
     if (!$ok) throw new RuntimeException($message);
 };
 
-$expect(str_contains($repository, 'ownedPhotographsForPost'), 'Single posts lost their ownership fallback.');
-$expect(str_contains($controller, "trim(strip_tags((string)\$rendered)) === ''")
-    && str_contains($controller, 'smacktalk-owned-photo'), 'Empty post shells no longer recover their owned photograph.');
 $expect(str_contains($controller, "\$view === 'categories' || \$view === 'albums'")
     && str_contains($layout, 'tilez-taxonomy-page'), 'Categories or albums bypass the strict TILEZ directory.');
 $expect(str_contains($navigation, "'?view=categories'") || str_contains($navigation, "'categories'"),
@@ -28,9 +26,9 @@ $expect(str_contains($navigation, "'?view=categories'") || str_contains($navigat
 $expect(str_contains($style, '.blogroll-grid { columns: 2;')
     && str_contains($style, 'break-inside: avoid'), 'Blogroll groups can create false vertical holes.');
 $expect(str_contains($style, '#page > #system-footer { margin-top: auto;'), 'Footer is no longer anchored to the page.');
-$expect(str_contains($manifest, '"slug": "the-idea", "label": "THE IDEA"')
-    && !str_contains($manifest, '"slug": "about", "label": "ABOUT"'),
-    'TILEZ restored the duplicate About text-menu default.');
+$expect(!str_contains(strtolower($manifest), 'the-idea')
+    && !str_contains(strtolower($manifest), 'bad-day-masthead'),
+    'TILEZ package defaults contain site-specific navigation or branding.');
 $expect(str_contains($menuBuilder, 'Supports three levels of nesting')
     && str_contains($menuBuilder, 'makeChildRow')
     && str_contains($menuBuilder, 'menu-grandchildren-list')
@@ -48,12 +46,16 @@ $expect(str_contains($manifest, '"asset:public:public-base"')
 $expect(str_contains($assetRegistry, "if(isset(\$registry[\$handle]))")
     && str_contains($assetRegistry, "':css'"),
     'Paired mosaic JavaScript and CSS can overwrite one another in the asset registry.');
-$expect(str_contains($repository, 'signaturePhotographForPost')
-    && str_contains($controller, 'signaturePhotographForPost'),
-    'Imported author signatures no longer resolve through the public content contract.');
-$expect(str_contains($controller, "if (\$colophon === ''")
-    && str_contains($controller, 'images? (?:made|taken|shot) with'),
-    'Imported equipment notes no longer move into the post colophon.');
+$expect(str_contains($controller, "\$post['signature_image_id']")
+    && !str_contains(strtolower($controller), 'mccormick')
+    && !str_contains(strtolower($repository), 'mccormick'),
+    'Public rendering guesses a site-specific signature instead of using the post contract.');
+$expect(!str_contains($controller, 'ownedPhotographsForPost')
+    && !str_contains($controller, 'images? (?:made|taken|shot) with')
+    && !str_contains($repository, 'ownedPhotographsForPost'),
+    'Public rendering is repairing incomplete imports instead of rendering stored post fields.');
+$expect(!str_contains(strtolower($presentation), 'bad-day-masthead'),
+    'Core presentation contains site-specific TILEZ branding.');
 $expect(str_contains($repository, 'menu_order,created_at')
     && str_contains($controller, "'publication_date'")
     && str_contains($controller, "'photo_count'")

@@ -32,9 +32,9 @@ foreach (['snapsmack_smacktalk_slug_url', 'snapsmack_smacktalk_page', "'page_slu
 if (str_contains($viewModel, "?view=page&slug=")) {
     throw new RuntimeException('TILEZ navigation exposed internal page-controller parameters instead of a clean slug.');
 }
-foreach (["-scaled|-\\d{2,5}x\\d{2,5}", 'sean[-_ ]?mccormick', '$area > $canonical'] as $hook) {
-    if (!str_contains($controller, $hook)) {
-        throw new RuntimeException("SMACKPRESS archive reconciliation missing: {$hook}");
+foreach (["-scaled|-\\d{2,5}x\\d{2,5}", 'sean[-_ ]?mccormick', '$area > $canonical'] as $leak) {
+    if (str_contains($controller, $leak)) {
+        throw new RuntimeException("SMACKPRESS migration repair leaked into public rendering: {$leak}");
     }
 }
 foreach (['archive_columns', 'archive_gap'] as $key) {

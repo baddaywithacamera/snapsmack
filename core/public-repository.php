@@ -53,34 +53,6 @@ final class SnapPublicRepository
         );
     }
 
-    /**
-     * Resolve an imported author's closing signature without making the skin
-     * understand migration-era filenames or relationships.
-     */
-    public function signaturePhotographForPost(int $postId, int $explicitId = 0): ?array {
-        if ($explicitId > 0) {
-            $explicit = $this->photographById($explicitId);
-            if ($explicit) return $explicit;
-        }
-        $hint = "LOWER(CONCAT_WS(' ',i.img_title,i.img_slug,i.img_file)) REGEXP 'signature|autograph|sean[-_ ]?mccormick[-_ ]?black[-_ ]?low[-_ ]?res'";
-        $owned = $this->one(
-            "SELECT i.id,i.img_title,i.img_slug,i.img_alt,i.img_file
-             FROM snap_images i
-             LEFT JOIN snap_post_images pi ON pi.image_id=i.id AND pi.post_id=?
-             WHERE (i.post_id=? OR pi.post_id=?) AND {$hint}
-               AND i.img_status='published' AND i.img_date <= NOW()
-             ORDER BY CASE WHEN i.post_id=? THEN 0 ELSE 1 END,i.id DESC LIMIT 1",
-            [$postId, $postId, $postId, $postId]
-        );
-        if ($owned) return $owned;
-        return $this->one(
-            "SELECT i.id,i.img_title,i.img_slug,i.img_alt,i.img_file
-             FROM snap_images i
-             WHERE {$hint} AND i.img_status='published' AND i.img_date <= NOW()
-             ORDER BY i.id DESC LIMIT 1"
-        );
-    }
-
     /** Minimal cover lookup used by story routing on every supported schema. */
     public function photographPathById(int $id): string {
         $row = $this->one(
@@ -95,7 +67,7 @@ final class SnapPublicRepository
         $typeSql = $type === null ? '' : ' AND post_type=?';
         $params = $type === null ? [$slug] : [$slug, $type];
         return $this->one(
-            "SELECT id,title,slug,post_type,created_at,allow_comments,content,colophon,
+            "SELECT id,title,slug,post_type,created_at,allow_comments,content,colophon,user_id,
                     signature_image_id,featured_image_id
              FROM snap_posts
              WHERE slug=?{$typeSql} AND status='published' AND created_at <= NOW() LIMIT 1",
@@ -107,7 +79,7 @@ final class SnapPublicRepository
         $typeSql = $type === null ? '' : ' AND post_type=?';
         $params = $type === null ? [$id] : [$id, $type];
         return $this->one(
-            "SELECT id,title,slug,post_type,created_at,allow_comments,content,colophon,
+            "SELECT id,title,slug,post_type,created_at,allow_comments,content,colophon,user_id,
                     signature_image_id,featured_image_id
              FROM snap_posts
              WHERE id=?{$typeSql} AND status='published' AND created_at <= NOW() LIMIT 1",
@@ -125,30 +97,6 @@ final class SnapPublicRepository
              WHERE pi.post_id=? AND pi.sort_position >= 0
                AND i.img_status='published' AND i.img_date <= NOW()
              ORDER BY pi.sort_position ASC",
-            [$postId]
-        );
-    }
-
-    /**
-     * The post model has always treated snap_images.post_id as the ownership
-     * relationship.  The pivot carries presentation order, but older and
-     * repaired posts may legitimately lack it.  Public reads must not turn
-     * those photographs into an empty story.
-     */
-    public function ownedPhotographsForPost(int $postId): array {
-        return $this->all(
-            "SELECT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,i.img_file,
-                    i.img_width,i.img_height,i.img_thumb_square,i.img_thumb_aspect,i.img_display_options,
-                    COALESCE(pi.sort_position,i.sort_order,0) AS sort_position,
-                    COALESCE(pi.is_cover,CASE WHEN p.featured_image_id=i.id THEN 1 ELSE 0 END) AS is_cover,
-                    pi.img_size_pct,pi.img_border_px,pi.img_border_color,pi.img_bg_color,pi.img_shadow,
-                    pi.img_focus_x,pi.img_focus_y,pi.img_zoom
-             FROM snap_images i
-             JOIN snap_posts p ON p.id=i.post_id
-             LEFT JOIN snap_post_images pi ON pi.post_id=p.id AND pi.image_id=i.id
-             WHERE p.id=? AND p.status='published' AND p.created_at <= NOW()
-               AND i.img_status='published' AND i.img_date <= NOW()
-             ORDER BY COALESCE(pi.sort_position,i.sort_order,0) ASC,i.id ASC",
             [$postId]
         );
     }

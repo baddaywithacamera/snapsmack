@@ -223,6 +223,7 @@ const UPDATER_KNOWN_MIGRATIONS = [
     'migrate-pages-image-cols.sql',
     'migrate-users-recovery-columns.sql',
     'migrate-users-ui-mode.sql',
+    'migrate-users-display-name.sql',
     'migrate-collections-name-to-title.sql',
     'migrate-chaplin-presets.sql',
     'migrate-smackback.sql',

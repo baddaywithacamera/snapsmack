@@ -272,7 +272,7 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
     return body, ordered
 
 
-_WP_SIGNATURE_HINT = re.compile(r"(?:signature|autograph|sean[-_ ]?mccormick[-_ ]?black[-_ ]?low[-_ ]?res)", re.I)
+_WP_SIGNATURE_HINT = re.compile(r"(?:signature|autograph|sign[-_ ]?off)", re.I)
 _WP_COLOPHON_LEAD = re.compile(
     r"\b(?:main camera|camera used|also used|equipment used|shot (?:on|with)|taken with|"
     r"photos? (?:from|(?:taken|made|shot) with)|images? (?:from|(?:taken|made|shot) with)|photographed with)\b",
