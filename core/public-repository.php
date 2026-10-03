@@ -53,6 +53,34 @@ final class SnapPublicRepository
         );
     }
 
+    /**
+     * Resolve an imported author's closing signature without making the skin
+     * understand migration-era filenames or relationships.
+     */
+    public function signaturePhotographForPost(int $postId, int $explicitId = 0): ?array {
+        if ($explicitId > 0) {
+            $explicit = $this->photographById($explicitId);
+            if ($explicit) return $explicit;
+        }
+        $hint = "LOWER(CONCAT_WS(' ',i.img_title,i.img_slug,i.img_file)) REGEXP 'signature|autograph|sean[-_ ]?mccormick[-_ ]?black[-_ ]?low[-_ ]?res'";
+        $owned = $this->one(
+            "SELECT i.id,i.img_title,i.img_slug,i.img_alt,i.img_file
+             FROM snap_images i
+             LEFT JOIN snap_post_images pi ON pi.image_id=i.id AND pi.post_id=?
+             WHERE (i.post_id=? OR pi.post_id=?) AND {$hint}
+               AND i.img_status='published' AND i.img_date <= NOW()
+             ORDER BY CASE WHEN i.post_id=? THEN 0 ELSE 1 END,i.id DESC LIMIT 1",
+            [$postId, $postId, $postId, $postId]
+        );
+        if ($owned) return $owned;
+        return $this->one(
+            "SELECT i.id,i.img_title,i.img_slug,i.img_alt,i.img_file
+             FROM snap_images i
+             WHERE {$hint} AND i.img_status='published' AND i.img_date <= NOW()
+             ORDER BY i.id DESC LIMIT 1"
+        );
+    }
+
     /** Minimal cover lookup used by story routing on every supported schema. */
     public function photographPathById(int $id): string {
         $row = $this->one(

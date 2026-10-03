@@ -10,7 +10,13 @@ function snapsmack_asset_registry(): array
     $registry=[];
     foreach(['javascript','css'] as $group)foreach(($catalog[$group]??[]) as $entry){
         if(!is_array($entry)||!is_string($entry['file']??null)||!is_string($entry['scope']??null))continue;
-        $handle='asset:'.$entry['scope'].':'.pathinfo($entry['file'],PATHINFO_FILENAME);
+        $handle=is_string($entry['registry_handle']??null)&&$entry['registry_handle']!==''
+            ?$entry['registry_handle']
+            :'asset:'.$entry['scope'].':'.pathinfo($entry['file'],PATHINFO_FILENAME);
+        // A component may deliberately ship matching JS and CSS files under
+        // one public handle. Keep both records: the manifest resolver indexes
+        // them by path and must not let the stylesheet replace the script.
+        if(isset($registry[$handle]))$handle.=$group==='javascript'?':script':':css';
         $registry[$handle]=['path'=>$entry['file'],'scope'=>$entry['scope'],'type'=>$group==='javascript'?'script':'style'];
     }
     return $registry;
