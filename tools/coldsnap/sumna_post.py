@@ -712,6 +712,8 @@ class SmacktalkPoster:
             "content": content if content is not None else (draft.caption or ""),
             "status": "published" if draft.img_status == "published" else "draft",
         }
+        if draft.post_date:
+            payload["date"] = draft.post_date
         if getattr(draft, "remote_post_id", 0):
             payload["page_id"] = int(draft.remote_post_id)
         return payload
