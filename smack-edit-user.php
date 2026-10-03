@@ -63,18 +63,19 @@ if (isset($_POST['gen_recovery_code'])) {
 // --- FORM SUBMISSION HANDLER ---
 // Updates email, role, and optionally resets password.
 if (isset($_POST['update_user'])) {
+    $display_name = trim($_POST['display_name'] ?? '');
     $email = trim($_POST['email']);
     $role  = $_POST['user_role'];
     $pass  = trim($_POST['password']);
 
     // Conditionally update password only if a new one was provided.
-    $sql = "UPDATE snap_users SET email = ?, user_role = ? WHERE id = ?";
-    $params = [$email, $role, $uid];
+    $sql = "UPDATE snap_users SET display_name = NULLIF(?, ''), email = ?, user_role = ? WHERE id = ?";
+    $params = [$display_name, $email, $role, $uid];
 
     if (!empty($pass)) {
         // Hash password before storage.
-        $sql = "UPDATE snap_users SET email = ?, user_role = ?, password_hash = ? WHERE id = ?";
-        $params = [$email, $role, password_hash($pass, PASSWORD_BCRYPT, ['cost' => 12]), $uid];
+        $sql = "UPDATE snap_users SET display_name = NULLIF(?, ''), email = ?, user_role = ?, password_hash = ? WHERE id = ?";
+        $params = [$display_name, $email, $role, password_hash($pass, PASSWORD_BCRYPT, ['cost' => 12]), $uid];
     }
 
     $pdo->prepare($sql)->execute($params);
@@ -119,6 +120,9 @@ include 'core/sidebar.php';
         <form method="POST">
             <label>USERNAME (IMMUTABLE)</label>
             <div class="read-only-display"><?php echo htmlspecialchars($user['username']); ?></div>
+
+            <label>DISPLAY NAME</label>
+            <input type="text" name="display_name" maxlength="100" value="<?php echo htmlspecialchars($user['display_name'] ?? ''); ?>">
 
             <label>EMAIL ADDRESS</label>
             <input type="email" name="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
