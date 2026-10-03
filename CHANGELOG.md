@@ -9,6 +9,15 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.813D — 2026-10-03 — Migrations belong to everyone
+
+- Gives every system user a shared display-name field and binds SMACKPRESS API keys to a real default author, so imported bylines come from ordinary account data rather than site-specific fallbacks.
+- Makes SMACKPRESS repair existing posts and static pages by migration record or authored slug, retaining stable destination URLs and updating content instead of making duplicates.
+- Lets each WordPress source declare its own recurring signature and colophon markers; AI or a person may interpret the source, while the result is stored only in standard SnapSmack post fields available to every approved skin.
+- Restores the security boundary by removing site-specific reconstruction, signature guessing, colophon inference, archive deduplication, masthead fallbacks, and menu defaults from runtime core and TILEZ.
+- Adds the missing static-page read API and repairs static-page updates so imported pages can be reconciled idempotently.
+- Ships TILEZ 0.2.55 with the same generic rendering contract and no Bad Day-specific content.
+
 ## 0.7.812D — 2026-10-03 — One About link is enough
 
 - Replaces TILEZ's duplicate ABOUT text-menu default with the imported static page THE IDEA; the circled information shortcut remains the direct About route.
