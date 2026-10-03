@@ -64,6 +64,11 @@
         "smack-mosaic",
         "smack-alfred-archive"
     ],
+    "require_styles": [
+        "asset:public:public-base",
+        "asset:public:shortcodes",
+        "asset:public:columns"
+    ],
     "community_comments": "1",
     "community_likes": "0",
     "community_reactions": "0",
