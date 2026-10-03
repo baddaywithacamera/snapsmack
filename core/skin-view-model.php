@@ -75,6 +75,7 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
     $resolve = function (array $item) use (&$resolve, $pdo, $base, $strict_smacktalk): ?array {
         if (isset($item['active']) && !$item['active']) return null;
         $type = (string)($item['type'] ?? 'custom');
+        $label = (string)($item['label'] ?? '');
         $url = (string)($item['url'] ?? '');
         // Existing owner menus may predate the strict SMACKTALK controller and
         // still store the old public PHP endpoint as a custom URL. Keep the
@@ -84,12 +85,25 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
             && preg_match('#(?:^|/)blogroll\.php(?:[?#].*)?$#i', trim($url))) {
             $type = 'blogroll';
         }
+        if ($strict_smacktalk && $type === 'custom'
+            && preg_match('#(?:^|/)archive\.php(?:[?#].*)?$#i', trim($url))) {
+            $type = 'image_archive';
+        }
+        if ($strict_smacktalk && $type === 'custom'
+            && preg_match('#(?:^|/)albums\.php(?:[?#].*)?$#i', trim($url))) {
+            $type = 'albums';
+        }
         switch ($type) {
             case 'container': $url = ''; break;
             case 'home': $url = $base; break;
-            case 'archive': $url = $base . 'archive.php'; break;
+            case 'archive':
+                $url = $strict_smacktalk
+                    ? $base . '?view=' . (stripos($label, 'categor') !== false ? 'categories' : 'archive')
+                    : $base . 'archive.php';
+                break;
+            case 'categories': $url = $strict_smacktalk ? $base . '?view=categories' : $base . 'archive.php'; break;
             case 'image_archive': $url = $base . '?view=archive'; break;
-            case 'albums': $url = $base . 'albums.php'; break;
+            case 'albums': $url = $strict_smacktalk ? $base . '?view=albums' : $base . 'albums.php'; break;
             case 'collections': $url = $base . 'collections.php'; break;
             case 'wall': $url = $base . 'gallery-wall.php'; break;
             case 'blogroll': $url = $strict_smacktalk ? $base . '?view=blogroll' : $base . 'blogroll.php'; break;
@@ -111,8 +125,15 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
             case 'album':
             case 'category':
             case 'collection':
-                $url = !empty($item['target_id'])
-                    ? $base . 'archive.php?' . $type . '=' . (int)$item['target_id'] : $url;
+                if (!empty($item['target_id'])) {
+                    $url = $strict_smacktalk
+                        ? $base . '?view=archive&' . $type . '=' . (int)$item['target_id']
+                        : $base . 'archive.php?' . $type . '=' . (int)$item['target_id'];
+                } elseif ($strict_smacktalk && $type === 'category') {
+                    $url = $base . '?view=categories';
+                } elseif ($strict_smacktalk && $type === 'album') {
+                    $url = $base . '?view=albums';
+                }
                 break;
         }
         $children = [];

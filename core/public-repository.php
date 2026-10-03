@@ -101,6 +101,30 @@ final class SnapPublicRepository
         );
     }
 
+    /**
+     * The post model has always treated snap_images.post_id as the ownership
+     * relationship.  The pivot carries presentation order, but older and
+     * repaired posts may legitimately lack it.  Public reads must not turn
+     * those photographs into an empty story.
+     */
+    public function ownedPhotographsForPost(int $postId): array {
+        return $this->all(
+            "SELECT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,i.img_file,
+                    i.img_width,i.img_height,i.img_thumb_square,i.img_thumb_aspect,i.img_display_options,
+                    COALESCE(pi.sort_position,i.sort_order,0) AS sort_position,
+                    COALESCE(pi.is_cover,CASE WHEN p.featured_image_id=i.id THEN 1 ELSE 0 END) AS is_cover,
+                    pi.img_size_pct,pi.img_border_px,pi.img_border_color,pi.img_bg_color,pi.img_shadow,
+                    pi.img_focus_x,pi.img_focus_y,pi.img_zoom
+             FROM snap_images i
+             JOIN snap_posts p ON p.id=i.post_id
+             LEFT JOIN snap_post_images pi ON pi.post_id=p.id AND pi.image_id=i.id
+             WHERE p.id=? AND p.status='published' AND p.created_at <= NOW()
+               AND i.img_status='published' AND i.img_date <= NOW()
+             ORDER BY COALESCE(pi.sort_position,i.sort_order,0) ASC,i.id ASC",
+            [$postId]
+        );
+    }
+
     public function photographLanding(int $limit, int $offset = 0): array {
         return $this->all(
             "SELECT id,img_title,img_slug,img_description,img_alt,img_date,img_file,img_width,img_height,
@@ -227,7 +251,19 @@ final class SnapPublicRepository
         );
     }
 
-    public function archivePhotographs(int $limit, int $offset = 0): array {
+    public function archivePhotographs(int $limit, int $offset = 0, int $categoryId = 0, int $albumId = 0): array {
+        $scope = '';
+        $params = [];
+        if ($categoryId > 0) {
+            $scope .= ' AND EXISTS (SELECT 1 FROM snap_image_cat_map cm WHERE cm.image_id=i.id AND cm.cat_id=?)';
+            $params[] = $categoryId;
+        }
+        if ($albumId > 0) {
+            $scope .= ' AND EXISTS (SELECT 1 FROM snap_image_album_map am WHERE am.image_id=i.id AND am.album_id=?)';
+            $params[] = $albumId;
+        }
+        $params[] = max(1, min(5000, $limit));
+        $params[] = max(0, $offset);
         return $this->all(
             "SELECT i.id,i.img_title,i.img_slug,i.img_alt,i.img_file,i.img_width,i.img_height,
                     i.img_thumb_square,i.img_thumb_aspect
@@ -237,10 +273,22 @@ final class SnapPublicRepository
                     SELECT 1 FROM snap_posts p
                     WHERE p.signature_image_id=i.id
                       AND p.status='published' AND p.created_at <= NOW()
-               )
+               ){$scope}
              ORDER BY CASE WHEN i.sort_order>0 THEN 1 ELSE 0 END ASC,i.sort_order ASC,i.id DESC
              LIMIT ? OFFSET ?",
-            [max(1, min(5000, $limit)), max(0, $offset)]
+            $params
+        );
+    }
+
+    public function publicCategories(): array {
+        return $this->all(
+            "SELECT c.id,c.cat_name,COUNT(DISTINCT i.id) AS photograph_count,
+                    SUBSTRING_INDEX(GROUP_CONCAT(i.img_file ORDER BY i.id DESC SEPARATOR '\n'),'\n',1) AS cover_path
+             FROM snap_categories c
+             JOIN snap_image_cat_map m ON m.cat_id=c.id
+             JOIN snap_images i ON i.id=m.image_id AND i.img_status='published' AND i.img_date <= NOW()
+             WHERE c.show_in_archive=1
+             GROUP BY c.id,c.cat_name ORDER BY c.cat_name ASC"
         );
     }
 
@@ -314,10 +362,14 @@ final class SnapPublicRepository
 
     public function publicAlbums(): array {
         return $this->all(
-            "SELECT a.id,a.album_name,a.album_description,a.cover_image_id,a.featured_post_id
+            "SELECT a.id,a.album_name,a.album_description,a.cover_image_id,a.featured_post_id,
+                    COUNT(DISTINCT i.id) AS photograph_count,
+                    COALESCE(ci.img_file,SUBSTRING_INDEX(GROUP_CONCAT(i.img_file ORDER BY i.id DESC SEPARATOR '\n'),'\n',1)) AS cover_path
              FROM snap_albums a
-             WHERE EXISTS (SELECT 1 FROM snap_image_album_map m JOIN snap_images i ON i.id=m.image_id
-                           WHERE m.album_id=a.id AND i.img_status='published' AND i.img_date <= NOW())
+             JOIN snap_image_album_map m ON m.album_id=a.id
+             JOIN snap_images i ON i.id=m.image_id AND i.img_status='published' AND i.img_date <= NOW()
+             LEFT JOIN snap_images ci ON ci.id=COALESCE(a.cover_image_id,a.featured_post_id)
+             GROUP BY a.id,a.album_name,a.album_description,a.cover_image_id,a.featured_post_id,ci.img_file
              ORDER BY a.album_name ASC,a.id ASC"
         );
     }
