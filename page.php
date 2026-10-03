@@ -72,6 +72,15 @@ try {
     snapsmack_apply_skin_settings($settings, $active_skin);
     $skin_view = snapsmack_prepare_skin_view($pdo, $settings, $active_skin);
 
+    // Controller-backed SMACKTALK skins render every public surface through
+    // their bounded core controller.  Preserve page.php as an old-link entry
+    // point, but do not let it bypass the selected skin's layout.
+    $active_manifest = load_skin_manifest($active_skin);
+    if (($active_manifest['cms_controller'] ?? '') === 'smacktalk') {
+        header('Location: ' . BASE_URL . '?view=page&slug=' . rawurlencode((string)$slug), true, 302);
+        exit;
+    }
+
     // --- PAGE LOOKUP ---
     $page_stmt = $pdo->prepare("SELECT * FROM snap_pages WHERE slug = ? AND is_active = 1 LIMIT 1");
     $page_stmt->execute([$slug]);
