@@ -16,6 +16,9 @@ $needles = [
     "This import key is not bound to a system user",
     'featured_image_id=?, user_id=?',
     'featured_image_id,user_id',
+    "if (\$sub === 'pages' && \$method === 'GET')",
+    "SELECT id,title,slug,is_active,created_at FROM snap_pages",
+    '$stmt = $pdo->prepare(',
 ];
 foreach ($needles as $needle) {
     if (strpos($api, $needle) === false) {

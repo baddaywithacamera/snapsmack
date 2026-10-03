@@ -257,11 +257,23 @@ class SourcePane(QWidget):
         self._say(f"Pulling “{p.get('title') or wp_id}” across…", theme.WARN)
         workdir = (self.workdir_provider() if hasattr(self, "workdir_provider") else None) \
             or os.path.join(sp_config._app_dir(), "wp-import", str(wp_id))
+        destination_url = (self.destination_url_provider()
+                           if hasattr(self, "destination_url_provider") else "")
 
         def work():
             try:
                 full = wp_client.get_post(wp_id)
-                draft = wp_source.draft_from_wp(full, workdir, on_progress=self._bridge.progress.emit)
+                profile = sp_config.get_migration_profile(self.wp_url.text().strip())
+                draft = wp_source.draft_from_wp(
+                    full, workdir, on_progress=self._bridge.progress.emit, profile=profile)
+                draft.destination_url = str(destination_url or "").rstrip("/")
+                existing = sp_db.get_post(wp_id)
+                destination_id = int(existing["snap_post_id"] or 0) if existing else 0
+                if not destination_id and hasattr(self, "existing_destination_lookup"):
+                    destination_id = int(self.existing_destination_lookup(
+                        draft.slug, draft.destination_type) or 0)
+                if destination_id:
+                    draft.remote_post_id = destination_id
                 self._bridge.pulled.emit(draft, wp_id)
             except Exception as e:  # noqa: BLE001
                 self._bridge.pulled.emit(e, wp_id)
@@ -273,10 +285,15 @@ class SourcePane(QWidget):
         if isinstance(result, Exception):
             self._say(f"Not pulled: {result}", theme.DANGER)
             return
+        existing = sp_db.get_post(wp_id)
+        if existing and existing["snap_post_id"]:
+            result.remote_post_id = int(existing["snap_post_id"])
         self._draft_by_wp[wp_id] = result.draft_id
-        sp_db.upsert_post(wp_id, wp_title=result.title, wp_date=result.post_date,
+        sp_db.upsert_post(wp_id, wp_title=result.title, wp_slug=result.slug,
+                          wp_date=result.post_date, wp_type=result.destination_type,
                           notes=f"draft:{result.draft_id}")
-        self._say(f"Pulled: {len(result.images)} picture(s) are now local. Finish it on the right, then SEND.", theme.OK)
+        verb = "repair existing" if getattr(result, "remote_post_id", 0) else "create new"
+        self._say(f"Pulled: {len(result.images)} picture(s) are now local · SEND will {verb}.", theme.OK)
         self.draft_ready.emit(result, wp_id, result.title)
         self._reflect_selection()
 
