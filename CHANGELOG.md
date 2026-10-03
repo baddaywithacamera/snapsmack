@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.808D — 2026-10-02 — Pages are pages
+
+- Corrects the Windows SMACKPRESS migration path so WordPress Pages are created in SnapSmack's static-page system instead of being misfiled as SMACKTALK posts.
+- Preserves imported page titles, slugs, authored content, links, and locally owned images; published pages remain published, and ordinary imported post slugs are retained so existing links continue to work.
+- Adds regression coverage proving a static page can never be sent through the post endpoint, including a text-only page and the image-bearing page conversion path.
+
 ## 0.7.807D — 2026-10-02 — One photograph, one archive tile
 
 - Corrects SMACKPRESS media canonicalization so WordPress originals, `-scaled`, and dimension-suffixed derivatives become one imported photograph and the largest available source wins.
