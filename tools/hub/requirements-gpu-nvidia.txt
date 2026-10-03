@@ -1,2 +1,6 @@
 # Optional NVIDIA/CUDA 12 acceleration. The normal build remains CPU-compatible.
 cupy-cuda12x>=13.6,<14
+# CuPy does not pull these in, and without them it names the card and then
+# cannot execute a single instruction on it.
+nvidia-cuda-nvrtc-cu12
+nvidia-cuda-runtime-cu12
