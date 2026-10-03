@@ -77,6 +77,24 @@ class SourcePane(QWidget):
         src.body.addLayout(row)
         src.body.addWidget(hint("WP Admin → Users → Profile → Application Passwords. "
                                 "The SMACKPRESS companion plugin must be active on the WordPress site."))
+        src.body.addWidget(field_label("Recurring signature markers"))
+        self.signature_markers = QLineEdit()
+        self.signature_markers.setPlaceholderText("signature, autograph, closing-flourish")
+        self.signature_markers.setToolTip(
+            "Comma-separated words found in the recurring signature image's filename, title or ALT text.")
+        src.body.addWidget(self.signature_markers)
+        src.body.addWidget(field_label("Recurring colophon phrases"))
+        self.colophon_markers = QLineEdit()
+        self.colophon_markers.setPlaceholderText("images made with, travelling kit")
+        self.colophon_markers.setToolTip(
+            "Comma-separated phrases that identify the final equipment/camera paragraph.")
+        src.body.addWidget(self.colophon_markers)
+        rules_row = QHBoxLayout()
+        save_rules = QPushButton("SAVE SOURCE RULES")
+        save_rules.clicked.connect(self._save_source_rules)
+        rules_row.addWidget(save_rules)
+        rules_row.addWidget(hint("Saved separately for each WordPress address."), 1)
+        src.body.addLayout(rules_row)
         brow = QHBoxLayout()
         self.test_btn = QPushButton("TEST + LOAD POSTS")
         self.test_btn.clicked.connect(self._test_and_load)
@@ -138,6 +156,8 @@ class SourcePane(QWidget):
         self._posts = []
         self._draft_by_wp = {}      # wp_id -> draft_id handed to the editor
         self.last_synced_lookup = None   # main window sets: (draft_id) -> (post_id, url) | None
+        self.wp_url.editingFinished.connect(self._load_source_rules)
+        self._load_source_rules()
 
     # ── plumbing ───────────────────────────────────────────────────────────
     def _say(self, text: str, colour: str = ""):
@@ -157,7 +177,31 @@ class SourcePane(QWidget):
         except sp_config.VaultRequired as e:
             # Works for this session; not written to disk unsealed (SECAUDIT 054).
             self._say(f"Password kept for this session only — {e}", theme.WARN)
+        self._save_source_rules(quiet=True)
         return True
+
+    @staticmethod
+    def _marker_list(text: str) -> list:
+        return [item.strip() for item in str(text or "").split(",") if item.strip()]
+
+    def _load_source_rules(self):
+        profile = sp_config.get_migration_profile(self.wp_url.text().strip())
+        self.signature_markers.setText(", ".join(profile.get("signature_markers") or []))
+        self.colophon_markers.setText(", ".join(profile.get("colophon_markers") or []))
+
+    def _save_source_rules(self, _checked=False, quiet: bool = False):
+        source_url = self.wp_url.text().strip()
+        if not source_url:
+            if not quiet:
+                QMessageBox.information(self, "Source rules", "Enter the WordPress site address first.")
+            return
+        profile = {
+            "signature_markers": self._marker_list(self.signature_markers.text()),
+            "colophon_markers": self._marker_list(self.colophon_markers.text()),
+        }
+        sp_config.save_migration_profile(source_url, profile)
+        if not quiet:
+            self._say("Source interpretation rules saved for this WordPress site.", theme.OK)
 
     def _test_and_load(self):
         if self._busy or not self._save_creds():
