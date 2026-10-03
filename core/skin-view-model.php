@@ -117,10 +117,10 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
                         $slug = (string)($stmt->fetchColumn() ?: '');
                     } catch (Throwable $e) { $slug = ''; }
                 }
-                // Static pages use the bounded public controller.  An
-                // extensionless /page path can be captured by MultiViews and
-                // sent to legacy page.php, bypassing a strict skin entirely.
-                $url = $slug !== '' ? $base . '?view=page&slug=' . rawurlencode($slug) : '';
+                // The front controller resolves clean root slugs as active
+                // pages before posts. Keep controller parameters internal;
+                // public navigation should be readable and shareable.
+                $url = $slug !== '' ? $base . rawurlencode($slug) : '';
                 break;
             case 'album':
             case 'category':
