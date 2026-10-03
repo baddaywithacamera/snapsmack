@@ -10,7 +10,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
         'comments', 'navigation', 'results', 'query', 'slug', 'page', 'total_pages',
         'page_title', 'rendered_content', 'signature', 'previous', 'next', 'categories',
         'albums', 'categories_label', 'albums_label', 'author', 'colophon', 'photo_count', 'word_count', 'comments_enabled',
-        'show_titles', 'blogroll_groups'];
+        'show_titles', 'blogroll_groups', 'taxonomy', 'groups'];
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
         'skin_style_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',

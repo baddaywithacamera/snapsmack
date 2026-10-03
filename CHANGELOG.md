@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.810D — 2026-10-02 — Finish the whole TILEZ public path
+
+- Restores the photograph on a SMACKTALK single-post page when an older or interrupted migration retained the canonical post ownership but missed its optional presentation pivot; the page no longer claims that a visible photographed post contains zero photographs.
+- Keeps Categories, Albums, and filtered archive navigation inside the bounded SMACKTALK controller and presents them through TILEZ instead of exposing retired, unstyled PHP pages.
+- Packs Blogroll groups independently so a short group cannot create a large false gap beneath it, and anchors the configured global footer to the bottom of short public pages.
+- Adds a completion regression covering the post fallback, strict category and album routes, Blogroll packing, and footer placement before release packaging.
+
 ## 0.7.809D — 2026-10-02 — Static pages wear the selected skin
 
 - Routes imported static pages through the bounded SMACKTALK public controller, so TILEZ supplies the same masthead, navigation, favicon, footer, and approved assets used everywhere else.
