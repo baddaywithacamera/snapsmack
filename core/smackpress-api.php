@@ -37,12 +37,12 @@ function smackpress_ensure_key_type(PDO $pdo): void {
     }
 }
 
-function smackpress_auth(PDO $pdo, string $key_type = 'smackpress'): bool {
+function smackpress_auth(PDO $pdo, string $key_type = 'smackpress'): ?array {
     smackpress_ensure_key_type($pdo);
-    if (!in_array($key_type, ['smackpress', 'bloggerflogger'], true)) return false;
+    if (!in_array($key_type, ['smackpress', 'bloggerflogger'], true)) return null;
     $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     if (!preg_match('/^Bearer\s+([a-f0-9]{64})$/i', $header, $m)) {
-        return false;
+        return null;
     }
     $hash = hash('sha256', $m[1]);
     // SECAUDIT 039 (sweep): enforce key EXPIRY — this handler checked only
@@ -50,7 +50,7 @@ function smackpress_auth(PDO $pdo, string $key_type = 'smackpress'): bool {
     // core/api-auth.php. NULL expires_at = legacy key. Falls back if absent.
     try {
         $stmt = $pdo->prepare("
-            SELECT id FROM snap_ohsnap_keys
+            SELECT id,user_id FROM snap_ohsnap_keys
             WHERE key_hash = ? AND is_active = 1 AND key_type = '{$key_type}'
               AND (expires_at IS NULL OR expires_at > NOW())
             LIMIT 1
@@ -58,17 +58,17 @@ function smackpress_auth(PDO $pdo, string $key_type = 'smackpress'): bool {
         $stmt->execute([$hash]);
     } catch (Exception $e) {
         $stmt = $pdo->prepare("
-            SELECT id FROM snap_ohsnap_keys
+            SELECT id,user_id FROM snap_ohsnap_keys
             WHERE key_hash = ? AND is_active = 1 AND key_type = '{$key_type}'
             LIMIT 1
         ");
         $stmt->execute([$hash]);
     }
     $row = $stmt->fetch();
-    if (!$row) return false;
+    if (!$row) return null;
     $pdo->prepare("UPDATE snap_ohsnap_keys SET last_used_at = NOW() WHERE id = ?")
         ->execute([$row['id']]);
-    return true;
+    return ['key_id' => (int)$row['id'], 'user_id' => (int)($row['user_id'] ?? 0)];
 }
 
 function smackpress_error(int $code, string $message): void {
@@ -86,7 +86,8 @@ $route = $_GET['route'] ?? '';
 $blogger_flogger = str_starts_with($route, 'bloggerflogger');
 $key_type = $blogger_flogger ? 'bloggerflogger' : 'smackpress';
 
-if (!smackpress_auth($pdo, $key_type)) {
+$smackpress_actor = smackpress_auth($pdo, $key_type);
+if (!$smackpress_actor) {
     smackpress_error(401, 'Invalid or missing API key.');
 }
 
@@ -513,6 +514,10 @@ if ($sub === 'posts' && $method === 'GET') {
 // ROUTE: POST smackpress/posts — create or update longform post
 // =====================================================================
 if ($sub === 'posts' && $method === 'POST') {
+    $actor_user_id = (int)($smackpress_actor['user_id'] ?? 0);
+    if ($actor_user_id < 1) {
+        smackpress_error(403, 'This import key is not bound to a system user. Regenerate it with a default author.');
+    }
     $body = json_decode(file_get_contents('php://input'), true);
     if (!$body) smackpress_error(400, 'Invalid JSON body.');
 
@@ -580,10 +585,10 @@ if ($sub === 'posts' && $method === 'POST') {
         if (!$has_colophon) $colophon_html = $existing_post['colophon'];
         if (!$has_signature_image) $signature_image = $existing_post['signature_image_id'];
 
-        $sql = "UPDATE snap_posts SET title=?, slug=?, content=?, colophon=?, signature_image_id=?, status=?, allow_comments=?, featured_image_id=?"
+        $sql = "UPDATE snap_posts SET title=?, slug=?, content=?, colophon=?, signature_image_id=?, status=?, allow_comments=?, featured_image_id=?, user_id=?"
              . ($custom_date ? ", created_at=?" : "")
              . " WHERE id=? AND post_type='longform'";
-        $params = [$title, $slug, $content_html, $colophon_html, $signature_image, $status, $allow_comments, $featured_image];
+        $params = [$title, $slug, $content_html, $colophon_html, $signature_image, $status, $allow_comments, $featured_image, $actor_user_id];
         if ($custom_date) $params[] = $custom_date;
         $params[] = $post_id;
         $pdo->prepare($sql)->execute($params);
@@ -606,11 +611,11 @@ if ($sub === 'posts' && $method === 'POST') {
             if (!$check->fetch()) break;
             $slug = $base_slug . '-' . (++$n);
         }
-        $sql = "INSERT INTO snap_posts (title,slug,content,colophon,signature_image_id,post_type,status,allow_comments,featured_image_id"
+        $sql = "INSERT INTO snap_posts (title,slug,content,colophon,signature_image_id,post_type,status,allow_comments,featured_image_id,user_id"
              . ($custom_date ? ",created_at" : "")
-             . ") VALUES(?,?,?,?,?,'longform',?,?,?"
+             . ") VALUES(?,?,?,?,?,'longform',?,?,?,?"
              . ($custom_date ? ",?" : "") . ")";
-        $params = [$title, $slug, $content_html, $colophon_html, $signature_image, $status, $allow_comments, $featured_image];
+        $params = [$title, $slug, $content_html, $colophon_html, $signature_image, $status, $allow_comments, $featured_image, $actor_user_id];
         if ($custom_date) $params[] = $custom_date;
         $pdo->prepare($sql)->execute($params);
         $new_id = (int)$pdo->lastInsertId();
