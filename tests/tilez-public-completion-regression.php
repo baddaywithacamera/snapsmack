@@ -7,6 +7,8 @@ $repository = (string)file_get_contents($root . '/core/public-repository.php');
 $navigation = (string)file_get_contents($root . '/core/skin-view-model.php');
 $layout = (string)file_get_contents($root . '/skins/tilez/layout.php');
 $style = (string)file_get_contents($root . '/skins/tilez/style.css');
+$manifest = (string)file_get_contents($root . '/skins/tilez/manifest.json');
+$menuBuilder = (string)file_get_contents($root . '/assets/js/ss-engine-menu-builder.js');
 
 $expect = static function (bool $ok, string $message): void {
     if (!$ok) throw new RuntimeException($message);
@@ -22,6 +24,14 @@ $expect(str_contains($navigation, "'?view=categories'") || str_contains($navigat
 $expect(str_contains($style, '.blogroll-grid { columns: 2;')
     && str_contains($style, 'break-inside: avoid'), 'Blogroll groups can create false vertical holes.');
 $expect(str_contains($style, '#page > #system-footer { margin-top: auto;'), 'Footer is no longer anchored to the page.');
+$expect(str_contains($manifest, '"slug": "the-idea", "label": "THE IDEA"')
+    && !str_contains($manifest, '"slug": "about", "label": "ABOUT"'),
+    'TILEZ restored the duplicate About text-menu default.');
+$expect(str_contains($menuBuilder, 'Supports three levels of nesting')
+    && str_contains($menuBuilder, 'makeChildRow')
+    && str_contains($menuBuilder, 'menu-grandchildren-list')
+    && str_contains($menuBuilder, 'depth < 2 ? clean(item.children, depth + 1) : []'),
+    'Menu Manager no longer preserves ordered root, child, and grandchild levels.');
 
 echo "TILEZ public completion regression passed.\n";
 
