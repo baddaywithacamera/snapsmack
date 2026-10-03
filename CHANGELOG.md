@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.812D — 2026-10-03 — One About link is enough
+
+- Replaces TILEZ's duplicate ABOUT text-menu default with the imported static page THE IDEA; the circled information shortcut remains the direct About route.
+- Confirms the shared Menu Manager remains the authority for ordering and nesting: root items, dropdown children, and grandchildren are serialized in their chosen order and rendered recursively, with no TILEZ-specific menu order hardcoded in the skin.
+
 ## 0.7.811D — 2026-10-02 — Static pages belong to the same publication
 
 - Presents TILEZ static pages with the same editorial split used by its posts: authored page content on the left and the page title in the right-hand record column.
