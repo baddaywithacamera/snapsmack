@@ -28,6 +28,16 @@ MAX_IMAGE_CHANNELS = 4
 MAX_FLOAT_BYTES = 2 * 1024 * 1024 * 1024
 
 
+def _xp(array):
+    """NumPy or CuPy, whichever this array belongs to.
+
+    Every helper below dispatches through this instead of naming a module, so
+    one implementation serves the processor and the graphics card. A chain
+    written twice drifts; this one cannot.
+    """
+    return gpu_acceleration.array_module(array)
+
+
 @dataclass(frozen=True)
 class FloatImage:
     """Linear image samples carried as H×W×C float32 arrays.
@@ -43,7 +53,11 @@ class FloatImage:
     icc_profile: bytes = b""
 
     def __post_init__(self):
-        pixels = np.asarray(self.pixels)
+        # The samples may live on the graphics card partway through a render, so
+        # validate them where they are instead of dragging them back.
+        pixels = self.pixels
+        if not gpu_acceleration.is_device_array(pixels):
+            pixels = np.asarray(pixels)
         if pixels.dtype != np.float32 or pixels.ndim != 3:
             raise TypeError("FloatImage pixels must be an H×W×C float32 array")
         if pixels.shape[2] not in (1, 2, 3, 4):
@@ -665,19 +679,21 @@ def write(image, path, *, integer_bits=16, metadata_source=None,
 
 def _rgb(image):
     pixels = image.pixels
+    xp = _xp(pixels)
     if pixels.shape[2] == 1:
-        return np.repeat(pixels, 3, axis=2), None
+        return xp.repeat(pixels, 3, axis=2), None
     if pixels.shape[2] == 2:
-        return np.repeat(pixels[:, :, :1], 3, axis=2), pixels[:, :, 1:2]
+        return xp.repeat(pixels[:, :, :1], 3, axis=2), pixels[:, :, 1:2]
     return pixels[:, :, :3], pixels[:, :, 3:4] if pixels.shape[2] == 4 else None
 
 
 def _with_rgb(image, rgb, alpha=None):
+    xp = _xp(rgb)
     if alpha is None:
-        return FloatImage(np.ascontiguousarray(rgb, dtype=np.float32),
+        return FloatImage(xp.ascontiguousarray(rgb, dtype=xp.float32),
                           ("R", "G", "B"), image.source_format, image.icc_profile)
-    return FloatImage(np.ascontiguousarray(np.concatenate((rgb, alpha), axis=2),
-                                           dtype=np.float32),
+    return FloatImage(xp.ascontiguousarray(xp.concatenate((rgb, alpha), axis=2),
+                                           dtype=xp.float32),
                       ("R", "G", "B", "A"), image.source_format, image.icc_profile)
 
 
@@ -711,34 +727,47 @@ _HUE_BANDS = (("red", 0.0), ("orange", 30.0), ("yellow", 60.0),
 
 
 def _hue_saturation(rgb):
-    values = np.clip(rgb, 0.0, None)
-    maximum = np.max(values, axis=2)
-    minimum = np.min(values, axis=2)
+    """Hue in degrees and saturation, for the colour bands and the B+W mixer.
+
+    Written with maximum/minimum over the three named channels rather than a
+    reduction along the channel axis. They give the same answer, but the
+    reduction costs 65 ms on a 2.6 MP frame on the GPU against 1 ms this way,
+    which was most of the cost of the whole stage.
+    """
+    xp = _xp(rgb)
+    values = xp.clip(rgb, 0.0, None)
+    red, green, blue = values[:, :, 0], values[:, :, 1], values[:, :, 2]
+    maximum = xp.maximum(xp.maximum(red, green), blue)
+    minimum = xp.minimum(xp.minimum(red, green), blue)
     delta = maximum - minimum
-    saturation = np.zeros_like(maximum)
-    np.divide(delta, maximum, out=saturation, where=maximum > 1e-8)
-    hue = np.zeros_like(maximum)
+    lit = maximum > 1e-8
+    saturation = xp.where(lit, delta / xp.where(lit, maximum, xp.float32(1.0)),
+                          xp.float32(0.0)).astype(xp.float32)
     active = delta > 1e-8
-    red = active & (maximum == values[:, :, 0])
-    green = active & (maximum == values[:, :, 1])
-    blue = active & (maximum == values[:, :, 2])
-    hue[red] = 60.0 * np.mod((values[:, :, 1][red] - values[:, :, 2][red]) / delta[red], 6.0)
-    hue[green] = 60.0 * (((values[:, :, 2][green] - values[:, :, 0][green]) / delta[green]) + 2.0)
-    hue[blue] = 60.0 * (((values[:, :, 0][blue] - values[:, :, 1][blue]) / delta[blue]) + 4.0)
+    safe = xp.where(active, delta, xp.float32(1.0))
+    hue = xp.where(
+        maximum == red, xp.mod((green - blue) / safe, 6.0),
+        xp.where(maximum == green, ((blue - red) / safe) + 2.0,
+                 ((red - green) / safe) + 4.0)) * xp.float32(60.0)
+    hue = xp.where(active, hue, xp.float32(0.0)).astype(xp.float32)
     return hue, saturation
 
 
 def _band_values(settings, prefix, hue, scale):
+    xp = _xp(hue)
     centres = np.asarray([degree for _name, degree in _HUE_BANDS], dtype=np.float32)
     sliders = np.asarray([float(settings.get(f"{prefix}_{name}", 0.0))
                           for name, _degree in _HUE_BANDS], dtype=np.float32)
     extended_x = np.concatenate((centres[-1:] - 360.0, centres, centres[:1] + 360.0))
     extended_y = np.concatenate((sliders[-1:], sliders, sliders[:1]))
-    return 1.0 + np.interp(hue, extended_x, extended_y).astype(np.float32) / 100.0 * scale
+    if xp is not np:
+        extended_x, extended_y = xp.asarray(extended_x), xp.asarray(extended_y)
+    return 1.0 + xp.interp(hue, extended_x, extended_y).astype(xp.float32) / 100.0 * scale
 
 
 def _smoothstep(edge0, edge1, value):
-    amount = np.clip((value - edge0) / max(1e-6, edge1 - edge0), 0.0, 1.0)
+    xp = _xp(value)
+    amount = xp.clip((value - edge0) / max(1e-6, edge1 - edge0), 0.0, 1.0)
     return amount * amount * (3.0 - 2.0 * amount)
 
 
@@ -749,13 +778,16 @@ def _remap_luminance(rgb, source_luma, target_luma):
     which keeps hue stable. Near black there is no colour vector to scale, so a
     neutral target is the only defined result.
     """
-    source = np.asarray(source_luma, dtype=np.float32)
-    target = np.asarray(target_luma, dtype=np.float32)
-    active = source > np.float32(1e-6)
-    ratio = np.ones_like(source, dtype=np.float32)
-    np.divide(target, source, out=ratio, where=active)
+    xp = _xp(rgb)
+    source = xp.asarray(source_luma, dtype=xp.float32)
+    target = xp.asarray(target_luma, dtype=xp.float32)
+    active = source > xp.float32(1e-6)
+    # Guard the denominator rather than passing where= to divide: CuPy's ufuncs
+    # do not take it, and this gives the identical result on both sides.
+    safe = xp.where(active, source, xp.float32(1.0))
+    ratio = xp.where(active, target / safe, xp.float32(1.0)).astype(xp.float32)
     mapped = rgb * ratio[:, :, None]
-    return np.where(active[:, :, None], mapped, target[:, :, None]).astype(np.float32)
+    return xp.where(active[:, :, None], mapped, target[:, :, None]).astype(xp.float32)
 
 
 def _wavelet_noise_reduction(rgb, luminance_amount=0.0, colour_amount=0.0):
@@ -766,54 +798,56 @@ def _wavelet_noise_reduction(rgb, luminance_amount=0.0, colour_amount=0.0):
     receives a stronger edge-aware low-pass. Large residuals survive as real
     detail instead of being blurred with the noise.
     """
-    lum_strength = np.clip(float(luminance_amount) / 100.0, 0.0, 1.0)
-    colour_strength = np.clip(float(colour_amount) / 100.0, 0.0, 1.0)
+    lum_strength = float(np.clip(float(luminance_amount) / 100.0, 0.0, 1.0))
+    colour_strength = float(np.clip(float(colour_amount) / 100.0, 0.0, 1.0))
+    xp = _xp(rgb)
     if not lum_strength and not colour_strength:
         return rgb
 
-    original_luma = luminance(rgb).astype(np.float32)
+    original_luma = luminance(rgb).astype(xp.float32)
     denoised_luma = original_luma
     if lum_strength:
         current = original_luma
         details = []
         for radius in (.65, 1.30, 2.60):
-            plane = FloatImage(current[:, :, None].astype(np.float32), ("Y",))
+            plane = FloatImage(current[:, :, None].astype(xp.float32), ("Y",))
             coarse = gaussian_blur(plane, radius).pixels[:, :, 0]
             details.append(current - coarse)
             current = coarse
         finest = details[0]
-        centre = np.median(finest)
-        sigma = float(np.median(np.abs(finest - centre)) / .67448975)
+        centre = xp.median(finest)
+        sigma = float(xp.median(xp.abs(finest - centre)) / .67448975)
         # At 100, reject roughly five estimated sigmas on the finest scale;
         # coarser bands use lower thresholds so shapes and texture survive.
         threshold = sigma * (.35 + 4.65 * lum_strength)
         restored = current
         for detail, scale in zip(reversed(details), reversed((1.0, .62, .38))):
             limit = threshold * scale
-            shrunk = np.sign(detail) * np.maximum(np.abs(detail) - limit, 0.0)
-            restored = restored + shrunk.astype(np.float32)
+            shrunk = xp.sign(detail) * xp.maximum(xp.abs(detail) - limit, 0.0)
+            restored = restored + shrunk.astype(xp.float32)
         denoised_luma = (original_luma * (1.0 - lum_strength) +
-                          restored * lum_strength).astype(np.float32)
+                          restored * lum_strength).astype(xp.float32)
 
     # Opponent colour is the RGB distance from luminance. Gaussian smoothing
     # is acceptable here only behind a luminance-edge gate; this prevents
     # colour bleeding across object boundaries.
     chroma = rgb - original_luma[:, :, None]
     if colour_strength:
-        chroma_image = FloatImage(chroma.astype(np.float32), ("R", "G", "B"))
+        chroma_image = FloatImage(chroma.astype(xp.float32), ("R", "G", "B"))
         soft_chroma, _ = _rgb(gaussian_blur(
             chroma_image, .75 + colour_strength * 2.75))
-        gy, gx = np.gradient(original_luma)
-        edge = np.sqrt(gx * gx + gy * gy)
-        protection = np.clip(edge / (.012 + .045 * (1.0 - colour_strength)), 0.0, 1.0)
+        gy, gx = xp.gradient(original_luma)
+        edge = xp.sqrt(gx * gx + gy * gy)
+        protection = xp.clip(edge / (.012 + .045 * (1.0 - colour_strength)), 0.0, 1.0)
         mix = colour_strength * (1.0 - protection * .90)
         chroma = chroma * (1.0 - mix[:, :, None]) + soft_chroma * mix[:, :, None]
 
-    return (denoised_luma[:, :, None] + chroma).astype(np.float32)
+    return (denoised_luma[:, :, None] + chroma).astype(xp.float32)
 
 
 def _curve(values, points):
     """Piecewise-linear curve with endpoint extrapolation, never clipping headroom."""
+    xp = _xp(values)
     ordered = sorted((max(0.0, min(1.0, float(x) / 255.0)),
                       max(0.0, min(1.0, float(y) / 255.0))) for x, y in points)
     if not ordered or ordered[0][0] != 0.0:
@@ -822,22 +856,30 @@ def _curve(values, points):
         ordered.append((1.0, 1.0))
     xs = np.asarray([item[0] for item in ordered], dtype=np.float32)
     ys = np.asarray([item[1] for item in ordered], dtype=np.float32)
-    result = np.interp(values, xs, ys).astype(np.float32)
     low_slope = (ys[1] - ys[0]) / max(1e-6, xs[1] - xs[0])
     high_slope = (ys[-1] - ys[-2]) / max(1e-6, xs[-1] - xs[-2])
-    result = np.where(values < xs[0], ys[0] + (values - xs[0]) * low_slope, result)
-    result = np.where(values > xs[-1], ys[-1] + (values - xs[-1]) * high_slope, result)
-    return result.astype(np.float32)
+    first_x, first_y, last_x, last_y = xs[0], ys[0], xs[-1], ys[-1]
+    if xp is not np:
+        xs, ys = xp.asarray(xs), xp.asarray(ys)
+        # A per-channel curve is handed rgb[:, :, n], which is a strided view.
+        # CuPy's interp only reads contiguous memory.
+        if not values.flags.c_contiguous:
+            values = xp.ascontiguousarray(values)
+    result = xp.interp(values, xs, ys).astype(xp.float32)
+    result = xp.where(values < first_x, first_y + (values - first_x) * low_slope, result)
+    result = xp.where(values > last_x, last_y + (values - last_x) * high_slope, result)
+    return result.astype(xp.float32)
 
 
 def _soft_light(base, blend):
-    base_safe = np.clip(base, 0.0, None)
+    xp = _xp(base)
+    base_safe = xp.clip(base, 0.0, None)
     dark = base - (1.0 - 2.0 * blend) * base * (1.0 - base)
-    d = np.where(base_safe <= .25,
+    d = xp.where(base_safe <= .25,
                  ((16.0 * base_safe - 12.0) * base_safe + 4.0) * base_safe,
-                 np.sqrt(base_safe))
+                 xp.sqrt(base_safe))
     light = base + (2.0 * blend - 1.0) * (d - base)
-    return np.where(blend <= .5, dark, light)
+    return xp.where(blend <= .5, dark, light)
 
 
 def _oiio_result(image, operation, *args, **kwargs):
@@ -846,6 +888,36 @@ def _oiio_result(image, operation, *args, **kwargs):
     _raise_oiio(result, getattr(operation, "__name__", "image operation"))
     return FloatImage(np.ascontiguousarray(result.get_pixels(oiio.FLOAT)),
                       image.channel_names, image.source_format, image.icc_profile)
+
+
+_KERNEL_CACHE = {}
+
+
+def _gaussian_kernel_1d(span):
+    """OpenImageIO's own 1-D gaussian coefficients, read once and kept.
+
+    The card convolves with exactly what the processor path convolves with, so
+    the two cannot drift apart over a release.
+    """
+    key = round(float(span), 4)
+    cached = _KERNEL_CACHE.get(key)
+    if cached is None:
+        buffer = oiio.ImageBufAlgo.make_kernel("gaussian", float(span), 1.0)
+        cached = np.ascontiguousarray(
+            np.asarray(buffer.get_pixels(oiio.FLOAT)).reshape(-1), dtype=np.float32)
+        _KERNEL_CACHE[key] = cached
+    return cached
+
+
+def _gaussian_blur_device(pixels, span):
+    """Separable gaussian on the card, one axis at a time."""
+    import cupyx.scipy.ndimage as ndimage
+    xp = _xp(pixels)
+    kernel = xp.asarray(_gaussian_kernel_1d(span))
+    result = pixels
+    for axis in (1, 0):
+        result = ndimage.convolve1d(result, kernel, axis=axis, mode="nearest")
+    return result.astype(xp.float32)
 
 
 def gaussian_blur(image, radius):
@@ -863,6 +935,10 @@ def gaussian_blur(image, radius):
     if radius == 0.0:
         return image
     span = radius * 2.0 + 1.0
+    if gpu_acceleration.is_device_array(image.pixels):
+        return FloatImage(_gaussian_blur_device(image.pixels, span),
+                          image.channel_names, image.source_format,
+                          image.icc_profile)
     buffer = oiio.ImageBuf(np.ascontiguousarray(image.pixels))
     for width, height in ((span, 1.0), (1.0, span)):
         kernel = oiio.ImageBufAlgo.make_kernel("gaussian", width, height)
@@ -873,11 +949,30 @@ def gaussian_blur(image, radius):
 
 
 def unsharp(image, radius, amount, threshold=0.0):
+    """Unsharp mask: add back the detail the blur removed, above a threshold.
+
+    This is OpenImageIO's definition, reproduced on the card so a sharpened
+    frame never has to come back to the processor mid-chain.
+    """
     if float(amount) <= 0.0:
         return image
-    return _oiio_result(image, oiio.ImageBufAlgo.unsharp_mask, "gaussian",
-                        max(.1, float(radius)) * 2.0 + 1.0,
-                        max(0.0, float(amount)), max(0.0, float(threshold)))
+    span = max(.1, float(radius)) * 2.0 + 1.0
+    contrast = max(0.0, float(amount))
+    floor = max(0.0, float(threshold))
+    # One formula for both paths. OpenImageIO's unsharp_mask blurs with a square
+    # kernel internally, which cannot be reproduced cheaply on the card, and a
+    # sharpen that differs between processor and card is worse than a sharpen
+    # that differs very slightly from the old one. Both now subtract this
+    # module's own separable blur, so they agree by construction.
+    pixels = image.pixels
+    xp = _xp(pixels)
+    blurred = gaussian_blur(image, max(.1, float(radius))).pixels
+    detail = pixels - blurred
+    if floor > 0.0:
+        detail = xp.where(xp.abs(detail) < xp.float32(floor),
+                          xp.float32(0.0), detail)
+    return FloatImage((pixels + detail * xp.float32(contrast)).astype(xp.float32),
+                      image.channel_names, image.source_format, image.icc_profile)
 
 
 def blend(base, top, mode="normal", opacity=1.0, mask=None):
@@ -1129,11 +1224,12 @@ def _neutral_luminance_pass(rgb):
     the divide and multiply across the whole frame. An image with usable
     luminance everywhere needs no pass at all.
     """
-    tone = luminance(rgb).astype(np.float32)
-    active = tone > np.float32(1e-6)
-    if active.all():
+    xp = _xp(rgb)
+    tone = luminance(rgb).astype(xp.float32)
+    active = tone > xp.float32(1e-6)
+    if bool(active.all()):
         return rgb
-    return np.where(active[:, :, None], rgb, tone[:, :, None]).astype(np.float32)
+    return xp.where(active[:, :, None], rgb, tone[:, :, None]).astype(xp.float32)
 
 
 class Frame:
@@ -1165,10 +1261,10 @@ class Frame:
     def is_whole_frame(self):
         return self.left == 0 and self.top == 0
 
-    def rows_columns(self, tile_height, tile_width):
+    def rows_columns(self, tile_height, tile_width, xp=np):
         """Pixel coordinates of this tile, in the whole frame's grid."""
-        return (np.arange(self.top, self.top + tile_height)[:, None],
-                np.arange(self.left, self.left + tile_width)[None, :])
+        return (xp.arange(self.top, self.top + tile_height)[:, None],
+                xp.arange(self.left, self.left + tile_width)[None, :])
 
 
 def tile_margin(settings, frame_width, frame_height):
@@ -1219,18 +1315,31 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
     settings = dict(defaults or {})
     settings.update(adjustments or {})
     rgb, alpha = _rgb(image)
+    # The whole chain runs wherever the frame starts. Offload it here, once, and
+    # bring it back once at the end: a stage-by-stage transfer would cost more
+    # than the stages save.
+    offload = (not gpu_acceleration.is_device_array(rgb) and
+               gpu_acceleration.chain_is_worth_offloading(rgb.shape[0] * rgb.shape[1]))
+    if offload:
+        moved = gpu_acceleration.to_device(rgb)
+        offload = gpu_acceleration.is_device_array(moved)
+        if offload:
+            rgb = moved
+            if alpha is not None:
+                alpha = gpu_acceleration.to_device(alpha)
     rgb = rgb.copy()
     if frame is None:
         frame = Frame(rgb.shape[1], rgb.shape[0])
+    xp = _xp(rgb)
 
     exposure_stops = float(settings.get("exposure", 0.0))
     if exposure_stops:
-        rgb *= np.float32(2.0 ** exposure_stops)
+        rgb *= xp.float32(2.0 ** exposure_stops)
 
     brightness = float(settings.get("brightness", 0.0))
     if brightness:
-        tone = luminance(rgb).astype(np.float32)
-        target_tone = tone + np.float32(brightness * 1.28 / 255.0)
+        tone = luminance(rgb).astype(xp.float32)
+        target_tone = tone + xp.float32(brightness * 1.28 / 255.0)
         rgb = _remap_luminance(rgb, tone, target_tone)
     else:
         rgb = _neutral_luminance_pass(rgb)
@@ -1241,25 +1350,25 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
     whites = float(settings.get("whites", 0.0))
     blacks = float(settings.get("blacks", 0.0))
     if shadows or midtones or highlights or whites or blacks:
-        tone = luminance(rgb).astype(np.float32)
-        mask_tone = np.clip(tone, 0.0, 1.0)
-        delta = np.zeros_like(mask_tone)
+        tone = luminance(rgb).astype(xp.float32)
+        mask_tone = xp.clip(tone, 0.0, 1.0)
+        delta = xp.zeros_like(mask_tone)
         if shadows:
             delta += (shadows / 100.0 * 50.0 / 255.0 *
                       (1.0 - _smoothstep(.10, .50, mask_tone)) ** 2)
         if midtones:
             delta += (midtones / 100.0 * 55.0 / 255.0 *
-                      (1.0 - _smoothstep(0.0, .32, np.abs(mask_tone - .5))))
+                      (1.0 - _smoothstep(0.0, .32, xp.abs(mask_tone - .5))))
         if highlights:
             delta += (highlights / 100.0 * 50.0 / 255.0 *
                       _smoothstep(.50, .90, mask_tone) ** 2)
         if whites:
             delta += (whites / 100.0 * 45.0 / 255.0 *
-                      np.maximum(0.0, (mask_tone - .80) / .20))
+                      xp.maximum(0.0, (mask_tone - .80) / .20))
         if blacks:
             delta += (blacks / 100.0 * 45.0 / 255.0 *
-                      np.maximum(0.0, (.20 - mask_tone) / .20))
-        rgb = _remap_luminance(rgb, tone, tone + delta.astype(np.float32))
+                      xp.maximum(0.0, (.20 - mask_tone) / .20))
+        rgb = _remap_luminance(rgb, tone, tone + delta.astype(xp.float32))
     else:
         rgb = _neutral_luminance_pass(rgb)
 
@@ -1268,8 +1377,8 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
     # return tone for very dark pixels, so the established render shifts them
     # very slightly. Skipping the stage would change those pixels, so it runs.
     contrast = 1.0 + float(settings.get("contrast", 0.0)) / 100.0
-    tone = luminance(rgb).astype(np.float32)
-    rgb = _remap_luminance(rgb, tone, (tone - .5) * np.float32(contrast) + .5)
+    tone = luminance(rgb).astype(xp.float32)
+    rgb = _remap_luminance(rgb, tone, (tone - .5) * xp.float32(contrast) + .5)
 
     black = float(settings.get("level_black", 0.0)) / 255.0
     white = max(black + 1.0 / 255.0, float(settings.get("level_white", 255.0)) / 255.0)
@@ -1277,15 +1386,15 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
         rgb = (rgb - black) / (white - black)
     gamma = max(.1, float(settings.get("level_gamma", 1.0)))
     if gamma != 1.0:
-        positive = np.maximum(rgb, 0.0)
-        rgb = np.where(rgb >= 0.0, np.power(positive, 1.0 / gamma), rgb).astype(np.float32)
+        positive = xp.maximum(rgb, 0.0)
+        rgb = xp.where(rgb >= 0.0, xp.power(positive, 1.0 / gamma), rgb).astype(xp.float32)
 
     temperature = float(settings.get("temperature", 0.0)) / 100.0
     tint = float(settings.get("tint", 0.0)) / 100.0
     if temperature or tint:
-        rgb *= np.asarray((1.0 + temperature * .22 + tint * .06,
+        rgb *= xp.asarray((1.0 + temperature * .22 + tint * .06,
                            1.0 - abs(tint) * .05,
-                           1.0 - temperature * .22 + tint * .06), dtype=np.float32)
+                           1.0 - temperature * .22 + tint * .06), dtype=xp.float32)
 
     # The saturation lerp stays unconditional. At neutral it is a no-op only to
     # within float rounding, and a degenerate Levels window (black above white)
@@ -1293,12 +1402,12 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
     # visible difference. It is one of the cheap stages, so it is not worth it.
     saturation = max(0.0, 1.0 + float(settings.get("saturation", 0.0)) / 100.0)
     grey = luminance(rgb)[:, :, None]
-    rgb = grey + (rgb - grey) * np.float32(saturation)
+    rgb = grey + (rgb - grey) * xp.float32(saturation)
     vibrance = float(settings.get("vibrance", 0.0)) / 100.0
     if vibrance:
         # Vibrance deliberately reuses the pre-saturation grey, as it always has.
-        chroma = np.max(rgb, axis=2) - np.min(rgb, axis=2)
-        boost = 1.0 + vibrance * 1.4 * np.clip(1.0 - chroma, 0.0, 1.0)
+        chroma = xp.max(rgb, axis=2) - xp.min(rgb, axis=2)
+        boost = 1.0 + vibrance * 1.4 * xp.clip(1.0 - chroma, 0.0, 1.0)
         rgb = grey + (rgb - grey) * boost[:, :, None]
 
     colour_saturation = any(float(settings.get(f"col_sat_{name}", 0.0))
@@ -1309,21 +1418,21 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
         # One hue pass feeds both bands, and both read the same pre-band hue.
         hue, _band_unused = _hue_saturation(rgb)
         if colour_saturation:
-            multiplier = np.maximum(0.0, _band_values(settings, "col_sat", hue, .9))
+            multiplier = xp.maximum(0.0, _band_values(settings, "col_sat", hue, .9))
             grey = luminance(rgb)[:, :, None]
             rgb = grey + (rgb - grey) * multiplier[:, :, None]
         if colour_luminance:
-            multiplier = np.maximum(0.0, _band_values(settings, "col_lum", hue, .5))
+            multiplier = xp.maximum(0.0, _band_values(settings, "col_lum", hue, .5))
             rgb *= multiplier[:, :, None]
 
-    working = _with_rgb(image, rgb.astype(np.float32), alpha)
+    working = _with_rgb(image, rgb.astype(xp.float32), alpha)
     clarity = float(settings.get("clarity", 0.0))
     if clarity:
         radius = max(2.0, min(frame.width, frame.height) / 180.0)
         blurred, _ = _rgb(gaussian_blur(working, radius))
         detail = rgb - blurred
-        rgb = rgb + detail * np.float32(clarity / 35.0)
-        working = _with_rgb(image, rgb.astype(np.float32), alpha)
+        rgb = rgb + detail * xp.float32(clarity / 35.0)
+        working = _with_rgb(image, rgb.astype(xp.float32), alpha)
     texture = float(settings.get("texture", 0.0))
     if texture > 0:
         working = unsharp(working, .65, texture * .018, 2.0 / 255.0)
@@ -1332,7 +1441,7 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
         softened, _ = _rgb(gaussian_blur(working, min(2.0, abs(texture) / 45.0)))
         amount = min(.75, abs(texture) / 100.0)
         rgb = rgb * (1.0 - amount) + softened * amount
-        working = _with_rgb(image, rgb.astype(np.float32), alpha)
+        working = _with_rgb(image, rgb.astype(xp.float32), alpha)
 
     dehaze = float(settings.get("dehaze", 0.0))
     if dehaze:
@@ -1347,7 +1456,7 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
 
     sharpen = float(settings.get("sharpen", 0.0))
     if sharpen > 0:
-        working = _with_rgb(image, rgb.astype(np.float32), alpha)
+        working = _with_rgb(image, rgb.astype(xp.float32), alpha)
         radius = max(.1, min(6.0, float(settings.get("sharpen_radius", 1.2))))
         reduce_noise = np.clip(float(settings.get("sharpen_reduce_noise", 0.0)) / 100.0,
                                0.0, 1.0)
@@ -1357,10 +1466,10 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
         gate = max(reduce_noise, .4) if settings.get("sharpen_mode", "lens") == "lens" else reduce_noise
         if gate:
             blurred, _ = _rgb(gaussian_blur(working, radius))
-            detail = np.mean(np.abs(rgb - blurred), axis=2)
+            detail = xp.mean(xp.abs(rgb - blurred), axis=2)
             floor = gate * 28.0 / 255.0
-            mask = np.clip((detail - floor) * (6.0 + gate * 6.0), 0.0, 1.0)
-            mask_image = FloatImage(mask[:, :, None].astype(np.float32), ("Y",))
+            mask = xp.clip((detail - floor) * (6.0 + gate * 6.0), 0.0, 1.0)
+            mask_image = FloatImage(mask[:, :, None].astype(xp.float32), ("Y",))
             mask = gaussian_blur(mask_image, max(.4, radius * .5)).pixels[:, :, 0]
             rgb = sharp_rgb * mask[:, :, None] + rgb * (1.0 - mask[:, :, None])
         else:
@@ -1381,12 +1490,12 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
         if any(float(settings.get(f"bw_{name}", 0.0)) for name, _ in _HUE_BANDS):
             multiplier = _band_values(settings, "bw", hue, .7)
             mono *= 1.0 + (multiplier - 1.0) * hue_saturation
-        rgb = np.repeat(mono[:, :, None], 3, axis=2)
+        rgb = xp.repeat(mono[:, :, None], 3, axis=2)
 
     density = max(0.0, min(1.0, float(settings.get("photo_filter_density", 0.0)) / 100.0))
     if density:
-        colour = np.asarray(settings.get("photo_filter_color", [236, 138, 0])[:3],
-                            dtype=np.float32) / 255.0
+        colour = xp.asarray(settings.get("photo_filter_color", [236, 138, 0])[:3],
+                            dtype=xp.float32) / 255.0
         filtered = rgb * colour
         candidate = rgb * (1.0 - density) + filtered * density
         if settings.get("photo_filter_preserve_lum", True):
@@ -1400,15 +1509,15 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
     split_amounts = [max(0.0, float(settings.get(prefix + "_amount", 0.0)) / 100.0) * .6
                      for prefix, _default in split_bands]
     if any(split_amounts):
-        luma = np.clip(luminance(rgb), 0.0, 1.0)
+        luma = xp.clip(luminance(rgb), 0.0, 1.0)
         split_weights = (1.0 - luma,
-                         np.maximum(0.0, 1.0 - np.abs(luma - .5) * 2.0),
+                         xp.maximum(0.0, 1.0 - xp.abs(luma - .5) * 2.0),
                          luma)
         for (prefix, default_colour), amount, weight in zip(
                 split_bands, split_amounts, split_weights):
             if amount:
-                colour = np.asarray(settings.get(prefix, default_colour)[:3],
-                                    dtype=np.float32) / 255.0
+                colour = xp.asarray(settings.get(prefix, default_colour)[:3],
+                                    dtype=xp.float32) / 255.0
                 toned = _soft_light(rgb, colour.reshape((1, 1, 3)))
                 mix = (weight * amount)[:, :, None]
                 rgb = toned * mix + rgb * (1.0 - mix)
@@ -1416,22 +1525,22 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
     glow_amount = max(0.0, float(settings.get("glow_amount", 0.0)) / 100.0)
     if glow_amount:
         width, height = frame.width, frame.height
-        yy, xx = frame.rows_columns(*rgb.shape[:2])
+        yy, xx = frame.rows_columns(*rgb.shape[:2], xp=xp)
         cx = float(settings.get("glow_x", 50.0)) / 100.0 * width
         cy = float(settings.get("glow_y", 40.0)) / 100.0 * height
         reach = max(1.0, max(width, height) * float(settings.get("glow_size", 45.0)) / 100.0)
         distance2 = ((xx - cx) ** 2 + (yy - cy) ** 2) / max(1.0, reach * reach)
-        glow_mask = np.exp(-distance2 * 2.0).astype(np.float32) * glow_amount
-        colour = np.asarray(settings.get("glow_colour", [255, 220, 170])[:3],
-                            dtype=np.float32) / 255.0
+        glow_mask = xp.exp(-distance2 * 2.0).astype(xp.float32) * glow_amount
+        colour = xp.asarray(settings.get("glow_colour", [255, 220, 170])[:3],
+                            dtype=xp.float32) / 255.0
         bloom = glow_mask[:, :, None] * colour.reshape((1, 1, 3))
         rgb = 1.0 - (1.0 - rgb) * (1.0 - bloom)
 
     vignette = float(settings.get("vignette", 0.0))
     if vignette:
         width, height = frame.width, frame.height
-        yy, xx = frame.rows_columns(*rgb.shape[:2])
-        radius = np.sqrt(((xx - (width - 1) / 2) / max(1, width / 2)) ** 2 +
+        yy, xx = frame.rows_columns(*rgb.shape[:2], xp=xp)
+        radius = xp.sqrt(((xx - (width - 1) / 2) / max(1, width / 2)) ** 2 +
                          ((yy - (height - 1) / 2) / max(1, height / 2)) ** 2)
         size = np.clip(float(settings.get("vignette_size", 70.0)) / 100.0, 0.0, 2.0)
         feather = np.clip(float(settings.get("vignette_feather", 50.0)) / 100.0,
@@ -1448,20 +1557,29 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
     if grain:
         rng = np.random.default_rng(int(settings.get("grain_seed", 7319)))
         noise = rng.normal(0.0, grain / 100.0 * 32.0 / 255.0,
-                           (frame.height, frame.width)).astype(np.float32)
+                           (frame.height, frame.width)).astype(xp.float32)
         if not (frame.height, frame.width) == rgb.shape[:2]:
             # The field is drawn for the whole frame so the tile carries the
             # same grain it would have had in a full render, then cropped.
             height, width = rgb.shape[:2]
             noise = noise[frame.top:frame.top + height,
                           frame.left:frame.left + width]
+        if xp is not np:
+            # The card's generator gives a different stream for the same
+            # seed, so the field is drawn here and sent across.
+            noise = xp.asarray(noise)
         if settings.get("grain_darken"):
-            rgb *= (1.0 - np.maximum(0.0, -noise)[:, :, None])
+            rgb *= (1.0 - xp.maximum(0.0, -noise)[:, :, None])
         else:
-            blend_noise = np.clip(.5 + noise, 0.0, 1.0)[:, :, None]
+            blend_noise = xp.clip(.5 + noise, 0.0, 1.0)[:, :, None]
             rgb = _soft_light(rgb, blend_noise)
 
-    return _with_rgb(image, rgb.astype(np.float32), alpha)
+    result = _with_rgb(image, rgb.astype(xp.float32), alpha)
+    if offload:
+        result = FloatImage(gpu_acceleration.to_host(result.pixels),
+                            result.channel_names, result.source_format,
+                            result.icc_profile)
+    return result
 
 
 # ===== SNAPSMACK EOF =====
