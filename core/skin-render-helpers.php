@@ -54,6 +54,9 @@ function snap_route_url(string $route, array $parameters = []): string {
         else $allowed[$key] = (string)$value;
     }
     $base = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
+    if (($route === 'page' || $route === 'post') && !empty($allowed['slug'])) {
+        return snap_escape_url($base . rawurlencode($allowed['slug']));
+    }
     $path = $routes[$route];
     return snap_escape_url($base . $path . ($allowed ? '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986) : ''));
 }

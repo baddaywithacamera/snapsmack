@@ -9,6 +9,7 @@ $layout = (string)file_get_contents($root . '/skins/tilez/layout.php');
 $style = (string)file_get_contents($root . '/skins/tilez/style.css');
 $manifest = (string)file_get_contents($root . '/skins/tilez/manifest.json');
 $menuBuilder = (string)file_get_contents($root . '/assets/js/ss-engine-menu-builder.js');
+$routes = (string)file_get_contents($root . '/core/skin-render-helpers.php');
 
 $expect = static function (bool $ok, string $message): void {
     if (!$ok) throw new RuntimeException($message);
@@ -32,6 +33,11 @@ $expect(str_contains($menuBuilder, 'Supports three levels of nesting')
     && str_contains($menuBuilder, 'menu-grandchildren-list')
     && str_contains($menuBuilder, 'depth < 2 ? clean(item.children, depth + 1) : []'),
     'Menu Manager no longer preserves ordered root, child, and grandchild levels.');
+$expect(str_contains($controller, 'snapsmack_smacktalk_slug_url')
+    && str_contains($controller, "'redirect_status' => 301")
+    && !str_contains($navigation, '?view=page&slug=')
+    && str_contains($routes, "\$route === 'page' || \$route === 'post'"),
+    'SMACKTALK exposed internal query routing instead of canonical readable slugs.');
 
 echo "TILEZ public completion regression passed.\n";
 

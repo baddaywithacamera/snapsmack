@@ -803,7 +803,7 @@ if ($sub === 'pages' && $method === 'POST') {
     // front controller so the active skin, footer, assets, and security model
     // are applied.  page.php remains a compatibility entry point for older
     // skins, but it is not the canonical URL returned to importers.
-    $page_url = $base_url . '?view=page&slug=' . rawurlencode($slug);
+    $page_url = rtrim($base_url, '/') . '/' . rawurlencode($slug);
     smackpress_ok(['page_id' => $pid, 'slug' => $slug, 'url' => $page_url, 'is_active' => $is_active]);
 }
 

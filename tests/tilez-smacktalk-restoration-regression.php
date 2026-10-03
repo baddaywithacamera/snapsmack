@@ -24,10 +24,13 @@ foreach (["kind'] ?? '') === 'page'", "snap_render_component('footer'", 'footer-
         throw new RuntimeException("TILEZ page/footer restoration missing: {$hook}");
     }
 }
-foreach (["?view=page&slug=", 'snapsmack_smacktalk_page', "'page_slug'"] as $hook) {
+foreach (['snapsmack_smacktalk_slug_url', 'snapsmack_smacktalk_page', "'page_slug'", "'redirect_status' => 301"] as $hook) {
     if (!str_contains($viewModel . $controller . file_get_contents($root . '/index.php'), $hook)) {
         throw new RuntimeException("Strict CMS page route missing: {$hook}");
     }
+}
+if (str_contains($viewModel, "?view=page&slug=")) {
+    throw new RuntimeException('TILEZ navigation exposed internal page-controller parameters instead of a clean slug.');
 }
 foreach (["-scaled|-\\d{2,5}x\\d{2,5}", 'sean[-_ ]?mccormick', '$area > $canonical'] as $hook) {
     if (!str_contains($controller, $hook)) {

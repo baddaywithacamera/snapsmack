@@ -186,7 +186,7 @@ try {
         ]);
         if (!empty($_smacktalk['handled'])) {
             if (!empty($_smacktalk['redirect'])) {
-                header('Location: ' . $_smacktalk['redirect'], true, 302);
+                header('Location: ' . $_smacktalk['redirect'], true, (int)($_smacktalk['redirect_status'] ?? 302));
                 exit;
             }
             if (($_smacktalk['kind'] ?? '') === 'not_found') http_response_code(404);
