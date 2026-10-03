@@ -169,12 +169,7 @@ function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base, int $category
     } catch (Throwable $e) { return []; }
 
     $tiles = [];
-    $canonical = [];
     foreach ($images as $image) {
-        $identity = strtolower(trim((string)($image['img_title'] ?? '')));
-        $identity = preg_replace('/(?:-scaled|-\d{2,5}x\d{2,5})$/i', '', $identity);
-        // SMACKPRESS signatures are post chrome, never Gallery photographs.
-        if (preg_match('/(?:signature|autograph|sean[-_ ]?mccormick[-_ ]?black[-_ ]?low[-_ ]?res)/i', $identity)) continue;
         $full = ltrim((string)($image['img_file'] ?? ''), '/');
         if ($full === '' || !is_file(dirname(__DIR__) . '/' . $full)) continue;
         $thumb = '';
@@ -186,18 +181,11 @@ function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base, int $category
             }
         }
         if ($thumb === '') continue;
-        $tile = ['full' => $base . $full, 'thumb' => $base . $thumb,
+        $tiles[] = ['full' => $base . $full, 'thumb' => $base . $thumb,
             'title' => (string)($image['img_title'] ?? ''),
             'width' => max(1, (int)($image['img_width'] ?? 3)),
             'height' => max(1, (int)($image['img_height'] ?? 2))];
-        $key = $identity !== '' ? $identity : strtolower(pathinfo($full, PATHINFO_FILENAME));
-        $area = $tile['width'] * $tile['height'];
-        if (!isset($canonical[$key]) || $area > $canonical[$key]['area']) {
-            $canonical[$key] = ['area' => $area, 'tile' => $tile, 'order' => count($canonical)];
-        }
     }
-    uasort($canonical, static fn(array $a, array $b): int => $a['order'] <=> $b['order']);
-    foreach ($canonical as $entry) $tiles[] = $entry['tile'];
     return $tiles;
 }
 
@@ -230,61 +218,19 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         $stmt = $pdo->prepare("SELECT a.album_name FROM snap_post_album_map m JOIN snap_albums a ON a.id=m.album_id WHERE m.post_id=? ORDER BY a.album_name");
         $stmt->execute([(int)$post['id']]); $albums = $stmt->fetchAll(PDO::FETCH_COLUMN);
         if (!empty($post['user_id'])) {
-            $stmt = $pdo->prepare('SELECT username FROM snap_users WHERE id=? LIMIT 1');
+            $stmt = $pdo->prepare("SELECT COALESCE(NULLIF(display_name,''),username) FROM snap_users WHERE id=? LIMIT 1");
             $stmt->execute([(int)$post['user_id']]);
             $author = trim((string)($stmt->fetchColumn() ?: $author));
         }
-        $image = $repository->signaturePhotographForPost(
-            (int)$post['id'],
-            (int)($post['signature_image_id'] ?? 0)
-        );
-        if ($image) $signature = ['url' => $base . ltrim((string)$image['img_file'], '/'),
-            'alt' => (string)($image['img_alt'] ?: $image['img_title'])];
+        if (!empty($post['signature_image_id'])) {
+            $image = $repository->photographById((int)$post['signature_image_id']);
+            if ($image) $signature = ['url' => $base . ltrim((string)$image['img_file'], '/'),
+                'alt' => (string)($image['img_alt'] ?: $image['img_title'])];
+        }
     } catch (Throwable $e) { /* optional relationships may not exist on older installs */ }
-    if ($author === '') $author = (string)($settings['site_name'] ?? '');
-
     $parser = new SnapSmack($pdo);
     $rendered = $parser->parseContent((string)($post['content'] ?? ''));
-    // A post can own photographs through snap_images.post_id even when an old
-    // or interrupted migration did not create the optional presentation pivot.
-    // The landing page already honours featured_image_id; the single page must
-    // show the same photograph instead of presenting a false empty post.
-    if (trim(strip_tags((string)$rendered)) === '' && !preg_match('/<img\b/i', (string)$rendered)) {
-        try { $owned = $repository->ownedPhotographsForPost((int)$post['id']); }
-        catch (Throwable $e) { $owned = []; }
-        if (!$owned && !empty($post['featured_image_path'])) {
-            $owned = [[
-                'img_file' => (string)$post['featured_image_path'],
-                'img_alt' => (string)($post['title'] ?? ''),
-                'img_title' => (string)($post['title'] ?? ''),
-                'img_description' => '',
-            ]];
-        }
-        $fallback = '';
-        foreach ($owned as $image) {
-            $path = trim((string)($image['img_file'] ?? ''));
-            if ($path === '') continue;
-            $alt = trim((string)($image['img_alt'] ?? '')) ?: trim((string)($image['img_title'] ?? ''));
-            $fallback .= '<figure class="smacktalk-owned-photo"><img src="'
-                . htmlspecialchars($base . ltrim($path, '/'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-                . '" alt="' . htmlspecialchars($alt, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">';
-            $description = trim((string)($image['img_description'] ?? ''));
-            if ($description !== '') $fallback .= '<figcaption>' . $parser->parseContent($description) . '</figcaption>';
-            $fallback .= '</figure>';
-        }
-        if ($fallback !== '') $rendered = $fallback;
-    }
     $colophon = trim(html_entity_decode(strip_tags((string)($post['colophon'] ?? '')), ENT_QUOTES | ENT_HTML5));
-    // Already-imported WordPress posts may predate the explicit colophon
-    // field. Recover the final equipment note in the CMS view model and keep
-    // it out of the article body; skins receive only presentation-ready data.
-    if ($colophon === '' && preg_match('/<p\b[^>]*>(.*?)<\/p>\s*$/is', (string)$rendered, $closing, PREG_OFFSET_CAPTURE)) {
-        $candidate = trim(html_entity_decode(strip_tags((string)$closing[1][0]), ENT_QUOTES | ENT_HTML5));
-        if (preg_match('/^(?:images? (?:made|taken|shot) with|camera(?:s)?\s*:|equipment\s*:|gear\s*:|shot on\b|photographed with\b)/i', $candidate)) {
-            $colophon = $candidate;
-            $rendered = substr((string)$rendered, 0, (int)$closing[0][1]);
-        }
-    }
     $photo_count = preg_match_all('/<img\b/i', $rendered);
     if (preg_match_all('/\bdata-mosaic=(?:"([^"]*)"|\'([^\']*)\')/i', $rendered, $matches, PREG_SET_ORDER)) {
         foreach ($matches as $match) {

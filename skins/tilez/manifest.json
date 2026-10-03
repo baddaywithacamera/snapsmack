@@ -29,7 +29,6 @@
     ],
     "cms_navigation": [
         {"type": "home", "label": "HOME"},
-        {"type": "page", "slug": "the-idea", "label": "THE IDEA"},
         {"type": "blogroll", "label": "BLOGROLL"},
         {"type": "categories", "label": "CATEGORIES"},
         {"type": "albums", "label": "ALBUMS"},
@@ -115,7 +114,7 @@
             "section": "HEADER",
             "type": "image",
             "label": "Custom Logo",
-            "default": "skins/tilez/assets/bad-day-masthead.png",
+            "default": "",
             "accept": "image/jpeg,image/png,image/webp,image/svg+xml",
             "help": "Upload a logo image to replace the site title text. Transparent PNG recommended.",
             "hint": "Transparent PNG recommended."

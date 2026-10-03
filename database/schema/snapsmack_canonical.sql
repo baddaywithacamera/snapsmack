@@ -426,6 +426,7 @@ CREATE TABLE IF NOT EXISTS `snap_comments` (
 CREATE TABLE IF NOT EXISTS `snap_users` (
   `id`                    int          NOT NULL AUTO_INCREMENT,
   `username`              varchar(50)  COLLATE utf8mb4_unicode_ci NOT NULL,
+  `display_name`          varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `password_hash`         varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `user_role`             varchar(20)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'editor',
   `email`                 varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
