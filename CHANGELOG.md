@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.811D — 2026-10-02 — Static pages belong to the same publication
+
+- Presents TILEZ static pages with the same editorial split used by its posts: authored page content on the left and the page title in the right-hand record column.
+- Includes the fully tested but never deployed 0.7.810D public-path completion work, avoiding an unnecessary intermediate fleet update.
+
 ## 0.7.810D — 2026-10-02 — Finish the whole TILEZ public path
 
 - Restores the photograph on a SMACKTALK single-post page when an older or interrupted migration retained the canonical post ownership but missed its optional presentation pivot; the page no longer claims that a visible photographed post contains zero photographs.
