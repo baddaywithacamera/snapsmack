@@ -158,7 +158,7 @@ class DraftTests(unittest.TestCase):
         d = wp_source.draft_from_wp(POST, self.tmp.name, fetch=fake_fetch)
         self.assertEqual(d.kind, "smacktalk")
         self.assertEqual(d.title, "Rust & Chrome")
-        self.assertEqual(d.slug, "")
+        self.assertEqual(d.slug, "rust-and-chrome")
         self.assertEqual(d.post_date, "2024-05-06T14:22:00Z")
         self.assertEqual(d.tags, "")
         self.assertEqual(d.category, "")
@@ -179,13 +179,22 @@ class DraftTests(unittest.TestCase):
             wp_source.draft_from_wp(post, self.tmp.name, fetch=fake_fetch)
         self.assertIn("missing.png", str(cm.exception))
 
+    def test_wordpress_page_keeps_its_identity_and_is_not_a_post(self):
+        page = dict(POST)
+        page.update({"type": "page", "status": "publish", "slug": "the-idea"})
+        d = wp_source.draft_from_wp(page, self.tmp.name, fetch=fake_fetch)
+        self.assertEqual(d.destination_type, "page")
+        self.assertEqual(d.slug, "the-idea")
+        self.assertEqual(d.img_status, "published")
+        self.assertEqual(d.colophon, "")
+
     def test_poster_payload_keeps_date_but_not_wordpress_structure(self):
         sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "coldsnap"))
         import sumna_post
         d = wp_source.draft_from_wp(POST, self.tmp.name, fetch=fake_fetch)
         poster = sumna_post.SmacktalkPoster.__new__(sumna_post.SmacktalkPoster)
         payload = poster.build_payload(d, [101, 102, 103, 104], 101)
-        self.assertNotIn("slug", payload)
+        self.assertEqual(payload["slug"], "rust-and-chrome")
         self.assertEqual(payload["featured_image_id"], 101)
         self.assertEqual(payload["date"], "2024-05-06T14:22:00Z")
         self.assertEqual(payload["tags"], "")

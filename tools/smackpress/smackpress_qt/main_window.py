@@ -114,9 +114,13 @@ class MainWindow(QMainWindow):
             return None
         if not d or not getattr(d, "remote_post_id", 0):
             return None
-        base = (self.connect_panel.config.get("url") or "").rstrip("/")
+        base = (self.connect_panel.config.get("url")
+                or self.connect_panel.url_edit.text() or "").rstrip("/")
         slug = getattr(d, "slug", "") or ""
-        url = f"{base}/post/{slug}" if slug else f"{base}/?p={d.remote_post_id}"
+        if getattr(d, "destination_type", "post") == "page":
+            url = f"{base}/page.php?slug={slug}" if slug else f"{base}/page.php?id={d.remote_post_id}"
+        else:
+            url = f"{base}/post/{slug}" if slug else f"{base}/?p={d.remote_post_id}"
         return int(d.remote_post_id), url
 
 # ===== SNAPSMACK EOF =====

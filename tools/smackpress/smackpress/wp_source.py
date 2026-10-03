@@ -22,8 +22,9 @@ secure.
     SmacktalkPoster(site_url, key).sync_smacktalk(draft)
 
 What travels: authored words (title, body and image alt text), every image,
-and the original publication date. WordPress URLs, directory structure, slug,
-taxonomy, comments, excerpt and attachment metadata do not cross the boundary.
+the original publication date, and the authored URL slug so migrated links
+keep working. WordPress directory structure, taxonomy, comments, excerpt and
+attachment metadata do not cross the boundary.
 """
 
 # SNAPSMACK_EOF_HEADER
@@ -328,8 +329,16 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
         images = [feat] + [im for im in images if _norm(im.get("url", "")) != _norm(feat["url"])]
 
     body, ordered = rewrite_body(content, images)
-    body = _discard_source_links(body, full_post.get("link") or "")
-    body, colophon, signature_slots = extract_wordpress_ephemera(body, ordered)
+    destination_type = "page" if full_post.get("type") == "page" else "post"
+    if destination_type == "page":
+        # A WordPress Page is authored static content.  Do not reinterpret its
+        # final paragraph, signature, or links as post metadata: the page must
+        # arrive as written.  Images still become local bucket tokens so the
+        # old WordPress host can be retired safely.
+        colophon, signature_slots = "", set()
+    else:
+        body = _discard_source_links(body, full_post.get("link") or "")
+        body, colophon, signature_slots = extract_wordpress_ephemera(body, ordered)
 
     draft_images: List[DraftImage] = []
     for n, im in enumerate(ordered, 1):
@@ -356,9 +365,11 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
         colophon=colophon,
         tags="",
         post_date=date,
-        img_status=status,
+        img_status=("published" if full_post.get("status") in ("publish", "published") else status)
+                   if destination_type == "page" else status,
         category="",
-        slug="",
+        slug=full_post.get("slug") or "",
+        destination_type=destination_type,
         images=draft_images,
     )
 
