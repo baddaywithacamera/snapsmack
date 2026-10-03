@@ -180,6 +180,8 @@ try {
             'post_id' => $_GET['id'] ?? 0,
             'page_slug' => $_GET['slug'] ?? '',
             'page' => $_GET['page'] ?? 1,
+            'category' => $_GET['category'] ?? 0,
+            'album' => $_GET['album'] ?? 0,
             'requested_slug' => $requested_slug ?? '',
         ]);
         if (!empty($_smacktalk['handled'])) {

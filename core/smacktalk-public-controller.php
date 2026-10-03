@@ -19,6 +19,23 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     $page_slug = trim((string)($request['page_slug'] ?? ''));
     $requested_slug = trim((string)($request['requested_slug'] ?? ''));
 
+    if ($view === 'categories' || $view === 'albums') {
+        try {
+            $repo = new SnapPublicRepository($pdo);
+            $groups = $view === 'categories' ? $repo->publicCategories() : $repo->publicAlbums();
+        } catch (Throwable $e) { $groups = []; }
+        foreach ($groups as &$group) {
+            $id = (int)($group['id'] ?? 0);
+            $group['label'] = (string)($view === 'categories' ? ($group['cat_name'] ?? '') : ($group['album_name'] ?? ''));
+            $group['description'] = (string)($group['album_description'] ?? '');
+            $group['url'] = $base . '?view=archive&' . ($view === 'categories' ? 'category' : 'album') . '=' . $id;
+            $group['cover_url'] = !empty($group['cover_path']) ? $base . ltrim((string)$group['cover_path'], '/') : '';
+        }
+        unset($group);
+        return ['handled' => true, 'kind' => 'taxonomy', 'taxonomy' => $view,
+            'page_title' => strtoupper($view), 'groups' => $groups];
+    }
+
     if ($view === 'blogroll') {
         if (($settings['blogroll_enabled'] ?? '1') !== '1') {
             return ['handled' => true, 'redirect' => $base];
@@ -32,7 +49,9 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
             return ['handled' => true, 'redirect' => $base];
         }
         return ['handled' => true, 'kind' => 'archive', 'page_title' => 'ARCHIVE',
-            'tiles' => snapsmack_smacktalk_archive_tiles($pdo, $base)];
+            'tiles' => snapsmack_smacktalk_archive_tiles(
+                $pdo, $base, max(0, (int)($request['category'] ?? 0)), max(0, (int)($request['album'] ?? 0))
+            )];
     }
 
     if ($view === 'page' && $page_slug !== '') {
@@ -117,10 +136,10 @@ function snapsmack_smacktalk_blogroll(PDO $pdo): array
     return ['blogroll_groups' => $bounded];
 }
 
-function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base): array
+function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base, int $categoryId = 0, int $albumId = 0): array
 {
     try {
-        $images = (new SnapPublicRepository($pdo))->archivePhotographs(10000);
+        $images = (new SnapPublicRepository($pdo))->archivePhotographs(10000, 0, $categoryId, $albumId);
     } catch (Throwable $e) { return []; }
 
     $tiles = [];
@@ -199,6 +218,35 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
 
     $parser = new SnapSmack($pdo);
     $rendered = $parser->parseContent((string)($post['content'] ?? ''));
+    // A post can own photographs through snap_images.post_id even when an old
+    // or interrupted migration did not create the optional presentation pivot.
+    // The landing page already honours featured_image_id; the single page must
+    // show the same photograph instead of presenting a false empty post.
+    if (trim(strip_tags((string)$rendered)) === '' && !preg_match('/<img\b/i', (string)$rendered)) {
+        try { $owned = $repository->ownedPhotographsForPost((int)$post['id']); }
+        catch (Throwable $e) { $owned = []; }
+        if (!$owned && !empty($post['featured_image_path'])) {
+            $owned = [[
+                'img_file' => (string)$post['featured_image_path'],
+                'img_alt' => (string)($post['title'] ?? ''),
+                'img_title' => (string)($post['title'] ?? ''),
+                'img_description' => '',
+            ]];
+        }
+        $fallback = '';
+        foreach ($owned as $image) {
+            $path = trim((string)($image['img_file'] ?? ''));
+            if ($path === '') continue;
+            $alt = trim((string)($image['img_alt'] ?? '')) ?: trim((string)($image['img_title'] ?? ''));
+            $fallback .= '<figure class="smacktalk-owned-photo"><img src="'
+                . htmlspecialchars($base . ltrim($path, '/'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                . '" alt="' . htmlspecialchars($alt, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">';
+            $description = trim((string)($image['img_description'] ?? ''));
+            if ($description !== '') $fallback .= '<figcaption>' . $parser->parseContent($description) . '</figcaption>';
+            $fallback .= '</figure>';
+        }
+        if ($fallback !== '') $rendered = $fallback;
+    }
     $photo_count = preg_match_all('/<img\b/i', $rendered);
     if (preg_match_all('/\bdata-mosaic=(?:"([^"]*)"|\'([^\']*)\')/i', $rendered, $matches, PREG_SET_ORDER)) {
         foreach ($matches as $match) {
