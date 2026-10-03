@@ -78,6 +78,25 @@ def save_with_metadata(output, target, source_path, copyright_text="", strip_gps
             pnginfo = PngImagePlugin.PngInfo()
             pnginfo.add_itxt("XML:com.adobe.xmp", xmp.decode("utf-8", errors="replace"))
             options["pnginfo"] = pnginfo
+    # JPEG cannot carry an alpha channel, and a render has one whenever the
+    # photograph had one or geometry left transparent edges behind. Every other
+    # JPEG path in the editor converts first; publishing did not, and failed with
+    # "cannot write mode RGBA as JPEG" at the point of sending a post. Converting
+    # here covers every caller rather than the one that was noticed.
+    if image_format == "JPEG" and output.mode not in {"RGB", "L", "CMYK"}:
+        if "A" in output.mode or output.mode in {"P", "PA"}:
+            # Dropping the channel would leave transparent pixels at whatever
+            # sits underneath them, which the renderer sets to zero: a lens
+            # correction's transparent wedge would arrive as a black wedge on a
+            # published photograph. Compose onto white instead, as flattening
+            # for a format without transparency normally does. An image whose
+            # alpha is fully opaque, which is the common case, is unaffected.
+            flattened = Image.new("RGB", output.size, (255, 255, 255))
+            source_image = output.convert("RGBA")
+            flattened.paste(source_image, mask=source_image.getchannel("A"))
+            output = flattened
+        else:
+            output = output.convert("RGB")
     target_dir = os.path.dirname(os.path.abspath(target))
     os.makedirs(target_dir, exist_ok=True)
     descriptor, temporary = tempfile.mkstemp(prefix=".snap-writing-", suffix=".tmp",
