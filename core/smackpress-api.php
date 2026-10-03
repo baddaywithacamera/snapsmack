@@ -761,6 +761,7 @@ if ($sub === 'pages' && $method === 'POST') {
     $image_align  = in_array($raw_align, ['center','left','right'],  true) ? $raw_align : 'center';
     $image_shadow = !empty($body['image_shadow']) ? 1 : 0;
     $menu_order   = (int)($body['menu_order'] ?? 0);
+    $custom_date  = smackpress_import_date($pdo, $body['created_at'] ?? ($body['date'] ?? null));
 
     if ($title === '') smackpress_error(422, 'Title is required.');
 
@@ -776,8 +777,13 @@ if ($sub === 'pages' && $method === 'POST') {
         if (!$chk->fetch()) smackpress_error(404, 'Page not found.');
 
         $pdo->prepare(
-            "UPDATE snap_pages SET title=?, slug=?, content=?, image_asset=?, image_size=?, image_align=?, image_shadow=?, is_active=?, menu_order=? WHERE id=?"
-        )->execute([$title, $slug, $content_html, $image_asset, $image_size, $image_align, $image_shadow, $is_active, $menu_order, $page_id]);
+            "UPDATE snap_pages SET title=?, slug=?, content=?, image_asset=?, image_size=?, image_align=?, image_shadow=?, is_active=?, menu_order=?"
+            . ($custom_date ? ", created_at=?" : "") . " WHERE id=?"
+        );
+        $params = [$title, $slug, $content_html, $image_asset, $image_size, $image_align, $image_shadow, $is_active, $menu_order];
+        if ($custom_date) $params[] = $custom_date;
+        $params[] = $page_id;
+        $stmt->execute($params);
         $pid = $page_id;
     } else {
         // INSERT — ensure unique slug (snap_pages.slug is UNIQUE)
@@ -788,9 +794,12 @@ if ($sub === 'pages' && $method === 'POST') {
             if (!$c->fetch()) break;
             $slug = $base_slug . '-' . (++$n);
         }
-        $pdo->prepare(
-            "INSERT INTO snap_pages (title, slug, content, image_asset, image_size, image_align, image_shadow, is_active, menu_order) VALUES (?,?,?,?,?,?,?,?,?)"
-        )->execute([$title, $slug, $content_html, $image_asset, $image_size, $image_align, $image_shadow, $is_active, $menu_order]);
+        $sql = "INSERT INTO snap_pages (title, slug, content, image_asset, image_size, image_align, image_shadow, is_active, menu_order"
+             . ($custom_date ? ", created_at" : "") . ") VALUES (?,?,?,?,?,?,?,?,?"
+             . ($custom_date ? ",?" : "") . ")";
+        $params = [$title, $slug, $content_html, $image_asset, $image_size, $image_align, $image_shadow, $is_active, $menu_order];
+        if ($custom_date) $params[] = $custom_date;
+        $pdo->prepare($sql)->execute($params);
         $pid = (int)$pdo->lastInsertId();
     }
 

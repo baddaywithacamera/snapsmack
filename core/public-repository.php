@@ -266,14 +266,14 @@ final class SnapPublicRepository
 
     public function activePages(): array {
         return $this->all(
-            "SELECT id,slug,title,content,image_asset,image_size,image_align,image_shadow,menu_order
+            "SELECT id,slug,title,content,image_asset,image_size,image_align,image_shadow,menu_order,created_at
              FROM snap_pages WHERE is_active=1 ORDER BY menu_order ASC,id ASC"
         );
     }
 
     public function activePageBySlug(string $slug): ?array {
         return $this->one(
-            "SELECT id,slug,title,content,image_asset,image_size,image_align,image_shadow,menu_order
+            "SELECT id,slug,title,content,image_asset,image_size,image_align,image_shadow,menu_order,created_at
              FROM snap_pages WHERE slug=? AND is_active=1 LIMIT 1",
             [$slug]
         );
