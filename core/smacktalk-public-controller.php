@@ -219,11 +219,12 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
             $stmt->execute([(int)$post['user_id']]);
             $author = trim((string)($stmt->fetchColumn() ?: $author));
         }
-        if (!empty($post['signature_image_id'])) {
-            $image = $repository->photographById((int)$post['signature_image_id']);
-            if ($image) $signature = ['url' => $base . ltrim((string)$image['img_file'], '/'),
-                'alt' => (string)($image['img_alt'] ?: $image['img_title'])];
-        }
+        $image = $repository->signaturePhotographForPost(
+            (int)$post['id'],
+            (int)($post['signature_image_id'] ?? 0)
+        );
+        if ($image) $signature = ['url' => $base . ltrim((string)$image['img_file'], '/'),
+            'alt' => (string)($image['img_alt'] ?: $image['img_title'])];
     } catch (Throwable $e) { /* optional relationships may not exist on older installs */ }
     if ($author === '') $author = (string)($settings['site_name'] ?? '');
 
@@ -258,6 +259,17 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         }
         if ($fallback !== '') $rendered = $fallback;
     }
+    $colophon = trim(html_entity_decode(strip_tags((string)($post['colophon'] ?? '')), ENT_QUOTES | ENT_HTML5));
+    // Already-imported WordPress posts may predate the explicit colophon
+    // field. Recover the final equipment note in the CMS view model and keep
+    // it out of the article body; skins receive only presentation-ready data.
+    if ($colophon === '' && preg_match('/<p\b[^>]*>(.*?)<\/p>\s*$/is', (string)$rendered, $closing, PREG_OFFSET_CAPTURE)) {
+        $candidate = trim(html_entity_decode(strip_tags((string)$closing[1][0]), ENT_QUOTES | ENT_HTML5));
+        if (preg_match('/^(?:images? (?:made|taken|shot) with|camera(?:s)?\s*:|equipment\s*:|gear\s*:|shot on\b|photographed with\b)/i', $candidate)) {
+            $colophon = $candidate;
+            $rendered = substr((string)$rendered, 0, (int)$closing[0][1]);
+        }
+    }
     $photo_count = preg_match_all('/<img\b/i', $rendered);
     if (preg_match_all('/\bdata-mosaic=(?:"([^"]*)"|\'([^\']*)\')/i', $rendered, $matches, PREG_SET_ORDER)) {
         foreach ($matches as $match) {
@@ -275,7 +287,7 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         'signature' => $signature, 'previous' => $previous, 'next' => $next,
         'categories' => $categories, 'albums' => $albums,
         'categories_label' => implode(', ', $categories), 'albums_label' => implode(', ', $albums), 'author' => $author,
-        'colophon' => trim((string)($post['colophon'] ?? '')), 'photo_count' => $photo_count,
+        'colophon' => $colophon, 'photo_count' => $photo_count,
         'word_count' => count($words[0]), 'comments_enabled' => !empty($post['allow_comments']),
         'comments' => $repository->approvedComments(null, (int)$post['id']),
     ];

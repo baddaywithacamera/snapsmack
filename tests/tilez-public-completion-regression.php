@@ -10,6 +10,7 @@ $style = (string)file_get_contents($root . '/skins/tilez/style.css');
 $manifest = (string)file_get_contents($root . '/skins/tilez/manifest.json');
 $menuBuilder = (string)file_get_contents($root . '/assets/js/ss-engine-menu-builder.js');
 $routes = (string)file_get_contents($root . '/core/skin-render-helpers.php');
+$assetRegistry = (string)file_get_contents($root . '/core/asset-registry.php');
 
 $expect = static function (bool $ok, string $message): void {
     if (!$ok) throw new RuntimeException($message);
@@ -38,6 +39,19 @@ $expect(str_contains($controller, 'snapsmack_smacktalk_slug_url')
     && !str_contains($navigation, '?view=page&slug=')
     && str_contains($routes, "\$route === 'page' || \$route === 'post'"),
     'SMACKTALK exposed internal query routing instead of canonical readable slugs.');
+$expect(str_contains($manifest, '"asset:public:public-base"')
+    && str_contains($manifest, '"asset:public:shortcodes"')
+    && str_contains($manifest, '"asset:public:columns"'),
+    'TILEZ stopped loading the shared longform image presentation styles.');
+$expect(str_contains($assetRegistry, "if(isset(\$registry[\$handle]))")
+    && str_contains($assetRegistry, "':css'"),
+    'Paired mosaic JavaScript and CSS can overwrite one another in the asset registry.');
+$expect(str_contains($repository, 'signaturePhotographForPost')
+    && str_contains($controller, 'signaturePhotographForPost'),
+    'Imported author signatures no longer resolve through the public content contract.');
+$expect(str_contains($controller, "if (\$colophon === ''")
+    && str_contains($controller, 'images? (?:made|taken|shot) with'),
+    'Imported equipment notes no longer move into the post colophon.');
 
 echo "TILEZ public completion regression passed.\n";
 
