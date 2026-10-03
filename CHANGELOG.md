@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.809D — 2026-10-02 — Static pages wear the selected skin
+
+- Routes imported static pages through the bounded SMACKTALK public controller, so TILEZ supplies the same masthead, navigation, favicon, footer, and approved assets used everywhere else.
+- Keeps `page.php` as an old-link compatibility entrance while redirecting strict SMACKTALK sites to the canonical skinned page route.
+- Prevents web-server MultiViews from capturing extensionless page links and bypassing the active skin.
+
 ## 0.7.808D — 2026-10-02 — Pages are pages
 
 - Corrects the Windows SMACKPRESS migration path so WordPress Pages are created in SnapSmack's static-page system instead of being misfiled as SMACKTALK posts.
