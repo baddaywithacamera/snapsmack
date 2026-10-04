@@ -120,6 +120,18 @@ class RewriteTests(unittest.TestCase):
         self.assertNotIn("[img:bucket:", body)
         self.assertEqual(ordered[-1]["url"], f"{WP}/third.png")
 
+    def test_wordpress_derivatives_collapse_to_largest_variant(self):
+        images = [
+            {"url": f"{WP}/lake-1024x683.jpg", "width": 1024, "height": 683},
+            {"url": f"{WP}/lake-scaled.jpg", "width": 2560, "height": 1707},
+            {"url": f"{WP}/lake.jpg", "width": 6000, "height": 4000},
+        ]
+        body, ordered = wp_source.rewrite_body(
+            f'<img src="{WP}/lake-1024x683.jpg">', images)
+        self.assertEqual(len(ordered), 1)
+        self.assertEqual(ordered[0]["url"], f"{WP}/lake.jpg")
+        self.assertIn("[img:bucket:1]", body)
+
     def test_two_columns_plus_following_image_wins_over_preceding_image(self):
         content = (
             '<!-- wp:image --><figure><img src="%s/before.png"></figure><!-- /wp:image -->'
@@ -146,7 +158,7 @@ class DraftTests(unittest.TestCase):
         d = wp_source.draft_from_wp(POST, self.tmp.name, fetch=fake_fetch)
         self.assertEqual(d.kind, "smacktalk")
         self.assertEqual(d.title, "Rust & Chrome")
-        self.assertEqual(d.slug, "")
+        self.assertEqual(d.slug, "rust-and-chrome")
         self.assertEqual(d.post_date, "2024-05-06T14:22:00Z")
         self.assertEqual(d.tags, "")
         self.assertEqual(d.category, "")
@@ -167,13 +179,22 @@ class DraftTests(unittest.TestCase):
             wp_source.draft_from_wp(post, self.tmp.name, fetch=fake_fetch)
         self.assertIn("missing.png", str(cm.exception))
 
+    def test_wordpress_page_keeps_its_identity_and_is_not_a_post(self):
+        page = dict(POST)
+        page.update({"type": "page", "status": "publish", "slug": "the-idea"})
+        d = wp_source.draft_from_wp(page, self.tmp.name, fetch=fake_fetch)
+        self.assertEqual(d.destination_type, "page")
+        self.assertEqual(d.slug, "the-idea")
+        self.assertEqual(d.img_status, "published")
+        self.assertEqual(d.colophon, "")
+
     def test_poster_payload_keeps_date_but_not_wordpress_structure(self):
         sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "coldsnap"))
         import sumna_post
         d = wp_source.draft_from_wp(POST, self.tmp.name, fetch=fake_fetch)
         poster = sumna_post.SmacktalkPoster.__new__(sumna_post.SmacktalkPoster)
         payload = poster.build_payload(d, [101, 102, 103, 104], 101)
-        self.assertNotIn("slug", payload)
+        self.assertEqual(payload["slug"], "rust-and-chrome")
         self.assertEqual(payload["featured_image_id"], 101)
         self.assertEqual(payload["date"], "2024-05-06T14:22:00Z")
         self.assertEqual(payload["tags"], "")
@@ -196,7 +217,10 @@ class DraftTests(unittest.TestCase):
             f'<figure><img src="{WP}/sean-mccormick-black-low-res.png" alt="Sean\'s signature"></figure>'
             "<p>Images made with a Canon EOS R5, a Helios lens, and a DJI drone.</p>"
         )
-        d = wp_source.draft_from_wp(post, self.tmp.name, fetch=fake_fetch)
+        d = wp_source.draft_from_wp(
+            post, self.tmp.name, fetch=fake_fetch,
+            profile={"signature_markers": ["sean-mccormick-black-low-res"]},
+        )
         self.assertEqual(d.caption, "<p>The essay ends here.</p>")
         self.assertIn("Canon EOS R5", d.colophon)
         self.assertEqual(sum(1 for image in d.images if image.is_signature), 1)
@@ -205,6 +229,26 @@ class DraftTests(unittest.TestCase):
         signature_position = next(i for i, image in enumerate(d.images) if image.is_signature)
         self.assertEqual(payload["signature_image_id"], 101 + signature_position)
         self.assertIn("Canon EOS R5", payload["colophon"])
+
+    def test_source_profile_can_describe_another_sites_recurring_chrome(self):
+        post = dict(POST)
+        post["images"] = POST["images"] + [{
+            "id": 13, "url": f"{WP}/closing-flourish.png",
+            "filename": "closing-flourish.png", "alt": "the author's mark",
+        }]
+        post["content_expanded"] = (
+            "<p>The authored story.</p>"
+            f'<img src="{WP}/closing-flourish.png" alt="the author\'s mark">'
+            "<p>Made on the road with the travelling kit.</p>"
+        )
+        profile = {
+            "signature_markers": ["closing-flourish"],
+            "colophon_markers": ["travelling kit"],
+        }
+        d = wp_source.draft_from_wp(post, self.tmp.name, fetch=fake_fetch, profile=profile)
+        self.assertEqual(d.caption, "<p>The authored story.</p>")
+        self.assertIn("travelling kit", d.colophon)
+        self.assertEqual(sum(1 for image in d.images if image.is_signature), 1)
 
 
 if __name__ == "__main__":

@@ -16,7 +16,34 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     $view = trim((string)($request['view'] ?? ''));
     $post_slug = trim((string)($request['post_slug'] ?? ''));
     $post_id = max(0, (int)($request['post_id'] ?? 0));
+    $page_slug = trim((string)($request['page_slug'] ?? ''));
     $requested_slug = trim((string)($request['requested_slug'] ?? ''));
+
+    // Old controller-style links remain valid, but they are no longer the
+    // public address. Send browsers and crawlers to the readable root slug.
+    if ($view === 'page' && $page_slug !== '') {
+        return ['handled' => true, 'redirect' => snapsmack_smacktalk_slug_url($base, $page_slug), 'redirect_status' => 301];
+    }
+    if ($post_slug !== '' && $post_id === 0) {
+        return ['handled' => true, 'redirect' => snapsmack_smacktalk_slug_url($base, $post_slug), 'redirect_status' => 301];
+    }
+
+    if ($view === 'categories' || $view === 'albums') {
+        try {
+            $repo = new SnapPublicRepository($pdo);
+            $groups = $view === 'categories' ? $repo->publicCategories() : $repo->publicAlbums();
+        } catch (Throwable $e) { $groups = []; }
+        foreach ($groups as &$group) {
+            $id = (int)($group['id'] ?? 0);
+            $group['label'] = (string)($view === 'categories' ? ($group['cat_name'] ?? '') : ($group['album_name'] ?? ''));
+            $group['description'] = (string)($group['album_description'] ?? '');
+            $group['url'] = $base . '?view=archive&' . ($view === 'categories' ? 'category' : 'album') . '=' . $id;
+            $group['cover_url'] = !empty($group['cover_path']) ? $base . ltrim((string)$group['cover_path'], '/') : '';
+        }
+        unset($group);
+        return ['handled' => true, 'kind' => 'taxonomy', 'taxonomy' => $view,
+            'page_title' => strtoupper($view), 'groups' => $groups];
+    }
 
     if ($view === 'blogroll') {
         if (($settings['blogroll_enabled'] ?? '1') !== '1') {
@@ -31,7 +58,18 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
             return ['handled' => true, 'redirect' => $base];
         }
         return ['handled' => true, 'kind' => 'archive', 'page_title' => 'ARCHIVE',
-            'tiles' => snapsmack_smacktalk_archive_tiles($pdo, $base)];
+            'tiles' => snapsmack_smacktalk_archive_tiles(
+                $pdo, $base, max(0, (int)($request['category'] ?? 0)), max(0, (int)($request['album'] ?? 0))
+            )];
+    }
+
+    // Pretty page URLs arrive as a requested path. Resolve an active CMS page
+    // before treating that path as a post slug; pages and posts remain ordinary
+    // canonical SnapSmack records, not skin-owned compatibility content.
+    if ($requested_slug !== '' && $post_slug === '' && $post_id === 0) {
+        try { $page = (new SnapPublicRepository($pdo))->activePageBySlug($requested_slug); }
+        catch (Throwable $e) { $page = null; }
+        if ($page) return ['handled' => true] + snapsmack_smacktalk_page($pdo, $requested_slug, $page);
     }
 
     $candidate_from_path = false;
@@ -52,6 +90,43 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     if ($requested_slug !== '') return ['handled' => false];
     return ['handled' => true, 'kind' => 'feed']
         + snapsmack_smacktalk_feed($pdo, $settings, $base, max(1, (int)($request['page'] ?? 1)));
+}
+
+function snapsmack_smacktalk_slug_url(string $base, string $slug): string
+{
+    $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', trim($slug));
+    return rtrim($base, '/') . '/' . rawurlencode($slug);
+}
+
+function snapsmack_smacktalk_page(PDO $pdo, string $slug, ?array $page = null): array
+{
+    try {
+        $page = $page ?? (new SnapPublicRepository($pdo))->activePageBySlug($slug);
+    } catch (Throwable $e) { $page = null; }
+    if (!$page) return ['kind' => 'not_found', 'page_title' => '404 — Not Found'];
+
+    $parser = new SnapSmack($pdo);
+    $rendered = $parser->parseContent((string)($page['content'] ?? ''));
+    $photo_count = preg_match_all('/<img\b/i', $rendered);
+    if (preg_match_all('/\bdata-mosaic=(?:"([^"]*)"|\'([^\']*)\')/i', $rendered, $mosaics, PREG_SET_ORDER)) {
+        foreach ($mosaics as $mosaic) {
+            $json = html_entity_decode((string)($mosaic[1] !== '' ? $mosaic[1] : $mosaic[2]), ENT_QUOTES | ENT_HTML5);
+            $items = json_decode($json, true);
+            if (is_array($items)) $photo_count += count($items);
+        }
+    }
+    $plain = preg_replace('/\[[^\]]+\]/', ' ', (string)($page['content'] ?? ''));
+    $plain = html_entity_decode(strip_tags((string)$plain), ENT_QUOTES | ENT_HTML5);
+    preg_match_all('/[\p{L}\p{N}]+(?:[’\'\-][\p{L}\p{N}]+)*/u', $plain, $words);
+    return [
+        'kind' => 'page',
+        'page_title' => (string)($page['title'] ?? ''),
+        'item' => $page,
+        'rendered_content' => $rendered,
+        'publication_date' => (string)($page['created_at'] ?? ''),
+        'photo_count' => $photo_count,
+        'word_count' => count($words[0]),
+    ];
 }
 
 function snapsmack_smacktalk_blogroll(PDO $pdo): array
@@ -87,23 +162,29 @@ function snapsmack_smacktalk_blogroll(PDO $pdo): array
     return ['blogroll_groups' => $bounded];
 }
 
-function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base): array
+function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base, int $categoryId = 0, int $albumId = 0): array
 {
     try {
-        $images = (new SnapPublicRepository($pdo))->archivePhotographs(10000);
+        $images = (new SnapPublicRepository($pdo))->archivePhotographs(10000, 0, $categoryId, $albumId);
     } catch (Throwable $e) { return []; }
 
     $tiles = [];
     foreach ($images as $image) {
         $full = ltrim((string)($image['img_file'] ?? ''), '/');
-        if ($full === '') continue;
-        $thumb = ltrim((string)($image['img_thumb_square'] ?? $image['img_thumb_aspect'] ?? ''), '/');
-        if ($thumb === '') {
-            $dir = trim(str_replace(basename($full), '', $full), '/');
-            $thumb = ($dir !== '' ? $dir . '/' : '') . 'thumbs/t_' . basename($full);
+        if ($full === '' || !is_file(dirname(__DIR__) . '/' . $full)) continue;
+        $thumb = '';
+        foreach ([$image['img_thumb_aspect'] ?? '', $image['img_thumb_square'] ?? '', $full] as $candidate) {
+            $candidate = ltrim((string)$candidate, '/');
+            if ($candidate !== '' && is_file(dirname(__DIR__) . '/' . $candidate)) {
+                $thumb = $candidate;
+                break;
+            }
         }
+        if ($thumb === '') continue;
         $tiles[] = ['full' => $base . $full, 'thumb' => $base . $thumb,
-            'title' => (string)($image['img_title'] ?? '')];
+            'title' => (string)($image['img_title'] ?? ''),
+            'width' => max(1, (int)($image['img_width'] ?? 3)),
+            'height' => max(1, (int)($image['img_height'] ?? 2))];
     }
     return $tiles;
 }
@@ -128,7 +209,7 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         $next = $repository->adjacentPosts((int)$post['id'], 'longform', true);
         foreach (['previous' => &$previous, 'next' => &$next] as &$adjacent) {
             if (is_array($adjacent) && !empty($adjacent['slug'])) {
-                $adjacent['url'] = $base . '?post=' . rawurlencode((string)$adjacent['slug']);
+                $adjacent['url'] = snapsmack_smacktalk_slug_url($base, (string)$adjacent['slug']);
             }
         }
         unset($adjacent);
@@ -137,7 +218,7 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         $stmt = $pdo->prepare("SELECT a.album_name FROM snap_post_album_map m JOIN snap_albums a ON a.id=m.album_id WHERE m.post_id=? ORDER BY a.album_name");
         $stmt->execute([(int)$post['id']]); $albums = $stmt->fetchAll(PDO::FETCH_COLUMN);
         if (!empty($post['user_id'])) {
-            $stmt = $pdo->prepare('SELECT username FROM snap_users WHERE id=? LIMIT 1');
+            $stmt = $pdo->prepare("SELECT COALESCE(NULLIF(display_name,''),username) FROM snap_users WHERE id=? LIMIT 1");
             $stmt->execute([(int)$post['user_id']]);
             $author = trim((string)($stmt->fetchColumn() ?: $author));
         }
@@ -147,10 +228,9 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
                 'alt' => (string)($image['img_alt'] ?: $image['img_title'])];
         }
     } catch (Throwable $e) { /* optional relationships may not exist on older installs */ }
-    if ($author === '') $author = (string)($settings['site_name'] ?? '');
-
     $parser = new SnapSmack($pdo);
     $rendered = $parser->parseContent((string)($post['content'] ?? ''));
+    $colophon = trim(html_entity_decode(strip_tags((string)($post['colophon'] ?? '')), ENT_QUOTES | ENT_HTML5));
     $photo_count = preg_match_all('/<img\b/i', $rendered);
     if (preg_match_all('/\bdata-mosaic=(?:"([^"]*)"|\'([^\']*)\')/i', $rendered, $matches, PREG_SET_ORDER)) {
         foreach ($matches as $match) {
@@ -168,7 +248,7 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         'signature' => $signature, 'previous' => $previous, 'next' => $next,
         'categories' => $categories, 'albums' => $albums,
         'categories_label' => implode(', ', $categories), 'albums_label' => implode(', ', $albums), 'author' => $author,
-        'colophon' => trim((string)($post['colophon'] ?? '')), 'photo_count' => $photo_count,
+        'colophon' => $colophon, 'photo_count' => $photo_count,
         'word_count' => count($words[0]), 'comments_enabled' => !empty($post['allow_comments']),
         'comments' => $repository->approvedComments(null, (int)$post['id']),
     ];
@@ -185,7 +265,7 @@ function snapsmack_smacktalk_feed(PDO $pdo, array $settings, string $base, int $
     } catch (Throwable $e) { $total = 0; $posts = []; }
 
     foreach ($posts as &$post) {
-        $post['url'] = $base . '?post=' . rawurlencode((string)$post['slug']);
+        $post['url'] = snapsmack_smacktalk_slug_url($base, (string)$post['slug']);
         $post['image_url'] = !empty($post['featured_image_path']) ? $base . ltrim((string)$post['featured_image_path'], '/') : '';
         $post['width'] = max(1, (int)($post['featured_width'] ?? 3));
         $post['height'] = max(1, (int)($post['featured_height'] ?? 2));

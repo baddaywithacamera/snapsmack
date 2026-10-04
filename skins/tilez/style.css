@@ -2015,9 +2015,11 @@ p.comment-form-author { margin-right: 5%; }
    ============================================================ */
 
 .alfred-archive-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    grid-gap: 4px;
+    --ss-cols: 5;
+    --ss-gap: 4px;
+    position: relative;
+    display: block;
+    width: 100%;
     margin: 0 0 40px;
 }
 
@@ -2025,7 +2027,6 @@ p.comment-form-author { margin-right: 5%; }
     position: relative;
     display: block;
     overflow: hidden;
-    aspect-ratio: 1 / 1;
     background: #111;
     cursor: pointer;
 }
@@ -2034,7 +2035,7 @@ p.comment-form-author { margin-right: 5%; }
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: fill;
     transition: transform 0.4s ease, opacity 0.3s ease;
 }
 
@@ -2178,6 +2179,8 @@ body.alfred-lb-open { overflow: hidden; }
 }
 
 html, body { background: #fff; color: var(--tilez-ink); }
+body.tilez-v2 > #page { min-height: 100vh; display: flex; flex-direction: column; }
+body.tilez-v2 > #page > #system-footer { margin-top: auto; width: 100%; }
 body.blog, body.single, body.archive { background: #fff; }
 
 /* The TILEZ masthead is the identity. The old full-viewport ALFRED backdrop is
@@ -2584,8 +2587,15 @@ body.blog, body.single, body.archive { background: #fff; }
 
 .tilez-blogroll > .section-inner { width: min(980px, calc(100% - 48px)); padding: 72px 0 30px; }
 .blogroll-heading { margin-bottom: 48px; border-bottom: 1px solid #ddd; }
-.blogroll-heading h1 { margin: 0 0 18px; font-size: clamp(30px, 5vw, 58px); font-weight: 500; letter-spacing: -.035em; }
-.blogroll-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 54px 70px; }
+.blogroll-heading h1 {
+    margin: 0 0 18px;
+    font-size: clamp(2rem, 2.6vw, 2.7rem);
+    font-weight: 700;
+    line-height: 1.06;
+    letter-spacing: normal;
+}
+.blogroll-grid { columns: 2; column-gap: 70px; }
+.blogroll-group { break-inside: avoid; margin: 0 0 54px; }
 .blogroll-group h2 { margin: 0 0 20px; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 .blogroll-group ul { margin: 0; padding: 0; list-style: none; }
 .blogroll-group li { padding: 17px 0; border-top: 1px solid #e7e7e7; }
@@ -2593,7 +2603,13 @@ body.blog, body.single, body.archive { background: #fff; }
 .blogroll-group a:hover { text-decoration: underline; }
 .blogroll-group p { margin: 7px 0 0; color: #555; font-size: 15px; line-height: 1.55; }
 
+.tilez-page .page-container { padding-top: 72px; padding-bottom: 30px; }
+.tilez-page .page-record { align-self: start; }
+.tilez-page .page-record .post-header { margin: 0; border: 0; }
+.tilez-page .page-content { min-width: 0; }
+
 @media (max-width: 900px) {
+    .alfred-archive-grid { --ss-cols: 3; }
     .posts.ss-masonry { --ss-cols: 2; }
     .navigation { position: relative; top: auto; }
     .main-menu { display: none; }
@@ -2616,6 +2632,7 @@ body.blog, body.single, body.archive { background: #fff; }
 }
 
 @media (max-width: 560px) {
+    .alfred-archive-grid { --ss-cols: 2; }
     :root { --tilez-gap: 10px; }
     .header, .content > .section-inner { width: calc(100% - 28px); }
     .header { padding: 58px 0 20px; }
@@ -2632,7 +2649,31 @@ body.blog, body.single, body.archive { background: #fff; }
         margin-right: 0;
     }
     .tilez-blogroll > .section-inner { width: calc(100% - 28px); padding-top: 46px; }
-    .blogroll-grid { grid-template-columns: 1fr; gap: 42px; }
+    .blogroll-grid { columns: 1; }
+    .blogroll-group { margin-bottom: 42px; }
 }
+
+.smacktalk-owned-photo { margin: 0 0 34px; }
+.smacktalk-owned-photo img { display: block; width: 100%; height: auto; }
+.smacktalk-owned-photo figcaption { margin-top: 14px; }
+
+.tilez-taxonomy-page > .section-inner { width: min(var(--tilez-page), calc(100% - 48px)); padding: var(--tilez-content-start) 0 30px; }
+.taxonomy-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 370px); gap: 0 clamp(42px, 4vw, 64px); align-items: start; }
+.taxonomy-record { position: sticky; top: 32px; }
+.taxonomy-heading { margin-bottom: 20px; border-bottom: 1px solid #ddd; }
+.taxonomy-heading h1 { margin: 0 0 18px; font-size: clamp(30px, 5vw, 58px); font-weight: 500; letter-spacing: -.035em; }
+.taxonomy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 210px; gap: 8px; }
+.taxonomy-card { overflow: hidden; background: #f3f3f3; text-decoration: none; }
+.taxonomy-card > img { width: 100%; height: 100%; object-fit: cover; transition: transform .2s ease, opacity .2s ease; }
+.taxonomy-card:hover > img { opacity: .88; transform: scale(1.015); }
+.taxonomy-links { list-style: none; margin: 0; padding: 0; }
+.taxonomy-links li { border-bottom: 1px solid #e5e5e5; }
+.taxonomy-links a { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 18px; padding: 13px 0; color: #111; text-decoration: none; }
+.taxonomy-links strong { font-size: 17px; font-weight: 500; }
+.taxonomy-links small { color: #777; text-transform: uppercase; letter-spacing: .06em; }
+.taxonomy-links span { grid-column: 1 / -1; color: #555; font-size: 14px; line-height: 1.45; }
+.taxonomy-links a:hover strong { color: var(--alfred-accent); }
+@media (max-width: 900px) { .taxonomy-split { grid-template-columns: 1fr; gap: 38px; } .taxonomy-record { position: static; grid-row: 1; } }
+@media (max-width: 560px) { .taxonomy-grid { grid-template-columns: 1fr; } }
 
 /* ===== SNAPSMACK EOF ===== */
