@@ -1,0 +1,50 @@
+<?php
+declare(strict_types=1);
+
+$root = dirname(__DIR__);
+$repo = file_get_contents($root . '/core/public-repository.php');
+$controller = file_get_contents($root . '/core/smacktalk-public-controller.php');
+$viewModel = file_get_contents($root . '/core/skin-view-model.php');
+$layout = file_get_contents($root . '/skins/tilez/layout.php');
+$css = file_get_contents($root . '/skins/tilez/style.css');
+$manifest = json_decode((string)file_get_contents($root . '/skins/tilez/manifest.json'), true);
+
+if (!is_array($manifest)) throw new RuntimeException('TILEZ manifest is invalid JSON.');
+if (!str_contains($repo, 'p.signature_image_id=i.id')) {
+    throw new RuntimeException('Signature-only media can leak into the public image archive.');
+}
+foreach (["img_thumb_aspect", "is_file(dirname(__DIR__)", "'width'", "'height'"] as $hook) {
+    if (!str_contains($controller, $hook)) throw new RuntimeException("Archive media validation missing: {$hook}");
+}
+foreach (['alfred-archive-grid ss-masonry', 'alfred-archive-tile ss-masonry-item', 'data-w=', 'data-h='] as $hook) {
+    if (!str_contains($layout, $hook)) throw new RuntimeException("TILEZ archive lost shared columns hook: {$hook}");
+}
+foreach (["kind'] ?? '') === 'page'", "snap_render_component('footer'", 'footer-metadata-bar'] as $hook) {
+    if (!str_contains($layout . file_get_contents($root . '/core/skin-render-helpers.php'), $hook)) {
+        throw new RuntimeException("TILEZ page/footer restoration missing: {$hook}");
+    }
+}
+foreach (['snapsmack_smacktalk_slug_url', 'snapsmack_smacktalk_page', "'page_slug'", "'redirect_status' => 301"] as $hook) {
+    if (!str_contains($viewModel . $controller . file_get_contents($root . '/index.php'), $hook)) {
+        throw new RuntimeException("Strict CMS page route missing: {$hook}");
+    }
+}
+if (str_contains($viewModel, "?view=page&slug=")) {
+    throw new RuntimeException('TILEZ navigation exposed internal page-controller parameters instead of a clean slug.');
+}
+foreach (["-scaled|-\\d{2,5}x\\d{2,5}", 'sean[-_ ]?mccormick', '$area > $canonical'] as $leak) {
+    if (str_contains($controller, $leak)) {
+        throw new RuntimeException("SMACKPRESS migration repair leaked into public rendering: {$leak}");
+    }
+}
+foreach (['archive_columns', 'archive_gap'] as $key) {
+    if (!isset($manifest['options'][$key])) throw new RuntimeException("TILEZ archive control missing: {$key}");
+}
+if (!str_contains($viewModel, "blogroll\\.php") || !str_contains($viewModel, "type = 'blogroll'")) {
+    throw new RuntimeException('Old configured Blogroll URLs are not normalized for strict SMACKTALK skins.');
+}
+if (!str_contains($css, '.alfred-archive-grid {') || !str_contains($css, '--ss-cols: 5')) {
+    throw new RuntimeException('TILEZ archive no longer defaults to the smaller asymmetric wall.');
+}
+
+echo "TILEZ SMACKTALK restoration regression passed\n";
