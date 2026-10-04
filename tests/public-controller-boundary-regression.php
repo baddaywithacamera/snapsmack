@@ -28,6 +28,9 @@ $entry = (string)file_get_contents(dirname(__DIR__) . '/index.php');
 if (!str_contains($entry, "'/style.css?v=' . rawurlencode(\$_active_skin_version)")) {
     throw new RuntimeException('Strict skin stylesheet URL is not versioned by the installed skin manifest.');
 }
+if (!str_contains($entry, "\$_GET['slug'] ?? (\$_GET['s'] ?? '')")) {
+    throw new RuntimeException('Legacy ?s=<slug> image links no longer enter the strict public controller.');
+}
 if (!str_contains($entry, "in_array(\n            'smack-progressive-reveal'")
     || str_contains($entry, "if (\$active_skin === 'instant-camera')")) {
     throw new RuntimeException('Full progressive feed is not granted by declared shared-engine capability.');
