@@ -170,7 +170,6 @@ try {
     // CLI output for cron logs
     $msg = "SnapSmack version check complete. ";
     $msg .= "Core: {$core_status}. ";
-    $msg .= "New skins: " . count($skin_info['new_skins']) . ". ";
     $msg .= "Skin updates: " . count($skin_info['updated_skins']) . ".";
     echo $msg . "\n";
 
