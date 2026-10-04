@@ -526,6 +526,23 @@ if (($settings['active_skin'] ?? '') === 'instant-camera') {
     .gp-swatch input[type=color] { width:24px; height:20px; border:none;
         background:none; padding:0; cursor:pointer; }
     .gp-shadow { flex:1; min-width:0; }
+    .gp-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:10px 12px; margin-top:12px; padding-top:12px;
+        border-top:1px solid var(--border-color,#333); }
+    .gp-meta-heading { grid-column:1/-1; font-size:10px; font-weight:800;
+        letter-spacing:.12em; text-transform:uppercase; opacity:.72; }
+    .gp-meta-field { display:flex !important; flex-direction:column; gap:6px;
+        min-width:0; margin:0 !important; }
+    .gp-meta-field > span { font-size:10px; font-weight:700; letter-spacing:.07em;
+        text-transform:uppercase; opacity:.68; }
+    .gp-meta-field input, .gp-meta-field select { width:100%; min-width:0;
+        box-sizing:border-box; }
+    .gp-meta-wide { grid-column:1/-1; }
+
+    @media (max-width: 560px) {
+        .gp-meta { grid-template-columns:1fr; }
+        .gp-meta-heading, .gp-meta-wide { grid-column:1; }
+    }
 
     /* ---------------------------------------------------------------------
        UPLOAD STRIP — drop zone + preview thumbnails. These .cp-* classes were
