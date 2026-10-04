@@ -303,10 +303,12 @@ function pc_board_windows(PDO $pdo, array $settings, int $history_limit = 52): a
     try {
         $limit = max(1, min(260, $history_limit + 1));
         $q = $pdo->prepare(
-            "SELECT week_key,friday,submit_start,submit_end,prompt,tag
-               FROM pc_prompts
-              WHERE status IN ('live','done') AND submit_start<=UTC_TIMESTAMP()
-           ORDER BY submit_start DESC LIMIT {$limit}"
+            "SELECT p.week_key,p.friday,p.submit_start,p.submit_end,p.prompt,p.tag,p.tag_display,
+                    p.alt,p.image_id,i.img_file AS prompt_image
+               FROM pc_prompts p
+          LEFT JOIN snap_images i ON i.id=p.image_id
+              WHERE p.status IN ('live','done') AND p.submit_start<=UTC_TIMESTAMP()
+           ORDER BY p.submit_start DESC LIMIT {$limit}"
         );
         $q->execute();
         foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -320,6 +322,9 @@ function pc_board_windows(PDO $pdo, array $settings, int $history_limit = 52): a
                 'label' => (new DateTimeImmutable((string)$row['friday'], new DateTimeZone('UTC')))->format('M j, Y'),
                 'prompt' => trim((string)($row['prompt'] ?? '')),
                 'tag' => strtolower(trim((string)($row['tag'] ?? ''))) ?: pc_tag($settings),
+                'tag_display' => trim((string)($row['tag_display'] ?? '')),
+                'prompt_image' => trim((string)($row['prompt_image'] ?? '')),
+                'alt' => trim((string)($row['alt'] ?? '')),
             ];
             if ($week_key === (string)$current['week_key']) {
                 $rounds[$week_key] = array_merge($current, $window);
@@ -2023,7 +2028,28 @@ function pc_board_rounds_embed_html(PDO $pdo, array $settings, int $history_limi
 
     $esc = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
     $rounds = pc_board_windows($pdo, $settings, $history_limit);
+    $base = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : '/';
     $out = '<div class="pc-board-rounds">';
+
+    if ($rounds) {
+        $out .= '<nav class="pc-prompt-index" aria-label="Current and past photo challenge prompts">';
+        $out .= '<h2>Current and Past Prompts</h2><div class="pc-prompt-cards">';
+        foreach ($rounds as $round_index => $win) {
+            $week_key = preg_replace('/[^A-Za-z0-9_-]/', '-', (string)($win['week_key'] ?? ''));
+            $prompt = trim((string)($win['prompt'] ?? ''));
+            $tag = trim((string)($win['tag_display'] ?? '')) ?: trim((string)($win['tag'] ?? pc_tag($settings)));
+            $image = trim((string)($win['prompt_image'] ?? ''));
+            if ($image !== '' && !preg_match('#^https?://#i', $image)) $image = $base . ltrim($image, '/');
+            $out .= '<a class="pc-prompt-card' . ($round_index === 0 ? ' is-current' : '') . '" href="#round-' . $esc($week_key) . '">';
+            if ($image !== '') {
+                $alt = trim((string)($win['alt'] ?? '')) ?: ($prompt !== '' ? $prompt . ' photo challenge prompt' : 'Photo challenge prompt');
+                $out .= '<img loading="lazy" src="' . $esc($image) . '" alt="' . $esc($alt) . '">';
+            }
+            $out .= '<span class="pc-prompt-copy"><strong>' . $esc($round_index === 0 ? 'Current: ' . ($prompt ?: 'This Week') : ($prompt ?: 'Previous Prompt')) . '</strong>';
+            $out .= '<span>' . $esc($win['label'] ?? '') . ' &middot; #' . $esc(ltrim($tag, '#')) . '</span></span></a>';
+        }
+        $out .= '</div></nav>';
+    }
 
     foreach ($rounds as $round_index => $win) {
         $prompt = trim((string)($win['prompt'] ?? ''));
@@ -2033,7 +2059,8 @@ function pc_board_rounds_embed_html(PDO $pdo, array $settings, int $history_limi
             ? 'This Week'
             : ($prompt !== '' ? $prompt : (string)($win['label'] ?? 'Previous Round'));
 
-        $out .= '<section class="pc-board-round">';
+        $week_key = preg_replace('/[^A-Za-z0-9_-]/', '-', (string)($win['week_key'] ?? ''));
+        $out .= '<section class="pc-board-round" id="round-' . $esc($week_key) . '">';
         $out .= '<h2>' . $esc($heading) . '</h2>';
         $out .= '<p class="dim"><strong>' . $esc($state) . '</strong> &middot; '
               . $esc($win['label'] ?? '');
