@@ -190,22 +190,26 @@
                         '<div class="gp-ctl"><span>Shadow</span>' +
                             '<select class="gp-shadow">' + shadowOpts + '</select></div>' +
                     '</div>' +
-                    // ALT applies in both crop modes, so it lives outside .gp-fit.
-                    '<div class="gp-ctl gp-ctl-alt"><span>Alt</span>' +
-                        '<input type="text" class="gp-alt" maxlength="500" placeholder="Describe this photo for screen readers" value="' + escHtml(item.alt || '') + '" style="flex:1;min-width:0;"></div>' +
-                    '<div class="gp-ctl"><span>Orientation</span>' +
-                        '<select class="gp-orientation">' +
-                            '<option value="auto"' + (item.orientation === 'auto' ? ' selected' : '') + '>Auto</option>' +
-                            '<option value="0"' + (item.orientation === '0' ? ' selected' : '') + '>Landscape</option>' +
-                            '<option value="1"' + (item.orientation === '1' ? ' selected' : '') + '>Portrait</option>' +
-                            '<option value="2"' + (item.orientation === '2' ? ' selected' : '') + '>Square</option>' +
-                        '</select></div>' +
-                    '<div class="gp-ctl"><span>Colour / B&amp;W</span>' +
-                        '<select class="gp-color-mode">' +
-                            '<option value=""' + (item.colorMode === '' ? ' selected' : '') + '>&mdash;</option>' +
-                            '<option value="color"' + (item.colorMode === 'color' ? ' selected' : '') + '>Colour</option>' +
-                            '<option value="bw"' + (item.colorMode === 'bw' ? ' selected' : '') + '>B&amp;W</option>' +
-                        '</select></div>' +
+                    // Descriptive metadata applies in both crop modes. Keep it in
+                    // one labelled panel instead of appending three loose rows.
+                    '<div class="gp-meta">' +
+                        '<div class="gp-meta-heading">Photo details</div>' +
+                        '<label class="gp-meta-field gp-meta-wide"><span>Alternative text</span>' +
+                            '<input type="text" class="gp-alt" maxlength="500" placeholder="Describe this photo for screen readers" value="' + escHtml(item.alt || '') + '"></label>' +
+                        '<label class="gp-meta-field"><span>Orientation</span>' +
+                            '<select class="gp-orientation">' +
+                                '<option value="auto"' + (item.orientation === 'auto' ? ' selected' : '') + '>Auto</option>' +
+                                '<option value="0"' + (item.orientation === '0' ? ' selected' : '') + '>Landscape</option>' +
+                                '<option value="1"' + (item.orientation === '1' ? ' selected' : '') + '>Portrait</option>' +
+                                '<option value="2"' + (item.orientation === '2' ? ' selected' : '') + '>Square</option>' +
+                            '</select></label>' +
+                        '<label class="gp-meta-field"><span>Colour treatment</span>' +
+                            '<select class="gp-color-mode">' +
+                                '<option value=""' + (item.colorMode === '' ? ' selected' : '') + '>Not specified</option>' +
+                                '<option value="color"' + (item.colorMode === 'color' ? ' selected' : '') + '>Colour</option>' +
+                                '<option value="bw"' + (item.colorMode === 'bw' ? ' selected' : '') + '>Black &amp; white</option>' +
+                            '</select></label>' +
+                    '</div>' +
                 '</div>';
 
             const wrap     = el.querySelector('.cp-thumb-wrap');
