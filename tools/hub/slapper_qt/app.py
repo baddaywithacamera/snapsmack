@@ -26,6 +26,21 @@ def main(argv=None):
     if core_gate_report:
         import core_release_gate
         return 0 if core_release_gate.run(core_gate_report) else 1
+    if os.environ.get("SNAP_SLAPPER_GPU_PROBE", "").strip():
+        # Report what the packaged build can actually do with the graphics
+        # card, without opening a window. Diagnosing this by asking the
+        # photographer to open Preferences and read back an error is not a
+        # workflow; this is one command.
+        import gpu_acceleration
+        gpu_acceleration.configure("auto")
+        report = gpu_acceleration.status()
+        print("available:", report["available"])
+        print("label:", report["label"])
+        detail = gpu_acceleration.detail()
+        if detail:
+            print("detail:")
+            print(detail)
+        return 0 if report["available"] else 1
     import snap_single_instance
     qa_mode = bool(os.environ.get("SNAP_SLAPPER_QA_IMAGE") and
                    os.environ.get("SNAP_SLAPPER_QA_MARKER"))
