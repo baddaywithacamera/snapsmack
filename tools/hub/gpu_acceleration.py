@@ -93,9 +93,71 @@ def _cupy():
                     raise RuntimeError("the GPU returned the wrong arithmetic result")
                 _CUPY = cp
             except Exception as exc:  # noqa: BLE001 - fallback is the contract
-                _ERROR = str(exc)
+                _ERROR = _readable_reason(exc)
+                _record_detail(exc)
                 _CUPY = None
     return _CUPY
+
+
+_DETAIL = ""
+
+
+def _readable_reason(error):
+    """One sentence a photographer can act on, not an import diagnostic.
+
+    CuPy wraps whatever really went wrong in a long generic message listing
+    every DLL it looked for. The useful part is the chained cause, so start
+    there, and recognise the few failures that actually happen.
+    """
+    cause = error
+    seen = set()
+    while getattr(cause, "__cause__", None) is not None and id(cause) not in seen:
+        seen.add(id(cause))
+        cause = cause.__cause__
+    text = str(cause) or str(error)
+    lowered = text.lower()
+    if "nvrtc-builtins" in lowered:
+        return ("the CUDA compiler is present but could not load its own "
+                "support file")
+    if "nvrtc" in lowered:
+        return "the CUDA compiler could not be loaded"
+    if "cuda_fp16" in lowered or "cuda root" in lowered or "cuda_path" in lowered:
+        return "the CUDA headers are missing"
+    if "no module named" in lowered:
+        # Anything missing while importing CuPy means this build was packaged
+        # wrong, not that the machine is at fault. Say which piece: that is the
+        # only thing that identifies it.
+        if "'cupy'" in text:
+            return "this build does not include GPU support"
+        # A piece of it is missing, which means the build is wrong rather than
+        # the machine. Name the piece: it is the only thing that identifies it.
+        missing = text.split("'")[1] if "'" in text else "a component"
+        return f"this build is missing part of its GPU support ({missing})"
+    if "getdevicecount" in lowered or "no cuda device" in lowered:
+        return "no NVIDIA graphics card was found"
+    if "driver" in lowered and "version" in lowered:
+        return "the NVIDIA driver is too old for this CUDA version"
+    first = text.strip().splitlines()[0] if text.strip() else error.__class__.__name__
+    return first[:160]
+
+
+def _record_detail(error):
+    """Keep the full technical account where it belongs: the log file."""
+    global _DETAIL
+    import traceback
+    _DETAIL = "".join(traceback.format_exception(
+        type(error), error, error.__traceback__))
+    try:
+        import snap_log
+        snap_log.get("snap_slapper").warning(
+            "GPU unavailable, using the processor: %s\n%s", _ERROR, _DETAIL)
+    except Exception:  # noqa: BLE001 - never let logging break the fallback
+        pass
+
+
+def detail():
+    """The full import failure, for the log and for support."""
+    return _DETAIL
 
 
 def status():
@@ -103,8 +165,10 @@ def status():
         return {"mode": _MODE, "available": False, "label": "CPU selected"}
     cp = _cupy()
     if cp is None:
-        detail = _ERROR or "NVIDIA acceleration add-on is not installed"
-        return {"mode": _MODE, "available": False, "label": f"CPU fallback — {detail}"}
+        reason = _ERROR or "this build does not include GPU support"
+        return {"mode": _MODE, "available": False,
+                "label": f"Using the processor — {reason}.",
+                "reason": reason, "detail": _DETAIL}
     try:
         device = cp.cuda.Device()
         props = cp.cuda.runtime.getDeviceProperties(device.id)
