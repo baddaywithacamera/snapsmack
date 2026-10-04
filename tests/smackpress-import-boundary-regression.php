@@ -12,6 +12,13 @@ $needles = [
     "setting_key='timezone'",
     'smackpress_reject_migration_residue((string)$raw_content)',
     'smackpress_reject_migration_residue((string)$raw_colophon)',
+    'SELECT id,user_id FROM snap_ohsnap_keys',
+    "This import key is not bound to a system user",
+    'featured_image_id=?, user_id=?',
+    'featured_image_id,user_id',
+    "if (\$sub === 'pages' && \$method === 'GET')",
+    "SELECT id,title,slug,is_active,created_at FROM snap_pages",
+    '$stmt = $pdo->prepare(',
 ];
 foreach ($needles as $needle) {
     if (strpos($api, $needle) === false) {

@@ -67,9 +67,8 @@ final class SnapPublicRepository
         $typeSql = $type === null ? '' : ' AND post_type=?';
         $params = $type === null ? [$slug] : [$slug, $type];
         return $this->one(
-            "SELECT id,title,slug,description,post_type,created_at,updated_at,allow_comments,
-                    allow_download,download_url,panorama_rows,content,colophon,signature_image_id,
-                    featured_image_id
+            "SELECT id,title,slug,post_type,created_at,allow_comments,content,colophon,user_id,
+                    signature_image_id,featured_image_id
              FROM snap_posts
              WHERE slug=?{$typeSql} AND status='published' AND created_at <= NOW() LIMIT 1",
             $params
@@ -80,9 +79,8 @@ final class SnapPublicRepository
         $typeSql = $type === null ? '' : ' AND post_type=?';
         $params = $type === null ? [$id] : [$id, $type];
         return $this->one(
-            "SELECT id,title,slug,description,post_type,created_at,updated_at,allow_comments,
-                    allow_download,download_url,panorama_rows,content,colophon,signature_image_id,
-                    featured_image_id
+            "SELECT id,title,slug,post_type,created_at,allow_comments,content,colophon,user_id,
+                    signature_image_id,featured_image_id
              FROM snap_posts
              WHERE id=?{$typeSql} AND status='published' AND created_at <= NOW() LIMIT 1",
             $params
@@ -216,21 +214,58 @@ final class SnapPublicRepository
 
     public function activePages(): array {
         return $this->all(
-            "SELECT id,slug,title,content,image_asset,image_size,image_align,image_shadow,menu_order
+            "SELECT id,slug,title,content,image_asset,image_size,image_align,image_shadow,menu_order,created_at
              FROM snap_pages WHERE is_active=1 ORDER BY menu_order ASC,id ASC"
         );
     }
 
     public function activePageBySlug(string $slug): ?array {
         return $this->one(
-            "SELECT id,slug,title,content,image_asset,image_size,image_align,image_shadow,menu_order
+            "SELECT id,slug,title,content,image_asset,image_size,image_align,image_shadow,menu_order,created_at
              FROM snap_pages WHERE slug=? AND is_active=1 LIMIT 1",
             [$slug]
         );
     }
 
-    public function archivePhotographs(int $limit, int $offset = 0): array {
-        return $this->photographLanding($limit, $offset);
+    public function archivePhotographs(int $limit, int $offset = 0, int $categoryId = 0, int $albumId = 0): array {
+        $scope = '';
+        $params = [];
+        if ($categoryId > 0) {
+            $scope .= ' AND EXISTS (SELECT 1 FROM snap_image_cat_map cm WHERE cm.image_id=i.id AND cm.cat_id=?)';
+            $params[] = $categoryId;
+        }
+        if ($albumId > 0) {
+            $scope .= ' AND EXISTS (SELECT 1 FROM snap_image_album_map am WHERE am.image_id=i.id AND am.album_id=?)';
+            $params[] = $albumId;
+        }
+        $params[] = max(1, min(5000, $limit));
+        $params[] = max(0, $offset);
+        return $this->all(
+            "SELECT i.id,i.img_title,i.img_slug,i.img_alt,i.img_file,i.img_width,i.img_height,
+                    i.img_thumb_square,i.img_thumb_aspect
+             FROM snap_images i
+             WHERE i.img_status='published' AND i.img_date <= NOW()
+               AND NOT EXISTS (
+                    SELECT 1 FROM snap_posts p
+                    WHERE p.signature_image_id=i.id
+                      AND p.status='published' AND p.created_at <= NOW()
+               ){$scope}
+             ORDER BY CASE WHEN i.sort_order>0 THEN 1 ELSE 0 END ASC,i.sort_order ASC,i.id DESC
+             LIMIT ? OFFSET ?",
+            $params
+        );
+    }
+
+    public function publicCategories(): array {
+        return $this->all(
+            "SELECT c.id,c.cat_name,COUNT(DISTINCT i.id) AS photograph_count,
+                    SUBSTRING_INDEX(GROUP_CONCAT(i.img_file ORDER BY i.id DESC SEPARATOR '\n'),'\n',1) AS cover_path
+             FROM snap_categories c
+             JOIN snap_image_cat_map m ON m.cat_id=c.id
+             JOIN snap_images i ON i.id=m.image_id AND i.img_status='published' AND i.img_date <= NOW()
+             WHERE c.show_in_archive=1
+             GROUP BY c.id,c.cat_name ORDER BY c.cat_name ASC"
+        );
     }
 
     public function search(string $term, int $limit = 50): array {
@@ -303,10 +338,14 @@ final class SnapPublicRepository
 
     public function publicAlbums(): array {
         return $this->all(
-            "SELECT a.id,a.album_name,a.album_description,a.cover_image_id,a.featured_post_id
+            "SELECT a.id,a.album_name,a.album_description,a.cover_image_id,a.featured_post_id,
+                    COUNT(DISTINCT i.id) AS photograph_count,
+                    COALESCE(ci.img_file,SUBSTRING_INDEX(GROUP_CONCAT(i.img_file ORDER BY i.id DESC SEPARATOR '\n'),'\n',1)) AS cover_path
              FROM snap_albums a
-             WHERE EXISTS (SELECT 1 FROM snap_image_album_map m JOIN snap_images i ON i.id=m.image_id
-                           WHERE m.album_id=a.id AND i.img_status='published' AND i.img_date <= NOW())
+             JOIN snap_image_album_map m ON m.album_id=a.id
+             JOIN snap_images i ON i.id=m.image_id AND i.img_status='published' AND i.img_date <= NOW()
+             LEFT JOIN snap_images ci ON ci.id=COALESCE(a.cover_image_id,a.featured_post_id)
+             GROUP BY a.id,a.album_name,a.album_description,a.cover_image_id,a.featured_post_id,ci.img_file
              ORDER BY a.album_name ASC,a.id ASC"
         );
     }

@@ -29,6 +29,7 @@ $new_recovery_username  = null;
 // Registers a new system user with hashed password and assigned role.
 if (isset($_POST['add_user'])) {
     $new_user  = trim($_POST['username']);
+    $new_display_name = trim($_POST['display_name'] ?? '');
     $new_email = trim($_POST['email']);
     $new_role  = $_POST['user_role'] ?? 'editor';
     $raw_pass  = $_POST['password'];
@@ -36,9 +37,9 @@ if (isset($_POST['add_user'])) {
     if (!empty($new_user) && !empty($raw_pass)) {
         $hashed_pass = password_hash($raw_pass, PASSWORD_BCRYPT, ['cost' => 12]);
 
-        $stmt = $pdo->prepare("INSERT INTO snap_users (username, email, password_hash, user_role) VALUES (?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO snap_users (username, display_name, email, password_hash, user_role) VALUES (?, NULLIF(?, ''), ?, ?, ?)");
         try {
-            $stmt->execute([$new_user, $new_email, $hashed_pass, $new_role]);
+            $stmt->execute([$new_user, $new_display_name, $new_email, $hashed_pass, $new_role]);
             $new_uid = (int)$pdo->lastInsertId();
             $msg = "Access granted for user: {$new_user}";
 
@@ -109,7 +110,7 @@ if (isset($_GET['delete'])) {
 
 // --- DATA RETRIEVAL ---
 // Load all user accounts for display and management.
-$users = $pdo->query("SELECT id, username, email, user_role, (recovery_code_hash IS NOT NULL) AS has_recovery_code FROM snap_users ORDER BY username ASC")->fetchAll();
+$users = $pdo->query("SELECT id, username, display_name, email, user_role, (recovery_code_hash IS NOT NULL) AS has_recovery_code FROM snap_users ORDER BY username ASC")->fetchAll();
 
 $page_title = "User Manager";
 include 'core/admin-header.php';
@@ -154,6 +155,11 @@ include 'core/sidebar.php';
             </div>
 
             <div class="lens-input-wrapper">
+                <label>DISPLAY NAME</label>
+                <input type="text" name="display_name" maxlength="100" autocomplete="off">
+            </div>
+
+            <div class="lens-input-wrapper">
                 <label>EMAIL ADDRESS</label>
                 <input type="email" name="email" required autocomplete="off">
             </div>
@@ -192,7 +198,7 @@ include 'core/sidebar.php';
             <div class="recent-item">
                 <div class="item-details">
                     <div class="item-text">
-                        <strong><?php echo strtoupper($u['username']); ?></strong>
+                        <strong><?php echo htmlspecialchars($u['display_name'] ?: strtoupper($u['username'])); ?></strong>
                         <span class="dim">
                             <?php echo htmlspecialchars($u['email']); ?> | Role: <?php echo ucfirst($u['user_role']); ?>
                             <?php if ($u['has_recovery_code']): ?>

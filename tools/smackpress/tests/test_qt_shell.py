@@ -55,6 +55,8 @@ class ShellTests(unittest.TestCase):
         w.take.rail.session = None
         w.connect_panel.config["url"] = "https://pixhellated.ca"
         w.connect_panel.config["smackpress_key"] = "k" * 64
+        w.connect_panel.url_edit.setText("https://pixhellated.ca")
+        w.source.existing_destination_lookup = lambda _slug, _kind: 0
         return w
 
     def test_window_builds_with_coldsnap_editor_inside(self):
@@ -67,6 +69,23 @@ class ShellTests(unittest.TestCase):
         self.assertIsInstance(w.take, TakeMode)
         self.assertIsInstance(w.connect_panel, ConnectPanel)
         self.assertFalse(w.source.pull_btn.isEnabled(), "nothing selected → PULL is off")
+
+    def test_existing_slug_becomes_an_update_not_a_duplicate(self):
+        from smackpress_qt import main_window
+        w = self._window()
+
+        class Existing:
+            def __init__(self, *_args, **_kwargs):
+                pass
+            def list_posts(self, _limit=500):
+                return [{"id": 912, "slug": "rust-and-chrome"}]
+            def list_pages(self, _limit=500):
+                return [{"id": 44, "slug": "the-idea"}]
+
+        with mock.patch.object(main_window, "SmacktalkPoster", Existing):
+            self.assertEqual(w._existing_destination("rust-and-chrome", "post"), 912)
+            self.assertEqual(w._existing_destination("the-idea", "page"), 44)
+            self.assertEqual(w._existing_destination("new-story", "post"), 0)
 
     def test_pull_across_lands_in_the_editor_with_local_pictures(self):
         from PySide6.QtWidgets import QListWidgetItem

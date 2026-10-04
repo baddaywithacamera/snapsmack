@@ -13,13 +13,13 @@ if ($start === false || $end === false || $end <= $start) {
 }
 $lookups = substr($source, $start, $end - $start);
 
-foreach (['content', 'colophon', 'signature_image_id', 'featured_image_id'] as $required) {
+foreach (['content', 'colophon', 'signature_image_id', 'featured_image_id', 'user_id'] as $required) {
     if (!str_contains($lookups, $required)) {
         throw new RuntimeException("Public post lookup lost required field: {$required}");
     }
 }
 
-foreach (['show_featured_image', 'trigram_id', 'cover_pos_x', 'cover_pos_y', 'cover_zoom', 'user_id,is_sensitive,content_warning'] as $optional) {
+foreach (['description', 'updated_at', 'allow_download', 'download_url', 'panorama_rows', 'show_featured_image', 'trigram_id', 'cover_pos_x', 'cover_pos_y', 'cover_zoom', 'is_sensitive,content_warning'] as $optional) {
     if (str_contains($lookups, $optional)) {
         throw new RuntimeException("Public post lookup still requires unrelated optional field(s): {$optional}");
     }

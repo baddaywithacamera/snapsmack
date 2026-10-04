@@ -2,7 +2,7 @@
     "schema_version": 2,
     "security_policy": 2,
     "name": "TILEZ",
-    "version": "0.2.49",
+    "version": "0.2.55",
     "author": "Sean McCormick & Claude",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A quiet white SMACKTALK portfolio inspired by editorial design studios. Longform posts flow through a native-aspect three-column wall powered by SnapSmack's shared columns engine.",
@@ -17,6 +17,7 @@
         "feed": "layout.php",
         "archive": "layout.php",
         "blogroll": "layout.php",
+        "page": "layout.php",
         "not_found": "layout.php",
         "default": "layout.php"
     },
@@ -28,9 +29,8 @@
     ],
     "cms_navigation": [
         {"type": "home", "label": "HOME"},
-        {"type": "page", "slug": "about", "label": "ABOUT"},
         {"type": "blogroll", "label": "BLOGROLL"},
-        {"type": "archive", "label": "CATEGORIES"},
+        {"type": "categories", "label": "CATEGORIES"},
         {"type": "albums", "label": "ALBUMS"},
         {"type": "image_archive", "label": "IMAGES"}
     ],
@@ -62,6 +62,11 @@
         "smack-community",
         "smack-mosaic",
         "smack-alfred-archive"
+    ],
+    "require_styles": [
+        "asset:public:public-base",
+        "asset:public:shortcodes",
+        "asset:public:columns"
     ],
     "community_comments": "1",
     "community_likes": "0",
@@ -109,7 +114,7 @@
             "section": "HEADER",
             "type": "image",
             "label": "Custom Logo",
-            "default": "skins/tilez/assets/bad-day-masthead.png",
+            "default": "",
             "accept": "image/jpeg,image/png,image/webp,image/svg+xml",
             "help": "Upload a logo image to replace the site title text. Transparent PNG recommended.",
             "hint": "Transparent PNG recommended."
@@ -173,6 +178,29 @@
             "default": "12",
             "min": "4",
             "max": "40"
+        },
+        "archive_columns": {
+            "section": "LAYOUT",
+            "type": "range",
+            "label": "Image Archive Columns",
+            "default": "5",
+            "min": "2",
+            "max": "8",
+            "selector": ".alfred-archive-grid",
+            "property": "--ss-cols",
+            "help": "Number of smaller native-aspect columns in the Images archive."
+        },
+        "archive_gap": {
+            "section": "LAYOUT",
+            "type": "range",
+            "label": "Image Archive Gap",
+            "default": "4",
+            "min": "0",
+            "max": "24",
+            "unit": "px",
+            "selector": ".alfred-archive-grid",
+            "property": "--ss-gap",
+            "help": "Space between photographs in the Images archive."
         }
     }
 }

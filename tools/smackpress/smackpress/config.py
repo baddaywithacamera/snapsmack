@@ -10,6 +10,7 @@ credentials, SnapSmack API key, AI provider, etc.) live here.
 import sqlite3
 import os
 import sys
+import json
 from pathlib import Path
 
 _SHARED_DIR = Path(__file__).resolve().parents[2] / "_shared"
@@ -78,6 +79,12 @@ CREATE TABLE IF NOT EXISTS posts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(wp_status);
+
+CREATE TABLE IF NOT EXISTS migration_profiles (
+    source_url   TEXT PRIMARY KEY,
+    profile_json TEXT NOT NULL DEFAULT '{}',
+    analyzed_at  TEXT DEFAULT NULL
+);
 """
 
 _DEFAULTS = {
@@ -214,5 +221,48 @@ def get_all() -> dict:
 def get_db() -> sqlite3.Connection:
     """Return an open connection for callers that need direct DB access."""
     return _conn()
+
+
+def _source_key(source_url: str) -> str:
+    return str(source_url or "").strip().lower().rstrip("/")
+
+
+def get_migration_profile(source_url: str) -> dict:
+    """Return the saved interpretation rules for one source site.
+
+    Profiles describe source conventions only. Their output is still written
+    into SnapSmack's ordinary post/page fields; neither core nor a skin reads
+    this local migration database.
+    """
+    key = _source_key(source_url)
+    if not key:
+        return {}
+    with _conn() as con:
+        row = con.execute(
+            "SELECT profile_json FROM migration_profiles WHERE source_url=?", (key,)
+        ).fetchone()
+    if not row:
+        return {}
+    try:
+        value = json.loads(row["profile_json"] or "{}")
+    except (TypeError, ValueError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def save_migration_profile(source_url: str, profile: dict, analyzed_at: str = "") -> None:
+    """Persist confirmed AI/manual source rules without site-specific code."""
+    key = _source_key(source_url)
+    if not key:
+        raise ValueError("source_url is required")
+    payload = json.dumps(dict(profile or {}), ensure_ascii=False, sort_keys=True)
+    with _conn() as con:
+        con.execute(
+            "INSERT INTO migration_profiles(source_url,profile_json,analyzed_at) VALUES(?,?,NULLIF(?,'')) "
+            "ON CONFLICT(source_url) DO UPDATE SET profile_json=excluded.profile_json, "
+            "analyzed_at=excluded.analyzed_at",
+            (key, payload, str(analyzed_at or "")),
+        )
+        con.commit()
 
 # ===== SNAPSMACK EOF =====

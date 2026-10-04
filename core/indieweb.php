@@ -96,7 +96,7 @@ function snapsmack_indieweb_photo_properties(array $img, array $settings): void 
 function snapsmack_indieweb_longform_properties(array $post, array $settings): void {
     $base = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : '/';
     $slug = trim((string)($post['slug'] ?? ''));
-    $url  = $slug !== '' ? $base . '?post=' . rawurlencode($slug) : $base;
+    $url  = $slug !== '' ? rtrim($base, '/') . '/' . rawurlencode($slug) : $base;
     $site = html_entity_decode((string)($settings['site_name'] ?? 'SnapSmack'), ENT_QUOTES | ENT_HTML5);
 
     echo '<span class="snapsmack-indieweb-properties" hidden aria-hidden="true">';

@@ -743,6 +743,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'snap_users' => [
                 'id'             => "int NOT NULL AUTO_INCREMENT",
                 'username'       => "varchar(50) NOT NULL",
+                'display_name'   => "varchar(100) DEFAULT NULL",
                 'password_hash'  => "varchar(255) NOT NULL",
                 'user_role'      => "varchar(20) NOT NULL DEFAULT 'editor'",
                 'email'          => "varchar(100) DEFAULT NULL",

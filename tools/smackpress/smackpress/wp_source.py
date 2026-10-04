@@ -22,8 +22,9 @@ secure.
     SmacktalkPoster(site_url, key).sync_smacktalk(draft)
 
 What travels: authored words (title, body and image alt text), every image,
-and the original publication date. WordPress URLs, directory structure, slug,
-taxonomy, comments, excerpt and attachment metadata do not cross the boundary.
+the original publication date, and the authored URL slug so migrated links
+keep working. WordPress directory structure, taxonomy, comments, excerpt and
+attachment metadata do not cross the boundary.
 """
 
 # SNAPSMACK_EOF_HEADER
@@ -170,8 +171,19 @@ def _publication_instant(full_post: dict) -> str:
 
 def _norm(url: str) -> str:
     u = html.unescape((url or "").strip())
-    # WordPress serves resized variants like name-1024x768.jpg; match the original too.
-    return re.sub(r"-\d{2,4}x\d{2,4}(\.[a-z0-9]+)$", r"\1", u, flags=re.I).lower()
+    # WordPress serves the same attachment as name.jpg, name-scaled.jpg and
+    # name-1024x768.jpg. They are variants of one photograph, not three media
+    # records in SnapSmack.
+    return re.sub(r"(?:-scaled|-\d{2,5}x\d{2,5})(\.[a-z0-9]+)$", r"\1", u, flags=re.I).lower()
+
+
+def _variant_rank(image: dict) -> tuple:
+    """Prefer the largest known WordPress variant, then its original URL."""
+    width = max(0, int(image.get("width") or 0))
+    height = max(0, int(image.get("height") or 0))
+    url = html.unescape(str(image.get("url") or ""))
+    derivative = bool(re.search(r"(?:-scaled|-\d{2,5}x\d{2,5})(?:\.[a-z0-9]+)$", url, re.I))
+    return (width * height, 0 if derivative else 1)
 
 
 def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
@@ -187,7 +199,13 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
     def slot(url: str, alt: str = "", extra: Optional[dict] = None) -> int:
         key = _norm(url)
         if key in by_url:
-            return by_url[key]
+            position = by_url[key]
+            candidate = dict(extra or {})
+            candidate.setdefault("url", html.unescape(url))
+            candidate.setdefault("alt", alt)
+            if _variant_rank(candidate) > _variant_rank(ordered[position - 1]):
+                ordered[position - 1] = candidate
+            return position
         img = dict(extra or {})
         img.setdefault("url", html.unescape(url))
         img.setdefault("alt", alt)
@@ -254,7 +272,7 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
     return body, ordered
 
 
-_WP_SIGNATURE_HINT = re.compile(r"(?:signature|autograph|sean[-_ ]?mccormick[-_ ]?black[-_ ]?low[-_ ]?res)", re.I)
+_WP_SIGNATURE_HINT = re.compile(r"(?:signature|autograph|sign[-_ ]?off)", re.I)
 _WP_COLOPHON_LEAD = re.compile(
     r"\b(?:main camera|camera used|also used|equipment used|shot (?:on|with)|taken with|"
     r"photos? (?:from|(?:taken|made|shot) with)|images? (?:from|(?:taken|made|shot) with)|photographed with)\b",
@@ -267,7 +285,15 @@ _WP_EQUIPMENT = re.compile(
 )
 
 
-def extract_wordpress_ephemera(body: str, ordered: List[dict]) -> Tuple[str, str, set]:
+def _profile_markers(profile: Optional[dict], key: str) -> List[str]:
+    values = (profile or {}).get(key) or []
+    if isinstance(values, str):
+        values = [values]
+    return [str(value).strip() for value in values if str(value).strip()]
+
+
+def extract_wordpress_ephemera(body: str, ordered: List[dict],
+                               profile: Optional[dict] = None) -> Tuple[str, str, set]:
     """Translate recurring WordPress-era conventions into explicit post data.
 
     This deliberately belongs to the WordPress adapter. The CMS and skins never
@@ -275,10 +301,13 @@ def extract_wordpress_ephemera(body: str, ordered: List[dict]) -> Tuple[str, str
     Returns cleaned body, colophon HTML, and 1-based signature image positions.
     """
     signature_slots = set()
+    signature_markers = _profile_markers(profile, "signature_markers")
     for position, image in enumerate(ordered, 1):
         haystack = " ".join(str(image.get(key) or "") for key in
                             ("filename", "title", "alt", "caption", "url"))
-        if _WP_SIGNATURE_HINT.search(haystack):
+        profiled_signature = any(marker.casefold() in haystack.casefold()
+                                 for marker in signature_markers)
+        if _WP_SIGNATURE_HINT.search(haystack) or profiled_signature:
             signature_slots.add(position)
             body = re.sub(r"(?:^|\n)\s*\[img:bucket:%d\]\s*(?=\n|$)" % position, "\n", body)
 
@@ -287,7 +316,10 @@ def extract_wordpress_ephemera(body: str, ordered: List[dict]) -> Tuple[str, str
     if final:
         plain = html.unescape(re.sub(r"<[^>]+>", " ", final.group(1)))
         terms = {m.group(0).lower() for m in _WP_EQUIPMENT.finditer(plain)}
-        if _WP_COLOPHON_LEAD.search(plain) or len(terms) >= 3:
+        colophon_markers = _profile_markers(profile, "colophon_markers")
+        profiled_colophon = any(marker.casefold() in plain.casefold()
+                                for marker in colophon_markers)
+        if _WP_COLOPHON_LEAD.search(plain) or len(terms) >= 3 or profiled_colophon:
             colophon = final.group(1)
             body = body[:final.start()].rstrip()
 
@@ -296,7 +328,8 @@ def extract_wordpress_ephemera(body: str, ordered: List[dict]) -> Tuple[str, str
 
 # ── the adapter ───────────────────────────────────────────────────────────────
 def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
-                  status: str = "draft", on_progress: Callable[[str], None] = None) -> Draft:
+                  status: str = "draft", on_progress: Callable[[str], None] = None,
+                  profile: Optional[dict] = None) -> Draft:
     """Turn the companion's full post JSON into a COLD SNAP Draft with every
     picture downloaded into `workdir`. Raises ImportError_ naming the picture
     if one cannot be brought across — a post with a missing picture is not
@@ -311,8 +344,16 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
         images = [feat] + [im for im in images if _norm(im.get("url", "")) != _norm(feat["url"])]
 
     body, ordered = rewrite_body(content, images)
-    body = _discard_source_links(body, full_post.get("link") or "")
-    body, colophon, signature_slots = extract_wordpress_ephemera(body, ordered)
+    destination_type = "page" if full_post.get("type") == "page" else "post"
+    if destination_type == "page":
+        # A WordPress Page is authored static content.  Do not reinterpret its
+        # final paragraph, signature, or links as post metadata: the page must
+        # arrive as written.  Images still become local bucket tokens so the
+        # old WordPress host can be retired safely.
+        colophon, signature_slots = "", set()
+    else:
+        body = _discard_source_links(body, full_post.get("link") or "")
+        body, colophon, signature_slots = extract_wordpress_ephemera(body, ordered, profile)
 
     draft_images: List[DraftImage] = []
     for n, im in enumerate(ordered, 1):
@@ -339,9 +380,11 @@ def draft_from_wp(full_post: dict, workdir: str, *, fetch: Callable = None,
         colophon=colophon,
         tags="",
         post_date=date,
-        img_status=status,
+        img_status=("published" if full_post.get("status") in ("publish", "published") else status)
+                   if destination_type == "page" else status,
         category="",
-        slug="",
+        slug=full_post.get("slug") or "",
+        destination_type=destination_type,
         images=draft_images,
     )
 

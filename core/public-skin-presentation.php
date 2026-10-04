@@ -13,10 +13,6 @@ function snapsmack_public_skin_presentation(string $skin, array $options): array
             'image'=>$media('header_image'), 'logo'=>$media('header_logo'),
             'retina'=>$on('retina_logo'), 'show_tagline'=>$on('show_tagline'),
         ];
-        if ($skin === 'tilez' && $out['header_media']['logo'] === '') {
-            $base = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
-            $out['header_media']['logo'] = $base . 'skins/tilez/assets/bad-day-masthead.png';
-        }
     }
     if ($skin === 'photogram') $out['discover'] = ['visible'=>$on('pg_show_discover')];
     if ($skin === 'rational-geo') {
