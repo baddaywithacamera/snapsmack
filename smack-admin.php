@@ -93,7 +93,13 @@ try {
     $_update_json = $stmt->fetchColumn();
     if ($_update_json) {
         $_update_notifications = json_decode($_update_json, true);
-        $_update_total = $_update_notifications['total_notifications'] ?? 0;
+        if (is_array($_update_notifications)) {
+            // Skin discovery is opt-in through the gallery/forums. Only core
+            // and installed-skin updates belong in the dashboard warning.
+            $_update_notifications['new_skins'] = [];
+            $_update_total = (!empty($_update_notifications['core_update']) ? 1 : 0)
+                + count($_update_notifications['updated_skins'] ?? []);
+        }
     }
 
     // Check cache age — trigger live check if stale (>24h) and updater is available
@@ -364,9 +370,7 @@ include 'core/sidebar.php';
             if (!empty($_update_notifications['core_update'])) {
                 $_notices[] = 'Core update available: v' . htmlspecialchars($_update_notifications['core_update']['version']);
             }
-            $_new_count = count($_update_notifications['new_skins'] ?? []);
             $_upd_count = count($_update_notifications['updated_skins'] ?? []);
-            if ($_new_count > 0) $_notices[] = "{$_new_count} new skin" . ($_new_count > 1 ? 's' : '') . " available";
             if ($_upd_count > 0) $_notices[] = "{$_upd_count} skin update" . ($_upd_count > 1 ? 's' : '') . " available";
             echo strtoupper(implode(' — ', $_notices));
             ?>

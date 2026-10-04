@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.815D — 2026-10-04 — Skins are optional
+
+- Removes uninstalled skins from system-update notifications and dashboard counts. Newly published skins remain available through the opt-in Skin Gallery and forum announcements.
+- Keeps update notices focused on SNAPSMACK itself and newer versions of skins already installed on the site, while immediately discarding obsolete cached gallery counts.
+
 ## 0.7.814D — 2026-10-04 — The whole board
 
 - Restores the complete Photo Challenge board history when the board is embedded in an ordinary static page: the current round and every earlier scheduled round now use the same shared renderer as the dedicated board route.

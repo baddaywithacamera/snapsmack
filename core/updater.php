@@ -2367,7 +2367,9 @@ function updater_prune_backups(int $keep = 3): void {
 // ─── SKIN REGISTRY CHECK (for dual notification) ───────────────────────────
 
 /**
- * Check the skin registry for new or updated skins.
+ * Check the skin registry for updates to skins already installed on this site.
+ * New skins are deliberately discovery-only: they belong in the opt-in Skin
+ * Gallery and forum announcements, not in the system update notification count.
  * Returns an array with counts and details:
  * ['new_skins' => [...], 'updated_skins' => [...], 'total_notifications' => int]
  */
@@ -2404,15 +2406,7 @@ function updater_check_skin_registry(PDO $pdo, bool $fast = false): array {
         // Skip development and self-managed mobile infrastructure skins.
         if (($skin['status'] ?? '') === 'development' || !empty($skin['features']['mobile_only'])) continue;
 
-        if (!isset($local[$slug])) {
-            // Brand new skin not installed locally
-            $new_skins[] = [
-                'slug' => $slug,
-                'name' => $skin['name'] ?? $slug,
-                'version' => $skin['version'] ?? '?',
-                'description' => $skin['description'] ?? '',
-            ];
-        } elseif (
+        if (isset($local[$slug]) &&
             isset($skin['version'], $local[$slug]['version']) &&
             snap_version_compare($skin['version'], $local[$slug]['version'], '>')
         ) {

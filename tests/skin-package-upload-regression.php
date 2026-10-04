@@ -11,6 +11,8 @@ $root = dirname(__DIR__);
 $gallery = file_get_contents($root . '/smack-skin.php') ?: '';
 $packager = file_get_contents($root . '/smack-central/sc-skins.php') ?: '';
 $updater = file_get_contents($root . '/smack-update.php') ?: '';
+$updaterCore = file_get_contents($root . '/core/updater.php') ?: '';
+$dashboard = file_get_contents($root . '/smack-admin.php') ?: '';
 $failures = [];
 
 $expect = static function (bool $condition, string $message) use (&$failures): void {
@@ -28,6 +30,14 @@ $expect(str_contains($packager, "['master', 'dev']"), 'one-skin fetch must offer
 $expect(!str_contains($updater, "setting_key='update_public_key'"), 'skin updates must not depend on a nonexistent database key');
 $expect(substr_count($updater, "defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : ''") >= 2,
     'manual and automatic skin updates must use the protected installed release key');
+$expect(!str_contains($updaterCore, '// Brand new skin not installed locally'),
+    'uninstalled gallery skins must not become system update notifications');
+$expect(!str_contains($updater, 'available in the Skin Gallery'),
+    'system updates must not advertise newly published skins');
+$expect(!str_contains($dashboard, 'new skin" .'),
+    'dashboard warning must not count newly published skins');
+$expect(str_contains($updaterCore, 'isset($local[$slug]) &&'),
+    'skin update checks must be limited to skins already installed locally');
 
 if ($failures) {
     foreach ($failures as $failure) fwrite(STDERR, "FAIL: {$failure}\n");
