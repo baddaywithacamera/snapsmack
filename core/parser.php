@@ -209,16 +209,15 @@ class SnapSmack {
         }, $content);
     }
 
-    // 0.7.618D — [board]: the live Photo-Challenge entry grid, inline, reusing
-    // pc_board_ranked() (same data as /board). Renders under the site's own
-    // chrome so a static page can carry the board without the standalone page's
-    // separate nav/footer.
+    // [board]: the complete Photo-Challenge board, including the active round
+    // and earlier scheduled rounds. Renders under the site's own chrome so a
+    // static page can carry the board without losing its history.
     private function parseBoard($content) {
         if (stripos($content, '[board]') === false) return $content;
         return preg_replace_callback('/\[board\]/i', function () {
-            if (!function_exists('pc_board_embed_html')) require_once __DIR__ . '/photochallenge.php';
+            if (!function_exists('pc_board_rounds_embed_html')) require_once __DIR__ . '/photochallenge.php';
             $settings = is_array($this->config) ? $this->config : [];
-            try { return pc_board_embed_html($this->pdo, $settings); }
+            try { return pc_board_rounds_embed_html($this->pdo, $settings); }
             catch (\Throwable $e) { return ''; }
         }, $content);
     }
