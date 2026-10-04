@@ -158,6 +158,13 @@ if (is_array($cached_result)) {
     if (is_array($cached_result['core_update'])) {
         $cached_result['core_update'] = _normalise_update_array($cached_result['core_update']);
     }
+    // New skins are optional discoveries, not pending system updates. Strip
+    // old cached gallery counts immediately so upgrading sites do not keep an
+    // obsolete "26 new skins" warning until their next scheduled check.
+    $cached_result['new_skins'] = [];
+    $cached_result['skin_notifications'] = count($cached_result['updated_skins']);
+    $cached_result['total_notifications'] = (!empty($cached_result['core_update']) ? 1 : 0)
+        + count($cached_result['updated_skins']);
 }
 
 // ── STALE-CACHE GUARD ─────────────────────────────────────────────────────────
@@ -707,12 +714,11 @@ if ($action === 'check') {
 
         if (!$auto_check) {
             if ($core_status === 'up_to_date' && $skin_info['total_notifications'] === 0) {
-                $flash_msg  = 'SYSTEM IS UP TO DATE. NO NEW SKINS AVAILABLE.';
+                $flash_msg  = 'SYSTEM IS UP TO DATE.';
                 $flash_type = 'success';
             } else {
                 $notifications = [];
                 if ($core_update) $notifications[] = "Core update available: v{$core_update['version']}";
-                if (count($skin_info['new_skins'])    > 0) $notifications[] = count($skin_info['new_skins'])    . " new skin(s) available";
                 if (count($skin_info['updated_skins']) > 0) $notifications[] = count($skin_info['updated_skins']) . " skin update(s) available";
                 $flash_msg  = strtoupper(implode(' / ', $notifications));
                 $flash_type = 'warning';
@@ -2259,16 +2265,6 @@ include 'core/sidebar.php';
             <?php endif; ?>
         </div>
         <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
-
-    <?php if (!empty($cached_result['new_skins'])): ?>
-    <div class="box update-section">
-        <div class="skin-new-notice">
-            <?php $nc = count($cached_result['new_skins']); ?>
-            <?php echo $nc; ?> new skin<?php echo $nc !== 1 ? 's' : ''; ?> available in the Skin Gallery.
-            <a href="smack-skin.php?tab=gallery" class="btn-smack btn-sm" style="text-decoration:none;">OPEN GALLERY</a>
-        </div>
     </div>
     <?php endif; ?>
 
