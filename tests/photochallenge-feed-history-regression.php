@@ -3,6 +3,7 @@
 $root = dirname(__DIR__);
 $photo = file_get_contents($root . '/core/photochallenge.php');
 $board = file_get_contents($root . '/photochallenge-board.php');
+$parser = file_get_contents($root . '/core/parser.php');
 $header = file_get_contents($root . '/core/header.php');
 $gram = file_get_contents($root . '/core/gram-nav-links.php');
 $ht = file_get_contents($root . '/core/htaccess-template');
@@ -12,7 +13,12 @@ $checks = [
         str_contains($photo, 'submit_end,prompt,tag')
         && str_contains($photo, "pc_round_tag(\$pdo, \$settings, (string)\$row['week_key'])"),
     'embed accepts an explicit window' => str_contains($photo, 'array $settings, ?array $window = null'),
-    'board renders every round in order' => str_contains($board, 'foreach ($rounds as $round_index => $win)'),
+    'standalone board uses the shared historical renderer' =>
+        str_contains($board, 'pc_board_rounds_embed_html($pdo, $settings)'),
+    'static-page board shortcode renders the same historical rounds' =>
+        str_contains($photo, 'function pc_board_rounds_embed_html(')
+        && str_contains($photo, 'pc_board_windows($pdo, $settings, $history_limit)')
+        && str_contains($parser, 'pc_board_rounds_embed_html($this->pdo, $settings)'),
     'old human feed URL aliases the unified board' =>
         str_contains($ht, 'RewriteRule ^challenge-feed/?$ photochallenge-board.php [L,QSA]'),
     'ordinary navigation hides retired feed item' => str_contains($header, "=== 'challenge_feed') continue"),

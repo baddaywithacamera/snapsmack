@@ -62,7 +62,6 @@ if (!function_exists('pc_enabled') || !pc_enabled($settings) || !pc_feed_enabled
 }
 
 $esc        = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
-$rounds     = pc_board_windows($pdo, $settings);
 $page_title = 'The Board';
 $skin_path  = 'skins/' . $active_skin;
 
@@ -92,22 +91,7 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             <div class="static-content">
                 <h1 class="static-page-title"><?php echo $esc($page_title); ?></h1>
                 <div class="description">
-                    <?php foreach ($rounds as $round_index => $win):
-                        $tag = trim((string)($win['tag'] ?? pc_tag($settings)));
-                        $prompt = trim((string)($win['prompt'] ?? ''));
-                        $state = !empty($win['open']) ? 'OPEN' : 'CLOSED';
-                        $heading = $round_index === 0 ? 'This Week' : ($prompt !== '' ? $prompt : (string)$win['label']);
-                    ?>
-                    <section class="pc-board-round">
-                        <h2><?php echo $esc($heading); ?></h2>
-                        <p class="dim">
-                            <strong><?php echo $esc($state); ?></strong> &middot; <?php echo $esc($win['label']); ?>
-                            <?php if ($round_index === 0 && $prompt !== ''): ?>&middot; <?php echo $esc($prompt); ?><?php endif; ?>
-                            &mdash; <code>#<?php echo $esc($tag); ?></code>
-                        </p>
-                        <?php echo pc_board_embed_html($pdo, $settings, $win, $round_index === 0); ?>
-                    </section>
-                    <?php endforeach; ?>
+                    <?php echo pc_board_rounds_embed_html($pdo, $settings); ?>
                 </div>
             </div>
 
