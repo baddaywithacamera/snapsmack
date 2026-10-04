@@ -2289,7 +2289,7 @@ body.blog, body.single, body.archive { background: #fff; }
     background: transparent;
     border: 0;
 }
-.navigation .section-inner { position: relative; width: 100%; overflow: visible; isolation: isolate; }
+.navigation .section-inner { position: relative; width: 100%; max-width: none; overflow: visible; isolation: isolate; }
 .main-menu { position: relative; z-index: 1; display: flex; width: auto; max-width: none; gap: 14px; white-space: nowrap; justify-content: flex-start; }
 .main-menu > li > a, .main-menu > li > span {
     color: var(--tilez-ink);
