@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.814D — 2026-10-04 — The whole board
+
+- Restores the complete Photo Challenge board history when the board is embedded in an ordinary static page: the current round and every earlier scheduled round now use the same shared renderer as the dedicated board route.
+- Organizes GRAMOFSMACK photo metadata into a coherent, responsive details panel, with full-width alternative text and aligned orientation and colour-treatment controls.
+
 ## 0.7.813D — 2026-10-03 — Migrations belong to everyone
 
 - Gives every system user a shared display-name field and binds SMACKPRESS API keys to a real default author, so imported bylines come from ordinary account data rather than site-specific fallbacks.
