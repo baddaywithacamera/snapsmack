@@ -9,8 +9,8 @@ require_once dirname(__DIR__) . '/core/public-controller.php';
 
 function special_check(bool $ok, string $message): void { if (!$ok) throw new RuntimeException($message); }
 function special_render(string $skin, array $settings, string $kind = 'landing'): string {
-    $response = $kind === 'photo'
-        ? ['kind'=>'photo','photo_count'=>1,'navigation'=>[],'item'=>['img_title'=>'Photo','img_slug'=>'photo','img_file'=>'/photo.jpg','img_focus_x'=>17,'img_focus_y'=>83,'img_zoom'=>240,'img_description'=>snapsmack_trusted_html('<p>Description</p>')]]
+    $response = str_starts_with($kind, 'photo')
+        ? ['kind'=>'photo','fragment'=>$kind === 'photo_fragment','autoopen'=>$kind !== 'photo_fragment','photo_count'=>1,'navigation'=>[],'items'=>[['img_title'=>'Photo','img_slug'=>'photo','img_thumb_square'=>'/thumb.jpg','img_file'=>'/photo.jpg']],'puzzle_items'=>[['img_title'=>'Photo','img_slug'=>'photo','img_thumb_square'=>'/thumb.jpg','img_file'=>'/photo.jpg']],'item'=>['img_title'=>'Photo','img_slug'=>'photo','img_file'=>'/photo.jpg','img_focus_x'=>17,'img_focus_y'=>83,'img_zoom'=>240,'img_description'=>snapsmack_trusted_html('<p>Description</p>')]]
         : ['kind'=>'landing','photo_count'=>1,'navigation'=>[],'items'=>[['img_title'=>'Photo','img_slug'=>'photo','img_thumb_square'=>'/thumb.jpg','img_file'=>'/photo.jpg']]];
     $view = snapsmack_build_skin_view($response, ['site_name'=>'Example','language'=>'en','direction'=>'ltr','skin_style_url'=>'/skin.css','skin_presentation'=>snapsmack_skin_presentation($settings, $skin)]);
     ob_start(); special_check(snapsmack_render_strict_skin_template(dirname(__DIR__).'/skins/'.$skin, 'layout.php', $view), "{$skin} did not render"); return (string)ob_get_clean();
@@ -35,7 +35,10 @@ foreach (['data-mode="quiet"','data-first-delay="31"','data-hold="11"','data-res
 $game = special_render('game-on', ['go_treatment_overlay'=>'-42','go_border_radius'=>'17']);
 foreach (['--go-puzzle-tone:rgba(0,0,0,0.42)','--tile-radius:17px','data-game-on'] as $value) special_check(str_contains($game, $value), "GAME ON control missing: {$value}");
 $gameSolo = special_render('game-on', [], 'photo');
-foreach (['data-play-as-puzzle','data-focus-x="17"','data-focus-y="83"','data-zoom="240"'] as $value) special_check(str_contains($gameSolo, $value), "GAME ON solo puzzle action missing: {$value}");
+foreach (['id="browse-grid"','data-autoopen="1"','data-game-on'] as $value) special_check(str_contains($gameSolo, $value), "GAME ON direct photo backdrop handoff missing: {$value}");
+$gameSoloFragment = special_render('game-on', [], 'photo_fragment');
+foreach (['class="go-post-ig"','data-play-as-puzzle','data-focus-x="17"','data-focus-y="83"','data-zoom="240"'] as $value) special_check(str_contains($gameSoloFragment, $value), "GAME ON photo modal fragment missing: {$value}");
+special_check(!str_contains($gameSoloFragment, '<!doctype html>'), 'GAME ON modal fragment incorrectly contains a full page shell.');
 $boundedFocus = snapsmack_game_on_focus_item(['img_focus_x'=>-5,'img_focus_y'=>150,'img_zoom'=>999]);
 special_check($boundedFocus['img_focus_x'] === 0 && $boundedFocus['img_focus_y'] === 100 && $boundedFocus['img_zoom'] === 500, 'GAME ON focus/zoom bounds failed.');
 $defaultFocus = snapsmack_game_on_focus_item([]);
