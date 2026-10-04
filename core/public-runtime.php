@@ -10,10 +10,10 @@ function snapsmack_public_runtime_request(array $input): array
     if (trim((string)($input['tag'] ?? '')) !== '') return ['route' => 'hashtag', 'slug' => $input['tag'], 'page' => $input['page'] ?? 1];
     $view = strtolower(trim((string)($input['view'] ?? '')));
     $routes = ['archive', 'albums', 'collections', 'collection', 'photo', 'post', 'page'];
-    if (in_array($view, $routes, true)) return ['route' => $view, 'slug' => $input['slug'] ?? '', 'id' => $input['id'] ?? 0, 'page' => $input['page'] ?? 1];
+    if (in_array($view, $routes, true)) return ['route' => $view, 'slug' => $input['slug'] ?? '', 'id' => $input['id'] ?? 0, 'page' => $input['page'] ?? 1, 'fragment' => $input['fragment'] ?? false];
     $slug = trim((string)($input['slug'] ?? ''));
-    if ($slug !== '') return ['route' => 'resolve', 'slug' => $slug];
-    if ((int)($input['id'] ?? 0) > 0) return ['route' => 'photo', 'id' => $input['id']];
+    if ($slug !== '') return ['route' => 'resolve', 'slug' => $slug, 'fragment' => $input['fragment'] ?? false];
+    if ((int)($input['id'] ?? 0) > 0) return ['route' => 'photo', 'id' => $input['id'], 'fragment' => $input['fragment'] ?? false];
     return ['route' => 'landing', 'page' => $input['page'] ?? 1];
 }
 

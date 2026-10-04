@@ -13,13 +13,15 @@ function snapsmack_public_parse_request(array $input): array
     if ($slug !== '' && !preg_match('/^[a-z0-9][a-z0-9_-]{0,199}$/i', $slug)) $slug = '';
     $query = is_string($input['query'] ?? null) ? trim($input['query']) : '';
     $query = function_exists('mb_substr') ? mb_substr($query, 0, 200) : substr($query, 0, 200);
-    return [
+    $request = [
         'route' => $route,
         'slug' => $slug,
         'id' => max(0, (int)($input['id'] ?? 0)),
         'page' => max(1, min(100000, (int)($input['page'] ?? 1))),
         'query' => $query,
     ];
+    if (array_key_exists('fragment', $input)) $request['fragment'] = !empty($input['fragment']);
+    return $request;
 }
 
 function snapsmack_heuristic_map(string $raw): array
@@ -60,6 +62,24 @@ function snapsmack_game_on_focus_item(array $item): array
     return $item;
 }
 
+function snapsmack_game_on_photo_response(SnapPublicRepository $repository, array $item, array $settings, array $navigation, int $perPage, bool $fragment): array
+{
+    $response = [
+        'status' => 200,
+        'kind' => 'photo',
+        'item' => snapsmack_game_on_focus_item($item),
+        'comments' => $repository->approvedComments((int)$item['id'], null),
+        'navigation' => $navigation,
+        'fragment' => $fragment,
+    ];
+    if ($fragment) return $response;
+    $response['items'] = snapsmack_grid_frame_items($repository->photographLanding($perPage, 0), $settings, 'game-on');
+    $response['puzzle_items'] = array_map('snapsmack_game_on_focus_item', $repository->gameOnPuzzlePhotographs());
+    $response['photo_count'] = $repository->publishedPhotographCount();
+    $response['autoopen'] = true;
+    return $response;
+}
+
 function snapsmack_grid_frame_items(array $items, array $settings, string $skin): array
 {
     $prefixes = ['the-grid'=>'tg','aurora'=>'au','sudden-impact'=>'tg','parade'=>'pa','jive-turkey'=>'jt','heuristic'=>'he','instant-camera'=>'ic','game-on'=>'go','sliders'=>'ic'];
@@ -90,6 +110,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
     $slug = (string)($request['slug'] ?? '');
     $id = max(0, (int)($request['id'] ?? 0));
     $page = max(1, (int)($request['page'] ?? 1));
+    $fragment = !empty($request['fragment']);
     $perPageCap = !empty($settings['_cms_full_landing']) ? 5000 : 100;
     $skin = (string)($settings['active_skin'] ?? '');
     $pageSizeKey = ['onyx'=>'onyx_wall_page_size', 'scroll'=>'scroll_page_size',
@@ -100,8 +121,10 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
 
     if ($route === 'resolve') {
         $item = $slug !== '' ? $repository->photographBySlug($slug) : null;
-        if ($item !== null) return ['status' => 200, 'kind' => 'photo', 'item' => snapsmack_game_on_focus_item($item),
-            'comments' => $repository->approvedComments((int)$item['id'], null), 'navigation' => $navigation];
+        if ($item !== null) return $skin === 'game-on'
+            ? snapsmack_game_on_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment)
+            : ['status' => 200, 'kind' => 'photo', 'item' => snapsmack_game_on_focus_item($item),
+                'comments' => $repository->approvedComments((int)$item['id'], null), 'navigation' => $navigation];
         $pageItem = $slug !== '' ? $repository->activePageBySlug($slug) : null;
         return $pageItem === null
             ? ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation]
@@ -151,8 +174,10 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
     if ($route === 'photo') {
         $item = $slug !== '' ? $repository->photographBySlug($slug) : $repository->photographById($id);
         if ($item === null) return ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation];
-        return ['status' => 200, 'kind' => 'photo', 'item' => snapsmack_game_on_focus_item($item),
-            'comments' => $repository->approvedComments((int)$item['id'], null), 'navigation' => $navigation];
+        return $skin === 'game-on'
+            ? snapsmack_game_on_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment)
+            : ['status' => 200, 'kind' => 'photo', 'item' => snapsmack_game_on_focus_item($item),
+                'comments' => $repository->approvedComments((int)$item['id'], null), 'navigation' => $navigation];
     }
     if ($route === 'post') {
         $item = $slug !== '' ? $repository->postBySlug($slug) : $repository->postById($id);

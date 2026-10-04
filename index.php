@@ -251,6 +251,7 @@ try {
             'view' => $_GET['view'] ?? '', 'query' => $_GET['q'] ?? '',
             'tag' => $_GET['tag'] ?? '', 'slug' => $requested_slug ?? ($_GET['slug'] ?? ''),
             'id' => $_GET['id'] ?? 0, 'page' => $_GET['page'] ?? 1,
+            'fragment' => !empty($_GET['modal']),
         ], $_public_settings);
         if (!empty($skin_view['navigation']) && is_array($skin_view['navigation'])) {
             $_public['navigation'] = $skin_view['navigation'];
