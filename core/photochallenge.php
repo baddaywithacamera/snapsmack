@@ -2013,5 +2013,40 @@ function pc_board_embed_html(PDO $pdo, array $settings, ?array $window = null, b
     return $out;
 }
 
+/**
+ * Render the complete public challenge board: the active round followed by
+ * previous scheduled rounds. Static pages use this wrapper so moving the board
+ * into ordinary CMS content does not silently discard its history.
+ */
+function pc_board_rounds_embed_html(PDO $pdo, array $settings, int $history_limit = 52): string {
+    if (!pc_enabled($settings) || !pc_feed_enabled($settings)) return '';
+
+    $esc = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+    $rounds = pc_board_windows($pdo, $settings, $history_limit);
+    $out = '<div class="pc-board-rounds">';
+
+    foreach ($rounds as $round_index => $win) {
+        $prompt = trim((string)($win['prompt'] ?? ''));
+        $tag = trim((string)($win['tag'] ?? pc_tag($settings)));
+        $state = !empty($win['open']) ? 'OPEN' : 'CLOSED';
+        $heading = $round_index === 0
+            ? 'This Week'
+            : ($prompt !== '' ? $prompt : (string)($win['label'] ?? 'Previous Round'));
+
+        $out .= '<section class="pc-board-round">';
+        $out .= '<h2>' . $esc($heading) . '</h2>';
+        $out .= '<p class="dim"><strong>' . $esc($state) . '</strong> &middot; '
+              . $esc($win['label'] ?? '');
+        if ($round_index === 0 && $prompt !== '') {
+            $out .= ' &middot; ' . $esc($prompt);
+        }
+        $out .= ' &mdash; <code>#' . $esc($tag) . '</code></p>';
+        $out .= pc_board_embed_html($pdo, $settings, $win, $round_index === 0);
+        $out .= '</section>';
+    }
+
+    return $out . '</div>';
+}
+
 } // function_exists guard
 // ===== SNAPSMACK EOF =====
