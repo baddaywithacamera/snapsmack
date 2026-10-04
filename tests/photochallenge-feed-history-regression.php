@@ -10,8 +10,13 @@ $ht = file_get_contents($root . '/core/htaccess-template');
 $checks = [
     'chronological board window helper exists' => str_contains($photo, 'function pc_board_windows('),
     'historical rounds carry their own prompt tags' =>
-        str_contains($photo, 'submit_end,prompt,tag')
+        str_contains($photo, 'p.submit_end,p.prompt,p.tag,p.tag_display')
         && str_contains($photo, "pc_round_tag(\$pdo, \$settings, (string)\$row['week_key'])"),
+    'prompt index uses scheduled prompt records and links to its board round' =>
+        str_contains($photo, 'class="pc-prompt-index"')
+        && str_contains($photo, 'prompt_image')
+        && str_contains($photo, 'href="#round-')
+        && str_contains($photo, 'id="round-'),
     'embed accepts an explicit window' => str_contains($photo, 'array $settings, ?array $window = null'),
     'standalone board uses the shared historical renderer' =>
         str_contains($board, 'pc_board_rounds_embed_html($pdo, $settings)'),
