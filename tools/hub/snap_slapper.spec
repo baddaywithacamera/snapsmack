@@ -32,7 +32,18 @@ _gpu_datas, _gpu_binaries = [], []
 # the import fails, and its probe now reports that honestly.
 _gpu_excludes = ['cupy', 'cupy_backends', 'cupyx', 'fastrlock']
 if os.environ.get('SNAP_SLAPPER_NVIDIA_BUILD') == '1':
-    _gpu_datas, _gpu_binaries, _gpu_hidden = collect_all('cupy')
+    # cupy_backends and cupyx are separate top-level packages, not subpackages
+    # of cupy. Collecting only 'cupy' left cupy_backends.cuda._softlink out and
+    # the import died on it, so the card was named in Preferences and never
+    # used. collect_all on each, and collect_submodules as well, because the
+    # compiled backends are reached through Cython imports the analysis cannot
+    # see.
+    _gpu_datas, _gpu_binaries, _gpu_hidden = [], [], []
+    for _gpu_package in ('cupy', 'cupy_backends', 'cupyx', 'fastrlock'):
+        _package_datas, _package_binaries, _package_hidden = collect_all(_gpu_package)
+        _gpu_datas += _package_datas
+        _gpu_binaries += _package_binaries
+        _gpu_hidden += _package_hidden + collect_submodules(_gpu_package)
     _hidden += _gpu_hidden
     # CuPy alone is not enough. The runtime compiler and the CUDA headers live
     # in their own wheels under nvidia/, and without them CuPy imports, names
