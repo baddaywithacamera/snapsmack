@@ -249,7 +249,11 @@ try {
         }
         $_public = snapsmack_public_runtime($pdo, [
             'view' => $_GET['view'] ?? '', 'query' => $_GET['q'] ?? '',
-            'tag' => $_GET['tag'] ?? '', 'slug' => $requested_slug ?? ($_GET['slug'] ?? ''),
+            'tag' => $_GET['tag'] ?? '',
+            // Preserve the original GramOfSmack image links. Older installs and
+            // shared links use ?s=<image-slug>; it is a route alias, not a
+            // separate rendering path, so it must enter the strict controller.
+            'slug' => $requested_slug ?? ($_GET['slug'] ?? ($_GET['s'] ?? '')),
             'id' => $_GET['id'] ?? 0, 'page' => $_GET['page'] ?? 1,
             'fragment' => !empty($_GET['modal']),
         ], $_public_settings);
