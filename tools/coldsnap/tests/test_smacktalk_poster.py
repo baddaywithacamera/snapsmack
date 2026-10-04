@@ -58,6 +58,9 @@ class FakeSession:
         if "smackpress/posts" in url:
             self.last_json = json
             return FakeResp(200, {"post_id": 777, "slug": "s", "url": "u"})
+        if "smackpress/pages" in url:
+            self.last_json = json
+            return FakeResp(200, {"page_id": 778, "slug": "the-idea", "url": "page-u"})
         return FakeResp(404, {})
     def get(self, url, timeout=None, params=None):
         return FakeResp(200, {})
@@ -91,6 +94,25 @@ def _checks():
     assert res.ok, res.message
     assert res.remote_post_id == 777, res.remote_post_id
     assert fake.uploads == 3, fake.uploads
+    n += 1
+
+    # A WordPress Page uses the static-page endpoint and cannot become a
+    # long-form row.  It may also be a text-only page.
+    page = Draft(draft_id="page1", kind=KIND_SMACKTALK, mode=MODE_SMACKTALK,
+                 destination_type="page", title="The Idea", slug="the-idea",
+                 caption="<p>Preserve this.</p>", img_status="published")
+    page_fake = FakeSession()
+    page_poster = P.SmacktalkPoster("https://smacktalk.example", "deadbeef",
+                                    session=page_fake)
+    page_result = page_poster.sync_smacktalk(page)
+    assert page_result.ok and page_result.remote_post_id == 778, page_result.message
+    assert any("smackpress/pages" in url for url in page_fake.post_calls), page_fake.post_calls
+    assert not any("smackpress/posts" in url for url in page_fake.post_calls), page_fake.post_calls
+    assert page_fake.last_json == {
+        "title": "The Idea", "slug": "the-idea",
+        "content": "<p>Preserve this.</p>", "status": "published",
+    }, page_fake.last_json
+    assert page.validate() == [], page.validate()
     n += 1
 
     # 2. Payload: bucket in upload order [101,102,103]; cover = the 2nd image's id (102).

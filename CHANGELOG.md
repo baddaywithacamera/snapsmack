@@ -9,6 +9,65 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.813D — 2026-10-03 — Migrations belong to everyone
+
+- Gives every system user a shared display-name field and binds SMACKPRESS API keys to a real default author, so imported bylines come from ordinary account data rather than site-specific fallbacks.
+- Makes SMACKPRESS repair existing posts and static pages by migration record or authored slug, retaining stable destination URLs and updating content instead of making duplicates.
+- Lets each WordPress source declare its own recurring signature and colophon markers; AI or a person may interpret the source, while the result is stored only in standard SnapSmack post fields available to every approved skin.
+- Restores the security boundary by removing site-specific reconstruction, signature guessing, colophon inference, archive deduplication, masthead fallbacks, and menu defaults from runtime core and TILEZ.
+- Adds the missing static-page read API and repairs static-page updates so imported pages can be reconciled idempotently.
+- Ships TILEZ 0.2.55 with the same generic rendering contract and no Bad Day-specific content.
+
+## 0.7.812D — 2026-10-03 — One About link is enough
+
+- Replaces TILEZ's duplicate ABOUT text-menu default with the imported static page THE IDEA; the circled information shortcut remains the direct About route.
+- Confirms the shared Menu Manager remains the authority for ordering and nesting: root items, dropdown children, and grandchildren are serialized in their chosen order and rendered recursively, with no TILEZ-specific menu order hardcoded in the skin.
+
+## 0.7.811D — 2026-10-02 — Static pages belong to the same publication
+
+- Presents TILEZ static pages with the same editorial split used by its posts: authored page content on the left and the page title in the right-hand record column.
+- Includes the fully tested but never deployed 0.7.810D public-path completion work, avoiding an unnecessary intermediate fleet update.
+
+## 0.7.810D — 2026-10-02 — Finish the whole TILEZ public path
+
+- Restores the photograph on a SMACKTALK single-post page when an older or interrupted migration retained the canonical post ownership but missed its optional presentation pivot; the page no longer claims that a visible photographed post contains zero photographs.
+- Keeps Categories, Albums, and filtered archive navigation inside the bounded SMACKTALK controller and presents them through TILEZ instead of exposing retired, unstyled PHP pages.
+- Packs Blogroll groups independently so a short group cannot create a large false gap beneath it, and anchors the configured global footer to the bottom of short public pages.
+- Adds a completion regression covering the post fallback, strict category and album routes, Blogroll packing, and footer placement before release packaging.
+
+## 0.7.809D — 2026-10-02 — Static pages wear the selected skin
+
+- Routes imported static pages through the bounded SMACKTALK public controller, so TILEZ supplies the same masthead, navigation, favicon, footer, and approved assets used everywhere else.
+- Keeps `page.php` as an old-link compatibility entrance while redirecting strict SMACKTALK sites to the canonical skinned page route.
+- Prevents web-server MultiViews from capturing extensionless page links and bypassing the active skin.
+
+## 0.7.808D — 2026-10-02 — Pages are pages
+
+- Corrects the Windows SMACKPRESS migration path so WordPress Pages are created in SnapSmack's static-page system instead of being misfiled as SMACKTALK posts.
+- Preserves imported page titles, slugs, authored content, links, and locally owned images; published pages remain published, and ordinary imported post slugs are retained so existing links continue to work.
+- Adds regression coverage proving a static page can never be sent through the post endpoint, including a text-only page and the image-bearing page conversion path.
+
+## 0.7.807D — 2026-10-02 — One photograph, one archive tile
+
+- Corrects SMACKPRESS media canonicalization so WordPress originals, `-scaled`, and dimension-suffixed derivatives become one imported photograph and the largest available source wins.
+- Reconciles already-imported SMACKTALK archives at the CMS boundary: derivative rows collapse to their largest version and signature graphics remain post chrome instead of Gallery photographs. Skins still receive bounded presentation data only.
+
+## 0.7.806D — 2026-10-02 — Put static-page menus on the live route
+
+- Routes CMS-owned static-page menu items through the same bounded `/page?slug=` endpoint already used successfully by public pages, fixing the live-only 404 caused by the previous hand-built front-controller query URL.
+
+## 0.7.805D — 2026-10-02 — Complete the TILEZ public contract
+
+- Restores CMS-owned static pages to strict SMACKTALK skins and routes TILEZ page links through the bounded public controller instead of the retired standalone endpoint.
+- Restores the configured global footer slots through a bounded display-only component; no settings, PHP, JavaScript, or database access enters the skin.
+- Narrows single-post reads to the canonical fields the public story renderer actually consumes, preventing unrelated post columns from turning valid published stories into false 404s.
+- Adds end-to-end regressions for TILEZ pages, posts, blogroll, archive, favicon, and footer presentation.
+
+## 0.7.804D — 2026-10-02 — Finish the SMACKPRESS landing
+
+- SMACKTALK image archives now exclude signature-only media, discard missing files, prefer native-aspect derivatives, and provide native dimensions to the shared columns engine. TILEZ 0.2.50 renders the archive as a smaller asymmetric wall with owner-controlled column count and gap instead of a cropped square grid.
+- Existing owner navigation that still stores the former `blogroll.php` destination is normalized into the bounded SMACKTALK Blogroll route, preserving the configured label and order without sending TILEZ around its CMS controller.
+
 ## 0.7.803D — 2026-10-02 — The fleet gets the whole update
 
 - **Hub-driven fleet updates now reconcile every spoke against the signed canonical database schema on every release, even when there are no loose migration files.** The fleet path had incorrectly skipped canonical synchronization when `updater_find_migrations()` returned an empty list, allowing a site to report the new software version while retaining an incomplete data model. The repair uses the release manifest's signed canonical schema URLs and keeps existing content intact.

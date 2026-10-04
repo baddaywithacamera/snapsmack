@@ -54,6 +54,9 @@ function snap_route_url(string $route, array $parameters = []): string {
         else $allowed[$key] = (string)$value;
     }
     $base = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
+    if (($route === 'page' || $route === 'post') && !empty($allowed['slug'])) {
+        return snap_escape_url($base . rawurlencode($allowed['slug']));
+    }
     $path = $routes[$route];
     return snap_escape_url($base . $path . ($allowed ? '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986) : ''));
 }
@@ -119,6 +122,30 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . nl2br(snap_escape_html($comment['text'] ?? $comment['comment_text'] ?? ''), false) . '</p></li>';
         }
         $html .= '</ol>';
+    } elseif ($name === 'footer') {
+        $footer = is_array($data['footer'] ?? null) ? $data['footer'] : [];
+        $parts = [];
+        foreach (($footer['slots'] ?? []) as $slot) {
+            if (!is_array($slot)) continue;
+            switch ((string)($slot['kind'] ?? '')) {
+                case 'copyright':
+                    $parts[] = '&copy; ' . snap_escape_html($slot['year'] ?? '') . ' <a class="p-name u-url footer-link" href="' . snap_route_url('home') . '">' . snap_escape_html($slot['site_name'] ?? '') . '</a>';
+                    break;
+                case 'email':
+                    $email = trim((string)($slot['email'] ?? ''));
+                    if (filter_var($email, FILTER_VALIDATE_EMAIL)) $parts[] = 'EMAIL: <a class="footer-link" href="mailto:' . snap_escape_attr($email) . '">' . snap_escape_html($email) . '</a>';
+                    break;
+                case 'theme': $parts[] = 'THEME: ' . snap_escape_html($slot['name'] ?? ''); break;
+                case 'powered':
+                    $parts[] = 'POWERED BY <a class="footer-link" href="https://snapsmack.ca" target="_blank" rel="nofollow noopener">SNAPSMACK</a> ' . snap_escape_html($slot['version'] ?? '');
+                    break;
+                case 'link':
+                    $parts[] = '<a class="footer-link" href="' . snap_escape_url($slot['url'] ?? '') . '">' . snap_escape_html($slot['label'] ?? '') . '</a>';
+                    break;
+                case 'text': $parts[] = snap_escape_html($slot['text'] ?? ''); break;
+            }
+        }
+        $html = '<div class="footer-metadata-bar"><p>' . implode(' <span class="sep">|</span> ', $parts) . '</p></div>';
     }
     return SnapTrustedHtml::__snapsmackCmsOnly($html);
 }

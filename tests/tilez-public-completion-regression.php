@@ -1,0 +1,82 @@
+<?php
+declare(strict_types=1);
+
+$root = dirname(__DIR__);
+$controller = (string)file_get_contents($root . '/core/smacktalk-public-controller.php');
+$repository = (string)file_get_contents($root . '/core/public-repository.php');
+$navigation = (string)file_get_contents($root . '/core/skin-view-model.php');
+$layout = (string)file_get_contents($root . '/skins/tilez/layout.php');
+$style = (string)file_get_contents($root . '/skins/tilez/style.css');
+$manifest = (string)file_get_contents($root . '/skins/tilez/manifest.json');
+$menuBuilder = (string)file_get_contents($root . '/assets/js/ss-engine-menu-builder.js');
+$routes = (string)file_get_contents($root . '/core/skin-render-helpers.php');
+$assetRegistry = (string)file_get_contents($root . '/core/asset-registry.php');
+$presentation = (string)file_get_contents($root . '/core/public-skin-presentation.php');
+$smackpressApi = (string)file_get_contents($root . '/core/smackpress-api.php');
+$coldSnapPoster = (string)file_get_contents($root . '/tools/coldsnap/sumna_post.py');
+
+$expect = static function (bool $ok, string $message): void {
+    if (!$ok) throw new RuntimeException($message);
+};
+
+$expect(str_contains($controller, "\$view === 'categories' || \$view === 'albums'")
+    && str_contains($layout, 'tilez-taxonomy-page'), 'Categories or albums bypass the strict TILEZ directory.');
+$expect(str_contains($navigation, "'?view=categories'") || str_contains($navigation, "'categories'"),
+    'Category navigation no longer resolves through the strict controller.');
+$expect(str_contains($style, '.blogroll-grid { columns: 2;')
+    && str_contains($style, 'break-inside: avoid'), 'Blogroll groups can create false vertical holes.');
+$expect(str_contains($style, '#page > #system-footer { margin-top: auto;'), 'Footer is no longer anchored to the page.');
+$expect(!str_contains(strtolower($manifest), 'the-idea')
+    && !str_contains(strtolower($manifest), 'bad-day-masthead'),
+    'TILEZ package defaults contain site-specific navigation or branding.');
+$expect(str_contains($menuBuilder, 'Supports three levels of nesting')
+    && str_contains($menuBuilder, 'makeChildRow')
+    && str_contains($menuBuilder, 'menu-grandchildren-list')
+    && str_contains($menuBuilder, 'depth < 2 ? clean(item.children, depth + 1) : []'),
+    'Menu Manager no longer preserves ordered root, child, and grandchild levels.');
+$expect(str_contains($controller, 'snapsmack_smacktalk_slug_url')
+    && str_contains($controller, "'redirect_status' => 301")
+    && !str_contains($navigation, '?view=page&slug=')
+    && str_contains($routes, "\$route === 'page' || \$route === 'post'"),
+    'SMACKTALK exposed internal query routing instead of canonical readable slugs.');
+$expect(str_contains($manifest, '"asset:public:public-base"')
+    && str_contains($manifest, '"asset:public:shortcodes"')
+    && str_contains($manifest, '"asset:public:columns"'),
+    'TILEZ stopped loading the shared longform image presentation styles.');
+$expect(str_contains($assetRegistry, "if(isset(\$registry[\$handle]))")
+    && str_contains($assetRegistry, "':css'"),
+    'Paired mosaic JavaScript and CSS can overwrite one another in the asset registry.');
+$expect(str_contains($controller, "\$post['signature_image_id']")
+    && !str_contains(strtolower($controller), 'mccormick')
+    && !str_contains(strtolower($repository), 'mccormick'),
+    'Public rendering guesses a site-specific signature instead of using the post contract.');
+$expect(!str_contains($controller, 'ownedPhotographsForPost')
+    && !str_contains($controller, 'images? (?:made|taken|shot) with')
+    && !str_contains($repository, 'ownedPhotographsForPost'),
+    'Public rendering is repairing incomplete imports instead of rendering stored post fields.');
+$expect(!str_contains(strtolower($presentation), 'bad-day-masthead'),
+    'Core presentation contains site-specific TILEZ branding.');
+$expect(str_contains($repository, 'menu_order,created_at')
+    && str_contains($controller, "'publication_date'")
+    && str_contains($controller, "'photo_count'")
+    && str_contains($controller, "'word_count'")
+    && str_contains($layout, 'page-record post-record')
+    && str_contains($layout, '<dt>Photos</dt>')
+    && str_contains($layout, '<dt>Words</dt>'),
+    'Static pages no longer expose their publication record beside the content.');
+$expect(str_contains($layout, 'taxonomy-split')
+    && str_contains($layout, 'taxonomy-record')
+    && str_contains($layout, 'taxonomy-links')
+    && str_contains($style, '.taxonomy-split { display: grid;'),
+    'Category and album directories lost their linked image-and-list split.');
+$expect(str_contains($smackpressApi, "\$body['created_at'] ?? (\$body['date'] ?? null)")
+    && str_contains($coldSnapPoster, 'payload["date"] = draft.post_date'),
+    'SMACKPRESS pages no longer retain the source publication date.');
+$expect(str_contains($style, '.blogroll-heading h1 {')
+    && str_contains($style, 'font-size: clamp(2rem, 2.6vw, 2.7rem);')
+    && str_contains($style, 'font-weight: 700;'),
+    'The BLOGROLL title no longer matches post-title typography.');
+
+echo "TILEZ public completion regression passed.\n";
+
+// ===== SNAPSMACK EOF =====

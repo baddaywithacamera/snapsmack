@@ -219,6 +219,8 @@ class Draft:
     panorama_rows: int = 1                # 1-3 (panorama post_type only)
     post_type:  str = ""                  # '', 'single', 'carousel', 'panorama' (derived if blank)
     slug:       str = ""                  # SMACKTALK: requested URL slug (imports keep old URLs); blank = from title
+    destination_type: str = "post"        # SMACKPRESS import: post | page
+    destination_url: str = ""              # site selected when an import draft was created
     # Images.
     images:     List[DraftImage] = field(default_factory=list)
     # Trigram grouping (KIND_GRAM_TRIGRAM only).
@@ -267,7 +269,7 @@ class Draft:
         problems: List[str] = []
         if self.kind not in (KIND_SOLO, KIND_SMACKTALK) + GRAM_KINDS:
             problems.append(f"unknown draft kind '{self.kind}'")
-        if not self.images:
+        if not self.images and self.destination_type != "page":
             problems.append("no images attached")
         if self.kind == KIND_SMACKTALK:
             if not (self.title or "").strip():

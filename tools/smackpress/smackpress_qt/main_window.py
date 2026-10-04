@@ -24,6 +24,7 @@ import sumna_offline as O
 from coldsnap_qt.connect_panel import ConnectPanel
 from coldsnap_qt.mode_take import TakeMode
 from coldsnap_qt.widgets import hint
+from sumna_post import SmacktalkPoster
 
 from smackpress import __version__ as BUILD_VERSION
 from . import SHELL_LABEL
@@ -75,6 +76,10 @@ class MainWindow(QMainWindow):
         self.source.draft_ready.connect(self._hand_to_editor)
         self.source.last_synced_lookup = self._posted_lookup
         self.source.workdir_provider = self._workdir
+        self.source.destination_url_provider = lambda: (
+            self.connect_panel.config.get("url") or self.connect_panel.url_edit.text() or ""
+        ).strip().rstrip("/")
+        self.source.existing_destination_lookup = self._existing_destination
         QShortcut(QKeySequence("F1"), self).activated.connect(self._show_help)
 
     def _show_help(self):
@@ -114,9 +119,32 @@ class MainWindow(QMainWindow):
             return None
         if not d or not getattr(d, "remote_post_id", 0):
             return None
-        base = (self.connect_panel.config.get("url") or "").rstrip("/")
+        base = (getattr(d, "destination_url", "") or self.connect_panel.config.get("url")
+                or self.connect_panel.url_edit.text() or "").rstrip("/")
         slug = getattr(d, "slug", "") or ""
-        url = f"{base}/post/{slug}" if slug else f"{base}/?p={d.remote_post_id}"
+        if getattr(d, "destination_type", "post") == "page":
+            url = f"{base}/page.php?slug={slug}" if slug else f"{base}/page.php?id={d.remote_post_id}"
+        else:
+            url = f"{base}/post/{slug}" if slug else f"{base}/?p={d.remote_post_id}"
         return int(d.remote_post_id), url
+
+    def _existing_destination(self, slug: str, destination_type: str) -> int:
+        """Find an already-imported record by its stable authored slug.
+
+        Called inside SourcePane's worker thread. It makes a repair idempotent
+        even when an older SMACKPRESS build never wrote its local tracking row.
+        """
+        cfg = self.connect_panel.config or {}
+        url = (cfg.get("url") or "").strip()
+        key = (cfg.get("smackpress_key") or "").strip()
+        if not url or not key or not slug:
+            return 0
+        poster = SmacktalkPoster(url, key, site_data=None)
+        records = poster.list_pages() if destination_type == "page" else poster.list_posts(500)
+        wanted = str(slug).strip().casefold()
+        for record in records:
+            if str(record.get("slug") or "").strip().casefold() == wanted:
+                return int(record.get("id") or 0)
+        return 0
 
 # ===== SNAPSMACK EOF =====

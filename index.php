@@ -178,12 +178,15 @@ try {
             'view' => $_GET['view'] ?? '',
             'post_slug' => $_GET['post'] ?? '',
             'post_id' => $_GET['id'] ?? 0,
+            'page_slug' => $_GET['slug'] ?? '',
             'page' => $_GET['page'] ?? 1,
+            'category' => $_GET['category'] ?? 0,
+            'album' => $_GET['album'] ?? 0,
             'requested_slug' => $requested_slug ?? '',
         ]);
         if (!empty($_smacktalk['handled'])) {
             if (!empty($_smacktalk['redirect'])) {
-                header('Location: ' . $_smacktalk['redirect'], true, 302);
+                header('Location: ' . $_smacktalk['redirect'], true, (int)($_smacktalk['redirect_status'] ?? 302));
                 exit;
             }
             if (($_smacktalk['kind'] ?? '') === 'not_found') http_response_code(404);
@@ -211,6 +214,7 @@ try {
                     'skin_presentation' => snapsmack_skin_presentation($settings, (string)$active_skin),
                     'owner_custom_code' => snapsmack_owner_custom_code($settings),
                     'registered_assets' => $_registered_skin_assets,
+                    'footer' => snapsmack_prepare_public_footer($settings, $_active_manifest),
                 ]);
                 $_template_map = is_array($_active_manifest['templates'] ?? null) ? $_active_manifest['templates'] : [];
                 $_strict_template = (string)($_template_map[$_smacktalk['kind'] ?? ''] ?? $_template_map['default'] ?? '');
