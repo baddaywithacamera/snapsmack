@@ -1141,11 +1141,12 @@ input[type="button"],
         display: block;
         height: 200px;
         width: 45px;
-        background: #2d2d2d;
-        color: #fff;
+        background: transparent;
+        color: #2d2d2d;
         position: fixed;
         top: 50%;
         margin-top: -100px;
+        transition: width .15s ease, color .15s ease, background-color .15s ease;
     }
 
     .post-navigation .fa {
@@ -1167,9 +1168,12 @@ input[type="button"],
     .post-nav-next { left: 0; }
     .post-nav-next .fa { padding-right: 4px; }
 
-    .post-navigation a:hover {
+    .post-navigation a:hover,
+    .post-navigation a:focus-visible {
         width: 50px;
+        background: #2d2d2d;
         color: #fff;
+        outline: none;
     }
 
 }
