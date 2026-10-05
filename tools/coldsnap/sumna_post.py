@@ -730,6 +730,11 @@ class SmacktalkPoster:
         r.raise_for_status()
         return list(r.json().get("pages") or [])
 
+    def get_page(self, page_id: int) -> dict:
+        r = self.session.get(self._route(f"smackpress/pages/{int(page_id)}"), timeout=30)
+        r.raise_for_status()
+        return dict(r.json().get("page") or {})
+
     def get_post(self, post_id: int) -> dict:
         r = self.session.get(self._route(f"smackpress/posts/{int(post_id)}"), timeout=30)
         r.raise_for_status()
@@ -902,11 +907,12 @@ class SmacktalkPoster:
         pid = getattr(draft, "remote_post_id", 0)
         if not pid:
             return False
-        # The pages endpoint confirms creation with page_id but intentionally
-        # has no read-by-id route.  Do not verify a static page against the
-        # long-form posts endpoint (which can only return a false 404).
         if getattr(draft, "destination_type", "post") == "page":
-            return True
+            try:
+                r = self.session.get(self._route(f"smackpress/pages/{int(pid)}"), timeout=20)
+                return r.status_code == 200
+            except requests.RequestException:
+                return True
         try:
             r = self.session.get(self._route(f"smackpress/posts/{int(pid)}"), timeout=20)
             if r.status_code == 200:

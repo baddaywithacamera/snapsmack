@@ -9,6 +9,14 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.819D — 2026-10-05 — The landing is the archive
+
+- Replaces public `?view=` menu destinations with readable, label-derived paths such as `/diary` and `/blogroll`; legacy query links and strict legacy PHP entrances redirect to their clean canonical routes.
+- Keeps a SMACKTALK post diary separate from its photograph archive, while GRAMOFSMACK sites treat the landing grid as their archive and no longer advertise or manufacture a duplicate Archive page.
+- Restores the bounded data GAME ON secondary pages lost during the skin-security migration: saved puzzle-background content, post count, static-page hero images, grouped Blogroll presentation, and the standard Admin-configured footer in normal document flow.
+- Adds a read-only static-page API and makes existing SMACKPRESS page repairs reuse their imported image records instead of uploading another copy on every run; ambiguous image-count repairs stop for review.
+- Ships GAME ON 0.1.24 as a presentation-only skin update. The fleet security ratchet and all 162 regression programs pass; this bounded repair does not claim whole-fleet visual parity or close the wider migration incident.
+
 ## 0.7.818D — 2026-10-05 — A footer means a footer
 
 - Keeps the standard Admin-configured footer visible at the bottom of every page when it is enabled.
