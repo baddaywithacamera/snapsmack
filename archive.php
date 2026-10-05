@@ -71,6 +71,18 @@ try {
     snapsmack_apply_skin_settings($settings, $active_skin);
     $skin_view = snapsmack_prepare_skin_view($pdo, $settings, $active_skin);
 
+    // Legacy archive.php links must not fall out of a strict skin into the old
+    // unstyled document. A GRAMOFSMACK landing page already is its archive;
+    // other strict skins use their clean controller-owned archive route.
+    $_archive_manifest = load_skin_manifest($active_skin);
+    if (in_array((string)($_archive_manifest['cms_controller'] ?? ''), ['smacktalk', 'public'], true)) {
+        $_archive_target = (($settings['site_mode'] ?? '') === 'carousel')
+            ? BASE_URL
+            : snapsmack_public_route_url(BASE_URL, $skin_view['route_aliases'] ?? [], 'archive', 'archive');
+        header('Location: ' . $_archive_target, true, 301);
+        exit;
+    }
+
     // --- ARCHIVE DISABLED? ---
     // Archive is a disable-able feature: archive_layout === 'none' turns it off
     // entirely (no nav link — see core/header.php + core/gram-nav-links.php — and
