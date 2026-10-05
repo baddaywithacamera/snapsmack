@@ -29,6 +29,10 @@ $expect(str_contains($style, '#page > #system-footer { margin-top: auto;'), 'Foo
 $expect(!str_contains(strtolower($manifest), 'the-idea')
     && !str_contains(strtolower($manifest), 'bad-day-masthead'),
     'TILEZ package defaults contain site-specific navigation or branding.');
+$expect(str_contains($manifest, '"tilez_info_page_slug"')
+    && str_contains($manifest, '"default": "about"')
+    && str_contains($layout, "tilez_info_page_slug'] ?? 'about'"),
+    'TILEZ information shortcut is not backed by a reusable per-site page setting.');
 $expect(str_contains($menuBuilder, 'Supports three levels of nesting')
     && str_contains($menuBuilder, 'makeChildRow')
     && str_contains($menuBuilder, 'menu-grandchildren-list')

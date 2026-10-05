@@ -2,7 +2,7 @@
     "schema_version": 2,
     "security_policy": 2,
     "name": "TILEZ",
-    "version": "0.2.57",
+    "version": "0.2.58",
     "author": "Sean McCormick & Claude",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A quiet white SMACKTALK portfolio inspired by editorial design studios. Longform posts flow through a native-aspect three-column wall powered by SnapSmack's shared columns engine.",
@@ -140,6 +140,13 @@
                 "0": "Hide"
             },
             "help": "Hide the site tagline under the logo/title (useful when your logo already includes it). The tagline still appears in RSS and social/SEO meta."
+        },
+        "tilez_info_page_slug": {
+            "section": "NAVIGATION",
+            "type": "text",
+            "label": "Info Page Slug",
+            "default": "about",
+            "help": "The static page opened by the round information icon, for example about or the-artist."
         },
         "accent_color": {
             "section": "COLOURS",
