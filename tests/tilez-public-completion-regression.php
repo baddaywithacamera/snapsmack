@@ -1,4 +1,9 @@
 <?php
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ */
 declare(strict_types=1);
 
 $root = dirname(__DIR__);
@@ -11,6 +16,7 @@ $manifest = (string)file_get_contents($root . '/skins/tilez/manifest.json');
 $menuBuilder = (string)file_get_contents($root . '/assets/js/ss-engine-menu-builder.js');
 $routes = (string)file_get_contents($root . '/core/skin-render-helpers.php');
 $assetRegistry = (string)file_get_contents($root . '/core/asset-registry.php');
+$footerController = (string)file_get_contents($root . '/assets/js/ss-engine-footer.js');
 $presentation = (string)file_get_contents($root . '/core/public-skin-presentation.php');
 $smackpressApi = (string)file_get_contents($root . '/core/smackpress-api.php');
 $coldSnapPoster = (string)file_get_contents($root . '/tools/coldsnap/sumna_post.py');
@@ -26,6 +32,13 @@ $expect(str_contains($navigation, "'?view=categories'") || str_contains($navigat
 $expect(str_contains($style, '.blogroll-grid { columns: 2;')
     && str_contains($style, 'break-inside: avoid'), 'Blogroll groups can create false vertical holes.');
 $expect(str_contains($style, '#page > #system-footer { margin-top: auto;'), 'Footer is no longer anchored to the page.');
+$drawerGuard = strpos($footerController, 'if (footer && hasDrawer)');
+$footerHide = strpos($footerController, "footer.style.display = 'none';");
+$expect(str_contains($footerController, 'const hasDrawer = paneInfo || paneComm || paneHelp;')
+    && $drawerGuard !== false
+    && $footerHide !== false
+    && $drawerGuard < $footerHide,
+    'The shared drawer controller can hide the normal Admin-configured footer.');
 $expect(!str_contains(strtolower($manifest), 'the-idea')
     && !str_contains(strtolower($manifest), 'bad-day-masthead'),
     'TILEZ package defaults contain site-specific navigation or branding.');

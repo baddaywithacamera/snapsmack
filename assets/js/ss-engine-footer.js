@@ -27,7 +27,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const paneComm = document.getElementById('pane-comments');
     const paneHelp = document.getElementById('pane-help');
 
-    if (footer) {
+    // A normal site footer may also use the historical #footer ID. Only take
+    // control when this page actually contains one of the collapsible panes.
+    // Otherwise the Admin-configured footer must remain visible.
+    const hasDrawer = paneInfo || paneComm || paneHelp;
+
+    if (footer && hasDrawer) {
         footer.style.display = 'none';
 
         let closing = false;
