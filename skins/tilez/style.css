@@ -2572,11 +2572,19 @@ body.blog, body.single, body.archive { background: #fff; }
 }
 .entry-content .snap-inline-frame img,
 .entry-content .mosaic-item img {
-    transition: filter .3s ease, transform .35s ease;
+    transition: filter .3s ease, transform .35s ease, clip-path .35s ease;
     transform-origin: center;
 }
 .entry-content .snap-inline-frame:hover img,
-.entry-content .snap-inline-frame:focus-within img,
+.entry-content .snap-inline-frame:focus-within img {
+    filter: brightness(.83);
+    transform: scale(1.195);
+    /* The frame spans the prose column, but a tall photograph may be narrower
+       because the shared shortcode engine caps it at 75vh. Clip the scaled
+       pixels back to the photograph's original visual footprint rather than
+       letting them expand into the frame's unused horizontal space. */
+    clip-path: inset(8.16%);
+}
 .entry-content .mosaic-item:hover img,
 .entry-content .mosaic-item:focus-within img {
     filter: brightness(.83);
