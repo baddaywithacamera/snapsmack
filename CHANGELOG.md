@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.818D — 2026-10-05 — A footer means a footer
+
+- Keeps the standard Admin-configured footer visible at the bottom of every page when it is enabled.
+- Limits the shared slide-up footer controller to skins that actually render information, comments, or help drawers, preserving those interactive drawers without hiding ordinary skin footers.
+- Adds regression coverage for the shared footer boundary exposed by TILEZ and other static-footer skins.
+
 ## 0.7.817D — 2026-10-05 — Reconnect the presentation boundary
 
 - Restores the shared SMACKTALK lightbox by retaining its CMS-generated `data-lightbox-src` attribute through the trusted-HTML boundary while rejecting unsafe URL schemes.
