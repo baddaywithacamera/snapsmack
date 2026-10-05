@@ -1,5 +1,12 @@
 <?php
 /**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
+/**
  * SNAPSMACK - Skin View Model
  *
  * Central, reusable preparation of display-only values consumed by skins.
@@ -71,8 +78,10 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
     if (!is_array($items)) return [];
 
     $base = defined('BASE_URL') ? BASE_URL : '/';
-    $strict_smacktalk = (($manifest['cms_controller'] ?? '') === 'smacktalk');
-    $resolve = function (array $item) use (&$resolve, $pdo, $base, $strict_smacktalk): ?array {
+    $controller = (string)($manifest['cms_controller'] ?? '');
+    $strict_controller = in_array($controller, ['smacktalk', 'public'], true);
+    $strict_smacktalk = $controller === 'smacktalk';
+    $resolve = function (array $item) use (&$resolve, $pdo, $base, $strict_controller, $strict_smacktalk): ?array {
         if (isset($item['active']) && !$item['active']) return null;
         $type = (string)($item['type'] ?? 'custom');
         $label = (string)($item['label'] ?? '');
@@ -81,15 +90,15 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
         // still store the old public PHP endpoint as a custom URL. Keep the
         // owner's label/order but route that known CMS destination through the
         // bounded controller just like a newly-created Blogroll item.
-        if ($strict_smacktalk && $type === 'custom'
+        if ($strict_controller && $type === 'custom'
             && preg_match('#(?:^|/)blogroll\.php(?:[?#].*)?$#i', trim($url))) {
             $type = 'blogroll';
         }
-        if ($strict_smacktalk && $type === 'custom'
+        if ($strict_controller && $type === 'custom'
             && preg_match('#(?:^|/)archive\.php(?:[?#].*)?$#i', trim($url))) {
             $type = 'image_archive';
         }
-        if ($strict_smacktalk && $type === 'custom'
+        if ($strict_controller && $type === 'custom'
             && preg_match('#(?:^|/)albums\.php(?:[?#].*)?$#i', trim($url))) {
             $type = 'albums';
         }
@@ -106,7 +115,7 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
             case 'albums': $url = $strict_smacktalk ? $base . '?view=albums' : $base . 'albums.php'; break;
             case 'collections': $url = $base . 'collections.php'; break;
             case 'wall': $url = $base . 'gallery-wall.php'; break;
-            case 'blogroll': $url = $strict_smacktalk ? $base . '?view=blogroll' : $base . 'blogroll.php'; break;
+            case 'blogroll': $url = $strict_controller ? $base . '?view=blogroll' : $base . 'blogroll.php'; break;
             case 'blog': $url = $base . 'blog.php'; break;
             case 'page':
                 $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($item['slug'] ?? ''));
