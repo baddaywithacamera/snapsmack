@@ -9,6 +9,15 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.817D — 2026-10-05 — Reconnect the presentation boundary
+
+- Restores the shared SMACKTALK lightbox by retaining its CMS-generated `data-lightbox-src` attribute through the trusted-HTML boundary while rejecting unsafe URL schemes.
+- Gives every SMACKTALK skin the same linked-image interaction: restrained darkening, a close zoom clipped to the photograph's original displayed footprint, and click-to-open access to the full-size original.
+- Removes TILEZ's defective duplicate post-image hover rule. TILEZ 0.2.59 relies on the shared CMS behavior instead of implementing a site-specific copy.
+- Restores strict-controller page and blogroll routing without allowing disabled blogrolls to bypass their visibility guard.
+- Restores GAME ON's clean photograph links, deep-link modal path, site-wide frame state, styled static pages, and styled blogroll. GAME ON 0.1.23 keeps presentation in the skin while the CMS supplies bounded data and shared behavior.
+- Adds read-only presentation-hook and declared-route audits so incomplete skin reconnections are recorded instead of being mistaken for parity.
+
 ## 0.7.816D — 2026-10-04 — Bring the originals with you
 
 - Preserves WordPress image-link intent during SMACKPRESS migrations so photographs that opened their full-size originals continue to do so after import.

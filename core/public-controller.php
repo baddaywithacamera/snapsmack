@@ -1,13 +1,20 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
 require_once __DIR__ . '/public-repository.php';
 
 /** Turn ambient request input into a small, typed route request. */
 function snapsmack_public_parse_request(array $input): array
 {
     $route = is_string($input['route'] ?? null) ? strtolower(trim($input['route'])) : 'landing';
-    $allowed = ['landing', 'resolve', 'photo', 'post', 'archive', 'page', 'search', 'hashtag', 'albums', 'collections', 'collection'];
+    $allowed = ['landing', 'resolve', 'photo', 'post', 'archive', 'page', 'blogroll', 'search', 'hashtag', 'albums', 'collections', 'collection'];
     if (!in_array($route, $allowed, true)) $route = 'not_found';
     $slug = is_string($input['slug'] ?? null) ? trim($input['slug']) : '';
     if ($slug !== '' && !preg_match('/^[a-z0-9][a-z0-9_-]{0,199}$/i', $slug)) $slug = '';
@@ -88,12 +95,21 @@ function snapsmack_grid_frame_items(array $items, array $settings, string $skin)
     $shadowMap = ['0'=>'none','1'=>'3px 3px 8px rgba(0,0,0,.20)','2'=>'6px 6px 18px rgba(0,0,0,.40)','3'=>'12px 12px 32px rgba(0,0,0,.60)'];
     foreach ($items as $index => $item) {
         $source = $level === 'per_image' ? 'img_' : ($level === 'per_carousel' ? 'post_' : '');
-        if ($source === '') { $items[$index]['frame_style']=''; $items[$index]['is_framed']=false; continue; }
-        $size=max(1,min(100,(int)($item[$source.($source==='img_'?'size_pct':'img_size_pct')]??100)));
-        $border=max(0,min(100,(int)($item[$source.'border_px']??0)));
-        $color=(string)($item[$source.'border_color']??'#000000'); if(!preg_match('/^#[0-9a-f]{6}$/i',$color))$color='#000000';
-        $bg=(string)($item[$source.'bg_color']??'#ffffff'); if(!preg_match('/^#[0-9a-f]{6}$/i',$bg))$bg='#ffffff';
-        $shadow=$shadowMap[(string)($item[$source.'shadow']??'0')]??'none';
+        if ($source === '') {
+            $size=max(1,min(100,(int)($settings[$prefix.'_frame_size_pct']??100)));
+            $border=max(0,min(100,(int)($settings[$prefix.'_frame_border_px']??0)));
+            $color=(string)($settings[$prefix.'_frame_border_color']??'#000000');
+            $bg=(string)($settings[$prefix.'_frame_bg_color']??'#ffffff');
+            $shadow=$shadowMap[(string)($settings[$prefix.'_frame_shadow']??'0')]??'none';
+        } else {
+            $size=max(1,min(100,(int)($item[$source.($source==='img_'?'size_pct':'img_size_pct')]??100)));
+            $border=max(0,min(100,(int)($item[$source.'border_px']??0)));
+            $color=(string)($item[$source.'border_color']??'#000000');
+            $bg=(string)($item[$source.'bg_color']??'#ffffff');
+            $shadow=$shadowMap[(string)($item[$source.'shadow']??'0')]??'none';
+        }
+        if(!preg_match('/^#[0-9a-f]{6}$/i',$color))$color='#000000';
+        if(!preg_match('/^#[0-9a-f]{6}$/i',$bg))$bg='#ffffff';
         $items[$index]['frame_style']="--tile-img-size:{$size}%;--tile-border-w:{$border}px;--tile-border-c:{$color};--tile-bg:{$bg};--tile-shadow:{$shadow};";
         $items[$index]['is_framed']=$size<100||$border>0||$shadow!=='none';
     }
@@ -202,6 +218,31 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             ? ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation]
             : ['status' => 200, 'kind' => 'page', 'item' => $item, 'navigation' => $navigation];
     }
+    if ($route === 'blogroll') {
+        if (($settings['blogroll_enabled'] ?? '1') !== '1') {
+            return ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation];
+        }
+        $groups = [];
+        $seen = [];
+        foreach ($repository->blogrollPeers() as $row) {
+            $url = trim((string)($row['peer_url'] ?? ''));
+            if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $url)) continue;
+            $key = strtolower(rtrim($url, '/'));
+            if (isset($seen[$key])) continue;
+            $seen[$key] = true;
+            $category = preg_replace('/^Hub:\s*/i', '', trim((string)($row['cat_name'] ?? '')));
+            if ($category === '' || preg_match('/^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?$/i', $category)) $category = 'THE NETWORK';
+            $groups[$category][] = [
+                'name' => trim((string)($row['peer_name'] ?? '')) ?: $url,
+                'url' => $url,
+                'description' => trim((string)($row['peer_desc'] ?? '')),
+            ];
+        }
+        $bounded = [];
+        foreach ($groups as $label => $items) $bounded[] = ['label' => $label, 'items' => $items];
+        return ['status' => 200, 'kind' => 'blogroll', 'page_title' => 'BLOGROLL',
+            'blogroll_groups' => $bounded, 'navigation' => $navigation];
+    }
     if ($route === 'search') {
         $query = trim((string)($request['query'] ?? ''));
         return ['status' => 200, 'kind' => 'search', 'query' => $query,
@@ -228,3 +269,4 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
     }
     return ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation];
 }
+// ===== SNAPSMACK EOF =====

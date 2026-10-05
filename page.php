@@ -76,8 +76,8 @@ try {
     // their bounded core controller.  Preserve page.php as an old-link entry
     // point, but do not let it bypass the selected skin's layout.
     $active_manifest = load_skin_manifest($active_skin);
-    if (($active_manifest['cms_controller'] ?? '') === 'smacktalk') {
-        header('Location: ' . BASE_URL . '?view=page&slug=' . rawurlencode((string)$slug), true, 302);
+    if (in_array((string)($active_manifest['cms_controller'] ?? ''), ['smacktalk', 'public'], true)) {
+        header('Location: ' . rtrim(BASE_URL, '/') . '/' . rawurlencode((string)$slug), true, 301);
         exit;
     }
 

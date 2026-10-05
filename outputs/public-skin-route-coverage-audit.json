@@ -1,0 +1,2362 @@
+{
+    "schema_version": 1,
+    "generated_at_utc": "2026-10-05T06:46:59+00:00",
+    "head": "088ee886164141daf0be8502d2e267b22494ea0f",
+    "method": "render each route with a unique marker and reject not-found fallthrough",
+    "warning": "Route marker coverage proves bounded content reaches the skin; it does not prove visual parity or interaction behavior.",
+    "skins": {
+        "50-shades-of-noah-grey": {
+            "covered_count": 11,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "52-card-pickup": {
+            "covered_count": 11,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "aurora": {
+            "covered_count": 7,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "chaplin": {
+            "covered_count": 11,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "full-monty": {
+            "covered_count": 11,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "galleria": {
+            "covered_count": 11,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "game-on": {
+            "covered_count": 7,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "glide": {
+            "covered_count": 11,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "heuristic": {
+            "covered_count": 7,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "hip-to-be-square": {
+            "covered_count": 11,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "impact-printer": {
+            "covered_count": 11,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "instant-camera": {
+            "covered_count": 7,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "jive-turkey": {
+            "covered_count": 7,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "new-horizon": {
+            "covered_count": 11,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "onyx": {
+            "covered_count": 11,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "parade": {
+            "covered_count": 7,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "photogram": {
+            "covered_count": 11,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "rational-geo": {
+            "covered_count": 11,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "scroll": {
+            "covered_count": 8,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "show-n-tell": {
+            "covered_count": 8,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "slickr": {
+            "covered_count": 8,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "sliders": {
+            "covered_count": 7,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "sudden-impact": {
+            "covered_count": 7,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "the-grid": {
+            "covered_count": 7,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": false,
+                    "marker_present": true,
+                    "not_found_fallthrough": true,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        },
+        "true-grit": {
+            "covered_count": 11,
+            "declared_count": 11,
+            "routes": {
+                "landing": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "photo": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "post": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "archive": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "page": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "search": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "hashtag": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "albums": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collections": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "collection": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                },
+                "not_found": {
+                    "declared_template": "layout.php",
+                    "covered": true,
+                    "marker_present": true,
+                    "not_found_fallthrough": false,
+                    "warning_count": 0,
+                    "warnings": []
+                }
+            }
+        }
+    },
+    "skin_count": 25,
+    "declared_route_total": 275,
+    "covered_route_total": 230
+}

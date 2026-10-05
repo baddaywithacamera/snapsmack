@@ -1,6 +1,13 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
 /** Opaque HTML value. Strict templates can render it but cannot construct it. */
 final class SnapTrustedHtml
 {
@@ -27,7 +34,10 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         'div' => ['class', 'id', 'data-mosaic'], 'span' => ['class'], 'section' => ['class', 'id'],
         'figure' => ['class'], 'figcaption' => ['class'],
         'a' => ['href', 'title'],
-        'img' => ['src', 'alt', 'title', 'width', 'height', 'loading'],
+        // This attribute is emitted by the CMS shortcode parser, then consumed
+        // by the shared SMACKTALK lightbox engine. It remains URL-validated
+        // below just like src and href.
+        'img' => ['src', 'alt', 'title', 'width', 'height', 'loading', 'data-lightbox-src'],
     ];
     $document = new DOMDocument('1.0', 'UTF-8');
     $previous = libxml_use_internal_errors(true);
@@ -53,7 +63,7 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
                 $node->removeAttributeNode($attribute);
                 continue;
             }
-            if (in_array($name, ['href', 'src'], true)) {
+            if (in_array($name, ['href', 'src', 'data-lightbox-src'], true)) {
                 $value = trim(html_entity_decode($attribute->nodeValue, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
                 $scheme = strtolower((string)parse_url($value, PHP_URL_SCHEME));
                 if (str_starts_with($value, '//') || ($scheme !== '' && !in_array($scheme, ['http', 'https'], true))) {
@@ -68,3 +78,4 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
     foreach ($root->childNodes as $child) $output .= $document->saveHTML($child);
     return SnapTrustedHtml::__snapsmackCmsOnly($output);
 }
+// ===== SNAPSMACK EOF =====
