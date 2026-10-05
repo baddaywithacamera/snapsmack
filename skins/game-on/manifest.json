@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "GAME ON",
-    "version": "0.1.23",
+    "version": "0.1.24",
     "requires_snapsmack": "0.7.680D",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",

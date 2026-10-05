@@ -51,7 +51,7 @@ function snap_route_url(string $route, array $parameters = []): string {
     $routes = [
         'home' => '', 'archive' => 'archive', 'search' => 'search', 'hashtag' => 'tag',
         'post' => 'post', 'photo' => 'photo', 'page' => 'page', 'albums' => 'albums',
-        'collections' => 'collections', 'collection' => 'collection', 'blogroll' => '?view=blogroll',
+        'collections' => 'collections', 'collection' => 'collection', 'blogroll' => 'blogroll',
         'game-scores' => 'game-on-scores.php',
     ];
     if (!array_key_exists($route, $routes)) return '';

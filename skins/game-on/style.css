@@ -52,7 +52,7 @@
 
 body {
     margin: 0;
-    padding: 0 0 48px;
+    padding: 0;
     background: var(--bg-primary);
     color: var(--text-primary);
     font-family: var(--font-body);
@@ -83,7 +83,12 @@ img { display: block; max-width: 100%; }
     margin: 0 auto;
     padding-left: var(--grid-gutter, 0px);
     padding-right: var(--grid-gutter, 0px);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
+
+.go-content-wrap > main { flex: 1 0 auto; }
 
 /* General constrained wrapper — profile header, topbar, post view, archive */
 .go-wrap {
@@ -1059,12 +1064,10 @@ body.go-modal-open { overflow: hidden; }
     background: color-mix(in srgb, var(--go-content-bg, #fff) var(--go-content-opacity, 75%), transparent);
     max-width: calc(var(--grid-max-width, 935px) + 2 * var(--grid-gutter, 0px));
     width: min(100%, calc(var(--grid-max-width, 935px) + 2 * var(--grid-gutter, 0px)));
-    position: fixed;
-    left: 50%;
-    bottom: 0;
-    z-index: 95;
-    margin: 0;
-    transform: translateX(-50%);
+    position: relative;
+    z-index: 2;
+    flex: 0 0 auto;
+    margin: 32px auto 0;
 }
 
 #system-footer .inside {
@@ -1115,15 +1118,18 @@ body.go-modal-open { overflow: hidden; }
     width: 100%;
     max-width: var(--static-content-width, 850px);
     margin: 0 auto;
-    padding: 40px 0 60px;
+    padding: 0 0 60px;
 }
 
 .go-static-title {
-    font-size: clamp(26px, 3vw, 34px);
-    font-weight: 800;
-    line-height: 1.1;
+    width: 100%;
+    max-width: var(--static-content-width, 850px);
+    margin: 0 auto;
+    padding: 38px 0 22px;
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.25;
     color: var(--text-primary);
-    margin: 0 0 24px;
 }
 
 .go-static-page .go-content-wrap {
@@ -1169,6 +1175,22 @@ body.go-modal-open { overflow: hidden; }
 .go-static-body a:hover {
     text-decoration: underline;
 }
+
+.go-page-hero {
+    margin: 0 0 28px;
+}
+
+.go-page-hero img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.go-page-hero--medium { max-width: 70%; }
+.go-page-hero--small { max-width: 45%; }
+.go-page-hero--center { margin-left: auto; margin-right: auto; }
+.go-page-hero--right { margin-left: auto; }
+.go-page-hero--shadow img { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22); }
 
 /* ==========================================================================
    BACKGROUND TREATMENT  (skin admin → Treatment)
@@ -1261,16 +1283,17 @@ body:has(.go-treatment-bg).is-blogroll #scroll-stage {
    ========================================================================== */
 
 body.is-blogroll .blogroll-canvas {
-    max-width: 680px;
+    max-width: var(--static-content-width, 850px);
     margin: 0 auto;
-    padding: 32px 20px 60px;
+    padding: 0 0 60px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 36px 64px;
 }
 
-body.is-blogroll .static-page-title {
-    font-size: var(--blog-title-size, 24px);
-    font-weight: 300;
-    color: var(--text-primary);
-    margin: 0 0 24px;
+body.is-blogroll .blogroll-category-block {
+    min-width: 0;
 }
 
 body.is-blogroll .blogroll-category-heading {
@@ -1281,10 +1304,16 @@ body.is-blogroll .blogroll-category-heading {
     color: var(--text-secondary);
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 6px;
-    margin: 32px 0 16px;
+    margin: 0 0 16px;
 }
 
-body.is-blogroll .blogroll-peer { margin: 0 0 20px; }
+body.is-blogroll .blogroll-peer {
+    margin: 0;
+    padding: 0 0 18px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+}
+
+body.is-blogroll .blogroll-peer + .blogroll-peer { padding-top: 18px; }
 
 body.is-blogroll .blogroll-peer-name a {
     font-size: 15px;
@@ -1306,6 +1335,14 @@ body.is-blogroll .blogroll-peer-desc {
 
 /* Drop the raw URL line — the peer name is the link. */
 body.is-blogroll .blogroll-peer-url { display: none; }
+
+@media (max-width: 760px) {
+    .go-static-title,
+    .go-static-content { padding-left: 20px; padding-right: 20px; }
+    body.is-blogroll .blogroll-canvas { grid-template-columns: 1fr; gap: 32px; }
+    .go-page-hero--medium,
+    .go-page-hero--small { max-width: 100%; }
+}
 
 /* ==========================================================================
    COMMUNITY COMMENT FORM  (inside the Grid post modal)

@@ -15,6 +15,7 @@ require_once dirname(__DIR__) . '/core/trusted-html.php';
 require_once dirname(__DIR__) . '/core/skin-render-helpers.php';
 require_once dirname(__DIR__) . '/core/skin-view-contract.php';
 require_once dirname(__DIR__) . '/core/public-controller.php';
+require_once dirname(__DIR__) . '/core/public-route-aliases.php';
 
 function recovery_check(bool $condition, string $message): void
 {
@@ -32,8 +33,39 @@ recovery_check(
     'Page links no longer use the canonical root slug.'
 );
 recovery_check(
-    snap_route_url('blogroll') === 'https://example.test/?view=blogroll',
+    snap_route_url('blogroll') === 'https://example.test/blogroll',
     'Blogroll links no longer enter the strict public controller.'
+);
+
+$legacyMenuSettings = ['nav_menu_json' => json_encode([
+    ['type' => 'custom', 'label' => 'ARCHIVE VIEW', 'url' => '/archive.php', 'active' => true],
+    ['type' => 'custom', 'label' => 'BLOGROLL', 'url' => '/blogroll.php', 'active' => true],
+], JSON_THROW_ON_ERROR)];
+$carouselAliases = snapsmack_public_route_aliases($legacyMenuSettings, [
+    'cms_controller' => 'public',
+    'site_mode' => 'carousel',
+]);
+recovery_check(
+    ($carouselAliases['blogroll'] ?? '') === 'blogroll',
+    'A legacy blogroll.php menu record no longer resolves at the clean /blogroll path.'
+);
+recovery_check(
+    !in_array('archive', $carouselAliases, true),
+    'A GRAMOFSMACK skin still manufactures a duplicate archive route from archive.php.'
+);
+
+$smacktalkAliases = snapsmack_public_route_aliases([
+    'nav_menu_json' => json_encode([
+        ['type' => 'archive', 'label' => 'DIARY', 'active' => true],
+        ['type' => 'image_archive', 'label' => 'THE IMAGES', 'active' => true],
+        ['type' => 'blogroll', 'label' => 'BLOGROLL', 'active' => true],
+    ], JSON_THROW_ON_ERROR),
+], ['cms_controller' => 'smacktalk']);
+recovery_check(
+    ($smacktalkAliases['diary'] ?? '') === 'diary'
+        && ($smacktalkAliases['the-images'] ?? '') === 'archive'
+        && ($smacktalkAliases['blogroll'] ?? '') === 'blogroll',
+    'SMACKTALK clean aliases no longer keep the diary, image archive, and blogroll distinct.'
 );
 
 $framed = snapsmack_grid_frame_items(
@@ -87,6 +119,39 @@ recovery_check($rendered, 'GAME ON blogroll did not render through the strict sk
 foreach (['game-on-v2 is-blogroll', 'go-blogroll', 'FRIENDS', 'Example Photographer'] as $needle) {
     recovery_check(str_contains($html, $needle), 'GAME ON blogroll lost ' . $needle);
 }
+recovery_check(
+    str_contains($html, 'footer-metadata-bar') && !str_contains($html, '<p id="sig-text">'),
+    'GAME ON no longer renders the configured standard footer.'
+);
+
+$pageResponse = [
+    'kind' => 'page',
+    'status' => 200,
+    'navigation' => [],
+    'item' => [
+        'title' => 'About Sean',
+        'content' => snapsmack_trusted_html('<p>Biography.</p>'),
+        'image_asset' => '/media_assets/about.png',
+        'image_size' => 'medium',
+        'image_align' => 'center',
+        'image_shadow' => 1,
+    ],
+];
+$pageView = snapsmack_build_skin_view($pageResponse, $site);
+ob_start();
+$pageRendered = snapsmack_render_strict_skin_template(dirname(__DIR__) . '/skins/game-on', 'layout.php', $pageView);
+$pageHtml = (string)ob_get_clean();
+recovery_check($pageRendered, 'GAME ON static page did not render through the strict skin.');
+foreach (['is-static-page', 'go-page-hero--medium', 'go-page-hero--center', 'go-page-hero--shadow', '/media_assets/about.png', 'go-static-body'] as $needle) {
+    recovery_check(str_contains($pageHtml, $needle), 'GAME ON static page lost ' . $needle);
+}
+
+$gameCss = (string)file_get_contents(dirname(__DIR__) . '/skins/game-on/style.css');
+recovery_check(
+    !preg_match('/#system-footer\s*\{[^}]*position:\s*fixed/s', $gameCss)
+        && str_contains($gameCss, '.go-content-wrap > main { flex: 1 0 auto; }'),
+    'GAME ON footer is floating over content instead of following it.'
+);
 
 class RecoveryEmptyPDO extends PDO {
     public function __construct() {}

@@ -4,8 +4,8 @@
 This is deliberately conservative: only source items whose authored slug already
 exists at the SnapSmack destination are eligible.  Posts reuse their existing
 Gallery bucket when its size matches, so a repair does not duplicate photographs.
-Static pages have no read-back endpoint, so their referenced images are uploaded
-again while the existing page id and URL are retained.
+Static pages use their read-back media bucket so a repeated repair reuses the
+existing Gallery records instead of uploading duplicates.
 """
 
 from __future__ import annotations
@@ -100,6 +100,16 @@ def main() -> int:
                 draft.category_ids = list(current.get("cat_ids") or [])
                 draft.album_ids = list(current.get("album_ids") or [])
                 draft.tags = " ".join(current.get("tags") or [])
+            else:
+                current = poster.get_page(int(destination["id"]))
+                bucket = list(current.get("bucket") or [])
+                if len(bucket) != len(draft.images):
+                    raise RuntimeError(
+                        f"image count changed ({len(draft.images)} source, {len(bucket)} destination); "
+                        "refusing an ambiguous positional repair"
+                    )
+                for image, existing in zip(draft.images, bucket):
+                    image.remote_image_id = int(existing["id"])
 
             result = poster.sync_smacktalk(draft)
             if not result.ok:

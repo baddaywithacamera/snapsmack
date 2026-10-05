@@ -65,7 +65,7 @@ $tilezBlogroll = snapsmack_build_skin_view($base + [
 ob_start();
 $tilezBlogrollOk = snapsmack_render_strict_skin_template($root . '/skins/tilez', 'layout.php', $tilezBlogroll);
 $tilezBlogrollHtml = (string)ob_get_clean();
-foreach (['class="content tilez-blogroll"', 'Away With A Camera', 'Local day trips and fine photographs.', 'rel="icon" href="/media/adorable.ico"', '/?view=blogroll'] as $hook) {
+foreach (['class="content tilez-blogroll"', 'Away With A Camera', 'Local day trips and fine photographs.', 'rel="icon" href="/media/adorable.ico"', '/blogroll'] as $hook) {
     if (!$tilezBlogrollOk || !str_contains($tilezBlogrollHtml, $hook)) throw new RuntimeException("TILEZ blogroll/favicon presentation missing: {$hook}");
 }
 
