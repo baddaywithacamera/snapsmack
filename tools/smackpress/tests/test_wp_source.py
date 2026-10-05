@@ -62,15 +62,28 @@ class RewriteTests(unittest.TestCase):
         self.assertEqual([o["url"] for o in ordered],
                          [f"{WP}/cover.png", f"{WP}/grille.png", f"{WP}/badge.png",
                           "https://elsewhere.example/hotlinked.png"])
-        self.assertIn("[img:bucket:2]", body)
+        self.assertIn("[img:gbucket:2]", body)
         self.assertIn("[img:bucket:3]", body)
         self.assertIn("[img:bucket:4]", body)
         self.assertNotIn("[img:bucket:1]", body, "the cover is the featured image, not inline")
         # tokens sit on their own lines so the server's shortcode pass sees them
-        for tok in ("[img:bucket:2]", "[img:bucket:3]", "[img:bucket:4]"):
+        for tok in ("[img:gbucket:2]", "[img:bucket:3]", "[img:bucket:4]"):
             self.assertRegex(body, r"(^|\n)" + re.escape(tok) + r"(\n|$)")
         self.assertIn("<p>Opening words.</p>", body)
         self.assertIn("<p>Closing words.</p>", body)
+
+    def test_media_linked_picture_keeps_lightbox_intent(self):
+        content = (
+            f'<figure><a href="{WP}/grille.png">'
+            f'<img src="{WP}/grille-1024x768.png" alt="grille"></a></figure>'
+        )
+        body, _ = wp_source.rewrite_body(content, POST["images"])
+        self.assertEqual(body, "[img:gbucket:1]")
+
+    def test_unlinked_picture_stays_plain(self):
+        content = f'<figure><img src="{WP}/grille.png" alt="grille"></figure>'
+        body, _ = wp_source.rewrite_body(content, POST["images"])
+        self.assertEqual(body, "[img:bucket:1]")
 
     def test_hotlinked_picture_gets_its_alt(self):
         _, ordered = wp_source.rewrite_body(POST["content_expanded"], POST["images"])

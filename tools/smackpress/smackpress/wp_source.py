@@ -113,7 +113,7 @@ _SP_IMAGE  = re.compile(r"""\[smackpress-image\s+id=["'](\d+)["']\s+url=["']([^"
 _WRAPPED   = re.compile(
     r"(?:<figure\b[^>]*>\s*)?(?:<a\b[^>]*>\s*)?(<img\b[^>]*>)(?:\s*</a>)?"
     r"(?:\s*<figcaption\b[^>]*>.*?</figcaption>)?(?:\s*</figure>)?", re.I | re.S)
-_EMPTY_P   = re.compile(r"<p\b[^>]*>\s*(\[img:bucket:\d+\])\s*</p>", re.I)
+_EMPTY_P   = re.compile(r"<p\b[^>]*>\s*(\[img:g?bucket:\d+\])\s*</p>", re.I)
 _WP_BLOCK_COMMENT = re.compile(r"<!--\s*/?wp:[\s\S]*?-->", re.I)
 _WP_SPACER = re.compile(
     r'<div\b[^>]*class=["\'][^"\']*\bwp-block-spacer\b[^"\']*["\'][^>]*>.*?</div>',
@@ -123,12 +123,16 @@ _DIV_TAG = re.compile(r"</?div\b[^>]*>", re.I)
 _WP_COLUMNS_BLOCK = re.compile(
     r"<!--\s*wp:columns\b[^>]*-->(.*?)<!--\s*/wp:columns\s*-->", re.I | re.S)
 _FOLLOWING_IMAGE_BLOCK = re.compile(
-    r"^\s*<!--\s*wp:image\b[^>]*-->\s*(\[img:bucket:\d+\])\s*"
+    r"^\s*<!--\s*wp:image\b[^>]*-->\s*(\[img:g?bucket:\d+\])\s*"
     r"<!--\s*/wp:image\s*-->", re.I)
 _PRECEDING_IMAGE_BLOCK = re.compile(
-    r"<!--\s*wp:image\b[^>]*-->\s*(\[img:bucket:\d+\])\s*"
+    r"<!--\s*wp:image\b[^>]*-->\s*(\[img:g?bucket:\d+\])\s*"
     r"<!--\s*/wp:image\s*-->\s*$", re.I)
-_BUCKET_TOKEN = re.compile(r"\[img:bucket:(\d+)\]", re.I)
+_BUCKET_TOKEN = re.compile(r"\[img:g?bucket:(\d+)\]", re.I)
+_IMAGE_LINK = re.compile(
+    r"<a\b[^>]*\bhref\s*=\s*([\"'])([^\"']+)\1[^>]*>\s*<img\b",
+    re.I | re.S,
+)
 
 
 def _discard_source_links(body: str, source_url: str) -> str:
@@ -222,15 +226,25 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
     def repl_sp(m):
         return "\n[img:bucket:%d]\n" % slot(m.group(2))
 
-    def token_for_tag(tag: str) -> str:
+    def token_for_tag(tag: str, gallery: bool = False) -> str:
         src = _SRC_ATTR.search(tag)
         if not src:
             return ""
         alt = _ALT_ATTR.search(tag)
-        return "\n[img:bucket:%d]\n" % slot(src.group(1), html.unescape(alt.group(1)) if alt else "")
+        prefix = "g" if gallery else ""
+        return "\n[img:%sbucket:%d]\n" % (
+            prefix,
+            slot(src.group(1), html.unescape(alt.group(1)) if alt else ""),
+        )
 
     body = _SP_IMAGE.sub(repl_sp, content or "")
-    body = _WRAPPED.sub(lambda m: token_for_tag(m.group(1)), body)   # <img> with figure / a / caption
+    # A WordPress image wrapped in a media-file link is authored lightbox intent.
+    # Preserve that distinction as a gallery-forced bucket token; the COLD SNAP
+    # poster resolves it to [img:gID] after uploading the photograph.
+    body = _WRAPPED.sub(
+        lambda m: token_for_tag(m.group(1), bool(_IMAGE_LINK.search(m.group(0)))),
+        body,
+    )
     body = _IMG_TAG.sub(lambda m: token_for_tag(m.group(0)), body)   # any bare <img> left over
     body = _EMPTY_P.sub(r"\n\1\n", body)
 

@@ -775,7 +775,7 @@ class SmacktalkPoster:
     # (Sean, 2026-09-10: temp id locally, permanent id on sync.) An N that no
     # longer exists — photo removed after writing — drops the tag rather than
     # sending the site a broken one.
-    _BUCKET_IMG_TOKEN = re.compile(r'\[img:bucket:(\d+)((?:\|[^\]]*)?)\]', re.I)
+    _BUCKET_IMG_TOKEN = re.compile(r'\[img:(g)?bucket:(\d+)((?:\|[^\]]*)?)\]', re.I)
 
     def _resolve_bucket_images(self, content, image_ids) -> str:
         content = content or ""
@@ -784,9 +784,10 @@ class SmacktalkPoster:
         ids = list(image_ids or [])
 
         def swap(match):
-            pos = int(match.group(1))
+            gallery = "g" if match.group(1) else ""
+            pos = int(match.group(2))
             if 1 <= pos <= len(ids):
-                return "[img:%d%s]" % (int(ids[pos - 1]), match.group(2) or "")
+                return "[img:%s%d%s]" % (gallery, int(ids[pos - 1]), match.group(3) or "")
             return ""
 
         return self._BUCKET_IMG_TOKEN.sub(swap, content)
