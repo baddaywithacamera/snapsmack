@@ -2344,8 +2344,8 @@ body.blog, body.single, body.archive { background: #fff; }
 }
 .posts .post.ss-masonry-item:hover > img,
 .posts .post.ss-masonry-item:focus-visible > img {
-    filter: brightness(.66);
-    transform: scale(1.065);
+    filter: brightness(.83);
+    transform: scale(1.195);
 }
 
 .posts .post-overlay {
@@ -2360,7 +2360,7 @@ body.blog, body.single, body.archive { background: #fff; }
 }
 .posts .post:hover .post-overlay,
 .posts .post:focus-visible .post-overlay {
-    background: rgba(0,0,0,.30);
+    background: rgba(0,0,0,.15);
 }
 .archive-post-header {
     width: fit-content;
@@ -2502,7 +2502,7 @@ body.blog, body.single, body.archive { background: #fff; }
 .entry-content {
     color: #282828;
     font-family: Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    font-size: 19px;
+    font-size: 20px;
     font-weight: 400;
     line-height: 1.72;
     font-synthesis: none;
@@ -2561,6 +2561,26 @@ body.blog, body.single, body.archive { background: #fff; }
     width: 100%;
     margin-top: 3em;
     margin-bottom: 3em;
+}
+
+/* Photographs use one interaction language everywhere in TILEZ: the same
+   restrained darkening and close zoom used by the landing cards. Frames clip
+   the enlargement so hovering never changes the longform layout. */
+.entry-content .ip-ascii-frame-inner,
+.entry-content .mosaic-item {
+    overflow: hidden;
+}
+.entry-content .snap-inline-frame img,
+.entry-content .mosaic-item img {
+    transition: filter .3s ease, transform .35s ease;
+    transform-origin: center;
+}
+.entry-content .snap-inline-frame:hover img,
+.entry-content .snap-inline-frame:focus-within img,
+.entry-content .mosaic-item:hover img,
+.entry-content .mosaic-item:focus-within img {
+    filter: brightness(.83);
+    transform: scale(1.195);
 }
 
 /* The imported WordPress body has empty paragraphs around its shortcodes.
