@@ -9,6 +9,7 @@
 
 require_once __DIR__ . '/parser.php';
 require_once __DIR__ . '/public-repository.php';
+require_once __DIR__ . '/public-route-aliases.php';
 
 function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request): array
 {
@@ -18,6 +19,23 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     $post_id = max(0, (int)($request['post_id'] ?? 0));
     $page_slug = trim((string)($request['page_slug'] ?? ''));
     $requested_slug = trim((string)($request['requested_slug'] ?? ''));
+    $route_aliases = is_array($request['route_aliases'] ?? null) ? $request['route_aliases'] : [];
+
+    // Public navigation uses readable paths. Query-string controller routes
+    // remain accepted only as compatibility entrances and canonicalize once.
+    if ($requested_slug !== '' && isset($route_aliases[$requested_slug])) {
+        $view = (string)$route_aliases[$requested_slug];
+        $requested_slug = '';
+    } elseif ($view !== '' && $requested_slug === '' && in_array($view, $route_aliases, true)) {
+        $target = snapsmack_public_route_url($base, $route_aliases, $view, $view);
+        $query = [];
+        if ($view === 'archive') {
+            if (!empty($request['category'])) $query['category'] = max(0, (int)$request['category']);
+            if (!empty($request['album'])) $query['album'] = max(0, (int)$request['album']);
+        }
+        if ($query) $target .= '?' . http_build_query($query);
+        return ['handled' => true, 'redirect' => $target, 'redirect_status' => 301];
+    }
 
     // Old controller-style links remain valid, but they are no longer the
     // public address. Send browsers and crawlers to the readable root slug.
@@ -37,7 +55,8 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
             $id = (int)($group['id'] ?? 0);
             $group['label'] = (string)($view === 'categories' ? ($group['cat_name'] ?? '') : ($group['album_name'] ?? ''));
             $group['description'] = (string)($group['album_description'] ?? '');
-            $group['url'] = $base . '?view=archive&' . ($view === 'categories' ? 'category' : 'album') . '=' . $id;
+            $group['url'] = snapsmack_public_route_url($base, $route_aliases, 'archive', 'archive')
+                . '?' . ($view === 'categories' ? 'category' : 'album') . '=' . $id;
             $group['cover_url'] = !empty($group['cover_path']) ? $base . ltrim((string)$group['cover_path'], '/') : '';
         }
         unset($group);
@@ -51,6 +70,11 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
         }
         return ['handled' => true, 'kind' => 'blogroll', 'page_title' => 'BLOGROLL']
             + snapsmack_smacktalk_blogroll($pdo);
+    }
+
+    if ($view === 'diary') {
+        return ['handled' => true, 'kind' => 'feed', 'page_title' => 'DIARY', 'is_diary' => true]
+            + snapsmack_smacktalk_feed($pdo, $settings, $base, max(1, (int)($request['page'] ?? 1)));
     }
 
     if ($view === 'archive') {

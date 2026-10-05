@@ -734,6 +734,45 @@ if ($sub === 'mosaics' && $method === 'POST') {
 }
 
 // =====================================================================
+// ROUTE: GET smackpress/pages/{id} — read page media for idempotent repair
+// =====================================================================
+if (preg_match('#^pages/(\d+)$#', $sub, $m) && $method === 'GET') {
+    $page_id = (int)$m[1];
+    $stmt = $pdo->prepare(
+        "SELECT id,title,slug,content,is_active,created_at FROM snap_pages WHERE id=? LIMIT 1"
+    );
+    $stmt->execute([$page_id]);
+    $page = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$page) smackpress_error(404, 'Page not found.');
+
+    $ids = [];
+    if (preg_match_all('/\[img:\s*g?\s*(\d+)(?:\s*\|[^\]]*)?\]/i', (string)$page['content'], $matches)) {
+        foreach ($matches[1] as $value) {
+            $id = (int)$value;
+            if ($id > 0 && !in_array($id, $ids, true)) $ids[] = $id;
+        }
+    }
+    $images = [];
+    if ($ids) {
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $image_stmt = $pdo->prepare(
+            "SELECT id,img_title,img_alt,img_file FROM snap_images WHERE id IN ({$placeholders})"
+        );
+        $image_stmt->execute($ids);
+        $by_id = [];
+        foreach ($image_stmt->fetchAll(PDO::FETCH_ASSOC) as $image) {
+            $image['id'] = (int)$image['id'];
+            $by_id[$image['id']] = $image;
+        }
+        foreach ($ids as $id) if (isset($by_id[$id])) $images[] = $by_id[$id];
+    }
+    $page['id'] = (int)$page['id'];
+    $page['is_active'] = (int)$page['is_active'];
+    $page['bucket'] = $images;
+    smackpress_ok(['page' => $page]);
+}
+
+// =====================================================================
 // ROUTE: GET smackpress/pages — list static pages for idempotent repair
 // =====================================================================
 if ($sub === 'pages' && $method === 'GET') {

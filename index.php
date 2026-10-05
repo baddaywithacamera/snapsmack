@@ -183,6 +183,7 @@ try {
             'category' => $_GET['category'] ?? 0,
             'album' => $_GET['album'] ?? 0,
             'requested_slug' => $requested_slug ?? '',
+            'route_aliases' => $skin_view['route_aliases'] ?? [],
         ]);
         if (!empty($_smacktalk['handled'])) {
             if (!empty($_smacktalk['redirect'])) {
@@ -234,6 +235,19 @@ try {
         require_once __DIR__ . '/core/skin-render-helpers.php';
         require_once __DIR__ . '/core/skin-view-contract.php';
         require_once __DIR__ . '/core/skin-presentation.php';
+        $_public_aliases = $skin_view['route_aliases'] ?? [];
+        $_legacy_public_view = strtolower(trim((string)($_GET['view'] ?? '')));
+        if ($_legacy_public_view !== '') {
+            if (($settings['site_mode'] ?? '') === 'carousel' && $_legacy_public_view === 'archive') {
+                header('Location: ' . BASE_URL, true, 301);
+                exit;
+            }
+            $_public_alias_slug = array_search($_legacy_public_view, $_public_aliases, true);
+            if (is_string($_public_alias_slug) && $_public_alias_slug !== '') {
+                header('Location: ' . rtrim(BASE_URL, '/') . '/' . rawurlencode($_public_alias_slug), true, 301);
+                exit;
+            }
+        }
         $_public_settings = $settings;
         $_uses_progressive_reveal = in_array(
             'smack-progressive-reveal',
@@ -256,6 +270,7 @@ try {
             'slug' => $requested_slug ?? ($_GET['slug'] ?? ($_GET['s'] ?? '')),
             'id' => $_GET['id'] ?? 0, 'page' => $_GET['page'] ?? 1,
             'fragment' => !empty($_GET['modal']),
+            'route_aliases' => $skin_view['route_aliases'] ?? [],
         ], $_public_settings);
         if (!empty($skin_view['navigation']) && is_array($skin_view['navigation'])) {
             $_public['navigation'] = $skin_view['navigation'];
@@ -276,6 +291,7 @@ try {
             'search_dock' => snapsmack_gram_search_dock_presentation($settings),
             'owner_custom_code' => snapsmack_owner_custom_code($settings),
             'registered_assets' => $_registered_skin_assets,
+            'footer' => snapsmack_prepare_public_footer($settings, $_active_manifest),
         ]);
         $_template_map = is_array($_active_manifest['templates'] ?? null) ? $_active_manifest['templates'] : [];
         $_strict_template = (string)($_template_map[$_public['kind'] ?? ''] ?? $_template_map['default'] ?? '');

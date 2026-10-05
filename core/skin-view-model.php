@@ -15,6 +15,7 @@
  */
 
 require_once __DIR__ . '/skin-manifest.php';
+require_once __DIR__ . '/public-route-aliases.php';
 if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
 
 function snapsmack_latest_asset_image(PDO $pdo): string
@@ -48,7 +49,7 @@ function snapsmack_resolve_skin_media_slot(PDO $pdo, array $settings, array $slo
 
 function snapsmack_prepare_skin_view(PDO $pdo, array $settings, string $skin_slug): array
 {
-    $view = ['media_slots' => [], 'navigation' => []];
+    $view = ['media_slots' => [], 'navigation' => [], 'route_aliases' => []];
     $slug = preg_replace('/[^a-zA-Z0-9_\-]/', '', $skin_slug);
     if ($slug === '') return $view;
 
@@ -67,6 +68,7 @@ function snapsmack_prepare_skin_view(PDO $pdo, array $settings, string $skin_slu
         // activation or owner choice initializes them.
         $view['media_slots'][$safe_name] = snapsmack_resolve_skin_media_slot($pdo, $settings, $slot, false);
     }
+    $view['route_aliases'] = snapsmack_public_route_aliases($settings, $manifest);
     $view['navigation'] = snapsmack_prepare_skin_navigation($pdo, $settings, $manifest);
     return $view;
 }
@@ -81,7 +83,9 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
     $controller = (string)($manifest['cms_controller'] ?? '');
     $strict_controller = in_array($controller, ['smacktalk', 'public'], true);
     $strict_smacktalk = $controller === 'smacktalk';
-    $resolve = function (array $item) use (&$resolve, $pdo, $base, $strict_controller, $strict_smacktalk): ?array {
+    $is_carousel = (($settings['site_mode'] ?? '') === 'carousel');
+    $route_aliases = snapsmack_public_route_aliases($settings, $manifest);
+    $resolve = function (array $item) use (&$resolve, $pdo, $base, $strict_controller, $strict_smacktalk, $is_carousel, $route_aliases): ?array {
         if (isset($item['active']) && !$item['active']) return null;
         $type = (string)($item['type'] ?? 'custom');
         $label = (string)($item['label'] ?? '');
@@ -102,20 +106,24 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
             && preg_match('#(?:^|/)albums\.php(?:[?#].*)?$#i', trim($url))) {
             $type = 'albums';
         }
+        // A GRAMOFSMACK landing page is already its complete chronological
+        // archive. Do not expose a second Archive destination through strict
+        // skin navigation (including old custom archive.php menu records).
+        if ($is_carousel && in_array($type, ['archive', 'image_archive'], true)) return null;
         switch ($type) {
             case 'container': $url = ''; break;
             case 'home': $url = $base; break;
             case 'archive':
                 $url = $strict_smacktalk
-                    ? $base . '?view=' . (stripos($label, 'categor') !== false ? 'categories' : 'archive')
+                    ? snapsmack_public_route_url($base, $route_aliases, stripos($label, 'categor') !== false ? 'categories' : 'diary', 'archive')
                     : $base . 'archive.php';
                 break;
-            case 'categories': $url = $strict_smacktalk ? $base . '?view=categories' : $base . 'archive.php'; break;
-            case 'image_archive': $url = $base . '?view=archive'; break;
-            case 'albums': $url = $strict_smacktalk ? $base . '?view=albums' : $base . 'albums.php'; break;
+            case 'categories': $url = $strict_smacktalk ? snapsmack_public_route_url($base, $route_aliases, 'categories', 'categories') : $base . 'archive.php'; break;
+            case 'image_archive': $url = $strict_controller ? snapsmack_public_route_url($base, $route_aliases, 'archive', 'images') : $base . 'archive.php'; break;
+            case 'albums': $url = $strict_smacktalk ? snapsmack_public_route_url($base, $route_aliases, 'albums', 'albums') : $base . 'albums.php'; break;
             case 'collections': $url = $base . 'collections.php'; break;
             case 'wall': $url = $base . 'gallery-wall.php'; break;
-            case 'blogroll': $url = $strict_controller ? $base . '?view=blogroll' : $base . 'blogroll.php'; break;
+            case 'blogroll': $url = $strict_controller ? snapsmack_public_route_url($base, $route_aliases, 'blogroll', 'blogroll') : $base . 'blogroll.php'; break;
             case 'blog': $url = $base . 'blog.php'; break;
             case 'page':
                 $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($item['slug'] ?? ''));

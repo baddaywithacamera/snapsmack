@@ -70,7 +70,12 @@ try {
     // the selected skin, its assets, and its presentation settings are kept.
     $active_manifest = load_skin_manifest($active_skin);
     if (in_array((string)($active_manifest['cms_controller'] ?? ''), ['smacktalk', 'public'], true)) {
-        header('Location: ' . BASE_URL . '?view=blogroll', true, 301);
+        header('Location: ' . snapsmack_public_route_url(
+            BASE_URL,
+            $skin_view['route_aliases'] ?? [],
+            'blogroll',
+            'blogroll'
+        ), true, 301);
         exit;
     }
 

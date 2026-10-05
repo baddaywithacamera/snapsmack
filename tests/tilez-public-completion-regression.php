@@ -20,6 +20,9 @@ $footerController = (string)file_get_contents($root . '/assets/js/ss-engine-foot
 $presentation = (string)file_get_contents($root . '/core/public-skin-presentation.php');
 $smackpressApi = (string)file_get_contents($root . '/core/smackpress-api.php');
 $coldSnapPoster = (string)file_get_contents($root . '/tools/coldsnap/sumna_post.py');
+$repairExisting = (string)file_get_contents($root . '/tools/smackpress/repair_existing.py');
+$routeAliases = (string)file_get_contents($root . '/core/public-route-aliases.php');
+$frontController = (string)file_get_contents($root . '/index.php');
 
 $expect = static function (bool $ok, string $message): void {
     if (!$ok) throw new RuntimeException($message);
@@ -56,6 +59,19 @@ $expect(str_contains($controller, 'snapsmack_smacktalk_slug_url')
     && !str_contains($navigation, '?view=page&slug=')
     && str_contains($routes, "\$route === 'page' || \$route === 'post'"),
     'SMACKTALK exposed internal query routing instead of canonical readable slugs.');
+$expect(str_contains($routeAliases, 'snapsmack_public_route_slug')
+    && str_contains($routeAliases, "'blogroll' => 'blogroll'")
+    && str_contains($routeAliases, "? 'diary' : 'archive'")
+    && str_contains($navigation, 'snapsmack_public_route_url')
+    && !str_contains($navigation, "\$base . '?view=blogroll'")
+    && !str_contains($navigation, "\$base . '?view=archive'")
+    && str_contains($controller, "'redirect_status' => 301")
+    && str_contains($frontController, "'route_aliases' => \$skin_view['route_aliases'] ?? []"),
+    'Configured public menu labels no longer produce canonical readable routes.');
+$expect(str_contains($controller, "if (\$view === 'diary')")
+    && str_contains($controller, "'is_diary' => true")
+    && str_contains($controller, 'snapsmack_smacktalk_feed'),
+    'The SMACKTALK diary route collapsed back into the unrelated photograph archive.');
 $expect(str_contains($manifest, '"asset:public:public-base"')
     && str_contains($manifest, '"asset:public:shortcodes"')
     && str_contains($manifest, '"asset:public:columns"'),
@@ -89,6 +105,12 @@ $expect(str_contains($layout, 'taxonomy-split')
 $expect(str_contains($smackpressApi, "\$body['created_at'] ?? (\$body['date'] ?? null)")
     && str_contains($coldSnapPoster, 'payload["date"] = draft.post_date'),
     'SMACKPRESS pages no longer retain the source publication date.');
+$expect(str_contains($smackpressApi, "preg_match('#^pages/(\\d+)$#'")
+    && str_contains($smackpressApi, "\$page['bucket'] = \$images")
+    && str_contains($coldSnapPoster, 'def get_page(self, page_id: int) -> dict:')
+    && str_contains($repairExisting, 'current = poster.get_page(int(destination["id"]))')
+    && str_contains($repairExisting, 'image.remote_image_id = int(existing["id"])'),
+    'SMACKPRESS pages lost the read-back media contract required for idempotent repair.');
 $expect(str_contains($style, '.blogroll-heading h1 {')
     && str_contains($style, 'font-size: clamp(2rem, 2.6vw, 2.7rem);')
     && str_contains($style, 'font-weight: 700;'),
