@@ -194,13 +194,15 @@ def _checks():
 
 
 def _bucket_img_checks():
-    """[img:bucket:N] becomes the uploaded site id at send; a gone photo drops the tag."""
+    """Bucket images keep plain/gallery intent when permanent ids replace positions."""
     from sumna_post import SmacktalkPoster
     p = SmacktalkPoster.__new__(SmacktalkPoster)
     out = p._resolve_bucket_images("a [img:bucket:2|wall|left] b [img:bucket:9] c [img:77|full|center]", [101, 102, 103])
     assert out == "a [img:102|wall|left] b  c [img:77|full|center]", out
+    assert p._resolve_bucket_images("[img:gbucket:1|full|center|100]", [101]) == \
+        "[img:g101|full|center|100]"
     assert p._resolve_bucket_images("plain", []) == "plain"
-    return 2
+    return 3
 
 
 def _mosaic_token_checks():
