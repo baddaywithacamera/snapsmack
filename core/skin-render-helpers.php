@@ -1,6 +1,13 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
 require_once __DIR__ . '/trusted-html.php';
 
 function snap_escape_html(mixed $value): string {
@@ -54,7 +61,7 @@ function snap_route_url(string $route, array $parameters = []): string {
         else $allowed[$key] = (string)$value;
     }
     $base = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
-    if (($route === 'page' || $route === 'post') && !empty($allowed['slug'])) {
+    if (($route === 'page' || $route === 'post' || $route === 'photo') && !empty($allowed['slug'])) {
         return snap_escape_url($base . rawurlencode($allowed['slug']));
     }
     $path = $routes[$route];
@@ -149,3 +156,4 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
     }
     return SnapTrustedHtml::__snapsmackCmsOnly($html);
 }
+// ===== SNAPSMACK EOF =====
