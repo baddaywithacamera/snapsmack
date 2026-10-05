@@ -103,7 +103,15 @@ if (!function_exists('smack_autop_long')) {
     // Inline minimal autop — mirrors smack-post-long.php logic
     function smack_autop_long(string $text): string {
         if (trim($text) === '') return '';
-        if (preg_match('/^\s*<p/i', $text)) return $text;
+        // Imported block HTML may legitimately begin with a SnapSmack shortcode
+        // (most commonly a page hero image) before its first paragraph.  Treat
+        // that as authored HTML too; otherwise the paragraph/list markup after
+        // the shortcode is escaped and printed literally on the public page.
+        if (preg_match(
+            '/^\s*(?:\[(?:img|mosaic|spacer):[^\]]+\]\s*)*'
+            . '<(?:p|h[1-6]|ul|ol|blockquote|figure|div|section|article|header|main|aside|nav)\b/i',
+            $text
+        )) return $text;
         $text = preg_replace('/(\[img:[^\]]+\])\s*\n+/', '$1', $text);
         $text = preg_replace('/(\[mosaic:\d+\])\s*\n+/', '$1', $text);
         $text = str_replace(["\r\n", "\r"], "\n", $text);
