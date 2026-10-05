@@ -65,6 +65,15 @@ try {
     snapsmack_apply_skin_settings($settings, $active_skin);
     $skin_view = snapsmack_prepare_skin_view($pdo, $settings, $active_skin);
 
+    // Legacy links remain valid, but strict skins own their complete document
+    // shell. Route the old PHP entry point through the bounded controller so
+    // the selected skin, its assets, and its presentation settings are kept.
+    $active_manifest = load_skin_manifest($active_skin);
+    if (in_array((string)($active_manifest['cms_controller'] ?? ''), ['smacktalk', 'public'], true)) {
+        header('Location: ' . BASE_URL . '?view=blogroll', true, 301);
+        exit;
+    }
+
     // --- ACCESS CONTROL ---
     // Redirect to home if blogroll feature is disabled
     if (($settings['blogroll_enabled'] ?? '1') == '0') {

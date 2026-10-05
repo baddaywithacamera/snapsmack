@@ -1,12 +1,20 @@
 <?php
 declare(strict_types=1);
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ * Missing or different = truncated/corrupted. Restore before saving.
+ */
+
 require_once dirname(__DIR__) . '/core/public-controller.php';
 
 $source = (string)file_get_contents(dirname(__DIR__) . '/core/public-controller.php');
 foreach (['$_GET', '$_POST', '$_REQUEST', '$_SERVER', 'header(', 'http_response_code(', 'setcookie(', '$pdo'] as $forbidden) {
     if (str_contains($source, $forbidden)) throw new RuntimeException("Public controller owns ambient authority: {$forbidden}");
 }
-foreach (['landing', 'photo', 'post', 'archive', 'page', 'search', 'hashtag', 'albums', 'collections', 'collection'] as $route) {
+foreach (['landing', 'photo', 'post', 'archive', 'page', 'blogroll', 'search', 'hashtag', 'albums', 'collections', 'collection'] as $route) {
     if (!str_contains($source, "'{$route}'")) throw new RuntimeException("Public route is not centralized: {$route}");
 }
 
@@ -46,3 +54,4 @@ if (!str_contains($repository, '[max(1, min(5000, $limit)), max(0, $offset)]')) 
     throw new RuntimeException('Public repository collapses a controller-approved progressive feed below 5,000.');
 }
 echo "Public service/controller boundary regression passed.\n";
+// ===== SNAPSMACK EOF =====

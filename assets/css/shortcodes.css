@@ -162,8 +162,13 @@
    MOSAIC keeps complete control of its own tile geometry. The wrapper retains
    the author's requested width; the image scales proportionally without crop. */
 .post-content .snap-inline-frame .ip-ascii-frame-inner {
-    display: flex;
+    /* Shrink-wrap the displayed photograph. A block flex container spans the
+       prose column and lets portrait photographs enlarge into empty space. */
+    display: inline-flex;
     justify-content: center;
+    max-width: 100%;
+    overflow: hidden;
+    vertical-align: top;
 }
 .post-content .snap-inline-frame img {
     width: auto;
@@ -172,6 +177,21 @@
     height: auto;
     margin-inline: auto;
     object-fit: contain;
+}
+
+/* Default SMACKTALK interaction for photographs that open a full-size source.
+   Deliberately unlinked authored images do not advertise an unavailable action. */
+.post-content .snap-inline-frame img[data-lightbox-src],
+.post-content .mosaic-item img[data-lightbox-src] {
+    transition: filter .3s ease, transform .35s ease;
+    transform-origin: center;
+}
+.post-content .snap-inline-frame:has(img[data-lightbox-src]):hover img[data-lightbox-src],
+.post-content .snap-inline-frame:has(img[data-lightbox-src]):focus-within img[data-lightbox-src],
+.post-content .mosaic-item:hover img[data-lightbox-src],
+.post-content .mosaic-item:focus-within img[data-lightbox-src] {
+    filter: brightness(.83);
+    transform: scale(1.195);
 }
 
 /* [card-grid] — N-column card grid */
