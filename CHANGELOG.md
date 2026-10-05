@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.816D — 2026-10-04 — Bring the originals with you
+
+- Preserves WordPress image-link intent during SMACKPRESS migrations so photographs that opened their full-size originals continue to do so after import.
+- Adds a conservative repair runner for already-imported WordPress content: it updates only matching authored slugs, keeps destination IDs and URLs, reuses existing post Gallery images, and refuses ambiguous image-count changes.
+- Keeps authored block HTML intact when an imported static page begins with an image shortcode instead of a paragraph, preventing headings, lists, and links from being printed as markup.
+
 ## 0.7.815D — 2026-10-04 — Skins are optional
 
 - Removes uninstalled skins from system-update notifications and dashboard counts. Newly published skins remain available through the opt-in Skin Gallery and forum announcements.
