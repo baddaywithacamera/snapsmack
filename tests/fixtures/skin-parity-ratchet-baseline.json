@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "purpose": "SECAUDIT 060 finding A parity ratchet. These are the KNOWN-MISSING parity candidates recorded at CMS 0.7.821D (commit 029d3ec4). The gate fails on anything worse than this file and fails when an entry here is fixed but not removed. Entries may only be deleted, never added, without an owner decision recorded in SECAUDIT 060.",
+  "baseline_ref": "v0.7.772D",
+  "recorded_at_cms": "0.7.821D",
+  "route_fallthrough_total": 45,
+  "uncovered_routes": {
+    "aurora": [
+      "albums",
+      "collection",
+      "collections",
+      "search"
+    ],
+    "game-on": [
+      "albums",
+      "collection",
+      "collections",
+      "search"
+    ],
+    "heuristic": [
+      "albums",
+      "collection",
+      "collections",
+      "search"
+    ],
+    "instant-camera": [
+      "albums",
+      "collection",
+      "collections",
+      "search"
+    ],
+    "jive-turkey": [
+      "albums",
+      "collection",
+      "collections",
+      "search"
+    ],
+    "parade": [
+      "albums",
+      "collection",
+      "collections",
+      "search"
+    ],
+    "scroll": [
+      "albums",
+      "collections",
+      "search"
+    ],
+    "show-n-tell": [
+      "albums",
+      "collections",
+      "search"
+    ],
+    "slickr": [
+      "albums",
+      "collections",
+      "search"
+    ],
+    "sliders": [
+      "albums",
+      "collection",
+      "collections",
+      "search"
+    ],
+    "sudden-impact": [
+      "albums",
+      "collection",
+      "collections",
+      "search"
+    ],
+    "the-grid": [
+      "albums",
+      "collection",
+      "collections",
+      "search"
+    ]
+  },
+  "presentation_candidate_total": 645,
+  "presentation_candidates": {
+    "50-shades-of-noah-grey": 6,
+    "52-card-pickup": 8,
+    "alfred": 23,
+    "aurora": 34,
+    "chaplin": 37,
+    "full-monty": 1,
+    "galleria": 33,
+    "game-on": 32,
+    "heuristic": 34,
+    "hip-to-be-square": 33,
+    "impact-printer": 1,
+    "instant-camera": 32,
+    "jive-turkey": 34,
+    "onyx": 26,
+    "parade": 33,
+    "photogram": 39,
+    "rational-geo": 8,
+    "scroll": 19,
+    "show-n-tell": 3,
+    "slickr": 40,
+    "sliders": 41,
+    "stanley": 9,
+    "sudden-impact": 33,
+    "telegram": 34,
+    "the-grid": 33,
+    "tilez": 2,
+    "true-grit": 7,
+    "writing-with-impact": 10
+  }
+}

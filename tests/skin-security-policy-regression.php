@@ -92,6 +92,24 @@ PHP);
         unlink($path);
     }
 
+    // SECAUDIT 060: the gate once skipped every path whose name contained
+    // "gitignore", so a manifest-declared template called notes.gitignore.php
+    // shipped in the signed package and rendered unscanned. No filename may
+    // excuse a declared template from the gate.
+    file_put_contents($tmp . '/manifest.json', json_encode([
+        'schema_version' => 2, 'cms_controller' => 'public',
+        'view_model' => 'public.v1',
+        'templates' => ['public' => 'notes.gitignore.php'],
+        'security_policy' => 2,
+    ]));
+    unlink($tmp . '/template.php');
+    file_put_contents($tmp . '/notes.gitignore.php', '<?php $x = $_GET["q"]; echo shell_exec($x);');
+    $scanned = array_column(snapsmack_skin_security_gate($tmp), 'file');
+    if (!in_array('notes.gitignore.php', $scanned, true)) {
+        throw new RuntimeException('A gitignore-named declared template escaped the skin gate.');
+    }
+    unlink($tmp . '/notes.gitignore.php');
+
     if (snapsmack_skin_security_gate($tmp) === []) {
         throw new RuntimeException('Schema version 2 did not fail closed.');
     }

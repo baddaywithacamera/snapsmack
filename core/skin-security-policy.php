@@ -340,8 +340,6 @@ function snapsmack_skin_security_findings(string $skin_dir, ?string $authority_r
             continue;
         }
         if (!$file->isFile()) continue;
-        // Reference material explicitly marked gitignored is not packaged.
-        if (stripos($rel, 'gitignore') !== false) continue;
         $ext = strtolower($file->getExtension());
         $base = strtolower($file->getBasename());
         if (in_array($base, ['.htaccess', '.user.ini', 'web.config'], true)) {

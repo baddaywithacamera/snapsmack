@@ -7,9 +7,11 @@ $checks = [
     'core/skin-registry.php' => 'snapsmack_skin_security_gate',
     'core/smackback.php' => 'snapsmack_skin_security_gate',
     '.githooks/pre-commit' => 'skin-security-ratchet-regression.php',
+    // SECAUDIT 060 finding A: the parity half of the gate must run too.
+    '.githooks/pre-commit:parity' => 'skin-parity-ratchet-regression.php',
 ];
 foreach ($checks as $file => $needle) {
-    $source = (string)file_get_contents($root . '/' . $file);
+    $source = (string)file_get_contents($root . '/' . explode(':', $file)[0]);
     if (!str_contains($source, $needle)) throw new RuntimeException("{$file} does not use the shared skin gate.");
 }
 $install = (string)file_get_contents($root . '/tools/_build/build-install-package.php');
