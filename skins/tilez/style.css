@@ -626,10 +626,10 @@ input[type="button"],
     font-size: 14px;
     color: #3d3d3d;
     position: absolute;
-    left: -25px;
+    left: -20px;
     top: 50%;
     margin-top: 1px;
-    transform: translateY(-50%);
+    transform: translate(-50%, -50%);
 }
 
 .main-menu a {
