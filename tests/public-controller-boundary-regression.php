@@ -53,5 +53,10 @@ $repository = (string)file_get_contents(dirname(__DIR__) . '/core/public-reposit
 if (!str_contains($repository, '[max(1, min(5000, $limit)), max(0, $offset)]')) {
     throw new RuntimeException('Public repository collapses a controller-approved progressive feed below 5,000.');
 }
+foreach (['snap_image_tags', 'snap_tags', 'snap_image_album_map', 'snap_albums', 'snap_image_cat_map', 'snap_categories'] as $searchTable) {
+    if (!str_contains($repository, $searchTable)) {
+        throw new RuntimeException("Public photograph search lost {$searchTable} matching.");
+    }
+}
 echo "Public service/controller boundary regression passed.\n";
 // ===== SNAPSMACK EOF =====

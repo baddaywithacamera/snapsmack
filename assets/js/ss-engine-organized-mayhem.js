@@ -1,4 +1,5 @@
 /**
+ * SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
  * SNAPSMACK — Organized Mayhem
  * ss-engine-organized-mayhem.js
  *
@@ -175,6 +176,10 @@
             if (!pool.length) return null;
             var img = pool[poolIdx % pool.length]; poolIdx++; return img;
         }
+        function imageAspect(img) {
+            var aspect = parseFloat(img && img.aspect);
+            return isFinite(aspect) && aspect > 0 ? aspect : 1;
+        }
 
         // ── Fetch the image pool (+ server vitals) ───────────────────────
         // Resolves the whole payload { images:[...], vitals:{...} }. A bare
@@ -213,7 +218,7 @@
 
         function placeCard(reg, img, anchorX, anchorY, rx, ry) {
             var w = maxWidth * rand(0.66, 1.0);
-            var h = w * rand(0.66, 1.45);
+            var h = w / imageAspect(img);
             var x = anchorX + rand(-REGION * 0.18, REGION * 0.18);
             var y = anchorY + rand(-REGION * 0.18, REGION * 0.18);
 
@@ -560,22 +565,29 @@
             // mounts thousands of nodes (still no repeats — just a subset).
             var M = Math.max(1, Math.min(pool.length, 220));
             var cols = Math.max(1, Math.round(Math.sqrt(M * fieldW / fieldH)));
-            var rows = Math.max(1, Math.ceil(M / cols));
-            cols = Math.ceil(M / rows);                          // cols*rows >= M, fills the field
+            // The coverage grid must never contain more cells than photographs.
+            // The previous ceil/ceil pair left every spare cell at the right end
+            // of the final row — exactly the exposed strips this mode forbids.
+            var rows = Math.max(1, Math.floor(M / cols));
+            while (cols * rows > M && cols > 1) cols--;
             var cellW = fieldW / cols, cellH = fieldH / rows;
-            // Print sized well over the cell so rotation + jitter never open a gap.
-            var cardW = Math.max(cellW, cellH) * 1.7;
 
             budget.maxMounted = Math.max(budget.maxMounted, M + 4);
 
             var idx = 0;
-            for (var r = 0; r < rows && idx < M; r++) {
-                for (var c = 0; c < cols && idx < M; c++) {
-                    var img = pool[idx++];                       // each image exactly once
+            function addAmbientCard(img, r, c, extra) {
+                    var aspect = imageAspect(img);
                     var cx = ox + (c + 0.5) * cellW + rand(-cellW * 0.16, cellW * 0.16);
                     var cy = oy + (r + 0.5) * cellH + rand(-cellH * 0.16, cellH * 0.16);
-                    var w = cardW * rand(0.94, 1.12);
-                    var h = w * rand(0.92, 1.24);
+                    if (extra) {
+                        cx += rand(-cellW * 0.22, cellW * 0.22);
+                        cy += rand(-cellH * 0.22, cellH * 0.22);
+                    }
+                    // Size from the photograph's REAL aspect ratio. Both axes
+                    // exceed the cell by enough for rotation and jitter, so a
+                    // panorama cannot masquerade as a tall coverage rectangle.
+                    var w = Math.max(cellW * 1.72, cellH * aspect * 1.72) * rand(0.98, 1.12);
+                    var h = w / aspect;
                     var card = {
                         title: img.title || '', src: img.src || '', url: img.url || '#',
                         x: cx - w / 2, y: cy - h / 2, w: w, h: h,
@@ -584,12 +596,43 @@
                         node: null
                     };
                     reg.cards.push(card); cardCount++;
+            }
+            // First occupy every cell. Remaining unique photographs become a
+            // second scattered layer instead of manufacturing empty cells.
+            for (var r = 0; r < rows; r++) {
+                for (var c = 0; c < cols; c++) {
+                    addAmbientCard(pool[idx++], r, c, false);
                 }
+            }
+            var baseCells = cols * rows;
+            while (idx < M) {
+                var slot = (idx - baseCells) % baseCells;
+                addAmbientCard(pool[idx++], Math.floor(slot / cols), slot % cols, true);
             }
             syncMounted();
             hideOverlay();
             startLoop();
         }
+
+        // Ambient coverage is geometry, not decoration: when the viewport
+        // meaningfully changes shape, rebuild against the new bounds. Debounce
+        // avoids churn from mobile browser chrome and live desktop resizing.
+        var coverageW = 0, coverageH = 0, coverageResizeTimer = null;
+        function rememberCoverageSize() {
+            coverageW = container.clientWidth;
+            coverageH = container.clientHeight;
+        }
+        window.addEventListener('resize', function () {
+            if (!coverageMode) return;
+            if (coverageResizeTimer) clearTimeout(coverageResizeTimer);
+            coverageResizeTimer = setTimeout(function () {
+                var dw = Math.abs(container.clientWidth - coverageW);
+                var dh = Math.abs(container.clientHeight - coverageH);
+                if (dw < 24 && dh < 48) return;
+                buildAmbientCoverage();
+                rememberCoverageSize();
+            }, 180);
+        });
 
         function reshuffle() {
             for (var key in regions) { if (!regions.hasOwnProperty(key)) continue; var cs = regions[key].cards; for (var i = 0; i < cs.length; i++) unmount(cs[i]); }
@@ -600,7 +643,7 @@
                 var imgs = payload && payload.images;
                 pool = (imgs && imgs.length) ? imgs : pool;
                 applyVitals(payload && payload.vitals);
-                if (ambient) { coverageMode = true; buildAmbientCoverage(); } else { build(); }
+                if (ambient) { coverageMode = true; buildAmbientCoverage(); rememberCoverageSize(); } else { build(); }
             }).catch(function (e) { fault('reshuffle', e); });
         }
         var reBtn = document.querySelector('[data-mayhem-reshuffle]');
@@ -626,7 +669,7 @@
             pool = (payload && payload.images) || [];
             if (!pool.length) { fault('empty pool', null); hideOverlay(); return; }
             applyVitals(payload && payload.vitals);
-            if (ambient) { coverageMode = true; buildAmbientCoverage(); } else { build(); }
+            if (ambient) { coverageMode = true; buildAmbientCoverage(); rememberCoverageSize(); } else { build(); }
         }).catch(function (e) { fault('init', e); hideOverlay(); });
     }
 

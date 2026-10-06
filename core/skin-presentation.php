@@ -220,7 +220,41 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
         $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly($existing . (string)$common['style']);
         if (isset($common['treatment'])) $presentation['treatment'] = $common['treatment'];
     }
+    snapsmack_attach_local_font_faces($presentation);
     return $presentation;
+}
+
+/**
+ * Attach locally bundled faces selected by a skin's font controls.
+ *
+ * Schema-v2 layouts no longer execute skin headers, so the old font-loader
+ * call disappeared during that migration. The compiled selector still named
+ * the chosen family, but browsers had no face to load and silently fell back.
+ */
+function snapsmack_attach_local_font_faces(array &$presentation): void
+{
+    $inventory = include __DIR__ . '/manifest-inventory.php';
+    $localFonts = is_array($inventory['local_fonts'] ?? null) ? $inventory['local_fonts'] : [];
+    $selected = [];
+    foreach (($presentation['options'] ?? []) as $value) {
+        $family = trim((string)$value);
+        if ($family !== '' && isset($localFonts[$family])) $selected[$family] = $localFonts[$family];
+    }
+    if (!$selected) return;
+
+    $base = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
+    $css = '';
+    foreach ($selected as $family => $font) {
+        $segments = array_map('rawurlencode', explode('/', (string)$font['file']));
+        $url = $base . implode('/', $segments);
+        $safeFamily = str_replace(['\\', "'"], ['\\\\', "\\'"], $family);
+        $css .= "@font-face{font-family:'{$safeFamily}';src:url('{$url}') format('{$font['format']}');"
+            . "font-weight:{$font['weight']};font-style:{$font['style']};font-display:swap;}";
+    }
+    $existing = isset($presentation['style']) ? (string)$presentation['style'] : '';
+    $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly(
+        $existing . '<style id="snapsmack-local-fonts">' . str_replace('<', '\\3C ', $css) . '</style>'
+    );
 }
 
 /** Bind the common grid-family controls without granting skins authority. */
