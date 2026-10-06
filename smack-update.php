@@ -1226,28 +1226,17 @@ if ($action === 'stage_migrate'
             $_SESSION['update_state']['log'][] = ['label' => 'Colour tag backfill', 'status' => 'ok', 'detail' => "{$backfilled} hex tag(s) classified"];
         }
 
-        // Repair .htaccess — rebuild SnapSmack block from canonical template so
-        // named routes and security rules are always current after an update.
-        $htaccess_path  = __DIR__ . '/.htaccess';
-        $template_path  = __DIR__ . '/core/htaccess-template';
-        $htaccess_marker = '# SNAPSMACK-HTACCESS-RULES';
-        if (file_exists($template_path)) {
-            $template_rules = file_get_contents($template_path);
-            if ($template_rules !== false) {
-                $existing = file_exists($htaccess_path) ? file_get_contents($htaccess_path) : '';
-                // Strip old SnapSmack block if present
-                $marker_pos = strpos($existing, $htaccess_marker);
-                $before = $marker_pos !== false ? rtrim(substr($existing, 0, $marker_pos)) . "\n" : $existing;
-                $new_htaccess = ltrim($before) . $template_rules . "\n";
-                if (file_put_contents($htaccess_path, $new_htaccess) !== false) {
-                    $_SESSION['update_state']['log'][] = ['label' => '.htaccess repair', 'status' => 'ok', 'detail' => 'SnapSmack rules rebuilt from core/htaccess-template'];
-                } else {
-                    $_SESSION['update_state']['log'][] = ['label' => '.htaccess repair', 'status' => 'warn', 'detail' => 'Could not write .htaccess — check file permissions'];
-                }
-            }
-        } else {
-            $_SESSION['update_state']['log'][] = ['label' => '.htaccess repair', 'status' => 'warn', 'detail' => 'core/htaccess-template missing — skipped'];
-        }
+        // Reconcile public routing plus CMS-owned robots.txt, llms.txt,
+        // security.txt, and sitemap cache. The same helper is used by local,
+        // uploaded-package, and fleet update paths.
+        $public_reconcile = updater_reconcile_public_site($pdo);
+        $_SESSION['update_state']['log'][] = [
+            'label'  => 'Public site files',
+            'status' => $public_reconcile['errors'] ? 'warn' : 'ok',
+            'detail' => $public_reconcile['errors']
+                ? implode('; ', $public_reconcile['errors'])
+                : 'Routes and crawler files reconciled; sitemap cache cleared',
+        ];
 
         // A release may change the install's absolute path (for example when a
         // deployment swaps a versioned directory). Refresh only cron jobs that
@@ -1488,6 +1477,15 @@ if ($action === 'stage_migrate_upload' && !empty($_SESSION['upload_migrate_pendi
         if ($backfilled > 0) {
             $upload_steps[] = ['label' => 'Colour tag backfill', 'status' => 'ok', 'detail' => "{$backfilled} hex tag(s) classified"];
         }
+
+        $public_reconcile = updater_reconcile_public_site($pdo);
+        $upload_steps[] = [
+            'label'  => 'Public site files',
+            'status' => $public_reconcile['errors'] ? 'warn' : 'ok',
+            'detail' => $public_reconcile['errors']
+                ? implode('; ', $public_reconcile['errors'])
+                : 'Routes and crawler files reconciled; sitemap cache cleared',
+        ];
 
         // Manual package installs need the same post-deploy cron path repair as
         // the signed automatic updater. Preserve disabled jobs as disabled.

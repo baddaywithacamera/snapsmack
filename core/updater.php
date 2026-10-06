@@ -1693,6 +1693,41 @@ function updater_reconcile_htaccess(): array {
 }
 
 /**
+ * Reconnect the public routing and generated crawler files after new code lands.
+ * Every update path calls this only after version stamping, so llms.txt identifies
+ * the version that is actually installed. Failures are reported but never turn a
+ * successfully verified package into a partially rolled-back deployment.
+ */
+function updater_reconcile_public_site(PDO $pdo): array {
+    $result = [
+        'htaccess' => ['changed' => false, 'note' => 'not attempted'],
+        'crawler'  => null,
+        'errors'   => [],
+    ];
+
+    try {
+        $result['htaccess'] = updater_reconcile_htaccess();
+    } catch (\Throwable $e) {
+        $result['errors'][] = '.htaccess: ' . $e->getMessage();
+    }
+
+    try {
+        require_once __DIR__ . '/site-files.php';
+        $result['crawler'] = snapsmack_reconcile_site_files($pdo);
+        foreach (($result['crawler']['files'] ?? []) as $name => $ok) {
+            if (!$ok) $result['errors'][] = $name . ': write failed';
+        }
+    } catch (\Throwable $e) {
+        $result['errors'][] = 'crawler files: ' . $e->getMessage();
+    }
+
+    if ($result['errors']) {
+        error_log('SnapSmack Updater: public-site reconciliation warning — ' . implode('; ', $result['errors']));
+    }
+    return $result;
+}
+
+/**
  * Self-heal a root .user.ini carrying SnapSmack's PHP limits. php-fpm / CGI honor
  * .user.ini even where .htaccess `php_value` is ignored, so this is what actually
  * raises upload_max_filesize / post_max_size on managed / tunnel hosting — the fix

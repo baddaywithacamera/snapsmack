@@ -9,6 +9,14 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.820D — 2026-10-05 — The CMS keeps its own map
+
+- Restores the public `/sitemap.xml` route that `robots.txt` has always advertised and makes paged sitemap links use that public address instead of exposing the implementation filename.
+- Reconciles CMS-owned `robots.txt`, `llms.txt`, `security.txt`, and the sitemap cache after fresh installs, ordinary updates, uploaded-package updates, and fleet updates; operators no longer have to resave Global Configuration on every site.
+- Makes fresh installs consume the canonical routing template instead of maintaining a divergent installer copy, while retaining the old inline rules only as an incomplete-package fallback.
+- Makes regenerated `llms.txt` report the freshly installed database version during the same update request, avoiding the old in-memory version constant.
+- Adds lifecycle regression coverage for all install/update entrances. The full 164-program regression suite passes with no skin changes.
+
 ## 0.7.819D — 2026-10-05 — The landing is the archive
 
 - Replaces public `?view=` menu destinations with readable, label-derived paths such as `/diary` and `/blogroll`; legacy query links and strict legacy PHP entrances redirect to their clean canonical routes.
