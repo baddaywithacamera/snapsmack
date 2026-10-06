@@ -3,7 +3,7 @@
   "purpose": "SECAUDIT 060 finding A parity ratchet. These are the KNOWN-MISSING parity candidates recorded at CMS 0.7.821D (commit 029d3ec4). The gate fails on anything worse than this file and fails when an entry here is fixed but not removed. Entries may only be deleted, never added, without an owner decision recorded in SECAUDIT 060.",
   "baseline_ref": "v0.7.772D",
   "recorded_at_cms": "0.7.821D",
-  "route_fallthrough_total": 45,
+  "route_fallthrough_total": 43,
   "uncovered_routes": {
     "aurora": [
       "albums",
@@ -14,8 +14,7 @@
     "game-on": [
       "albums",
       "collection",
-      "collections",
-      "search"
+      "collections"
     ],
     "heuristic": [
       "albums",
@@ -53,8 +52,7 @@
     ],
     "slickr": [
       "albums",
-      "collections",
-      "search"
+      "collections"
     ],
     "sliders": [
       "albums",
