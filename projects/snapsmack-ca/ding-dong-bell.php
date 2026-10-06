@@ -208,6 +208,17 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="entry">
                 <div class="entry-top">
+                    <h3>The security fix that disconnected the skins</h3>
+                    <span class="date">SNAPSMACK &middot; SKIN MIGRATION &middot; 2026-10-05</span>
+                    <span class="state open">Recovery open</span>
+                </div>
+                <p>The security rule was right: skins should present data, not own database access, request routing, writes, remote calls, or reusable application behaviour. The migration was not. Executable behaviour was removed before every legitimate result had a bounded replacement in the CMS, and the tests proved that forbidden authority was gone without proving that the sites still worked. Backgrounds, navigation, image links, static pages, Blogrolls, footers, post viewers, saved appearance settings, and defining skin interactions then had to be recovered one failure at a time on live sites.</p>
+                <p>The crawler-file failure found during that recovery is now watched working in sequential CMS 0.7.821D: the hub and all 24 spokes report the same deployed version, and all 25 sites serve their current robots, sitemap, security, and agent-information files. The larger skin-parity recovery remains open. This entry stays open until the remaining fleet ledger is dispositioned and the security follow-up receives its independent review. The report also records the avoidable human cost, the broken release sequence, and why a security gate that checks only what disappeared is not enough.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-10-05-020-the-security-fix-that-disconnected-the-skins.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top">
                     <h3>The backup that keeps your followers and the exit that forgets them</h3>
                     <span class="date">SMACK UP YOUR BACKUP &middot; TAKE YOUR SHIT WITH YOU &middot; 2026-09-19</span>
                     <span class="state open">Open</span>
