@@ -22,7 +22,7 @@ h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
         <tr><td class="k">First observed</td><td>Repeated live presentation and routing regressions after the September 28 skin execution-boundary migration; consolidated as one incident on October 5 after GAME ON, TILEZ, AURORA, JIVE TURKEY, and imported SMACKTALK content exposed missing replacement contracts.</td></tr>
         <tr><td class="k">Theme</td><td>The security decision was right. The migration was not complete. Executable behavior was removed from skins without first inventorying, rebuilding, and proving every bounded CMS-to-skin contract that had supplied the visible site.</td></tr>
         <tr><td class="k">Surfaces</td><td>Schema-v2 public skins; strict public controllers; route compatibility; saved appearance settings; shared assets and components; SMACKPRESS imported content; crawler-file lifecycle; skin packaging; CMS and skin release sequencing.</td></tr>
-        <tr><td class="k">State</td><td><span class="state-chip chip-open">Open</span> &nbsp; CMS 0.7.820D was packaged and deployed to all 25 installations, but post-deployment verification proved that its crawler-file repair ran only on the hub. The 24 spokes received the new version without receiving the promised reconciliation. Whole-fleet parity is not claimed.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-open">Open</span> &nbsp; The crawler-file lifecycle sub-incident is repaired and fleet-verified in sequential CMS 0.7.821D: the hub and all 24 spokes report that exact version, and all 25 pass the same public crawler-file audit. The wider skin-migration parity incident remains open; whole-fleet visual and route parity is not claimed.</td></tr>
         <tr><td class="k">Human impact</td><td>Approximately two weeks of recovery work less than one month before closed beta, damaged trust and morale, lost sleep, and severe autism-related distress reported by the owner, including feeling physically sick. Repeated model-capacity failures prolonged the recovery despite available account quota.</td></tr>
         <tr><td class="k">Reporter</td><td>Sean identified and repeatedly reproduced the live failures. Codex reconstructed the repository evidence and wrote this report. Model attribution for earlier individual changes remains unproven unless a session record establishes it.</td></tr>
         <tr><td class="k">Related</td><td>SECAUDIT 059 (skin execution boundary), SECAUDIT 060 (migration-integrity follow-up), pre-migration reference v0.7.772D, controller migration beginning at <code>c9eb3a9e</code>.</td></tr>
@@ -98,17 +98,18 @@ h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
         <tr><th>Item</th><th>State</th><th>Evidence</th></tr>
         <tr><td>CMS 0.7.819D</td><td>Deployed and bounded verification complete</td><td>The hub and 24 connected sites report 0.7.819D. Clean routes, GAME ON pages, standard footer flow, and the targeted imported-post repair were live-verified.</td></tr>
         <tr><td>CMS 0.7.820D</td><td>Deployed; repair failed on 24 spokes</td><td>Package SHA-256 <code>d0bba184112afb424e19bfcd46a45764c01f8a6a09609e57af2015070104c7c3</code>, source commit <code>5f1fc9ee260109a708b28f6aadd113764963aba0</code>. Authenticated status checks reported 0.7.820D on all 24 spokes; the hub is also publicly identified as 0.7.820D.</td></tr>
+        <tr><td>CMS 0.7.821D</td><td>Packaged, deployed, and fleet-verified</td><td>Sequential package source commit <code>85f7b66819092cbf8ab4e0868618be2443257ae8</code>; manifest and downloaded ZIP SHA-256 both <code>b4c97220bec8705aeff4ebafe21913140e83a7cb42c3106fdffec571f8a5b1f0</code>. The authenticated hub dashboard reports the hub and all 24 spokes active on exactly 0.7.821D with no pending update.</td></tr>
         <tr><td>GAME ON 0.1.24</td><td>Deployed and bounded verification complete</td><td>Presentation-only template; landing, direct photograph modal, Blogroll, About page, saved hero/background state, animated frame state, and standard footer flow live-verified.</td></tr>
         <tr><td>TILEZ</td><td>Unchanged</td><td>Remains 0.2.59. The clean-route and idempotent import-repair work is CMS/tool-owned.</td></tr>
         <tr><td>Security boundary</td><td>Gate passes</td><td>A draft template-side validation change was rejected by the fleet ratchet before release; validation was moved to core and the ratchet then passed.</td></tr>
-        <tr><td>Crawler repair deployment</td><td>Failed verification</td><td>After deployment, only 1 of 25 sites served a valid <code>/sitemap.xml</code> and only 1 of 25 had an <code>llms.txt</code> identifying 0.7.820D. All 25 still served <code>/sitemap.php</code>; 10 lacked <code>llms.txt</code>, 6 lacked <code>robots.txt</code>, and only 15 robots files named the exact public sitemap. The hub reconciled; the 24 spokes did not.</td></tr>
+        <tr><td>Crawler repair deployment</td><td>Closed in 0.7.821D</td><td>The 0.7.820D first-request failure remains part of the incident record. Its sequential repair makes deployment a two-request operation so finalization loads newly installed code. Post-deployment HTTPS verification passed on 25 of 25 sites: every site serves <code>robots.txt</code> naming its public <code>/sitemap.xml</code>, <code>llms.txt</code> identifying 0.7.821D, <code>/.well-known/security.txt</code>, and valid XML from <code>/sitemap.xml</code>.</td></tr>
         <tr><td>Whole-fleet parity</td><td>Open</td><td>Neither this candidate nor this report represents all remaining skin findings as closed.</td></tr>
     </table>
 
     <h2>7. Closure gate</h2>
-    <p>This audit closes only after the failed 0.7.820D first-upgrade behavior is repaired in
-    strict release order and all 25 audited sites answer the public sitemap route and carry
-    current CMS-generated crawler files; the formal security follow-up is independently
+    <p>The failed 0.7.820D first-upgrade behavior has now been repaired in strict release order,
+    and all 25 audited sites answer the public sitemap route and carry current CMS-generated
+    crawler files. This audit remains open until the formal security follow-up is independently
     reviewed; the remaining fleet
     parity ledger has an owner-approved disposition; and no later version is created to hide
     an incomplete earlier one.</p>
@@ -127,6 +128,12 @@ h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
     callback could not run on that first upgrade. Only the hub's separate update path completed
     reconciliation. Post-deployment verification found 24 of 25 sites still unrepaired. A
     reported version match is therefore not evidence that update-completion behavior ran.</p>
+    <p>Sequential CMS 0.7.821D corrected that bootstrap defect by separating installation and
+    finalization into two authenticated requests. The second request necessarily loads the
+    newly installed controller before reconciling public files. The signed package and source
+    commit were independently matched, the hub and all 24 spokes reported 0.7.821D, and the
+    repeated public audit passed every crawler-file condition on all 25 sites. This closes the
+    crawler-file sub-incident without claiming that the wider skin-parity incident is closed.</p>
 
     <h2>9. Plain admission</h2>
     <p>We made a necessary security change in an unsafe operational way. We removed code from
