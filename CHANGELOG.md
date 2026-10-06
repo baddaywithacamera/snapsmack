@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.821D — 2026-10-05 — The second request counts
+
+- Makes fleet deployment a two-request operation: the first authenticated request installs the release and a second authenticated finalization request loads the newly installed code before running completion work.
+- Reconciles the public sitemap route and CMS-owned crawler files from that fresh request, closing the in-memory-controller gap that left 24 spokes on 0.7.820D without its promised repair.
+- Reports an installed-but-unfinalized spoke as a deployment failure instead of treating a matching version number as proof that post-update behavior ran.
+- Adds regression coverage for the fresh-code finalization contract. No skin files or skin versions change.
+
 ## 0.7.820D — 2026-10-05 — The CMS keeps its own map
 
 - Restores the public `/sitemap.xml` route that `robots.txt` has always advertised and makes paged sitemap links use that public address instead of exposing the implementation filename.

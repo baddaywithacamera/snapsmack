@@ -15,6 +15,7 @@
  *   multisite/posts/create
  *   multisite/stats/daily
  *   multisite/updates/status
+ *   multisite/updates/finalize
  *   multisite/backup/status
  *   multisite/backup/log
  *   multisite/auth/sso-token
@@ -1702,6 +1703,32 @@ if ($resource === 'ban-sync' && $method === 'POST') {
 // Hub instructs this spoke to download and apply the latest release.
 // Hub role required. Returns {ok, version, files_updated, migrations, errors[]}.
 // ─────────────────────────────────────────────────────────────────────────────
+// ENDPOINT: POST multisite/updates/finalize
+// Runs in a SECOND request after extraction. This is deliberately separate from
+// updates/trigger: PHP keeps the old controller and updater functions in memory
+// for the lifetime of the request that replaces them. A fresh request guarantees
+// that post-update completion work executes the code that was just installed.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($resource === 'updates' && $sub_action === 'finalize' && $method === 'POST') {
+    if (($node['role'] ?? '') !== 'hub') ms_err('Only a hub may finalize spoke updates', 403);
+    if (($settings['multisite_allow_update'] ?? '0') !== '1') {
+        ms_err('Remote updates are disabled on this site (enable them in Multisite settings).', 403);
+    }
+
+    require_once __DIR__ . '/updater.php';
+    $public_reconcile = updater_reconcile_public_site($pdo);
+    $errors = array_values(array_map('strval', $public_reconcile['errors'] ?? []));
+    if ($errors) {
+        ms_err('Post-update finalization failed: ' . implode('; ', $errors), 500);
+    }
+
+    ms_ok([
+        'status'      => 'finalized',
+        'version'     => SNAPSMACK_VERSION_SHORT,
+        'public_site' => $public_reconcile,
+    ]);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ENDPOINT: POST multisite/jobs/run
 // Hub tells this spoke to run its fediverse/relay sweep now — delivery, relay,
