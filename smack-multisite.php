@@ -670,6 +670,39 @@ if (isset($_POST['push_update']) || isset($_POST['push_update_all'])) {
                     $pdo->prepare("UPDATE snap_multisite_nodes SET software_version = ?, status = 'active', last_seen_at = NOW() WHERE id = ?")
                         ->execute([$clean_ver, $tn['id']]);
                 }
+
+                // Extraction ran inside the spoke's OLD PHP request. Make a
+                // second authenticated request so completion hooks execute from
+                // the newly installed controller/updater instead of stale
+                // in-memory code. A version match is not deployment completion.
+                $fch = curl_init();
+                curl_setopt_array($fch, [
+                    CURLOPT_URL            => rtrim($tn['site_url'], '/') . '/api.php?route=multisite/updates/finalize',
+                    CURLOPT_POST           => true,
+                    CURLOPT_POSTFIELDS     => '',
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_TIMEOUT        => 30,
+                    CURLOPT_HTTPHEADER     => [
+                        'Authorization: Bearer ' . $tn['api_key_local'],
+                        'Accept: application/json',
+                        'Content-Length: 0',
+                    ],
+                ]);
+                $fraw  = curl_exec($fch);
+                $fcode = (int)curl_getinfo($fch, CURLINFO_HTTP_CODE);
+                $fcerr = curl_error($fch);
+                curl_close($fch);
+                $fdata = json_decode((string)$fraw, true);
+
+                if ($fcerr || $fcode !== 200 || empty($fdata['ok'])) {
+                    $result['ok'] = false;
+                    $result['status'] = 'updated_not_finalized';
+                    $result['detail'] = $fcerr ?: ($fdata['error'] ?? ('Finalize HTTP ' . $fcode));
+                } else {
+                    $result['finalized'] = true;
+                    $result['public_site'] = $fdata['public_site'] ?? null;
+                }
             }
             $update_results[] = $result;
         }
