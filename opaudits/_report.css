@@ -64,6 +64,7 @@ table.meta td.k {
     border-radius: 3px;
 }
 .chip-watched  { background: #1a7a3c; color: #fff; }
+.chip-closed   { background: #1a7a3c; color: #fff; }
 .chip-confirm  { background: #F3E2B3; color: #6b4c00; border: 1px solid #d9b84e; }
 .chip-open     { background: #D40000; color: #fff; }
 .doctrine {

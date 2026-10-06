@@ -22,11 +22,11 @@ h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
         <tr><td class="k">First observed</td><td>Repeated live presentation and routing regressions after the September 28 skin execution-boundary migration; consolidated as one incident on October 5 after GAME ON, TILEZ, AURORA, JIVE TURKEY, and imported SMACKTALK content exposed missing replacement contracts.</td></tr>
         <tr><td class="k">Theme</td><td>The security decision was right. The migration was not complete. Executable behavior was removed from skins without first inventorying, rebuilding, and proving every bounded CMS-to-skin contract that had supplied the visible site.</td></tr>
         <tr><td class="k">Surfaces</td><td>Schema-v2 public skins; strict public controllers; route compatibility; saved appearance settings; shared assets and components; SMACKPRESS imported content; crawler-file lifecycle; skin packaging; CMS and skin release sequencing.</td></tr>
-        <tr><td class="k">State</td><td><span class="state-chip chip-open">Open</span> &nbsp; The crawler-file lifecycle sub-incident is repaired and fleet-verified in sequential CMS 0.7.821D: the hub and all 24 spokes report that exact version, and all 25 pass the same public crawler-file audit. The wider skin-migration parity incident remains open; whole-fleet visual and route parity is not claimed.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-closed">Recovery bounded; monitoring continues</span> &nbsp; The crawler-file lifecycle sub-incident is repaired and fleet-verified. SECAUDIT 059 and 060 are closed with explicit deferred parity debt after independent review. CMS 0.7.822D made both security and parity gates fail-closed; 0.7.823D restored the most visible affected skin families. Whole-fleet pixel-perfect parity is not claimed, and this operability record remains public and updateable.</td></tr>
         <tr><td class="k">Human impact</td><td>Approximately two weeks of recovery work less than one month before closed beta, damaged trust and morale, lost sleep, and severe autism-related distress reported by the owner, including feeling physically sick. Repeated model-capacity failures prolonged the recovery despite available account quota.</td></tr>
         <tr><td class="k">Reporter</td><td>Sean identified and repeatedly reproduced the live failures. Codex reconstructed the repository evidence and wrote this report. Model attribution for earlier individual changes remains unproven unless a session record establishes it.</td></tr>
         <tr><td class="k">Related</td><td>SECAUDIT 059 (skin execution boundary), SECAUDIT 060 (migration-integrity follow-up), pre-migration reference v0.7.772D, controller migration beginning at <code>c9eb3a9e</code>.</td></tr>
-        <tr><td class="k">Publication</td><td>Owner-gated. The report is intentionally candid; publish only after the recovery is deployed, independently reviewed where required, and the evidence table is completed.</td></tr>
+        <tr><td class="k">Publication</td><td>Published and updated with owner approval on 2026-10-06. Source recovery through 0.7.823D is recorded separately from live-fleet verification.</td></tr>
     </table>
 
     <h2>1. Summary</h2>
@@ -107,12 +107,19 @@ h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
     </table>
 
     <h2>7. Closure gate</h2>
-    <p>The failed 0.7.820D first-upgrade behavior has now been repaired in strict release order,
+    <p>The failed 0.7.820D first-upgrade behavior was repaired in strict release order,
     and all 25 audited sites answer the public sitemap route and carry current CMS-generated
-    crawler files. This audit remains open until the formal security follow-up is independently
-    reviewed; the remaining fleet
-    parity ledger has an owner-approved disposition; and no later version is created to hide
-    an incomplete earlier one.</p>
+    crawler files. The formal security follow-up received an independent adversarial review.
+    That review found a HIGH filename-based gate bypass and proved that the original parity
+    tests asserted structure rather than successful coverage. Both findings closed in 0.7.822D.
+    The owner accepted the remaining 43 strict-route fallthroughs and 611 presentation-hook
+    candidates as named, ratcheted debt rather than pretending they were either zero or 654
+    confirmed live defects.</p>
+    <p>CMS 0.7.823D then restored the WordPress mosaic import, TILEZ navigation spacing,
+    GAME ON and INSTANT CAMERA solo presentation and navigation, and grid-family photo modals.
+    The 166-program regression directory and the targeted security, gate-wiring, and parity
+    gates pass. This moves the recovery from open-ended emergency work to bounded monitoring.
+    It does not claim a fresh live visual sweep of every route on every site.</p>
 
     <h2>8. Additional crawler-file admission</h2>
     <p>We said SnapSmack sites maintained their own SEO and agent-facing files before checking

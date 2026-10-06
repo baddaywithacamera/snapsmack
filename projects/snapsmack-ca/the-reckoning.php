@@ -71,7 +71,7 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="number-card"><strong>305,653</strong><span>Expanded implementation source including Python, SQL, Rust, and scripts</span></div>
                 <div class="number-card"><strong>447</strong><span>Python files for desktop applications and tooling</span></div>
                 <div class="number-card"><strong>30</strong><span>Skin directories</span></div>
-                <div class="number-card"><strong>58</strong><span>Published numbered security audits</span></div>
+                <div class="number-card"><strong>60</strong><span>Published numbered security audits</span></div>
             </div>
         </div>
     </section>
