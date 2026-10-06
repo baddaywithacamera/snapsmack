@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "INSTANT CAMERA",
-    "version": "1.0.40",
+    "version": "1.0.41",
     "min_images": 200,
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
@@ -63,7 +63,7 @@
             "section": "POST VIEWER",
             "type": "range_numeric",
             "label": "Post Viewer Backdrop Opacity",
-            "default": "40",
+            "default": "0",
             "min": "0",
             "max": "100",
             "step": "1",

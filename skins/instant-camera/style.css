@@ -808,8 +808,9 @@ img { display: block; max-width: 100%; }
 
 /* ==========================================================================
    POST MODAL OVERLAY
-   IG-style popover: grid stays visible, dimmed behind 80% opaque backdrop.
-   tg-modal.js populates #tg-modal-frame by fetching ?modal=1 fragments.
+   Original INSTANT CAMERA popover: the archive stays visible and the shared
+   CMS modal engine inserts the skin's two-panel fragment into this frame.
+   The skin owns this established geometry; the CMS owns fetching/history.
    ========================================================================== */
 
 .tg-modal-overlay {
@@ -829,8 +830,8 @@ body.tg-modal-open { overflow: hidden; }
 .tg-modal-backdrop {
     position:   absolute;
     inset:      0;
-    /* POST VIEWER controls (colour + opacity); was hard-coded black 80%. */
-    background: color-mix(in srgb, var(--ic-post-viewer-backdrop-color, #000000) var(--ic-post-viewer-backdrop-opacity, 80%), transparent);
+    /* Preserve the old viewer without forcing its old 80% blackout. */
+    background: color-mix(in srgb, var(--ic-post-viewer-backdrop-color, #000000) var(--ic-post-viewer-backdrop-opacity, 0%), transparent);
 }
 
 .tg-modal-frame {
