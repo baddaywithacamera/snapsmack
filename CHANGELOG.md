@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.824D — 2026-10-06 — The wall is the product
+
+- Restores SLICKR as SLICKR instead of the disconnected generic grid published in 1.0.27. SLICKR 1.0.28 receives its cover photograph, lifetime statistics, Flickr-style navigation, search, and justified-row geometry through the bounded CMS presentation contract, then renders the known-good full-width banner and tightly packed photographic wall without regaining database, routing, or reusable engine authority.
+- Completes INSTANT CAMERA 1.0.42's known-good presentation restoration around the CMS-owned engines: original square-print viewer, compact social panel, sticky-nav avatar, Home and Blogroll fallbacks, transparent navigation and panel, frameless prints, 2px grid rhythm, and original profile typography. Its one intentional visual change remains the requested high-key white viewer veil in place of the old dark overlay.
+
 ## 0.7.823D — 2026-10-06 — Put the pictures back
 
 - Restores GAME ON's photograph search as a real skinned grid, makes title, description, ALT text, tags, album names, and category names all searchable, and gives solo posts a contained photograph-and-caption composition instead of a viewport-height black slab. The puzzle action now stays with the caption when community controls are disabled. GAME ON 0.1.25 removes its repaired search route from the parity baseline.
@@ -18,7 +23,7 @@
 - Preserves authored WordPress gallery boundaries through SMACKPRESS. Classic galleries and Gutenberg gallery blocks now become one native SnapSmack mosaic with the exact original member count; the existing-post repair remains ID-preserving and refuses ambiguous media-count changes.
 - Restores the pre-migration two-panel photograph viewer across the Grid family instead of substituting a generic image-and-empty-sidebar page. Direct photograph URLs rebuild the archive behind the viewer, modal requests return only the bounded photograph fragment, and the original header, caption, EXIF, community, action, and date regions are back. Sequential skin releases: THE GRID 1.3.45, AURORA 1.0.42, SUDDEN IMPACT 1.0.10, PARADE 1.2.40, JIVE TURKEY 0.1.28, HEURISTIC 0.1.4, and SLIDERS 0.1.6.
 - Restores GAME ON 0.1.27's square solo-photo stage without the migration's black letterbox bars and reconnects Space/Left/Right navigation to bounded published-photo neighbours.
-- Restores INSTANT CAMERA 1.0.41's original square-print modal and compact social panel over the archive by reconnecting that known-good skin fragment to the CMS-owned modal engine instead of designing a replacement viewer. The old 80% black dimmer becomes a high-key 80% white veil (both colour and opacity remain adjustable), Home returns to the navbar, static-page menu destinations resolve, and the navbar stays on the same translucent plane as the rest of the page.
+- Restores INSTANT CAMERA 1.0.42's complete known-good presentation around the CMS-owned engines instead of designing a replacement: the original square-print modal and compact social panel, sticky-nav avatar, Home + Blogroll fallback, transparent navbar and panel, frameless prints, 2px grid rhythm, and original profile typography. The sole intentional visual change is replacing the old 80% black dimmer with the requested high-key 80% white veil; both colour and opacity remain adjustable.
 - Corrects GAME ON 0.1.28's solo viewer to let each source image set the photographic stage's natural proportions. Non-square photographs are shown whole without the square black filler that remained in 0.1.27.
 
 ## 0.7.822D — 2026-10-05 — Both sides of the gate
