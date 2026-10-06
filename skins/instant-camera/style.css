@@ -1403,6 +1403,6 @@ body {
    .profile-hidden made a non-zero admin setting appear to do nothing on the
    landing page and left dropdown navigation without a readable parent bar. */
 .tg-sticky-nav,
-.tg-sticky-nav.profile-hidden  { background: var(--ic-nav-bg, transparent) !important; }
+.tg-sticky-nav.profile-hidden  { background: transparent !important; }
 
 /* ===== SNAPSMACK EOF ===== */
