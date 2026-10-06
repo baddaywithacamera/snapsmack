@@ -1,4 +1,5 @@
 <?php
+// SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 declare(strict_types=1);
 
 /**
@@ -270,14 +271,22 @@ final class SnapPublicRepository
 
     public function search(string $term, int $limit = 50): array {
         $like = '%' . $term . '%';
+        $tagLike = '%' . strtolower($term) . '%';
         return [
             'photographs' => $this->all(
-                "SELECT id,img_title,img_slug,img_description,img_alt,img_date,img_file,img_thumb_square,img_thumb_aspect
-                 FROM snap_images
-                 WHERE img_status='published' AND img_date <= NOW()
-                   AND (img_title LIKE ? OR img_description LIKE ? OR img_alt LIKE ?)
-                 ORDER BY img_date DESC,id DESC LIMIT ?",
-                [$like, $like, $like, max(1, min(100, $limit))]
+                "SELECT DISTINCT i.id,i.img_title,i.img_slug,i.img_description,i.img_alt,i.img_date,
+                        i.img_file,i.img_thumb_square,i.img_thumb_aspect
+                 FROM snap_images i
+                 LEFT JOIN snap_image_tags it ON it.image_id=i.id
+                 LEFT JOIN snap_tags t ON t.id=it.tag_id
+                 WHERE i.img_status='published' AND i.img_date <= NOW()
+                   AND (i.img_title LIKE ? OR i.img_description LIKE ? OR i.img_alt LIKE ? OR t.slug LIKE ?
+                        OR EXISTS (SELECT 1 FROM snap_image_album_map sam JOIN snap_albums a ON a.id=sam.album_id
+                                   WHERE sam.image_id=i.id AND a.album_name LIKE ?)
+                        OR EXISTS (SELECT 1 FROM snap_image_cat_map scm JOIN snap_categories c ON c.id=scm.cat_id
+                                   WHERE scm.image_id=i.id AND c.cat_name LIKE ?))
+                 ORDER BY i.img_date DESC,i.id DESC LIMIT ?",
+                [$like, $like, $like, $tagLike, $like, $like, max(1, min(100, $limit))]
             ),
             'posts' => $this->all(
                 "SELECT id,title,slug,description,post_type,created_at,featured_image_id
@@ -369,3 +378,4 @@ final class SnapPublicRepository
         );
     }
 }
+// ===== SNAPSMACK EOF =====

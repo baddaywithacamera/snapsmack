@@ -1,4 +1,5 @@
 <?php
+// SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 /**
  * SNAPSMACK - Organized Mayhem data source (shared)
  *
@@ -89,7 +90,8 @@ if (!function_exists('mayhem_image_pool')) {
         $hi = (int) ($bounds['hi'] ?? 0);
         if ($hi <= 0 || $lo <= 0) return [];
 
-        $sql = "SELECT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_aspect
+        $sql = "SELECT i.id, i.img_title, i.img_slug, i.img_file, i.img_thumb_aspect,
+                       i.img_width, i.img_height
                 FROM snap_images i
                 LEFT JOIN snap_post_images pi ON pi.image_id = i.id
                 LEFT JOIN snap_posts p        ON p.id = pi.post_id
@@ -143,6 +145,9 @@ if (!function_exists('mayhem_image_pool')) {
                 'title' => $r['img_title'],
                 'src'   => $src,
                 'url'   => BASE_URL . htmlspecialchars($r['img_slug']),
+                'aspect'=> ((int)$r['img_width'] > 0 && (int)$r['img_height'] > 0)
+                    ? round((int)$r['img_width'] / (int)$r['img_height'], 6)
+                    : 1.0,
             ];
         }
         return $images;

@@ -1,4 +1,5 @@
 <?php
+// SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/core/custom-code-policy.php';
@@ -117,6 +118,7 @@ $approved = [
     'core/custom-code-policy.php|snapsmack_owner_custom_code|SnapOwnerCode::factory' => 1,
     'core/custom-code-policy.php|snapsmack_skin_custom_style|SnapTrustedHtml::factory' => 2,
     'core/skin-presentation.php|snapsmack_grid_common_presentation|SnapTrustedHtml::factory' => 1,
+    'core/skin-presentation.php|snapsmack_attach_local_font_faces|SnapTrustedHtml::factory' => 1,
     'core/skin-presentation.php|snapsmack_instant_camera_presentation|SnapTrustedHtml::factory' => 1,
     'core/skin-presentation.php|snapsmack_parade_presentation|SnapTrustedHtml::factory' => 1,
     'core/skin-presentation.php|snapsmack_presentation_style|SnapTrustedHtml::factory' => 1,
@@ -164,3 +166,4 @@ foreach ($excluded as $finding) $excludedKinds[$finding['kind']] = ($excludedKin
 ksort($excludedKinds);
 echo 'Privileged-wrapper production inventory passed (' . count($production) . ' approved occurrences); '
     . 'excluded test/fixture occurrences reported: ' . json_encode($excludedKinds, JSON_UNESCAPED_SLASHES) . ".\n";
+// ===== SNAPSMACK EOF =====
