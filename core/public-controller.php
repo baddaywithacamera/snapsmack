@@ -159,6 +159,38 @@ function snapsmack_grid_modal_photo_response(SnapPublicRepository $repository, a
     return $response;
 }
 
+/** Pack SLICKR photographs into the same justified rows as the original skin. */
+function snapsmack_slickr_rows(array $items, array $settings, int $page): array
+{
+    $targetHeight = max(80, min(600, (int)($settings['justified_row_height'] ?? 240)));
+    $canvasWidth = max(320, min(3000, (int)($settings['main_canvas_width'] ?? 1400)));
+    $gap = 4;
+    $rows = [];
+    $row = [];
+    $scaledWidth = 0.0;
+    foreach ($items as $item) {
+        $width = max(1, (int)($item['img_width'] ?? 400));
+        $height = max(1, (int)($item['img_height'] ?? 400));
+        $item['presentation_aspect'] = $width / $height;
+        $item['presentation_flex'] = (int)round($item['presentation_aspect'] * 100);
+        $row[] = $item;
+        $scaledWidth += ($item['presentation_aspect'] * $targetHeight) + $gap;
+        if ($scaledWidth - $gap >= $canvasWidth) {
+            $rows[] = ['items' => $row, 'full' => true];
+            $row = [];
+            $scaledWidth = 0.0;
+        }
+    }
+    if ($row) $rows[] = ['items' => $row, 'full' => false];
+    $perPage = 25;
+    return [
+        'rows' => array_slice($rows, (max(1, $page) - 1) * $perPage, $perPage),
+        'total_pages' => max(1, (int)ceil(count($rows) / $perPage)),
+        'target_height' => $targetHeight,
+        'gap' => $gap,
+    ];
+}
+
 function snapsmack_grid_frame_items(array $items, array $settings, string $skin): array
 {
     $prefixes = ['the-grid'=>'tg','aurora'=>'au','sudden-impact'=>'tg','parade'=>'pa','jive-turkey'=>'jt','heuristic'=>'he','instant-camera'=>'ic','game-on'=>'go','sliders'=>'ic'];
@@ -236,7 +268,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             ? $repository->randomPhotographs(200)
             : ($mode === 'smacktalk'
             ? $repository->longformLanding($perPage, $offset)
-            : $repository->photographLanding($perPage, $offset));
+            : $repository->photographLanding($perPage, $skin === 'slickr' && !empty($settings['_cms_full_landing']) ? 0 : $offset));
         $items = snapsmack_grid_frame_items($items, $settings, $skin);
         $rows = [];
         if ($skin === 'heuristic') $items = snapsmack_heuristic_items($items, (string)($settings['he_infomatic_map'] ?? ''));
@@ -250,6 +282,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
                 $rows[$index % 9][] = $item;
             }
         }
+        $slickrRows = $skin === 'slickr' ? snapsmack_slickr_rows($items, $settings, $page) : [];
         $sliderItems = [];
         if ($skin === 'show-n-tell' && (($settings['htbs_slider_enabled'] ?? '1') === '1')) {
             $assetIds = json_decode((string)($settings['htbs_slider_assets'] ?? '[]'), true);
@@ -267,7 +300,10 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         }
         return ['status' => 200, 'kind' => 'landing', 'mode' => $mode, 'items' => $items,
             'puzzle_items' => $skin === 'game-on' ? array_map('snapsmack_game_on_focus_item', $repository->gameOnPuzzlePhotographs()) : [],
-            'rows' => $rows, 'slider_items' => $sliderItems, 'navigation' => $navigation, 'page' => $page,
+            'rows' => $skin === 'slickr' ? ($slickrRows['rows'] ?? []) : $rows,
+            'total_pages' => $skin === 'slickr' ? ($slickrRows['total_pages'] ?? 1) : 1,
+            'next_page' => $skin === 'slickr' && $page < ($slickrRows['total_pages'] ?? 1) ? $page + 1 : 0,
+            'slider_items' => $sliderItems, 'navigation' => $navigation, 'page' => $page,
             'photo_count' => $mode === 'smacktalk' ? 0 : $repository->publishedPhotographCount()];
     }
     if ($route === 'photo') {
