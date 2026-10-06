@@ -591,6 +591,51 @@ a:hover { color: var(--sl-link-hover); }
   padding: 0 24px 60px;
 }
 
+/* Search belongs to the wall, not to the viewport. Keep its summary and tag
+   suggestions aligned with the photographs and give the wall one deliberate
+   top rhythm instead of three unrelated strips. */
+.archive-page .archive-search-status,
+.archive-page .archive-tags-row {
+  max-width: var(--sl-canvas-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+.archive-page .archive-search-status {
+  padding-top: 22px;
+  text-align: left;
+  font-family: var(--sl-font-stack);
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--sl-text-primary);
+}
+.archive-page .archive-search-status a {
+  margin-left: 8px;
+  color: var(--sl-text-secondary);
+  font-size: 12px;
+}
+.archive-page .archive-tags-row {
+  justify-content: flex-start;
+  gap: 8px;
+  padding-top: 10px;
+  padding-bottom: 14px;
+}
+.archive-page .archive-tags-row .tg-tag {
+  display: inline-flex;
+  padding: 5px 10px;
+  border: 1px solid var(--sl-header-border);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+}
+
+/* SLICKR's archive chrome already owns search and calendar. The old docked
+   layout switch was absolutely positioned over the first result image. */
+.archive-page .archive-controls--docked { display: none; }
+
 /* ── Archive heading (core .archive-heading — album / category / collection) ─
    Core titles a single-taxonomy archive view. Lead with the name Flickr-style,
    photo count beneath, aligned to the same canvas as the grid. */
@@ -776,6 +821,15 @@ a:hover { color: var(--sl-link-hover); }
   margin: 0 auto;
   padding: 20px 24px 60px;
 }
+.sl-search-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 4px 16px;
+}
+.sl-search-summary h1 { margin: 0; font-size: 22px; line-height: 1.25; }
+.sl-search-summary span { color: var(--sl-text-secondary); font-size: 13px; white-space: nowrap; }
 
 /* Justified-row rules ported from core page-archive.css — the index page type
    loads page-static.css (not page-archive.css), so they must live in the skin. */

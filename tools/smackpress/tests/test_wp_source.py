@@ -133,6 +133,35 @@ class RewriteTests(unittest.TestCase):
         self.assertNotIn("[img:bucket:", body)
         self.assertEqual(ordered[-1]["url"], f"{WP}/third.png")
 
+    def test_classic_four_image_gallery_stays_one_four_image_mosaic(self):
+        content = (
+            '[smackpress-gallery]\n'
+            f'[smackpress-image id="10" url="{WP}/one.png"]\n'
+            f'[smackpress-image id="11" url="{WP}/two.png"]\n'
+            f'[smackpress-image id="12" url="{WP}/three.png"]\n'
+            f'[smackpress-image id="13" url="{WP}/four.png"]\n'
+            '[/smackpress-gallery]'
+        )
+        body, ordered = wp_source.rewrite_body(content, [])
+        self.assertEqual(body, "[mosaic=1,2,3,4 layout=asymmetric]")
+        self.assertEqual(len(ordered), 4)
+
+    def test_gutenberg_four_image_gallery_stays_one_four_image_mosaic(self):
+        figures = "".join(
+            '<!-- wp:image --><figure class="wp-block-image">'
+            f'<img src="{WP}/{name}.png" alt="{name}"></figure><!-- /wp:image -->'
+            for name in ("one", "two", "three", "four")
+        )
+        content = (
+            '<!-- wp:gallery {"columns":2} -->'
+            '<figure class="wp-block-gallery has-nested-images columns-2">'
+            + figures + '</figure><!-- /wp:gallery -->'
+        )
+        body, ordered = wp_source.rewrite_body(content, [])
+        self.assertEqual(body, "[mosaic=1,2,3,4 layout=asymmetric]")
+        self.assertEqual([image["alt"] for image in ordered],
+                         ["one", "two", "three", "four"])
+
     def test_wordpress_derivatives_collapse_to_largest_variant(self):
         images = [
             {"url": f"{WP}/lake-1024x683.jpg", "width": 1024, "height": 683},

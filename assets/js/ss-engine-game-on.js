@@ -86,7 +86,15 @@
             if (button.parentElement && button.parentElement.classList.contains('ss-community-bar')) return;
             var wrap = button.closest('.go-community-wrap');
             var like = wrap && wrap.querySelector('.ss-community-bar .ss-like-btn');
-            if (like) like.insertAdjacentElement('afterend', button);
+            if (like) {
+                like.insertAdjacentElement('afterend', button);
+                return;
+            }
+            // Posts with community actions disabled used to strand this control
+            // over the photograph. Keep it with the caption/actions instead.
+            var article = button.closest('.go-post-ig');
+            var body = article && article.querySelector('.go-post-ig-body');
+            if (body) body.appendChild(button);
         });
     }
 

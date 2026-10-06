@@ -1,4 +1,5 @@
 <?php
+// SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 // SECAUDIT 050-B — direct-access guard: backend include, never a URL entry point.
 // Refuse a direct HTTP request regardless of web server (the Apache deny-list is
 // Apache-only and drifts). CLI and normal includes pass through untouched.
@@ -45,6 +46,18 @@ $inventory = [
        use allowed_fonts in that manifest to restrict the picker.
        ========================================================= */
     'local_fonts' => [
+
+        // ---- Special Elite ----------------------------------------------
+        // Formerly loaded from Google Fonts by the public skin header. Keep
+        // the owner's selected SCROLL masthead stable without a third-party
+        // request or a browser-dependent fallback.
+        'Special Elite' => [
+            'label'  => 'Special Elite (Typewriter Stamp / Period Utility)',
+            'file'   => 'assets/fonts/Special Elite/SpecialElite-Regular.ttf',
+            'format' => 'truetype',
+            'weight' => 'normal',
+            'style'  => 'normal',
+        ],
 
         // ---- BlackCasper ------------------------------------------------
         'BlackCasper' => [

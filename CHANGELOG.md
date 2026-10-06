@@ -9,6 +9,14 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.823D — 2026-10-06 — Put the pictures back
+
+- Restores GAME ON's photograph search as a real skinned grid, makes title, description, ALT text, tags, album names, and category names all searchable, and gives solo posts a contained photograph-and-caption composition instead of a viewport-height black slab. The puzzle action now stays with the caption when community controls are disabled. GAME ON 0.1.25 removes its repaired search route from the parity baseline.
+- Makes INSTANT CAMERA's ORGANIZED MAYHEM background cover the viewport without blank cells: the coverage grid never creates more cells than photographs, every print uses the source photograph's real aspect ratio, spare photographs form a second scattered layer, and a meaningful viewport resize rebuilds the field.
+- Restores the locally served Special Elite face selected by SCROLL instead of silently falling back to Arial after the schema-v2 header migration. The shared presentation compiler now emits only the local faces actually selected by saved skin controls.
+- Repairs SLICKR search presentation and removes the obsolete view switch that covered the first result. SLICKR 1.0.27 renders strict-path search results inside its justified wall and removes that repaired route from the parity baseline.
+- Preserves authored WordPress gallery boundaries through SMACKPRESS. Classic galleries and Gutenberg gallery blocks now become one native SnapSmack mosaic with the exact original member count; the existing-post repair remains ID-preserving and refuses ambiguous media-count changes.
+
 ## 0.7.822D — 2026-10-05 — Both sides of the gate
 
 - Closes a skin security-gate bypass: any file whose name contained "gitignore" was skipped by the gate entirely, so a manifest-declared template such as `notes.gitignore.php` shipped inside a signed package and rendered unscanned with full PHP authority. Declared templates are now always scanned, whatever they are called.

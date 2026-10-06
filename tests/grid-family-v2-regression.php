@@ -1,4 +1,5 @@
 <?php
+// SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 declare(strict_types=1);
 define('SNAPSMACK_SKIN_RENDER', true);
 require_once dirname(__DIR__) . '/core/trusted-html.php';
@@ -15,7 +16,7 @@ $responses = [
         ['id'=>11,'img_title'=>'First','img_alt'=>'First slide','img_file'=>'/media/first.jpg','is_framed'=>true,'frame_style'=>'--slide-bg:#abcdef'],
         ['id'=>12,'img_title'=>'Second','img_alt'=>'Second & slide','img_file'=>'/media/second.jpg','is_framed'=>false,'frame_style'=>''],
     ],'navigation'=>[]],
-    ['status'=>200,'kind'=>'search','results'=>['photographs'=>[['img_title'=>'Match']],'posts'=>[]],'navigation'=>[]],
+    ['status'=>200,'kind'=>'search','query'=>'cat','results'=>['photographs'=>[['img_title'=>'Match','img_slug'=>'match','img_file'=>'/media/match.jpg']],'posts'=>[]],'navigation'=>[]],
     ['status'=>404,'kind'=>'not_found','navigation'=>[]],
 ];
 $styles=[];
@@ -37,6 +38,7 @@ foreach($skins as $skin){
         if(!str_contains($html,'class="'.$prefix.'-content-wrap')) throw new RuntimeException("{$skin}/{$response['kind']} lost its family content hook.");
         foreach(['id="'.$prefix.'-modal-overlay"','id="'.$prefix.'-modal-frame"','id="'.$prefix.'-lightbox"'] as $modalHook)if(!str_contains($html,$modalHook))throw new RuntimeException("{$skin}/{$response['kind']} lost route modal/lightbox hook: {$modalHook}");
         if(($response['kind']??'')==='landing'&&!str_contains($html,'class="'.$prefix.'-tile')) throw new RuntimeException("{$skin} lost its tile contract.");
+        if($skin==='game-on'&&($response['kind']??'')==='search'&&(!str_contains($html,'class="go-search-view"')||!str_contains($html,'/media/match.jpg'))) throw new RuntimeException('GAME ON search fell through or lost its photograph results.');
         if(($response['kind']??'')==='post'){
             if(!str_contains($html,'id="tg-carousel" class="ss-slider"')||substr_count($html,'class="slider-slide')!==2)throw new RuntimeException("{$skin} post route lost its CMS photograph carousel.");
             if(substr_count($html,'class="ss-slider-dot')!==3||substr_count($html,'data-slide-index=')!==2)throw new RuntimeException("{$skin} post carousel indicator count drifted from its photographs.");
@@ -80,3 +82,4 @@ $frameMaximum=snapsmack_skin_presentation(['go_frame_size_pct'=>'100','go_frame_
 foreach(['--tile-img-size:75%','--tile-border-w:0px','--tile-border-c:#123456','--tile-bg:#abcdef','--tile-shadow:none'] as $expected)if(!str_contains((string)$frameMinimum['style'],$expected))throw new RuntimeException("Grid frame minimum control lost: {$expected}");
 foreach(['--tile-img-size:100%','--tile-border-w:20px','--tile-border-c:#654321','--tile-bg:#fedcba','--tile-shadow:12px 12px 32px'] as $expected)if(!str_contains((string)$frameMaximum['style'],$expected))throw new RuntimeException("Grid frame maximum control lost: {$expected}");
 echo "Grid-family schema-v2 regression passed.\n";
+// ===== SNAPSMACK EOF =====

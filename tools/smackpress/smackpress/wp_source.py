@@ -1,4 +1,5 @@
 """
+SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment.
 SmackPress — wp_source.py
 
 A WordPress post → a COLD SNAP Draft, with the pictures already yours.
@@ -109,6 +110,8 @@ _SRC_ATTR  = re.compile(r"""\bsrc\s*=\s*["']([^"']+)["']""", re.I)
 _ALT_ATTR  = re.compile(r"""\balt\s*=\s*["']([^"']*)["']""", re.I)
 # companion's gallery expansion: [smackpress-image id="12" url="https://…"]
 _SP_IMAGE  = re.compile(r"""\[smackpress-image\s+id=["'](\d+)["']\s+url=["']([^"']+)["']\s*\]""", re.I)
+_SP_GALLERY = re.compile(
+    r"\[smackpress-gallery\](.*?)\[/smackpress-gallery\]", re.I | re.S)
 # an <img> wrapped in <a>…</a> and/or <figure>…</figure> (with optional figcaption)
 _WRAPPED   = re.compile(
     r"(?:<figure\b[^>]*>\s*)?(?:<a\b[^>]*>\s*)?(<img\b[^>]*>)(?:\s*</a>)?"
@@ -122,6 +125,8 @@ _WP_SPACER = re.compile(
 _DIV_TAG = re.compile(r"</?div\b[^>]*>", re.I)
 _WP_COLUMNS_BLOCK = re.compile(
     r"<!--\s*wp:columns\b[^>]*-->(.*?)<!--\s*/wp:columns\s*-->", re.I | re.S)
+_WP_GALLERY_BLOCK = re.compile(
+    r"<!--\s*wp:gallery\b[^>]*-->(.*?)<!--\s*/wp:gallery\s*-->", re.I | re.S)
 _FOLLOWING_IMAGE_BLOCK = re.compile(
     r"^\s*<!--\s*wp:image\b[^>]*-->\s*(\[img:g?bucket:\d+\])\s*"
     r"<!--\s*/wp:image\s*-->", re.I)
@@ -237,7 +242,35 @@ def rewrite_body(content: str, images: List[dict]) -> Tuple[str, List[dict]]:
             slot(src.group(1), html.unescape(alt.group(1)) if alt else ""),
         )
 
-    body = _SP_IMAGE.sub(repl_sp, content or "")
+    body = content or ""
+
+    # Classic [gallery] shortcodes are expanded by the companion inside this
+    # explicit boundary.  Resolve every member through slot() first, then carry
+    # the whole authored group forward as one native mosaic placeholder.
+    def repl_sp_gallery(match):
+        positions = [slot(item.group(2)) for item in _SP_IMAGE.finditer(match.group(1))]
+        return ("\n[mosaic=%s layout=asymmetric]\n" %
+                ",".join(str(position) for position in positions)) if positions else ""
+
+    body = _SP_GALLERY.sub(repl_sp_gallery, body)
+    body = _SP_IMAGE.sub(repl_sp, body)
+
+    # Gutenberg stores gallery membership in block comments around nested image
+    # figures.  Read that boundary before the ordinary image pass consumes the
+    # figures, so a four-photo block stays a four-photo mosaic.
+    def repl_wp_gallery(match):
+        positions = []
+        for tag in _IMG_TAG.findall(match.group(1)):
+            src = _SRC_ATTR.search(tag)
+            if not src:
+                continue
+            alt = _ALT_ATTR.search(tag)
+            positions.append(slot(
+                src.group(1), html.unescape(alt.group(1)) if alt else ""))
+        return ("\n[mosaic=%s layout=asymmetric]\n" %
+                ",".join(str(position) for position in positions)) if positions else ""
+
+    body = _WP_GALLERY_BLOCK.sub(repl_wp_gallery, body)
     # A WordPress image wrapped in a media-file link is authored lightbox intent.
     # Preserve that distinction as a gallery-forced bucket token; the COLD SNAP
     # poster resolves it to [img:gID] after uploading the photograph.

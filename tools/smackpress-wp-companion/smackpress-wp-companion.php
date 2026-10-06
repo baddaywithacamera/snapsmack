@@ -429,7 +429,15 @@ function smackpress_expand_content( string $content, int $post_id ): array {
                 $block_lines[] = '[smackpress-image id="' . $att_id . '" url="' . $img['url'] . '"]';
             }
 
-            return implode( "\n", $block_lines );
+            // Keep the authored gallery boundary.  The desktop importer needs
+            // to know that these photographs are one visual group; returning
+            // anonymous image lines made a four-photo WordPress gallery arrive
+            // as unrelated inline images (or get caught by a three-image layout
+            // heuristic).  The marker is private migration data and is replaced
+            // with a native SnapSmack mosaic before publication.
+            return "[smackpress-gallery]\n"
+                . implode( "\n", $block_lines )
+                . "\n[/smackpress-gallery]";
         },
         $content
     );
