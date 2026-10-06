@@ -39,6 +39,8 @@ foreach (['id="browse-grid"','data-autoopen="1"','data-game-on'] as $value) spec
 $gameSoloFragment = special_render('game-on', [], 'photo_fragment');
 foreach (['class="go-post-ig"','data-play-as-puzzle','data-focus-x="17"','data-focus-y="83"','data-zoom="240"'] as $value) special_check(str_contains($gameSoloFragment, $value), "GAME ON photo modal fragment missing: {$value}");
 special_check(!str_contains($gameSoloFragment, '<!doctype html>'), 'GAME ON modal fragment incorrectly contains a full page shell.');
+$gameCss = (string)file_get_contents(dirname(__DIR__).'/skins/game-on/style.css');
+special_check(str_contains($gameCss, 'max-height: min(78dvh, 820px)') && !str_contains($gameCss, 'aspect-ratio:    1 / 1'), 'GAME ON solo photograph stage regressed to a square letterbox.');
 $boundedFocus = snapsmack_game_on_focus_item(['img_focus_x'=>-5,'img_focus_y'=>150,'img_zoom'=>999]);
 special_check($boundedFocus['img_focus_x'] === 0 && $boundedFocus['img_focus_y'] === 100 && $boundedFocus['img_zoom'] === 500, 'GAME ON focus/zoom bounds failed.');
 $defaultFocus = snapsmack_game_on_focus_item([]);
