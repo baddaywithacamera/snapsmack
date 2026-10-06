@@ -830,8 +830,8 @@ body.tg-modal-open { overflow: hidden; }
 .tg-modal-backdrop {
     position:   absolute;
     inset:      0;
-    /* Preserve the old viewer without forcing its old 80% blackout. */
-    background: color-mix(in srgb, var(--ic-post-viewer-backdrop-color, #000000) var(--ic-post-viewer-backdrop-opacity, 0%), transparent);
+    /* Keep the old 80% separation as a high-key white veil, not a blackout. */
+    background: color-mix(in srgb, var(--ic-post-viewer-backdrop-color, #ffffff) var(--ic-post-viewer-backdrop-opacity, 80%), transparent);
 }
 
 .tg-modal-frame {
