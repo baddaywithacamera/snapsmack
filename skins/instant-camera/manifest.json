@@ -54,7 +54,7 @@
             "section": "POST VIEWER",
             "type": "color",
             "label": "Post Viewer Backdrop Colour",
-            "default": "#000000",
+            "default": "#ffffff",
             "selector": ":root",
             "property": "--ic-post-viewer-backdrop-color",
             "hint": "The full-screen layer behind the post viewer window."
@@ -63,7 +63,7 @@
             "section": "POST VIEWER",
             "type": "range_numeric",
             "label": "Post Viewer Backdrop Opacity",
-            "default": "0",
+            "default": "80",
             "min": "0",
             "max": "100",
             "step": "1",
