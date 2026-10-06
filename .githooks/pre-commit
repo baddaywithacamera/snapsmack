@@ -51,12 +51,15 @@ if needs_skin_gate:
     if not php_available:
         skin_policy_dirty.append('php is unavailable; skin policy cannot be verified')
     else:
-        gate = subprocess.run(
-            ['php', 'tests/skin-security-ratchet-regression.php'],
-            capture_output=True, text=True
-        )
-        if gate.returncode != 0:
-            skin_policy_dirty.append(gate.stderr.strip() or gate.stdout.strip())
+        # Two-sided gate (SECAUDIT 060 finding A): forbidden authority must be
+        # absent AND required presentation behaviour must still be present.
+        for program in (
+            'tests/skin-security-ratchet-regression.php',
+            'tests/skin-parity-ratchet-regression.php',
+        ):
+            gate = subprocess.run(['php', program], capture_output=True, text=True)
+            if gate.returncode != 0:
+                skin_policy_dirty.append(gate.stderr.strip() or gate.stdout.strip())
 blocked = blocked or bool(skin_policy_dirty)
 
 if null_dirty:

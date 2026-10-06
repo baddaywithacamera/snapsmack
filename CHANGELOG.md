@@ -9,6 +9,13 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.822D — 2026-10-05 — Both sides of the gate
+
+- Closes a skin security-gate bypass: any file whose name contained "gitignore" was skipped by the gate entirely, so a manifest-declared template such as `notes.gitignore.php` shipped inside a signed package and rendered unscanned with full PHP authority. Declared templates are now always scanned, whatever they are called.
+- Makes the presentation half of the skin boundary fail closed. The declared-route coverage and presentation-parity audits are now a ratchet against a recorded baseline: a new route that renders nothing fails the gate, and a route that has been repaired must be removed from the baseline in the same change so it cannot regress again.
+- Runs the parity ratchet beside the security ratchet in the pre-commit gate, so a skin change is checked for missing behaviour as well as for forbidden authority.
+- Records the 45 known declared-route fallthroughs across 12 skins and the 645 orphaned pre-migration presentation hooks as the baseline to work down. No skin files and no skin versions change.
+
 ## 0.7.821D — 2026-10-05 — The second request counts
 
 - Makes fleet deployment a two-request operation: the first authenticated request installs the release and a second authenticated finalization request loads the newly installed code before running completion work.
