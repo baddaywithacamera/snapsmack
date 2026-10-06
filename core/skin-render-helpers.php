@@ -88,7 +88,53 @@ function snap_render_navigation_tree(array $items, int $depth = 0): string {
 /** Render fixed shared chrome from bounded data; components cannot execute code. */
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
-    if ($name === 'navigation-tree') {
+    if ($name === 'grid-photo-fragment') {
+        $prefix = preg_replace('/[^a-z]/', '', strtolower((string)($data['prefix'] ?? 'tg')));
+        if (!in_array($prefix, ['tg', 'au', 'pa', 'jt', 'he'], true)) $prefix = 'tg';
+        $item = is_array($data['item'] ?? null) ? $data['item'] : [];
+        $site = is_array($data['site'] ?? null) ? $data['site'] : [];
+        $comments = is_array($data['comments'] ?? null) ? $data['comments'] : [];
+        $siteName = snap_escape_html($site['site_name'] ?? '');
+        $image = (string)($item['img_file'] ?? '');
+        $html = '<article class="' . $prefix . '-post-ig"><div class="' . $prefix . '-post-ig-image">';
+        if ($image !== '') {
+            $html .= (string)snap_render_component('image', [
+                'url' => $image,
+                'alt' => $item['img_alt'] ?? $item['img_title'] ?? '',
+                'class' => $prefix . '-single-img',
+                'attributes' => ['data-lightbox-src' => $image],
+            ]);
+        }
+        $html .= '</div><div class="' . $prefix . '-post-ig-info">'
+            . '<div class="' . $prefix . '-post-ig-header"><button class="' . $prefix . '-back-btn" type="button" aria-label="Back to grid">&#8592;</button>';
+        if (!empty($site['avatar_url'])) {
+            $html .= '<img class="' . $prefix . '-post-ig-avatar" src="' . snap_escape_url($site['avatar_url']) . '" alt="">';
+        } else {
+            $html .= '<span class="' . $prefix . '-post-ig-avatar ' . $prefix . '-post-ig-avatar--initials">' . $siteName . '</span>';
+        }
+        $html .= '<span class="' . $prefix . '-post-ig-sitename">' . $siteName . '</span></div>'
+            . '<div class="' . $prefix . '-post-ig-body"><div class="' . $prefix . '-post-caption-block"><p class="' . $prefix . '-post-ig-caption">'
+            . '<span class="' . $prefix . '-post-ig-caption-user">' . $siteName . '</span>';
+        if (!empty($item['img_title'])) $html .= ' ' . snap_escape_html($item['img_title']);
+        $description = $item['content'] ?? $item['description'] ?? $item['img_description'] ?? '';
+        if ((string)$description !== '') $html .= '<br>' . snap_render_html($description);
+        $html .= '</p></div>';
+        $exif = is_array($item['exif'] ?? null) ? $item['exif'] : [];
+        $fields = ['camera'=>'Camera','lens'=>'Lens','focal'=>'Focal','film'=>'Film','iso'=>'ISO','aperture'=>'Aperture','shutter'=>'Shutter','flash'=>'Flash'];
+        $rows = '';
+        foreach ($fields as $key => $label) {
+            if (empty($exif[$key])) continue;
+            $rows .= '<div class="' . $prefix . '-exif-item" data-exif-key="' . snap_escape_attr($key) . '"><span class="' . $prefix . '-exif-label">' . snap_escape_html($label) . '</span><span class="' . $prefix . '-exif-value">' . snap_escape_html($exif[$key]) . '</span></div>';
+        }
+        if ($rows !== '') $html .= '<div id="' . $prefix . '-exif-panel" class="' . $prefix . '-exif-panel">' . $rows . '</div>';
+        $html .= '<div class="' . $prefix . '-community-wrap">';
+        if ($comments !== []) $html .= (string)snap_render_component('comments', ['items' => $comments]);
+        $html .= '</div></div><div class="' . $prefix . '-post-ig-actions"><div class="' . $prefix . '-post-ig-action-icons">'
+            . '<button type="button" class="' . $prefix . '-action-btn" aria-label="Comment" data-ss-action="scroll-to" data-ss-target=".' . $prefix . '-community-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>'
+            . '<button type="button" class="' . $prefix . '-action-btn ' . $prefix . '-action-bookmark" aria-label="Save"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button></div>';
+        if (!empty($item['img_date'])) $html .= '<p class="' . $prefix . '-post-ig-date">' . snap_escape_html($item['img_date']) . '</p>';
+        $html .= '</div></div></article>';
+    } elseif ($name === 'navigation-tree') {
         $html = snap_render_navigation_tree(is_array($data['items'] ?? null) ? $data['items'] : []);
     } elseif ($name === 'gram-search-dock') {
         $dock = is_array($data['dock'] ?? null) ? $data['dock'] : [];
