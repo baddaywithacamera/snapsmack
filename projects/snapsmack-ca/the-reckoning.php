@@ -63,15 +63,15 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2>The codebase</h2>
             <div class="reckoning-copy">
-                <p>These figures come from the Git-tracked repository on September 10, 2026. CLOC 2.10 classified source, comments, and blank lines separately. Dependencies, generated files, and untracked work are excluded.</p>
+                <p>These figures come from the Git-tracked repository on October 6, 2026. CLOC 2.10 classified source, comments, and blank lines separately. Dependencies, generated files, and untracked work are excluded.</p>
             </div>
             <div class="number-grid">
-                <div class="number-card"><strong>2,205</strong><span>Tracked files</span></div>
-                <div class="number-card"><strong>204,831</strong><span>PHP, JavaScript, and CSS source lines</span></div>
-                <div class="number-card"><strong>284,541</strong><span>Expanded source including Python, SQL, Rust, and scripts</span></div>
-                <div class="number-card"><strong>240</strong><span>Python files for desktop applications and tooling</span></div>
+                <div class="number-card"><strong>2,383</strong><span>Tracked files</span></div>
+                <div class="number-card"><strong>198,687</strong><span>PHP, JavaScript, and CSS source lines</span></div>
+                <div class="number-card"><strong>305,653</strong><span>Expanded implementation source including Python, SQL, Rust, and scripts</span></div>
+                <div class="number-card"><strong>447</strong><span>Python files for desktop applications and tooling</span></div>
                 <div class="number-card"><strong>30</strong><span>Skin directories</span></div>
-                <div class="number-card"><strong>53</strong><span>Published numbered security audits</span></div>
+                <div class="number-card"><strong>58</strong><span>Published numbered security audits</span></div>
             </div>
         </div>
     </section>
@@ -86,6 +86,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="reckoning-copy">
                 <p>This is a replacement-cost estimate, not a sale price or company valuation. It covers product planning, core and desktop development, design, federation and infrastructure, security engineering, QA, compatibility testing, documentation, release engineering, project management, contingency, and vendor overhead.</p>
                 <p>The underlying estimate is approximately 31,000-53,000 hours, or 16-27 person-years. It is based on replacement workstreams and commercial delivery costs, not a dollars-per-line formula.</p>
+                <p>The workstream estimate has not been inflated merely because the repository line count grew; it remains the same until the replacement-cost model itself is recalculated.</p>
             </div>
         </div>
     </section>
@@ -115,11 +116,12 @@ require_once __DIR__ . '/includes/header.php';
         <div class="wrap">
             <h2>How it was produced</h2>
             <div class="reckoning-copy">
+                <p><strong>Development began January 29, 2026.</strong></p>
                 <p>SNAPSMACK uses a human-directed, AI-assisted production model. Sean McCormick supplies the photography workflow, requirements, priorities, aesthetic judgment, testing, and acceptance decisions. Claude, Gemini, and OpenAI Codex contribute implementation, analysis, review, and iteration.</p>
                 <p>The useful conclusion is not that one person replaced a team in every sense. AI changed which parts of software production required scarce specialist labour. Human responsibility for goals, judgment, verification, and consequences remained.</p>
                 <p><strong>Or, put less politely: Sean accidentally founded a small software company without the inconvenience of employees, funding, or adult supervision.</strong></p>
             </div>
-            <p class="method-note"><strong>Counting note:</strong> The headline source figures exclude 59,737 comment lines and 51,433 blank lines. The broader CLOC-classified total, including documentation and configuration, is 339,419 lines. Counts measure repository scale, not quality or effort.</p>
+            <p class="method-note"><strong>Counting note:</strong> CLOC classified 377,221 source lines, 60,328 comment lines, and 54,874 blank lines across all recognized tracked file types: 492,423 physical lines in total. The 305,653 headline is the implementation-language subset and excludes documentation, configuration, and data formats. Counts measure repository scale, not quality or effort.</p>
         </div>
     </section>
 </main>
