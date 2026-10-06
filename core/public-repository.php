@@ -333,6 +333,26 @@ final class SnapPublicRepository
         );
     }
 
+    public function adjacentPhotograph(int $id, bool $next): ?array {
+        $op = $next ? '>' : '<';
+        $direction = $next ? 'ASC' : 'DESC';
+        return $this->one(
+            "SELECT id,img_slug,img_title,img_date FROM snap_images
+             WHERE img_status='published' AND img_date <= NOW() AND id {$op} ?
+             ORDER BY id {$direction} LIMIT 1",
+            [$id]
+        );
+    }
+
+    public function photographBoundary(bool $newest): ?array {
+        $direction = $newest ? 'DESC' : 'ASC';
+        return $this->one(
+            "SELECT id,img_slug,img_title,img_date FROM snap_images
+             WHERE img_status='published' AND img_date <= NOW()
+             ORDER BY id {$direction} LIMIT 1"
+        );
+    }
+
     public function approvedComments(?int $imageId, ?int $postId): array {
         if ($imageId === null && $postId === null) return [];
         $column = $imageId !== null ? 'img_id' : 'post_id';

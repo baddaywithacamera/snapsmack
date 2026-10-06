@@ -546,13 +546,14 @@ img { display: block; max-width: 100%; }
     box-shadow:      0 18px 55px rgba(0, 0, 0, .26);
 }
 
-/* ── Left: image panel (fluid, never scrolls) ─────────────────────────── */
+/* ── Left: image panel (fixed square, never scrolls) ─────────────────── */
 .go-post-ig-image {
-    /* Let the photograph use the room left after the compact info panel. */
-    flex:            1 1 auto;
-    width:           auto;
+    /* GAME ON's solo viewer is a square photographic stage. Keeping the
+       stage square prevents contain-fit photographs gaining letterbox bars
+       merely because the adjacent information panel changed its width. */
+    flex:            0 0 auto;
     height:          100%;
-    aspect-ratio:    auto;
+    aspect-ratio:    1 / 1;
     min-width:       0;
     display:         flex;
     align-items:     center;
@@ -618,8 +619,8 @@ img { display: block; max-width: 100%; }
 
 /* ── Right: info panel (scrollable) ────────────────────────────────────── */
 .go-post-ig-info {
-    flex:           0 0 360px;
-    width:          360px;
+    flex:           0 0 335px;
+    width:          335px;
     border-left:    1px solid var(--border-color);
     background:     var(--bg-primary, #fff);
     display:        flex;

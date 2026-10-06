@@ -82,8 +82,8 @@ foreach (['id="snapsmack-dynamic-css"', '--saved:#123456', 'id="snapsmack-skin-p
     if (!str_contains($instant, $hook)) throw new RuntimeException("INSTANT CAMERA CMS renderer lost hook: {$hook}");
 }
 $instantCss = file_get_contents(dirname(__DIR__) . '/skins/instant-camera/style.css');
-if (!str_contains((string)$instantCss, '.tg-sticky-nav.profile-hidden  { background: var(--ic-nav-bg, transparent) !important; }')) {
-    throw new RuntimeException('INSTANT CAMERA resting/sticky navbar no longer honours the CMS opacity value.');
+if (!str_contains((string)$instantCss, '.tg-sticky-nav.profile-hidden  { background: transparent !important; }')) {
+    throw new RuntimeException('INSTANT CAMERA navbar no longer shares the translucent content plane.');
 }
 if (snap_route_url('unknown') !== '') throw new RuntimeException('Unknown route did not fail closed.');
 if (snap_asset_url('../evil') !== '') throw new RuntimeException('Unknown/traversal asset handle was accepted.');

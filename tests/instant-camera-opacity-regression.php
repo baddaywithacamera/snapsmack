@@ -34,8 +34,8 @@ if (!preg_match('/\.ic-bg\s*\{[^}]*z-index:\s*0/s', $css)
     || !preg_match('/\.tg-content-wrap\s*\{[^}]*z-index:\s*3/s', $css)) {
     throw new RuntimeException('Scrim is not visibly stacked between the background and content.');
 }
-if (!preg_match('/\.tg-sticky-nav,\s*\.tg-sticky-nav\.profile-hidden\s*\{\s*background:\s*var\(--ic-nav-bg/s', $css)) {
-    throw new RuntimeException('Navbar opacity is not applied both before and after sticky activation.');
+if (!preg_match('/\.tg-sticky-nav,\s*\.tg-sticky-nav\.profile-hidden\s*\{\s*background:\s*transparent/s', $css)) {
+    throw new RuntimeException('Navbar no longer shares the translucent content plane.');
 }
 
 echo "Instant Camera opacity regression: PASS\n";
