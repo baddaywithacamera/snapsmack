@@ -29,15 +29,30 @@ $layout = (string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/la
 $css = (string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/style.css');
 $manifest = json_decode((string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
 if (!str_contains($layout, 'class="ic-scrim"')) throw new RuntimeException('Scrim layer is absent from the owned layout.');
-if (($manifest['version'] ?? '') !== '1.0.41') throw new RuntimeException('INSTANT CAMERA release is not sequentially versioned at 1.0.41.');
+if (($manifest['version'] ?? '') !== '1.0.42') throw new RuntimeException('INSTANT CAMERA release is not sequentially versioned at 1.0.42.');
 if (($manifest['options']['ic_post_viewer_backdrop_color']['default'] ?? null) !== '#ffffff'
     || ($manifest['options']['ic_post_viewer_backdrop_opacity']['default'] ?? null) !== '80') {
     throw new RuntimeException('Post viewer must default to the original-strength high-key white veil.');
+}
+$originalDefaults = [
+    'ic_nav_opacity' => '0',
+    'ic_nav_opacity_inner' => '',
+    'ic_panel_opacity' => '0',
+    'ic_frame_border_px' => '0',
+    'ic_gap' => '2',
+    'ic_blog_title_weight' => '300',
+    'ic_tagline_size' => '16',
+];
+foreach ($originalDefaults as $key => $expected) {
+    if (($manifest['options'][$key]['default'] ?? null) !== $expected) {
+        throw new RuntimeException("Original INSTANT CAMERA default changed: {$key}");
+    }
 }
 foreach (['class="tg-post-ig-image"', 'class="tg-post-ig-info"', 'class="tg-post-ig-header"', 'class="tg-post-ig-body"', 'class="tg-post-ig-actions"'] as $legacyViewerHook) {
     if (!str_contains($layout, $legacyViewerHook)) throw new RuntimeException("Original post viewer hook is missing: {$legacyViewerHook}");
 }
 if (!str_contains($layout, 'data-autoopen="1"')) throw new RuntimeException('Direct photograph routes no longer reconnect to the original modal viewer.');
+if (!str_contains($layout, 'class="tg-sticky-avatar"')) throw new RuntimeException('Original sticky navigation avatar was not restored.');
 if (!preg_match('/\.tg-modal-frame\s*\{[^}]*height:\s*min\(92vh,\s*900px\)/s', $css)
     || !preg_match('/\.tg-post-ig\s*\{[^}]*display:\s*flex[^}]*height:\s*100dvh/s', $css)
     || !preg_match('/\.tg-post-ig-info\s*\{[^}]*flex:\s*0 0 335px/s', $css)) {

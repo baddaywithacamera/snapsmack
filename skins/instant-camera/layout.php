@@ -45,7 +45,9 @@
 <?php if (!empty($view['site']['site_description'])): ?><p class="tg-profile-bio"><?php echo snap_escape_html($view['site']['site_description']); ?></p><?php endif; ?>
 </div></header>
 <?php endif; ?>
-<nav class="tg-sticky-nav" aria-label="Primary"><div class="tg-sticky-nav-inner"><ul class="tg-sticky-nav-links">
+<nav class="tg-sticky-nav" aria-label="Site navigation"><div class="tg-sticky-nav-inner">
+<?php if (!empty($view['site']['avatar_url'])): ?><img class="tg-sticky-avatar" src="<?php echo snap_escape_url($view['site']['avatar_url']); ?>" alt="<?php echo snap_escape_attr($view['site']['site_name']); ?>" aria-hidden="true"><?php else: ?><span class="tg-sticky-avatar-initials" aria-hidden="true"><?php echo snap_escape_html($view['site']['site_name']); ?></span><?php endif; ?>
+<ul class="tg-sticky-nav-links">
 <?php if (!empty($view['response']['navigation'])): ?><?php echo snap_render_html(snap_render_component('navigation-tree', ['items' => $view['response']['navigation']])); ?><?php else: ?><li><a class="active" href="<?php echo snap_route_url('home'); ?>">Home</a></li><?php endif; ?>
 </ul></div></nav>
 <?php if (($view['response']['kind'] ?? '') === 'landing' || ($view['response']['kind'] ?? '') === 'archive' || ($view['response']['kind'] ?? '') === 'hashtag' || ($view['response']['kind'] ?? '') === 'photo'): ?>

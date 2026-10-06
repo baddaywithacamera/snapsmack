@@ -292,6 +292,7 @@ try {
             'owner_custom_code' => snapsmack_owner_custom_code($settings),
             'registered_assets' => $_registered_skin_assets,
             'footer' => snapsmack_prepare_public_footer($settings, $_active_manifest),
+            'slickr_profile' => $active_skin === 'slickr' ? snapsmack_prepare_slickr_profile($pdo, $settings, $_public['navigation'] ?? []) : [],
         ]);
         $_template_map = is_array($_active_manifest['templates'] ?? null) ? $_active_manifest['templates'] : [];
         $_strict_template = (string)($_template_map[$_public['kind'] ?? ''] ?? $_template_map['default'] ?? '');
