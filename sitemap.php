@@ -74,7 +74,7 @@ function ss_sitemap_index(string $site_url, int $pages): string {
     $out = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
     $out .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
     for ($i = 1; $i <= max(1, $pages); $i++) {
-        $out .= "  <sitemap>\n    <loc>" . htmlspecialchars($site_url . 'sitemap.php?p=' . $i, ENT_XML1) . "</loc>\n";
+        $out .= "  <sitemap>\n    <loc>" . htmlspecialchars($site_url . 'sitemap.xml?p=' . $i, ENT_XML1) . "</loc>\n";
         $out .= "    <lastmod>{$now}</lastmod>\n  </sitemap>\n";
     }
     return $out . "</sitemapindex>\n";

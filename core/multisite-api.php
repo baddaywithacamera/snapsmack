@@ -1893,6 +1893,10 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
         (string)($release_info['canonical_schema_sig'] ?? '')
     );
 
+    // Fleet updates bypass the local updater UI. Reconcile the exact same public
+    // routes and generated crawler files here after the new version is stamped.
+    $public_reconcile = updater_reconcile_public_site($pdo);
+
     // 8. Release lock (version already stamped in step 6b, before the baseline)
     updater_release_lock();
     updater_cleanup();
@@ -1932,6 +1936,7 @@ if ($resource === 'updates' && $sub_action === 'trigger' && $method === 'POST') 
             static fn(array $row): string => (string)($row['tag'] ?? 'cron') . ': ' . (string)($row['message'] ?? 'refresh failed'),
             $cron_failures
         )),
+        'public_site'   => $public_reconcile,
         'errors'        => $extract['errors'],
     ]);
 }

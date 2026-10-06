@@ -1444,7 +1444,23 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
         $htaccess_path = __DIR__ . '/.htaccess';
         $existing = file_exists($htaccess_path) ? file_get_contents($htaccess_path) : '';
 
-        if (strpos($existing, $htaccess_marker) === false) {
+        // The canonical template is the source of truth for fresh installs too.
+        // Keep the inline block below only as a last-resort fallback for an
+        // incomplete package, never as a second independently maintained router.
+        $canonical_template_path = __DIR__ . '/core/htaccess-template';
+        $canonical_template = is_file($canonical_template_path)
+            ? rtrim((string)@file_get_contents($canonical_template_path))
+            : '';
+        if ($canonical_template !== '' && strpos($canonical_template, $htaccess_marker) !== false) {
+            $host_rules = $existing;
+            if (strpos($host_rules, $htaccess_marker) !== false) {
+                $host_rules = preg_replace('/' . preg_quote($htaccess_marker, '/') . '.*$/s', '', $host_rules);
+            }
+            $desired_htaccess = rtrim((string)$host_rules) . "\n\n" . $canonical_template . "\n";
+            if (@file_put_contents($htaccess_path, ltrim($desired_htaccess), LOCK_EX) === false) {
+                $errors[] = 'Could not write the canonical .htaccess rules.';
+            }
+        } elseif (strpos($existing, $htaccess_marker) === false) {
             $snapsmack_rules = <<<'HTACCESS'
 
 # ─────────────────────────────────────────────────────────────
@@ -1475,6 +1491,7 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
 RewriteRule ^archive$ archive.php [L,QSA]
+RewriteRule ^sitemap\.xml$ sitemap.php [L,QSA]
 RewriteRule ^rss$ rss.php [L,QSA]
 RewriteRule ^feed$ rss.php [L,QSA]
 RewriteRule ^snap-in$ snap-in.php [L,QSA]
@@ -1547,6 +1564,19 @@ HTACCESS;
               . "post_max_size = 64M\n"
               . "memory_limit = 128M\n"
               . "max_execution_time = 120\n", LOCK_EX);
+        }
+
+        // Publish crawler-facing files immediately. A new site must not require
+        // a later Global Configuration save before robots.txt, llms.txt, and
+        // security.txt exist or before the sitemap cache starts clean.
+        require_once __DIR__ . '/core/site-files.php';
+        try {
+            $site_file_result = snapsmack_reconcile_site_files($pdo);
+            foreach ($site_file_result['files'] as $site_file => $written) {
+                if (!$written) $errors[] = "Could not write {$site_file} site file.";
+            }
+        } catch (\Throwable $e) {
+            $errors[] = 'Could not generate crawler-facing site files: ' . htmlspecialchars($e->getMessage());
         }
     }
 
