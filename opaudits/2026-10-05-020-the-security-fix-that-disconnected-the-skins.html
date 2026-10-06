@@ -5,6 +5,11 @@
 <meta charset="UTF-8">
 <title>OPAUDIT 020 - The security fix that disconnected the skins</title>
 <link rel="stylesheet" href="_report.css">
+<style>
+tr { break-inside: avoid; page-break-inside: avoid; }
+h2:last-of-type { break-after: avoid; page-break-after: avoid; }
+h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
+</style>
 </head>
 <body>
 
@@ -17,7 +22,7 @@
         <tr><td class="k">First observed</td><td>Repeated live presentation and routing regressions after the September 28 skin execution-boundary migration; consolidated as one incident on October 5 after GAME ON, TILEZ, AURORA, JIVE TURKEY, and imported SMACKTALK content exposed missing replacement contracts.</td></tr>
         <tr><td class="k">Theme</td><td>The security decision was right. The migration was not complete. Executable behavior was removed from skins without first inventorying, rebuilding, and proving every bounded CMS-to-skin contract that had supplied the visible site.</td></tr>
         <tr><td class="k">Surfaces</td><td>Schema-v2 public skins; strict public controllers; route compatibility; saved appearance settings; shared assets and components; SMACKPRESS imported content; crawler-file lifecycle; skin packaging; CMS and skin release sequencing.</td></tr>
-        <tr><td class="k">State</td><td><span class="state-chip chip-open">Open</span> &nbsp; CMS 0.7.819D and GAME ON 0.1.24 are deployed and their bounded recovery is live-verified. CMS 0.7.820D repairs a newly proven fleet-wide crawler-file lifecycle defect and passes local tests; packaging, deployment, and fleet verification remain required. Whole-fleet parity is not claimed.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-open">Open</span> &nbsp; CMS 0.7.820D was packaged and deployed to all 25 installations, but post-deployment verification proved that its crawler-file repair ran only on the hub. The 24 spokes received the new version without receiving the promised reconciliation. Whole-fleet parity is not claimed.</td></tr>
         <tr><td class="k">Human impact</td><td>Approximately two weeks of recovery work less than one month before closed beta, damaged trust and morale, lost sleep, and severe autism-related distress reported by the owner, including feeling physically sick. Repeated model-capacity failures prolonged the recovery despite available account quota.</td></tr>
         <tr><td class="k">Reporter</td><td>Sean identified and repeatedly reproduced the live failures. Codex reconstructed the repository evidence and wrote this report. Model attribution for earlier individual changes remains unproven unless a session record establishes it.</td></tr>
         <tr><td class="k">Related</td><td>SECAUDIT 059 (skin execution boundary), SECAUDIT 060 (migration-integrity follow-up), pre-migration reference v0.7.772D, controller migration beginning at <code>c9eb3a9e</code>.</td></tr>
@@ -49,6 +54,7 @@
         <tr><td>Version order was not respected</td><td>TILEZ 0.2.59 was packaged and installed while 0.2.58 had not been deployed, despite the owner repeatedly requiring strict sequence. The owner also reported having to finish and deploy CMS 0.7.817D after the assistant stalled, then deploy 0.7.818D.</td><td>The version ledger stopped being a trustworthy statement of what had been seen, installed, and verified.</td></tr>
         <tr><td>Communication increased rather than reduced load</td><td>The owner repeatedly had to distinguish CMS defects from post data, skin defects from shared assets, and source changes from deployed behavior. Repeated capacity errors interrupted the same recovery thread.</td><td>The person already doing acceptance testing also had to supervise scope, sequence, and basic state reconstruction.</td></tr>
         <tr><td>CMS-owned crawler files were not part of install/update completion</td><td>A 25-site read-only audit found <code>/sitemap.xml</code> returning 404 on every site although <code>/sitemap.php</code> worked; 10 sites lacked <code>llms.txt</code>, the other 15 identified old CMS versions, and 6 lacked <code>robots.txt</code>. The generator ran only after manual settings/maintenance actions, while the canonical router omitted the advertised sitemap alias and fleet updates never reconciled the files.</td><td>Sites could report stale or absent AI/search guidance indefinitely after successful CMS updates. The failure was centralized but presented as fleet drift, adding another unplanned recovery immediately after the owner asked whether the CMS maintained these files.</td></tr>
+        <tr><td>The first fleet deployment of the crawler repair could not call its own new completion hook</td><td>CMS 0.7.820D added the fleet post-update reconciliation call to the same PHP controller that the update replaced. During the update request, PHP continued executing the already-loaded 0.7.819D controller, so the newly written call was not available until a later request. Version checks passed while the intended repair silently did not run on 24 spokes.</td><td>The release was successfully installed but functionally unsuccessful. This is a bootstrap design defect in the updater, not a deployment omission by the owner.</td></tr>
     </table>
 
     <h2>3. Representative regressions</h2>
@@ -91,18 +97,19 @@
     <table>
         <tr><th>Item</th><th>State</th><th>Evidence</th></tr>
         <tr><td>CMS 0.7.819D</td><td>Deployed and bounded verification complete</td><td>The hub and 24 connected sites report 0.7.819D. Clean routes, GAME ON pages, standard footer flow, and the targeted imported-post repair were live-verified.</td></tr>
-        <tr><td>CMS 0.7.820D</td><td>Locally tested</td><td>Exactly 0.7.820D; canonical sitemap route and shared install/update crawler-file reconciliation; 164 PHP regression programs pass, 0 fail; no skin files changed.</td></tr>
+        <tr><td>CMS 0.7.820D</td><td>Deployed; repair failed on 24 spokes</td><td>Package SHA-256 <code>d0bba184112afb424e19bfcd46a45764c01f8a6a09609e57af2015070104c7c3</code>, source commit <code>5f1fc9ee260109a708b28f6aadd113764963aba0</code>. Authenticated status checks reported 0.7.820D on all 24 spokes; the hub is also publicly identified as 0.7.820D.</td></tr>
         <tr><td>GAME ON 0.1.24</td><td>Deployed and bounded verification complete</td><td>Presentation-only template; landing, direct photograph modal, Blogroll, About page, saved hero/background state, animated frame state, and standard footer flow live-verified.</td></tr>
         <tr><td>TILEZ</td><td>Unchanged</td><td>Remains 0.2.59. The clean-route and idempotent import-repair work is CMS/tool-owned.</td></tr>
         <tr><td>Security boundary</td><td>Gate passes</td><td>A draft template-side validation change was rejected by the fleet ratchet before release; validation was moved to core and the ratchet then passed.</td></tr>
-        <tr><td>Crawler repair deployment</td><td>Open</td><td>0.7.820D has not yet been packaged or pushed. The 25-site failure counts are pre-repair evidence and must be rerun after fleet deployment.</td></tr>
+        <tr><td>Crawler repair deployment</td><td>Failed verification</td><td>After deployment, only 1 of 25 sites served a valid <code>/sitemap.xml</code> and only 1 of 25 had an <code>llms.txt</code> identifying 0.7.820D. All 25 still served <code>/sitemap.php</code>; 10 lacked <code>llms.txt</code>, 6 lacked <code>robots.txt</code>, and only 15 robots files named the exact public sitemap. The hub reconciled; the 24 spokes did not.</td></tr>
         <tr><td>Whole-fleet parity</td><td>Open</td><td>Neither this candidate nor this report represents all remaining skin findings as closed.</td></tr>
     </table>
 
     <h2>7. Closure gate</h2>
-    <p>This audit closes only after CMS 0.7.820D is packaged and deployed in order; all 25
-    audited sites answer the public sitemap route and carry current CMS-generated crawler
-    files; the formal security follow-up is independently reviewed; the remaining fleet
+    <p>This audit closes only after the failed 0.7.820D first-upgrade behavior is repaired in
+    strict release order and all 25 audited sites answer the public sitemap route and carry
+    current CMS-generated crawler files; the formal security follow-up is independently
+    reviewed; the remaining fleet
     parity ledger has an owner-approved disposition; and no later version is created to hide
     an incomplete earlier one.</p>
 
@@ -113,6 +120,13 @@
     release invariant from the first version that emitted <code>Sitemap: .../sitemap.xml</code>.
     The owner found the missing control by asking a basic product-responsibility question
     during an already exhausting recovery.</p>
+    <p>The first attempted repair then repeated the operational mistake in a subtler form.
+    Version 0.7.820D was packaged, deployed, and reported successfully by the fleet, but the
+    reconciliation callback was added inside the controller being replaced. The active update
+    request was still executing the old controller already loaded into memory, so the new
+    callback could not run on that first upgrade. Only the hub's separate update path completed
+    reconciliation. Post-deployment verification found 24 of 25 sites still unrepaired. A
+    reported version match is therefore not evidence that update-completion behavior ran.</p>
 
     <h2>9. Plain admission</h2>
     <p>We made a necessary security change in an unsafe operational way. We removed code from
