@@ -73,11 +73,101 @@ function snapsmack_prepare_skin_view(PDO $pdo, array $settings, string $skin_slu
     return $view;
 }
 
+/** Build the read-only Flickr-style masthead model for SLICKR. */
+function snapsmack_prepare_slickr_profile(PDO $pdo, array $settings, array $navigation = []): array
+{
+    $profile = [
+        'cover_url' => '', 'location' => trim((string)($settings['slickr_location'] ?? '')),
+        'photo_count' => 0, 'photo_views' => 0, 'photostream_views' => 0,
+        'album_views' => 0, 'total_views' => 0, 'launch_year' => 0,
+        'cover_pos_x' => max(0, min(100, (int)($settings['slickr_cover_pos_x'] ?? 50))),
+        'cover_pos_y' => max(0, min(100, (int)($settings['slickr_cover_pos_y'] ?? 50))),
+        'cover_zoom' => max(100, min(300, (int)($settings['slickr_cover_zoom'] ?? 100))) / 100,
+    ];
+    try {
+        $profile['photo_count'] = (int)$pdo->query("SELECT COUNT(*) FROM snap_images WHERE img_status='published' AND img_date <= NOW()")->fetchColumn();
+        $seedRows = $pdo->query("SELECT setting_key, setting_val FROM snap_settings WHERE setting_key LIKE 'flickr_seed_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
+        $seed = static fn(string $key, int $fallback = 0): int => isset($seedRows[$key]) && $seedRows[$key] !== '' ? (int)$seedRows[$key] : $fallback;
+        $imageSeed = (int)$pdo->query("SELECT COALESCE(SUM(img_view_seed),0) FROM snap_images WHERE img_status='published'")->fetchColumn();
+        $albumSeed = (int)$pdo->query('SELECT COALESCE(SUM(view_count),0) FROM snap_albums')->fetchColumn();
+        $nativeImage = (int)$pdo->query('SELECT COUNT(*) FROM snap_stats WHERE is_bot=0 AND image_id IS NOT NULL')->fetchColumn();
+        $nativeStream = (int)$pdo->query("SELECT COUNT(*) FROM snap_stats WHERE is_bot=0 AND image_id IS NULL AND page_type IN ('archive','landing')")->fetchColumn();
+        $nativeAll = (int)$pdo->query('SELECT COUNT(*) FROM snap_stats WHERE is_bot=0')->fetchColumn();
+        $photoSeed = $seed('flickr_seed_photo_views', $imageSeed);
+        $streamSeed = $seed('flickr_seed_photostream_views');
+        $albumViews = $seed('flickr_seed_album_views', $albumSeed);
+        $profile['photo_views'] = $photoSeed + $nativeImage;
+        $profile['photostream_views'] = $streamSeed + $nativeStream;
+        $profile['album_views'] = $albumViews;
+        $profile['total_views'] = $photoSeed + $streamSeed + $albumViews
+            + $seed('flickr_seed_collection_views') + $seed('flickr_seed_gallery_views') + $nativeAll;
+        $profile['launch_year'] = (int)$pdo->query("SELECT COALESCE(MIN(YEAR(img_date)),0) FROM snap_images WHERE img_status='published' AND img_date >= '1990-01-01'")->fetchColumn();
+
+        $coverId = (int)($settings['slickr_cover_image_id'] ?? 0);
+        if ($coverId > 0) {
+            $stmt = $pdo->prepare("SELECT img_file FROM snap_images WHERE id=? AND img_status='published' LIMIT 1");
+            $stmt->execute([$coverId]);
+            $profile['cover_url'] = (string)($stmt->fetchColumn() ?: '');
+        }
+        if ($profile['cover_url'] === '') {
+            $profile['cover_url'] = (string)($pdo->query("SELECT img_file FROM snap_images WHERE img_status='published' AND img_width>img_height AND img_date<=NOW() ORDER BY sort_order ASC,id DESC LIMIT 1")->fetchColumn() ?: '');
+        }
+        if ($profile['cover_url'] !== '') {
+            $profile['cover_url'] = (defined('BASE_URL') ? BASE_URL : '/') . ltrim($profile['cover_url'], '/');
+        }
+    } catch (Throwable $e) {
+        // Optional legacy counters may not exist on a new installation.
+    }
+    $profile['stats'] = [];
+    foreach ([
+        'photo_count' => 'Photos', 'photo_views' => 'Views',
+        'photostream_views' => 'Photostream Views', 'album_views' => 'Album Views',
+        'total_views' => 'Total Views', 'launch_year' => 'Launch Date',
+    ] as $key => $label) {
+        if (!empty($profile[$key])) $profile['stats'][] = [
+            'value' => $key === 'launch_year' ? (string)$profile[$key] : number_format((int)$profile[$key]),
+            'label' => $label,
+        ];
+    }
+    $profile['tabs'] = [];
+    foreach ($navigation as $item) {
+        $label = strtolower(trim((string)($item['label'] ?? '')));
+        if (in_array($label, ['home', 'photostream', 'albums', 'collections'], true) || empty($item['url'])) continue;
+        $profile['tabs'][] = ['label' => (string)$item['label'], 'url' => (string)$item['url']];
+    }
+    return $profile;
+}
+
 function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $manifest): array
 {
     $configured = json_decode((string)($settings['nav_menu_json'] ?? '[]'), true);
     $items = is_array($configured) && $configured ? $configured : ($manifest['cms_navigation'] ?? []);
-    if (!is_array($items)) return [];
+    if (!is_array($items)) $items = [];
+
+    // Preserve the original GRAM-family navigation contract when the owner has
+    // not saved a Menu Manager configuration: Home, Blogroll, then active
+    // static pages in their chosen order. The CMS resolves these destinations;
+    // skins only render the bounded navigation model they receive.
+    if (!$items) {
+        $items = [
+            ['type' => 'home', 'label' => 'Home'],
+            ['type' => 'blogroll', 'label' => 'Blogroll'],
+        ];
+        try {
+            $pages = $pdo->query('SELECT id, title, slug FROM snap_pages WHERE is_active = 1 ORDER BY menu_order ASC')->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($pages as $page) {
+                $items[] = [
+                    'type' => 'page',
+                    'label' => (string)($page['title'] ?? ''),
+                    'slug' => (string)($page['slug'] ?? ''),
+                    'target_id' => (int)($page['id'] ?? 0),
+                ];
+            }
+        } catch (Throwable $e) {
+            // Older databases may not yet have the pages table. Home and
+            // Blogroll remain available without leaking persistence to skins.
+        }
+    }
 
     $base = defined('BASE_URL') ? BASE_URL : '/';
     $controller = (string)($manifest['cms_controller'] ?? '');
