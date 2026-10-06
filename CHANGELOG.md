@@ -16,6 +16,9 @@
 - Restores the locally served Special Elite face selected by SCROLL instead of silently falling back to Arial after the schema-v2 header migration. The shared presentation compiler now emits only the local faces actually selected by saved skin controls.
 - Repairs SLICKR search presentation and removes the obsolete view switch that covered the first result. SLICKR 1.0.27 renders strict-path search results inside its justified wall and removes that repaired route from the parity baseline.
 - Preserves authored WordPress gallery boundaries through SMACKPRESS. Classic galleries and Gutenberg gallery blocks now become one native SnapSmack mosaic with the exact original member count; the existing-post repair remains ID-preserving and refuses ambiguous media-count changes.
+- Restores the pre-migration two-panel photograph viewer across the Grid family instead of substituting a generic image-and-empty-sidebar page. Direct photograph URLs rebuild the archive behind the viewer, modal requests return only the bounded photograph fragment, and the original header, caption, EXIF, community, action, and date regions are back. Sequential skin releases: THE GRID 1.3.45, AURORA 1.0.42, SUDDEN IMPACT 1.0.10, PARADE 1.2.40, JIVE TURKEY 0.1.28, HEURISTIC 0.1.4, and SLIDERS 0.1.6.
+- Restores GAME ON 0.1.27's square solo-photo stage without the migration's black letterbox bars and reconnects Space/Left/Right navigation to bounded published-photo neighbours.
+- Restores INSTANT CAMERA 1.0.40's original square-print modal and compact social panel over the archive, reduces the default viewer backdrop from 80% to 40%, returns Home to the navbar, resolves static-page menu destinations, and keeps the navbar on the same translucent plane as the rest of the page.
 
 ## 0.7.822D — 2026-10-05 — Both sides of the gate
 
