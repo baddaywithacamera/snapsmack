@@ -14,7 +14,9 @@
 
 ## 1. Summary
 
-SECAUDIT 059 correctly required that signed skins stop owning database access, request routing, writes, remote calls, and reusable application behavior. The rollout removed that authority before every legitimate result had a bounded replacement. Security isolation improved while availability, routing, and presentation integrity regressed.
+This incident began with an explicit architectural prohibition being violated. The owner had instructed that database access, request routing, writes, remote calls, JavaScript engines, and other reusable application behavior must never be placed inside independently packaged skins. Nevertheless, shared behavior was implemented there. The violation surfaced when a JavaScript-engine defect was answered with a proposed TILEZ update. Because the defect belonged to the engine, naming TILEZ as the release target exposed that CMS-owned behavior had been buried in the skin and prompted a review of the entire skin fleet.
+
+SECAUDIT 059 then correctly required that signed skins stop owning that authority. The rollout created a second failure by removing it before every legitimate result had a bounded replacement. Security isolation improved while availability, routing, and presentation integrity regressed.
 
 The recovery now has a two-sided gate. The security half rejects forbidden authority. The parity half rejects any new strict-route fallthrough, rejects an increase in orphaned presentation hooks, and requires repaired baseline entries to be removed in the same change. Independent review found that the first parity tests only described the audit output and asserted no successful coverage. CMS 0.7.822D replaced those ineffective assertions with a fail-closed ratchet.
 
@@ -27,6 +29,10 @@ The remaining figures are accepted deferred debt, not a claim of perfect parity:
 The first migration tests passed while live skins lacked saved settings, backgrounds, navigation, controls, complete feeds, search, image associations, routes, Blogrolls, static-page presentation, and footers. The initial diagnostic found 45 declared strict-route fallthroughs and 645 orphaned-hook candidates.
 
 CMS 0.7.822D added a fail-closed parity ratchet. By 0.7.823D the measured route total is 43 and the presentation total is 611. The gate fails on any new route, any increased per-skin hook count, or any repaired route left in the baseline. Accepted debt can shrink but cannot quietly grow.
+
+### A1. Explicit skin-ownership instructions were violated (HIGH process) - CLOSED AS AN ARCHITECTURAL GATE
+
+The owner had explicitly prohibited reusable engines and application authority inside skins. The proposed TILEZ release for a JavaScript-engine defect supplied the observable evidence that the boundary had already been crossed and triggered the fleet-wide review. This was not an innocent ambiguity in a newly invented rule. Future diagnosis and release notes must identify the owning layer before a fix is assigned to a CMS or skin version, and the package gate must reject reusable engine implementations in skin code.
 
 ### B. Generic replacement layouts obscured dependencies (MEDIUM) - CLOSED AS A PROCESS CONTROL
 
@@ -93,6 +99,6 @@ This disposition closes the audit without claiming whole-fleet visual perfection
 
 SECAUDIT 060 is closed with accepted deferred parity debt. Closure means the migration's security boundary is verified, the recovery process has a fail-closed two-sided gate, the independent findings are fixed, and the residual inventory has an explicit disposition. Closure does not mean every skin has pixel-perfect parity on every route, nor does it turn source evidence into a live-fleet claim.
 
-Plainly: we made a necessary security change in an unsafe operational way. We removed code from skins before proving that the CMS supplied everything those skins legitimately needed. We relied on tests that could pass while sites were visibly broken, released too many partial restorations, and left the owner to find failures that should have been caught before deployment. The boundary is now stronger because the review found another bypass. The process is now stronger because parity can no longer worsen silently. Neither improvement excuses the avoidable cost.
+Plainly: we first violated an explicit instruction by putting reusable application behavior in skins. A proposed TILEZ update for a JavaScript-engine defect exposed that violation. We then made the necessary security correction in an unsafe operational way, removing code before proving that the CMS supplied everything the skins legitimately needed. We relied on tests that could pass while sites were visibly broken, released too many partial restorations, and left the owner to find failures that should have been caught before deployment. The boundary is now stronger because the review found another bypass. The process is now stronger because parity can no longer worsen silently. Neither improvement excuses the original violation or the avoidable recovery cost.
 
 <!-- ===== SNAPSMACK EOF ===== -->

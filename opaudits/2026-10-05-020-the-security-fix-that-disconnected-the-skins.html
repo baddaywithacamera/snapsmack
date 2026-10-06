@@ -19,8 +19,8 @@ h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
     <table class="meta">
         <tr><td class="k">Audit ID</td><td>2026-10-05-020</td></tr>
         <tr><td class="k">Report date</td><td>2026-10-05</td></tr>
-        <tr><td class="k">First observed</td><td>Repeated live presentation and routing regressions after the September 28 skin execution-boundary migration; consolidated as one incident on October 5 after GAME ON, TILEZ, AURORA, JIVE TURKEY, and imported SMACKTALK content exposed missing replacement contracts.</td></tr>
-        <tr><td class="k">Theme</td><td>The security decision was right. The migration was not complete. Executable behavior was removed from skins without first inventorying, rebuilding, and proving every bounded CMS-to-skin contract that had supplied the visible site.</td></tr>
+        <tr><td class="k">First observed</td><td>A JavaScript-engine defect was answered with a proposed TILEZ skin update despite the owner's explicit rule that reusable engine behavior must never live in a skin. The wrong release target exposed the architectural violation and prompted the fleet-wide review. Repeated live presentation and routing regressions followed the September 28 extraction; the recovery was consolidated as one incident on October 5.</td></tr>
+        <tr><td class="k">Theme</td><td>Two failures compounded. CMS-owned behavior had been placed in independently packaged skins despite an explicit prohibition. The necessary extraction then removed legitimate presentation connections without first inventorying, rebuilding, and proving every bounded CMS-to-skin contract that supplied the visible product.</td></tr>
         <tr><td class="k">Surfaces</td><td>Schema-v2 public skins; strict public controllers; route compatibility; saved appearance settings; shared assets and components; SMACKPRESS imported content; crawler-file lifecycle; skin packaging; CMS and skin release sequencing.</td></tr>
         <tr><td class="k">State</td><td><span class="state-chip chip-closed">Recovery bounded; monitoring continues</span> &nbsp; The crawler-file lifecycle sub-incident is repaired and fleet-verified. SECAUDIT 059 and 060 are closed with explicit deferred parity debt after independent review. CMS 0.7.822D made both security and parity gates fail-closed; 0.7.823D restored the most visible affected skin families. Whole-fleet pixel-perfect parity is not claimed, and this operability record remains public and updateable.</td></tr>
         <tr><td class="k">Human impact</td><td>Approximately two weeks of recovery work less than one month before closed beta, damaged trust and morale, lost sleep, and severe autism-related distress reported by the owner, including feeling physically sick. Repeated model-capacity failures prolonged the recovery despite available account quota.</td></tr>
@@ -30,13 +30,20 @@ h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
     </table>
 
     <h2>1. Summary</h2>
-    <p>SnapSmack correctly decided that skins must not own database access, request routing,
-    writes, remote calls, or reusable application behavior. The implementation treated
-    that boundary as a removal exercise instead of a contract migration. Old skin code
-    was stripped out and generic replacement layouts were installed before every route,
-    setting, component, asset hook, and interaction had a central replacement and a parity
-    test. Security gates proved that authority was gone. They did not prove that the site
-    still worked.</p>
+    <p>This incident began with a known architectural rule being broken, not with a newly
+    discovered best practice. The owner had explicitly instructed that database access,
+    request routing, writes, remote calls, JavaScript engines, and other reusable application
+    behavior must never be placed inside independently packaged skins. Nevertheless, shared
+    behavior was implemented there. The violation surfaced when a JavaScript-engine problem
+    was answered with a proposed TILEZ update. Because the defect belonged to the engine,
+    naming TILEZ as the release target exposed that CMS-owned behavior had been buried in the
+    skin and prompted a review of the entire skin fleet.</p>
+    <p>Removing that forbidden authority was necessary. The implementation then created a
+    second failure by treating the boundary as a removal exercise instead of a contract
+    migration. Old skin code was stripped out and generic replacement layouts were installed
+    before every route, setting, component, asset hook, interaction, and legitimate visual
+    result had a central replacement and a parity test. Security gates proved that authority
+    was gone. They did not prove that the product still worked.</p>
     <p>The predictable result was a long sequence of releases that each restored another
     missing connection: backgrounds, opacity, navigation, search, complete feeds, image
     links, static pages, Blogrolls, footers, post counts, saved hero images, clean routes,
@@ -68,6 +75,11 @@ h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
     </ul>
 
     <h2>4. Root cause</h2>
+    <p><strong>An explicit ownership rule was disregarded.</strong> Reusable JavaScript-engine
+    and application behavior was placed in independently packaged skins even though the owner
+    had specifically prohibited that architecture. The proposal to repair an engine defect by
+    releasing TILEZ was not merely an imprecise status message; it was the observable clue that
+    the forbidden coupling existed. That clue initiated the fleet-wide investigation.</p>
     <p><strong>The project optimized for the absence of forbidden code and failed to specify
     the presence of required behavior.</strong> A skin-security migration has two acceptance
     conditions: the old authority must be gone, and every legitimate result that authority
