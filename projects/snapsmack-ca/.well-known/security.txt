@@ -1,0 +1,5 @@
+Contact: https://snapsmack.ca/oi.php
+Expires: 2027-10-05T00:00:00Z
+Preferred-Languages: en
+Canonical: https://snapsmack.ca/.well-known/security.txt
+Policy: https://snapsmack.ca/security.php
