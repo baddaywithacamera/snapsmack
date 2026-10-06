@@ -128,6 +128,37 @@ function snapsmack_instant_camera_photo_response(SnapPublicRepository $repositor
     return $response;
 }
 
+function snapsmack_grid_modal_photo_response(SnapPublicRepository $repository, array $item, array $settings, array $navigation, int $perPage, bool $fragment, string $skin): array
+{
+    $previous = $repository->adjacentPhotograph((int)$item['id'], false);
+    $next = $repository->adjacentPhotograph((int)$item['id'], true);
+    $first = $repository->photographBoundary(false);
+    $last = $repository->photographBoundary(true);
+    foreach ([$previous, $next, $first, $last] as &$destination) {
+        if (is_array($destination) && !empty($destination['img_slug'])) $destination['url'] = snap_route_url('photo', ['slug' => $destination['img_slug']]);
+    }
+    unset($destination);
+    $response = [
+        'status' => 200,
+        'kind' => 'photo',
+        'item' => snapsmack_game_on_focus_item($item),
+        'comments' => $repository->approvedComments((int)$item['id'], null),
+        'navigation' => $navigation,
+        'fragment' => $fragment,
+        'previous' => $previous,
+        'next' => $next,
+        'first' => $first,
+        'last' => $last,
+    ];
+    if ($fragment) return $response;
+    $items = snapsmack_grid_frame_items($repository->photographLanding($perPage, 0), $settings, $skin);
+    if ($skin === 'heuristic') $items = snapsmack_heuristic_items($items, (string)($settings['he_infomatic_map'] ?? ''));
+    $response['items'] = $items;
+    $response['photo_count'] = $repository->publishedPhotographCount();
+    $response['autoopen'] = true;
+    return $response;
+}
+
 function snapsmack_grid_frame_items(array $items, array $settings, string $skin): array
 {
     $prefixes = ['the-grid'=>'tg','aurora'=>'au','sudden-impact'=>'tg','parade'=>'pa','jive-turkey'=>'jt','heuristic'=>'he','instant-camera'=>'ic','game-on'=>'go','sliders'=>'ic'];
@@ -184,12 +215,15 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
 
     if ($route === 'resolve') {
         $item = $slug !== '' ? $repository->photographBySlug($slug) : null;
+        $gridModalSkins = ['the-grid', 'aurora', 'sudden-impact', 'parade', 'jive-turkey', 'heuristic', 'sliders'];
         if ($item !== null) return $skin === 'game-on'
             ? snapsmack_game_on_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment)
             : ($skin === 'instant-camera'
             ? snapsmack_instant_camera_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment)
+            : (in_array($skin, $gridModalSkins, true)
+            ? snapsmack_grid_modal_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment, $skin)
             : ['status' => 200, 'kind' => 'photo', 'item' => snapsmack_game_on_focus_item($item),
-                'comments' => $repository->approvedComments((int)$item['id'], null), 'navigation' => $navigation]);
+                'comments' => $repository->approvedComments((int)$item['id'], null), 'navigation' => $navigation]));
         $pageItem = $slug !== '' ? $repository->activePageBySlug($slug) : null;
         return $pageItem === null
             ? ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation]
@@ -239,12 +273,15 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
     if ($route === 'photo') {
         $item = $slug !== '' ? $repository->photographBySlug($slug) : $repository->photographById($id);
         if ($item === null) return ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation];
+        $gridModalSkins = ['the-grid', 'aurora', 'sudden-impact', 'parade', 'jive-turkey', 'heuristic', 'sliders'];
         return $skin === 'game-on'
             ? snapsmack_game_on_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment)
             : ($skin === 'instant-camera'
             ? snapsmack_instant_camera_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment)
+            : (in_array($skin, $gridModalSkins, true)
+            ? snapsmack_grid_modal_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment, $skin)
             : ['status' => 200, 'kind' => 'photo', 'item' => snapsmack_game_on_focus_item($item),
-                'comments' => $repository->approvedComments((int)$item['id'], null), 'navigation' => $navigation]);
+                'comments' => $repository->approvedComments((int)$item['id'], null), 'navigation' => $navigation]));
     }
     if ($route === 'post') {
         $item = $slug !== '' ? $repository->postBySlug($slug) : $repository->postById($id);

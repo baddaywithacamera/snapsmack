@@ -51,6 +51,21 @@ foreach($skins as $skin){
         if($skin==='parade'&&(!str_contains($html,'class="pa-parade-bg pa-flag-bg"')||!str_contains($html,'class="pa-panel"'))) throw new RuntimeException('PARADE layout no longer owns its backdrop structure.');
         if($skin!=='parade'&&(str_contains($html,'class="pa-parade-bg')||str_contains($html,'class="pa-panel"'))) throw new RuntimeException("{$skin} received PARADE structure.");
     }
+    if(!in_array($skin,['game-on','instant-camera'],true)){
+        $fragmentResponse=['status'=>200,'kind'=>'photo','fragment'=>true,'item'=>[
+            'img_title'=>'Modal photo','img_file'=>'/media/modal.jpg','img_date'=>'2026-10-06',
+            'img_description'=>snapsmack_trusted_html('<p>Modal caption</p>'),
+            'exif'=>['camera'=>'Camera body','flash'=>'No'],
+        ],'comments'=>[['comment_author'=>'Reader','comment_text'=>'Good photograph.']]];
+        $fragmentView=snapsmack_build_skin_view($fragmentResponse,[
+            'site_name'=>'Example','avatar_url'=>'/avatar.jpg','language'=>'en','direction'=>'ltr',
+            'skin_slug'=>$skin,'skin_style_url'=>'/skins/'.$skin.'/style.css',
+            'skin_presentation'=>snapsmack_skin_presentation([], $skin),
+        ]);
+        ob_start();$fragmentOk=snapsmack_render_strict_skin_template($dir,'layout.php',$fragmentView);$fragmentHtml=(string)ob_get_clean();
+        $prefix=$prefixes[$skin];
+        if(!$fragmentOk||str_contains($fragmentHtml,'<!doctype html>')||!str_contains($fragmentHtml,'class="'.$prefix.'-post-ig"')||!str_contains($fragmentHtml,'class="'.$prefix.'-post-ig-header"')||!str_contains($fragmentHtml,'/media/modal.jpg'))throw new RuntimeException("{$skin} lost its original modal fragment composition.");
+    }
 }
 if(count(array_unique($styles))!==count($styles)) throw new RuntimeException('Grid-family presentations are not distinct.');
 $renderHelpers=(string)file_get_contents($root.'/core/skin-render-helpers.php');
