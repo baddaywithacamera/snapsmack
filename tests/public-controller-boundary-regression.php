@@ -29,7 +29,8 @@ if (strlen($parsed['query']) > 200) throw new RuntimeException('Search input is 
 $missing = snapsmack_public_parse_request(['route' => 'made-up']);
 if ($missing['route'] !== 'not_found') throw new RuntimeException('Unknown route did not become not_found.');
 $valid = snapsmack_public_parse_request(['route' => 'post', 'slug' => 'hello-world', 'id' => '7', 'page' => '2']);
-if ($valid !== ['route' => 'post', 'slug' => 'hello-world', 'id' => 7, 'page' => 2, 'query' => '']) {
+if ($valid !== ['route' => 'post', 'slug' => 'hello-world', 'id' => 7, 'page' => 2,
+    'category_id' => 0, 'album_id' => 0, 'query' => '']) {
     throw new RuntimeException('Valid request normalization changed unexpectedly.');
 }
 $entry = (string)file_get_contents(dirname(__DIR__) . '/index.php');
