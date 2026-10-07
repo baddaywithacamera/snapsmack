@@ -17,6 +17,20 @@ if (!str_contains($compiledHtml, 'id="snapsmack-dynamic-css"')
     || str_contains($compiledHtml, '</style><script>')) {
     throw new RuntimeException('CMS-compiled skin CSS token is missing or can escape its style element.');
 }
+$staleGeneratedStyle = snap_render_html(snapsmack_skin_custom_style([
+    'custom_css_public' => '/* SKIN_START */body{font-family:"Wrong"}/* SKIN_END */ .owner-rule{color:red}',
+]));
+if (str_contains($staleGeneratedStyle, 'Wrong') || !str_contains($staleGeneratedStyle, '.owner-rule{color:red}')) {
+    throw new RuntimeException('Strict skin replayed a stale generated CSS block or lost owner CSS.');
+}
+$gridPresentation = snapsmack_skin_presentation([
+    'tg_max_width' => '840', 'tg_gutter' => '72', 'tg_gap' => '10',
+    'tg_font_body' => 'Figtree',
+], 'the-grid');
+$gridCss = (string)($gridPresentation['style'] ?? '');
+foreach (['--grid-max-width:840px', '--grid-gutter:72px', '--grid-gap:10px', '--font-body:Figtree'] as $expected) {
+    if (!str_contains($gridCss, $expected)) throw new RuntimeException("Declared THE GRID setting was not rendered: {$expected}");
+}
 
 if (snap_escape_html('<script>') !== '&lt;script&gt;') throw new RuntimeException('HTML escaping failed.');
 if (snap_escape_attr('" onerror="x') !== '&quot; onerror=&quot;x') throw new RuntimeException('Attribute escaping failed.');
