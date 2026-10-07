@@ -115,7 +115,9 @@ img { display: block; max-width: 100%; }
     position: relative;
     padding: 0 var(--grid-gutter, 0px);
     height: 40px;
-    overflow: hidden;
+    /* Child menus must be allowed to leave the 40px bar. Clipping here made
+       the CMS-owned dropdown plane disappear below the navigation row. */
+    overflow: visible;
 }
 
 /* Mini avatar — absolutely positioned left, hidden until profile scrolls off screen */
@@ -1404,6 +1406,6 @@ body {
    .profile-hidden made a non-zero admin setting appear to do nothing on the
    landing page and left dropdown navigation without a readable parent bar. */
 .tg-sticky-nav,
-.tg-sticky-nav.profile-hidden  { background: transparent !important; }
+.tg-sticky-nav.profile-hidden  { background: var(--ic-nav-bg, transparent) !important; }
 
 /* ===== SNAPSMACK EOF ===== */
