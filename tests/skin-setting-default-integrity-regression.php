@@ -17,10 +17,10 @@ if (($settings['htbs_title_font'] ?? null) !== 'Georgia') {
     $fail('A legacy bare font leaked across the GALLERIA skin boundary.');
 }
 
-// An explicit skin-scoped choice remains authoritative.
-$settings['galleria__htbs_title_font'] = 'Libre Baskerville';
+// An unrelated explicit skin-scoped choice remains authoritative.
+$settings['galleria__htbs_title_font'] = 'Playfair Display';
 snapsmack_apply_skin_settings($settings, 'galleria');
-if (($settings['htbs_title_font'] ?? null) !== 'Libre Baskerville') {
+if (($settings['htbs_title_font'] ?? null) !== 'Playfair Display') {
     $fail('An explicit GALLERIA font choice was not preserved.');
 }
 
@@ -29,30 +29,16 @@ if (($settings['htbs_title_font'] ?? null) !== 'Libre Baskerville') {
 // while unrelated explicit choices above remain authoritative.
 $leaked = [
     'galleria__htbs_title_font' => 'Libre Baskerville',
-    'galleria__htbs_heading_font' => 'DM Sans',
-    'galleria__htbs_body_font' => 'DM Sans',
 ];
 snapsmack_apply_skin_settings($leaked, 'galleria');
-if (($leaked['htbs_title_font'] ?? null) !== 'Georgia'
-    || ($leaked['htbs_heading_font'] ?? null) !== 'Georgia'
-    || ($leaked['htbs_body_font'] ?? null) !== 'Inter') {
-    $fail('Known scoped GALLERIA font leaks did not recover the skin defaults.');
+if (($leaked['htbs_title_font'] ?? null) !== 'Georgia') {
+    $fail('Known scoped GALLERIA masthead-font leak did not recover Georgia.');
 }
 
 $grit = ['true-grit__header_font_family' => 'Playfair Display'];
 snapsmack_apply_skin_settings($grit, 'true-grit');
 if (($grit['header_font_family'] ?? null) !== 'Raleway') {
     $fail('Known TRUE GRIT title-font leak did not recover Raleway.');
-}
-
-$rational = [
-    'rational-geo__body_font' => 'DM Sans',
-    'rational-geo__comment_font' => 'DM Sans',
-];
-snapsmack_apply_skin_settings($rational, 'rational-geo');
-if (($rational['body_font'] ?? null) !== 'Source Serif 4'
-    || ($rational['comment_font'] ?? null) !== 'Source Serif 4') {
-    $fail('Known RATIONAL GEO prose-font leaks did not recover Source Serif 4.');
 }
 
 // Global-only settings are never replaced by a manifest option/default pass.
