@@ -352,6 +352,10 @@ function snapsmack_grid_frame_items(array $items, array $settings, string $skin)
         $items[$index]['frame_style']="--tile-img-size:{$size}%;--tile-border-w:{$border}px;--tile-border-c:{$color};--tile-bg:{$bg};--tile-shadow:{$shadow};";
         $items[$index]['is_framed']=empty($item['is_trigram_slice'])&&($size<100||$border>0||$shadow!=='none');
         $items[$index]['is_portrait']=(int)($item['img_height']??0)>(int)($item['img_width']??0);
+        if ($skin === 'aurora') {
+            $items[$index]['aurora_wave_row'] = intdiv((int)$index, 3);
+            $items[$index]['aurora_wave_column'] = (int)$index % 3;
+        }
     }
     return $items;
 }
