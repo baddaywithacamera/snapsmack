@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.830D — 2026-10-07 — The font URL has to exist
+
+- Serves selected packaged masthead faces from the audited Smack Central asset repository unconditionally. A shared-host install could report its packaged font file as present on disk while the corresponding public `/assets/fonts/…` URL still returned 404; SQUARED STRAIGHT therefore named SquareSanSerif7 correctly but rendered a generic fallback. The browser now receives the verified, publicly routable central font URL.
+
 ## 0.7.829D — 2026-10-07 — Search and type belong home
 
 - Restores SLICKR's original pill-shaped search field and compact calendar button in the profile bar. Their established skin markup now points to the CMS-owned search and calendar handlers instead of substituting the generic floating search dock. SLICKR advances sequentially from 1.0.29 to 1.0.30.

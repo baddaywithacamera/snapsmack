@@ -242,19 +242,15 @@ function snapsmack_attach_local_font_faces(array &$presentation): void
     }
     if (!$selected) return;
 
-    $base = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
     $css = '';
     foreach ($selected as $family => $font) {
         $segments = array_map('rawurlencode', explode('/', (string)$font['file']));
         $relativeUrl = implode('/', $segments);
-        $localPath = dirname(__DIR__) . '/' . ltrim((string)$font['file'], '/');
-        // Fonts normally self-heal into each install from the asset repository.
-        // If a fleet update has not completed that copy yet, keep the selected
-        // face working from the same signed central asset instead of silently
-        // falling back to Arial.
-        $url = is_file($localPath)
-            ? $base . $relativeUrl
-            : 'https://snapsmack.ca/sc-assets/' . preg_replace('#^assets/#', '', $relativeUrl);
+        // The shared-host filesystem can report a packaged font as present even
+        // when that path is not web-routable.  Use the audited central asset as
+        // the canonical public source so a selected face cannot silently fall
+        // back merely because an install exposes a different document root.
+        $url = 'https://snapsmack.ca/sc-assets/' . preg_replace('#^assets/#', '', $relativeUrl);
         $safeFamily = str_replace(['\\', "'"], ['\\\\', "\\'"], $family);
         $css .= "@font-face{font-family:'{$safeFamily}';src:url('{$url}') format('{$font['format']}');"
             . "font-weight:{$font['weight']};font-style:{$font['style']};font-display:swap;}";
