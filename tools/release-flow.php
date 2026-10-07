@@ -163,6 +163,7 @@ function rf_require_release_gate(): void {
         'commit' => $head,
         'security' => 'pass',
         'parity' => 'pass',
+        'skin_render_parity' => 'pass',
         'authority_review' => 'approved',
     ];
     foreach ($required as $field => $expected) {
@@ -180,6 +181,22 @@ function rf_require_release_gate(): void {
     }
     if (($gate['skin_inventory_sha256'] ?? null) !== $inventoryHash) {
         rf_fail('release-gate note skin inventory does not match the packaged skins');
+    }
+    if (!array_key_exists('skin_render_changes', $gate) || !is_array($gate['skin_render_changes'])) {
+        rf_fail('release-gate note must include skin_render_changes as an array (normally empty)');
+    }
+    foreach ($gate['skin_render_changes'] as $index => $change) {
+        if (!is_array($change)) {
+            rf_fail("skin_render_changes entry {$index} must be an object");
+        }
+        foreach (['skin', 'reason', 'pre_strip_reference'] as $field) {
+            if (!is_string($change[$field] ?? null) || trim($change[$field]) === '') {
+                rf_fail("skin_render_changes entry {$index} must declare {$field}");
+            }
+        }
+        if (!in_array($change['skin'], $skinNames, true)) {
+            rf_fail("skin_render_changes entry {$index} names an unbundled skin");
+        }
     }
 }
 
