@@ -90,6 +90,12 @@ RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?name=$1 [L,QSA]
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    # Skin fonts are served from SnapSmack's audited central asset repository.
+    # Browsers require an explicit CORS grant before another fleet hostname may
+    # use those bytes as a font face.
+    <FilesMatch "\.(ttf|otf|woff|woff2)$">
+        Header always set Access-Control-Allow-Origin "*"
+    </FilesMatch>
     # HSTS + CSP were sent only by core/http-security-headers.php, and on many
     # sites that PHP step was skipped for some responses (fleet check 2026-09-26:
     # 12 of 28 sites without them, varying from one check to the next). The web

@@ -6,6 +6,7 @@
  */
 $source = file_get_contents(dirname(__DIR__) . '/core/skin-presentation.php');
 $metaSource = file_get_contents(dirname(__DIR__) . '/core/meta.php');
+$htaccessTemplate = file_get_contents(dirname(__DIR__) . '/core/htaccess-template');
 
 $fail = static function (string $message): void {
     fwrite(STDERR, $message . PHP_EOL);
@@ -25,6 +26,11 @@ if (strpos($metaSource, "https://snapsmack.ca/sc-assets/") === false
 
 if (strpos($source, "is_file(\$localPath)") !== false) {
     $fail('Local filesystem presence must not be treated as proof that a font is publicly routable.');
+}
+
+if (strpos($htaccessTemplate, 'Access-Control-Allow-Origin "*"') === false
+    || strpos($htaccessTemplate, 'ttf|otf|woff|woff2') === false) {
+    $fail('The installed and repairable web-server rules do not permit fleet sites to use centrally hosted font faces.');
 }
 
 echo "local font remote fallback regression: ok\n";
