@@ -224,20 +224,49 @@ function snapsmack_grid_modal_photo_response(SnapPublicRepository $repository, a
 }
 
 /** Preserve the original one-cover-per-post GRAM feed outside the skin. */
+function snapsmack_trigram_landing_provider(array $items, ?string $publicRoot = null): array
+{
+    require_once __DIR__ . '/trigram.php';
+    if (function_exists('trigram_align_backfill')) $items = trigram_align_backfill($items);
+    $publicRoot = $publicRoot ?? dirname(__DIR__);
+    $provided = [];
+    $column = 0;
+    foreach ($items as $item) {
+        $slot = (int)($item['trigram_slot'] ?? 0);
+        $orientation = (string)($item['trigram_orientation'] ?? 'h');
+        if ($slot === 1 && $orientation !== 'v' && $column !== 0) {
+            for ($missing = 3 - $column; $missing > 0; $missing--) {
+                $provided[] = ['is_phantom' => true, 'presentation_class' => 'tg-tile tg-tile--phantom'];
+                $column = ($column + 1) % 3;
+            }
+        }
+        if ((int)($item['trigram_id'] ?? 0) > 0 && $slot > 0) {
+            $labels = $orientation === 'v' ? [1=>'T',2=>'M',3=>'B'] : [1=>'L',2=>'M',3=>'R'];
+            $label = $labels[$slot] ?? '';
+            $relative = $label === '' ? '' : 'trigrams/trigram-' . (int)$item['trigram_id'] . '-' . $label . '.jpg';
+            if ($relative !== '' && is_file(rtrim($publicRoot, '/\\') . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative))) {
+                $item['trigram_slice_path'] = $relative;
+                $item['is_trigram_slice'] = true;
+            }
+        }
+        $provided[] = $item;
+        $column = ($column + 1) % 3;
+    }
+    return $provided;
+}
+
 function snapsmack_grid_landing_items(SnapPublicRepository $repository, array $settings, string $skin, int $limit, int $offset = 0): array
 {
     $gridFamily = ['the-grid','aurora','sudden-impact','parade','jive-turkey','heuristic','sliders'];
     $items = in_array($skin, $gridFamily, true)
         ? $repository->carouselPostLanding($limit, $offset)
         : $repository->photographLanding($limit, $offset);
-    if (in_array($skin, $gridFamily, true)) {
-        require_once __DIR__ . '/trigram.php';
-        if (function_exists('trigram_align_backfill')) $items = trigram_align_backfill($items);
-    }
+    if (in_array($skin, $gridFamily, true)) $items = snapsmack_trigram_landing_provider($items);
     $items = snapsmack_grid_frame_items($items, $settings, $skin);
     $prefixes = ['the-grid'=>'tg','aurora'=>'au','sudden-impact'=>'tg','parade'=>'pa','jive-turkey'=>'jt','heuristic'=>'he','sliders'=>'tg'];
     $prefix = $prefixes[$skin] ?? 'tg';
     foreach ($items as &$item) {
+        if (!empty($item['is_phantom'])) continue;
         $classes = $prefix . '-tile';
         if (!empty($item['is_framed'])) {
             $classes .= ' ' . $prefix . '-tile--framed';
@@ -249,9 +278,11 @@ function snapsmack_grid_landing_items(SnapPublicRepository $repository, array $s
             $classes .= ' ' . $prefix . '-tile--trigram ' . $prefix . '-tile--trigram-' . ($labels[$slot] ?? 'M');
         }
         $item['presentation_class'] = $classes;
-        $item['presentation_image'] = !empty($item['is_framed'])
+        $item['presentation_image'] = !empty($item['trigram_slice_path'])
+            ? (string)$item['trigram_slice_path']
+            : (!empty($item['is_framed'])
             ? (string)($item['img_thumb_aspect'] ?? $item['img_file'] ?? '')
-            : (string)($item['img_thumb_square'] ?? $item['img_file'] ?? '');
+            : (string)($item['img_thumb_square'] ?? $item['img_file'] ?? ''));
         $item['presentation_title'] = (string)($item['title'] ?? $item['img_title'] ?? '');
         $item['is_carousel'] = (int)($item['image_count'] ?? 0) > 1;
     }
@@ -298,6 +329,7 @@ function snapsmack_grid_frame_items(array $items, array $settings, string $skin)
     $level = (string)($settings[$prefix.'_customize_level'] ?? 'per_grid');
     $shadowMap = ['0'=>'none','1'=>'3px 3px 8px rgba(0,0,0,.20)','2'=>'6px 6px 18px rgba(0,0,0,.40)','3'=>'12px 12px 32px rgba(0,0,0,.60)'];
     foreach ($items as $index => $item) {
+        if (!empty($item['is_phantom'])) continue;
         $hasImageTreatment = (int)($item['img_size_pct'] ?? 100) < 100
             || (int)($item['img_border_px'] ?? 0) > 0
             || (int)($item['img_shadow'] ?? 0) > 0;
@@ -318,7 +350,7 @@ function snapsmack_grid_frame_items(array $items, array $settings, string $skin)
         if(!preg_match('/^#[0-9a-f]{6}$/i',$color))$color='#000000';
         if(!preg_match('/^#[0-9a-f]{6}$/i',$bg))$bg='#ffffff';
         $items[$index]['frame_style']="--tile-img-size:{$size}%;--tile-border-w:{$border}px;--tile-border-c:{$color};--tile-bg:{$bg};--tile-shadow:{$shadow};";
-        $items[$index]['is_framed']=$size<100||$border>0||$shadow!=='none';
+        $items[$index]['is_framed']=empty($item['is_trigram_slice'])&&($size<100||$border>0||$shadow!=='none');
         $items[$index]['is_portrait']=(int)($item['img_height']??0)>(int)($item['img_width']??0);
     }
     return $items;

@@ -88,6 +88,19 @@ function rf_tag_target(string $tag): string {
     return $code === 0 ? trim(implode("\n", $lines)) : '';
 }
 
+function rf_release_declarations(): array {
+    $path = dirname(__DIR__) . '/smack-central/release-identifier-declarations.ndjson';
+    if (!is_file($path)) rf_fail('declared release ledger is missing');
+    $entries = [];
+    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+        $entry = json_decode($line, true);
+        $version = is_array($entry) ? preg_replace('/D$/i', '', (string)($entry['version'] ?? '')) : '';
+        if ($version === '' || isset($entries[$version])) rf_fail('declared release ledger is invalid or contains a duplicate');
+        $entries[$version] = $entry;
+    }
+    return $entries;
+}
+
 function rf_require_next_dev_version(string $version): void {
     // A Git tag is a candidate, not proof of a package or deployment. Keep
     // numbers sequential without claiming that any earlier tag was installed.
@@ -107,6 +120,8 @@ function rf_require_next_dev_version(string $version): void {
     $reservations = is_file($reservationsPath) ? json_decode((string)file_get_contents($reservationsPath), true) : [];
     if (!is_array($reservations)) rf_fail('release reservation ledger is invalid');
     while (isset($reservations[$prefix . '.' . $next])) $next++;
+    $declarations = rf_release_declarations();
+    if (isset($declarations[$version])) rf_fail("development identifier {$version}D is already present in the append-only release ledger");
     if ($latest >= 0 && $version !== $prefix . '.' . $next) {
         rf_fail("next dev candidate must be {$prefix}.{$next}"
             . '; do not skip or reuse a tag number');
@@ -117,6 +132,10 @@ function rf_release_state_refusal(string $requested, string $latest_tagged, stri
     $requested = rf_version($requested);
     $latest_tagged = rf_version($latest_tagged);
     $latest_packaged = rf_version($latest_packaged);
+    $declarations = rf_release_declarations();
+    if (isset($declarations[$requested])) {
+        return "development identifier {$requested}D is already present in the append-only release ledger";
+    }
     if ($latest_tagged !== $latest_packaged) {
         return "highest tagged dev version is {$latest_tagged}D but highest packaged dev version is {$latest_packaged}D; "
             . 'package and deploy every existing tag in order before creating another tag';
