@@ -129,6 +129,39 @@ final class SnapPublicRepository
     }
 
     /**
+     * GRAMOFSMACK landing contract: one ordered tile per published post, using
+     * the post's declared cover and retaining carousel/trigram presentation
+     * metadata. This is the bounded CMS equivalent of THE GRID's known-good
+     * landing query; returning photographs here would split carousels apart.
+     */
+    public function carouselPostLanding(int $limit = 5000, int $offset = 0): array {
+        return $this->all(
+            "SELECT p.id AS post_id,p.title,p.slug AS post_slug,p.post_type,p.trigram_id,
+                    p.created_at,p.sort_order,p.post_img_size_pct,p.post_border_px,
+                    p.post_border_color,p.post_bg_color,p.post_shadow,
+                    i.id AS img_id,i.img_file,i.img_thumb_square,i.img_thumb_aspect,
+                    i.img_width,i.img_height,i.img_slug,i.img_title,i.img_alt,
+                    pi.img_size_pct,pi.img_border_px,pi.img_border_color,pi.img_bg_color,
+                    pi.img_shadow,pi.img_focus_x,pi.img_focus_y,pi.img_zoom,
+                    (SELECT COUNT(*) FROM snap_post_images spi
+                     WHERE spi.post_id=p.id AND spi.sort_position>=0) AS image_count,
+                    CASE WHEN tg.post_id_1=p.id THEN 1 WHEN tg.post_id_2=p.id THEN 2
+                         WHEN tg.post_id_3=p.id THEN 3 ELSE NULL END AS trigram_slot,
+                    tg.orientation AS trigram_orientation
+             FROM snap_posts p
+             JOIN snap_post_images pi ON pi.post_id=p.id AND pi.is_cover=1
+             JOIN snap_images i ON i.id=pi.image_id
+             LEFT JOIN snap_trigrams tg ON tg.id=p.trigram_id
+             WHERE p.status='published' AND p.created_at<=NOW()
+               AND i.img_status='published' AND i.img_date<=NOW()
+             ORDER BY CASE WHEN p.sort_order>0 THEN 1 ELSE 0 END ASC,
+                      p.sort_order ASC,p.id DESC
+             LIMIT ? OFFSET ?",
+            [max(1, min(5000, $limit)), max(0, $offset)]
+        );
+    }
+
+    /**
      * Lightweight complete inventory for CMS-owned justified layouts.
      *
      * A justified row cannot be paged correctly until the CMS has measured the
