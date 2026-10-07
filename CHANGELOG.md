@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.833D — 2026-10-07 — White room
+
+- Restores JIVE TURKEY's saved pre-scoping presentation settings instead of replacing its unambiguously skin-owned `jt_*` values with manifest defaults. The white image-page/card background and saved scrim controls on craptasti.ca therefore reconnect to the strict CMS renderer without returning database access or behaviour to the skin.
+
 ## 0.7.832D — 2026-10-07 — Lower case
 
 - Restores SQUARED STRAIGHT's original as-entered masthead casing. The archived presentation used its lowercase site name with SquareSansSerif7; the generic typography option had silently made uppercase the skin default, so repairing the font URL alone could not restore the intended masthead.
