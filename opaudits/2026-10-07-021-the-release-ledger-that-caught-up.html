@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 021 - The release ledger that caught up</title>
+<link rel="stylesheet" href="_report.css">
+<style>tr { break-inside: avoid; page-break-inside: avoid; } .skin-ledger { font-size: 8.5pt; }</style>
+</head>
+<body>
+<p class="doc-kicker">SnapSmack Operability Audit - DING DONG BELL</p>
+<h1>OPAUDIT 021 - The release ledger that caught up</h1>
+
+<table class="meta">
+<tr><td class="k">Audit ID</td><td>2026-10-07-021</td></tr>
+<tr><td class="k">State</td><td>Fixed, confirming</td></tr>
+<tr><td class="k">Scope</td><td>Development release sequence, declared gaps, 0.7.836D history, and the bounded skin-data recovery contract.</td></tr>
+<tr><td class="k">Baseline</td><td>0.7.836D is the operator-confirmed deployed baseline. The next permitted development release is 0.7.837D.</td></tr>
+</table>
+
+<h2>1. Decision</h2>
+<p>The ledger records what happened instead of manufacturing a clean history. Versions 0.7.826D and 0.7.830D through 0.7.835D are declared gaps. They remain tagged historical candidates, but they were not standalone packages or deployments and must not be retagged or backfilled. Version 0.7.836D is the deployed baseline. The next development release is 0.7.837D.</p>
+<p>Bundling several fixes into one numbered release is allowed. Every included fix must appear in the versioned changelog. That release must be packaged, deployed, and checked before work starts on the next numbered release.</p>
+
+<h2>2. Append-only release record</h2>
+<table>
+<tr><th>Identifier</th><th>Record</th><th>Disposition</th></tr>
+<tr><td>0.7.826D</td><td>Declared gap</td><td>Tagged but not packaged, deployed, or verified. Do not backfill.</td></tr>
+<tr><td>0.7.829D</td><td>Completed predecessor</td><td>Last completed release before the second gap run.</td></tr>
+<tr><td>0.7.830D-0.7.835D</td><td>Declared gaps</td><td>Changes were incorporated into 0.7.836D; none had a standalone package or deployment.</td></tr>
+<tr><td>0.7.836D</td><td>Deployed baseline</td><td>Immutable baseline for the repaired gate.</td></tr>
+<tr><td>0.7.837D</td><td>Next permitted</td><td>May bundle listed fixes; must complete package, deployment, and live checks before 0.7.838D begins.</td></tr>
+</table>
+
+<h2>3. 0.7.836D addendum</h2>
+<p>The deployed 0.7.836D baseline also carried the work named by the unshipped 0.7.830D through 0.7.835D tags:</p>
+<ul>
+<li><strong>0.7.830D:</strong> serve selected packaged masthead fonts from a publicly routable central asset URL.</li>
+<li><strong>0.7.831D:</strong> restore GALLERIA's mixed-case masthead.</li>
+<li><strong>0.7.832D:</strong> restore SQUARED STRAIGHT's as-entered lowercase masthead.</li>
+<li><strong>0.7.833D:</strong> restore JIVE TURKEY's saved white card/viewer background and scrim settings.</li>
+<li><strong>0.7.834D:</strong> bind compiled option CSS to the skin that produced it, restoring GAME ON's saved gutters.</li>
+<li><strong>0.7.835D:</strong> restore PARADE's saved flag palette by accepting the established string-list palette contract.</li>
+</ul>
+<p>At the time, the Smack Central packager offered only 0.7.834D through 0.7.836D. That three-tag display window hid earlier candidates; it did not prove they had been packaged or deployed. Packaging 0.7.836D therefore created a historical gap that must be declared, not retroactively filled.</p>
+
+<h2>4. Gate correction</h2>
+<p>The tracked newline-delimited ledger is append-only by policy and is merged with Smack Central's publication ledger. A declared gap consumes its identifier permanently without claiming a package. The 0.7.836D baseline satisfies the predecessor identity for 0.7.837D, while the server still independently requires 0.7.836D package history and active-fleet deployment evidence. No override or force path is added.</p>
+
+<h2>5. THE GRID trigram finding</h2>
+<p>Pre-strip THE GRID computed its trigram display model inside the skin. Its landing template queried <code>snap_trigrams</code>, derived each post's slot and orientation, chose <code>trigrams/trigram-{id}-{L|M|R}.jpg</code> when present, ran row backfill, and emitted phantom tiles for the remaining tail case. Those operations mixed legitimate presentation requirements with forbidden database and filesystem authority.</p>
+<p>The replacement is a bounded CMS provider. The public repository returns published post covers plus trigram ID, slot, and orientation. The controller realigns the bounded result, resolves an existing public slice to a relative presentation path, suppresses framing only for a physical slice, and supplies tail phantoms. The skin receives prepared values and emits markup; it receives no database handle, SQL, request parsing, writes, or arbitrary filesystem access.</p>
+
+<h2>6. Twenty-four-skin recovery table</h2>
+<table class="skin-ledger">
+<tr><th>Skin</th><th>Presentation hooks / saved-setting state</th><th>Pre-strip data the skin computed itself</th><th>CMS now provides it?</th><th>Parity state</th></tr>
+<tr><td>50 SHADES OF NOAH GREY</td><td>Solo, archive, static-content hooks retained; scoped settings compiled.</td><td>Published photo selection, orientation, archive classes, metadata.</td><td>Yes: bounded photo/archive response model.</td><td>Source contract present; live visual check remains release evidence.</td></tr>
+<tr><td>52 CARD PICKUP</td><td>Pickup wrappers and post fields retained; scoped settings compiled.</td><td>Published photo ordering, dates, descriptions, navigation.</td><td>Yes: bounded photo/archive response model.</td><td>Source contract present.</td></tr>
+<tr><td>AURORA</td><td><code>.au-ring</code>, row/column wave inputs, saved palette controls restored.</td><td>Post covers, carousel count, frames, trigram membership and positioning.</td><td>Yes: grid/trigram provider and presentation settings model.</td><td>Source repaired; live recheck required for 0.7.837D.</td></tr>
+<tr><td>CHAPLIN</td><td>Film/overlay and archive hooks retained; scoped settings compiled.</td><td>Photo selection, EXIF, neighbours, archive grouping.</td><td>Yes: bounded photo/detail/archive providers.</td><td>Source contract present.</td></tr>
+<tr><td>FULL MONTY</td><td>Hero and content hooks retained; scoped settings compiled.</td><td>Featured media and page/post presentation fields.</td><td>Yes: bounded public response model.</td><td>Source contract present.</td></tr>
+<tr><td>GALLERIA</td><td>Mixed-case masthead and declared Georgia font restored.</td><td>Slide inventory, active item, neighbours, EXIF and archive fields.</td><td>Yes: bounded slider/photo response model.</td><td>Font/casing must be live-checked in 0.7.837D.</td></tr>
+<tr><td>GAME ON</td><td>Saved 85px gutters, puzzle hooks, frames and nav colours reconnected.</td><td>Puzzle pool, focus/zoom, cover exclusions, search result fields.</td><td>Yes: dedicated CMS puzzle/search providers.</td><td>Source repaired; live layout check required.</td></tr>
+<tr><td>GLIDE</td><td>Row/track hooks retained; scoped settings compiled.</td><td>Random pool, aspect ratios and nine-row distribution.</td><td>Yes: CMS random-photo and row providers.</td><td>Source contract present.</td></tr>
+<tr><td>HEURISTIC</td><td>Grid/modal hooks and map presentation retained.</td><td>Post covers, carousel count, frames, trigram fields and infomatic mapping.</td><td>Yes: grid/trigram provider plus bounded map preparation.</td><td>Source contract present.</td></tr>
+<tr><td>HIP TO BE SQUARE</td><td>As-entered masthead casing and local SquareSansSerif7 selection restored.</td><td>Slider/photo inventory, neighbours and metadata.</td><td>Yes: bounded slider/photo response model.</td><td>Font/casing must be live-checked.</td></tr>
+<tr><td>IMPACT PRINTER</td><td>Print/image hooks retained; scoped settings compiled.</td><td>Published photo, metadata and navigation fields.</td><td>Yes: bounded public response model.</td><td>Source contract present.</td></tr>
+<tr><td>INSTANT CAMERA</td><td>Square-print viewer, veil, profile/nav and frame settings reconnected.</td><td>Photo pool, frames, neighbours, carousel photographs and focus values.</td><td>Yes: dedicated modal/photo provider.</td><td>Source contract present.</td></tr>
+<tr><td>JIVE TURKEY</td><td><code>.jt-ring</code>, white background, scrim and treatment settings restored.</td><td>Post covers, frames, carousel count, trigram fields and modal data.</td><td>Yes: grid/trigram provider and settings presentation model.</td><td>Source repaired; white detail view and borders require live check.</td></tr>
+<tr><td>ONYX</td><td>Wall/sector hooks retained; scoped settings compiled.</td><td>Complete photo inventory, wall ordering and paging fields.</td><td>Yes: bounded photo feed and controller paging.</td><td>Source contract present.</td></tr>
+<tr><td>PARADE</td><td>Flag palette/background and animated border hooks restored.</td><td>Post covers, frames, carousel count, trigram fields and palette inputs.</td><td>Yes: grid/trigram provider and normalized palette model.</td><td>Source repaired; live motion/palette check required.</td></tr>
+<tr><td>PHOTOGRAM</td><td>Feed, sheet, search and phantom hooks retained.</td><td>Post feed, carousel membership, tags, comments and paging state.</td><td>Yes: bounded post/feed/search providers.</td><td>Source contract present.</td></tr>
+<tr><td>RATIONAL GEO</td><td>Relief-map treatment and Marcellus masthead declaration retained.</td><td>Published photo selection, orientation, archive and metadata fields.</td><td>Yes: bounded photo/archive response plus scoped presentation settings.</td><td>Background and masthead require live check.</td></tr>
+<tr><td>SCROLL</td><td>Wall, filter, search and sentinel hooks retained.</td><td>Complete photo feed, ordering, paging and filter/search fields.</td><td>Yes: bounded photo/search/archive providers.</td><td>Source contract present.</td></tr>
+<tr><td>SHOW N TELL</td><td>Slider and archive hooks retained; scoped settings compiled.</td><td>Selected asset IDs, bounded slide list and overlay text.</td><td>Yes: CMS public-asset provider and controller cap.</td><td>Source contract present.</td></tr>
+<tr><td>SLICKR</td><td>Justified rows, banner, pill search and compact calendar reconnected.</td><td>Full lightweight photo inventory, row geometry, paging and statistics.</td><td>Yes: CMS justified-feed and row providers.</td><td>Source repaired; search control and row geometry require live check.</td></tr>
+<tr><td>SLIDERS</td><td>Slider/grid/modal hooks retained; scoped settings compiled.</td><td>Post covers, carousel count, frames and trigram display fields.</td><td>Yes: grid/trigram and slider providers.</td><td>Source contract present.</td></tr>
+<tr><td>SUDDEN IMPACT</td><td>Grid/modal hooks retained; scoped settings compiled.</td><td>Post covers, carousel count, frames and trigram display fields.</td><td>Yes: grid/trigram provider.</td><td>Source contract present.</td></tr>
+<tr><td>THE GRID</td><td>Saved 840px width, 72px gutters, 10px rhythm and original tile/modal hooks restored.</td><td>Trigram SQL fields, slice selection, row alignment, tail phantoms, covers, frames and carousel counts.</td><td>Yes: completed bounded CMS trigram landing provider.</td><td>Source repaired; unzucked.ca must match the pre-strip reference before 0.7.837D passes.</td></tr>
+<tr><td>TRUE GRIT</td><td>Declared Raleway masthead and photo hooks restored.</td><td>Published photo selection, orientation, navigation and metadata.</td><td>Yes: bounded public response model.</td><td>Font must be live-checked.</td></tr>
+</table>
+
+<h2>7. Closure conditions</h2>
+<ol>
+<li>The deliberately skipped candidate 0.7.838D is refused while 0.7.837D is incomplete.</li>
+<li>0.7.837D's changelog lists every bundled fix and its release gate names any intentional render change; normally that list is empty because unchanged settings and content must match the pre-strip reference.</li>
+<li>0.7.837D is packaged, deployed, and checked on the named live skin surfaces before any 0.7.838D work starts.</li>
+<li>THE GRID's trigram rows, physical slices, tail alignment, saved dimensions, order, covers, and carousel modal behavior match the pre-strip reference without skin database access.</li>
+</ol>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->

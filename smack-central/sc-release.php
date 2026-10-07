@@ -194,11 +194,24 @@ function sc_tag_commit(string $tag): string {
  * Permanent on-disk release ledger. Deleting a zip/history row must never make
  * a public identifier reusable.
  */
+function sc_declared_release_identifiers(): array {
+    $path = __DIR__ . '/release-identifier-declarations.ndjson';
+    if (!is_file($path)) return [];
+    $entries = [];
+    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+        $entry = json_decode($line, true);
+        $version = is_array($entry) ? trim((string)($entry['version'] ?? '')) : '';
+        if ($version === '' || isset($entries[$version])) continue;
+        $entries[$version] = $entry;
+    }
+    return $entries;
+}
+
 function sc_release_ledger(): array {
     $path = rtrim(RELEASES_DIR, '/') . '/release-identifiers.json';
-    if (!is_file($path)) return [];
-    $decoded = json_decode((string)file_get_contents($path), true);
-    return is_array($decoded) ? $decoded : [];
+    $decoded = is_file($path) ? json_decode((string)file_get_contents($path), true) : [];
+    $ledger = is_array($decoded) ? $decoded : [];
+    return $ledger + sc_declared_release_identifiers();
 }
 
 function sc_release_identifier_used(string $version): bool {
