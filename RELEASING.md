@@ -39,6 +39,12 @@ FEDISTRUCTURE uses the same channels:
    manifests published.
 7. Never create the plain and `D` tags together at the start of testing.
 8. Never push implementation work directly to `master`.
+9. **Skin rendering is a compatibility contract.** With unchanged saved settings
+   and unchanged content, every skin must render identically to its pre-strip
+   reference. Any difference is a regression and must be restored; it is not a
+   redesign opportunity, and the changed output must not be described as
+   "authoritative." A release that changes any skin render without an explicit,
+   reviewed reason in its release-gate evidence fails. Silence is not approval.
 
 **On `dev`, EVERYTHING carries the `D`** — the source constant
 (`SNAPSMACK_VERSION` / `SNAPSMACK_VERSION_SHORT` = `X.Y.ZD`), the changelog
@@ -65,6 +71,13 @@ php tools/release-flow.php promote-stable 0.7.456 --yes
 `tag-dev` runs the repository regression checks before pushing. Promotion
 refuses a dirty tree, a missing/mismatched `D` tag, a non-fast-forward master,
 or an already-used stable tag.
+
+The exact-commit release-gate note must record `skin_render_parity: "pass"` and
+`skin_render_changes`. The latter is an array and is normally empty. Every
+intentional rendering change must name the skin, state the reason, and identify
+the approved pre-strip reference used for comparison. Missing evidence, an
+undeclared difference, or a claim that the replacement rendering is newly
+"authoritative" fails the release.
 
 ## Smack Central
 
