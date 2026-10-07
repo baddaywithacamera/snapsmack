@@ -62,14 +62,14 @@ if (!function_exists('_snap_gram_nav_url')) {
             case 'external':  return $item['url'] ?? '';
             case 'page':
                 if (!empty($item['slug'])) {
-                    return $base . 'page.php?slug=' . rawurlencode($item['slug']);
+                    return $base . rawurlencode((string)$item['slug']);
                 }
                 if (!empty($item['target_id'])) {
                     try {
                         $r = $pdo->prepare("SELECT slug FROM snap_pages WHERE id = ? AND is_active = 1 LIMIT 1");
                         $r->execute([(int)$item['target_id']]);
                         $slug = $r->fetchColumn();
-                        return $slug ? $base . 'page.php?slug=' . rawurlencode($slug) : '';
+                        return $slug ? $base . rawurlencode((string)$slug) : '';
                     } catch (Exception $e) { return ''; }
                 }
                 return $item['url'] ?? '';
@@ -179,7 +179,7 @@ if (is_array($_gn_items) && count($_gn_items) > 0) {
     }
     foreach ($_gn_pages as $_gn_pg) {
         $_gn_ps = $_gn_pg['slug'] ?? '';
-        echo '<li><a href="' . htmlspecialchars($_gn_base . 'page.php?slug=' . $_gn_ps) . '"'
+        echo '<li><a href="' . htmlspecialchars($_gn_base . rawurlencode((string)$_gn_ps)) . '"'
            . ($_gn_ps === $_gn_active_slug ? ' class="active"' : '') . '>'
            . htmlspecialchars($_gn_pg['title'] ?? '') . '</a></li>' . "\n";
     }
