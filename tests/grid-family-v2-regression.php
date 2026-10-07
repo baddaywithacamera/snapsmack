@@ -38,6 +38,7 @@ foreach($skins as $skin){
         if(!str_contains($html,'class="'.$prefix.'-content-wrap')) throw new RuntimeException("{$skin}/{$response['kind']} lost its family content hook.");
         foreach(['id="'.$prefix.'-modal-overlay"','id="'.$prefix.'-modal-frame"','id="'.$prefix.'-lightbox"'] as $modalHook)if(!str_contains($html,$modalHook))throw new RuntimeException("{$skin}/{$response['kind']} lost route modal/lightbox hook: {$modalHook}");
         if(($response['kind']??'')==='landing'&&!str_contains($html,'class="'.$prefix.'-tile')) throw new RuntimeException("{$skin} lost its tile contract.");
+        if($skin==='jive-turkey'&&($response['kind']??'')==='landing'&&!str_contains($html,'class="jt-ring"')) throw new RuntimeException('JIVE TURKEY lost the ring element required by its CMS border engine.');
         if($skin==='game-on'&&($response['kind']??'')==='search'&&(!str_contains($html,'class="go-search-view"')||!str_contains($html,'/media/match.jpg'))) throw new RuntimeException('GAME ON search fell through or lost its photograph results.');
         if(($response['kind']??'')==='post'){
             if(!str_contains($html,'id="tg-carousel" class="ss-slider"')||substr_count($html,'class="slider-slide')!==2)throw new RuntimeException("{$skin} post route lost its CMS photograph carousel.");

@@ -833,6 +833,9 @@ a:hover { color: var(--sl-link-hover); }
 
 /* Justified-row rules ported from core page-archive.css — the index page type
    loads page-static.css (not page-archive.css), so they must live in the skin. */
+#justified-grid:has(> .justified-row) {
+  display: block;
+}
 #justified-grid .justified-row {
   display: flex;
   gap: var(--justified-gap, 4px);

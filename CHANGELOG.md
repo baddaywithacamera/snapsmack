@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.828D — 2026-10-06 — Put the ring back
+
+- Restores JIVE TURKEY's existing animated colour-border presentation by returning the missing `.jt-ring` element to every landing tile. The CMS-owned border engine and saved settings were already deployed and enabled; the strict skin template had simply stopped giving that engine the presentation hook it paints.
+- Restores the same template's declared tile classes, presentation image, trigram metadata, carousel indicator, and hover treatment instead of inventing replacement styling. JIVE TURKEY advances sequentially from 0.1.28 to 0.1.29.
+- Restores SLICKR's original justified photographic wall by keeping its CMS-prepared rows in normal block flow. A generic archive fallback had mistakenly treated each complete row as a 200-pixel grid cell, compressing the entire photostream into tiny thumbnails. The repair removes only that collision; SLICKR's established banner, navigation, row geometry, ordering, and photograph treatment remain intact. SLICKR advances sequentially from 1.0.28 to 1.0.29.
+
 ## 0.7.827D — 2026-10-06 — The slugs stop being poop
 
 - Makes root-level static-page slugs such as `/cameras` the single canonical public form. Both legacy navigation builders now emit the clean URL they could already resolve, and old `page.php?slug=…` bookmarks permanently redirect to it.
