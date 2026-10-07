@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.831D — 2026-10-07 — As entered
+
+- Restores GALLERIA's original mixed-case masthead contract. The font repair correctly returned Georgia, but a later generic typography option had incorrectly made uppercase the skin default; site names again render exactly as entered, matching the archived GALLERIA presentation.
+
 ## 0.7.830D — 2026-10-07 — The font URL has to exist
 
 - Serves selected packaged masthead faces from the audited Smack Central asset repository unconditionally. A shared-host install could report its packaged font file as present on disk while the corresponding public `/assets/fonts/…` URL still returned 404; SQUARED STRAIGHT therefore named SquareSanSerif7 correctly but rendered a generic fallback. The browser now receives the verified, publicly routable central font URL.
