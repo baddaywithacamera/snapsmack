@@ -338,12 +338,10 @@ if (file_exists($inventory_path)) {
     if (!empty($local_fonts)) {
         echo '<style id="snapsmack-local-fonts">' . "\n";
         foreach ($local_fonts as $family => $font) {
-            $segments = array_map('rawurlencode', explode('/', (string)$font['file']));
-            $relative_url = implode('/', $segments);
-            // Fonts are shared CMS assets. Individual installs are not
-            // guaranteed to expose the packaged font directory publicly.
-            $file_url = 'https://snapsmack.ca/sc-assets/'
-                . preg_replace('#^assets/#', '', $relative_url);
+            // Keep the browser request same-origin. The bounded provider
+            // validates the family against this inventory and retrieves the
+            // canonical shared asset without exposing an arbitrary proxy.
+            $file_url = rtrim(BASE_URL, '/') . '/font.php?family=' . rawurlencode((string)$family);
             $format   = $font['format'] ?? 'truetype';
             $weight   = $font['weight'] ?? 'normal';
             $style    = $font['style'] ?? 'normal';

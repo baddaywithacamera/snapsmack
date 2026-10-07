@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.840D — 2026-10-07 — Same door
+
+- Completes SCROLL font delivery after deployed 0.7.839D proved the central static host still omitted its cross-origin grant. Approved inventory fonts now load through a bounded same-origin CMS provider which retrieves and caches the canonical asset server-side. Saved font selections and skin CSS remain unchanged; arbitrary URLs and unlisted font families are rejected.
+
 ## 0.7.839D — 2026-10-07 — Let it through
 
 - Completes the SCROLL masthead-font repair after the deployed 0.7.838D acceptance check exposed the remaining delivery failure. The central font returned 200 but omitted `Access-Control-Allow-Origin`, so browsers rejected `Special Elite` across fleet hostnames. Font-file responses now carry the required cross-origin grant in both the installed rules and their repair template; the saved family and skin typography remain unchanged.
