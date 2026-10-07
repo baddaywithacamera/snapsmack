@@ -42,6 +42,13 @@ function snapsmack_owner_custom_code(array $settings): SnapOwnerCode
 function snapsmack_skin_custom_style(array $settings): SnapTrustedHtml
 {
     $css = str_replace("\0", '', (string)($settings['custom_css_public'] ?? ''));
+    // The SKIN block is a generated cache from the legacy renderer.  It is
+    // global, so after a skin switch it can contain another skin's selectors
+    // and variables (for example PHOTOGRAM CSS on THE GRID).  Schema-v2 skins
+    // receive their current, skin-scoped settings through the bounded
+    // presentation model; never replay this stale cache into them.  Preserve
+    // any owner-authored CSS outside the generated block.
+    $css = (string)preg_replace('/\/\* SKIN_START \*\/.*?\/\* SKIN_END \*\//s', '', $css);
     if (trim($css) === '') return SnapTrustedHtml::__snapsmackCmsOnly('');
     $css = str_replace('<', '\\3C ', $css);
     return SnapTrustedHtml::__snapsmackCmsOnly('<style id="snapsmack-dynamic-css">' . $css . '</style>');

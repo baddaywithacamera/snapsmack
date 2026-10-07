@@ -220,8 +220,92 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
         $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly($existing . (string)$common['style']);
         if (isset($common['treatment'])) $presentation['treatment'] = $common['treatment'];
     }
+    $declaredStyle = snapsmack_declared_skin_style($skinSlug, $presentation['options']);
+    if ($declaredStyle !== '') {
+        $existing = isset($presentation['style']) ? (string)$presentation['style'] : '';
+        $presentation['style'] = SnapTrustedHtml::__snapsmackCmsOnly($existing . $declaredStyle);
+    }
     snapsmack_attach_local_font_faces($presentation);
     return $presentation;
+}
+
+/**
+ * Compile the inert selector/property declarations from a schema-v2 manifest.
+ *
+ * The old public CSS cache carried these values, but that cache is global and
+ * can belong to whichever skin was saved most recently.  Strict skins instead
+ * compile their own validated, skin-scoped options on every render.  This is
+ * the presentation half of the schema-v2 contract: it restores every declared
+ * font, colour and layout variable without giving the skin database access or
+ * executable PHP.
+ */
+function snapsmack_declared_skin_style(string $skinSlug, array $options): string
+{
+    $skinSlug = preg_replace('/[^a-z0-9-]/', '', strtolower($skinSlug));
+    $path = dirname(__DIR__) . '/skins/' . $skinSlug . '/manifest.json';
+    if ($skinSlug === '' || !is_file($path)) return '';
+    try {
+        $manifest = json_decode((string)file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+    } catch (Throwable $e) {
+        return '';
+    }
+    if (($manifest['schema_version'] ?? 0) !== 2 || !is_array($manifest['options'] ?? null)) return '';
+
+    $rules = [];
+    foreach ($manifest['options'] as $key => $definition) {
+        if (!is_string($key) || !is_array($definition) || !array_key_exists($key, $options)) continue;
+        $selector = trim((string)($definition['selector'] ?? ''));
+        $property = trim((string)($definition['property'] ?? ''));
+        if ($selector === '' || $property === '' || str_starts_with($property, 'data-')) continue;
+        $value = $options[$key];
+        $type = strtolower((string)($definition['type'] ?? 'text'));
+
+        if (str_starts_with($property, 'custom-')) {
+            $choice = $definition['options'][(string)$value] ?? null;
+            if (is_array($choice) && is_string($choice['css'] ?? null) && trim($choice['css']) !== '') {
+                $rules[] = $selector . '{' . trim($choice['css']) . '}';
+            }
+            continue;
+        }
+        if ($type === 'select') {
+            $choice = $definition['options'][(string)$value] ?? null;
+            if (is_array($choice) && is_string($choice['css'] ?? null) && trim($choice['css']) !== '') {
+                $rules[] = $selector . '{' . trim($choice['css']) . '}';
+                continue;
+            }
+        }
+
+        $properties = array_values(array_filter(array_map('trim', explode(',', $property))));
+        if (!$properties) continue;
+        if ($property === 'font-family') {
+            $font = trim((string)$value);
+            if ($font === 'inherit' || str_contains($font, ',')) {
+                $cssValue = $font;
+            } else {
+                $safe = str_replace(['\\', '"'], ['\\\\', '\\"'], $font);
+                $cssValue = '"' . $safe . '", sans-serif';
+            }
+        } elseif (in_array($type, ['range', 'range_numeric', 'number'], true)) {
+            $cssValue = (string)$value . (string)($definition['unit'] ?? (str_starts_with($property, '--') ? '' : 'px'));
+        } elseif (is_bool($value)) {
+            $cssValue = $value ? '1' : '0';
+        } else {
+            $cssValue = (string)$value;
+        }
+        if ($cssValue === '') continue;
+        $declarations = [];
+        foreach ($properties as $name) $declarations[] = $name . ':' . $cssValue;
+        $rules[] = $selector . '{' . implode(';', $declarations) . ';}';
+
+        if ($property === 'font-family' && empty($definition['no_size_slider'])) {
+            $sizeKey = $key . '_size';
+            if (array_key_exists($sizeKey, $options)) {
+                $rules[] = $selector . '{font-size:' . (string)$options[$sizeKey] . 'rem;}';
+            }
+        }
+    }
+    if (!$rules) return '';
+    return '<style id="snapsmack-declared-skin-style">' . str_replace('<', '\\3C ', implode('', $rules)) . '</style>';
 }
 
 /**

@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## Unreleased
+
+- Restores schema-v2 skins from their own unchanged saved presentation settings instead of replaying the global compiled-CSS cache left by whichever skin was saved last. Every manifest-declared font, colour, spacing, width, and gutter value is now compiled into the bounded public presentation model; owner-authored CSS outside the generated cache remains intact. This returns THE GRID to its saved 840px inner grid, 72px card gutters, and 10px image rhythm without redesigning it.
+
 ## 0.7.836D — 2026-10-07 — Ring of fire
 
 - Restores AURORA's animated palette borders by reconnecting the exact presentation hooks lost in its strict-template migration. Landing tiles once again emit their `.au-ring` overlay and row/column coordinates for the shared wave engine; the saved palette, direction, rhythm, opacity, and width remain authoritative.
