@@ -16,7 +16,7 @@ $photo=snapsmack_build_skin_view(['status'=>200,'kind'=>'photo','item'=>['img_ti
 ob_start();$ok=snapsmack_render_strict_skin_template($dir,'layout.php',$photo);$html=(string)ob_get_clean();foreach(['scroll-solo-header','scroll-solo-stage','scroll-solo-photobox','scroll-infobox'] as $hook)if(!$ok||!str_contains($html,$hook))throw new RuntimeException("SCROLL photo route lost {$hook}.");
 $fontPresentation=snapsmack_skin_presentation(['scroll_masthead_font'=>'Special Elite'],'scroll');
 $fontStyle=(string)($fontPresentation['style']??'');
-if(!str_contains($fontStyle,"font-family:'Special Elite'")||!str_contains($fontStyle,'Special%20Elite/SpecialElite-Regular.ttf'))throw new RuntimeException('SCROLL lost its locally served selected masthead font.');
+if(!str_contains($fontStyle,"font-family:'Special Elite'")||!str_contains($fontStyle,'/font.php?family=Special%20Elite'))throw new RuntimeException('SCROLL lost its same-origin selected masthead font.');
 echo "PASS: scroll behavior is CMS-owned and its presentation contract is strict.
 ";
 // ===== SNAPSMACK EOF =====
