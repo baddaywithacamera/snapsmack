@@ -1269,6 +1269,11 @@ if (!empty($google_families)) {
                                 <?php $is_font = (($o['property'] ?? '') === 'font-family') || !empty($o['is_font']); ?>
                                 <select name="skin_opt[<?php echo $k; ?>]"
                                     <?php if ($is_font): ?>data-font-preview="1"<?php endif; ?>>
+                                    <?php if (!array_key_exists((string)$val, $o['options'])): ?>
+                                        <option value="<?php echo htmlspecialchars((string)$val); ?>" selected>
+                                            <?php echo htmlspecialchars((string)$val); ?> (skin default)
+                                        </option>
+                                    <?php endif; ?>
                                     <?php foreach ($o['options'] as $sv => $sl): ?>
                                         <option value="<?php echo $sv; ?>"
                                             <?php echo ($val == $sv) ? 'selected' : ''; ?>

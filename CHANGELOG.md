@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.825D — 2026-10-06 — The default is the contract
+
+- Stops legacy bare skin settings from leaking across skin boundaries. A skin without an explicitly saved scoped value now receives its own manifest default, rather than inheriting whichever font, colour, or layout value another skin last left in the old global key.
+- Keeps declared defaults selectable even when an older manifest omitted them from its option list. The Skin Admin inserts the current default as a bounded choice instead of letting the browser silently select the first unrelated option and permanently save it when any calibration is submitted. This restores GALLERIA's original system `Georgia` masthead path and protects the other affected skin controls without redesigning their presentation.
+- Adds regression coverage for both sides of the fault: legacy values cannot cross into GALLERIA, while an explicit `galleria__htbs_title_font` choice remains authoritative.
+
 ## 0.7.824D — 2026-10-06 — The wall is the product
 
 - Repairs the COLD SNAP 0.7.26 solo-publishing contract. The selected SMACKONEOUT site's category and album names now refresh into real editable pickers, their canonical CMS IDs survive the offline catalogue, and those IDs are sent with the photograph. Orientation names are accepted as the same bounded landscape/portrait/square values used by the CMS instead of `portrait` being coerced to landscape. The rebuilt app carries the established green ColdSnap icon.
