@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "INSTANT CAMERA",
-    "version": "1.0.43",
+    "version": "1.0.44",
     "min_images": 200,
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
@@ -1073,14 +1073,6 @@
             },
             "selector": ":root",
             "property": "--nav-text-transform"
-        },
-        "ic_post_bg_color": {
-            "section": "COLOURS",
-            "type": "color",
-            "label": "Image Page Background",
-            "default": "#000000",
-            "selector": ":root",
-            "property": "--post-bg"
         },
         "ic_bg_primary": {
             "section": "COLOURS",
