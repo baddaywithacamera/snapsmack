@@ -17,11 +17,14 @@ function snapsmack_public_runtime_request(array $input): array
     if (trim((string)($input['tag'] ?? '')) !== '') return ['route' => 'hashtag', 'slug' => $input['tag'], 'page' => $input['page'] ?? 1];
     $view = strtolower(trim((string)($input['view'] ?? '')));
     $routes = ['archive', 'albums', 'collections', 'collection', 'photo', 'post', 'page', 'blogroll'];
-    if (in_array($view, $routes, true)) return ['route' => $view, 'slug' => $input['slug'] ?? '', 'id' => $input['id'] ?? 0, 'page' => $input['page'] ?? 1, 'fragment' => $input['fragment'] ?? false];
+    if (in_array($view, $routes, true)) return ['route' => $view, 'slug' => $input['slug'] ?? '', 'id' => $input['id'] ?? 0,
+        'page' => $input['page'] ?? 1, 'category_id' => $input['category_id'] ?? 0,
+        'album_id' => $input['album_id'] ?? 0, 'fragment' => $input['fragment'] ?? false];
     $slug = trim((string)($input['slug'] ?? ''));
     $aliases = is_array($input['route_aliases'] ?? null) ? $input['route_aliases'] : [];
     if ($slug !== '' && isset($aliases[$slug]) && in_array($aliases[$slug], $routes, true)) {
         return ['route' => $aliases[$slug], 'page' => $input['page'] ?? 1,
+            'category_id' => $input['category_id'] ?? 0, 'album_id' => $input['album_id'] ?? 0,
             'fragment' => $input['fragment'] ?? false];
     }
     if ($slug !== '') return ['route' => 'resolve', 'slug' => $slug, 'fragment' => $input['fragment'] ?? false];
@@ -34,6 +37,10 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     $request = snapsmack_public_parse_request(snapsmack_public_runtime_request($input));
     $repository = new SnapPublicRepository($pdo);
     $response = snapsmack_public_controller($repository, $request, $settings);
+    if (($response['kind'] ?? '') === 'photo') {
+        $response['comments_enabled'] = (($settings['global_comments_enabled'] ?? '1') === '1')
+            && (($response['item']['allow_comments'] ?? '1') == '1');
+    }
     // Profile chrome is shared across every strict public page, not just the
     // landing response. GAME ON also needs its puzzle field on About,
     // Blogroll and other secondary pages so those pages retain the skin.

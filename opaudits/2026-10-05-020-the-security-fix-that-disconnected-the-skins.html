@@ -116,9 +116,31 @@ h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
         <tr><td>Security boundary</td><td>Gate passes</td><td>A draft template-side validation change was rejected by the fleet ratchet before release; validation was moved to core and the ratchet then passed.</td></tr>
         <tr><td>Crawler repair deployment</td><td>Closed in 0.7.821D</td><td>The 0.7.820D first-request failure remains part of the incident record. Its sequential repair makes deployment a two-request operation so finalization loads newly installed code. Post-deployment HTTPS verification passed on 25 of 25 sites: every site serves <code>robots.txt</code> naming its public <code>/sitemap.xml</code>, <code>llms.txt</code> identifying 0.7.821D, <code>/.well-known/security.txt</code>, and valid XML from <code>/sitemap.xml</code>.</td></tr>
         <tr><td>Whole-fleet parity</td><td>Open</td><td>Neither this candidate nor this report represents all remaining skin findings as closed.</td></tr>
+        <tr><td>Strict photo/archive CMS contract</td><td>Source repaired and regression-verified; not yet published</td><td>The October 6 follow-up found that the strict controller accepted <code>?page=N</code> while the existing infinite-feed engine requested <code>?p=N</code>, causing later requests to repeat page one. It also found an arbitrary 5,000-photograph repository ceiling that made the older half of a roughly 10,000-photo SLICKR archive unreachable. The CMS now normalizes both page forms, prepares justified rows from a complete lightweight published-photo inventory, preserves the established manual/date order, and exposes only one bounded 25-row page to the skin. It also owns album/category archive filters and counts, photograph neighbours and boundaries, album/tag memberships, and formatted technical metadata formerly assembled around skin templates. A 6,001-photo regression proves that page two advances and the final photograph remains reachable.</td></tr>
     </table>
 
-    <h2>7. Closure gate</h2>
+    <h2>7. October 6 remediation addendum</h2>
+    <p>The initial recovery statement was still too optimistic about SLICKR. The
+    row-packing mathematics had been moved into the CMS, but the complete request
+    contract had not. The client requested subsequent batches with <code>?p=N</code>
+    while the strict controller read only <code>?page=N</code>; a successful fetch
+    could therefore repeat the first page indefinitely. Separately, a generic
+    5,000-item safety ceiling was reused for a lightweight layout inventory even
+    though the live archive contains roughly twice that number. Both defects were
+    capable of passing the existing presentation-token test.</p>
+    <p>The repair keeps authority on the correct side of the boundary. The public
+    repository performs a narrow, read-only query for published photograph identity,
+    thumbnail, dimensions, and established ordering. The controller calculates the
+    complete row geometry, slices it into bounded pages, and gives the skin only the
+    requested prepared rows. The same bounded controller now supplies filtered
+    archive results and counts plus each photograph's navigation destinations,
+    album and tag memberships, and formatted technical details. No database handle,
+    query, request parsing, metadata formatting, or paging rule returns to the skin.
+    Obsolete <code>fjGallery</code> declarations and the
+    exact SLICKR presentation restoration remain separate skin-package work and are
+    not represented here as complete.</p>
+
+    <h2>8. Closure gate</h2>
     <p>The failed 0.7.820D first-upgrade behavior was repaired in strict release order,
     and all 25 audited sites answer the public sitemap route and carry current CMS-generated
     crawler files. The formal security follow-up received an independent adversarial review.
@@ -133,7 +155,7 @@ h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
     gates pass. This moves the recovery from open-ended emergency work to bounded monitoring.
     It does not claim a fresh live visual sweep of every route on every site.</p>
 
-    <h2>8. Additional crawler-file admission</h2>
+    <h2>9. Additional crawler-file admission</h2>
     <p>We said SnapSmack sites maintained their own SEO and agent-facing files before checking
     the fleet. They did not. The generator existed, but we had not connected it to install or
     update completion, and the route it advertised did not exist. This should have been a
@@ -154,7 +176,7 @@ h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
     repeated public audit passed every crawler-file condition on all 25 sites. This closes the
     crawler-file sub-incident without claiming that the wider skin-parity incident is closed.</p>
 
-    <h2>9. Plain admission</h2>
+    <h2>10. Plain admission</h2>
     <p>We made a necessary security change in an unsafe operational way. We removed code from
     skins before proving that the CMS supplied everything those skins legitimately needed.
     We relied on tests that could pass while sites were visibly broken. We released too many

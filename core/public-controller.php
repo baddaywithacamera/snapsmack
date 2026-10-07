@@ -25,6 +25,8 @@ function snapsmack_public_parse_request(array $input): array
         'slug' => $slug,
         'id' => max(0, (int)($input['id'] ?? 0)),
         'page' => max(1, min(100000, (int)($input['page'] ?? 1))),
+        'category_id' => max(0, (int)($input['category_id'] ?? 0)),
+        'album_id' => max(0, (int)($input['album_id'] ?? 0)),
         'query' => $query,
     ];
     if (array_key_exists('fragment', $input)) $request['fragment'] = !empty($input['fragment']);
@@ -67,6 +69,58 @@ function snapsmack_game_on_focus_item(array $item): array
     $item['img_focus_y'] = max(0, min(100, is_numeric($item['img_focus_y'] ?? null) ? (float)$item['img_focus_y'] : 50));
     $item['img_zoom'] = max(100, min(500, is_numeric($item['img_zoom'] ?? null) ? (float)$item['img_zoom'] : 100));
     return $item;
+}
+
+/** Format stored photograph metadata once, outside every presentation skin. */
+function snapsmack_photo_technical_details(array $item): array
+{
+    $raw = json_decode((string)($item['img_exif'] ?? ''), true);
+    if (!is_array($raw) || $raw === []) return [];
+    require_once __DIR__ . '/fix-exif.php';
+    $formatted = get_smack_exif($raw);
+    if (!is_array($formatted)) return [];
+    $labels = [
+        'Camera' => $formatted['camera'] ?? '',
+        'Lens' => $formatted['lens'] ?? '',
+        'Aperture' => $formatted['aperture'] ?? '',
+        'Shutter' => $formatted['shutter'] ?? '',
+        'ISO' => $formatted['iso'] ?? '',
+        'Focal Length' => $formatted['focal'] ?? '',
+        'Film' => $formatted['film'] ?? '',
+        'Flash' => $formatted['flash'] ?? '',
+    ];
+    return array_filter($labels, static fn($value): bool => $value !== '' && $value !== 'N/A' && $value !== 'f/0' && $value !== '0mm');
+}
+
+/** Complete bounded detail model shared by traditional single-photo skins. */
+function snapsmack_photo_response(SnapPublicRepository $repository, array $item, array $navigation): array
+{
+    $previous = $repository->adjacentPhotograph((int)$item['id'], false);
+    $next = $repository->adjacentPhotograph((int)$item['id'], true);
+    $first = $repository->photographBoundary(false);
+    $last = $repository->photographBoundary(true);
+    foreach ([$previous, $next, $first, $last] as &$destination) {
+        if (is_array($destination) && !empty($destination['img_slug'])) {
+            $destination['url'] = snap_route_url('photo', ['slug' => $destination['img_slug']]);
+        }
+    }
+    unset($destination);
+    $item['technical'] = snapsmack_photo_technical_details($item);
+    $item['albums'] = array_map(static function (array $album): array {
+        $album['url'] = snap_route_url('archive', ['album' => (int)$album['id']]);
+        return $album;
+    }, $repository->photographAlbums((int)$item['id']));
+    $item['tags'] = array_map(static function (array $tag): array {
+        $tag['url'] = snap_route_url('hashtag', ['slug' => (string)$tag['slug']]);
+        return $tag;
+    }, $repository->photographTags((int)$item['id']));
+    return [
+        'status' => 200, 'kind' => 'photo', 'item' => $item,
+        'comments' => $repository->approvedComments((int)$item['id'], null),
+        'comments_enabled' => !empty($item['allow_comments']),
+        'navigation' => $navigation, 'previous' => $previous, 'next' => $next,
+        'first' => $first, 'last' => $last,
+    ];
 }
 
 function snapsmack_game_on_photo_response(SnapPublicRepository $repository, array $item, array $settings, array $navigation, int $perPage, bool $fragment): array
@@ -159,8 +213,8 @@ function snapsmack_grid_modal_photo_response(SnapPublicRepository $repository, a
     return $response;
 }
 
-/** Pack SLICKR photographs into the same justified rows as the original skin. */
-function snapsmack_slickr_rows(array $items, array $settings, int $page): array
+/** Pack a complete photograph inventory into bounded justified-layout pages. */
+function snapsmack_justified_rows(array $items, array $settings, int $page): array
 {
     $targetHeight = max(80, min(600, (int)($settings['justified_row_height'] ?? 240)));
     $canvasWidth = max(320, min(3000, (int)($settings['main_canvas_width'] ?? 1400)));
@@ -254,8 +308,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             ? snapsmack_instant_camera_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment)
             : (in_array($skin, $gridModalSkins, true)
             ? snapsmack_grid_modal_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment, $skin)
-            : ['status' => 200, 'kind' => 'photo', 'item' => snapsmack_game_on_focus_item($item),
-                'comments' => $repository->approvedComments((int)$item['id'], null), 'navigation' => $navigation]));
+            : snapsmack_photo_response($repository, $item, $navigation)));
         $pageItem = $slug !== '' ? $repository->activePageBySlug($slug) : null;
         return $pageItem === null
             ? ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation]
@@ -266,9 +319,11 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         $mode = (string)($settings['site_mode'] ?? 'photoblog');
         $items = $skin === 'glide'
             ? $repository->randomPhotographs(200)
+            : ($skin === 'slickr'
+            ? $repository->justifiedPhotographFeed()
             : ($mode === 'smacktalk'
             ? $repository->longformLanding($perPage, $offset)
-            : $repository->photographLanding($perPage, $skin === 'slickr' && !empty($settings['_cms_full_landing']) ? 0 : $offset));
+            : $repository->photographLanding($perPage, $offset)));
         $items = snapsmack_grid_frame_items($items, $settings, $skin);
         $rows = [];
         if ($skin === 'heuristic') $items = snapsmack_heuristic_items($items, (string)($settings['he_infomatic_map'] ?? ''));
@@ -282,7 +337,10 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
                 $rows[$index % 9][] = $item;
             }
         }
-        $slickrRows = $skin === 'slickr' ? snapsmack_slickr_rows($items, $settings, $page) : [];
+        $justifiedRows = [];
+        if ($skin === 'slickr') {
+            $justifiedRows = snapsmack_justified_rows($items, $settings, $page);
+        }
         $sliderItems = [];
         if ($skin === 'show-n-tell' && (($settings['htbs_slider_enabled'] ?? '1') === '1')) {
             $assetIds = json_decode((string)($settings['htbs_slider_assets'] ?? '[]'), true);
@@ -300,9 +358,9 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         }
         return ['status' => 200, 'kind' => 'landing', 'mode' => $mode, 'items' => $items,
             'puzzle_items' => $skin === 'game-on' ? array_map('snapsmack_game_on_focus_item', $repository->gameOnPuzzlePhotographs()) : [],
-            'rows' => $skin === 'slickr' ? ($slickrRows['rows'] ?? []) : $rows,
-            'total_pages' => $skin === 'slickr' ? ($slickrRows['total_pages'] ?? 1) : 1,
-            'next_page' => $skin === 'slickr' && $page < ($slickrRows['total_pages'] ?? 1) ? $page + 1 : 0,
+            'rows' => $skin === 'slickr' ? ($justifiedRows['rows'] ?? []) : $rows,
+            'total_pages' => $skin === 'slickr' ? ($justifiedRows['total_pages'] ?? 1) : 1,
+            'next_page' => $skin === 'slickr' && $page < ($justifiedRows['total_pages'] ?? 1) ? $page + 1 : 0,
             'slider_items' => $sliderItems, 'navigation' => $navigation, 'page' => $page,
             'photo_count' => $mode === 'smacktalk' ? 0 : $repository->publishedPhotographCount()];
     }
@@ -327,10 +385,13 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             'comments' => $repository->approvedComments(null, (int)$item['id']), 'navigation' => $navigation];
     }
     if ($route === 'archive') {
-        $total = $repository->publishedPhotographCount();
+        $categoryId = max(0, (int)($request['category_id'] ?? 0));
+        $albumId = max(0, (int)($request['album_id'] ?? 0));
+        $total = $repository->archivePhotographCount($categoryId, $albumId);
         return ['status' => 200, 'kind' => 'archive',
-            'items' => $repository->archivePhotographs($perPage, $offset),
+            'items' => $repository->archivePhotographs($perPage, $offset, $categoryId, $albumId),
             'navigation' => $navigation, 'page' => $page, 'per_page' => $perPage,
+            'taxonomy' => ['category_id' => $categoryId, 'album_id' => $albumId],
             'total_count' => $total, 'total_pages' => (int)ceil($total / $perPage),
             'has_more' => ($offset + $perPage) < $total,
             'previous_page' => $page > 1 ? $page - 1 : null,

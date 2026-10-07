@@ -6,6 +6,10 @@ require_once dirname(__DIR__) . '/core/skin-render-helpers.php';
 require_once dirname(__DIR__) . '/core/skin-view-contract.php';
 if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
 
+if (html_entity_decode(snap_route_url('hashtag', ['slug' => 'cats', 'page' => 2]), ENT_QUOTES) !== '/?page=2&tag=cats') {
+    throw new RuntimeException('Hashtag URL does not match the public ?tag= router.');
+}
+
 $compiledStyle = snapsmack_skin_custom_style(['custom_css_public' => ':root{--saved:#123456} </style><script>alert(1)</script>']);
 $compiledHtml = snap_render_html($compiledStyle);
 if (!str_contains($compiledHtml, 'id="snapsmack-dynamic-css"')

@@ -128,6 +128,24 @@ final class SnapPublicRepository
         );
     }
 
+    /**
+     * Lightweight complete inventory for CMS-owned justified layouts.
+     *
+     * A justified row cannot be paged correctly until the CMS has measured the
+     * photographs which precede it: cutting the SQL result at an arbitrary item
+     * count changes row boundaries and can make the rest of a large archive
+     * unreachable.  Keep this read deliberately narrow and let the controller
+     * expose only one bounded page of prepared rows to the skin.
+     */
+    public function justifiedPhotographFeed(): array {
+        return $this->all(
+            "SELECT id,img_title,img_slug,img_alt,img_file,img_thumb_aspect,img_width,img_height
+             FROM snap_images
+             WHERE img_status='published' AND img_date <= NOW()
+             ORDER BY sort_order ASC,img_date DESC,id DESC"
+        );
+    }
+
     public function randomPhotographs(int $limit): array {
         return $this->all(
             "SELECT id,img_title,img_slug,img_alt,img_file,img_width,img_height,img_thumb_square,img_thumb_aspect
@@ -257,6 +275,30 @@ final class SnapPublicRepository
         );
     }
 
+    public function archivePhotographCount(int $categoryId = 0, int $albumId = 0): int {
+        $scope = '';
+        $params = [];
+        if ($categoryId > 0) {
+            $scope .= ' AND EXISTS (SELECT 1 FROM snap_image_cat_map cm WHERE cm.image_id=i.id AND cm.cat_id=?)';
+            $params[] = $categoryId;
+        }
+        if ($albumId > 0) {
+            $scope .= ' AND EXISTS (SELECT 1 FROM snap_image_album_map am WHERE am.image_id=i.id AND am.album_id=?)';
+            $params[] = $albumId;
+        }
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(i.id) FROM snap_images i
+             WHERE i.img_status='published' AND i.img_date <= NOW()
+               AND NOT EXISTS (
+                    SELECT 1 FROM snap_posts p
+                    WHERE p.signature_image_id=i.id
+                      AND p.status='published' AND p.created_at <= NOW()
+               ){$scope}"
+        );
+        $stmt->execute($params);
+        return (int)$stmt->fetchColumn();
+    }
+
     public function publicCategories(): array {
         return $this->all(
             "SELECT c.id,c.cat_name,COUNT(DISTINCT i.id) AS photograph_count,
@@ -362,6 +404,26 @@ final class SnapPublicRepository
              FROM snap_comments WHERE {$column}=? AND is_approved=1 AND is_spam=0
              ORDER BY comment_date ASC,id ASC",
             [(int)$id]
+        );
+    }
+
+    public function photographAlbums(int $imageId): array {
+        return $this->all(
+            "SELECT a.id,a.album_name,a.album_description
+             FROM snap_albums a
+             JOIN snap_image_album_map m ON m.album_id=a.id
+             WHERE m.image_id=? ORDER BY a.album_name ASC,a.id ASC",
+            [$imageId]
+        );
+    }
+
+    public function photographTags(int $imageId): array {
+        return $this->all(
+            "SELECT t.id,t.tag,t.slug
+             FROM snap_tags t
+             JOIN snap_image_tags m ON m.tag_id=t.id
+             WHERE m.image_id=? ORDER BY t.tag ASC,t.id ASC",
+            [$imageId]
         );
     }
 
