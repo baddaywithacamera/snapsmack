@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.827D — 2026-10-06 — The slugs stop being poop
+
+- Makes root-level static-page slugs such as `/cameras` the single canonical public form. Both legacy navigation builders now emit the clean URL they could already resolve, and old `page.php?slug=…` bookmarks permanently redirect to it.
+
 ## 0.7.826D — 2026-10-06 — The styles get home
 
 - Makes public skin option CSS self-heal when its compiled cache is missing or stale, including once after each CMS update. Manifest defaults and saved skin-scoped values again reach live pages without a manual Skin Admin save.
