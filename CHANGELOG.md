@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.841D — 2026-10-07 — Solid footing
+
+- Restores INSTANT CAMERA navigation from the unchanged saved settings. The skin no longer forces the CMS-provided navbar background to transparent, and its 40-pixel navigation wrapper no longer clips child menus; dropdowns retain the bounded CMS-provided background colour, opacity, and text colour.
+- Records SnapSmack's governing order in `ETHICS.md` and continuity documentation: ethics first, security second, function third; nothing lower may compromise what is above it.
+
 ## 0.7.840D — 2026-10-07 — Same door
 
 - Completes SCROLL font delivery after deployed 0.7.839D proved the central static host still omitted its cross-origin grant. Approved inventory fonts now load through a bounded same-origin CMS provider which retrieves and caches the canonical asset server-side. Saved font selections and skin CSS remain unchanged; arbitrary URLs and unlisted font families are rejected.
