@@ -64,16 +64,10 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
     // remains authoritative.
     $known_font_leaks = [
         'galleria' => [
-            'htbs_title_font'   => 'Libre Baskerville',
-            'htbs_heading_font' => 'DM Sans',
-            'htbs_body_font'    => 'DM Sans',
+            'htbs_title_font' => 'Libre Baskerville',
         ],
         'true-grit' => [
             'header_font_family' => 'Playfair Display',
-        ],
-        'rational-geo' => [
-            'body_font'    => 'DM Sans',
-            'comment_font' => 'DM Sans',
         ],
     ];
     $leak_profile = $known_font_leaks[$skin_slug] ?? [];
