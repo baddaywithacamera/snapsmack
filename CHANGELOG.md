@@ -9,6 +9,12 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.826D — 2026-10-06 — The styles get home
+
+- Makes public skin option CSS self-heal when its compiled cache is missing or stale, including once after each CMS update. Manifest defaults and saved skin-scoped values again reach live pages without a manual Skin Admin save.
+- Restores the connection rather than redesigning the skins: their existing templates and stylesheets remain authoritative for presentation.
+- Restores the GRAMOFSMACK landing contract in the CMS: one ordered tile per published post, the declared cover, accurate post count, retained trigram metadata, per-image frame treatment, and complete carousel contents in the modal viewer.
+
 ## 0.7.825D — 2026-10-06 — The default is the contract
 
 - Stops legacy bare skin settings from leaking across skin boundaries. A skin without an explicitly saved scoped value now receives its own manifest default, rather than inheriting whichever font, colour, or layout value another skin last left in the old global key.

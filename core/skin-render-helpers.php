@@ -99,10 +99,30 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $item = is_array($data['item'] ?? null) ? $data['item'] : [];
         $site = is_array($data['site'] ?? null) ? $data['site'] : [];
         $comments = is_array($data['comments'] ?? null) ? $data['comments'] : [];
+        $photographs = is_array($data['photographs'] ?? null) ? $data['photographs'] : [];
         $siteName = snap_escape_html($site['site_name'] ?? '');
         $image = (string)($item['img_file'] ?? '');
         $html = '<article class="' . $prefix . '-post-ig"><div class="' . $prefix . '-post-ig-image">';
-        if ($image !== '') {
+        if (count($photographs) > 1) {
+            $html .= '<div class="' . $prefix . '-carousel-wrap"><div id="' . $prefix . '-carousel" class="ss-slider" data-slider-mode="carousel"><div class="slider-track">';
+            foreach ($photographs as $photograph) {
+                if (!is_array($photograph) || empty($photograph['img_file'])) continue;
+                $classes = 'slider-slide' . (!empty($photograph['is_framed']) ? ' ' . $prefix . '-slide--framed' : '');
+                $html .= '<div class="' . $classes . '" data-image-id="' . snap_escape_attr($photograph['id'] ?? '') . '" style="' . snap_escape_attr($photograph['frame_style'] ?? '') . '">'
+                    . (string)snap_render_component('image', [
+                        'url' => $photograph['img_file'],
+                        'alt' => $photograph['img_alt'] ?? $photograph['img_title'] ?? '',
+                        'attributes' => ['data-lightbox-src' => $photograph['img_file']],
+                    ]) . '</div>';
+            }
+            $html .= '</div></div><div class="ss-slider-dots" data-slider-indicators>';
+            foreach ($photographs as $index => $photograph) {
+                $html .= '<button type="button" class="ss-slider-dot' . ($index === 0 ? ' is-active' : '')
+                    . '" data-slide-index="' . snap_escape_attr($index) . '" aria-label="'
+                    . snap_escape_attr($photograph['img_title'] ?? 'Photograph') . '"></button>';
+            }
+            $html .= '</div></div>';
+        } elseif ($image !== '') {
             $html .= (string)snap_render_component('image', [
                 'url' => $image,
                 'alt' => $item['img_alt'] ?? $item['img_title'] ?? '',
