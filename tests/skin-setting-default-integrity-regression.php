@@ -24,6 +24,14 @@ if (($settings['htbs_title_font'] ?? null) !== 'Playfair Display') {
     $fail('An explicit GALLERIA font choice was not preserved.');
 }
 
+$galleriaManifest = json_decode(
+    file_get_contents(dirname(__DIR__) . '/skins/galleria/manifest.json'),
+    true
+);
+if (($galleriaManifest['options']['header_text_transform']['default'] ?? null) !== 'none') {
+    $fail('GALLERIA must preserve the entered site-title case by default.');
+}
+
 // The scoped values written by the broken cross-skin picker are not genuine
 // customizations.  Exact known leak combinations recover the skin defaults,
 // while unrelated explicit choices above remain authoritative.
