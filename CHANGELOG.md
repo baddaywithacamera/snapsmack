@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.839D — 2026-10-07 — Let it through
+
+- Completes the SCROLL masthead-font repair after the deployed 0.7.838D acceptance check exposed the remaining delivery failure. The central font returned 200 but omitted `Access-Control-Allow-Origin`, so browsers rejected `Special Elite` across fleet hostnames. Font-file responses now carry the required cross-origin grant in both the installed rules and their repair template; the saved family and skin typography remain unchanged.
+
 ## 0.7.838D — 2026-10-07 — Right way up
 
 - Restores SCROLL masthead fonts from the saved family without substitution. The shared page loader now serves packaged local faces from the same canonical central asset repository as the bounded presentation compiler; it no longer emits an install-local font URL that returns 404 on usedcarparts.photoblogs.fyi.
