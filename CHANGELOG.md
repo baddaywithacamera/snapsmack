@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.836D — 2026-10-07 — Ring of fire
+
+- Restores AURORA's animated palette borders by reconnecting the exact presentation hooks lost in its strict-template migration. Landing tiles once again emit their `.au-ring` overlay and row/column coordinates for the shared wave engine; the saved palette, direction, rhythm, opacity, and width remain authoritative.
+
 ## 0.7.835D — 2026-10-07 — True colours
 
 - Restores PARADE's established waving flag background. The CMS correctly handed the shared flag engine the skin's saved palette as a JSON array of colour strings, but the relocated engine interpreted each string as a weighted pair and reduced colours such as `#5bcffb` to the invalid colour `#`. The engine now accepts both the original string-list contract and its newer weighted-pair form without changing PARADE's saved presentation.
