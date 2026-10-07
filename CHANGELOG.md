@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.829D — 2026-10-07 — Search belongs in the bar
+
+- Restores SLICKR's original pill-shaped search field and compact calendar button in the profile bar. Their established skin markup now points to the CMS-owned search and calendar handlers instead of substituting the generic floating search dock. SLICKR advances sequentially from 1.0.29 to 1.0.30.
+
 ## 0.7.828D — 2026-10-06 — Put the ring back
 
 - Restores JIVE TURKEY's existing animated colour-border presentation by returning the missing `.jt-ring` element to every landing tile. The CMS-owned border engine and saved settings were already deployed and enabled; the strict skin template had simply stopped giving that engine the presentation hook it paints.
