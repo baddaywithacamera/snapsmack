@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.835D — 2026-10-07 — True colours
+
+- Restores PARADE's established waving flag background. The CMS correctly handed the shared flag engine the skin's saved palette as a JSON array of colour strings, but the relocated engine interpreted each string as a weighted pair and reduced colours such as `#5bcffb` to the invalid colour `#`. The engine now accepts both the original string-list contract and its newer weighted-pair form without changing PARADE's saved presentation.
+
 ## 0.7.834D — 2026-10-07 — Name on the tin
 
 - Binds compiled public option CSS to the skin that produced it. The separate cache stamp on theschoolofhardnocks.ca claimed GAME ON was current while the blob itself contained PHOTOGRAM's `--pg-*` variables, leaving GAME ON without its saved 85px side gutters and falling back to zero. Compiled CSS now carries its own skin/version identity; a mismatched or legacy blob is rebuilt and emitted on the same request.

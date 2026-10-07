@@ -67,7 +67,15 @@
             try {
                 var custom = JSON.parse(d.stripes);
                 if (Array.isArray(custom) && custom.length) {
-                    stripes = custom.map(function (s) { return [String(s[0]), Math.max(0.01, +s[1] || 1)]; });
+                    // Skin manifests historically publish a simple array of
+                    // colour strings.  The shared engine also accepts weighted
+                    // [colour, weight] pairs, but must not treat a string as an
+                    // array of characters ("#5bcffb" became colour "#").
+                    stripes = custom.map(function (s) {
+                        return Array.isArray(s)
+                            ? [String(s[0]), Math.max(0.01, +s[1] || 1)]
+                            : [String(s), 1];
+                    });
                     orient  = (d.orientation === 'v') ? 'v' : 'h';
                 }
             } catch (e) { fault('parse data-stripes', e); }
