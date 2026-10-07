@@ -57,6 +57,27 @@ if (($grit['header_font_family'] ?? null) !== 'Raleway') {
     $fail('Known TRUE GRIT title-font leak did not recover Raleway.');
 }
 
+// JIVE TURKEY's original settings are unambiguously skin-owned by their jt_
+// prefix. The scoping migration must not replace a saved white solo surface
+// (or its related scrim/card controls) with the black manifest defaults.
+$jive = [
+    'jt_post_bg_color' => '#ffffff',
+    'jt_solo_scrim_color' => '#ffffff',
+    'jt_solo_scrim_opacity' => '0',
+    'jt_solo_card_color' => '#ffffff',
+];
+snapsmack_apply_skin_settings($jive, 'jive-turkey');
+foreach (['jt_post_bg_color', 'jt_solo_scrim_color', 'jt_solo_scrim_opacity', 'jt_solo_card_color'] as $key) {
+    if (($jive[$key] ?? null) !== ([
+        'jt_post_bg_color' => '#ffffff',
+        'jt_solo_scrim_color' => '#ffffff',
+        'jt_solo_scrim_opacity' => '0',
+        'jt_solo_card_color' => '#ffffff',
+    ][$key])) {
+        $fail('JIVE TURKEY lost a pre-scope skin-owned presentation value: ' . $key);
+    }
+}
+
 // Global-only settings are never replaced by a manifest option/default pass.
 if (($settings['active_skin'] ?? null) !== 'galleria') {
     $fail('The skin settings overlay changed a global-only setting.');

@@ -56,6 +56,13 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
     $prefix     = $skin_slug . '__';
     $prefix_len = strlen($prefix);
 
+    // JIVE TURKEY predates per-skin scoping and deliberately names its
+    // presentation controls with a private jt_ prefix. Those bare values
+    // cannot belong to another skin. Keep them as the migration source when
+    // no scoped copy exists instead of replacing legitimate saved colours,
+    // scrims and layout choices with the manifest defaults.
+    $legacy_owned_prefix = $skin_slug === 'jive-turkey' ? 'jt_' : '';
+
     // A short-lived Skin Admin regression copied the currently selected font
     // from one skin into the scoped row of the next skin that was saved.  Once
     // scoped, those values looked intentional and survived the general legacy
@@ -104,6 +111,10 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
             $scoped_key = $prefix . $bare_key;
             if (array_key_exists($scoped_key, $settings)) {
                 $settings[$bare_key] = $settings[$scoped_key];
+            } elseif ($legacy_owned_prefix !== ''
+                && str_starts_with((string)$bare_key, $legacy_owned_prefix)
+                && array_key_exists($bare_key, $settings)) {
+                // Preserve the skin's unambiguously owned pre-scope value.
             } elseif (is_array($meta) && array_key_exists('default', $meta)) {
                 $settings[$bare_key] = $meta['default'];
             } else {
