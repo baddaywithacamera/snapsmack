@@ -14,6 +14,7 @@
 ## 0.7.841D — 2026-10-07 — Solid footing
 
 - Restores INSTANT CAMERA navigation from the unchanged saved settings. The skin no longer forces the CMS-provided navbar background to transparent, and its 40-pixel navigation wrapper no longer clips child menus; dropdowns retain the bounded CMS-provided background colour, opacity, and text colour.
+- Restores INSTANT CAMERA's saved Solo Background Colour and Opacity in the post viewer. A duplicate legacy `Image Page Background` declaration was emitted later as solid black and overrode the CMS-provided saved white 80% value; the duplicate declaration is removed while the bounded CMS provider remains authoritative for presentation.
 - Records SnapSmack's governing order in `ETHICS.md` and continuity documentation: ethics first, security second, function third; nothing lower may compromise what is above it.
 
 ## 0.7.840D — 2026-10-07 — Same door
