@@ -11,6 +11,7 @@
 # SnapSmack Changelog
 ## 0.7.824D — 2026-10-06 — The wall is the product
 
+- Repairs the COLD SNAP 0.7.26 solo-publishing contract. The selected SMACKONEOUT site's category and album names now refresh into real editable pickers, their canonical CMS IDs survive the offline catalogue, and those IDs are sent with the photograph. Orientation names are accepted as the same bounded landscape/portrait/square values used by the CMS instead of `portrait` being coerced to landscape. The rebuilt app carries the established green ColdSnap icon.
 - Restores SLICKR as SLICKR instead of the disconnected generic grid published in 1.0.27. SLICKR 1.0.28 receives its cover photograph, lifetime statistics, Flickr-style navigation, search, and justified-row geometry through the bounded CMS presentation contract, then renders the known-good full-width banner and tightly packed photographic wall without regaining database, routing, or reusable engine authority.
 - Completes INSTANT CAMERA 1.0.42's known-good presentation restoration around the CMS-owned engines: original square-print viewer, compact social panel, sticky-nav avatar, Home and Blogroll fallbacks, transparent navigation and panel, frameless prints, 2px grid rhythm, and original profile typography. Its one intentional visual change remains the requested high-key white viewer veil in place of the old dark overlay.
 

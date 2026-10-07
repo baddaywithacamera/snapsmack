@@ -161,12 +161,22 @@ class ConnectPanel(QWidget):
         return names
 
     def _start_mode_discovery(self):
-        """Verify every saved destination without blocking the Qt interface."""
+        """Probe only destinations whose mode is not already in the shared profile/catalog."""
         profiles = []
         for name in profile_manager.list_profiles():
             profile = profile_manager.load_profile(name) or {}
-            if profile.get("url") and profile.get("api_key"):
+            known = self._profile_mode(profile)
+            if not known and profile.get("url"):
+                known = str(snap_library.site_mode(profile["url"]) or "").strip().lower()
+            if known in ("photoblog", "carousel", "smacktalk"):
+                self._discovered_modes[name] = known
+            elif profile.get("url") and profile.get("api_key"):
                 profiles.append((name, profile.get("url"), profile.get("api_key")))
+
+        if not profiles:
+            self._probing_modes = False
+            self._rebuild_profile_combo()
+            return
 
         def run():
             def probe(row):

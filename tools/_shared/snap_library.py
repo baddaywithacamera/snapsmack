@@ -51,8 +51,8 @@ from snap_paths import contained_local_path
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta       (key TEXT PRIMARY KEY, val TEXT);
-CREATE TABLE IF NOT EXISTS categories (name TEXT PRIMARY KEY, description TEXT DEFAULT '');
-CREATE TABLE IF NOT EXISTS albums     (name TEXT PRIMARY KEY, description TEXT DEFAULT '');
+CREATE TABLE IF NOT EXISTS categories (name TEXT PRIMARY KEY, description TEXT DEFAULT '', remote_id INTEGER DEFAULT 0);
+CREATE TABLE IF NOT EXISTS albums     (name TEXT PRIMARY KEY, description TEXT DEFAULT '', remote_id INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS tags       (tag  TEXT PRIMARY KEY);
 CREATE TABLE IF NOT EXISTS titles     (title TEXT PRIMARY KEY);
 
@@ -190,12 +190,22 @@ _ASSET_COLUMN_MIGRATIONS = (
     "ALTER TABLE assets ADD COLUMN img_date    TEXT DEFAULT ''",
 )
 
+_CATALOG_COLUMN_MIGRATIONS = (
+    "ALTER TABLE categories ADD COLUMN remote_id INTEGER DEFAULT 0",
+    "ALTER TABLE albums ADD COLUMN remote_id INTEGER DEFAULT 0",
+)
+
 
 def _connect(site: str) -> sqlite3.Connection:
     conn = sqlite3.connect(_db_path(site))
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(_SCHEMA)
     for stmt in _ASSET_COLUMN_MIGRATIONS:
+        try:
+            conn.execute(stmt)
+        except sqlite3.OperationalError:
+            pass  # duplicate column — already migrated
+    for stmt in _CATALOG_COLUMN_MIGRATIONS:
         try:
             conn.execute(stmt)
         except sqlite3.OperationalError:
@@ -224,12 +234,12 @@ def sync_from_sybu_data(site: str, payload: dict) -> dict:
             conn.execute("DELETE FROM tags")
             conn.execute("DELETE FROM titles")
             conn.executemany(
-                "INSERT OR REPLACE INTO categories(name, description) VALUES (?, ?)",
-                [(str(c.get("name", "")), str(c.get("description", "") or "")) for c in cats if c.get("name")],
+                "INSERT OR REPLACE INTO categories(name, description, remote_id) VALUES (?, ?, ?)",
+                [(str(c.get("name", "")), str(c.get("description", "") or ""), int(c.get("id", 0) or 0)) for c in cats if c.get("name")],
             )
             conn.executemany(
-                "INSERT OR REPLACE INTO albums(name, description) VALUES (?, ?)",
-                [(str(a.get("name", "")), str(a.get("description", "") or "")) for a in albums if a.get("name")],
+                "INSERT OR REPLACE INTO albums(name, description, remote_id) VALUES (?, ?, ?)",
+                [(str(a.get("name", "")), str(a.get("description", "") or ""), int(a.get("id", 0) or 0)) for a in albums if a.get("name")],
             )
             conn.executemany("INSERT OR REPLACE INTO tags(tag) VALUES (?)", [(str(t),) for t in tags])
             conn.executemany("INSERT OR REPLACE INTO titles(title) VALUES (?)", [(str(t),) for t in titles])
@@ -266,6 +276,30 @@ def categories(site: str) -> list:
 
 def albums(site: str) -> list:
     return _col(site, "SELECT name FROM albums ORDER BY name COLLATE NOCASE")
+
+
+def category_map(site: str) -> dict:
+    if not os.path.isfile(_db_path(site)):
+        return {}
+    conn = _connect(site)
+    try:
+        return {str(name).lower(): int(remote_id or 0)
+                for name, remote_id in conn.execute(
+                    "SELECT name, remote_id FROM categories WHERE remote_id > 0").fetchall()}
+    finally:
+        conn.close()
+
+
+def album_map(site: str) -> dict:
+    if not os.path.isfile(_db_path(site)):
+        return {}
+    conn = _connect(site)
+    try:
+        return {str(name).lower(): int(remote_id or 0)
+                for name, remote_id in conn.execute(
+                    "SELECT name, remote_id FROM albums WHERE remote_id > 0").fetchall()}
+    finally:
+        conn.close()
 
 
 def tags(site: str) -> list:

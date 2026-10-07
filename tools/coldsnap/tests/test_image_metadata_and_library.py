@@ -38,6 +38,21 @@ def check(name, cond):
 
 SITE = "https://example.photoblogs.fyi"
 
+# --- CMS catalogue IDs survive the offline mirror and drive solo posting ----
+L.sync_from_sybu_data(SITE, {
+    "site_mode": "photoblog",
+    "categories": [{"id": 7, "name": "Cats", "description": "Felines"}],
+    "albums": [{"id": 11, "name": "Aristaeus", "description": "The cat"}],
+})
+check("category id survives catalogue sync", L.category_map(SITE) == {"cats": 7})
+check("album id survives catalogue sync", L.album_map(SITE) == {"aristaeus": 11})
+resolver = P.SoloPoster.__new__(P.SoloPoster)
+resolver.site_data = {"categories": L.category_map(SITE), "albums": L.album_map(SITE)}
+taxonomy_draft = O.Draft(draft_id="tax", kind=O.KIND_SOLO, mode=O.MODE_SOLO,
+                         category="Cats", album="Aristaeus")
+check("solo poster resolves the CMS taxonomy IDs",
+      resolver._resolve_ids(taxonomy_draft) == (7, 11))
+
 # --- DraftImage.alt exists and round-trips the draft JSON --------------------
 im = O.DraftImage(local_path="C:/x/a.jpg", filename="a.jpg", alt="a red barn at dusk")
 check("alt survives to_dict/from_dict",
