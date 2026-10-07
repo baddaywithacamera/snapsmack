@@ -1,6 +1,6 @@
 <?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
 <?php if (!empty($view['response']['fragment']) && ($view['response']['kind'] ?? '') === 'photo'): ?>
-<?php echo snap_render_html(snap_render_component('grid-photo-fragment', ['prefix' => 'pa', 'item' => $view['response']['item'] ?? [], 'comments' => $view['response']['comments'] ?? [], 'site' => $view['site']])); ?>
+<?php echo snap_render_html(snap_render_component('grid-photo-fragment', ['prefix' => 'pa', 'item' => $view['response']['item'] ?? [], 'photographs' => $view['response']['photographs'] ?? [], 'comments' => $view['response']['comments'] ?? [], 'site' => $view['site']])); ?>
 <?php else: ?>
 <!doctype html><html lang="<?php echo snap_escape_attr($view['site']['language']); ?>" dir="<?php echo snap_escape_attr($view['site']['direction']); ?>">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?php echo snap_escape_html($view['response']['page_title'] ?? $view['site']['site_name']); ?></title><link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['skin_style_url']); ?>"><?php echo snap_render_html($view['site']['skin_custom_style'] ?? ''); ?><?php echo snap_render_html($view['site']['skin_presentation']['style'] ?? ''); ?></head>
