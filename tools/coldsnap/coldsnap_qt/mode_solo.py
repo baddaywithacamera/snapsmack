@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 import sumna_offline as O
+import snap_library
 from sumna_post import SumnaConnection, SoloPoster, InsecureTransportError
 
 from . import theme
@@ -37,6 +38,10 @@ class _AiBridge(QObject):
     failed = Signal(str)
 
 
+class _CatalogBridge(QObject):
+    loaded = Signal(str, list, list)
+
+
 class SoloMode(QWidget):
     SUITE_MODE = O.MODE_SOLO
 
@@ -45,6 +50,9 @@ class SoloMode(QWidget):
         self.app_config = app_config_provider     # () -> dict with url/api_key
         self._editing_id = None
         self._image_path = ""
+        self._catalog_site = ""
+        self._catalog_bridge = _CatalogBridge(self)
+        self._catalog_bridge.loaded.connect(self._apply_catalog)
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(10, 10, 0, 0)
@@ -116,8 +124,12 @@ class SoloMode(QWidget):
         grid = QGridLayout()
         grid.addWidget(field_label("Category"), 0, 0)
         grid.addWidget(field_label("Album"), 0, 1)
-        self.cat_edit = QLineEdit()
-        self.album_edit = QLineEdit()
+        self.cat_edit = QComboBox()
+        self.album_edit = QComboBox()
+        for picker in (self.cat_edit, self.album_edit):
+            picker.setEditable(True)
+            picker.setInsertPolicy(QComboBox.NoInsert)
+            picker.addItem("")
         grid.addWidget(self.cat_edit, 1, 0)
         grid.addWidget(self.album_edit, 1, 1)
         self.options_sec.add_layout(grid)
@@ -217,8 +229,8 @@ class SoloMode(QWidget):
         self.tags_edit.setText(draft.tags)
         self.caption_edit.set_state(draft.caption, getattr(draft, "body_blocks", ""))
         self.alt_edit.setPlainText(draft.alt)
-        self.cat_edit.setText(draft.category)
-        self.album_edit.setText(draft.album)
+        self.cat_edit.setCurrentText(draft.category)
+        self.album_edit.setCurrentText(draft.album)
         self.orient_combo.setCurrentText(draft.orientation or "auto")
         self.status_combo.setCurrentText(draft.img_status)
         self.colour_combo.setCurrentText(_VAL_TO_COLOUR.get(draft.color_mode, "—"))
@@ -232,9 +244,10 @@ class SoloMode(QWidget):
         self.path_lbl.setText("No photo yet.")
         self.photo_sec.header.setText("PHOTO — none yet")
         self.preview.clear()
-        for w in (self.title_edit, self.tags_edit, self.cat_edit,
-                  self.album_edit, self.dl_url):
+        for w in (self.title_edit, self.tags_edit, self.dl_url):
             w.clear()
+        self.cat_edit.setCurrentText("")
+        self.album_edit.setCurrentText("")
         self.caption_edit.clear()
         self.alt_edit.clear()
         self.orient_combo.setCurrentText("auto")
@@ -256,8 +269,8 @@ class SoloMode(QWidget):
         draft.caption = self.caption_edit.toPlainText().strip()
         draft.body_blocks = self.caption_edit.blocks_json()
         draft.alt = self.alt_edit.toPlainText().strip()
-        draft.category = self.cat_edit.text().strip()
-        draft.album = self.album_edit.text().strip()
+        draft.category = self.cat_edit.currentText().strip()
+        draft.album = self.album_edit.currentText().strip()
         draft.orientation = self.orient_combo.currentText()
         draft.color_mode = _COLOUR_TO_VAL.get(self.colour_combo.currentText(), "")
         draft.ai_colors = (getattr(self, "_ai_meta", {}) or {}).get("colors", draft.ai_colors)
@@ -343,10 +356,10 @@ class SoloMode(QWidget):
             self.tags_edit.setText(meta["tags"])
         if meta.get("title") and not self.title_edit.text().strip():
             self.title_edit.setText(meta["title"])
-        if meta.get("category") and not self.cat_edit.text().strip():
-            self.cat_edit.setText(meta["category"])
-        if meta.get("album") and not self.album_edit.text().strip():
-            self.album_edit.setText(meta["album"])
+        if meta.get("category") and not self.cat_edit.currentText().strip():
+            self.cat_edit.setCurrentText(meta["category"])
+        if meta.get("album") and not self.album_edit.currentText().strip():
+            self.album_edit.setCurrentText(meta["album"])
         if meta.get("orientation"):
             self.orient_combo.setCurrentText(meta["orientation"])
         if meta.get("color_mode"):
@@ -361,6 +374,45 @@ class SoloMode(QWidget):
         QMessageBox.critical(self, "AI Fill failed", msg)
 
     # -- network ------------------------------------------------------------------
+    def refresh_taxonomy(self):
+        """Show the cached vocabulary immediately, then refresh it from the CMS."""
+        cfg = self.app_config() or {}
+        url = (cfg.get("url") or "").strip()
+        key = (cfg.get("api_key") or "").strip()
+        self._catalog_site = url
+        self._apply_catalog(url, snap_library.categories(url), snap_library.albums(url))
+        if not url or not key:
+            return
+
+        bridge = self._catalog_bridge
+
+        def work():
+            try:
+                catalog = SumnaConnection(url, key).site_catalog(timeout=12)
+                snap_library.sync_from_sybu_data(url, catalog)
+                bridge.loaded.emit(url, snap_library.categories(url), snap_library.albums(url))
+            except Exception:
+                # Posting performs one final synchronous refresh if IDs are absent.
+                pass
+
+        threading.Thread(target=work, daemon=True, name="coldsnap-solo-taxonomy").start()
+
+    def _apply_catalog(self, site: str, categories: list, albums: list):
+        if site != self._catalog_site:
+            return
+        current_cat = self.cat_edit.currentText()
+        current_album = self.album_edit.currentText()
+        for picker, values, current in (
+            (self.cat_edit, categories, current_cat),
+            (self.album_edit, albums, current_album),
+        ):
+            picker.blockSignals(True)
+            picker.clear()
+            picker.addItem("")
+            picker.addItems([str(value) for value in values if str(value).strip()])
+            picker.setCurrentText(current)
+            picker.blockSignals(False)
+
     def _poster_and_url(self):
         cfg = self.app_config() or {}
         url = (cfg.get("url") or "").strip()
@@ -373,6 +425,18 @@ class SoloMode(QWidget):
         except InsecureTransportError as e:
             QMessageBox.warning(self, "Insecure connection", str(e))
             return None, url
-        return SoloPoster(conn, site_data=None), url
+        categories = snap_library.category_map(url)
+        albums = snap_library.album_map(url)
+        if not categories and not albums:
+            try:
+                snap_library.sync_from_sybu_data(url, conn.site_catalog(timeout=15))
+                categories = snap_library.category_map(url)
+                albums = snap_library.album_map(url)
+            except Exception as e:
+                QMessageBox.warning(self, "Site catalogue unavailable",
+                                    "ColdSnap could not load this site's categories and albums: "
+                                    + str(e))
+                return None, url
+        return SoloPoster(conn, site_data={"categories": categories, "albums": albums}), url
 
 # ===== SNAPSMACK EOF =====
