@@ -351,7 +351,12 @@ function snapsmack_grid_frame_items(array $items, array $settings, string $skin)
         if(!preg_match('/^#[0-9a-f]{6}$/i',$bg))$bg='#ffffff';
         $items[$index]['frame_style']="--tile-img-size:{$size}%;--tile-border-w:{$border}px;--tile-border-c:{$color};--tile-bg:{$bg};--tile-shadow:{$shadow};";
         $items[$index]['is_framed']=empty($item['is_trigram_slice'])&&($size<100||$border>0||$shadow!=='none');
-        $items[$index]['is_portrait']=(int)($item['img_height']??0)>(int)($item['img_width']??0);
+        $orientation = array_key_exists('img_orientation', $item)
+            ? filter_var($item['img_orientation'], FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE)
+            : null;
+        $items[$index]['is_portrait'] = $orientation !== null
+            ? $orientation === 1
+            : (int)($item['img_height']??0)>(int)($item['img_width']??0);
         if ($skin === 'aurora') {
             $items[$index]['aurora_wave_row'] = intdiv((int)$index, 3);
             $items[$index]['aurora_wave_column'] = (int)$index % 3;
