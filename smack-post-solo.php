@@ -556,9 +556,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['img_file'])) {
         // --- ORIENTATION DETECTION ---
         // Classifies image as landscape, portrait, or square for archive display.
         // User override takes precedence; otherwise auto-detect from final dimensions.
-        $orient_override = $_POST['orientation_override'] ?? 'auto';
+        $orient_override = strtolower(trim((string)($_POST['orientation_override'] ?? 'auto')));
+        $orientation_values = ['landscape' => 0, 'portrait' => 1, 'square' => 2, '0' => 0, '1' => 1, '2' => 2];
         if ($orient_override !== 'auto') {
-            $auto_orientation = (int)$orient_override;
+            $auto_orientation = $orientation_values[$orient_override] ?? 0;
         } else {
             $auto_orientation = 0; // landscape
             if ($orig_w == $orig_h) {

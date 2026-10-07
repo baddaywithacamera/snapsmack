@@ -274,6 +274,13 @@ class SumnaConnection:
                 policy.get("download_default_mode", "per_post") or "per_post"),
         }
 
+    def site_catalog(self, timeout: int = 15) -> dict:
+        """Fetch the CMS-owned category/album vocabulary and canonical IDs."""
+        r = self.session.get(f"{self.base_url}/sybu-data.php", timeout=timeout)
+        r.raise_for_status()
+        data = r.json()
+        return data if isinstance(data, dict) else {}
+
     # -- site mode probe ----------------------------------------------------
     def probe_site_mode(self, timeout: int = 12) -> Tuple[str, bool, str]:
         """
@@ -324,10 +331,16 @@ class SoloPoster:
     def _resolve_ids(self, draft: Draft) -> Tuple[Optional[int], Optional[int]]:
         cat_id = album_id = None
         if self.site_data is not None:
+            categories = (self.site_data.get("categories", {})
+                          if isinstance(self.site_data, dict)
+                          else getattr(self.site_data, "categories", {}))
+            albums = (self.site_data.get("albums", {})
+                      if isinstance(self.site_data, dict)
+                      else getattr(self.site_data, "albums", {}))
             if draft.category:
-                cat_id = self.site_data.categories.get(draft.category.lower())
+                cat_id = categories.get(draft.category.lower())
             if draft.album:
-                album_id = self.site_data.albums.get(draft.album.lower())
+                album_id = albums.get(draft.album.lower())
         return cat_id, album_id
 
     def sync_solo(self, draft: Draft) -> SyncResult:

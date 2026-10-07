@@ -7,7 +7,7 @@
     "version": "0.2.0"
   },
   "coldsnap": {
-    "version": "0.7.23",
+    "version": "0.7.26",
     "version_file": "coldsnap/_version.py"
   },
   "sybu": {
