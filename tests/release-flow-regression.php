@@ -32,6 +32,13 @@ rel_expect(str_contains($policy, 'All ordinary implementation pushes go to `dev`
     'policy must make dev the ordinary push branch');
 rel_expect(str_contains($policy, 'Never create the plain and `D` tags together'),
     'policy must prohibit simultaneous stable/dev tagging');
+rel_expect(str_contains($policy, 'unchanged saved settings')
+    && str_contains($policy, 'unchanged content')
+    && str_contains($policy, 'pre-strip reference'),
+    'release policy must preserve identical rendering for unchanged skin inputs');
+rel_expect(str_contains($policy, 'must not be described as')
+    && str_contains($policy, '"authoritative."'),
+    'release policy must prohibit relabelling a regression as authoritative output');
 rel_expect(!str_contains($notes, 'Always force-move the version tag on'),
     'working notes must not retain the stale force-move instruction');
 rel_expect(str_contains($packager, 'latest-fedistructure-dev.json'),
@@ -67,6 +74,15 @@ rel_expect(is_array($reservations) && isset($reservations['0.7.791']),
     'the reverted 0.7.791 identifier must remain retired');
 rel_expect(str_contains($guard, "'authority_review' => 'approved'"),
     'release gate must require explicit authority review approval');
+rel_expect(str_contains($guard, "'skin_render_parity' => 'pass'"),
+    'release gate must require exact-commit skin render parity evidence');
+rel_expect(str_contains($guard, "array_key_exists('skin_render_changes', \$gate)"),
+    'release gate must require an explicit intentional-render-change ledger');
+foreach (['skin', 'reason', 'pre_strip_reference'] as $render_change_field) {
+    rel_expect(str_contains($guard, "['skin', 'reason', 'pre_strip_reference']")
+        && str_contains($guard, "\$change[\$field]"),
+        'intentional skin render changes must declare ' . $render_change_field);
+}
 rel_expect(str_contains($packager, 'sc_release_identifier_used'),
     'packager must refuse an already-published release identifier');
 rel_expect(str_contains($packager, 'release-identifiers.json'),
