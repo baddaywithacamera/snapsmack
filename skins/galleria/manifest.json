@@ -549,7 +549,7 @@
             "section": "TYPOGRAPHY",
             "type": "select",
             "label": "Site Title Case",
-            "default": "uppercase",
+            "default": "none",
             "options": {
                 "uppercase": "UPPERCASE",
                 "lowercase": "lowercase",
