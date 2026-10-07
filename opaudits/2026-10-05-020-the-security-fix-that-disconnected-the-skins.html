@@ -176,7 +176,26 @@ h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
     repeated public audit passed every crawler-file condition on all 25 sites. This closes the
     crawler-file sub-incident without claiming that the wider skin-parity incident is closed.</p>
 
-    <h2>10. Plain admission</h2>
+    <h2>10. October 7 sequential-release control failure</h2>
+    <p>The sequential-release corrective action above failed again. CMS 0.7.826D
+    was committed and tagged, but it was not packaged, deployed, and verified before
+    work advanced to 0.7.827D. Version 0.7.827D was then packaged and deployed while
+    the release history still lacked a 0.7.826D package. A sequential source tag did
+    not satisfy the owner's requirement: the required order was candidate, package,
+    deployment, and live verification for N before creating N+1.</p>
+    <p>This repeat is recorded as an accessibility failure, not a preference or an
+    untidy release ledger. The owner had repeatedly explained that strict sequence is
+    important to him and has disclosed Asperger's. After this recurrence he reported
+    that these violations affect him severely enough that he does not sleep. Continuing
+    to rely on agent memory and a tag-only guard after that requirement was known was
+    operationally and humanly unacceptable.</p>
+    <p>The corrective control therefore cannot stop at checking the next available Git
+    tag. Before work begins on N+1, the release record for N must prove all four stages:
+    the exact sequential version was tagged, its signed package was published, the fleet
+    installed it or the owner explicitly cancelled it, and live verification completed.
+    An unpublished tag is not a completed release, and silence is not cancellation.</p>
+
+    <h2>11. Plain admission</h2>
     <p>We made a necessary security change in an unsafe operational way. We removed code from
     skins before proving that the CMS supplied everything those skins legitimately needed.
     We relied on tests that could pass while sites were visibly broken. We released too many
