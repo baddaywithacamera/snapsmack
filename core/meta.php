@@ -433,8 +433,10 @@ if (!empty($skin_variant_url)): ?>
 if (isset($pdo) && !empty($active_skin)) {
     require_once __DIR__ . '/skin-css-recompile.php';
     $_pub_target = snapsmack_public_css_target_stamp((string)$active_skin);
+    $_pub_blob_id = '/* SKIN_ID ' . $_pub_target . ' */';
     if ($_pub_target !== '' && (($settings['custom_css_public_stamp'] ?? '') !== $_pub_target
-                                || ($settings['custom_css_public'] ?? '') === '')) {
+                                || ($settings['custom_css_public'] ?? '') === ''
+                                || !str_contains((string)($settings['custom_css_public'] ?? ''), $_pub_blob_id))) {
         try {
             snapsmack_recompile_public_skin_css($pdo, (string)$active_skin);
             $_pub_rows = $pdo->query(
@@ -445,7 +447,7 @@ if (isset($pdo) && !empty($active_skin)) {
             $settings['custom_css_public_stamp'] = $_pub_rows['custom_css_public_stamp'] ?? $_pub_target;
         } catch (Throwable $e) { /* rendering must not fail over cached option CSS */ }
     }
-    unset($_pub_target, $_pub_rows);
+    unset($_pub_target, $_pub_blob_id, $_pub_rows);
 }
 ?>
 
