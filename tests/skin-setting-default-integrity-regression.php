@@ -24,6 +24,37 @@ if (($settings['htbs_title_font'] ?? null) !== 'Libre Baskerville') {
     $fail('An explicit GALLERIA font choice was not preserved.');
 }
 
+// The scoped values written by the broken cross-skin picker are not genuine
+// customizations.  Exact known leak combinations recover the skin defaults,
+// while unrelated explicit choices above remain authoritative.
+$leaked = [
+    'galleria__htbs_title_font' => 'Libre Baskerville',
+    'galleria__htbs_heading_font' => 'DM Sans',
+    'galleria__htbs_body_font' => 'DM Sans',
+];
+snapsmack_apply_skin_settings($leaked, 'galleria');
+if (($leaked['htbs_title_font'] ?? null) !== 'Georgia'
+    || ($leaked['htbs_heading_font'] ?? null) !== 'Georgia'
+    || ($leaked['htbs_body_font'] ?? null) !== 'Inter') {
+    $fail('Known scoped GALLERIA font leaks did not recover the skin defaults.');
+}
+
+$grit = ['true-grit__header_font_family' => 'Playfair Display'];
+snapsmack_apply_skin_settings($grit, 'true-grit');
+if (($grit['header_font_family'] ?? null) !== 'Raleway') {
+    $fail('Known TRUE GRIT title-font leak did not recover Raleway.');
+}
+
+$rational = [
+    'rational-geo__body_font' => 'DM Sans',
+    'rational-geo__comment_font' => 'DM Sans',
+];
+snapsmack_apply_skin_settings($rational, 'rational-geo');
+if (($rational['body_font'] ?? null) !== 'Source Serif 4'
+    || ($rational['comment_font'] ?? null) !== 'Source Serif 4') {
+    $fail('Known RATIONAL GEO prose-font leaks did not recover Source Serif 4.');
+}
+
 // Global-only settings are never replaced by a manifest option/default pass.
 if (($settings['active_skin'] ?? null) !== 'galleria') {
     $fail('The skin settings overlay changed a global-only setting.');
