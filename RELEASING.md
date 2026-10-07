@@ -8,6 +8,14 @@
 This is the authoritative versioning and release policy. If an older continuity
 note, handoff, comment, or instruction conflicts with this file, this file wins.
 
+## Development release sequence
+
+- The operator-confirmed deployed baseline is `0.7.836D`. The next permitted development release is `0.7.837D`.
+- `0.7.826D` and `0.7.830D` through `0.7.835D` are declared gaps in the append-only release ledger. They must never be retagged, packaged, backfilled, or reused.
+- Several fixes may be bundled into one numbered release. The versioned changelog must name every included fix.
+- Finish one release before beginning the next: package it, deploy it, and check the declared live acceptance surfaces. A tag or source commit is not a finished release.
+- A declared gap is an incident record, not proof of a package or deployment. It retires the identifier without falsifying release history.
+
 ## The two channels
 
 | Channel | Git branch | Tag | Smack Central manifest |
