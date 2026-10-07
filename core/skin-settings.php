@@ -56,6 +56,30 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
     $prefix     = $skin_slug . '__';
     $prefix_len = strlen($prefix);
 
+    // A bare legacy value may belong to whichever skin was saved before
+    // per-skin scoping existed.  Do not let it bleed into another skin.  For
+    // every option declared by this skin, use its scoped value when one exists
+    // and otherwise restore the manifest default.  Without this pass, merely
+    // opening and saving a skin can permanently stamp another skin's font,
+    // colour, or layout choice into it.
+    $manifest_path = dirname(__DIR__) . '/skins/' . $skin_slug . '/manifest.json';
+    if (is_file($manifest_path)) {
+        $manifest = json_decode((string) file_get_contents($manifest_path), true);
+        foreach (($manifest['options'] ?? []) as $bare_key => $meta) {
+            if (in_array($bare_key, $global_only, true)) {
+                continue;
+            }
+            $scoped_key = $prefix . $bare_key;
+            if (array_key_exists($scoped_key, $settings)) {
+                $settings[$bare_key] = $settings[$scoped_key];
+            } elseif (is_array($meta) && array_key_exists('default', $meta)) {
+                $settings[$bare_key] = $meta['default'];
+            } else {
+                unset($settings[$bare_key]);
+            }
+        }
+    }
+
     foreach ($settings as $key => $val) {
         if (strpos($key, $prefix) === 0) {
             $bare_key = substr($key, $prefix_len);
