@@ -29,7 +29,7 @@ $layout = (string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/la
 $css = (string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/style.css');
 $manifest = json_decode((string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
 if (!str_contains($layout, 'class="ic-scrim"')) throw new RuntimeException('Scrim layer is absent from the owned layout.');
-if (($manifest['version'] ?? '') !== '1.0.42') throw new RuntimeException('INSTANT CAMERA release is not sequentially versioned at 1.0.42.');
+if (($manifest['version'] ?? '') !== '1.0.43') throw new RuntimeException('INSTANT CAMERA release is not sequentially versioned at 1.0.43.');
 if (($manifest['options']['ic_post_viewer_backdrop_color']['default'] ?? null) !== '#ffffff'
     || ($manifest['options']['ic_post_viewer_backdrop_opacity']['default'] ?? null) !== '80') {
     throw new RuntimeException('Post viewer must default to the original-strength high-key white veil.');
@@ -64,8 +64,11 @@ if (!preg_match('/\.ic-bg\s*\{[^}]*z-index:\s*0/s', $css)
     || !preg_match('/\.tg-content-wrap\s*\{[^}]*z-index:\s*3/s', $css)) {
     throw new RuntimeException('Scrim is not visibly stacked between the background and content.');
 }
-if (!preg_match('/\.tg-sticky-nav,\s*\.tg-sticky-nav\.profile-hidden\s*\{\s*background:\s*transparent/s', $css)) {
-    throw new RuntimeException('Navbar no longer shares the translucent content plane.');
+if (!preg_match('/\.tg-sticky-nav,\s*\.tg-sticky-nav\.profile-hidden\s*\{\s*background:\s*var\(--ic-nav-bg,\s*transparent\)/s', $css)) {
+    throw new RuntimeException('Navbar no longer honors its saved CMS-provided background.');
+}
+if (!preg_match('/\.tg-sticky-nav-inner\s*\{[^}]*overflow:\s*visible/s', $css)) {
+    throw new RuntimeException('Navbar clips CMS-provided child menus.');
 }
 
 echo "Instant Camera opacity regression: PASS\n";
