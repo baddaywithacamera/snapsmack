@@ -74,7 +74,8 @@ function snapsmack_recompile_public_skin_css(PDO $pdo, string $active_skin): voi
     }
 
     // --- Public CSS compilation (mirrors smack-skin.php §4c) ---
-    $generated_public = "/* SKIN_START */\n";
+    $target_stamp = snapsmack_public_css_target_stamp($active_skin, $manifest);
+    $generated_public = "/* SKIN_START */\n/* SKIN_ID {$target_stamp} */\n";
 
     foreach ($manifest['options'] as $key => $meta) {
         $val  = ($all_settings[$key] ?? '') !== '' ? $all_settings[$key] : ($meta['default'] ?? '');
@@ -159,7 +160,7 @@ function snapsmack_recompile_public_skin_css(PDO $pdo, string $active_skin): voi
     $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('custom_css_public', ?)")
         ->execute([$final_public]);
 
-    $stamp = snapsmack_public_css_target_stamp($active_skin, $manifest);
+    $stamp = $target_stamp;
     if ($stamp !== '') {
         $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('custom_css_public_stamp', ?)")
             ->execute([$stamp]);
