@@ -140,7 +140,7 @@ final class SnapPublicRepository
                     p.created_at,p.sort_order,p.post_img_size_pct,p.post_border_px,
                     p.post_border_color,p.post_bg_color,p.post_shadow,
                     i.id AS img_id,i.img_file,i.img_thumb_square,i.img_thumb_aspect,
-                    i.img_width,i.img_height,i.img_slug,i.img_title,i.img_alt,
+                    i.img_width,i.img_height,i.img_orientation,i.img_slug,i.img_title,i.img_alt,
                     pi.img_size_pct,pi.img_border_px,pi.img_border_color,pi.img_bg_color,
                     pi.img_shadow,pi.img_focus_x,pi.img_focus_y,pi.img_zoom,
                     (SELECT COUNT(*) FROM snap_post_images spi

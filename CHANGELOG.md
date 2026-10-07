@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.838D — 2026-10-07 — Right way up
+
+- Restores SCROLL masthead fonts from the saved family without substitution. The shared page loader now serves packaged local faces from the same canonical central asset repository as the bounded presentation compiler; it no longer emits an install-local font URL that returns 404 on usedcarparts.photoblogs.fyi.
+- Restores THE GRID's portrait frame geometry for rotated covers. The bounded carousel provider now supplies the stored `img_orientation`, and frame preparation treats that CMS value as authoritative while retaining a width/height fallback for legacy rows that do not contain orientation data.
+
 ## 0.7.837D — 2026-10-07 — Declared gaps are not releases
 
 - Records `0.7.826D` and `0.7.830D` through `0.7.835D` as declared gaps in the append-only release ledger. They are retired without being retagged, packaged, backfilled, or represented as deployed. The operator-confirmed deployed baseline is `0.7.836D`; the only permitted next development release is `0.7.837D`.

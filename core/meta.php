@@ -338,7 +338,12 @@ if (file_exists($inventory_path)) {
     if (!empty($local_fonts)) {
         echo '<style id="snapsmack-local-fonts">' . "\n";
         foreach ($local_fonts as $family => $font) {
-            $file_url = BASE_URL . ltrim($font['file'], '/');
+            $segments = array_map('rawurlencode', explode('/', (string)$font['file']));
+            $relative_url = implode('/', $segments);
+            // Fonts are shared CMS assets. Individual installs are not
+            // guaranteed to expose the packaged font directory publicly.
+            $file_url = 'https://snapsmack.ca/sc-assets/'
+                . preg_replace('#^assets/#', '', $relative_url);
             $format   = $font['format'] ?? 'truetype';
             $weight   = $font['weight'] ?? 'normal';
             $style    = $font['style'] ?? 'normal';
