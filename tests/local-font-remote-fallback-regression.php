@@ -11,10 +11,13 @@ $fail = static function (string $message): void {
     exit(1);
 };
 
-if (strpos($source, "is_file(\$localPath)") === false
-    || strpos($source, "https://snapsmack.ca/sc-assets/") === false
+if (strpos($source, "https://snapsmack.ca/sc-assets/") === false
     || strpos($source, "preg_replace('#^assets/#'") === false) {
-    $fail('Selected local fonts have no central-asset fallback when an install is missing the file.');
+    $fail('Selected local fonts are not served from the canonical central asset repository.');
+}
+
+if (strpos($source, "is_file(\$localPath)") !== false) {
+    $fail('Local filesystem presence must not be treated as proof that a font is publicly routable.');
 }
 
 echo "local font remote fallback regression: ok\n";
