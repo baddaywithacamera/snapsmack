@@ -85,6 +85,19 @@ foreach (['--tile-border-w:10px', '--tile-border-c:#123456', '--tile-bg:#abcdef'
     recovery_check(str_contains((string)($framed[0]['frame_style'] ?? ''), $needle), 'GAME ON global frame style lost ' . $needle);
 }
 
+$orientationFramed = snapsmack_grid_frame_items(
+    [
+        ['img_slug' => 'rotated-portrait', 'img_orientation' => 1, 'img_width' => 1200, 'img_height' => 800],
+        ['img_slug' => 'declared-landscape', 'img_orientation' => 0, 'img_width' => 800, 'img_height' => 1200],
+        ['img_slug' => 'legacy-portrait', 'img_width' => 800, 'img_height' => 1200],
+    ],
+    ['tg_customize_level' => 'per_grid'],
+    'the-grid'
+);
+recovery_check(($orientationFramed[0]['is_portrait'] ?? false) === true, 'THE GRID ignores the authoritative stored portrait orientation.');
+recovery_check(($orientationFramed[1]['is_portrait'] ?? true) === false, 'THE GRID overrides an authoritative stored landscape orientation.');
+recovery_check(($orientationFramed[2]['is_portrait'] ?? false) === true, 'THE GRID lost the dimension fallback for legacy rows without orientation data.');
+
 $response = [
     'kind' => 'blogroll',
     'status' => 200,
