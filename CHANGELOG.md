@@ -13,6 +13,14 @@
 
 - Restores schema-v2 skins from their own unchanged saved presentation settings instead of replaying the global compiled-CSS cache left by whichever skin was saved last. Every manifest-declared font, colour, spacing, width, and gutter value is now compiled into the bounded public presentation model; owner-authored CSS outside the generated cache remains intact. This returns THE GRID to its saved 840px inner grid, 72px card gutters, and 10px image rhythm without redesigning it.
 
+## 0.7.837D — Pending — Declared gaps are not releases
+
+- Records `0.7.826D` and `0.7.830D` through `0.7.835D` as declared gaps in the append-only release ledger. They are retired without being retagged, packaged, backfilled, or represented as deployed. The operator-confirmed deployed baseline is `0.7.836D`; the only permitted next development release is `0.7.837D`.
+- Adds the 0.7.836D release-history addendum: the deployed 0.7.836D baseline incorporated the changes tagged as 0.7.830D through 0.7.835D even though those identifiers never had standalone packages or deployments. Smack Central's packager offered only 0.7.834D through 0.7.836D at the time; that UI window did not make the missing releases real.
+- Permits several fixes in one numbered release when every fix is listed here. A release must be packaged, deployed, and checked on its declared live acceptance surfaces before work starts on the next number.
+- Completes THE GRID's bounded CMS trigram provider. The pre-strip skin itself queried trigram membership, derived slot and orientation, selected physical slice files, realigned rows, and emitted tail phantoms. The repository/controller now provide those display fields and prepared items without returning database, request, write, or filesystem authority to the skin.
+- Restores schema-v2 skins from their own unchanged saved presentation settings instead of replaying another skin's compiled-CSS cache. Every manifest-declared font, colour, spacing, width, and gutter value is compiled into the bounded public presentation model; owner-authored CSS remains intact.
+
 ## 0.7.836D — 2026-10-07 — Ring of fire
 
 - Restores AURORA's animated palette borders by reconnecting the exact presentation hooks lost in its strict-template migration. Landing tiles once again emit their `.au-ring` overlay and row/column coordinates for the shared wave engine; the saved palette, direction, rhythm, opacity, and width remain authoritative.

@@ -1,0 +1,8 @@
+{"version":"0.7.826D","track":"dev","record_kind":"declared_gap","declared_at":"2026-10-07","reason":"Tagged but never packaged, deployed, or verified; deliberately not backfilled."}
+{"version":"0.7.830D","track":"dev","record_kind":"declared_gap","declared_at":"2026-10-07","reason":"Changes were incorporated into deployed baseline 0.7.836D; no standalone package or deployment."}
+{"version":"0.7.831D","track":"dev","record_kind":"declared_gap","declared_at":"2026-10-07","reason":"Changes were incorporated into deployed baseline 0.7.836D; no standalone package or deployment."}
+{"version":"0.7.832D","track":"dev","record_kind":"declared_gap","declared_at":"2026-10-07","reason":"Changes were incorporated into deployed baseline 0.7.836D; no standalone package or deployment."}
+{"version":"0.7.833D","track":"dev","record_kind":"declared_gap","declared_at":"2026-10-07","reason":"Changes were incorporated into deployed baseline 0.7.836D; no standalone package or deployment."}
+{"version":"0.7.834D","track":"dev","record_kind":"declared_gap","declared_at":"2026-10-07","reason":"Changes were incorporated into deployed baseline 0.7.836D; no standalone package or deployment."}
+{"version":"0.7.835D","track":"dev","record_kind":"declared_gap","declared_at":"2026-10-07","reason":"Changes were incorporated into deployed baseline 0.7.836D; no standalone package or deployment."}
+{"version":"0.7.836D","track":"dev","record_kind":"deployed_baseline","declared_at":"2026-10-07","reason":"Operator-confirmed deployed baseline. The next permitted development release is 0.7.837D."}
