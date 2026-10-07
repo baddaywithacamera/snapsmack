@@ -9,6 +9,11 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.830D — 2026-10-07 — The fonts come home
+
+- Recovers the exact known font-setting combinations accidentally stamped across skin boundaries: GALLERIA returns to Georgia and Inter, TRUE GRIT returns to Raleway, and RATIONAL GEO returns its prose to Source Serif 4. Other saved appearance choices remain untouched.
+- Keeps locally selected faces such as SQUARED STRAIGHT's SquareSanSerif7 and KeyBinds working when a fleet install is missing its local copy. The CMS temporarily serves the verified Smack Central asset instead of silently falling back to a generic browser font.
+
 ## 0.7.829D — 2026-10-07 — Search belongs in the bar
 
 - Restores SLICKR's original pill-shaped search field and compact calendar button in the profile bar. Their established skin markup now points to the CMS-owned search and calendar handlers instead of substituting the generic floating search dock. SLICKR advances sequentially from 1.0.29 to 1.0.30.

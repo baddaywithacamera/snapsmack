@@ -56,6 +56,44 @@ function snapsmack_apply_skin_settings(array &$settings, string $skin_slug): voi
     $prefix     = $skin_slug . '__';
     $prefix_len = strlen($prefix);
 
+    // A short-lived Skin Admin regression copied the currently selected font
+    // from one skin into the scoped row of the next skin that was saved.  Once
+    // scoped, those values looked intentional and survived the general legacy
+    // key repair.  These are the exact combinations observed on the affected
+    // installs; discard only those combinations so every other customization
+    // remains authoritative.
+    $known_font_leaks = [
+        'galleria' => [
+            'htbs_title_font'   => 'Libre Baskerville',
+            'htbs_heading_font' => 'DM Sans',
+            'htbs_body_font'    => 'DM Sans',
+        ],
+        'true-grit' => [
+            'header_font_family' => 'Playfair Display',
+        ],
+        'rational-geo' => [
+            'body_font'    => 'DM Sans',
+            'comment_font' => 'DM Sans',
+        ],
+    ];
+    $leak_profile = $known_font_leaks[$skin_slug] ?? [];
+    if ($leak_profile) {
+        $matches_profile = true;
+        foreach ($leak_profile as $bare_key => $leaked_value) {
+            $scoped_key = $prefix . $bare_key;
+            if (!array_key_exists($scoped_key, $settings)
+                || (string)$settings[$scoped_key] !== $leaked_value) {
+                $matches_profile = false;
+                break;
+            }
+        }
+        if ($matches_profile) {
+            foreach ($leak_profile as $bare_key => $_leaked_value) {
+                unset($settings[$prefix . $bare_key], $settings[$bare_key]);
+            }
+        }
+    }
+
     // A bare legacy value may belong to whichever skin was saved before
     // per-skin scoping existed.  Do not let it bleed into another skin.  For
     // every option declared by this skin, use its scoped value when one exists
