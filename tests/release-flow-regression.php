@@ -23,6 +23,7 @@ $fedup = file_get_contents($root . '/fedup.php') ?: '';
 $guard = file_get_contents($root . '/tools/release-flow.php') ?: '';
 $constants = file_get_contents($root . '/core/constants.php') ?: '';
 $changelog = file_get_contents($root . '/CHANGELOG.md') ?: '';
+require_once $root . '/smack-central/sc-release-sequence.php';
 
 rel_expect(str_contains($packager, "'assets/ASSET-INVENTORY.json'"),
     'release packages must include the runtime asset inventory used by the fail-closed skin policy');
@@ -55,6 +56,12 @@ rel_expect(str_contains($guard, "['skin_inventory_sha256']"),
     'release gate must bind parity evidence to the exact packaged skin inventory');
 rel_expect(str_contains($guard, 'release-reservations.json'),
     'release guard must preserve deliberately retired identifiers');
+rel_expect(str_contains($guard, 'rf_require_packaged_tag_alignment($version);'),
+    'tagging must refuse while Git tags are ahead of the public packaged version');
+rel_expect(str_contains($guard, 'https://snapsmack.ca/releases/latest-dev.json'),
+    'tagging must verify the authoritative public dev manifest and fail closed');
+rel_expect(str_contains($guard, 'package and deploy every existing tag in order before creating another tag'),
+    'tag refusal must explain an existing tagged/package gap');
 $reservations = json_decode((string)file_get_contents($root . '/tools/release-reservations.json'), true);
 rel_expect(is_array($reservations) && isset($reservations['0.7.791']),
     'the reverted 0.7.791 identifier must remain retired');
@@ -68,6 +75,21 @@ rel_expect(str_contains($packager, "'source_commit'"),
     'published manifests must record the exact source commit');
 rel_expect(str_contains($packager, 'sc_record_release_identifier'),
     'packager must record checksum and signature before publication');
+rel_expect(str_contains($packager, 'sc_require_dev_sequence(sc_db(), $version)'),
+    'dev packager must run the server-side sequential state gate before building');
+rel_expect(sc_dev_predecessor('0.7.836D') === '0.7.835D',
+    'development predecessor must be calculated without skipping a number');
+$skip_refusal = sc_dev_sequence_refusal('0.7.836D', false, false, ['0.7.829D']);
+rel_expect(str_contains($skip_refusal, 'SEQUENTIAL RELEASE GATE REFUSED 0.7.836D'),
+    'an attempted skipped package must produce an explicit refusal');
+rel_expect(str_contains($skip_refusal, '0.7.835D is not in dev build history'),
+    'refusal must identify the missing predecessor package');
+rel_expect(str_contains($skip_refusal, 'not deployed across the active dev fleet'),
+    'refusal must identify predecessor deployment drift');
+rel_expect(str_contains($skip_refusal, 'No override exists.'),
+    'sequential release gate must not offer an override');
+rel_expect(sc_dev_sequence_refusal('0.7.830D', true, true, ['0.7.829D', '0.7.829D']) === '',
+    'next package may proceed only when its predecessor is packaged, deployed, and recorded');
 if (preg_match("/SNAPSMACK_VERSION_SHORT',\\s*'([^']+)'/", $constants, $version_match)) {
     rel_expect(str_contains($changelog, '## ' . $version_match[1] . ' '),
         'the source version must have a versioned changelog section before tagging');

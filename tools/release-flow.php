@@ -113,6 +113,42 @@ function rf_require_next_dev_version(string $version): void {
     }
 }
 
+function rf_release_state_refusal(string $requested, string $latest_tagged, string $latest_packaged): string {
+    $requested = rf_version($requested);
+    $latest_tagged = rf_version($latest_tagged);
+    $latest_packaged = rf_version($latest_packaged);
+    if ($latest_tagged !== $latest_packaged) {
+        return "highest tagged dev version is {$latest_tagged}D but highest packaged dev version is {$latest_packaged}D; "
+            . 'package and deploy every existing tag in order before creating another tag';
+    }
+    [$major, $minor, $patch] = array_map('intval', explode('.', $latest_packaged));
+    $expected = "{$major}.{$minor}." . ($patch + 1);
+    return $requested === $expected
+        ? ''
+        : "next dev tag must be {$expected}D because {$latest_packaged}D is the highest packaged version";
+}
+
+function rf_require_packaged_tag_alignment(string $requested): void {
+    $tags = rf_git(['tag', '--list', 'v*D']);
+    $latest_tagged = '';
+    foreach (explode("\n", $tags) as $tag) {
+        if (!preg_match('/^v(\d+\.\d+\.\d+)D$/i', trim($tag), $m)) continue;
+        if ($latest_tagged === '' || version_compare($m[1], $latest_tagged, '>')) $latest_tagged = $m[1];
+    }
+    if ($latest_tagged === '') rf_fail('could not determine the highest tagged development version');
+
+    $context = stream_context_create(['http' => ['timeout' => 15, 'ignore_errors' => true]]);
+    $raw = @file_get_contents('https://snapsmack.ca/releases/latest-dev.json', false, $context);
+    $manifest = is_string($raw) ? json_decode($raw, true) : null;
+    $latest_packaged = is_array($manifest) ? (string)($manifest['version'] ?? '') : '';
+    if (!preg_match('/^\d+\.\d+\.\d+D$/i', $latest_packaged)) {
+        rf_fail('could not verify the highest packaged development version; tagging fails closed');
+    }
+    $latest_packaged = preg_replace('/D$/i', '', $latest_packaged);
+    $refusal = rf_release_state_refusal($requested, $latest_tagged, $latest_packaged);
+    if ($refusal !== '') rf_fail($refusal . '. No override exists.');
+}
+
 function rf_require_release_gate(): void {
     $head = rf_git(['rev-parse', 'HEAD']);
     $ref = 'refs/notes/release-gates';
@@ -187,6 +223,7 @@ if ($command === 'tag-dev') {
     $tag = 'v' . $version . 'D';
     if (rf_tag_target($tag) !== '') rf_fail("tag {$tag} already exists; use the next version");
     rf_require_next_dev_version($version);
+    rf_require_packaged_tag_alignment($version);
     rf_tests();
     rf_require_release_gate();
     rf_git(['tag', $tag]);
