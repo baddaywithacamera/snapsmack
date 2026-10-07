@@ -58,7 +58,8 @@ class MainWindow(QMainWindow):
 
         self.tabs = QTabWidget()
         self.tabs.setObjectName("ModeTabs")
-        self.tabs.addTab(SoloMode(cfg), "COLD ONE")
+        self.solo_mode = SoloMode(cfg)
+        self.tabs.addTab(self.solo_mode, "COLD ONE")
         self.tabs.addTab(StackMode(cfg), "COLD STACK")
         self.tabs.addTab(TakeMode(cfg), "COLD TAKE")
         self.tabs.addTab(StorageMode(cfg), "COLD STORAGE")
@@ -76,7 +77,10 @@ class MainWindow(QMainWindow):
             (None, ""),
         )
         self.tabs.currentChanged.connect(self._on_mode_changed)
+        self.connect_panel.profile_combo.currentIndexChanged.connect(
+            lambda _index: QTimer.singleShot(0, self.solo_mode.refresh_taxonomy))
         self._on_mode_changed(self.tabs.currentIndex())
+        QTimer.singleShot(0, self.solo_mode.refresh_taxonomy)
 
         self.setCentralWidget(central)
 
@@ -95,6 +99,8 @@ class MainWindow(QMainWindow):
     def _on_mode_changed(self, index):
         suite_mode, label = self._tab_modes[index]
         self.connect_panel.set_suite_mode(suite_mode, label)
+        if index == 0:
+            QTimer.singleShot(0, self.solo_mode.refresh_taxonomy)
 
     def _consume_handoff(self):
         request = snap_desktop_handoff.consume_request("coldsnap")
