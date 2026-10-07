@@ -60,6 +60,14 @@ try {
         define('BASE_URL', rtrim($db_url, '/') . '/');
     }
 
+    // page.php is retained only as a compatibility entrance. Static pages have
+    // canonical root-level URLs and index.php already resolves those slugs for
+    // every skin, so old bookmarks and stale external links converge there.
+    if ($slug !== '') {
+        header('Location: ' . rtrim(BASE_URL, '/') . '/' . rawurlencode((string)$slug), true, 301);
+        exit;
+    }
+
     $active_skin = $settings['active_skin'] ?? 'smackdown';
     $site_name = $settings['site_name'] ?? $site_name;
 
@@ -73,8 +81,7 @@ try {
     $skin_view = snapsmack_prepare_skin_view($pdo, $settings, $active_skin);
 
     // Controller-backed SMACKTALK skins render every public surface through
-    // their bounded core controller.  Preserve page.php as an old-link entry
-    // point, but do not let it bypass the selected skin's layout.
+    // their bounded core controller.
     $active_manifest = load_skin_manifest($active_skin);
     if (in_array((string)($active_manifest['cms_controller'] ?? ''), ['smacktalk', 'public'], true)) {
         header('Location: ' . rtrim(BASE_URL, '/') . '/' . rawurlencode((string)$slug), true, 301);
