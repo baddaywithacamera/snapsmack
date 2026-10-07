@@ -122,7 +122,7 @@ $approved = [
     'core/skin-presentation.php|snapsmack_instant_camera_presentation|SnapTrustedHtml::factory' => 1,
     'core/skin-presentation.php|snapsmack_parade_presentation|SnapTrustedHtml::factory' => 1,
     'core/skin-presentation.php|snapsmack_presentation_style|SnapTrustedHtml::factory' => 1,
-    'core/skin-presentation.php|snapsmack_skin_presentation|SnapTrustedHtml::factory' => 3,
+    'core/skin-presentation.php|snapsmack_skin_presentation|SnapTrustedHtml::factory' => 4,
     'core/skin-render-helpers.php|snap_render_component|SnapTrustedHtml::factory' => 1,
 ];
 ksort($approved);
