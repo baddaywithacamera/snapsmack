@@ -10,6 +10,7 @@
  */
 
 require_once __DIR__ . '/sc-auth.php';
+require_once __DIR__ . '/sc-release-sequence.php';
 $sc_active_nav = 'sc-release.php';
 $sc_page_title = 'Release Packager';
 
@@ -226,6 +227,45 @@ function sc_record_release_identifier(string $track, string $version, string $ta
     if (!is_string($json) || file_put_contents($tmp,$json,LOCK_EX)===false) return false;
     if (!@rename($tmp,$path)) { @unlink($tmp); return false; }
     return true;
+}
+
+/**
+ * Refuse a dev package unless its immediate predecessor is independently
+ * proven packaged, recorded, and deployed on every active dev-track install.
+ * This runs before tag resolution, downloads, zip creation, signing, or writes.
+ */
+function sc_require_dev_sequence(PDO $db, string $requested): string {
+    $predecessor = sc_dev_predecessor($requested);
+    if ($predecessor === null) {
+        return sc_dev_sequence_refusal($requested, false, false, []);
+    }
+
+    $packaged = false;
+    try {
+        $q = $db->prepare('SELECT COUNT(*) FROM sc_dev_builds WHERE version = ?');
+        $q->execute([$predecessor]);
+        $packaged = (int)$q->fetchColumn() > 0;
+    } catch (Throwable $e) {
+        // Fail closed: an unreadable history is not proof of a package.
+    }
+
+    $recorded = isset(sc_release_ledger()[$predecessor]);
+    $fleet_versions = [];
+    try {
+        $q = $db->query(
+            "SELECT version FROM sc_phone_home
+             WHERE track = 'dev' AND last_seen >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+             ORDER BY uid"
+        );
+        $fleet_versions = array_values(array_filter(array_map(
+            static fn ($row): string => trim((string)($row['version'] ?? '')),
+            $q->fetchAll(PDO::FETCH_ASSOC)
+        )));
+    } catch (Throwable $e) {
+        // Fail closed: an unreadable fleet is not proof of deployment.
+    }
+
+    return sc_dev_sequence_refusal($requested, $packaged, $recorded, $fleet_versions);
 }
 
 // ── Helper: list tags from GitHub (sorted newest-first by version) ────────────
@@ -1455,6 +1495,10 @@ if ($action === 'build_dev' && $preflight_ok) {
         $dev_build_error = 'Release identifier already published. Published versions are immutable; use the next version.';
     } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $released)) {
         $dev_build_error = 'Invalid release date.';
+    }
+
+    if (!$dev_build_error) {
+        $dev_build_error = sc_require_dev_sequence(sc_db(), $version);
     }
 
     if (!$dev_build_error) {
