@@ -555,7 +555,9 @@ if (isset($_POST['save_skin_settings'])) {
     page_cache_purge_all();
 
     // 4c. Public CSS Compilation.
-    $generated_public = "/* SKIN_START */\n";
+    require_once __DIR__ . '/core/skin-css-recompile.php';
+    $public_css_stamp = snapsmack_public_css_target_stamp($active_skin, $manifest);
+    $generated_public = "/* SKIN_START */\n/* SKIN_ID {$public_css_stamp} */\n";
 
     // Map manifest options to CSS properties or custom payloads.
     foreach ($manifest['options'] as $key => $meta) {

@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.834D — 2026-10-07 — Name on the tin
+
+- Binds compiled public option CSS to the skin that produced it. The separate cache stamp on theschoolofhardnocks.ca claimed GAME ON was current while the blob itself contained PHOTOGRAM's `--pg-*` variables, leaving GAME ON without its saved 85px side gutters and falling back to zero. Compiled CSS now carries its own skin/version identity; a mismatched or legacy blob is rebuilt and emitted on the same request.
+
 ## 0.7.833D — 2026-10-07 — White room
 
 - Restores JIVE TURKEY's saved pre-scoping presentation settings instead of replacing its unambiguously skin-owned `jt_*` values with manifest defaults. The white image-page/card background and saved scrim controls on craptasti.ca therefore reconnect to the strict CMS renderer without returning database access or behaviour to the skin.
