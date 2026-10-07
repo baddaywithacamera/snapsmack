@@ -32,6 +32,14 @@ if (($galleriaManifest['options']['header_text_transform']['default'] ?? null) !
     $fail('GALLERIA must preserve the entered site-title case by default.');
 }
 
+$squareManifest = json_decode(
+    file_get_contents(dirname(__DIR__) . '/skins/hip-to-be-square/manifest.json'),
+    true
+);
+if (($squareManifest['options']['header_text_transform']['default'] ?? null) !== 'none') {
+    $fail('SQUARED STRAIGHT must preserve the entered site-title case by default.');
+}
+
 // The scoped values written by the broken cross-skin picker are not genuine
 // customizations.  Exact known leak combinations recover the skin defaults,
 // while unrelated explicit choices above remain authoritative.

@@ -9,6 +9,10 @@
 -->
 
 # SnapSmack Changelog
+## 0.7.832D — 2026-10-07 — Lower case
+
+- Restores SQUARED STRAIGHT's original as-entered masthead casing. The archived presentation used its lowercase site name with SquareSansSerif7; the generic typography option had silently made uppercase the skin default, so repairing the font URL alone could not restore the intended masthead.
+
 ## 0.7.831D — 2026-10-07 — As entered
 
 - Restores GALLERIA's original mixed-case masthead contract. The font repair correctly returned Georgia, but a later generic typography option had incorrectly made uppercase the skin default; site names again render exactly as entered, matching the archived GALLERIA presentation.
