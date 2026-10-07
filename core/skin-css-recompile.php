@@ -159,6 +159,12 @@ function snapsmack_recompile_public_skin_css(PDO $pdo, string $active_skin): voi
     $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('custom_css_public', ?)")
         ->execute([$final_public]);
 
+    $stamp = snapsmack_public_css_target_stamp($active_skin, $manifest);
+    if ($stamp !== '') {
+        $pdo->prepare("REPLACE INTO snap_settings (setting_key, setting_val) VALUES ('custom_css_public_stamp', ?)")
+            ->execute([$stamp]);
+    }
+
     // Google-Font CDN links for any active font-family selections (mirrors §4d-i).
     $google_catalog = $global_inventory['fonts'] ?? [];
     if (!empty($google_catalog)) {
@@ -194,5 +200,16 @@ function snapsmack_recompile_public_skin_css(PDO $pdo, string $active_skin): voi
             page_cache_purge_all();
         }
     }
+}
+
+/** Stamp the public option CSS should carry for the skin currently on disk. */
+function snapsmack_public_css_target_stamp(string $active_skin, ?array $manifest = null): string
+{
+    $active_skin = trim($active_skin);
+    if ($active_skin === '' || !preg_match('/^[a-z0-9_-]+$/', $active_skin)) return '';
+    if ($manifest === null) $manifest = load_skin_manifest($active_skin);
+    if (!is_array($manifest) || empty($manifest['options']) || !is_array($manifest['options'])) return '';
+    $cms = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '0';
+    return $active_skin . '@' . (string)($manifest['version'] ?? '0') . '+cms@' . $cms;
 }
 // ===== SNAPSMACK EOF =====

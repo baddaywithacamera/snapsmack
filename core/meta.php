@@ -427,6 +427,28 @@ if (!empty($skin_variant_url)): ?>
 <link rel="stylesheet" href="<?php echo $skin_variant_url; ?>?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <?php endif; ?>
 
+<?php
+// The compiled option blob is a cache. Rebuild it once when a CMS or skin
+// update makes it stale, then emit the repaired value on this same request.
+if (isset($pdo) && !empty($active_skin)) {
+    require_once __DIR__ . '/skin-css-recompile.php';
+    $_pub_target = snapsmack_public_css_target_stamp((string)$active_skin);
+    if ($_pub_target !== '' && (($settings['custom_css_public_stamp'] ?? '') !== $_pub_target
+                                || ($settings['custom_css_public'] ?? '') === '')) {
+        try {
+            snapsmack_recompile_public_skin_css($pdo, (string)$active_skin);
+            $_pub_rows = $pdo->query(
+                "SELECT setting_key, setting_val FROM snap_settings
+                 WHERE setting_key IN ('custom_css_public', 'custom_css_public_stamp')"
+            )->fetchAll(PDO::FETCH_KEY_PAIR);
+            $settings['custom_css_public'] = $_pub_rows['custom_css_public'] ?? '';
+            $settings['custom_css_public_stamp'] = $_pub_rows['custom_css_public_stamp'] ?? $_pub_target;
+        } catch (Throwable $e) { /* rendering must not fail over cached option CSS */ }
+    }
+    unset($_pub_target, $_pub_rows);
+}
+?>
+
 <?php if (!empty($settings['custom_css_public'])): ?>
 <style id="snapsmack-dynamic-css">
 <?php echo $settings['custom_css_public']; ?>

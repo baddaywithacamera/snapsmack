@@ -1,6 +1,6 @@
 <?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
 <?php if (!empty($view['response']['fragment']) && ($view['response']['kind'] ?? '') === 'photo'): ?>
-<?php echo snap_render_html(snap_render_component('grid-photo-fragment', ['prefix' => 'he', 'item' => $view['response']['item'] ?? [], 'comments' => $view['response']['comments'] ?? [], 'site' => $view['site']])); ?>
+<?php echo snap_render_html(snap_render_component('grid-photo-fragment', ['prefix' => 'he', 'item' => $view['response']['item'] ?? [], 'photographs' => $view['response']['photographs'] ?? [], 'comments' => $view['response']['comments'] ?? [], 'site' => $view['site']])); ?>
 <?php else: ?>
 <!doctype html>
 <html lang="<?php echo snap_escape_attr($view['site']['language']); ?>" dir="<?php echo snap_escape_attr($view['site']['direction']); ?>">

@@ -204,13 +204,59 @@ function snapsmack_grid_modal_photo_response(SnapPublicRepository $repository, a
         'first' => $first,
         'last' => $last,
     ];
+    $postId = (int)($item['post_id'] ?? 0);
+    if ($postId > 0) {
+        $post = $repository->postById($postId);
+        $photographs = $repository->photographsForPost($postId);
+        if ($post !== null && $photographs !== []) {
+            $response['item'] = array_merge($response['item'], $post);
+            $response['photographs'] = snapsmack_grid_frame_items($photographs, $settings, $skin);
+            $response['comments'] = $repository->approvedComments(null, $postId);
+        }
+    }
     if ($fragment) return $response;
-    $items = snapsmack_grid_frame_items($repository->photographLanding($perPage, 0), $settings, $skin);
+    $items = snapsmack_grid_landing_items($repository, $settings, $skin, $perPage, 0);
     if ($skin === 'heuristic') $items = snapsmack_heuristic_items($items, (string)($settings['he_infomatic_map'] ?? ''));
     $response['items'] = $items;
-    $response['photo_count'] = $repository->publishedPhotographCount();
+    $response['photo_count'] = $repository->publishedPostCount();
     $response['autoopen'] = true;
     return $response;
+}
+
+/** Preserve the original one-cover-per-post GRAM feed outside the skin. */
+function snapsmack_grid_landing_items(SnapPublicRepository $repository, array $settings, string $skin, int $limit, int $offset = 0): array
+{
+    $gridFamily = ['the-grid','aurora','sudden-impact','parade','jive-turkey','heuristic','sliders'];
+    $items = in_array($skin, $gridFamily, true)
+        ? $repository->carouselPostLanding($limit, $offset)
+        : $repository->photographLanding($limit, $offset);
+    if (in_array($skin, $gridFamily, true)) {
+        require_once __DIR__ . '/trigram.php';
+        if (function_exists('trigram_align_backfill')) $items = trigram_align_backfill($items);
+    }
+    $items = snapsmack_grid_frame_items($items, $settings, $skin);
+    $prefixes = ['the-grid'=>'tg','aurora'=>'au','sudden-impact'=>'tg','parade'=>'pa','jive-turkey'=>'jt','heuristic'=>'he','sliders'=>'tg'];
+    $prefix = $prefixes[$skin] ?? 'tg';
+    foreach ($items as &$item) {
+        $classes = $prefix . '-tile';
+        if (!empty($item['is_framed'])) {
+            $classes .= ' ' . $prefix . '-tile--framed';
+            if (!empty($item['is_portrait'])) $classes .= ' ' . $prefix . '-tile--portrait';
+        }
+        $slot = (int)($item['trigram_slot'] ?? 0);
+        if ($slot > 0) {
+            $labels = (($item['trigram_orientation'] ?? 'h') === 'v') ? [1=>'T',2=>'M',3=>'B'] : [1=>'L',2=>'M',3=>'R'];
+            $classes .= ' ' . $prefix . '-tile--trigram ' . $prefix . '-tile--trigram-' . ($labels[$slot] ?? 'M');
+        }
+        $item['presentation_class'] = $classes;
+        $item['presentation_image'] = !empty($item['is_framed'])
+            ? (string)($item['img_thumb_aspect'] ?? $item['img_file'] ?? '')
+            : (string)($item['img_thumb_square'] ?? $item['img_file'] ?? '');
+        $item['presentation_title'] = (string)($item['title'] ?? $item['img_title'] ?? '');
+        $item['is_carousel'] = (int)($item['image_count'] ?? 0) > 1;
+    }
+    unset($item);
+    return $items;
 }
 
 /** Pack a complete photograph inventory into bounded justified-layout pages. */
@@ -252,7 +298,10 @@ function snapsmack_grid_frame_items(array $items, array $settings, string $skin)
     $level = (string)($settings[$prefix.'_customize_level'] ?? 'per_grid');
     $shadowMap = ['0'=>'none','1'=>'3px 3px 8px rgba(0,0,0,.20)','2'=>'6px 6px 18px rgba(0,0,0,.40)','3'=>'12px 12px 32px rgba(0,0,0,.60)'];
     foreach ($items as $index => $item) {
-        $source = $level === 'per_image' ? 'img_' : ($level === 'per_carousel' ? 'post_' : '');
+        $hasImageTreatment = (int)($item['img_size_pct'] ?? 100) < 100
+            || (int)($item['img_border_px'] ?? 0) > 0
+            || (int)($item['img_shadow'] ?? 0) > 0;
+        $source = ($level === 'per_image' || $hasImageTreatment) ? 'img_' : ($level === 'per_carousel' ? 'post_' : '');
         if ($source === '') {
             $size=max(1,min(100,(int)($settings[$prefix.'_frame_size_pct']??100)));
             $border=max(0,min(100,(int)($settings[$prefix.'_frame_border_px']??0)));
@@ -270,6 +319,7 @@ function snapsmack_grid_frame_items(array $items, array $settings, string $skin)
         if(!preg_match('/^#[0-9a-f]{6}$/i',$bg))$bg='#ffffff';
         $items[$index]['frame_style']="--tile-img-size:{$size}%;--tile-border-w:{$border}px;--tile-border-c:{$color};--tile-bg:{$bg};--tile-shadow:{$shadow};";
         $items[$index]['is_framed']=$size<100||$border>0||$shadow!=='none';
+        $items[$index]['is_portrait']=(int)($item['img_height']??0)>(int)($item['img_width']??0);
     }
     return $items;
 }
@@ -323,8 +373,10 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             ? $repository->justifiedPhotographFeed()
             : ($mode === 'smacktalk'
             ? $repository->longformLanding($perPage, $offset)
-            : $repository->photographLanding($perPage, $offset)));
-        $items = snapsmack_grid_frame_items($items, $settings, $skin);
+            : snapsmack_grid_landing_items($repository, $settings, $skin, $perPage, $offset)));
+        if ($skin === 'glide' || $skin === 'slickr' || $mode === 'smacktalk') {
+            $items = snapsmack_grid_frame_items($items, $settings, $skin);
+        }
         $rows = [];
         if ($skin === 'heuristic') $items = snapsmack_heuristic_items($items, (string)($settings['he_infomatic_map'] ?? ''));
         if ($skin === 'glide') {
@@ -362,7 +414,8 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             'total_pages' => $skin === 'slickr' ? ($justifiedRows['total_pages'] ?? 1) : 1,
             'next_page' => $skin === 'slickr' && $page < ($justifiedRows['total_pages'] ?? 1) ? $page + 1 : 0,
             'slider_items' => $sliderItems, 'navigation' => $navigation, 'page' => $page,
-            'photo_count' => $mode === 'smacktalk' ? 0 : $repository->publishedPhotographCount()];
+            'photo_count' => $mode === 'smacktalk' ? 0 : ($mode === 'carousel'
+                ? $repository->publishedPostCount() : $repository->publishedPhotographCount())];
     }
     if ($route === 'photo') {
         $item = $slug !== '' ? $repository->photographBySlug($slug) : $repository->photographById($id);
