@@ -268,7 +268,11 @@ try {
             // shared links use ?s=<image-slug>; it is a route alias, not a
             // separate rendering path, so it must enter the strict controller.
             'slug' => $requested_slug ?? ($_GET['slug'] ?? ($_GET['s'] ?? '')),
-            'id' => $_GET['id'] ?? 0, 'page' => $_GET['page'] ?? 1,
+            // Historical feed engines use ?p=N; public routes also accept the
+            // descriptive ?page=N form. Normalize both at the CMS boundary.
+            'id' => $_GET['id'] ?? 0, 'page' => $_GET['page'] ?? ($_GET['p'] ?? 1),
+            'category_id' => $_GET['category'] ?? ($_GET['cat'] ?? 0),
+            'album_id' => $_GET['album'] ?? 0,
             'fragment' => !empty($_GET['modal']),
             'route_aliases' => $skin_view['route_aliases'] ?? [],
         ], $_public_settings);
@@ -282,7 +286,7 @@ try {
             'base_url' => defined('BASE_URL') ? BASE_URL : '/',
             'language' => 'en', 'direction' => 'ltr',
             'owner_name' => (string)($settings['site_author'] ?? ''),
-            'site_description' => (string)($settings['site_description'] ?? ''),
+            'site_description' => strip_tags((string)($settings['site_description'] ?? '')),
             'avatar_url' => !empty($settings['skin_avatar']) ? (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['skin_avatar'], '/') : '',
             'skin_slug' => (string)$active_skin,
             'skin_style_url' => $_active_skin_style_url,

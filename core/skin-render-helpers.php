@@ -55,7 +55,7 @@ function snap_route_url(string $route, array $parameters = []): string {
         'game-scores' => 'game-on-scores.php',
     ];
     if (!array_key_exists($route, $routes)) return '';
-    $allowed = array_intersect_key($parameters, array_flip(['slug', 'id', 'page', 'query']));
+    $allowed = array_intersect_key($parameters, array_flip(['slug', 'id', 'page', 'query', 'album', 'category']));
     foreach ($allowed as $key => $value) {
         if (!is_scalar($value)) unset($allowed[$key]);
         else $allowed[$key] = (string)$value;
@@ -63,6 +63,11 @@ function snap_route_url(string $route, array $parameters = []): string {
     $base = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
     if (($route === 'page' || $route === 'post' || $route === 'photo') && !empty($allowed['slug'])) {
         return snap_escape_url($base . rawurlencode($allowed['slug']));
+    }
+    if ($route === 'hashtag' && !empty($allowed['slug'])) {
+        $allowed['tag'] = $allowed['slug'];
+        unset($allowed['slug']);
+        return snap_escape_url($base . '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986));
     }
     $path = $routes[$route];
     return snap_escape_url($base . $path . ($allowed ? '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986) : ''));
