@@ -1,0 +1,1 @@
+{"security":"pass","parity":"pass","skin_render_parity":"pass","skin_render_changes":[],"commit":"ecc014690bd13098ecf93c5dde1aa9cc551046c0","skin_inventory_sha256":"d9559be77cfc2a7bddd42c7b90b824a42b9cc4471ab6ff303e0d2abf9bda7c3d","skin_count":30,"authority_review":"approved","tests":"full release-flow suite, including strict fleet skin security and privileged-wrapper inventory"}
