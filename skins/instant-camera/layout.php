@@ -73,5 +73,6 @@
 <div id="tg-modal-overlay" class="tg-modal-overlay" hidden data-grid-url="<?php echo snap_route_url('home'); ?>"<?php if (!empty($view['response']['autoopen'])): ?> data-autoopen="1"<?php endif; ?>><div class="tg-modal-backdrop"></div><div id="tg-modal-frame" class="tg-modal-frame"></div></div><div id="tg-lightbox" class="tg-lightbox" hidden><button type="button" class="tg-lightbox-close" aria-label="Close">&times;</button><img class="tg-lightbox-img" src="" alt=""></div>
 <?php echo snap_render_html(snap_render_component('registered-assets', ['assets' => $view['site']['registered_assets'] ?? []])); ?>
 <?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?>
+<?php if (($view['response']['kind'] ?? '') === 'landing' && !empty($view['response']['next_page'])): ?><div id="tg-sentinel" class="ss-feed-sentinel" data-feed data-next="<?php echo snap_escape_attr($view['response']['next_page']); ?>" data-base="<?php echo snap_escape_url($view['site']['base_url']); ?>" aria-hidden="true"></div><?php endif; ?>
 </body></html>
 <?php endif; ?>

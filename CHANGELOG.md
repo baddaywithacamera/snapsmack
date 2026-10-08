@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.846D — 2026-10-08 — Lighten up
+
+- Replaces the GRAMOFSMACK family's accidental 5,000-post landing response with real bounded server paging. THE GRID, AURORA, GAME ON, HEURISTIC, INSTANT CAMERA, JIVE TURKEY, PARADE, SLIDERS, and SUDDEN IMPACT now render only the configured first batch and request later batches as the reader approaches them, instead of making PHP, the database, HTML parsing, and the DOM process the complete archive up front.
+- Cuts GAME ON's background candidate pool from 400 photographs to 160 and constructs fifteen-piece puzzle boards only when they can occupy the current viewport. Hidden candidates remain cheap until a resize actually brings them into view.
+
 ## 0.7.845D — 2026-10-08 — Solo act
 
 - Restores SLICKR's solo photograph page as a coherent Flickr-style composition. The photograph owns the dark stage; title, description, comments, and EXIF return to the bounded two-column information area beneath it; the oversized cover drops out while the utility tabs remain available. The Small Photos option now emits a valid declaration instead of a double-braced rule that browsers discard.

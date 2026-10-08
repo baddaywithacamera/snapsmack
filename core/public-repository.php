@@ -121,10 +121,7 @@ final class SnapPublicRepository
              WHERE img_status='published' AND img_date <= NOW()
              ORDER BY CASE WHEN sort_order>0 THEN 1 ELSE 0 END ASC,sort_order ASC,id DESC
              LIMIT ? OFFSET ?",
-            // The controller owns the route-specific ceiling (100 normally,
-            // 5,000 for a declared progressive-reveal feed). Do not silently
-            // collapse that validated full-feed request back to 100 here.
-            [max(1, min(5000, $limit)), max(0, $offset)]
+            [max(1, min(100, $limit)), max(0, $offset)]
         );
     }
 
@@ -205,7 +202,7 @@ final class SnapPublicRepository
     }
 
     /** CMS-owned GAME ON pool: no trigram members and no carousel cover images. */
-    public function gameOnPuzzlePhotographs(int $limit = 400): array {
+    public function gameOnPuzzlePhotographs(int $limit = 160): array {
         return $this->all(
             "SELECT i.id,i.img_title,i.img_slug,i.img_file,i.img_thumb_square,i.img_thumb_aspect,
                     pi.img_focus_x,pi.img_focus_y,pi.img_zoom,p.id AS post_id,p.title AS post_title,

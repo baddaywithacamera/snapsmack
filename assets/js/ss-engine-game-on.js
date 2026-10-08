@@ -154,7 +154,15 @@
         root.style.width = (columns * size) + 'px';
         root.style.height = (rows * size) + 'px';
         boards.forEach(function (board, index) {
-            board.el.style.display = index < visible ? 'block' : 'none';
+            var shown = index < visible;
+            board.el.style.display = shown ? 'block' : 'none';
+            // Building a board creates fifteen positioned image pieces. The
+            // server supplies a broad shuffle pool, but only the boards that
+            // can actually cover this viewport should pay that DOM/image cost.
+            if (shown && !board.initialized) {
+                makeTiles(board, false);
+                board.initialized = true;
+            }
         });
     }
 
@@ -313,6 +321,7 @@
             paused: false, modal: !!isModal, startedAt: 0, finished: false,
             naturalWidth: 0, naturalHeight: 0,
             previewing: false, previewSlots: null, previewEmpty: -1,
+            initialized: !!isModal,
             previewTimer: 0, complete: null
         };
     }
@@ -830,7 +839,7 @@
     boardElements.forEach(function (el) {
         var state = scramble(100 + Math.floor(Math.random() * 151));
         var board = boardFrom(el, state, false);
-        boards.push(board); makeTiles(board, false);
+        boards.push(board);
         el.addEventListener('click', function () { openModal(board); });
     });
     layoutField();

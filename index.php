@@ -249,18 +249,6 @@ try {
             }
         }
         $_public_settings = $settings;
-        $_uses_progressive_reveal = in_array(
-            'smack-progressive-reveal',
-            is_array($_active_manifest['require_scripts'] ?? null) ? $_active_manifest['require_scripts'] : [],
-            true
-        );
-        if ($_uses_progressive_reveal) {
-            // The shared progressive-reveal engine folds the complete lazy-image
-            // DOM in batches; it cannot reveal rows omitted server-side. Grant
-            // the bounded full feed by declared capability, never by skin name.
-            $_public_settings['_cms_full_landing'] = true;
-            $_public_settings['posts_per_page'] = 5000;
-        }
         $_public = snapsmack_public_runtime($pdo, [
             'view' => $_GET['view'] ?? '', 'query' => $_GET['q'] ?? '',
             'tag' => $_GET['tag'] ?? '',

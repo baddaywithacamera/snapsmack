@@ -376,7 +376,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
     $id = max(0, (int)($request['id'] ?? 0));
     $page = max(1, (int)($request['page'] ?? 1));
     $fragment = !empty($request['fragment']);
-    $perPageCap = !empty($settings['_cms_full_landing']) ? 5000 : 100;
+    $perPageCap = 100;
     $skin = (string)($settings['active_skin'] ?? '');
     $pageSizeKey = ['onyx'=>'onyx_wall_page_size', 'scroll'=>'scroll_page_size',
         'show-n-tell'=>'htbs_grid_per_page'][$skin] ?? 'posts_per_page';
@@ -449,14 +449,21 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
                 ];
             }
         }
+        $totalCount = $mode === 'smacktalk' ? 0 : ($mode === 'carousel'
+            ? $repository->publishedPostCount() : $repository->publishedPhotographCount());
+        // A full batch may have a successor; a short batch is definitively the
+        // end. This follows the actual filtered landing query instead of a
+        // broader site-wide count that can include posts without usable covers.
+        $nextLandingPage = count($items) === $perPage ? $page + 1 : 0;
         return ['status' => 200, 'kind' => 'landing', 'mode' => $mode, 'items' => $items,
             'puzzle_items' => $skin === 'game-on' ? array_map('snapsmack_game_on_focus_item', $repository->gameOnPuzzlePhotographs()) : [],
             'rows' => $skin === 'slickr' ? ($justifiedRows['rows'] ?? []) : $rows,
             'total_pages' => $skin === 'slickr' ? ($justifiedRows['total_pages'] ?? 1) : 1,
-            'next_page' => $skin === 'slickr' && $page < ($justifiedRows['total_pages'] ?? 1) ? $page + 1 : 0,
+            'next_page' => $skin === 'slickr'
+                ? ($page < ($justifiedRows['total_pages'] ?? 1) ? $page + 1 : 0)
+                : $nextLandingPage,
             'slider_items' => $sliderItems, 'navigation' => $navigation, 'page' => $page,
-            'photo_count' => $mode === 'smacktalk' ? 0 : ($mode === 'carousel'
-                ? $repository->publishedPostCount() : $repository->publishedPhotographCount())];
+            'photo_count' => $totalCount];
     }
     if ($route === 'photo') {
         $item = $slug !== '' ? $repository->photographBySlug($slug) : $repository->photographById($id);
