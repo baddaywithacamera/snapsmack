@@ -19,6 +19,7 @@
 - Restores the clean `/blogroll` route on untouched strict skins. The CMS default Home/Blogroll navigation and its bounded route aliases now come from the same fallback condition, so the generated Blogroll link no longer falls through to ordinary slug resolution and returns Not Found.
 - Restores legacy static-page image blocks on strict skins. The CMS public runtime now expands stored `[img:ID|size|align]` content through the existing bounded parser before handing trusted presentation HTML to the skin, so pages such as About retain their images without returning database access to the skin.
 - Restores JIVE TURKEY's original static-page spacing. The strict template once again keeps the title and page body inside the skin's padded reading container, instead of pinning the title directly beneath the navigation bar.
+- Restores RATIONAL GEO's selected Marcellus masthead through the bounded same-origin font provider. The face is now packaged in the audited local inventory instead of silently falling through to a generic sans-serif after remote font loading was prohibited; the saved 30% relief-map intensity remains unchanged.
 - Records SnapSmack's governing order in `ETHICS.md` and continuity documentation: ethics first, security second, function third; nothing lower may compromise what is above it.
 
 ## 0.7.840D — 2026-10-07 — Same door
