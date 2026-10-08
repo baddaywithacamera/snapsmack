@@ -31,6 +31,14 @@ function snapsmack_public_route_aliases(array $settings, array $manifest = []): 
     $items = is_array($configured) && $configured ? $configured : ($manifest['cms_navigation'] ?? []);
     if (!is_array($items)) return [];
 
+    // Strict skins without a saved Menu Manager tree receive the CMS default
+    // Home + Blogroll navigation in snapsmack_prepare_skin_navigation(). Keep
+    // its clean route registered here as well; otherwise the CMS emits a
+    // /blogroll link which falls through to ordinary slug resolution and 404s.
+    if (!$items && in_array((string)($manifest['cms_controller'] ?? ''), ['public', 'smacktalk'], true)) {
+        $items = [['type' => 'blogroll', 'label' => 'Blogroll']];
+    }
+
     $archiveView = (($manifest['cms_controller'] ?? '') === 'smacktalk') ? 'diary' : 'archive';
     $isCarousel = (($manifest['site_mode'] ?? '') === 'carousel');
     $typeToView = [
