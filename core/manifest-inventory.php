@@ -47,6 +47,18 @@ $inventory = [
        ========================================================= */
     'local_fonts' => [
 
+        // ---- Marcellus --------------------------------------------------
+        // RATIONAL GEO's original masthead face. It was still selected after
+        // the strict-skin migration, but was only present in the legacy remote
+        // catalogue, so privacy-safe public rendering fell through to sans-serif.
+        'Marcellus' => [
+            'label'  => 'Marcellus (Roman Capitals / NatGeo masthead feel)',
+            'file'   => 'assets/fonts/Marcellus/Marcellus-Regular.ttf',
+            'format' => 'truetype',
+            'weight' => '400',
+            'style'  => 'normal',
+        ],
+
         // ---- Special Elite ----------------------------------------------
         // Formerly loaded from Google Fonts by the public skin header. Keep
         // the owner's selected SCROLL masthead stable without a third-party
