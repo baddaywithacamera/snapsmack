@@ -524,9 +524,12 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
     }
     if ($route === 'search') {
         $query = trim((string)($request['query'] ?? ''));
+        $results = $query === '' ? ['photographs' => [], 'posts' => []] : $repository->search($query);
+        $searchRows = $skin === 'slickr'
+            ? snapsmack_justified_rows($results['photographs'] ?? [], $settings, 1)['rows']
+            : [];
         return ['status' => 200, 'kind' => 'search', 'query' => $query,
-            'results' => $query === '' ? ['photographs' => [], 'posts' => []] : $repository->search($query),
-            'navigation' => $navigation];
+            'results' => $results, 'rows' => $searchRows, 'navigation' => $navigation];
     }
     if ($route === 'hashtag') {
         $total = $slug === '' ? 0 : $repository->hashtagPhotographCount($slug);
@@ -538,8 +541,31 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             'previous_page' => $page > 1 ? $page - 1 : null,
             'next_page' => ($offset + $perPage) < $total ? $page + 1 : null];
     }
-    if ($route === 'albums') return ['status' => 200, 'kind' => 'albums', 'items' => $repository->publicAlbums(), 'navigation' => $navigation];
-    if ($route === 'collections') return ['status' => 200, 'kind' => 'collections', 'items' => $repository->publicCollections(), 'navigation' => $navigation];
+    if ($route === 'albums') {
+        $items = $repository->publicAlbums();
+        if ($skin === 'slickr') {
+            foreach ($items as &$item) {
+                $count = max(0, (int)($item['photograph_count'] ?? 0));
+                $item['presentation_id'] = max(0, (int)($item['id'] ?? 0));
+                $item['presentation_count'] = number_format($count) . ($count === 1 ? ' photo' : ' photos');
+            }
+            unset($item);
+        }
+        return ['status' => 200, 'kind' => 'albums', 'items' => $items, 'navigation' => $navigation];
+    }
+    if ($route === 'collections') {
+        $items = $repository->publicCollections();
+        if ($skin === 'slickr') {
+            foreach ($items as &$item) {
+                $count = max(0, (int)($item['photograph_count'] ?? 0));
+                $item['presentation_count'] = number_format($count) . ($count === 1 ? ' image' : ' images');
+                $timestamp = strtotime((string)($item['latest_date'] ?? ''));
+                $item['presentation_posted'] = $timestamp === false ? '' : 'Posted ' . date('j F Y', $timestamp);
+            }
+            unset($item);
+        }
+        return ['status' => 200, 'kind' => 'collections', 'items' => $items, 'navigation' => $navigation];
+    }
     if ($route === 'collection') {
         $collections = array_values(array_filter($repository->publicCollections(), static fn(array $row): bool => ($row['slug'] ?? '') === $slug));
         if (!$collections) return ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation];

@@ -49,6 +49,7 @@ function snapsmack_public_route_aliases(array $settings, array $manifest = []): 
         'blogroll' => 'blogroll',
         'categories' => 'categories',
         'albums' => 'albums',
+        'collections' => 'collections',
     ];
     $fallbacks = [
         'archive' => 'archive',
@@ -56,6 +57,7 @@ function snapsmack_public_route_aliases(array $settings, array $manifest = []): 
         'blogroll' => 'blogroll',
         'categories' => 'categories',
         'albums' => 'albums',
+        'collections' => 'collections',
     ];
     $aliases = [];
     $walk = static function (array $nodes) use (&$walk, &$aliases, $typeToView, $fallbacks, $isCarousel): void {
@@ -91,8 +93,12 @@ function snapsmack_public_route_aliases(array $settings, array $manifest = []): 
     // corresponding menu item a more personal label. The label-derived alias
     // stays first and is therefore the canonical URL emitted by navigation.
     foreach (['diary' => 'diary', 'images' => 'archive', 'blogroll' => 'blogroll',
-                 'categories' => 'categories', 'albums' => 'albums'] as $slug => $view) {
-        if (in_array($view, $aliases, true) && !isset($aliases[$slug])) $aliases[$slug] = $view;
+                 'categories' => 'categories', 'albums' => 'albums', 'collections' => 'collections'] as $slug => $view) {
+        if (($manifest['cms_controller'] ?? '') === 'public' && in_array($view, ['albums', 'collections'], true)) {
+            $aliases[$slug] = $view;
+        } elseif (in_array($view, $aliases, true) && !isset($aliases[$slug])) {
+            $aliases[$slug] = $view;
+        }
     }
     return $aliases;
 }
