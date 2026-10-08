@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 $root = dirname(__DIR__);
 $lazy = (string)file_get_contents($root . '/assets/js/ss-engine-lazyload.js');
+$fade = (string)file_get_contents($root . '/assets/js/ss-engine-image-fade-load.js');
 $css = (string)file_get_contents($root . '/skins/tilez/style.css');
 $manifest = json_decode((string)file_get_contents($root . '/skins/tilez/manifest.json'), true);
 
@@ -18,6 +19,12 @@ if (!str_contains($lazy, 'window.getComputedStyle(img).transition')) {
 }
 if (str_contains($lazy, "img.style.transition = 'opacity ' + fadeDuration + 'ms ease-in';")) {
     throw new RuntimeException('Lazy loading still replaces the complete transition shorthand.');
+}
+if (!str_contains($fade, 'window.getComputedStyle(img).transition')) {
+    throw new RuntimeException('Post-image fade loading can overwrite a skin-owned image transition.');
+}
+if (str_contains($fade, "img.style.transition = 'opacity 0.4s ease-in-out';")) {
+    throw new RuntimeException('Post-image fade loading still replaces the complete transition shorthand.');
 }
 if (!str_contains($css, 'transition: filter .3s ease, transform .35s ease;')) {
     throw new RuntimeException('TILEZ lost its smooth image zoom transition.');
@@ -30,8 +37,8 @@ foreach ([
         throw new RuntimeException('TILEZ caption can move vertically on hover: ' . $anchor);
     }
 }
-if (($manifest['version'] ?? '') !== '0.2.61') {
-    throw new RuntimeException('TILEZ version was not advanced to 0.2.61.');
+if (($manifest['version'] ?? '') !== '0.2.62') {
+    throw new RuntimeException('TILEZ version was not advanced to 0.2.62.');
 }
 
 echo "TILEZ hover transition regression passed\n";

@@ -2540,17 +2540,17 @@ body.blog, body.single, body.archive { background: #fff; }
     margin-top: 2.6em;
     margin-bottom: 2.6em;
 }
-/* Consecutive standalone photographs are an intentional pair. Keep them on
-   one row on desktop instead of turning the essay into two full-width panels. */
+/* Consecutive standalone photographs are an intentional compact photo wall.
+   Keep them two-up on desktop instead of turning the essay into a procession
+   of full-width panels. Inline-block siblings retain an HTML whitespace node;
+   leave enough real clearance for that whitespace at the active body font
+   size so small typography changes cannot wrap every second tile. */
 .entry-content > .snap-inline-frame:has(+ .snap-inline-frame),
 .entry-content > .snap-inline-frame + .snap-inline-frame {
     display: inline-block;
-    /* Leave room for the HTML whitespace between inline-block siblings. The
-       article's larger type otherwise makes that whitespace wide enough to
-       wrap the second photograph onto a new line. */
-    width: calc(50% - 6px) !important;
-    margin-top: 2.6em;
-    margin-bottom: 2.6em;
+    width: calc(50% - 10px) !important;
+    margin-top: 4px;
+    margin-bottom: 4px;
     vertical-align: top;
 }
 .entry-content > .snap-inline-frame:has(+ .snap-inline-frame) {
