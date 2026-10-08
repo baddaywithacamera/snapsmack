@@ -145,11 +145,6 @@ require_once __DIR__ . '/includes/header.php';
                     <h3>Rainfall, Rehash, Booklet, Sideways</h3>
                     <p>Four more skins in various states of half-built. They&rsquo;ll get names on this page when they earn them.</p>
                 </article>
-                <article class="coming-item">
-                    <span class="tag">Editor &middot; Parser</span>
-                    <h3><code>[pullquote]</code></h3>
-                    <p>Advertised in the appearance settings for months, never actually built. Small, embarrassing, on the list.</p>
-                </article>
             </div>
         </div>
     </section>
@@ -161,6 +156,7 @@ require_once __DIR__ . '/includes/header.php';
             <p class="lede">Things that used to live on this list and now live on real sites. The full running log is on <a href="wotcha.php">WOTCHA!</a></p>
             <div class="shipped-list">
                 <a href="tool-cold-snap.php"><strong>COLD SNAP</strong><span>Offline post composer with BIGGIE blocks and a local cold-storage library. Shipped.</span></a>
+                <a href="features.php"><strong><code>[pullquote]</code></strong><span>Semantic pull quotes in every web editor and COLD SNAP, rendered through the shared presentation layer. Shipped.</span></a>
                 <a href="tool-snap-slapper.php#lewks"><strong>LEWK AGAIN</strong><span>AI-assisted look builder inside SNAP SLAPPER, all five providers. Shipped.</span></a>
                 <a href="features.php#network"><strong>photoblogs.fyi + the challenge network</strong><span>The directory, the reader, and the weekly #photofri challenge. Live.</span></a>
                 <a href="skins.php"><strong>GAME ON</strong><span>The sliding-puzzle photoblog skin. In production on theschoolofhardnocks.ca.</span></a>
