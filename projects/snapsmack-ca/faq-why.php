@@ -74,8 +74,8 @@ $faq_qas = <<<'HTML'
                 <p>Yes. The admin panel says so.</p>
                 <p>The honest origin: I asked Gemini whether Pixelpost could be modernized. The answer was no. So I started over. SnapSmack was built independently from scratch. It doesn't use any Pixelpost code &mdash; nothing was copied, adapted, or carried over. Pixelpost inspired how SnapSmack should feel, but not how it was built. That also means SnapSmack has its own licence; it doesn't inherit Pixelpost's.</p>
                 <p>The original Gemini-built implementation was already better suited to the modern web than Pixelpost had been. Then I realised something: I blog much harder now than I did when Pixelpost was current. More sites, more workflows, more files, more reasons to want serious tooling. Pixelpost's one-photo-a-day shape was beautiful and sufficient for what blogging used to be. It is not sufficient for what blogging is now, at least not for me.</p>
-                <p>So the new product kept growing. Multisite. Companion apps. Security stack. Four install personalities for four different use shapes.</p>
-                <p>SnapSmack isn't mission creep. It's mission accomplished.</p>
+                <p>It started as a re-imagining of Pixelpost. Then, while we were out on the water, we found a few more survivors worth pulling aboard: photographs stranded in old Flickr accounts, Instagram grids wrecked by the platform underneath them, Blogger photoblogs, and Picasa-shaped libraries with nowhere good to go.</p>
+                <p>So the new product kept growing. Multisite. Import and rescue tools. Companion apps. Security stack. Four install personalities for four different use shapes. SnapSmack isn't mission creep. It's photographers taking back what's ours from the corporate creeps.</p>
                 <p>See "SnapSmack vs Pixelpost" below for the operational comparison.</p>
             </div>
 
