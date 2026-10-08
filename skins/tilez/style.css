@@ -1027,7 +1027,7 @@ input[type="button"],
 .has-post-thumbnail .archive-post-header { bottom: 35px; }
 
 .has-post-thumbnail:hover .archive-post-header,
-.show-preview-titles .has-post-thumbnail .archive-post-header { bottom: 30px; }
+.show-preview-titles .has-post-thumbnail .archive-post-header { bottom: 35px; }
 
 .posts a.post.has-post-thumbnail { color: #fff; }
 
@@ -2000,7 +2000,7 @@ p.comment-form-author { margin-right: 5%; }
     }
 
     .has-post-thumbnail .archive-post-header { bottom: 25px; }
-    .has-post-thumbnail:hover .archive-post-header { bottom: 20px; }
+    .has-post-thumbnail:hover .archive-post-header { bottom: 25px; }
 
     .comment-title { font-size: 1em; }
 
