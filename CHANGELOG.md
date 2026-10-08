@@ -11,6 +11,13 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.844D — 2026-10-08 — Frame it right
+
+- Restores RATIONAL GEO's complete editorial presentation, not merely its header class names. The strict layout now emits the CMS-bounded per-skin stylesheet, while the base skin carries a fail-safe dark palette so a missing or stale variant can never collapse the masthead, navigation, map, and landing canvas to transparent browser defaults.
+- Restores the selected Merriweather masthead on 50 SHADES OF NOAH GREY through SnapSmack's bounded same-origin font provider. The font remains local to the visitor's site request instead of silently falling back to sans-serif or contacting a third-party font CDN.
+- Keeps GAME ON's framed-tile matte inside the configured rounded corners. The anchor now inherits the tile radius instead of exposing four square white corners behind the rounded photograph.
+- Keeps configured landing-tile borders tight around portrait photographs across the grid-family skins. Border colour no longer paints the spare `object-fit` area into thick side bars; THE GRID, AURORA, SUDDEN IMPACT, PARADE, JIVE TURKEY, HEURISTIC, and GAME ON receive sequential skin versions for distribution.
+
 ## 0.7.843D — 2026-10-08 — Hold the line
 
 - Keeps the guarded release sequence check operational on minimal Windows PHP builds that omit the HTTPS stream wrapper by falling back to the system HTTPS client; an unreadable or invalid public manifest still fails closed.

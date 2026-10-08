@@ -23,6 +23,31 @@
    ========================================================================== */
 
 :root {
+  /* Default dark editorial palette. These are deliberately present in the
+     base sheet so a missing or stale variant can never collapse the skin to
+     transparent browser defaults. A selected variant may override them. */
+  --rg-bg-page: #0a0a0a;
+  --rg-bg-secondary: #151515;
+  --rg-bg-chrome: #1a1a1a;
+  --rg-bg-drawer: #111111;
+  --rg-border: #2a2a2a;
+  --rg-border-light: #1f1f1f;
+  --rg-text-primary: #b8b8b8;
+  --rg-text-secondary: #aaaaaa;
+  --rg-text-dim: #666666;
+  --rg-text-bright: #ffffff;
+  --rg-accent: #ffcc00;
+  --rg-accent-dark: #ffd633;
+  --rg-accent-muted: rgba(255, 204, 0, 0.1);
+  --rg-link: #ffffff;
+  --rg-link-hover: #ffcc00;
+  --rg-input-bg: #1a1a1a;
+  --rg-overlay-bg: rgba(10, 10, 10, 0.97);
+  --rg-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  --rg-shadow-hover: 0 4px 16px rgba(0,0,0,0.5);
+  --rg-nav-color: #ffffff;
+  --rg-nav-dim: rgba(255,255,255,0.3);
+
   /* Layout Grid */
   --grid-cols: 4;
   --thumb-width: 210px;

@@ -1825,7 +1825,8 @@
             "registry_handle": "asset:public:ss-engine-nav-dropdown",
             "legacy_handle": null,
             "callers": [
-                "core/footer.php"
+                "core/footer.php",
+                "skins/instant-camera/manifest.json"
             ],
             "security_signals": [],
             "security_review": null,
@@ -1847,7 +1848,6 @@
                 "core/asset-security-reviews.php",
                 "core/mayhem-data.php",
                 "core/ohsnap-api.php",
-                "core/skin-render-helpers.php",
                 "skins/52-card-pickup/manifest.json",
                 "skins/instant-camera/manifest.json",
                 "52-card-pickup",
@@ -1867,7 +1867,7 @@
             "family": "Skin engines (ss-engine-*) \u2014 public-facing behaviour a skin can switch on",
             "vendor": false,
             "requires": [],
-            "purpose": "Organized Mayhem Tabletop Background FX Engine (spec: _spec/organized-mayhem-spec-v0.1.docx)."
+            "purpose": "Silent error pipeline (spec \u00a71) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
         },
         {
             "file": "assets/js/ss-engine-other-side.js",
@@ -2023,6 +2023,7 @@
             "registry_handle": "asset:public:ss-engine-progressive-reveal",
             "legacy_handle": "smack-progressive-reveal",
             "callers": [
+                "index.php",
                 "core/asset-security-reviews.php",
                 "skins/aurora/manifest.json",
                 "skins/game-on/manifest.json",
@@ -2650,6 +2651,33 @@
             "purpose": "Display/branding typeface. Skins reference it by family name in @font-face / CSS."
         },
         {
+            "family": "Marcellus",
+            "dir": "assets/fonts/Marcellus",
+            "files": [
+                "Marcellus-Regular.ttf"
+            ],
+            "license": "LICENSE.txt",
+            "purpose": "Display/branding typeface. Skins reference it by family name in @font-face / CSS."
+        },
+        {
+            "family": "Merriweather",
+            "dir": "assets/fonts/Merriweather",
+            "files": [
+                "Merriweather-Regular.ttf"
+            ],
+            "license": "OFL.txt",
+            "purpose": "Display/branding typeface. Skins reference it by family name in @font-face / CSS."
+        },
+        {
+            "family": "Special Elite",
+            "dir": "assets/fonts/Special Elite",
+            "files": [
+                "SpecialElite-Regular.ttf"
+            ],
+            "license": "LICENSE.txt",
+            "purpose": "Display/branding typeface. Skins reference it by family name in @font-face / CSS."
+        },
+        {
             "family": "Spray.ME",
             "dir": "assets/fonts/Spray.ME",
             "files": [
@@ -2723,7 +2751,9 @@
             "callers": [
                 "smack-preview-ajax.php",
                 "core/asset-security-reviews.php",
-                "core/meta.php"
+                "core/meta.php",
+                "skins/slickr/manifest.json",
+                "skins/tilez/manifest.json"
             ],
             "security_signals": [
                 "concealment"
@@ -2791,7 +2821,8 @@
             "registry_handle": "asset:public:page-blogroll",
             "legacy_handle": null,
             "callers": [
-                "core/meta.php"
+                "core/meta.php",
+                "skins/slickr/manifest.json"
             ],
             "security_signals": [],
             "security_review": null,
@@ -2805,7 +2836,8 @@
             "registry_handle": "asset:public:page-collection",
             "legacy_handle": null,
             "callers": [
-                "core/meta.php"
+                "core/meta.php",
+                "skins/slickr/manifest.json"
             ],
             "security_signals": [],
             "security_review": null,
@@ -2833,7 +2865,8 @@
             "registry_handle": "asset:public:page-static",
             "legacy_handle": null,
             "callers": [
-                "core/meta.php"
+                "core/meta.php",
+                "skins/slickr/manifest.json"
             ],
             "security_signals": [],
             "security_review": null,
@@ -2876,7 +2909,9 @@
             "legacy_handle": null,
             "callers": [
                 "core/asset-security-reviews.php",
-                "core/meta.php"
+                "core/meta.php",
+                "skins/slickr/manifest.json",
+                "skins/tilez/manifest.json"
             ],
             "security_signals": [
                 "concealment"
@@ -2931,7 +2966,9 @@
             "legacy_handle": null,
             "callers": [
                 "smack-shortcodes.php",
-                "core/meta.php"
+                "core/meta.php",
+                "skins/slickr/manifest.json",
+                "skins/tilez/manifest.json"
             ],
             "security_signals": [],
             "security_review": null,

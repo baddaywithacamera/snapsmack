@@ -23,6 +23,12 @@ $faq_qas = <<<'HTML'
                 <p>One of them, yes: backup. The website used to back itself up, and on a large archive that slaughtered the server &mdash; a shared host will kill a job that big before it finishes &mdash; so it was taken out of the site and lives in SMACK UP YOUR BACKUP on your own computer. Everything else the website does on its own. The other tools exist because some jobs &mdash; editing eighty RAW files, importing fifteen years of Flickr &mdash; are miserable through a browser and cruel to a shared host, so they move that work onto your machine. If you post one photograph a week from your phone, backup is the only one you&rsquo;ll ever open. If you won&rsquo;t run the backup tool, or you&rsquo;re on a Mac, you will have to dump the database and copy the files yourself from your host&rsquo;s control panel. We are not putting the feature back into the website for you: it simply does not work on shared hosting.</p>
             </div>
 
+            <div class="qa" id="q-slapper-site-required">
+                <h3>Will you be releasing SNAP SLAPPER as a standalone photo editor and organizer without requiring running SnapSmack to use it?</h3>
+                <p>No. SNAP SLAPPER was intended to be part of the SnapSmack ecosystem from day one, not a separate product or project. Anyone who truly feels it should be a standalone software package can pull the code out of our repo, fork it, rename it, and offer their own standalone version. Just please follow the licensing terms and handle your own support for it; we&rsquo;re not taking on that kind of support burden.</p>
+                <p>SNAP SLAPPER needs a working SnapSmack installation and a key issued by that installation. It is your installation and your key; there is no charge, subscription, or account with us. It does not harvest your information, report your activity back to us, or phone home with your photographs. The requirement is a technical-support boundary, not paid activation or telemetry.</p>
+            </div>
+
             <div class="qa" id="q-tools-platforms">
                 <h3>Windows only?</h3>
                 <p>Windows and Linux. macOS is not supported and isn't planned &mdash; the reasons are in the <a href="faq-running.php#q-macos">Running it</a> section, and they're not going to change. SNAP HQ is currently Windows only.</p>

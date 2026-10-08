@@ -98,12 +98,16 @@ $page_css = <<<'CSS'
 .xkcd-proof-image { width: 100%; background: var(--white); }
 .xkcd-proof figcaption { margin-top: 10px; color: var(--mid-grey); font: .7rem/1.4 'Courier New', monospace; }
 
-#custodian { background: var(--white); border-top: 8px solid var(--black); }
+#custodian { background: var(--dark-grey); color: var(--white); border-top: 8px solid var(--black); }
+#custodian h2 { color: var(--red); }
+#custodian .site-discovery-kicker { color: var(--red); }
+#custodian a { color: #ff5a52; }
+#custodian a:hover { color: var(--white); }
 .custodian-inner { max-width: 820px; }
-.custodian-quote { margin: 0 0 26px; padding-left: 26px; border-left: 6px solid var(--red); color: var(--black); font-size: clamp(1.25rem, 2.4vw, 1.7rem); line-height: 1.45; font-style: italic; }
-.custodian-quote cite { display: block; margin-top: 12px; color: var(--mid-grey); font: 700 .72rem/1.3 'Courier New', monospace; font-style: normal; letter-spacing: .08em; text-transform: uppercase; }
-.custodian-points { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin-top: 34px; background: var(--border); border: 1px solid var(--border); }
-.custodian-points article { padding: 24px; background: var(--white); }
+.custodian-quote { margin: 0 0 26px; padding-left: 26px; border-left: 6px solid var(--red); color: var(--white); font-size: clamp(1.25rem, 2.4vw, 1.7rem); line-height: 1.45; font-style: italic; }
+.custodian-quote cite { display: block; margin-top: 12px; color: #bbb; font: 700 .72rem/1.3 'Courier New', monospace; font-style: normal; letter-spacing: .08em; text-transform: uppercase; }
+.custodian-points { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin-top: 34px; background: #666; border: 1px solid #666; }
+.custodian-points article { padding: 24px; background: #292929; color: var(--white); }
 .custodian-points h3 { color: var(--red); }
 .custodian-points p { margin: 0; font-size: .92rem; line-height: 1.55; }
 
@@ -170,7 +174,7 @@ require_once __DIR__ . '/includes/header.php';
             <h1 class="door-hook">Retro Photo Blogging.<br><span>No Algorithm.</span></h1>
             <p class="door-kicker">What&rsquo;s new is old again.</p>
             <p class="door-sub">We&rsquo;re not offering you anything new. We&rsquo;re giving back what was taken: the single-photo blog, long-form posting that hasn&rsquo;t been enshittified, classic Insta styling, and pumping images straight out of a file manager. All of it used to belong to photographers. Now it lives on hardware you control, and nobody is taking it back from you.</p>
-            <p class="door-editor">And a free, powerful <a href="tool-snap-slapper.php">photo editor</a>. Non-destructive; your originals are never touched, ever. And it doesn&rsquo;t expire when you stop paying, because we remember when you didn&rsquo;t have to rent your software.</p>
+            <p class="door-editor">And a free, powerful <a href="tool-snap-slapper.php">photo editor and organizer</a> because we remember when photographers were given good software for no charge rather than being told they needed to pay monthly rent for it.</p>
             <p class="door-never">Your photos. Your voice.<br>Your style. <em>Your dignity.</em></p>
             <div class="door-actions">
                 <a href="#beta" class="btn btn-primary">Try the Beta</a>
