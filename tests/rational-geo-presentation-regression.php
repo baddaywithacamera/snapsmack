@@ -14,8 +14,8 @@ $css = (string)file_get_contents(dirname(__DIR__) . '/skins/rational-geo/style.c
 $manifest = json_decode((string)file_get_contents(dirname(__DIR__) . '/skins/rational-geo/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
 $inventory = include dirname(__DIR__) . '/core/manifest-inventory.php';
 
-if (($manifest['version'] ?? '') !== '2.1.9') {
-    throw new RuntimeException('RATIONAL GEO release is not sequentially versioned at 2.1.9.');
+if (($manifest['version'] ?? '') !== '2.1.10') {
+    throw new RuntimeException('RATIONAL GEO release is not sequentially versioned at 2.1.10.');
 }
 if (!isset($inventory['local_fonts']['Marcellus'])
     || ($inventory['local_fonts']['Marcellus']['file'] ?? '') !== 'assets/fonts/Marcellus/Marcellus-Regular.ttf') {
@@ -32,6 +32,11 @@ if (!str_contains($style, '--rg-map-pct:30')
 }
 if (!str_contains($layout, 'rg-map-hidden')) {
     throw new RuntimeException('RATIONAL GEO no longer honors the bounded map visibility setting.');
+}
+foreach (['rg-header-inside', 'rg-header-nav', 'rg-logo-link', 'rg-masthead'] as $hook) {
+    if (!str_contains($layout, $hook)) {
+        throw new RuntimeException('RATIONAL GEO lost its pre-strip landing-page hook: ' . $hook);
+    }
 }
 
 echo "RATIONAL GEO presentation regression: PASS\n";

@@ -11,6 +11,13 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.843D — 2026-10-08 — Hold the line
+
+- Keeps the guarded release sequence check operational on minimal Windows PHP builds that omit the HTTPS stream wrapper by falling back to the system HTTPS client; an unreadable or invalid public manifest still fails closed.
+- Keeps consecutive TILEZ post photographs in a compact two-column wall. The paired-image width now reserves enough room for the actual inter-element whitespace, and wall rows use a small tile gutter instead of full article spacing, preventing typography changes from exploding the wall into a tall single-file procession.
+- Preserves smooth hover zooms on photographs inside SMACKTALK posts. The post-image fade loader now appends its opacity transition instead of replacing the skin's transform easing, matching the already repaired landing-page behaviour without moving text or layout.
+- Restores RATIONAL GEO's normal landing-page masthead and navigation by reconnecting the strict template to its original `rg-header-inside`, `rg-header-nav`, `rg-logo-link`, and `rg-masthead` presentation hooks. The preserved stylesheet and saved settings work again without returning authority to the skin.
+
 ## 0.7.842D — 2026-10-07 — Room to breathe
 
 - Prevents an odd-sized “Recently landed” list from exposing the grid-gap colour as a fake empty grey card; an unpaired final entry now spans the row.

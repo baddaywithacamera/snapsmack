@@ -128,6 +128,23 @@ function rf_require_next_dev_version(string $version): void {
     }
 }
 
+function rf_fetch_public_manifest(string $url): string|false {
+    // Minimal Windows PHP builds may omit the OpenSSL stream wrapper even
+    // though the release workstation has the system curl client. Keep the
+    // public sequence check fail-closed, but do not make its transport depend
+    // on one optional PHP extension.
+    if (in_array('https', stream_get_wrappers(), true)) {
+        $context = stream_context_create(['http' => ['timeout' => 15, 'ignore_errors' => true]]);
+        $raw = @file_get_contents($url, false, $context);
+        if (is_string($raw) && $raw !== '') return $raw;
+    }
+    $command = 'curl --fail --silent --show-error --location --max-time 15 '
+        . escapeshellarg($url) . ' 2>&1';
+    exec($command, $lines, $code);
+    $raw = trim(implode("\n", $lines));
+    return $code === 0 && $raw !== '' ? $raw : false;
+}
+
 function rf_release_state_refusal(string $requested, string $latest_tagged, string $latest_packaged): string {
     $requested = rf_version($requested);
     $latest_tagged = rf_version($latest_tagged);
@@ -156,8 +173,7 @@ function rf_require_packaged_tag_alignment(string $requested): void {
     }
     if ($latest_tagged === '') rf_fail('could not determine the highest tagged development version');
 
-    $context = stream_context_create(['http' => ['timeout' => 15, 'ignore_errors' => true]]);
-    $raw = @file_get_contents('https://snapsmack.ca/releases/latest-dev.json', false, $context);
+    $raw = rf_fetch_public_manifest('https://snapsmack.ca/releases/latest-dev.json');
     $manifest = is_string($raw) ? json_decode($raw, true) : null;
     $latest_packaged = is_array($manifest) ? (string)($manifest['version'] ?? '') : '';
     if (!preg_match('/^\d+\.\d+\.\d+D$/i', $latest_packaged)) {
