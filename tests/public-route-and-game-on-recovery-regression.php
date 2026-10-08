@@ -244,5 +244,17 @@ foreach ([$pageEntry, $blogrollEntry] as $source) {
     );
 }
 
+$jiveLayout = (string)file_get_contents(dirname(__DIR__) . '/skins/jive-turkey/layout.php');
+$jiveCss = (string)file_get_contents(dirname(__DIR__) . '/skins/jive-turkey/style.css');
+recovery_check(
+    str_contains($jiveLayout, 'class="jt-static-page jt-static-content"')
+        && str_contains($jiveLayout, 'class="jt-static-body"'),
+    'JIVE TURKEY static-page title and body no longer share the original padded reading container.'
+);
+recovery_check(
+    preg_match('/\.jt-static-content\s*\{[^}]*padding:\s*40px 28px 60px/s', $jiveCss) === 1,
+    'JIVE TURKEY static-page reading-container spacing changed.'
+);
+
 echo "Public route and GAME ON recovery regression passed.\n";
 // ===== SNAPSMACK EOF =====
