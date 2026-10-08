@@ -18,6 +18,7 @@
 - Restores THE GRID's portrait frame geometry when legacy orientation metadata contradicts the delivered thumbnail. Framed tiles now constrain both intrinsic image axes, preserving the saved size, border, background, and shadow while keeping the border tight to landscape and portrait photographs alike.
 - Restores the clean `/blogroll` route on untouched strict skins. The CMS default Home/Blogroll navigation and its bounded route aliases now come from the same fallback condition, so the generated Blogroll link no longer falls through to ordinary slug resolution and returns Not Found.
 - Restores legacy static-page image blocks on strict skins. The CMS public runtime now expands stored `[img:ID|size|align]` content through the existing bounded parser before handing trusted presentation HTML to the skin, so pages such as About retain their images without returning database access to the skin.
+- Restores JIVE TURKEY's original static-page spacing. The strict template once again keeps the title and page body inside the skin's padded reading container, instead of pinning the title directly beneath the navigation bar.
 - Records SnapSmack's governing order in `ETHICS.md` and continuity documentation: ethics first, security second, function third; nothing lower may compromise what is above it.
 
 ## 0.7.840D — 2026-10-07 — Same door
