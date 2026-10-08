@@ -16,7 +16,7 @@ $nav_active       = 'goods-tools';
 
 $page_css = <<<'CSS'
 .tools-intro { max-width: 780px; }
-.why-desktop { padding: 0 0 56px; }
+.why-desktop { padding: 48px 0 56px; }
 .why-desktop h2 { margin-bottom: 20px; }
 .why-desktop-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
 .why-desktop-cols p { margin: 0; font-size: .98rem; line-height: 1.55; color: var(--dark-grey); }
