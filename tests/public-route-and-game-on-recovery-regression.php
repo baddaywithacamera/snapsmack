@@ -98,6 +98,12 @@ recovery_check(($orientationFramed[0]['is_portrait'] ?? false) === true, 'THE GR
 recovery_check(($orientationFramed[1]['is_portrait'] ?? true) === false, 'THE GRID overrides an authoritative stored landscape orientation.');
 recovery_check(($orientationFramed[2]['is_portrait'] ?? false) === true, 'THE GRID lost the dimension fallback for legacy rows without orientation data.');
 
+$theGridCss = (string)file_get_contents(dirname(__DIR__) . '/skins/the-grid/style.css');
+recovery_check(
+    preg_match('/\.tg-tile--framed img\s*\{[^}]*width:\s*auto;[^}]*height:\s*auto;[^}]*max-width:\s*var\(--tile-img-size, 100%\);[^}]*max-height:\s*var\(--tile-img-size, 100%\);/s', $theGridCss) === 1,
+    'THE GRID frame geometry no longer constrains both intrinsic image axes; legacy portrait covers will expose oversized side gutters.'
+);
+
 $response = [
     'kind' => 'blogroll',
     'status' => 200,

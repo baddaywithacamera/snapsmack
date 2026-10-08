@@ -436,11 +436,13 @@ img { display: block; max-width: 100%; }
 
 .tg-tile--framed img {
     /* Border/shadow hug the IMAGE itself (natural aspect), not a square box.
-       Landscape: size% of WIDTH, height follows. Portrait override below. */
-    width:        var(--tile-img-size, 100%);
+       Constrain both axes so the browser's intrinsic image dimensions select
+       the limiting side. This keeps the frame tight even when legacy stored
+       orientation metadata contradicts the delivered thumbnail. */
+    width:        auto;
     height:       auto;
     max-width:    var(--tile-img-size, 100%);
-    max-height:   100%;
+    max-height:   var(--tile-img-size, 100%);
     margin:       auto;   /* bulletproof flex centring — splits matte evenly */
     object-fit:   contain;
     border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
@@ -454,10 +456,10 @@ img { display: block; max-width: 100%; }
     transition:   opacity 0.2s;
 }
 .tg-tile--framed.tg-tile--portrait img {
-    /* Portrait: size% of HEIGHT so it can't overflow the square tile. */
+    /* Retained for compatibility with correctly classified portrait rows. */
     width:        auto;
-    height:       var(--tile-img-size, 100%);
-    max-width:    100%;
+    height:       auto;
+    max-width:    var(--tile-img-size, 100%);
     max-height:   var(--tile-img-size, 100%);
 }
 
