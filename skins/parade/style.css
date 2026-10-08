@@ -526,11 +526,9 @@ img { display: block; max-width: 100%; }
     margin:       auto;   /* bulletproof flex centring — splits matte evenly */
     object-fit:   contain;
     border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
-    /* Fill the sub-pixel object-fit:contain letterbox with the border colour
-       instead of letting the tile bg show through as a thin sliver between
-       the image and its border (the "white line" bug). Falls back to
-       transparent when there's no border, preserving the matte. */
-    background-color: var(--tile-border-c, transparent);
+    /* The border belongs only on the image edge. Colouring the content box
+       turns object-fit space beside portrait images into thick side bars. */
+    background-color: transparent;
     box-sizing:   border-box;
     transition:   opacity 0.2s;
 }

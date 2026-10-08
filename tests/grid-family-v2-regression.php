@@ -29,7 +29,9 @@ foreach($skins as $skin){
     if(count($php)!==1||basename($php[0])!=='layout.php') throw new RuntimeException("{$skin} retains legacy PHP.");
     $layoutSource=(string)file_get_contents($dir.'/layout.php');
     if(str_contains($layoutSource,"snap_render_component('public-page'")) throw new RuntimeException("{$skin} still delegates its document skeleton to the CMS.");
-    $styles[$skin]=hash_file('sha256',$dir.'/style.css');
+    $styleSource=(string)file_get_contents($dir.'/style.css');
+    $styles[$skin]=hash('sha256',$styleSource);
+    if(preg_match('/background(?:-color)?\s*:\s*var\(--tile-border-c\b/', $styleSource)===1) throw new RuntimeException("{$skin} paints object-fit letterboxing with the frame border colour; portraits will render thick side bars.");
     foreach($responses as $response){
         $view=snapsmack_build_skin_view($response,['site_name'=>'Example','tagline'=>'Tag','language'=>'en','direction'=>'ltr','skin_slug'=>$skin,'skin_style_url'=>'/skins/'.$skin.'/style.css','skin_presentation'=>snapsmack_skin_presentation([], $skin)]);
         ob_start(); $ok=snapsmack_render_strict_skin_template($dir,'layout.php',$view); $html=(string)ob_get_clean();

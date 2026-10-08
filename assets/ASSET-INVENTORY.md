@@ -88,7 +88,7 @@
 - **`ss-engine-mosaic-feed.js`** — Incremental MOSAIC block feed.
 - **`ss-engine-mosaic.js`** — Mosaic Layout Engine Renders inline image mosaics from [mosaic:ID] shortcodes.
 - **`ss-engine-nav-dropdown.js`** — SnapSmack public navigation dropdown engine.
-- **`ss-engine-organized-mayhem.js`** — Organized Mayhem Tabletop Background FX Engine (spec: _spec/organized-mayhem-spec-v0.1.docx).
+- **`ss-engine-organized-mayhem.js`** — Silent error pipeline (spec §1) ──────────────────────────────────
 - **`ss-engine-other-side.js`** — THE OTHER SIDE engine A deliberately small state engine for dual-reality skins.
 - **`ss-engine-overlay.js`** — Center Overlay Controller Shared overlay engine for skins that use the HTBS-style center-expand info/comments panel (Galleria, Hip to be Square).
 - **`ss-engine-page-import.js`** — Page HTML Import (admin editor helper) Loads a local .html file straight into the page-content textarea, entirely client-side (FileReader — nothing is uploaded, no server round-trip, no stored file).
@@ -112,7 +112,7 @@
 - **`ss-engine-updater.js`** — Update Manager Modal XHR-driven update modal.
 - **`ss-engine-wall.js`** — Wall Engine Physics-driven horizontal gallery wall.
 
-## Fonts (12 families)
+## Fonts (15 families)
 
 - **American Stencil** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: OFL.txt)
 - **BlackCasper** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: blackcasper.regular-license.txt)
@@ -122,6 +122,9 @@
 - **FlottFlott** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: FlottFlott-license.txt)
 - **KeyBinds** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: keybinds-license.txt)
 - **LinuxBiolinum** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: linux-biolinum-license.txt)
+- **Marcellus** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: LICENSE.txt)
+- **Merriweather** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: OFL.txt)
+- **Special Elite** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: LICENSE.txt)
 - **Spray.ME** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: license.txt)
 - **SquareSanSerif7** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: square-sans-serif-7-license.txt)
 - **Tiny5** — Display/branding typeface. Skins reference it by family name in @font-face / CSS. (licence: tiny5-license.txt)

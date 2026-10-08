@@ -145,6 +145,12 @@ recovery_check(
     'THE GRID frame geometry no longer constrains both intrinsic image axes; legacy portrait covers will expose oversized side gutters.'
 );
 
+$gameOnCss = (string)file_get_contents(dirname(__DIR__) . '/skins/game-on/style.css');
+recovery_check(
+    preg_match('/\.go-tile--framed a\s*\{[^}]*background:\s*var\(--tile-bg, #ffffff\);[^}]*border-radius:\s*inherit;/s', $gameOnCss) === 1,
+    'GAME ON framed-tile anchor lost the inherited radius; its square matte will expose opaque corners around rounded photographs.'
+);
+
 $response = [
     'kind' => 'blogroll',
     'status' => 200,
