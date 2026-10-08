@@ -16,6 +16,7 @@ require_once dirname(__DIR__) . '/core/skin-render-helpers.php';
 require_once dirname(__DIR__) . '/core/skin-view-contract.php';
 require_once dirname(__DIR__) . '/core/public-controller.php';
 require_once dirname(__DIR__) . '/core/public-route-aliases.php';
+require_once dirname(__DIR__) . '/core/public-runtime.php';
 
 function recovery_check(bool $condition, string $message): void
 {
@@ -61,6 +62,37 @@ $defaultPublicAliases = snapsmack_public_route_aliases([], [
 recovery_check(
     ($defaultPublicAliases['blogroll'] ?? '') === 'blogroll',
     'An untouched strict GRAM site emits its default Blogroll link without registering the clean route.'
+);
+
+class RecoveryPageParserPDO extends PDO {
+    public function __construct() {}
+    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false {
+        return new RecoveryPageParserStatement([], []);
+    }
+    public function prepare(string $query, array $options = []): PDOStatement|false {
+        return new RecoveryPageParserStatement([
+            'path' => 'media_assets/sean.jpg',
+            'name' => 'Sean',
+            'alt' => 'Sean McCormick',
+            'bw' => 0,
+            'bc' => '#000000',
+        ], []);
+    }
+}
+class RecoveryPageParserStatement extends PDOStatement {
+    public function __construct(private array $row, private array $rows) {}
+    public function execute(?array $params = null): bool { return true; }
+    public function fetch(int $mode = PDO::FETCH_DEFAULT, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed { return $this->row ?: false; }
+    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array { return $this->rows; }
+}
+$parsedPage = snapsmack_public_parse_page_content(new RecoveryPageParserPDO(), [
+    'kind' => 'page',
+    'item' => ['content' => '[img:1|full|center] Biography.'],
+]);
+recovery_check(
+    str_contains((string)($parsedPage['item']['content'] ?? ''), 'media_assets/sean.jpg')
+        && !str_contains((string)($parsedPage['item']['content'] ?? ''), '[img:1|full|center]'),
+    'Strict static pages print legacy image shortcodes instead of expanding them through the CMS parser.'
 );
 
 $smacktalkAliases = snapsmack_public_route_aliases([
