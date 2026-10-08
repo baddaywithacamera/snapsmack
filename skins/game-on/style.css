@@ -465,6 +465,7 @@ img { display: block; max-width: 100%; }
     align-items:     center;
     justify-content: center;
     background:      var(--tile-bg, #ffffff);
+    border-radius:   inherit;
     overflow:        visible;
 }
 .go-tile--edge-frame,
@@ -483,11 +484,9 @@ img { display: block; max-width: 100%; }
     object-fit:   contain;
     border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
     border-radius: var(--tile-radius, 0px);
-    /* Fill the sub-pixel object-fit:contain letterbox with the border colour
-       instead of letting the white tile bg show through as a thin sliver
-       between the image and its border (the "white line at the bottom" bug).
-       Falls back to transparent when there's no border, preserving the matte. */
-    background-color: var(--tile-border-c, transparent);
+    /* The border belongs only on the image edge. Colouring the content box
+       turns object-fit space beside portrait images into thick side bars. */
+    background-color: transparent;
     box-shadow:   var(--tile-shadow, none);
     box-sizing:   border-box;
     transition:   opacity 0.2s;

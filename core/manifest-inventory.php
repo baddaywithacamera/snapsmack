@@ -47,6 +47,17 @@ $inventory = [
        ========================================================= */
     'local_fonts' => [
 
+        // ---- Merriweather -----------------------------------------------
+        // 50 SHADES OF NOAH GREY exposes this as a masthead choice. Keep the
+        // selected face available without a third-party request from visitors.
+        'Merriweather' => [
+            'label'  => 'Merriweather (Screen-Optimised / Long reads)',
+            'file'   => 'assets/fonts/Merriweather/Merriweather-Regular.ttf',
+            'format' => 'truetype',
+            'weight' => '400',
+            'style'  => 'normal',
+        ],
+
         // ---- Marcellus --------------------------------------------------
         // RATIONAL GEO's original masthead face. It was still selected after
         // the strict-skin migration, but was only present in the legacy remote

@@ -14,8 +14,8 @@ $css = (string)file_get_contents(dirname(__DIR__) . '/skins/rational-geo/style.c
 $manifest = json_decode((string)file_get_contents(dirname(__DIR__) . '/skins/rational-geo/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
 $inventory = include dirname(__DIR__) . '/core/manifest-inventory.php';
 
-if (($manifest['version'] ?? '') !== '2.1.10') {
-    throw new RuntimeException('RATIONAL GEO release is not sequentially versioned at 2.1.10.');
+if (($manifest['version'] ?? '') !== '2.1.11') {
+    throw new RuntimeException('RATIONAL GEO release is not sequentially versioned at 2.1.11.');
 }
 if (!isset($inventory['local_fonts']['Marcellus'])
     || ($inventory['local_fonts']['Marcellus']['file'] ?? '') !== 'assets/fonts/Marcellus/Marcellus-Regular.ttf') {
@@ -36,6 +36,14 @@ if (!str_contains($layout, 'rg-map-hidden')) {
 foreach (['rg-header-inside', 'rg-header-nav', 'rg-logo-link', 'rg-masthead'] as $hook) {
     if (!str_contains($layout, $hook)) {
         throw new RuntimeException('RATIONAL GEO lost its pre-strip landing-page hook: ' . $hook);
+    }
+}
+if (!str_contains($layout, "skin_presentation']['style")) {
+    throw new RuntimeException('RATIONAL GEO does not emit its bounded compiled presentation stylesheet.');
+}
+foreach (['--rg-bg-page:', '--rg-bg-chrome:', '--rg-text-primary:', '--rg-nav-color:'] as $variable) {
+    if (!str_contains($css, $variable)) {
+        throw new RuntimeException('RATIONAL GEO base CSS has no fail-safe palette value for ' . $variable);
     }
 }
 
