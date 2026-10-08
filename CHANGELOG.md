@@ -13,6 +13,7 @@
 
 ## 0.7.841D — 2026-10-07 — Solid footing
 
+- Restores TILEZ's smooth landing-tile hover without moving its caption. The shared lazy loader now appends its opacity fade instead of overwriting the skin's transform transition inline, and TILEZ keeps the archive title anchored at the same bottom position before, during, and after hover.
 - Restores INSTANT CAMERA navigation from the unchanged saved settings. The skin no longer forces the CMS-provided navbar background to transparent, and its 40-pixel navigation wrapper no longer clips child menus; dropdowns retain the bounded CMS-provided background colour, opacity, and text colour.
 - Restores INSTANT CAMERA's saved Solo Background Colour and Opacity in the post viewer. A duplicate legacy `Image Page Background` declaration was emitted later as solid black and overrode the CMS-provided saved white 80% value; the duplicate declaration is removed while the bounded CMS provider remains authoritative for presentation.
 - Restores THE GRID's portrait frame geometry when legacy orientation metadata contradicts the delivered thumbnail. Framed tiles now constrain both intrinsic image axes, preserving the saved size, border, background, and shadow while keeping the border tight to landscape and portrait photographs alike.

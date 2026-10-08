@@ -69,7 +69,14 @@ function _ssLazyInit(root) {
     // --- INITIAL STYLES ---
     lazyImages.forEach(img => {
         img.style.opacity = '0';
-        img.style.transition = 'opacity ' + fadeDuration + 'ms ease-in';
+        // Preserve skin-owned hover transitions. Replacing the shorthand here
+        // used to erase transitions such as TILEZ's transform zoom, making the
+        // image jump immediately even though the skin requested easing.
+        const existingTransition = window.getComputedStyle(img).transition;
+        const opacityTransition = 'opacity ' + fadeDuration + 'ms ease-in';
+        img.style.transition = (!existingTransition || existingTransition === 'none')
+            ? opacityTransition
+            : existingTransition + ', ' + opacityTransition;
     });
 
     // --- OBSERVER ---
