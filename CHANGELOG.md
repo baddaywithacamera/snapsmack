@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.842D — 2026-10-07 — Room to breathe
+
+- Restores the intended breathing room above the BOX O' TRICKS “Why desktop” section; its local zero-padding override had crushed the kicker and heading against the product navigation above it.
+
 ## 0.7.841D — 2026-10-07 — Solid footing
 
 - Restores SLICKR's strict-page presentation and routing. About again uses its established centred reading column and saved page hero, the profile-bar search is a pill, search results use the same justified mosaic rows as the landing page, and the CMS-owned Albums, Collections, collection-detail, and Blogroll routes render through SLICKR instead of falling into Not Found or unstyled legacy output.
