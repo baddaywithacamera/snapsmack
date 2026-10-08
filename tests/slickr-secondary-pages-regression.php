@@ -16,7 +16,7 @@ $css = (string)file_get_contents($root . '/skins/slickr/style.css');
 $controller = (string)file_get_contents($root . '/core/public-controller.php');
 $repository = (string)file_get_contents($root . '/core/public-repository.php');
 
-if (($manifest['version'] ?? '') !== '1.0.31') throw new RuntimeException('SLICKR version is not 1.0.31.');
+if (($manifest['version'] ?? '') !== '1.0.32') throw new RuntimeException('SLICKR version is not 1.0.32.');
 foreach (['asset:public:page-static', 'asset:public:page-collection', 'asset:public:page-blogroll', 'asset:public:shortcodes'] as $style) {
     if (!in_array($style, $manifest['require_styles'] ?? [], true)) throw new RuntimeException("SLICKR missing shared style: {$style}");
 }

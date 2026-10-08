@@ -242,10 +242,10 @@ a:hover { color: var(--sl-link-hover); }
    skins have tiny solo headers so they never needed it. */
 
 /* Header out of view: drop the big Flickr cover on solo, keep the tab bar. */
-.sl-single-flow .sl-cover { display: none; }
+.sl-solo-page .sl-cover { display: none; }
 
 /* Top nav locks to the top (the masthead is now just the tab bar). */
-.sl-single-flow .sl-masthead {
+.sl-solo-page .sl-masthead {
   position: sticky;
   top: 0;
   z-index: 100;
@@ -266,9 +266,15 @@ a:hover { color: var(--sl-link-hover); }
 .sl-single-flow:has(#footer[style*="display:block"])  #infobox { position: static; }
 /* Photo fills the space between the masthead and the bottom-pinned navbar. */
 .sl-single-flow #sl-photobox {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
 }
+
+.sl-solo-page .sl-profile-tabs { box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.sl-solo-page .sl-focus-container { width: 100%; }
+.sl-solo-page .sl-photo-title { margin-top: 0; }
+.sl-solo-page .sl-sidebar:empty { display: none; }
+.sl-solo-page .sl-focus-container:has(.sl-sidebar:empty) { grid-template-columns: 1fr; }
 /* Navbar bar — sits below the photo (DOM order; the footer follows it). Layout
    borrowed from 50-shades, recoloured for SLICKR's light theme. */
 .sl-single-flow #infobox {
