@@ -20,6 +20,7 @@
 - Restores legacy static-page image blocks on strict skins. The CMS public runtime now expands stored `[img:ID|size|align]` content through the existing bounded parser before handing trusted presentation HTML to the skin, so pages such as About retain their images without returning database access to the skin.
 - Restores JIVE TURKEY's original static-page spacing. The strict template once again keeps the title and page body inside the skin's padded reading container, instead of pinning the title directly beneath the navigation bar.
 - Restores RATIONAL GEO's selected Marcellus masthead through the bounded same-origin font provider. The face is now packaged in the audited local inventory instead of silently falling through to a generic sans-serif after remote font loading was prohibited; the saved 30% relief-map intensity remains unchanged.
+- Restores Skin Admin persistence when a form is submitted without a serialized submit-button name. The save intent and CSRF proof now travel as form fields, so GALLERIA's explicit lowercase/as-entered title choice survives save and reload instead of silently returning to the previously stored uppercase value; all other saved controls retain their submitted values.
 - Records SnapSmack's governing order in `ETHICS.md` and continuity documentation: ethics first, security second, function third; nothing lower may compromise what is above it.
 
 ## 0.7.840D — 2026-10-07 — Same door
