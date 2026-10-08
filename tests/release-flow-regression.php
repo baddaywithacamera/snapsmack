@@ -70,6 +70,9 @@ rel_expect(str_contains($guard, 'rf_require_packaged_tag_alignment($version);'),
     'tagging must refuse while Git tags are ahead of the public packaged version');
 rel_expect(str_contains($guard, 'https://snapsmack.ca/releases/latest-dev.json'),
     'tagging must verify the authoritative public dev manifest and fail closed');
+rel_expect(str_contains($guard, "in_array('https', stream_get_wrappers(), true)")
+    && str_contains($guard, 'curl --fail --silent --show-error'),
+    'public manifest verification must work on release hosts whose PHP build omits the HTTPS wrapper');
 rel_expect(str_contains($guard, 'package and deploy every existing tag in order before creating another tag'),
     'tag refusal must explain an existing tagged/package gap');
 $reservations = json_decode((string)file_get_contents($root . '/tools/release-reservations.json'), true);
