@@ -54,6 +54,15 @@ recovery_check(
     'A GRAMOFSMACK skin still manufactures a duplicate archive route from archive.php.'
 );
 
+$defaultPublicAliases = snapsmack_public_route_aliases([], [
+    'cms_controller' => 'public',
+    'site_mode' => 'carousel',
+]);
+recovery_check(
+    ($defaultPublicAliases['blogroll'] ?? '') === 'blogroll',
+    'An untouched strict GRAM site emits its default Blogroll link without registering the clean route.'
+);
+
 $smacktalkAliases = snapsmack_public_route_aliases([
     'nav_menu_json' => json_encode([
         ['type' => 'archive', 'label' => 'DIARY', 'active' => true],
