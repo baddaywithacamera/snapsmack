@@ -40,9 +40,8 @@ if (!str_contains($entry, "'/style.css?v=' . rawurlencode(\$_active_skin_version
 if (!str_contains($entry, "\$_GET['slug'] ?? (\$_GET['s'] ?? '')")) {
     throw new RuntimeException('Legacy ?s=<slug> image links no longer enter the strict public controller.');
 }
-if (!str_contains($entry, "in_array(\n            'smack-progressive-reveal'")
-    || str_contains($entry, "if (\$active_skin === 'instant-camera')")) {
-    throw new RuntimeException('Full progressive feed is not granted by declared shared-engine capability.');
+if (str_contains($entry, "_cms_full_landing") || str_contains($entry, "['posts_per_page'] = 5000")) {
+    throw new RuntimeException('Public entry point still expands a progressive feed into one enormous response.');
 }
 foreach (['game-on', 'instant-camera'] as $skin) {
     $manifest = json_decode((string)file_get_contents(dirname(__DIR__) . '/skins/' . $skin . '/manifest.json'), true);
@@ -51,8 +50,8 @@ foreach (['game-on', 'instant-camera'] as $skin) {
     }
 }
 $repository = (string)file_get_contents(dirname(__DIR__) . '/core/public-repository.php');
-if (!str_contains($repository, '[max(1, min(5000, $limit)), max(0, $offset)]')) {
-    throw new RuntimeException('Public repository collapses a controller-approved progressive feed below 5,000.');
+if (!str_contains($repository, '[max(1, min(100, $limit)), max(0, $offset)]')) {
+    throw new RuntimeException('Public repository no longer enforces the bounded landing-page ceiling.');
 }
 foreach (['snap_image_tags', 'snap_tags', 'snap_image_album_map', 'snap_albums', 'snap_image_cat_map', 'snap_categories'] as $searchTable) {
     if (!str_contains($repository, $searchTable)) {
