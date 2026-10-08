@@ -476,8 +476,18 @@ final class SnapPublicRepository
 
     public function publicCollections(): array {
         return $this->all(
-            "SELECT id,title,slug,description,default_display,cover_image_id,sort_order
-             FROM snap_collections WHERE published=1 ORDER BY sort_order ASC,id ASC"
+            "SELECT c.id,c.title,c.slug,c.description,c.default_display,c.cover_image_id,c.sort_order,
+                    COUNT(DISTINCT i.id) AS photograph_count,MAX(i.img_date) AS latest_date,
+                    COALESCE(cover.img_thumb_aspect,cover.img_file,
+                        SUBSTRING_INDEX(GROUP_CONCAT(COALESCE(i.img_thumb_aspect,i.img_file) ORDER BY ci.position ASC,ci.id ASC SEPARATOR '\n'),'\n',1)) AS cover_path
+             FROM snap_collections c
+             LEFT JOIN snap_collection_items ci ON ci.collection_id=c.id
+             LEFT JOIN snap_images i ON i.id=ci.image_id AND i.img_status='published' AND i.img_date <= NOW()
+             LEFT JOIN snap_images cover ON cover.id=c.cover_image_id AND cover.img_status='published' AND cover.img_date <= NOW()
+             WHERE c.published=1
+             GROUP BY c.id,c.title,c.slug,c.description,c.default_display,c.cover_image_id,c.sort_order,
+                      cover.img_thumb_aspect,cover.img_file
+             ORDER BY c.sort_order ASC,c.id ASC"
         );
     }
 

@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "SLICKR",
-    "version": "1.0.30",
+    "version": "1.0.31",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "Flickr, the way it was. Justified masonry archive, classic solo view with EXIF sidebar, albums directory. Built for migrated Flickr archives — includes an optional Flickr provenance badge on imported images.",
@@ -38,6 +38,14 @@
         "smack-calendar",
         "smack-grid-lightbox",
         "smack-lightbox"
+    ],
+    "require_styles": [
+        "asset:public:public-base",
+        "asset:public:page-static",
+        "asset:public:page-collection",
+        "asset:public:page-blogroll",
+        "asset:public:shortcodes",
+        "asset:public:columns"
     ],
     "community_comments": "1",
     "community_likes": "1",
