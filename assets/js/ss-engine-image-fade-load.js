@@ -57,7 +57,14 @@ function _ssImageFadeInit(root) {
 
         // Set initial state: invisible, but space reserved.
         img.style.opacity = '0';
-        img.style.transition = 'opacity 0.4s ease-in-out';
+        // Keep presentation-owned hover easing (for example TILEZ's post-image
+        // zoom). Replacing the complete shorthand here made the transform snap
+        // immediately even though the stylesheet requested a smooth change.
+        var existingTransition = window.getComputedStyle(img).transition;
+        var opacityTransition = 'opacity 0.4s ease-in-out';
+        img.style.transition = (!existingTransition || existingTransition === 'none')
+            ? opacityTransition
+            : existingTransition + ', ' + opacityTransition;
 
         var fadeIn = function () { img.style.opacity = '1'; img.dataset._ssFadeDone = '1'; };
         img.addEventListener('load', fadeIn, { once: true });
