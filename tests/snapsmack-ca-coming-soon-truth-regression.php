@@ -20,6 +20,9 @@ if (str_contains($page, 'never actually built')) {
 if (!str_contains($page, '<strong><code>[pullquote]</code></strong>')) {
     throw new RuntimeException('The shipped pullquote entry is missing from Recently landed.');
 }
+if (!str_contains($page, '.shipped-list a:last-child:nth-child(odd) { grid-column: 1 / -1; }')) {
+    throw new RuntimeException('An odd shipped-list count can expose a fake empty grey card.');
+}
 
 echo "SnapSmack.ca Coming Soon truth regression passed\n";
 // ===== SNAPSMACK EOF =====
