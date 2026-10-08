@@ -89,4 +89,26 @@ if (strpos($admin, "!array_key_exists((string)\$val, \$o['options'])") === false
     $fail('The skin picker cannot represent a declared default missing from its options.');
 }
 
+// Saving must not depend on the submit button being included in the request.
+// Keyboard submission, browser accessibility paths, and assisted controls can
+// submit a valid form without serializing the button name.  The intent and CSRF
+// proof therefore belong to the form itself.
+if (strpos($admin, '<input type="hidden" name="save_skin_settings" value="1">') === false) {
+    $fail('Skin Admin still gates persistence on a serialized submit button.');
+}
+if (strpos($admin, '<button type="submit" name="save_skin_settings"') !== false) {
+    $fail('Skin Admin still duplicates save intent on the submit button.');
+}
+if (strpos($admin, "hash_equals(\$_SESSION['csrf_token'] ?? '', (string)\$_POST['csrf_token'])") === false) {
+    $fail('Skin Admin save persistence is missing its CSRF verification.');
+}
+
+// Explicit case selections remain authoritative after the scoped settings
+// overlay; the manifest default must never replace a submitted saved value.
+$caseSettings = ['galleria__header_text_transform' => 'lowercase'];
+snapsmack_apply_skin_settings($caseSettings, 'galleria');
+if (($caseSettings['header_text_transform'] ?? null) !== 'lowercase') {
+    $fail('GALLERIA lost an explicit lowercase site-title choice on reload.');
+}
+
 echo "skin setting default integrity regression: ok\n";
