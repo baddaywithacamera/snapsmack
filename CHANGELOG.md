@@ -13,6 +13,7 @@
 
 ## 0.7.842D — 2026-10-07 — Room to breathe
 
+- Corrects the stale Coming Soon claim about `[pullquote]`. Pull quotes are already implemented in the parser, shared styling, every web editor, and COLD SNAP, so the feature now appears under “Recently landed” instead of “On the drawing board.”
 - Restores the intended breathing room above the BOX O' TRICKS “Why desktop” section; its local zero-padding override had crushed the kicker and heading against the product navigation above it.
 
 ## 0.7.841D — 2026-10-07 — Solid footing
