@@ -374,6 +374,12 @@ if (isset($_POST['reset_pa_bg'])) {
 
 if (isset($_POST['save_skin_settings'])) {
 
+    if (!isset($_POST['csrf_token'])
+        || !hash_equals($_SESSION['csrf_token'] ?? '', (string)$_POST['csrf_token'])) {
+        http_response_code(403);
+        exit('Invalid CSRF token.');
+    }
+
     // An established site's install mode is content architecture, not a skin
     // preference. Refuse an incompatible target before persisting any options.
     $_requested_skin = preg_replace('/[^a-z0-9_\-]/', '', $_POST['active_skin_target'] ?? $target_skin);
@@ -1100,6 +1106,12 @@ if (!empty($google_families)) {
     <?php endif; ?>
 
     <form method="POST" enctype="multipart/form-data">
+        <!-- The save intent belongs to the form, not the submit button. Browser,
+             keyboard and assisted-control submissions do not all serialize the
+             submitter; gating persistence on the button name made valid option
+             changes silently reload their previous values. -->
+        <input type="hidden" name="save_skin_settings" value="1">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
         <input type="hidden" name="active_skin_target" value="<?php echo $target_skin; ?>">
 
         <div id="smack-skin-config-wrap">
@@ -1472,7 +1484,7 @@ if (!empty($google_families)) {
         </div>
 
         <div class="form-action-row">
-            <button type="submit" name="save_skin_settings" class="master-update-btn">SAVE SKIN SPECIFIC CALIBRATION</button>
+            <button type="submit" class="master-update-btn">SAVE SKIN SPECIFIC CALIBRATION</button>
         </div>
     </form>
 
