@@ -29,7 +29,7 @@ $layout = (string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/la
 $css = (string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/style.css');
 $manifest = json_decode((string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
 if (!str_contains($layout, 'class="ic-scrim"')) throw new RuntimeException('Scrim layer is absent from the owned layout.');
-if (($manifest['version'] ?? '') !== '1.0.44') throw new RuntimeException('INSTANT CAMERA release is not sequentially versioned at 1.0.44.');
+if (($manifest['version'] ?? '') !== '1.0.45') throw new RuntimeException('INSTANT CAMERA release is not sequentially versioned at 1.0.45.');
 if (($manifest['options']['ic_post_viewer_backdrop_color']['default'] ?? null) !== '#ffffff'
     || ($manifest['options']['ic_post_viewer_backdrop_opacity']['default'] ?? null) !== '80') {
     throw new RuntimeException('Post viewer must default to the original-strength high-key white veil.');
