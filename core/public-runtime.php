@@ -9,6 +9,16 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/public-controller.php';
+require_once __DIR__ . '/parser.php';
+
+/** Expand CMS-owned static-page shortcodes before the presentation-only skin sees them. */
+function snapsmack_public_parse_page_content(PDO $pdo, array $response): array
+{
+    if (($response['kind'] ?? '') !== 'page' || !is_array($response['item'] ?? null)) return $response;
+    $parser = new SnapSmack($pdo);
+    $response['item']['content'] = $parser->parseContent((string)($response['item']['content'] ?? ''));
+    return $response;
+}
 
 /** Map an entry-point request into the central public controller's bounded vocabulary. */
 function snapsmack_public_runtime_request(array $input): array
@@ -37,6 +47,7 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     $request = snapsmack_public_parse_request(snapsmack_public_runtime_request($input));
     $repository = new SnapPublicRepository($pdo);
     $response = snapsmack_public_controller($repository, $request, $settings);
+    $response = snapsmack_public_parse_page_content($pdo, $response);
     if (($response['kind'] ?? '') === 'photo') {
         $response['comments_enabled'] = (($settings['global_comments_enabled'] ?? '1') === '1')
             && (($response['item']['allow_comments'] ?? '1') == '1');
