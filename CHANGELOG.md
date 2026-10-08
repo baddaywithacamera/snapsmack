@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.845D — 2026-10-08 — Solo act
+
+- Restores SLICKR's solo photograph page as a coherent Flickr-style composition. The photograph owns the dark stage; title, description, comments, and EXIF return to the bounded two-column information area beneath it; the oversized cover drops out while the utility tabs remain available. The Small Photos option now emits a valid declaration instead of a double-braced rule that browsers discard.
+
 ## 0.7.844D — 2026-10-08 — Frame it right
 
 - Restores RATIONAL GEO's complete editorial presentation, not merely its header class names. The strict layout now emits the CMS-bounded per-skin stylesheet, while the base skin carries a fail-safe dark palette so a missing or stale variant can never collapse the masthead, navigation, map, and landing canvas to transparent browser defaults.
