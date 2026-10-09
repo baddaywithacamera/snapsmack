@@ -75,11 +75,14 @@ function snap_route_url(string $route, array $parameters = []): string {
 
 function snap_render_navigation_tree(array $items, int $depth = 0): string {
     $html = '';
+    $first = true;
     foreach ($items as $item) {
         if (!is_array($item)) continue;
         $children = is_array($item['children'] ?? null) && $depth < 2 ? $item['children'] : [];
         $hasChildren = $children !== [];
         $html .= '<li' . ($hasChildren ? ' class="nav-has-children"' : '') . '>';
+        if ($depth === 0 && !$first) $html .= '<span class="sep">|</span>';
+        $first = false;
         $label = snap_escape_html($item['label'] ?? $item['title'] ?? '');
         $url = (string)($item['url'] ?? '');
         if ($url === '') $html .= '<span>' . $label . '</span>';

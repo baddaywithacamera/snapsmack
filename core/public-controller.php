@@ -408,6 +408,22 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
 
     if ($route === 'landing') {
         $mode = (string)($settings['site_mode'] ?? 'photoblog');
+        // Classic SMACKONEOUT skins do not have a separate landing surface:
+        // their home page is the newest photograph.  The strict-runtime
+        // migration accidentally treated every photoblog home as an archive,
+        // bypassing each skin's solo-photo presentation.
+        $soloHomeSkins = [
+            '50-shades-of-noah-grey', 'full-monty', 'impact-printer',
+            'new-horizon', 'rational-geo', 'true-grit',
+        ];
+        if ($mode === 'photoblog' && in_array($skin, $soloHomeSkins, true)) {
+            $latest = $repository->photographLanding(1, 0);
+            $latestId = (int)($latest[0]['id'] ?? 0);
+            $item = $latestId > 0 ? $repository->photographById($latestId) : null;
+            if ($item !== null) {
+                return snapsmack_photo_response($repository, $item, $navigation);
+            }
+        }
         $items = $skin === 'glide'
             ? $repository->randomPhotographs(200)
             : ($skin === 'slickr'
@@ -434,7 +450,9 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         if ($skin === 'slickr') {
             $justifiedRows = snapsmack_justified_rows($items, $settings, $page);
         }
-        $sliderItems = [];
+        $sliderItems = in_array($skin, ['galleria', 'hip-to-be-square'], true)
+            ? array_slice($items, 0, 20)
+            : [];
         if ($skin === 'show-n-tell' && (($settings['htbs_slider_enabled'] ?? '1') === '1')) {
             $assetIds = json_decode((string)($settings['htbs_slider_assets'] ?? '[]'), true);
             $sliderMax = max(1, min(30, (int)($settings['htbs_slider_max'] ?? 10)));
