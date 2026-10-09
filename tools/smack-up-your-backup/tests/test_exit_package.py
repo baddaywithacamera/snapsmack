@@ -61,6 +61,9 @@ class ExitPackageTests(unittest.TestCase):
         src = open(os.path.join(ROOT, "backup_engine.py"), encoding="utf-8").read()
         self.assertIn('self.profile.get("exit_package")', src)
         self.assertIn("exit_module.write_exit_package(", src)
+        self.assertIn("effective_key = config_module.effective_backup_key(self.profile)", src)
+        self.assertIn('self.profile.get("site_url", ""), effective_key, backup_dir', src)
+        self.assertNotIn('self.profile.get("site_url", ""), self.profile.get("api_key", ""), backup_dir', src)
         self.assertIn('os.path.join("exit", os.path.relpath(full, exit_dir))', src)
         # off by default, in the profile schema
         pm = open(os.path.join(ROOT, "profile_manager.py"), encoding="utf-8").read()

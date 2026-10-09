@@ -19,6 +19,18 @@ Historical entries used a `0.7.9x` letter-suffix scheme. That scheme is retired.
 
 ---
 
+## 0.7.50 — 2026-10-08
+
+- **Exit packages use the key that actually authenticated the backup.** Hub-managed
+  sites can replace an expired profile key with a freshly provisioned SUYB key at
+  the start of a run. The recovery backup used that current key, but the optional
+  portable exit package incorrectly reached back into the profile and sent the
+  expired one, producing a false “site must be on 0.7.711D” warning after an
+  otherwise successful backup. One effective key is now resolved once and reused
+  by the database, media, exit-package, and completion paths.
+- Replaces the misleading old-CMS advice with an accurate reconnect instruction
+  for a genuine key rejection.
+
 ## 0.7.48 — 2026-09-26
 
 - **Backup type is two big buttons.** DIFFERENTIAL and FULL, the chosen one lit
