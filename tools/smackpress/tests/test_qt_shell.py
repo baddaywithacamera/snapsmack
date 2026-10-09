@@ -115,7 +115,7 @@ class ShellTests(unittest.TestCase):
         self.assertEqual(w.take.title_edit.text(), "Rust & Chrome")
         self.assertEqual(len(w.take._bucket), 4)
         self.assertTrue(all(os.path.isfile(im.local_path) for im in w.take._bucket))
-        self.assertIn("[img:bucket:", w.take.body.toPlainText())
+        self.assertIn("[mosaic=3,4 layout=asymmetric]", w.take.body.toPlainText())
         # and it is saved in the import batch
         batch = w._batch()
         self.assertEqual(batch.name, "WordPress import")
