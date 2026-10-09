@@ -18,4 +18,27 @@ foreach($skins as $skin){
  ob_start();$ok=snapsmack_render_strict_skin_template($dir,'layout.php',$view);$html=(string)ob_get_clean();
  if(!$ok||!str_contains($html,'<p>Caption</p>'))throw new RuntimeException("{$skin} failed central rendering.");
 }
+
+// Home-page contracts are as important as solo-photo routes.  Galleria and
+// Hip 2 B Square own framed slider landings; neither may collapse to a list of
+// titles during another strict-template migration.
+$landingItem=['id'=>1,'img_title'=>'Photo','img_slug'=>'photo','img_file'=>'/media/photo.jpg','img_thumb_square'=>'/media/thumb.jpg','img_thumb_aspect'=>'/media/thumb-a.jpg'];
+$landingResponse=['status'=>200,'kind'=>'landing','items'=>[$landingItem],'slider_items'=>[$landingItem],'navigation'=>[]];
+foreach(['galleria','hip-to-be-square'] as $skin){
+ $dir=$root.'/skins/'.$skin;
+ $view=snapsmack_build_skin_view($landingResponse,['site_name'=>'Example','language'=>'en','direction'=>'ltr','skin_style_url'=>'/skins/'.$skin.'/style.css','skin_presentation'=>snapsmack_skin_presentation([],$skin)]);
+ ob_start();$ok=snapsmack_render_strict_skin_template($dir,'layout.php',$view);$html=(string)ob_get_clean();
+ foreach(['id="htbs-gallery-slider"','class="slider-track"','class="frame-mount"','src="/media/'] as $hook){
+  if(!$ok||!str_contains($html,$hook))throw new RuntimeException("{$skin} landing lost {$hook}.");
+ }
+}
+
+// Classic SMACKONEOUT home pages must remain newest-photo presentations.
+$controller=(string)file_get_contents($root.'/core/public-controller.php');
+foreach(['50-shades-of-noah-grey','full-monty','impact-printer','new-horizon','rational-geo','true-grit'] as $skin){
+ if(!str_contains($controller,"'{$skin}'"))throw new RuntimeException("{$skin} lost its solo-home contract.");
+}
+foreach(['photographLanding(1, 0)','photographById($latestId)','snapsmack_photo_response($repository, $item, $navigation)'] as $contract){
+ if(!str_contains($controller,$contract))throw new RuntimeException("Solo-home routing lost {$contract}.");
+}
 echo "Photoblog schema-v2 family regression passed.\n";
