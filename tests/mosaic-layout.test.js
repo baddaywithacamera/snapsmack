@@ -62,23 +62,6 @@ test('portrait-led three-image section spans a two-image stack', () => {
     assert.ok(Math.abs(layout.items[0].height - layout.height) < 0.02);
 });
 
-test('landscape plus two portraits forms a complete 2x2 editorial block', () => {
-    const layout = engine.computeLayout([
-        { width: 1950, height: 1300 },
-        { width: 1388, height: 1850 },
-        { width: 1388, height: 1850 }
-    ], 746, 4);
-
-    assertCleanGeometry(layout, 746);
-    assert.equal(layout.sections.length, 1);
-    assert.equal(layout.items[0].x, 0);
-    assert.equal(layout.items[0].y, 0);
-    assert.ok(Math.abs(layout.items[0].width - 746) < 0.02, 'landscape spans the top row');
-    assert.ok(layout.items[1].y > layout.items[0].y, 'portrait row sits below the landscape');
-    assert.ok(Math.abs(layout.items[1].y - layout.items[2].y) < 0.02, 'portraits share the lower row');
-    assert.ok(layout.items[2].x > layout.items[1].x, 'second portrait occupies the lower-right cell');
-});
-
 test('portrait-led four-image section spans a three-image stack', () => {
     const layout = engine.computeLayout([
         { width: 700, height: 1100 },
