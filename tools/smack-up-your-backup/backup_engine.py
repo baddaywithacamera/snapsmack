@@ -679,6 +679,13 @@ class BackupEngine:
             "errors":           [],
         }
 
+        # Resolve the self-healing SUYB key once for this entire run. The normal
+        # backup, HTTP media transport, optional exit package, and completion
+        # ping must all authenticate with the same current credential. Reading
+        # profile["api_key"] later reintroduced an expired pre-Hub key after the
+        # recovery backup itself had already succeeded with this resolved one.
+        effective_key = config_module.effective_backup_key(self.profile)
+
         # Default staging root: C:\snapsmack\staging (honours SNAPSMACK_HOME for the
         # thumb-drive layout). A one-time default — inherited by every profile, still
         # overridable per profile — so the backup directory is never entered 24×.
@@ -735,7 +742,7 @@ class BackupEngine:
             # 546D hub-key model: authenticate with the ONE fleet backup key from
             # The Hub when it's set, else the profile's own key (non-breaking).
             http = SnapSmackSession(self.profile["site_url"],
-                                    config_module.effective_backup_key(self.profile),
+                                    effective_key,
                                     self.profile.get("login_slug", "snap-in"))
             try:
                 http.login(
@@ -855,7 +862,7 @@ class BackupEngine:
                 if resuming:
                     http = SnapSmackSession(
                         self.profile["site_url"],
-                        config_module.effective_backup_key(self.profile),
+                        effective_key,
                         self.profile.get("login_slug", "snap-in"),
                     )
                     http.login(
@@ -1063,7 +1070,7 @@ class BackupEngine:
             try:
                 import exit_package as exit_module
                 summary = exit_module.write_exit_package(
-                    self.profile.get("site_url", ""), self.profile.get("api_key", ""), backup_dir,
+                    self.profile.get("site_url", ""), effective_key, backup_dir,
                     on_log=self._log,
                     on_progress=lambda stage, msg, frac: self._progress(
                         "stage3b", f"exit package: {msg}", 0.60 + 0.05 * float(frac or 0)),
@@ -1351,7 +1358,7 @@ class BackupEngine:
             if http is None:
                 http = SnapSmackSession(
                     self.profile["site_url"],
-                    config_module.effective_backup_key(self.profile),
+                    effective_key,
                     self.profile.get("login_slug", "snap-in"),
                 )
                 http.login(
