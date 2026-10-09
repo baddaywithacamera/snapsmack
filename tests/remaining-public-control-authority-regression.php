@@ -13,7 +13,9 @@ if (!str_contains($repository, 'function publicAssetsByIds(')
     throw new RuntimeException('Show-N-Tell selected media escaped the public repository.');
 }
 foreach (['galleria', 'hip-to-be-square'] as $skin) {
-    $layout = (string)file_get_contents($root . '/skins/' . $skin . '/layout.php');
+    $layout = (string)file_get_contents($skin === 'galleria'
+        ? $root . '/core/galleria-page-component.php'
+        : $root . '/skins/' . $skin . '/layout.php');
     $css = (string)file_get_contents($root . '/skins/' . $skin . '/style.css');
     foreach (['htbs_bevel_style', 'htbs_wood_grain', 'data-bevel', 'data-wood-grain'] as $needle) {
         if (!str_contains($layout, $needle)) throw new RuntimeException($skin . ' frame control missing: ' . $needle);
