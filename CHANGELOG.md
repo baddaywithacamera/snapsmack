@@ -11,20 +11,16 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.850D — 2026-10-09 — Put it back
+## 0.7.848D — 2026-10-09 — Put it back
 
 - Restores the original SMACKONEOUT homepage contract at the CMS boundary: skins with dedicated landing pages receive those landings, while skins without them open on the newest photograph. The decision now comes from each signed skin manifest instead of a guessed skin-name list or the unrelated site-mode setting; explicit archive-home choices remain archives.
 - Reconnects the CMS-generated presentation stylesheet across the remaining disconnected photoblog layouts, restoring saved fonts, dimensions, colours, frames, and navigation styling in GALLERIA, HIP 2 B SQUARE, IMPACT PRINTER, NEW HORIZON, FULL MONTY, 50 SHADES OF NOAH GREY, TRUE GRIT, 52 CARD PICKUP, GLIDE, and ONYX.
 - Restores CHAPLIN's silent-film newest-photo landing and image-bearing archive, and adds output-level regressions for the actual landing markup, masthead fonts, and family-wide presentation-style connection.
 - Records the migration failure in OPAUDIT 020: moving trusted behaviour across a security boundary is a transplant, not permission to reinterpret the product. Future boundary migrations must inventory, map, and verify the existing presentation contract before old execution paths are removed.
 
-## 0.7.849D — 2026-10-08 — Break the grid
-
 - Turns consecutive standalone photographs between prose paragraphs into one true asymmetric mosaic instead of TILEZ's brittle two-column imitation. Long imported posts now pack each uninterrupted image run tightly, including the 3rd Annual Car Show & BBQ post, without an odd final photograph leaving a conspicuous empty half-row.
 - Varies the editorial emphasis between successive equal-aspect blocks, so a long run of same-sized photographs no longer repeats the same six-cell checkerboard. Every composition remains edge-filled, preserves source order, respects the 900-pixel derivative ceiling, and keeps every photograph.
 - Carries Gallery image dimensions through ordinary `[img:]` rendering so promoted post mosaics compose from the real portrait and landscape shapes rather than a generic fallback ratio. Explicitly saved Columns, Rows, Square, and template layouts remain unchanged.
-
-## 0.7.848D — 2026-10-08 — Restoration
 
 - Restores the SMACKONEOUT home-page boundary lost during the strict skin migration. 50 SHADES OF NOAH GREY, FULL MONTY, IMPACT PRINTER, NEW HORIZON, RATIONAL GEO, and TRUE GRIT once again open on their newest photograph instead of being forced into a generic archive grid.
 - Restores GALLERIA and HIP 2 B SQUARE's framed image sliders and image-bearing archives. Their secure templates no longer collapse photographs into bare title links.
