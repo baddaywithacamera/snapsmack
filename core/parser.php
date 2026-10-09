@@ -862,7 +862,7 @@ class SnapSmack {
                     // tables number from 1, so a plain [img:ID] would resolve the
                     // Library asset of the same id first. snap_images has no border
                     // columns; defaults leave it borderless.
-                    $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt FROM snap_images WHERE id = ? LIMIT 1");
+                    $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt, img_width as width, img_height as height FROM snap_images WHERE id = ? LIMIT 1");
                     $stmt->execute([$id]);
                     $asset = $stmt->fetch();
                 } else {
@@ -885,7 +885,7 @@ class SnapSmack {
                     // --- FALLBACK TO SNAP_IMAGES (PRIORITY 2) ---
                     // snap_images has no border columns; defaults leave it borderless.
                     if (!$asset) {
-                        $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt FROM snap_images WHERE id = ? LIMIT 1");
+                        $stmt = $this->pdo->prepare("SELECT img_file as path, img_title as name, img_alt as alt, img_width as width, img_height as height FROM snap_images WHERE id = ? LIMIT 1");
                         $stmt->execute([$id]);
                         $asset = $stmt->fetch();
                     }
@@ -920,15 +920,19 @@ class SnapSmack {
                 $full_src     = $base . $final_path;
                 $full_url     = $base . $raw_path;   // always original file, never a thumb
                 $classes      = "snap-framed-img asset-$size align-$align";
+                $dimensions   = ((int)($asset['width'] ?? 0) > 0 && (int)($asset['height'] ?? 0) > 0)
+                    ? sprintf(' data-w="%d" data-h="%d"', (int)$asset['width'], (int)$asset['height'])
+                    : '';
 
                 return sprintf(
-                    '<div class="snap-inline-frame align-%s" style="--snap-image-width:%d%%"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy" data-lightbox-src="%s" style="cursor:zoom-in;%s"></div></div>',
+                    '<div class="snap-inline-frame align-%s" style="--snap-image-width:%d%%"><div class="ip-ascii-frame-inner"><img src="%s" class="%s" alt="%s" loading="lazy" data-lightbox-src="%s"%s style="cursor:zoom-in;%s"></div></div>',
                     $align,
                     $width,
                     $full_src,
                     $classes,
                     snap_alt_attr($asset['alt'] ?? null, $asset['name'] ?? ''),
                     htmlspecialchars($full_url),
+                    $dimensions,
                     $border_css
                 );
             },
