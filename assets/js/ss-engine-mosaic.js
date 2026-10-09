@@ -77,12 +77,16 @@
     }
 
     function sectionSize(remaining) {
-        /* Keep five and six photographs in one complete composition. Splitting
-           five as 4 + 1 produced a full-width blank-looking second row beside
-           the orphaned final photograph. Seven and eight still divide evenly. */
+        /* Partition a long run into editorial blocks of 3-6. Never leave one or
+           two photographs dangling at the end: that is the visible "hole" the
+           old six-at-a-time partition created in long post mosaics. */
         if (remaining <= 6) return remaining;
         if (remaining === 7 || remaining === 8) return 4;
-        if (remaining === 9) return 3;
+        if (remaining === 9) return 5;
+        if (remaining === 10) return 5;
+        if (remaining === 11 || remaining === 12) return 6;
+        if (remaining % 6 === 1) return 5;
+        if (remaining % 6 === 2) return 4;
         return 6;
     }
 
@@ -174,14 +178,17 @@
         return (memo[key] = trees);
     }
 
-    function blockScore(items, height, containerWidth, emphasis) {
+    function blockScore(items, height, containerWidth, emphasis, variant) {
         var portraitMax = 0;
         var landscapeMax = 0;
         var smallest = Infinity;
         var leadArea = 0;
+        var variantArea = 0;
+        var variantOrder = items.length ? variant % Math.min(items.length, 3) : 0;
         items.forEach(function (tile) {
             var area = tile.width * tile.height;
             if (tile.order === 0) leadArea = area;
+            if (tile.order === variantOrder) variantArea = area;
             smallest = Math.min(smallest, area);
             if (imageAR(tile.image) < 1.15) portraitMax = Math.max(portraitMax, area);
             else landscapeMax = Math.max(landscapeMax, area);
@@ -191,7 +198,8 @@
         if (emphasis === 'portrait') score = portraitMax * 20 + landscapeMax;
         else if (emphasis === 'landscape') score = landscapeMax * 20 + portraitMax;
         else if (emphasis === 'balanced') score = Math.min(portraitMax, landscapeMax) * 5 + Math.max(portraitMax, landscapeMax);
-        else score = leadArea * 4 + Math.max(portraitMax, landscapeMax) + Math.min(portraitMax, landscapeMax);
+        else score = variantArea * 4 + leadArea * 0.35
+            + Math.max(portraitMax, landscapeMax) + Math.min(portraitMax, landscapeMax);
 
         score += smallest * 0.2;
         score -= Math.abs(height - 850) * containerWidth * 0.12;
@@ -233,7 +241,7 @@
         return emphasis === 'portrait' ? heroIsPortrait : !heroIsPortrait;
     }
 
-    function solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize) {
+    function solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, variant) {
         var best = null;
         candidateTrees(images, 0, images.length, {}).forEach(function (tree) {
             var trial = [];
@@ -246,20 +254,20 @@
             if (height <= 0 || trial.some(tileExceedsLimit) ||
                 (enforceUsefulSize && (!blockIsVisuallyBalanced(trial, containerWidth) ||
                     !blockMatchesEmphasis(trial, emphasis)))) return;
-            var score = blockScore(trial, height, containerWidth, emphasis);
+            var score = blockScore(trial, height, containerWidth, emphasis, variant || 0);
             if (!best || score > best.score) best = { items: trial, height: height, score: score };
         });
         return best;
     }
 
-    function preferredBlock(images, y, containerWidth, gap, emphasis, template) {
+    function preferredBlock(images, y, containerWidth, gap, emphasis, template, variant) {
         /* buildSection is the original editorial composition used by the demo.
            Keep it when it is safe, but never let it bypass either hard size
            boundary. Six-image groups require the general solver because the
            original editorial tree only defines arrangements up to four cells. */
         var enforceUsefulSize = containerWidth >= 1200;
         if (images.length >= 5) {
-            return solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize);
+            return solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, variant);
         }
         var tree = buildSection(images, false, template);
         var items = [];
@@ -273,7 +281,7 @@
             blockMatchesEmphasis(items, emphasis)) {
             return { items: items, height: height, score: 0 };
         }
-        return solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize);
+        return solveBlock(images, y, containerWidth, gap, emphasis, enforceUsefulSize, variant);
     }
 
     function boundedSingle(image, y, containerWidth) {
@@ -306,6 +314,7 @@
         var items = [];
         var index = 0;
         var y = 0;
+        var sectionIndex = 0;
 
         if (containerWidth <= MOBILE_BREAKPOINT) {
             images.forEach(function (image) {
@@ -317,7 +326,7 @@
         } else {
             while (index < images.length) {
                 var remaining = images.length - index;
-                var count = remaining >= 6 ? 6 : sectionSize(remaining);
+                var count = sectionSize(remaining);
                 var sectionImages;
                 var solved = null;
 
@@ -326,13 +335,13 @@
                    derivative ceiling; never fall back to the invalid geometry. */
                 while (count >= 2 && !solved) {
                     sectionImages = images.slice(index, index + count);
-                    solved = preferredBlock(sectionImages, y, containerWidth, gap, emphasis, template);
+                    solved = preferredBlock(sectionImages, y, containerWidth, gap, emphasis, template, sectionIndex);
                     /* One saved MOSAIC should remain one composition whenever its
                        photographs fit the hard size ceiling. Relax aesthetic
                        balance/emphasis preferences before splitting the bundle
                        into ragged sections with visible empty rectangles. */
                     if (!solved) {
-                        solved = solveBlock(sectionImages, y, containerWidth, gap, emphasis, false);
+                        solved = solveBlock(sectionImages, y, containerWidth, gap, emphasis, false, sectionIndex);
                     }
                     if (!solved) count--;
                 }
@@ -353,6 +362,7 @@
                 });
                 y += sectionHeight + gap;
                 index += count;
+                sectionIndex++;
             }
         }
 
@@ -428,8 +438,65 @@
         }
     }
 
+    function promoteInlineImageRuns(scope) {
+        var cursor = scope.firstElementChild;
+        while (cursor) {
+            if (!cursor.matches('.snap-inline-frame.align-center')) {
+                cursor = cursor.nextElementSibling;
+                continue;
+            }
+
+            var run = [];
+            var probe = cursor;
+            while (probe) {
+                if (probe.matches('p:empty')) {
+                    probe = probe.nextElementSibling;
+                    continue;
+                }
+                if (!probe.matches('.snap-inline-frame.align-center')) break;
+                run.push(probe);
+                probe = probe.nextElementSibling;
+            }
+            if (run.length < 2) {
+                cursor = probe;
+                continue;
+            }
+
+            var images = run.map(function (frame) {
+                var img = frame.querySelector('img');
+                if (!img) return null;
+                return {
+                    src: img.getAttribute('data-src') || img.getAttribute('src') || '',
+                    full: img.getAttribute('data-lightbox-src') || img.getAttribute('src') || '',
+                    alt: img.getAttribute('alt') || '',
+                    width: Number(img.getAttribute('data-w')) || Number(img.getAttribute('width')) || 0,
+                    height: Number(img.getAttribute('data-h')) || Number(img.getAttribute('height')) || 0,
+                    focusX: 50,
+                    focusY: 50
+                };
+            }).filter(function (image) { return image && image.src; });
+            if (images.length < 2) {
+                cursor = probe;
+                continue;
+            }
+
+            var mosaic = document.createElement('div');
+            mosaic.className = 'snap-mosaic snap-mosaic--promoted-run';
+            mosaic.setAttribute('data-mosaic', JSON.stringify(images));
+            mosaic.setAttribute('data-gap', '4');
+            mosaic.setAttribute('data-emphasis', 'natural');
+            run[0].replaceWith(mosaic);
+            run.slice(1).forEach(function (frame) { frame.remove(); });
+            cursor = probe;
+        }
+    }
+
     function mergeAdjacentMosaics() {
         document.querySelectorAll('[data-merge-adjacent-mosaics]').forEach(function (scope) {
+            /* Consecutive [img:] blocks between prose paragraphs are a photo
+               sequence, not a pair of CSS columns. Promote the whole run into
+               the same exact-packing compositor used by saved MOSAIC blocks. */
+            promoteInlineImageRuns(scope);
             var mosaics = Array.prototype.slice.call(scope.children).filter(function (child) {
                 return child.matches('.snap-mosaic[data-mosaic], .snap-mosaic-wall');
             });
