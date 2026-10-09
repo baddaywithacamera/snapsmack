@@ -112,6 +112,9 @@ try {
     sort($skinDirectories, SORT_STRING);
     $sharedHelper = (string)file_get_contents($root . '/core/skin-render-helpers.php');
     $sharedClasses = literal_html_classes($sharedHelper);
+    $cmsOwnedComponents = [
+        'chaplin' => $root . '/core/chaplin-page-component.php',
+    ];
     $skins = [];
     $totalCandidates = 0;
 
@@ -135,6 +138,11 @@ try {
 
         $currentPhpFiles = current_files($skinDirectory, 'php');
         $currentClasses = array_fill_keys($sharedClasses, true);
+        if (isset($cmsOwnedComponents[$slug]) && is_file($cmsOwnedComponents[$slug])) {
+            foreach (literal_html_classes((string)file_get_contents($cmsOwnedComponents[$slug])) as $class) {
+                $currentClasses[$class] = true;
+            }
+        }
         foreach ($currentPhpFiles as $path) {
             foreach (literal_html_classes((string)file_get_contents($path)) as $class) {
                 $currentClasses[$class] = true;
