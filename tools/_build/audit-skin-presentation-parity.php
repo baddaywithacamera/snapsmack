@@ -113,7 +113,10 @@ try {
     $sharedHelper = (string)file_get_contents($root . '/core/skin-render-helpers.php');
     $sharedClasses = literal_html_classes($sharedHelper);
     $cmsOwnedComponents = [
-        'chaplin' => $root . '/core/chaplin-page-component.php',
+        '50-shades-of-noah-grey' => [$root . '/core/50-shades-page-component.php'],
+        'chaplin' => [$root . '/core/chaplin-page-component.php'],
+        'galleria' => [$root . '/core/galleria-page-component.php'],
+        'impact-printer' => [$root . '/core/impact-printer-page-component.php'],
     ];
     $skins = [];
     $totalCandidates = 0;
@@ -138,9 +141,11 @@ try {
 
         $currentPhpFiles = current_files($skinDirectory, 'php');
         $currentClasses = array_fill_keys($sharedClasses, true);
-        if (isset($cmsOwnedComponents[$slug]) && is_file($cmsOwnedComponents[$slug])) {
-            foreach (literal_html_classes((string)file_get_contents($cmsOwnedComponents[$slug])) as $class) {
-                $currentClasses[$class] = true;
+        if (isset($cmsOwnedComponents[$slug])) {
+            foreach ($cmsOwnedComponents[$slug] as $componentFile) {
+                foreach (literal_html_classes((string)file_get_contents($componentFile)) as $class) {
+                    $currentClasses[$class] = true;
+                }
             }
         }
         foreach ($currentPhpFiles as $path) {
