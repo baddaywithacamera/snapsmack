@@ -249,6 +249,11 @@ try {
             }
         }
         $_public_settings = $settings;
+        // Preserve the pre-strict homepage contract at the CMS boundary. A
+        // skin that owns a landing template receives the landing feed; a skin
+        // without one opens on its newest photograph. The controller must not
+        // guess this from a hand-maintained skin-name list.
+        $_public_settings['skin_has_landing'] = !empty($_active_manifest['features']['has_landing']);
         $_public = snapsmack_public_runtime($pdo, [
             'view' => $_GET['view'] ?? '', 'query' => $_GET['q'] ?? '',
             'tag' => $_GET['tag'] ?? '',
