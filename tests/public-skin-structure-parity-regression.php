@@ -16,7 +16,13 @@ $contracts = [
 ];
 
 foreach ($contracts as $skin => $needles) {
-    $source = (string) file_get_contents(dirname(__DIR__) . '/skins/' . $skin . '/layout.php');
+    $cmsComponents = [
+        '50-shades-of-noah-grey' => '50-shades-page-component.php',
+        'impact-printer' => 'impact-printer-page-component.php',
+    ];
+    $source = (string) file_get_contents(isset($cmsComponents[$skin])
+        ? dirname(__DIR__) . '/core/' . $cmsComponents[$skin]
+        : dirname(__DIR__) . '/skins/' . $skin . '/layout.php');
     foreach ($needles as $needle) {
         if (!str_contains($source, $needle)) {
             throw new RuntimeException($skin . ' lost its presentation hook: ' . $needle);

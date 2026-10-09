@@ -62,7 +62,14 @@ if(!str_contains($entry,"['skin_has_landing'] = !empty(\$_active_manifest['featu
 // block. Losing it leaves the HTML intact but silently discards saved fonts,
 // dimensions, colours and frame controls.
 foreach(['50-shades-of-noah-grey','52-card-pickup','full-monty','galleria','glide','hip-to-be-square','impact-printer','new-horizon','onyx','rational-geo','true-grit'] as $skin){
- $layout=(string)file_get_contents($root.'/skins/'.$skin.'/layout.php');
+ $cmsComponents=[
+  '50-shades-of-noah-grey'=>'50-shades-page-component.php',
+  'galleria'=>'galleria-page-component.php',
+  'impact-printer'=>'impact-printer-page-component.php',
+ ];
+ $layout=(string)file_get_contents(isset($cmsComponents[$skin])
+  ? $root.'/core/'.$cmsComponents[$skin]
+  : $root.'/skins/'.$skin.'/layout.php');
  if(!str_contains($layout,"skin_presentation']['style"))throw new RuntimeException("{$skin} lost its generated presentation style.");
 }
 
