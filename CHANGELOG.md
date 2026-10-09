@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.848D — 2026-10-08 — Restoration
+
+- Restores the SMACKONEOUT home-page boundary lost during the strict skin migration. 50 SHADES OF NOAH GREY, FULL MONTY, IMPACT PRINTER, NEW HORIZON, RATIONAL GEO, and TRUE GRIT once again open on their newest photograph instead of being forced into a generic archive grid.
+- Restores GALLERIA and HIP 2 B SQUARE's framed image sliders and image-bearing archives. Their secure templates no longer collapse photographs into bare title links.
+- Restores the navigation separators expected by the classic photoblog styles and restores NEW HORIZON's thumbnail archive. New home-route regressions now exercise actual landing output instead of testing only direct photograph URLs.
+
 ## 0.7.846D — 2026-10-08 — Lighten up
 
 - Replaces the GRAMOFSMACK family's accidental 5,000-post landing response with real bounded server paging. THE GRID, AURORA, GAME ON, HEURISTIC, INSTANT CAMERA, JIVE TURKEY, PARADE, SLIDERS, and SUDDEN IMPACT now render only the configured first batch and request later batches as the reader approaches them, instead of making PHP, the database, HTML parsing, and the DOM process the complete archive up front.
