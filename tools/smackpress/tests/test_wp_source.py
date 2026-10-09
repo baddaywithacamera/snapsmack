@@ -63,11 +63,10 @@ class RewriteTests(unittest.TestCase):
                          [f"{WP}/cover.png", f"{WP}/grille.png", f"{WP}/badge.png",
                           "https://elsewhere.example/hotlinked.png"])
         self.assertIn("[img:gbucket:2]", body)
-        self.assertIn("[img:bucket:3]", body)
-        self.assertIn("[img:bucket:4]", body)
+        self.assertIn("[mosaic=3,4 layout=asymmetric]", body)
         self.assertNotIn("[img:bucket:1]", body, "the cover is the featured image, not inline")
         # tokens sit on their own lines so the server's shortcode pass sees them
-        for tok in ("[img:gbucket:2]", "[img:bucket:3]", "[img:bucket:4]"):
+        for tok in ("[img:gbucket:2]", "[mosaic=3,4 layout=asymmetric]"):
             self.assertRegex(body, r"(^|\n)" + re.escape(tok) + r"(\n|$)")
         self.assertIn("<p>Opening words.</p>", body)
         self.assertIn("<p>Closing words.</p>", body)
@@ -117,7 +116,7 @@ class RewriteTests(unittest.TestCase):
         self.assertIn('<p class="has-large-font-size">Words worth keeping.</p>', body)
         self.assertIn("[img:bucket:1]", body)
 
-    def test_full_image_plus_two_columns_becomes_three_image_mosaic(self):
+    def test_consecutive_images_become_one_mosaic_regardless_of_old_layout(self):
         content = (
             '<!-- wp:image --><figure><img src="%s/grille.png"></figure><!-- /wp:image -->'
             '<!-- wp:columns --><div class="wp-block-columns">'
@@ -129,7 +128,7 @@ class RewriteTests(unittest.TestCase):
             '</div><!-- /wp:column --></div><!-- /wp:columns -->'
         ) % (WP, WP, WP)
         body, ordered = wp_source.rewrite_body(content, POST["images"])
-        self.assertIn("[mosaic=1,2,3 layout=one-top]", body)
+        self.assertIn("[mosaic=1,2,3 layout=asymmetric]", body)
         self.assertNotIn("[img:bucket:", body)
         self.assertEqual(ordered[-1]["url"], f"{WP}/third.png")
 
@@ -174,7 +173,7 @@ class RewriteTests(unittest.TestCase):
         self.assertEqual(ordered[0]["url"], f"{WP}/lake.jpg")
         self.assertIn("[img:bucket:1]", body)
 
-    def test_two_columns_plus_following_image_wins_over_preceding_image(self):
+    def test_all_images_without_intervening_prose_form_one_mosaic(self):
         content = (
             '<!-- wp:image --><figure><img src="%s/before.png"></figure><!-- /wp:image -->'
             '<!-- wp:columns --><div class="wp-block-columns">'
@@ -187,8 +186,33 @@ class RewriteTests(unittest.TestCase):
             '<!-- wp:image --><figure><img src="%s/after.png"></figure><!-- /wp:image -->'
         ) % (WP, WP, WP, WP)
         body, _ = wp_source.rewrite_body(content, POST["images"])
-        self.assertIn("[img:bucket:3]", body)
-        self.assertIn("[mosaic=1,2,4 layout=one-top]", body)
+        self.assertEqual(body, "[mosaic=3,1,2,4 layout=asymmetric]")
+
+    def test_paragraphs_split_adjacent_images_into_separate_mosaics(self):
+        content = (
+            '<p>Before.</p>'
+            f'<figure><img src="{WP}/one.png"></figure>'
+            f'<figure><img src="{WP}/two.png"></figure>'
+            '<p>Between.</p>'
+            f'<figure><img src="{WP}/three.png"></figure>'
+            f'<figure><img src="{WP}/four.png"></figure>'
+            '<p>After.</p>'
+        )
+        body, _ = wp_source.rewrite_body(content, [])
+        self.assertIn("[mosaic=1,2 layout=asymmetric]", body)
+        self.assertIn("<p>Between.</p>", body)
+        self.assertIn("[mosaic=3,4 layout=asymmetric]", body)
+        self.assertNotIn("[mosaic=1,2,3,4", body)
+
+    def test_one_image_between_paragraphs_remains_one_image(self):
+        content = (
+            '<p>Before.</p>'
+            f'<figure><img src="{WP}/one.png"></figure>'
+            '<p>After.</p>'
+        )
+        body, _ = wp_source.rewrite_body(content, [])
+        self.assertIn("[img:bucket:1]", body)
+        self.assertNotIn("[mosaic=", body)
 
 
 class DraftTests(unittest.TestCase):
