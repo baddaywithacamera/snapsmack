@@ -37,8 +37,8 @@ foreach ([
         throw new RuntimeException('TILEZ caption can move vertically on hover: ' . $anchor);
     }
 }
-if (($manifest['version'] ?? '') !== '0.2.62') {
-    throw new RuntimeException('TILEZ version was not advanced to 0.2.62.');
+if (($manifest['version'] ?? '') !== '0.2.63') {
+    throw new RuntimeException('TILEZ version was not advanced to 0.2.63.');
 }
 
 echo "TILEZ hover transition regression passed\n";

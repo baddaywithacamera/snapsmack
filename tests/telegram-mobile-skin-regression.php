@@ -73,7 +73,7 @@ tg_check(strpos($tilez, 'ORDER BY p.created_at DESC, p.id DESC') !== false,
 tg_check(strpos($tilezLayout, "snap_render_component('navigation-tree'") !== false
     && strpos($tilezLayout, 'class="main-menu"') !== false
     && strpos($tilezCss, 'font-synthesis: none') !== false
-    && strpos($tilezCss, '.snap-inline-frame:has(+ .snap-inline-frame)') !== false,
+    && strpos($tilezCss, 'promoted by ss-engine-mosaic.js') !== false,
     'TILEZ receives CMS navigation and keeps its readable presentation');
 
 echo "TELEGRAM/TILEZ regression checks passed.\n";

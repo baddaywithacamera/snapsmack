@@ -314,4 +314,41 @@ test('five photographs stay together without an orphan row', () => {
     });
 });
 
+test('long equal-aspect mosaics vary their editorial rhythm without holes', () => {
+    const photos = Array.from({ length: 18 }, (_, id) => ({ id, width: 1800, height: 1200 }));
+    const layout = engine.computeLayout(photos, 900, 4, 'natural');
+    assertCleanGeometry(layout, 900);
+    assert.equal(layout.items.length, photos.length);
+
+    const signatures = layout.sections.map(section => layout.items
+        .filter(item => item.y >= section.y - 0.02 && item.y < section.y + section.height - 0.02)
+        .map(item => [
+            Math.round(item.x / 5) * 5,
+            Math.round((item.y - section.y) / 5) * 5,
+            Math.round(item.width / 5) * 5,
+            Math.round(item.height / 5) * 5
+        ].join(':')).join('|'));
+    assert.ok(new Set(signatures).size > 1, 'successive equal-photo sections do not repeat one checkerboard');
+
+    layout.sections.forEach((section, sectionIndex) => {
+        const tiles = layout.items.filter(item =>
+            item.y >= section.y - 0.02 && item.y < section.y + section.height - 0.02);
+        assert.ok(tiles.some(item => Math.abs(item.x) < 0.02), `section ${sectionIndex} touches the left edge`);
+        assert.ok(tiles.some(item => Math.abs(item.x + item.width - 900) < 0.02), `section ${sectionIndex} touches the right edge`);
+        assert.ok(tiles.some(item => Math.abs(item.y + item.height - section.y - section.height) < 0.02),
+            `section ${sectionIndex} touches the bottom edge`);
+    });
+});
+
+test('long mosaics never create one- or two-photo tail sections', () => {
+    for (let total = 7; total <= 40; total++) {
+        const photos = Array.from({ length: total }, (_, id) => ({ id, width: 1800, height: 1200 }));
+        const layout = engine.computeLayout(photos, 900, 4, 'natural');
+        const counts = layout.sections.map(section => layout.items.filter(item =>
+            item.y >= section.y - 0.02 && item.y < section.y + section.height - 0.02).length);
+        assert.ok(counts.every(count => count >= 3 && count <= 6),
+            `${total} photographs partition into complete 3-6 image compositions: ${counts.join('+')}`);
+    }
+});
+
 // ===== SNAPSMACK EOF =====

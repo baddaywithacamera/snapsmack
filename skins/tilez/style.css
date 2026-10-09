@@ -2540,22 +2540,9 @@ body.blog, body.single, body.archive { background: #fff; }
     margin-top: 2.6em;
     margin-bottom: 2.6em;
 }
-/* Consecutive standalone photographs are an intentional compact photo wall.
-   Keep them two-up on desktop instead of turning the essay into a procession
-   of full-width panels. Inline-block siblings retain an HTML whitespace node;
-   leave enough real clearance for that whitespace at the active body font
-   size so small typography changes cannot wrap every second tile. */
-.entry-content > .snap-inline-frame:has(+ .snap-inline-frame),
-.entry-content > .snap-inline-frame + .snap-inline-frame {
-    display: inline-block;
-    width: calc(50% - 10px) !important;
-    margin-top: 4px;
-    margin-bottom: 4px;
-    vertical-align: top;
-}
-.entry-content > .snap-inline-frame:has(+ .snap-inline-frame) {
-    margin-right: 4px;
-}
+/* Consecutive standalone photographs are promoted by ss-engine-mosaic.js into
+   one exact-packed asymmetric composition. A single image remains a normal
+   framed block. */
 .entry-content > .snap-mosaic,
 .entry-content > .snap-mosaic-wall {
     width: 100%;
@@ -2654,12 +2641,6 @@ body.blog, body.single, body.archive { background: #fff; }
     .featured-media, .post-header { width: calc(100% - 28px); }
     .post-content,
     .entry-content { font-size: 17px; line-height: 1.7; }
-    .entry-content > .snap-inline-frame:has(+ .snap-inline-frame),
-    .entry-content > .snap-inline-frame + .snap-inline-frame {
-        display: block;
-        width: 100% !important;
-        margin-right: 0;
-    }
     .tilez-blogroll > .section-inner { width: calc(100% - 28px); padding-top: 46px; }
     .blogroll-grid { columns: 1; }
     .blogroll-group { margin-bottom: 42px; }
