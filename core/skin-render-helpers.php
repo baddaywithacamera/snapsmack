@@ -96,12 +96,16 @@ function snap_render_navigation_tree(array $items, int $depth = 0): string {
 /** Render fixed shared chrome from bounded data; components cannot execute code. */
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
-    if ($name === 'chaplin-page') {
-        // CHAPLIN's distinctive document structure belongs to the audited CMS
-        // renderer. The signed skin only selects this bounded component.
+    if (in_array($name, ['50-shades-page', 'chaplin-page', 'galleria-page', 'impact-printer-page'], true)) {
+        $componentFiles = [
+            '50-shades-page' => '50-shades-page-component.php',
+            'chaplin-page' => 'chaplin-page-component.php',
+            'galleria-page' => 'galleria-page-component.php',
+            'impact-printer-page' => 'impact-printer-page-component.php',
+        ];
         $view = $data;
         ob_start();
-        require __DIR__ . '/chaplin-page-component.php';
+        require __DIR__ . '/' . $componentFiles[$name];
         $html = (string)ob_get_clean();
     } elseif ($name === 'grid-photo-fragment') {
         $prefix = preg_replace('/[^a-z]/', '', strtolower((string)($data['prefix'] ?? 'tg')));

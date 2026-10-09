@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.849D — 2026-10-09 — Same shelf
+
+- Moves the unchanged, working 50 SHADES OF NOAH GREY, GALLERIA, and IMPACT PRINTER renderers into the audited CMS and leaves only their bounded connector calls in the signed skins. CHAPLIN continues through the same CMS component boundary. No presentation logic was reimplemented.
+- Teaches presentation, control, font, structure, and registered-asset checks to follow each skin connector into its CMS-owned renderer. The full 183-test suite and the fail-closed security/presentation ratchet pass.
+
 ## 0.7.848D — 2026-10-09 — Put it back
 
 - Restores the original SMACKONEOUT homepage contract at the CMS boundary: skins with dedicated landing pages receive those landings, while skins without them open on the newest photograph. The decision now comes from each signed skin manifest instead of a guessed skin-name list or the unrelated site-mode setting; explicit archive-home choices remain archives.
