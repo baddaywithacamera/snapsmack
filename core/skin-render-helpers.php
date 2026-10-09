@@ -96,7 +96,14 @@ function snap_render_navigation_tree(array $items, int $depth = 0): string {
 /** Render fixed shared chrome from bounded data; components cannot execute code. */
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
-    if ($name === 'grid-photo-fragment') {
+    if ($name === 'chaplin-page') {
+        // CHAPLIN's distinctive document structure belongs to the audited CMS
+        // renderer. The signed skin only selects this bounded component.
+        $view = $data;
+        ob_start();
+        require __DIR__ . '/chaplin-page-component.php';
+        $html = (string)ob_get_clean();
+    } elseif ($name === 'grid-photo-fragment') {
         $prefix = preg_replace('/[^a-z]/', '', strtolower((string)($data['prefix'] ?? 'tg')));
         if (!in_array($prefix, ['tg', 'au', 'pa', 'jt', 'he'], true)) $prefix = 'tg';
         $item = is_array($data['item'] ?? null) ? $data['item'] : [];
