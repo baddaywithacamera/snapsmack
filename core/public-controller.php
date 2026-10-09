@@ -408,15 +408,13 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
 
     if ($route === 'landing') {
         $mode = (string)($settings['site_mode'] ?? 'photoblog');
-        // Classic SMACKONEOUT skins do not have a separate landing surface:
-        // their home page is the newest photograph.  The strict-runtime
-        // migration accidentally treated every photoblog home as an archive,
-        // bypassing each skin's solo-photo presentation.
-        $soloHomeSkins = [
-            '50-shades-of-noah-grey', 'full-monty', 'impact-printer',
-            'new-horizon', 'rational-geo', 'true-grit',
-        ];
-        if ($mode === 'photoblog' && in_array($skin, $soloHomeSkins, true)) {
+        $homepageMode = (string)($settings['homepage_mode'] ?? 'latest_post');
+        $skinHasLanding = !empty($settings['skin_has_landing']);
+        // This is the original SMACKONEOUT contract, now expressed without
+        // letting skins execute application code: latest-post homepages use
+        // the solo-photo response unless the skin explicitly owns a landing.
+        // Archive/static choices remain landing routes and are not overridden.
+        if ($homepageMode === 'latest_post' && !$skinHasLanding) {
             $latest = $repository->photographLanding(1, 0);
             $latestId = (int)($latest[0]['id'] ?? 0);
             $item = $latestId > 0 ? $repository->photographById($latestId) : null;
