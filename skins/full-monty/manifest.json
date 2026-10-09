@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "FULL MONTY",
-  "version": "0.1.1",
+    "version": "0.1.2",
     "author": "Sean McCormick & OpenAI Codex",
     "support": "sean@baddaywithacamera.ca",
     "status": "alpha",
