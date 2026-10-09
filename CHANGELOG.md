@@ -11,10 +11,6 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.847D — 2026-10-08 — Square deal
-
-- Keeps mixed three-photo mosaics in a complete editorial block. A landscape followed by two portraits now spans the landscape across the top row and places both portraits beneath it, instead of crushing all three photographs into a shallow horizontal strip.
-
 ## 0.7.846D — 2026-10-08 — Lighten up
 
 - Replaces the GRAMOFSMACK family's accidental 5,000-post landing response with real bounded server paging. THE GRID, AURORA, GAME ON, HEURISTIC, INSTANT CAMERA, JIVE TURKEY, PARADE, SLIDERS, and SUDDEN IMPACT now render only the configured first batch and request later batches as the reader approaches them, instead of making PHP, the database, HTML parsing, and the DOM process the complete archive up front.
