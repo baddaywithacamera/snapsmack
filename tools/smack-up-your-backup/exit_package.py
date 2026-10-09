@@ -104,8 +104,8 @@ def write_exit_package(
     except Exception as e:                                   # noqa: BLE001 — reported, never raised
         text = str(e)
         if "403" in text or "401" in text or "key" in text.lower():
-            text += (" — the site must be on 0.7.711D or newer for a backup key to read "
-                     "the export API; older sites need a TYSWY key in TAKE YOUR SHIT WITH YOU.")
+            text += (" — the site rejected the current SUYB backup key for portable export. "
+                     "Reconnect this site so SUYB can provision a fresh backup key.")
         summary["errors"].append(f"exit package failed: {text}")
         return summary
 
