@@ -57,6 +57,14 @@
             if (template === 'one-right') return group('horizontal', [group('vertical', cells.slice(1)), cells[0]]);
             if (template === 'three-across') return group('horizontal', cells);
             if (template === 'one-top') return group('vertical', [cells[0], group('horizontal', cells.slice(1))]);
+            // A landscape followed by two portraits is a 2x2 editorial block:
+            // the landscape spans the top row and the portraits share the row
+            // beneath it. Treating all three as one horizontal strip is the
+            // recurring "bifurcated mosaic" failure: both portraits are cropped
+            // into shallow letterbox cells and the composition looks unfinished.
+            if (cells[0].ar >= 1.15 && cells[1].ar < 1.15 && cells[2].ar < 1.15) {
+                return group('vertical', [cells[0], group('horizontal', cells.slice(1))]);
+            }
             if (cells[0].ar < 1.15) {
                 return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
             }
