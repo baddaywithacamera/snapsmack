@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.854D - 2026-10-10 - The bar means a line break
+
+- Restores the SCROLL landing masthead line break. The Landing Masthead control has always documented `|` as a line break, but the strict skin template printed the setting verbatim, so usedcarparts.photoblogs.fyi showed a literal "Used|Car Parts" on one oversized line.
+- The CMS now hands SCROLL the masthead already split into lines, because a schema-v2 template cannot split a string itself. Empty, doubled and trailing bars are dropped rather than emitting blank lines, and a site with no masthead text still falls back to its site name.
+- Ships SCROLL 0.1.51 as a presentation-only skin update. No skin gains any authority; the template only iterates prepared values.
+
 ## 0.7.853D — 2026-10-10 — One site, one fix
 
 - Carries forward the bounded 50 SHADES OF NOAH GREY desktop restoration from 0.7.852D without changing the shared presentation compiler. This emergency release cannot activate previously ignored frame or column settings on unrelated skins.

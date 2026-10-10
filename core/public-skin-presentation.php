@@ -29,6 +29,13 @@ function snapsmack_public_skin_presentation(string $skin, array $options): array
     }
     if ($skin === 'scroll') $out['scroll']=[
         'logo'=>$media('masthead_logo'),
+        // The Landing Masthead control documents '|' as a line break. The
+        // strict template cannot split a string, so the split happens here
+        // and the skin only iterates. Empty segments are dropped so a
+        // trailing or doubled bar cannot emit a blank line.
+        'masthead_lines'=>array_values(array_filter(array_map('trim',
+            explode('|', (string)($options['scroll_masthead_lines'] ?? ''))),
+            static fn($line) => $line !== '')),
         'mosaic_emphasis'=>in_array((string)($options['scroll_mosaic_emphasis'] ?? ''),['natural','balanced','landscape','portrait'],true)
             ? (string)$options['scroll_mosaic_emphasis'] : '',
     ];
