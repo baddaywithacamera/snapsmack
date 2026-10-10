@@ -11,6 +11,13 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.857D - 2026-10-10 - Fonts that stay fetched
+
+- Fonts now cache into the site's own `data/cache/fonts` instead of the system temp directory. Shared hosts wipe temp aggressively and sometimes give each process its own, so a face was being refetched over and over and every one of those fetches was a chance for a masthead to fall back to a default. A font is now fetched once per site, ever. The installer still ships no fonts at all.
+- Installing or updating a skin now pulls down the faces that site actually uses, while an operator is watching, instead of leaving the first visitor to trigger it. If Smack Central cannot supply one, the install says so by name rather than succeeding quietly. A font can never fail a skin install.
+- Adds `core/font-provider.php` so font.php, the skin installer and the settings path share one implementation of where fonts live and how they are fetched.
+- Adds `tests/font-inventory-availability-regression.php`: every family in the inventory must be well formed, present in the repository, and - where the build host can reach the network - actually served by Smack Central. Merriweather and Marcellus were added on 2026-10-08, never uploaded, and rendered as a silent fallback for two days. This is the check that would have caught it that day.
+
 ## 0.7.856D - 2026-10-10 - The other navigation
 
 - Restores the SCROLL solo-page icon navigation. 0.7.854D repaired the landing row but the solo page has its own nav, and it was still calling the generic list component - so a photograph page showed underlined words where the design is a row of round icon buttons. Both now use the bounded `grid-nav-links` component; no generic list call remains in the skin.
