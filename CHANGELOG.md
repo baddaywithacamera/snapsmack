@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.851D — 2026-10-09 — Fresh in memory
+
+- Invalidates each replaced CMS file in PHP's opcode cache immediately after the updater atomically installs it. Full and fleet/chunked updates now execute the newly deployed renderer instead of reporting the new version while an Apache worker continues serving stale presentation code.
+- Keeps the 0.7.850D 50 SHADES renderer unchanged; this release repairs delivery of that already-tested code.
+
 ## 0.7.850D — 2026-10-09 — Zero by zero
 
 - Restores 50 SHADES OF NOAH GREY's original desktop DOM relationship: the information and footer panels are siblings of the flexing photograph stage, not children competing with the photograph for its width. This prevents a healthy loaded image from collapsing to 0 × 0 pixels.
