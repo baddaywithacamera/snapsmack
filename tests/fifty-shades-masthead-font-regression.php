@@ -15,8 +15,12 @@ $style = (string)($presentation['style'] ?? '');
 $manifest = json_decode((string)file_get_contents($root . '/skins/50-shades-of-noah-grey/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
 $inventory = include $root . '/core/manifest-inventory.php';
 
-if (($manifest['version'] ?? '') !== '1.5.2') {
-    throw new RuntimeException('50 SHADES OF NOAH GREY release is not sequentially versioned at 1.5.2.');
+// A FLOOR, not a pin. Pinning the exact version made every legitimate
+// skin release fail this test, so the cheap way out was to change the
+// files and leave the version alone — which is exactly how sites ended
+// up frozen on an old package under a current-looking version number.
+if (version_compare((string)($manifest['version'] ?? '0'), '1.5.2', '<')) {
+    throw new RuntimeException('50 SHADES OF NOAH GREY release must stay at or above 1.5.2.');
 }
 if (!isset($inventory['local_fonts']['Merriweather'])
     || ($inventory['local_fonts']['Merriweather']['file'] ?? '') !== 'assets/fonts/Merriweather/Merriweather-Regular.ttf') {

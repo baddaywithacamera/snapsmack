@@ -9,6 +9,8 @@ $checks = [
     '.githooks/pre-commit' => 'skin-security-ratchet-regression.php',
     // SECAUDIT 060 finding A: the parity half of the gate must run too.
     '.githooks/pre-commit:parity' => 'skin-parity-ratchet-regression.php',
+    // One skin version, one file-state. Sites install by version.
+    '.githooks/pre-commit:versions' => 'skin-version-content-regression.php',
 ];
 foreach ($checks as $file => $needle) {
     $source = (string)file_get_contents($root . '/' . explode(':', $file)[0]);

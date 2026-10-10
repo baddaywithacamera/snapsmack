@@ -12,7 +12,11 @@ if (!is_string($css) || !is_string($mosaic)
     throw new RuntimeException('TILEZ consecutive post photographs must become one exact-packed asymmetric mosaic.');
 }
 $manifest = json_decode((string) file_get_contents(__DIR__ . '/../skins/tilez/manifest.json'), true);
-if (($manifest['version'] ?? '') !== '0.2.63') {
+// A FLOOR, not a pin. Pinning the exact version made every legitimate
+// skin release fail this test, so the cheap way out was to change the
+// files and leave the version alone — which is exactly how sites ended
+// up frozen on an old package under a current-looking version number.
+if (version_compare((string)($manifest['version'] ?? '0'), '0.2.63', '<')) {
     throw new RuntimeException('TILEZ asymmetric post-wall repair must ship as skin version 0.2.63.');
 }
 echo "PASS: tilez behavior is CMS-owned and its presentation contract is strict.
