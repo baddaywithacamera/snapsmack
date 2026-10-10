@@ -6,7 +6,12 @@
  */
 $source = file_get_contents(dirname(__DIR__) . '/core/skin-presentation.php');
 $metaSource = file_get_contents(dirname(__DIR__) . '/core/meta.php');
-$providerSource = file_get_contents(dirname(__DIR__) . '/font.php');
+// The fetching moved into core/font-provider.php so font.php, the skin
+// installer and the settings save path share one implementation. The
+// contract below is unchanged: inventory families only, canonical HTTPS
+// source only.
+$providerSource = file_get_contents(dirname(__DIR__) . '/core/font-provider.php');
+$endpointSource = file_get_contents(dirname(__DIR__) . '/font.php');
 
 $fail = static function (string $message): void {
     fwrite(STDERR, $message . PHP_EOL);
@@ -25,6 +30,11 @@ if (strpos($metaSource, "/font.php?family=") === false
 
 if (strpos($source, "is_file(\$localPath)") !== false) {
     $fail('Local filesystem presence must not be treated as proof that a font is publicly routable.');
+}
+
+if (strpos($endpointSource, 'font-provider.php') === false
+    || strpos($endpointSource, 'snapsmack_font_relative_path') === false) {
+    $fail('font.php must go through the shared bounded font provider.');
 }
 
 if (strpos($providerSource, "isset(\$fonts[\$family])") === false
