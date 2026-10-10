@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.850D — 2026-10-09 — Zero by zero
+
+- Restores 50 SHADES OF NOAH GREY's original desktop DOM relationship: the information and footer panels are siblings of the flexing photograph stage, not children competing with the photograph for its width. This prevents a healthy loaded image from collapsing to 0 × 0 pixels.
+- Adds an output-level regression that fails if those panels are placed inside the photograph stage again.
+
 ## 0.7.849D — 2026-10-09 — Same shelf
 
 - Moves the unchanged, working 50 SHADES OF NOAH GREY, GALLERIA, and IMPACT PRINTER renderers into the audited CMS and leaves only their bounded connector calls in the signed skins. CHAPLIN continues through the same CMS component boundary. No presentation logic was reimplemented.
