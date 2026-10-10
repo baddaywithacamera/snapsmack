@@ -1349,6 +1349,8 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
     highlights = float(settings.get("highlights", 0.0))
     whites = float(settings.get("whites", 0.0))
     blacks = float(settings.get("blacks", 0.0))
+    tone_version = int(settings.get("tone_version", 1))
+    black_point = -(blacks / 100.0) * .12 if tone_version >= 2 else 0.0
     if shadows or midtones or highlights or whites or blacks:
         tone = luminance(rgb).astype(xp.float32)
         mask_tone = xp.clip(tone, 0.0, 1.0)
@@ -1365,12 +1367,22 @@ def apply_adjustments(image, adjustments, defaults=None, frame=None):
         if whites:
             delta += (whites / 100.0 * 45.0 / 255.0 *
                       xp.maximum(0.0, (mask_tone - .80) / .20))
-        if blacks:
+        if blacks and tone_version >= 2:
+            delta += (blacks / 100.0 * 28.0 / 255.0 *
+                      (1.0 - _smoothstep(0.0, .35, mask_tone)) ** 1.5)
+        elif blacks:
             delta += (blacks / 100.0 * 45.0 / 255.0 *
                       xp.maximum(0.0, (.20 - mask_tone) / .20))
         rgb = _remap_luminance(rgb, tone, tone + delta.astype(xp.float32))
     else:
         rgb = _neutral_luminance_pass(rgb)
+
+    if black_point:
+        # Matches the 8-bit LUT: acts on every tone, so a flat scene with
+        # nothing under 20% still responds to the control.
+        tone = luminance(rgb).astype(xp.float32)
+        moved = xp.clip((tone - black_point) / (1.0 - black_point), 0.0, 1.0)
+        rgb = _remap_luminance(rgb, tone, moved.astype(xp.float32))
 
     # Contrast is the one tone stage that is not skippable at neutral. Its
     # target is (tone - .5) * 1.0 + .5, and in float32 that round trip does not

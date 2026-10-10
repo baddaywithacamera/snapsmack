@@ -176,6 +176,12 @@ def _pp3_text(adjustments):
     shadows = round(max(-100, min(100, float(adjustments.get("shadows", 0.0)))))
     temperature = max(-100, min(100, float(adjustments.get("temperature", 0.0))))
     tint = max(-100, min(100, float(adjustments.get("tint", 0.0))))
+    # RawTherapee's Exposure black level works in raw units, at full depth
+    # and before the compositor. The UI keeps the familiar -100..100 scale;
+    # 100 maps to a deliberately conservative 4096 so the strongest setting
+    # crushes convincingly without destroying the file.
+    raw_black = round(max(-100.0, min(100.0,
+                      float(adjustments.get('raw_black', 0.0)))) * 40.96)
     noise_reduction = round(max(
         0, min(100, float(adjustments.get("raw_noise_reduction", 0.0)))))
     rotation = max(-45.0, min(45.0, float(adjustments.get("raw_rotation", 0.0))))
@@ -208,6 +214,7 @@ def _pp3_text(adjustments):
             "[Exposure]\nEnabled=true\n"
             f"Compensation={exposure:.4f}\nBrightness={brightness}\n"
             f"Contrast={contrast}\nSaturation={saturation}\n"
+            f"Black={raw_black}\n"
             f"HighlightCompr={max(0, -highlights)}\n"
             f"ShadowCompr={max(0, shadows)}\n\n"
             "[White Balance]\nEnabled=true\nSetting=Custom\n"
