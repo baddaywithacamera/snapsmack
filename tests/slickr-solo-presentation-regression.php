@@ -6,7 +6,11 @@ $layout = (string)file_get_contents($root . '/skins/slickr/layout.php');
 $css = (string)file_get_contents($root . '/skins/slickr/style.css');
 $manifest = json_decode((string)file_get_contents($root . '/skins/slickr/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
 
-if (($manifest['version'] ?? '') !== '1.0.32') throw new RuntimeException('SLICKR solo repair is not versioned at 1.0.32.');
+// A FLOOR, not a pin. Pinning the exact version made every legitimate
+// skin release fail this test, so the cheap way out was to change the
+// files and leave the version alone — which is exactly how sites ended
+// up frozen on an old package under a current-looking version number.
+if (version_compare((string)($manifest['version'] ?? '0'), '1.0.32', '<')) throw new RuntimeException('SLICKR solo repair must stay at or above 1.0.32.');
 $fit = $manifest['options']['solo_small_photos']['options'] ?? [];
 foreach (['fill','native'] as $mode) {
     $rule = (string)($fit[$mode]['css'] ?? '');

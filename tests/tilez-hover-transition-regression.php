@@ -37,7 +37,11 @@ foreach ([
         throw new RuntimeException('TILEZ caption can move vertically on hover: ' . $anchor);
     }
 }
-if (($manifest['version'] ?? '') !== '0.2.63') {
+// A FLOOR, not a pin. Pinning the exact version made every legitimate
+// skin release fail this test, so the cheap way out was to change the
+// files and leave the version alone — which is exactly how sites ended
+// up frozen on an old package under a current-looking version number.
+if (version_compare((string)($manifest['version'] ?? '0'), '0.2.63', '<')) {
     throw new RuntimeException('TILEZ version was not advanced to 0.2.63.');
 }
 

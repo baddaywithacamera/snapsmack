@@ -14,8 +14,12 @@ $css = (string)file_get_contents(dirname(__DIR__) . '/skins/rational-geo/style.c
 $manifest = json_decode((string)file_get_contents(dirname(__DIR__) . '/skins/rational-geo/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
 $inventory = include dirname(__DIR__) . '/core/manifest-inventory.php';
 
-if (($manifest['version'] ?? '') !== '2.1.11') {
-    throw new RuntimeException('RATIONAL GEO release is not sequentially versioned at 2.1.11.');
+// A FLOOR, not a pin. Pinning the exact version made every legitimate
+// skin release fail this test, so the cheap way out was to change the
+// files and leave the version alone — which is exactly how sites ended
+// up frozen on an old package under a current-looking version number.
+if (version_compare((string)($manifest['version'] ?? '0'), '2.1.11', '<')) {
+    throw new RuntimeException('RATIONAL GEO release must stay at or above 2.1.11.');
 }
 if (!isset($inventory['local_fonts']['Marcellus'])
     || ($inventory['local_fonts']['Marcellus']['file'] ?? '') !== 'assets/fonts/Marcellus/Marcellus-Regular.ttf') {

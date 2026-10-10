@@ -29,7 +29,11 @@ $layout = (string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/la
 $css = (string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/style.css');
 $manifest = json_decode((string)file_get_contents(dirname(__DIR__) . '/skins/instant-camera/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
 if (!str_contains($layout, 'class="ic-scrim"')) throw new RuntimeException('Scrim layer is absent from the owned layout.');
-if (($manifest['version'] ?? '') !== '1.0.45') throw new RuntimeException('INSTANT CAMERA release is not sequentially versioned at 1.0.45.');
+// A FLOOR, not a pin. Pinning the exact version made every legitimate
+// skin release fail this test, so the cheap way out was to change the
+// files and leave the version alone — which is exactly how sites ended
+// up frozen on an old package under a current-looking version number.
+if (version_compare((string)($manifest['version'] ?? '0'), '1.0.45', '<')) throw new RuntimeException('INSTANT CAMERA release must stay at or above 1.0.45.');
 if (($manifest['options']['ic_post_viewer_backdrop_color']['default'] ?? null) !== '#ffffff'
     || ($manifest['options']['ic_post_viewer_backdrop_opacity']['default'] ?? null) !== '80') {
     throw new RuntimeException('Post viewer must default to the original-strength high-key white veil.');
