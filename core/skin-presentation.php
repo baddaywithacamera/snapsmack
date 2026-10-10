@@ -252,6 +252,13 @@ function snapsmack_declared_skin_style(string $skinSlug, array $options): string
     if (($manifest['schema_version'] ?? 0) !== 2 || !is_array($manifest['options'] ?? null)) return '';
 
     $rules = [];
+    $declarationsOnly = static function (string $css): string {
+        $css = trim($css);
+        if (strlen($css) >= 2 && $css[0] === '{' && $css[strlen($css) - 1] === '}') {
+            $css = trim(substr($css, 1, -1));
+        }
+        return $css;
+    };
     foreach ($manifest['options'] as $key => $definition) {
         if (!is_string($key) || !is_array($definition) || !array_key_exists($key, $options)) continue;
         $selector = trim((string)($definition['selector'] ?? ''));
@@ -263,14 +270,14 @@ function snapsmack_declared_skin_style(string $skinSlug, array $options): string
         if (str_starts_with($property, 'custom-')) {
             $choice = $definition['options'][(string)$value] ?? null;
             if (is_array($choice) && is_string($choice['css'] ?? null) && trim($choice['css']) !== '') {
-                $rules[] = $selector . '{' . trim($choice['css']) . '}';
+                $rules[] = $selector . '{' . $declarationsOnly($choice['css']) . '}';
             }
             continue;
         }
         if ($type === 'select') {
             $choice = $definition['options'][(string)$value] ?? null;
             if (is_array($choice) && is_string($choice['css'] ?? null) && trim($choice['css']) !== '') {
-                $rules[] = $selector . '{' . trim($choice['css']) . '}';
+                $rules[] = $selector . '{' . $declarationsOnly($choice['css']) . '}';
                 continue;
             }
         }

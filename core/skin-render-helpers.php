@@ -201,6 +201,31 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . snap_escape_html($item['label'] ?? '') . '</a></li>';
         }
         $html .= '</ul></nav>';
+    } elseif ($name === 'photo-navigation') {
+        $comments = is_array($data['comments'] ?? null) ? $data['comments'] : [];
+        $enabled = !array_key_exists('comments_enabled', $data) || !empty($data['comments_enabled']);
+        $item = is_array($data['item'] ?? null) ? $data['item'] : [];
+        $current = (string)($item['url'] ?? ($item['img_slug'] ?? ''));
+        $destination = static fn(mixed $value): array => is_array($value) ? $value : [];
+        $link = static function (array $target, string $label, string $title, string $current): string {
+            $url = (string)($target['url'] ?? '');
+            $slug = (string)($target['img_slug'] ?? '');
+            if ($url === '' || ($current !== '' && ($url === $current || $slug === $current))) {
+                return '<span class="dim">' . snap_escape_html($label) . '</span>';
+            }
+            return '<a href="' . snap_escape_url($url) . '" title="' . snap_escape_attr($title) . '">' . snap_escape_html($label) . '</a>';
+        };
+        $html = '<div class="nav-links"><span class="left">'
+            . $link($destination($data['previous'] ?? []), '« PREV', 'Previous Entry', $current)
+            . '<span class="sep">|</span>'
+            . $link($destination($data['first'] ?? []), 'FIRST', 'Jump to First Entry', $current)
+            . '</span><span class="sep">|</span><span class="center"><a href="#" id="show-details">INFO</a>';
+        if ($enabled) $html .= '<span class="sep">|</span><a href="#" id="show-comments">COMMENTS (' . count($comments) . ')</a>';
+        $html .= '</span><span class="sep">|</span><span class="right">'
+            . $link($destination($data['last'] ?? []), 'LAST', 'Jump to Latest Entry', $current)
+            . '<span class="sep">|</span>'
+            . $link($destination($data['next'] ?? []), 'NEXT »', 'Next Entry', $current)
+            . '</span></div>';
     } elseif ($name === 'image') {
         $class = trim((string)($data['class'] ?? ''));
         $lightboxSource = trim((string)($data['attributes']['data-lightbox-src'] ?? ''));
