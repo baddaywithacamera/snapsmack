@@ -946,9 +946,19 @@ function updater_replace_file(string $dest, string $content): bool {
     }
 
     @chmod($tmp, 0644);
-    if (@rename($tmp, $dest)) return true;
+    if (@rename($tmp, $dest)) {
+        if (function_exists('opcache_invalidate')) {
+            @opcache_invalidate($dest, true);
+        }
+        return true;
+    }
 
-    if (is_file($dest) && @unlink($dest) && @rename($tmp, $dest)) return true;
+    if (is_file($dest) && @unlink($dest) && @rename($tmp, $dest)) {
+        if (function_exists('opcache_invalidate')) {
+            @opcache_invalidate($dest, true);
+        }
+        return true;
+    }
 
     @unlink($tmp);
     return false;
