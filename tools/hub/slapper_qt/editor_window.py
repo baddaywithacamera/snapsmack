@@ -463,6 +463,10 @@ RAW_DEVELOP_CONTROLS = [
     ("contrast", "Contrast", -100, 100, 1, 0),
     ("highlights", "Highlights", -100, 100, 1, 0),
     ("shadows", "Shadows", -100, 100, 1, 0),
+    # Moves the black POINT in the developer, at full raw depth. Unlike the
+    # compositor's Blacks — which only reaches luminance under 20% and so does
+    # nothing at all on a flat scene — this one always bites.
+    ("raw_black", "Black Level", -100, 100, 1, 0),
     ("temperature", "Temperature", -100, 100, 1, 0),
     ("tint", "Tint", -100, 100, 1, 0),
     ("saturation", "Saturation", -100, 100, 1, 0),
