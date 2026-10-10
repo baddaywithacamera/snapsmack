@@ -11,6 +11,14 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.852D — 2026-10-10 — Same shelf, same shape
+
+- Restores 50 SHADES OF NOAH GREY's complete original desktop presentation contract inside the CMS-owned renderer: page wrapper, scroll stage, masthead, photograph, photo navigation strip, information drawer, comments drawer, and system footer are again emitted in their original sibling order.
+- Reconnects the skin to its selected dark, medium, or light variant stylesheet and restores the archive-page state class, preventing a healthy landing grid from rendering into an apparently empty page.
+- Restores the original PREV / FIRST / INFO / COMMENTS / LAST / NEXT control strip instead of incorrectly repeating the site menu beneath the photograph. The existing CMS-owned footer controller once again opens and closes the information and comments drawer.
+- Normalizes declaration-only CSS stored with legacy outer braces before the CMS wraps it in a selector. Custom frames and column layouts no longer produce invalid doubled braces.
+- Keeps the signed skin as a two-line bounded connector. All executable rendering, navigation, validation, and asset selection remain in audited CMS code.
+
 ## 0.7.851D — 2026-10-09 — Fresh in memory
 
 - Invalidates each replaced CMS file in PHP's opcode cache immediately after the updater atomically installs it. Full and fleet/chunked updates now execute the newly deployed renderer instead of reporting the new version while an Apache worker continues serving stale presentation code.
