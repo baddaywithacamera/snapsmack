@@ -179,7 +179,11 @@ def _open_source_image(path, max_size=None):
 
 
 LEGACY_PROJECT_VERSION = 1
-PROJECT_VERSION = 2
+# 3 marks the Blacks maths change in 0.8.19. Older projects and recipes are
+# still opened — they simply keep their own tone maths.
+PROJECT_VERSION = 3
+SUPPORTED_PROJECT_VERSIONS = {1, 2, 3}
+SUPPORTED_RECIPE_VERSIONS = {2, 3}
 MAX_PROJECT_BYTES = 512 * 1024 * 1024
 MAX_PROJECT_DOCUMENT_BYTES = 16 * 1024 * 1024
 MAX_PROJECT_ENTRIES = 2048
@@ -211,6 +215,11 @@ DEFAULT_ADJUSTMENTS = {
     "exposure": 0.0, "brightness": 0.0, "contrast": 0.0,
     "highlights": 0.0, "midtones": 0.0, "shadows": 0.0,
     "whites": 0.0, "blacks": 0.0,
+    # Which Blacks maths to use. 1 == the original narrow shadow band that
+    # died above 20% luminance; 2 == black-point move plus a wide smooth
+    # band (0.8.19+). A saved project without this key is version 1, so
+    # existing work never shifts under the photographer.
+    "tone_version": 2,
     "temperature": 0.0, "tint": 0.0, "saturation": 0.0, "vibrance": 0.0,
     "clarity": 0.0, "texture": 0.0, "dehaze": 0.0, "sharpen": 0.0,
     # Smart-sharpen controls. amount == the sharpen slider above. Lens mode
@@ -218,6 +227,10 @@ DEFAULT_ADJUSTMENTS = {
     # gaussian is the classic unsharp mask. Defaults keep sharpen off (0).
     "sharpen_radius": 1.2, "sharpen_reduce_noise": 0.0, "sharpen_mode": "lens",
     "raw_noise_reduction": 0.0,
+    # RawTherapee black level. Moves the black POINT at full raw depth,
+    # before the compositor, so it bites even on a flat scene where the
+    # compositor's shadow-band "blacks" control has nothing below 20% to act on.
+    "raw_black": 0.0,
     # RAW-only geometry is performed by RawTherapee before the 16-bit master
     # enters SNAP SLAPPER. These stay separate from the editor's later geometry
     # so Free Corners, horizon correction, and final crop remain available.
@@ -278,7 +291,7 @@ DEFAULT_ADJUSTMENTS = {
 # Controls performed in the RAW developer when a document has a RAW source.
 RAW_DEVELOPMENT_KEYS = {
     "exposure", "brightness", "contrast", "highlights", "shadows",
-    "temperature", "tint", "saturation", "raw_noise_reduction",
+    "temperature", "tint", "saturation", "raw_noise_reduction", "raw_black",
     "raw_rotation", "raw_perspective_horizontal", "raw_perspective_vertical",
     "raw_lens_distortion", "raw_defish", "raw_ca_red", "raw_ca_blue",
     "raw_vignette_correction",
@@ -721,6 +734,9 @@ def _tonal_lut(adjustments):
     highlights = float(adjustments.get("highlights", 0)) / 100.0
     whites = float(adjustments.get("whites", 0)) / 100.0
     blacks = float(adjustments.get("blacks", 0)) / 100.0
+    tone_version = int(adjustments.get("tone_version", 1))
+    # Negative blacks raise the black point (crush); positive lower it (lift).
+    black_point = -blacks * .12 if tone_version >= 2 else 0.0
     level_black = float(adjustments.get("level_black", 0))
     level_white = max(level_black + 1, float(adjustments.get("level_white", 255)))
     level_gamma = max(.1, float(adjustments.get("level_gamma", 1)))
@@ -739,7 +755,19 @@ def _tonal_lut(adjustments):
         value += midtones * 55.0 * midtone_weight
         value += highlights * 50.0 * highlight_weight
         value += whites * 45.0 * max(0.0, (normalized - .80) / .20)
-        value += blacks * 45.0 * max(0.0, (.20 - normalized) / .20)
+        if tone_version >= 2:
+            # Wide, smooth shadow band — no hard death at 20%.
+            value += blacks * 28.0 * (
+                1.0 - _smoothstep(0.0, .35, normalized)) ** 1.5
+        else:
+            value += blacks * 45.0 * max(0.0, (.20 - normalized) / .20)
+        if tone_version >= 2 and black_point:
+            # The black POINT move. This is the half Photoshop always has
+            # and the old maths never did: it acts on every tone, so the
+            # control still bites on a flat scene with nothing in the
+            # shadows to grab.
+            shifted = (_clamp(value) / 255.0 - black_point) / (1.0 - black_point)
+            value = 255.0 * max(0.0, min(1.0, shifted))
         value = (value - 127.5) * (1.0 + contrast) + 127.5
         normalized = max(0.0, min(1.0, (value - level_black) / (level_white - level_black)))
         value = 255.0 * normalized ** (1.0 / level_gamma)
@@ -2349,7 +2377,7 @@ class EditorDocument:
         value = _read_project_document(path)
         if not isinstance(value, dict):
             raise ValueError("Invalid SNAP SLAPPER project: the root must be an object")
-        if value.get("version") not in {LEGACY_PROJECT_VERSION, PROJECT_VERSION}:
+        if value.get("version") not in SUPPORTED_PROJECT_VERSIONS:
             raise ValueError("Unsupported SNAP SLAPPER project version")
         legacy_project = value.get("version") == LEGACY_PROJECT_VERSION
         expected_types = {"adjustments": dict, "geometry": dict,
@@ -2531,7 +2559,7 @@ class EditorDocument:
     def apply_recipe(self, recipe):
         if not isinstance(recipe, dict):
             raise ValueError("Invalid SNAP SLAPPER recipe: the root must be an object")
-        if recipe.get("version") != PROJECT_VERSION:
+        if recipe.get("version") not in SUPPORTED_RECIPE_VERSIONS:
             raise ValueError("Unsupported recipe version")
         adjustments = recipe.get("adjustments", DEFAULT_ADJUSTMENTS)
         geometry = recipe.get("geometry", {})
