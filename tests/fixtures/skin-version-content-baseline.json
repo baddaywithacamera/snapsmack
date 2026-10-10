@@ -1,0 +1,126 @@
+{
+    "schema_version": 1,
+    "purpose": "One published skin version must mean exactly one set of files. A site installs a skin BY VERSION, so if two different file-states ship under one number, the sites that took the first are frozen on it and no CMS release can move them. That is what left photowalk.ing running the 0.7.850D 50 SHADES layout while reporting the same 1.5.2 as the repaired one. Change any skin file and change its version in the same commit, then regenerate this file.",
+    "skins": {
+        "50-shades-of-noah-grey": {
+            "version": "1.5.3",
+            "files_sha256": "73f53fe2591836632ad1a850279647220cd9ba08cd552642bf561b80e5b829ba"
+        },
+        "52-card-pickup": {
+            "version": "1.4.5",
+            "files_sha256": "be7d20ebbe8c1c591684a0446090875916f62505db351e077b93745214e070f7"
+        },
+        "alfred": {
+            "version": "1.0.4",
+            "files_sha256": "1f787a2324413129eadd1dce6a78cedc261c64d011a99efe9c816037f69b82d1"
+        },
+        "aurora": {
+            "version": "1.0.44",
+            "files_sha256": "6296a8eff41b62fd90669146095bf46672975fa6fde49d519a78e35896576eeb"
+        },
+        "chaplin": {
+            "version": "0.2.18",
+            "files_sha256": "7eca9990021fb939293049c18724d139a96c6837b738ec5c615cfc647d61c13c"
+        },
+        "full-monty": {
+            "version": "0.1.2",
+            "files_sha256": "344c1f49a014d876fa121367dc97b4e8c835d1a8c8d8f12034a8ab10295eb3b3"
+        },
+        "galleria": {
+            "version": "1.3.12",
+            "files_sha256": "8365c8038add113323fc351a45db9cccdf920c0b82c9397b323216d10719bc76"
+        },
+        "game-on": {
+            "version": "0.1.30",
+            "files_sha256": "77ea0256bbdc5af70693d67c008f04c7bcfe7fa3cb7a412439dd1a2cd1f44db1"
+        },
+        "glide": {
+            "version": "0.1.5",
+            "files_sha256": "b165c2473b2240a37a1a813dc309da908cf276cd272c26e9c86a680a856838bb"
+        },
+        "heuristic": {
+            "version": "0.1.6",
+            "files_sha256": "83490811ea022c3a7e117947c505cfadfa101a1f8c8fa4a141bfce91b977a970"
+        },
+        "hip-to-be-square": {
+            "version": "1.3.6",
+            "files_sha256": "56975494d93b05fabfaf4f6f9c297d3d19f36d42b231dca3ab7d56296fb2d3fe"
+        },
+        "impact-printer": {
+            "version": "2.1.5",
+            "files_sha256": "f505282c1c7758765a0bd1045e79e2aa3598a3a30bd638383e37b65e05bedc98"
+        },
+        "instant-camera": {
+            "version": "1.0.45",
+            "files_sha256": "cf30ecffb85afae6df9b223a5e1a6faf4ab1dbdcb63073b9ef4f2c8cb0860186"
+        },
+        "jive-turkey": {
+            "version": "0.1.32",
+            "files_sha256": "77a254b44cfefb305e6d474bb9d03c22628ba138149254fedd0e1489ada4795d"
+        },
+        "new-horizon": {
+            "version": "1.3.8",
+            "files_sha256": "326b252e6b966fe249d09b83a90e7df68434ca4b84ef8ca49654c44ebb7a1b3d"
+        },
+        "onyx": {
+            "version": "0.1.11",
+            "files_sha256": "e2b812c128164cb28c050dc6d4581cd4f2ac10ad79b2b3950152f85ca2577db5"
+        },
+        "parade": {
+            "version": "1.2.42",
+            "files_sha256": "11a5d2f7cf61a625e5d1250ff5286f28b5f9325e34691ff818a11614f6a1d158"
+        },
+        "photogram": {
+            "version": "2.0.19",
+            "files_sha256": "9e373ff93b8f846e4213c66fd092913eda1a26e78ca6ae1e5b12a558f767ad0d"
+        },
+        "rational-geo": {
+            "version": "2.1.11",
+            "files_sha256": "4c3769ce54a717b0432e2c5b0f2c7b7dbb3d1c05ba01060291f72a1b0f6e0096"
+        },
+        "scroll": {
+            "version": "0.1.52",
+            "files_sha256": "48bb5395e44c627b6fd3786b96794ecd444713ce92a80d899470498d0a66f365"
+        },
+        "show-n-tell": {
+            "version": "1.2.3",
+            "files_sha256": "4dabac52fcb0793927f92a51dd958ff7278c1a02dd64f95021eec0115803ea3f"
+        },
+        "slickr": {
+            "version": "1.0.32",
+            "files_sha256": "73982b158717e2dd2deb18f91c44ec1659c64d75d4e03b4bb105bb0d264018ff"
+        },
+        "sliders": {
+            "version": "0.1.7",
+            "files_sha256": "793547d08583dc53a4daeb6ed355a8831e8ea65a1ee7e7131b4938c8163ca0ed"
+        },
+        "stanley": {
+            "version": "1.1.2",
+            "files_sha256": "b27420434a1ee12fad36b3f3eeef5ce4ac96048eb08cd270126bb61e3c3d1a4f"
+        },
+        "sudden-impact": {
+            "version": "1.0.12",
+            "files_sha256": "7078b10719e0b9beb06bf1e3298c3caa1764f8db3beb02e99ec6c7f08db1e55a"
+        },
+        "telegram": {
+            "version": "0.1.1",
+            "files_sha256": "a6ef6eb52ba53d19a3ed11bf0da86a3a853cd79a66fda0c749cffd4fa3c51c0d"
+        },
+        "the-grid": {
+            "version": "1.3.47",
+            "files_sha256": "efec0bbdf653b9ef139dea486c16738c5d7300dd6c5aee213c63a60012f079a5"
+        },
+        "tilez": {
+            "version": "0.2.63",
+            "files_sha256": "138caa14f6eb3e144e972e1a6427e783b5420ddb0260070747771ec157dd92ff"
+        },
+        "true-grit": {
+            "version": "1.3.4",
+            "files_sha256": "30046fbfab447e5c9b4d73a1ba7bb1a229d7d3010ef180486b0ae400e75fa9a8"
+        },
+        "writing-with-impact": {
+            "version": "1.1.1",
+            "files_sha256": "009b2da5ef93f962a61515b84cc353aa68ffb56900ac05919d8d4be2665d1816"
+        }
+    }
+}
