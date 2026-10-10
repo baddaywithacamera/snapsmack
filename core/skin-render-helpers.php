@@ -201,6 +201,39 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . snap_escape_html($item['label'] ?? '') . '</a></li>';
         }
         $html .= '</ul></nav>';
+    } elseif ($name === 'grid-nav-links') {
+        // SCROLL and the other wall skins style a row of round icon buttons
+        // (.ss-grid-nav-link + svg). The pre-migration component that emitted
+        // them reads globals and was never wired into the strict component
+        // system, so the strict templates fell back to the generic list
+        // component and the icon row rendered as a bulleted <ul>.
+        // The markup is fixed here; the skin supplies only bounded link data.
+        $icons = [
+            'home'      => '<path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+            'archive'   => '<path d="M4 7h16v13H4zM3 4h18v3H3zm6 7h6" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+            'people'    => '<circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 20c0-4 2-6 6-6s6 2 6 6M16 5a3 3 0 0 1 0 6m1 3c2.7.3 4 2.3 4 6" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+        ];
+        $fallback = '<circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/>';
+        $html = '<div class="ss-grid-nav-links">';
+        foreach (($data['items'] ?? []) as $item) {
+            if (!is_array($item)) continue;
+            $label = (string)($item['label'] ?? '');
+            $icon = strtolower((string)($item['icon'] ?? ''));
+            if ($icon === '') {
+                // Derive the icon from the label so an ordinary menu still
+                // gets sensible glyphs without the owner configuring anything.
+                $probe = strtolower($label);
+                if (str_contains($probe, 'home')) $icon = 'home';
+                elseif (str_contains($probe, 'blogroll') || str_contains($probe, 'friend')) $icon = 'people';
+                elseif (str_contains($probe, 'archive') || str_contains($probe, 'album')) $icon = 'archive';
+            }
+            $html .= '<a class="ss-grid-nav-link" href="' . snap_escape_url($item['url'] ?? '')
+                . '" title="' . snap_escape_attr($label) . '">'
+                . '<svg viewBox="0 0 24 24" aria-hidden="true">'
+                . ($icons[$icon] ?? $fallback) . '</svg>'
+                . '<span class="ss-grid-nav-label">' . snap_escape_html($label) . '</span></a>';
+        }
+        $html .= '</div>';
     } elseif ($name === 'photo-navigation') {
         $comments = is_array($data['comments'] ?? null) ? $data['comments'] : [];
         $enabled = !array_key_exists('comments_enabled', $data) || !empty($data['comments_enabled']);
