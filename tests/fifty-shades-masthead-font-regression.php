@@ -34,25 +34,54 @@ if (!is_file($root . '/assets/fonts/Merriweather/Merriweather-Regular.ttf')
 
 $view = snapsmack_build_skin_view(
     ['status'=>200,'kind'=>'landing','items'=>[],'navigation'=>[]],
-    ['site_name'=>'Photowalk.ing','language'=>'en','direction'=>'ltr','skin_style_url'=>'/skins/50-shades-of-noah-grey/style.css','skin_presentation'=>$presentation]
+    ['site_name'=>'Photowalk.ing','language'=>'en','direction'=>'ltr','skin_style_url'=>'/skins/50-shades-of-noah-grey/style.css','skin_variant_url'=>'/skins/50-shades-of-noah-grey/variant-light.css','skin_presentation'=>$presentation]
 );
 ob_start();
 $rendered = snapsmack_render_strict_skin_template($root . '/skins/50-shades-of-noah-grey', 'layout.php', $view);
 $html = (string)ob_get_clean();
 if (!$rendered || !str_contains($html, 'font-family:"Merriweather", sans-serif')
-    || !str_contains($html, '/font.php?family=Merriweather')) {
+    || !str_contains($html, '/font.php?family=Merriweather')
+    || !str_contains($html, 'variant-light.css')
+    || !str_contains($html, 'archive-page')) {
     throw new RuntimeException('The 50 SHADES layout does not emit its generated masthead font presentation.');
 }
 
 $photoView = snapsmack_build_skin_view(
     ['status'=>200,'kind'=>'photo','item'=>['id'=>1,'img_title'=>'Photo','img_file'=>'/photo.jpg'],'comments'=>[],'navigation'=>[]],
-    ['site_name'=>'Photowalk.ing','language'=>'en','direction'=>'ltr','skin_style_url'=>'/skins/50-shades-of-noah-grey/style.css','skin_presentation'=>$presentation]
+    ['site_name'=>'Photowalk.ing','language'=>'en','direction'=>'ltr','skin_style_url'=>'/skins/50-shades-of-noah-grey/style.css','skin_variant_url'=>'/skins/50-shades-of-noah-grey/variant-light.css','skin_presentation'=>$presentation]
 );
 ob_start();
 $photoRendered = snapsmack_render_strict_skin_template($root . '/skins/50-shades-of-noah-grey', 'layout.php', $photoView);
 $photoHtml = (string)ob_get_clean();
-if (!$photoRendered || !str_contains($photoHtml, '</div></article><div id="infobox">')) {
+if (!$photoRendered || !preg_match('/<\/article>\s*<div id="infobox">/', $photoHtml)) {
     throw new RuntimeException('The 50 SHADES information panels are inside the flexing photo stage and collapse the photograph.');
+}
+foreach (['id="page-wrapper"', 'id="scroll-stage"', 'id="fsog-header"', 'id="main-image"',
+    'class="nav-links"', 'id="show-details"', 'id="show-comments"', 'id="footer"', 'id="system-footer"'] as $hook) {
+    if (!str_contains($photoHtml, $hook)) throw new RuntimeException("The restored 50 SHADES desktop structure lost {$hook}.");
+}
+$order = array_map(static fn(string $hook): int|false => strpos($photoHtml, $hook), [
+    'id="scroll-stage"', 'id="fsog-header"', 'id="fsog-photobox"', 'id="infobox"', 'id="footer"', 'id="system-footer"',
+]);
+$sortedOrder = $order;
+sort($sortedOrder);
+if (in_array(false, $order, true) || $order !== $sortedOrder) {
+    throw new RuntimeException('The restored 50 SHADES presentation is no longer in its original sibling order.');
+}
+if (!in_array('smack-footer', $manifest['require_scripts'] ?? [], true)
+    || ($inventory['scripts']['smack-footer']['path'] ?? '') !== 'assets/js/ss-engine-footer.js') {
+    throw new RuntimeException('The 50 SHADES drawer is not connected to the CMS-owned footer controller.');
+}
+
+$framePresentation = snapsmack_skin_presentation([
+    'image_frame_style' => 'border_thin',
+    'blogroll_columns' => '2',
+], '50-shades-of-noah-grey');
+$frameStyle = (string)($framePresentation['style'] ?? '');
+if (str_contains($frameStyle, '{{') || str_contains($frameStyle, '}}')
+    || !str_contains($frameStyle, 'border: 1px solid #555555 !important;')
+    || !str_contains($frameStyle, 'grid-template-columns: repeat(2, 1fr);')) {
+    throw new RuntimeException('The CMS presentation compiler emitted malformed wrapped declarations.');
 }
 
 echo "50 SHADES masthead font regression: PASS\n";
