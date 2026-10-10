@@ -16,6 +16,7 @@
 - Restores the SCROLL landing masthead line break. The Landing Masthead control has always documented `|` as a line break, but the strict skin template printed the setting verbatim, so usedcarparts.photoblogs.fyi showed a literal "Used|Car Parts" on one oversized line.
 - The CMS now hands SCROLL the masthead already split into lines, because a schema-v2 template cannot split a string itself. Empty, doubled and trailing bars are dropped rather than emitting blank lines, and a site with no masthead text still falls back to its site name.
 - Ships SCROLL 0.1.51 as a presentation-only skin update. No skin gains any authority; the template only iterates prepared values.
+- Restores the SCROLL icon navigation row. The pre-migration component that drew the round icon buttons reads globals and was never wired into the strict component system, so the strict template fell back to the generic list component and the icon row rendered as a plain bulleted list. The CMS now owns that markup as a bounded `grid-nav-links` component and the skin supplies only link data.
 
 ## 0.7.853D — 2026-10-10 — One site, one fix
 
