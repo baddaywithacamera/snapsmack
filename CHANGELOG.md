@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.856D - 2026-10-10 - The other navigation
+
+- Restores the SCROLL solo-page icon navigation. 0.7.854D repaired the landing row but the solo page has its own nav, and it was still calling the generic list component - so a photograph page showed underlined words where the design is a row of round icon buttons. Both now use the bounded `grid-nav-links` component; no generic list call remains in the skin.
+- Ships SCROLL 0.1.53.
+
 ## 0.7.855D - 2026-10-10 - One version, one skin
 
 - Finds and fixes the reason photowalk.ing stayed broken through a fortnight of CMS releases: it was serving the 0.7.850D 50 SHADES `layout.php` while reporting skin version 1.5.2, the same 1.5.2 the repaired layout carries. A site installs a skin BY VERSION, so it had no way to know there was anything to fetch.
