@@ -56,6 +56,9 @@ if needs_skin_gate:
         for program in (
             'tests/skin-security-ratchet-regression.php',
             'tests/skin-parity-ratchet-regression.php',
+            # One skin version must mean one set of files, or the sites that
+            # already installed that version can never receive the change.
+            'tests/skin-version-content-regression.php',
         ):
             gate = subprocess.run(['php', program], capture_output=True, text=True)
             if gate.returncode != 0:

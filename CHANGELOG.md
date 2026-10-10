@@ -11,6 +11,14 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.855D - 2026-10-10 - One version, one skin
+
+- Finds and fixes the reason photowalk.ing stayed broken through a fortnight of CMS releases: it was serving the 0.7.850D 50 SHADES `layout.php` while reporting skin version 1.5.2, the same 1.5.2 the repaired layout carries. A site installs a skin BY VERSION, so it had no way to know there was anything to fetch.
+- Four skins had their `layout.php` replaced wholesale with no version change - 50 SHADES, CHAPLIN, GALLERIA and IMPACT PRINTER each swapped a 5.7-10.2 KB self-contained layout for a ~130 byte delegating one. Every site that installed during the first window is frozen on it. All four are bumped so the fleet can finally receive the repair, along with SCROLL.
+- Adds `tests/skin-version-content-regression.php`: change any file in a skin and its version must change in the same commit. Proved against the original mistake - restoring the old 50 SHADES layout under the current version fails the gate. It runs in the pre-commit gate beside the security and parity ratchets.
+- Removes the exact-version pins from seven skin tests. Pinning a skin to one exact version made every legitimate release fail, so the cheap way out was to change the files and leave the version alone - the very habit that caused this. They are floors now: a version may rise, never fall.
+- No skin markup or CMS rendering changes. 184 of 185 regression programs pass.
+
 ## 0.7.854D - 2026-10-10 - The bar means a line break
 
 - Restores the SCROLL landing masthead line break. The Landing Masthead control has always documented `|` as a line break, but the strict skin template printed the setting verbatim, so usedcarparts.photoblogs.fyi showed a literal "Used|Car Parts" on one oversized line.
