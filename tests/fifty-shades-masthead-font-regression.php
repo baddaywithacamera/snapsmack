@@ -44,5 +44,16 @@ if (!$rendered || !str_contains($html, 'font-family:"Merriweather", sans-serif')
     throw new RuntimeException('The 50 SHADES layout does not emit its generated masthead font presentation.');
 }
 
+$photoView = snapsmack_build_skin_view(
+    ['status'=>200,'kind'=>'photo','item'=>['id'=>1,'img_title'=>'Photo','img_file'=>'/photo.jpg'],'comments'=>[],'navigation'=>[]],
+    ['site_name'=>'Photowalk.ing','language'=>'en','direction'=>'ltr','skin_style_url'=>'/skins/50-shades-of-noah-grey/style.css','skin_presentation'=>$presentation]
+);
+ob_start();
+$photoRendered = snapsmack_render_strict_skin_template($root . '/skins/50-shades-of-noah-grey', 'layout.php', $photoView);
+$photoHtml = (string)ob_get_clean();
+if (!$photoRendered || !str_contains($photoHtml, '</div></article><div id="infobox">')) {
+    throw new RuntimeException('The 50 SHADES information panels are inside the flexing photo stage and collapse the photograph.');
+}
+
 echo "50 SHADES masthead font regression: PASS\n";
 // ===== SNAPSMACK EOF =====
