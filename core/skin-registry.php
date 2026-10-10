@@ -602,8 +602,35 @@ function skin_registry_install(string $slug, string $download_url, string $signa
         && is_dir($retired_dir)
         && !_skin_rmdir_recursive($retired_dir);
 
+    // Pull down the faces this installation actually uses, now, while an
+    // operator is watching. Release packages omit the 22 MB font library to
+    // keep the installer small on shared hosting, so a freshly installed skin
+    // would otherwise fetch its masthead face on a visitor's first request --
+    // or quietly fall back to a default face if Smack Central happened to be
+    // unreachable at that moment, which is exactly how a wrong masthead went
+    // unnoticed for days.
+    //
+    // A font must never fail a skin install, so every step here is optional
+    // and anything missing is reported rather than thrown.
+    $font_note = '';
+    try {
+        require_once __DIR__ . '/font-provider.php';
+        $font_options = [];
+        if (function_exists('snapsmack_apply_skin_settings')) {
+            snapsmack_apply_skin_settings($font_options, $slug);
+        }
+        $warm = snapsmack_font_warm(snapsmack_font_families_in_use($font_options));
+        if ($warm['missing']) {
+            $font_note = ' Fonts Smack Central could not supply yet: '
+                . implode(', ', $warm['missing']) . '.';
+        }
+    } catch (Throwable $font_error) {
+        $font_note = ' Fonts could not be pre-fetched: ' . $font_error->getMessage();
+    }
+
     return ['success' => true, 'message' => 'Skin "' . $slug . '" installed successfully.'
-        . ($cleanup_pending ? ' The previous read-only directory was retained for server cleanup.' : '')];
+        . ($cleanup_pending ? ' The previous read-only directory was retained for server cleanup.' : '')
+        . $font_note];
 }
 
 /*
