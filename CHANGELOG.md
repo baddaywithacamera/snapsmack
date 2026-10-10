@@ -11,12 +11,17 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.853D — 2026-10-10 — One site, one fix
+
+- Carries forward the bounded 50 SHADES OF NOAH GREY desktop restoration from 0.7.852D without changing the shared presentation compiler. This emergency release cannot activate previously ignored frame or column settings on unrelated skins.
+- Keeps parity anchored to the last known-working 50 SHADES implementation at commit `c414613d`, not to the currently broken live page. Automated verification covers the restored hierarchy, controls, variant stylesheet, registered footer engine, and the complete 184-test suite.
+
 ## 0.7.852D — 2026-10-10 — Same shelf, same shape
 
 - Restores 50 SHADES OF NOAH GREY's complete original desktop presentation contract inside the CMS-owned renderer: page wrapper, scroll stage, masthead, photograph, photo navigation strip, information drawer, comments drawer, and system footer are again emitted in their original sibling order.
 - Reconnects the skin to its selected dark, medium, or light variant stylesheet and restores the archive-page state class, preventing a healthy landing grid from rendering into an apparently empty page.
 - Restores the original PREV / FIRST / INFO / COMMENTS / LAST / NEXT control strip instead of incorrectly repeating the site menu beneath the photograph. The existing CMS-owned footer controller once again opens and closes the information and comments drawer.
-- Normalizes declaration-only CSS stored with legacy outer braces before the CMS wraps it in a selector. Custom frames and column layouts no longer produce invalid doubled braces.
+- Also changed the shared declaration compiler; superseded by 0.7.853D so the emergency skin restoration remains isolated from that fleet-wide behavior change.
 - Keeps the signed skin as a two-line bounded connector. All executable rendering, navigation, validation, and asset selection remain in audited CMS code.
 
 ## 0.7.851D — 2026-10-09 — Fresh in memory

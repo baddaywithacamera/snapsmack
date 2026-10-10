@@ -73,16 +73,5 @@ if (!in_array('smack-footer', $manifest['require_scripts'] ?? [], true)
     throw new RuntimeException('The 50 SHADES drawer is not connected to the CMS-owned footer controller.');
 }
 
-$framePresentation = snapsmack_skin_presentation([
-    'image_frame_style' => 'border_thin',
-    'blogroll_columns' => '2',
-], '50-shades-of-noah-grey');
-$frameStyle = (string)($framePresentation['style'] ?? '');
-if (str_contains($frameStyle, '{{') || str_contains($frameStyle, '}}')
-    || !str_contains($frameStyle, 'border: 1px solid #555555 !important;')
-    || !str_contains($frameStyle, 'grid-template-columns: repeat(2, 1fr);')) {
-    throw new RuntimeException('The CMS presentation compiler emitted malformed wrapped declarations.');
-}
-
 echo "50 SHADES masthead font regression: PASS\n";
 // ===== SNAPSMACK EOF =====
