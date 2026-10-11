@@ -81,6 +81,19 @@ $site = [
     'search_dock' => ['enabled' => false],
     'registered_assets' => snapsmack_skin_declared_assets($manifest),
     'footer' => [],
+    'crop_circles' => [
+        'identity' => 'SNAPSMACK VISUAL CHECK', 'home_url' => '/',
+        'icon_sprite_url' => '/assets/icons/crop-circles.svg', 'navigation' => $nav,
+        'search' => ['action'=>'/','placeholder'=>'Search or #tag…'],
+        'filters' => [['label'=>'categories','type'=>'cat','items'=>[['id'=>1,'label'=>'Fixture']]]],
+        'social' => [
+            ['url'=>'https://example.invalid/vero','label'=>'Vero','icon'=>'vero'],
+            ['url'=>'https://example.invalid/bluesky','label'=>'Bluesky','icon'=>'bluesky'],
+            ['url'=>'https://example.invalid/links','label'=>'Linktree','icon'=>'linktree'],
+            ['url'=>'https://example.invalid/','label'=>'Website','icon'=>'website'],
+        ],
+        'appearance' => ['icon'=>'#1a1a1a','background'=>'rgba(255,255,255,.7)','background_hover'=>'rgba(255,255,255,.95)','border'=>'rgba(26,26,26,.3)','border_hover'=>'rgba(26,26,26,.7)','opacity'=>.5],
+    ],
 ];
 
 if (($manifest['cms_controller'] ?? '') === 'smacktalk') {

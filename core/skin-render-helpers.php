@@ -201,6 +201,50 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . snap_escape_html($item['label'] ?? '') . '</a></li>';
         }
         $html .= '</ul></nav>';
+    } elseif ($name === 'crop-circles') {
+        $model = is_array($data['model'] ?? null) ? $data['model'] : [];
+        $sprite = (string)($model['icon_sprite_url'] ?? '');
+        $icon = static fn(string $name): string => '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="' . snap_escape_url($sprite) . '#' . snap_escape_attr($name) . '"></use></svg>';
+        $navItems = is_array($model['navigation'] ?? null) ? $model['navigation'] : [];
+        $html = '<nav class="scroll-sticky-nav ss-grid-sticky-nav ' . (!empty($data['solo']) ? 'ss-grid-nav-always-visible scroll-solo-nav' : 'ss-grid-nav-inline-then-sticky') . '" aria-label="Site navigation"' . (empty($data['solo']) ? ' data-grid-nav-observer="scroll-profile"' : '') . '>';
+        $html .= '<div class="ss-grid-nav-identity"><a class="ss-grid-nav-name" href="' . snap_escape_url($model['home_url'] ?? snap_route_url('home')) . '">' . snap_escape_html($model['identity'] ?? '') . '</a></div><div class="ss-grid-nav-links">';
+        foreach ($navItems as $item) {
+            if (!is_array($item) || empty($item['url'])) continue;
+            $label = (string)($item['label'] ?? '');
+            $probe = strtolower($label);
+            $glyph = str_contains($probe, 'home') ? 'home' : (str_contains($probe, 'about') ? 'about' : (str_contains($probe, 'blogroll') ? 'blogroll' : 'link'));
+            $html .= '<a class="ss-grid-nav-link" href="' . snap_escape_url($item['url']) . '" title="' . snap_escape_attr($label) . '">' . $icon($glyph) . '<span class="ss-grid-nav-label">' . snap_escape_html($label) . '</span></a>';
+        }
+        $search = is_array($model['search'] ?? null) ? $model['search'] : [];
+        $html .= '<details class="scroll-nav-search"><summary class="ss-grid-nav-link" title="Search">' . $icon('search') . '<span class="ss-grid-nav-label">Search</span></summary><form class="scroll-nav-search-panel" method="get" action="' . snap_escape_url($search['action'] ?? '') . '"><label class="ss-grid-nav-label" for="crop-circles-search">Search photographs</label><input id="crop-circles-search" type="search" name="q" placeholder="' . snap_escape_attr($search['placeholder'] ?? 'Search or #tag…') . '" autocomplete="off"><button type="submit">GO</button></form></details>';
+        $groups = is_array($model['filters'] ?? null) ? $model['filters'] : [];
+        if ($groups) {
+            $html .= '<div class="saf-wrap scroll-nav-filter"><button id="smack-archive-filter-btn" type="button" class="ss-grid-nav-link" aria-expanded="false" aria-controls="smack-archive-filter-panel" title="Filter">' . $icon('filter') . '<span class="ss-grid-nav-label saf-btn-label">Filter</span></button><div id="smack-archive-filter-panel" class="saf-panel" role="dialog" aria-label="Filter photographs"><input type="text" id="smack-archive-filter-search" class="saf-search" placeholder="SEARCH FILTERS…" autocomplete="off" spellcheck="false">';
+            foreach ($groups as $group) {
+                if (!is_array($group)) continue;
+                $html .= '<div class="saf-group"><div class="saf-group-header">' . snap_escape_html(strtoupper((string)($group['label'] ?? ''))) . '</div>';
+                foreach (($group['items'] ?? []) as $item) {
+                    if (!is_array($item)) continue;
+                    $html .= '<label class="saf-item"><input type="checkbox" class="saf-checkbox" data-type="' . snap_escape_attr($group['type'] ?? '') . '" value="' . snap_escape_attr($item['id'] ?? '') . '"><span class="saf-label">' . snap_escape_html(strtoupper((string)($item['label'] ?? ''))) . '</span></label>';
+                }
+                $html .= '</div>';
+            }
+            $html .= '</div></div>';
+        }
+        $appearance = is_array($model['appearance'] ?? null) ? $model['appearance'] : [];
+        $dockStyle = '--dock-bg:' . snap_escape_attr($appearance['background'] ?? 'transparent')
+            . ';--dock-bg-hover:' . snap_escape_attr($appearance['background_hover'] ?? 'rgba(255,255,255,.95)')
+            . ';--dock-border:' . snap_escape_attr($appearance['border'] ?? 'rgba(26,26,26,.3)')
+            . ';--dock-border-hover:' . snap_escape_attr($appearance['border_hover'] ?? 'rgba(26,26,26,.7)')
+            . ';--dock-icon:' . snap_escape_attr($appearance['icon'] ?? '#1a1a1a')
+            . ';--dock-idle-opacity:' . snap_escape_attr($appearance['opacity'] ?? 1);
+        $html .= '</div><div class="ss-grid-nav-actions"><div class="social-dock social-dock-inline" data-inline="true" style="' . $dockStyle . '">';
+        foreach (($model['social'] ?? []) as $item) {
+            if (!is_array($item)) continue;
+            $glyph = preg_replace('/[^a-z0-9]/', '', strtolower((string)($item['icon'] ?? 'link')));
+            $html .= '<a href="' . snap_escape_url($item['url'] ?? '') . '" target="_blank" rel="me noopener" title="' . snap_escape_attr($item['label'] ?? '') . '" class="dock-link u-url">' . $icon($glyph) . '</a>';
+        }
+        $html .= '</div></div></nav>';
     } elseif ($name === 'grid-nav-links') {
         // SCROLL and the other wall skins style a row of round icon buttons
         // (.ss-grid-nav-link + svg). The pre-migration component that emitted

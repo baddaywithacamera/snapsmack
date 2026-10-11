@@ -79,8 +79,8 @@
             "files_sha256": "4c3769ce54a717b0432e2c5b0f2c7b7dbb3d1c05ba01060291f72a1b0f6e0096"
         },
         "scroll": {
-            "version": "0.1.53",
-            "files_sha256": "3400fae508ad9083a3fcf22912f1ca732c7f8ea9ae975d6a3dedb36e986fa710"
+            "version": "0.1.54",
+            "files_sha256": "f4145b3d7de1b80fb6d9e79859461bf95cbef6a443b30e3f3a024780294b3fcb"
         },
         "show-n-tell": {
             "version": "1.2.3",
