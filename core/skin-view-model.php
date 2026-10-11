@@ -81,6 +81,20 @@ function snapsmack_prepare_skin_view(PDO $pdo, array $settings, string $skin_slu
  */
 function snapsmack_prepare_crop_circles(PDO $pdo, array $settings, array $manifest, array $navigation): array
 {
+    // Public bootstrap settings can be deliberately narrowed. Crop Circles owns
+    // this reusable CMS feature, so reload its persisted keys here rather than
+    // making every skin (or caller) know which social settings it requires.
+    try {
+        $rows = $pdo->query(
+            "SELECT setting_key, setting_val FROM snap_settings
+             WHERE setting_key = 'social_dock_enabled'
+                OR setting_key LIKE 'social_dock_%'"
+        )->fetchAll(PDO::FETCH_KEY_PAIR);
+        if (is_array($rows)) $settings = array_replace($settings, $rows);
+    } catch (Throwable $e) {
+        // The passed settings remain the compatibility source on old installs.
+    }
+
     $base = defined('BASE_URL') ? BASE_URL : '/';
     $model = [
         'identity' => trim(str_replace('|', ' ', (string)($settings['scroll_masthead_lines'] ?? $settings['site_name'] ?? 'SnapSmack'))),
