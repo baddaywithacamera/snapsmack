@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.860D - 2026-10-10 - SCROLL parity repair
+
+- Restores SCROLL's native photograph proportions and asymmetrical wall by handing the existing column engine the CMS-owned image dimensions again. Crop Circles now reloads its saved Social Dock links inside the CMS model, restoring the complete welded icon row without executable code in the skin.
+
 ## 0.7.859D - 2026-10-10 - Crop Circles
 
 - Restores SCROLL's original desktop presentation without returning executable behavior to the skin. The new reusable CMS-owned **Crop Circles** component welds the normal icon navigation, search, taxonomy filter, and social dock into the single continuous row the skin had before the security move. SCROLL 0.1.54 calls that bounded component and regains its viewport photo stage, bottom PREV/FIRST/INFO/COMMENTS/LAST/NEXT strip, and hidden information drawer.
