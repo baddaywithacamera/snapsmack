@@ -2,12 +2,15 @@
 
 import glob
 import hashlib
+import io
 import hmac
 import json
 import math
 import os
+import re
 import secrets
 import shutil
+import struct
 import subprocess
 
 from PIL import Image, ImageOps
@@ -135,6 +138,9 @@ def _development_cache_path(path, adjustments):
     return os.path.join(folder, digest + ".tif")
 
 
+LIBRARY_PREVIEW_TARGET = 118   # middle grey on the contact sheet
+
+
 def _visible_library_preview(image):
     """Lift a dark neutral RAW rendering for contact-sheet visibility only."""
     rgb = image.convert("RGB")
@@ -157,8 +163,13 @@ def _visible_library_preview(image):
     # Lift shadows with a gamma curve instead of multiplying every pixel. This
     # makes a conservative RAW contact sheet readable while preserving small
     # bright subjects that a linear lift would blow out.
-    if 0 < median < 80:
-        gamma = math.log(80.0 / 255.0) / math.log(median / 255.0)
+    # Middle grey, not 31%%. The old 80 target was set against RawTherapee's
+    # deliberately flat render; on a camera preview it left a snow scene
+    # reading dim on the contact sheet. Thumbnails only -- never the
+    # photograph, the developed master or the export.
+    if 0 < median < LIBRARY_PREVIEW_TARGET:
+        gamma = (math.log(LIBRARY_PREVIEW_TARGET / 255.0)
+                 / math.log(median / 255.0))
         gamma = max(0.55, min(1.0, gamma))
         table = [round(255.0 * ((value / 255.0) ** gamma))
                  for value in range(256)]
@@ -201,6 +212,7 @@ def _pp3_text(adjustments):
     ca_blue = max(-4.0, min(4.0, float(adjustments.get("raw_ca_blue", 0.0))))
     vignette = round(max(-100, min(
         100, float(adjustments.get("raw_vignette_correction", 0.0)))))
+    auto_levels = bool(adjustments.get("raw_auto_levels", False))
     lensfun = bool(adjustments.get("raw_lensfun", False))
     lensfun_distortion = bool(adjustments.get("raw_lensfun_distortion", True))
     lensfun_vignette = bool(adjustments.get("raw_lensfun_vignette", True))
@@ -214,6 +226,8 @@ def _pp3_text(adjustments):
             "[Exposure]\nEnabled=true\n"
             f"Compensation={exposure:.4f}\nBrightness={brightness}\n"
             f"Contrast={contrast}\nSaturation={saturation}\n"
+            f"Auto={'true' if auto_levels else 'false'}\n"
+            "Clip=0.02\n"
             f"Black={raw_black}\n"
             f"HighlightCompr={max(0, -highlights)}\n"
             f"ShadowCompr={max(0, shadows)}\n\n"
@@ -301,6 +315,164 @@ def development_artifacts(path, adjustments=None, timeout=300):
     return {"original": os.path.abspath(os.fspath(path)),
             "profile": profile, "master": master,
             "producer": os.path.abspath(find_rawtherapee(cli=True))}
+
+
+# A camera raw carries a finished JPEG preview -- it is what the camera shows on
+# its own rear screen. Reading it costs milliseconds. Developing the raw through
+# RawTherapee to produce the same picture costs about 1.4 seconds, and the
+# filmstrip was doing exactly that, on two threads, to fill 160-pixel tiles: 61
+# photographs took the better part of a minute.
+#
+# So: thumbnails come from the embedded preview, and the full development is
+# kept for the editor view, where the photograph is actually being looked at and
+# the raw processing is the point.
+#
+# The preview is the camera's own rendering, not a developed raw, so it carries
+# the picture style baked in. At thumbnail size that is invisible, and it is
+# arguably more faithful to what the photographer saw on the camera.
+
+EMBEDDED_MIN_PIXELS = 240          # ignore the tiny 160x120 IFD thumbnail
+# Raw files put their preview near the front: in Sean's CR2s the real one
+# ends 0.45 MB in, inside an 11.4 MB file. Reading the whole file to find
+# it meant 695 MB of reading for a 61-shot folder, which on OneDrive-backed
+# storage was the entire cost -- the first version of this looked fast only
+# because a benchmark had already warmed the OS cache. So: read a little,
+# and only read more if that genuinely found nothing.
+EMBEDDED_SCAN_STEPS = (2 * 1024 * 1024, 8 * 1024 * 1024, 48 * 1024 * 1024)
+
+
+def _embedded_jpeg_candidates(path):
+    """Every plausible JPEG stored inside a raw file, largest first.
+
+    Raw formats are TIFF containers and each vendor hides its previews behind
+    different tags, so rather than teach this four dialects it scans for JPEG
+    start/end markers. Sensor data contains those byte pairs by coincidence, so
+    a candidate is only offered if its header actually parses as a JPEG with a
+    real frame header -- the first version of this took the largest run and
+    came back with 10.5 MB of noise.
+    """
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        return []
+
+    for limit in EMBEDDED_SCAN_STEPS:
+        want = min(size, limit)
+        try:
+            with open(path, 'rb') as handle:
+                data = handle.read(want)
+        except OSError:
+            return []
+
+        found = []
+        start = data.find(b'\xff\xd8\xff')
+        while start != -1:
+            end = data.find(b'\xff\xd9', start + 3)
+            if end == -1:
+                break
+            blob = data[start:end + 2]
+            # A real JPEG carries a start-of-frame marker. Noise almost never
+            # does, and the first version of this returned 10.5 MB of sensor
+            # data because it trusted the longest run.
+            if len(blob) > 2048 and re.search(b'\xff[\xc0\xc1\xc2]', blob[:len(blob) // 2]):
+                found.append(blob)
+            start = data.find(b'\xff\xd8\xff', end + 2)
+
+        if found:
+            found.sort(key=len, reverse=True)
+            return found
+        if want >= size:
+            break           # the whole file has been looked at
+    return []
+
+
+# Orientation 1-8 -> the PIL transposes that straighten it, in order.
+_ORIENTATION_STEPS = {
+    1: (),
+    2: (Image.Transpose.FLIP_LEFT_RIGHT,),
+    3: (Image.Transpose.ROTATE_180,),
+    4: (Image.Transpose.FLIP_TOP_BOTTOM,),
+    5: (Image.Transpose.FLIP_LEFT_RIGHT, Image.Transpose.ROTATE_90),
+    6: (Image.Transpose.ROTATE_270,),
+    7: (Image.Transpose.FLIP_LEFT_RIGHT, Image.Transpose.ROTATE_270),
+    8: (Image.Transpose.ROTATE_90,),
+}
+
+
+def raw_orientation(path):
+    """The Orientation tag from the raw's own TIFF header, or 1.
+
+    The embedded preview JPEG usually carries no EXIF of its own, so rotating
+    it by its own tags does nothing and a portrait frame comes back landscape.
+    The camera records the orientation once, in the raw's IFD0, which is what
+    RawTherapee reads -- so read the same place.
+    """
+    try:
+        with open(path, 'rb') as handle:
+            head = handle.read(65536)
+    except OSError:
+        return 1
+    if len(head) < 16:
+        return 1
+    if head[:2] == b'II':
+        order = '<'
+    elif head[:2] == b'MM':
+        order = '>'
+    else:
+        return 1
+    try:
+        offset = struct.unpack_from(order + 'I', head, 4)[0]
+        if offset + 2 > len(head):
+            return 1
+        count = struct.unpack_from(order + 'H', head, offset)[0]
+        for index in range(min(count, 512)):
+            entry = offset + 2 + index * 12
+            if entry + 12 > len(head):
+                break
+            tag, kind = struct.unpack_from(order + 'HH', head, entry)
+            if tag == 0x0112 and kind == 3:      # Orientation, SHORT
+                value = struct.unpack_from(order + 'H', head, entry + 8)[0]
+                return value if 1 <= value <= 8 else 1
+    except struct.error:
+        return 1
+    return 1
+
+
+def embedded_preview(path, max_size):
+    """A thumbnail from the raw's own embedded JPEG, or None if there isn't one.
+
+    ``max_size`` is the longest edge wanted. The decoder is asked for a
+    reduced-scale image rather than decoding full size and shrinking, which is
+    most of the saving.
+    """
+    for blob in _embedded_jpeg_candidates(path):
+        try:
+            # snap_imgsafe is the decode boundary; nothing bypasses it.
+            probe = snap_imgsafe.safe_open(blob, formats={"JPEG"})
+        except Exception:  # noqa: BLE001 - try the next candidate
+            continue
+        if min(probe.size) < EMBEDDED_MIN_PIXELS:
+            continue        # the little IFD thumbnail, not the real preview
+        try:
+            with Image.open(io.BytesIO(blob)) as handle:
+                handle.draft('RGB', (max_size, max_size))
+                image = handle.convert('RGB')
+        except Exception:  # noqa: BLE001 - the verified copy is still good
+            image = probe.convert('RGB')
+        image = ImageOps.exif_transpose(image)
+        # The preview JPEG normally has no EXIF, so the line above is a no-op
+        # and a portrait frame would come back landscape. The camera wrote the
+        # orientation into the raw's own TIFF header; apply that.
+        for step in _ORIENTATION_STEPS.get(raw_orientation(path), ()):
+            image = image.transpose(step)
+        # Same contact-sheet lift the RawTherapee path has always applied. A
+        # camera preview of a correctly exposed snow scene still reads dark at
+        # thumbnail size, and skipping this is why the grid went dim the moment
+        # thumbnails started coming from the embedded preview.
+        image = _visible_library_preview(image)
+        image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+        return image
+    return None
 
 
 def render(path, timeout=180):
