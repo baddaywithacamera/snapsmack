@@ -858,14 +858,6 @@ class EditorWindow(QMainWindow):
         self.act_ai_fill.triggered.connect(self.open_ai_fill)
         bar.addAction(self.act_ai_fill)
 
-        # Keep the label split so older source-level checks for the withdrawn
-        # prototype do not mistake this bounded implementation for that code.
-        self.act_ai_expand = QAction("Generative " + "Expand…", self)
-        self.act_ai_expand.setToolTip(
-            "Extend one or more edges by up to 20% while preserving the original centre")
-        self.act_ai_expand.triggered.connect(self._open_ai_border_dialog)
-        bar.addAction(self.act_ai_expand)
-
         self.act_mask_brush = QAction("Mask Brush", self)
         self.act_mask_brush.setToolTip("Paint the selected layer mask directly on the photo")
         self.act_mask_brush.triggered.connect(lambda: self._activate_canvas_mask_tool("brush"))
@@ -1017,7 +1009,7 @@ class EditorWindow(QMainWindow):
                 self.act_zoom_out, self.act_zoom_in,
                 self.act_crop, self.act_heal, self.act_redeye, self.act_clone,
                 self.act_patch, self.act_ai_heal,
-                self.act_ai_fill, self.act_ai_expand,
+                self.act_ai_fill,
                 self.act_mask_brush, self.act_mask_gradient, self.act_colour_range,
                 self.act_compare, self.act_filmstrip,
                 self.act_recipe_save, self.act_recipe_apply,
@@ -1053,7 +1045,7 @@ class EditorWindow(QMainWindow):
                      self.act_compare),
             "retouch": (self.act_heal, self.act_redeye, self.act_clone, self.act_patch,
                         self.act_ai_heal,
-                        self.act_ai_fill, self.act_ai_expand,
+                        self.act_ai_fill,
                         self.act_mask_brush,
                         self.act_mask_gradient, self.act_colour_range),
             "looks": (self.act_lewks, self.act_lewk_again, self.act_filters, self.act_textures,
@@ -3122,31 +3114,6 @@ class EditorWindow(QMainWindow):
         from .ai_heal_dialog import AIHealDialog
         AIHealDialog(self, operation="fill").exec()
 
-    def _open_ai_border_dialog(self):
-        if not self.doc:
-            QMessageBox.information(self, "Open a photograph", "Open a photograph first.")
-            return
-        from .generative_consent import confirm
-        if not confirm(self):
-            return
-        from .ai_expand_dialog import AIExpandDialog
-        AIExpandDialog(self).exec()
-
-    def generative_expand_budget(self):
-        """Return original/current/used/remaining pixels for active history."""
-        if not self.doc:
-            return 0, 0, 0, 0
-        with Image.open(self.doc.source_path) as source:
-            original = int(source.width * source.height)
-        used = sum(
-            max(0, int(layer.get("generated_area_pixels", 0)))
-            for layer in self.doc.layers
-            if layer.get("type") == "generative_expand"
-        )
-        remaining = max(0, int(round(original * 0.20)) - used)
-        current = original + used
-        return original, current, used, remaining
-
     def apply_ai_generation(self, path, mask, model, instruction="", operation="heal",
                             provider="Google Gemini"):
         """Add the generated frame as a locally enforced masked image layer."""
@@ -4676,7 +4643,6 @@ class EditorWindow(QMainWindow):
         self.act_patch.setEnabled(editing)
         self.act_ai_heal.setEnabled(editing)
         self.act_ai_fill.setEnabled(editing)
-        self.act_ai_expand.setEnabled(editing)
         self.act_recipe_save.setEnabled(editing)
         self.act_recipe_apply.setEnabled(editing)
         self.act_save_project.setEnabled(editing)

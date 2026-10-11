@@ -1,5 +1,6 @@
 import base64
 import io
+import re
 import sys
 from pathlib import Path
 
@@ -118,7 +119,7 @@ def test_editor_wires_ai_heal_as_a_masked_layer():
     assert 'def apply_ai_generation(' in source
     assert 'layer["ai_heal_source_mask"] = editor_engine._mask_to_text(mask)' in source
     assert '"kind": "generative-fill" if is_fill else "generative-repair"' in source
-    assert '"retouch": (self.act_heal, self.act_redeye, self.act_ai_heal,' in source
+    assert '"retouch": (self.act_heal, self.act_redeye, self.act_clone, self.act_patch,' in source
     assert 'self.setWindowTitle(f"{name}{raw}{dirty}")' in source
     assert 'QTimer.singleShot(0, self._scroll_rail_to_layers)' in source
     panel = (HUB / "slapper_qt" / "layers_panel.py").read_text(encoding="utf-8")
@@ -126,7 +127,7 @@ def test_editor_wires_ai_heal_as_a_masked_layer():
     assert 'self._feather_timer.setInterval(300)' in panel
     assert 'self._apply_pending_ai_heal_feather()' in panel
     assert 'self.doc.record("AI Heal feather")' in panel
-    assert 'legacy_mask.point(lambda value: 255 if value >= 128 else 0)' in panel
+    assert 'legacy_mask.point(lambda pixel: 255 if pixel >= 128 else 0)' in panel
 
 
 def test_generative_fill_can_infer_content_without_a_description(monkeypatch):
@@ -167,9 +168,23 @@ def test_ai_heal_blend_mask_expands_and_feathers_without_leaking_across_frame():
 
 
 def test_editor_does_not_expose_withdrawn_generative_expand():
+    """Generative Expand stays withdrawn, including under a split label.
+
+    A later build put the command back as ``"Generative " + "Expand…"``
+    specifically so this check would not see it, and wired its button to a host
+    method that does not exist -- so pressing it did nothing, every time. The
+    assertions below read the source with its string concatenations folded, and
+    name the dialog and the dead host hooks as well as the label.
+    """
     source = (HUB / "slapper_qt" / "editor_window.py").read_text(encoding="utf-8")
-    assert "Generative Expand" not in source
+    folded = re.sub(r'"\s*\+\s*"', "", source)
+    assert "Generative Expand" not in folded
     assert "open_ai_expand" not in source
+    assert "act_ai_expand" not in source
+    assert "ai_expand_dialog" not in source
+    assert "generative_expand_budget" not in source
+    assert not (HUB / "slapper_qt" / "ai_expand_dialog.py").exists()
+    assert not (HUB / "slapper_qt" / "expand_canvas.py").exists()
 
 
 def test_first_run_notice_is_tracked_source_and_gates_all_generative_tools():
@@ -178,8 +193,12 @@ def test_first_run_notice_is_tracked_source_and_gates_all_generative_tools():
     assert "SNAP SLAPPER collects no identity, telemetry, or per-user edit log" in notice
     assert '"generative_notice_acknowledged": False' in (
         HUB / "slapper_qt" / "prefs.py").read_text(encoding="utf-8")
-    assert source.count("from .generative_consent import confirm") == 2
-    assert source.count("if not confirm(self):") == 2
+    # Two generative tools remain -- AI Heal and Generative Fill -- and each
+    # passes the first-run notice before it opens. Generative Expand was the
+    # third gate; it is withdrawn, so these counts are one, not two.
+    assert source.count("from .generative_consent import confirm") == 1
+    assert source.count("if not confirm(self):") == 1
+    assert "if not generative_consent.confirm(self):" in source
 
 
 def test_provider_send_warnings_can_be_dismissed_per_tool():
