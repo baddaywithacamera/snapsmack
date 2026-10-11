@@ -19,8 +19,8 @@ $inventory = include $root . '/core/manifest-inventory.php';
 // skin release fail this test, so the cheap way out was to change the
 // files and leave the version alone — which is exactly how sites ended
 // up frozen on an old package under a current-looking version number.
-if (version_compare((string)($manifest['version'] ?? '0'), '1.5.2', '<')) {
-    throw new RuntimeException('50 SHADES OF NOAH GREY release must stay at or above 1.5.2.');
+if (version_compare((string)($manifest['version'] ?? '0'), '1.5.4', '<')) {
+    throw new RuntimeException('50 SHADES OF NOAH GREY release must stay at or above 1.5.4.');
 }
 if (!isset($inventory['local_fonts']['Merriweather'])
     || ($inventory['local_fonts']['Merriweather']['file'] ?? '') !== 'assets/fonts/Merriweather/Merriweather-Regular.ttf') {
@@ -75,6 +75,12 @@ if (in_array(false, $order, true) || $order !== $sortedOrder) {
 if (!in_array('smack-footer', $manifest['require_scripts'] ?? [], true)
     || ($inventory['scripts']['smack-footer']['path'] ?? '') !== 'assets/js/ss-engine-footer.js') {
     throw new RuntimeException('The 50 SHADES drawer is not connected to the CMS-owned footer controller.');
+}
+
+$skinCss = (string)file_get_contents($root . '/skins/50-shades-of-noah-grey/style.css');
+if (!str_contains($skinCss, '.nav-menu > li + li::before')
+    || !str_contains($skinCss, 'content: "|"')) {
+    throw new RuntimeException('The 50 SHADES header lost its original pipe-separated navigation presentation.');
 }
 
 echo "50 SHADES masthead font regression: PASS\n";
