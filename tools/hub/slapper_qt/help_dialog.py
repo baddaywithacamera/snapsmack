@@ -99,6 +99,16 @@ TOPICS = [
      "layer's visibility, opacity, and blend mode, reorder or delete it. Text "
      "layers have their own content/size/colour panel."),
     ("Masks",
+     "START HERE. A mask belongs to ONE layer, so there has to be a layer "
+     "first: the photograph itself is the base, not a layer. Add an adjustment "
+     "layer, change something on it so you can see what it does, then open "
+     "MASK and choose PAINT BY HAND. Painting begins on the big photograph "
+     "straight away. RED means hidden -- the layer does nothing there. Hide "
+     "paints red on, Reveal wipes it off, and the X key swaps them. The green "
+     "circle that follows the pointer is the brush at its real size; [ and ] "
+     "change it. Turn off “Show the red mask while painting” when you want "
+     "to judge the result instead of the mask. The small preview in the rail "
+     "shows the whole frame and can be painted on too, for broad strokes.\n\n"
      "With a layer selected, open MASK to limit that layer to part of the photo: "
      "a Radial mask, a linear Gradient, a paint Brush, or Colour Range. Colour "
      "Range has an eyedropper: click it, then click the photograph to seed the "
@@ -195,6 +205,19 @@ TOPICS = [
      "the paid request, SNAP SLAPPER asks permission to send a working-resolution "
      "photo and mask to Google. The repair returns as a masked layer; pixels "
      "outside the selection and the original photograph remain unchanged."),
+    ("Printing",
+     "Print... (Ctrl+P) is in OUTPUT in the editor and under PRESENT in the "
+     "library. In the editor it prints the photograph as edited; in the "
+     "library it prints the photographs you have selected, or the whole "
+     "folder if you have selected none. Choose a layout first: one per sheet "
+     "as large as the paper allows, an exact 4x6, 5x7 or 8x10 inch print, or "
+     "two, four, nine or sixteen to a sheet as a contact sheet. The file name "
+     "can be printed under each photograph. Paper size, orientation, "
+     "borderless printing and which printer to use belong to your printer and "
+     "are chosen in the window after that one. A photograph that cannot be "
+     "read is skipped; it does not cancel the job. Nothing on disk is "
+     "changed, and an exact print size larger than the paper is brought down "
+     "to fit rather than printed off the edge."),
     ("Projects, recipes, and export",
      "Save Project writes a .slapper file with all your editing steps. External "
      "textures are recorded by name, source, rights status, and restore link; "
@@ -214,12 +237,13 @@ TOPICS = [
      "(actual pixels) · Ctrl++ zoom in · Ctrl+- zoom out · "
      "Ctrl+\\ before/after · Ctrl+Shift+C crop · "
      "Ctrl+Shift+H heal · Ctrl+Shift+E red-eye · Ctrl+Shift+F filmstrip · "
-     "Ctrl+Shift+R reset all.\n\n"
+     "Ctrl+Shift+R reset all · Ctrl+P print.\n\n"
      "Panels & modes: Ctrl+K LEWKS · Ctrl+T textures · Ctrl+Shift+S save "
      "project · Ctrl+Shift+A switch Normal / Advanced.\n\n"
      "Layers: Ctrl+I invert colour · Ctrl+Shift+I invert luminance. "
      "Masks (when a layer is selected): M open mask · I invert · G gradient · "
-     "B brush · E hide/erase · K bucket · [ / ] brush size · Shift+[ / Shift+] "
+     "B brush · E hide/erase · X swap hide and reveal · K bucket · "
+     "[ / ] brush size · Shift+[ / Shift+] "
      "brush hardness. Bare mask keys are ignored while typing in a text field.\n\n"
      "The title bar shows a ● when there are unsaved "
      "edits, and each toolbar button's tooltip shows its shortcut."),
