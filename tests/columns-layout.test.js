@@ -34,13 +34,12 @@ function loadEngine() {
 
 const engine = loadEngine();
 
-test('extreme portraits never render beyond the 900px derivative', () => {
+test('extreme portraits fill their complete column without manufactured gutters', () => {
     const twoAcrossSlot = (1728 - 20) / 2;
     const threeAcrossSlot = (1728 - 40) / 3;
     [twoAcrossSlot, threeAcrossSlot].forEach(slot => {
         const tile = engine.boundedTileSize(slot, 0.5, 0);
-        assert.ok(tile.width <= 900.01);
-        assert.ok(tile.height <= 900.01);
+        assert.ok(Math.abs(tile.width - slot) < 0.01);
         assert.ok(Math.abs(tile.width / tile.height - 0.5) < 0.0001, 'native aspect is preserved');
     });
 });

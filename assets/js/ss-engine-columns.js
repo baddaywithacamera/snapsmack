@@ -47,15 +47,6 @@
     var DEFAULT_COLS = 4;
     var DEFAULT_GAP = 6;
     var FALLBACK_ASPECT = 3 / 2;   // matches the server-side fallback in landing.php
-    var MAX_TILE_EDGE = 900;       // a_ thumbnail derivative longest edge
-
-    function maxTileEdge() {
-        // A portrait should read large without extending below a desktop
-        // viewport. Keep the derivative ceiling, but reserve room for SCROLL's
-        // sticky header and a small visual gutter.
-        var viewportBound = Math.max(420, window.innerHeight * 0.82);
-        return Math.min(MAX_TILE_EDGE, viewportBound);
-    }
 
     function cssNum(cs, name, fb) {
         var v = parseFloat(cs.getPropertyValue(name));
@@ -87,9 +78,12 @@
     function boundedTileSize(slotWidth, aspect, borderWidth) {
         aspect = aspect > 0 ? aspect : FALLBACK_ASPECT;
         borderWidth = Math.max(0, borderWidth || 0);
-        var maxInnerEdge = Math.max(1, maxTileEdge() - 2 * borderWidth);
         var slotInnerWidth = Math.max(1, slotWidth - 2 * borderWidth);
-        var innerWidth = Math.min(slotInnerWidth, maxInnerEdge, maxInnerEdge * aspect);
+        // The original SCROLL presentation is edge-to-edge within each column.
+        // Never narrow portraits inside a fixed-width slot: doing so manufactures
+        // white gutters that read as broken masonry. Native aspect determines
+        // height; the column always determines width.
+        var innerWidth = slotInnerWidth;
         return {
             width: innerWidth + 2 * borderWidth,
             height: innerWidth / aspect + 2 * borderWidth
@@ -129,9 +123,7 @@
             for (c = 1; c < cols; c++) if (colH[c] < colH[best] - 1e-6) best = c;
 
             var top = colH[best] === 0 ? 0 : colH[best] + gap;
-            // Preserve native aspect without enlarging the 900px derivative.
-            // Extreme portraits become narrower than their column slot and are
-            // centred inside it instead of growing beyond 900px in height.
+            // Preserve native aspect and fill the complete column slot.
             var bounded = boundedTileSize(colW, it.aspect, bw);
             var tileW = bounded.width;
             var h = bounded.height;
@@ -140,7 +132,7 @@
             st.position = 'absolute';
             st.boxSizing = 'border-box';
             st.margin = '0';
-            st.left = (padL + best * (colW + gap) + (colW - tileW) / 2) + 'px';
+            st.left = (padL + best * (colW + gap)) + 'px';
             st.top = top + 'px';
             st.width = tileW + 'px';
             st.height = h + 'px';
