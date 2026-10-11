@@ -13,4 +13,6 @@ $legacy=require $root.'/core/manifest-inventory.php';foreach(($legacy['scripts']
 if(snapsmack_skin_declared_assets(['require_scripts'=>['asset:admin:ss-engine-admin-ui'],'require_styles'=>['asset:admin:admin-theme-geometry-master']])!==['scripts'=>[],'styles'=>[]])throw new RuntimeException('Strict skin asset resolution crossed into admin scope.');
 $versioned=snapsmack_skin_declared_assets(['require_scripts'=>['smack-organized-mayhem']]);
 if(($versioned['scripts'][0]??'')!=='/assets/js/ss-engine-organized-mayhem.js?v=asset-regression')throw new RuntimeException('Strict public engine URL is not versioned with the installed CMS release.');
+$dockAssets=snapsmack_skin_declared_assets(['social_dock'=>['position'=>'inline']]);
+if(($dockAssets['styles'][0]??'')!=='/assets/css/ss-engine-social-dock.css?v=asset-regression')throw new RuntimeException('The reusable Social Dock component did not load its own audited stylesheet.');
 echo "Complete JS/CSS security inventory regression passed.\n";

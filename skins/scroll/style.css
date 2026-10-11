@@ -605,7 +605,9 @@ a { color: inherit; }
    .scroll-sticky-nav .ss-grid-nav-name, which this element carries) unless the
    solo-specific "Blog Name Font" is set. */
 .scroll-solo-nav .ss-grid-nav-name {
-    font-size: var(--scroll-solo-name-size, 1.05rem);
+    /* The pre-customizer presentation used a full 2rem running head. Keep that
+       known-good desktop floor while still honouring deliberately larger values. */
+    font-size: max(2rem, var(--scroll-solo-name-size, 2rem));
     /* Optical centring comes from the shared sticky-name rule above. */
 }
 .scroll-solo-nav .ss-grid-nav-actions {
