@@ -619,6 +619,12 @@ class LibraryWindow(QMainWindow):
         self.act_slideshow.triggered.connect(self._start_slideshow)
         self.act_contact_sheet = QAction("Create Contact Sheet…", self)
         self.act_contact_sheet.triggered.connect(self._create_contact_sheet)
+        self.act_print = QAction("Print…", self)
+        self.act_print.setShortcut(QKeySequence("Ctrl+P"))
+        self.act_print.setToolTip(
+            "Print the selected photographs — one per sheet, standard print "
+            "sizes, or several to a sheet")
+        self.act_print.triggered.connect(self._print_selected)
 
         organize_menu = QMenu(self)
         for action in (self.act_new_folder, self.act_rename,
@@ -638,13 +644,15 @@ class LibraryWindow(QMainWindow):
         bar.addWidget(organize_button)
 
         output_menu = QMenu(self)
-        for action in (self.act_slideshow, self.act_contact_sheet):
+        for action in (self.act_slideshow, self.act_contact_sheet,
+                       self.act_print):
             output_menu.addAction(action)
         output_button = QToolButton()
         output_button.setText("Present")
         output_button.setPopupMode(QToolButton.InstantPopup)
         output_button.setMenu(output_menu)
-        output_button.setToolTip("Slideshow or create a contact sheet")
+        output_button.setToolTip(
+            "Slideshow, contact sheet, or print")
         bar.addWidget(output_button)
 
         # Standard menus make the same operations discoverable without knowing
@@ -668,6 +676,8 @@ class LibraryWindow(QMainWindow):
         output_bar_menu = self.menuBar().addMenu("Present")
         output_bar_menu.addAction(self.act_slideshow)
         output_bar_menu.addAction(self.act_contact_sheet)
+        output_bar_menu.addAction(self.act_print)
+        file_menu.addAction(self.act_print)
 
         act_help = QAction("Help", self)
         act_help.setShortcut(QKeySequence.HelpContents)   # F1
@@ -1145,6 +1155,16 @@ class LibraryWindow(QMainWindow):
             return
         self.status.showMessage(f"Created {len(outputs)} rotated copy/copies", 6000)
         self._reload_current()
+
+    def _print_selected(self):
+        """Print the selection, or the whole folder if nothing is selected."""
+        paths = self._selected_photo_paths() or self._paths
+        if not paths:
+            QMessageBox.information(
+                self, "Print", "Open a folder of photographs first.")
+            return
+        from .print_photos import PrintPhotosDialog
+        PrintPhotosDialog(self, paths).exec()
 
     def _find_quality_issues(self):
         """Select the soft or very dark photographs, and change nothing else.
