@@ -284,6 +284,10 @@ function snapsmack_grid_landing_items(SnapPublicRepository $repository, array $s
             ? (string)($item['img_thumb_aspect'] ?? $item['img_file'] ?? '')
             : (string)($item['img_thumb_square'] ?? $item['img_file'] ?? ''));
         $item['presentation_title'] = (string)($item['title'] ?? $item['img_title'] ?? '');
+        // Layout engines need the photograph's native shape, but strict skins
+        // may only print bounded presentation values prepared by the CMS.
+        $item['presentation_width'] = max(1, (int)($item['img_width'] ?? 3));
+        $item['presentation_height'] = max(1, (int)($item['img_height'] ?? 2));
         $item['is_carousel'] = (int)($item['image_count'] ?? 0) > 1;
     }
     unset($item);
