@@ -69,28 +69,30 @@ def start_installer():
         creationflags=flags)
 
 
-def fill(photo, mask, prompt):
+def fill_tile(tile, tile_mask, prompt):
+    """Generate inside ``tile_mask`` and return a patch at the TILE's own size.
+
+    The diffusion model works at 512 pixels; that is the model's limit, not a
+    choice. What this avoids is the second loss: the patch is delivered at the
+    resolution of the photograph rather than of the screen preview, so it is
+    composited once instead of being generated small, shrunk to a preview and
+    then stretched back up at export.
+    """
     if not installed():
         raise RuntimeError("Local Generative Fill is not installed yet.")
-    bounds = mask.getbbox()
-    if not bounds:
+    if not tile_mask.getbbox():
         raise ValueError("Paint an area to fill first.")
-    left, top, right, bottom = bounds
-    margin = max(96, int(max(right - left, bottom - top) * 0.75))
-    box = (max(0, left - margin), max(0, top - margin),
-           min(photo.width, right + margin), min(photo.height, bottom + margin))
-    crop = photo.crop(box).convert("RGB")
-    crop_mask = mask.crop(box).convert("L")
-    original_size = crop.size
-    scale = min(512 / crop.width, 512 / crop.height)
-    work_size = (max(64, round(crop.width * scale)), max(64, round(crop.height * scale)))
-    crop = crop.resize(work_size, Image.Resampling.LANCZOS)
-    crop_mask = crop_mask.resize(work_size, Image.Resampling.NEAREST)
+    tile = tile.convert("RGB")
+    tile_mask = tile_mask.convert("L").resize(tile.size, Image.Resampling.LANCZOS)
+    scale = min(512 / tile.width, 512 / tile.height)
+    work_size = (max(64, round(tile.width * scale)), max(64, round(tile.height * scale)))
+    work_image = tile.resize(work_size, Image.Resampling.LANCZOS)
+    work_mask = tile_mask.resize(work_size, Image.Resampling.NEAREST)
     with tempfile.TemporaryDirectory(prefix="snap-local-fill-") as temp:
         image_path = os.path.join(temp, "image.png")
         mask_path = os.path.join(temp, "mask.png")
         output_path = os.path.join(temp, "result.png")
-        crop.save(image_path); crop_mask.save(mask_path)
+        work_image.save(image_path); work_mask.save(mask_path)
         run = subprocess_limits.run(
             [_python(), _runner(), "--image", image_path, "--mask", mask_path,
              "--output", output_path, "--prompt", prompt or ""],
@@ -106,12 +108,22 @@ def fill(photo, mask, prompt):
             if source.format != "PNG" or source.width * source.height > 512 * 512:
                 raise RuntimeError("Local Generative Fill returned an unsafe image.")
             source.load()
-            generated = source.convert("RGB").resize(
-                original_size, Image.Resampling.LANCZOS)
-        result = photo.copy().convert("RGB")
-        local_mask = mask.crop(box).convert("L")
-        result.paste(generated, box[:2], local_mask)
-        return result, MODEL
+            return source.convert("RGB").resize(tile.size, Image.Resampling.LANCZOS), MODEL
+
+
+def fill(photo, mask, prompt):
+    """Whole-frame convenience wrapper: choose a bounded tile, fill, composite."""
+    bounds = mask.getbbox()
+    if not bounds:
+        raise ValueError("Paint an area to fill first.")
+    left, top, right, bottom = bounds
+    margin = max(96, int(max(right - left, bottom - top) * 0.75))
+    box = (max(0, left - margin), max(0, top - margin),
+           min(photo.width, right + margin), min(photo.height, bottom + margin))
+    patch, model = fill_tile(photo.crop(box), mask.crop(box), prompt)
+    result = photo.copy().convert("RGB")
+    result.paste(patch, box[:2], mask.crop(box).convert("L"))
+    return result, model
 
 
 # ===== SNAPSMACK EOF =====

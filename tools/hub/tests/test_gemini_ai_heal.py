@@ -4,7 +4,7 @@ import re
 import sys
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageDraw
 
 
 HUB = Path(__file__).resolve().parents[1]
@@ -209,5 +209,114 @@ def test_provider_send_warnings_can_be_dismissed_per_tool():
     for key in ("ai_heal_send_warning_hidden", "ai_fill_send_warning_hidden"):
         assert f'"{key}": False' in prefs_source
         assert key in heal
+
+
+# --- Native-resolution tiles -----------------------------------------------
+# Generative Fill used to be computed on a 2048-pixel preview and then added as
+# a layer with fit="stretch", so on a RAW-sized document every generated pixel
+# was enlarged about threefold at export. On a 2048-pixel web JPEG that same
+# code was 1:1, which is why the tool appeared to get worse without changing.
+
+
+def test_tile_box_is_square_stays_in_frame_and_keeps_the_selection():
+    for size, bounds in (((6000, 4000), (2980, 1980, 3020, 2020)),   # centre
+                         ((6000, 4000), (0, 0, 40, 40)),             # corner
+                         ((6000, 4000), (5960, 3960, 6000, 4000)),   # far corner
+                         ((800, 3000), (100, 2900, 200, 2990))):     # tall frame
+        box = gemini_image_edit.square_tile_box(size, bounds)
+        left, top, right, bottom = box
+        assert right - left == bottom - top, (size, bounds, box)
+        assert 0 <= left and 0 <= top and right <= size[0] and bottom <= size[1]
+        assert left <= bounds[0] and top <= bounds[1]
+        assert right >= bounds[2] and bottom >= bounds[3]
+        assert right - left > bounds[2] - bounds[0]   # real context, not a hug
+
+
+def test_square_return_is_not_squashed_into_a_rectangular_request():
+    # A circle drawn in the model's square answer must still be a circle after
+    # correction. A plain resize -- what the code did before -- flattens it.
+    square = Image.new("RGB", (1024, 1024), "black")
+    ImageDraw.Draw(square).ellipse((412, 412, 612, 612), fill="white")
+    corrected = gemini_image_edit.aspect_corrected(square, (1500, 1000))
+    assert corrected.size == (1500, 1000)
+    white = corrected.convert("L").point(lambda pixel: 255 if pixel > 128 else 0)
+    left, top, right, bottom = white.getbbox()
+    width, height = right - left, bottom - top
+    assert abs(width - height) / max(width, height) < 0.05, (width, height)
+    stretched = square.resize((1500, 1000), Image.Resampling.LANCZOS)
+    s_left, s_top, s_right, s_bottom = stretched.convert("L").point(
+        lambda pixel: 255 if pixel > 128 else 0).getbbox()
+    assert (s_right - s_left) > (s_bottom - s_top) * 1.3   # the old behaviour
+
+
+def test_matching_aspect_ratios_are_resized_not_cropped():
+    source = Image.new("RGB", (1024, 1024), "black")
+    ImageDraw.Draw(source).ellipse((0, 0, 1023, 1023), fill="white")
+    corrected = gemini_image_edit.aspect_corrected(source, (512, 512))
+    assert corrected.size == (512, 512)
+    assert corrected.getpixel((256, 256)) == (255, 255, 255)
+
+
+def test_alignment_error_sees_a_shifted_return_but_not_an_honest_one():
+    tile = Image.new("RGB", (400, 400), "black")
+    ImageDraw.Draw(tile).rectangle((0, 0, 399, 199), fill=(200, 60, 60))
+    mask = Image.new("L", (400, 400), 0)
+    ImageDraw.Draw(mask).rectangle((150, 150, 250, 250), fill=255)
+    honest = tile.copy()
+    ImageDraw.Draw(honest).rectangle((150, 150, 250, 250), fill="white")
+    assert gemini_image_edit.alignment_error(tile, honest, mask) == 0.0
+    shifted = ImageChops.offset(tile, 0, 60)
+    assert gemini_image_edit.alignment_error(tile, shifted, mask) > 20
+
+
+def test_heal_tile_sends_a_bounded_copy_and_answers_at_the_tiles_own_size(monkeypatch):
+    sent = {}
+
+    class Response:
+        ok = True
+        status_code = 200
+
+        def __init__(self, body):
+            self._body = body
+
+        def json(self):
+            return self._body
+
+    def fake_post(url, params=None, json=None, timeout=None, stream=None):
+        sent["parts"] = json["contents"][0]["parts"]
+        work = Image.open(io.BytesIO(base64.b64decode(
+            sent["parts"][1]["inlineData"]["data"])))
+        sent["work_size"] = work.size
+        buffer = io.BytesIO()
+        Image.new("RGB", (1024, 1024), "green").save(buffer, "PNG")
+        return Response({"candidates": [{"content": {"parts": [
+            {"inlineData": {"mimeType": "image/png",
+                            "data": base64.b64encode(buffer.getvalue()).decode()}}]}}]})
+
+    monkeypatch.setattr(gemini_image_edit.requests, "post", fake_post)
+    tile = Image.new("RGB", (2400, 2400), "red")
+    mask = Image.new("L", tile.size, 0)
+    ImageDraw.Draw(mask).rectangle((1000, 1000, 1400, 1400), fill=255)
+    patch, instruction, drift = gemini_image_edit.heal_tile(
+        tile, mask, "", "key", operation="fill")
+    assert max(sent["work_size"]) <= 1536          # bounded on the wire
+    assert patch.size == tile.size                 # native where it lands
+    assert instruction and isinstance(drift, float)
+
+
+def test_generated_layer_is_document_sized_and_transparent_outside_the_tile():
+    document_size = (6000, 4000)
+    box = (2000, 1200, 2800, 2000)
+    patch = Image.new("RGB", (800, 800), "white")
+    tile_mask = Image.new("L", (800, 800), 0)
+    ImageDraw.Draw(tile_mask).rectangle((300, 300, 500, 500), fill=255)
+    layer = gemini_image_edit.tile_layer_image(document_size, patch, tile_mask, box)
+    assert layer.size == document_size             # fit="stretch" is now 1:1
+    assert layer.getpixel((10, 10))[3] == 0        # nothing outside the tile
+    assert layer.getpixel((2400, 1600))[3] == 255  # solid inside the selection
+    # Scaled to the old preview-sized layer, the selection would have been
+    # rebuilt from roughly a ninth of these pixels.
+    assert layer.size[0] / 2048 > 2.9
+
 
 # ===== SNAPSMACK EOF =====
