@@ -41,6 +41,31 @@ def pil_to_qimage_l(pil, size):
                   QImage.Format_Grayscale8).copy()
 
 
+def red_wash(mask, tint_white=False, alpha=110):
+    """A translucent red QImage over the masked area, or None if nothing is.
+
+    One definition, used by the small rail preview and by the full photograph,
+    so "red" means the same thing in both places. ``tint_white`` picks which end
+    of the mask is the painted one: Generative Fill and AI Heal paint WHITE to
+    mark what a model may rebuild, while a layer mask paints BLACK to hide part
+    of a layer -- so on a layer mask, red is the hidden area.
+    """
+    grey = np.asarray(mask.convert("L"), dtype=np.uint8)
+    height, width = grey.shape
+    if not width or not height:
+        return None
+    painted = grey if tint_white else (255 - grey)
+    strength = (painted.astype(np.uint16) * int(alpha) // 255).astype(np.uint8)
+    if not strength.any():
+        return None
+    # Qt wants premultiplied ARGB32 in BGRA byte order.
+    red = (strength.astype(np.uint16) * 230 // 255).astype(np.uint8)
+    zero = np.zeros_like(strength)
+    argb = np.dstack((zero, zero, red, strength)).copy()
+    return QImage(argb.data, width, height, width * 4,
+                  QImage.Format_ARGB32_Premultiplied).copy()
+
+
 class MaskBrushCanvas(QWidget):
     """Paint white/black onto a layer mask with a soft round brush."""
 
@@ -50,6 +75,7 @@ class MaskBrushCanvas(QWidget):
         super().__init__(parent)
         self.setObjectName("MaskBrushCanvas")
         self._photo = None        # QPixmap scaled to the display box
+        self._baseline = None     # the mask as loaded, for delta merges
         self._mask = None         # QImage Grayscale8 at display size
         self._paint_white = False  # False = hide (black), True = reveal (white)
         self._radius = 22
@@ -82,8 +108,20 @@ class MaskBrushCanvas(QWidget):
         else:
             self._mask = QImage(width, height, QImage.Format_Grayscale8)
             self._mask.fill(255)
+        # Keep what was loaded. This preview is far smaller than the mask the
+        # photograph is painted at, so the editor merges only the pixels this
+        # widget actually changed instead of replacing a detailed mask with an
+        # enlargement of a 238-pixel-wide one.
+        self._baseline = self._mask.copy()
         self.setFixedSize(width, height)
         self.update()
+
+    def baseline_pil(self, size):
+        """The mask as it was loaded, at ``size`` -- for merging changes."""
+        if getattr(self, "_baseline", None) is None:
+            return None
+        return qimage_l_to_pil(self._baseline).resize(
+            size, Image.Resampling.LANCZOS)
 
     def set_paint_white(self, white):
         self._paint_white = bool(white)
@@ -174,30 +212,13 @@ class MaskBrushCanvas(QWidget):
     def _tint_overlay(self):
         """A translucent red wash over the painted area, or None.
 
-        The mask is a selection, not the picture. Which end of it is "painted"
-        depends on the caller: Generative Fill and AI Heal paint white to mark
-        the area a model may rebuild (tint_white), while the layer mask brush
-        paints black to hide part of a layer.
+        The mask is a selection, not the picture. ``red_wash`` above holds the
+        one definition of which end is painted; the full-photograph canvas uses
+        the same function so the colour means the same thing in both places.
         """
         if self._mask is None:
             return None
-        width, height = self._mask.width(), self._mask.height()
-        if width <= 0 or height <= 0:
-            return None
-        pointer = self._mask.constBits()
-        grey = np.frombuffer(pointer, dtype=np.uint8,
-                             count=self._mask.sizeInBytes())
-        grey = grey.reshape(height, self._mask.bytesPerLine())[:, :width]
-        painted = grey if self._tint_white else (255 - grey)
-        alpha = (painted.astype(np.uint16) * 110 // 255).astype(np.uint8)
-        if not alpha.any():
-            return None
-        # Qt wants premultiplied ARGB32 in BGRA byte order.
-        red = (alpha.astype(np.uint16) * 230 // 255).astype(np.uint8)
-        zero = np.zeros_like(alpha)
-        argb = np.dstack((zero, zero, red, alpha)).copy()
-        return QImage(argb.data, width, height, width * 4,
-                      QImage.Format_ARGB32_Premultiplied).copy()
+        return red_wash(qimage_l_to_pil(self._mask), self._tint_white)
 
     def paintEvent(self, event):
         painter = QPainter(self)
