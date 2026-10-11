@@ -1,11 +1,13 @@
 {
   "_comment": "Version floor for desktop apps. tools/check-desktop-integrity.php FAILS if a tool's version drops below its floor here — catching merges/folds that silently revert a desktop tool to an older build (e.g. GYSS 0.7.9 -> 0.1.5-alpha, or COLD SNAP dragged from the Qt build back to the previous one). Tauri apps are read from src-tauri/tauri.conf.json automatically; the others declare version_file (relative to the tool dir) holding a BUILD_VERSION/__version__ literal. When you INTENTIONALLY bump a version, raise its floor here in the SAME commit. Never lower a floor to get past a failure — restore the reverted version instead.",
   "snap-slapper": {
-    "version": "0.7.1",
+    "version": "0.7.46",
     "version_file": "hub/slapper_qt/__init__.py"
   },
   "gyss": {
-    "version": "0.7.17"
+    "version": "0.7.35",
+    "_comment": "GYSS is a PyInstaller app (gyss.spec + build.bat). The stale src-tauri/tauri.conf.json is left over from an abandoned Tauri attempt and still reads 0.7.11. Without version_file the checker took the Tauri branch and read that dead manifest, so this gate reported a REVERT on every clean checkout while the real version climbed to 0.7.35.",
+    "version_file": "gyss/_version.py"
   },
   "oh-snap": {
     "version": "0.2.0"
