@@ -33,17 +33,29 @@ def _register_cuda_libraries():
         if path:
             roots.append(os.path.join(path, "nvidia"))
     for root in roots:
-        nvrtc = os.path.join(root, "cuda_nvrtc", "bin")
-        if not os.path.isdir(nvrtc):
+        if not os.path.isdir(os.path.join(root, "cuda_nvrtc", "bin")):
             continue
+        # EVERY library gets its own bin folder -- nvidia/cublas/bin,
+        # nvidia/cufft/bin and so on -- and each one has to be registered.
+        # Registering only cuda_nvrtc/bin is why a build that physically
+        # contained cublas64_12.dll still reported it "not found when the
+        # application was frozen": the file was there, nothing said where.
         try:
-            os.add_dll_directory(nvrtc)
-        except (OSError, AttributeError):
-            pass
-        # nvrtc loads its own builtins by bare name, which ignores
-        # add_dll_directory, so it has to be on PATH as well.
-        if nvrtc not in os.environ.get("PATH", "").split(os.pathsep):
-            os.environ["PATH"] = nvrtc + os.pathsep + os.environ.get("PATH", "")
+            names = sorted(os.listdir(root))
+        except OSError:
+            continue
+        for name in names:
+            binary_dir = os.path.join(root, name, "bin")
+            if not os.path.isdir(binary_dir):
+                continue
+            try:
+                os.add_dll_directory(binary_dir)
+            except (OSError, AttributeError):
+                pass
+            # These libraries also load siblings by bare name, which ignores
+            # add_dll_directory, so each one has to be on PATH as well.
+            if binary_dir not in os.environ.get("PATH", "").split(os.pathsep):
+                os.environ["PATH"] = binary_dir + os.pathsep + os.environ.get("PATH", "")
         runtime = os.path.join(root, "cuda_runtime")
         if os.path.isdir(os.path.join(runtime, "include")) and \
                 not os.environ.get("CUDA_PATH"):
