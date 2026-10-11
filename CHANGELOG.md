@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.863D - 2026-10-11 - Crop Circles owns its dock
+
+- Makes the reusable CMS-owned Social Dock component load its own audited public stylesheet whenever a skin declares a dock, so welded Crop Circles menus cannot silently lose their social half.
+- Restores SCROLL's pre-customizer solo-page masthead scale with a 2rem desktop floor while preserving deliberately larger saved values.
+
 ## 0.7.862D - 2026-10-11 - Complete Crop Circles
 
 - Restores SCROLL's complete nine-circle welded menu by declaring the audited CMS-owned Social Dock stylesheet through its public asset handle. The existing four Social Dock links were already in the rendered model but had no shared styling, leaving them present yet visually zero-sized.
