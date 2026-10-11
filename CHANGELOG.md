@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.861D - 2026-10-11 - Finish the SCROLL wall
+
+- Restores SCROLL's CMS-driven infinite loading after the strict-template move dropped the presentation tripwire. Later batches now append into the existing native-aspect wall until the complete public library and real footer are reached.
+- Caps the longest edge of a wall tile against the desktop viewport, keeping tall portraits prominent without letting them run below the visible window.
+
 ## 0.7.860D - 2026-10-10 - SCROLL parity repair
 
 - Restores SCROLL's native photograph proportions and asymmetrical wall by handing the existing column engine the CMS-owned image dimensions again. Crop Circles now reloads its saved Social Dock links inside the CMS model, restoring the complete welded icon row without executable code in the skin.
