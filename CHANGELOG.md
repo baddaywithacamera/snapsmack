@@ -13,7 +13,7 @@
 
 ## 0.7.862D - 2026-10-11 - Complete Crop Circles
 
-- Restores SCROLL's complete nine-circle welded menu by declaring the shared CMS-owned Crop Circles asset. The existing four Social Dock links were already in the rendered model but had no shared styling, leaving them present yet visually zero-sized.
+- Restores SCROLL's complete nine-circle welded menu by declaring the audited CMS-owned Social Dock stylesheet through its public asset handle. The existing four Social Dock links were already in the rendered model but had no shared styling, leaving them present yet visually zero-sized.
 - Preserves the selected SCROLL masthead face on solo pages when the optional solo-name font is blank. Empty optional font values now inherit instead of emitting an empty `font-family` override.
 - Adds regressions that require SCROLL to load Crop Circles and forbid empty font declarations from replacing the configured masthead.
 
