@@ -231,6 +231,12 @@ DEFAULT_ADJUSTMENTS = {
     # before the compositor, so it bites even on a flat scene where the
     # compositor's shadow-band "blacks" control has nothing below 20% to act on.
     "raw_black": 0.0,
+    # RawTherapee's own Auto Levels. Its neutral render is deliberately
+    # conservative -- on a correctly exposed snow scene it lands at mean
+    # brightness 69 where Auto Levels gives 136 -- which is why the
+    # library has a whole function lifting thumbnails to compensate.
+    # Off by default so no existing edit changes how it looks.
+    "raw_auto_levels": False,
     # RAW-only geometry is performed by RawTherapee before the 16-bit master
     # enters SNAP SLAPPER. These stay separate from the editor's later geometry
     # so Free Corners, horizon correction, and final crop remain available.
@@ -295,6 +301,7 @@ RAW_DEVELOPMENT_KEYS = {
     "raw_rotation", "raw_perspective_horizontal", "raw_perspective_vertical",
     "raw_lens_distortion", "raw_defish", "raw_ca_red", "raw_ca_blue",
     "raw_vignette_correction",
+    "raw_auto_levels",
     "raw_lensfun", "raw_lensfun_distortion", "raw_lensfun_vignette",
     "raw_lensfun_ca",
 }

@@ -141,6 +141,11 @@ class _PreviewJob(QRunnable):
             document.revision = self.document_revision
             if self.raw_source_path:
                 document.raw_source_path = self.raw_source_path
+                # Keep this throwaway render document consistent with the
+                # live one. It is not what the filmstrip reads -- that is the
+                # document built in the open worker below -- so this alone did
+                # not fix the filmstrip browsing the RawTherapee cache.
+                document.browse_source_path = self.raw_source_path
             elif self.raw_baseline:
                 # Interactive RAW previews start from the last authoritative
                 # RawTherapee master. Apply only the slider delta in float32;
@@ -264,6 +269,18 @@ class _OpenJob(QRunnable):
                     document = editor_engine.EditorDocument.load_project(
                         recovery, trust_external_source=True)
                     source_colour = inspect_source(document.source_path)
+                    # load_project replaces the document that attach_raw_source
+                    # had just configured, and it only sets browse_source_path
+                    # for embedded portable projects. A recovery file is not
+                    # one, so the field kept __init__'s value: the developed
+                    # TIFF. The filmstrip browses that field, which is how it
+                    # came to list 87 hash-named .tif files from the
+                    # RawTherapee cache -- every photograph ever opened, at
+                    # 0.7-2.5s each to thumbnail.
+                    if is_raw:
+                        document.browse_source_path = original_path
+                        if not getattr(document, "raw_source_path", ""):
+                            document.raw_source_path = original_path
                 initial_preview = document.render((1600, 1600))
                 payload = (document, source_colour, original_path,
                            "raw" if is_raw else "image", initial_preview)
@@ -1369,11 +1386,20 @@ class EditorWindow(QMainWindow):
             srow.committed.connect(self._on_commit)
             self.raw_rows[key] = srow
             raw_section.add(srow)
+        # RawTherapee resolves this one; it is not the compositor's own
+        # Auto Exposure button up in LIGHT, which works on the developed
+        # result instead of the camera file.
+        self.raw_auto_levels = QCheckBox("Auto Levels (RawTherapee)")
+        self.raw_auto_levels.setToolTip(
+            "Let RawTherapee set exposure and black point from the camera "
+            "file. Its neutral render is deliberately conservative, so raws "
+            "often open darker than the scene looked.")
         self.raw_lensfun_check = QCheckBox("Use Lensfun auto profile")
         self.raw_lensfun_distortion = QCheckBox("Lensfun distortion")
         self.raw_lensfun_vignette = QCheckBox("Lensfun vignetting")
         self.raw_lensfun_ca = QCheckBox("Lensfun chromatic aberration")
         self._raw_lensfun_checks = {
+            "raw_auto_levels": self.raw_auto_levels,
             "raw_lensfun": self.raw_lensfun_check,
             "raw_lensfun_distortion": self.raw_lensfun_distortion,
             "raw_lensfun_vignette": self.raw_lensfun_vignette,
