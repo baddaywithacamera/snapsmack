@@ -936,6 +936,13 @@ class EditorWindow(QMainWindow):
         self.act_print.triggered.connect(self.print_photograph)
         bar.addAction(self.act_print)
 
+        self.act_email = QAction("Email…", self)
+        self.act_email.setToolTip(
+            "Make a sending-sized copy of this photograph as edited and open a "
+            "draft in your mail program")
+        self.act_email.triggered.connect(self.email_photograph)
+        bar.addAction(self.act_email)
+
         self.act_copy_flattened = QAction("Copy Flattened JPEG", self)
         self.act_copy_flattened.setShortcut(QKeySequence("Ctrl+Shift+C"))
         self.act_copy_flattened.setToolTip(
@@ -1024,7 +1031,7 @@ class EditorWindow(QMainWindow):
                 self.act_recipe_save, self.act_recipe_apply,
                 self.act_lewks, self.act_lewk_again, self.act_textures, self.act_filters,
                 self.act_save_project, self.act_export, self.act_copy_flattened,
-                self.act_print,
+                self.act_print, self.act_email,
                 self.act_blog_copy,
                 self.act_hdr,
                 self.act_external_edit,
@@ -1062,6 +1069,7 @@ class EditorWindow(QMainWindow):
                       self.act_recipe_save, self.act_recipe_apply),
             "output": (self.act_save_project, self.act_export,
                        self.act_copy_flattened, self.act_print,
+                       self.act_email,
                        self.act_blog_copy, self.act_hdr, self.act_external_edit),
             "view": (self.act_fit, self.act_full, self.act_zoom_out,
                      self.act_zoom_in, self.act_filmstrip,
@@ -4326,11 +4334,28 @@ class EditorWindow(QMainWindow):
         self.status.showMessage("Exporting photograph…")
         self._background_pool.start(job)
 
-    def print_photograph(self):
-        """Print the photograph as edited, rendered off the UI thread."""
+    def email_photograph(self):
+        """Email this photograph as edited. SNAP SLAPPER never sends it."""
         if not self.doc:
-            QMessageBox.information(self, "Print", "Open a photograph first.")
+            QMessageBox.information(self, "Email", "Open a photograph first.")
             return
+        self._flattened_to_temp_file(
+            "snap-email-",
+            lambda path: self._open_email_dialog(path),
+            "Rendering this photograph to email…", "Email failed")
+
+    def _open_email_dialog(self, path):
+        from .email_photos import EmailPhotosDialog
+        try:
+            EmailPhotosDialog(self, [path], title="Email this photograph").exec()
+        finally:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+    def _flattened_to_temp_file(self, prefix, then, busy_message, error_title):
+        """Render the document off the UI thread into a temporary JPEG."""
         import tempfile
         from . import prefs
         job = _ClipboardJob(
@@ -4339,27 +4364,39 @@ class EditorWindow(QMainWindow):
 
         def ready(payload, current=job):
             self._export_jobs.discard(current)
-            handle, path = tempfile.mkstemp(prefix="snap-print-", suffix=".jpg")
+            handle, path = tempfile.mkstemp(prefix=prefix, suffix=".jpg")
             with os.fdopen(handle, "wb") as sink:
                 sink.write(payload)
             self.status.clearMessage()
-            from .print_photos import PrintPhotosDialog
-            dialog = PrintPhotosDialog(self, [path],
-                                       title="Print this photograph")
-            dialog.exec()
+            then(path)
+
+        def failed(message, current=job):
+            self._export_jobs.discard(current)
+            self._error(error_title, message)
+
+        job.signals.ready.connect(ready)
+        job.signals.failed.connect(failed)
+        self.status.showMessage(busy_message)
+        self._background_pool.start(job)
+
+    def print_photograph(self):
+        """Print the photograph as edited, rendered off the UI thread."""
+        if not self.doc:
+            QMessageBox.information(self, "Print", "Open a photograph first.")
+            return
+        self._flattened_to_temp_file(
+            "snap-print-", lambda path: self._open_print_dialog(path),
+            "Rendering this photograph for the printer…", "Print failed")
+
+    def _open_print_dialog(self, path):
+        from .print_photos import PrintPhotosDialog
+        try:
+            PrintPhotosDialog(self, [path], title="Print this photograph").exec()
+        finally:
             try:
                 os.remove(path)
             except OSError:
                 pass
-
-        def failed(message, current=job):
-            self._export_jobs.discard(current)
-            self._error("Print failed", message)
-
-        job.signals.ready.connect(ready)
-        job.signals.failed.connect(failed)
-        self.status.showMessage("Rendering this photograph for the printer…")
-        self._background_pool.start(job)
 
     def copy_flattened_jpeg(self):
         if not self.doc:
@@ -4876,6 +4913,8 @@ class EditorWindow(QMainWindow):
         self.act_patch.setEnabled(editing)
         self.act_ai_heal.setEnabled(editing)
         self.act_ai_fill.setEnabled(editing)
+        self.act_print.setEnabled(editing)
+        self.act_email.setEnabled(editing)
         self.act_recipe_save.setEnabled(editing)
         self.act_recipe_apply.setEnabled(editing)
         self.act_save_project.setEnabled(editing)
