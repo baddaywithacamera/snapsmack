@@ -928,6 +928,14 @@ class EditorWindow(QMainWindow):
         self.act_export.triggered.connect(self.export_image)
         bar.addAction(self.act_export)
 
+        self.act_print = QAction("Print…", self)
+        self.act_print.setShortcut(QKeySequence("Ctrl+P"))
+        self.act_print.setToolTip(
+            "Print this photograph as edited — standard print sizes or fit to "
+            "the paper")
+        self.act_print.triggered.connect(self.print_photograph)
+        bar.addAction(self.act_print)
+
         self.act_copy_flattened = QAction("Copy Flattened JPEG", self)
         self.act_copy_flattened.setShortcut(QKeySequence("Ctrl+Shift+C"))
         self.act_copy_flattened.setToolTip(
@@ -1016,6 +1024,7 @@ class EditorWindow(QMainWindow):
                 self.act_recipe_save, self.act_recipe_apply,
                 self.act_lewks, self.act_lewk_again, self.act_textures, self.act_filters,
                 self.act_save_project, self.act_export, self.act_copy_flattened,
+                self.act_print,
                 self.act_blog_copy,
                 self.act_hdr,
                 self.act_external_edit,
@@ -1052,7 +1061,7 @@ class EditorWindow(QMainWindow):
             "looks": (self.act_lewks, self.act_lewk_again, self.act_filters, self.act_textures,
                       self.act_recipe_save, self.act_recipe_apply),
             "output": (self.act_save_project, self.act_export,
-                       self.act_copy_flattened,
+                       self.act_copy_flattened, self.act_print,
                        self.act_blog_copy, self.act_hdr, self.act_external_edit),
             "view": (self.act_fit, self.act_full, self.act_zoom_out,
                      self.act_zoom_in, self.act_filmstrip,
@@ -4315,6 +4324,41 @@ class EditorWindow(QMainWindow):
             lambda generation, message, current=job:
             self._reject_export(generation, message, current))
         self.status.showMessage("Exporting photograph…")
+        self._background_pool.start(job)
+
+    def print_photograph(self):
+        """Print the photograph as edited, rendered off the UI thread."""
+        if not self.doc:
+            QMessageBox.information(self, "Print", "Open a photograph first.")
+            return
+        import tempfile
+        from . import prefs
+        job = _ClipboardJob(
+            self.doc.detached_copy(), int(prefs.load()["export_quality"]))
+        self._export_jobs.add(job)
+
+        def ready(payload, current=job):
+            self._export_jobs.discard(current)
+            handle, path = tempfile.mkstemp(prefix="snap-print-", suffix=".jpg")
+            with os.fdopen(handle, "wb") as sink:
+                sink.write(payload)
+            self.status.clearMessage()
+            from .print_photos import PrintPhotosDialog
+            dialog = PrintPhotosDialog(self, [path],
+                                       title="Print this photograph")
+            dialog.exec()
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+        def failed(message, current=job):
+            self._export_jobs.discard(current)
+            self._error("Print failed", message)
+
+        job.signals.ready.connect(ready)
+        job.signals.failed.connect(failed)
+        self.status.showMessage("Rendering this photograph for the printer…")
         self._background_pool.start(job)
 
     def copy_flattened_jpeg(self):
