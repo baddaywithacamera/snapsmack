@@ -106,12 +106,14 @@ rel_expect(str_contains($skip_refusal, 'SEQUENTIAL RELEASE GATE REFUSED 0.7.838D
     'an attempted skipped package must produce an explicit refusal');
 rel_expect(str_contains($skip_refusal, '0.7.837D is not in dev build history'),
     'refusal must identify the missing predecessor package');
-rel_expect(str_contains($skip_refusal, 'not deployed across the active dev fleet'),
+rel_expect(str_contains($skip_refusal, 'no active development install reports'),
     'refusal must identify predecessor deployment drift');
 rel_expect(str_contains($skip_refusal, 'No override exists.'),
     'sequential release gate must not offer an override');
 rel_expect(sc_dev_sequence_refusal('0.7.837D', true, true, ['0.7.836D', '0.7.836D']) === '',
     'next package may proceed only when its predecessor is packaged, deployed, and recorded');
+rel_expect(sc_dev_sequence_refusal('0.7.837D', true, true, ['0.7.836D', '0.7.700D']) === '',
+    'an unmanaged older dev install must not veto a predecessor deployment proven by the managed fleet');
 $declaredVersions = [];
 foreach (array_filter(explode("\n", trim($declaredLedger))) as $line) {
     $entry = json_decode($line, true);
