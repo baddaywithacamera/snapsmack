@@ -11,6 +11,9 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.865D - 2026-10-11 - Restore SCROLL edge-to-edge columns
+
+- Restores SCROLL's original edge-to-edge native-aspect column wall: portrait tiles again fill their complete column width instead of being narrowed inside the slot and surrounded by false masonry gaps.
 - Changes development release sequencing from a hard gate to an operator warning, so the current intended release can be packaged directly without manufacturing and deploying obsolete intermediate builds.
 
 ## 0.7.864D - 2026-10-11 - Managed fleet release gate
