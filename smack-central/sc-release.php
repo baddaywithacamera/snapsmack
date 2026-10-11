@@ -243,11 +243,11 @@ function sc_record_release_identifier(string $track, string $version, string $ta
 }
 
 /**
- * Refuse a dev package unless its immediate predecessor is independently
- * proven packaged, recorded, and deployed on every active dev-track install.
- * This runs before tag resolution, downloads, zip creation, signing, or writes.
+ * Report predecessor drift without blocking a release. Version sequencing is
+ * an operator workflow concern; an emergency/current build must never require
+ * packaging and deploying an obsolete intermediate build first.
  */
-function sc_require_dev_sequence(PDO $db, string $requested): string {
+function sc_dev_sequence_notice(PDO $db, string $requested): string {
     $predecessor = sc_dev_predecessor($requested);
     if ($predecessor === null) {
         return sc_dev_sequence_refusal($requested, false, false, []);
@@ -1118,6 +1118,7 @@ $build_error      = '';
 $build_log        = [];
 $build_result     = null;
 $dev_build_error  = '';
+$dev_build_notice = '';
 $dev_build_log    = [];
 $dev_build_result = null;
 
@@ -1511,7 +1512,7 @@ if ($action === 'build_dev' && $preflight_ok) {
     }
 
     if (!$dev_build_error) {
-        $dev_build_error = sc_require_dev_sequence(sc_db(), $version);
+        $dev_build_notice = sc_dev_sequence_notice(sc_db(), $version);
     }
 
     if (!$dev_build_error) {
@@ -1969,6 +1970,10 @@ require __DIR__ . '/sc-layout-top.php';
         <?php if (!empty($dev_build_log)): ?>
         <div class="sc-build-log"><?php echo htmlspecialchars(implode("\n", $dev_build_log)); ?></div>
         <?php endif; ?>
+        <?php endif; ?>
+
+        <?php if ($dev_build_notice): ?>
+        <div class="sc-alert sc-alert--warn"><?php echo htmlspecialchars($dev_build_notice); ?></div>
         <?php endif; ?>
 
         <?php if (!$preflight_ok): ?>

@@ -97,19 +97,19 @@ rel_expect(str_contains($packager, "'source_commit'"),
     'published manifests must record the exact source commit');
 rel_expect(str_contains($packager, 'sc_record_release_identifier'),
     'packager must record checksum and signature before publication');
-rel_expect(str_contains($packager, 'sc_require_dev_sequence(sc_db(), $version)'),
-    'dev packager must run the server-side sequential state gate before building');
+rel_expect(str_contains($packager, '$dev_build_notice = sc_dev_sequence_notice(sc_db(), $version)'),
+    'dev packager must expose predecessor drift as a non-blocking operator notice');
 rel_expect(sc_dev_predecessor('0.7.837D') === '0.7.836D',
     'development predecessor must be calculated without skipping a number');
 $skip_refusal = sc_dev_sequence_refusal('0.7.838D', false, false, ['0.7.836D']);
-rel_expect(str_contains($skip_refusal, 'SEQUENTIAL RELEASE GATE REFUSED 0.7.838D'),
-    'an attempted skipped package must produce an explicit refusal');
+rel_expect(str_contains($skip_refusal, 'RELEASE SEQUENCE WARNING 0.7.838D'),
+    'an attempted skipped package must produce an explicit warning');
 rel_expect(str_contains($skip_refusal, '0.7.837D is not in dev build history'),
     'refusal must identify the missing predecessor package');
 rel_expect(str_contains($skip_refusal, 'no active development install reports'),
     'refusal must identify predecessor deployment drift');
-rel_expect(str_contains($skip_refusal, 'No override exists.'),
-    'sequential release gate must not offer an override');
+rel_expect(str_contains($skip_refusal, 'Packaging remains available.'),
+    'sequence drift must not block packaging the current intended release');
 rel_expect(sc_dev_sequence_refusal('0.7.837D', true, true, ['0.7.836D', '0.7.836D']) === '',
     'next package may proceed only when its predecessor is packaged, deployed, and recorded');
 rel_expect(sc_dev_sequence_refusal('0.7.837D', true, true, ['0.7.836D', '0.7.700D']) === '',
