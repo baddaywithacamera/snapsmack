@@ -8,8 +8,8 @@ require_once $root . '/core/skin-render-helpers.php';
 require_once $root . '/core/skin-view-contract.php';
 
 $manifest = json_decode((string)file_get_contents($root . '/skins/scroll/manifest.json'), true);
-if (!in_array('smack-crop-circles', $manifest['require_scripts'] ?? [], true)) {
-    throw new RuntimeException('SCROLL stopped requesting the shared Crop Circles engine and stylesheet.');
+if (!in_array('asset:public:ss-engine-social-dock', $manifest['require_styles'] ?? [], true)) {
+    throw new RuntimeException('SCROLL stopped requesting the shared Crop Circles social-dock stylesheet.');
 }
 
 $model = [
