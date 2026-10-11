@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.864D - 2026-10-11 - Managed fleet release gate
+
+- Keeps the sequential release gate fail-closed unless the predecessor is packaged, recorded, and reported deployed, while preventing unrelated older development installs from vetoing a completed managed-fleet rollout.
+
 ## 0.7.863D - 2026-10-11 - Crop Circles owns its dock
 
 - Makes the reusable CMS-owned Social Dock component load its own audited public stylesheet whenever a skin declares a dock, so welded Crop Circles menus cannot silently lose their social half.

@@ -39,21 +39,21 @@ function sc_dev_sequence_refusal(
     if (!$active_dev_versions) {
         $missing[] = 'no active development-track install has reported a deployed version';
     } else {
-        $not_deployed = array_values(array_filter(
+        $deployed = array_values(array_filter(
             $active_dev_versions,
-            static fn (string $reported): bool => strcasecmp($reported, $predecessor) !== 0
+            static fn (string $reported): bool => strcasecmp($reported, $predecessor) === 0
         ));
-        if ($not_deployed) {
-            $counts = array_count_values($not_deployed);
+        if (!$deployed) {
+            $counts = array_count_values($active_dev_versions);
             $summary = [];
             foreach ($counts as $reported => $count) $summary[] = "{$reported} x{$count}";
-            $missing[] = "{$predecessor} is not deployed across the active dev fleet (reported: "
+            $missing[] = "no active development install reports {$predecessor} deployed (reported: "
                 . implode(', ', $summary) . ')';
         }
     }
 
     return $missing
-        ? "SEQUENTIAL RELEASE GATE REFUSED {$requested}: immediate predecessor {$predecessor} must be packaged, deployed, and recorded first; "
+        ? "SEQUENTIAL RELEASE GATE REFUSED {$requested}: immediate predecessor {$predecessor} must be packaged, reported deployed, and recorded first; "
             . implode('; ', $missing) . '. No override exists.'
         : '';
 }
