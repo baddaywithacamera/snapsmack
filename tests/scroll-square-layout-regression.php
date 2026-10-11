@@ -16,9 +16,10 @@ if(!str_contains($html,'data-w="1200"')||!str_contains($html,'data-h="1800"'))th
 if(!str_contains($html,'scroll-wall-sentinel')||!str_contains($html,'data-next="2"'))throw new RuntimeException('SCROLL stopped rendering the CMS paging tripwire.');
 $photo=snapsmack_build_skin_view(['status'=>200,'kind'=>'photo','item'=>['img_title'=>'Photo','img_file'=>'/media/photo.jpg','img_description'=>snapsmack_trusted_html('<p>Description</p>')],'navigation'=>[]],$site);
 ob_start();$ok=snapsmack_render_strict_skin_template($dir,'layout.php',$photo);$html=(string)ob_get_clean();foreach(['scroll-solo-header','scroll-solo-stage','scroll-solo-photobox','scroll-infobox'] as $hook)if(!$ok||!str_contains($html,$hook))throw new RuntimeException("SCROLL photo route lost {$hook}.");
-$fontPresentation=snapsmack_skin_presentation(['scroll_masthead_font'=>'Special Elite'],'scroll');
+$fontPresentation=snapsmack_skin_presentation(['scroll_masthead_font'=>'Special Elite','scroll_solo_name_font'=>''],'scroll');
 $fontStyle=(string)($fontPresentation['style']??'');
 if(!str_contains($fontStyle,"font-family:'Special Elite'")||!str_contains($fontStyle,'/font.php?family=Special%20Elite'))throw new RuntimeException('SCROLL lost its same-origin selected masthead font.');
+if(str_contains($fontStyle,'font-family:""')||str_contains($fontStyle,"font-family:''"))throw new RuntimeException('An empty optional SCROLL font overrode the selected masthead font.');
 echo "PASS: scroll behavior is CMS-owned and its presentation contract is strict.
 ";
 // ===== SNAPSMACK EOF =====
