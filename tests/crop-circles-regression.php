@@ -7,6 +7,11 @@ require_once $root . '/core/trusted-html.php';
 require_once $root . '/core/skin-render-helpers.php';
 require_once $root . '/core/skin-view-contract.php';
 
+$manifest = json_decode((string)file_get_contents($root . '/skins/scroll/manifest.json'), true);
+if (!in_array('smack-crop-circles', $manifest['require_scripts'] ?? [], true)) {
+    throw new RuntimeException('SCROLL stopped requesting the shared Crop Circles engine and stylesheet.');
+}
+
 $model = [
     'identity' => 'SCROLL', 'home_url' => '/', 'icon_sprite_url' => '/assets/icons/crop-circles.svg',
     'navigation' => [
