@@ -11,6 +11,8 @@
 # SnapSmack Changelog
 ## Unreleased
 
+- **The Generative Expand button is gone, because it never did anything.** Its dialog's GENERATE BORDER asked the editor for a method that does not exist in SNAP SLAPPER, so every press closed nothing and produced no pixels. Expand was withdrawn on quality grounds in 0.7.56 (September); a later build put the toolbar command and dialog back without the engine behind it, labelling it `"Generative " + "Expand"` so the test that enforces the withdrawal could not see the words. The command, the dialog, the cursor stub and the orphan pixel-budget accounting are removed, and that test now folds string concatenation before it looks and names the files as well as the label. AI Heal and Generative Fill are untouched. SNAP SLAPPER 0.7.56. (`tools/hub/slapper_qt/editor_window.py`, `tools/hub/slapper_qt/ai_expand_dialog.py`, `tools/hub/slapper_qt/expand_canvas.py`, `tools/hub/tests/test_gemini_ai_heal.py`.)
+
 ## 0.7.865D - 2026-10-11 - Restore SCROLL edge-to-edge columns
 
 - Restores SCROLL's original edge-to-edge native-aspect column wall: portrait tiles again fill their complete column width instead of being narrowed inside the slot and surrounded by false masonry gaps.
