@@ -32,8 +32,17 @@ _gpu_datas, _gpu_binaries = [], []
 # the import fails, and its probe now reports that honestly.
 _gpu_excludes = ['cupy', 'cupy_backends', 'cupyx', 'fastrlock']
 if os.environ.get('SNAP_SLAPPER_NVIDIA_BUILD') == '1':
+    # CuPy is four top-level packages, not one. Collecting only 'cupy' left
+    # cupy_backends out, and the frozen app failed with
+    # ModuleNotFoundError: No module named 'cupy_backends.cuda._softlink'
+    # even though every CUDA DLL resolved correctly.
     _gpu_datas, _gpu_binaries, _gpu_hidden = collect_all('cupy')
     _hidden += _gpu_hidden
+    for _cupy_package in ('cupy_backends', 'cupyx', 'fastrlock'):
+        _extra_datas, _extra_binaries, _extra_hidden = collect_all(_cupy_package)
+        _gpu_datas += _extra_datas
+        _gpu_binaries += _extra_binaries
+        _hidden += _extra_hidden
     # CuPy alone is not enough. Every CUDA library it links lives in its own
     # wheel under nvidia/, and a frozen build resolves them eagerly even though
     # a normal interpreter loads them lazily. Bundling only the runtime
