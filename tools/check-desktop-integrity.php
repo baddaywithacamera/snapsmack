@@ -47,6 +47,12 @@ $seen = [];
 
 foreach (glob($toolsDir . '/*/src-tauri/tauri.conf.json') as $conf) {
     $tool = basename(dirname(dirname($conf)));
+    // A tool that declares version_file is NOT a Tauri app -- the manifest is
+    // an abandoned experiment left on disk. GYSS shipped as PyInstaller while
+    // its dead src-tauri/tauri.conf.json sat at 0.7.11 and its real version
+    // climbed to 0.7.35, so this gate reported a REVERT on every clean
+    // checkout and was simply ignored. The registry says where the truth is.
+    if (!empty($baseline[$tool]['version_file'])) continue;
     $seen[$tool] = true;
     $cfg = json_decode((string)file_get_contents($conf), true);
     if (!is_array($cfg)) { echo "FAIL $tool: tauri.conf.json is not valid JSON\n"; $fail++; continue; }
