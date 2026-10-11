@@ -20,6 +20,8 @@ $fontPresentation=snapsmack_skin_presentation(['scroll_masthead_font'=>'Special 
 $fontStyle=(string)($fontPresentation['style']??'');
 if(!str_contains($fontStyle,"font-family:'Special Elite'")||!str_contains($fontStyle,'/font.php?family=Special%20Elite'))throw new RuntimeException('SCROLL lost its same-origin selected masthead font.');
 if(str_contains($fontStyle,'font-family:""')||str_contains($fontStyle,"font-family:''"))throw new RuntimeException('An empty optional SCROLL font overrode the selected masthead font.');
+$scrollCss=(string)file_get_contents($dir.'/style.css');
+if(!str_contains($scrollCss,'font-size: max(2rem, var(--scroll-solo-name-size, 2rem))'))throw new RuntimeException('SCROLL lost the known-good desktop solo masthead scale.');
 echo "PASS: scroll behavior is CMS-owned and its presentation contract is strict.
 ";
 // ===== SNAPSMACK EOF =====
