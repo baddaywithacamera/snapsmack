@@ -41,6 +41,7 @@ from .engine_bridge import pil_to_qpixmap, original_pixmap
 from .widgets import ImageView, SliderRow, Accordion, Histogram
 from .layers_panel import LayersPanel, BASE
 from .filmstrip import Filmstrip
+from . import mask_brush as mask_brush_module
 from .mask_brush import MaskBrushCanvas
 from .curve_editor import CurveEditor
 from .source_colour import inspect_source, workspace_label
@@ -1171,6 +1172,7 @@ class EditorWindow(QMainWindow):
             "]": lambda: self._mask_key("larger"),
             "Shift+[": lambda: self._mask_key("softer"),
             "Shift+]": lambda: self._mask_key("harder"),
+            "X": lambda: self._mask_key("swap"),
         }
         self.mask_shortcut_actions = {}
         for sequence, callback in bindings.items():
@@ -1197,10 +1199,13 @@ class EditorWindow(QMainWindow):
             self.open_mask_panel()
         elif command == "bucket":
             self._mask_type_buttons["brush"].click()
-            self.mask_brush.fill(self.mask_brush._paint_white)
+            self._bucket_fill(self.btn_reveal.isChecked())
         elif command == "erase":
             self._mask_type_buttons["brush"].click()
-            self.btn_hide.click()
+            self._set_paint_white(False)
+        elif command == "swap":
+            self._mask_type_buttons["brush"].click()
+            self._swap_paint_colour()
         elif command in {"smaller", "larger"}:
             delta = -3 if command == "smaller" else 3
             self.brush_size.slider.setValue(self.brush_size.slider.value() + delta)
@@ -1219,8 +1224,18 @@ class EditorWindow(QMainWindow):
 
     def _activate_canvas_mask_tool(self, kind):
         if self._mask_layer() is None:
-            self.status.showMessage("Select or add a layer before editing its mask.")
-            return
+            # A status line scrolls away and does not say what to do about it.
+            # A mask belongs to a layer, so offer to make one here.
+            answer = QMessageBox.question(
+                self, "A mask needs a layer",
+                "A mask hides part of ONE layer, so there has to be a layer to "
+                "mask. The photograph itself is the base, not a layer.\n\n"
+                "Add an adjustment layer now and mask that?",
+                QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Yes)
+            if answer != QMessageBox.Yes:
+                return
+            if not self._add_maskable_layer():
+                return
         self.open_mask_panel()
         self._mask_type_buttons[kind].click()
         if kind == "brush":
@@ -2011,18 +2026,31 @@ class EditorWindow(QMainWindow):
         bl = QVBoxLayout(brush_page)
         bl.setContentsMargins(0, 0, 0, 0)
         bl.setSpacing(4)
-        paint_hint = QLabel("Paint on the photo: Hide dims this layer, "
-                            "Reveal brings it back.")
+        paint_hint = QLabel(
+            "Paint straight onto the photograph. RED is hidden — this layer "
+            "does nothing there. Hide paints red on; Reveal wipes it off.")
         paint_hint.setObjectName("TargetLabel")
         paint_hint.setWordWrap(True)
         bl.addWidget(paint_hint)
-        self.paint_on_photo = QPushButton("Paint mask on full photo")
+        self.paint_on_photo = QPushButton("Painting on the photo")
         self.paint_on_photo.setObjectName("LayerAddBtn")
         self.paint_on_photo.setCheckable(True)
         self.paint_on_photo.setToolTip(
-            "Paint this layer mask directly on the large photograph")
+            "Paint this layer's mask directly on the large photograph. "
+            "Turn it off to pan and zoom instead.")
         self.paint_on_photo.toggled.connect(self._toggle_canvas_mask_paint)
         bl.addWidget(self.paint_on_photo)
+        self.show_mask_wash = QCheckBox("Show the red mask while painting")
+        self.show_mask_wash.setChecked(True)
+        self.show_mask_wash.setToolTip(
+            "Without this the only feedback is the layer's own effect, which "
+            "can be too subtle to see while you work.")
+        self.show_mask_wash.toggled.connect(lambda _c: self._refresh_mask_overlay())
+        bl.addWidget(self.show_mask_wash)
+        preview_label = QLabel("Whole-frame preview — painting here works too:")
+        preview_label.setObjectName("TargetLabel")
+        preview_label.setWordWrap(True)
+        bl.addWidget(preview_label)
         self.mask_brush = MaskBrushCanvas()
         self.mask_brush.mask_changed.connect(self._store_brush_mask)
         bl.addWidget(self.mask_brush, 0, Qt.AlignHCenter)
@@ -2037,7 +2065,8 @@ class EditorWindow(QMainWindow):
             btn.setObjectName("MaskTypeBtn")
             btn.setCheckable(True)
             btn.setCursor(Qt.PointingHandCursor)
-            btn.clicked.connect(lambda _c, w=white: self.mask_brush.set_paint_white(w))
+            btn.setToolTip("Hide and Reveal swap with the X key")
+            btn.clicked.connect(lambda _c, w=white: self._set_paint_white(w))
             self.brush_paint_group.addButton(btn)
             paint_row.addWidget(btn)
         self.btn_hide.setChecked(True)
@@ -2054,8 +2083,7 @@ class EditorWindow(QMainWindow):
         bl.addLayout(preset_row)
 
         self.brush_size = SliderRow("brush", "Brush size", 3, 60, 1, 22)
-        self.brush_size.changed.connect(
-            lambda _k, v: self.mask_brush.set_radius(int(v)))
+        self.brush_size.changed.connect(lambda _k, _v: self._sync_brush_radius())
         bl.addWidget(self.brush_size)
         self.brush_hardness = SliderRow("brush_hardness", "Hardness", 0, 100, 1, 70)
         self.brush_hardness.changed.connect(
@@ -2076,7 +2104,7 @@ class EditorWindow(QMainWindow):
         for button, white in ((fill_hide, False), (fill_reveal, True)):
             button.setObjectName("LayerOrderBtn")
             button.setToolTip("Fill the entire current mask")
-            button.clicked.connect(lambda _c, w=white: self.mask_brush.fill(w))
+            button.clicked.connect(lambda _c, w=white: self._bucket_fill(w))
             bucket_row.addWidget(button)
         bl.addLayout(bucket_row)
         self.mask_stack.addWidget(brush_page)
@@ -2145,6 +2173,11 @@ class EditorWindow(QMainWindow):
         self.view.set_gradient_mode(kind == "linear")
         if kind == "brush":
             self._seed_brush()
+            # Choosing the brush IS the request to paint. Leaving this to a
+            # second button meant the tool looked chosen while every click on
+            # the photograph still panned it.
+            if self._mask_layer() is not None:
+                self.paint_on_photo.setChecked(True)
         elif kind != "linear":
             self._reapply_mask()
 
@@ -2167,8 +2200,22 @@ class EditorWindow(QMainWindow):
             # after the first background preview has arrived.
             probe = self.doc.render((256, 256))
         long_edge = 1600
+        # Hold the chosen size for as long as the composition's shape is
+        # unchanged. It was derived from whatever preview had most recently
+        # arrived, so it moved by a pixel when the window was resized -- and
+        # every store then resampled the painted mask, softening its edges a
+        # little more each time.
+        aspect = probe.width / max(1, probe.height)
+        cached = getattr(self, "_mask_size_cache", None)
+        # In Fit mode the probe is a VIEWPORT-sized proxy, so its shape wobbles
+        # by a fraction of a percent as the window moves. Only a real change of
+        # composition -- a crop -- earns a new mask size.
+        if cached and abs(cached[0] - aspect) / cached[0] < 0.01 and                 cached[2] is self.doc:
+            return cached[1]
         scale = long_edge / max(probe.width, probe.height)
-        return (max(1, int(probe.width * scale)), max(1, int(probe.height * scale)))
+        size = (max(1, int(probe.width * scale)), max(1, int(probe.height * scale)))
+        self._mask_size_cache = (aspect, size, self.doc)
+        return size
 
     def _apply_radial_mask(self):
         layer = self._mask_layer()
@@ -2208,8 +2255,79 @@ class EditorWindow(QMainWindow):
         photo = self.doc.render((476, 344))   # reference view for painting
         existing = None
         if layer.get("mask"):
-            existing = editor_engine._mask_from_text(layer.get("mask", ""))
+            existing = self._painting_mask(layer)
         self.mask_brush.load(photo, existing)
+        self._sync_brush_radius()
+
+    def _painting_mask(self, layer):
+        """The stored mask, exactly as painted.
+
+        For a painted mask, Swap flips the mask once, there and then -- it is
+        not re-applied every time the mask is stored. Doing both meant leaving
+        paint mode and coming back flipped the mask, and ticking Swap threw the
+        strokes away entirely.
+        """
+        return editor_engine._mask_from_text(layer.get("mask", ""))
+
+    def _brush_radius_fraction(self):
+        """One definition of brush size: a fraction of the SHORT edge.
+
+        The small preview used the slider as display pixels while the
+        photograph used it as a proportion, so the same number meant a very
+        different brush in the two places.
+        """
+        return max(0.005, self.brush_size.slider.value() / 172.0)
+
+    def _sync_brush_radius(self):
+        fraction = self._brush_radius_fraction()
+        self.view.set_mask_brush_radius(fraction)
+        if self.mask_brush.has_mask():
+            short_edge = min(self.mask_brush.width(), self.mask_brush.height())
+            self.mask_brush.set_radius(max(3, round(fraction * short_edge)))
+
+    def _add_maskable_layer(self):
+        """Add an adjustment layer and select it, so a mask has something to be on."""
+        if not self.doc:
+            return False
+        layer = self.doc.add_adjustment_layer("Masked adjustment")
+        self.set_target(layer["id"])
+        self.after_structure_change()
+        self.status.showMessage(
+            "Added a layer to mask. Change an adjustment to see where the "
+            "mask is letting it through.")
+        return True
+
+    def _set_paint_white(self, white):
+        """Hide/Reveal applies to both the photograph and the rail preview."""
+        self.mask_brush.set_paint_white(white)
+        (self.btn_reveal if white else self.btn_hide).setChecked(True)
+
+    def _swap_paint_colour(self):
+        self._set_paint_white(not self.btn_reveal.isChecked())
+        self.status.showMessage(
+            "Reveal" if self.btn_reveal.isChecked() else "Hide")
+
+    def _bucket_fill(self, white):
+        """Fill the whole mask -- on the photograph, not only the preview."""
+        self.mask_brush.fill(white)
+        buffer = getattr(self, "_canvas_mask", None)
+        if buffer is not None:
+            self._canvas_mask = Image.new("L", buffer.size, 255 if white else 0)
+            self._refresh_mask_overlay()
+            layer = self._mask_layer()
+            if layer is not None:
+                self._store_mask(layer, self._canvas_mask, "brush",
+                                 "Reveal all" if white else "Hide all")
+
+    def _refresh_mask_overlay(self):
+        """Push the red wash for the mask being painted onto the photograph."""
+        buffer = getattr(self, "_canvas_mask", None)
+        if buffer is None or not self.paint_on_photo.isChecked():
+            self.view.set_mask_overlay(None)
+            return
+        self.view.set_mask_overlay(
+            mask_brush_module.red_wash(buffer, tint_white=False)
+            if self.show_mask_wash.isChecked() else None)
 
     def _toggle_canvas_mask_paint(self, checked):
         layer = self._mask_layer()
@@ -2218,7 +2336,7 @@ class EditorWindow(QMainWindow):
             return
         if checked:
             size = self._mask_target_size()
-            self._canvas_mask = (editor_engine._mask_from_text(layer.get("mask", ""))
+            self._canvas_mask = (self._painting_mask(layer)
                                  if layer.get("mask") else Image.new("L", size, 255))
             if self._canvas_mask.size != size:
                 self._canvas_mask = self._canvas_mask.resize(size, Image.Resampling.LANCZOS)
@@ -2229,10 +2347,14 @@ class EditorWindow(QMainWindow):
                 self.layers_panel.rebuild()
             self._canvas_mask_last = None
             self.view.set_mask_paint_mode(True)
+            self._sync_brush_radius()
+            self._refresh_mask_overlay()
             self.status.showMessage(
-                "Painting layer mask on photo — Hide paints black; Reveal paints white.")
+                "Painting this layer's mask on the photograph — red is hidden. "
+                "X swaps Hide and Reveal; [ and ] change the brush size.")
         else:
             self.view.set_mask_paint_mode(False)
+            self.view.set_mask_overlay(None)
             self._canvas_mask_last = None
 
     def _paint_canvas_mask(self, x, y, finished):
@@ -2255,31 +2377,57 @@ class EditorWindow(QMainWindow):
         value = 255 if self.mask_brush._paint_white else 0
         self._canvas_mask.paste(value, mask=dab)
         self._canvas_mask_last = None if finished else point
+        self._refresh_mask_overlay()
         layer = self._mask_layer()
-        display_mask = (ImageOps.invert(self._canvas_mask)
-                        if self.mask_invert.isChecked() else self._canvas_mask)
-        layer["mask"] = editor_engine._mask_to_text(display_mask)
+        layer["mask"] = editor_engine._mask_to_text(self._canvas_mask)
         layer["mask_enabled"] = True
         layer["mask_kind"] = "brush"
         self.layers_panel.update_mask_thumbnail(layer)
         if finished:
             self.doc.record("Paint mask on photo")
             self.layers_panel.rebuild()
+            # Keep the rail preview showing what the photograph now holds, so
+            # a later stroke there starts from the real mask instead of a
+            # stale one.
+            self.mask_brush.load(self.doc.render((476, 344)), self._canvas_mask)
+            self._sync_brush_radius()
             self._render_preview()
             self._update_title()
         else:
             self._render_timer.start()
 
     def _store_brush_mask(self):
+        """Merge a stroke made on the small rail preview into the real mask.
+
+        The preview is 238 pixels wide; the mask is 1600. Writing the preview
+        over the mask replaced work painted on the photograph with a blurred
+        enlargement of a thumbnail -- so a stroke here, or ticking Swap, threw
+        away whatever had been painted on the photograph. Only the pixels this
+        widget actually changed are carried across.
+        """
         layer = self._mask_layer()
         if layer is None:
             return
-        mask = self.mask_brush.mask_pil(self._mask_target_size())
-        if mask is None:
+        size = self._mask_target_size()
+        painted = self.mask_brush.mask_pil(size)
+        if painted is None:
             return
-        if self.mask_invert.isChecked():
-            mask = ImageOps.invert(mask)
-        self._store_mask(layer, mask, "brush", "Brush mask")
+        baseline = self.mask_brush.baseline_pil(size)
+        current = getattr(self, "_canvas_mask", None)
+        if baseline is not None and current is not None:
+            if current.size != size:
+                current = current.resize(size, Image.Resampling.LANCZOS)
+            changed = ImageChops.difference(painted, baseline).point(
+                lambda pixel: 255 if pixel > 8 else 0)
+            if changed.getbbox() is None:
+                return
+            merged = current.copy()
+            merged.paste(painted, mask=changed)
+        else:
+            merged = painted
+        self._canvas_mask = merged
+        self._refresh_mask_overlay()
+        self._store_mask(layer, merged, "brush", "Brush mask")
 
     def _apply_colour_mask(self):
         layer = self._mask_layer()
@@ -2374,9 +2522,25 @@ class EditorWindow(QMainWindow):
         if self._mask_kind == "radial":
             self._apply_radial_mask()
         elif self._mask_kind == "brush":
-            self._store_brush_mask()
+            # A painted mask cannot be regenerated from its controls -- there
+            # is nothing to recompute it from but the strokes themselves, so
+            # Swap flips the mask that exists instead of rebuilding it from
+            # the rail preview and losing the detail painted on the photograph.
+            self._swap_painted_mask()
         elif self._mask_kind == "colour":
             self._apply_colour_mask()
+
+    def _swap_painted_mask(self):
+        layer = self._mask_layer()
+        if layer is None or not layer.get("mask"):
+            return
+        flipped = ImageOps.invert(editor_engine._mask_from_text(layer["mask"]))
+        buffer = getattr(self, "_canvas_mask", None)
+        if buffer is not None:
+            self._canvas_mask = ImageOps.invert(buffer)
+            self._refresh_mask_overlay()
+        self._store_mask(layer, flipped, "brush", "Swap hidden and revealed")
+        self._seed_brush()
 
     def _clear_mask(self):
         layer = self._mask_layer()

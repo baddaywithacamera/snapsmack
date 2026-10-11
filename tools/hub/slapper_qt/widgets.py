@@ -91,6 +91,9 @@ class ImageView(QGraphicsView):
         self._gradient_points = None
         self._mask_paint_mode = False
         self._mask_painting = False
+        self._mask_overlay = None       # red wash QImage, mask resolution
+        self._mask_hover = None         # scene point under the pointer
+        self._mask_brush_radius = 0.0   # fraction of the SHORT edge
         self._layer_move_mode = False
         self._layer_drag_point = None
         self._perspective_mode = False
@@ -318,6 +321,50 @@ class ImageView(QGraphicsView):
         self.setDragMode(QGraphicsView.NoDrag if enabled
                          else QGraphicsView.ScrollHandDrag)
         self.viewport().setCursor(Qt.CrossCursor if enabled else Qt.ArrowCursor)
+        # Hover tracking is what lets the brush ring follow the pointer before
+        # a button is pressed, so the brush has a visible size before a stroke.
+        self.viewport().setMouseTracking(True)
+        if not enabled:
+            self._mask_hover = None
+            self._mask_overlay = None
+        self.viewport().update()
+
+    def set_mask_overlay(self, overlay):
+        """Show (or clear) the red wash marking the masked area on the photo.
+
+        Painting a layer mask used to change nothing on screen except the
+        layer's own effect, so a subtle layer gave no feedback at all. The wash
+        is drawn in scene coordinates, so it follows zoom and pan for free.
+        """
+        self._mask_overlay = overlay
+        self.viewport().update()
+
+    def set_mask_brush_radius(self, fraction_of_short_edge):
+        """Brush radius as a fraction of the photograph's short edge."""
+        self._mask_brush_radius = max(0.0, float(fraction_of_short_edge))
+        self.viewport().update()
+
+    def leaveEvent(self, event):
+        # Without this the brush ring stays frozen where the pointer left.
+        if self._mask_hover is not None:
+            self._mask_hover = None
+            self.viewport().update()
+        super().leaveEvent(event)
+
+    def drawForeground(self, painter, rect):
+        super().drawForeground(painter, rect)
+        if not (self._mask_paint_mode and self._has_image):
+            return
+        scene = self._scene.sceneRect()
+        if not (scene.width() and scene.height()):
+            return
+        if self._mask_overlay is not None:
+            painter.drawImage(scene, self._mask_overlay)
+        if self._mask_hover is not None and self._mask_brush_radius > 0:
+            radius = self._mask_brush_radius * min(scene.width(), scene.height())
+            painter.setPen(QPen(QColor(57, 255, 20), 0))   # cosmetic: 1px at any zoom
+            painter.setBrush(Qt.NoBrush)
+            painter.drawEllipse(self._mask_hover, radius, radius)
 
     def set_crop_mode(self, enabled, normalized_rect=None):
         self._crop_mode = enabled
@@ -738,6 +785,9 @@ class ImageView(QGraphicsView):
             point.setY(max(rect.top(), min(rect.bottom(), point.y())))
             self._update_gradient_guide(self._gradient_start, point)
             return
+        if self._mask_paint_mode and self._has_image:
+            self._mask_hover = self.mapToScene(event.position().toPoint())
+            self.viewport().update()
         if self._mask_paint_mode and self._mask_painting and \
                 (event.buttons() & Qt.LeftButton):
             point = self.mapToScene(event.position().toPoint())
