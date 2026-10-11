@@ -11,6 +11,7 @@ visible, so a hidden strip costs nothing.
 """
 
 import os
+import time
 
 import editor_engine
 import photo_manager
@@ -42,6 +43,23 @@ class _ThumbSignals(QObject):
     ready = Signal(str, QImage)
 
 
+def _untinted_icon(pixmap):
+    """A QIcon that looks the same when the item is selected.
+
+    QIcon(pixmap) registers only the Normal state. Qt then SYNTHESISES the
+    selected appearance by blending the pixmap with the palette highlight,
+    which under Fusion is #308cc6 -- a mid blue. Over a warm photograph that
+    reads as pink, which is why the selected thumbnail turned magenta while
+    the stored image was perfectly fine. Registering every state stops Qt
+    inventing one.
+    """
+    icon = QIcon()
+    for mode in (QIcon.Normal, QIcon.Selected, QIcon.Active, QIcon.Disabled):
+        icon.addPixmap(pixmap, mode, QIcon.Off)
+        icon.addPixmap(pixmap, mode, QIcon.On)
+    return icon
+
+
 class _ThumbTask(QRunnable):
     """Load and scale one filmstrip thumbnail off the GUI thread.
 
@@ -56,6 +74,8 @@ class _ThumbTask(QRunnable):
         self.signals = signals
 
     def run(self):
+        _t0 = time.perf_counter()
+        _how = "unknown"
         try:
             recovery = photo_manager.recovery_path(
                 os.path.join(snap_home.shared_library(), "snap_slapper", "edits"),
@@ -68,7 +88,20 @@ class _ThumbTask(QRunnable):
                     # Old recoveries predate embedded previews.
                     image = None
             if image is None and os.path.splitext(self.path)[1].lower() in photo_manager.RAW_EXTENSIONS:
-                image = ImageOps.exif_transpose(raw_preview.render(self.path)).convert("RGBA")
+                # The camera already wrote a finished JPEG inside the raw.
+                # Reading it costs ~30 ms; developing the raw through
+                # RawTherapee to fill a 160-pixel tile costs ~1.4 s, which
+                # is why a fresh folder took the better part of a minute on
+                # this two-thread pool. Full development belongs in the
+                # editor view, where the photograph is actually looked at.
+                preview = raw_preview.embedded_preview(self.path, THUMB_SOURCE)
+                if preview is not None:
+                    image = preview.convert("RGBA")
+                    _how = "embedded"
+                else:
+                    image = ImageOps.exif_transpose(
+                        raw_preview.render(self.path)).convert("RGBA")
+                    _how = "rawtherapee"
             elif image is None:
                 image = display_thumbnail(
                     self.path, (THUMB_SOURCE, THUMB_SOURCE)).convert("RGBA")
@@ -76,6 +109,8 @@ class _ThumbTask(QRunnable):
             data = image.tobytes("raw", "RGBA")
             qimage = QImage(data, image.width, image.height,
                             image.width * 4, QImage.Format_RGBA8888).copy()
+            _log.info("filmstrip thumb %.3fs %s %s",
+                      time.perf_counter() - _t0, _how, os.path.basename(self.path))
             self.signals.ready.emit(self.path, qimage)
         except Exception:  # noqa: BLE001 — a bad file just keeps its placeholder
             _log.debug("filmstrip thumbnail failed for %s", self.path, exc_info=True)
@@ -158,16 +193,22 @@ class Filmstrip(QListWidget):
         self._scroll_timer.start()
 
     def _load_folder(self, folder):
+        _t0 = time.perf_counter()
         self.clear()
         self._items.clear()
         self._queued.clear()
         placeholder = self._placeholder()
-        for full in self._scan(folder):
+        _scanned = list(self._scan(folder))
+        _t_scan = time.perf_counter()
+        for full in _scanned:
             item = QListWidgetItem(placeholder, "")
             item.setData(Qt.UserRole, full)
             item.setToolTip(os.path.basename(full))
             self.addItem(item)
             self._items[full] = item
+        _log.info("filmstrip _load_folder: %d files, scan %.3fs, widgets %.3fs, total %.3fs",
+                  len(_scanned), _t_scan - _t0,
+                  time.perf_counter() - _t_scan, time.perf_counter() - _t0)
 
     def _queue_near(self, current, radius=16):
         """Decode only nearby frames; placeholders make the full shoot navigable."""
@@ -179,10 +220,15 @@ class Filmstrip(QListWidget):
         except ValueError:
             centre = 0
         start, end = max(0, centre - radius), min(len(paths), centre + radius + 1)
+        _queued_now = 0
         for path in paths[start:end]:
             if path not in self._queued:
                 self._queued.add(path)
                 self._pool.start(_ThumbTask(path, self._signals))
+                _queued_now += 1
+        if _queued_now:
+            _log.info("filmstrip queued %d thumbs (%d total known)",
+                      _queued_now, len(paths))
 
     def _queue_visible(self, margin=10):
         """Queue the visible run plus a small look-ahead on either side."""
@@ -228,12 +274,12 @@ class Filmstrip(QListWidget):
     def _placeholder(self):
         pixmap = QPixmap(ICON, ICON)
         pixmap.fill(Qt.transparent)
-        return QIcon(pixmap)
+        return _untinted_icon(pixmap)
 
     def _on_thumb(self, path, qimage):
         item = self._items.get(path)
         if item is not None:
-            item.setIcon(QIcon(QPixmap.fromImage(qimage)))
+            item.setIcon(_untinted_icon(QPixmap.fromImage(qimage)))
 
     def _select_current(self):
         item = self._items.get(self._current)
