@@ -49,6 +49,14 @@
     var FALLBACK_ASPECT = 3 / 2;   // matches the server-side fallback in landing.php
     var MAX_TILE_EDGE = 900;       // a_ thumbnail derivative longest edge
 
+    function maxTileEdge() {
+        // A portrait should read large without extending below a desktop
+        // viewport. Keep the derivative ceiling, but reserve room for SCROLL's
+        // sticky header and a small visual gutter.
+        var viewportBound = Math.max(420, window.innerHeight * 0.82);
+        return Math.min(MAX_TILE_EDGE, viewportBound);
+    }
+
     function cssNum(cs, name, fb) {
         var v = parseFloat(cs.getPropertyValue(name));
         return (typeof v === 'number' && isFinite(v)) ? v : fb;
@@ -79,7 +87,7 @@
     function boundedTileSize(slotWidth, aspect, borderWidth) {
         aspect = aspect > 0 ? aspect : FALLBACK_ASPECT;
         borderWidth = Math.max(0, borderWidth || 0);
-        var maxInnerEdge = Math.max(1, MAX_TILE_EDGE - 2 * borderWidth);
+        var maxInnerEdge = Math.max(1, maxTileEdge() - 2 * borderWidth);
         var slotInnerWidth = Math.max(1, slotWidth - 2 * borderWidth);
         var innerWidth = Math.min(slotInnerWidth, maxInnerEdge, maxInnerEdge * aspect);
         return {
@@ -240,10 +248,10 @@
 
     /* ---------- INFINITE SCROLL ----------------------------------------------
      * The wall is paged: the skin renders page 0 into .ss-masonry plus a
-     * .scroll-wall-sentinel carrying data-next / data-cutoff / data-has-more.
-     * As the sentinel nears the viewport we fetch the next page as JSON from the
-     * same URL (?pg=wall&format=json&c=N&t=cutoff), append its tiles into the
-     * EXISTING grid, hand them to the lazy loader, and relayout. Because the
+     * .scroll-wall-sentinel carrying data-next / data-has-more. As the sentinel
+     * nears the viewport we fetch the next CMS-rendered page, extract its tiles,
+     * append them into the EXISTING grid, hand them to the lazy loader, and
+     * relayout. Because the
      * column placement is deterministic (item i -> shortest column at step i),
      * re-laying out with the new tiles appended leaves every earlier tile in the
      * exact same spot — no reflow, no jump — it just extends the columns. Columns
@@ -264,19 +272,33 @@
             if (loading || exhausted()) return;
             loading = true;
             var next = parseInt(sentinel.getAttribute('data-next'), 10) || 1;
-            var url = '?pg=wall&format=json&c=' + next
-                    + '&t=' + encodeURIComponent(sentinel.getAttribute('data-cutoff') || '');
+            var url = new URL(window.location.href);
+            url.searchParams.delete('format');
+            url.searchParams.delete('pg');
+            url.searchParams.delete('c');
+            url.searchParams.delete('t');
+            url.searchParams.delete('verify');
+            url.searchParams.set('page', String(next));
             fetch(url, { credentials: 'same-origin' })
-                .then(function (r) { return r.ok ? r.json() : null; })
-                .then(function (data) {
-                    if (!data || !data.html) { stop(); return; }
+                .then(function (r) { return r.ok ? r.text() : ''; })
+                .then(function (html) {
+                    if (!html) { stop(); return; }
                     fails = 0;
-                    var tmp = document.createElement('div');
-                    tmp.innerHTML = data.html;
-                    var added = [], el;
-                    while ((el = tmp.firstElementChild)) { grid.appendChild(el); added.push(el); }
-                    sentinel.setAttribute('data-next', String(data.next));
-                    sentinel.setAttribute('data-has-more', data.has_more ? '1' : '0');
+                    var doc = new DOMParser().parseFromString(html, 'text/html');
+                    var incoming = doc.querySelectorAll('.scroll-wall .ss-masonry-item');
+                    if (!incoming.length) { stop(); return; }
+                    var added = [], i;
+                    for (i = 0; i < incoming.length; i++) {
+                        var el = document.importNode(incoming[i], true);
+                        grid.appendChild(el); added.push(el);
+                    }
+                    var nextSentinel = doc.querySelector('.scroll-wall-sentinel');
+                    if (nextSentinel) {
+                        sentinel.setAttribute('data-next', nextSentinel.getAttribute('data-next') || String(next + 1));
+                        sentinel.setAttribute('data-has-more', '1');
+                    } else {
+                        sentinel.setAttribute('data-has-more', '0');
+                    }
                     // Hand the new tiles to the shared lazy loader, then relayout.
                     if (window.ssLazyScan) window.ssLazyScan(grid);
                     if (grid.matches('.ss-masonry')) relayout(grid);
