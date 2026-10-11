@@ -34,18 +34,46 @@ _gpu_excludes = ['cupy', 'cupy_backends', 'cupyx', 'fastrlock']
 if os.environ.get('SNAP_SLAPPER_NVIDIA_BUILD') == '1':
     _gpu_datas, _gpu_binaries, _gpu_hidden = collect_all('cupy')
     _hidden += _gpu_hidden
-    # CuPy alone is not enough. The runtime compiler and the CUDA headers live
-    # in their own wheels under nvidia/, and without them CuPy imports, names
-    # the card, and then fails on the first instruction. gpu_acceleration puts
-    # these folders on the search path at startup.
-    for _package in ('nvidia.cuda_nvrtc', 'nvidia.cuda_runtime'):
-        try:
-            _extra_datas, _extra_binaries, _extra_hidden = collect_all(_package)
-        except Exception:
+    # CuPy alone is not enough. Every CUDA library it links lives in its own
+    # wheel under nvidia/, and a frozen build resolves them eagerly even though
+    # a normal interpreter loads them lazily. Bundling only the runtime
+    # compiler and the CUDA runtime produced a build that named the card in
+    # Preferences and then reported "Failed to import CuPy", listing
+    # cublas64_12.dll, cusolver64_11.dll, cusparse64_12.dll, cufft64_11.dll
+    # and curand64_10.dll as not found when the application was frozen.
+    #
+    # So collect every nvidia.* package that is installed rather than a
+    # hand-kept list that silently falls behind CuPy's requirements.
+    import importlib
+    _nvidia_root = importlib.import_module('nvidia')
+    # Most nvidia.* wheels are implicit namespace packages with no
+    # __init__.py, so pkgutil.iter_modules reports only the one that has one.
+    # Read the directory instead.
+    _nvidia_packages = []
+    for _root in list(_nvidia_root.__path__):
+        for _name in sorted(os.listdir(_root)):
+            if _name.startswith('_') or _name.startswith('.'):
+                continue
+            if os.path.isdir(os.path.join(_root, _name)):
+                _candidate = 'nvidia.' + _name
+                if _candidate not in _nvidia_packages:
+                    _nvidia_packages.append(_candidate)
+    _nvidia_packages.sort()
+    # These two must be present or the card is named and never used.
+    for _required in ('nvidia.cuda_nvrtc', 'nvidia.cuda_runtime'):
+        if _required not in _nvidia_packages:
             raise SystemExit(
                 'snap_slapper.spec: SNAP_SLAPPER_NVIDIA_BUILD is set but '
                 '%s is not installed. Run bootstrap-build-runtime.ps1 '
-                '-NvidiaGpu.' % _package)
+                '-NvidiaGpu.' % _required)
+    print('snap_slapper.spec: bundling CUDA packages: %s'
+          % ', '.join(_nvidia_packages))
+    for _package in _nvidia_packages:
+        try:
+            _extra_datas, _extra_binaries, _extra_hidden = collect_all(_package)
+        except Exception as _error:
+            raise SystemExit('snap_slapper.spec: could not collect %s (%s).'
+                             % (_package, _error))
         _gpu_datas += _extra_datas
         _gpu_binaries += _extra_binaries
         _hidden += _extra_hidden
