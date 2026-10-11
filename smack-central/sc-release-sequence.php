@@ -1,6 +1,6 @@
 <?php
 /**
- * SMACK CENTRAL - fail-closed development release sequence gate.
+ * SMACK CENTRAL - development release sequence advisory.
  *
  * This file is deliberately dependency-free so the refusal logic can be
  * regression-tested without loading the authenticated packager page.
@@ -19,8 +19,8 @@ function sc_dev_predecessor(string $version): ?string {
 }
 
 /**
- * Evaluate the three independent facts required before packaging N+1.
- * There is intentionally no override parameter.
+ * Describe missing predecessor evidence for the operator. This is advisory:
+ * release packaging must remain available for the newest intended version.
  */
 function sc_dev_sequence_refusal(
     string $requested,
@@ -30,7 +30,7 @@ function sc_dev_sequence_refusal(
 ): string {
     $predecessor = sc_dev_predecessor($requested);
     if ($predecessor === null) {
-        return "SEQUENTIAL RELEASE GATE REFUSED {$requested}: invalid development version.";
+        return "RELEASE SEQUENCE WARNING {$requested}: invalid development version.";
     }
 
     $missing = [];
@@ -53,8 +53,8 @@ function sc_dev_sequence_refusal(
     }
 
     return $missing
-        ? "SEQUENTIAL RELEASE GATE REFUSED {$requested}: immediate predecessor {$predecessor} must be packaged, reported deployed, and recorded first; "
-            . implode('; ', $missing) . '. No override exists.'
+        ? "RELEASE SEQUENCE WARNING {$requested}: immediate predecessor {$predecessor} was not fully packaged, recorded, and observed in deployment; "
+            . implode('; ', $missing) . '. Packaging remains available.'
         : '';
 }
 

@@ -11,6 +11,8 @@
 # SnapSmack Changelog
 ## Unreleased
 
+- Changes development release sequencing from a hard gate to an operator warning, so the current intended release can be packaged directly without manufacturing and deploying obsolete intermediate builds.
+
 ## 0.7.864D - 2026-10-11 - Managed fleet release gate
 
 - Keeps the sequential release gate fail-closed unless the predecessor is packaged, recorded, and reported deployed, while preventing unrelated older development installs from vetoing a completed managed-fleet rollout.
