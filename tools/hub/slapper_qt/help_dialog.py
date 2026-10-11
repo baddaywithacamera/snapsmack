@@ -218,6 +218,19 @@ TOPICS = [
      "read is skipped; it does not cancel the job. Nothing on disk is "
      "changed, and an exact print size larger than the paper is brought down "
      "to fit rather than printed off the edge."),
+    ("Emailing photographs",
+     "EMAIL... is beside PRINT in the editor's OUTPUT row and under PRESENT in "
+     "the library. SNAP SLAPPER makes sending-sized copies -- your originals "
+     "are never touched -- and then opens a draft in your own mail program. It "
+     "never sends anything: there is no mail account in SNAP SLAPPER, no "
+     "address book and no password to give it. Pressing Send is yours. The "
+     "place the photograph was taken is removed from the copies by default, "
+     "because an email is out of your hands once it has gone; untick that if "
+     "you want the location to travel with them. If you use webmail in a "
+     "browser rather than a mail program, no application can put files into "
+     "that page for you: the copies are left in one folder, the folder opens, "
+     "a draft is started, and you drag the files in. SNAP SLAPPER says which "
+     "of the two it did."),
     ("Projects, recipes, and export",
      "Save Project writes a .slapper file with all your editing steps. External "
      "textures are recorded by name, source, rights status, and restore link; "
