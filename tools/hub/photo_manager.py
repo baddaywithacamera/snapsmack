@@ -390,26 +390,82 @@ def duplicate_groups(paths):
     return groups
 
 
-def quality_flags(paths, blur_threshold=18.0, dark_threshold=28.0):
-    results = []
+# A 3x3 Laplacian. The variance of this filter's output is the standard
+# sharpness measure; the offset keeps negative responses inside 8-bit range.
+_LAPLACIAN = ImageFilter.Kernel((3, 3), (0, 1, 0, 1, -4, 1, 0, 1, 0),
+                                scale=1, offset=128)
+
+# Measured on a real photograph (projects/snapsmack-ca/img/sean-paddleboard.jpg,
+# 1950x1300): sharp 422, blurred by 2px 107, by 3px 36, by 5px 7. Synthetic
+# cases: hard lines 5419, flat grey 0, random noise 13550. 30 therefore sits
+# below anything acceptably sharp and above anything visibly soft.
+SOFT_SHARPNESS = 30.0
+DARK_BRIGHTNESS = 28.0
+
+
+def sharpness(photo):
+    """Variance of the Laplacian over the interior -- higher is sharper.
+
+    The previous measure was the variance of FIND_EDGES over the WHOLE frame,
+    compared against 18. Measured, that scored a 14-pixel blur at 119 and a
+    completely flat grey rectangle at 189 -- because FIND_EDGES draws a bright
+    border around the image, and that artifact dominated the number. So the
+    blur flag could not fire on a real photograph, and the ranking was
+    meaningless. The border is cropped off and a Laplacian is used instead.
+    """
+    grey = ImageOps.grayscale(ImageOps.exif_transpose(photo))
+    grey.thumbnail((640, 640), Image.Resampling.BILINEAR)
+    width, height = grey.size
+    if width < 16 or height < 16:
+        return 0.0
+    inset = (int(width * .03), int(height * .03),
+             int(width * .97), int(height * .97))
+    response = grey.filter(_LAPLACIAN).crop(inset)
+    return round(ImageStat.Stat(response).var[0], 1)
+
+
+def quality_measures(paths):
+    """Sharpness and brightness for every readable path, in order."""
+    measures = []
     for path in paths:
         try:
             with Image.open(path) as image:
+                image.load()
+                score = sharpness(image)
                 sample = ImageOps.grayscale(ImageOps.exif_transpose(image))
                 sample.thumbnail((512, 512), Image.Resampling.BILINEAR)
-                edges = sample.filter(ImageFilter.FIND_EDGES)
-                blur_score = ImageStat.Stat(edges).var[0]
                 brightness = ImageStat.Stat(sample).mean[0]
-            reasons = []
-            if blur_score < blur_threshold:
-                reasons.append("possibly blurry")
-            if brightness < dark_threshold:
-                reasons.append("very dark")
-            if reasons:
-                results.append({"path": path, "reasons": reasons,
-                                "sharpness": round(blur_score, 1), "brightness": round(brightness, 1)})
         except Exception:
             continue
+        measures.append({"path": path, "sharpness": score,
+                         "brightness": round(brightness, 1)})
+    return measures
+
+
+def quality_flags(paths, blur_threshold=SOFT_SHARPNESS,
+                  dark_threshold=DARK_BRIGHTNESS, relative=0.30):
+    """Flag the soft and the very dark. Reads only; changes nothing.
+
+    Two tests, because one is not enough. The absolute threshold catches a
+    frame that is soft by any standard. The relative one catches a frame that
+    is soft FOR THIS FOLDER -- the misfocused shot in a set where everything
+    else is crisp, which is the one worth finding when choosing between frames
+    of the same subject.
+    """
+    measures = quality_measures(paths)
+    scores = sorted(item["sharpness"] for item in measures)
+    median = scores[len(scores) // 2] if scores else 0.0
+    results = []
+    for item in measures:
+        reasons = []
+        if item["sharpness"] < blur_threshold or (
+                median > 0 and item["sharpness"] < median * relative):
+            reasons.append("possibly blurry")
+        if item["brightness"] < dark_threshold:
+            reasons.append("very dark")
+        if reasons:
+            results.append(dict(item, reasons=reasons))
     return results
+
 
 # ===== SNAPSMACK EOF =====
