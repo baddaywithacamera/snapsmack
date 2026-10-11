@@ -120,6 +120,23 @@ body {
     white-space: nowrap;
 }
 
+/* The strict shared navigation renderer emits one list item per link.  The
+   original 50 SHADES header put a pipe between those links; retain that
+   presentation without asking the shared component to carry skin markup. */
+.nav-menu > li {
+    display: inline-flex;
+    align-items: center;
+}
+
+.nav-menu > li + li::before {
+    content: "|";
+    display: inline-block;
+    margin: 0 15px;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    cursor: default;
+}
+
 .nav-menu a {
     color: var(--accent);
     text-decoration: none;
