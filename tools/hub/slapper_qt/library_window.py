@@ -619,6 +619,11 @@ class LibraryWindow(QMainWindow):
         self.act_slideshow.triggered.connect(self._start_slideshow)
         self.act_contact_sheet = QAction("Create Contact Sheet…", self)
         self.act_contact_sheet.triggered.connect(self._create_contact_sheet)
+        self.act_email = QAction("Email…", self)
+        self.act_email.setToolTip(
+            "Make sending-sized copies of the selected photographs and open a "
+            "draft in your mail program. Nothing is sent by SNAP SLAPPER.")
+        self.act_email.triggered.connect(self._email_selected)
         self.act_print = QAction("Print…", self)
         self.act_print.setShortcut(QKeySequence("Ctrl+P"))
         self.act_print.setToolTip(
@@ -645,14 +650,14 @@ class LibraryWindow(QMainWindow):
 
         output_menu = QMenu(self)
         for action in (self.act_slideshow, self.act_contact_sheet,
-                       self.act_print):
+                       self.act_print, self.act_email):
             output_menu.addAction(action)
         output_button = QToolButton()
         output_button.setText("Present")
         output_button.setPopupMode(QToolButton.InstantPopup)
         output_button.setMenu(output_menu)
         output_button.setToolTip(
-            "Slideshow, contact sheet, or print")
+            "Slideshow, contact sheet, print, or email")
         bar.addWidget(output_button)
 
         # Standard menus make the same operations discoverable without knowing
@@ -677,7 +682,9 @@ class LibraryWindow(QMainWindow):
         output_bar_menu.addAction(self.act_slideshow)
         output_bar_menu.addAction(self.act_contact_sheet)
         output_bar_menu.addAction(self.act_print)
+        output_bar_menu.addAction(self.act_email)
         file_menu.addAction(self.act_print)
+        file_menu.addAction(self.act_email)
 
         act_help = QAction("Help", self)
         act_help.setShortcut(QKeySequence.HelpContents)   # F1
@@ -1155,6 +1162,15 @@ class LibraryWindow(QMainWindow):
             return
         self.status.showMessage(f"Created {len(outputs)} rotated copy/copies", 6000)
         self._reload_current()
+
+    def _email_selected(self):
+        paths = self._selected_photo_paths()
+        if not paths:
+            QMessageBox.information(
+                self, "Email", "Select the photographs to email first.")
+            return
+        from .email_photos import EmailPhotosDialog
+        EmailPhotosDialog(self, paths).exec()
 
     def _print_selected(self):
         """Print the selection, or the whole folder if nothing is selected."""

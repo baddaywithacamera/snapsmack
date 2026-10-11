@@ -24,6 +24,7 @@ _hidden = collect_submodules('slapper_qt') + [
     # Printing lives in its own PySide module and its own Qt DLL. Without
     # naming it here the frozen build imports fine and then cannot print.
     'PySide6.QtPrintSupport',
+    'slapper_qt.print_photos', 'slapper_qt.email_photos',
     'PIL', 'PIL.Image', 'PIL.TiffImagePlugin', 'psd_tools',
     'numpy', 'OpenImageIO',
 ]
