@@ -16,6 +16,7 @@
 
 require_once __DIR__ . '/skin-manifest.php';
 require_once __DIR__ . '/public-route-aliases.php';
+require_once __DIR__ . '/indieweb.php';
 if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
 
 function snapsmack_latest_asset_image(PDO $pdo): string
@@ -71,6 +72,70 @@ function snapsmack_prepare_skin_view(PDO $pdo, array $settings, string $skin_slu
     $view['route_aliases'] = snapsmack_public_route_aliases($settings, $manifest);
     $view['navigation'] = snapsmack_prepare_skin_navigation($pdo, $settings, $manifest);
     return $view;
+}
+
+/**
+ * Build the bounded data model for the reusable CROP CIRCLES navigation.
+ * Persistence, URL validation and taxonomy discovery stay in the CMS; skins
+ * receive only display-ready values and choose where the component is placed.
+ */
+function snapsmack_prepare_crop_circles(PDO $pdo, array $settings, array $manifest, array $navigation): array
+{
+    $base = defined('BASE_URL') ? BASE_URL : '/';
+    $model = [
+        'identity' => trim(str_replace('|', ' ', (string)($settings['scroll_masthead_lines'] ?? $settings['site_name'] ?? 'SnapSmack'))),
+        'home_url' => $base,
+        'navigation' => $navigation,
+        'search' => ['action' => $base, 'placeholder' => substr(trim((string)($settings['search_placeholder'] ?? 'Search or #tag…')), 0, 120)],
+        'filters' => [],
+        'social' => [],
+        'appearance' => [],
+        'icon_sprite_url' => $base . 'assets/icons/crop-circles.svg',
+    ];
+
+    foreach ([
+        'categories' => ['SELECT id, cat_name AS label FROM snap_categories WHERE show_in_archive = 1 ORDER BY cat_name', 'cat'],
+        'albums' => ['SELECT id, album_name AS label FROM snap_albums ORDER BY album_name', 'alb'],
+        'collections' => ['SELECT id, title AS label FROM snap_collections ORDER BY title', 'col'],
+        'photographer' => ["SELECT u.id, u.username AS label FROM snap_users u WHERE EXISTS (SELECT 1 FROM snap_images i WHERE i.user_id=u.id AND i.img_status='published') ORDER BY u.username", 'usr'],
+    ] as $label => [$sql, $type]) {
+        try {
+            $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+            if ($label === 'photographer' && count($rows) < 2) continue;
+            if ($rows) $model['filters'][] = ['label' => $label, 'type' => $type, 'items' => $rows];
+        } catch (Throwable $e) {
+            // Optional taxonomy tables differ on old installs; omit unavailable groups.
+        }
+    }
+
+    if (($settings['social_dock_enabled'] ?? '0') === '1') {
+        $platforms = [
+            'flickr'=>'Flickr','smugmug'=>'SmugMug','instagram'=>'Instagram','facebook'=>'Facebook',
+            'youtube'=>'YouTube','500px'=>'500px','vero'=>'Vero','threads'=>'Threads',
+            'mastodon'=>'Mastodon','bluesky'=>'Bluesky','linkedin'=>'LinkedIn','pinterest'=>'Pinterest',
+            'tumblr'=>'Tumblr','deviantart'=>'DeviantArt','behance'=>'Behance','linktree'=>'Linktree','website'=>'Website',
+        ];
+        foreach ($platforms as $key => $label) {
+            $url = snapsmack_indieweb_url((string)($settings['social_dock_' . $key] ?? ''));
+            if ($url !== '') $model['social'][] = ['url' => $url, 'label' => $label, 'icon' => $key];
+        }
+    }
+    $dock = is_array($manifest['social_dock'] ?? null) ? $manifest['social_dock'] : [];
+    $dark = (($dock['color_mode'] ?? $settings['social_dock_color_mode'] ?? 'light') === 'dark');
+    $color = (string)($dark
+        ? ($dock['color_dark'] ?? $settings['social_dock_color_dark'] ?? '#1a1a1a')
+        : ($dock['color_light'] ?? $settings['social_dock_color_light'] ?? '#ffffff'));
+    if (!preg_match('/^#[0-9a-f]{6}$/i', $color)) $color = $dark ? '#1a1a1a' : '#ffffff';
+    $rgb = implode(',', [hexdec(substr($color, 1, 2)), hexdec(substr($color, 3, 2)), hexdec(substr($color, 5, 2))]);
+    $model['appearance'] = [
+        'icon' => $color,
+        'background' => $dark ? 'rgba(255,255,255,.7)' : 'rgba(0,0,0,.7)',
+        'background_hover' => $dark ? 'rgba(255,255,255,.95)' : 'rgba(0,0,0,.9)',
+        'border' => 'rgba(' . $rgb . ',.3)',
+        'border_hover' => 'rgba(' . $rgb . ',.7)',
+        'opacity' => max(0, min(100, (int)($dock['opacity'] ?? $settings['social_dock_opacity'] ?? 50))) / 100,
+    ];
+    return $model;
 }
 
 /** Build the read-only Flickr-style masthead model for SLICKR. */

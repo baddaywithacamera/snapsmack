@@ -793,6 +793,12 @@ $inventory = [
             'css'          => 'assets/css/ss-engine-grid-nav.css',
             'has_settings' => false,
         ],
+        'smack-crop-circles' => [
+            'label'        => 'Crop Circles welded navigation, search, filter, and social dock',
+            'path'         => 'assets/js/ss-engine-archive-filter.js',
+            'css'          => 'assets/css/ss-engine-social-dock.css',
+            'has_settings' => false,
+        ],
         'smack-grid-modal' => [
             'label'        => 'The Grid post modal overlay (IG-style popover)',
             'path'         => 'assets/js/ss-engine-grid-modal.js',
