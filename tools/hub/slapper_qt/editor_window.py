@@ -3114,17 +3114,32 @@ class EditorWindow(QMainWindow):
         from .ai_heal_dialog import AIHealDialog
         AIHealDialog(self, operation="fill").exec()
 
+    def render_document_image(self):
+        """A full-resolution flattened render, for work that must be native.
+
+        Generative Fill and AI Heal call this from their worker thread, the
+        way the flattened-JPEG job already does, so the area they rebuild is
+        cut from the photograph at its own resolution instead of from the
+        2048-pixel screen preview.
+        """
+        if not self.doc:
+            return None
+        return self.doc.render().convert("RGB")
+
     def apply_ai_generation(self, path, mask, model, instruction="", operation="heal",
-                            provider="Google Gemini"):
+                            provider="Google Gemini", input_image=None,
+                            output_image=None, drift=None):
         """Add the generated frame as a locally enforced masked image layer."""
         # Build the generated layer completely before recording history. An
         # earlier version recorded an unmasked halfway state, so stepping back
         # in History exposed Gemini's entire returned frame.
         is_fill = operation == "fill"
         layer_name = "Generative Fill" if is_fill else "AI Heal"
-        input_image = self.render_preview_image((2048, 2048)).convert("RGB")
-        with Image.open(path) as generated:
-            output_image = generated.convert("RGB")
+        if input_image is None:
+            input_image = self.render_preview_image((2048, 2048)).convert("RGB")
+        if output_image is None:
+            with Image.open(path) as generated:
+                output_image = generated.convert("RGB")
         layer = self.doc.add_image_layer(path, name=layer_name, record=False)
         layer["fit"] = "stretch"
         import gemini_image_edit
@@ -3135,6 +3150,12 @@ class EditorWindow(QMainWindow):
         layer["mask_enabled"] = True
         layer["mask_linked"] = True
         layer["mask_kind"] = "ai-fill-selection" if is_fill else "ai-heal-selection"
+        if drift is not None:
+            # Difference outside the selection between what was sent and what
+            # came back. The model is told to change nothing out there, so a
+            # high number means the returned frame is shifted rather than
+            # repaired -- the failure a squashed aspect ratio produces.
+            layer["ai_outside_selection_drift"] = float(drift)
         import slapper_provenance
         operation_class = ("C" if is_fill else
                            slapper_provenance.classify_heal_instruction(instruction))
@@ -3155,8 +3176,12 @@ class EditorWindow(QMainWindow):
         self.layers_panel.rebuild()
         self.request_render()
         self._update_title()
-        self.status.showMessage(
-            f"{layer_name} added as a masked layer — the original remains unchanged.")
+        message = (f"{layer_name} added as a masked layer — "
+                   "the original remains unchanged.")
+        if drift is not None and drift > 8.0:
+            message += (f" The model also changed the area outside your selection "
+                        f"(difference {drift:.1f}/255); check the edges.")
+        self.status.showMessage(message)
 
     # --- Normal / Advanced mode ---------------------------------------------
     def _init_mode(self):
