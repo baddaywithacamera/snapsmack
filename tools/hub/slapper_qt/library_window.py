@@ -93,6 +93,23 @@ def _transfer_photo_files(paths, destination, copy_files=False):
     return done, errors
 
 
+def _untinted_icon(pixmap):
+    """A QIcon that looks the same when the item is selected.
+
+    QIcon(pixmap) registers only the Normal state. Qt then SYNTHESISES the
+    selected appearance by blending the pixmap with the palette highlight,
+    which under Fusion is #308cc6 -- a mid blue. Over a warm photograph that
+    reads as pink, which is why the selected thumbnail turned magenta while
+    the stored image was perfectly fine. Registering every state stops Qt
+    inventing one.
+    """
+    icon = QIcon()
+    for mode in (QIcon.Normal, QIcon.Selected, QIcon.Active, QIcon.Disabled):
+        icon.addPixmap(pixmap, mode, QIcon.Off)
+        icon.addPixmap(pixmap, mode, QIcon.On)
+    return icon
+
+
 class _PhotoList(QListWidget):
     """Thumbnail grid that exports selected photos as ordinary file drags."""
 
@@ -246,9 +263,17 @@ class _ThumbTask(QRunnable):
             else:
                 image = None
             if image is None and is_raw:
-                source = raw_preview.render(self.path)
-                stamp = _capture_timestamp(source, self.path)
-                image = ImageOps.exif_transpose(source).convert("RGBA")
+                # Same bargain as the filmstrip: the raw's own embedded
+                # JPEG fills a grid tile ~48x faster than developing the
+                # file, and at this size the two are indistinguishable.
+                preview = raw_preview.embedded_preview(self.path, THUMB_SOURCE)
+                if preview is not None:
+                    stamp = _capture_timestamp(None, self.path)
+                    image = preview.convert("RGBA")
+                else:
+                    source = raw_preview.render(self.path)
+                    stamp = _capture_timestamp(source, self.path)
+                    image = ImageOps.exif_transpose(source).convert("RGBA")
             elif image is None:
                 # Metadata is best-effort and independent from display decode.
                 # High-bit/compressed TIFFs use the editor's OIIO boundary;
@@ -1531,7 +1556,7 @@ class LibraryWindow(QMainWindow):
     def _placeholder_icon(self):
         pixmap = QPixmap(THUMB_SOURCE, THUMB_SOURCE)
         pixmap.fill(Qt.transparent)
-        return QIcon(pixmap)
+        return _untinted_icon(pixmap)
 
     def _start_thumbnail(self, path, attempt=0):
         recovery = self._recovery_path(path)
@@ -1546,7 +1571,7 @@ class LibraryWindow(QMainWindow):
         pool.start(task)
 
     def _on_thumb(self, path, qimage, stamp):
-        icon = QIcon(QPixmap.fromImage(qimage))
+        icon = _untinted_icon(QPixmap.fromImage(qimage))
         self._icons[path] = icon
         self._icon_versions[path] = self._thumbnail_version(path)
         self._stamps[path] = stamp

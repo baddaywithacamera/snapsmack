@@ -13,6 +13,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QWidget
 
+import numpy as np
 from PIL import Image
 
 BOX_W = 238      # display width in the rail
@@ -170,6 +171,34 @@ class MaskBrushCanvas(QWidget):
         self.update()
 
     # --- display ------------------------------------------------------------
+    def _tint_overlay(self):
+        """A translucent red wash over the painted area, or None.
+
+        The mask is a selection, not the picture. Which end of it is "painted"
+        depends on the caller: Generative Fill and AI Heal paint white to mark
+        the area a model may rebuild (tint_white), while the layer mask brush
+        paints black to hide part of a layer.
+        """
+        if self._mask is None:
+            return None
+        width, height = self._mask.width(), self._mask.height()
+        if width <= 0 or height <= 0:
+            return None
+        pointer = self._mask.constBits()
+        grey = np.frombuffer(pointer, dtype=np.uint8,
+                             count=self._mask.sizeInBytes())
+        grey = grey.reshape(height, self._mask.bytesPerLine())[:, :width]
+        painted = grey if self._tint_white else (255 - grey)
+        alpha = (painted.astype(np.uint16) * 110 // 255).astype(np.uint8)
+        if not alpha.any():
+            return None
+        # Qt wants premultiplied ARGB32 in BGRA byte order.
+        red = (alpha.astype(np.uint16) * 230 // 255).astype(np.uint8)
+        zero = np.zeros_like(alpha)
+        argb = np.dstack((zero, zero, red, alpha)).copy()
+        return QImage(argb.data, width, height, width * 4,
+                      QImage.Format_ARGB32_Premultiplied).copy()
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(20, 20, 20))
@@ -178,8 +207,14 @@ class MaskBrushCanvas(QWidget):
             painter.drawText(self.rect(), Qt.AlignCenter, "Open a photo")
             painter.end()
             return
-        if self._mask is not None:
-            painter.drawImage(0, 0, self._mask)
+        # The photograph itself. This was missing: paintEvent checked _photo
+        # for None and then drew only the mask, so Generative Fill -- whose
+        # mask starts empty -- showed a solid black box, and the layer mask
+        # brush showed a solid white one. The widget has never shown a photo.
+        painter.drawPixmap(0, 0, self._photo)
+        overlay = self._tint_overlay()
+        if overlay is not None:
+            painter.drawImage(0, 0, overlay)
         # brush cursor
         if self._hover is not None:
             painter.setPen(QPen(QColor(57, 255, 20), 1))
