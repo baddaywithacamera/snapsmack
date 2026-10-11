@@ -11,9 +11,9 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.858D - 2026-10-10 - Crop Circles
+## 0.7.859D - 2026-10-10 - Crop Circles
 
-- Restores SCROLL's original desktop presentation without returning executable behavior to the skin. The new reusable CMS-owned **Crop Circles** component welds the normal icon navigation, search, taxonomy filter, and social dock into the single continuous row the skin had before the security move. SCROLL 0.1.54 calls that bounded component and regains its viewport photo stage, bottom PREV/FIRST/INFO/COMMENTS/LAST/NEXT strip, and hidden information drawer.
+- Restores SCROLL's original desktop presentation without returning executable behavior to the skin. The new reusable CMS-owned **Crop Circles** component welds the normal icon navigation, search, taxonomy filter, and social dock into the single continuous row the skin had before the security move. SCROLL 0.1.55 calls that bounded component and regains its viewport photo stage, bottom PREV/FIRST/INFO/COMMENTS/LAST/NEXT strip, and hidden information drawer.
 - Stores the shared Crop Circles SVG symbol set in the CMS asset library so other skins can reuse the same control without copying executable code or icon markup into their packages.
 - Adds a regression that requires both halves of the welded control and the original SCROLL solo-page structure. A partial three-circle menu can no longer pass as restored.
 
