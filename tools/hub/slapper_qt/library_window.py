@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QComboBox, QLineEdit, QTreeView, QSplitter,
     QFileSystemModel, QAbstractItemView, QInputDialog, QMessageBox, QMenu,
     QToolButton, QDockWidget, QVBoxLayout, QPushButton, QCheckBox, QDialog,
+    QApplication,
 )
 from PIL import Image, ImageOps
 
@@ -603,7 +604,12 @@ class LibraryWindow(QMainWindow):
         self.act_rotate_right = QAction("Create Rotated Copies — Right", self)
         self.act_rotate_right.triggered.connect(lambda: self._rotate_selected(-90))
         self.act_find_duplicates = QAction("Find Exact Duplicates", self)
+        self.act_find_quality = QAction("Flag Blurry or Dark…", self)
+        self.act_find_quality.setToolTip(
+            "Measure every photograph in this folder and select the soft or "
+            "very dark ones. Nothing is moved, changed or deleted.")
         self.act_find_duplicates.triggered.connect(self._find_duplicates)
+        self.act_find_quality.triggered.connect(self._find_quality_issues)
         self.act_export_selection = QAction("Batch Export…", self)
         self.act_export_selection.triggered.connect(self._export_selected)
         self.act_apply_recipe = QAction("Apply Recipe to Selection…", self)
@@ -620,6 +626,7 @@ class LibraryWindow(QMainWindow):
                        self.act_restore_trash, self.act_rotate_left,
                        self.act_undo_files,
                        self.act_rotate_right, self.act_find_duplicates,
+                       self.act_find_quality,
                        self.act_export_selection, self.act_apply_recipe,
                        self.act_show_folder):
             organize_menu.addAction(action)
@@ -655,6 +662,7 @@ class LibraryWindow(QMainWindow):
                        self.act_restore_trash, self.act_rotate_left,
                        self.act_undo_files,
                        self.act_rotate_right, self.act_find_duplicates,
+                       self.act_find_quality,
                        self.act_export_selection, self.act_apply_recipe):
             organize_bar_menu.addAction(action)
         output_bar_menu = self.menuBar().addMenu("Present")
@@ -1138,6 +1146,47 @@ class LibraryWindow(QMainWindow):
         self.status.showMessage(f"Created {len(outputs)} rotated copy/copies", 6000)
         self._reload_current()
 
+    def _find_quality_issues(self):
+        """Select the soft or very dark photographs, and change nothing else.
+
+        photo_manager.quality_flags() has existed all along and the Tk library
+        called it; the Qt port kept the duplicate finder beside it and left
+        this one unreachable. It is the measured half of "which of these is the
+        keeper" -- sharpness and exposure are numbers, "best" is a judgement.
+        """
+        paths = self._paths
+        if not paths:
+            QMessageBox.information(
+                self, "Flag Blurry or Dark", "Open a folder of photographs first.")
+            return
+        previous = self.statusBar().currentMessage()
+        self.status.showMessage(
+            f"Measuring {len(paths):,} photograph(s)…")
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            results = photo_manager.quality_flags(paths)
+        finally:
+            QApplication.restoreOverrideCursor()
+            if not results:
+                self.status.showMessage(previous)
+        flagged = {os.path.normcase(os.path.abspath(item["path"]))
+                   for item in results}
+        self.list.clearSelection()
+        for path, item in self._items.items():
+            if os.path.normcase(os.path.abspath(path)) in flagged:
+                item.setSelected(True)
+        soft = sum(1 for item in results if "possibly blurry" in item["reasons"])
+        dark = sum(1 for item in results if "very dark" in item["reasons"])
+        if not results:
+            QMessageBox.information(
+                self, "Flag Blurry or Dark",
+                f"Measured {len(paths):,} photograph(s). None looked soft or "
+                "very dark. Nothing was changed.")
+            return
+        self.status.showMessage(
+            f"Selected {len(flagged):,} of {len(paths):,}: {soft:,} possibly "
+            f"soft, {dark:,} very dark — nothing changed", 10000)
+
     def _find_duplicates(self):
         groups = photo_manager.duplicate_groups(self._paths)
         duplicates = {os.path.normcase(os.path.abspath(path))
@@ -1478,6 +1527,13 @@ class LibraryWindow(QMainWindow):
             return 0.0
 
     def _populate(self):
+        # Rebuilding the grid used to drop the selection on the floor. The last
+        # thumbnail of a folder settles the date sort by calling this, so a
+        # selection made moments earlier -- by hand, or by Find Exact
+        # Duplicates or Flag Blurry or Dark -- silently emptied itself a second
+        # later. Hold the chosen paths across the rebuild.
+        chosen = {os.path.normcase(os.path.abspath(path))
+                  for path in self._selected_photo_paths()}
         self.list.clear()
         self._items.clear()
         placeholder = self._placeholder_icon()
@@ -1506,6 +1562,8 @@ class LibraryWindow(QMainWindow):
                 self._items[path] = item
                 if path not in self._icons or self._icon_versions.get(path) != version:
                     self._start_thumbnail(path)
+                if chosen and os.path.normcase(os.path.abspath(path)) in chosen:
+                    item.setSelected(True)
             if end < len(paths):
                 self.status.showMessage(
                     f"Showing {end} of {len(paths)} photos…")
