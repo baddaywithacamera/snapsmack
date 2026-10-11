@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.862D - 2026-10-11 - Complete Crop Circles
+
+- Restores SCROLL's complete nine-circle welded menu by declaring the shared CMS-owned Crop Circles asset. The existing four Social Dock links were already in the rendered model but had no shared styling, leaving them present yet visually zero-sized.
+- Preserves the selected SCROLL masthead face on solo pages when the optional solo-name font is blank. Empty optional font values now inherit instead of emitting an empty `font-family` override.
+- Adds regressions that require SCROLL to load Crop Circles and forbid empty font declarations from replacing the configured masthead.
+
 ## 0.7.861D - 2026-10-11 - Finish the SCROLL wall
 
 - Restores SCROLL's CMS-driven infinite loading after the strict-template move dropped the presentation tripwire. Later batches now append into the existing native-aspect wall until the complete public library and real footer are reached.

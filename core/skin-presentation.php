@@ -279,6 +279,10 @@ function snapsmack_declared_skin_style(string $skinSlug, array $options): string
         if (!$properties) continue;
         if ($property === 'font-family') {
             $font = trim((string)$value);
+            // An empty optional font means "inherit the skin's presentation".
+            // Never turn it into `font-family:"", sans-serif`, which overrides
+            // the configured masthead font with the browser default.
+            if ($font === '') continue;
             if ($font === 'inherit' || str_contains($font, ',')) {
                 $cssValue = $font;
             } else {
