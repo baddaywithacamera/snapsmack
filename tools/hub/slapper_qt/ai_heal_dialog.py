@@ -142,28 +142,52 @@ class AIHealDialog(QDialog):
 
         def work():
             try:
+                # The generated pixels are cut from the PHOTOGRAPH, not from the
+                # screen preview. Rendering the document here (on this worker
+                # thread, the same way the flattened-JPEG job does) is what lets
+                # the patch come back at the photograph's own resolution.
+                document = self.host.render_document_image()
+                full_mask = (mask if document.size == self.photo.size else
+                             mask.resize(document.size, Image.Resampling.LANCZOS))
+                bounds = full_mask.getbbox()
+                box = gemini_image_edit.square_tile_box(document.size, bounds)
+                tile = document.crop(box).convert("RGB")
+                tile_mask = full_mask.crop(box)
                 if provider == "local":
-                    result, used_model = local_fill.fill(self.photo, mask, self.prompt.text())
-                    payload = (result, mask, used_model, "Local Diffusers")
+                    patch, used_model = local_fill.fill_tile(
+                        tile, tile_mask, self.prompt.text())
+                    drift = gemini_image_edit.alignment_error(tile, patch, tile_mask)
+                    payload = (patch, tile, tile_mask, mask, box, document.size,
+                               used_model, "Local Diffusers", drift)
                 else:
-                    operation = gemini_image_edit.fill if self.is_fill else gemini_image_edit.heal
-                    result = operation(self.photo, mask, self.prompt.text(), key, model=model)
-                    payload = (result, mask, model, "Google Gemini")
+                    patch, _instruction, drift = gemini_image_edit.heal_tile(
+                        tile, tile_mask, self.prompt.text(), key, model=model,
+                        operation=self.operation)
+                    payload = (patch, tile, tile_mask, mask, box, document.size,
+                               model, "Google Gemini", drift)
                 self.signals.finished.emit(payload)
             except Exception as error:  # noqa: BLE001
                 self.signals.failed.emit(str(error))
         threading.Thread(target=work, daemon=True).start()
 
     def _received(self, payload):
-        result, mask, model, provider = payload
-        result = result.resize(self.photo.size, Image.Resampling.LANCZOS)
+        (patch, tile, tile_mask, layer_mask, box, document_size, model,
+         provider, drift) = payload
+        # The layer is document-sized and transparent everywhere except the
+        # tile, so the image layer's "stretch" fit is a 1:1 placement at export
+        # instead of a 3x upscale of a 2048-pixel preview. An almost entirely
+        # transparent PNG costs little on disk.
+        canvas = gemini_image_edit.tile_layer_image(
+            document_size, patch, tile_mask, box)
         folder = os.path.join(snap_home.shared_library(), "snap_slapper", "generative")
         os.makedirs(folder, exist_ok=True)
         slug = "ai-fill" if self.is_fill else "ai-heal"
         path = os.path.join(folder, f"{slug}-{int(time.time() * 1000)}.png")
-        result.save(path, "PNG")
+        canvas.save(path, "PNG")
         self.host.apply_ai_generation(
-            path, mask, model, self.prompt.text().strip(), self.operation, provider)
+            path, layer_mask, model,
+            self.prompt.text().strip(), self.operation, provider,
+            input_image=tile, output_image=patch, drift=drift)
         self.accept()
 
     def _failed(self, message):
