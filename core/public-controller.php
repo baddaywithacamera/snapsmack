@@ -495,8 +495,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             ? snapsmack_instant_camera_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment)
             : (in_array($skin, $gridModalSkins, true)
             ? snapsmack_grid_modal_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment, $skin)
-            : ['status' => 200, 'kind' => 'photo', 'item' => snapsmack_game_on_focus_item($item),
-                'comments' => $repository->approvedComments((int)$item['id'], null), 'navigation' => $navigation]));
+            : snapsmack_photo_response($repository, snapsmack_game_on_focus_item($item), $navigation)));
     }
     if ($route === 'post') {
         $item = $slug !== '' ? $repository->postBySlug($slug) : $repository->postById($id);
