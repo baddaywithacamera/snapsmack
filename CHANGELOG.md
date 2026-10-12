@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.866D - 2026-10-11 - Restore traditional photo navigation
+
+- Restores complete previous, next, first, and last destinations plus tags and technical metadata to traditional single-photo skins after the strict public-controller migration omitted their bounded detail model.
+- Restores 50 Shades hashtag presentation to its original centred content column with readable spacing.
+
 ## 0.7.865D - 2026-10-11 - Restore SCROLL edge-to-edge columns
 
 - Restores SCROLL's original edge-to-edge native-aspect column wall: portrait tiles again fill their complete column width instead of being narrowed inside the slot and surrounded by false masonry gaps.
