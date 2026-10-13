@@ -400,7 +400,12 @@ _LAPLACIAN = ImageFilter.Kernel((3, 3), (0, 1, 0, 1, -4, 1, 0, 1, 0),
 # cases: hard lines 5419, flat grey 0, random noise 13550. 30 therefore sits
 # below anything acceptably sharp and above anything visibly soft.
 SOFT_SHARPNESS = 30.0
-DARK_BRIGHTNESS = 28.0
+# Measured on the same real photograph: its mean brightness is 28.3, so the
+# inherited floor of 28 would have called a correctly exposed, moody frame
+# "very dark" by a third of a point. A near-black frame measures 5.7. Flagging
+# a good photograph is the worse mistake, so the floor sits well below any
+# frame that is actually usable.
+DARK_BRIGHTNESS = 12.0
 
 
 def sharpness(photo):

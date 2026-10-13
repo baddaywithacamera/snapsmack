@@ -15,7 +15,7 @@ _hidden = collect_submodules('slapper_qt') + [
     'editor_engine', 'built_in_lewks', 'found_textures', 'texture_assets',
     'highbit_image', 'gpu_acceleration', 'highbit_decode_worker', 'blog_copy_worker', 'subprocess_limits', 'render_graph',
     'core_release_gate',
-    'photo_manager', 'raw_preview', 'hdr_processor', 'slapper_filters', 'lewk_again', 'gemini_image_edit',
+    'photo_manager', 'raw_preview', 'slapper_faces', 'hdr_processor', 'slapper_filters', 'lewk_again', 'gemini_image_edit',
     'slapper_qt.external_edit',
     'slapper_provenance',
     'snap_home', 'snap_log', 'snap_profiles', 'snap_creds', 'snap_vault',
@@ -25,6 +25,8 @@ _hidden = collect_submodules('slapper_qt') + [
     # naming it here the frozen build imports fine and then cannot print.
     'PySide6.QtPrintSupport',
     'slapper_qt.print_photos', 'slapper_qt.email_photos',
+    'slapper_qt.people_panel', 'slapper_qt.faces_component',
+    'slapper_qt.cull', 'slapper_qt.cull_dialog',
     'PIL', 'PIL.Image', 'PIL.TiffImagePlugin', 'psd_tools',
     'numpy', 'OpenImageIO',
 ]
@@ -98,7 +100,12 @@ a = Analysis(
     binaries=_gpu_binaries,
     datas=_gpu_datas + [(_license_dir, 'licenses')] +
            [(os.path.join(_src, 'local_ai', name), 'local_ai') for name in
-            ('install_local_fill.py', 'local_fill_runner.py')],
+            ('install_local_fill.py', 'local_fill_runner.py',
+             'install_faces.py', 'faces_runner.py')] +
+           # The detector travels into the People component as a FILE so that
+           # the component runs the application's own slapper_faces.py rather
+           # than a second copy that drifts from it.
+           [(os.path.join(_src, 'slapper_faces.py'), 'local_ai')],
     hiddenimports=_hidden,
     hookspath=[],
     hooksconfig={},
