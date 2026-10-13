@@ -189,6 +189,92 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . '<input type="search" name="q" class="gsd-input" placeholder="' . snap_escape_attr($dock['placeholder'] ?? 'Search or #tag…') . '" autocomplete="off" aria-label="Search photos or tags" tabindex="-1">'
                 . '</form></div>';
         }
+    } elseif ($name === 'archive-filters') {
+        // The archive's own control row: SHOW ALL, the FILTER panel, the
+        // search field and the layout toggles. It lived inside archive.php,
+        // so when strict skins stopped rendering through that file the whole
+        // row disappeared from their archives -- no select and no input on
+        // the page at all, while the switch engine stayed loaded with nothing
+        // to bind to. Rendering it here, from the bounded filter data the
+        // view model already prepares, gives it back to every skin at once
+        // rather than to one. It carries no navigation: a skin's header and
+        // menus are its own.
+        $groups = is_array($data['filters'] ?? null) ? $data['filters'] : [];
+        $search = is_array($data['search'] ?? null) ? $data['search'] : [];
+        $layouts = is_array($data['layouts'] ?? null) ? $data['layouts'] : [];
+        $selected = array_map('strval', (array)($data['selected'] ?? []));
+        $count = count($selected);
+        $showAll = (string)($data['show_all_url'] ?? '');
+        $query = (string)($data['query'] ?? '');
+        // The content cap is the site's own, so it arrives as bounded data and
+        // becomes a custom property on the row. Without it the docked controls
+        // measure from the window and escape the content column.
+        $width = (string)($data['content_width'] ?? '');
+        $width = preg_match('/^\d{3,5}px$/', $width) ? $width : '';
+        $html = '<div id="infobox" class="archive-filter-row"'
+            . ($width !== '' ? ' style="--archive-content-width:' . snap_escape_attr($width) . '"' : '')
+            . '><div class="archive-filter-inner"><div class="nav-links"><div class="center">';
+        $html .= '<a href="' . snap_escape_url($showAll) . '" class="'
+            . ($count === 0 && $query === '' ? 'active' : 'inactive') . '">[ SHOW ALL ]</a>';
+        if ($groups) {
+            $html .= '<span class="sep">/</span>'
+                . '<div class="filter-group saf-wrap">'
+                . '<button id="smack-archive-filter-btn" class="saf-btn'
+                . ($count > 0 ? ' saf-btn--active' : '')
+                . '" aria-expanded="false" aria-controls="smack-archive-filter-panel" type="button">'
+                . '<span class="saf-btn-label">'
+                . ($count > 0 ? snap_escape_html($count . ' SELECTED') : 'FILTER')
+                . '</span><span class="saf-btn-arrow">▾</span></button>'
+                . '<div id="smack-archive-filter-panel" class="saf-panel" role="dialog" aria-label="Filter photos">'
+                . '<input type="text" id="smack-archive-filter-search" class="saf-search"'
+                . ' placeholder="SEARCH FILTERS…" autocomplete="off" spellcheck="false">';
+            foreach ($groups as $group) {
+                if (!is_array($group) || empty($group['items']) || !is_array($group['items'])) continue;
+                $type = preg_replace('/[^a-z]/', '', strtolower((string)($group['type'] ?? '')));
+                if ($type === '') continue;
+                $html .= '<div class="saf-group"><div class="saf-group-header">'
+                    . snap_escape_html(strtoupper((string)($group['label'] ?? ''))) . '</div>';
+                foreach ($group['items'] as $item) {
+                    if (!is_array($item)) continue;
+                    $value = (string)($item['id'] ?? '');
+                    if ($value === '') continue;
+                    $html .= '<label class="saf-item"><input type="checkbox" class="saf-checkbox" name="'
+                        . snap_escape_attr($type) . '[]" value="' . snap_escape_attr($value) . '"'
+                        . (in_array($type . ':' . $value, $selected, true) ? ' checked' : '')
+                        . '><span class="saf-label">'
+                        . snap_escape_html(strtoupper((string)($item['label'] ?? ''))) . '</span></label>';
+                }
+                $html .= '</div>';
+            }
+            $html .= '</div></div>';
+        }
+        if (!empty($search['action'])) {
+            $html .= '<span class="sep">|</span><div class="filter-group">'
+                . '<form method="GET" action="' . snap_escape_url($search['action']) . '" class="archive-search-form" role="search">'
+                . '<input type="search" name="q" class="archive-search-input" autocomplete="off"'
+                . ' aria-label="Search photographs"'
+                . ' placeholder="' . snap_escape_attr($search['placeholder'] ?? 'Search or #tag…') . '"'
+                . ' value="' . snap_escape_attr($query) . '"></form></div>';
+        }
+        $html .= '</div></div>';
+        if ($layouts) {
+            // Docked inside this row, which is why the row is the positioning
+            // context: the shipped fallback is right:40px against whatever is
+            // positioned above it, and it relied on a runtime JS correction
+            // that a skin not loading the toggle engine never receives.
+            $html .= '<div class="archive-controls archive-controls--docked" role="group" aria-label="Archive controls">'
+                . '<div class="archive-layout-toggle" role="group" aria-label="Layout">';
+            foreach ($layouts as $layout) {
+                if (!is_array($layout) || empty($layout['url'])) continue;
+                $html .= '<a href="' . snap_escape_url($layout['url']) . '" class="alt-btn'
+                    . (!empty($layout['active']) ? ' alt-btn--active' : '') . '"'
+                    . (!empty($layout['active']) ? ' aria-current="true"' : '')
+                    . ' title="' . snap_escape_attr($layout['label'] ?? '') . '">'
+                    . snap_escape_html($layout['label'] ?? '') . '</a>';
+            }
+            $html .= '</div></div>';
+        }
+        $html .= '</div></div>';
     } elseif ($name === 'document-head') {
         // The one <head>. Twenty skins carried a byte-identical copy of this
         // block and six variants existed across the thirty, so a bug in it --
