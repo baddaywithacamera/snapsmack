@@ -620,17 +620,6 @@ body {
     transition: opacity 0.3s ease;
 }
 
-/* The archive's Cropped choices preserve each generated aspect thumbnail.
-   Square is the only mode that deliberately forces a 1:1 crop. */
-html[data-archive-thumbnail-shape="natural"] .fsog-archive-grid {
-    align-items: start;
-}
-
-html[data-archive-thumbnail-shape="natural"] .fsog-archive-item .fsog-thumb img {
-    height: auto;
-    object-fit: contain;
-}
-
 .fsog-archive-item:hover .fsog-thumb img {
     opacity: 0.75;
 }
