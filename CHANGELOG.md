@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.871D - 2026-10-13 - Pixelix consent returns to the app
+
+- The Pixelix consent form now posts to the canonical OAuth endpoint explicitly. After authorization, SnapSmack presents a direct **RETURN TO PIXELIX** handoff carrying the short-lived authorization code, instead of relying on an HTTP redirect to a custom Android application scheme that Chrome may silently refuse. This repairs the observed flow where login and 2FA succeeded but repeated taps on **ALLOW PIXELIX** left the browser on the consent page and Pixelix on its welcome screen.
+
 ## 0.7.870D - 2026-10-13 - Pixelix knows when to refresh
 
 - Pixelix OAuth token responses now declare the same 30-day access-token lifetime that the server enforces. The server already issued a rotating refresh token, but omitted the standard `expires_in` field, leaving the app unable to schedule a refresh before a previously valid account abruptly began receiving “The access token is invalid.” Both the initial authorization-code exchange and every refresh response now carry the lifetime. An expired or absent bearer also returns the standard `WWW-Authenticate` `invalid_token` challenge so Pixelix can discard the dead session and return the owner through its normal OAuth login instead of treating an HTML redirect as content. Already-expired accounts require one reconnect; no credential is revived or altered directly.
