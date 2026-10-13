@@ -11,9 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.872D - 2026-10-13 - Links that land
+## 0.7.873D - 2026-10-13 - Keep scrolling
 
 - **The photo wall scrolls endlessly again; it had been stopping at its first batch on every wall skin.** The archive is endless scroll, not pages, and two separate pieces were missing — either one alone stops it dead. First, `ss-engine-rows.js` watches for a marker element carrying the next cursor, and 50 Shades never emitted one, so the engine gave up immediately and the archive showed 25 photographs out of hundreds. Second, when that marker does fire the engine asks the site for the next batch as data — and that request was only ever answered by a file inside each skin called `landing.php`, every one of which was deleted in the strict-skin conversion. Measured against the live site, the request returned a whole HTML page of 7,908 bytes instead of photographs, which the engine cannot read. The CMS now answers it directly, so no skin needs that file, and the tiles come from one shared component used by both the page and the scroll — a photograph that scrolls into view is identical to one that arrived with the page, and a fix to either reaches both. There is also now breathing room between the control row and the photographs, adjustable rather than fixed. The “is there more?” answer is worked out from the cursor rather than read from the response, because the two pages that own a wall disagree: an archive says both, while a landing page — which is where SCROLL's wall lives — says only where to continue. Reading the wrong one would have let SCROLL load exactly one more batch and then stop. (`index.php`, `core/skin-render-helpers.php`, `core/50-shades-page-component.php`, `assets/css/page-archive.css`, `tests/wall-endless-scroll-regression.php`.)
+
+## 0.7.872D - 2026-10-13 - Links that land
+
 
 - **A static page is laid out as a page again, not as a photograph.** 50 Shades rendered its static pages through its own `skin-page.php` until that file was deleted on 2026-09-28; pages then fell into the photograph branch of the CMS renderer and came out wearing the photo layout — a photograph article, photograph navigation, and an empty technical-specifications slot on an About page. The skin never stopped styling `.static-content`, `.static-page-title`, `.description` and `#photobox.page-hero`; measured on the live site, those names appeared on `/about` **only inside its stylesheet**, with no markup to match. Pages now render the structure that file described: the content wrapper, the page title, the optional full-width hero image, and the description. Photographs are unaffected. (`core/50-shades-page-component.php`, `tests/static-page-presentation-regression.php`.)
 
