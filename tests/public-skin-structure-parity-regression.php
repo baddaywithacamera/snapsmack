@@ -23,6 +23,15 @@ foreach ($contracts as $skin => $needles) {
     $source = (string) file_get_contents(isset($cmsComponents[$skin])
         ? dirname(__DIR__) . '/core/' . $cmsComponents[$skin]
         : dirname(__DIR__) . '/skins/' . $skin . '/layout.php');
+    // A CMS-rendered skin may build part of its presentation from a SHARED
+    // per-function component rather than inline markup -- the wall tile is
+    // the first, so the page and the endless-scroll feed cannot emit
+    // different tiles. The hook must still exist in CMS-owned presentation
+    // code; it is only allowed to live in the component that owns it. The
+    // rendered-output check at the end proves it reaches the page.
+    if (isset($cmsComponents[$skin])) {
+        $source .= (string) file_get_contents(dirname(__DIR__) . '/core/skin-render-helpers.php');
+    }
     foreach ($needles as $needle) {
         if (!str_contains($source, $needle)) {
             throw new RuntimeException($skin . ' lost its presentation hook: ' . $needle);
@@ -39,6 +48,28 @@ if (substr_count($rational, 'rg-drawer-inner') < 2
 $fsogManifest = json_decode((string)file_get_contents(dirname(__DIR__) . '/skins/50-shades-of-noah-grey/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
 if (!in_array('smack-archive-grid-switch', $fsogManifest['require_scripts'] ?? [], true)) {
     throw new RuntimeException('50 Shades dual grids lost their registered switch engine.');
+}
+
+// Grepping source proves a hook EXISTS. This proves it REACHES THE PAGE:
+// render the 50 Shades archive and inspect the actual markup.
+if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
+if (!defined('BASE_URL')) define('BASE_URL', 'https://example.test/');
+$view = [
+    'site' => ['language' => 'en', 'direction' => 'ltr', 'site_name' => 'x',
+               'skin_style_url' => 'https://example.test/s.css', 'archive_layout' => 'masonry'],
+    'response' => ['kind' => 'archive', 'navigation' => [], 'next_page' => 2,
+                   'items' => [['img_title' => 'a', 'img_slug' => 'a',
+                                'img_thumb_aspect' => 'https://example.test/a.jpg',
+                                'img_width' => 3000, 'img_height' => 2000]]],
+];
+ob_start();
+include dirname(__DIR__) . '/core/50-shades-page-component.php';
+$fsogHtml = (string)ob_get_clean();
+foreach (['ss-masonry-item', 'data-w="3000"', 'data-h="2000"', 'id="justified-grid"',
+          'fsog-archive-item', 'scroll-wall-sentinel'] as $needle) {
+    if (!str_contains($fsogHtml, $needle)) {
+        throw new RuntimeException('50 Shades archive output lost: ' . $needle);
+    }
 }
 
 echo "Public skin structure parity regression passed.\n";
