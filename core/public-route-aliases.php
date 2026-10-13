@@ -110,4 +110,31 @@ function snapsmack_public_route_url(string $base, array $aliases, string $view, 
     return rtrim($base, '/') . '/' . rawurlencode($slug);
 }
 
+/**
+ * Where a legacy archive.php link should go.
+ *
+ * The alias table is built from the site's navigation, so a site whose menu
+ * has no archive item -- or labels it something else, such as "Images" --
+ * has NO slug mapping to the archive view. Asking snapsmack_public_route_url()
+ * for one then returns its FALLBACK, the literal slug 'archive', and
+ * archive.php redirected there: a path the CMS never registered, which the
+ * rewrite handed straight back to archive.php, which redirected again. Six
+ * live sites answered /archive.php with an endless 301 loop.
+ *
+ * So a pretty slug is used only when one genuinely exists. Otherwise the
+ * request goes to ?view=archive, which snapsmack_public_runtime_request()
+ * already accepts and renders through the strict controller in the site's own
+ * skin. Never a slug that is not in the table.
+ */
+function snapsmack_legacy_archive_target(string $base, array $aliases, string $site_mode = ''): string
+{
+    // A carousel landing page already IS its archive.
+    if ($site_mode === 'carousel') return $base;
+    $slug = array_search('archive', $aliases, true);
+    if (is_string($slug) && $slug !== '') {
+        return rtrim($base, '/') . '/' . rawurlencode($slug);
+    }
+    return rtrim($base, '/') . '/?view=archive';
+}
+
 // ===== SNAPSMACK EOF =====
