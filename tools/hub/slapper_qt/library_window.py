@@ -388,6 +388,8 @@ class LibraryWindow(QMainWindow):
         self._icon_versions = {}  # path -> (source mtime, saved-edit mtime)
         self._stamps = {}         # path -> capture timestamp (float)
         self._paths = []          # all photo paths in the current folder
+        self._people_filter = ""       # show only this person, if set
+        self._people_filter_paths = set()
         self._folder = None
         self._virtual_source = None
         self._scan_generation = 0
@@ -489,6 +491,7 @@ class LibraryWindow(QMainWindow):
         self.split.splitterMoved.connect(self._splitter_moved)
         self.setCentralWidget(self.split)
         self._build_catalog_dock()
+        self._build_people_dock()
 
         self.tree.setVisible(folders_visible)
         self.act_folders.setChecked(folders_visible)
@@ -604,6 +607,11 @@ class LibraryWindow(QMainWindow):
         self.act_rotate_right = QAction("Create Rotated Copies — Right", self)
         self.act_rotate_right.triggered.connect(lambda: self._rotate_selected(-90))
         self.act_find_duplicates = QAction("Find Exact Duplicates", self)
+        self.act_cull = QAction("Pick the Keepers…", self)
+        self.act_cull.setToolTip(
+            "Group frames shot seconds apart and nominate the sharpest usable "
+            "one in each burst. Nothing is deleted, moved or renamed.")
+        self.act_cull.triggered.connect(self._pick_keepers)
         self.act_find_quality = QAction("Flag Blurry or Dark…", self)
         self.act_find_quality.setToolTip(
             "Measure every photograph in this folder and select the soft or "
@@ -637,7 +645,7 @@ class LibraryWindow(QMainWindow):
                        self.act_restore_trash, self.act_rotate_left,
                        self.act_undo_files,
                        self.act_rotate_right, self.act_find_duplicates,
-                       self.act_find_quality,
+                       self.act_find_quality, self.act_cull,
                        self.act_export_selection, self.act_apply_recipe,
                        self.act_show_folder):
             organize_menu.addAction(action)
@@ -675,7 +683,7 @@ class LibraryWindow(QMainWindow):
                        self.act_restore_trash, self.act_rotate_left,
                        self.act_undo_files,
                        self.act_rotate_right, self.act_find_duplicates,
-                       self.act_find_quality,
+                       self.act_find_quality, self.act_cull,
                        self.act_export_selection, self.act_apply_recipe):
             organize_bar_menu.addAction(action)
         output_bar_menu = self.menuBar().addMenu("Present")
@@ -811,6 +819,28 @@ class LibraryWindow(QMainWindow):
         dock.setWidget(panel)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
         self.catalog_dock = dock
+
+    def _build_people_dock(self):
+        """PEOPLE: find faces, name each person once, filter the grid by them."""
+        from .people_panel import PeoplePanel
+        self.people_panel = PeoplePanel(self)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.people_panel)
+        # Tabbed with PHOTO INFO rather than stacked: the right-hand side is
+        # already narrow, and both panels want the same room.
+        self.tabifyDockWidget(self.catalog_dock, self.people_panel)
+        self.catalog_dock.raise_()
+
+    def set_people_filter(self, name):
+        """Show only photographs containing ``name``, or all when None."""
+        self._people_filter = name or ""
+        self._people_filter_paths = set()
+        if name:
+            self._people_filter_paths = set(
+                self.people_panel.store.photos_of(name))
+        self._apply_filter(self.search.text())
+        self.status.showMessage(
+            f"Showing photographs of {name}" if name
+            else "Showing every photograph", 6000)
 
     # --- Folder tree --------------------------------------------------------
     def _toggle_folders(self, checked):
@@ -1181,6 +1211,31 @@ class LibraryWindow(QMainWindow):
             return
         from .print_photos import PrintPhotosDialog
         PrintPhotosDialog(self, paths).exec()
+
+    def _pick_keepers(self):
+        """Nominate the sharpest usable frame in each burst."""
+        paths = self._selected_photo_paths() or self._paths
+        if not paths:
+            QMessageBox.information(
+                self, "Pick the Keepers", "Open a folder of photographs first.")
+            return
+        from .cull_dialog import CullDialog
+        store = getattr(getattr(self, "people_panel", None), "store", None)
+        CullDialog(self, paths, store).exec()
+
+    def apply_cull_picks(self, keepers, outcome):
+        """Act on the nominations: select, favourite, or rate. Never destroy."""
+        chosen = {os.path.normcase(os.path.abspath(path)) for path in keepers}
+        self.list.clearSelection()
+        for path, item in self._items.items():
+            if os.path.normcase(os.path.abspath(path)) in chosen:
+                item.setSelected(True)
+        if outcome == "favorite":
+            self.catalog.set_details(keepers, favorite=True)
+        elif outcome == "rate":
+            self.catalog.set_details(keepers, rating=5)
+        if outcome != "select":
+            self._reload_current()
 
     def _find_quality_issues(self):
         """Select the soft or very dark photographs, and change nothing else.
@@ -1627,6 +1682,8 @@ class LibraryWindow(QMainWindow):
             details = self.catalog.details(path)
             haystack = " ".join((os.path.basename(path), details["tags"])).lower()
             match = not needle or needle in haystack
+            if getattr(self, "_people_filter", ""):
+                match = match and os.path.normcase(os.path.abspath(path)) in                     self._people_filter_paths
             rating = details["rating"]
             if catalog_filter == "favorites":
                 match = match and details["favorite"]
