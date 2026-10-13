@@ -17,6 +17,10 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
 function px_json(array $body, int $code = 200): void { http_response_code($code); echo json_encode($body, JSON_UNESCAPED_SLASHES); exit; }
+function px_invalid_token(): void {
+    header('WWW-Authenticate: Bearer realm="SnapSmack", error="invalid_token", error_description="The access token is invalid or expired"');
+    px_json(['error'=>'The access token is invalid','error_code'=>'invalid_token'],401);
+}
 function px_write_input(): array {
     $input=$_POST;$ctype=(string)($_SERVER['CONTENT_TYPE']??'');
     if(stripos($ctype,'application/json')!==false){$decoded=json_decode(file_get_contents('php://input'),true);if(is_array($decoded))$input=$decoded;}
@@ -69,11 +73,11 @@ function px_registration_budget(PDO $pdo): void {
 function px_bearer(PDO $pdo): array {
     $h=$_SERVER['HTTP_AUTHORIZATION']??$_SERVER['REDIRECT_HTTP_AUTHORIZATION']??'';
     if (!$h && function_exists('getallheaders')) { $a=getallheaders(); $h=$a['Authorization']??$a['authorization']??''; }
-    if (!preg_match('/^Bearer\s+(\S+)$/i',$h,$m)) px_json(['error'=>'The access token is invalid'],401);
+    if (!preg_match('/^Bearer\s+(\S+)$/i',$h,$m)) px_invalid_token();
     $s=$pdo->prepare("SELECT t.*,a.client_id FROM snap_oauth_tokens t JOIN snap_oauth_apps a ON a.id=t.app_id
       WHERE t.token_hash=? AND t.revoked_at IS NULL AND t.token_expires_at>NOW() LIMIT 1");
     $s->execute([hash('sha256',$m[1])]); $row=$s->fetch(PDO::FETCH_ASSOC);
-    if (!$row) px_json(['error'=>'The access token is invalid'],401); return $row;
+    if (!$row) px_invalid_token(); return $row;
 }
 function px_avatar(PDO $pdo, string $base): string {
     // Same resolution as sv_avatar() in core/fediverse.php: the avatar is the
@@ -223,8 +227,17 @@ if ($route==='oauth/authorize') {
     $cid=(string)($_REQUEST['client_id']??''); $redirect=(string)($_REQUEST['redirect_uri']??''); $state=(string)($_REQUEST['state']??'');
     $s=$pdo->prepare('SELECT * FROM snap_oauth_apps WHERE client_id=? LIMIT 1');$s->execute([$cid]);$app=$s->fetch(PDO::FETCH_ASSOC);
     if(!$app || !hash_equals($app['redirect_uri'],$redirect)) px_json(['error'=>'invalid_client'],400);
-    if($method==='POST') { $code=bin2hex(random_bytes(32));$i=$pdo->prepare('INSERT INTO snap_oauth_tokens(app_id,user_id,authorization_code_hash,redirect_uri,scopes,code_expires_at) VALUES(?,?,?,?,?,DATE_ADD(NOW(),INTERVAL 10 MINUTE))');$i->execute([$app['id'],$_SESSION['user_id']??null,hash('sha256',$code),$redirect,$app['scopes']]);header('Location: '.$redirect.(strpos($redirect,'?')===false?'?':'&').'code='.rawurlencode($code).'&state='.rawurlencode($state),true,302);exit; }
-    header('Content-Type: text/html; charset=utf-8'); echo '<!doctype html><meta name="viewport" content="width=device-width"><title>Connect Pixelix</title><style>body{font:16px system-ui;background:#111;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}.c{max-width:430px;padding:32px;border:1px solid #444;border-radius:18px;background:#191919}button{width:100%;padding:14px;border:0;border-radius:999px;font-weight:800}</style><form class="c" method="post"><h1>Connect '.htmlspecialchars($app['name']).'?</h1><p>This app will be able to read your SnapSmack profile and Fediverse posts. Publishing is available when this site&rsquo;s mode and Offline Posting settings support it.</p><input type="hidden" name="client_id" value="'.htmlspecialchars($cid).'"><input type="hidden" name="redirect_uri" value="'.htmlspecialchars($redirect).'"><input type="hidden" name="state" value="'.htmlspecialchars($state).'"><input type="hidden" name="csrf_token" value="'.htmlspecialchars(csrf_token()).'"><button>ALLOW PIXELIX</button></form>';exit;
+    if($method==='POST') {
+        $code=bin2hex(random_bytes(32));
+        $i=$pdo->prepare('INSERT INTO snap_oauth_tokens(app_id,user_id,authorization_code_hash,redirect_uri,scopes,code_expires_at) VALUES(?,?,?,?,?,DATE_ADD(NOW(),INTERVAL 10 MINUTE))');
+        $i->execute([$app['id'],$_SESSION['user_id']??null,hash('sha256',$code),$redirect,$app['scopes']]);
+        $callback=$redirect.(strpos($redirect,'?')===false?'?':'&').'code='.rawurlencode($code).'&state='.rawurlencode($state);
+        $safeCallback=htmlspecialchars($callback,ENT_QUOTES,'UTF-8');
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<!doctype html><meta name="viewport" content="width=device-width"><title>Return to Pixelix</title><style>body{font:16px system-ui;background:#111;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}.c{max-width:430px;padding:32px;border:1px solid #444;border-radius:18px;background:#191919}.return{display:block;width:100%;box-sizing:border-box;padding:14px;border:0;border-radius:999px;background:#fff;color:#111;text-align:center;text-decoration:none;font-weight:800}</style><main class="c"><h1>Pixelix is allowed</h1><p>Return to Pixelix to finish connecting this site.</p><a class="return" href="'.$safeCallback.'">RETURN TO PIXELIX</a></main>';
+        exit;
+    }
+    header('Content-Type: text/html; charset=utf-8'); echo '<!doctype html><meta name="viewport" content="width=device-width"><title>Connect Pixelix</title><style>body{font:16px system-ui;background:#111;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}.c{max-width:430px;padding:32px;border:1px solid #444;border-radius:18px;background:#191919}button{width:100%;padding:14px;border:0;border-radius:999px;font-weight:800}</style><form class="c" method="post" action="/oauth/authorize"><h1>Connect '.htmlspecialchars($app['name']).'?</h1><p>This app will be able to read your SnapSmack profile and Fediverse posts. Publishing is available when this site&rsquo;s mode and Offline Posting settings support it.</p><input type="hidden" name="client_id" value="'.htmlspecialchars($cid).'"><input type="hidden" name="redirect_uri" value="'.htmlspecialchars($redirect).'"><input type="hidden" name="state" value="'.htmlspecialchars($state).'"><input type="hidden" name="csrf_token" value="'.htmlspecialchars(csrf_token()).'"><button type="submit">ALLOW PIXELIX</button></form>';exit;
 }
 if ($route==='oauth/token' && $method==='POST') {
     $cid=(string)($_POST['client_id']??'');$secret=(string)($_POST['client_secret']??'');$code=(string)($_POST['code']??'');$redirect=(string)($_POST['redirect_uri']??'');
@@ -236,7 +249,7 @@ if ($route==='oauth/token' && $method==='POST') {
             $u=$pdo->prepare('UPDATE snap_oauth_tokens SET token_hash=?,refresh_token_hash=?,token_expires_at=DATE_ADD(NOW(),INTERVAL 30 DAY) WHERE id=? AND refresh_token_hash=? AND revoked_at IS NULL AND refresh_expires_at>NOW()');$u->execute([hash('sha256',$token),hash('sha256',$newRefresh),$row['id'],$oldHash]);
             if($u->rowCount()!==1){$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}$pdo->commit();
         }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}
-        px_json(['access_token'=>$token,'refresh_token'=>$newRefresh,'token_type'=>'Bearer','scope'=>$row['scopes'],'created_at'=>(string)time()]);
+        px_json(['access_token'=>$token,'refresh_token'=>$newRefresh,'token_type'=>'Bearer','scope'=>$row['scopes'],'created_at'=>(string)time(),'expires_in'=>30*24*60*60]);
     }
     $codeHash=hash('sha256',$code);$token=bin2hex(random_bytes(32));$refresh=bin2hex(random_bytes(32));$pdo->beginTransaction();
     try{$s=$pdo->prepare("SELECT t.*,a.client_secret_hash FROM snap_oauth_tokens t JOIN snap_oauth_apps a ON a.id=t.app_id WHERE a.client_id=? AND t.authorization_code_hash=? AND t.redirect_uri=? AND t.code_expires_at>NOW() AND t.token_hash IS NULL LIMIT 1 FOR UPDATE");$s->execute([$cid,$codeHash,$redirect]);$row=$s->fetch(PDO::FETCH_ASSOC);
@@ -244,7 +257,7 @@ if ($route==='oauth/token' && $method==='POST') {
         $u=$pdo->prepare('UPDATE snap_oauth_tokens SET token_hash=?,refresh_token_hash=?,authorization_code_hash=NULL,token_expires_at=DATE_ADD(NOW(),INTERVAL 30 DAY),refresh_expires_at=DATE_ADD(NOW(),INTERVAL 90 DAY) WHERE id=? AND authorization_code_hash=? AND token_hash IS NULL AND revoked_at IS NULL AND code_expires_at>NOW()');$u->execute([hash('sha256',$token),hash('sha256',$refresh),$row['id'],$codeHash]);
         if($u->rowCount()!==1){$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}$pdo->commit();
     }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}
-    px_json(['access_token'=>$token,'refresh_token'=>$refresh,'token_type'=>'Bearer','scope'=>$row['scopes'],'created_at'=>(string)time()]);
+    px_json(['access_token'=>$token,'refresh_token'=>$refresh,'token_type'=>'Bearer','scope'=>$row['scopes'],'created_at'=>(string)time(),'expires_in'=>30*24*60*60]);
 }
 if ($route==='oauth/revoke' && $method==='POST') { $token=(string)($_POST['token']??'');$pdo->prepare('UPDATE snap_oauth_tokens SET revoked_at=NOW() WHERE token_hash=?')->execute([hash('sha256',$token)]);px_json([]); }
 
