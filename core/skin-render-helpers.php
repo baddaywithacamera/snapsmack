@@ -306,8 +306,13 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
     } elseif ($name === 'image') {
         $class = trim((string)($data['class'] ?? ''));
         $lightboxSource = trim((string)($data['attributes']['data-lightbox-src'] ?? ''));
+        $width = filter_var($data['attributes']['data-w'] ?? null, FILTER_VALIDATE_INT);
+        $height = filter_var($data['attributes']['data-h'] ?? null, FILTER_VALIDATE_INT);
         $html = '<img' . ($class !== '' ? ' class="' . snap_escape_attr($class) . '"' : '') . ' src="' . snap_escape_url($data['url'] ?? '') . '" alt="'
-            . snap_escape_attr($data['alt'] ?? '') . '"' . ($lightboxSource !== '' ? ' data-lightbox-src="' . snap_escape_url($lightboxSource) . '"' : '') . ' loading="lazy">';
+            . snap_escape_attr($data['alt'] ?? '') . '"' . ($lightboxSource !== '' ? ' data-lightbox-src="' . snap_escape_url($lightboxSource) . '"' : '')
+            . ($width !== false && $width > 0 ? ' data-w="' . $width . '"' : '')
+            . ($height !== false && $height > 0 ? ' data-h="' . $height . '"' : '')
+            . ' loading="lazy">';
     } elseif ($name === 'comments') {
         $html = '<ol class="snap-comments">';
         foreach (($data['items'] ?? []) as $comment) {
