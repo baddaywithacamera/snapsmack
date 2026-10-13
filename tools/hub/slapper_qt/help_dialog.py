@@ -205,6 +205,38 @@ TOPICS = [
      "the paid request, SNAP SLAPPER asks permission to send a working-resolution "
      "photo and mask to Google. The repair returns as a masked layer; pixels "
      "outside the selection and the original photograph remain unchanged."),
+    ("People — naming faces",
+     "The PEOPLE panel is on the right of the library, tabbed beside PHOTO "
+     "INFO. Press FIND FACES IN THIS FOLDER; a group of faces that look like "
+     "the same person appears, you name it once, and from then on that person "
+     "is recognised in new photographs and offered for a yes or no. Click a "
+     "name to show only their photographs, and SHOW EVERY PHOTOGRAPH to go "
+     "back. A second scan only looks at what has changed since the first.\n\n"
+     "All of it runs on your computer. There is no account, no key and no "
+     "quota; no photograph and no face is ever uploaded; the names and face "
+     "fingerprints are numbers in SNAP SLAPPER's own store, and your "
+     "photographs are never written to.\n\n"
+     "People needs a separate component of about 120 MB -- OpenCV and two "
+     "small face models -- downloaded once. It is separate because including "
+     "it would more than double SNAP SLAPPER's download for everybody, "
+     "including the photographers who never use it. The panel offers to "
+     "install it, and it can be removed without removing SNAP SLAPPER."),
+    ("Picking the keepers",
+     "ORGANIZE -> Pick the Keepers... groups the frames you shot seconds "
+     "apart and nominates the sharpest usable one in each burst. It cannot "
+     "tell you which photograph is the best -- that is yours. What it can "
+     "measure is which of several frames of the same thing is sharpest, and "
+     "which are so blown out or so dark that there is no detail left.\n\n"
+     "Set how far apart two frames can be and still count as one burst, and "
+     "choose what happens to the keepers: selected in the grid, marked "
+     "Favorite, or rated five stars. Nothing is deleted, moved or renamed, "
+     "and the frames it does not nominate are left exactly as they were.\n\n"
+     "If PEOPLE is installed and has found faces, sharpness is measured ON "
+     "THE FACE. That matters: a portrait with a crisp background and a soft "
+     "face is the frame to throw away, and a whole-frame measurement cannot "
+     "tell the difference -- measured on one photograph here, blurring just "
+     "the face changed the whole-frame number by a quarter and the face "
+     "number by a factor of 385."),
     ("Printing",
      "Print... (Ctrl+P) is in OUTPUT in the editor and under PRESENT in the "
      "library. In the editor it prints the photograph as edited; in the "
