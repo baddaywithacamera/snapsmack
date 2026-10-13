@@ -12,6 +12,8 @@ $response = [
     'items' => [[
         'img_title' => 'Portrait',
         'img_slug' => 'portrait',
+        'img_width' => 800,
+        'img_height' => 1200,
         'img_thumb_square' => '/media/square.jpg',
         'img_thumb_aspect' => '/media/natural.jpg',
         'img_file' => '/media/original.jpg',
@@ -33,24 +35,21 @@ $render = static function (string $layout) use ($response): string {
     return (string)ob_get_clean();
 };
 
-$square = $render('square');
-if (!str_contains($square, 'data-archive-layout="thumbs"')
-    || !str_contains($square, 'data-archive-thumbnail-shape="square"')
-    || !str_contains($square, 'src="/media/square.jpg"')) {
-    throw new RuntimeException('50 Shades square archive no longer uses square thumbnails.');
-}
-
 $cropped = $render('cropped');
 if (!str_contains($cropped, 'data-archive-layout="thumbs"')
-    || !str_contains($cropped, 'data-archive-thumbnail-shape="natural"')
-    || !str_contains($cropped, 'src="/media/natural.jpg"')) {
+    || !str_contains($cropped, 'class="fsog-thumb fsog-thumb-portrait"')
+    || !str_contains($cropped, 'style="aspect-ratio:0.6667"')
+    || !str_contains($cropped, 'src="/media/natural.jpg"')
+    || !str_contains($cropped, 'id="justified-grid" class="ss-scroll-wall" data-masonry-layout="rows" style="display:none"')) {
     throw new RuntimeException('50 Shades natural cropped archive fell back to square thumbnails.');
 }
 
 $masonry = $render('masonry');
 if (!str_contains($masonry, 'data-archive-layout="masonry"')
     || !str_contains($masonry, 'class="ss-scroll-wall"')
-    || !str_contains($masonry, 'src="/media/natural.jpg"')) {
+    || !str_contains($masonry, 'src="/media/natural.jpg"')
+    || !str_contains($masonry, 'data-w="800"')
+    || !str_contains($masonry, 'data-h="1200"')) {
     throw new RuntimeException('50 Shades masonry archive no longer opens its native-aspect wall.');
 }
 
