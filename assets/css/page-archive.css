@@ -373,4 +373,14 @@
     right: var(--archive-content-padding, 40px);
 }
 
+/* Breathing room between the control row and the photographs. The grids are
+ * general siblings of the row rather than adjacent ones, because two grids
+ * follow it (thumbs and wall) and whichever is hidden must not absorb the
+ * gap. A skin or site can change the distance without touching this file. */
+.archive-filter-row ~ #browse-grid,
+.archive-filter-row ~ #justified-grid,
+.archive-filter-row ~ .archive-grid {
+    margin-top: var(--archive-grid-gap, 32px);
+}
+
 /* ===== SNAPSMACK EOF ===== */

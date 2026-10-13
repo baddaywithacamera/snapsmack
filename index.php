@@ -272,7 +272,12 @@ try {
             'slug' => $requested_slug ?? ($_GET['slug'] ?? ($_GET['s'] ?? '')),
             // Historical feed engines use ?p=N; public routes also accept the
             // descriptive ?page=N form. Normalize both at the CMS boundary.
-            'id' => $_GET['id'] ?? 0, 'page' => $_GET['page'] ?? ($_GET['p'] ?? 1),
+            'id' => $_GET['id'] ?? 0,
+            // ?c=N is the cursor the wall engines send when fetching the
+            // next batch of tiles. It is checked first because only those
+            // engines send it; the historical ?p=N normalisation below is
+            // untouched and still required by the justified-feed contract.
+            'page' => $_GET['c'] ?? ($_GET['page'] ?? ($_GET['p'] ?? 1)),
             'category_id' => $_GET['category'] ?? ($_GET['cat'] ?? 0),
             'album_id' => $_GET['album'] ?? 0,
             'fragment' => !empty($_GET['modal']),
@@ -303,6 +308,34 @@ try {
             'slickr_profile' => $active_skin === 'slickr' ? snapsmack_prepare_slickr_profile($pdo, $settings, $_public['navigation'] ?? []) : [],
             'crop_circles' => snapsmack_prepare_crop_circles($pdo, $settings, $_active_manifest, $_public['navigation'] ?? []),
         ]);
+
+        // ── Endless-scroll tiles for a photo wall ────────────────────────
+        // ss-engine-rows/columns fetch "?pg=wall&format=json&c=N" as the
+        // sentinel nears the viewport and append data.html into the grid.
+        // That request used to be answered only by a skin's landing.php, and
+        // the strict conversion deleted every one of those files, so the
+        // fetch received a whole HTML document, could not parse it, and the
+        // wall stopped at its first batch for good. The URL the engine builds
+        // is relative, so it already carries the route -- an archive page
+        // asks for more archive. Tiles come from the same wall-tile component
+        // the page itself renders, so a scrolled-in photograph is identical
+        // to one that arrived with the page.
+        if (($_GET['format'] ?? '') === 'json' && ($_GET['pg'] ?? '') === 'wall') {
+            $_wall_tiles = '';
+            foreach (($_strict_view['response']['items'] ?? []) as $_wall_item) {
+                if (!is_array($_wall_item)) continue;
+                $_wall_tiles .= (string)snap_render_component('wall-tile', ['item' => $_wall_item]);
+            }
+            header('Content-Type: application/json; charset=utf-8');
+            header('X-Content-Type-Options: nosniff');
+            echo json_encode([
+                'html' => $_wall_tiles,
+                'next' => (int)($_strict_view['response']['next_page'] ?? 0),
+                'has_more' => !empty($_strict_view['response']['has_more']),
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
         $_template_map = is_array($_active_manifest['templates'] ?? null) ? $_active_manifest['templates'] : [];
         $_strict_template = (string)($_template_map[$_public['kind'] ?? ''] ?? $_template_map['default'] ?? '');
         if ($_strict_template !== '' && snapsmack_render_strict_skin_template(__DIR__ . '/skins/' . $active_skin, $_strict_template, $_strict_view)) exit;

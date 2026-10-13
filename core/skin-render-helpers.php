@@ -189,6 +189,29 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . '<input type="search" name="q" class="gsd-input" placeholder="' . snap_escape_attr($dock['placeholder'] ?? 'Search or #tag…') . '" autocomplete="off" aria-label="Search photos or tags" tabindex="-1">'
                 . '</form></div>';
         }
+    } elseif ($name === 'wall-tile') {
+        // One photograph in a wall. The page renderer and the endless-scroll
+        // JSON endpoint both build their tiles here, so a tile fetched on
+        // scroll is identical to one rendered in the page -- the two cannot
+        // drift apart, and a fix to either reaches both.
+        $item = is_array($data['item'] ?? null) ? $data['item'] : [];
+        $thumb = (string)($item['img_thumb_aspect'] ?? '') !== ''
+            ? (string)$item['img_thumb_aspect'] : (string)($item['img_file'] ?? '');
+        $href = (string)($item['url'] ?? '');
+        if ($href === '') $href = snap_route_url('photo', ['slug' => $item['img_slug'] ?? '']);
+        $html = '<a class="ss-masonry-item" href="' . snap_escape_url($href) . '" title="'
+            . snap_escape_attr($item['img_title'] ?? '') . '">';
+        if ($thumb !== '') {
+            $html .= (string)snap_render_component('image', [
+                'url' => $thumb,
+                'alt' => $item['img_alt'] ?? $item['img_title'] ?? '',
+                'attributes' => [
+                    'data-w' => max(1, (int)($item['img_width'] ?? 3)),
+                    'data-h' => max(1, (int)($item['img_height'] ?? 2)),
+                ],
+            ]);
+        }
+        $html .= '</a>';
     } elseif ($name === 'archive-filters') {
         // The archive's own control row: SHOW ALL, the FILTER panel, the
         // search field and the layout toggles. It lived inside archive.php,
