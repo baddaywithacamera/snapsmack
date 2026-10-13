@@ -178,19 +178,42 @@ class ComponentEngine:
         self.close()
 
 
-def engine():
+def have_opencv():
+    """Whether this build can run the detector in-process."""
+    try:
+        import cv2   # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def state():
+    """What People needs before it can run: ready / models / component.
+
+    The three are different sizes of ask and must not be confused. A machine
+    with OpenCV but no model files needs 37 MB, not a 120 MB component -- and
+    reporting it as ready, which an earlier version of this did, enabled the
+    scan button for a scan that then failed.
+    """
+    if have_opencv():
+        return "ready" if slapper_faces.models_present() else "models"
+    return "ready" if installed() else "component"
+
+
+def engine(allow_download=False):
     """The best available detector, or None.
 
     In-process OpenCV first -- the Linux packages declare it as a dependency
     and a developer checkout usually has it -- then the installed component.
+    ``allow_download`` permits the one-time 37 MB model fetch; it is False by
+    default so nothing reaches for the network unasked.
     """
-    try:
-        import cv2   # noqa: F401
-        in_process = slapper_faces.FaceEngine.load()
-        if in_process is not None:
-            return in_process
-    except ImportError:
-        pass
+    if have_opencv():
+        if not slapper_faces.models_present():
+            if not allow_download:
+                return None
+            slapper_faces.ensure_models()
+        return slapper_faces.FaceEngine.load()
     if installed():
         return ComponentEngine.start()
     return None
