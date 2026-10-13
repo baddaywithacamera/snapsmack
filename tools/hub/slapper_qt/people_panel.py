@@ -45,7 +45,7 @@ class _ScanJob(QRunnable):
     def run(self):
         from . import faces_component
         try:
-            self._engine = faces_component.engine()
+            self._engine = faces_component.engine(allow_download=True)
             if self._engine is None:
                 self.signals.failed.emit(
                     "People is not installed on this computer.")
@@ -167,26 +167,36 @@ class PeoplePanel(QDockWidget):
         self.refresh()
 
     # --- state -----------------------------------------------------------
-    def available(self):
+    def state(self):
         from . import faces_component
-        try:
-            import cv2   # noqa: F401
-            return True
-        except ImportError:
-            return faces_component.installed()
+        return faces_component.state()
+
+    def available(self):
+        return self.state() == "ready"
 
     def refresh(self):
-        ready = self.available()
-        self.install_button.setVisible(not ready)
-        self.scan_button.setEnabled(ready and bool(self.host._paths))
-        self.explain.setText(
-            "Find the faces in your photographs, name each person once, and "
-            "SNAP SLAPPER will recognise them from then on."
-            if ready else
-            "People finds faces so you can name each person once. It needs a "
-            "separate component — about 120 MB, downloaded once — because "
-            "bundling it would more than double SNAP SLAPPER's download for "
-            "everybody. It runs entirely on this computer.")
+        state = self.state()
+        self.install_button.setVisible(state != "ready")
+        self.install_button.setText(
+            "INSTALL PEOPLE" if state == "component"
+            else "DOWNLOAD THE FACE MODELS (37 MB)")
+        self.scan_button.setEnabled(state == "ready" and bool(self.host._paths))
+        self.explain.setText({
+            "ready":
+                "Find the faces in your photographs, name each person once, "
+                "and SNAP SLAPPER will recognise them from then on.",
+            "models":
+                "People is ready apart from its two face models, about 37 MB, "
+                "downloaded once from OpenCV's model zoo and checked against "
+                "pinned checksums. Nothing else is fetched and nothing is "
+                "uploaded.",
+            "component":
+                "People finds faces so you can name each person once. It "
+                "needs a separate component — about 120 MB, downloaded once "
+                "— because bundling it would more than double SNAP "
+                "SLAPPER's download for everybody. It runs entirely on this "
+                "computer.",
+        }[state])
         self._refresh_people()
         self._refresh_group()
         self._refresh_suggestions()
@@ -229,11 +239,29 @@ class PeoplePanel(QDockWidget):
     # --- actions ---------------------------------------------------------
     def _install(self):
         from . import faces_component
+        if self.state() == "models":
+            answer = QMessageBox.question(
+                self, "Download the face models?",
+                "This downloads two model files, about 37 MB in total, once, "
+                "from OpenCV's model zoo. Each is checked against a pinned "
+                "checksum and refused if it does not match. Nothing is "
+                "uploaded. Continue?",
+                QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel)
+            if answer != QMessageBox.Yes:
+                return
+            try:
+                slapper_faces.ensure_models()
+            except Exception as error:  # noqa: BLE001
+                QMessageBox.warning(self, "The models could not be fetched",
+                                    str(error))
+            self.refresh()
+            return
         answer = QMessageBox.question(
             self, "Install People?",
             "This installs a separate component of about 120 MB: OpenCV and "
             "two small face models. It is downloaded once and runs entirely "
-            "on this computer — no account, no key, nothing uploaded.\n\n"
+            "on this computer — no account, no key, nothing uploaded." +
+            chr(10) * 2 +
             "It can be removed without removing SNAP SLAPPER. Continue?",
             QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel)
         if answer != QMessageBox.Yes:

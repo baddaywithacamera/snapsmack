@@ -149,4 +149,32 @@ def test_a_full_scan_stores_people_and_never_touches_the_photographs(
                 ".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp")
 
 
+def test_the_three_states_are_told_apart(tmp_path, monkeypatch):
+    """ready / models / component are three different sizes of ask.
+
+    An earlier version reported "ready" whenever OpenCV could be imported,
+    without checking that the model files existed. On a machine with OpenCV
+    and no models the panel therefore enabled a scan that then failed, and it
+    offered a 120 MB component install when all that was missing was 37 MB of
+    models.
+    """
+    monkeypatch.setattr(faces_component, "install_root",
+                        lambda: str(tmp_path / "none"))
+
+    monkeypatch.setattr(faces_component, "have_opencv", lambda: True)
+    monkeypatch.setattr(slapper_faces, "models_present", lambda *a, **k: True)
+    assert faces_component.state() == "ready"
+
+    monkeypatch.setattr(slapper_faces, "models_present", lambda *a, **k: False)
+    assert faces_component.state() == "models"
+    # And it does not reach for the network to find that out.
+    def no_download(*_args, **_kwargs):
+        raise AssertionError("ensure_models must not be called unasked")
+    monkeypatch.setattr(slapper_faces, "ensure_models", no_download)
+    assert faces_component.engine() is None
+
+    monkeypatch.setattr(faces_component, "have_opencv", lambda: False)
+    assert faces_component.state() == "component"
+
+
 # ===== SNAPSMACK EOF =====
