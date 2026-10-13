@@ -344,4 +344,33 @@
     opacity: 1;
     background: rgba(255, 255, 255, 0.10);
 }
+
+/* --- 7b. FILTER ROW CONTENT COLUMN ---------------------------------------
+ * The row itself is full-bleed: it carries the bar's background and borders
+ * across the window. Its CONTENTS belong to the same column as the grid, so
+ * the docked controls line up with the photographs instead of the window
+ * edge. .archive-controls--docked above falls back to right:40px measured
+ * from whatever is positioned over it, corrected at runtime by
+ * ss-engine-archive-toggle.js -- a skin that does not load that engine never
+ * received the correction, and its controls sat outside the content width.
+ * The inner wrapper is the positioning context, so no JavaScript is needed.
+ */
+.archive-filter-row { position: relative; }
+.archive-filter-row .archive-filter-inner {
+    position: relative;
+    /* The row is a flex container in several skins, so the wrapper must be
+     * told to fill the line; without this it shrink-wraps to its contents and
+     * the docked controls dock to the middle of the bar. */
+    width: 100%;
+    flex: 1 1 auto;
+    max-width: var(--archive-content-width, none);
+    margin: 0 auto;
+    padding-left: var(--archive-content-padding, 40px);
+    padding-right: var(--archive-content-padding, 40px);
+    box-sizing: border-box;
+}
+.archive-filter-row .archive-controls--docked {
+    right: var(--archive-content-padding, 40px);
+}
+
 /* ===== SNAPSMACK EOF ===== */

@@ -866,6 +866,11 @@ $inventory = [
         'smack-archive-grid-switch' => [
             'label'        => 'Archive grid switch (thumbs/masonry responder)',
             'path'         => 'assets/js/ss-engine-archive-grid-switch.js',
+            // The filter row, the T/M toggle and the calendar button are all
+            // styled here. Without it the controls render unstyled and the
+            // docked group falls back to right:40px off the WINDOW instead of
+            // the content column -- the search bar escaping the content width.
+            'css'          => 'assets/css/page-archive.css',
             'has_settings' => false,
         ],
         'smack-flag-wave' => [
@@ -916,6 +921,11 @@ $inventory = [
         'smack-archive-toggle' => [
             'label'        => 'Archive Layout Toggle (in-place T/M switch + hotkeys)',
             'path'         => 'assets/js/ss-engine-archive-toggle.js',
+            // The filter row, the T/M toggle and the calendar button are all
+            // styled here. Without it the controls render unstyled and the
+            // docked group falls back to right:40px off the WINDOW instead of
+            // the content column -- the search bar escaping the content width.
+            'css'          => 'assets/css/page-archive.css',
             'has_settings' => false,
             'admin_page'   => 'archive',
         ],
