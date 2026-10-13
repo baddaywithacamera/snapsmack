@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.867D - 2026-10-12 - Activate traditional photo destinations
+
+- Preserves generated public URLs on previous, next, first, and last photograph destinations instead of adding them to temporary array copies, restoring clickable links and keyboard navigation in traditional single-photo skins.
+
 ## 0.7.866D - 2026-10-11 - Restore traditional photo navigation
 
 - Restores complete previous, next, first, and last destinations plus tags and technical metadata to traditional single-photo skins after the strict public-controller migration omitted their bounded detail model.
