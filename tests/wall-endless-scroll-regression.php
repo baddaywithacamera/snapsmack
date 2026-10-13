@@ -101,6 +101,16 @@ foreach (["'html'", "'next'", "'has_more'"] as $key) {
 }
 $check(str_contains($index, "header('Content-Type: application/json"),
     'the feed must answer as json, not as a page');
+
+// has_more must be DERIVED from the cursor, not read from the response. The
+// two routes that own a wall disagree: the archive response carries both
+// has_more and next_page, while the LANDING response -- where SCROLL's wall
+// lives -- carries only next_page, zero when exhausted. Reading has_more
+// would have stopped SCROLL after exactly one extra batch.
+$check(str_contains($index, "'has_more' => \$_wall_next > 0"),
+    'has_more must come from the cursor, or a landing wall stops after one batch');
+$check(!str_contains($index, "'has_more' => !empty(\$_strict_view['response']['has_more'])"),
+    'the feed must not read has_more from a response that may not carry it');
 // The cursor is read FIRST, before page/p, because only the wall engines
 // send it -- and the historical ?p=N normalisation the justified-feed
 // contract requires stays intact behind it.
