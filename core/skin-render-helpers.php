@@ -189,6 +189,41 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . '<input type="search" name="q" class="gsd-input" placeholder="' . snap_escape_attr($dock['placeholder'] ?? 'Search or #tag…') . '" autocomplete="off" aria-label="Search photos or tags" tabindex="-1">'
                 . '</form></div>';
         }
+    } elseif ($name === 'document-head') {
+        // The one <head>. Twenty skins carried a byte-identical copy of this
+        // block and six variants existed across the thirty, so a bug in it --
+        // a wrong escape, a missing meta, a stylesheet needing a cache-buster
+        // -- was six fixes and thirty skin releases. Skins that need more in
+        // their head pass it as 'extra'; nothing else varied between the
+        // copies.
+        $site = is_array($data['site'] ?? null) ? $data['site'] : [];
+        $title = (string)($data['title'] ?? '');
+        if ($title === '') $title = (string)($site['site_name'] ?? '');
+        $html = '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+            . '<title>' . snap_escape_html($title) . '</title>'
+            . '<link rel="stylesheet" href="' . snap_escape_url((string)($site['skin_style_url'] ?? '')) . '">';
+        // Owner and skin styles are already trusted, constructed CMS values.
+        $html .= snap_render_html($site['skin_custom_style'] ?? '');
+        $html .= snap_render_html($site['skin_presentation']['style'] ?? '');
+        // A skin that needs more in its head declares it as BOUNDED DATA --
+        // urls and name/content pairs the CMS turns into markup here. Raw
+        // markup is not an option: snapsmack_trusted_html() is a content
+        // sanitiser and strips <link> entirely, so a skin passing a font
+        // preconnect as html would have silently got nothing.
+        foreach ((array)($data['preconnect'] ?? []) as $url) {
+            $safe = snap_escape_url($url);
+            if ($safe !== '') $html .= '<link rel="preconnect" href="' . $safe . '" crossorigin>';
+        }
+        foreach ((array)($data['stylesheets'] ?? []) as $url) {
+            $safe = snap_escape_url($url);
+            if ($safe !== '') $html .= '<link rel="stylesheet" href="' . $safe . '">';
+        }
+        foreach ((array)($data['meta'] ?? []) as $name => $content) {
+            if (!is_string($name) || $name === '') continue;
+            $html .= '<meta name="' . snap_escape_attr($name) . '" content="'
+                . snap_escape_attr($content) . '">';
+        }
+        $html .= '</head>';
     } elseif ($name === 'registered-assets') {
         $assets=is_array($data['assets']??null)?$data['assets']:[];
         foreach(($assets['styles']??[]) as $url)$html.='<link rel="stylesheet" href="'.snap_escape_url($url).'">';
