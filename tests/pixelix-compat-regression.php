@@ -37,6 +37,9 @@ $checks = [
     'JSON status payload'      => "application/json",
     'refresh-token grant'      => "grant_type']??'')==='refresh_token'",
     'refresh-token rotation'   => "refresh_token_hash",
+    'declared access lifetime' => "'expires_in'=>30*24*60*60",
+    'standard invalid-token challenge' => "WWW-Authenticate: Bearer realm=\"SnapSmack\", error=\"invalid_token\"",
+    'machine-readable invalid token' => "'error_code'=>'invalid_token'",
     'absolute refresh expiry'  => "refresh_expires_at>NOW()",
     'media ownership'          => "JOIN snap_oauth_media",
     'scope enforcement'        => "px_require_scope",
@@ -75,6 +78,8 @@ $checks = [
 foreach ($checks as $name => $needle) {
     if (strpos($api, $needle) === false) { fwrite(STDERR, "Missing: {$name}\n"); exit(1); }
 }
+if (substr_count($api, "'expires_in'=>30*24*60*60") !== 2) { fwrite(STDERR, "Both Pixelix token grants must declare the enforced access-token lifetime\n"); exit(1); }
+if (substr_count($api, 'px_invalid_token();') !== 2) { fwrite(STDERR, "Every Pixelix bearer rejection must issue the standard invalid-token challenge\n"); exit(1); }
 if (strpos($api, 'function px_schema') !== false || strpos($api, 'CREATE TABLE') !== false || strpos($api, 'ALTER TABLE') !== false) { fwrite(STDERR, "Runtime schema mutation returned\n"); exit(1); }
 if (strpos($api, 'token_expires_at IS NULL') !== false) { fwrite(STDERR, "Null-expiry bearer still fails open\n"); exit(1); }
 foreach (["SNAP_PIXELIX_DRAFT_RETENTION_DAYS = 7", "FOR UPDATE", "post_id IS NULL", "snap_api_safe_upload_path", "dry_run"] as $needle) {

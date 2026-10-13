@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.870D - 2026-10-13 - Pixelix knows when to refresh
+
+- Pixelix OAuth token responses now declare the same 30-day access-token lifetime that the server enforces. The server already issued a rotating refresh token, but omitted the standard `expires_in` field, leaving the app unable to schedule a refresh before a previously valid account abruptly began receiving “The access token is invalid.” Both the initial authorization-code exchange and every refresh response now carry the lifetime. An expired or absent bearer also returns the standard `WWW-Authenticate` `invalid_token` challenge so Pixelix can discard the dead session and return the owner through its normal OAuth login instead of treating an HTML redirect as content. Already-expired accounts require one reconnect; no credential is revived or altered directly.
+
 ## 0.7.869D - 2026-10-12 - Restore the original 50 Shades archive
 
 - Restores the known-good 50 Shades 1.6.0 archive presentation contract unchanged across the strict skin boundary: natural aspect thumbnails, bounded portrait ratios, original visibility behavior, and native image dimensions for the SnapSmack rows and columns engines.

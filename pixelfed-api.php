@@ -17,6 +17,10 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
 function px_json(array $body, int $code = 200): void { http_response_code($code); echo json_encode($body, JSON_UNESCAPED_SLASHES); exit; }
+function px_invalid_token(): void {
+    header('WWW-Authenticate: Bearer realm="SnapSmack", error="invalid_token", error_description="The access token is invalid or expired"');
+    px_json(['error'=>'The access token is invalid','error_code'=>'invalid_token'],401);
+}
 function px_write_input(): array {
     $input=$_POST;$ctype=(string)($_SERVER['CONTENT_TYPE']??'');
     if(stripos($ctype,'application/json')!==false){$decoded=json_decode(file_get_contents('php://input'),true);if(is_array($decoded))$input=$decoded;}
@@ -69,11 +73,11 @@ function px_registration_budget(PDO $pdo): void {
 function px_bearer(PDO $pdo): array {
     $h=$_SERVER['HTTP_AUTHORIZATION']??$_SERVER['REDIRECT_HTTP_AUTHORIZATION']??'';
     if (!$h && function_exists('getallheaders')) { $a=getallheaders(); $h=$a['Authorization']??$a['authorization']??''; }
-    if (!preg_match('/^Bearer\s+(\S+)$/i',$h,$m)) px_json(['error'=>'The access token is invalid'],401);
+    if (!preg_match('/^Bearer\s+(\S+)$/i',$h,$m)) px_invalid_token();
     $s=$pdo->prepare("SELECT t.*,a.client_id FROM snap_oauth_tokens t JOIN snap_oauth_apps a ON a.id=t.app_id
       WHERE t.token_hash=? AND t.revoked_at IS NULL AND t.token_expires_at>NOW() LIMIT 1");
     $s->execute([hash('sha256',$m[1])]); $row=$s->fetch(PDO::FETCH_ASSOC);
-    if (!$row) px_json(['error'=>'The access token is invalid'],401); return $row;
+    if (!$row) px_invalid_token(); return $row;
 }
 function px_avatar(PDO $pdo, string $base): string {
     // Same resolution as sv_avatar() in core/fediverse.php: the avatar is the
@@ -236,7 +240,7 @@ if ($route==='oauth/token' && $method==='POST') {
             $u=$pdo->prepare('UPDATE snap_oauth_tokens SET token_hash=?,refresh_token_hash=?,token_expires_at=DATE_ADD(NOW(),INTERVAL 30 DAY) WHERE id=? AND refresh_token_hash=? AND revoked_at IS NULL AND refresh_expires_at>NOW()');$u->execute([hash('sha256',$token),hash('sha256',$newRefresh),$row['id'],$oldHash]);
             if($u->rowCount()!==1){$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}$pdo->commit();
         }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}
-        px_json(['access_token'=>$token,'refresh_token'=>$newRefresh,'token_type'=>'Bearer','scope'=>$row['scopes'],'created_at'=>(string)time()]);
+        px_json(['access_token'=>$token,'refresh_token'=>$newRefresh,'token_type'=>'Bearer','scope'=>$row['scopes'],'created_at'=>(string)time(),'expires_in'=>30*24*60*60]);
     }
     $codeHash=hash('sha256',$code);$token=bin2hex(random_bytes(32));$refresh=bin2hex(random_bytes(32));$pdo->beginTransaction();
     try{$s=$pdo->prepare("SELECT t.*,a.client_secret_hash FROM snap_oauth_tokens t JOIN snap_oauth_apps a ON a.id=t.app_id WHERE a.client_id=? AND t.authorization_code_hash=? AND t.redirect_uri=? AND t.code_expires_at>NOW() AND t.token_hash IS NULL LIMIT 1 FOR UPDATE");$s->execute([$cid,$codeHash,$redirect]);$row=$s->fetch(PDO::FETCH_ASSOC);
@@ -244,7 +248,7 @@ if ($route==='oauth/token' && $method==='POST') {
         $u=$pdo->prepare('UPDATE snap_oauth_tokens SET token_hash=?,refresh_token_hash=?,authorization_code_hash=NULL,token_expires_at=DATE_ADD(NOW(),INTERVAL 30 DAY),refresh_expires_at=DATE_ADD(NOW(),INTERVAL 90 DAY) WHERE id=? AND authorization_code_hash=? AND token_hash IS NULL AND revoked_at IS NULL AND code_expires_at>NOW()');$u->execute([hash('sha256',$token),hash('sha256',$refresh),$row['id'],$codeHash]);
         if($u->rowCount()!==1){$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}$pdo->commit();
     }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();px_json(['error'=>'invalid_grant'],400);}
-    px_json(['access_token'=>$token,'refresh_token'=>$refresh,'token_type'=>'Bearer','scope'=>$row['scopes'],'created_at'=>(string)time()]);
+    px_json(['access_token'=>$token,'refresh_token'=>$refresh,'token_type'=>'Bearer','scope'=>$row['scopes'],'created_at'=>(string)time(),'expires_in'=>30*24*60*60]);
 }
 if ($route==='oauth/revoke' && $method==='POST') { $token=(string)($_POST['token']??'');$pdo->prepare('UPDATE snap_oauth_tokens SET revoked_at=NOW() WHERE token_hash=?')->execute([hash('sha256',$token)]);px_json([]); }
 
