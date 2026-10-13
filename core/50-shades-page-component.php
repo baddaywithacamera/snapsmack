@@ -22,7 +22,7 @@ $archivePane = $archiveLayout === 'masonry' ? 'masonry' : 'thumbs';
 <?php echo snap_render_html(snap_render_component('navigation', ['items' => $view['response']['navigation'] ?? []])); ?>
 </div></header>
 
-<?php if (in_array(($view['response']['kind'] ?? ''), ['photo', 'post', 'page', 'collection'], true)): ?>
+<?php if (in_array(($view['response']['kind'] ?? ''), ['photo', 'post', 'collection'], true)): ?>
 <?php $item = is_array($view['response']['item'] ?? null) ? $view['response']['item'] : []; ?>
 <article id="fsog-photobox" class="h-entry single-image-page"><div class="fsog-photo-wrap">
 <?php if (!empty($item['img_file']) || !empty($item['featured_image_path'])): ?><img src="<?php echo snap_escape_url($item['img_file'] ?? $item['featured_image_path']); ?>" alt="<?php echo snap_escape_attr($item['img_alt'] ?? $item['img_title'] ?? ''); ?>" class="fsog-image post-image u-photo" id="main-image"><?php endif; ?>
@@ -39,6 +39,23 @@ $archivePane = $archiveLayout === 'masonry' ? 'masonry' : 'thumbs';
 <?php $technical = is_array($item['technical'] ?? null) ? $item['technical'] : (is_array($item['exif'] ?? null) ? $item['exif'] : []); ?>
 <?php if ($technical): ?><div class="meta"><div class="meta-header">TECHNICAL SPECIFICATIONS</div><table class="exif-table"><?php foreach ($technical as $label => $value): ?><?php if ((string)$value !== '' && (string)$value !== 'N/A'): ?><tr><td class="exif-label"><?php echo snap_escape_html($label); ?></td><td class="exif-value"><?php echo snap_escape_html($value); ?></td></tr><?php endif; ?><?php endforeach; ?></table></div><?php endif; ?>
 </div><div id="pane-comments" class="footer-pane"><?php echo snap_render_html(snap_render_component('comments', ['items' => $view['response']['comments'] ?? []])); ?></div></div>
+<?php elseif (($view['response']['kind'] ?? '') === 'page'): ?>
+<?php
+// A static page is not a photograph. It used to render through the skin's
+// own skin-page.php, deleted on 2026-09-28, after which pages fell into the
+// photograph branch and came out with photo navigation and an empty
+// technical-specifications slot. This is that file's structure: the skin
+// still styles .static-content, .static-page-title, .description and
+// #photobox.page-hero, and until now emitted none of them.
+$pageItem = is_array($view['response']['item'] ?? null) ? $view['response']['item'] : [];
+$pageHero = trim((string)($pageItem['image_asset'] ?? ''));
+$pageBase = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
+?>
+<div class="static-content">
+<h1 class="static-page-title"><?php echo snap_escape_html($pageItem['title'] ?? $view['response']['page_title'] ?? ''); ?></h1>
+<?php if ($pageHero !== ''): ?><div id="photobox" class="page-hero"><div class="main-photo"><img src="<?php echo snap_escape_url($pageBase . ltrim($pageHero, '/')); ?>" class="post-image" alt="<?php echo snap_escape_attr($pageItem['title'] ?? ''); ?>"></div></div><?php endif; ?>
+<div class="description entry-content e-content"><?php echo snap_render_html($pageItem['content'] ?? $pageItem['description'] ?? ''); ?></div>
+</div>
 <?php elseif (($view['response']['kind'] ?? '') === 'search'): ?>
 <section class="fsog-search-page search-results"><h1 class="static-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Search'); ?></h1><?php foreach (($view['response']['results'] ?? []) as $group): ?><?php foreach ($group as $result): ?><article><h2><?php echo snap_escape_html($result['img_title'] ?? $result['title'] ?? ''); ?></h2></article><?php endforeach; ?><?php endforeach; ?></section>
 <?php else: ?>
