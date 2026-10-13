@@ -326,12 +326,19 @@ try {
                 if (!is_array($_wall_item)) continue;
                 $_wall_tiles .= (string)snap_render_component('wall-tile', ['item' => $_wall_item]);
             }
+            // has_more is derived from the cursor, not read, because the two
+            // routes that own a wall disagree: the archive response carries
+            // has_more AND next_page, while the LANDING response -- which is
+            // where SCROLL's wall lives -- carries only next_page and sets it
+            // to 0 when the feed is exhausted. Reading has_more would have
+            // told SCROLL there was nothing more after a single extra batch.
+            $_wall_next = (int)($_strict_view['response']['next_page'] ?? 0);
             header('Content-Type: application/json; charset=utf-8');
             header('X-Content-Type-Options: nosniff');
             echo json_encode([
                 'html' => $_wall_tiles,
-                'next' => (int)($_strict_view['response']['next_page'] ?? 0),
-                'has_more' => !empty($_strict_view['response']['has_more']),
+                'next' => $_wall_next,
+                'has_more' => $_wall_next > 0 && $_wall_tiles !== '',
             ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             exit;
         }
