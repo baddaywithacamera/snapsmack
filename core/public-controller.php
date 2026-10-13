@@ -71,6 +71,15 @@ function snapsmack_game_on_focus_item(array $item): array
     return $item;
 }
 
+/** Attach the public photo URL without mutating a temporary array copy. */
+function snapsmack_photo_destination(?array $destination): ?array
+{
+    if (is_array($destination) && !empty($destination['img_slug'])) {
+        $destination['url'] = snap_route_url('photo', ['slug' => $destination['img_slug']]);
+    }
+    return $destination;
+}
+
 /** Format stored photograph metadata once, outside every presentation skin. */
 function snapsmack_photo_technical_details(array $item): array
 {
@@ -99,12 +108,10 @@ function snapsmack_photo_response(SnapPublicRepository $repository, array $item,
     $next = $repository->adjacentPhotograph((int)$item['id'], true);
     $first = $repository->photographBoundary(false);
     $last = $repository->photographBoundary(true);
-    foreach ([$previous, $next, $first, $last] as &$destination) {
-        if (is_array($destination) && !empty($destination['img_slug'])) {
-            $destination['url'] = snap_route_url('photo', ['slug' => $destination['img_slug']]);
-        }
-    }
-    unset($destination);
+    $previous = snapsmack_photo_destination($previous);
+    $next = snapsmack_photo_destination($next);
+    $first = snapsmack_photo_destination($first);
+    $last = snapsmack_photo_destination($last);
     $item['technical'] = snapsmack_photo_technical_details($item);
     $item['albums'] = array_map(static function (array $album): array {
         $album['url'] = snap_route_url('archive', ['album' => (int)$album['id']]);
@@ -129,10 +136,10 @@ function snapsmack_game_on_photo_response(SnapPublicRepository $repository, arra
     $next = $repository->adjacentPhotograph((int)$item['id'], true);
     $first = $repository->photographBoundary(false);
     $last = $repository->photographBoundary(true);
-    foreach ([$previous, $next, $first, $last] as &$destination) {
-        if (is_array($destination) && !empty($destination['img_slug'])) $destination['url'] = snap_route_url('photo', ['slug' => $destination['img_slug']]);
-    }
-    unset($destination);
+    $previous = snapsmack_photo_destination($previous);
+    $next = snapsmack_photo_destination($next);
+    $first = snapsmack_photo_destination($first);
+    $last = snapsmack_photo_destination($last);
     $response = [
         'status' => 200,
         'kind' => 'photo',
@@ -159,10 +166,10 @@ function snapsmack_instant_camera_photo_response(SnapPublicRepository $repositor
     $next = $repository->adjacentPhotograph((int)$item['id'], true);
     $first = $repository->photographBoundary(false);
     $last = $repository->photographBoundary(true);
-    foreach ([$previous, $next, $first, $last] as &$destination) {
-        if (is_array($destination) && !empty($destination['img_slug'])) $destination['url'] = snap_route_url('photo', ['slug' => $destination['img_slug']]);
-    }
-    unset($destination);
+    $previous = snapsmack_photo_destination($previous);
+    $next = snapsmack_photo_destination($next);
+    $first = snapsmack_photo_destination($first);
+    $last = snapsmack_photo_destination($last);
     $response = [
         'status' => 200,
         'kind' => 'photo',
@@ -188,10 +195,10 @@ function snapsmack_grid_modal_photo_response(SnapPublicRepository $repository, a
     $next = $repository->adjacentPhotograph((int)$item['id'], true);
     $first = $repository->photographBoundary(false);
     $last = $repository->photographBoundary(true);
-    foreach ([$previous, $next, $first, $last] as &$destination) {
-        if (is_array($destination) && !empty($destination['img_slug'])) $destination['url'] = snap_route_url('photo', ['slug' => $destination['img_slug']]);
-    }
-    unset($destination);
+    $previous = snapsmack_photo_destination($previous);
+    $next = snapsmack_photo_destination($next);
+    $first = snapsmack_photo_destination($first);
+    $last = snapsmack_photo_destination($last);
     $response = [
         'status' => 200,
         'kind' => 'photo',
