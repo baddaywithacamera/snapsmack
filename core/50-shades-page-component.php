@@ -1,4 +1,5 @@
-<?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
+<?php defined('SNAPSMACK_SKIN_RENDER') || exit;
+require_once __DIR__ . '/public-route-aliases.php'; ?>
 <?php
 $archiveLayout = in_array(($view['site']['archive_layout'] ?? ''), ['square', 'cropped', 'masonry', 'croppedwithcalendar'], true)
     ? (string)$view['site']['archive_layout']
@@ -41,6 +42,28 @@ $archivePane = $archiveLayout === 'masonry' ? 'masonry' : 'thumbs';
 <?php elseif (($view['response']['kind'] ?? '') === 'search'): ?>
 <section class="fsog-search-page search-results"><h1 class="static-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Search'); ?></h1><?php foreach (($view['response']['results'] ?? []) as $group): ?><?php foreach ($group as $result): ?><article><h2><?php echo snap_escape_html($result['img_title'] ?? $result['title'] ?? ''); ?></h2></article><?php endforeach; ?><?php endforeach; ?></section>
 <?php else: ?>
+<?php
+// The archive's control row, below the header and above the grids, exactly
+// where this skin has always carried it. It is a shared component: it brings
+// no navigation of its own, so the header and menus above are untouched.
+echo snap_render_html(snap_render_component('archive-filters', [
+    'content_width' => (string)($view['site']['skin_presentation']['options']['archive_content_width'] ?? ''),
+    // Not snap_route_url('archive'): that returns the literal /archive, which
+    // is exactly the unregistered path that sent six sites into a redirect
+    // loop. The guarded helper returns the site's real archive slug, or
+    // ?view=archive, which the strict controller always renders.
+    'show_all_url'  => snapsmack_legacy_archive_target(
+        defined('BASE_URL') ? (string)BASE_URL : '/',
+        (array)($view['route_aliases'] ?? $view['site']['route_aliases'] ?? []),
+        (string)($view['site']['site_mode'] ?? '')
+    ),
+    'query'         => (string)($view['response']['query'] ?? ''),
+    'selected'      => (array)($view['response']['active_filters'] ?? []),
+    'filters'       => (array)($view['site']['crop_circles']['filters'] ?? []),
+    'search'        => (array)($view['site']['crop_circles']['search'] ?? []),
+    'layouts'       => (array)($view['response']['archive_layouts'] ?? []),
+]));
+?>
 <section id="browse-grid" class="fsog-archive-grid archive-grid h-feed"<?php if ($archivePane !== 'thumbs'): ?> style="display:none"<?php endif; ?>><?php foreach (($view['response']['items'] ?? []) as $archiveItem): ?><?php $archiveWidth = max(1, (int)($archiveItem['img_width'] ?? 1)); $archiveHeight = max(1, (int)($archiveItem['img_height'] ?? 1)); $archiveRatio = max(2 / 3, min(3 / 2, $archiveWidth / $archiveHeight)); $archiveThumb = !empty($archiveItem['img_thumb_aspect']) ? $archiveItem['img_thumb_aspect'] : ($archiveItem['img_file'] ?? ''); ?><a class="fsog-archive-item" href="<?php echo snap_escape_url($archiveItem['url'] ?? snap_route_url('photo', ['slug' => $archiveItem['img_slug'] ?? ''])); ?>" title="<?php echo snap_escape_attr($archiveItem['img_title'] ?? ''); ?>"><?php if ($archiveThumb !== ''): ?><div class="fsog-thumb<?php if ($archiveRatio < 1): ?> fsog-thumb-portrait<?php endif; ?>" style="aspect-ratio:<?php echo snap_escape_attr(round($archiveRatio, 4)); ?>"><?php echo snap_render_html(snap_render_component('image', ['url' => $archiveThumb, 'alt' => $archiveItem['img_alt'] ?? $archiveItem['img_title'] ?? ''])); ?></div><?php endif; ?><div class="fsog-archive-title"><?php echo snap_escape_html($archiveItem['img_title'] ?? $archiveItem['title'] ?? $archiveItem['name'] ?? ''); ?></div></a><?php endforeach; ?></section>
 <section id="justified-grid" class="<?php echo snap_escape_attr(($view['site']['skin_presentation']['options']['masonry_layout'] ?? '') === 'columns' ? 'ss-masonry' : (($view['site']['skin_presentation']['options']['masonry_layout'] ?? '') === 'square' ? 'ss-square-wall' : 'ss-scroll-wall')); ?>" data-masonry-layout="<?php echo snap_escape_attr($view['site']['skin_presentation']['options']['masonry_layout'] ?? ''); ?>"<?php if ($archivePane === 'thumbs'): ?> style="display:none"<?php endif; ?>><?php foreach (($view['response']['items'] ?? []) as $archiveItem): ?><?php $archiveWidth = max(1, (int)($archiveItem['img_width'] ?? 3)); $archiveHeight = max(1, (int)($archiveItem['img_height'] ?? 2)); $archiveThumb = !empty($archiveItem['img_thumb_aspect']) ? $archiveItem['img_thumb_aspect'] : ($archiveItem['img_file'] ?? ''); ?><a class="ss-masonry-item" href="<?php echo snap_escape_url($archiveItem['url'] ?? snap_route_url('photo', ['slug' => $archiveItem['img_slug'] ?? ''])); ?>" title="<?php echo snap_escape_attr($archiveItem['img_title'] ?? ''); ?>"><?php if ($archiveThumb !== ''): ?><?php echo snap_render_html(snap_render_component('image', ['url' => $archiveThumb, 'alt' => $archiveItem['img_alt'] ?? $archiveItem['img_title'] ?? '', 'attributes' => ['data-w' => $archiveWidth, 'data-h' => $archiveHeight]])); ?><?php endif; ?></a><?php endforeach; ?></section>
 <?php endif; ?>
