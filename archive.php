@@ -76,11 +76,20 @@ try {
     // other strict skins use their clean controller-owned archive route.
     $_archive_manifest = load_skin_manifest($active_skin);
     if (in_array((string)($_archive_manifest['cms_controller'] ?? ''), ['smacktalk', 'public'], true)) {
-        $_archive_target = (($settings['site_mode'] ?? '') === 'carousel')
-            ? BASE_URL
-            : snapsmack_public_route_url(BASE_URL, $skin_view['route_aliases'] ?? [], 'archive', 'archive');
-        header('Location: ' . $_archive_target, true, 301);
-        exit;
+        $_archive_target = snapsmack_legacy_archive_target(
+            BASE_URL,
+            $skin_view['route_aliases'] ?? [],
+            (string)($settings['site_mode'] ?? '')
+        );
+        // Belt and braces: never 301 to the address we were just asked for,
+        // whatever a future alias table says. A loop is worse than a plain page.
+        $_archive_here = strtok((string)($_SERVER['REQUEST_URI'] ?? ''), '?');
+        $_archive_there = parse_url($_archive_target, PHP_URL_PATH);
+        if (rtrim((string)$_archive_there, '/') !== rtrim((string)$_archive_here, '/')
+                || parse_url($_archive_target, PHP_URL_QUERY)) {
+            header('Location: ' . $_archive_target, true, 301);
+            exit;
+        }
     }
 
     // --- ARCHIVE DISABLED? ---
