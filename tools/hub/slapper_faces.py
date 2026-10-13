@@ -45,7 +45,10 @@ import os
 import time
 import urllib.request
 
-import photo_manager
+# photo_manager is imported where it is used, not here. The separately
+# installed faces component imports THIS module to run the detector, so that
+# there is exactly one detector in SNAP SLAPPER rather than a copy that drifts
+# -- and that environment has OpenCV but none of the application's own modules.
 
 # --- models -----------------------------------------------------------------
 # Pinned to exact files in OpenCV's model zoo. If either hash ever disagrees the
@@ -214,6 +217,7 @@ class FaceStore:
         self.directory = directory
         os.makedirs(directory, exist_ok=True)
         self.path = os.path.join(directory, "faces.json")
+        import photo_manager
         data = photo_manager.load_versioned(self.path, "faces", {})
         self.photos = data.get("photos", {}) if isinstance(data, dict) else {}
         self.people = data.get("people", {}) if isinstance(data, dict) else {}
@@ -223,6 +227,7 @@ class FaceStore:
         return os.path.normcase(os.path.abspath(path))
 
     def save(self):
+        import photo_manager
         photo_manager.save_versioned(self.path, "faces", {
             "photos": self.photos, "people": self.people})
 
