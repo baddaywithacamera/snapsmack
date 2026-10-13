@@ -812,11 +812,25 @@ $inventory = [
         'smack-columns' => [
             'label'        => 'Fixed-column photo wall (native aspect, portraits largest)',
             'path'         => 'assets/js/ss-engine-columns.js',
+            // The wall's geometry lives in this stylesheet. Without it the
+            // container has no width rule, measures zero, and the engine
+            // lays out nothing -- which is what emptied the 50 Shades
+            // archive. Declaring it here means every skin that switches
+            // the engine on gets its structure, instead of each skin
+            // remembering a stylesheet it cannot see.
+            'css'          => 'assets/css/ss-engine-scroll-wall.css',
             'has_settings' => false,
         ],
         'smack-rows' => [
             'label'        => 'Justified-row photo wall (native aspect, landscapes largest — mirror of smack-columns)',
             'path'         => 'assets/js/ss-engine-rows.js',
+            // The wall's geometry lives in this stylesheet. Without it the
+            // container has no width rule, measures zero, and the engine
+            // lays out nothing -- which is what emptied the 50 Shades
+            // archive. Declaring it here means every skin that switches
+            // the engine on gets its structure, instead of each skin
+            // remembering a stylesheet it cannot see.
+            'css'          => 'assets/css/ss-engine-scroll-wall.css',
             'has_settings' => false,
         ],
         'smack-aurora-bg' => [
