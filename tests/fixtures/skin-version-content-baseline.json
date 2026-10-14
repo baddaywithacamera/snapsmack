@@ -7,8 +7,8 @@
             "files_sha256": "1899a6101774420c5bb5f3bbbc6d9215e5192e2324cc07a9395e1c5ddd01ed8f"
         },
         "52-card-pickup": {
-            "version": "1.4.7",
-            "files_sha256": "fbcf5162a7eb3bc3de1271f17301907239ca394f0c27e8473fce065938bbef5a"
+            "version": "1.4.8",
+            "files_sha256": "a445c571447e0e25a3dd0bf8427bef81a292493c5298c406ac5ef5c7ad8bb6e5"
         },
         "alfred": {
             "version": "1.0.6",
