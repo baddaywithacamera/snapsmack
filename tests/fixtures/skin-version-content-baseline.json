@@ -7,12 +7,12 @@
             "files_sha256": "1899a6101774420c5bb5f3bbbc6d9215e5192e2324cc07a9395e1c5ddd01ed8f"
         },
         "52-card-pickup": {
-            "version": "1.4.9",
-            "files_sha256": "dfcfe2f69af62e2bd615710109f0899a1d13ad6af1d06ea110a03641ded170e6"
+            "version": "1.4.10",
+            "files_sha256": "79d2acd98f7f1c6ebf7505732817c4a96ad28cc2877499da07457c1927414978"
         },
         "alfred": {
-            "version": "1.0.7",
-            "files_sha256": "bd3dcb068541778b5d403d737060b25d4a3dfda918ecf6fd6bb9389ba0fc35aa"
+            "version": "1.0.8",
+            "files_sha256": "bb080f8c40551bf0003d05fddac90cd5e28c22324bdea038dba8b9ba917d7cf7"
         },
         "aurora": {
             "version": "1.0.47",
@@ -23,32 +23,32 @@
             "files_sha256": "64da24b0a6ad65d6e30d36a3435a0b98b8d53c94b64d0474dafd159cc178cf21"
         },
         "full-monty": {
-            "version": "0.1.5",
-            "files_sha256": "2a545a267b8ccaa547f6653944dd35a53f2a85f30925e86548d8056b87e86cb0"
+            "version": "0.1.6",
+            "files_sha256": "9d00076cc72504ce9b2cd9f850aa21b1463b43c4dbf51b72f4cffb915c22d6d7"
         },
         "galleria": {
-            "version": "1.3.13",
-            "files_sha256": "c4f37157657fdcd2ac64ca5ac508b86d00072a89704eec06bd3983c14e132631"
+            "version": "1.3.14",
+            "files_sha256": "b5609df042c36af0b30ffb8754191bbd7246b8e1fbc61c32e73faebcb022b440"
         },
         "game-on": {
             "version": "0.1.31",
             "files_sha256": "518e9ba942862ab6696429ef353867e60ba7791fe6ca58ef287bef88277134d8"
         },
         "glide": {
-            "version": "0.1.8",
-            "files_sha256": "7663e9ea32241a9c5998848f629b17eb501b643ecdd7ec06f559c3e105fddc5a"
+            "version": "0.1.9",
+            "files_sha256": "6703e40b327e901cf1f0df7434245a8ee5f6e0dc18294d5a1e2c2972d1d9c2d9"
         },
         "heuristic": {
             "version": "0.1.9",
             "files_sha256": "647ac55b031c0bb49d0d329daef057e7bc421ee275dc69e07369f1fbe0c47258"
         },
         "hip-to-be-square": {
-            "version": "1.3.9",
-            "files_sha256": "b49b5b308e524deeb5c406d4f26da99660b1c072d1e5e56bd4e97bfcc7d67180"
+            "version": "1.3.10",
+            "files_sha256": "1ae95bd8744853a2f09c88221a49e5055eb6835634ddf42c5731e543dc49bf28"
         },
         "impact-printer": {
-            "version": "2.1.6",
-            "files_sha256": "e9af3e74d122ad9d3e882e1522326d6be531dccf91bc5c8c20b7b6c8ac799088"
+            "version": "2.1.7",
+            "files_sha256": "bff814e9a6b5e011a3fa50ae64f483f11e3cf0c0c6b5e546ee38751b0d7746e3"
         },
         "instant-camera": {
             "version": "1.0.48",
@@ -59,12 +59,12 @@
             "files_sha256": "8d35000348bf8cc2186492bd484b930acd3c8b8094d2b21a1c5a70aeb393157d"
         },
         "new-horizon": {
-            "version": "1.3.12",
-            "files_sha256": "4809e972c56df57429c2510e6d7af1d05872968e505bd3902d162ec1e3100301"
+            "version": "1.3.14",
+            "files_sha256": "2d6bdfe1fc30e31887efd59ac4b7635ac4a388daea42d902a9ed222b03154a86"
         },
         "onyx": {
-            "version": "0.1.14",
-            "files_sha256": "e952926717c291c621a705c55e0b0fd5e41930ae1785d07c5bc833f258fa1868"
+            "version": "0.1.15",
+            "files_sha256": "b83b079d6a477b49f70ddf6d23cb86d581162b09fc83fa9ddbe001442f3eb723"
         },
         "parade": {
             "version": "1.2.45",
@@ -75,16 +75,16 @@
             "files_sha256": "28ba7fd6543533eafe77f4c954e4aa87cf9937d7f73e58c68926ecca345c5565"
         },
         "rational-geo": {
-            "version": "2.1.14",
-            "files_sha256": "29bfaaa5ccc7b9625dad58fe0fb91b4e64da7d3c84ab2fbfcc7c51590659ef45"
+            "version": "2.1.15",
+            "files_sha256": "fb057bc4004117c93bfec634c1e43bbc412d3fc66aee08d1035b6b5d0675a21d"
         },
         "scroll": {
             "version": "0.1.63",
             "files_sha256": "a450b2f030331c6e521737e1a39dc51a5ba2a42a223a10c0ac6e61049a2ebf2c"
         },
         "show-n-tell": {
-            "version": "1.2.6",
-            "files_sha256": "a9913bf3ea3279441755e3528d96081cd75f0301812a089cd2b878f0503a7519"
+            "version": "1.2.7",
+            "files_sha256": "3a38672836dc35bd3b717d938d56b824ec560c07fba35d51e7b8478230bf0766"
         },
         "slickr": {
             "version": "1.0.34",
@@ -95,16 +95,16 @@
             "files_sha256": "f6bf75698c167d6214b7dbc76092788ca33241cc3046362c9cc81f939b6465c6"
         },
         "stanley": {
-            "version": "1.1.6",
-            "files_sha256": "5b554d357c334d0f1b3f1df20a62ac86c30acc23602350e18e162fac0ed4a715"
+            "version": "1.1.7",
+            "files_sha256": "f3d1e3045cb760a4c1589f596237e6f350b64cfd80abd6b9de9a9487069947ec"
         },
         "sudden-impact": {
             "version": "1.0.15",
             "files_sha256": "23494ca8e982e79df94f29e8f8ca73b521b47dcb1cd4f35a217e187ebf42c838"
         },
         "telegram": {
-            "version": "0.1.4",
-            "files_sha256": "591d0f8a12f779c16423f976968d0016a09bdf03a267136dba3be1a813f47316"
+            "version": "0.1.5",
+            "files_sha256": "40c176aea8793acd259f0456b153d1aa89566d40d4173ec213a23ab9e1845961"
         },
         "the-grid": {
             "version": "1.3.50",
@@ -115,12 +115,12 @@
             "files_sha256": "138caa14f6eb3e144e972e1a6427e783b5420ddb0260070747771ec157dd92ff"
         },
         "true-grit": {
-            "version": "1.3.7",
-            "files_sha256": "d9a8d97c22dc2b4ac049fadc4a4af22942c09c9e63d53f1b93f726c86b22f5eb"
+            "version": "1.3.9",
+            "files_sha256": "375246153d6b5d2c613070dd686dec8cb79034febc4a18bb493b845caeb4d8d5"
         },
         "writing-with-impact": {
-            "version": "1.1.5",
-            "files_sha256": "00ec234e3803702e60ea22123350dfce21f80cf73a271d53013d8190abef637d"
+            "version": "1.1.6",
+            "files_sha256": "1601eb164ba059718b95082af2a2922b923e5ce730e4c98f6bbbf94c04eebd8a"
         }
     }
 }
