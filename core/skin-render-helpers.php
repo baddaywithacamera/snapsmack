@@ -246,7 +246,9 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         // The content cap is the site's own, so it arrives as bounded data and
         // becomes a custom property on the row. Without it the docked controls
         // measure from the window and escape the content column.
-        $width = (string)($data['content_width'] ?? '');
+        // Skin width controls store a bare number of pixels; accept either.
+        $width = trim((string)($data['content_width'] ?? ''));
+        if (preg_match('/^\d{3,5}$/', $width)) $width .= 'px';
         $width = preg_match('/^\d{3,5}px$/', $width) ? $width : '';
         $html = '<div id="infobox" class="archive-filter-row"'
             . ($width !== '' ? ' style="--archive-content-width:' . snap_escape_attr($width) . '"' : '')
@@ -275,7 +277,12 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                     if (!is_array($item)) continue;
                     $value = (string)($item['id'] ?? '');
                     if ($value === '') continue;
-                    $html .= '<label class="saf-item"><input type="checkbox" class="saf-checkbox" name="'
+                    // data-type is how ss-engine-archive-filter.js knows whether a
+                    // ticked box is a category, an album, a collection or an author.
+                    // Without it every selection was dropped and applying a filter
+                    // navigated to a bare archive, clearing what you had just ticked.
+                    $html .= '<label class="saf-item"><input type="checkbox" class="saf-checkbox" data-type="'
+                        . snap_escape_attr($type) . '" name="'
                         . snap_escape_attr($type) . '[]" value="' . snap_escape_attr($value) . '"'
                         . (in_array($type . ':' . $value, $selected, true) ? ' checked' : '')
                         . '><span class="saf-label">'

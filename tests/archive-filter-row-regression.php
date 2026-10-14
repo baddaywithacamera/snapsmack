@@ -93,6 +93,17 @@ $check(str_contains($bar, 'class="archive-filter-inner"'),
     'the row needs an inner column for the controls to dock to');
 $check(str_contains($bar, '--archive-content-width:1650px'),
     'the site content width must reach the row');
+// The skin's Main Canvas Width control stores a bare number of pixels, and
+// that is the ONLY width setting 50 Shades has -- there is no
+// archive_content_width. Reading one that did not exist left the row
+// uncapped on the live site: measured 1900px of inner column against a
+// 1650px wall, with the docked controls back outside the photographs.
+$check(str_contains((string)snap_render_component('archive-filters', ['content_width' => '1650']),
+    '--archive-content-width:1650px'),
+    'a bare number of pixels must be accepted; that is how a skin control stores it');
+$check(str_contains($renderer_src = (string)@file_get_contents($root . '/core/50-shades-page-component.php'),
+    "['options']['main_canvas_width']"),
+    'the row must read the width control the skin actually has');
 foreach (['999999px', 'javascript:x', '40', 'calc(100% - 2px)'] as $bad) {
     $guarded = (string)snap_render_component('archive-filters', ['content_width' => $bad]);
     $check(!str_contains($guarded, '--archive-content-width'),
@@ -107,6 +118,55 @@ $check(str_contains($css, '.archive-filter-row .archive-controls--docked'),
     'page-archive.css must dock the controls to that column, not the window');
 $check(preg_match('/\.archive-filter-row \.archive-filter-inner\s*\{[^}]*width:\s*100%/', $css) === 1,
     'the inner column must fill the row; without it it shrink-wraps and the controls dock mid-bar');
+
+// --- the panel's checkboxes must be legible to the engine ----------------
+// ss-engine-archive-filter.js reads cb.dataset.type to decide whether a
+// ticked box is a category, an album, a collection or an author. The
+// component emitted name="cat[]" but no data-type, so every selection was
+// dropped: pressing a filter navigated to a bare archive and cleared the
+// boxes you had just ticked.
+$check(preg_match('/class="saf-checkbox" data-type="cat"/', $bar) === 1,
+    'a checkbox must declare its taxonomy type for the filter engine');
+$check(str_contains($bar, 'data-type="alb"'), 'album checkboxes must declare their type too');
+
+// --- the inner column must centre what the skin used to centre -----------
+// A skin centres this row by making #infobox a flex container with the links
+// as its inline-flex child. The inner column is the flex child now, so it
+// must centre in turn; while it did not, everything sat against the left
+// 40px of padding. Measured in a harness at a 1900px viewport with the live
+// stylesheet: the links' centre is 0px from the window centre, the column
+// measures 1650px exactly like the wall, and the docked controls land 40px
+// inside the wall's right edge.
+$check(preg_match('/\.archive-filter-row \.archive-filter-inner\s*\{[^}]*justify-content:\s*center/', $css) === 1,
+    'the inner column must centre its controls, or the row bunches to the left');
+
+// --- the engine must reach the page, and from the CMS --------------------
+// It was a hand-written <script> tag at the bottom of archive.php. Strict
+// skins never render that file, so the FILTER button was inert: measured on
+// the live site, the button and panel both existed and a click left
+// aria-expanded="false". No skin may be asked to remember it -- it ships as
+// a companion of the archive handles that already carry page-archive.css.
+$inventory = require $root . '/core/manifest-inventory.php';
+foreach (['smack-archive-grid-switch', 'smack-archive-toggle'] as $handle) {
+    $check(in_array('assets/js/ss-engine-archive-filter.js',
+        $inventory['scripts'][$handle]['companions'] ?? [], true),
+        $handle . ' must deliver the filter engine with the row it styles');
+}
+if (!defined('BASE_URL')) define('BASE_URL', 'https://example.test/');
+if (!defined('SNAPSMACK_VERSION_SHORT')) define('SNAPSMACK_VERSION_SHORT', '0.0.0D');
+require_once $root . '/core/asset-registry.php';
+$manifest = json_decode((string)@file_get_contents($root . '/skins/50-shades-of-noah-grey/manifest.json'), true);
+$resolved = snapsmack_skin_declared_assets(is_array($manifest) ? $manifest : []);
+$check(count(array_filter($resolved['scripts'], static fn($u) => str_contains($u, 'ss-engine-archive-filter.js'))) === 1,
+    'the filter engine must resolve exactly once for a skin with an archive');
+
+$engine = (string)@file_get_contents($root . '/assets/js/ss-engine-archive-filter.js');
+$check(!str_contains($engine, "'archive.php'"),
+    'applying a filter must not navigate to archive.php; that is the unregistered path that loops');
+$check(str_contains($engine, 'window.location.pathname'),
+    'applying a filter must stay on the archive the reader is looking at');
+$check(str_contains($engine, '__smackArchiveFilterBound'),
+    'the engine must bind once; Crop Circles points at this same file and a double bind reads as a dead button');
 
 // --- and the skin renderer must actually call it -------------------------
 $renderer = (string)@file_get_contents($root . '/core/50-shades-page-component.php');
