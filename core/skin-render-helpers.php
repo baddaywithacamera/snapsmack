@@ -487,32 +487,49 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         }
         $html .= '</ol>';
     } elseif ($name === 'blogroll') {
-        // The list of sites a photographer sends you to. TILEZ, GAME ON and
-        // SLICKR each hand-rolled this loop in their own layout; the three
-        // renderers in core/ had no branch for it at all, so a blogroll fell
-        // through to the archive and served an empty photo wall. One loop,
-        // here, so a fix reaches every skin that calls it.
+        // The markup blogroll.php has always emitted, class for class. The
+        // skins already style .blogroll-canvas, .blogroll-category-block,
+        // .blogroll-category-heading, .blogroll-grid, .blogroll-peer,
+        // -peer-name, -peer-desc and -peer-url, and five manifest controls
+        // target those names -- Column Layout, Content Max Width, Column
+        // Gutter, Show Peer Description, Show Peer URL. Inventing different
+        // names would have left every one of those controls doing nothing,
+        // which is exactly how the About page lost its photograph frame.
         $groups = is_array($data['groups'] ?? null) ? $data['groups'] : [];
-        $html = '<div class="blogroll-grid">';
+        $html = '';
         foreach ($groups as $group) {
             if (!is_array($group)) continue;
             $items = is_array($group['items'] ?? null) ? $group['items'] : [];
-            if (!$items) continue;
-            $html .= '<section class="blogroll-group"><h2>'
-                . snap_escape_html($group['label'] ?? '') . '</h2><ul>';
+            $peers = '';
             foreach ($items as $peer) {
                 if (!is_array($peer)) continue;
                 $url = snap_escape_url($peer['url'] ?? '');
                 if ($url === '') continue;
-                $html .= '<li><a href="' . $url . '" target="_blank" rel="noopener noreferrer">'
-                    . snap_escape_html($peer['name'] ?? $peer['url'] ?? '') . '</a>';
+                $peers .= '<div class="blogroll-peer"><div class="blogroll-peer-name">'
+                    . '<a href="' . $url . '" target="_blank" rel="noopener noreferrer">'
+                    . snap_escape_html($peer['name'] ?? $peer['url'] ?? '') . '</a></div>';
                 $note = trim((string)($peer['description'] ?? ''));
-                if ($note !== '') $html .= '<p>' . snap_escape_html($note) . '</p>';
-                $html .= '</li>';
+                if ($note !== '') {
+                    $peers .= '<p class="blogroll-peer-desc">' . snap_escape_html($note) . '</p>';
+                }
+                $peers .= '<a class="blogroll-peer-url dim" href="' . $url
+                    . '" target="_blank" rel="noopener noreferrer">'
+                    . snap_escape_html($peer['url'] ?? '') . '</a></div>';
             }
-            $html .= '</ul></section>';
+            if ($peers === '') continue;
+            $label = trim((string)($group['label'] ?? ''));
+            $html .= '<div class="blogroll-category-block">';
+            if ($label !== '') {
+                // The skin already sets text-transform:uppercase on this
+                // heading. Shouting in PHP as well is presentation leaking
+                // into the CMS, and it would stop a skin ever choosing
+                // otherwise -- blogroll.php did it and had to be matched by
+                // every stylesheet.
+                $html .= '<h2 class="blogroll-category-heading">'
+                    . snap_escape_html($label) . '</h2>';
+            }
+            $html .= '<div class="blogroll-grid">' . $peers . '</div></div>';
         }
-        $html .= '</div>';
     } elseif ($name === 'footer') {
         $footer = is_array($data['footer'] ?? null) ? $data['footer'] : [];
         $parts = [];
