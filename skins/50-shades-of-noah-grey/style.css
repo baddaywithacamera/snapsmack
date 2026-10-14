@@ -775,7 +775,10 @@ body.archive-page #system-footer {
     margin: 40px auto 40px auto !important;
     padding: 72px 40px 96px !important;
     box-sizing: border-box;
-    background: var(--static-card-bg, var(--bg-secondary));
+    /* Fall back to the page's own grey, not a lighter one: a static page
+       should read as the same surface as the landing page unless the
+       owner deliberately asks for a panel. */
+    background: var(--static-card-bg, var(--bg-primary));
     /* No border and no shadow. Nothing else on this site is drawn as a box --
        the home page is a photograph edge to edge -- so a bordered, shadowed
        panel floating on the stage read as a dialog rather than as a page.
