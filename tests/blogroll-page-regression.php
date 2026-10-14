@@ -48,14 +48,28 @@ $groups = [
 
 // --- the shared component ------------------------------------------------
 $html = (string)snap_render_component('blogroll', ['groups' => $groups]);
-$check(str_contains($html, 'class="blogroll-grid"'), 'the blogroll needs its grid');
-$check(substr_count($html, 'blogroll-group') === 1,
+// The class names are a CONTRACT. Every skin styles these, and five manifest
+// controls target them -- Column Layout (.blogroll-grid), Content Max Width
+// (.blogroll-canvas), Column Gutter (.blogroll-grid), Show Peer Description
+// (.blogroll-peer-desc) and Show Peer URL (.blogroll-peer-url). Invent a
+// different name and all five silently do nothing, which is exactly how the
+// About page lost the photograph frame its owner had chosen.
+foreach (['blogroll-category-block', 'blogroll-category-heading', 'blogroll-grid',
+          'blogroll-peer', 'blogroll-peer-name', 'blogroll-peer-desc',
+          'blogroll-peer-url'] as $contract) {
+    $check(str_contains($html, 'class="' . $contract . '"') || str_contains($html, 'class="' . $contract . ' '),
+        'the blogroll must emit .' . $contract . '; a skin control targets it');
+}
+$check(substr_count($html, 'blogroll-category-block') === 1,
     'a group with no entries must not render an empty heading');
 $check(str_contains($html, '>A Bad Day With A Camera</a>'), 'a peer is a link by name');
 $check(str_contains($html, 'href="https://baddaywithacamera.ca"'), 'the peer url must survive');
 $check(str_contains($html, 'rel="noopener noreferrer"'), 'outbound links must not leak the opener');
 $check(str_contains($html, 'Rust, ruin &amp; bad weather.'), 'the note must be escaped');
-$check(!str_contains($html, '<p></p>'), 'no empty note paragraph when there is no note');
+$check(!str_contains($html, 'blogroll-peer-desc"></p>'), 'no empty note paragraph when there is no note');
+// The heading is uppercased by the stylesheet, so the CMS must not shout too.
+$check(str_contains($html, '>Photographers</h2>'),
+    'the CMS must not uppercase the heading; text-transform belongs to the skin');
 
 $nasty = (string)snap_render_component('blogroll', ['groups' => [
     ['label' => '<script>x</script>', 'items' => [
@@ -105,8 +119,16 @@ $check(str_contains($page, 'footer-metadata-bar'), 'a blogroll still gets the fo
 $css = (string)@file_get_contents($root . '/skins/50-shades-of-noah-grey/style.css');
 $check(str_contains($css, '.static-content--list'),
     'a list page must collapse the two-column layout; there is no photograph to sit beside');
-$check(preg_match('/\.blogroll-grid\s*\{[^}]*grid-template-columns/', $css) === 1,
-    'the blogroll needs a column layout');
+// The skin has styled .blogroll-* all along -- it was the markup that went
+// missing, not the presentation. Nothing here may be reinvented beside it.
+foreach (['.blogroll-canvas', '.blogroll-category-heading', '.blogroll-peer-desc',
+          '.blogroll-peer-url'] as $rule) {
+    $check(str_contains($css, $rule), 'the skin must keep styling ' . $rule);
+}
+$check(!str_contains($css, '.blogroll-group'),
+    'no second set of invented blogroll classes beside the real ones');
+$check(str_contains($page, 'class="blogroll-canvas"'),
+    'the renderer must use the canvas the Content Max Width control targets');
 
 if ($failures) {
     fwrite(STDERR, "Blogroll page regression FAILED:\n");

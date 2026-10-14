@@ -802,51 +802,12 @@ body.archive-page #system-footer {
     display: block;
 }
 
-/* The blogroll: the same quiet voice as the navigation, in columns that
-   reflow rather than a fixed grid, so one group or nine both look deliberate. */
-.blogroll-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(var(--blogroll-column, 260px), 1fr));
-    gap: var(--static-column-gap, 56px);
-    align-items: start;
-}
-.blogroll-group h2 {
-    font-family: 'Raleway', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 3px;
-    color: var(--text-dim);
-    margin: 0 0 20px 0;
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(136, 136, 136, 0.25);
-}
-.blogroll-group ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-.blogroll-group li {
-    margin: 0 0 22px 0;
-}
-.blogroll-group li a {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.95rem;
-    color: var(--text-primary);
-    text-decoration: none;
-    border-bottom: 1px solid transparent;
-    transition: border-color 0.3s ease, color 0.3s ease;
-}
-.blogroll-group li a:hover {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-}
-.blogroll-group li p {
-    margin: 6px 0 0 0;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.85rem;
-    line-height: 1.55;
-    color: var(--text-secondary);
+/* The Column Layout control owns how many columns the peers sit in; a
+   phone is too narrow for any of them. */
+@media (max-width: 760px) {
+    .blogroll-grid {
+        grid-template-columns: 1fr !important;
+    }
 }
 
 .static-content > .static-page-title {
