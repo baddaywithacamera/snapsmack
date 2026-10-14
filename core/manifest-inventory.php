@@ -871,6 +871,10 @@ $inventory = [
             // docked group falls back to right:40px off the WINDOW instead of
             // the content column -- the search bar escaping the content width.
             'css'          => 'assets/css/page-archive.css',
+            // The FILTER button is inert without its engine. It used to be a
+            // hand-written <script> tag at the bottom of archive.php; strict
+            // skins never render that file, so the panel would not open.
+            'companions'   => ['assets/js/ss-engine-archive-filter.js'],
             'has_settings' => false,
         ],
         'smack-flag-wave' => [
@@ -926,6 +930,10 @@ $inventory = [
             // docked group falls back to right:40px off the WINDOW instead of
             // the content column -- the search bar escaping the content width.
             'css'          => 'assets/css/page-archive.css',
+            // The FILTER button is inert without its engine. It used to be a
+            // hand-written <script> tag at the bottom of archive.php; strict
+            // skins never render that file, so the panel would not open.
+            'companions'   => ['assets/js/ss-engine-archive-filter.js'],
             'has_settings' => false,
             'admin_page'   => 'archive',
         ],
