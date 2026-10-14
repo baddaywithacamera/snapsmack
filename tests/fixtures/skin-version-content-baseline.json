@@ -11,8 +11,8 @@
             "files_sha256": "a445c571447e0e25a3dd0bf8427bef81a292493c5298c406ac5ef5c7ad8bb6e5"
         },
         "alfred": {
-            "version": "1.0.6",
-            "files_sha256": "92fc3c56590a958ebf65610443bf41d2f59832f8db464f041942ef0208db98ab"
+            "version": "1.0.7",
+            "files_sha256": "bd3dcb068541778b5d403d737060b25d4a3dfda918ecf6fd6bb9389ba0fc35aa"
         },
         "aurora": {
             "version": "1.0.47",
@@ -59,12 +59,12 @@
             "files_sha256": "8d35000348bf8cc2186492bd484b930acd3c8b8094d2b21a1c5a70aeb393157d"
         },
         "new-horizon": {
-            "version": "1.3.10",
-            "files_sha256": "40707d40052e3b01716db313068b5e4cfb920ddfc99045d3ab1aaa766d4c571f"
+            "version": "1.3.11",
+            "files_sha256": "689e02a37b57e9ccb750a21035c8967a5753044fbefd3c9ea3ec776fa5514fdb"
         },
         "onyx": {
-            "version": "0.1.13",
-            "files_sha256": "1d1a51577d1ace8a29b92517ee62fc9e7b1772d8d3e16a20499c0b4fe2a49ab3"
+            "version": "0.1.14",
+            "files_sha256": "a47caca11452e65171fb1d497c3d5663e9b038ce15e79523b80889c600dbc148"
         },
         "parade": {
             "version": "1.2.45",
@@ -75,8 +75,8 @@
             "files_sha256": "163b492665fba81ae1491d8ddfe0c4b371a688c5c12becdd764b7719997b1fcb"
         },
         "rational-geo": {
-            "version": "2.1.13",
-            "files_sha256": "6291e6224f70aaeb8c82b414a85007ad86353cad0ba854d67133eb04f48d1238"
+            "version": "2.1.14",
+            "files_sha256": "108c204bc275da3125be29b6ddf690507e97156f68c1310aba83909615c28395"
         },
         "scroll": {
             "version": "0.1.62",
@@ -95,16 +95,16 @@
             "files_sha256": "f6bf75698c167d6214b7dbc76092788ca33241cc3046362c9cc81f939b6465c6"
         },
         "stanley": {
-            "version": "1.1.4",
-            "files_sha256": "9439c6097ed0cd8f97701d06d968ad9a417e2e8616e28bfd2531bae9fd8867e3"
+            "version": "1.1.5",
+            "files_sha256": "3f4c0ce77da9144f437b99c6d736b570f04d75eb6103b5ead4562c28c9212e3c"
         },
         "sudden-impact": {
             "version": "1.0.15",
             "files_sha256": "23494ca8e982e79df94f29e8f8ca73b521b47dcb1cd4f35a217e187ebf42c838"
         },
         "telegram": {
-            "version": "0.1.3",
-            "files_sha256": "6a1aad5fb46d031a9600c6f102494ca5fc0e41779c166e8f1b461e1de8fe75ae"
+            "version": "0.1.4",
+            "files_sha256": "591d0f8a12f779c16423f976968d0016a09bdf03a267136dba3be1a813f47316"
         },
         "the-grid": {
             "version": "1.3.50",
@@ -119,8 +119,8 @@
             "files_sha256": "c021a566874f57037ab809d2b8fa1a243c6304d597d548b45722d45b9e6571b9"
         },
         "writing-with-impact": {
-            "version": "1.1.3",
-            "files_sha256": "e5eadf817258dedec83b0da278c903e872f7839d8a226ab73a72d442305c00b4"
+            "version": "1.1.4",
+            "files_sha256": "14ccb1119dd8970aec3aaf77d43f4f080d96bebd1433c97d02592645350f2787"
         }
     }
 }

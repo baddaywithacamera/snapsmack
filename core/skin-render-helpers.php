@@ -486,6 +486,32 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . nl2br(snap_escape_html($comment['text'] ?? $comment['comment_text'] ?? ''), false) . '</p></li>';
         }
         $html .= '</ol>';
+    } elseif ($name === 'archive-thumb') {
+        // One thumbnail in a thumbs-view archive. It exists because a skin may
+        // not compute: the aspect ratio, the clamp and the portrait test are
+        // arithmetic, and the strict boundary keeps arithmetic in the CMS.
+        // ONYX's layout was rejected by the security gate for doing exactly
+        // that, which is the gate working. The class prefix is the skin's
+        // (fsog, pfd), bounded to letters and dashes.
+        $item = is_array($data['item'] ?? null) ? $data['item'] : [];
+        $prefix = preg_match('/^[a-z][a-z0-9-]{0,15}$/', (string)($data['prefix'] ?? ''))
+            ? (string)$data['prefix'] : 'archive';
+        $url = snap_escape_url($item['url'] ?? snap_route_url('photo', ['slug' => $item['img_slug'] ?? '']));
+        $title = (string)($item['img_title'] ?? $item['title'] ?? $item['name'] ?? '');
+        $thumb = (string)($item['img_thumb_aspect'] ?? $item['img_file'] ?? '');
+        $w = max(1, (int)($item['img_width'] ?? 1));
+        $h = max(1, (int)($item['img_height'] ?? 1));
+        $ratio = max(2 / 3, min(3 / 2, $w / $h));
+        $html = '<a class="' . $prefix . '-archive-item" href="' . $url
+            . '" title="' . snap_escape_attr($title) . '">';
+        if ($thumb !== '') {
+            $html .= '<div class="' . $prefix . '-thumb' . ($ratio < 1 ? ' ' . $prefix . '-thumb-portrait' : '')
+                . '" style="aspect-ratio:' . snap_escape_attr((string)round($ratio, 4)) . '">'
+                . (string)snap_render_component('image', [
+                    'url' => $thumb, 'alt' => $item['img_alt'] ?? $title])
+                . '</div>';
+        }
+        $html .= '<div class="' . $prefix . '-archive-title">' . snap_escape_html($title) . '</div></a>';
     } elseif ($name === 'blogroll') {
         // The markup blogroll.php has always emitted, class for class. The
         // skins already style .blogroll-canvas, .blogroll-category-block,
