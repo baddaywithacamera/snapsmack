@@ -449,16 +449,24 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $item = is_array($data['item'] ?? null) ? $data['item'] : [];
         $current = (string)($item['url'] ?? ($item['img_slug'] ?? ''));
         $destination = static fn(mixed $value): array => is_array($value) ? $value : [];
-        $link = static function (array $target, string $label, string $title, string $current): string {
+        // rel="prev"/"next" is standard HTML, and it is also how the hotkey
+        // engine finds where the arrow keys should go. It used to read a
+        // window.SNAP_DATA global that nothing has set since the pre-CMS
+        // code, so arrow and spacebar navigation has been dead on every skin
+        // for a long time. A link the page already renders cannot go stale
+        // the way a parallel global does.
+        $link = static function (array $target, string $label, string $title, string $current, string $rel = ''): string {
             $url = (string)($target['url'] ?? '');
             $slug = (string)($target['img_slug'] ?? '');
             if ($url === '' || ($current !== '' && ($url === $current || $slug === $current))) {
                 return '<span class="dim">' . snap_escape_html($label) . '</span>';
             }
-            return '<a href="' . snap_escape_url($url) . '" title="' . snap_escape_attr($title) . '">' . snap_escape_html($label) . '</a>';
+            return '<a href="' . snap_escape_url($url) . '"'
+                . ($rel !== '' ? ' rel="' . snap_escape_attr($rel) . '"' : '')
+                . ' title="' . snap_escape_attr($title) . '">' . snap_escape_html($label) . '</a>';
         };
         $html = '<div class="nav-links"><span class="left">'
-            . $link($destination($data['previous'] ?? []), '« PREV', 'Previous Entry', $current)
+            . $link($destination($data['previous'] ?? []), '« PREV', 'Previous Entry', $current, 'prev')
             . '<span class="sep">|</span>'
             . $link($destination($data['first'] ?? []), 'FIRST', 'Jump to First Entry', $current)
             . '</span><span class="sep">|</span><span class="center"><a href="#" id="show-details">INFO</a>';
@@ -466,7 +474,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         $html .= '</span><span class="sep">|</span><span class="right">'
             . $link($destination($data['last'] ?? []), 'LAST', 'Jump to Latest Entry', $current)
             . '<span class="sep">|</span>'
-            . $link($destination($data['next'] ?? []), 'NEXT »', 'Next Entry', $current)
+            . $link($destination($data['next'] ?? []), 'NEXT »', 'Next Entry', $current, 'next')
             . '</span></div>';
     } elseif ($name === 'image') {
         $class = trim((string)($data['class'] ?? ''));
