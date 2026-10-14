@@ -535,4 +535,17 @@ body[data-paper="greenbar"] #wwi-page {
     }
 }
 
+
+
+/* The menu separator. The CMS drew a pipe here until 0.7.873D, when the
+   hard-coded one was removed from the shared renderer because it reached
+   every skin at once. This skin never styled that span, so it was showing
+   an unstyled pipe -- which is still a pipe, and it disappeared. The
+   character belongs to the skin; this restores what was on screen. */
+.nav-menu > li + li::before {
+    content: "|";
+    padding: 0 10px;
+    opacity: .5;
+    cursor: default;
+}
 /* ===== SNAPSMACK EOF ===== */

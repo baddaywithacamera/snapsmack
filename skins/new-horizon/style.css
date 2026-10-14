@@ -1095,4 +1095,17 @@ span.dropcap {
 
 .nav-submenu a:hover { opacity: 1; }
 
+
+/* The menu separator. The CMS drew it until 0.7.873D, when a hard-coded
+   pipe in the shared renderer was removed because it reached every skin
+   at once -- including three that already drew their own, which then
+   showed two. The character belongs to the skin. This reuses the colour
+   and spacing this skin's own .sep span already had, so nothing changes
+   but where it comes from. */
+.nav-menu > li + li::before {
+    content: "|";
+    padding: 0 15px;
+    color: var(--text-faint);
+    cursor: default;
+}
 /* ===== SNAPSMACK EOF ===== */
