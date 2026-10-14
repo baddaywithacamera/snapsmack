@@ -126,15 +126,29 @@ function snapsmack_public_route_url(string $base, array $aliases, string $view, 
  * already accepts and renders through the strict controller in the site's own
  * skin. Never a slug that is not in the table.
  */
-function snapsmack_legacy_archive_target(string $base, array $aliases, string $site_mode = ''): string
+function snapsmack_legacy_archive_target(string $base, array $aliases, string $site_mode = '', string $query = ''): string
 {
     // A carousel landing page already IS its archive.
     if ($site_mode === 'carousel') return $base;
     $slug = array_search('archive', $aliases, true);
-    if (is_string($slug) && $slug !== '') {
-        return rtrim($base, '/') . '/' . rawurlencode($slug);
-    }
-    return rtrim($base, '/') . '/?view=archive';
+    $target = (is_string($slug) && $slug !== '')
+        ? rtrim($base, '/') . '/' . rawurlencode($slug)
+        : rtrim($base, '/') . '/?view=archive';
+
+    // CARRY THE QUESTION. An album card links to /archive?album=232, and a
+    // redirect that keeps only the path answers with the whole archive
+    // instead of that album -- which is what every album, category, search,
+    // filter and layout link did, because they all travel in the query.
+    // The target's own parameters win, so ?view=archive cannot be displaced.
+    $query = ltrim(trim($query), '?&');
+    if ($query === '') return $target;
+    parse_str($query, $incoming);
+    $existing = [];
+    parse_str((string)(parse_url($target, PHP_URL_QUERY) ?? ''), $existing);
+    $merged = array_merge($incoming, $existing);
+    if (!$merged) return $target;
+    $path = strtok($target, '?');
+    return $path . '?' . http_build_query($merged);
 }
 
 // ===== SNAPSMACK EOF =====

@@ -79,7 +79,8 @@ try {
         $_archive_target = snapsmack_legacy_archive_target(
             BASE_URL,
             $skin_view['route_aliases'] ?? [],
-            (string)($settings['site_mode'] ?? '')
+            (string)($settings['site_mode'] ?? ''),
+            (string)($_SERVER['QUERY_STRING'] ?? '')
         );
         // Belt and braces: never 301 to the address we were just asked for,
         // whatever a future alias table says. A loop is worse than a plain page.
@@ -87,7 +88,10 @@ try {
         $_archive_there = parse_url($_archive_target, PHP_URL_PATH);
         if (rtrim((string)$_archive_there, '/') !== rtrim((string)$_archive_here, '/')
                 || parse_url($_archive_target, PHP_URL_QUERY)) {
-            header('Location: ' . $_archive_target, true, 301);
+            // 302, not 301: this address is derived from the site's menu and
+            // changes when the owner renames an item, and a 301 that a reader
+            // has already cached cannot be taken back.
+            header('Location: ' . $_archive_target, true, 302);
             exit;
         }
     }
