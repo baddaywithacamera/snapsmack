@@ -1133,6 +1133,7 @@ class LibraryWindow(QMainWindow):
         dialog.setFileMode(QFileDialog.Directory)
         dialog.setOption(QFileDialog.ShowDirsOnly, True)
         dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        self._prepare_folder_dialog(dialog, self._folder)
         if dialog.exec():
             selected = dialog.selectedFiles()
             return selected[0] if selected else ""
@@ -1145,6 +1146,7 @@ class LibraryWindow(QMainWindow):
             "Photos (*.jpg *.jpeg *.png *.tif *.tiff *.webp *.bmp *.gif "
             "*.dng *.nef *.cr2 *.cr3 *.arw *.orf *.rw2 *.raf)")
         dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        self._prepare_folder_dialog(dialog, getattr(self, "_folder", ""))
         if not dialog.exec():
             return
         paths = dialog.selectedFiles()
@@ -1476,6 +1478,41 @@ class LibraryWindow(QMainWindow):
             QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
 
     # --- Folder scanning ----------------------------------------------------
+    def _pictures_dir(self):
+        """The folder a photographer actually keeps photographs in.
+
+        QStandardPaths follows a redirected Pictures folder, which matters
+        here: this machine has no Pictures folder under the user profile
+        at all, because Pictures is redirected into OneDrive.
+        """
+        path = QStandardPaths.writableLocation(QStandardPaths.PicturesLocation)
+        if path and os.path.isdir(path):
+            return path
+        return QDir.homePath()
+
+    def _prepare_folder_dialog(self, dialog, start=""):
+        """Give a file dialog somewhere to start and somewhere to jump to.
+
+        Qt's own dialog is used deliberately -- the Windows shell picker hangs
+        while it resolves disconnected drives -- but it opens on the process
+        working directory and carries no shortcuts. SNAP SLAPPER is launched
+        from its install folder, so Choose Folder opened on the install
+        directory with no way to reach Pictures except by typing the path.
+        """
+        pictures = self._pictures_dir()
+        start = start if start and os.path.isdir(start) else pictures
+        dialog.setDirectory(start)
+        seen = []
+        for path in (pictures, QDir.homePath(),
+                     QStandardPaths.writableLocation(QStandardPaths.DesktopLocation),
+                     QStandardPaths.writableLocation(QStandardPaths.DownloadLocation),
+                     QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)):
+            if path and os.path.isdir(path) and path not in seen:
+                seen.append(path)
+        if seen:
+            dialog.setSidebarUrls([QUrl.fromLocalFile(p) for p in seen])
+        return dialog
+
     def choose_folder(self):
         dialog = QFileDialog(self, "Choose photo folder")
         dialog.setFileMode(QFileDialog.Directory)
@@ -1483,6 +1520,7 @@ class LibraryWindow(QMainWindow):
         # The Windows shell picker can hang while resolving disconnected drives
         # and stale network locations. Qt's own directory view stays responsive.
         dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        self._prepare_folder_dialog(dialog, getattr(self, "_folder", ""))
         folder = ""
         if dialog.exec():
             selected = dialog.selectedFiles()
