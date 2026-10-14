@@ -52,4 +52,48 @@ a.blogroll-peer-url:hover {
     opacity: 0.85;
     text-decoration: underline;
 }
+
+/* ── Layout geometry ──────────────────────────────────────────────────────
+   STRUCTURE ONLY: no colours, no fonts, no borders -- those are the skin's.
+   Thirteen skins already style .blogroll-grid and .blogroll-peer in their own
+   stylesheets and these rules sit under them harmlessly. The other ten render
+   a blogroll and have never styled one, and without this their peers stack
+   flat down the page. One file, so a fix reaches all of them instead of ten
+   copies drifting apart. Every measurement is a custom property a skin can
+   redefine without forking anything. */
+
+.blogroll-category-block {
+    margin: 0 0 var(--blogroll-block-gap, 56px) 0;
+}
+
+.blogroll-category-block:last-child {
+    margin-bottom: 0;
+}
+
+.blogroll-grid {
+    display: grid;
+    /* The skin's Column Layout control writes grid-template-columns onto this
+       selector and wins. This is the fallback for an owner who has never
+       touched it. minmax(0,1fr) rather than 1fr so a long url cannot push its
+       column wider than its share and shove the next one off the page. */
+    grid-template-columns: repeat(var(--blogroll-columns, 2), minmax(0, 1fr));
+    gap: var(--blogroll-gap, 40px);
+    align-items: start;
+}
+
+.blogroll-peer {
+    min-width: 0;   /* let a long url wrap rather than widen the grid */
+}
+
+.blogroll-peer-desc {
+    margin: 0 0 6px 0;
+}
+
+/* A phone is too narrow for any column count the control can choose. */
+@media (max-width: 760px) {
+    .blogroll-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* ===== SNAPSMACK EOF ===== */

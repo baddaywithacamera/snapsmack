@@ -1,5 +1,5 @@
 <?php defined('SNAPSMACK_SKIN_RENDER') || exit; ?>
-<?php if (!empty($view['response']['fragment']) && ($view['response']['kind'] ?? '') === 'photo'): ?>
+<?php if (($view['response']['kind'] ?? '') === 'blogroll'): ?><main class="blogroll-page" role="main"><div class="blogroll-canvas"><h1 class="static-page-title blogroll-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Blogroll'); ?></h1><?php echo snap_render_html(snap_render_component('blogroll', ['groups' => $view['response']['blogroll_groups'] ?? []])); ?></div></main><footer id="system-footer" class="site-footer<?php if (!empty($view['site']['footer']['lowercase'])): ?> footer-lowercase<?php endif; ?>"><div id="footer"><?php echo snap_render_html(snap_render_component('footer', ['footer' => $view['site']['footer'] ?? []])); ?></div></footer><?php elseif (!empty($view['response']['fragment']) && ($view['response']['kind'] ?? '') === 'photo'): ?>
 <?php echo snap_render_html(snap_render_component('grid-photo-fragment', ['prefix' => 'jt', 'item' => $view['response']['item'] ?? [], 'photographs' => $view['response']['photographs'] ?? [], 'comments' => $view['response']['comments'] ?? [], 'site' => $view['site']])); ?>
 <?php else: ?>
 <!doctype html>

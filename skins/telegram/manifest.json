@@ -11,7 +11,7 @@
         "default": "layout.php"
     },
     "name": "TELEGRAM",
-  "version": "0.1.2",
+  "version": "0.1.3",
     "author": "Sean McCormick & Codex",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "A phone-first reading skin for SMACKTALK longform posts. It preserves editorial image and mosaic order in a narrow reading column, with tap-to-enlarge photographs and a persistent top-right text menu.",
@@ -37,7 +37,7 @@
         ],
         "mobile_only": true
     },
-    "require_scripts": [
+    "require_scripts": ["smack-blogroll", 
         "smack-alfred-nav",
         "smack-footer",
         "smack-image-fade-load",
