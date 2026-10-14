@@ -783,6 +783,53 @@ body.archive-page #system-footer {
        it to the stage colour and the panel disappears altogether. */
     text-align: left;
     overflow-x: hidden;
+    /* Photograph beside the words. The title spans both columns; which side
+       the photograph takes is the owner's Static Page Hero Position control,
+       which sets the two custom properties below. "Above" puts it back to a
+       single stacked column by switching this to display:block. */
+    display: var(--static-layout, grid);
+    /* The photograph keeps the width the owner chose whichever side it is
+       on; the position control swaps the track order with it. */
+    grid-template-columns: var(--static-cols, var(--static-hero-width, 46%) 1fr);
+    column-gap: var(--static-column-gap, 56px);
+    align-items: start;
+}
+
+/* A page with no hero photograph must not keep an empty column open. */
+.static-content:not(:has(#photobox.page-hero)) {
+    display: block;
+}
+
+.static-content > .static-page-title {
+    grid-column: 1 / -1;
+}
+
+.static-content > #photobox.page-hero {
+    grid-column: var(--static-hero-col, 1);
+    grid-row: 2;
+    /* The writing is usually taller than the photograph. Rather than leave
+       half the page empty, the photograph stays with the reader as the words
+       scroll past it. */
+    position: sticky;
+    top: var(--static-hero-sticky-top, 40px);
+}
+
+.static-content > .description {
+    grid-column: var(--static-text-col, 2);
+    grid-row: 2;
+}
+
+/* One column on a narrow screen, photograph first, nothing sticky. */
+@media (max-width: 900px) {
+    .static-content {
+        display: block;
+    }
+    .static-content > #photobox.page-hero {
+        position: static;
+    }
+    .static-content > .description {
+        margin: 0 auto !important;
+    }
 }
 
 .static-content::after {
@@ -827,7 +874,7 @@ body.archive-page #system-footer {
     float: none !important;
     width: 100% !important;
     padding: 0 !important;
-    margin: 0 0 56px 0 !important;
+    margin: 0 0 var(--static-column-gap, 56px) 0 !important;
     background: transparent !important;
 }
 
@@ -857,7 +904,10 @@ body.archive-page #system-footer {
        32em = 70. The photograph above keeps the full width; only the words
        are narrowed, and the owner can widen them again. */
     max-width: var(--static-text-measure, 32em) !important;
-    margin: 0 auto !important;
+    /* Beside the photograph the words fill their own column, so no centring.
+       Stacked under a full-width photograph they are a narrow column on a
+       wide block and must sit in the middle of it. */
+    margin: 0 var(--static-text-side, 0) !important;
 }
 
 .static-transmission .description p:first-of-type {
