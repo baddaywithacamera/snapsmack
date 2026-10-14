@@ -2,7 +2,7 @@
     "schema_version": 2,
     "name": "50 SHADES OF NOAH GREY",
     "oh_snap_ready": true,
-    "version": "1.6.1",
+    "version": "1.7.0",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Pure greyscale photography skin. Three monochrome variants with zero colour accents.",
@@ -683,7 +683,7 @@
             "section": "COLOURS",
             "type": "color",
             "label": "Static Page Card (Content Area)",
-            "default": "#242424",
+            "default": "#1a1a1a",
             "selector": ".static-content",
             "property": "background-color"
         },
@@ -833,6 +833,30 @@
             "max": "100",
             "selector": "#infobox",
             "property": "height"
+        },
+        "static_page_width": {
+            "section": "CANVAS LAYOUT",
+            "type": "range",
+            "label": "Static Page Width (px)",
+            "default": "1100",
+            "min": "700",
+            "max": "1650",
+            "step": "10",
+            "selector": ".static-content",
+            "property": "--static-content-width",
+            "unit": "px"
+        },
+        "static_text_measure": {
+            "section": "TYPOGRAPHY",
+            "type": "range",
+            "label": "Static Page Line Length (characters)",
+            "default": "32",
+            "min": "24",
+            "max": "60",
+            "step": "1",
+            "selector": ".static-content",
+            "property": "--static-text-measure",
+            "unit": "em"
         },
         "static_section_spacing": {
             "section": "VERTICAL LOCKS",
