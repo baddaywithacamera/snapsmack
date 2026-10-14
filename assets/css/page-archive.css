@@ -358,6 +358,13 @@
 .archive-filter-row { position: relative; }
 .archive-filter-row .archive-filter-inner {
     position: relative;
+    /* A skin centres the row by making #infobox a flex container and its
+     * links an inline-flex child. Putting this column in between broke that:
+     * the column is the flex child now, so IT must centre the controls or
+     * everything bunches against the left padding. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
     /* The row is a flex container in several skins, so the wrapper must be
      * told to fill the line; without this it shrink-wraps to its contents and
      * the docked controls dock to the middle of the bar. */
