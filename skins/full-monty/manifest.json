@@ -25,7 +25,7 @@
             "square"
         ]
     },
-    "require_scripts": ["smack-blogroll", 
+    "require_scripts": [
         "smack-full-monty",
         "smack-keyboard",
         "smack-community"

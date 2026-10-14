@@ -37,7 +37,7 @@
             "masonry"
         ]
     },
-    "require_scripts": ["smack-blogroll", 
+    "require_scripts": [
         "smack-footer",
         "smack-image-fade-load",
         "smack-lightbox",
