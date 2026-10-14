@@ -694,6 +694,14 @@ $inventory = [
             'label'        => 'Community Engine (Likes, Comments, Reactions)',
             'path'         => 'assets/js/ss-engine-community.js',
             'css'          => 'assets/css/ss-community.css',
+            // Blogroll page geometry rides here because all 30 skins declare
+            // this handle. It was briefly its own style-only handle, which
+            // the Skin Packager on SMACK CENTRAL -- eleven builds behind --
+            // refused outright: a handle with no script is not something an
+            // older policy knows about, and ten skins were blocked. A
+            // companion is invisible to that policy and resolves on any site
+            // from 0.7.872D, so nothing has to be upgraded in lockstep.
+            'companions'   => ['assets/css/page-blogroll.css'],
             'has_settings' => false,
         ],
 
@@ -921,16 +929,6 @@ $inventory = [
                     'options' => ['left' => 'Slide From Left', 'right' => 'Slide From Right']
                 ],
             ]
-        ],
-        // Blogroll page geometry. A style-only entry: the resolver reads
-        // 'path' and 'css' independently, so an entry with no script simply
-        // delivers its stylesheet. Declared by the skins that render a
-        // blogroll but have never styled one -- the thirteen that style it
-        // themselves do not need it.
-        'smack-blogroll' => [
-            'label'        => 'Blogroll page layout (columns and spacing)',
-            'css'          => 'assets/css/page-blogroll.css',
-            'has_settings' => false,
         ],
         'smack-archive-toggle' => [
             'label'        => 'Archive Layout Toggle (in-place T/M switch + hotkeys)',

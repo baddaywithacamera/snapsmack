@@ -71,7 +71,7 @@
             "comments"
         ]
     },
-    "require_scripts": ["smack-blogroll", 
+    "require_scripts": [
         "smack-footer",
         "smack-community"
     ],
