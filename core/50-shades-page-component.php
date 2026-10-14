@@ -98,7 +98,7 @@ echo snap_render_html(snap_render_component('archive-filters', [
 ?>
 <?php if (!empty($view['response']['next_page'])): ?><div class="scroll-wall-sentinel" data-next="<?php echo snap_escape_attr($view['response']['next_page']); ?>" data-has-more="1" aria-hidden="true"></div><?php endif; ?>
 <?php endif; ?>
-<footer id="system-footer" class="site-footer fsog-footer"><div class="inside"><p id="sig-text"><?php echo snap_escape_html($view['site']['site_name']); ?></p></div></footer>
+<footer id="system-footer" class="site-footer fsog-footer<?php if (!empty($view['site']['footer']['lowercase'])): ?> footer-lowercase<?php endif; ?>"><div class="inside"><?php echo snap_render_html(snap_render_component('footer', ['footer' => $view['site']['footer'] ?? []])); ?></div></footer>
 </main></div>
 <?php echo snap_render_html(snap_render_component('registered-assets', ['assets' => $view['site']['registered_assets'] ?? []])); ?><?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?>
 </body></html>
