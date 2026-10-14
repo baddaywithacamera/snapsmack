@@ -226,6 +226,26 @@ try {
                     'registered_assets' => $_registered_skin_assets,
                     'footer' => snapsmack_prepare_public_footer($settings, $_active_manifest),
                 ]);
+                // The SMACKTALK controller exits here too, so it had the same
+                // silent hole: a converted SMACKTALK site recorded nothing.
+                $_hit_kind = (string)($_smacktalk['kind'] ?? '');
+                $_hit_types = [
+                    'landing' => 'landing', 'photo' => 'image', 'post' => 'image',
+                    'page' => 'page', 'collection' => 'page', 'blogroll' => 'page',
+                    'hashtag' => 'hashtag', 'search' => 'search',
+                    'archive' => 'archive', 'albums' => 'archive', 'collections' => 'archive',
+                ];
+                if (isset($_hit_types[$_hit_kind]) && (int)($_smacktalk['status'] ?? 200) === 200) {
+                    $_hit_item = is_array($_smacktalk['item'] ?? null) ? $_smacktalk['item'] : [];
+                    snapsmack_log_hit($pdo, $settings, [
+                        'page_type' => $_hit_types[$_hit_kind],
+                        'page_slug' => $_hit_item['img_slug'] ?? $_hit_item['slug'] ?? null,
+                        'image_id'  => $_hit_item['id'] ?? null,
+                    ]);
+                    snapsmack_maybe_rollup($pdo);
+                }
+                unset($_hit_types, $_hit_kind, $_hit_item);
+
                 $_template_map = is_array($_active_manifest['templates'] ?? null) ? $_active_manifest['templates'] : [];
                 $_strict_template = (string)($_template_map[$_smacktalk['kind'] ?? ''] ?? $_template_map['default'] ?? '');
                 if ($_strict_template !== '' && snapsmack_render_strict_skin_template(
@@ -342,6 +362,31 @@ try {
             ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             exit;
         }
+
+        // COUNT THE VISIT. Every snapsmack_log_hit() call in this file sits
+        // BELOW the strict branch, and the strict branch exits -- so from the
+        // day a site was converted it recorded no views at all. Its traffic
+        // did not fall off; it was never written down. The strict kinds are
+        // mapped onto the six page types the rest of the CMS already uses, so
+        // old and new rows are comparable.
+        $_hit_types = [
+            'landing' => 'landing', 'photo' => 'image', 'post' => 'image',
+            'page' => 'page', 'collection' => 'page', 'blogroll' => 'page',
+            'hashtag' => 'hashtag', 'search' => 'search',
+            'archive' => 'archive', 'albums' => 'archive', 'collections' => 'archive',
+        ];
+        $_hit_kind = (string)($_public['kind'] ?? '');
+        if (isset($_hit_types[$_hit_kind]) && (int)($_public['status'] ?? 200) === 200) {
+            $_hit_item = is_array($_public['item'] ?? null) ? $_public['item'] : [];
+            snapsmack_log_hit($pdo, $settings, [
+                'page_type'   => $_hit_types[$_hit_kind],
+                'page_slug'   => $_hit_item['img_slug'] ?? $_hit_item['slug'] ?? ($requested_slug ?? null),
+                'image_id'    => $_hit_item['id'] ?? null,
+                'search_term' => $_hit_kind === 'search' ? (($_GET['q'] ?? '') ?: null) : null,
+            ]);
+            snapsmack_maybe_rollup($pdo);
+        }
+        unset($_hit_types, $_hit_kind, $_hit_item);
 
         $_template_map = is_array($_active_manifest['templates'] ?? null) ? $_active_manifest['templates'] : [];
         $_strict_template = (string)($_template_map[$_public['kind'] ?? ''] ?? $_template_map['default'] ?? '');

@@ -57,9 +57,10 @@ $pageBase = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
 <div class="description entry-content e-content"><?php echo snap_render_html($pageItem['content'] ?? $pageItem['description'] ?? ''); ?></div>
 </div>
 <?php elseif (($view['response']['kind'] ?? '') === 'blogroll'): ?>
-<div class="static-content static-content--list">
+<div class="static-content static-content--list"><div class="blogroll-canvas">
 <h1 class="static-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Blogroll'); ?></h1>
 <?php echo snap_render_html(snap_render_component('blogroll', ['groups' => $view['response']['blogroll_groups'] ?? []])); ?>
+</div>
 </div>
 <?php elseif (($view['response']['kind'] ?? '') === 'search'): ?>
 <section class="fsog-search-page search-results"><h1 class="static-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Search'); ?></h1><?php foreach (($view['response']['results'] ?? []) as $group): ?><?php foreach ($group as $result): ?><article><h2><?php echo snap_escape_html($result['img_title'] ?? $result['title'] ?? ''); ?></h2></article><?php endforeach; ?><?php endforeach; ?></section>
