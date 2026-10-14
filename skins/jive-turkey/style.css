@@ -1595,4 +1595,17 @@ body.is-blogroll .blogroll-peer-url { display: none; }
 /* Phantom alignment tiles never get a ring. */
 .jt-grid .jt-tile--phantom .jt-ring { display: none; }
 
+
+/* --- MENU SEPARATOR ------------------------------------------------------
+ * This skin's menu has always shown a pipe between top-level items. It came
+ * from the CMS until 0.7.873D, which stopped the shared menu renderer from
+ * emitting decoration: a hard-coded separator there reached all twelve skins
+ * at once and gave the three that draw their own two of them. The character
+ * belongs to the skin, so it lives here, where its colour, spacing and
+ * position can be changed without a CMS release. */
+.jt-sticky-nav-links > li + li::before {
+    content: "|";
+    margin-right: 0.5em;
+}
+
 /* ===== SNAPSMACK EOF ===== */
