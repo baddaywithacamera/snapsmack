@@ -64,7 +64,11 @@ $pageBase = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
 // where this skin has always carried it. It is a shared component: it brings
 // no navigation of its own, so the header and menus above are untouched.
 echo snap_render_html(snap_render_component('archive-filters', [
-    'content_width' => (string)($view['site']['skin_presentation']['options']['archive_content_width'] ?? ''),
+    // The skin's own Main Canvas Width control, which is what caps the
+    // header, the photo wrap and both grids. There is no separate archive
+    // width setting; passing one that does not exist left the row uncapped
+    // and its docked controls outside the photographs.
+    'content_width' => (string)($view['site']['skin_presentation']['options']['main_canvas_width'] ?? ''),
     // Not snap_route_url('archive'): that returns the literal /archive, which
     // is exactly the unregistered path that sent six sites into a redirect
     // loop. The guarded helper returns the site's real archive slug, or

@@ -28,6 +28,12 @@
 
     // ── INIT ──────────────────────────────────────────────────────────────────
     function init() {
+        // The CMS now delivers this engine with the archive control row, and
+        // the Crop Circles welded-nav handle points at this same file. Binding
+        // twice makes the FILTER button toggle the panel open and shut in one
+        // click, which reads as a dead button.
+        if (window.__smackArchiveFilterBound) return;
+
         _panel = document.getElementById('smack-archive-filter-panel');
         _btn   = document.getElementById('smack-archive-filter-btn');
         if (!_panel || !_btn) return;
@@ -88,6 +94,7 @@
         });
 
         updateButton();
+        window.__smackArchiveFilterBound = true;
     }
 
     // ── PANEL CLOSE ───────────────────────────────────────────────────────────
@@ -134,8 +141,12 @@
         sel.cols.forEach(function (id) { params.append('f[]', 'col:' + id); });
         sel.usrs.forEach(function (id) { params.append('f[]', 'usr:' + id); });
 
+        // Stay on the page we are on. The legacy /archive.php path is one most
+        // sites never register -- a site whose archive is called "Images"
+        // redirected it and six sites looped on it -- so filtering rewrites the
+        // query string of the archive the reader is actually looking at.
         var qs = params.toString();
-        window.location.href = 'archive.php' + (qs ? '?' + qs : '');
+        window.location.href = window.location.pathname + (qs ? '?' + qs : '');
     }
 
     // ── BOOT ──────────────────────────────────────────────────────────────────
