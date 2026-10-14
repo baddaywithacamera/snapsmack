@@ -19,7 +19,7 @@
 </header>
 
 <main class="post-inner telegram-reading-column">
-<?php if ($view['response']['kind'] === 'single'): ?>
+<?php if (($view['response']['kind'] ?? '') === 'blogroll'): ?><main class="blogroll-page" role="main"><div class="blogroll-canvas"><h1 class="static-page-title blogroll-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Blogroll'); ?></h1><?php echo snap_render_html(snap_render_component('blogroll', ['groups' => $view['response']['blogroll_groups'] ?? []])); ?></div></main><?php elseif ($view['response']['kind'] === 'single'): ?>
     <article class="telegram-post">
         <h1><?php echo snap_escape_html($view['response']['post']['title']); ?></h1>
         <p class="telegram-date"><?php echo snap_escape_html($view['response']['post']['created_at']); ?></p>

@@ -11,7 +11,7 @@
         "default": "layout.php"
     },
     "name": "STANLEY",
-  "version": "1.1.3",
+  "version": "1.1.4",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "Two eras of Kubrick-inspired blogging in one SMACKTALK skin: Michael Heilemann's original Kubrick and Rough Pixels' contemporary KUBRICK 2024 reinterpretation. Choose retro STANLEY or modern STANLEY 2024, keep either stable, or let it occasionally glimpse its counterpart across THE OTHER SIDE.",
@@ -43,7 +43,7 @@
             "comments"
         ]
     },
-    "require_scripts": [
+    "require_scripts": ["smack-blogroll", 
         "smack-footer",
         "smack-community",
         "smack-other-side"
