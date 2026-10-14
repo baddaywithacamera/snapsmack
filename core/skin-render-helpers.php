@@ -486,6 +486,33 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . nl2br(snap_escape_html($comment['text'] ?? $comment['comment_text'] ?? ''), false) . '</p></li>';
         }
         $html .= '</ol>';
+    } elseif ($name === 'blogroll') {
+        // The list of sites a photographer sends you to. TILEZ, GAME ON and
+        // SLICKR each hand-rolled this loop in their own layout; the three
+        // renderers in core/ had no branch for it at all, so a blogroll fell
+        // through to the archive and served an empty photo wall. One loop,
+        // here, so a fix reaches every skin that calls it.
+        $groups = is_array($data['groups'] ?? null) ? $data['groups'] : [];
+        $html = '<div class="blogroll-grid">';
+        foreach ($groups as $group) {
+            if (!is_array($group)) continue;
+            $items = is_array($group['items'] ?? null) ? $group['items'] : [];
+            if (!$items) continue;
+            $html .= '<section class="blogroll-group"><h2>'
+                . snap_escape_html($group['label'] ?? '') . '</h2><ul>';
+            foreach ($items as $peer) {
+                if (!is_array($peer)) continue;
+                $url = snap_escape_url($peer['url'] ?? '');
+                if ($url === '') continue;
+                $html .= '<li><a href="' . $url . '" target="_blank" rel="noopener noreferrer">'
+                    . snap_escape_html($peer['name'] ?? $peer['url'] ?? '') . '</a>';
+                $note = trim((string)($peer['description'] ?? ''));
+                if ($note !== '') $html .= '<p>' . snap_escape_html($note) . '</p>';
+                $html .= '</li>';
+            }
+            $html .= '</ul></section>';
+        }
+        $html .= '</div>';
     } elseif ($name === 'footer') {
         $footer = is_array($data['footer'] ?? null) ? $data['footer'] : [];
         $parts = [];
