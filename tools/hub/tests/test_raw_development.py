@@ -110,6 +110,41 @@ def test_interactive_raw_distortion_uses_local_geometry_proxy(monkeypatch):
     assert seen["geometry"]["lens_edges"] == "transparent"
 
 
+def test_running_raw_development_coalesces_new_requests():
+    """A second release records newest-state work without queueing another CLI."""
+    from slapper_qt.editor_window import EditorWindow
+
+    class Document:
+        raw_source_path = "camera.CR3"
+        revision = 7
+
+    class Status:
+        message = ""
+
+        def showMessage(self, message):
+            self.message = message
+
+    class Pool:
+        def start(self, _job):
+            raise AssertionError("obsolete RAW work must not be queued")
+
+    class Window:
+        doc = Document()
+        status = Status()
+        _preview_generation = 12
+        _raw_quality_job_active = True
+        _raw_quality_render_pending = False
+        _raw_preview_pool = Pool()
+
+    window = Window()
+    EditorWindow._dispatch_raw_quality_render(window)
+
+    assert window._preview_generation == 13
+    assert window.doc.revision == 8
+    assert window._raw_quality_render_pending is True
+    assert window.status.message == "Updating RAW development…"
+
+
 def raw_preview_adjustments(**changes):
     import editor_engine
     values = {key: editor_engine.DEFAULT_ADJUSTMENTS[key]
@@ -163,3 +198,51 @@ def test_pp3_maps_rawtherapee_geometry_controls():
 
 
 # ===== SNAPSMACK EOF =====
+
+
+def test_slider_before_first_render_keeps_committed_raw_adjustments():
+    """A baseline must be paired with the base frame it is a delta FROM.
+
+    The fast RAW drag nudges the pixels already on the canvas by however far
+    the slider moved. _on_adjust records the origin adjustments every time,
+    but it can only record a base frame once something has rendered -- so
+    reaching for a slider while a slow RAW is still opening leaves an origin
+    with no frame. Paired wrongly, the absolute adjustments are replaced by
+    deltas and then rendered against the developed master, and on screen
+    every RAW adjustment the photographer had already committed vanishes.
+
+    That window is precisely the wait the fast drag exists to remove, so it
+    is reachable in ordinary use. There are two legitimate bases -- the
+    developed master with the adjustments developed into it, and the canvas
+    frame with the adjustments as they stood when the drag began -- and this
+    asserts the chooser keeps each with its own.
+    """
+    import inspect
+    from slapper_qt.editor_window import EditorWindow
+
+    source = inspect.getsource(EditorWindow._schedule_interactive_job)         if hasattr(EditorWindow, "_schedule_interactive_job") else None
+    if source is None:
+        # The chooser lives wherever the interactive job is built.
+        for name, member in inspect.getmembers(EditorWindow, inspect.isfunction):
+            body = inspect.getsource(member)
+            if "base_image=" in body and "_draft_base" in body:
+                source = body
+                break
+    assert source is not None, "could not find where the preview job is built"
+
+    assert "base_image=draft_base" in source, (
+        "the job must receive the same frame the baseline was chosen for")
+    assert "_raw_developed_adjustments" in source, (
+        "with no canvas frame the baseline must fall back to the adjustments "
+        "already developed into the master, not to an empty one -- an empty "
+        "baseline silently drops every committed RAW adjustment")
+    assert "if draft_base is not None:" in source, (
+        "the frame decides which baseline is correct")
+
+    # And the job itself still accepts a delta with no frame: that is the
+    # developed-master path, which two older tests rely on.
+    run = inspect.getsource(
+        __import__("slapper_qt.editor_window", fromlist=["_PreviewJob"])._PreviewJob.run)
+    assert "elif self.raw_baseline:" in run, (
+        "the developed-master delta path must stay; gating it on a canvas "
+        "frame breaks the ordinary interactive RAW preview")

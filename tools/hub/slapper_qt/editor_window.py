@@ -121,7 +121,7 @@ class _PreviewJob(QRunnable):
     """Render an immutable document snapshot away from Qt's UI thread."""
 
     def __init__(self, token, source_path, state, max_size, raw_source_path="",
-                 raw_baseline=None, document_revision=0):
+                 raw_baseline=None, document_revision=0, base_image=None):
         super().__init__()
         self.token = token
         self.source_path = source_path
@@ -129,6 +129,7 @@ class _PreviewJob(QRunnable):
         self.max_size = max_size
         self.raw_source_path = raw_source_path
         self.raw_baseline = dict(raw_baseline or {})
+        self.base_image = base_image.copy() if base_image is not None else None
         self.document_revision = int(document_revision)
         # Filled in by run(), read back to size the next drag frame.
         self.elapsed_ms = 0.0
@@ -152,6 +153,15 @@ class _PreviewJob(QRunnable):
                 # RawTherapee master. Apply only the slider delta in float32;
                 # applying the absolute values would double the committed RAW
                 # settings already baked into that master.
+                #
+                # There are TWO legitimate things to take a delta from, and
+                # the caller pairs each with its own baseline:
+                #   - the developed master on disk, against the adjustments
+                #     already developed into it (no base_image);
+                #   - the frame currently on the canvas, against the
+                #     adjustments as they stood when the drag began.
+                # A baseline paired with the wrong base is what makes a
+                # photograph appear to lose every RAW adjustment made to it.
                 for key in editor_engine.RAW_DEVELOPMENT_KEYS:
                     current = float(document.adjustments.get(
                         key, editor_engine.DEFAULT_ADJUSTMENTS[key]))
@@ -173,7 +183,21 @@ class _PreviewJob(QRunnable):
                     else:
                         document.adjustments[key] = delta
             started = time.perf_counter()
-            rendered = document.render(max_size=self.max_size)
+            if self.base_image is not None:
+                # A RAW drag starts with the pixels already on the canvas.
+                # Re-decoding the multi-megapixel developed TIFF took about
+                # two seconds before even a cheap exposure preview appeared.
+                # This is a disposable display proxy, so apply only the delta
+                # to that rendered frame; RawTherapee remains authoritative on
+                # release and replaces it with a fresh 16-bit development.
+                import highbit_image as highbit
+                document._graph_input_image = highbit.from_pillow(self.base_image)
+                document.layers = []
+                document.retouched = []
+                rendered = document._render_float_reference(
+                    max_size=self.max_size).display_proxy()
+            else:
+                rendered = document.render(max_size=self.max_size)
             self.elapsed_ms = (time.perf_counter() - started) * 1000.0
             self.rendered_megapixels = max(
                 1e-6, (rendered.width * rendered.height) / 1e6)
@@ -574,6 +598,8 @@ class EditorWindow(QMainWindow):
         self._publish_jobs = set()
         self._interactive_job_active = False
         self._interactive_render_pending = False
+        self._raw_quality_job_active = False
+        self._raw_quality_render_pending = False
         self._last_rendered = None
         self._draft_base = None
         self._draft_origin = None
@@ -583,6 +609,11 @@ class EditorWindow(QMainWindow):
         # isolated bounded queues so neither can starve interaction.
         self._preview_pool = QThreadPool(self)
         self._preview_pool.setMaxThreadCount(2)
+        # RawTherapee developments are seconds-long external processes.  They
+        # must not occupy the workers used by the cheap live-drag previews or
+        # a slider appears frozen while obsolete developments drain.
+        self._raw_preview_pool = QThreadPool(self)
+        self._raw_preview_pool.setMaxThreadCount(1)
         self._open_pool = QThreadPool(self)
         self._open_pool.setMaxThreadCount(1)
         self._background_pool = QThreadPool(self)
@@ -4620,12 +4651,26 @@ class EditorWindow(QMainWindow):
             # calculate and apply the clean crop only when the gesture commits.
             state["geometry"]["lens_edges"] = "transparent"
         raw_source = getattr(self.doc, "raw_source_path", "")
-        raw_baseline = (getattr(self.doc, "_raw_developed_adjustments", {})
-                        if raw_source else {})
+        # Pick the base frame and ITS baseline together; they are only
+        # meaningful as a pair. _on_adjust records the origin every time but
+        # can only record a base frame once something has rendered, so a
+        # slider grabbed while a slow RAW is still opening leaves an origin
+        # with no frame -- and that is exactly the wait this fast drag exists
+        # to remove. Falling back to the developed master and the adjustments
+        # developed into it keeps that first drag correct, if slower.
+        draft_base = self._draft_base if raw_source else None
+        if draft_base is not None:
+            raw_baseline = dict(self._draft_origin or {})
+        elif raw_source:
+            raw_baseline = dict(
+                getattr(self.doc, "_raw_developed_adjustments", {}) or {})
+        else:
+            raw_baseline = {}
         job = _PreviewJob(
             token, self.doc.source_path, state,
             self._interactive_target(),
-            raw_baseline=raw_baseline, document_revision=document_revision)
+            raw_baseline=raw_baseline, document_revision=document_revision,
+            base_image=draft_base)
         self._preview_jobs.add(job)
         job.signals.ready.connect(
             lambda generation, image, current=job:
@@ -4640,8 +4685,17 @@ class EditorWindow(QMainWindow):
         if not self.doc or not getattr(self.doc, "raw_source_path", ""):
             return
         self._preview_generation += 1
-        token = self._preview_generation
         self.doc.revision += 1
+        if self._raw_quality_job_active:
+            # Keep only the newest requested state.  The running CLI process
+            # cannot be cancelled safely, but there is no value in queueing a
+            # development for every slider release behind it.
+            self._raw_quality_render_pending = True
+            self.status.showMessage("Updating RAW development…")
+            return
+        self._raw_quality_job_active = True
+        self._raw_quality_render_pending = False
+        token = self._preview_generation
         job = _PreviewJob(
             token, self.doc.source_path, self.doc.snapshot(),
             self.view.viewport_target(), self.doc.raw_source_path,
@@ -4649,12 +4703,29 @@ class EditorWindow(QMainWindow):
         self._preview_jobs.add(job)
         job.signals.ready.connect(
             lambda generation, image, current=job:
-            self._accept_quality_proxy(generation, image, current))
+            self._accept_raw_quality_proxy(generation, image, current))
         job.signals.failed.connect(
             lambda generation, message, current=job:
-            self._reject_proxy(generation, message, current))
+            self._reject_raw_quality_proxy(generation, message, current))
         self.status.showMessage("Updating RAW development…")
-        self._preview_pool.start(job)
+        self._raw_preview_pool.start(job)
+
+    def _accept_raw_quality_proxy(self, generation, rendered, job):
+        self._raw_quality_job_active = False
+        self._accept_quality_proxy(generation, rendered, job)
+        self._dispatch_pending_raw_quality()
+
+    def _reject_raw_quality_proxy(self, generation, message, job):
+        self._raw_quality_job_active = False
+        self._preview_jobs.discard(job)
+        if generation == self._preview_generation:
+            _log.warning("RAW development preview failed: %s", message)
+        self._dispatch_pending_raw_quality()
+
+    def _dispatch_pending_raw_quality(self):
+        if self._raw_quality_render_pending:
+            self._raw_quality_render_pending = False
+            QTimer.singleShot(0, self._dispatch_raw_quality_render)
 
     def _dispatch_quality_render(self, keep_view=True):
         """Run a crisp non-RAW viewport render without freezing the window."""
