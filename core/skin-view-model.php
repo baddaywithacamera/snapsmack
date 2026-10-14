@@ -381,7 +381,16 @@ function snapsmack_prepare_public_footer(array $settings, array $manifest): arra
         $slots[] = ['kind' => 'link', 'label' => (string)($settings['privacy_policy_title'] ?? 'Privacy Policy'), 'url' => (defined('BASE_URL') ? BASE_URL : '/') . 'privacy-policy.php'];
     }
     $slots[] = ['kind' => 'link', 'label' => 'RSS', 'url' => (defined('BASE_URL') ? BASE_URL : '/') . 'feed'];
-    return ['lowercase' => (($settings['footer_lowercase'] ?? '0') === '1'), 'slots' => $slots];
+    // The h-card identity core/footer.php published. Strict skins lost it with
+    // the rest of the footer, and it is what fediverse and IndieWeb readers
+    // parse to learn who a site belongs to.
+    return [
+        'lowercase'   => (($settings['footer_lowercase'] ?? '0') === '1'),
+        'site_name'   => $site,
+        'site_url'    => defined('BASE_URL') ? BASE_URL : '/',
+        'site_note'   => trim(strip_tags((string)($settings['site_description'] ?? ''))),
+        'slots'       => $slots,
+    ];
 }
 
 /** Render CMS-resolved navigation. No routing or data access occurs here. */
