@@ -1849,4 +1849,17 @@ textarea:focus {
 .slide-in-up {
     animation: slideInUp 0.3s ease;
 }
+
+/* The menu separator. The CMS drew it until 0.7.873D, when a hard-coded
+   pipe in the shared renderer was removed because it reached every skin
+   at once -- including three that already drew their own, which then
+   showed two. The character belongs to the skin. This reuses the colour
+   and spacing this skin's own .sep span already had, so nothing changes
+   but where it comes from. */
+.nav-menu > li + li::before {
+    content: "|";
+    padding: 0 10px;
+    color: rgba(0, 228, 255, 0.2);
+    cursor: default;
+}
 /* ===== SNAPSMACK EOF ===== */

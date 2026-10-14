@@ -580,4 +580,17 @@ a:hover { color: var(--text-primary); }
 .pickup-ghost-footer a { color: var(--text-primary); text-decoration: none; }
 .pickup-ghost-footer a:hover { color: var(--accent-color); }
 
+
+/* The menu separator. The CMS drew a pipe between menu items until
+   0.7.873D, when the hard-coded one was removed from the shared renderer
+   because it reached every skin at once -- including three that already
+   drew their own and so showed two. This skin never styled that span, so
+   what it had was an unstyled pipe, and it vanished. The character is the
+   skin's to choose; this restores what was on the screen. */
+.nav-menu > li + li::before {
+    content: "|";
+    padding: 0 10px;
+    opacity: .5;
+    cursor: default;
+}
 /* ===== SNAPSMACK EOF ===== */
