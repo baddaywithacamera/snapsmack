@@ -61,7 +61,7 @@
 <?php endif; ?>
 </main>
 
-<footer class="site-footer"><p><?php echo snap_escape_html($view['site']['site_name']); ?></p></footer>
+<footer class="site-footer<?php if (!empty($view['site']['footer']['lowercase'])): ?> footer-lowercase<?php endif; ?>"><div class="inside"><?php echo snap_render_html(snap_render_component('footer', ['footer' => $view['site']['footer'] ?? []])); ?></div></footer>
 <?php echo snap_render_html(snap_render_component('registered-assets', ['assets' => $view['site']['registered_assets'] ?? []])); ?>
 <?php echo snap_render_html($view['site']['owner_custom_code'] ?? ''); ?>
 </body>
