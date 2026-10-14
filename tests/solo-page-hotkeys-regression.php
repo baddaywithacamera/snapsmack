@@ -97,6 +97,39 @@ $check(str_contains($runtime, "\$settings['community_comments_enabled']"),
 $check(preg_match("/in_array\(\(\\\$response\['kind'\] \?\? ''\), \['photo', 'post', 'collection'\]/", $runtime) === 1,
     'a post and a collection carry the same navigation bar and must be gated as well');
 
+// --- #infobox holds the PHOTO navigation, not the site menu -------------
+// IMPACT PRINTER, NEW HORIZON, RATIONAL GEO and TRUE GRIT rendered the site
+// menu into #infobox, which is where the prev/first/info/comments/last/next
+// bar belongs -- 50 Shades has always put it there, and all four skins style
+// #infobox for that bar's markup (.center, .filter-group, a.active). Sean saw
+// it as "the top menu in place of the bottom footer". One substitution took
+// four faults with it: the menu in the wrong place, the missing nav bar, the
+// dead arrow keys (the bar carries rel="prev"/"next") and the comments
+// hotkey (the bar honours comments_enabled).
+foreach (['core/impact-printer-page-component.php', 'core/50-shades-page-component.php',
+          'skins/new-horizon/layout.php', 'skins/rational-geo/layout.php',
+          'skins/true-grit/layout.php'] as $template) {
+    $src = (string)@file_get_contents($root . '/' . $template);
+    $at = strpos($src, 'id="infobox"');
+    $check($at !== false, $template . ' must still have an #infobox');
+    if ($at === false) continue;
+    $block = substr($src, $at, (int)strpos($src, '</div>', $at) - $at);
+    $check(str_contains($block, "snap_render_component('photo-navigation'"),
+        $template . ': #infobox must hold the photo navigation');
+    $check(!str_contains($block, "snap_render_component('navigation'"),
+        $template . ': #infobox must not hold the site menu, which belongs in the header');
+}
+
+// --- EXIF is withheld by the CMS when the owner switches it off ---------
+// Only core/meta.php honoured exif_display_enabled, and no strict skin runs
+// that file -- so every converted site published its camera data whatever
+// the owner had chosen. A skin cannot print what it was not given.
+$runtime = (string)@file_get_contents($root . '/core/public-runtime.php');
+$check(str_contains($runtime, "\$settings['exif_display_enabled']"),
+    'the CMS must honour the EXIF switch, not leave it to a file strict skins never run');
+$check(str_contains($runtime, "\$response['item']['exif'] = []"),
+    'the technical specifications must be emptied, not merely flagged');
+
 // --- the engine reaches the skins that need it --------------------------
 $declaring = 0;
 foreach (glob($root . '/skins/*/manifest.json') ?: [] as $path) {

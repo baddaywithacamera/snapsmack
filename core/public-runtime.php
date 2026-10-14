@@ -48,6 +48,19 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     $repository = new SnapPublicRepository($pdo);
     $response = snapsmack_public_controller($repository, $request, $settings);
     $response = snapsmack_public_parse_page_content($pdo, $response);
+    // EXIF / Technical Specs is switched off in Solo Image Appearance, and
+    // until now only core/meta.php honoured it -- a file no strict skin ever
+    // runs. So every converted site published its camera data however the
+    // owner had set it. The CMS withholds it here instead, once, for every
+    // skin and every renderer: a skin cannot print what it was not given.
+    if (($settings['exif_display_enabled'] ?? '1') !== '1') {
+        if (isset($response['item']['exif'])) $response['item']['exif'] = [];
+        if (isset($response['item']['technical'])) $response['item']['technical'] = [];
+        foreach (($response['items'] ?? []) as $i => $_unused) {
+            if (isset($response['items'][$i]['exif'])) $response['items'][$i]['exif'] = [];
+        }
+    }
+
     // Comments are one feature with TWO switches: global_comments_enabled in
     // Settings, and community_comments_enabled on the community engine. Only
     // the first was consulted here, so turning the other one off hid the
