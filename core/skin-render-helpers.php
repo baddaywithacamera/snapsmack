@@ -73,16 +73,30 @@ function snap_route_url(string $route, array $parameters = []): string {
     return snap_escape_url($base . $path . ($allowed ? '?' . http_build_query($allowed, '', '&', PHP_QUERY_RFC3986) : ''));
 }
 
+/**
+ * Render a menu tree: list items and links, and nothing else.
+ *
+ * This deliberately emits NO separator. 0.7.848D added a hard-coded
+ * '<span class="sep">|</span>' here to restore the pipe the legacy
+ * core/header.php had always drawn, and in doing so put a separator into all
+ * twelve skins that call this -- including ALFRED, TELEGRAM and TILEZ, which
+ * already draw their own with `.main-menu > li + li:before { content: "/" }`.
+ * Their menus then read "HOME | / THE IDEA".
+ *
+ * A separator between menu items is decoration, and decoration is the skin's.
+ * Each skin that wants one now draws it in its own stylesheet, where it also
+ * controls the character, colour, size and position -- none of which a
+ * hard-coded span in here can offer. A CMS change must not alter presentation
+ * in individual skins; that is what happened on 8 October and it reached
+ * every site at once.
+ */
 function snap_render_navigation_tree(array $items, int $depth = 0): string {
     $html = '';
-    $first = true;
     foreach ($items as $item) {
         if (!is_array($item)) continue;
         $children = is_array($item['children'] ?? null) && $depth < 2 ? $item['children'] : [];
         $hasChildren = $children !== [];
         $html .= '<li' . ($hasChildren ? ' class="nav-has-children"' : '') . '>';
-        if ($depth === 0 && !$first) $html .= '<span class="sep">|</span>';
-        $first = false;
         $label = snap_escape_html($item['label'] ?? $item['title'] ?? '');
         $url = (string)($item['url'] ?? '');
         if ($url === '') $html .= '<span>' . $label . '</span>';

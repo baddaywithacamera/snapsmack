@@ -3,8 +3,8 @@
     "purpose": "One published skin version must mean exactly one set of files. A site installs a skin BY VERSION, so if two different file-states ship under one number, the sites that took the first are frozen on it and no CMS release can move them. That is what left photowalk.ing running the 0.7.850D 50 SHADES layout while reporting the same 1.5.2 as the repaired one. Change any skin file and change its version in the same commit, then regenerate this file.",
     "skins": {
         "50-shades-of-noah-grey": {
-            "version": "1.5.3",
-            "files_sha256": "73f53fe2591836632ad1a850279647220cd9ba08cd552642bf561b80e5b829ba"
+            "version": "1.6.1",
+            "files_sha256": "553722fb50fa9c144430f88f347b3ab42b444232ad03da614b795cebd77af2c7"
         },
         "52-card-pickup": {
             "version": "1.4.5",
@@ -15,8 +15,8 @@
             "files_sha256": "1f787a2324413129eadd1dce6a78cedc261c64d011a99efe9c816037f69b82d1"
         },
         "aurora": {
-            "version": "1.0.44",
-            "files_sha256": "6296a8eff41b62fd90669146095bf46672975fa6fde49d519a78e35896576eeb"
+            "version": "1.0.45",
+            "files_sha256": "dd82bbf4ccd887ba461192e5ca54429220e28bdae85d0b051456fd9273ef47c8"
         },
         "chaplin": {
             "version": "0.2.18",
@@ -31,16 +31,16 @@
             "files_sha256": "8365c8038add113323fc351a45db9cccdf920c0b82c9397b323216d10719bc76"
         },
         "game-on": {
-            "version": "0.1.30",
-            "files_sha256": "77ea0256bbdc5af70693d67c008f04c7bcfe7fa3cb7a412439dd1a2cd1f44db1"
+            "version": "0.1.31",
+            "files_sha256": "518e9ba942862ab6696429ef353867e60ba7791fe6ca58ef287bef88277134d8"
         },
         "glide": {
             "version": "0.1.5",
             "files_sha256": "b165c2473b2240a37a1a813dc309da908cf276cd272c26e9c86a680a856838bb"
         },
         "heuristic": {
-            "version": "0.1.6",
-            "files_sha256": "83490811ea022c3a7e117947c505cfadfa101a1f8c8fa4a141bfce91b977a970"
+            "version": "0.1.7",
+            "files_sha256": "4e992a73640b4162bdb0e5d1d6b4ea8368de3d8df1b696c834aa72b0bdeb782f"
         },
         "hip-to-be-square": {
             "version": "1.3.6",
@@ -51,12 +51,12 @@
             "files_sha256": "f505282c1c7758765a0bd1045e79e2aa3598a3a30bd638383e37b65e05bedc98"
         },
         "instant-camera": {
-            "version": "1.0.45",
-            "files_sha256": "cf30ecffb85afae6df9b223a5e1a6faf4ab1dbdcb63073b9ef4f2c8cb0860186"
+            "version": "1.0.46",
+            "files_sha256": "a5969b8e30ca9cd1472420f9d2f2f2f7a177addfdd57c5b31b8116e1e65aacf7"
         },
         "jive-turkey": {
-            "version": "0.1.32",
-            "files_sha256": "77a254b44cfefb305e6d474bb9d03c22628ba138149254fedd0e1489ada4795d"
+            "version": "0.1.33",
+            "files_sha256": "22891845711255bee4c200771fb68da5755248117b14384aa75a7c4052a227dc"
         },
         "new-horizon": {
             "version": "1.3.8",
@@ -67,8 +67,8 @@
             "files_sha256": "e2b812c128164cb28c050dc6d4581cd4f2ac10ad79b2b3950152f85ca2577db5"
         },
         "parade": {
-            "version": "1.2.42",
-            "files_sha256": "11a5d2f7cf61a625e5d1250ff5286f28b5f9325e34691ff818a11614f6a1d158"
+            "version": "1.2.43",
+            "files_sha256": "0deeabcd4a040087ddfaed2787f60068c75a8eb637ad30a3ace8b0c555ff4487"
         },
         "photogram": {
             "version": "2.0.19",
@@ -91,24 +91,24 @@
             "files_sha256": "73982b158717e2dd2deb18f91c44ec1659c64d75d4e03b4bb105bb0d264018ff"
         },
         "sliders": {
-            "version": "0.1.7",
-            "files_sha256": "793547d08583dc53a4daeb6ed355a8831e8ea65a1ee7e7131b4938c8163ca0ed"
+            "version": "0.1.8",
+            "files_sha256": "547f9252477df144782492a78e87f3dba1bb9f74ab85459e5f5e09db68d8c8f0"
         },
         "stanley": {
             "version": "1.1.2",
             "files_sha256": "b27420434a1ee12fad36b3f3eeef5ce4ac96048eb08cd270126bb61e3c3d1a4f"
         },
         "sudden-impact": {
-            "version": "1.0.12",
-            "files_sha256": "7078b10719e0b9beb06bf1e3298c3caa1764f8db3beb02e99ec6c7f08db1e55a"
+            "version": "1.0.13",
+            "files_sha256": "ab4022b80509b4771ace30e839d9d608b27a2ea1196d541d42126dedd2900436"
         },
         "telegram": {
             "version": "0.1.1",
             "files_sha256": "a6ef6eb52ba53d19a3ed11bf0da86a3a853cd79a66fda0c749cffd4fa3c51c0d"
         },
         "the-grid": {
-            "version": "1.3.47",
-            "files_sha256": "efec0bbdf653b9ef139dea486c16738c5d7300dd6c5aee213c63a60012f079a5"
+            "version": "1.3.48",
+            "files_sha256": "4258fa2019198eb7783e5114c1a629de0b6755acaf18961a0b4764a596b07f3d"
         },
         "tilez": {
             "version": "0.2.63",
