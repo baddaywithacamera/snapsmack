@@ -15,7 +15,7 @@ $archivePane = $archiveLayout === 'masonry' ? 'masonry' : 'thumbs';
 <?php if (!empty($view['site']['skin_variant_url'])): ?><link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['skin_variant_url']); ?>"><?php endif; ?>
 <?php echo snap_render_html($view['site']['skin_custom_style'] ?? ''); ?><?php echo snap_render_html($view['site']['skin_presentation']['style'] ?? ''); ?>
 </head>
-<?php $kind = (string)($view['response']['kind'] ?? ''); $bodyClass = in_array($kind, ['landing', 'archive', 'hashtag', 'albums', 'collections'], true) ? 'archive-page' : (in_array($kind, ['page', 'collection'], true) ? 'static-transmission' : ''); ?>
+<?php $kind = (string)($view['response']['kind'] ?? ''); $bodyClass = in_array($kind, ['landing', 'archive', 'hashtag', 'albums', 'collections'], true) ? 'archive-page' : (in_array($kind, ['page', 'collection', 'blogroll'], true) ? 'static-transmission' : ''); ?>
 <body class="50-shades-of-noah-grey-v2 <?php echo snap_escape_attr($bodyClass); ?>"><div id="page-wrapper"><main id="scroll-stage" class="public-content">
 <header id="fsog-header" class="site-header fsog-header" data-sticky-header><div class="fsog-header-inside">
 <div class="logo-area"><a href="<?php echo snap_route_url('home'); ?>"><h1 class="site-title-text"><?php echo snap_escape_html($view['site']['site_name']); ?></h1></a></div>
@@ -55,6 +55,11 @@ $pageBase = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') . '/' : '/';
 <h1 class="static-page-title"><?php echo snap_escape_html($pageItem['title'] ?? $view['response']['page_title'] ?? ''); ?></h1>
 <?php if ($pageHero !== ''): ?><div id="photobox" class="page-hero"><div class="main-photo"><img src="<?php echo snap_escape_url($pageBase . ltrim($pageHero, '/')); ?>" class="post-image" alt="<?php echo snap_escape_attr($pageItem['title'] ?? ''); ?>"></div></div><?php endif; ?>
 <div class="description entry-content e-content"><?php echo snap_render_html($pageItem['content'] ?? $pageItem['description'] ?? ''); ?></div>
+</div>
+<?php elseif (($view['response']['kind'] ?? '') === 'blogroll'): ?>
+<div class="static-content static-content--list">
+<h1 class="static-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Blogroll'); ?></h1>
+<?php echo snap_render_html(snap_render_component('blogroll', ['groups' => $view['response']['blogroll_groups'] ?? []])); ?>
 </div>
 <?php elseif (($view['response']['kind'] ?? '') === 'search'): ?>
 <section class="fsog-search-page search-results"><h1 class="static-page-title"><?php echo snap_escape_html($view['response']['page_title'] ?? 'Search'); ?></h1><?php foreach (($view['response']['results'] ?? []) as $group): ?><?php foreach ($group as $result): ?><article><h2><?php echo snap_escape_html($result['img_title'] ?? $result['title'] ?? ''); ?></h2></article><?php endforeach; ?><?php endforeach; ?></section>

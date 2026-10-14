@@ -795,9 +795,58 @@ body.archive-page #system-footer {
     align-items: start;
 }
 
-/* A page with no hero photograph must not keep an empty column open. */
-.static-content:not(:has(#photobox.page-hero)) {
+/* A page with no hero photograph must not keep an empty column open, and
+   neither must a list page such as the blogroll. */
+.static-content:not(:has(#photobox.page-hero)),
+.static-content--list {
     display: block;
+}
+
+/* The blogroll: the same quiet voice as the navigation, in columns that
+   reflow rather than a fixed grid, so one group or nine both look deliberate. */
+.blogroll-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(var(--blogroll-column, 260px), 1fr));
+    gap: var(--static-column-gap, 56px);
+    align-items: start;
+}
+.blogroll-group h2 {
+    font-family: 'Raleway', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin: 0 0 20px 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(136, 136, 136, 0.25);
+}
+.blogroll-group ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.blogroll-group li {
+    margin: 0 0 22px 0;
+}
+.blogroll-group li a {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.3s ease, color 0.3s ease;
+}
+.blogroll-group li a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+.blogroll-group li p {
+    margin: 6px 0 0 0;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
 }
 
 .static-content > .static-page-title {
@@ -844,7 +893,10 @@ body.archive-page #system-footer {
     margin: 0 0 56px 0 !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
-    text-align: center !important;
+    /* Left, like the site title and the photograph metadata. There is no
+       other page heading on this site to centre against, and the header is
+       left-aligned, so centring this one made it the odd thing out. */
+    text-align: left !important;
     display: block !important;
     box-sizing: border-box !important;
     font-family: 'Raleway', sans-serif;
