@@ -230,6 +230,27 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
 }
 
 /**
+ * Wrap a manifest option's css in exactly one set of braces.
+ *
+ * 143 of the 145 css values across the 30 skins already carry their own
+ * braces -- "{ border: 1px solid #555 !important; }" -- because that is what
+ * the admin compiler in smack-skin.php expects, and it concatenates the
+ * selector and the css with nothing in between. This compiler added a second
+ * pair, producing "img.post-image {{ border: ... }}", which is invalid and
+ * discards the whole rule. Every custom- control on every strict skin was
+ * therefore dead: hero image frames, thumbnail borders, dropcaps. Visible on
+ * photowalk.ing as an About page whose photograph had lost its border.
+ */
+function snapsmack_skin_css_block(string $selector, string $css): string
+{
+    $css = trim($css);
+    if (str_starts_with($css, '{') && str_ends_with($css, '}')) {
+        $css = trim(substr($css, 1, -1));
+    }
+    return $css === '' ? '' : $selector . '{' . $css . '}';
+}
+
+/**
  * Compile the inert selector/property declarations from a schema-v2 manifest.
  *
  * The old public CSS cache carried these values, but that cache is global and
@@ -263,14 +284,16 @@ function snapsmack_declared_skin_style(string $skinSlug, array $options): string
         if (str_starts_with($property, 'custom-')) {
             $choice = $definition['options'][(string)$value] ?? null;
             if (is_array($choice) && is_string($choice['css'] ?? null) && trim($choice['css']) !== '') {
-                $rules[] = $selector . '{' . trim($choice['css']) . '}';
+                $block = snapsmack_skin_css_block($selector, (string)$choice['css']);
+                if ($block !== '') $rules[] = $block;
             }
             continue;
         }
         if ($type === 'select') {
             $choice = $definition['options'][(string)$value] ?? null;
             if (is_array($choice) && is_string($choice['css'] ?? null) && trim($choice['css']) !== '') {
-                $rules[] = $selector . '{' . trim($choice['css']) . '}';
+                $block = snapsmack_skin_css_block($selector, (string)$choice['css']);
+                if ($block !== '') $rules[] = $block;
                 continue;
             }
         }
