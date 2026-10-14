@@ -2104,4 +2104,18 @@ nav_menu_json is configured). Classes emitted by core/header.php renderer.
     color: #cccccc;
     cursor: default;
 }
+
+/* The masthead is an <a>, and the <a> itself must be styled.
+   The wordmark span sets its own colour and text-decoration:none, but a
+   descendant cannot cancel an underline drawn by its ancestor -- so the
+   link rendered in the browser's default blue, underlined, purple once
+   visited. A rule for ".logo-area a" targets an anchor INSIDE a container;
+   the renderer emits the anchor AS the container, so it matches nothing. */
+a.site-title,
+a.logo-area,
+.site-title > a,
+.logo-area > a {
+    color: inherit;
+    text-decoration: none;
+}
 /* ===== SNAPSMACK EOF ===== */

@@ -593,4 +593,20 @@ a:hover { color: var(--text-primary); }
     opacity: .5;
     cursor: default;
 }
+
+/* The masthead is an <a>, and the <a> itself must be styled.
+   The wordmark span sets its own colour and text-decoration:none, but a
+   descendant cannot cancel an underline drawn by its ancestor -- so the
+   link rendered in the browser's default blue, underlined, and purple once
+   visited. Skins written for the older markup target ".logo-area a", an
+   anchor INSIDE a container; the renderer emits the anchor AS the
+   container (<a class="site-title logo-area">), so that selector matches
+   nothing. This covers both shapes and lets the wordmark's own colour show. */
+a.site-title,
+a.logo-area,
+.site-title > a,
+.logo-area > a {
+    color: inherit;
+    text-decoration: none;
+}
 /* ===== SNAPSMACK EOF ===== */
