@@ -922,6 +922,16 @@ $inventory = [
                 ],
             ]
         ],
+        // Blogroll page geometry. A style-only entry: the resolver reads
+        // 'path' and 'css' independently, so an entry with no script simply
+        // delivers its stylesheet. Declared by the skins that render a
+        // blogroll but have never styled one -- the thirteen that style it
+        // themselves do not need it.
+        'smack-blogroll' => [
+            'label'        => 'Blogroll page layout (columns and spacing)',
+            'css'          => 'assets/css/page-blogroll.css',
+            'has_settings' => false,
+        ],
         'smack-archive-toggle' => [
             'label'        => 'Archive Layout Toggle (in-place T/M switch + hotkeys)',
             'path'         => 'assets/js/ss-engine-archive-toggle.js',

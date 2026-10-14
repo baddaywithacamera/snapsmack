@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "ONYX",
-  "version": "0.1.12",
+  "version": "0.1.13",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "status": "alpha",
@@ -37,7 +37,7 @@
             "masonry"
         ]
     },
-    "require_scripts": [
+    "require_scripts": ["smack-blogroll", 
         "smack-footer",
         "smack-image-fade-load",
         "smack-lightbox",

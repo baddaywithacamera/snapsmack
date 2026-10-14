@@ -25,8 +25,17 @@ function snapsmack_skin_policy_public_asset_handles(?string $authority_root=null
     $snapsmack_manifest_inventory_catalogue_mode=$authority_root!==null;
     $legacy=is_file($legacyPath)?include $legacyPath:[];
     foreach(($legacy['scripts']??[]) as $handle=>$entry){
-        if(!is_string($handle)||!is_array($entry)||!is_string($entry['path']??null)||!isset($publicPaths[$entry['path']]))continue;
-        if(isset($entry['css'])&&(!is_string($entry['css'])||!isset($publicPaths[$entry['css']])))continue;
+        if(!is_string($handle)||!is_array($entry))continue;
+        // An entry may carry a script, a stylesheet, or both, and the resolver
+        // reads the two independently -- page geometry with no engine behind
+        // it is a real declarable asset. The gate is unchanged: WHATEVER it
+        // declares must be a registered public asset, and an entry declaring
+        // nothing is still refused.
+        $hasPath=is_string($entry['path']??null)&&isset($publicPaths[$entry['path']]);
+        $hasCss=is_string($entry['css']??null)&&isset($publicPaths[$entry['css']]);
+        if(isset($entry['path'])&&!$hasPath)continue;
+        if(isset($entry['css'])&&!$hasCss)continue;
+        if(!$hasPath&&!$hasCss)continue;
         $allowed['scripts'][$handle]=true;
     }
     return $cache[$root]=$allowed;
