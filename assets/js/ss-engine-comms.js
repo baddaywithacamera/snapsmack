@@ -99,19 +99,34 @@ document.addEventListener('keydown', function(e) {
     // of whether SNAP_DATA is populated or a slider is active.
     if (e.key === ' ') e.preventDefault();
 
-    // Gallery navigation with arrow keys (single post view only)
-    if (window.SNAP_DATA && !sliderActive) {
-        if (e.key === 'ArrowLeft' && window.SNAP_DATA.prevUrl) {
-            window.location.href = window.SNAP_DATA.prevUrl;
+    // Gallery navigation with arrow keys (single post view only).
+    //
+    // This used to read window.SNAP_DATA. Nothing has set that global since
+    // the pre-CMS reference code, so the arrow keys and the spacebar have
+    // been dead on every skin -- the engine was asking a question no page
+    // answered. It now reads the page's OWN previous/next links, which the
+    // photo navigation renders and marks rel="prev" / rel="next". A link
+    // that is on the page cannot drift out of step with the page the way a
+    // parallel global did. SNAP_DATA is still honoured if anything sets it.
+    if (!sliderActive) {
+        var relLink = function (rel) {
+            var el = document.querySelector('a[rel="' + rel + '"][href]');
+            return el ? el.getAttribute('href') : '';
+        };
+        var prevUrl = (window.SNAP_DATA && window.SNAP_DATA.prevUrl) || relLink('prev');
+        var nextUrl = (window.SNAP_DATA && window.SNAP_DATA.nextUrl) || relLink('next');
+
+        if (e.key === 'ArrowLeft' && prevUrl) {
+            window.location.href = prevUrl;
         }
 
-        if (e.key === 'ArrowRight' && window.SNAP_DATA.nextUrl) {
-            window.location.href = window.SNAP_DATA.nextUrl;
+        if (e.key === 'ArrowRight' && nextUrl) {
+            window.location.href = nextUrl;
         }
 
-        // Spacebar navigates backward through archive (newest to oldest)
-        if (e.key === ' ' && window.SNAP_DATA.prevUrl) {
-            window.location.href = window.SNAP_DATA.prevUrl;
+        // Spacebar navigates backward through the archive (newest to oldest)
+        if (e.key === ' ' && prevUrl) {
+            window.location.href = prevUrl;
         }
     }
 
