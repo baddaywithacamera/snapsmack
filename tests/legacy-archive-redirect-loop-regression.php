@@ -92,8 +92,38 @@ $check(str_contains($archive, 'snapsmack_legacy_archive_target('),
     'archive.php must resolve its legacy target through the guarded helper');
 $check(!preg_match("/snapsmack_public_route_url\(\s*BASE_URL[^;]*'archive',\s*'archive'/", $archive),
     'archive.php must not ask the generic resolver for a fallback slug');
-$check(str_contains($archive, "REQUEST_URI") && str_contains($archive, 'true, 301'),
-    'archive.php must compare its target with the current request before redirecting');
+$check(str_contains($archive, "REQUEST_URI") && str_contains($archive, 'true, 302'),
+    'archive.php must compare its target with the current request before redirecting, '
+    . 'and answer 302: the address comes from the site menu and changes when an item '
+    . 'is renamed, and a 301 a reader has cached cannot be taken back');
+$check(str_contains($archive, "QUERY_STRING"),
+    'the redirect must pass the incoming query to the helper');
+
+// --- THE QUESTION MUST SURVIVE THE REDIRECT -----------------------------
+// An album card links to /archive?album=232. Carrying only the path answered
+// with the WHOLE archive instead of that album -- and every album, category,
+// search, filter and layout link travels in the query, so all of them landed
+// on the same unfiltered page. Measured on foreverphotograph.ing:
+// /archive?album=232 -> 301 -> /?view=archive, query gone.
+$carried = snapsmack_legacy_archive_target('https://example.test/', [], '', 'album=232');
+parse_str((string)parse_url($carried, PHP_URL_QUERY), $q);
+$check(($q['album'] ?? '') === '232', 'an album must survive the redirect');
+$check(($q['view'] ?? '') === 'archive', 'and the view must still be the archive');
+
+$aliased = snapsmack_legacy_archive_target('https://example.test/', ['images' => 'archive'], '', 'album=232');
+$check($aliased === 'https://example.test/images?album=232',
+    'a site with a real archive slug keeps the album too, got ' . $aliased);
+
+// The target's own parameters win, so a crafted query cannot redirect the
+// reader somewhere other than the archive.
+$hostile = snapsmack_legacy_archive_target('https://example.test/', [], '', 'view=elsewhere&album=7');
+parse_str((string)parse_url($hostile, PHP_URL_QUERY), $hq);
+$check(($hq['view'] ?? '') === 'archive', 'an incoming view must not displace the archive view');
+
+$check(snapsmack_legacy_archive_target('https://example.test/', [], '', '')
+    === 'https://example.test/?view=archive', 'no query, no change');
+$check(snapsmack_legacy_archive_target('https://example.test/', ['images' => 'archive'], '', '')
+    === 'https://example.test/images', 'no query and a real slug, no stray question mark');
 
 if ($failures) {
     fwrite(STDERR, "Legacy archive redirect regression FAILED:\n");

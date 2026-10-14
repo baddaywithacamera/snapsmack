@@ -87,8 +87,8 @@
             "files_sha256": "4dabac52fcb0793927f92a51dd958ff7278c1a02dd64f95021eec0115803ea3f"
         },
         "slickr": {
-            "version": "1.0.32",
-            "files_sha256": "73982b158717e2dd2deb18f91c44ec1659c64d75d4e03b4bb105bb0d264018ff"
+            "version": "1.0.33",
+            "files_sha256": "ef59b4b07018459810405ba55f3d1c9eff8ed2886ef6be5d275346db86662728"
         },
         "sliders": {
             "version": "0.1.8",
