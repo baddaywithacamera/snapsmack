@@ -1563,4 +1563,5 @@ html[data-archive-layout="thumbs"]  #browse-grid    { display: grid  !important;
 html[data-archive-layout="thumbs"]  #justified-grid { display: none  !important; }
 html[data-archive-layout="masonry"] #browse-grid    { display: none  !important; }
 html[data-archive-layout="masonry"] #justified-grid { display: block !important; }
+
 /* ===== SNAPSMACK EOF ===== */

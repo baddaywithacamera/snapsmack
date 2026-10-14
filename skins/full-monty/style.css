@@ -18,4 +18,17 @@ body{overflow-x:hidden}.fm-stage{position:relative;isolation:isolate;min-height:
 @keyframes fm-drift{from{transform:scale(1.08) translate3d(-1.2%,-.7%,0)}to{transform:scale(1.13) translate3d(1.2%,.8%,0)}}@keyframes fm-cue{0%,100%{opacity:0}15%,75%{opacity:1}}
 @media(max-width:760px){.fm-diagonal{grid-template-columns:repeat(5,min(34vw,var(--fm-tile)));transform:rotate(-8deg) translate(-18vw,4vh);padding-top:20vh}.fm-tile{width:min(34vw,var(--fm-tile))}.fm-nav-well{top:12px;right:12px;max-width:80vw}.fm-hero{max-width:94vw;max-height:84vh}}
 @media(prefers-reduced-motion:reduce){.fm-atmosphere{animation:none}.fm-first-cue{animation:none;opacity:1}.fm-hero,.fm-tile{transition:none}}
+
+/* The menu separator. The CMS drew a pipe between menu items until
+   0.7.873D, when the hard-coded one was removed from the shared renderer
+   because it reached every skin at once -- including three that already
+   drew their own and so showed two. This skin never styled that span, so
+   what it had was an unstyled pipe, and it vanished. The character is the
+   skin's to choose; this restores what was on the screen. */
+.nav-menu > li + li::before {
+    content: "|";
+    padding: 0 10px;
+    opacity: .5;
+    cursor: default;
+}
 /* ===== SNAPSMACK EOF ===== */

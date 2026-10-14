@@ -7,8 +7,8 @@
             "files_sha256": "1899a6101774420c5bb5f3bbbc6d9215e5192e2324cc07a9395e1c5ddd01ed8f"
         },
         "52-card-pickup": {
-            "version": "1.4.8",
-            "files_sha256": "a445c571447e0e25a3dd0bf8427bef81a292493c5298c406ac5ef5c7ad8bb6e5"
+            "version": "1.4.9",
+            "files_sha256": "dfcfe2f69af62e2bd615710109f0899a1d13ad6af1d06ea110a03641ded170e6"
         },
         "alfred": {
             "version": "1.0.7",
@@ -20,35 +20,35 @@
         },
         "chaplin": {
             "version": "0.2.18",
-            "files_sha256": "7eca9990021fb939293049c18724d139a96c6837b738ec5c615cfc647d61c13c"
+            "files_sha256": "64da24b0a6ad65d6e30d36a3435a0b98b8d53c94b64d0474dafd159cc178cf21"
         },
         "full-monty": {
-            "version": "0.1.4",
-            "files_sha256": "366f5be4d7bc03afc8683b7fd178346d9adbf4beccbec09de78950aca542f4f6"
+            "version": "0.1.5",
+            "files_sha256": "2a545a267b8ccaa547f6653944dd35a53f2a85f30925e86548d8056b87e86cb0"
         },
         "galleria": {
-            "version": "1.3.12",
-            "files_sha256": "8365c8038add113323fc351a45db9cccdf920c0b82c9397b323216d10719bc76"
+            "version": "1.3.13",
+            "files_sha256": "c4f37157657fdcd2ac64ca5ac508b86d00072a89704eec06bd3983c14e132631"
         },
         "game-on": {
             "version": "0.1.31",
             "files_sha256": "518e9ba942862ab6696429ef353867e60ba7791fe6ca58ef287bef88277134d8"
         },
         "glide": {
-            "version": "0.1.7",
-            "files_sha256": "277a38d851fc0f4d934331a2fbe0da851d05d1df7d7d8b98ea949e1576154803"
+            "version": "0.1.8",
+            "files_sha256": "7663e9ea32241a9c5998848f629b17eb501b643ecdd7ec06f559c3e105fddc5a"
         },
         "heuristic": {
             "version": "0.1.9",
             "files_sha256": "647ac55b031c0bb49d0d329daef057e7bc421ee275dc69e07369f1fbe0c47258"
         },
         "hip-to-be-square": {
-            "version": "1.3.8",
-            "files_sha256": "c1221edfe483dd36b6928eacacaa3d38b3fb502d4862ac8786de9a109fa6f3ee"
+            "version": "1.3.9",
+            "files_sha256": "b49b5b308e524deeb5c406d4f26da99660b1c072d1e5e56bd4e97bfcc7d67180"
         },
         "impact-printer": {
-            "version": "2.1.5",
-            "files_sha256": "f505282c1c7758765a0bd1045e79e2aa3598a3a30bd638383e37b65e05bedc98"
+            "version": "2.1.6",
+            "files_sha256": "e9af3e74d122ad9d3e882e1522326d6be531dccf91bc5c8c20b7b6c8ac799088"
         },
         "instant-camera": {
             "version": "1.0.48",
@@ -59,44 +59,44 @@
             "files_sha256": "8d35000348bf8cc2186492bd484b930acd3c8b8094d2b21a1c5a70aeb393157d"
         },
         "new-horizon": {
-            "version": "1.3.11",
-            "files_sha256": "689e02a37b57e9ccb750a21035c8967a5753044fbefd3c9ea3ec776fa5514fdb"
+            "version": "1.3.12",
+            "files_sha256": "4809e972c56df57429c2510e6d7af1d05872968e505bd3902d162ec1e3100301"
         },
         "onyx": {
             "version": "0.1.14",
-            "files_sha256": "a47caca11452e65171fb1d497c3d5663e9b038ce15e79523b80889c600dbc148"
+            "files_sha256": "e952926717c291c621a705c55e0b0fd5e41930ae1785d07c5bc833f258fa1868"
         },
         "parade": {
             "version": "1.2.45",
             "files_sha256": "cea76f3cbfd64ac51218b161be0357420bb12e9d967840918523b35a36289a77"
         },
         "photogram": {
-            "version": "2.0.20",
-            "files_sha256": "163b492665fba81ae1491d8ddfe0c4b371a688c5c12becdd764b7719997b1fcb"
+            "version": "2.0.21",
+            "files_sha256": "28ba7fd6543533eafe77f4c954e4aa87cf9937d7f73e58c68926ecca345c5565"
         },
         "rational-geo": {
             "version": "2.1.14",
-            "files_sha256": "108c204bc275da3125be29b6ddf690507e97156f68c1310aba83909615c28395"
+            "files_sha256": "29bfaaa5ccc7b9625dad58fe0fb91b4e64da7d3c84ab2fbfcc7c51590659ef45"
         },
         "scroll": {
-            "version": "0.1.62",
-            "files_sha256": "fea83468986c665ed3c0d9dc302016fd68e94285ff787d324d086081cd7ae32b"
+            "version": "0.1.63",
+            "files_sha256": "a450b2f030331c6e521737e1a39dc51a5ba2a42a223a10c0ac6e61049a2ebf2c"
         },
         "show-n-tell": {
-            "version": "1.2.5",
-            "files_sha256": "9892751ea2e4e6d913494e95836a377dd6baaec415b187d12580892b0840a18b"
+            "version": "1.2.6",
+            "files_sha256": "a9913bf3ea3279441755e3528d96081cd75f0301812a089cd2b878f0503a7519"
         },
         "slickr": {
-            "version": "1.0.33",
-            "files_sha256": "ef59b4b07018459810405ba55f3d1c9eff8ed2886ef6be5d275346db86662728"
+            "version": "1.0.34",
+            "files_sha256": "6c2ebb172a3721c6ec3a69440193236b4a875276ce8c2e8351a25de36b44fb6a"
         },
         "sliders": {
             "version": "0.1.10",
             "files_sha256": "f6bf75698c167d6214b7dbc76092788ca33241cc3046362c9cc81f939b6465c6"
         },
         "stanley": {
-            "version": "1.1.5",
-            "files_sha256": "3f4c0ce77da9144f437b99c6d736b570f04d75eb6103b5ead4562c28c9212e3c"
+            "version": "1.1.6",
+            "files_sha256": "5b554d357c334d0f1b3f1df20a62ac86c30acc23602350e18e162fac0ed4a715"
         },
         "sudden-impact": {
             "version": "1.0.15",
@@ -115,12 +115,12 @@
             "files_sha256": "138caa14f6eb3e144e972e1a6427e783b5420ddb0260070747771ec157dd92ff"
         },
         "true-grit": {
-            "version": "1.3.6",
-            "files_sha256": "c021a566874f57037ab809d2b8fa1a243c6304d597d548b45722d45b9e6571b9"
+            "version": "1.3.7",
+            "files_sha256": "d9a8d97c22dc2b4ac049fadc4a4af22942c09c9e63d53f1b93f726c86b22f5eb"
         },
         "writing-with-impact": {
-            "version": "1.1.4",
-            "files_sha256": "14ccb1119dd8970aec3aaf77d43f4f080d96bebd1433c97d02592645350f2787"
+            "version": "1.1.5",
+            "files_sha256": "00ec234e3803702e60ea22123350dfce21f80cf73a271d53013d8190abef637d"
         }
     }
 }
