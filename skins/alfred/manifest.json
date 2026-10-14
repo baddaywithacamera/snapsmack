@@ -36,7 +36,7 @@
             "comments"
         ]
     },
-    "require_scripts": ["smack-blogroll", 
+    "require_scripts": [
         "smack-alfred-nav",
         "smack-footer",
         "smack-community"
