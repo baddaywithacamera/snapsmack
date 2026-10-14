@@ -48,8 +48,18 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     $repository = new SnapPublicRepository($pdo);
     $response = snapsmack_public_controller($repository, $request, $settings);
     $response = snapsmack_public_parse_page_content($pdo, $response);
-    if (($response['kind'] ?? '') === 'photo') {
+    // Comments are one feature with TWO switches: global_comments_enabled in
+    // Settings, and community_comments_enabled on the community engine. Only
+    // the first was consulted here, so turning the other one off hid the
+    // comments while leaving the COMMENTS link in the photo navigation and
+    // its "2" hotkey live -- a link that opens a pane the site will not fill.
+    // If either switch says no, comments are off.
+    //
+    // It also only answered for a photograph. A post and a collection carry
+    // the same navigation bar and were never gated at all.
+    if (in_array(($response['kind'] ?? ''), ['photo', 'post', 'collection'], true)) {
         $response['comments_enabled'] = (($settings['global_comments_enabled'] ?? '1') === '1')
+            && (($settings['community_comments_enabled'] ?? '1') === '1')
             && (($response['item']['allow_comments'] ?? '1') == '1');
     }
     // Profile chrome is shared across every strict public page, not just the
