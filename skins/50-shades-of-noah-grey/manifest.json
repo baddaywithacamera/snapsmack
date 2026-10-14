@@ -834,6 +834,52 @@
             "selector": "#infobox",
             "property": "height"
         },
+        "static_hero_position": {
+            "section": "CANVAS LAYOUT",
+            "type": "select",
+            "label": "Static Page Hero Position",
+            "default": "left",
+            "selector": ".static-content",
+            "property": "custom-framing",
+            "options": {
+                "left": {
+                    "label": "Photograph Left, Words Right",
+                    "css": "{ --static-hero-col: 1; --static-text-col: 2; }"
+                },
+                "right": {
+                    "label": "Words Left, Photograph Right",
+                    "css": "{ --static-hero-col: 2; --static-text-col: 1; --static-cols: 1fr var(--static-hero-width, 46%); }"
+                },
+                "above": {
+                    "label": "Photograph Above the Words",
+                    "css": "{ --static-layout: block; --static-text-side: auto; }"
+                }
+            }
+        },
+        "static_hero_width": {
+            "section": "CANVAS LAYOUT",
+            "type": "range",
+            "label": "Static Page Photograph Column (%)",
+            "default": "46",
+            "min": "25",
+            "max": "65",
+            "step": "1",
+            "selector": ".static-content",
+            "property": "--static-hero-width",
+            "unit": "%"
+        },
+        "static_column_gap": {
+            "section": "CANVAS LAYOUT",
+            "type": "range",
+            "label": "Static Page Column Gap (px)",
+            "default": "56",
+            "min": "16",
+            "max": "120",
+            "step": "4",
+            "selector": ".static-content",
+            "property": "--static-column-gap",
+            "unit": "px"
+        },
         "static_page_width": {
             "section": "CANVAS LAYOUT",
             "type": "range",
