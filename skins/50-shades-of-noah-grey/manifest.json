@@ -675,7 +675,7 @@
             "section": "COLOURS",
             "type": "color",
             "label": "Static Page Stage (Behind Card)",
-            "default": "#1a1a1a",
+            "default": "#3c3c3c",
             "selector": ".static-transmission #scroll-stage",
             "property": "background-color"
         },
@@ -683,7 +683,7 @@
             "section": "COLOURS",
             "type": "color",
             "label": "Static Page Card (Content Area)",
-            "default": "#1a1a1a",
+            "default": "#3c3c3c",
             "selector": ".static-content",
             "property": "background-color"
         },
@@ -918,7 +918,7 @@
             "section": "BLOGROLL",
             "type": "select",
             "label": "Column Layout",
-            "default": "1",
+            "default": "2",
             "selector": ".blogroll-grid",
             "property": "custom-cols",
             "options": {
