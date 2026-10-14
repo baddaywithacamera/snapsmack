@@ -509,7 +509,20 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 case 'text': $parts[] = snap_escape_html($slot['text'] ?? ''); break;
             }
         }
-        $html = '<div class="footer-metadata-bar"><p>' . implode(' <span class="sep">|</span> ', $parts) . '</p></div>';
+        // The hidden h-card core/footer.php published. It is how a fediverse or
+        // IndieWeb reader learns whose site this is, and every strict skin lost
+        // it when the footer stopped being rendered by that file.
+        $card = '';
+        $name = trim((string)($footer['site_name'] ?? ''));
+        if ($name !== '') {
+            $card = '<span class="h-card snapsmack-indieweb-properties" hidden aria-hidden="true">'
+                . '<data class="p-name" value="' . snap_escape_attr($name) . '"></data>'
+                . '<a class="u-url" href="' . snap_escape_url($footer['site_url'] ?? '') . '"></a>';
+            $note = trim((string)($footer['site_note'] ?? ''));
+            if ($note !== '') $card .= '<data class="p-note" value="' . snap_escape_attr($note) . '"></data>';
+            $card .= '</span>';
+        }
+        $html = $card . '<div class="footer-metadata-bar"><p>' . implode(' <span class="sep">|</span> ', $parts) . '</p></div>';
     }
     return SnapTrustedHtml::__snapsmackCmsOnly($html);
 }
