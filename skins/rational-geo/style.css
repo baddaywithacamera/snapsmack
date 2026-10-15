@@ -54,6 +54,7 @@
   --justified-row-height: 260px;
   --infobox-height: 50px;
   --rg-canvas-width: 1400px;   /* content max-width — overridden by main_canvas_width setting */
+  --static-content-width: 1040px;
 
   /* Floating gallery wall */
   --wall-bg: #000000;
@@ -141,7 +142,7 @@ body:has(.rg-single) {
 body:has(.rg-single) > #scroll-stage {
   flex: 1 1 auto;
   min-height: 0;
-  margin-top: 70px;
+  margin-top: 0;
   height: calc(100dvh - 70px);
 }
 
@@ -258,10 +259,8 @@ small,
    ========================================================================== */
 
 #rg-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
+  flex: 0 0 auto;
   height: 70px;
   background-color: var(--rg-bg-chrome);
   border-bottom: 1px solid var(--rg-border-light);
@@ -361,7 +360,7 @@ small,
 
 /* --- Single-view flex column (mirrors New Horizon snapping engine) ---
    scroll-stage.rg-single is a flex column inside #page-wrapper.
-   Header is fixed; everything else is in-flow so drawers push naturally. */
+   Header and everything else are in-flow so drawers push naturally. */
 
 .rg-single {
   display: flex;
@@ -395,7 +394,7 @@ small,
   align-items: center;
   width: 100%;
   background-color: transparent;
-  margin-top: 0; /* #scroll-stage clears the fixed header */
+  margin-top: 0;
   position: relative;
   /* overflow: hidden clips image to photobox bounds; outline stays visible
      because photo-wrap padding (4vh) comfortably exceeds max outline width (20px) */
@@ -902,7 +901,7 @@ body[data-frame="none"]   { --rg-hero-colour: transparent; }
 }
 
 /* --- Archive page base ---
-     archive.php provides: skin-header (#rg-header, fixed 70px), #infobox
+     archive.php provides: skin-header (#rg-header, in normal flow), #infobox
      (filter bar, 50px), #scroll-stage. #page-wrapper is a flex column so the
      footer always snaps to bottom. */
 
@@ -913,12 +912,12 @@ body.archive-page #page-wrapper {
   height: auto;
 }
 
-/* Show the filter bar and push it below the fixed header.
+/* Show the filter bar immediately below the normal-flow header.
    Background steps darker than the header (#1a1a1a → #111111) to create
    a clear visual break between header chrome and page content. */
 body.archive-page #infobox {
   position: relative;             /* anchor for the docked layout toggle */
-  margin-top: 70px;               /* clear the fixed #rg-header (70px) */
+  margin-top: 0;
   background-color: #111111;      /* --rg-bg-drawer: one step darker than header */
   border-top: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -1008,7 +1007,7 @@ body.archive-page {
 }
 
 body.static-transmission {
-  padding-top: 70px;
+  padding-top: 0;
   background-color: var(--rg-bg-page);
 }
 
@@ -1026,7 +1025,7 @@ body.static-transmission #scroll-stage {
 
 /* Static content lane — generous whitespace, centered */
 .static-content {
-  max-width: var(--static-content-width, 720px);
+  max-width: var(--static-content-width, 1040px);
   margin: 60px auto 80px auto;
   padding: 0 40px;
   box-sizing: border-box;
@@ -1108,7 +1107,7 @@ body.static-transmission #scroll-stage {
   display: block !important;
   height: auto !important;
   min-height: auto !important;
-  max-width: var(--static-content-width, 720px) !important;
+  max-width: var(--static-content-width, 1040px) !important;
   width: 100% !important;
   margin: 40px auto 60px auto !important;  /* top: breathing room below header */
   padding: 30px 40px !important;           /* inner padding so outline has space */
@@ -1462,7 +1461,7 @@ input[type="reset"]:active {
   }
 
   body:has(.rg-single) > #scroll-stage {
-    margin-top: 60px;
+    margin-top: 0;
     height: calc(100dvh - 60px);
   }
 
@@ -1532,7 +1531,7 @@ input[type="reset"]:active {
   }
 
   body:has(.rg-single) > #scroll-stage {
-    margin-top: 50px;
+    margin-top: 0;
     height: calc(100dvh - 50px);
   }
 
@@ -1597,7 +1596,7 @@ input[type="reset"]:active {
     flex: 1;
     display: flex;
     flex-direction: column;
-    margin-top: 50px;
+    margin-top: 0;
   }
 
   .rg-comment-form-field {
@@ -1645,7 +1644,7 @@ input[type="reset"]:active {
   }
 
   body:has(.rg-single) > #scroll-stage {
-    margin-top: 45px;
+    margin-top: 0;
     height: calc(100dvh - 45px);
   }
 

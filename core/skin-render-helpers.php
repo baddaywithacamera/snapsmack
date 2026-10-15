@@ -110,13 +110,14 @@ function snap_render_navigation_tree(array $items, int $depth = 0): string {
 /** Render fixed shared chrome from bounded data; components cannot execute code. */
 function snap_render_component(string $name, array $data): SnapTrustedHtml {
     $html = '';
-    if (in_array($name, ['50-shades-page', 'chaplin-page', 'galleria-page', 'impact-printer-page', 'onyx-page'], true)) {
+    if (in_array($name, ['50-shades-page', 'chaplin-page', 'galleria-page', 'impact-printer-page', 'onyx-page', 'rational-geo-page'], true)) {
         $componentFiles = [
             '50-shades-page' => '50-shades-page-component.php',
             'chaplin-page' => 'chaplin-page-component.php',
             'galleria-page' => 'galleria-page-component.php',
             'impact-printer-page' => 'impact-printer-page-component.php',
             'onyx-page' => 'onyx-page-component.php',
+            'rational-geo-page' => 'rational-geo-page-component.php',
         ];
         $view = $data;
         ob_start();
