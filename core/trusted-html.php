@@ -33,10 +33,17 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         // pfd-wordmark, pfd-tagline, pfd-lede and pfd-label). Stripping the
         // class leaves the content safe but collapses every distinct block
         // into the same generic paragraph presentation.
-        'p' => ['class'], 'br' => [], 'strong' => [], 'em' => [], 'b' => [], 'i' => [], 'u' => [], 's' => [],
+        // Countdown attributes are inert schedule data consumed by the shared
+        // countdown engine. Keeping them here restores CMS-authored counters;
+        // event handlers and style remain outside the allowlist.
+        'p' => ['class', 'data-until', 'data-every', 'data-roll-caption', 'data-done'],
+        'br' => [], 'strong' => [], 'em' => [], 'b' => ['data-cd'], 'i' => [], 'u' => [], 's' => [],
         'blockquote' => [], 'ul' => [], 'ol' => [], 'li' => [], 'code' => [], 'pre' => [],
         'h1' => [], 'h2' => [], 'h3' => [], 'h4' => [], 'h5' => [], 'h6' => [],
-        'div' => ['class', 'id', 'data-mosaic'], 'span' => ['class'], 'section' => ['class', 'id'],
+        'div' => ['class', 'id', 'data-mosaic'],
+        'span' => ['class', 'data-cd', 'data-cd-caption', 'data-cd-clock', 'aria-hidden'],
+        'section' => ['class', 'id', 'aria-label'],
+        'time' => ['class', 'datetime', 'data-cd-date'],
         'figure' => ['class'], 'figcaption' => ['class'],
         // Native, script-free disclosure controls used by CMS-authored FAQs.
         'details' => ['class'], 'summary' => ['class'],

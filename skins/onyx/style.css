@@ -124,7 +124,7 @@ img { max-width: 100%; height: auto; }
 #pfd-header {
     position: relative;
     z-index: 2;
-    border-bottom: 1px solid var(--pfd-hairline);
+    border-bottom: 1px solid var(--pfd-red);
 }
 
 .pfd-header-inside {
