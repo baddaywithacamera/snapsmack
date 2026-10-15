@@ -6,6 +6,17 @@ const SNAPSMACK_SKIN_VIEW_MODEL_VERSION = 1;
 /** Convert a controller response into the only data a strict skin receives. */
 function snapsmack_build_skin_view(array $response, array $presentation = []): array
 {
+    $kind = (string)($response['kind'] ?? '');
+    $item = is_array($response['item'] ?? null) ? $response['item'] : [];
+    $bodyClasses = ['skin-' . preg_replace('/[^a-z0-9_-]/i', '-', (string)($presentation['skin_slug'] ?? 'default'))];
+    if ($kind === 'page' || $kind === 'blogroll') $bodyClasses[] = 'static-transmission';
+    if (!empty($response['is_homepage'])) $bodyClasses[] = 'homepage-static';
+    if ($kind === 'page' && !empty($item['slug'])) {
+        $bodyClasses[] = 'page-slug-' . preg_replace('/[^a-z0-9_-]/i', '-', (string)$item['slug']);
+    }
+    if ($kind === 'blogroll') $bodyClasses[] = 'is-blogroll';
+    if ($kind === 'photo') $bodyClasses[] = 'is-photo-page';
+    $presentation['body_class'] = implode(' ', $bodyClasses);
     $allowedResponse = ['status', 'kind', 'mode', 'item', 'items', 'post', 'posts', 'tiles', 'rows', 'slider_items', 'photographs',
         'comments', 'navigation', 'results', 'query', 'slug', 'page', 'total_pages',
         'page_title', 'rendered_content', 'signature', 'previous', 'next', 'categories',
@@ -15,7 +26,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
         'skin_style_url', 'base_style_url', 'skin_variant_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',
-        'favicon_url', 'footer', 'slickr_profile', 'crop_circles', 'archive_layout'];
+        'favicon_url', 'footer', 'slickr_profile', 'crop_circles', 'archive_layout', 'body_class'];
     return [
         'model' => 'snapsmack.public',
         'version' => SNAPSMACK_SKIN_VIEW_MODEL_VERSION,
