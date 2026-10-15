@@ -1543,6 +1543,49 @@ button {
    drew their own and so showed two. This skin never styled that span, so
    what it had was an unstyled pipe, and it vanished. The character is the
    skin's to choose; this restores what was on the screen. */
+/* The Discover menu. The CMS emits the shared navigation component --
+   <nav class="navigation"><ul class="nav-menu"><li><a> -- and this skin never
+   styled that list, so it rendered as a default bulleted column in the
+   browser's link blue. The pipe separator added in 0.7.875D then sat on top of
+   that, which is why each item after the first read "| BLOGROLL" under a
+   bullet.
+
+   On a phone the row wraps, and a ::before pipe then dangles at the start of
+   the second line. CSS cannot see a wrap, so inside Discover the separator is
+   dropped and the spacing comes from gap instead. The list reset follows
+   50 SHADES, which has always rendered this component correctly. Measured on
+   theschoolofhardnocks.ca at 375px: four items, two rows, no dangling
+   separator, no horizontal overflow. */
+.pg-discover .nav-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 18px;
+}
+
+.pg-discover .nav-menu > li {
+    display: inline-flex;
+    align-items: center;
+}
+
+.pg-discover .nav-menu > li + li::before {
+    content: none;
+}
+
+.pg-discover .nav-menu a {
+    color: var(--pg-text);
+    text-decoration: none;
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+}
+
+.pg-discover .nav-menu a:hover {
+    color: var(--pg-accent);
+}
+
 .nav-menu > li + li::before {
     content: "|";
     padding: 0 10px;
