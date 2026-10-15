@@ -5,14 +5,14 @@ declare(strict_types=1);
 // Last non-empty line must be: // ===== SNAPSMACK EOF =====
 
 /**
- * THE BOARD's prompt index, and the menu that said HOME twice.
+ * The separate PROMPTS page index, and the menu that said HOME twice.
  *
  * Sean, looking at photofri.day/the-board once the page rendered at all:
  * the list of current and past prompts came out as one unbroken line of
  * words -- "Current and Past PromptsCurrent: FallOct 9, 2026 ..." -- and the
  * menu read HOME BLOGROLL HOME HOW IT WORKS.
  *
- * THE INDEX. pc_board_rounds_embed_html() builds the index as a <nav> of
+ * THE INDEX. pc_prompt_index_embed_html() builds the index as a section of
  * linked poster cards. Reached through the dedicated board page it is echoed
  * straight out and renders. Reached through a static page it goes through the
  * shortcode parser and then the content sanitiser, and 'nav' was not on that
@@ -36,16 +36,15 @@ $check = static function (bool $ok, string $what) use (&$failures): void {
 };
 
 // --- the prompt index survives the sanitiser, intact ---------------------
-$index = '<nav class="pc-prompt-index" aria-label="Current and past prompts">'
+$index = '<div class="pc-prompt-index" aria-label="Current, coming and past prompts">'
     . '<h2>Current and Past Prompts</h2><div class="pc-prompt-cards">'
     . '<a class="pc-prompt-card is-current" href="#round-2026-10-09">'
     . '<img src="/uploads/fall.jpg" alt="Fall prompt">'
     . '<span class="pc-prompt-copy"><strong>Current: Fall</strong>'
-    . '<span>Oct 9, 2026 &middot; #PhotoFriFall</span></span></a></div></nav>';
+    . '<span>Oct 9, 2026 &middot; #PhotoFriFall</span></span></a></div></div>';
 $clean = (string)snapsmack_trusted_html($index);
 
-$check(str_contains($clean, '<nav'),
-    'nav must survive, or the whole prompt index collapses into one line of text');
+$check(str_contains($clean, '<div'), 'the prompt index wrapper survives');
 $check(str_contains($clean, 'class="pc-prompt-index"'), 'the index keeps its class');
 $check(str_contains($clean, 'pc-prompt-card'),
     'the anchor must keep its class, or the poster cards render unstyled');
