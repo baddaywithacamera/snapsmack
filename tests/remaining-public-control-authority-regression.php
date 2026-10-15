@@ -57,7 +57,7 @@ foreach (["?? 'yellow'", ": 'landscape'", ": 'plain'", 'bool $default=true'] as 
 }
 $rationalOff = snapsmack_skin_presentation(['show_map_background'=>'0','single_show_description'=>'0','single_show_signals'=>'0','hero_border_width'=>'999','image_border_color'=>'none'], 'rational-geo')['rational'];
 if ($rationalOff['show_map'] || $rationalOff['show_description'] || $rationalOff['show_signals']
-    || $rationalOff['border_width'] !== 30 || $rationalOff['border_color'] !== 'transparent') {
+    || $rationalOff['border_width'] !== 30 || $rationalOff['frame'] !== 'none') {
     throw new RuntimeException('Rational Geo min/max/on/off model failed.');
 }
 $rationalMin = snapsmack_skin_presentation(['infobox_height'=>'30'], 'rational-geo')['rational'];
