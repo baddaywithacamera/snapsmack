@@ -132,6 +132,40 @@ if ($declared !== '') {
     }
 }
 
+/* ── RULE 5 ───────────────────────────────────────────────────────────────
+ * CMS core must not grow new knowledge of individual skins.
+ *
+ * Sean: "a skin specific css fix should never have been put in the cms core."
+ * core/public-skin-presentation.php contains `if ($skin === 'rational-geo')`,
+ * and that block is where the double yellow frame was built. A per-skin branch
+ * in core is how one skin's presentation decision becomes everybody's problem
+ * and how a CMS release can break a single skin for days.
+ *
+ * Unpicking the existing couplings is a refactor, not a gate. What a gate can
+ * do is stop the number rising: core may forget a skin, never learn a new one.
+ */
+$skinSlugs = [];
+foreach (glob($root . '/skins/*/manifest.json') ?: [] as $mf) {
+    $skinSlugs[] = basename(dirname($mf));
+}
+$coupled = [];
+foreach (glob($root . '/core/*.php') ?: [] as $file) {
+    $src = (string)file_get_contents($file);
+    foreach ($skinSlugs as $slug) {
+        if (str_contains($src, "'" . $slug . "'")) $coupled[] = basename($file) . ' -> ' . $slug;
+    }
+}
+$COUPLING_BUDGET = 55;   // measured 15 Oct 2026; may only go down
+$n = count($coupled);
+$check($n <= $COUPLING_BUDGET,
+    'CMS core now names ' . $n . ' skin slugs, budget ' . $COUPLING_BUDGET
+    . '. Core must not learn about another individual skin -- put the decision in '
+    . 'the skin manifest or its stylesheet. New: '
+    . implode(', ', array_slice(array_diff($coupled, []), -3)));
+$check($n >= $COUPLING_BUDGET,
+    'core/skin coupling fell to ' . $n . ' -- lower $COUPLING_BUDGET to ' . $n
+    . ' so it cannot climb back');
+
 printf("agreed rules: %d inline styles (budget %d), %d CSS-in-PHP (budget %d), version %s.\n",
     $inline, $INLINE_STYLE_BUDGET, count($cssInPhp), $CSS_IN_PHP_BUDGET, $declared);
 
