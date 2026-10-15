@@ -10,6 +10,7 @@ function snapsmack_assert_strict_skin_feature(string $slug): void {
         'chaplin'=>'chaplin-page-component.php',
         'galleria'=>'galleria-page-component.php',
         'impact-printer'=>'impact-printer-page-component.php',
+        'onyx'=>'onyx-page-component.php',
     ];
     $layout=(string)file_get_contents(isset($cmsComponents[$slug])
         ? $root.'/core/'.$cmsComponents[$slug]

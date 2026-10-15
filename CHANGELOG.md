@@ -21,6 +21,8 @@
 
 - **The menu-separator gate uses the measured current caller count.** Twenty-three skin layouts render the shared navigation component, and every one still proves either its own separator or an intentional no-separator treatment. The test no longer demands a twenty-fourth caller that is not present in the published 0.7.886D tree.
 
+- **ONYX's strict-feature regression follows its CMS-owned page component.** ONYX deliberately delegates its bounded public rendering to `core/onyx-page-component.php`; the gate now inspects that component and verifies its registered-asset mount, including the countdown engine, instead of stopping at the three-line delegating layout.
+
 ## 0.7.888D - 2026-10-15 - One Rational Geo frame and machine-enforced rules
 
 - **RATIONAL GEO draws the configured photograph frame once.** The CMS no longer assembles a second border declaration in PHP and the template no longer emits it as an inline style. The skin stylesheet owns the frame presentation; the manifest's selector/property mechanism carries the owner's width and infobox-height choices. RATIONAL GEO is released as 2.1.22.
