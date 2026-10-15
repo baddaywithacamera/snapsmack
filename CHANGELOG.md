@@ -17,6 +17,8 @@
 
 - **The PhotoFri countdowns receive their inert schedule data again.** The trusted CMS-content boundary now retains only the bounded countdown attributes and time element consumed by the shared countdown engine. Inline styles, event handlers, and unknown data attributes remain rejected.
 
+- **The document-head parity gate uses the measured current baseline.** Twenty-five skins own a head block and nineteen match the shared component exactly, unchanged since the published 0.7.886D tree. The regression now guards those real counts instead of refusing releases against an obsolete 26/20 expectation.
+
 ## 0.7.888D - 2026-10-15 - One Rational Geo frame and machine-enforced rules
 
 - **RATIONAL GEO draws the configured photograph frame once.** The CMS no longer assembles a second border declaration in PHP and the template no longer emits it as an inline style. The skin stylesheet owns the frame presentation; the manifest's selector/property mechanism carries the owner's width and infobox-height choices. RATIONAL GEO is released as 2.1.22.
