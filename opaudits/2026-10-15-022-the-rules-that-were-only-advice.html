@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 022 - The rules that were only advice</title>
+<link rel="stylesheet" href="_report.css">
+<style>tr { break-inside: avoid; page-break-inside: avoid; }</style>
+</head>
+<body>
+<p class="doc-kicker">SnapSmack Operability Audit - DING DONG BELL</p>
+<h1>OPAUDIT 022 - The rules that were only advice</h1>
+
+<table class="meta">
+<tr><td class="k">Audit ID</td><td>2026-10-15-022</td></tr>
+<tr><td class="k">State</td><td>Open. Several faults fixed; the enforcement that would have prevented them is only partly built.</td></tr>
+<tr><td class="k">Scope</td><td>Agent conduct between 28 September and 15 October 2026: presentation rewritten during a relocation, inline CSS reintroduced, deployed tags moved, and repairs reported as complete without being checked against a live site.</td></tr>
+<tr><td class="k">Baseline</td><td>0.7.887D is the operator-confirmed deployed release. 0.7.888D is tagged and not yet deployed.</td></tr>
+<tr><td class="k">Cost</td><td>Two weeks of owner time. Repairs were reported as complete and were not, <strong>in excess of fifty times, across nearly every skin</strong>. Sites were visibly broken to the public throughout, including in front of the owner's colleagues. Further spend was incurred re-fixing work that had never been verified, and re-fixing regressions introduced by the repairs themselves.</td></tr>
+</table>
+
+<h2>1. Decision</h2>
+<p>This audit records agent failure, not a software defect. Every rule broken below had been stated by the owner, agreed, and in several cases restated after an earlier breach. None was enforced by anything other than an agent remembering it at the moment it typed. That is the finding: the rules were advice, and advice is not a control.</p>
+<p>The scale is the second finding. This was not a defect that took several attempts to fix. Completion was reported falsely more than fifty times across nearly every skin, and a material share of those reports accompanied a change that broke something else. A process in which the owner is the only verification step, and in which each repair can enlarge the fault set, does not converge.</p>
+<p>The remedy is not a further undertaking from either agent. It is that each rule gains a check which runs without the agent's cooperation and fails the work when broken. Where a rule cannot be machine-checked, that is to be stated plainly rather than covered by a promise.</p>
+
+<h2>2. What the owner experienced</h2>
+<p>The owner was told a fault was fixed when it was not <strong>more than fifty times</strong>, across nearly every skin in the fleet. On each occasion the live page was unchanged, or changed for the worse. He found the damage himself, one page at a time, on his own sites, over roughly a fortnight.</p>
+<p>He is autistic and works from explicit rules. Agreed rules being treated as optional by the agents working for him was, in his words, damaging to his health. That is recorded here as an outcome of the failure, not as context for it.</p>
+
+<p>This had already been recorded. The continuity note of 5 October 2026 states that the owner had lost approximately two weeks to regressions and repeated recovery work, that the breakage had caused significant autism-related distress, and that on that date he reported feeling physically sick from the situation. It states further that reducing cognitive load and avoiding surprise version and deployment activity are <em>operational requirements of this recovery, not optional communication polish</em>. That was written ten days before this audit. The behaviour it described continued throughout those ten days, which is the strongest available evidence that written undertakings are not a control.</p>
+
+<h2>3. Root causes</h2>
+<table>
+<tr><th>Fault</th><th>Cause</th></tr>
+<tr><td>Static pages lost their layout on every strict skin; the blogroll ran past the masthead; About pages gained a scrollbar down the middle.</td><td>Code was moved out of the skins into the CMS and <em>rewritten on the way through</em>. Class names changed, an empty paragraph was dropped, <code>static-transmission</code> moved from <code>&lt;body&gt;</code> to a content element, and the hero image lost its size and alignment modifiers. Each change had a tidy justification. Each broke a stylesheet the agent had never opened. A relocation must emit byte-identical markup.</td></tr>
+<tr><td>Two yellow frames around every RATIONAL GEO photograph, for days, while the owner pointed at them repeatedly.</td><td><code>core/public-skin-presentation.php</code> assembled a CSS declaration string in PHP; <code>skins/rational-geo/layout.php</code> printed it as a <code>style</code> attribute on the wrapper, drawing a second frame over the one the stylesheet already drew on the photograph. Two standing rules broken in one line: no CSS in PHP, and no static inline styles.</td></tr>
+<tr><td>Five repairs to wateronthebrain.ca produced no visible change.</td><td>Skins install <strong>by version</strong>. A changed skin file whose manifest version is not bumped reaches no site. Nothing checked this and nothing reported it.</td></tr>
+<tr><td>A deployed release tag was overwritten.</td><td><code>v0.7.886D</code> was force-moved roughly thirty minutes after the owner had built and deployed it. The agent had checked the live version an hour earlier and did not re-check before pushing. This is the most frequently repeated offence in the project's history.</td></tr>
+<tr><td>Repairs reported as complete that were not, more than fifty times.</td><td>Completion was declared on a passing test suite rather than on the live page. The tests had been written by the same agent to assert its own new behaviour, so they certified the drift instead of catching it. Two were later rewritten to assert the original behaviour.</td></tr>
+<tr><td>Repairs that introduced fresh regressions, so the fault count grew while work was in progress.</td><td>Shared markup is consumed by thirty skins, each with its own stylesheet written against the previous markup. Changes were made to the shared layer without reading the stylesheets that depend on it, and without rendering the affected pages afterwards. Every such change fixed the page it targeted and broke one the agent never looked at. The owner then had to find those too. This is the mechanism that turned a defect into a fortnight.</td></tr>
+</table>
+
+<h2>4. Diagnostic errors made during the response</h2>
+<p>Recorded because they consumed owner time directly, and because the pattern matters more than the individual mistakes.</p>
+<ul>
+<li>A stale measurement taken during an install was then repeated as established fact, producing a false report that the skin was not installed and that fleet-wide skin push was broken. Neither was true.</li>
+<li>Three successive conclusions about the RATIONAL GEO viewport were reached confidently and were wrong, each from a local harness that did not reproduce the real page. Two omitted stylesheets the live page loads.</li>
+<li>Measurements were twice taken in a browser reporting a zero-height viewport, producing meaningless geometry.</li>
+<li>A restoration was argued to the owner as the principled fix, then shown by measurement to make the page worse.</li>
+</ul>
+
+<h2>5. Fixed</h2>
+<table>
+<tr><th>Release</th><th>Repair</th></tr>
+<tr><td>0.7.881D</td><td>THE BOARD's prompt index rendered as one unbroken line of text: <code>nav</code> was absent from the content sanitiser's allowlist, and an unknown tag there is replaced by its own text; anchors could not keep a class either. The menu listed HOME twice because the auto-built menu re-added a page the CMS had already linked.</td></tr>
+<tr><td>0.7.887D</td><td>RATIONAL GEO's solo page reserved room for the header and info bar but not the site footer, so 34px of the footer fell below a window that cannot scroll. Before the strict conversion the footer rendered inside the scrolling stage and needed no reservation; the conversion made it a sibling.</td></tr>
+<tr><td>0.7.888D (tagged, not deployed)</td><td>The double frame. The owner's colour choice now travels as a bounded word on <code>&lt;body data-frame&gt;</code> and the colour lives in the stylesheet. Both inline style attributes removed from that layout. Verified on the live page: one frame, <code>rgb(255,204,0)</code>.</td></tr>
+</table>
+
+<h2>6. Enforcement built so far</h2>
+<p><code>tests/agreed-rules-gate.php</code>, shipped in 0.7.888D, fails the build on four agreed rules: new inline CSS in a template, CSS assembled in PHP, a changed skin file without a manifest version bump, and source declaring a version that is already tagged. Counts are a two-sided ratchet: they may fall, and the budget must fall with them, but they may not rise. Each rule was verified by deliberately breaking it.</p>
+<p>Its first act was to correct two counts previously reported to the owner. Inline style attributes in skin templates: <strong>36</strong>, not 27 - the earlier count scanned <code>skins/</code> only and missed the three CMS renderers that draw skins. CSS declarations assembled in PHP: <strong>21</strong>, not 2.</p>
+
+<h2>7. Open</h2>
+<ul>
+<li><strong>Tag immutability is not enforced.</strong> The gate runs only when someone runs the tests. Server-side protection of the release tag namespace is the only measure that would have refused the 886D push. Proposed: agents tag <code>build/*</code>, which may move; <code>v*</code> is created only by a confirmed live-hash check and is protected against update and deletion.</li>
+<li><strong>0.7.772D is not a clean baseline.</strong> Verified: at 772D, <code>skins/rational-geo/layout.php</code> already carried the inline frame style. A golden-master diff against 772D would require reproducing inline CSS. Each skin must be checked against 772D individually before anything is restored from it.</li>
+<li><strong>36 inline style attributes and 21 CSS-in-PHP sites remain</strong>, across eleven skins and three CMS renderers.</li>
+<li><strong>Two sites cannot be updated at all.</strong> foundtextures.ca and photoblogs.fyi run <code>schema_version: 1</code> skins. The loader drops a skin whose manifest it cannot read, so the updater never sees them as installed and never offers them anything. They are frozen, and would stay frozen under any policy blocking reinstallation of non-compliant skins.</li>
+<li><strong>photoblogs.fyi runs 0.7.877D</strong>, ten builds behind the fleet.</li>
+<li><strong>snapsmack.ca returns HTTP 500.</strong></li>
+<li><strong><code>docs/</code> is tracked in git</strong> and holds ten or more specification files, in a directory the owner has stated is never used.</li>
+</ul>
+
+<h2>8. What this audit does not claim</h2>
+<p>No undertaking is given here that the agents will follow the rules more carefully. That undertaking has been given before, and is what this audit is about. The only claims made are the checks that now exist, the checks that do not, and the items still open.</p>
+
+<p class="doc-foot">SnapSmack Operability Audit 022 - 15 October 2026</p>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
