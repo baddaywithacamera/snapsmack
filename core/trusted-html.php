@@ -33,7 +33,18 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         'h1' => [], 'h2' => [], 'h3' => [], 'h4' => [], 'h5' => [], 'h6' => [],
         'div' => ['class', 'id', 'data-mosaic'], 'span' => ['class'], 'section' => ['class', 'id'],
         'figure' => ['class'], 'figcaption' => ['class'],
-        'a' => ['href', 'title'],
+        // nav, and class on a. THE BOARD's prompt index is a <nav> of linked
+        // poster cards built by pc_board_rounds_embed_html(). Reached through
+        // the dedicated board page it rendered; reached through a static page
+        // and the shortcode parser it came here, nav was not on this list,
+        // and an unknown tag is replaced by its own text -- so the whole
+        // index collapsed into one unbroken line of words. The cards then
+        // needed class on the anchor as well, or they survive with no styling
+        // at all. Neither is a behaviour: nav is a plain container, and class
+        // is CSS, which div, span, section, figure and figcaption are already
+        // trusted with. href and src stay URL-validated below exactly as before.
+        'nav' => ['class', 'aria-label'],
+        'a' => ['href', 'title', 'class'],
         // This attribute is emitted by the CMS shortcode parser, then consumed
         // by the shared SMACKTALK lightbox engine. It remains URL-validated
         // below just like src and href.
