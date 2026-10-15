@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.883D - 2026-10-15 - Square Board cards and honest hors-concours admission
+
+- **Board entries stay square in both three-across and masonry layouts.** The masonry geometry carried an old `aspect-ratio: auto` override, so restoring the Board's registered stylesheet in 0.7.882D also restored native portrait and landscape shapes. Masonry now changes only card flow; the shared square crop remains authoritative.
+
+- **`#horsconcours` no longer consumes one of an author's five competitive slots.** Exhibition entries remain visible and unranked, are unlimited, and may be admitted after the competitive window closes. The cap now counts competitive admissions rather than the largest admission number.
+
 ## 0.7.882D - 2026-10-14 - THE BOARD loads its own audited styles
 
 - **0.7.881D restored THE BOARD's prompt-index markup but left its entries unstyled and oversized.** The shortcode emitted its two stylesheet `<link>` elements inside page content, where the trusted-HTML boundary correctly discards them. The strict public runtime now recognizes `[board]` as a CMS component and registers its two already-audited public stylesheets alongside the active skin's assets. Arbitrary page-supplied stylesheet tags remain blocked. This is a reusable CMS-component fix, not an ONYX or PhotoFri-specific exception.
