@@ -405,9 +405,17 @@ small,
   flex-grow: 1;
   flex-shrink: 1;
   min-height: 0;
-  /* Fill the bounded main row. The image well and navigation divide this
-     height between them; neither may overflow behind the site footer. */
-  height: 100%;
+  /* The window, minus the fixed header, the info bar and the site footer.
+     The footer term is the one the original formula never had -- it did not
+     need one, because before the strict conversion the footer rendered INSIDE
+     the scrolling stage. It is a sibling of the stage now, so its height has
+     to come out of this reservation or it hangs past the bottom of the window.
+     Measured live on wateronthebrain.ca at 1920x950: the footer is 84px tall
+     and had 50px of room, so 34px of it was cut off and the page could not be
+     scrolled to reach it (body is overflow:hidden on a solo page). With the
+     footer subtracted the footer ends at 900 in a 950 window and the
+     PREV/FIRST/INFO row sits fully on screen at 766-816. */
+  height: calc(100dvh - 70px - var(--infobox-height, 50px) - var(--rg-footer-height, 84px));
   padding: 0 !important; /* override compiled blob until admin re-saves */
 }
 
@@ -1451,6 +1459,10 @@ input[type="reset"]:active {
     margin-top: 60px;
   }
 
+  #rg-photobox {
+    height: calc(100dvh - 60px - var(--infobox-height, 50px) - var(--rg-footer-height, 84px));
+  }
+
   .rg-single #rg-comments-drawer { top: 60px; }
   .rg-single #rg-info-drawer     { bottom: 50px; }
 
@@ -1514,6 +1526,10 @@ input[type="reset"]:active {
 
   body:has(.rg-single) > #scroll-stage {
     margin-top: 50px;
+  }
+
+  #rg-photobox {
+    height: calc(100dvh - 50px - var(--infobox-height, 50px) - var(--rg-footer-height, 84px));
   }
 
   .rg-single #rg-comments-drawer { top: 50px; }
@@ -1622,6 +1638,10 @@ input[type="reset"]:active {
 
   body:has(.rg-single) > #scroll-stage {
     margin-top: 45px;
+  }
+
+  #rg-photobox {
+    height: calc(100dvh - 45px - var(--infobox-height, 50px) - var(--rg-footer-height, 84px));
   }
 
   .rg-single #rg-comments-drawer { top: 45px; }
