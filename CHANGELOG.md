@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.881D - 2026-10-14 - THE BOARD keeps its structure, styles and one Home
+
+- **THE BOARD static page was reduced to a plain line of prompt names and unstyled, oversized entries.** Its `[board]` shortcode produced a real prompt-index `<nav>` with linked cards, but the trusted-HTML boundary did not permit that bounded navigation markup or the cards' classes. The sanitizer therefore replaced the index with its text and discarded the stylesheet `<link>` elements entirely. The Board's known CMS markup now survives sanitizing, while arbitrary scripts and `javascript:` URLs remain blocked. Its two already-audited stylesheets are registered by the strict public runtime when it sees `[board]`; page content is still not allowed to inject arbitrary stylesheets. This is a reusable CMS-component fix, not an ONYX or PhotoFri-specific exception.
+
+- **PhotoFri's menu said Home twice.** The default navigation already provides Home and Blogroll, then appended every active static page—including owner-created pages with those same reserved slugs. The automatic menu now omits duplicate `home` and `blogroll` page records while leaving every other active static page available as a top-level item.
+
 ## 0.7.880D - 2026-10-14 - ONYX gets its menu spacing back
 
 - **The ONYX update ran photofri.day's menu into one unbroken word.** It read "HOMEBLOGROLLHOMEHOW IT WORKSF.A.QJOINABOUTTHE BOARD". ONYX hides its menu separator on purpose, so when the hard-coded one was removed from the CMS in 0.7.873D it was left alone deliberately — and that was the wrong call for this skin. Its 22-pixel spacing came from `.nav-menu > li { gap: 22px }`, a gap *inside* each item, which only ever separated the link from the separator span sitting beside it. With the span gone each item held a single child, the gap had nothing to space, and the items butted together. The spacing now sits between the items, where it belongs; the separator stays hidden, as the skin intends. CHAPLIN and RATIONAL GEO put their gap on the list itself and were genuinely fine to leave. The separator check asked only whether a skin draws a *character* — it now asks whether anything at all separates one item from the next, and a gap inside an item does not count. Verified by restoring the fault and watching it fail. (`skins/onyx/style.css`, `tests/menu-separator-contract-regression.php`.)
