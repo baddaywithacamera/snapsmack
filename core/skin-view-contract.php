@@ -11,7 +11,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
         'page_title', 'rendered_content', 'signature', 'previous', 'next', 'categories',
         'albums', 'categories_label', 'albums_label', 'author', 'colophon', 'photo_count', 'word_count', 'comments_enabled',
         'show_titles', 'blogroll_groups', 'taxonomy', 'groups', 'puzzle_items', 'fragment', 'autoopen',
-        'first', 'last', 'next_page'];
+        'first', 'last', 'next_page', 'is_homepage'];
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
         'skin_style_url', 'base_style_url', 'skin_variant_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',

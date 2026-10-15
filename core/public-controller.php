@@ -421,6 +421,13 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         $mode = (string)($settings['site_mode'] ?? 'photoblog');
         $homepageMode = (string)($settings['homepage_mode'] ?? 'latest_post');
         $skinHasLanding = !empty($settings['skin_has_landing']);
+        if ($homepageMode === 'static_page') {
+            $homepage = $repository->activePageById((int)($settings['homepage_page_id'] ?? 0));
+            if ($homepage !== null) {
+                return ['status' => 200, 'kind' => 'page', 'item' => $homepage,
+                    'navigation' => $navigation, 'is_homepage' => true];
+            }
+        }
         // This is the original SMACKONEOUT contract, now expressed without
         // letting skins execute application code: latest-post homepages use
         // the solo-photo response unless the skin explicitly owns a landing.

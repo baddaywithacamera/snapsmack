@@ -264,7 +264,8 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
     $strict_smacktalk = $controller === 'smacktalk';
     $is_carousel = (($settings['site_mode'] ?? '') === 'carousel');
     $route_aliases = snapsmack_public_route_aliases($settings, $manifest);
-    $resolve = function (array $item) use (&$resolve, $pdo, $base, $strict_controller, $strict_smacktalk, $is_carousel, $route_aliases): ?array {
+    $blogroll_enabled = (($settings['blogroll_enabled'] ?? '1') === '1');
+    $resolve = function (array $item) use (&$resolve, $pdo, $base, $strict_controller, $strict_smacktalk, $is_carousel, $route_aliases, $blogroll_enabled): ?array {
         if (isset($item['active']) && !$item['active']) return null;
         $type = (string)($item['type'] ?? 'custom');
         $label = (string)($item['label'] ?? '');
@@ -277,6 +278,7 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
             && preg_match('#(?:^|/)blogroll\.php(?:[?#].*)?$#i', trim($url))) {
             $type = 'blogroll';
         }
+        if ($type === 'blogroll' && !$blogroll_enabled) return null;
         if ($strict_controller && $type === 'custom'
             && preg_match('#(?:^|/)archive\.php(?:[?#].*)?$#i', trim($url))) {
             $type = 'image_archive';

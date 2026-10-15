@@ -11,6 +11,18 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.885D - 2026-10-15 - Restore PhotoFri's actual pages
+
+- **PhotoFri's configured Home page is the homepage again.** The strict public controller treated every root request as the skin's photograph landing and ignored the existing `homepage_mode=static_page` and `homepage_page_id` settings. It now resolves that active page through the CMS repository and marks it as the homepage for presentation.
+
+- **Onyx static pages have their designed presentation hooks again.** The strict template had hard-coded only `onyx-v2` on `body`, dropping `static-transmission`, `homepage-static`, and the page-slug class used by the existing skin stylesheet.
+
+- **FAQ accordions survive the trusted-HTML boundary.** Native `details` and `summary` elements are permitted as inert CMS content; scripts and unsafe URLs remain blocked.
+
+- **Board images are square regardless of source orientation.** The Board renderer already emitted `img.thumb`, but the trusted-HTML sanitizer stripped the image class and thereby disabled the registered square-crop rule. Image classes now survive for bounded CMS presentation.
+
+- **Disabled Blogrolls stay out of navigation.** The navigation model now applies `blogroll_enabled` to configured and automatic menus instead of linking to a known 404.
+
 ## 0.7.884D - 2026-10-15 - Square Board cards and honest hors-concours admission
 
 - **Board entries stay square in both three-across and masonry layouts.** The masonry geometry carried an old `aspect-ratio: auto` override, so restoring the Board's registered stylesheet in 0.7.882D also restored native portrait and landscape shapes. Masonry now changes only card flow; the shared square crop remains authoritative.
