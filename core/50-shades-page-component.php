@@ -11,7 +11,7 @@ $archivePane = $archiveLayout === 'masonry' ? 'masonry' : 'thumbs';
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title><?php echo snap_escape_html($view['response']['page_title'] ?? $view['site']['site_name']); ?></title>
-<link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['skin_style_url']); ?>">
+<link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['base_style_url'] ?? ''); ?>"><link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['skin_style_url']); ?>">
 <?php if (!empty($view['site']['skin_variant_url'])): ?><link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['skin_variant_url']); ?>"><?php endif; ?>
 <?php echo snap_render_html($view['site']['skin_custom_style'] ?? ''); ?><?php echo snap_render_html($view['site']['skin_presentation']['style'] ?? ''); ?>
 </head>
