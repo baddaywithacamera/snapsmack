@@ -11,7 +11,7 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.883D - 2026-10-15 - Square Board cards and honest hors-concours admission
+## 0.7.884D - 2026-10-15 - Square Board cards and honest hors-concours admission
 
 - **Board entries stay square in both three-across and masonry layouts.** The masonry geometry carried an old `aspect-ratio: auto` override, so restoring the Board's registered stylesheet in 0.7.882D also restored native portrait and landscape shapes. Masonry now changes only card flow; the shared square crop remains authoritative.
 
