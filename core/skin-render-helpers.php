@@ -520,6 +520,35 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 . '</div>';
         }
         $html .= '<div class="' . $prefix . '-archive-title">' . snap_escape_html($title) . '</div></a>';
+    } elseif ($name === 'static-page') {
+        // A static page -- About, The Cameras, How It Works. It exists
+        // because this was fixed NINE separate times today, once per skin,
+        // each with its own hand-written markup, and the tenth, eleventh and
+        // twelfth were still broken. Every one of those skins bundled 'page'
+        // into the photograph branch, so a page came out wearing the photo
+        // layout; IMPACT PRINTER went further and put the words inside the
+        // photograph's INFO drawer, which is closed by default, so The
+        // Cameras was blank for weeks.
+        //
+        // The classes are the ones the skins already style: .static-content,
+        // .static-page-title, .description. One place to fix, every skin
+        // fixed. The skin decides how it looks; the CMS decides what it is.
+        $item = is_array($data['item'] ?? null) ? $data['item'] : [];
+        $title = (string)($item['title'] ?? $data['page_title'] ?? '');
+        $body = $item['content'] ?? $item['description'] ?? $data['rendered_content'] ?? '';
+        $hero = trim((string)($item['image_asset'] ?? ''));
+        $base = defined('BASE_URL') ? (string)BASE_URL : '/';
+        $html = '<div class="static-content static-transmission">';
+        if ($title !== '') {
+            $html .= '<h1 class="static-page-title">' . snap_escape_html($title) . '</h1>';
+        }
+        if ($hero !== '') {
+            $html .= '<div id="photobox" class="page-hero"><div class="main-photo">'
+                . '<img src="' . snap_escape_url(rtrim($base, '/') . '/' . ltrim($hero, '/'))
+                . '" class="post-image" alt="' . snap_escape_attr($title) . '"></div></div>';
+        }
+        $html .= '<div class="description entry-content e-content">'
+            . snap_render_html($body) . '</div></div>';
     } elseif ($name === 'blogroll') {
         // The markup blogroll.php has always emitted, class for class. The
         // skins already style .blogroll-canvas, .blogroll-category-block,
