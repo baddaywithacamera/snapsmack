@@ -235,6 +235,16 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
         try {
             $pages = $pdo->query('SELECT id, title, slug FROM snap_pages WHERE is_active = 1 ORDER BY menu_order ASC')->fetchAll(PDO::FETCH_ASSOC);
             foreach ($pages as $page) {
+                // Home and Blogroll are already in this list, two lines up.
+                // photofri.day has an active page of its own called Home at
+                // /home, so the auto-built menu read "HOME BLOGROLL HOME HOW
+                // IT WORKS" -- two items with the same word, going to two
+                // different places. A page the CMS has already linked is not
+                // added a second time. This runs only when the owner has
+                // saved no Menu Manager configuration; a menu they built
+                // themselves is theirs, duplicates and all.
+                $slug = strtolower(trim((string)($page['slug'] ?? '')));
+                if ($slug === 'home' || $slug === 'blogroll') continue;
                 $items[] = [
                     'type' => 'page',
                     'label' => (string)($page['title'] ?? ''),
