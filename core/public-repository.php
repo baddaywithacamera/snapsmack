@@ -279,7 +279,10 @@ final class SnapPublicRepository
     /** Resolve the configured static homepage without exposing SQL to a skin. */
     public function activePageById(int $id): ?array {
         if ($id < 1) return null;
-        $stmt = $this->pdo->prepare('SELECT * FROM snap_pages WHERE id = ? AND is_active = 1 LIMIT 1');
+        $stmt = $this->pdo->prepare(
+            'SELECT id,slug,title,content,image_asset,image_size,image_align,image_shadow,menu_order,created_at
+               FROM snap_pages WHERE id = ? AND is_active = 1 LIMIT 1'
+        );
         $stmt->execute([$id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return is_array($row) ? $row : null;
