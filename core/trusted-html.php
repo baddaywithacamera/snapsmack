@@ -28,7 +28,12 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         return SnapTrustedHtml::__snapsmackCmsOnly(htmlspecialchars(strip_tags($html), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
     }
     $allowed = [
-        'p' => [], 'br' => [], 'strong' => [], 'em' => [], 'b' => [], 'i' => [], 'u' => [], 's' => [],
+        // Paragraph classes are presentation metadata. Static CMS pages use
+        // them for bounded, skin-owned layouts (for example PhotoFri's
+        // pfd-wordmark, pfd-tagline, pfd-lede and pfd-label). Stripping the
+        // class leaves the content safe but collapses every distinct block
+        // into the same generic paragraph presentation.
+        'p' => ['class'], 'br' => [], 'strong' => [], 'em' => [], 'b' => [], 'i' => [], 'u' => [], 's' => [],
         'blockquote' => [], 'ul' => [], 'ol' => [], 'li' => [], 'code' => [], 'pre' => [],
         'h1' => [], 'h2' => [], 'h3' => [], 'h4' => [], 'h5' => [], 'h6' => [],
         'div' => ['class', 'id', 'data-mosaic'], 'span' => ['class'], 'section' => ['class', 'id'],

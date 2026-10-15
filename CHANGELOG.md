@@ -11,6 +11,14 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.886D - 2026-10-15 - Restore the known-good public presentation
+
+- **ONYX renders the proven PhotoFri page shell again.** The strict conversion deleted its working `#page-wrapper`, `#scroll-stage`, `#pfd-header`, `.pfd-header-inside`, static-content, photograph, information-bar, and footer-pane structure and substituted a generic public skeleton that the existing stylesheet was never designed to style. Those exact presentation contracts now render from the bounded CMS view model in core; the skin contains no data access or application logic. Board and Prompts remain CMS page content and retain their newer components.
+
+- **RATIONAL GEO's photograph navigation no longer falls underneath the site footer.** Its stylesheet still targeted a removed `#page-wrapper`, while the image well claimed `height: 100%` before the 50-pixel navigation row was laid out. The strict layout now bounds the real body, main, photograph and footer as one flex column; the image well yields the navigation's space instead of overflowing. This is a presentation-only skin correction with a regression for the exact failed geometry.
+
+- **PhotoFri's landing-page sections keep their CMS-authored presentation classes.** The trusted-content boundary permitted classes on containers and spans but stripped them from paragraphs, erasing `pfd-wordmark`, `pfd-tagline`, `pfd-lede`, and `pfd-label`. Those blocks consequently inherited one generic paragraph layout and overlapped in the centre of the page. Paragraph classes now survive as inert presentation metadata; scripts and unsafe URLs remain blocked.
+
 ## 0.7.885D - 2026-10-15 - Restore PhotoFri's actual pages
 
 - **PhotoFri's configured Home page is the homepage again.** The strict public controller treated every root request as the skin's photograph landing and ignored the existing `homepage_mode=static_page` and `homepage_page_id` settings. It now resolves that active page through the CMS repository and marks it as the homepage for presentation.
