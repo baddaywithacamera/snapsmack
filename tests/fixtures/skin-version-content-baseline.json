@@ -63,8 +63,8 @@
             "files_sha256": "192c14aed0167ffa2eabe4c3e6a80384a4f9bdc38c84c77250d8000ddec89857"
         },
         "onyx": {
-            "version": "0.1.16",
-            "files_sha256": "0cf947384b6fe8c84e48bd44774b5003b707f0196a5ce9d4c8ae5bd0808d5624"
+            "version": "0.1.17",
+            "files_sha256": "1614a1ca2bcf1a808467202bd22bb784511054165eb25ca2aa2eab198dd771a4"
         },
         "parade": {
             "version": "1.2.45",
