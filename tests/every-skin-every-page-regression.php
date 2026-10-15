@@ -192,6 +192,29 @@ foreach ($skins as $layout) {
         }
         $check(trim($out) !== '', $where . ' rendered nothing at all');
 
+        // THE MARKUP MUST PARSE. An edit of mine cut a <div id="infobox">
+        // opening tag in half -- it ended its style attribute with a PHP close tag
+        // of a PHP tag, so the attribute swallowed the next element and the
+        // navigation wrapper vanished from the page. Nothing here could see
+        // that: every check read the source or looked for a string. A parser
+        // sees it immediately.
+        $dom = new DOMDocument();
+        $prior = libxml_use_internal_errors(true);
+        $dom->loadHTML('<meta charset="utf-8">' . $out);
+        $malformed = [];
+        foreach (libxml_get_errors() as $error) {
+            $text = trim($error->message);
+            // Unknown tags and stray entities are noise; an unterminated tag
+            // or a quote left open is the fault being looked for.
+            if (preg_match('/(Unexpected end tag|attributes construct error|Couldn.t find end of Start Tag|error parsing attribute name|Opening and ending tag mismatch|Premature end of data)/i', $text)) {
+                $malformed[] = $text;
+            }
+        }
+        libxml_clear_errors();
+        libxml_use_internal_errors($prior);
+        $check($malformed === [],
+            $where . ' produced malformed markup: ' . implode('; ', array_slice($malformed, 0, 2)));
+
         // A known-broken combination must still render and still owes its
         // footer; only the content assertions below are suspended.
         $known = isset($KNOWN_BROKEN[$where]);

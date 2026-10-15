@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.879D - 2026-10-14 - Markup that parses
+
+- **I broke RATIONAL GEO's photograph bar, and three more skins with it, and nothing I had could see it.** Putting the photo navigation back into `#infobox` meant replacing the contents of that element in four templates. My edit found the end of the opening tag by looking for the first `>` — and in RATIONAL GEO that `>` belongs to the `?>` of a PHP tag inside its `style` attribute. The tag was cut in half, the attribute swallowed the navigation's opening markup, and the whole bar collapsed into a small dark box. In TRUE GRIT, NEW HORIZON and RATIONAL GEO the same edit also left two orphan `</div>` behind, and in SCROLL a blogroll branch went **inside the `<body class="…">` attribute**, because the first mention of a page kind in that file is the body class rather than a content branch. Every one of those is malformed HTML that no check of mine could see: they read the source, or looked for a string, and a browser quietly repairs what it is given. The skin-render matrix now **parses** each of the 300 rendered pages and fails on an unterminated tag, a broken attribute or a stray closing tag. It found all four the first time it ran, including two I had not noticed and Sean had not yet reached. (`skins/rational-geo`, `skins/true-grit`, `skins/new-horizon`, `skins/scroll`, `tests/every-skin-every-page-regression.php`.)
+
 ## 0.7.878D - 2026-10-14 - EXIF obeys its switch; no colour in a grey skin
 
 - **The EXIF switch still did nothing after I said it was fixed, because my repair was undone four lines later in the same function.** The gate emptied `item['exif']` near the top of the public runtime — and the field is *rebuilt* from the raw `img_exif` column further down, inside the closure that prepares each item. The table kept rendering and I reported it done, because I checked that my code was in the file rather than checking what came out. The switch is read where the field is made now, the raw column is not even decoded when it is off, and it was verified by running that closure both ways: switch on, three EXIF keys; switch off, none.
