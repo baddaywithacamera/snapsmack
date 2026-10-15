@@ -10,6 +10,7 @@ $presentation = snapsmack_skin_presentation([
 ], 'rational-geo');
 $style = (string)($presentation['style'] ?? '');
 $layout = (string)file_get_contents(dirname(__DIR__) . '/skins/rational-geo/layout.php');
+$pageComponent = (string)file_get_contents(dirname(__DIR__) . '/core/rational-geo-page-component.php');
 $css = (string)file_get_contents(dirname(__DIR__) . '/skins/rational-geo/style.css');
 $manifest = json_decode((string)file_get_contents(dirname(__DIR__) . '/skins/rational-geo/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
 $inventory = include dirname(__DIR__) . '/core/manifest-inventory.php';
@@ -41,6 +42,22 @@ foreach (['rg-header-inside', 'rg-header-nav', 'rg-logo-link', 'rg-masthead'] as
     if (!str_contains($layout, $hook)) {
         throw new RuntimeException('RATIONAL GEO lost its pre-strip landing-page hook: ' . $hook);
     }
+}
+foreach (["image_asset", "id=\"photobox\" class=\"page-hero\"", "'class' => 'post-image'"] as $pageContract) {
+    if (!str_contains($pageComponent, $pageContract)) {
+        throw new RuntimeException('RATIONAL GEO lost its original static-page contract: ' . $pageContract);
+    }
+}
+if (!str_contains($layout, 'static-transmission') || !str_contains($layout, "snap_render_component('rational-geo-page', \$view)")) {
+    throw new RuntimeException('RATIONAL GEO no longer delegates static pages to its bounded CMS component.');
+}
+if (!str_contains($css, '#rg-header {')
+    || !preg_match('/#rg-header\s*\{[^}]*position:\s*relative;/s', $css)
+    || str_contains($css, 'body.static-transmission {\n  padding-top: 70px;')) {
+    throw new RuntimeException('RATIONAL GEO made its masthead fixed or put fixed-header compensation back on static pages.');
+}
+if (!str_contains($css, '--static-content-width: 1040px;')) {
+    throw new RuntimeException('RATIONAL GEO lost the original wide static-page and page-hero measure.');
 }
 if (!str_contains($layout, "skin_presentation']['style")) {
     throw new RuntimeException('RATIONAL GEO does not emit its bounded compiled presentation stylesheet.');
