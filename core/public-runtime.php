@@ -16,7 +16,7 @@ function snapsmack_public_parse_page_content(PDO $pdo, array $response): array
 {
     if (($response['kind'] ?? '') !== 'page' || !is_array($response['item'] ?? null)) return $response;
     $source = (string)($response['item']['content'] ?? '');
-    if (stripos($source, '[board]') !== false) {
+    if (stripos($source, '[board]') !== false || stripos($source, '[prompts]') !== false) {
         // A shortcode may require audited CMS assets, but its generated HTML
         // still passes through the normal sanitizer. Never allow page content
         // to smuggle arbitrary <link> elements into the document.
