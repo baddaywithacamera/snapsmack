@@ -795,6 +795,18 @@ $inventory = [
             'path'         => 'assets/js/ss-engine-carousel-view.js',
             'has_settings' => false,
         ],
+        // INSTANT CAMERA declares this handle and the CMS could not resolve it,
+        // so fauxlaroid.fyi loads thirteen engines and not this one: submenus
+        // do not open by tap or keyboard there. The file's own docstring says
+        // "Loaded globally via core/meta.php" -- the file no strict skin runs,
+        // the same fault that stranded assets/css/public-base.css. The script
+        // and its asset-registry entry both already existed; only this
+        // resolution entry was missing.
+        'smack-nav-dropdown' => [
+            'label'        => 'Navigation Dropdown (tap and keyboard submenus)',
+            'path'         => 'assets/js/ss-engine-nav-dropdown.js',
+            'has_settings' => false,
+        ],
         'smack-grid-nav' => [
             'label'        => 'Grid Sticky Nav (profile-aware sticky nav for The Grid)',
             'path'         => 'assets/js/ss-engine-grid-nav.js',
