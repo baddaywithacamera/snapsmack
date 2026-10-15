@@ -771,22 +771,19 @@ body[data-frame="none"]   { --rg-hero-colour: transparent; }
    ARCHIVE/GRID LAYOUTS
    ========================================================================== */
 
-/* --- Cropped Grid: fixed-size thumbnails centered in the grid.
+/* --- Masonry archive: preserve every photograph's original aspect ratio.
        Hero frame (20px yellow outline + 4px white border) scaled to ~25%. --- */
 
 .rg-archive-grid {
   flex: 1;
   padding: 30px 60px 40px;
-  display: grid;
-  grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 250px));
-  gap: 30px;
+  display: block;
+  column-count: var(--grid-cols, 4);
+  column-gap: 30px;
   margin: 0 auto;
   max-width: var(--rg-canvas-width, 1400px);
   width: 100%;
   justify-content: center;
-  align-content: start;
-  align-items: center;
-  justify-items: center;
 }
 
 .rg-archive-item {
@@ -794,6 +791,9 @@ body[data-frame="none"]   { --rg-hero-colour: transparent; }
   cursor: pointer;
   transition: transform 0.2s ease;
   width: 100%;
+  display: inline-block;
+  break-inside: avoid;
+  margin: 0 0 30px;
 }
 
 /* Portraits: 60% width so they don't dominate the row */
@@ -816,7 +816,7 @@ body[data-frame="none"]   { --rg-hero-colour: transparent; }
 
 .rg-archive-item .rg-thumb img {
   width: 100%;
-  height: 100%;
+  height: auto;
   display: block;
   object-fit: cover;
 }
@@ -1485,7 +1485,8 @@ input[type="reset"]:active {
   }
 
   .rg-archive-grid {
-    gap: 24px;
+    column-count: 3;
+    column-gap: 24px;
     padding: 20px 30px 30px;
   }
 
@@ -1588,7 +1589,8 @@ input[type="reset"]:active {
   }
 
   .rg-archive-grid {
-    gap: 20px;
+    column-count: 2;
+    column-gap: 20px;
     padding: 15px 20px 20px;
   }
 
@@ -1713,7 +1715,8 @@ input[type="reset"]:active {
   }
 
   .rg-archive-grid {
-    gap: 16px;
+    column-count: 1;
+    column-gap: 16px;
     padding: 10px 15px 15px;
   }
 
