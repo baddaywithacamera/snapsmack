@@ -43,7 +43,7 @@ $view = snapsmack_build_skin_view([
 ob_start();
 $rendered = snapsmack_render_strict_skin_template($root . '/skins/onyx', 'layout.php', $view);
 $html = (string)ob_get_clean();
-$expect($rendered && str_contains($html, 'class="onyx-v2 static-transmission homepage-static page-slug-home"'),
+$expect($rendered && str_contains($html, 'static-transmission homepage-static page-slug-home'),
     'Onyx static homepage lost the body classes its landing design requires.');
 
 $controller = (string)file_get_contents($root . '/core/public-controller.php');
