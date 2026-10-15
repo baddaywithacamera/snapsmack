@@ -7,8 +7,8 @@
             "files_sha256": "1899a6101774420c5bb5f3bbbc6d9215e5192e2324cc07a9395e1c5ddd01ed8f"
         },
         "52-card-pickup": {
-            "version": "1.4.10",
-            "files_sha256": "79d2acd98f7f1c6ebf7505732817c4a96ad28cc2877499da07457c1927414978"
+            "version": "1.4.11",
+            "files_sha256": "47022751362eccfe9a636755c3fe73b163d1500dd67ac35960d603844663566b"
         },
         "alfred": {
             "version": "1.0.8",
@@ -23,8 +23,8 @@
             "files_sha256": "64da24b0a6ad65d6e30d36a3435a0b98b8d53c94b64d0474dafd159cc178cf21"
         },
         "full-monty": {
-            "version": "0.1.6",
-            "files_sha256": "9d00076cc72504ce9b2cd9f850aa21b1463b43c4dbf51b72f4cffb915c22d6d7"
+            "version": "0.1.7",
+            "files_sha256": "9e260e3c8b891584c0e1fbb3fb9b65cf443d4a611c2d76872146305e3049f99d"
         },
         "galleria": {
             "version": "1.3.14",
@@ -35,16 +35,16 @@
             "files_sha256": "2edca0e22e2be5e6dce9a8668d7cffd04c5c5058e40a857fe0753fcdd40adad1"
         },
         "glide": {
-            "version": "0.1.9",
-            "files_sha256": "6703e40b327e901cf1f0df7434245a8ee5f6e0dc18294d5a1e2c2972d1d9c2d9"
+            "version": "0.1.10",
+            "files_sha256": "a357b6221f2ff63dcfc9cdf0aa053d7db15965bf444e57d37db9ae9b910e10a7"
         },
         "heuristic": {
             "version": "0.1.9",
             "files_sha256": "647ac55b031c0bb49d0d329daef057e7bc421ee275dc69e07369f1fbe0c47258"
         },
         "hip-to-be-square": {
-            "version": "1.3.11",
-            "files_sha256": "d1665c5605a70caa7253c354d20ca1761857ef36b55282d242d46dc1bcee47c4"
+            "version": "1.3.12",
+            "files_sha256": "53f4eda3488e545843678e6d0c7cf4dad3a5b6006ea4369f8dfb7f7ee7399ea2"
         },
         "impact-printer": {
             "version": "2.1.9",
@@ -63,8 +63,8 @@
             "files_sha256": "192c14aed0167ffa2eabe4c3e6a80384a4f9bdc38c84c77250d8000ddec89857"
         },
         "onyx": {
-            "version": "0.1.17",
-            "files_sha256": "1614a1ca2bcf1a808467202bd22bb784511054165eb25ca2aa2eab198dd771a4"
+            "version": "0.1.18",
+            "files_sha256": "8e435bb246a15b5d7d6dced3798bffe4711f0f2e3e3de9403ece9780e59a0a22"
         },
         "parade": {
             "version": "1.2.45",
@@ -83,8 +83,8 @@
             "files_sha256": "9c98dd15002251d86006c41507a477dd2f142298e8747569e65e11efd3c775f2"
         },
         "show-n-tell": {
-            "version": "1.2.8",
-            "files_sha256": "0ede15dd082905768447d5140239775e3ea5f569446929b30b264f263147afcf"
+            "version": "1.2.9",
+            "files_sha256": "ed55a5a79662eb05be8d8f32603cefcd5436a1ef743d295141b7ca21a423865c"
         },
         "slickr": {
             "version": "1.0.34",
@@ -115,8 +115,8 @@
             "files_sha256": "138caa14f6eb3e144e972e1a6427e783b5420ddb0260070747771ec157dd92ff"
         },
         "true-grit": {
-            "version": "1.3.11",
-            "files_sha256": "9530532b46763fe7f22cecb14b9a8d845ab8f5ca2e16672904626f70c867c8dd"
+            "version": "1.3.12",
+            "files_sha256": "b6da8c0c149cde3dc6732a27e6abff5c0d93506c5d9850ba6acc472aa942650c"
         },
         "writing-with-impact": {
             "version": "1.1.6",
