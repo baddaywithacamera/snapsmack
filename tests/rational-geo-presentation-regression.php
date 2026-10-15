@@ -59,6 +59,11 @@ if (!str_contains($css, '#rg-header {')
 if (!str_contains($css, '--static-content-width: 1040px;')) {
     throw new RuntimeException('RATIONAL GEO lost the original wide static-page and page-hero measure.');
 }
+if (!str_contains($layout, '$item[\'img_thumb_aspect\'] ?? $item[\'img_file\'] ?? $item[\'img_thumb_square\']')
+    || !str_contains($css, 'column-count: var(--grid-cols, 4)')
+    || !str_contains($css, 'height: auto;')) {
+    throw new RuntimeException('RATIONAL GEO archive no longer preserves its masonry layout and aspect thumbnails.');
+}
 if (!str_contains($layout, "skin_presentation']['style")) {
     throw new RuntimeException('RATIONAL GEO does not emit its bounded compiled presentation stylesheet.');
 }
