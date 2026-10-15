@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.890D - 2026-10-15 - Restore Rational Geo's landing screen
+
+- **RATIONAL GEO's photograph landing again uses the established full-screen presentation.** The solo view keeps the site footer off-screen and places the photograph navigation at the bottom of the viewport, as in the approved reference; opening Info or Comments still reveals the corresponding drawer. The correction is stylesheet-only and RATIONAL GEO is released as 2.1.23.
+
 ## 0.7.889D - 2026-10-15 - Restore PhotoFri's header and live counters
 
 - **PhotoFri's established top navigation is restored and ONYX is versioned so the repair reaches installed sites.** The header again carries its crimson bottom rule to match the footer, with the site name at left and navigation at right. ONYX is released as 0.1.21 so the normal Skin Packager and updater path can deliver the stylesheet instead of leaving the repository fix stranded.
