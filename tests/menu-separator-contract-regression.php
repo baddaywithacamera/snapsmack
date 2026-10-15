@@ -76,6 +76,22 @@ foreach (glob($root . '/skins/*/layout.php') ?: [] as $layout) {
     // skin with no .sep rule at all was still showing the pipe the CMS drew,
     // unstyled -- so silence is not consent, it is a skin that lost one.
     $hides = preg_match('/(?:nav-menu|nav-links|header-nav)[^{]*\.sep\s*\{[^}]*display:\s*none/', $css) === 1;
+    // SPACING, not just a character. ONYX hides its separator and took its
+    // 22px gap from `.nav-menu > li { gap }` -- a gap INSIDE each item, which
+    // only separated the link from the separator span the CMS used to emit.
+    // When that span went, each item held one child, the gap did nothing, and
+    // photofri.day's menu rendered as one unbroken word:
+    // "HOMEBLOGROLLHOMEHOW IT WORKSF.A.QJOINABOUTTHE BOARD".
+    // A menu must be spaced between its ITEMS, by a character or by space.
+    $spaced = $draws
+        || preg_match('/\.nav-menu\s*\{[^}]*gap\s*:/', $css) === 1
+        || preg_match('/\.nav-menu[^{]*li\s*\+\s*li\s*\{[^}]*margin/', $css) === 1
+        || preg_match('/\.nav-menu[^{]*a\s*\{[^}]*(?:padding|margin)\s*:/', $css) === 1;
+    $check($spaced,
+        $skin . ': nothing separates one menu item from the next -- no character, '
+        . 'no gap on the list, no margin between items. A gap INSIDE an item does '
+        . 'not space the items.');
+
     $check($draws || $hides,
         $skin . ' renders the shared menu but neither draws a separator nor '
         . 'declares it wants none; it lost the one the CMS used to emit');
