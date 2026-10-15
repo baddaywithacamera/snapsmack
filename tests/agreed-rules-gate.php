@@ -125,10 +125,26 @@ if ($declared !== '') {
     if ($tagged !== '') {
         $tagCommit  = trim((string)@shell_exec('git -C ' . escapeshellarg($root) . ' rev-parse ' . escapeshellarg($tagged . '^{commit}') . ' 2>/dev/null'));
         $headCommit = trim((string)@shell_exec('git -C ' . escapeshellarg($root) . ' rev-parse HEAD 2>/dev/null'));
+        // STRICT ON PURPOSE. A tag that has not been deployed may legitimately
+        // move -- that is Sean's fold rule. A tag he HAS deployed must never
+        // move, which is the offence committed against 0.7.886D half an hour
+        // after he shipped it. Git cannot tell those apart.
+        //
+        // An earlier version of this check asked a live site which version it
+        // was serving. From PHP the request failed and the check silently
+        // SKIPPED, which is worse than useless: a gate that passes when it
+        // cannot tell gives false comfort. So this fails on both cases and
+        // makes the tag move a deliberate act rather than a habit.
+        //
+        // This is not the real control. A local test only runs when somebody
+        // runs it, and on 15 October nobody did. Server-side protection of the
+        // released tag namespace is the only thing that would have refused
+        // that push. Until that exists, treat this as a reminder, not a gate.
         $check($tagCommit === $headCommit,
-            'the source declares ' . $declared . ', which is already tagged at '
+            'the source declares ' . $declared . ', already tagged at '
             . substr($tagCommit, 0, 8) . ' while HEAD is ' . substr($headCommit, 0, 8)
-            . '. Open the next number instead of writing into a number that has been built.');
+            . '. If that version is DEPLOYED, open the next number -- never move it. '
+            . 'If it is not deployed, move the tag deliberately and re-run.');
     }
 }
 
