@@ -15,4 +15,6 @@ $versioned=snapsmack_skin_declared_assets(['require_scripts'=>['smack-organized-
 if(($versioned['scripts'][0]??'')!=='/assets/js/ss-engine-organized-mayhem.js?v=asset-regression')throw new RuntimeException('Strict public engine URL is not versioned with the installed CMS release.');
 $dockAssets=snapsmack_skin_declared_assets(['social_dock'=>['position'=>'inline']]);
 if(($dockAssets['styles'][0]??'')!=='/assets/css/ss-engine-social-dock.css?v=asset-regression')throw new RuntimeException('The reusable Social Dock component did not load its own audited stylesheet.');
+$boardAssets=snapsmack_merge_registered_assets(['scripts'=>[],'styles'=>[]],['styles'=>['asset:public:photochallenge-board-layouts','asset:public:photochallenge-board-embed']]);
+if(count($boardAssets['styles']??[])!==2||!str_contains($boardAssets['styles'][0]??'','photochallenge-board-layouts.css')||!str_contains($boardAssets['styles'][1]??'','photochallenge-board-embed.css'))throw new RuntimeException('The reusable Board component did not load its audited stylesheets.');
 echo "Complete JS/CSS security inventory regression passed.\n";

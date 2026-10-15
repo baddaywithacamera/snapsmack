@@ -15,8 +15,18 @@ require_once __DIR__ . '/parser.php';
 function snapsmack_public_parse_page_content(PDO $pdo, array $response): array
 {
     if (($response['kind'] ?? '') !== 'page' || !is_array($response['item'] ?? null)) return $response;
+    $source = (string)($response['item']['content'] ?? '');
+    if (stripos($source, '[board]') !== false) {
+        // A shortcode may require audited CMS assets, but its generated HTML
+        // still passes through the normal sanitizer. Never allow page content
+        // to smuggle arbitrary <link> elements into the document.
+        $response['required_assets']['styles'] = [
+            'asset:public:photochallenge-board-layouts',
+            'asset:public:photochallenge-board-embed',
+        ];
+    }
     $parser = new SnapSmack($pdo);
-    $response['item']['content'] = $parser->parseContent((string)($response['item']['content'] ?? ''));
+    $response['item']['content'] = $parser->parseContent($source);
     return $response;
 }
 
