@@ -306,6 +306,12 @@ try {
         if (!empty($skin_view['navigation']) && is_array($skin_view['navigation'])) {
             $_public['navigation'] = $skin_view['navigation'];
         }
+        if (is_array($_public['required_assets'] ?? null)) {
+            $_registered_skin_assets = snapsmack_merge_registered_assets(
+                $_registered_skin_assets,
+                $_public['required_assets']
+            );
+        }
         http_response_code((int)($_public['status'] ?? 500));
         $_strict_view = snapsmack_build_skin_view($_public, [
             'site_name' => (string)($settings['site_name'] ?? ''),

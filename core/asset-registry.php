@@ -45,3 +45,16 @@ function snapsmack_skin_declared_assets(array $manifest): array
     }
     return ['scripts'=>array_values(array_unique($scripts)),'styles'=>array_values(array_unique($styles))];
 }
+
+/** Add CMS-component assets to a skin's already bounded public asset list. */
+function snapsmack_merge_registered_assets(array $assets, array $required): array
+{
+    $component=snapsmack_skin_declared_assets([
+        'require_scripts'=>is_array($required['scripts']??null)?$required['scripts']:[],
+        'require_styles'=>is_array($required['styles']??null)?$required['styles']:[],
+    ]);
+    return [
+        'scripts'=>array_values(array_unique(array_merge((array)($assets['scripts']??[]),$component['scripts']))),
+        'styles'=>array_values(array_unique(array_merge((array)($assets['styles']??[]),$component['styles']))),
+    ];
+}
