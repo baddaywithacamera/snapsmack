@@ -11,6 +11,14 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.891D - 2026-10-15 - Restore Rational Geo's original static pages
+
+- **RATIONAL GEO static pages again render their saved page photograph before the original heading and body.** The strict skin template had stopped reading the bounded `image_asset` already supplied by the CMS, although the page record and photograph were intact. The restored markup uses the skin's existing framed-page presentation and does not alter page content. RATIONAL GEO is released as 2.1.24.
+
+- **RATIONAL GEO's masthead is back in normal document flow.** It no longer remains fixed over the About heading while the page scrolls. Static pages recover the original 1040px presentation measure used by the approved `rationalgeo-page.png` reference, while solo and archive viewport calculations retain their existing heights without fixed-header offsets.
+
+- **PHOTOGRAM's Discover navigation is reset and styled on mobile.** The shared menu no longer appears as a browser-default bulleted list with dangling separators. PHOTOGRAM 1.0.2 is included from the prior un-packaged dev commit.
+
 ## 0.7.890D - 2026-10-15 - Restore Rational Geo's landing screen
 
 - **RATIONAL GEO's photograph landing again uses the established full-screen presentation.** The solo view keeps the site footer off-screen and places the photograph navigation at the bottom of the viewport, as in the approved reference; opening Info or Comments still reveals the corresponding drawer. The correction is stylesheet-only and RATIONAL GEO is released as 2.1.23.
