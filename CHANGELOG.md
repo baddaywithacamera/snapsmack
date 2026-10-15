@@ -11,6 +11,22 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.889D - 2026-10-15 - Restore PhotoFri's header and live counters
+
+- **PhotoFri's established top navigation is restored and ONYX is versioned so the repair reaches installed sites.** The header again carries its crimson bottom rule to match the footer, with the site name at left and navigation at right. ONYX is released as 0.1.21 so the normal Skin Packager and updater path can deliver the stylesheet instead of leaving the repository fix stranded.
+
+- **The PhotoFri countdowns receive their inert schedule data again.** The trusted CMS-content boundary now retains only the bounded countdown attributes and time element consumed by the shared countdown engine. Inline styles, event handlers, and unknown data attributes remain rejected.
+
+## 0.7.888D - 2026-10-15 - One Rational Geo frame and machine-enforced rules
+
+- **RATIONAL GEO draws the configured photograph frame once.** The CMS no longer assembles a second border declaration in PHP and the template no longer emits it as an inline style. The skin stylesheet owns the frame presentation; the manifest's selector/property mechanism carries the owner's width and infobox-height choices. RATIONAL GEO is released as 2.1.22.
+
+- **Agreed release and presentation rules are enforced by a regression gate.** The gate rejects increases in inline styles or CSS assembled in PHP, requires changed skins to bump their own versions, and refuses reused or already-published source versions. Its measured legacy budgets ratchet downward when contamination is removed.
+
+## 0.7.887D - 2026-10-15 - Preserve the deployed 886D release
+
+- **The development sequence advances without moving the deployed 0.7.886D tag.** RATIONAL GEO's pending work moved to the next development number so the already-published package remains immutable.
+
 ## 0.7.886D - 2026-10-15 - Restore the known-good public presentation
 
 - **ONYX renders the proven PhotoFri page shell again.** The strict conversion deleted its working `#page-wrapper`, `#scroll-stage`, `#pfd-header`, `.pfd-header-inside`, static-content, photograph, information-bar, and footer-pane structure and substituted a generic public skeleton that the existing stylesheet was never designed to style. Those exact presentation contracts now render from the bounded CMS view model in core; the skin contains no data access or application logic. Board and Prompts remain CMS page content and retain their newer components.
