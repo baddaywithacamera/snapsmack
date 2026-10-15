@@ -20,6 +20,17 @@ foreach (['<script', 'onclick', 'onerror', 'javascript:', 'style='] as $unsafe) 
 foreach (['<p>', '<strong>world</strong>', 'src="/media/x.jpg"', 'data-lightbox-src="https://example.test/media/full.jpg"'] as $safe) {
     if (!str_contains($html, $safe)) throw new RuntimeException("Trusted HTML lost safe markup: {$safe}");
 }
+$styledParagraph = (string)snapsmack_trusted_html(
+    '<p class="pfd-wordmark">PHOTOFRI<span class="pfd-dot">.</span>DAY</p>'
+    . '<p class="pfd-tagline">The Federated Weekly Photo Challenge</p>'
+    . '<p class="pfd-lede">A weekly photo challenge.</p>'
+    . '<p class="pfd-label">Participate through the Fediverse</p>'
+);
+foreach (['pfd-wordmark', 'pfd-tagline', 'pfd-lede', 'pfd-label', 'pfd-dot'] as $class) {
+    if (!str_contains($styledParagraph, 'class="' . $class . '"')) {
+        throw new RuntimeException("Trusted static-page paragraph presentation was stripped: {$class}");
+    }
+}
 $unsafeLightbox = (string)snapsmack_trusted_html('<img src="/media/x.jpg" data-lightbox-src="javascript:alert(3)">');
 if (str_contains($unsafeLightbox, 'data-lightbox-src')) {
     throw new RuntimeException('Trusted HTML retained an unsafe lightbox URL.');
