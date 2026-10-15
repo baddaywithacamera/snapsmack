@@ -129,10 +129,9 @@ body:has(.rg-single) {
   overflow: hidden;
 }
 
-/* The strict skin layout has no #page-wrapper.  Make the actual body, main,
-   article, image well, navigation and site footer one bounded flex column.
-   Previously .rg-photo-wrap consumed height:100% of the article before the
-   50px navigation row was laid out, pushing that row underneath the footer. */
+/* The strict skin layout has no #page-wrapper. Keep the solo photograph and
+   its navigation inside the viewport: the system footer is deliberately not
+   part of this screen (it returns on archive/static pages). */
 body:has(.rg-single) {
   display: flex;
   flex-direction: column;
@@ -143,11 +142,11 @@ body:has(.rg-single) > #scroll-stage {
   flex: 1 1 auto;
   min-height: 0;
   margin-top: 70px;
+  height: calc(100dvh - 70px);
 }
 
 body:has(.rg-single) > #system-footer {
-  flex: 0 0 auto;
-  margin-top: 0;
+  display: none;
 }
 
 body {
@@ -405,17 +404,7 @@ small,
   flex-grow: 1;
   flex-shrink: 1;
   min-height: 0;
-  /* The window, minus the fixed header, the info bar and the site footer.
-     The footer term is the one the original formula never had -- it did not
-     need one, because before the strict conversion the footer rendered INSIDE
-     the scrolling stage. It is a sibling of the stage now, so its height has
-     to come out of this reservation or it hangs past the bottom of the window.
-     Measured live on wateronthebrain.ca at 1920x950: the footer is 84px tall
-     and had 50px of room, so 34px of it was cut off and the page could not be
-     scrolled to reach it (body is overflow:hidden on a solo page). With the
-     footer subtracted the footer ends at 900 in a 950 window and the
-     PREV/FIRST/INFO row sits fully on screen at 766-816. */
-  height: calc(100dvh - 70px - var(--infobox-height, 50px) - var(--rg-footer-height, 84px));
+  height: 100%;
   padding: 0 !important; /* override compiled blob until admin re-saves */
 }
 
@@ -1474,10 +1463,11 @@ input[type="reset"]:active {
 
   body:has(.rg-single) > #scroll-stage {
     margin-top: 60px;
+    height: calc(100dvh - 60px);
   }
 
   #rg-photobox {
-    height: calc(100dvh - 60px - var(--infobox-height, 50px) - var(--rg-footer-height, 84px));
+    height: 100%;
   }
 
   .rg-single #rg-comments-drawer { top: 60px; }
@@ -1543,10 +1533,11 @@ input[type="reset"]:active {
 
   body:has(.rg-single) > #scroll-stage {
     margin-top: 50px;
+    height: calc(100dvh - 50px);
   }
 
   #rg-photobox {
-    height: calc(100dvh - 50px - var(--infobox-height, 50px) - var(--rg-footer-height, 84px));
+    height: 100%;
   }
 
   .rg-single #rg-comments-drawer { top: 50px; }
@@ -1655,10 +1646,11 @@ input[type="reset"]:active {
 
   body:has(.rg-single) > #scroll-stage {
     margin-top: 45px;
+    height: calc(100dvh - 45px);
   }
 
   #rg-photobox {
-    height: calc(100dvh - 45px - var(--infobox-height, 50px) - var(--rg-footer-height, 84px));
+    height: 100%;
   }
 
   .rg-single #rg-comments-drawer { top: 45px; }

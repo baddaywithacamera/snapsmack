@@ -24,22 +24,18 @@ $expect(
     preg_match('/\.rg-photo-wrap\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;[^}]*height:\s*auto;/s', $css) === 1,
     'RATIONAL GEO image well must yield space to the navigation row.'
 );
-/*
- * These two assertions described a bounded flex column on <body>. Measured on
- * the live page at 1920x950, that column was never in effect: body computes to
- * display:block there, so the image well kept its full 830px, the 84px site
- * footer had 50px of room, and 34px of it fell past the bottom of a page that
- * cannot scroll (body is overflow:hidden on a solo view). The reservation has
- * to name the footer. Verified live before and after: footer bottom 984 -> 900
- * in a 950px window, PREV/FIRST/INFO fully on screen at 766-816.
- */
 $expect(
-    preg_match('/#rg-photobox\s*\{[^}]*height:\s*calc\(100dvh - 70px - var\(--infobox-height, 50px\) - var\(--rg-footer-height, 84px\)\);/s', $css) === 1,
-    'RATIONAL GEO solo article must reserve room for the site footer as well as the header and info bar.'
+    preg_match('/body:has\(\.rg-single\) > #system-footer\s*\{[^}]*display:\s*none;/s', $css) === 1,
+    'RATIONAL GEO solo view must keep the system footer off the photograph screen.'
 );
 $expect(
-    substr_count($css, '--rg-footer-height') >= 4,
-    'the footer reservation must hold at every header breakpoint, not only the default one.'
+    preg_match('/body:has\(\.rg-single\) > #scroll-stage\s*\{[^}]*height:\s*calc\(100dvh - 70px\);/s', $css) === 1
+    && preg_match('/#rg-photobox\s*\{[^}]*height:\s*100%;/s', $css) === 1,
+    'RATIONAL GEO solo view must give the full post-header viewport to the photograph and its navigation.'
+);
+$expect(
+    !str_contains($css, '--rg-footer-height'),
+    'RATIONAL GEO solo geometry must not reserve space for the hidden system footer.'
 );
 
 echo "RATIONAL GEO solo viewport regression: PASS\n";
