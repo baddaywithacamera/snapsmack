@@ -435,13 +435,30 @@ small,
   box-sizing: border-box;
 }
 
+/* The hero frame colour. The owner picks a name in Image Border Colour and
+   the CMS puts that word on <body data-frame>; the colour itself lives here,
+   because colour belongs to the skin. It used to be assembled as a CSS string
+   in PHP and printed as an inline style attribute on .rg-photo-wrap, which
+   drew the frame a SECOND time around the wrapper -- the double yellow
+   outline. */
+body[data-frame="yellow"] { --rg-hero-colour: #ffcc00; }
+body[data-frame="white"]  { --rg-hero-colour: #ffffff; }
+body[data-frame="black"]  { --rg-hero-colour: #000000; }
+body[data-frame="grey"]   { --rg-hero-colour: #808080; }
+body[data-frame="none"]   { --rg-hero-colour: transparent; }
+
 .rg-image.post-image {
   max-width: 100%;
   max-height: 100%;
   width: auto;
   height: auto;
   border: var(--rg-hero-inner) solid #ffffff;
-  outline: var(--rg-hero-border) solid var(--rg-accent);
+  /* --rg-hero-colour is the owner's Image Border Colour control. It used to be
+     assembled as a CSS string in PHP and printed as an inline style attribute
+     on .rg-photo-wrap -- which drew the frame a SECOND time, around the
+     wrapper, on top of this one. That is the double yellow outline. The frame
+     belongs on the photograph and nowhere else. */
+  outline: var(--rg-hero-border) solid var(--rg-hero-colour, var(--rg-accent));
   box-shadow: var(--rg-shadow);
   display: block;
 }
