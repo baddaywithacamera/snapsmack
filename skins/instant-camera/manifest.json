@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "INSTANT CAMERA",
-    "version": "1.0.51",
+    "version": "1.0.50",
     "min_images": 200,
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
@@ -44,7 +44,7 @@
         "smack-image-fade-load",
         "smack-lightbox",
         "smack-gram-search",
-        "smack-nav-dropdown"
+        "asset:public:ss-engine-nav-dropdown"
     ],
     "community_comments": true,
     "community_likes": true,
