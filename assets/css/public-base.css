@@ -136,6 +136,19 @@ body.landing-only .tg-topbar { display: none; }
 img[data-lightbox-src] {
     opacity: 0;
     transition: opacity 0.4s ease-in-out;
+    /* Safety net. These start invisible and ss-engine-image-fade-load.js
+       reveals them. If that script is ever missing, blocked or broken, every
+       photograph on the page stays invisible -- which is why this stylesheet
+       was held back from the strict skins rather than shipped, and why they
+       went without the alignment and inline-frame rules they needed. The
+       animation forces full opacity shortly after paint whatever happens to
+       the script; when the script works it sets opacity inline first and
+       nothing here is ever seen. */
+    animation: snap-image-reveal-safety 0s linear 2.5s forwards;
+}
+
+@keyframes snap-image-reveal-safety {
+    to { opacity: 1; }
 }
 
 /* ─── 11. NOT FOUND / EMPTY STATE (shared) ───────────────────────────────── */

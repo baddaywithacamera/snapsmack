@@ -5,7 +5,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title><?php echo snap_escape_html($view['response']['page_title'] ?? $view['site']['site_name']); ?></title>
 <?php if (!empty($view['site']['favicon_url'])): ?><link rel="icon" href="<?php echo snap_escape_url($view['site']['favicon_url']); ?>"><?php endif; ?>
-<link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['skin_style_url']); ?>">
+<link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['base_style_url'] ?? ''); ?>"><link rel="stylesheet" href="<?php echo snap_escape_url($view['site']['skin_style_url']); ?>">
 <?php echo snap_render_html($view['site']['skin_custom_style'] ?? ''); ?>
 </head>
 <?php if (($view['response']['kind'] ?? '') === 'feed'): ?><body class="blog<?php if (!empty($view['response']['show_titles'])): ?> show-preview-titles<?php endif; ?> tilez-v2">
