@@ -162,6 +162,30 @@ try {
     }
 
     // --- CMS-OWNED PUBLIC CONTROLLER ---
+    // The avatar, resolved exactly as PHOTOGRAM resolved it before the strict
+    // conversion. Skin settings are stored SCOPED as "<skin>__<key>", and the
+    // conversion kept only the unscoped lookup -- so a site whose avatar was
+    // saved under photogram__skin_avatar rendered the grey placeholder
+    // instead, on every photoblog's mobile view. The fallback chain to the
+    // header logo, site logo and favicon is the reference's, unchanged.
+    if (!function_exists('snapsmack_public_avatar_url')) {
+        function snapsmack_public_avatar_url(array $settings): string {
+            $skin = (string)($settings['active_skin'] ?? '');
+            $file = '';
+            foreach ([$settings['skin_avatar'] ?? '',
+                      $skin !== '' ? ($settings[$skin . '__skin_avatar'] ?? '') : '',
+                      $settings['header_logo_url'] ?? '',
+                      $settings['site_logo'] ?? '',
+                      $settings['favicon_url'] ?? ''] as $candidate) {
+                $candidate = trim((string)$candidate);
+                if ($candidate !== '') { $file = $candidate; break; }
+            }
+            if ($file === '') return '';
+            if (preg_match('#^https?://#i', $file)) return $file;
+            return (defined('BASE_URL') ? BASE_URL : '/') . ltrim($file, '/');
+        }
+    }
+
     // Presentation-only skins may opt into a reusable controller. Core owns
     // request parsing, data access, redirects and status; the skin receives a
     // bounded view model and renders markup only.
@@ -220,7 +244,7 @@ try {
                     'direction' => 'ltr',
                     'owner_name' => (string)($settings['site_author'] ?? ''),
                     'site_description' => (string)($settings['site_description'] ?? ''),
-                    'avatar_url' => !empty($settings['skin_avatar']) ? (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['skin_avatar'], '/') : '',
+                    'avatar_url' => snapsmack_public_avatar_url($settings),
                     'favicon_url' => !empty($settings['favicon_url']) ? (preg_match('#^https?://#i', (string)$settings['favicon_url']) ? (string)$settings['favicon_url'] : (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['favicon_url'], '/')) : '',
                     'skin_slug' => (string)$active_skin,
                     'skin_style_url' => $_active_skin_style_url,
@@ -327,7 +351,7 @@ try {
             'language' => 'en', 'direction' => 'ltr',
             'owner_name' => (string)($settings['site_author'] ?? ''),
             'site_description' => strip_tags((string)($settings['site_description'] ?? '')),
-            'avatar_url' => !empty($settings['skin_avatar']) ? (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['skin_avatar'], '/') : '',
+            'avatar_url' => snapsmack_public_avatar_url($settings),
             'skin_slug' => (string)$active_skin,
             'skin_style_url' => $_active_skin_style_url,
             'base_style_url' => $_base_style_url,

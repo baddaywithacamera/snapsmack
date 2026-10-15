@@ -228,6 +228,37 @@ final class SnapPublicRepository
         return (int)$stmt->fetchColumn();
     }
 
+    /**
+     * Site-wide approved comment and like totals, for the profile stats row.
+     *
+     * PHOTOGRAM's mobile profile has rendered "Likes" and "Comments" with no
+     * number beside them on every photoblog since the strict conversion: the
+     * skin asked for like_count and comment_count, neither was in the bounded
+     * response, and an absent field is an empty string. Sean's own reference
+     * screenshot reads 9,975 Posts / 1 Likes / 1,909 Comments.
+     *
+     * Both tables are optional -- snap_likes in particular only exists where
+     * the community engine has run -- so a missing table yields zero rather
+     * than a fatal, exactly as the pre-conversion skin did.
+     */
+    public function approvedCommentCount(): int {
+        try {
+            return (int)$this->pdo->query(
+                "SELECT COUNT(id) FROM snap_comments WHERE is_approved = 1 AND is_spam = 0"
+            )->fetchColumn();
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
+    public function likeCount(): int {
+        try {
+            return (int)$this->pdo->query("SELECT COUNT(id) FROM snap_likes")->fetchColumn();
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
     public function longformLanding(int $limit, int $offset = 0): array {
         return $this->all(
             "SELECT p.id,p.title,p.slug,p.description,p.created_at,p.updated_at,p.featured_image_id,
