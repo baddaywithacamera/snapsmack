@@ -171,6 +171,13 @@ img { max-width: 100%; height: auto; }
     padding: 0;
     display: flex;
     align-items: center;
+    /* The space BETWEEN menu items. It used to come from the gap below,
+       which sits inside each item and only separated the link from the
+       separator span the CMS emitted -- a span this skin hides. When that
+       span stopped being emitted in 0.7.873D each item held one child, the
+       inner gap did nothing, and the menu ran together as one word. The
+       spacing belongs between the items; the hidden separator stays hidden. */
+    gap: 22px;
 }
 .nav-menu > li {
     display: flex;
