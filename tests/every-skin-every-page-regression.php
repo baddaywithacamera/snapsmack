@@ -252,7 +252,16 @@ foreach ($skins as $layout) {
         }
         $furniture_ok = true;
         if (in_array($kind, ['page', 'blogroll'], true)) {
-            $furniture_ok = !str_contains($out, 'TECHNICAL SPECIFICATIONS');
+            // A page must not be dressed as a photograph. IMPACT PRINTER put
+            // a static page's words inside #pane-info -- the photograph's
+            // INFO drawer, which is display:none until opened -- so The
+            // Cameras and The Photographer were blank for weeks while this
+            // test passed them: the words WERE in the page, just invisible.
+            // Presence is not visibility; the furniture is what gives it away.
+            $furniture_ok = !str_contains($out, 'TECHNICAL SPECIFICATIONS')
+                && !str_contains($out, 'id="pane-info"')
+                && !str_contains($out, 'single-image-page')
+                && !str_contains($out, 'id="show-details"');
             if (!$known) {
                 $check($furniture_ok, $where . ' carries the photograph EXIF table');
             }
