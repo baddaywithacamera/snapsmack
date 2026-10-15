@@ -37,11 +37,6 @@
     vertical-align: top;
 }
 
-.grid--masonry .thumb {
-    height: auto;
-    aspect-ratio: auto;
-}
-
 .grid--masonry .thumb.none {
     min-height: 210px;
 }
