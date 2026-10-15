@@ -722,17 +722,21 @@ function pc_admit_object(PDO $pdo, array $settings, string $object_id): ?array {
         pc_last_admit_reason('needs exactly one image and no video (has ' . count($media) . ' image(s), ' . count((array)$videos) . ' video(s))');
         return null;
     }
-    if (!$win['open']) {
+    $hc = ((int)($row['participant_hc'] ?? 0) === 1 || in_array('horsconcours', $tags, true)) ? 1 : 0;
+    // Hors-concours is an exhibition entry: it is shown but never ranked,
+    // therefore neither the competitive submission window nor the five-entry
+    // competitive cap applies to it. This also permits historical catch-up
+    // after a round closes without silently turning those posts into entries.
+    if (!$win['open'] && !$hc) {
         pc_notice_closed_window($pdo,$settings,$row,$win);
         pc_last_admit_reason('the qualifying window is closed');
         return null;
     }
-    if ($published < $win['start'] || $published >= $win['end']) {
+    if (!$hc && ($published < $win['start'] || $published >= $win['end'])) {
         pc_last_admit_reason('published outside the window (posted ' . $published . ' UTC; window ' . $win['start'] . ' → ' . $win['end'] . ')');
         return null;
     }
     $actor = (string)$row['actor_url'];
-    $hc = ((int)($row['participant_hc'] ?? 0) === 1 || in_array('horsconcours', $tags, true)) ? 1 : 0;
 
     $pdo->beginTransaction();
     try {
@@ -750,10 +754,11 @@ function pc_admit_object(PDO $pdo, array $settings, string $object_id): ?array {
             }
             $pdo->commit(); return $old;
         }
-        $countq = $pdo->prepare("SELECT COALESCE(MAX(admission_number),0) FROM pc_admissions WHERE week_key=? AND actor_url=? FOR UPDATE");
+        $countq = $pdo->prepare("SELECT COALESCE(MAX(admission_number),0),COALESCE(SUM(horsconcours=0),0) FROM pc_admissions WHERE week_key=? AND actor_url=? FOR UPDATE");
         $countq->execute([$win['week_key'], $actor]);
-        $slot = (int)$countq->fetchColumn() + 1;
-        if ($slot > 5) { $pdo->commit(); return null; }
+        [$max_slot,$competitive_count] = array_map('intval', $countq->fetch(PDO::FETCH_NUM) ?: [0,0]);
+        $slot = $max_slot + 1;
+        if (!$hc && $competitive_count >= 5) { $pdo->commit(); return null; }
         $pdo->prepare("INSERT INTO pc_admissions
             (week_key,actor_url,object_id,admission_number,horsconcours,boost_state)
             VALUES (?,?,?,?,?,'pending')")->execute([$win['week_key'],$actor,$object_id,$slot,$hc]);

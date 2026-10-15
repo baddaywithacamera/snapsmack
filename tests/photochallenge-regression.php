@@ -180,10 +180,14 @@ pc_test(str_contains($photo, "if (\$handle === '')")
     && str_contains($photo, "\$handle = \$username . '@' . \$host"),
     'board does not recover a truthful handle from canonical actor URLs when legacy labels are blank');
 pc_test(str_contains($photo, '> 5'), 'per-author five-entry cap is missing');
-pc_test(str_contains($photo, '$slot > 5')
+pc_test(str_contains($photo, '$competitive_count >= 5')
+    && str_contains($photo, 'SUM(horsconcours=0)')
     && str_contains($photo, 'MAX(admission_number)')
     && str_contains($photo, 'uq_pc_admission_slot'),
-    'entry cap must durably retain admission slots 1-5 and stop later boosts');
+    'entry cap must durably retain five competitive slots without counting hors-concours posts');
+pc_test(str_contains($photo, "if (!\$win['open'] && !\$hc)")
+    && str_contains($photo, "if (!\$hc && (\$published < \$win['start'] || \$published >= \$win['end']))"),
+    'hors-concours posts must remain admissible after the competitive window closes');
 pc_test(str_contains($photo, "JOIN pc_participants p ON p.actor_url=t.actor_url")
     && str_contains($photo, "p.state='active'"),
     'board admission is not restricted to active participants');
@@ -350,22 +354,23 @@ pc_test(str_contains($admin, 'name="pc_feed_layout"')
     && str_contains($photo, "grid grid--")
     && str_contains($photo, "photochallenge_feed_layout")
     && str_contains($photo, 'photochallenge-board-layouts.css')
-    && str_contains($board_layout_css, '.grid--masonry'),
-    'challenge feed must offer three-across and external-CSS masonry layouts');
+    && str_contains($board_layout_css, '.grid--masonry')
+    && !preg_match('/\.grid--masonry\s+\.thumb\s*\{[^}]*aspect-ratio\s*:\s*auto/is', $board_layout_css),
+    'challenge feed must offer three-across and external-CSS masonry layouts while every photo remains square');
 
 // Admission owns the window gate. The outbound boost function must obtain an
 // active admission before its only sv_boost_remote() call can run.
 $admit_pos = strpos($photo, 'function pc_admit_object');
-$closed_pos = strpos($photo, "if (!\$win['open'])", $admit_pos);
-$notice_pos = strpos($photo, 'pc_notice_closed_window($pdo,$settings,$row,$win);', $closed_pos);
+$hc_closed_pos = strpos($photo, "if (!\$win['open'] && !\$hc)", $admit_pos);
+$notice_pos = strpos($photo, 'pc_notice_closed_window($pdo,$settings,$row,$win);', $hc_closed_pos);
 $closed_return_pos = strpos($photo, 'return null;', $notice_pos);
 $boost_fn_pos = strpos($photo, 'function pc_maybe_boost_entry');
 $admit_call_pos = strpos($photo, 'pc_admit_object($pdo, $settings, $object_id)', $boost_fn_pos);
 $boost_call_pos = strpos($photo, 'sv_boost_remote($pdo, $settings, $object_id)', $admit_call_pos);
-pc_test($admit_pos !== false && $closed_pos !== false && $notice_pos !== false
+pc_test($admit_pos !== false && $hc_closed_pos !== false && $notice_pos !== false
     && $closed_return_pos !== false && $closed_return_pos < $boost_fn_pos
     && $admit_call_pos !== false && $boost_call_pos !== false && $admit_call_pos < $boost_call_pos,
-    'an outside-window hashtag post can reach boosting before decline and courtesy notification');
+    'a competitive outside-window hashtag post is declined before boosting while hors-concours can pass');
 pc_test(str_contains($photo, 'function pc_failed_entry_dm_drafts')
     && str_contains($admin, 'DM DRAFTS &mdash; REVIEW ONLY')
     && str_contains($admin, 'No messages are sent from this page.'),
