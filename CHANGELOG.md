@@ -11,9 +11,13 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.881D - 2026-10-14 - THE BOARD keeps its structure, styles and one Home
+## 0.7.882D - 2026-10-14 - THE BOARD loads its own audited styles
 
-- **THE BOARD static page was reduced to a plain line of prompt names and unstyled, oversized entries.** Its `[board]` shortcode produced a real prompt-index `<nav>` with linked cards, but the trusted-HTML boundary did not permit that bounded navigation markup or the cards' classes. The sanitizer therefore replaced the index with its text and discarded the stylesheet `<link>` elements entirely. The Board's known CMS markup now survives sanitizing, while arbitrary scripts and `javascript:` URLs remain blocked. Its two already-audited stylesheets are registered by the strict public runtime when it sees `[board]`; page content is still not allowed to inject arbitrary stylesheets. This is a reusable CMS-component fix, not an ONYX or PhotoFri-specific exception.
+- **0.7.881D restored THE BOARD's prompt-index markup but left its entries unstyled and oversized.** The shortcode emitted its two stylesheet `<link>` elements inside page content, where the trusted-HTML boundary correctly discards them. The strict public runtime now recognizes `[board]` as a CMS component and registers its two already-audited public stylesheets alongside the active skin's assets. Arbitrary page-supplied stylesheet tags remain blocked. This is a reusable CMS-component fix, not an ONYX or PhotoFri-specific exception.
+
+## 0.7.881D - 2026-10-14 - THE BOARD keeps its structure and one Home
+
+- **THE BOARD static page was reduced to a plain line of prompt names.** Its `[board]` shortcode produced a real prompt-index `<nav>` with linked cards, but the trusted-HTML boundary did not permit that bounded navigation markup or the cards' classes. The Board's known CMS markup now survives sanitizing, while arbitrary scripts and `javascript:` URLs remain blocked.
 
 - **PhotoFri's menu said Home twice.** The default navigation already provides Home and Blogroll, then appended every active static page—including owner-created pages with those same reserved slugs. The automatic menu now omits duplicate `home` and `blogroll` page records while leaving every other active static page available as a top-level item.
 
