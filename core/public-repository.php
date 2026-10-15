@@ -276,6 +276,15 @@ final class SnapPublicRepository
         );
     }
 
+    /** Resolve the configured static homepage without exposing SQL to a skin. */
+    public function activePageById(int $id): ?array {
+        if ($id < 1) return null;
+        $stmt = $this->pdo->prepare('SELECT * FROM snap_pages WHERE id = ? AND is_active = 1 LIMIT 1');
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return is_array($row) ? $row : null;
+    }
+
     public function archivePhotographs(int $limit, int $offset = 0, int $categoryId = 0, int $albumId = 0): array {
         $scope = '';
         $params = [];
