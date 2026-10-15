@@ -2033,28 +2033,7 @@ function pc_board_rounds_embed_html(PDO $pdo, array $settings, int $history_limi
 
     $esc = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
     $rounds = pc_board_windows($pdo, $settings, $history_limit);
-    $base = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : '/';
     $out = '<div class="pc-board-rounds">';
-
-    if ($rounds) {
-        $out .= '<nav class="pc-prompt-index" aria-label="Current and past photo challenge prompts">';
-        $out .= '<h2>Current and Past Prompts</h2><div class="pc-prompt-cards">';
-        foreach ($rounds as $round_index => $win) {
-            $week_key = preg_replace('/[^A-Za-z0-9_-]/', '-', (string)($win['week_key'] ?? ''));
-            $prompt = trim((string)($win['prompt'] ?? ''));
-            $tag = trim((string)($win['tag_display'] ?? '')) ?: trim((string)($win['tag'] ?? pc_tag($settings)));
-            $image = trim((string)($win['prompt_image'] ?? ''));
-            if ($image !== '' && !preg_match('#^https?://#i', $image)) $image = $base . ltrim($image, '/');
-            $out .= '<a class="pc-prompt-card' . ($round_index === 0 ? ' is-current' : '') . '" href="#round-' . $esc($week_key) . '">';
-            if ($image !== '') {
-                $alt = trim((string)($win['alt'] ?? '')) ?: ($prompt !== '' ? $prompt . ' photo challenge prompt' : 'Photo challenge prompt');
-                $out .= '<img loading="lazy" src="' . $esc($image) . '" alt="' . $esc($alt) . '">';
-            }
-            $out .= '<span class="pc-prompt-copy"><strong>' . $esc($round_index === 0 ? 'Current: ' . ($prompt ?: 'This Week') : ($prompt ?: 'Previous Prompt')) . '</strong>';
-            $out .= '<span>' . $esc($win['label'] ?? '') . ' &middot; #' . $esc(ltrim($tag, '#')) . '</span></span></a>';
-        }
-        $out .= '</div></nav>';
-    }
 
     foreach ($rounds as $round_index => $win) {
         $prompt = trim((string)($win['prompt'] ?? ''));
@@ -2077,6 +2056,63 @@ function pc_board_rounds_embed_html(PDO $pdo, array $settings, int $history_limi
         $out .= '</section>';
     }
 
+    return $out . '</div>';
+}
+
+/** Render the prompt catalogue independently from THE BOARD. */
+function pc_prompt_index_embed_html(PDO $pdo, array $settings, int $history_limit = 52): string {
+    if (!pc_enabled($settings)) return '';
+
+    $esc = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+    $base = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/' : '/';
+    $now = gmdate('Y-m-d H:i:s');
+    $groups = ['current' => [], 'coming' => [], 'past' => []];
+
+    try {
+        $limit = max(3, min(260, $history_limit + 12));
+        $q = $pdo->query(
+            "SELECT p.week_key,p.friday,p.submit_start,p.submit_end,p.prompt,p.tag,p.tag_display,
+                    p.alt,p.image_id,i.img_file AS prompt_image
+               FROM pc_prompts p
+          LEFT JOIN snap_images i ON i.id=p.image_id
+              WHERE p.status IN ('queued','live','done')
+           ORDER BY p.submit_start DESC LIMIT {$limit}"
+        );
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $start = (string)($row['submit_start'] ?? '');
+            $end = (string)($row['submit_end'] ?? '');
+            $state = $start > $now ? 'coming' : ($end >= $now ? 'current' : 'past');
+            if ($state === 'past' && count($groups['past']) >= $history_limit) continue;
+            $row['state'] = $state;
+            $row['label'] = (new DateTimeImmutable((string)$row['friday'], new DateTimeZone('UTC')))->format('M j, Y');
+            $groups[$state][] = $row;
+        }
+    } catch (Throwable $e) {
+        return '<p class="pc-board-empty">Prompt history is temporarily unavailable.</p>';
+    }
+
+    usort($groups['coming'], static fn(array $a, array $b): int => strcmp((string)$a['submit_start'], (string)$b['submit_start']));
+    $out = '<div class="pc-prompt-index" aria-label="Photo challenge prompts">';
+    foreach (['current' => 'Current', 'coming' => 'Coming', 'past' => 'Past'] as $state => $heading) {
+        if (!$groups[$state]) continue;
+        $out .= '<section class="pc-prompt-group pc-prompt-group--' . $state . '"><h2>' . $heading . '</h2><div class="pc-prompt-cards">';
+        foreach ($groups[$state] as $win) {
+            $week_key = preg_replace('/[^A-Za-z0-9_-]/', '-', (string)($win['week_key'] ?? ''));
+            $prompt = trim((string)($win['prompt'] ?? '')) ?: 'Photo Challenge';
+            $tag = trim((string)($win['tag_display'] ?? '')) ?: trim((string)($win['tag'] ?? pc_tag($settings)));
+            $image = trim((string)($win['prompt_image'] ?? ''));
+            if ($image !== '' && !preg_match('#^https?://#i', $image)) $image = $base . ltrim($image, '/');
+            $href = $state === 'coming' ? '#' : $base . 'the-board#round-' . $week_key;
+            $out .= '<a class="pc-prompt-card' . ($state === 'current' ? ' is-current' : '') . '" href="' . $esc($href) . '">';
+            if ($image !== '') {
+                $alt = trim((string)($win['alt'] ?? '')) ?: $prompt . ' photo challenge prompt';
+                $out .= '<img loading="lazy" src="' . $esc($image) . '" alt="' . $esc($alt) . '">';
+            }
+            $out .= '<span class="pc-prompt-copy"><strong>' . $esc($prompt) . '</strong>';
+            $out .= '<span>' . $esc($win['label'] ?? '') . ' &middot; #' . $esc(ltrim($tag, '#')) . '</span></span></a>';
+        }
+        $out .= '</div></section>';
+    }
     return $out . '</div>';
 }
 

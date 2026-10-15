@@ -173,6 +173,10 @@ class SnapSmack {
         // the chrome, this emits just the entry grid.
         $content = $this->parseBoard($content);
 
+        // --- PHASE 12B: PHOTO-CHALLENGE PROMPTS ([prompts]) ---
+        // Prompt cards have their own page; THE BOARD is entries only.
+        $content = $this->parsePrompts($content);
+
         // --- PHASE 13: GAME SCORE HISTORY ---
         $content = $this->parseGameScores($content);
 
@@ -218,6 +222,16 @@ class SnapSmack {
             if (!function_exists('pc_board_rounds_embed_html')) require_once __DIR__ . '/photochallenge.php';
             $settings = is_array($this->config) ? $this->config : [];
             try { return pc_board_rounds_embed_html($this->pdo, $settings); }
+            catch (\Throwable $e) { return ''; }
+        }, $content);
+    }
+
+    private function parsePrompts($content) {
+        if (stripos($content, '[prompts]') === false) return $content;
+        return preg_replace_callback('/\[prompts\]/i', function () {
+            if (!function_exists('pc_prompt_index_embed_html')) require_once __DIR__ . '/photochallenge.php';
+            $settings = is_array($this->config) ? $this->config : [];
+            try { return pc_prompt_index_embed_html($this->pdo, $settings); }
             catch (\Throwable $e) { return ''; }
         }, $content);
     }

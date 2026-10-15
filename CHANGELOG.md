@@ -23,6 +23,8 @@
 
 - **Disabled Blogrolls stay out of navigation.** The navigation model now applies `blogroll_enabled` to configured and automatic menus instead of linking to a known 404.
 
+- **Prompts and THE BOARD are separate again.** `[board]` now renders only submission rounds. The new `[prompts]` CMS component owns a dedicated Current, Coming, and Past prompt catalogue, so an ordinary static Prompts page can appear in top-level navigation without duplicating the catalogue on THE BOARD.
+
 ## 0.7.884D - 2026-10-15 - Square Board cards and honest hors-concours admission
 
 - **Board entries stay square in both three-across and masonry layouts.** The masonry geometry carried an old `aspect-ratio: auto` override, so restoring the Board's registered stylesheet in 0.7.882D also restored native portrait and landscape shapes. Masonry now changes only card flow; the shared square crop remains authoritative.
