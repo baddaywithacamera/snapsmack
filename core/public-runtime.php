@@ -78,6 +78,21 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     if (!isset($response['photo_count']) && (($settings['site_mode'] ?? '') !== 'smacktalk')) {
         $response['photo_count'] = $repository->publishedPhotographCount();
     }
+    // The other two numbers in the profile stats row. They have been blank on
+    // every photoblog's mobile view since the conversion, because the skin
+    // asked for fields the bounded response did not carry. Supplied
+    // pre-formatted as well as raw: a template may not compute, so
+    // number_format has to happen on this side or the thousands separator in
+    // Sean's reference ("9,975") can never come back.
+    if (!isset($response['comment_count']) && (($settings['site_mode'] ?? '') !== 'smacktalk')) {
+        $response['comment_count'] = $repository->approvedCommentCount();
+        $response['like_count']    = $repository->likeCount();
+    }
+    foreach (['photo_count', 'comment_count', 'like_count'] as $_countKey) {
+        if (isset($response[$_countKey])) {
+            $response[$_countKey . '_display'] = number_format((int)$response[$_countKey]);
+        }
+    }
     if (($settings['active_skin'] ?? '') === 'game-on' && !isset($response['puzzle_items'])) {
         $response['puzzle_items'] = array_map(
             'snapsmack_game_on_focus_item',

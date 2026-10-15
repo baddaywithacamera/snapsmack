@@ -20,7 +20,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     $allowedResponse = ['status', 'kind', 'mode', 'item', 'items', 'post', 'posts', 'tiles', 'rows', 'slider_items', 'photographs',
         'comments', 'navigation', 'results', 'query', 'slug', 'page', 'total_pages',
         'page_title', 'rendered_content', 'signature', 'previous', 'next', 'categories',
-        'albums', 'categories_label', 'albums_label', 'author', 'colophon', 'photo_count', 'word_count', 'comments_enabled',
+        'albums', 'categories_label', 'albums_label', 'author', 'colophon', 'photo_count', 'photo_count_display', 'comment_count', 'comment_count_display', 'like_count', 'like_count_display', 'word_count', 'comments_enabled',
         'show_titles', 'blogroll_groups', 'taxonomy', 'groups', 'puzzle_items', 'fragment', 'autoopen',
         'first', 'last', 'next_page', 'is_homepage'];
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
