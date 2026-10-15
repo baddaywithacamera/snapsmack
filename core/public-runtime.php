@@ -48,19 +48,6 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     $repository = new SnapPublicRepository($pdo);
     $response = snapsmack_public_controller($repository, $request, $settings);
     $response = snapsmack_public_parse_page_content($pdo, $response);
-    // EXIF / Technical Specs is switched off in Solo Image Appearance, and
-    // until now only core/meta.php honoured it -- a file no strict skin ever
-    // runs. So every converted site published its camera data however the
-    // owner had set it. The CMS withholds it here instead, once, for every
-    // skin and every renderer: a skin cannot print what it was not given.
-    if (($settings['exif_display_enabled'] ?? '1') !== '1') {
-        if (isset($response['item']['exif'])) $response['item']['exif'] = [];
-        if (isset($response['item']['technical'])) $response['item']['technical'] = [];
-        foreach (($response['items'] ?? []) as $i => $_unused) {
-            if (isset($response['items'][$i]['exif'])) $response['items'][$i]['exif'] = [];
-        }
-    }
-
     // Comments are one feature with TWO switches: global_comments_enabled in
     // Settings, and community_comments_enabled on the community engine. Only
     // the first was consulted here, so turning the other one off hid the
@@ -88,12 +75,31 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
         );
     }
     require_once __DIR__ . '/trusted-html.php';
-    $trustItem = static function (array $item): array {
+    $trustItem = static function (array $item) use ($settings): array {
         foreach (['content', 'description', 'img_description'] as $field) {
             if (isset($item[$field]) && is_string($item[$field])) $item[$field] = snapsmack_trusted_html($item[$field]);
         }
-        $exif = json_decode((string)($item['img_exif'] ?? ''), true);
+        // EXIF / Technical Specs is switched off in Solo Image Appearance.
+        // Until 0.7.877D only core/meta.php honoured it, a file no strict
+        // skin runs. The first repair emptied item['exif'] earlier in this
+        // function -- and THIS line rebuilt it from the raw column a moment
+        // later, so the table kept rendering. The switch has to be read where
+        // the field is made, not before it.
+        $exifOff = (($settings['exif_display_enabled'] ?? '1') !== '1');
+        $exif = $exifOff ? [] : json_decode((string)($item['img_exif'] ?? ''), true);
         $item['exif'] = is_array($exif) ? $exif : [];
+        if ($exifOff) { $item['technical'] = []; $item['img_exif'] = ''; }
+
+        // A readable date. Twelve templates printed the raw database column,
+        // so a photograph was stamped "2026-09-11 03:05:00" -- a timestamp
+        // with seconds, on a photoblog -- and the site's own Date Format
+        // setting was read by nothing on the public side at all. Formatted
+        // once here; img_date stays untouched for the datetime attribute,
+        // which must remain machine-readable.
+        $stamp = (string)($item['img_date'] ?? $item['created_at'] ?? '');
+        $when = $stamp !== '' ? strtotime($stamp) : false;
+        $item['date_display'] = $when === false ? ''
+            : date((string)($settings['date_format'] ?? 'F j, Y'), $when);
         $lat = filter_var($item['exif']['latitude'] ?? null, FILTER_VALIDATE_FLOAT);
         $lon = filter_var($item['exif']['longitude'] ?? null, FILTER_VALIDATE_FLOAT);
         $item['geo_url'] = ($lat !== false && $lon !== false && $lat >= -90 && $lat <= 90 && $lon >= -180 && $lon <= 180)
