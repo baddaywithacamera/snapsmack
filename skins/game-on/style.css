@@ -481,7 +481,18 @@ img { display: block; max-width: 100%; }
     max-width:    var(--tile-img-size, 100%);
     max-height:   100%;
     margin:       auto;   /* bulletproof flex centring — splits matte evenly */
-    object-fit:   contain;
+    /* fill, not contain. The square thumbnails are not exactly square --
+       measured on theschoolofhardnocks.ca they come back 899x900 and 900x899
+       -- so contain letterboxed them inside a square tile and left 0.155px of
+       tile background down each side, visible as a hairline against the dark
+       border. 0.7.844D is when it became visible: it removed the
+       background-color that had been painting that sliver the border colour,
+       because colouring the content box made thick side bars beside portrait
+       images. fill removes the letterbox itself, so neither symptom can come
+       back. Measured across all 30 framed images on that page the worst box
+       is 0.1112% off its image's ratio, so the stretch is under a third of a
+       pixel. */
+    object-fit:   fill;
     border:       var(--tile-border-w, 0px) solid var(--tile-border-c, transparent);
     border-radius: var(--tile-radius, 0px);
     /* The border belongs only on the image edge. Colouring the content box
