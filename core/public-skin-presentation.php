@@ -16,13 +16,27 @@ function snapsmack_public_skin_presentation(string $skin, array $options): array
     }
     if ($skin === 'photogram') $out['discover'] = ['visible'=>$on('pg_show_discover')];
     if ($skin === 'rational-geo') {
-        $colours=['yellow'=>'#ffcc00','white'=>'#ffffff','black'=>'#000000','grey'=>'#808080','none'=>'transparent'];
+        // No colours and no CSS are decided here. The owner's choice travels
+        // as the bare word they picked; the stylesheet turns it into a colour,
+        // because colour is the skin's business. This used to assemble a CSS
+        // declaration string that the template printed as an inline style.
+        // The manifest owns the default. Restating it here is how a control's
+        // default drifts out of step with its declaration, so an unrecognised
+        // value emits nothing and the stylesheet's own fallback applies.
+        $allowed=['yellow','white','black','grey','none'];
         $choice=(string)($options['image_border_color'] ?? '');
+        if (!in_array($choice, $allowed, true)) $choice='';
         $out['rational']=[
             'infobox_height'=>snapsmack_declared_option_int($options,'infobox_height',30,100),
-            'border_color'=>$colours[$choice] ?? 'transparent',
+            'frame'=>$choice,
             'border_width'=>snapsmack_declared_option_int($options,'hero_border_width',0,80),
-            'frame_style'=>'border:var(--rg-hero-inner,4px) solid #ffffff;outline:' . snapsmack_declared_option_int($options,'hero_border_width',0,80) . 'px solid ' . ($colours[$choice] ?? 'transparent'),
+            // No CSS is assembled here any more. This used to build a
+            // declaration string that the skin printed as an inline style on
+            // .rg-photo-wrap, which drew the hero frame a second time around
+            // the wrapper -- the double yellow outline. The colour now travels
+            // as a bounded value and reaches the stylesheet as a custom
+            // property, like every other control in this skin.
+
             'show_map'=>$on('show_map_background'), 'show_description'=>$on('single_show_description'),
             'show_signals'=>$on('single_show_signals'),
         ];

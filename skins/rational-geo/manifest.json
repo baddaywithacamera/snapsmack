@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "RATIONAL GEO",
-    "version": "2.1.21",
+    "version": "2.1.22",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "An homage to the world's best magazine. Editorial serif typography, the iconic yellow accent, light and dark variants. For anyone who has read it and loved it or dreamed of having their work published in it.",
@@ -84,7 +84,9 @@
             "default": "50",
             "min": "30",
             "max": "100",
-            "css_var": "--infobox-height"
+            "selector": ":root",
+            "property": "--infobox-height",
+            "unit": "px"
         },
         "image_border_color": {
             "section": "IMAGE PRESENTATION",
@@ -105,7 +107,10 @@
             "label": "Hero Image Border (px)",
             "default": "20",
             "min": "0",
-            "max": "30"
+            "max": "30",
+            "selector": ":root",
+            "property": "--rg-hero-border",
+            "unit": "px"
         },
         "masonry_border_width": {
             "section": "IMAGE PRESENTATION",
