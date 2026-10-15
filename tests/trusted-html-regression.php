@@ -35,6 +35,25 @@ $unsafeLightbox = (string)snapsmack_trusted_html('<img src="/media/x.jpg" data-l
 if (str_contains($unsafeLightbox, 'data-lightbox-src')) {
     throw new RuntimeException('Trusted HTML retained an unsafe lightbox URL.');
 }
+$countdown = (string)snapsmack_trusted_html(
+    '<section class="pfd-countdowns" aria-label="Challenge countdown">'
+    . '<p class="pfd-countdown smack-countdown" data-until="2026-10-23T10:00:00Z" data-every="7d" data-roll-caption="Next prompt drops in" data-done="Live">'
+    . '<span class="pfd-cd-caption" data-cd-caption>First prompt drops in</span>'
+    . '<time class="pfd-cd-date" data-cd-date datetime="2026-10-23">2026-10-23</time>'
+    . '<span class="pfd-cd-clock" data-cd-clock aria-hidden="true"><b data-cd="d">--</b></span>'
+    . '</p></section>'
+);
+foreach (['data-until="2026-10-23T10:00:00Z"', 'data-every="7d"', 'data-roll-caption="Next prompt drops in"',
+          'data-done="Live"', 'data-cd-caption', 'data-cd-date', 'data-cd-clock',
+          'data-cd="d"', 'datetime="2026-10-23"', 'aria-hidden="true"', 'aria-label="Challenge countdown"'] as $safe) {
+    if (!str_contains($countdown, $safe)) throw new RuntimeException("Trusted HTML lost countdown markup: {$safe}");
+}
+$countdownAttack = (string)snapsmack_trusted_html(
+    '<p class="smack-countdown" data-until="2026-10-23T10:00:00Z" style="display:none" onclick="steal()" data-evil="yes">x</p>'
+);
+foreach (['style=', 'onclick=', 'data-evil='] as $unsafe) {
+    if (str_contains($countdownAttack, $unsafe)) throw new RuntimeException("Trusted countdown HTML retained {$unsafe}");
+}
 $reflection = new ReflectionClass(SnapTrustedHtml::class);
 if (!$reflection->getConstructor()?->isPrivate()) throw new RuntimeException('Trusted HTML constructor is public.');
 
