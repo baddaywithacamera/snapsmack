@@ -1277,4 +1277,39 @@ a.logo-area,
     color: inherit;
     text-decoration: none;
 }
+
+/* The publication date. The renderer emits <time class="dt-published">
+   and this skin styled nothing for it, so it sat unstyled in the flow --
+   out in the left margin beside the title, in the browser's default face.
+   It belongs under the title, in the same quiet metadata voice as the
+   footer. The CMS now formats it to the site's Date Format setting; this
+   only decides where it sits and how loud it is. */
+time.dt-published,
+.photo-title-footer + time.dt-published {
+    display: block;
+    margin: 6px 0 24px 0;
+    font-family: 'DotMatrix', 'Courier New', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    opacity: var(--ip-ink-opacity, 0.65);
+}
+
+/* NO COLOUR, EVER. This skin is dot-matrix on fanfold paper; a browser's
+   default link colour has no business in it. An <a> that no rule reaches
+   renders blue, and purple once visited -- which is exactly what happened
+   to the masthead. Rather than chase each unstyled link as it is found,
+   every link in the skin inherits its colour, so a rule has to go out of
+   its way to introduce one. Specific rules still win; this only removes
+   the default. */
+.impact-printer-v2 a,
+.impact-printer-v2 a:link,
+.impact-printer-v2 a:visited,
+.impact-printer-v2 a:hover,
+.impact-printer-v2 a:active,
+.impact-printer-v2 a:focus {
+    color: inherit;
+    text-decoration-color: currentColor;
+}
 /* ===== SNAPSMACK EOF ===== */

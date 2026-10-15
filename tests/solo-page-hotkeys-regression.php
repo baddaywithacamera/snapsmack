@@ -127,8 +127,17 @@ foreach (['core/impact-printer-page-component.php', 'core/50-shades-page-compone
 $runtime = (string)@file_get_contents($root . '/core/public-runtime.php');
 $check(str_contains($runtime, "\$settings['exif_display_enabled']"),
     'the CMS must honour the EXIF switch, not leave it to a file strict skins never run');
-$check(str_contains($runtime, "\$response['item']['exif'] = []"),
-    'the technical specifications must be emptied, not merely flagged');
+// The first repair emptied item['exif'] early in the runtime -- and the
+// field is REBUILT from the raw img_exif column later in the same function,
+// so the table kept rendering and I reported it fixed. The switch has to be
+// read where the field is made.
+$check(str_contains($runtime, '$exifOff = (($settings[' . "'" . 'exif_display_enabled' . "'" . '] ?? ' . "'1'" . ') !== ' . "'1'" . ')'),
+    'the EXIF switch must be read inside the closure that builds the field');
+$check(str_contains($runtime, '$exif = $exifOff ? [] : json_decode'),
+    'the raw column must not be decoded at all when the switch is off, or a '
+    . 'later line rebuilds what an earlier one cleared');
+$check(str_contains($runtime, '$item[' . "'technical'" . '] = []; $item[' . "'img_exif'" . '] = ' . "''" . ';'),
+    'the formatted block and the raw column must both be cleared with it');
 
 // --- the engine reaches the skins that need it --------------------------
 $declaring = 0;
