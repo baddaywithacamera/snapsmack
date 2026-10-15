@@ -66,6 +66,7 @@ foreach(['50-shades-of-noah-grey','52-card-pickup','full-monty','galleria','glid
   '50-shades-of-noah-grey'=>'50-shades-page-component.php',
   'galleria'=>'galleria-page-component.php',
   'impact-printer'=>'impact-printer-page-component.php',
+  'onyx'=>'onyx-page-component.php',
  ];
  $layout=(string)file_get_contents(isset($cmsComponents[$skin])
   ? $root.'/core/'.$cmsComponents[$skin]

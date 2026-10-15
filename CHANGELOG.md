@@ -21,7 +21,7 @@
 
 - **The menu-separator gate uses the measured current caller count.** Twenty-three skin layouts render the shared navigation component, and every one still proves either its own separator or an intentional no-separator treatment. The test no longer demands a twenty-fourth caller that is not present in the published 0.7.886D tree.
 
-- **ONYX's strict-feature regression follows its CMS-owned page component.** ONYX deliberately delegates its bounded public rendering to `core/onyx-page-component.php`; the gate now inspects that component and verifies its registered-asset mount, including the countdown engine, instead of stopping at the three-line delegating layout.
+- **ONYX's strict-feature and presentation regressions follow its CMS-owned page component.** ONYX deliberately delegates its bounded public rendering to `core/onyx-page-component.php`; the gates now inspect that component and verify both its registered-asset mount, including the countdown engine, and its generated presentation-style output instead of stopping at the three-line delegating layout.
 
 ## 0.7.888D - 2026-10-15 - One Rational Geo frame and machine-enforced rules
 
