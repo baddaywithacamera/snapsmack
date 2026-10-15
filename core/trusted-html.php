@@ -33,6 +33,8 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         'h1' => [], 'h2' => [], 'h3' => [], 'h4' => [], 'h5' => [], 'h6' => [],
         'div' => ['class', 'id', 'data-mosaic'], 'span' => ['class'], 'section' => ['class', 'id'],
         'figure' => ['class'], 'figcaption' => ['class'],
+        // Native, script-free disclosure controls used by CMS-authored FAQs.
+        'details' => ['class'], 'summary' => ['class'],
         // nav, and class on a. THE BOARD's prompt index is a <nav> of linked
         // poster cards built by pc_board_rounds_embed_html(). Reached through
         // the dedicated board page it rendered; reached through a static page
@@ -48,7 +50,11 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         // This attribute is emitted by the CMS shortcode parser, then consumed
         // by the shared SMACKTALK lightbox engine. It remains URL-validated
         // below just like src and href.
-        'img' => ['src', 'alt', 'title', 'width', 'height', 'loading', 'data-lightbox-src'],
+        // class is presentation-only and is required by CMS components such
+        // as the Board: its square crop lives on img.thumb. Stripping it made
+        // portrait source files expand the entire card despite the square
+        // contract in the registered Board stylesheet.
+        'img' => ['src', 'alt', 'title', 'class', 'width', 'height', 'loading', 'data-lightbox-src'],
     ];
     $document = new DOMDocument('1.0', 'UTF-8');
     $previous = libxml_use_internal_errors(true);
