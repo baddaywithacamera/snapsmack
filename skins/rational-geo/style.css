@@ -129,9 +129,25 @@ body:has(.rg-single) {
   overflow: hidden;
 }
 
-body:has(.rg-single) #page-wrapper {
-  height: 100dvh;
+/* The strict skin layout has no #page-wrapper.  Make the actual body, main,
+   article, image well, navigation and site footer one bounded flex column.
+   Previously .rg-photo-wrap consumed height:100% of the article before the
+   50px navigation row was laid out, pushing that row underneath the footer. */
+body:has(.rg-single) {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
+}
+
+body:has(.rg-single) > #scroll-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 70px;
+}
+
+body:has(.rg-single) > #system-footer {
+  flex: 0 0 auto;
+  margin-top: 0;
 }
 
 body {
@@ -380,7 +396,7 @@ small,
   align-items: center;
   width: 100%;
   background-color: transparent;
-  margin-top: 70px; /* Clear fixed header */
+  margin-top: 0; /* #scroll-stage clears the fixed header */
   position: relative;
   /* overflow: hidden clips image to photobox bounds; outline stays visible
      because photo-wrap padding (4vh) comfortably exceeds max outline width (20px) */
@@ -389,9 +405,9 @@ small,
   flex-grow: 1;
   flex-shrink: 1;
   min-height: 0;
-  /* Explicit height gives max-height:100% on .rg-image a value to resolve against.
-     Formula: 100dvh minus fixed header (70px) minus infobox (var). */
-  height: calc(100dvh - 70px - var(--infobox-height, 50px));
+  /* Fill the bounded main row. The image well and navigation divide this
+     height between them; neither may overflow behind the site footer. */
+  height: 100%;
   padding: 0 !important; /* override compiled blob until admin re-saves */
 }
 
@@ -403,7 +419,9 @@ small,
   max-width: var(--rg-canvas-width, 1400px); /* respects Content Width skin setting */
   margin-left: auto;
   margin-right: auto;
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
   /* Equal padding on all sides — keeps image dead-center */
   padding: 4vh 4vw;
   box-sizing: border-box;
@@ -1429,9 +1447,8 @@ input[type="reset"]:active {
     font-size: 1.4rem;
   }
 
-  #rg-photobox {
-    margin-top: 60px; /* match smaller header */
-    height: calc(100dvh - 110px); /* 60px header + 50px infobox */
+  body:has(.rg-single) > #scroll-stage {
+    margin-top: 60px;
   }
 
   .rg-single #rg-comments-drawer { top: 60px; }
@@ -1495,9 +1512,8 @@ input[type="reset"]:active {
     font-size: 0.75rem;
   }
 
-  #rg-photobox {
+  body:has(.rg-single) > #scroll-stage {
     margin-top: 50px;
-    height: calc(100dvh - 95px); /* 50px header + 45px infobox */
   }
 
   .rg-single #rg-comments-drawer { top: 50px; }
@@ -1604,9 +1620,8 @@ input[type="reset"]:active {
     font-size: 1rem;
   }
 
-  #rg-photobox {
+  body:has(.rg-single) > #scroll-stage {
     margin-top: 45px;
-    height: calc(100dvh - 90px); /* 45px header + 45px infobox */
   }
 
   .rg-single #rg-comments-drawer { top: 45px; }
