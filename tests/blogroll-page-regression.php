@@ -66,10 +66,26 @@ $check(str_contains($html, '>A Bad Day With A Camera</a>'), 'a peer is a link by
 $check(str_contains($html, 'href="https://baddaywithacamera.ca"'), 'the peer url must survive');
 $check(str_contains($html, 'rel="noopener noreferrer"'), 'outbound links must not leak the opener');
 $check(str_contains($html, 'Rust, ruin &amp; bad weather.'), 'the note must be escaped');
-$check(!str_contains($html, 'blogroll-peer-desc"></p>'), 'no empty note paragraph when there is no note');
-// The heading is uppercased by the stylesheet, so the CMS must not shout too.
-$check(str_contains($html, '>Photographers</h2>'),
-    'the CMS must not uppercase the heading; text-transform belongs to the skin');
+// These two assertions used to say the opposite, and they were wrong. Moving
+// blogroll.php's code into the CMS was meant to change where it lives, not
+// what it emits -- I took the chance to "improve" it instead, and the skins'
+// spacing and headings are written against the original. blogroll.php emitted
+// the note paragraph whether or not there was a note, and uppercased the
+// category in PHP. Both restored; both asserted the way it actually was.
+$check(str_contains($html, 'blogroll-peer-desc"></p>'),
+    'the note paragraph is emitted even when empty, as blogroll.php did -- the '
+    . 'skins measure their spacing from it being there');
+$check(str_contains($html, '>PHOTOGRAPHERS</h2>'),
+    'the category heading is uppercased in PHP, as blogroll.php did');
+
+// And the canvas, which is what holds the peers to the content column. Without
+// it IMPACT PRINTER ran them the full width of the window while the masthead
+// and menu stayed inside their column.
+$check(str_contains($html, '<div class="blogroll-canvas">'),
+    'the blogroll must be wrapped in the canvas blogroll.php wrapped it in');
+$check(substr_count($html, '<h1') === 0,
+    'the component must not add its own heading: twenty-six skins render one '
+    . 'already and would end up with two');
 
 $nasty = (string)snap_render_component('blogroll', ['groups' => [
     ['label' => '<script>x</script>', 'items' => [

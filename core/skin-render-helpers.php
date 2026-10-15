@@ -331,6 +331,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         if ($title === '') $title = (string)($site['site_name'] ?? '');
         $html = '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             . '<title>' . snap_escape_html($title) . '</title>'
+            . '<link rel="stylesheet" href="' . snap_escape_url((string)($site['base_style_url'] ?? '')) . '">'
             . '<link rel="stylesheet" href="' . snap_escape_url((string)($site['skin_style_url'] ?? '')) . '">';
         // Owner and skin styles are already trusted, constructed CMS values.
         $html .= snap_render_html($site['skin_custom_style'] ?? '');
@@ -521,34 +522,52 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         }
         $html .= '<div class="' . $prefix . '-archive-title">' . snap_escape_html($title) . '</div></a>';
     } elseif ($name === 'static-page') {
-        // A static page -- About, The Cameras, How It Works. It exists
-        // because this was fixed NINE separate times today, once per skin,
-        // each with its own hand-written markup, and the tenth, eleventh and
-        // twelfth were still broken. Every one of those skins bundled 'page'
-        // into the photograph branch, so a page came out wearing the photo
-        // layout; IMPACT PRINTER went further and put the words inside the
-        // photograph's INFO drawer, which is closed by default, so The
-        // Cameras was blank for weeks.
+        // The markup page.php emitted before this moved into the CMS, tag for
+        // tag and class for class. Moving code out of the skins was supposed
+        // to change WHERE it lives, not what it produces; my first version
+        // invented its own wrapper and classes and every difference cost Sean
+        // something real:
         //
-        // The classes are the ones the skins already style: .static-content,
-        // .static-page-title, .description. One place to fix, every skin
-        // fixed. The skin decides how it looks; the CMS decides what it is.
+        //   static-transmission belongs on <body>. I put it on this element,
+        //   and IMPACT PRINTER styles it as a fixed-height scrolling panel --
+        //   so the About page got a scrollbar down the middle of the page.
+        //   snap_body_class() gives it back to the body where it belongs.
+        //
+        //   page-hero--full|medium|small and --left|right|center and
+        //   --shadow are what float the photograph beside the text. I emitted
+        //   a bare "page-hero", so the columns collapsed into one. The runtime
+        //   has bounded these three fields all along; I simply never read them.
+        //
+        //   <div class="description">, not a <main>, and no e-content: the
+        //   skins' rules are written against the original.
         $item = is_array($data['item'] ?? null) ? $data['item'] : [];
         $title = (string)($item['title'] ?? $data['page_title'] ?? '');
         $body = $item['content'] ?? $item['description'] ?? $data['rendered_content'] ?? '';
         $hero = trim((string)($item['image_asset'] ?? ''));
         $base = defined('BASE_URL') ? (string)BASE_URL : '/';
-        $html = '<div class="static-content static-transmission">';
-        if ($title !== '') {
-            $html .= '<h1 class="static-page-title">' . snap_escape_html($title) . '</h1>';
-        }
+
+        $html = '<div class="static-content">'
+            . '<h1 class="static-page-title">' . snap_escape_html($title) . '</h1>';
+
         if ($hero !== '') {
-            $html .= '<div id="photobox" class="page-hero"><div class="main-photo">'
+            $size = in_array(($item['image_size'] ?? ''), ['medium', 'small'], true)
+                ? (string)$item['image_size'] : 'full';
+            $align = in_array(($item['image_align'] ?? ''), ['left', 'right'], true)
+                ? (string)$item['image_align'] : 'center';
+            $shadow = !empty($item['image_shadow']) ? ' page-hero--shadow' : '';
+            $html .= '<div id="photobox" class="page-hero page-hero--' . $size
+                . ' page-hero--' . $align . $shadow . '">'
+                . '<div class="main-photo">'
                 . '<img src="' . snap_escape_url(rtrim($base, '/') . '/' . ltrim($hero, '/'))
-                . '" class="post-image" alt="' . snap_escape_attr($title) . '"></div></div>';
+                . '" class="post-image" alt="' . snap_escape_attr($title) . '">'
+                . '</div></div>';
         }
-        $html .= '<div class="description entry-content e-content">'
-            . snap_render_html($body) . '</div></div>';
+
+        $rendered = snap_render_html($body);
+        if (trim(strip_tags($rendered)) === '' && !str_contains($rendered, '<img')) {
+            $rendered = "<p class='dim'>No content signal found for this sector.</p>";
+        }
+        $html .= '<div class="description">' . $rendered . '</div></div>';
     } elseif ($name === 'blogroll') {
         // The markup blogroll.php has always emitted, class for class. The
         // skins already style .blogroll-canvas, .blogroll-category-block,
@@ -558,8 +577,17 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         // Gutter, Show Peer Description, Show Peer URL. Inventing different
         // names would have left every one of those controls doing nothing,
         // which is exactly how the About page lost its photograph frame.
+        // blogroll.php wrapped all of this in <div class="blogroll-canvas">
+        // with the heading inside it. I left the canvas out and let each skin
+        // supply its own wrapper, so on IMPACT PRINTER the peers ran the full
+        // width of the window while the masthead and the menu stayed inside
+        // their column. The canvas is what holds it to the content width.
         $groups = is_array($data['groups'] ?? null) ? $data['groups'] : [];
-        $html = '';
+        // The canvas only. blogroll.php also put the <h1> inside it, but
+        // twenty-six skins render their own heading before calling this, and
+        // emitting one here would give every one of them two. The canvas is
+        // the part that was missing and the part that holds the width.
+        $html = '<div class="blogroll-canvas">';
         foreach ($groups as $group) {
             if (!is_array($group)) continue;
             $items = is_array($group['items'] ?? null) ? $group['items'] : [];
@@ -571,10 +599,10 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 $peers .= '<div class="blogroll-peer"><div class="blogroll-peer-name">'
                     . '<a href="' . $url . '" target="_blank" rel="noopener noreferrer">'
                     . snap_escape_html($peer['name'] ?? $peer['url'] ?? '') . '</a></div>';
-                $note = trim((string)($peer['description'] ?? ''));
-                if ($note !== '') {
-                    $peers .= '<p class="blogroll-peer-desc">' . snap_escape_html($note) . '</p>';
-                }
+                // Always emitted, empty or not: blogroll.php did, and the
+                // skins' spacing is measured from it being there.
+                $peers .= '<p class="blogroll-peer-desc">'
+                    . snap_escape_html(trim((string)($peer['description'] ?? ''))) . '</p>';
                 $peers .= '<a class="blogroll-peer-url dim" href="' . $url
                     . '" target="_blank" rel="noopener noreferrer">'
                     . snap_escape_html($peer['url'] ?? '') . '</a></div>';
@@ -583,16 +611,21 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             $label = trim((string)($group['label'] ?? ''));
             $html .= '<div class="blogroll-category-block">';
             if ($label !== '') {
-                // The skin already sets text-transform:uppercase on this
-                // heading. Shouting in PHP as well is presentation leaking
-                // into the CMS, and it would stop a skin ever choosing
-                // otherwise -- blogroll.php did it and had to be matched by
-                // every stylesheet.
+                // blogroll.php uppercased this in PHP. I thought that was
+                // presentation leaking into the CMS and stopped doing it --
+                // but the job here is to emit what the skins were written
+                // against, not to improve it. Restored.
                 $html .= '<h2 class="blogroll-category-heading">'
-                    . snap_escape_html($label) . '</h2>';
+                    . snap_escape_html(strtoupper($label)) . '</h2>';
             }
             $html .= '<div class="blogroll-grid">' . $peers . '</div></div>';
+            $rendered = true;
         }
+        // blogroll.php's empty state, and the canvas has to be closed.
+        if (empty($rendered)) {
+            $html .= '<p class="dim">The network is currently offline. No peers found.</p>';
+        }
+        $html .= '</div>';
     } elseif ($name === 'footer') {
         $footer = is_array($data['footer'] ?? null) ? $data['footer'] : [];
         $parts = [];

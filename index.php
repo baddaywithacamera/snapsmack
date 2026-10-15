@@ -168,6 +168,12 @@ try {
     $_active_manifest = load_skin_manifest($active_skin);
     $_active_skin_version = preg_replace('/[^A-Za-z0-9._-]/', '', (string)($_active_manifest['version'] ?? ''));
     if ($_active_skin_version === '') $_active_skin_version = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';
+    // assets/css/public-base.css reaches the skins as bounded data, the same
+    // way their own stylesheet does. It cannot be a function call inside a
+    // template: the skin security gate blocks unescaped output there, and it
+    // blocked all twenty-six skins when I first tried it that way.
+    $_base_style_url = (defined('BASE_URL') ? BASE_URL : '/') . 'assets/css/public-base.css'
+        . (defined('SNAPSMACK_VERSION_SHORT') ? '?v=' . rawurlencode(SNAPSMACK_VERSION_SHORT) : '');
     $_active_skin_style_url = (defined('BASE_URL') ? BASE_URL : '/') . 'skins/' . rawurlencode($active_skin)
         . '/style.css?v=' . rawurlencode($_active_skin_version);
     $_active_variant = preg_replace('/[^a-z0-9_-]/', '', strtolower((string)($settings['active_skin_variant'] ?? '')));
@@ -218,6 +224,7 @@ try {
                     'favicon_url' => !empty($settings['favicon_url']) ? (preg_match('#^https?://#i', (string)$settings['favicon_url']) ? (string)$settings['favicon_url'] : (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['favicon_url'], '/')) : '',
                     'skin_slug' => (string)$active_skin,
                     'skin_style_url' => $_active_skin_style_url,
+            'base_style_url' => $_base_style_url,
                     'skin_variant_url' => $_active_skin_variant_url,
                     'skin_custom_style' => snapsmack_skin_custom_style($settings),
                     'skin_presentation' => snapsmack_skin_presentation($settings, (string)$active_skin),
@@ -323,6 +330,7 @@ try {
             'avatar_url' => !empty($settings['skin_avatar']) ? (defined('BASE_URL') ? BASE_URL : '/') . ltrim((string)$settings['skin_avatar'], '/') : '',
             'skin_slug' => (string)$active_skin,
             'skin_style_url' => $_active_skin_style_url,
+            'base_style_url' => $_base_style_url,
             'skin_variant_url' => $_active_skin_variant_url,
             'skin_custom_style' => snapsmack_skin_custom_style($settings),
             'skin_presentation' => snapsmack_skin_presentation($settings, (string)$active_skin),
