@@ -140,6 +140,15 @@ if ($declared !== '') {
         // runs it, and on 15 October nobody did. Server-side protection of the
         // released tag namespace is the only thing that would have refused
         // that push. Until that exists, treat this as a reminder, not a gate.
+        // The fleet, not one site. On 15 October a single-site guard sampled
+        // wateronthebrain.ca, found 0.7.891D, and allowed v0.7.892D to be
+        // force-moved -- while twelve other sites were already serving 892D.
+        $deployed = trim((string)@shell_exec('bash ' . escapeshellarg($root . '/tools/_build/deployed-version.sh') . ' 2>/dev/null'));
+        if ($deployed !== '' && $deployed !== 'UNKNOWN') {
+            $check($declared !== $deployed,
+                'the source declares ' . $declared . ', which is IN SERVICE on the fleet. '
+                . 'A deployed tag must never move. Open the next number.');
+        }
         $check($tagCommit === $headCommit,
             'the source declares ' . $declared . ', already tagged at '
             . substr($tagCommit, 0, 8) . ' while HEAD is ' . substr($headCommit, 0, 8)
