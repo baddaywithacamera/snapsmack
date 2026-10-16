@@ -11,6 +11,34 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.899D - 2026-10-16 - PARADE gets its colour-shifting borders back
+
+- **PARADE's animated flag-coloured tile rings are back.** The moving ring of
+  flag colour around each square grid tile disappeared in 0.7.837D and PARADE
+  has been showing plain tiles ever since. Three things were wrong at once.
+  The ring is a small empty element sitting on top of each tile, and when the
+  nine grid skins were converted to one shared template that element was left
+  out, along with the row and column numbers that tell the ring where it sits
+  in the grid. The engine looks for those, finds nothing and stops, so there
+  was no animation at all. Second, the BORDER WAVE section's own Animated Tile
+  Ring Thickness and Ring Opacity sliders were not reaching the stylesheet, so
+  moving them did nothing. Third, Ring Opacity was being handed to the engine
+  as a brightness floor — a setting of 100% told the engine to lift every flag
+  colour as bright as it goes, which turns the whole ring white, so even a
+  restored ring would have been an invisible white band on the flag's white
+  stripe. That floor is a fixed value again, the one PARADE shipped with, there
+  to stop the black stripe in the Progress and Two-Spirit flags reading as a
+  hard black band. Tile Corners set to "Round with thickness" now follows the
+  ring's thickness rather than the photograph frame's. PARADE is released as
+  1.2.47.
+
+  Measured in an offline harness with the real template, the real stylesheet
+  and the real engine, on a nine-tile Progress-flag grid: before, none of the
+  nine tiles had a ring; after, all nine are painted and all nine change colour
+  as the wave travels, five different colours across the grid at once, and none
+  white. Not yet seen on the live site — the skin has to be packaged and sent
+  out through SYSTEM UPDATES first.
+
 ## 0.7.898D - 2026-10-16 - PixelDroid can connect
 
 - **PixelDroid can now connect to a SnapSmack site.** PixelDroid asks for the Mastodon scopes `read write follow push` when it registers itself, and the site refused the whole registration because it only understands `read` and `write` — PixelDroid showed "Could not register the application with this server", while Pixelix, which asks only for `read write`, connected fine. The site now accepts the full Mastodon scope vocabulary (including the granular `read:…` / `write:…` forms) and grants only the read and write it actually implements. The out-of-band redirect `urn:ietf:wg:oauth:2.0:oob` used by desktop and command-line clients is accepted too, and shows the authorization code on screen to copy. The ALLOW and RETURN screens now say the name of the app that is connecting instead of always saying Pixelix.
