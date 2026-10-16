@@ -199,12 +199,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy']) && $fedup_r
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FED UP — FEDISTRUCTURE Installer</title>
-<link rel="stylesheet" href="https://snapsmack.ca/fedup.css">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#081220;color:#d8e3ed;font:15px/1.6 system-ui,sans-serif;min-height:100vh;display:grid;place-items:center;padding:24px}.card{width:min(650px,100%);border:1px solid #16406a;background:#101d29;padding:34px}h1{margin:0;color:#00ffff;letter-spacing:.12em;font-size:1.8rem}h1 span{color:#728293;font-weight:400}p{color:#9badbd}.status{margin:24px 0;padding:14px;border-left:3px solid #00ffff;background:#081522}.error{border-color:#ff4365;color:#ff98aa}.checks{list-style:none;padding:0}.checks li{border-bottom:1px solid #20303d;padding:8px 0;display:flex;justify-content:space-between}.ok{color:#57d163}.bad{color:#ff5a73}button{width:100%;margin-top:20px;padding:14px;border:0;background:#00ffff;color:#06111b;font-weight:800;letter-spacing:.1em;cursor:pointer}code{color:#00ffff}
+</style>
 </head>
 <body><main class="card">
 <h1>FED UP <span>/ FEDISTRUCTURE</span></h1>
 <p>Installs the signed service distribution for PHOTOFRI.DAY, APHOTOEVERY.DAY, MIRRORPROJECT.FYI, or SMACKCAST.</p>
-<p class="bootstrap-meta">Bootstrap: <strong class="bootstrap-version"><?php echo htmlspecialchars(FEDUP_BOOTSTRAP_VERSION, ENT_QUOTES, 'UTF-8'); ?></strong> · Channel: <strong class="bootstrap-track"><?php echo strtoupper($fedup_track); ?></strong><?php echo $fedup_track === 'dev' ? ' — current development build' : ' — frozen stable feed'; ?></p>
+<p style="font-size:.85rem;color:#728293;margin-top:-8px">Bootstrap: <strong style="color:#8cff66"><?php echo htmlspecialchars(FEDUP_BOOTSTRAP_VERSION, ENT_QUOTES, 'UTF-8'); ?></strong> · Channel: <strong style="color:#00ffff"><?php echo strtoupper($fedup_track); ?></strong><?php echo $fedup_track === 'dev' ? ' — current development build' : ' — frozen stable feed'; ?></p>
 <?php if ($fedup_error !== ''): ?><div class="status error"><?php echo $fedup_error; ?></div><?php endif; ?>
 <ul class="checks">
 <li><span>PHP 8.3+</span><strong class="<?php echo PHP_VERSION_ID >= 80300 ? 'ok' : 'bad'; ?>"><?php echo PHP_VERSION; ?></strong></li>
