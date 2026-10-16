@@ -36,6 +36,9 @@ h2 {
     padding-bottom: 3px;
     border-bottom: 1px solid #ddd;
 }
+@media print {
+    .page-break-before { break-before: page; }
+}
 p { margin: 0 0 9px; }
 strong { color: #111; }
 code {
