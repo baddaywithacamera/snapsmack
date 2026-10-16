@@ -59,10 +59,14 @@ if (!str_contains($css, '#rg-header {')
 if (!str_contains($css, '--static-content-width: 1040px;')) {
     throw new RuntimeException('RATIONAL GEO lost the original wide static-page and page-hero measure.');
 }
-if (!str_contains($layout, '$item[\'img_thumb_aspect\'] ?? $item[\'img_file\'] ?? $item[\'img_thumb_square\']')
-    || !str_contains($css, 'column-count: var(--grid-cols, 4)')
-    || !str_contains($css, 'height: auto;')) {
-    throw new RuntimeException('RATIONAL GEO archive no longer preserves its masonry layout and aspect thumbnails.');
+if (!str_contains($layout, "snap_render_component('wall-tile'")
+    || !str_contains($layout, 'class="scroll-wall-sentinel"')
+    || !str_contains($layout, "data-next=\"<?php echo snap_escape_attr(\$view['response']['next_page']); ?>\"")
+    || !str_contains($layout, 'class="scroll-wall ss-masonry h-feed"')
+    || !in_array('smack-lazyload', $manifest['require_scripts'] ?? [], true)
+    || !in_array('smack-columns', $manifest['require_scripts'] ?? [], true)
+    || !str_contains($css, '--ss-cols: var(--grid-cols, 4)')) {
+    throw new RuntimeException('RATIONAL GEO archive no longer preserves its endless native-aspect masonry wall.');
 }
 if (!str_contains($layout, "skin_presentation']['style")) {
     throw new RuntimeException('RATIONAL GEO does not emit its bounded compiled presentation stylesheet.');
