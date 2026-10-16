@@ -327,7 +327,7 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="entry-top">
                     <h3>Deliveries that landed on a web page counted as &ldquo;delivered&rdquo;</h3>
                     <span class="date">&ldquo;Wrong Door&rdquo;</span>
-                    <span class="state notwatch">Fixed &mdash; confirming</span>
+                    <span class="state watched">Watched working</span>
                 </div>
                 <p>Some follower records held an old, wrong delivery address that quietly rendered the site&rsquo;s homepage &mdash; a normal <code>200 OK</code>. The sender read that <code>200</code> as success, ticked the post off, deleted it from the queue, and the post simply vanished. This is the exact reason SnapSmack-to-SnapSmack followers never received the Photo Friday prompt cards while Mastodon and Pixelfed followers got them fine.</p>
                 <p>Now a success that comes back as a full web page is treated as a <em>failure</em> &mdash; &ldquo;not an inbox&rdquo; &mdash; and on that failure the sender re-fetches the follower&rsquo;s live address, rewrites the wrong one, and knocks on the right door next pass. No manual unfollow-and-refollow needed. The lesson underneath it drives everything below: <strong>a <code>2xx</code> proves the pipe carried the bytes, never that the other end kept the post.</strong></p>
@@ -404,11 +404,11 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="entry-top">
                     <h3>The scheduled jobs looked registered while pointing at yesterday&rsquo;s door</h3>
                     <span class="date">the cron drift</span>
-                    <span class="state notwatch">Fixed &mdash; confirming</span>
+                    <span class="state watched">Watched working</span>
                 </div>
                 <p>Federation quietly stopped across the whole fleet for about two days, and it looked like several separate features breaking at once &mdash; new follows got no catalogue, posts never pushed, the version check went silent. It was one cause: the scheduled jobs still existed, but the command each one ran pointed at a script path that no longer existed after a deploy moved the install directory. A check that only asks &ldquo;is the job registered?&rdquo; said yes &mdash; the job was registered to run nothing.</p>
-                <p>The command-level checker (not just a heartbeat) exposed it, the jobs were re-registered across the hub and all 24 spokes, and a permanent self-heal shipped so a deploy re-points every job to the current path. The repair was watched working &mdash; a hub run completed and a backfill test landed end to end &mdash; but the durable fix isn&rsquo;t deployed fleet-wide yet.</p>
-                <p class="next-line"><strong>Corrected 2026-09-14:</strong> the re-registration across the 24 spokes did not hold. Every site on a box writes the same tag into the same crontab, so each spoke&rsquo;s registration replaced the one before it; one site ended up scheduled. See &ldquo;Last One In&rdquo; above (OPAUDIT 014).</p>
+                <p>The command-level checker (not just a heartbeat) exposed it, the jobs were re-registered across the hub and all 24 spokes, and a permanent self-heal shipped so a deploy re-points every job to the current path. The original repair completed and its backfill was proven end to end.</p>
+                <p class="watched-line"><strong>Closed 2026-09-14:</strong> the first re-registration did not hold because every site on a box wrote the same tag into the same crontab, leaving only the last site scheduled. OPAUDIT 014 replaced that broken registration model in 0.7.714D. After fleet-wide deployment, the scheduler-only monitor showed 25 of 25 sites green on all three jobs, hub included.</p>
                 <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-011-cron-registered-but-pointing-at-old-paths.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 

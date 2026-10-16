@@ -236,6 +236,24 @@ h2:last-of-type + p { break-inside: avoid; page-break-inside: avoid; }
     and the difference is presented to the owner before substitution. Architecture remains
     subordinate to the product people already use.</p>
 
+    <h2>13. October 15 addendum: inline CSS crossed the skin boundary</h2>
+    <p>A fleet source audit found 27 inline <code>style</code> attributes across 12 schema-v2
+    skin templates: AURORA, GAME ON, GLIDE, HEURISTIC, INSTANT CAMERA, JIVE TURKEY, PARADE,
+    RATIONAL GEO, SLICKR, SLIDERS, SUDDEN IMPACT, and THE GRID. This repeated the same category
+    of control failure: an explicit presentation boundary existed, but neither the work nor
+    the package gate enforced it.</p>
+    <p>The source remediation removes those style attributes without discarding the saved
+    values they carried. Templates now expose bounded frame and geometry values as inert
+    <code>data-*</code> attributes; each owning skin's external <code>style.css</code> consumes
+    those values and retains fallback defaults. CMS view models now supply structured frame
+    presentation data rather than serialized CSS declarations. Fixed SLICKR geometry moved
+    directly into its stylesheet.</p>
+    <p>A repository regression now scans every PHP-capable file below <code>skins/</code> and
+    fails if a style element or HTML style attribute returns. Grid-family render tests also
+    assert that per-image frame data survives the handoff and that rendered skin routes do not
+    emit style attributes. This entry records source remediation and test evidence only. It
+    does not claim packaging, deployment, or live cross-browser verification.</p>
+
 </body>
 </html>
 <!-- ===== SNAPSMACK EOF ===== -->
