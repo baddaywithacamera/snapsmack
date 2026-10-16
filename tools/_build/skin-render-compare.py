@@ -2,6 +2,7 @@
 """
 Prove a skin change did not alter what the browser renders.
 
+    stability: python tools/_build/skin-render-compare.py stability <url>
     capture:  python tools/_build/skin-render-compare.py capture <url> <out.json.gz> [--label NAME]
     compare:  python tools/_build/skin-render-compare.py compare <before.json.gz> <after.json.gz>
     selftest: python tools/_build/skin-render-compare.py selftest
@@ -44,6 +45,12 @@ ELEMENT IDENTITY is the structural path (nth-child chain), never the class
 list, because class names are among the things being changed. Tag and classes
 are recorded as DATA, so a rename shows up as a difference instead of silently
 re-matching.
+
+BASELINES NEED FIXED FIXTURE CONTENT, NOT LIVE POSTS. Run `stability <url>`
+before trusting any URL as a baseline. Measured on craptasti.ca: two captures
+of the SAME unchanged page differ in 330 places, because JIVE TURKEY
+randomises its tile colours and sizes per request. A comparison against a
+live feed reports differences that have nothing to do with the change.
 
 NOT PROOF OF BEHAVIOUR. This captures rendering. Scripted interaction -- open
 the menu, go to the next photograph, open the lightbox -- is a separate pass
@@ -198,9 +205,17 @@ FREEZE_JS = r"""
 
 SETTLE_JS = r"""
 (async () => {
-  if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) {} }
-  await Promise.all(Array.from(document.images).map(img =>
-    img.complete ? null : new Promise(res => { img.onload = img.onerror = res; })));
+  // Every wait is capped. The first version awaited onload/onerror for every
+  // image with no deadline, and a lazy image that never loads meant the
+  // promise never settled: a capture against a live site hung for over eight
+  // minutes and produced no file, no error and no clue. A wait without a
+  // timeout is a hang waiting to happen.
+  const cap = (p, ms) => Promise.race([p, new Promise(r => setTimeout(r, ms))]);
+  if (document.fonts && document.fonts.ready) {
+    try { await cap(document.fonts.ready, 5000); } catch (e) {}
+  }
+  await cap(Promise.all(Array.from(document.images).map(img =>
+    img.complete ? null : new Promise(res => { img.onload = img.onerror = res; }))), 15000);
   await new Promise(r => setTimeout(r, 400));
   return true;
 })()
@@ -283,7 +298,21 @@ def capture(url, out_path, label="", extra_css=""):
                     f"s.textContent={json.dumps(extra_css)};"
                     "document.head.appendChild(s);return true})()")
                 time.sleep(0.3)
-            snapshot["viewports"][f"{w}x{h}"] = chrome.evaluate(CAPTURE_JS)
+            shot = chrome.evaluate(CAPTURE_JS)
+            # A capture that produced nothing is a FAILURE, not a baseline.
+            # An empty or near-empty snapshot compared against anything later
+            # reports "no difference", which is the most dangerous possible
+            # answer from a tool whose whole job is to notice differences.
+            if not isinstance(shot, dict):
+                raise SystemExit(f"capture failed at {w}x{h}: no data returned")
+            if len(shot.get("elements") or {}) < 10:
+                raise SystemExit(f"capture failed at {w}x{h}: only "
+                                 f"{len(shot.get('elements') or {})} elements -- "
+                                 f"the page did not render")
+            if not shot.get("sheets"):
+                raise SystemExit(f"capture failed at {w}x{h}: the page loaded no "
+                                 f"stylesheets; a render without CSS proves nothing")
+            snapshot["viewports"][f"{w}x{h}"] = shot
         with gzip.open(out_path, "wt", encoding="utf-8") as fh:
             json.dump(snapshot, fh)
         total = sum(len(v["elements"]) for v in snapshot["viewports"].values())
@@ -452,6 +481,38 @@ def main():
         print(__doc__.strip().split("\n\n")[1])
         return 2
     mode = sys.argv[1]
+    if mode == "stability":
+        # Capture the same unchanged URL twice and report whether it renders
+        # deterministically. A page that does not is unusable as a baseline.
+        if len(sys.argv) < 3:
+            print("stability <url>")
+            return 2
+        url = sys.argv[2]
+        tmp = tempfile.mkdtemp(prefix="snap-stability-")
+        try:
+            a, b = os.path.join(tmp, "a.json.gz"), os.path.join(tmp, "b.json.gz")
+            capture(url, a, label="stability A")
+            capture(url, b, label="stability B")
+            diffs = compare(a, b)
+            if not diffs:
+                print("")
+                print("STABLE: two captures of the unchanged page are identical. "
+                      "This URL may be used as a baseline.")
+                return 0
+            print("")
+            print(f"NOT STABLE: {len(diffs)} difference(s) between two captures of "
+                  f"the SAME unchanged page.")
+            for line in diffs[:6]:
+                print("  - " + line)
+            print("")
+            print("This URL CANNOT be used as a baseline. The page renders")
+            print("differently per request -- randomised tile colours, rotating")
+            print("content, or a shuffled feed. Point the comparator at fixed")
+            print("fixture content instead of live posts.")
+            return 1
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
     if mode == "capture":
         if len(sys.argv) < 4:
             print("capture <url> <out.json.gz> [--label NAME]")
