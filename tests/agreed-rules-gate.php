@@ -40,7 +40,7 @@ $check = static function (bool $ok, string $what) use (&$failures): void {
 // scanned skins/ only; the three CMS renderers that draw skins hold the rest.
 // A budget set to a hoped-for number is a gate that gets switched off, so this
 // is the truth on the day, and it may only ever go down.
-$INLINE_STYLE_BUDGET = 30;
+$INLINE_STYLE_BUDGET = 28;
 
 $templates = array_merge(
     glob($root . '/skins/*/layout.php') ?: [],
