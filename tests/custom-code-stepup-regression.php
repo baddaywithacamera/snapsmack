@@ -40,12 +40,32 @@ $check($src !== '', 'smack-scripts.php not found');
 // --- the gate exists and uses the shared mechanism ----------------------
 $check(str_contains($src, "require_once 'core/reauth.php'"),
     'must use core/reauth.php, the same step-up as SMACKBACK -- not a new one');
-$check(str_contains($src, "reauth_window_active('owner_custom_code')"),
-    'the save path must require an active step-up window');
-$check(str_contains($src, "reauth_grant_window('owner_custom_code', 10)"),
-    'authorizing must grant a bounded window, not a permanent flag');
-$check(str_contains($src, 'reauth_verify($pdo'),
-    'the window must be granted only after password and 2FA are verified');
+// EVERY SAVE, no window. Sean: "we should not leave an opening for tampering
+// with adding JS. per save." A ten-minute grace period after one legitimate
+// save is ten minutes in which a borrowed session, an XSS or a second open
+// tab can install a payload without presenting a credential. Saving custom
+// code is rare, so the window bought nothing and left the door ajar.
+// Checked against the CODE, not the text. A substring search passed while
+// the call sat commented out -- the third test of mine today to report
+// success over a change that had removed the thing it was checking.
+$uncommented = preg_replace('#//[^
+]*#', '', preg_replace('#/\*.*?\*/#s', '', $src));
+$gateBlock = '';
+if (preg_match('/if \(\$needs_stepup\) \{(.*?)
+    \}/s', $uncommented, $gm)) {
+    $gateBlock = $gm[1];
+}
+$check($gateBlock !== '', 'the save path must contain an if ($needs_stepup) block');
+$check(str_contains($gateBlock, 'reauth_verify($pdo'),
+    'reauth_verify must be CALLED inside the gate, not merely mentioned');
+$check(preg_match('/if \(!\$re\[.ok.\]\)/', $gateBlock) === 1,
+    'a failed verification must stop the save');
+$check(str_contains($gateBlock, 'exit;'),
+    'a failed verification must exit, not fall through to the write');
+$check(!str_contains($src, 'reauth_window_active'),
+    'there must be NO authorization window: credentials are required per save');
+$check(!str_contains($src, 'reauth_grant_window'),
+    'nothing may grant a window for this scope');
 
 // --- it gates the right thing -------------------------------------------
 $check(str_contains($src, '$needs_stepup = ($custom_enabled === \'1\') && (!$was_enabled || $code_changed)'),
@@ -60,7 +80,8 @@ $check($offPath !== false && !preg_match('/\$needs_stepup\s*=\s*true/', $src),
     'disabling must never require step-up');
 
 // --- the operator can actually authorize --------------------------------
-$check(str_contains($src, 'name="scripts_stepup"'), 'the page must offer an authorize form');
+$check(str_contains($src, 'name="owner_custom_code_enabled"'),
+    'the enable switch must still be on the page');
 $check(str_contains($src, 'name="reauth_password"') && str_contains($src, 'name="reauth_totp"'),
     'the form must collect both the password and the 2FA code');
 $check(str_contains($src, 'csrf_verify();'), 'the step-up POST must still verify CSRF');

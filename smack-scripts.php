@@ -26,22 +26,6 @@ require_once 'core/auth-smack.php';
 
 define('CUSTOM_HEAD_FILE', __DIR__ . '/data/custom-head.html');
 
-// AUTHORIZE CUSTOM CODE — step-up (password + 2FA) grants a 10-minute window.
-// Same pattern as SMACKBACK's file actions; see core/reauth.php.
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['scripts_stepup'] ?? '') === '1') {
-    csrf_verify();
-    require_once 'core/reauth.php';
-    $re = reauth_verify($pdo, $_POST['reauth_password'] ?? '', $_POST['reauth_totp'] ?? '');
-    if ($re['ok']) {
-        reauth_grant_window('owner_custom_code', 10);
-        $m = 'Custom code authorized for 10 minutes.';
-    } else {
-        $m = 'Authorization failed: ' . $re['error'];
-    }
-    header('Location: smack-scripts.php?msg=' . urlencode($m));
-    exit;
-}
-
 if (isset($_POST['save_scripts'])) {
 
     csrf_verify();
@@ -68,10 +52,23 @@ if (isset($_POST['save_scripts'])) {
     $code_changed = $head_scripts !== (file_exists(CUSTOM_HEAD_FILE) ? file_get_contents(CUSTOM_HEAD_FILE) : '');
     $needs_stepup = ($custom_enabled === '1') && (!$was_enabled || $code_changed);
 
-    if ($needs_stepup && !reauth_window_active('owner_custom_code')) {
-        header('Location: smack-scripts.php?msg=' . urlencode(
-            'Authorize with your password and 2FA before enabling or changing custom code.'));
-        exit;
+    if ($needs_stepup) {
+        // EVERY SAVE. No window, no grace period. Sean: "we should not leave
+        // an opening for tampering with adding JS. per save."
+        //
+        // A ten-minute window would mean that for ten minutes after one
+        // legitimate save, anything able to post this form -- a borrowed
+        // session, an XSS, a second tab left open on a shared machine --
+        // could install a payload without presenting a credential. Saving
+        // custom code is a once-in-a-while act, so the window bought
+        // convenience nobody needed and left the door open.
+        $re = reauth_verify($pdo, $_POST['reauth_password'] ?? '', $_POST['reauth_totp'] ?? '');
+        if (!$re['ok']) {
+            header('Location: smack-scripts.php?msg=' . urlencode(
+                'Not saved. Enabling or changing custom code needs your password and 2FA '
+                . 'on every save: ' . $re['error']));
+            exit;
+        }
     }
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('owner_custom_code_enabled', ?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$custom_enabled]);
 
@@ -128,29 +125,7 @@ include 'core/sidebar.php';
             <div class="alert"><?php echo htmlspecialchars((string)$_GET['msg'], ENT_QUOTES, 'UTF-8'); ?></div>
     <?php endif; ?>
 
-    <?php require_once 'core/reauth.php'; $scripts_stepup_active = reauth_window_active('owner_custom_code'); ?>
-
-        <?php if (!$scripts_stepup_active): ?>
-        <form method="POST" class="box">
-            <?php csrf_field(); ?>
-            <input type="hidden" name="scripts_stepup" value="1">
-            <p class="dim">Enabling owner custom code, or changing it while enabled, needs your
-            password and 2FA. Authorization lasts 10 minutes. Turning it OFF never requires this.</p>
-            <div class="sb-stepup-row">
-                <div class="sb-stepup-field">
-                    <label for="sc-reauth-password">Your password</label>
-                    <input type="password" id="sc-reauth-password" name="reauth_password" placeholder="Password" autocomplete="off">
-                </div>
-                <div class="sb-stepup-field sb-stepup-field--code">
-                    <label for="sc-reauth-totp">2FA code</label>
-                    <input type="text" id="sc-reauth-totp" name="reauth_totp" placeholder="123456" inputmode="numeric" autocomplete="off">
-                </div>
-                <button type="submit" class="btn-smack">AUTHORIZE</button>
-            </div>
-        </form>
-        <?php else: ?>
-        <p class="dim">&#10003; Custom code authorized for the next few minutes.</p>
-        <?php endif; ?>
+    <?php require_once 'core/reauth.php'; ?>
 
 <form method="POST">
         <?php csrf_field(); ?>
@@ -158,6 +133,18 @@ include 'core/sidebar.php';
         <!-- HEAD SCRIPTS -->
         <div class="box">
             <label><input type="checkbox" name="owner_custom_code_enabled" value="1"<?php echo $custom_enabled ? ' checked' : ''; ?>> ENABLE OWNER CUSTOM CODE</label>
+                <div class="sb-stepup-row">
+                    <div class="sb-stepup-field">
+                        <label for="sc-reauth-password">Your password</label>
+                        <input type="password" id="sc-reauth-password" name="reauth_password" placeholder="Required to enable or change" autocomplete="off">
+                    </div>
+                    <div class="sb-stepup-field sb-stepup-field--code">
+                        <label for="sc-reauth-totp">2FA code</label>
+                        <input type="text" id="sc-reauth-totp" name="reauth_totp" placeholder="123456" inputmode="numeric" autocomplete="off">
+                    </div>
+                </div>
+                <p class="dim">Required on <strong>every save</strong> that enables custom code or
+                changes it while enabled. Not required to turn it off.</p>
             <p class="dim"><strong>This is arbitrary code execution in every visitor's browser.</strong> It is off by default, belongs to the site owner—not a skin—and relaxes the public script policy only while enabled. Saved code is retained when disabled.</p>
             <div class="lens-input-wrapper">
                 <label>HEAD SCRIPTS <span class="field-tip" data-tip="Injected before &lt;/head&gt; on every public page. Use for analytics, tracking pixels, or universal loaders (e.g. MailerLite, Google Analytics).">ⓘ</span></label>
