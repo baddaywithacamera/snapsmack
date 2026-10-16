@@ -1530,33 +1530,6 @@ p.comment-form-author { margin-right: 5%; }
 
 .archive-description p:last-child { margin-bottom: 0; }
 
-/* Archive Navigation */
-
-.archive-nav {
-    color: #2d2d2d;
-    margin-top: 60px;
-    text-align: center;
-}
-
-.archive-nav span { font-size: 32px; }
-
-.archive-nav a {
-    color: #fff;
-    display: inline-block;
-}
-
-.archive-nav a:hover { color: var(--alfred-accent); }
-
-.archive-nav .sep {
-    margin: 0 20px;
-    font-weight: 300;
-    font-size: 40px;
-    position: relative;
-    bottom: -4px;
-    -webkit-font-smoothing: antialiased;
-}
-
-
 /* -------------------------------------------------------------------------- */
 /*  13. Search Form                                                            */
 /* -------------------------------------------------------------------------- */
@@ -1657,9 +1630,6 @@ p.comment-form-author { margin-right: 5%; }
 /* -------------------------------------------------------------------------- */
 /*  16. No-JS Fixes                                                            */
 /* -------------------------------------------------------------------------- */
-
-
-.no-js .archive-nav { display: block; }
 
 
 /* -------------------------------------------------------------------------- */
@@ -1947,9 +1917,6 @@ p.comment-form-author { margin-right: 5%; }
         margin-right: 0;
     }
 
-    /* Pagination */
-
-    .archive-nav    { margin-top: 40px; }
     .archive-header { margin-bottom: 40px; }
 
     /* Widgets */

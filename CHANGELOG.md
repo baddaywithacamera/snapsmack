@@ -13,6 +13,12 @@
 
 ## 0.7.896D - 2026-10-16 - Six hard-coded styles out of the templates
 
+- **SLICKR moves off FJGallery and onto SnapSmack's row wall.** Its landing, archive, hashtag, and search photograph walls now use the CMS-owned `smack-rows` engine: native-aspect, uncropped, justified rows with endless loading on bounded batches. The existing row-height control now feeds the shared engine. SLICKR is released as 1.0.37.
+
+- **TILEZ restores its endless landing feed using SCROLL's exact wall contract.** The visible `1 / 2` pager is removed. TILEZ now emits SCROLL's sentinel and its already-declared CMS columns engine loads subsequent post batches automatically while retaining TILEZ's existing masonry presentation. TILEZ is released as 0.2.65.
+
+- **Automatic three-photo mosaics do not repeat the immediately preceding arrangement.** Explicitly selected arrangements remain untouched; automatic triplets retain their chosen arrangement across resize reflows.
+
 - **Three skins stop carrying styling inside their HTML.** SLICKR's two album grids were each repeating `--justified-gap:4px;--justified-row-height:240px` in the tag itself, the exact values its own stylesheet already sets, so removing them changes nothing on screen. 50 SHADES and ONYX hid their inactive archive pane with `style="display:none"`; the pane is now marked `data-pane-hidden="1"` and each skin's own stylesheet decides what that means, which is the rule that skins own their presentation. SLICKR is released as 1.0.36, 50 SHADES as 1.7.2, ONYX as 0.1.22.
 
 - **The rules gate ratchets down from 36 inline styles to 30.** The count may fall, never rise. The thirty that remain take runtime values and are not safe to touch without understanding each one.
