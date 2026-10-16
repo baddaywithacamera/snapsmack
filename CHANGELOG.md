@@ -13,6 +13,8 @@
 
 ## 0.7.897D - 2026-10-16 - SLICKR wall presentation controls
 
+- **PixelDroid can now connect to a SnapSmack site.** PixelDroid asks for the Mastodon scopes `read write follow push` when it registers itself, and the site refused the whole registration because it only understands `read` and `write` — PixelDroid showed "Could not register the application with this server", while Pixelix, which asks only for `read write`, connected fine. The site now accepts the full Mastodon scope vocabulary (including the granular `read:…` / `write:…` forms) and grants only the read and write it actually implements. The out-of-band redirect `urn:ietf:wg:oauth:2.0:oob` used by desktop and command-line clients is accepted too, and shows the authorization code on screen to copy. The ALLOW and RETURN screens now say the name of the app that is connecting instead of always saying Pixelix.
+
 - **SLICKR can hide hover titles and no longer flashes its unsized wall.** Skin Admin now places the row height, archive layout, and new Photo Titles on Hover control together under ARCHIVE & LANDING. The photograph wall remains hidden only until the CMS row engine applies its geometry, preventing full-size images from appearing before they settle into rows. SLICKR is released as 1.0.38.
 
 ## 0.7.896D - 2026-10-16 - Six hard-coded styles out of the templates
