@@ -17,8 +17,8 @@
         <tr><td class="k">First observed</td><td>2026-09-07, surfaced while repairing the cron outage (OPAUDIT 011). Fleet on 0.7.656D.</td></tr>
         <tr><td class="k">Theme</td><td>Discovery is not connection &mdash; an invariant that was never implemented.</td></tr>
         <tr><td class="k">Surfaces</td><td>The 25-site hub/spoke all-to-all peer-follow mesh; onboarding a new blog to the fleet.</td></tr>
-        <tr><td class="k">State</td><td><span class="state-chip chip-confirm">Fixed — confirming</span> &nbsp; The mesh is fully repaired and watched working; the permanent auto-reconciler shipped as v0.7.657D but is not yet deployed.</td></tr>
-        <tr><td class="k">Watched live?</td><td><strong>Yes, for the repair</strong> — all 600 peer relationships now exist, first full audit found zero missing, and backfill was proven end to end (see §6). The permanent reconciler awaits deployment.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-confirm">Fixed — confirming</span> &nbsp; The mesh repair was watched working and the permanent auto-reconciler is deployed; a later explicit zero-missing/zero-pending fleet reading is not recorded here.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes, for the repair</strong> — all 600 peer relationships existed, the first full audit found zero missing, and backfill was proven end to end (see §6). Deployment is no longer outstanding; only a recorded post-deploy mesh audit remains.</td></tr>
         <tr><td class="k">Reporter</td><td>Sean + Codex (established the exact missing-edge pattern, ran the live recovery, shipped the reconciler).</td></tr>
         <tr><td class="k">Related</td><td>OPAUDIT 011 (the cron outage that exposed this); OPAUDIT 006 (the intentionally-stale external relay row, not a fleet peer).</td></tr>
         <tr><td class="k">Publication</td><td>Public. No exploitable detail.</td></tr>
@@ -66,11 +66,11 @@
     peers (one and two posts) confirmed both accounts and their historical posts appeared in the
     hub&rsquo;s home feed &mdash; proving Follow, Accept, backfill-job creation, paced delivery, inbound
     ingest, and reader display all work end to end once the follow exists. All 600 directed peer rows
-    now exist, and the first full audit found zero missing on every site. What remains: the permanent
-    auto-reconciler is shipped as <code>v0.7.657D</code> but not yet deployed, and some Accepts are still
-    pending on 0.7.656D (inline-Accept fallbacks queued behind large backfills &mdash; the exact thing
-    657D reprioritises). So this stays <span class="state-chip chip-confirm">Fixed — confirming</span>
-    until 657D is live and every site reports zero missing and zero pending fleet peers.</p>
+    now exist, and the first full audit found zero missing on every site.</p>
+    <p><strong>Status update, 2026-10-15:</strong> the 0.7.657D reconciler is deployed; the stale statement
+    that deployment was still pending is corrected. This remains
+    <span class="state-chip chip-confirm">Fixed — confirming</span> because this report does not contain a
+    later, explicit fleet reading of zero missing and zero pending peers after that deployment.</p>
 
     <h2>7. Eyeball next</h2>
     <p>After 657D deploys, verify all 25 sites report zero missing and zero pending fleet peers &mdash;
