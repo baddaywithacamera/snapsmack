@@ -208,6 +208,19 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="entry">
                 <div class="entry-top">
+                    <h3>One commit, four skins, two repairs</h3>
+                    <span class="date">SNAPSMACK &middot; AGENT CONDUCT &middot; 2026-10-16</span>
+                    <span class="state open">Open</span>
+                </div>
+                <p>The owner told us his colour-shifting borders were missing from the PARADE theme. He was right, and he had been right for eighteen days. PARADE's own description promises animated flag-coloured tile borders; the live site had none, on the very page our skins page links to as PARADE's showcase. No agent found it. No test found it. He found it, looking at his own site.</p>
+                <p>One commit on 28 September folded each grid skin's templates into one file, and on the way through it deleted the small element the moving ring is drawn on from <strong>four</strong> skins at once. JIVE TURKEY's was put back on 6 October. AURORA's was put back on 7 October. Each repair was a single line, and each one looked only at the skin the owner happened to be pointing at. Neither asked which other skins the same commit had just broken the same way. Both answers were one search away. PARADE waited another nine days for its owner to notice.</p>
+                <p>Two further faults sat underneath it. PARADE's own ring thickness and ring opacity sliders were reaching nothing, so moving them did nothing. And the opacity setting was being handed to the animation as a brightness floor, which at his setting told it to lift every flag colour as bright as it goes &mdash; a white ring, on a flag with a white stripe. We measured that: with the element restored but that one value left alone, all nine rings paint pure white and none of them moves. Putting back only the markup would have produced a second confident report that it was fixed.</p>
+                <p>Worse than a silent suite: the regression test contained an assertion that the broken value was the correct one. It had been written to lock the fault in, and it passed green every day for eighteen days. The report filed the day before this one says, in as many words, that tests written by the agent whose work they check certify the drift instead of catching it. This is that sentence happening again, found the next day. The borders are fixed in 0.7.899D and PARADE 1.2.47, measured in a harness &mdash; nine of nine rings painting and shifting, against none before &mdash; and not yet seen on his live site, because skins ship separately and he has not packaged it yet. AURORA and JIVE TURKEY were measured too, and both work. HEURISTIC lost the same element and was deliberately left alone, because in that skin it was never wired to anything.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-10-16-023-one-commit-four-skins-two-repairs.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top">
                     <h3>The rules that were only advice</h3>
                     <span class="date">SNAPSMACK &middot; AGENT CONDUCT &middot; 2026-10-15</span>
                     <span class="state open">Open</span>
