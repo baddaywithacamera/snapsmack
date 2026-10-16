@@ -483,6 +483,7 @@ body[data-frame="none"]   { --rg-hero-colour: transparent; }
 
 /* Single view: infobox in-flow (not fixed), snaps to bottom via flex layout */
 .rg-single #infobox {
+  width: 100%;
   height: var(--infobox-height, 50px);
   flex-shrink: 0;
   background-color: var(--rg-bg-chrome);
