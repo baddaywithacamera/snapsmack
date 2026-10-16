@@ -283,6 +283,19 @@ a { color: inherit; }
     margin: 0 auto;
     padding-bottom: 0;
 }
+
+/* The wall carries TWO classes -- scroll-wall and, from the layout control,
+   either ss-masonry or ss-square-wall. .ss-masonry below sets width:100% and
+   sits later in this file at equal specificity, so it won the cascade and the
+   side margins disappeared: measured 1585px in a 1600px viewport, where 90%
+   is 1426px. Sean's reference has wide margins either side.
+   Naming both classes raises specificity so the owner's Canvas Width control
+   is honoured again. Measured after: 1426px, 89% of the viewport, centred. */
+.scroll-wall.ss-masonry,
+.scroll-wall.ss-square-wall {
+    width: var(--scroll-canvas-pct, 90%);
+    margin: 0 auto;
+}
 .scroll-browse-tools {
     display: flex;
     align-items: center;
