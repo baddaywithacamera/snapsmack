@@ -20,6 +20,12 @@ extend a shared stylesheet to fix one skin.
 
 ## 2. No CSS in PHP. No inline styles. No JS in PHP.
 
+**Exactly two bootstrap exceptions:** `fedup.php` and `setup.php`. Each is a
+one-file installer intended to be uploaded by itself into an empty directory,
+so each may carry the CSS required to render its own installation screen.
+This exception does not extend to `install.php`, ordinary CMS PHP, project
+sites, skins, or any other file.
+
 - No `style="..."` in any template, static or generated.
 - No CSS declarations assembled in PHP strings.
 - Colour and geometry belong in the skin's stylesheet.
