@@ -25,6 +25,10 @@ $expect(
     'RATIONAL GEO image well must yield space to the navigation row.'
 );
 $expect(
+    preg_match('/\.rg-single\s+#infobox\s*\{[^}]*width:\s*100%;/s', $css) === 1,
+    'RATIONAL GEO single-photo navigation must span the full viewer width.'
+);
+$expect(
     preg_match('/body:has\(\.rg-single\) > #system-footer\s*\{[^}]*display:\s*none;/s', $css) === 1,
     'RATIONAL GEO solo view must keep the system footer off the photograph screen.'
 );
