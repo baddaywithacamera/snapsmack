@@ -152,6 +152,7 @@
         grid.style.position = 'relative';
         grid.style.display = 'block';
         grid.style.height = total + 'px';
+        grid.setAttribute('data-ss-rows-ready', '1');
 
         if (anyProvisional) grid.dataset.ssProvisional = '1';
         else if (grid.dataset.ssProvisional) delete grid.dataset.ssProvisional;

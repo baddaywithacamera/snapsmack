@@ -124,7 +124,10 @@ a:hover { color: var(--sl-link-hover); }
   padding: var(--justified-gap) !important;
   margin: 0 auto;
   display: block;
+  visibility: hidden;
 }
+
+#justified-grid.ss-scroll-wall[data-ss-rows-ready="1"] { visibility: visible; }
 
 #justified-grid.ss-scroll-wall .ss-masonry-item::after {
   content: attr(title);
