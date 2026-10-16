@@ -54,6 +54,15 @@ $countdownAttack = (string)snapsmack_trusted_html(
 foreach (['style=', 'onclick=', 'data-evil='] as $unsafe) {
     if (str_contains($countdownAttack, $unsafe)) throw new RuntimeException("Trusted countdown HTML retained {$unsafe}");
 }
+$styledList = (string)snapsmack_trusted_html(
+    '<ol class="pfd-steps" style="display:none"><li class="pfd-step" onclick="steal()">One</li></ol>'
+);
+foreach (['<ol class="pfd-steps">', '<li class="pfd-step">'] as $safe) {
+    if (!str_contains($styledList, $safe)) throw new RuntimeException("Trusted list presentation was stripped: {$safe}");
+}
+foreach (['style=', 'onclick='] as $unsafe) {
+    if (str_contains($styledList, $unsafe)) throw new RuntimeException("Trusted list HTML retained {$unsafe}");
+}
 $reflection = new ReflectionClass(SnapTrustedHtml::class);
 if (!$reflection->getConstructor()?->isPrivate()) throw new RuntimeException('Trusted HTML constructor is public.');
 
