@@ -207,8 +207,12 @@ jive-turkey 2 · the-grid 2. TILEZ and STANLEY are at 0.
   allowances; see rule 7. Neither is a defect that shows on a photograph.
 - All nine GRAMOFSMACK skins print the whole site name in the no-avatar
   circle where the original printed one uppercase letter.
-- The comparator covers rendering, not interaction. Menu, next/prev and
-  lightbox clicks are uncovered.
+- Interaction is now covered: `skin-render-compare.py controls <url>` and
+  `capture --interact` discover the controls on a page, click each one from a
+  fresh load, and report any that change nothing. 11/11 mutation tests,
+  including one fixture written with exactly one live and one dead button.
+  What is still uncovered: anything needing two clicks in sequence, typing, or
+  a logged-in session.
 - `v0.7.892D` points ahead of what twelve sites are running, because the tag
   was moved after deployment. The built commit is not known on this side.
 
