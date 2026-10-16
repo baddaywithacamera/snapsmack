@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK FEDISTRUCTURE - Bootstrap Deployer
- * Bootstrap release: 0.7.898D
+ * Bootstrap release: 0.7.899D
  *
  * Upload this one file to an empty web directory. It fetches only the signed
  * FEDISTRUCTURE release, verifies it, extracts it, and hands off to install.php.
@@ -17,11 +17,11 @@
 // a current stable FEDISTRUCTURE release is cut. Opt back with ?track=stable.
 $fedup_track = (($_GET['track'] ?? '') === 'stable') ? 'stable' : 'dev';
 $fedup_manifest_url = $fedup_track === 'dev'
-    ? 'https://snapsmack.ca/releases/latest-fedistructure-dev.json?bootstrap=0.7.898D'
+    ? 'https://snapsmack.ca/releases/latest-fedistructure-dev.json?bootstrap=0.7.899D'
     : 'https://snapsmack.ca/releases/latest-fedistructure.json';
 $fedup_target = __DIR__;
-define('FEDUP_BOOTSTRAP_VERSION', '0.7.898D');
-define('FEDUP_MINIMUM_DEV_VERSION', '0.7.898D');
+define('FEDUP_BOOTSTRAP_VERSION', '0.7.899D');
+define('FEDUP_MINIMUM_DEV_VERSION', '0.7.899D');
 define('FEDUP_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');
 
 if (is_file($fedup_target . '/core/fedistructure-package.php')
