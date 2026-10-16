@@ -398,7 +398,11 @@ function snapsmack_grid_common_presentation(array $options, string $prefix): arr
         $vars += [
             '--pa-bg'=>['white'=>'#ffffff','soft'=>'#fafafa','warm'=>'#fff7ed','wash'=>'color-mix(in srgb,var(--accent-color) 8%,#ffffff)'][(string)($options['pa_background'] ?? '')] ?? 'transparent',
             '--tile-border-w'=>snapsmack_declared_option_int($options, 'pa_border_width', 0, 40).'px',
-            '--tile-radius'=>['square'=>'0','rounded'=>'14px','auto'=>'calc(var(--tile-border-w) * 1.5)'][$corners] ?? '0',
+            // Animated Tile Ring Thickness / Opacity drive the .pa-ring overlay,
+            // the same pair AURORA feeds from its own controls.
+            '--tile-bw'=>snapsmack_declared_option_int($options, 'pa_border_width', 1, 10).'px',
+            '--ring-op'=>number_format(snapsmack_declared_option_int($options, 'pa_border_opacity', 10, 100)/100, 2, '.', ''),
+            '--tile-radius'=>['square'=>'0','rounded'=>'14px','auto'=>'calc(var(--tile-bw) * 1.5)'][$corners] ?? '0',
             '--tile-shadow'=>'0 0 '.snapsmack_declared_option_int($options, 'pa_tile_glow', 0, 40).'px '.snapsmack_skin_rgba('#ffffff', snapsmack_declared_option_int($options, 'pa_tile_glow_strength', 0, 100)),
             '--profile-text-glow'=>snapsmack_declared_option_glow($options, 'pa_glow'), '--nav-text-glow'=>snapsmack_declared_option_glow($options, 'pa_nav_glow'),
             '--posts-glow'=>snapsmack_declared_option_glow($options, 'pa_posts_glow'), '--footer-text-glow'=>snapsmack_declared_option_glow($options, 'pa_footer_glow'),
@@ -696,7 +700,12 @@ function snapsmack_parade_presentation(array $options): array
             'border_dir' => (string)($options['pa_border_dir'] ?? ''),
             'border_rhythm' => (string)($options['pa_border_rhythm'] ?? ''),
             'border_cycle' => snapsmack_declared_option_int($options, 'pa_wave_speed', 20, 600),
-            'border_minl' => snapsmack_declared_option_int($options, 'pa_border_opacity', 0, 100),
+            // Lightness floor (0..1) that lifts the black/brown stops in the
+            // Progress, Two-Spirit, Asexual and Genderfluid flags so the ring
+            // never reads as a hard black band. Not a setting, and not the
+            // ring's opacity -- feeding a 10..100 percentage in here flattened
+            // every flag colour to white.
+            'border_minl' => '0.45',
         ],
     ];
 }
