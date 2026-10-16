@@ -368,9 +368,12 @@ function snapsmack_grid_frame_items(array $items, array $settings, string $skin)
         $items[$index]['is_portrait'] = $orientation !== null
             ? $orientation === 1
             : (int)($item['img_height']??0)>(int)($item['img_width']??0);
-        if ($skin === 'aurora') {
-            $items[$index]['aurora_wave_row'] = intdiv((int)$index, 3);
-            $items[$index]['aurora_wave_column'] = (int)$index % 3;
+        // The shared border-wave engine places each tile's ring by where the
+        // tile sits in the 3-across grid. AURORA and PARADE both run it.
+        if ($skin === 'aurora' || $skin === 'parade') {
+            $wavePrefix = $skin === 'parade' ? 'parade' : 'aurora';
+            $items[$index][$wavePrefix . '_wave_row'] = intdiv((int)$index, 3);
+            $items[$index][$wavePrefix . '_wave_column'] = (int)$index % 3;
         }
     }
     return $items;

@@ -53,7 +53,18 @@ $perCarouselFrame = snapsmack_grid_frame_items([['post_img_size_pct'=>91,'post_b
 foreach (['--tile-img-size:91%','--tile-border-w:3px','--tile-border-c:#654321','--tile-bg:#fedcba','--tile-shadow:3px 3px 8px'] as $value) special_check(str_contains($perCarouselFrame[0]['frame_style'], $value), "Per-carousel frame override missing: {$value}");
 
 $parade = special_render('parade', ['pa_border_style'=>'sweep','pa_border_dir'=>'rtl','pa_border_rhythm'=>'constant','pa_wave_speed'=>'91','pa_border_opacity'=>'44']);
-foreach (['data-pa-border-style="sweep"','data-pa-border-dir="rtl"','data-pa-border-rhythm="constant"','data-pa-border-cycle="91"','data-pa-border-minl="44"'] as $value) special_check(str_contains($parade, $value), "PARADE control missing: {$value}");
+foreach (['data-pa-border-style="sweep"','data-pa-border-dir="rtl"','data-pa-border-rhythm="constant"','data-pa-border-cycle="91"','data-pa-border-minl="0.45"'] as $value) special_check(str_contains($parade, $value), "PARADE control missing: {$value}");
+// Ring Opacity is a percentage for --ring-op. It is NOT the engine's lightness
+// floor: when it was fed to data-pa-border-minl (a 0..1 value) every flag
+// colour was lifted to white and the ring stopped shifting colour.
+special_check(!str_contains($parade, 'data-pa-border-minl="44"'), 'PARADE ring opacity leaked into the engine lightness floor.');
+special_check(str_contains((string)snapsmack_skin_presentation(['pa_border_opacity'=>'44'],'parade')['style'], '--ring-op:0.44'), 'PARADE ring opacity never reaches --ring-op.');
+// The engine finds no rings and bails out unless the tile markup carries both.
+$paradeLayout = (string)file_get_contents(dirname(__DIR__).'/skins/parade/layout.php');
+foreach (['class="pa-ring"','data-row=','data-col='] as $value) special_check(str_contains($paradeLayout, $value), "PARADE border-wave markup missing: {$value}");
+$paradeWave = snapsmack_grid_frame_items([[ 'img_file'=>'a.jpg' ],[ 'img_file'=>'b.jpg' ],[ 'img_file'=>'c.jpg' ],[ 'img_file'=>'d.jpg' ]], [], 'parade');
+special_check(($paradeWave[0]['parade_wave_row']??null)===0 && ($paradeWave[0]['parade_wave_column']??null)===0, 'PARADE wave position missing on the first tile.');
+special_check(($paradeWave[3]['parade_wave_row']??null)===1 && ($paradeWave[3]['parade_wave_column']??null)===0, 'PARADE wave position does not wrap every 3 tiles.');
 
 $instant = special_render('instant-camera', ['ic_bg_mode'=>'rainfall','ic_rf_density'=>'66','ic_rf_speed'=>'77','ic_rf_angle'=>'-23','ic_rf_thickness'=>'4','ic_rf_color'=>'#123456','ic_rf_opacity'=>'81']);
 foreach (['data-rainfall','data-density="66"','data-speed="77"','data-angle="-23"','data-thickness="4"','data-color="#123456"','data-opacity="81"'] as $value) special_check(str_contains($instant, $value), "INSTANT CAMERA control missing: {$value}");
@@ -62,7 +73,7 @@ foreach(['--ic-nav-bg-inner:rgba(255,255,255,0.37)','class="tg-treatment-bg"','-
 
 foreach(['white'=>'#ffffff','soft'=>'#fafafa','warm'=>'#fff7ed','wash'=>'color-mix(in srgb,var(--accent-color) 8%,#ffffff)'] as $mode=>$colour){$p=snapsmack_skin_presentation(['pa_background'=>$mode],'parade');special_check(str_contains((string)$p['style'],'--pa-bg:'.$colour),"PARADE background {$mode} failed.");}
 $paradeControls=snapsmack_skin_presentation(['pa_border_width'=>'10','pa_tile_glow'=>'17','pa_tile_glow_strength'=>'62','pa_tile_corners'=>'rounded','pa_nav_line_mode'=>'track','pa_navbar_opacity_inner'=>'41','pa_footer_gap'=>'73','pa_footer_bg_color'=>'#123456','pa_footer_bg_opacity'=>'58','pa_text_color'=>'#111111','pa_muted_color'=>'#222222','pa_accent_color'=>'#333333','pa_glow_size'=>'2','pa_glow_opacity'=>'50','pa_nav_glow_size'=>'3','pa_nav_glow_opacity'=>'60','pa_posts_glow_size'=>'4','pa_posts_glow_opacity'=>'70','pa_footer_glow_size'=>'5','pa_footer_glow_opacity'=>'80'],'parade');
-foreach(['--tile-border-w:10px','--tile-radius:14px','--text-primary:#111111','--text-secondary:#222222','--accent-color:#333333','--footer-gap:73px','--pa-footer-bg:rgba(18,52,86,0.58)','--pa-navbar-bg-inner:rgba(255,255,255,0.41)','[class$="-sticky-nav"]{border-color:var(--accent-color)}'] as $value)special_check(str_contains((string)$paradeControls['style'],$value),"PARADE remaining control missing: {$value}");
+foreach(['--tile-border-w:10px','--tile-bw:10px','--tile-radius:14px','--text-primary:#111111','--text-secondary:#222222','--accent-color:#333333','--footer-gap:73px','--pa-footer-bg:rgba(18,52,86,0.58)','--pa-navbar-bg-inner:rgba(255,255,255,0.41)','[class$="-sticky-nav"]{border-color:var(--accent-color)}'] as $value)special_check(str_contains((string)$paradeControls['style'],$value),"PARADE remaining control missing: {$value}");
 
 $jiveSolo=snapsmack_skin_presentation(['jt_gap'=>'19','jt_nav_tile_gap'=>'34','jt_nav_line_color'=>'#123456','jt_nav_line_mode'=>'track','jt_solo_backdrop_source'=>'image','jt_solo_backdrop_image'=>'img_uploads/jive.jpg','jt_solo_backdrop_image_pos'=>'top','jt_solo_card_color'=>'#234567','jt_solo_text_color'=>'#345678','jt_solo_text_secondary_color'=>'#456789'],'jive-turkey');
 foreach(['--grid-gap:19px','--nav-tile-gap:34px','--jt-nav-line:#123456','--jt-solo-backdrop-image:url("/img_uploads/jive.jpg")','--jt-solo-backdrop-position:center top','--jt-solo-card:#234567','--jt-solo-text:#345678','--jt-solo-text-secondary:#456789'] as $value)special_check(str_contains((string)$jiveSolo['style'],$value),"JIVE remaining control missing: {$value}");
