@@ -17,8 +17,8 @@
         <tr><td class="k">First observed</td><td>2026-09-13, during a deliberate end-to-end comment test on allinthewrist.photoblogs.fyi (0.7.706D). Prompted by the snapsmack.ca home page claiming two-way comments and the co-author asking whether that claim had ever been checked.</td></tr>
         <tr><td class="k">Theme</td><td>&ldquo;Works&rdquo; was true of the database and false of the web page. Two comment tables, two one-way pipes, and nobody had ever looked at a public post as a reader.</td></tr>
         <tr><td class="k">Surfaces</td><td>Every skin&rsquo;s public comment thread (all 24 render the same component); the public comment form; inbound and outbound comment federation.</td></tr>
-        <tr><td class="k">State</td><td><span class="state-chip chip-watched">Watched working</span> &nbsp; for the inbound half (0.7.707D, deployed and seen). The outbound half (a comment typed on the blog reaching Pixelfed/Mastodon) is fixed in 0.7.708D and is <span class="state-chip chip-confirm">Confirming</span> &mdash; listed separately on the ledger.</td></tr>
-        <tr><td class="k">Watched live?</td><td><strong>Yes, inbound</strong> &mdash; two federated replies and one local comment, all three visible under the test post on allinthewrist.photoblogs.fyi after 707D (see §6). <strong>Not yet, outbound</strong> &mdash; pixelfed.social was returning 502 during the test window.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-watched">Watched working</span> &nbsp; inbound in 0.7.707D and outbound in 0.7.708D.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes, both directions.</strong> Two federated replies and one local comment were visible under the test post after 0.7.707D. On 2026-09-14, a comment typed on allinthewrist.photoblogs.fyi appeared under the same post on pixelfed.social after 0.7.708D.</td></tr>
         <tr><td class="k">Reporter</td><td>Sean (ran the test from three accounts, deployed, watched) + Claude (traced both tables, wrote both fixes).</td></tr>
         <tr><td class="k">Related</td><td>OPAUDIT 005 (inbound activity arrived, passed checks, then vanished &mdash; this is the next link in that chain: it arrived, passed, was stored, and vanished on the page); OPAUDIT 009 (Pixelfed likes).</td></tr>
         <tr><td class="k">Publication</td><td>Public. No exploitable detail.</td></tr>
@@ -89,12 +89,10 @@
     post showed all three comments in order: the unzucked reply, the pixelfed.social reply (both
     tagged FEDIVERSE), and the typed local comment &mdash; without re-sending anything. That is the
     inbound half, watched.</p>
-    <p>What remains: the outbound half. 708D is tagged but not yet deployed. The test is: deploy,
-    type a fresh comment on the post, and watch it appear under the same post on unzucked.ca&rsquo;s
-    fediverse page (a full SnapSmack-to-SnapSmack round trip) and on pixelfed.social. During this
-    audit pixelfed.social was returning 502 for everyone; the delivery queue retries with backoff, so
-    the Pixelfed copy should land on its own when that server returns. Until someone watches it, the
-    outbound entry on the ledger stays <em>Confirming</em>.</p>
+    <p><strong>Resolution update, 2026-09-14:</strong> the outbound half was subsequently watched. A
+    comment typed on allinthewrist.photoblogs.fyi appeared under the same post on pixelfed.social,
+    attributed to the blog with the original time preserved. Both directions are therefore watched
+    working; the separate ledger entry records that live result.</p>
 
     <h2>7. Eyeball next</h2>
     <p>Whether the moderation screen should show community-form comments alongside classic ones,
