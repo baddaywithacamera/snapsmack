@@ -39,6 +39,26 @@
   white. Not yet seen on the live site — the skin has to be packaged and sent
   out through SYSTEM UPDATES first.
 
+- **AURORA and JIVE TURKEY were checked too, and both work.** The same commit
+  took the ring element out of four skins, not one. JIVE TURKEY's was put back
+  on 6 October and AURORA's on 7 October, each as a single line, each looking
+  only at the skin that had been reported. Measured today in the same harness:
+  AURORA paints and rotates all nine rings, JIVE TURKEY paints all nine and
+  pulses the band, which is that skin's own design. Neither needed a change.
+  HEURISTIC lost the same element and is deliberately left alone: it loads no
+  border engine and has no BORDER WAVE controls, so in that skin the ring was
+  never wired to anything and putting it back would be adding a feature nobody
+  asked for.
+
+- **Recorded as OPAUDIT 023, "One commit, four skins, two repairs."** Eighteen
+  days with the feature missing from the site that advertises it, found by the
+  owner rather than by us or by the tests. The regression test had been written
+  to assert the broken value as correct, so the suite passed green throughout.
+  The audit also records that `tests/agreed-rules-gate.php` is already failing
+  on `dev` before this work — the inline-style budget was ratcheted to 9 while
+  28 inline styles remain — and asks for a check that a skin cannot advertise
+  an engine whose markup it does not emit. On the DING DONG BELL page.
+
 ## 0.7.898D - 2026-10-16 - PixelDroid can connect
 
 - **PixelDroid can now connect to a SnapSmack site.** PixelDroid asks for the Mastodon scopes `read write follow push` when it registers itself, and the site refused the whole registration because it only understands `read` and `write` — PixelDroid showed "Could not register the application with this server", while Pixelix, which asks only for `read write`, connected fine. The site now accepts the full Mastodon scope vocabulary (including the granular `read:…` / `write:…` forms) and grants only the read and write it actually implements. The out-of-band redirect `urn:ietf:wg:oauth:2.0:oob` used by desktop and command-line clients is accepted too, and shows the authorization code on screen to copy. The ALLOW and RETURN screens now say the name of the app that is connecting instead of always saying Pixelix.
