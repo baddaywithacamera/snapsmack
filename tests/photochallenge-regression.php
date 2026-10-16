@@ -179,12 +179,16 @@ pc_test(str_contains($photo, "if (\$handle === '')")
     && str_contains($photo, "rawurldecode((string)end(\$parts))")
     && str_contains($photo, "\$handle = \$username . '@' . \$host"),
     'board does not recover a truthful handle from canonical actor URLs when legacy labels are blank');
-pc_test(str_contains($photo, '> 5'), 'per-author five-entry cap is missing');
-pc_test(str_contains($photo, '$competitive_count >= 5')
-    && str_contains($photo, 'SUM(horsconcours=0)')
+pc_test(str_contains($photo, "photochallenge_entry_limit'] ?? 5"),
+    'per-author entry cap no longer defaults to five');
+pc_test(str_contains($photo, "SUM(status='active' AND horsconcours=0)")
     && str_contains($photo, 'MAX(admission_number)')
+    && str_contains($photo, 'if (!$hc && $entry_limit > 0 && (int)$counts[1] >= $entry_limit)')
     && str_contains($photo, 'uq_pc_admission_slot'),
-    'entry cap must durably retain five competitive slots without counting hors-concours posts');
+    'entry cap must retain its configured competitive slots without counting withdrawn or hors-concours entries');
+pc_test(str_contains($installer, "'photo-challenge', 'daily-photo', 'mirror-project', 'smackcast'")
+    && str_contains($installer, '\'photochallenge_entry_limit\'=> $install_profile === \'mirror-project\' ? \'0\' : \'5\''),
+    'Mirror Project is absent from FEDISTRUCTURE install profiles or is not configured for unlimited contributions');
 pc_test(str_contains($photo, "if (!\$win['open'] && !\$hc)")
     && str_contains($photo, "if (!\$hc && (\$published < \$win['start'] || \$published >= \$win['end']))"),
     'hors-concours posts must remain admissible after the competitive window closes');
@@ -241,7 +245,7 @@ foreach (['smack-stats.php', 'smack-multisite.php'] as $required) {
     pc_test(str_contains($sidebar, $required),
         "photo challenge sidebar is missing {$required}");
 }
-pc_test(str_contains($installer, "'photo-challenge', 'daily-photo', 'smackcast'"),
+pc_test(str_contains($installer, "'photo-challenge', 'daily-photo', 'mirror-project', 'smackcast'"),
     'FEDISTRUCTURE installer profiles are missing');
 pc_test(str_contains($fedup, 'latest-fedistructure.json')
     && str_contains($fedup, "FEDUP_RELEASE_PUBKEY"),

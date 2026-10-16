@@ -225,7 +225,7 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
         // screens back and dead-ends the FEDISTRUCTURE install.
         if ($installer_is_fedistructure) {
             $profile = (string)($_POST['distribution_profile'] ?? $_SESSION['distribution_profile'] ?? '');
-            if (!in_array($profile, ['photo-challenge', 'daily-photo', 'smackcast'], true)) {
+            if (!in_array($profile, ['photo-challenge', 'daily-photo', 'mirror-project', 'smackcast'], true)) {
                 $errors[] = 'Choose a FEDISTRUCTURE service profile.';
                 $step = 2;
             } else {
@@ -1302,10 +1302,13 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'active_skin_variant'       => $default_variant,
                 'active_theme'              => 'midnight-lime',
                 'fediverse_enabled'        => $installer_is_fedistructure ? '1' : '0',
-                'photochallenge_enabled'    => in_array($install_profile, ['photo-challenge', 'daily-photo'], true) ? '1' : '0',
-                'photochallenge_tag'        => $install_profile === 'daily-photo' ? 'aphotoeveryday' : 'photofri',
-                'photochallenge_window_mode'=> $install_profile === 'daily-photo' ? 'daily' : 'weekly',
-                'photochallenge_boost_enabled'=> in_array($install_profile, ['photo-challenge', 'daily-photo'], true) ? '1' : '0',
+                'photochallenge_enabled'    => in_array($install_profile, ['photo-challenge', 'daily-photo', 'mirror-project'], true) ? '1' : '0',
+                'photochallenge_tag'        => $install_profile === 'daily-photo' ? 'aphotoeveryday' : ($install_profile === 'mirror-project' ? 'mirrorproject' : 'photofri'),
+                'photochallenge_window_mode'=> $install_profile === 'daily-photo' ? 'daily' : ($install_profile === 'mirror-project' ? 'open' : 'weekly'),
+                'photochallenge_open_since' => $install_profile === 'mirror-project' ? gmdate('Y-m-d H:i:s') : '',
+                'photochallenge_open_week_key'=> $install_profile === 'mirror-project' ? 'mirror-project' : '',
+                'photochallenge_entry_limit'=> $install_profile === 'mirror-project' ? '0' : '5',
+                'photochallenge_boost_enabled'=> in_array($install_profile, ['photo-challenge', 'daily-photo', 'mirror-project'], true) ? '1' : '0',
                 'smackcast_inbox_policy'     => $install_profile === 'smackcast' ? 'relay' : 'standard',
                 'smackcast_relay_enabled'    => '0',
                 'smackcast_admission_mode'   => 'allowlist',
@@ -2435,6 +2438,16 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                         <div class="install-mode-body">
                             <div class="install-mode-name">APHOTOEVERY.DAY</div>
                             <div class="install-mode-desc">A daily photo-discovery actor with configurable qualifying tags, boost cadence, entry limits, and public feed pages.</div>
+                        </div>
+                    </div>
+                </label>
+                <label class="install-mode-card">
+                    <input type="radio" name="distribution_profile" value="mirror-project">
+                    <div class="install-mode-card-inner">
+                        <div class="install-mode-version">SPOKE</div>
+                        <div class="install-mode-body">
+                            <div class="install-mode-name">MIRRORPROJECT.FYI</div>
+                            <div class="install-mode-desc">A Fediverse-only revival of the original Mirror Project. Share photographs of yourself—or anything else—captured in a reflective surface. Contributions are unlimited, with occasional themed challenges. The project actor discovers and boosts qualifying posts into followers' feeds.</div>
                         </div>
                     </div>
                 </label>
