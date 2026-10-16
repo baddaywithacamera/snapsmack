@@ -28,11 +28,15 @@ $aliases = snapsmack_public_route_aliases([], $manifest);
 foreach (['albums' => 'albums', 'collections' => 'collections'] as $slug => $route) {
     if (($aliases[$slug] ?? '') !== $route) throw new RuntimeException("SLICKR route missing: {$slug}");
 }
-foreach (["=== 'albums'", "=== 'collections'", "=== 'collection'", "=== 'blogroll'", "page-hero page-hero--", "\$view['response']['rows'] ?? []"] as $hook) {
+foreach (["=== 'albums'", "=== 'collections'", "=== 'collection'", "=== 'blogroll'", "page-hero page-hero--", 'ss-scroll-wall', "snap_render_component('wall-tile'", 'scroll-wall-sentinel'] as $hook) {
     if (!str_contains($layout, $hook)) throw new RuntimeException("SLICKR strict layout missing: {$hook}");
 }
 if (!str_contains($css, 'border-radius: 999px;')) throw new RuntimeException('SLICKR search is no longer a pill.');
-if (!str_contains($controller, "'results' => \$results, 'rows' => \$searchRows")) throw new RuntimeException('SLICKR search lacks CMS-prepared justified rows.');
+if (!in_array('smack-rows', $manifest['require_scripts'] ?? [], true)) throw new RuntimeException('SLICKR is not using the CMS row wall engine.');
+foreach (['smack-justified-lib', 'smack-justified', 'smack-tag-infinite'] as $obsolete) {
+    if (in_array($obsolete, $manifest['require_scripts'] ?? [], true)) throw new RuntimeException("SLICKR still loads obsolete engine: {$obsolete}");
+}
+if (str_contains($controller, "\$skin === 'slickr'\n            ? snapsmack_justified_rows")) throw new RuntimeException('SLICKR search still depends on server-composed FJGallery rows.');
 foreach (['presentation_id', 'presentation_count', 'presentation_posted'] as $field) {
     if (!str_contains($controller, $field)) throw new RuntimeException("SLICKR provider missing: {$field}");
 }

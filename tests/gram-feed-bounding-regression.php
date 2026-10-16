@@ -11,7 +11,7 @@ if (str_contains($entry, '_cms_full_landing') || str_contains($entry, "['posts_p
 }
 if (!str_contains($controller, '$perPageCap = 100;')
     || !str_contains($repository, 'min(100, $limit)')
-    || !str_contains($controller, "'next_page' => \$skin === 'slickr'")) {
+    || !str_contains($controller, "'next_page' => \$nextLandingPage")) {
     throw new RuntimeException('GRAM server paging is not bounded end to end.');
 }
 

@@ -442,11 +442,9 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         }
         $items = $skin === 'glide'
             ? $repository->randomPhotographs(200)
-            : ($skin === 'slickr'
-            ? $repository->justifiedPhotographFeed()
             : ($mode === 'smacktalk'
             ? $repository->longformLanding($perPage, $offset)
-            : snapsmack_grid_landing_items($repository, $settings, $skin, $perPage, $offset)));
+            : snapsmack_grid_landing_items($repository, $settings, $skin, $perPage, $offset));
         if ($skin === 'glide' || $skin === 'slickr' || $mode === 'smacktalk') {
             $items = snapsmack_grid_frame_items($items, $settings, $skin);
         }
@@ -461,10 +459,6 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
                 $items[$index] = $item;
                 $rows[$index % 9][] = $item;
             }
-        }
-        $justifiedRows = [];
-        if ($skin === 'slickr') {
-            $justifiedRows = snapsmack_justified_rows($items, $settings, $page);
         }
         $sliderItems = in_array($skin, ['galleria', 'hip-to-be-square'], true)
             ? array_slice($items, 0, 20)
@@ -491,11 +485,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         $nextLandingPage = count($items) === $perPage ? $page + 1 : 0;
         return ['status' => 200, 'kind' => 'landing', 'mode' => $mode, 'items' => $items,
             'puzzle_items' => $skin === 'game-on' ? array_map('snapsmack_game_on_focus_item', $repository->gameOnPuzzlePhotographs()) : [],
-            'rows' => $skin === 'slickr' ? ($justifiedRows['rows'] ?? []) : $rows,
-            'total_pages' => $skin === 'slickr' ? ($justifiedRows['total_pages'] ?? 1) : 1,
-            'next_page' => $skin === 'slickr'
-                ? ($page < ($justifiedRows['total_pages'] ?? 1) ? $page + 1 : 0)
-                : $nextLandingPage,
+            'rows' => $rows, 'total_pages' => 1, 'next_page' => $nextLandingPage,
             'slider_items' => $sliderItems, 'navigation' => $navigation, 'page' => $page,
             'photo_count' => $totalCount];
     }
@@ -565,11 +555,8 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
     if ($route === 'search') {
         $query = trim((string)($request['query'] ?? ''));
         $results = $query === '' ? ['photographs' => [], 'posts' => []] : $repository->search($query);
-        $searchRows = $skin === 'slickr'
-            ? snapsmack_justified_rows($results['photographs'] ?? [], $settings, 1)['rows']
-            : [];
         return ['status' => 200, 'kind' => 'search', 'query' => $query,
-            'results' => $results, 'rows' => $searchRows, 'navigation' => $navigation];
+            'results' => $results, 'navigation' => $navigation];
     }
     if ($route === 'hashtag') {
         $total = $slug === '' ? 0 : $repository->hashtagPhotographCount($slug);
