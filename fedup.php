@@ -1,7 +1,7 @@
 <?php
 /**
  * SNAPSMACK FEDISTRUCTURE - Bootstrap Deployer
- * Bootstrap release: 0.7.653D
+ * Bootstrap release: 0.7.899D
  *
  * Upload this one file to an empty web directory. It fetches only the signed
  * FEDISTRUCTURE release, verifies it, extracts it, and hands off to install.php.
@@ -17,11 +17,11 @@
 // a current stable FEDISTRUCTURE release is cut. Opt back with ?track=stable.
 $fedup_track = (($_GET['track'] ?? '') === 'stable') ? 'stable' : 'dev';
 $fedup_manifest_url = $fedup_track === 'dev'
-    ? 'https://snapsmack.ca/releases/latest-fedistructure-dev.json?bootstrap=0.7.653D'
+    ? 'https://snapsmack.ca/releases/latest-fedistructure-dev.json?bootstrap=0.7.899D'
     : 'https://snapsmack.ca/releases/latest-fedistructure.json';
 $fedup_target = __DIR__;
-define('FEDUP_BOOTSTRAP_VERSION', '0.7.653D');
-define('FEDUP_MINIMUM_DEV_VERSION', '0.7.653D');
+define('FEDUP_BOOTSTRAP_VERSION', '0.7.899D');
+define('FEDUP_MINIMUM_DEV_VERSION', '0.7.899D');
 define('FEDUP_RELEASE_PUBKEY', 'b0cbadef25a6aca5292e5c31b29dededb3f710f1d57908ba3c83a5e641f53bc2');
 
 if (is_file($fedup_target . '/core/fedistructure-package.php')
@@ -205,7 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deploy']) && $fedup_r
 </head>
 <body><main class="card">
 <h1>FED UP <span>/ FEDISTRUCTURE</span></h1>
-<p>Installs the signed service distribution for PHOTOFRI.DAY, APHOTOEVERY.DAY, or SMACKCAST.</p>
+<p>Installs the signed service distribution for PHOTOFRI.DAY, APHOTOEVERY.DAY, MIRRORPROJECT.FYI, or SMACKCAST.</p>
 <p style="font-size:.85rem;color:#728293;margin-top:-8px">Bootstrap: <strong style="color:#8cff66"><?php echo htmlspecialchars(FEDUP_BOOTSTRAP_VERSION, ENT_QUOTES, 'UTF-8'); ?></strong> · Channel: <strong style="color:#00ffff"><?php echo strtoupper($fedup_track); ?></strong><?php echo $fedup_track === 'dev' ? ' — current development build' : ' — frozen stable feed'; ?></p>
 <?php if ($fedup_error !== ''): ?><div class="status error"><?php echo $fedup_error; ?></div><?php endif; ?>
 <ul class="checks">
