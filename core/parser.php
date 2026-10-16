@@ -291,7 +291,7 @@ class SnapSmack {
         // NOTE: <p> IS included because the user's content may already
         // contain <p> tags from the editor — these must be passed through,
         // not wrapped in another <p>.
-        $block_tags = 'p|h[1-6]|div|blockquote|ul|ol|table|figure|figcaption|pre|form|section|article|aside|nav|header|footer';
+        $block_tags = 'p|h[1-6]|div|blockquote|ul|ol|table|figure|figcaption|pre|form|section|article|aside|nav|header|footer|details';
 
         // Split content into segments: block-level HTML vs. text.
         // Backreference \2 ensures the closing tag matches the opening tag,
