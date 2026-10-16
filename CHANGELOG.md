@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.897D - 2026-10-16 - SLICKR wall presentation controls
+
+- **SLICKR can hide hover titles and no longer flashes its unsized wall.** Skin Admin now places the row height, archive layout, and new Photo Titles on Hover control together under ARCHIVE & LANDING. The photograph wall remains hidden only until the CMS row engine applies its geometry, preventing full-size images from appearing before they settle into rows. SLICKR is released as 1.0.38.
+
 ## 0.7.896D - 2026-10-16 - Six hard-coded styles out of the templates
 
 - **SLICKR moves off FJGallery and onto SnapSmack's row wall.** Its landing, archive, hashtag, and search photograph walls now use the CMS-owned `smack-rows` engine: native-aspect, uncropped, justified rows with endless loading on bounded batches. The existing row-height control now feeds the shared engine. SLICKR is released as 1.0.37.
