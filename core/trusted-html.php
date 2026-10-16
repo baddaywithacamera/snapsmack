@@ -38,7 +38,12 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         // event handlers and style remain outside the allowlist.
         'p' => ['class', 'data-until', 'data-every', 'data-roll-caption', 'data-done'],
         'br' => [], 'strong' => [], 'em' => [], 'b' => ['data-cd'], 'i' => [], 'u' => [], 's' => [],
-        'blockquote' => [], 'ul' => [], 'ol' => [], 'li' => [], 'code' => [], 'pre' => [],
+        // List classes are presentation metadata too. PhotoFri's HOW IT WORKS
+        // page carries `pfd-steps` on its ordered list; stripping that class
+        // discarded the skin's numbered-step treatment while the FAQ kept its
+        // component classes, making two sibling pages visibly inconsistent.
+        // `class` is inert and style/event attributes remain forbidden.
+        'blockquote' => [], 'ul' => ['class'], 'ol' => ['class'], 'li' => ['class'], 'code' => [], 'pre' => [],
         'h1' => [], 'h2' => [], 'h3' => [], 'h4' => [], 'h5' => [], 'h6' => [],
         'div' => ['class', 'id', 'data-mosaic'],
         'span' => ['class', 'data-cd', 'data-cd-caption', 'data-cd-clock', 'aria-hidden'],
