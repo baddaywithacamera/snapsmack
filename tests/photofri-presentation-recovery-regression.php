@@ -5,6 +5,7 @@ $root = dirname(__DIR__);
 require_once $root . '/core/trusted-html.php';
 require_once $root . '/core/skin-render-helpers.php';
 require_once $root . '/core/skin-view-contract.php';
+require_once $root . '/core/parser.php';
 
 $expect = static function (bool $ok, string $message): void {
     if (!$ok) throw new RuntimeException($message);
@@ -21,6 +22,36 @@ $expect(str_contains($trusted, 'class="pfd-answer"') && str_contains($trusted, '
     'Trusted CMS content stripped FAQ presentation hooks.');
 $expect(str_contains($trusted, 'class="thumb"'),
     'Trusted CMS content stripped the Board square-image hook.');
+
+// The FAQ is deliberately native HTML, not a JavaScript accordion. Ensure the
+// content parser treats every disclosure as a complete block; otherwise the
+// second and later <details> elements are wrapped in <p>/<br>, causing browsers
+// to close them before their answer sections.
+$pdo = new class {
+    public function query(string $sql): never { throw new PDOException('No test database'); }
+};
+$faq = (new SnapSmack($pdo))->parseContent(<<<'HTML'
+<div class="pfd-faq">
+  <details open>
+    <summary><span class="pfd-q">First question</span><span class="pfd-arrow">+</span></summary>
+    <section class="pfd-answer"><p>First answer</p></section>
+  </details>
+  <details>
+    <summary><span class="pfd-q">Second question</span><span class="pfd-arrow">+</span></summary>
+    <section class="pfd-answer"><p>Second answer</p></section>
+  </details>
+  <details>
+    <summary><span class="pfd-q">Third question</span><span class="pfd-arrow">+</span></summary>
+    <section class="pfd-answer"><p>Third answer</p></section>
+  </details>
+</div>
+HTML);
+$expect(substr_count($faq, '<details') === 3 && substr_count($faq, '</details>') === 3,
+    'Content parser lost one or more PhotoFri FAQ disclosures.');
+$expect(!preg_match('/<p>\s*<details|<details[^>]*>\s*<br\s*\/?/i', $faq),
+    'Content parser injected paragraph markup around PhotoFri FAQ disclosures.');
+$expect((bool)preg_match('/<details[^>]*>.*?<summary>.*?Second question.*?<\/summary>.*?<section class="pfd-answer">.*?Second answer.*?<\/section>.*?<\/details>/si', $faq),
+    'Content parser detached a PhotoFri FAQ answer from its disclosure.');
 
 $view = snapsmack_build_skin_view([
     'status' => 200,
