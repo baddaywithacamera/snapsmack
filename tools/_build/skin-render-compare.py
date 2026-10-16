@@ -3,8 +3,9 @@
 Prove a skin change did not alter what the browser renders.
 
     stability: python tools/_build/skin-render-compare.py stability <url>
-    capture:  python tools/_build/skin-render-compare.py capture <url> <out.json.gz> [--label NAME]
+    capture:  python tools/_build/skin-render-compare.py capture <url> <out.json.gz> [--label NAME] [--interact]
     compare:  python tools/_build/skin-render-compare.py compare <before.json.gz> <after.json.gz>
+    controls: python tools/_build/skin-render-compare.py controls <url>
     selftest: python tools/_build/skin-render-compare.py selftest
 
 WHY THIS EXISTS. Between 28 September and 15 October 2026 skin code was moved
@@ -52,9 +53,19 @@ of the SAME unchanged page differ in 330 places, because JIVE TURKEY
 randomises its tile colours and sizes per request. A comparison against a
 live feed reports differences that have nothing to do with the change.
 
-NOT PROOF OF BEHAVIOUR. This captures rendering. Scripted interaction -- open
-the menu, go to the next photograph, open the lightbox -- is a separate pass
-and is not implemented here yet.
+INTERACTION. `capture --interact` and `controls <url>` add a second pass that
+clicks things. It does NOT use a list of selectors per skin -- guessing at a
+skin's class names is how an invented asset handle got ten skins blocked by the
+packager. It DISCOVERS the controls instead: every button, [role=button],
+[aria-controls], [aria-expanded], [data-*toggle*] and in-page anchor, named by
+its structural path, the same identity scheme used for elements.
+
+Each control is clicked from a freshly loaded page and the result captured. The
+useful part is not that the states match -- it is that a control which changed
+NOTHING is reported as dead. SCROLL's FILTER button drew a panel nothing was
+listening to, and seven GRAMOFSMACK skins put cursor:zoom-in on an avatar that
+no code zooms. Both are controls that look live and are not, and neither is
+visible to a rendering comparison of a page sitting still.
 
 # SNAPSMACK_EOF_HEADER
 #     # ===== SNAPSMACK EOF =====
@@ -96,6 +107,97 @@ CHROME_CANDIDATES = [
     "/usr/bin/chromium",
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 ]
+
+
+# Discover the controls rather than being told them. A per-skin selector list
+# would have to be maintained by the same agent whose changes it is checking,
+# and would quietly cover nothing the day a class name changed.
+CONTROLS_JS = r"""
+(() => {
+  const path = (el) => {
+    const bits = [];
+    for (let n = el; n && n.nodeType === 1 && n !== document.documentElement; n = n.parentElement) {
+      let i = 1;
+      for (let s = n.previousElementSibling; s; s = s.previousElementSibling) i++;
+      bits.unshift(n.tagName.toLowerCase() + ':' + i);
+    }
+    return bits.join('/');
+  };
+  const SEL = [
+    'button', '[role="button"]', '[aria-controls]', '[aria-expanded]',
+    'summary', 'label[for]', 'input[type="checkbox"]',
+    '[data-lightbox-src]', 'a[href="#"]', 'a[href^="#"]',
+  ];
+  const extra = Array.from(document.querySelectorAll('*')).filter((el) =>
+    Array.from(el.attributes).some((a) =>
+      /^data-/.test(a.name) && /toggle|open|close|filter|menu|drawer|tab|panel/.test(a.name)));
+  // Anything the cursor says is clickable. This is how the pass sees a FALSE
+  // AFFORDANCE: seven GRAMOFSMACK skins put cursor:zoom-in on the avatar and
+  // nothing in the repository zooms an avatar. Real links are excluded -- an
+  // <a href> that navigates is doing its job, and clicking it would only
+  // measure a different page.
+  const cursory = Array.from(document.querySelectorAll('*')).filter((el) => {
+    if (el.matches('a[href]:not([href^="#"])')) return false;
+    const c = getComputedStyle(el).cursor;
+    return c === 'pointer' || c === 'zoom-in' || c === 'zoom-out';
+  });
+  const seen = new Set();
+  const out = [];
+  for (const el of [...document.querySelectorAll(SEL.join(',')), ...extra, ...cursory]) {
+    const r = el.getBoundingClientRect();
+    // Only things a person could actually click. A zero-size or hidden
+    // control is not a dead control, it is a control that is not there yet.
+    if (r.width < 4 || r.height < 4) continue;
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || cs.display === 'none' || cs.pointerEvents === 'none') continue;
+    const k = path(el);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push({
+      path: k,
+      tag: el.tagName.toLowerCase(),
+      cls: (el.className && typeof el.className === 'string') ? el.className.trim().split(/\s+/) : [],
+      label: (el.getAttribute('aria-label') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 60),
+      cursor: cs.cursor,
+    });
+  }
+  return out;
+})()
+"""
+
+# Click by structural path, not by selector: the path is what the capture
+# records, so the thing clicked and the thing reported are the same element.
+CLICK_JS = r"""
+((want) => {
+  const path = (el) => {
+    const bits = [];
+    for (let n = el; n && n.nodeType === 1 && n !== document.documentElement; n = n.parentElement) {
+      let i = 1;
+      for (let s = n.previousElementSibling; s; s = s.previousElementSibling) i++;
+      bits.unshift(n.tagName.toLowerCase() + ':' + i);
+    }
+    return bits.join('/');
+  };
+  for (const el of document.querySelectorAll('*')) {
+    if (path(el) !== want) continue;
+    el.scrollIntoView({ block: 'center' });
+    el.click();
+    return true;
+  }
+  return false;
+})
+"""
+
+
+# Interaction is run at two viewports, not five. A control that behaves
+# differently at 1280 than at 1920 is a thing worth knowing but not worth
+# quadrupling a run that reloads the page once per control.
+INTERACT_VIEWPORTS = [(1920, 1030), (375, 812)]
+
+# A page can carry a lot of clickable things -- every tile is an anchor. Cap
+# the pass so a feed of 200 photographs does not turn into 200 page loads, and
+# say so in the snapshot rather than silently truncating.
+MAX_CONTROLS = 14
 
 
 def find_chrome():
@@ -278,7 +380,7 @@ class Chrome:
             shutil.rmtree(self.profile, ignore_errors=True)
 
 
-def capture(url, out_path, label="", extra_css=""):
+def capture(url, out_path, label="", extra_css="", do_interact=False):
     chrome = Chrome()
     try:
         chrome.send("Page.enable")
@@ -312,15 +414,120 @@ def capture(url, out_path, label="", extra_css=""):
             if not shot.get("sheets"):
                 raise SystemExit(f"capture failed at {w}x{h}: the page loaded no "
                                  f"stylesheets; a render without CSS proves nothing")
+            if do_interact and (w, h) in INTERACT_VIEWPORTS:
+                shot["interaction"] = interact(chrome, url, shot)
             snapshot["viewports"][f"{w}x{h}"] = shot
         with gzip.open(out_path, "wt", encoding="utf-8") as fh:
             json.dump(snapshot, fh)
         total = sum(len(v["elements"]) for v in snapshot["viewports"].values())
         print(f"captured {url}")
         print(f"  {len(VIEWPORTS)} viewports, {total} element records -> {out_path}")
+        if do_interact:
+            for key, v in snapshot["viewports"].items():
+                it = v.get("interaction")
+                if not it:
+                    continue
+                ctls = it["controls"]
+                dead = [c for c in ctls.values() if c["clicked"] and not c["changed"]]
+                miss = [c for c in ctls.values() if not c["clicked"]]
+                print(f"  [{key}] {len(ctls)} control(s) clicked, "
+                      f"{len(dead)} changed nothing, {len(miss)} could not be clicked")
+                for c in dead:
+                    print(f"      DEAD CONTROL <{c['tag']}> {c['label']!r} "
+                          f"cursor:{c['cursor']} at {c['path']}")
+                for c in miss:
+                    print(f"      NOT CLICKED (tool failure) {c['path']}")
+                if it["truncated"]:
+                    print(f"      note: more than {MAX_CONTROLS} controls on the page; "
+                          f"only the first {MAX_CONTROLS} were exercised")
         return snapshot
     finally:
         chrome.close()
+
+
+def interact(chrome, url, base_shot):
+    """
+    Click each discovered control from a freshly loaded page and record the
+    result. Returns {path: {...}} keyed the same way elements are.
+
+    The important finding is a control that changes NOTHING. That is either a
+    dead control -- the button draws a panel nothing is listening to -- or a
+    click this tool failed to deliver. The two are distinguished: a click that
+    could not be dispatched is recorded as `clicked: false` and is a TOOL
+    failure, while a dispatched click that changed nothing is a FINDING about
+    the page. Reporting them as one thing would let every broken button hide
+    behind "maybe the harness missed it".
+    """
+    controls = chrome.evaluate(CONTROLS_JS)
+    if not isinstance(controls, list):
+        raise SystemExit("control discovery returned no list -- the page did not run JS")
+    truncated = len(controls) > MAX_CONTROLS
+    controls = controls[:MAX_CONTROLS]
+    steps = {}
+    for ctl in controls:
+        chrome.send("Page.navigate", url=url)
+        time.sleep(1.5)
+        chrome.evaluate(SETTLE_JS, await_promise=True)
+        clicked = chrome.evaluate(
+            "(" + CLICK_JS.strip() + ")(" + json.dumps(ctl["path"]) + ")")
+        if not clicked:
+            steps[ctl["path"]] = dict(ctl, clicked=False, shot=None, changed=None)
+            continue
+        time.sleep(0.8)
+        chrome.evaluate(FREEZE_JS)
+        shot = chrome.evaluate(CAPTURE_JS)
+        if not isinstance(shot, dict) or len(shot.get("elements") or {}) < 10:
+            # Same rule as the base capture: nothing captured is a failure, not
+            # a baseline. An empty post-click state compared to anything later
+            # would report "no difference".
+            raise SystemExit(f"post-click capture failed for {ctl['path']}")
+        steps[ctl["path"]] = dict(ctl, clicked=True, shot=shot,
+                                  changed=bool(_state_diff(base_shot, shot)))
+    return {"controls": steps, "truncated": truncated,
+            "discovered": len(controls) + (1 if truncated else 0)}
+
+
+def _state_diff(b, a, limit=40, key=""):
+    """One rendered state against another. Shared by the base comparison and
+    by every interaction step, so a step is held to the same standard."""
+    findings = []
+    if set(b["sheets"]) != set(a["sheets"]):
+        gone = set(b["sheets"]) - set(a["sheets"])
+        new = set(a["sheets"]) - set(b["sheets"])
+        if gone:
+            findings.append(f"{key}stylesheet NO LONGER LOADED: {sorted(gone)}")
+        if new:
+            findings.append(f"{key}stylesheet added: {sorted(new)}")
+    bel, ael = b["elements"], a["elements"]
+    for pth in sorted(set(bel) - set(ael))[:limit]:
+        findings.append(f"{key}ELEMENT REMOVED at {pth}: "
+                        f"<{bel[pth]['tag']} class=\"{' '.join(bel[pth]['cls'])}\">")
+    for pth in sorted(set(ael) - set(bel))[:limit]:
+        findings.append(f"{key}element added at {pth}: "
+                        f"<{ael[pth]['tag']} class=\"{' '.join(ael[pth]['cls'])}\">")
+    for pth in sorted(set(bel) & set(ael)):
+        rb, ra = bel[pth], ael[pth]
+        if rb["tag"] != ra["tag"]:
+            findings.append(f"{key}tag changed at {pth}: {rb['tag']} -> {ra['tag']}")
+        if rb["box"] != ra["box"]:
+            findings.append(f"{key}geometry changed at {pth} <{ra['tag']}>: "
+                            f"{rb['box']} -> {ra['box']}")
+        for prop, bv in rb["style"].items():
+            av = ra["style"].get(prop)
+            if av != bv:
+                findings.append(f"{key}{prop} changed at {pth} <{ra['tag']}>: {bv!r} -> {av!r}")
+        for pseudo in set(rb["pseudo"]) | set(ra["pseudo"]):
+            if pseudo not in ra["pseudo"]:
+                findings.append(f"{key}PSEUDO-ELEMENT {pseudo} DISAPPEARED at {pth} <{ra['tag']}>")
+                continue
+            if pseudo not in rb["pseudo"]:
+                findings.append(f"{key}pseudo-element {pseudo} appeared at {pth} <{ra['tag']}>")
+                continue
+            for prop, bv in rb["pseudo"][pseudo].items():
+                av = ra["pseudo"][pseudo].get(prop)
+                if av != bv:
+                    findings.append(f"{key}{pseudo} {prop} changed at {pth}: {bv!r} -> {av!r}")
+    return findings
 
 
 def load(path):
@@ -339,45 +546,48 @@ def compare(before_path, after_path, limit=40):
             findings.append(f"[{key}] viewport missing from the after capture")
             continue
 
-        if set(b["sheets"]) != set(a["sheets"]):
-            gone = set(b["sheets"]) - set(a["sheets"])
-            new = set(a["sheets"]) - set(b["sheets"])
-            if gone:
-                findings.append(f"[{key}] stylesheet NO LONGER LOADED: {sorted(gone)}")
-            if new:
-                findings.append(f"[{key}] stylesheet added: {sorted(new)}")
+        findings += _state_diff(b, a, limit, key=f"[{key}] ")
 
-        bel, ael = b["elements"], a["elements"]
-        removed = sorted(set(bel) - set(ael))
-        added = sorted(set(ael) - set(bel))
-        for p in removed[:limit]:
-            findings.append(f"[{key}] ELEMENT REMOVED at {p}: <{bel[p]['tag']} class=\"{' '.join(bel[p]['cls'])}\">")
-        for p in added[:limit]:
-            findings.append(f"[{key}] element added at {p}: <{ael[p]['tag']} class=\"{' '.join(ael[p]['cls'])}\">")
+        # Interaction, when both captures have it. A capture without the pass
+        # is not silently treated as "no controls" -- that would turn a missing
+        # pass into a clean bill of health.
+        bi, ai = b.get("interaction"), a.get("interaction")
+        if bi is None and ai is None:
+            continue
+        if bi is None or ai is None:
+            side = "before" if bi is None else "after"
+            findings.append(f"[{key}] the {side} capture has no interaction pass, so the "
+                            f"controls were NOT compared at this viewport. Re-capture "
+                            f"both with --interact.")
+            continue
 
-        for p in sorted(set(bel) & set(ael)):
-            rb, ra = bel[p], ael[p]
-            if rb["tag"] != ra["tag"]:
-                findings.append(f"[{key}] tag changed at {p}: {rb['tag']} -> {ra['tag']}")
-            if rb["box"] != ra["box"]:
-                findings.append(f"[{key}] geometry changed at {p} <{ra['tag']}>: "
-                                f"{rb['box']} -> {ra['box']}")
-            for prop, bv in rb["style"].items():
-                av = ra["style"].get(prop)
-                if av != bv:
-                    findings.append(f"[{key}] {prop} changed at {p} <{ra['tag']}>: "
-                                    f"{bv!r} -> {av!r}")
-            for pseudo in set(rb["pseudo"]) | set(ra["pseudo"]):
-                if pseudo not in ra["pseudo"]:
-                    findings.append(f"[{key}] PSEUDO-ELEMENT {pseudo} DISAPPEARED at {p} <{ra['tag']}>")
-                    continue
-                if pseudo not in rb["pseudo"]:
-                    findings.append(f"[{key}] pseudo-element {pseudo} appeared at {p} <{ra['tag']}>")
-                    continue
-                for prop, bv in rb["pseudo"][pseudo].items():
-                    av = ra["pseudo"][pseudo].get(prop)
-                    if av != bv:
-                        findings.append(f"[{key}] {pseudo} {prop} changed at {p}: {bv!r} -> {av!r}")
+        bc, ac = bi["controls"], ai["controls"]
+        for pth in sorted(set(bc) - set(ac)):
+            c = bc[pth]
+            findings.append(f"[{key}] CONTROL GONE: <{c['tag']}> {c['label']!r} at {pth}")
+        for pth in sorted(set(ac) - set(bc)):
+            c = ac[pth]
+            findings.append(f"[{key}] control added: <{c['tag']}> {c['label']!r} at {pth}")
+
+        for pth in sorted(set(bc) & set(ac)):
+            cb, ca = bc[pth], ac[pth]
+            if cb["clicked"] and not ca["clicked"]:
+                findings.append(f"[{key}] CONTROL NO LONGER CLICKABLE: <{ca['tag']}> "
+                                f"{ca['label']!r} at {pth}")
+                continue
+            if not cb["clicked"] or not ca["clicked"]:
+                continue
+            if cb["changed"] and not ca["changed"]:
+                findings.append(f"[{key}] CONTROL WENT DEAD: <{ca['tag']}> {ca['label']!r} "
+                                f"at {pth} did something before and now changes nothing")
+                continue
+            if not cb["changed"] and ca["changed"]:
+                findings.append(f"[{key}] control came alive: <{ca['tag']}> {ca['label']!r} "
+                                f"at {pth} changed nothing before and now does")
+                continue
+            if cb["shot"] and ca["shot"]:
+                findings += _state_diff(cb["shot"], ca["shot"], limit,
+                                        key=f"[{key}] after clicking {ca['label']!r}: ")
 
     return findings
 
@@ -412,15 +622,28 @@ def selftest():
 <link rel="stylesheet" href="base.css"></head>
 <body><div class="wrap"><h1 class="title">Title</h1>
 <ul class="menu"><li>One</li><li>Two</li></ul>
-<p class="note">Note</p><img src="x.svg" width="80" height="60"></div></body></html>"""
+<p class="note">Note</p><img src="x.svg" width="80" height="60">
+<button class="live" aria-controls="panel">Filter</button>
+<button class="dead">Looks Clickable</button>
+<div id="panel" class="panel">Panel</div></div>
+<script src="app.js"></script></body></html>"""
     base = """.wrap{padding:20px;max-width:600px}
 .title{color:#1a1a1a;font-size:28px}
 .menu{list-style:none;display:flex;gap:12px}
 .menu > li + li::before{content:"|";padding:0 6px;color:#999}
 .note{color:#444}
+.live,.dead{cursor:pointer;font:14px sans-serif;padding:6px 10px}
+.panel{display:none;height:40px;background:#eee}
+.panel.open{display:block}
 @media (max-width:400px){.title{font-size:18px}}"""
+    # One control that does something and one that only looks like it does.
+    # The dead button is the SCROLL FILTER bug and the GRAMOFSMACK avatar
+    # cursor in miniature: pointer cursor, no handler, perfect screenshot.
+    app = ("""document.querySelector('.live').addEventListener('click',"""
+           """ () => document.getElementById('panel').classList.add('open'));""")
     svg = '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="60"><rect width="80" height="60" fill="#777"/></svg>'
-    for name, body in (("index.html", page), ("base.css", base), ("x.svg", svg)):
+    for name, body in (("index.html", page), ("base.css", base), ("x.svg", svg),
+                       ("app.js", app)):
         with open(os.path.join(root, name), "w", encoding="utf-8") as fh:
             fh.write(body)
 
@@ -469,6 +692,73 @@ def selftest():
                 failed += 1
                 for d in diffs[:3]:
                     print("        " + d)
+        # ---------------------------------------------------------------
+        # The interaction pass gets its own mutations. It is the part most
+        # able to pass by doing nothing: a click that never lands produces a
+        # post-click state identical to the base, which an unguarded
+        # comparison reads as "no difference".
+        # ---------------------------------------------------------------
+        print("")
+        print("interaction mutations (slower: reloads once per control)...")
+        ibefore = os.path.join(root, "ibefore.json.gz")
+        snap = capture(url, ibefore, label="interaction baseline", do_interact=True)
+
+        # The fixture has exactly one live and one dead control. If the pass
+        # cannot tell them apart on a page written to have one of each, nothing
+        # it says about a real skin means anything.
+        vp = snap["viewports"]["1920x1030"]["interaction"]["controls"]
+        live = [c for c in vp.values() if "live" in c["cls"]]
+        dead = [c for c in vp.values() if "dead" in c["cls"]]
+        base_ok = True
+        if len(live) != 1 or not live[0]["clicked"] or not live[0]["changed"]:
+            print("  FAIL  the live control was not seen to do anything")
+            base_ok = False
+        if len(dead) != 1 or not dead[0]["clicked"] or dead[0]["changed"]:
+            print("  FAIL  the dead control was not reported as dead")
+            base_ok = False
+        if base_ok:
+            print("  PASS  told the live control from the dead one")
+            passed += 1
+        else:
+            failed += 1
+
+        imut = [
+            # (name, new app.js, new index.html, should_differ)
+            ("the live control goes dead", "", None, True),
+            ("the dead control is removed", None,
+             page.replace('<button class="dead">Looks Clickable</button>', ''), True),
+            ("nothing changes", None, None, False),
+        ]
+        for name, newjs, newhtml, should_differ in imut:
+            if newjs is not None:
+                with open(os.path.join(root, "app.js"), "w", encoding="utf-8") as fh:
+                    fh.write(newjs)
+            if newhtml is not None:
+                with open(os.path.join(root, "index.html"), "w", encoding="utf-8") as fh:
+                    fh.write(newhtml)
+            iafter = os.path.join(root, "iafter.json.gz")
+            capture(url, iafter, label=name, do_interact=True)
+            diffs = [d for d in compare(ibefore, iafter)
+                     if "CONTROL" in d or "after clicking" in d or "control " in d]
+            detected = bool(diffs)
+            ok = (detected == should_differ)
+            print(f"  {'PASS' if ok else 'FAIL'}  {name}: "
+                  f"{'detected' if detected else 'no difference'} "
+                  f"({len(diffs)} interaction finding(s))")
+            if ok:
+                passed += 1
+            else:
+                failed += 1
+                for d in diffs[:3]:
+                    print("        " + d)
+            # Put the fixture back between mutations, or each one inherits the
+            # last. An earlier version of this file did not, and every mutation
+            # after the first was testing a page nobody had described.
+            with open(os.path.join(root, "app.js"), "w", encoding="utf-8") as fh:
+                fh.write(app)
+            with open(os.path.join(root, "index.html"), "w", encoding="utf-8") as fh:
+                fh.write(page)
+
         print(f"\nmutation tests: {passed} passed, {failed} failed")
         return 0 if failed == 0 else 1
     finally:
@@ -520,8 +810,41 @@ def main():
         label = ""
         if "--label" in sys.argv:
             label = sys.argv[sys.argv.index("--label") + 1]
-        capture(sys.argv[2], sys.argv[3], label=label)
+        capture(sys.argv[2], sys.argv[3], label=label,
+                do_interact="--interact" in sys.argv)
         return 0
+    if mode == "controls":
+        # One capture, interaction only, nothing to compare against. Answers
+        # "does every button on this page do something" on its own.
+        if len(sys.argv) < 3:
+            print("controls <url>")
+            return 2
+        tmp = tempfile.mkdtemp(prefix="snap-controls-")
+        try:
+            snap = capture(sys.argv[2], os.path.join(tmp, "c.json.gz"),
+                           label="controls", do_interact=True)
+            dead = []
+            for key, v in snap["viewports"].items():
+                it = v.get("interaction")
+                if not it:
+                    continue
+                dead += [(key, c) for c in it["controls"].values()
+                         if c["clicked"] and not c["changed"]]
+            print("")
+            if not dead:
+                print("Every control that could be clicked changed something.")
+                return 0
+            print(f"{len(dead)} control(s) changed nothing when clicked:")
+            for key, c in dead:
+                print(f"  [{key}] <{c['tag']}> {c['label']!r} cursor:{c['cursor']} "
+                      f"class=\"{' '.join(c['cls'])}\"")
+            print("")
+            print("A control that changes nothing is either wired to code that is")
+            print("not loaded, or is pure styling pretending to be a control. Both")
+            print("look fine in a screenshot and both are broken for the visitor.")
+            return 1
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
     if mode == "compare":
         if len(sys.argv) < 4:
             print("compare <before.json.gz> <after.json.gz>")
