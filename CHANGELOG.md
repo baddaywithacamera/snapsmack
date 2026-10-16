@@ -11,6 +11,42 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.896D - 2026-10-16 - Six hard-coded styles out of the templates
+
+- **Three skins stop carrying styling inside their HTML.** SLICKR's two album grids were each repeating `--justified-gap:4px;--justified-row-height:240px` in the tag itself, the exact values its own stylesheet already sets, so removing them changes nothing on screen. 50 SHADES and ONYX hid their inactive archive pane with `style="display:none"`; the pane is now marked `data-pane-hidden="1"` and each skin's own stylesheet decides what that means, which is the rule that skins own their presentation. SLICKR is released as 1.0.36, 50 SHADES as 1.7.2, ONYX as 0.1.22.
+
+- **The rules gate ratchets down from 36 inline styles to 30.** The count may fall, never rise. The thirty that remain take runtime values and are not safe to touch without understanding each one.
+
+## 0.7.895D - 2026-10-15 - The FILTER button, and a revert that reaches the sites
+
+- **SCROLL's FILTER button opens its panel again.** The button drew a panel that nothing was listening to, so clicking it did nothing visible.
+
+- **Owner custom code asks for the password and 2FA on every save.** The earlier version granted a window after one check, which left a period where further code could be saved unchallenged. There is no window now: each save that turns custom code on, or changes it, is challenged on its own.
+
+- **RATIONAL GEO's photograph navigation spans the viewport.** (Codex)
+
+- **A skin can now be put back exactly as it was, in a way the sites actually receive.** `tools/_build/skin-revert.sh` marks a skin's current state, shows what changed since, and restores it — restoring the files *and* moving the version number forward, because a skin restored without a new version is correct in the repository and absent from every site. The first thing it reverted was one of my own changes.
+
+## 0.7.894D - 2026-10-15 - Turning on custom code needs the password and 2FA
+
+- **Enabling owner custom code is now a step-up action.** Previously the setting could be switched on with an ordinary logged-in session. It now requires the account password and the 2FA code.
+
+## 0.7.893D - 2026-10-15 - SCROLL's side margins, and a comparator that tells the truth
+
+- **SCROLL's wall has its side margins back instead of running to the window edge.** The cause was inside SCROLL's own stylesheet: a later `.ss-masonry` rule setting full width beat the earlier `.scroll-wall` rule that set the margins.
+
+- **A render comparator, and the limits of it.** `tools/_build/skin-render-compare.py` captures a page's computed styles, pseudo-elements, boxes and element tree at five viewports and compares two captures, so a change meant to alter nothing can be proven to alter nothing. Two findings from building it are recorded rather than hidden: the first version hung silently for minutes on uncapped image waits, and **two captures of an unchanged live page differ in hundreds of places**, so a live page cannot be used as a baseline.
+
+- **RULES.md at the repository root.** The rules that were being broken from memory, written down, each one naming the check that enforces it or saying plainly that none exists.
+
+## 0.7.892D - 2026-10-15 - PHOTOGRAM's avatar and its blank counters
+
+- **PHOTOGRAM shows the site avatar again, and its like and comment counts are real numbers.** The avatar was saved under a skin-scoped setting the page never read. The two counters sat blank because the counts were not in the data the skin is given; they are supplied now, counting approved, non-spam comments. The badge that was appearing on every tile is corrected.
+
+- **INSTANT CAMERA's declared engine loads.** The skin was declaring an asset in the registry-derived `asset:public:` form, which the CMS honoured for stylesheets but not for scripts. The CMS was corrected rather than the skin: a skin that declares correctly must not be changed to suit CMS code.
+
+- **The PHOTOGRAM footer finding is withdrawn.** It was reported as missing; PHOTOGRAM never had one.
+
 ## 0.7.891D - 2026-10-15 - Restore Rational Geo's original static pages
 
 - **RATIONAL GEO static pages again render their saved page photograph before the original heading and body.** The strict skin template had stopped reading the bounded `image_asset` already supplied by the CMS, although the page record and photograph were intact. The restored markup uses the skin's existing framed-page presentation and does not alter page content. RATIONAL GEO is released as 2.1.24.

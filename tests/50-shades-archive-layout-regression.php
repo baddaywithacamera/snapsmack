@@ -40,7 +40,14 @@ if (!str_contains($cropped, 'data-archive-layout="thumbs"')
     || !str_contains($cropped, 'class="fsog-thumb fsog-thumb-portrait"')
     || !str_contains($cropped, 'style="aspect-ratio:0.6667"')
     || !str_contains($cropped, 'src="/media/natural.jpg"')
-    || !str_contains($cropped, 'id="justified-grid" class="ss-scroll-wall" data-masonry-layout="rows" style="display:none"')) {
+    // The inactive pane was marked with style="display:none" until 0.7.896D.
+    // Inline CSS is forbidden, so it now carries data-pane-hidden and the SKIN
+    // decides what that means. Checked here as markup AND as effect: the
+    // attribute must be on the element, and 50 Shades' own stylesheet must
+    // hide it -- a marker nothing acts on would leave both panes showing.
+    || !str_contains($cropped, 'id="justified-grid" class="ss-scroll-wall" data-masonry-layout="rows" data-pane-hidden="1"')
+    || !str_contains((string)@file_get_contents(dirname(__DIR__) . '/skins/50-shades-of-noah-grey/style.css'),
+        '[data-pane-hidden] { display: none; }')) {
     throw new RuntimeException('50 Shades natural cropped archive fell back to square thumbnails.');
 }
 
