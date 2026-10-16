@@ -50,6 +50,23 @@
   never wired to anything and putting it back would be adding a feature nobody
   asked for.
 
+- **A skin can no longer advertise an engine it does not feed.** This is the
+  check OPAUDIT 023 asked for, built the same day. If a skin lists a
+  JavaScript engine and does not emit the markup that engine looks for, the
+  build fails instead of the site quietly losing the feature. That is the whole
+  fault above: the engine loaded, every setting was published, the stylesheet
+  was correct, and the one element it paints on was missing, so it gave up
+  without a word. Each engine now states what it needs once, beside where the
+  engine is already described, so a new engine brings its own contract. Three
+  engines are covered today, four skin-and-engine pairs checked. It reads the
+  rendered page rather than the template, because searching the template would
+  pass on markup sitting in a branch that never runs. Pointed at PARADE's old
+  layout it names all three missing pieces, and it ships with seven mutation
+  tests and a control so it has been seen to fail before being trusted. It
+  does not prove the animation looks right — the white-ring fault would still
+  get past it, and that is said in the check itself rather than left implied.
+  `tests/skin-engine-markup-contract.php`, RULES.md section 1b.
+
 - **Recorded as OPAUDIT 023, "One commit, four skins, two repairs."** Eighteen
   days with the feature missing from the site that advertises it, found by the
   owner rather than by us or by the tests. The regression test had been written
