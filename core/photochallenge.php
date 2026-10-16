@@ -754,11 +754,17 @@ function pc_admit_object(PDO $pdo, array $settings, string $object_id): ?array {
             }
             $pdo->commit(); return $old;
         }
-        $countq = $pdo->prepare("SELECT COALESCE(MAX(admission_number),0),COALESCE(SUM(horsconcours=0),0) FROM pc_admissions WHERE week_key=? AND actor_url=? FOR UPDATE");
+        $countq = $pdo->prepare("SELECT COALESCE(MAX(admission_number),0),
+            COALESCE(SUM(status='active' AND horsconcours=0),0)
+            FROM pc_admissions WHERE week_key=? AND actor_url=? FOR UPDATE");
         $countq->execute([$win['week_key'], $actor]);
-        [$max_slot,$competitive_count] = array_map('intval', $countq->fetch(PDO::FETCH_NUM) ?: [0,0]);
-        $slot = $max_slot + 1;
-        if (!$hc && $competitive_count >= 5) { $pdo->commit(); return null; }
+        $counts = $countq->fetch(PDO::FETCH_NUM) ?: [0,0];
+        $slot = (int)$counts[0] + 1;
+        $entry_limit = max(0, (int)($settings['photochallenge_entry_limit'] ?? 5));
+        if (!$hc && $entry_limit > 0 && (int)$counts[1] >= $entry_limit) {
+            pc_last_admit_reason('the ' . $entry_limit . ' competitive entries for this round are already used');
+            $pdo->commit(); return null;
+        }
         $pdo->prepare("INSERT INTO pc_admissions
             (week_key,actor_url,object_id,admission_number,horsconcours,boost_state)
             VALUES (?,?,?,?,?,'pending')")->execute([$win['week_key'],$actor,$object_id,$slot,$hc]);
