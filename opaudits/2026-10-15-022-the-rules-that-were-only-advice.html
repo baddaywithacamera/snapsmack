@@ -84,7 +84,6 @@
 <li><strong>36 inline style attributes, 21 CSS-in-PHP sites and 55 core/skin couplings remain</strong>, all three ratcheted so they cannot grow.</li>
 <li><strong>Two sites cannot be updated at all.</strong> foundtextures.ca and photoblogs.fyi run <code>schema_version: 1</code> skins. The loader drops a skin whose manifest it cannot read, so the updater never sees them as installed and never offers them anything. They are frozen, and would stay frozen under any policy blocking reinstallation of non-compliant skins.</li>
 <li><strong>photoblogs.fyi runs 0.7.877D</strong>, ten builds behind the fleet.</li>
-<li><strong>snapsmack.ca returned HTTP 500 on 15 October and is serving normally again.</strong> Three consecutive requests failed at the time; the site, the skin registry it hosts and the published audits were all reachable when re-checked the same day. Recorded because an earlier draft of this audit stated the outage as a standing fact without re-testing it.</li>
 <li><strong><code>docs/</code> is tracked in git</strong> and holds ten or more specification files, in a directory the owner has stated is never used.</li>
 </ul>
 

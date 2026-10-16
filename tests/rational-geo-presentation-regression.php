@@ -72,6 +72,10 @@ foreach (['--rg-bg-page:', '--rg-bg-chrome:', '--rg-text-primary:', '--rg-nav-co
         throw new RuntimeException('RATIONAL GEO base CSS has no fail-safe palette value for ' . $variable);
     }
 }
+if (!str_contains($css, '.blogroll-peer:nth-child(-n + 2)')
+    || !preg_match('/@media\s*\(max-width:\s*760px\)\s*\{[^}]*\.blogroll-peer:nth-child\(2\)\s*\{[^}]*padding-top:\s*2vw/s', $css)) {
+    throw new RuntimeException('RATIONAL GEO blogroll first row no longer aligns without collapsing mobile spacing.');
+}
 
 echo "RATIONAL GEO presentation regression: PASS\n";
 // ===== SNAPSMACK EOF =====

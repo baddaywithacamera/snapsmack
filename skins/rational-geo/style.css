@@ -1199,8 +1199,14 @@ body.static-transmission #scroll-stage {
   transition: background 0.3s ease;
 }
 
-.blogroll-peer:first-child {
+.blogroll-peer:nth-child(-n + 2) {
   padding-top: 0;
+}
+
+@media (max-width: 760px) {
+  .blogroll-peer:nth-child(2) {
+    padding-top: 2vw;
+  }
 }
 
 .blogroll-peer:last-child {
