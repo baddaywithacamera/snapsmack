@@ -209,8 +209,9 @@ jive-turkey 2 · the-grid 2. TILEZ and STANLEY are at 0.
   circle where the original printed one uppercase letter.
 - Interaction is now covered: `skin-render-compare.py controls <url>` and
   `capture --interact` discover the controls on a page, click each one from a
-  fresh load, and report any that change nothing. 11/11 mutation tests,
-  including one fixture written with exactly one live and one dead button.
+  fresh load, and report any that change nothing. 12/12 mutation tests,
+  including one fixture written with exactly one live and one dead button,
+  and one that randomises per load -- a dead control must still read as dead.
   What is still uncovered: anything needing two clicks in sequence, typing, or
   a logged-in session.
 - `v0.7.892D` points ahead of what twelve sites are running, because the tag
