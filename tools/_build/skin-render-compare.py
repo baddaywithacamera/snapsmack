@@ -415,7 +415,7 @@ def capture(url, out_path, label="", extra_css="", do_interact=False):
                 raise SystemExit(f"capture failed at {w}x{h}: the page loaded no "
                                  f"stylesheets; a render without CSS proves nothing")
             if do_interact and (w, h) in INTERACT_VIEWPORTS:
-                shot["interaction"] = interact(chrome, url, shot)
+                shot["interaction"] = interact(chrome, url)
             snapshot["viewports"][f"{w}x{h}"] = shot
         with gzip.open(out_path, "wt", encoding="utf-8") as fh:
             json.dump(snapshot, fh)
@@ -445,7 +445,7 @@ def capture(url, out_path, label="", extra_css="", do_interact=False):
         chrome.close()
 
 
-def interact(chrome, url, base_shot):
+def interact(chrome, url):
     """
     Click each discovered control from a freshly loaded page and record the
     result. Returns {path: {...}} keyed the same way elements are.
@@ -468,6 +468,18 @@ def interact(chrome, url, base_shot):
         chrome.send("Page.navigate", url=url)
         time.sleep(1.5)
         chrome.evaluate(SETTLE_JS, await_promise=True)
+        # Whether a click did anything is judged against a shot taken in the
+        # SAME page load, not against the base capture from an earlier load.
+        # On a page that renders differently per request -- JIVE TURKEY
+        # randomises its tile colours and sizes, which is 330 differences
+        # between two captures of an unchanged page -- comparing across loads
+        # makes every control look alive and hides every dead one. That is the
+        # failure mode this whole tool exists to avoid, so it must not be
+        # built into the part that looks for dead controls.
+        chrome.evaluate(FREEZE_JS)
+        pre = chrome.evaluate(CAPTURE_JS)
+        if not isinstance(pre, dict) or len(pre.get("elements") or {}) < 10:
+            raise SystemExit(f"pre-click capture failed for {ctl['path']}")
         clicked = chrome.evaluate(
             "(" + CLICK_JS.strip() + ")(" + json.dumps(ctl["path"]) + ")")
         if not clicked:
@@ -482,7 +494,7 @@ def interact(chrome, url, base_shot):
             # would report "no difference".
             raise SystemExit(f"post-click capture failed for {ctl['path']}")
         steps[ctl["path"]] = dict(ctl, clicked=True, shot=shot,
-                                  changed=bool(_state_diff(base_shot, shot)))
+                                  changed=bool(_state_diff(pre, shot)))
     return {"controls": steps, "truncated": truncated,
             "discovered": len(controls) + (1 if truncated else 0)}
 
@@ -721,6 +733,33 @@ def selftest():
             passed += 1
         else:
             failed += 1
+
+        # The case that caught a real mistake in this file. The first version
+        # judged "did the click do anything" against the base capture from an
+        # EARLIER page load. On a page that renders differently per request --
+        # JIVE TURKEY randomises tile colours and sizes, 330 differences
+        # between two captures of an unchanged page -- that makes every control
+        # look alive and hides every dead one. So: make the fixture randomise,
+        # and require the dead button to still be called dead.
+        with open(os.path.join(root, "app.js"), "w", encoding="utf-8") as fh:
+            fh.write(app + chr(10) + "document.querySelector('.note').style.color ="
+                     " 'rgb(' + [1,2,3].map(() => Math.floor(Math.random()*255))"
+                     ".join(',') + ')';")
+        rnd = os.path.join(root, "irand.json.gz")
+        rsnap = capture(url, rnd, label="randomising", do_interact=True)
+        rc = rsnap["viewports"]["1920x1030"]["interaction"]["controls"]
+        rlive = [c for c in rc.values() if "live" in c["cls"]]
+        rdead = [c for c in rc.values() if "dead" in c["cls"]]
+        if (len(rdead) == 1 and rdead[0]["clicked"] and not rdead[0]["changed"]
+                and len(rlive) == 1 and rlive[0]["changed"]):
+            print("  PASS  still told them apart on a page that randomises per load")
+            passed += 1
+        else:
+            print("  FAIL  randomisation made the dead control look alive -- the "
+                  "verdict is being taken across page loads again")
+            failed += 1
+        with open(os.path.join(root, "app.js"), "w", encoding="utf-8") as fh:
+            fh.write(app)
 
         imut = [
             # (name, new app.js, new index.html, should_differ)
