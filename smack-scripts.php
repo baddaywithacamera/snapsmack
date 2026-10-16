@@ -26,6 +26,22 @@ require_once 'core/auth-smack.php';
 
 define('CUSTOM_HEAD_FILE', __DIR__ . '/data/custom-head.html');
 
+// AUTHORIZE CUSTOM CODE — step-up (password + 2FA) grants a 10-minute window.
+// Same pattern as SMACKBACK's file actions; see core/reauth.php.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['scripts_stepup'] ?? '') === '1') {
+    csrf_verify();
+    require_once 'core/reauth.php';
+    $re = reauth_verify($pdo, $_POST['reauth_password'] ?? '', $_POST['reauth_totp'] ?? '');
+    if ($re['ok']) {
+        reauth_grant_window('owner_custom_code', 10);
+        $m = 'Custom code authorized for 10 minutes.';
+    } else {
+        $m = 'Authorization failed: ' . $re['error'];
+    }
+    header('Location: smack-scripts.php?msg=' . urlencode($m));
+    exit;
+}
+
 if (isset($_POST['save_scripts'])) {
 
     csrf_verify();
@@ -33,6 +49,30 @@ if (isset($_POST['save_scripts'])) {
     $head_scripts = trim($_POST['head_scripts'] ?? '');
     $embed_codes  = trim($_POST['embed_codes'] ?? '');
     $custom_enabled = ($_POST['owner_custom_code_enabled'] ?? '0') === '1' ? '1' : '0';
+
+    // STEP-UP GATE. This switch runs arbitrary JavaScript in every visitor's
+    // browser -- the highest-privilege control on the site -- and until now a
+    // single checkbox and a session cookie were the whole of it. Anyone with a
+    // borrowed session, or any XSS reaching this form, could have turned it on.
+    // Spotted by Sean, 15 October 2026.
+    //
+    // Gated: turning it ON, and changing the code WHILE it is on, because the
+    // payload is as dangerous as the switch.
+    // NOT gated: turning it OFF, and editing while it is off. Making someone
+    // find their authenticator to disable arbitrary code execution would be a
+    // worse rule than having none.
+    require_once 'core/reauth.php';
+    $stmt_was = $pdo->prepare("SELECT setting_val FROM snap_settings WHERE setting_key = 'owner_custom_code_enabled'");
+    $stmt_was->execute();
+    $was_enabled = ($stmt_was->fetchColumn() === '1');
+    $code_changed = $head_scripts !== (file_exists(CUSTOM_HEAD_FILE) ? file_get_contents(CUSTOM_HEAD_FILE) : '');
+    $needs_stepup = ($custom_enabled === '1') && (!$was_enabled || $code_changed);
+
+    if ($needs_stepup && !reauth_window_active('owner_custom_code')) {
+        header('Location: smack-scripts.php?msg=' . urlencode(
+            'Authorize with your password and 2FA before enabling or changing custom code.'));
+        exit;
+    }
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES ('owner_custom_code_enabled', ?) ON DUPLICATE KEY UPDATE setting_val=VALUES(setting_val)")->execute([$custom_enabled]);
 
     // Head scripts — written to a file, not the DB, so SMACKBACK can watch it.
@@ -85,10 +125,34 @@ include 'core/sidebar.php';
     <h2>SMACK YOUR SCRIPTS UP!</h2>
 
     <?php if (isset($_GET['msg'])): ?>
-        <div class="alert">> SCRIPTS INJECTED</div>
+            <div class="alert"><?php echo htmlspecialchars((string)$_GET['msg'], ENT_QUOTES, 'UTF-8'); ?></div>
     <?php endif; ?>
 
-    <form method="POST">
+    <?php require_once 'core/reauth.php'; $scripts_stepup_active = reauth_window_active('owner_custom_code'); ?>
+
+        <?php if (!$scripts_stepup_active): ?>
+        <form method="POST" class="box">
+            <?php csrf_field(); ?>
+            <input type="hidden" name="scripts_stepup" value="1">
+            <p class="dim">Enabling owner custom code, or changing it while enabled, needs your
+            password and 2FA. Authorization lasts 10 minutes. Turning it OFF never requires this.</p>
+            <div class="sb-stepup-row">
+                <div class="sb-stepup-field">
+                    <label for="sc-reauth-password">Your password</label>
+                    <input type="password" id="sc-reauth-password" name="reauth_password" placeholder="Password" autocomplete="off">
+                </div>
+                <div class="sb-stepup-field sb-stepup-field--code">
+                    <label for="sc-reauth-totp">2FA code</label>
+                    <input type="text" id="sc-reauth-totp" name="reauth_totp" placeholder="123456" inputmode="numeric" autocomplete="off">
+                </div>
+                <button type="submit" class="btn-smack">AUTHORIZE</button>
+            </div>
+        </form>
+        <?php else: ?>
+        <p class="dim">&#10003; Custom code authorized for the next few minutes.</p>
+        <?php endif; ?>
+
+<form method="POST">
         <?php csrf_field(); ?>
 
         <!-- HEAD SCRIPTS -->
