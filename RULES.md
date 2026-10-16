@@ -93,11 +93,53 @@ standardized into core... No shared mechanism."*
 Each skin keeps the functionality it already had in Skin Admin; only the
 masthead and nav **code** is individual to each skin.
 
-The comparator must hold those three regions strict for this family.
+The check is `tests/gramofsmack-family-identity.php`.
 
-**Measured 15 Oct: they are NOT identical today** — the masthead, bio and
-navbar markup differ across the nine. That check, once written, fails on
-arrival. Treat the divergence as work, not as a reason to weaken the rule.
+**Re-measured 16 Oct: they ARE identical, and the 15 Oct reading was wrong.**
+That reading counted 3 masthead and 7 navbar variants because it compared the
+raw text, class prefixes included — and each skin owns its class prefix, so
+`au-profile` versus `tg-profile` was being scored as a divergence. With the
+prefix normalised away, all nine match.
+
+What is really there, and it reverses the obvious conclusion:
+
+- Before the conversion all nine had a layout.php that was a shell; the whole
+  body came from one shared core component. The masthead was identical because
+  it was one piece of code.
+- `6cab3a9c` "Move grid family skeletons into skin layouts" did not relocate
+  that markup, it **re-typed** it for six skins and changed it on the way:
+  `<header>`→`<section>`, `<span class="stat"><strong class="stat-num">`→
+  `<div class="stat"><span class="stat-num">`, `aria-label="Primary"`→
+  `"Site navigation"`, and the avatar gained a `--zoom` modifier the original
+  never had. That is rule 5 broken in the same commit that claimed to be a
+  relocation.
+- `edf8670c` (PARADE) and `4043b2a6` (INSTANT CAMERA) were done separately and
+  correctly. **Those two are the faithful ones; the seven are the drift.**
+  A majority vote would have "fixed" the two correct skins.
+
+Five of those differences were measured to render identically and the check
+re-verifies the reason for each, rather than trusting it: every skin sets
+`display` on the stat box and `font-weight` on the number, no skin selects the
+masthead by element name or the initials as a descendant, and the boxes either
+side of the whitespace that differs are all flex or block-level. If any of
+those stops holding, the check fails instead of keeping its allowance.
+
+Two real residuals, both Sean's call, neither changed:
+
+- PARADE and INSTANT CAMERA's avatar lacks `--zoom`, so no `cursor: zoom-in`.
+  Nothing in the repository implements avatar zoom, so on the other seven that
+  cursor is a **false affordance** — it says click-to-zoom and nothing happens.
+  Restoring the original means removing it from seven skins: seven layout
+  edits, seven manifest bumps, seven skin installs, for a mouse cursor.
+- INSTANT CAMERA shows an avatar inside its sticky nav. The other eight do not.
+  Looks deliberate, never confirmed.
+
+One uniform regression against the pre-conversion original, affecting all nine
+equally: the no-avatar fallback used to show a single uppercase initial
+(`strtoupper(substr($siteName, 0, 1))`); every skin now puts the **whole site
+name** inside the avatar circle. Only visible on a site with no avatar set.
+
+Proven by mutation: nine deliberate breakages, all nine caught.
 
 Every other skin owns its own masthead and nav outright.
 
@@ -160,6 +202,11 @@ jive-turkey 2 · the-grid 2. TILEZ and STANLEY are at 0.
 - 21 CSS-in-PHP sites in `core/`. Ratcheted.
 - PHOTOGRAM's bottom tab bar: present in Sean's reference screenshots,
   found in no version of the skin. Unexplained.
+- The GRAMOFSMACK avatar `--zoom` false affordance on seven skins, and
+  INSTANT CAMERA's sticky-nav avatar. Both recorded in the identity check as
+  allowances; see rule 7. Neither is a defect that shows on a photograph.
+- All nine GRAMOFSMACK skins print the whole site name in the no-avatar
+  circle where the original printed one uppercase letter.
 - The comparator covers rendering, not interaction. Menu, next/prev and
   lightbox clicks are uncovered.
 - `v0.7.892D` points ahead of what twelve sites are running, because the tag
