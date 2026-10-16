@@ -253,3 +253,4 @@ _harness/
 # Regenerated on demand next to the module/exe; never source.
 tools/coldsnap/export_cache/
 tools/smackpress/smackpress.db
+.skin-marks/
