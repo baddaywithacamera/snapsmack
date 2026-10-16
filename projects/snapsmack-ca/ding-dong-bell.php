@@ -403,7 +403,7 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="entry-top">
                     <h3>The scheduled jobs looked registered while pointing at yesterday&rsquo;s door</h3>
                     <span class="date">the cron drift</span>
-                    <span class="state notwatch">Fixed &mdash; confirming</span>
+                    <span class="state watched">Watched working</span>
                 </div>
                 <p>Federation quietly stopped across the whole fleet for about two days, and it looked like several separate features breaking at once &mdash; new follows got no catalogue, posts never pushed, the version check went silent. It was one cause: the scheduled jobs still existed, but the command each one ran pointed at a script path that no longer existed after a deploy moved the install directory. A check that only asks &ldquo;is the job registered?&rdquo; said yes &mdash; the job was registered to run nothing.</p>
                 <p>The command-level checker (not just a heartbeat) exposed it, the jobs were re-registered across the hub and all 24 spokes, and a permanent self-heal shipped so a deploy re-points every job to the current path. The original repair completed and its backfill was proven end to end.</p>
