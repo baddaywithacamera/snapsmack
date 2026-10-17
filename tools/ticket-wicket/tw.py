@@ -40,7 +40,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 if BASE not in sys.path:
     sys.path.insert(0, BASE)
 
-from ticketwicket import anonymise, forum as forummod, model, store as storemod
+from ticketwicket import agent, anonymise, forum as forummod, model, store as storemod
 
 
 def _store(args):
@@ -279,6 +279,13 @@ def cmd_mod_check(args):
     return 0
 
 
+def cmd_agent(args):
+    """What Claude and Codex can do here. Refusals first: this tool cannot
+    send and cannot delete, and knowing that saves looking for the button."""
+    _out(args, agent.sheet(), agent.text())
+    return 0
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="tw", description="TICKET WICKET")
     p.add_argument("--json", action="store_true")
@@ -357,6 +364,18 @@ def build_parser():
     ob.set_defaults(func=cmd_outbox)
 
     sub.add_parser("mod-check").set_defaults(func=cmd_mod_check)
+    sub.add_parser("agent", help="what Claude and Codex can do here"
+                   ).set_defaults(func=cmd_agent)
+
+    # --json is documented as working on every command, and an agent will
+    # naturally write it after the subcommand. argparse only accepts a
+    # top-level flag before the subcommand, so mirror it onto each subparser.
+    # SUPPRESS matters: without it the subparser's default would overwrite a
+    # --json given before the subcommand.
+    for _sp in sub.choices.values():
+        _sp.add_argument("--json", action="store_true",
+                         default=argparse.SUPPRESS,
+                         help="machine-readable output")
     return p
 
 

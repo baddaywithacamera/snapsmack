@@ -208,6 +208,18 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="entry">
                 <div class="entry-top">
+                    <h3>The watchman was asleep</h3>
+                    <span class="date">SNAPSMACK &middot; OPERABILITY &middot; 2026-10-17</span>
+                    <span class="state open">Open</span>
+                </div>
+                <p>CRONOMETER is the tool that watches whether the scheduled jobs on Sean&rsquo;s sites are running. It stopped, and nothing noticed. For at least thirty-three days it showed no sites at all while twenty-five site profiles sat on disk in exactly the folder it says it reads &mdash; and those same profiles load perfectly when anything else asks for them.</p>
+                <p>It does not crash or complain. It opens, finds nothing, draws a tidy screen saying &ldquo;No fleet sites found&rdquo; with helpful advice, and writes a log file containing only a header. Not one line about the failure. A tool that reports its own total failure as a neutral empty state is indistinguishable from a tool with nothing to do, which is how a month went by.</p>
+                <p>Two causes. It looks for a folder beside itself that has never existed; and when that fails it quietly substitutes &ldquo;no sites&rdquo; for &ldquo;I could not load anything&rdquo; &mdash; the same answer a brand new install would give. The repair is not written yet, and a fix for a separate fault in it has been sitting built-but-unshipped since 14 September.</p>
+                <p>It was found by a different tool, written that morning, on its first run. That is less a credit to the new tool than a measure of how long nobody looked. This is the second time cron monitoring has silently not worked here &mdash; the first time the cron had never been installed at all, and this is the instrument that was supposed to make that impossible to repeat.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-10-17-024-the-watchman-was-asleep.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
+            </div>
+            <div class="entry">
+                <div class="entry-top">
                     <h3>One commit, four skins, two repairs</h3>
                     <span class="date">SNAPSMACK &middot; AGENT CONDUCT &middot; 2026-10-16</span>
                     <span class="state open">Open</span>
