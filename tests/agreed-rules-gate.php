@@ -41,7 +41,14 @@ $check = static function (bool $ok, string $what) use (&$failures): void {
 // scanned skins/ only; the three CMS renderers that draw skins hold the rest.
 // A budget set to a hoped-for number is a gate that gets switched off, so this
 // is the truth on the day, and it may only ever go down.
-$INLINE_STYLE_BUDGET = 9;
+$INLINE_STYLE_BUDGET = 28;   // measured 2026-10-17, see the note below
+// 1513b8ac set this to 9 while the real count was 28. The gate failed from
+// that commit onward and nobody ran it: 0.7.898D, 899D and 900D all shipped
+// with it red, and 900D is deployed on the fleet. A budget is the MEASURED
+// count, not the count somebody hoped for -- set below the truth it stops
+// being a ratchet and becomes noise that gets ignored, which is exactly what
+// happened. Lower it only in the same commit that removes the styles, and run
+// the gate before pushing.
 
 $templates = array_merge(
     glob($root . '/skins/*/layout.php') ?: [],
