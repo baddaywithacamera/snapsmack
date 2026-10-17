@@ -49,6 +49,14 @@
   already published. Those two are now the only thing left in the style
   attribute. Until they are settled the inline-style count stays at 28.
 
+- **ONYX now uses the palette selected by the site owner.** The strict ONYX
+  renderer loaded the base stylesheet but omitted the saved variant stylesheet,
+  so Garnet red always won even when a site selected Topaz, Emerald, Amethyst,
+  Aquamarine, or Sapphire. PHOTOFRI.DAY can remain Garnet while Mirror Project
+  uses its selected Topaz/amber palette. The separate Glow Strength setting is
+  unchanged and can still be set to zero. A renderer regression proves that the
+  selected palette stylesheet is emitted. (`core/onyx-page-component.php`,
+  `tests/onyx-variant-regression.php`.)
 
 - **Opened because 0.7.899D is deployed.** 899D went out to the fleet, so that
   number is frozen and must never move again. Everything from here folds into
