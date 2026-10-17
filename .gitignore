@@ -254,3 +254,7 @@ _harness/
 tools/coldsnap/export_cache/
 tools/smackpress/smackpress.db
 .skin-marks/
+
+# LOG FLOGGER / TICKET WICKET: pytest scratch, never shipped
+tools/log-flogger/build/
+tools/ticket-wicket/build/
