@@ -142,6 +142,39 @@ foreach ((array)($inventory['css'] ?? []) as $entry) {
 $check($registered, 'ss-frame-tokens.css is not a public asset in ASSET-INVENTORY.json, so no site would load it.');
 
 // ---------------------------------------------------------------------------
+// 3b. A site on an older installed skin must keep its frames
+// ---------------------------------------------------------------------------
+// The CMS and skins ship through different channels, so this CMS will run
+// against skins that have not been updated yet. Such a skin emits no
+// data-frame-* attributes and does not load the token stylesheet, so handing
+// it colours alone strips the inset, border and drop shadow from every
+// photograph, silently. Measured before the branch existed: an older PARADE
+// got style="--tile-border-c:#123456;--tile-bg:#abcdef;" and nothing else.
+$check(function_exists('snapsmack_skin_reads_frame_tokens'),
+    'snapsmack_skin_reads_frame_tokens() is gone. Every site on an older installed skin '
+    . 'now loses the inset, border and shadow on every photograph.');
+
+if (function_exists('snapsmack_skin_reads_frame_tokens')) {
+    // A skin that declares the stylesheet gets tokens; one that does not gets
+    // the old declaration. 'chaplin' stands in for any skin outside the
+    // family: it declares nothing, so it must take the compatibility path.
+    $check(snapsmack_skin_reads_frame_tokens('the-grid') === true,
+        'THE GRID declares the token stylesheet but is not recognised as token-aware.');
+    $check(snapsmack_skin_reads_frame_tokens('no-such-skin-here') === false,
+        'An unknown skin is treated as token-aware, which would strip its frames.');
+
+    $legacy = snapsmack_grid_frame_items(
+        [['img_file' => '/p.jpg', 'img_size_pct' => 90, 'img_border_px' => 10, 'img_shadow' => '1']],
+        ['tg_customize_level' => 'per_image'], 'the-grid');
+    $modern = (string)($legacy[0]['frame_style'] ?? '');
+    // THE GRID is token-aware, so it must NOT be handed the old declaration.
+    foreach (['--tile-img-size', '--tile-border-w', '--tile-shadow'] as $banned) {
+        $check(!str_contains($modern, $banned),
+            "A token-aware skin is still being handed {$banned} in its style attribute.");
+    }
+}
+
+// ---------------------------------------------------------------------------
 // 4. SUDDEN IMPACT refuses drop shadows. Sean, 16 Oct 2026.
 // ---------------------------------------------------------------------------
 $si = (string)file_get_contents($root . '/skins/sudden-impact/style.css');
