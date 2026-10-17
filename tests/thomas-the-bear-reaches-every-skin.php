@@ -71,9 +71,18 @@ foreach (glob($root . '/skins/*/manifest.json') ?: [] as $path) {
         $declaring[] = basename(dirname($path));
     }
 }
-$check($declaring === [],
-    'These skins declare smack-thomas as well as the CMS shipping it, so he would load '
-    . 'twice and spawn twice: ' . implode(', ', $declaring));
+// Declaring him in a skin is FINE and in fact wanted -- a site can run an older CMS
+// that does not ship him yet while installing a newer skin. What must be true is that
+// loading him twice is harmless, or that combination spawns two sets of bears.
+$check(str_contains($engine, 'window.__snapsmackThomas'),
+    'The Thomas engine has lost its load-once guard. He is shipped by the CMS AND declared '
+    . 'by some skins, deliberately, so that he survives any CMS/skin combination — without '
+    . 'the guard that same belt-and-braces spawns two sets of bears.');
+if ($declaring !== []) {
+    $check(str_contains($engine, 'if (window.__snapsmackThomas) return;'),
+        'These skins declare smack-thomas while the CMS also ships him, and the guard does '
+        . 'not return early: ' . implode(', ', $declaring));
+}
 
 if ($failures !== []) {
     fwrite(STDERR, "THOMAS THE BEAR CHECK FAILED\n");
