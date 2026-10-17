@@ -11,6 +11,36 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.902D - 2026-10-17 - LOG FLOGGER and TICKET WICKET
+
+- **Opened because 0.7.901D is deployed.** Measured against the live fleet.
+
+- **LOG FLOGGER reads the logs nobody reads.** Gather, sort by app and kind,
+  analyse, summarise, clean up — plus two things that came out of the
+  conversation: whether anyone has started probing SnapSmack specifically, and
+  an anonymous report an owner can send without naming themselves.
+  It is built around silences rather than errors, because that is what has
+  actually cost time here: the fleet cron that was never installed, the page
+  hits never recorded for a year, PARADE's borders dead for eighteen days,
+  Thomas missing from 28 skins. None of those errored. **On its first run
+  against the real logs it found that CRONOMETER has written nothing for 32
+  days, against a normal gap of 44 minutes.**
+
+- **TICKET WICKET turns a real issue into a numbered, tracked, public ticket
+  that carries nobody's name.** Every ticket goes in the tickets board whatever
+  channel it arrived on; the reporter and their original message stay private
+  and the tool refuses to post anything that still identifies someone. Urgency
+  is computed from security, usability and how many are affected rather than
+  picked off a list, and it is what makes "this one is rotting" mean something.
+
+- **Both have a command line, for Claude and for ChatGPT**, so the support work
+  can be done without Sean present. Everyone signs as themselves; the tool
+  stamps who is driving and a caller cannot claim to be someone else.
+  **Neither can send and neither can delete.** Replies queue for a separate
+  armed sender that holds the only credential, and tickets close, withdraw or
+  merge but never vanish.
+
+
 ## 0.7.901D - 2026-10-17 - The dead-control check was passing everything
 
 - **Thomas the Bear reaches every skin.** 900D shipped with him declared by three skins out of
