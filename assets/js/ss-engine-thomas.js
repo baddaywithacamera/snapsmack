@@ -17,6 +17,16 @@
 (function() {
     'use strict';
 
+    // Load-once guard. Thomas is shipped by the CMS (core/meta.php) for every skin,
+    // AND still declared by the few skins that always declared him. Both paths are
+    // kept on purpose: a site can be running an older CMS that does not ship him yet
+    // while installing a newer skin, or the reverse, and he has to survive both.
+    // Two script tags would otherwise register two keydown listeners and spawn two
+    // sets of bears. He is a tribute to Noah Grey — he should be impossible to lose
+    // and impossible to double.
+    if (window.__snapsmackThomas) return;
+    window.__snapsmackThomas = true;
+
     let dedicationShown = false;
     let bearsActive     = false;
     // --- BEAR REMOVAL ---
