@@ -57,14 +57,16 @@ $perImageFrame = snapsmack_grid_frame_items([['img_size_pct'=>82,'img_border_px'
 special_check((string)$perImageFrame[0]['frame_size'] === '82', 'Per-image inset choice lost.');
 special_check((string)$perImageFrame[0]['frame_border'] === '6', 'Per-image border choice lost.');
 special_check((string)$perImageFrame[0]['frame_shadow'] === '2', 'Per-image shadow choice lost.');
-foreach (['--tile-border-c:#123456','--tile-bg:#abcdef'] as $value) special_check(str_contains($perImageFrame[0]['frame_style'], $value), "Per-image frame colour missing: {$value}");
-foreach (['--tile-img-size','--tile-border-w','--tile-shadow'] as $banned) special_check(!str_contains($perImageFrame[0]['frame_style'], $banned), "Frame CSS is being assembled in PHP again: {$banned}");
+foreach (['--tile-border-c:#123456','--tile-bg:#abcdef'] as $value) special_check(str_contains($perImageFrame[0]['frame_colours'], $value), "Per-image frame colour missing: {$value}");
+foreach (['--tile-img-size','--tile-border-w','--tile-shadow'] as $banned) special_check(!str_contains($perImageFrame[0]['frame_colours'], $banned), "Token-aware skins are being handed frame CSS again: {$banned}");
+// frame_style is kept unchanged for skins a site has not updated yet.
+special_check(str_contains($perImageFrame[0]['frame_style'], '--tile-img-size:82%'), 'frame_style lost the legacy declaration older skins read.');
 special_check($perImageFrame[0]['is_framed'] === true, 'Per-image framed state missing.');
 $perCarouselFrame = snapsmack_grid_frame_items([['post_img_size_pct'=>91,'post_border_px'=>3,'post_border_color'=>'#654321','post_bg_color'=>'#fedcba','post_shadow'=>'1']], ['ic_customize_level'=>'per_carousel'], 'instant-camera');
 special_check((string)$perCarouselFrame[0]['frame_size'] === '91', 'Per-carousel inset choice lost.');
 special_check((string)$perCarouselFrame[0]['frame_border'] === '3', 'Per-carousel border choice lost.');
 special_check((string)$perCarouselFrame[0]['frame_shadow'] === '1', 'Per-carousel shadow choice lost.');
-foreach (['--tile-border-c:#654321','--tile-bg:#fedcba'] as $value) special_check(str_contains($perCarouselFrame[0]['frame_style'], $value), "Per-carousel frame colour missing: {$value}");
+foreach (['--tile-border-c:#654321','--tile-bg:#fedcba'] as $value) special_check(str_contains($perCarouselFrame[0]['frame_colours'], $value), "Per-carousel frame colour missing: {$value}");
 
 $parade = special_render('parade', ['pa_border_style'=>'sweep','pa_border_dir'=>'rtl','pa_border_rhythm'=>'constant','pa_wave_speed'=>'91','pa_border_opacity'=>'44']);
 foreach (['data-pa-border-style="sweep"','data-pa-border-dir="rtl"','data-pa-border-rhythm="constant"','data-pa-border-cycle="91"','data-pa-border-minl="0.45"'] as $value) special_check(str_contains($parade, $value), "PARADE control missing: {$value}");

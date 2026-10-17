@@ -146,10 +146,12 @@ recovery_check(($framed[0]['is_framed'] ?? false) === true, 'GAME ON global fram
 // colours are still carried as custom properties until that is decided.
 recovery_check((string)($framed[0]['frame_border'] ?? '') === '10', 'GAME ON global border choice lost.');
 foreach (['--tile-border-c:#123456', '--tile-bg:#abcdef'] as $needle) {
-    recovery_check(str_contains((string)($framed[0]['frame_style'] ?? ''), $needle), 'GAME ON global frame colour lost ' . $needle);
+    recovery_check(str_contains((string)($framed[0]['frame_colours'] ?? ''), $needle), 'GAME ON global frame colour lost ' . $needle);
 }
-recovery_check(!str_contains((string)($framed[0]['frame_style'] ?? ''), '--tile-border-w'),
-    'GAME ON frame CSS is being assembled in PHP again.');
+recovery_check(!str_contains((string)($framed[0]['frame_colours'] ?? ''), '--tile-border-w'),
+    'GAME ON is being handed frame CSS in the key token-aware skins read.');
+recovery_check(str_contains((string)($framed[0]['frame_style'] ?? ''), '--tile-border-w:10px'),
+    'frame_style lost the legacy declaration older skins read.');
 
 $orientationFramed = snapsmack_grid_frame_items(
     [
