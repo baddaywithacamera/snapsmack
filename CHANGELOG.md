@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.902D - 2026-10-17 - Static pages keep their shared layout engine
+
+- Strict public routes now register the existing static-page, shortcode, and column styles whenever the CMS parses a static page. A valid `[columns]` block no longer collapses into stacked full-width images simply because its skin uses the strict public controller.
+- The existing shared lightbox engine is registered with the same page response; skins still own presentation and page content still owns which images enter a column layout.
+
 ## 0.7.901D - 2026-10-17 - The dead-control check was passing everything
 
 - **Thomas the Bear reaches every skin.** 900D shipped with him declared by three skins out of
