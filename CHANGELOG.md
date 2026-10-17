@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.901D - 2026-10-17 - The dead-control check was passing everything
+
+- **The render comparator's interaction pass can report a dead control again.** Pointed at a live site it found none, which was wrong: the click helper scrolled to the element first, and scrolling moves the page, so every bounding box changed and every control read as having done something. The scroll was never needed -- a synthetic DOM click takes no coordinates. The test fixture's dead button now sits below 2400px of filler so the same mistake fails the fixture instead of shipping.
+
+- **Photograph tiles are no longer counted as controls.** 27 of the 29 clickable things found on a live photoblog were tile images inside links, which crowded the real buttons out of the pass.
+
 ## 0.7.900D - 2026-10-16 - (open build)
 
 - **A grid skin keeps its photograph frames even on a site that has not been updated yet.**
