@@ -583,6 +583,58 @@ body.archive-page #scroll-stage {
     margin: 40px auto;
 }
 
+/* The dedicated archive-view route emits .archive-grid rather than one of
+   the interactive archive-layout classes. Give that skin-owned markup the
+   same compact, configurable presentation instead of full-width cards. */
+#browse-grid.archive-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), minmax(0, 1fr));
+    gap: 36px 28px;
+    width: 100%;
+    max-width: 95%;
+    margin: 40px auto;
+    padding: 0 20px;
+    align-items: start;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+}
+
+.archive-grid .thumb-container,
+.archive-grid .thumb-link,
+.archive-grid .ip-ascii-frame {
+    min-width: 0;
+    width: 100%;
+}
+
+.archive-grid .thumb-link {
+    display: block;
+}
+
+.archive-grid .ip-ascii-frame img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.archive-grid .thumb-container h2 {
+    margin: 12px 0 0;
+    font-size: clamp(0.9rem, 1.25vw, 1.2rem);
+    line-height: 1.25;
+}
+
+@media (max-width: 900px) {
+    #browse-grid.archive-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    #browse-grid.archive-grid {
+        grid-template-columns: 1fr;
+        padding: 0 12px;
+    }
+}
+
 /* T/M/C controls: let alignDockedControls() calculate the right offset so
    the buttons track the right edge of the masonry grid (now 95% wide with
    auto margins). No !important override — the JS inline style wins.        */
