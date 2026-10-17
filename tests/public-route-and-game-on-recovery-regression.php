@@ -142,9 +142,14 @@ $framed = snapsmack_grid_frame_items(
     'game-on'
 );
 recovery_check(($framed[0]['is_framed'] ?? false) === true, 'GAME ON global frame settings no longer mark framed tiles.');
-foreach (['--tile-border-w:10px', '--tile-border-c:#123456', '--tile-bg:#abcdef'] as $needle) {
-    recovery_check(str_contains((string)($framed[0]['frame_style'] ?? ''), $needle), 'GAME ON global frame style lost ' . $needle);
+// Border thickness now travels as the owner's bare choice; the two free-form
+// colours are still carried as custom properties until that is decided.
+recovery_check((string)($framed[0]['frame_border'] ?? '') === '10', 'GAME ON global border choice lost.');
+foreach (['--tile-border-c:#123456', '--tile-bg:#abcdef'] as $needle) {
+    recovery_check(str_contains((string)($framed[0]['frame_style'] ?? ''), $needle), 'GAME ON global frame colour lost ' . $needle);
 }
+recovery_check(!str_contains((string)($framed[0]['frame_style'] ?? ''), '--tile-border-w'),
+    'GAME ON frame CSS is being assembled in PHP again.');
 
 $orientationFramed = snapsmack_grid_frame_items(
     [

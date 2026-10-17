@@ -13,6 +13,43 @@
 
 ## 0.7.900D - 2026-10-16 - (open build)
 
+- **The CMS stops deciding what a photograph's frame looks like.** When you set
+  a photograph's inset, border thickness or drop shadow, the CMS used to take
+  your choice from the dropdown, write it out as real CSS, and glue that CSS
+  onto every photograph in the page. Every tile carried it, even photographs
+  where you had customised nothing. Now the CMS passes your choice as the bare
+  number you picked and a stylesheet turns it into the frame, so no part of how
+  a frame looks is decided in PHP any more. This is the same mechanism that
+  drew the double yellow frame round every RATIONAL GEO photograph, where the
+  CMS drew one frame and the skin drew another.
+
+  **Nothing on your sites looks different.** Measured, not reasoned: all nine
+  GRAMOFSMACK skins were rendered before and after against every frame
+  combination in use on the fleet plus the extremes of each dropdown, and the
+  browser's own computed style was compared property by property —
+  **1253 identical, 7 changed, and all 7 are the one change asked for below.**
+
+- **SUDDEN IMPACT refuses drop shadows, because it is a dot-matrix print.** The
+  dot-matrix skin had inherited its shadow line from THE GRID when it was
+  forked, so setting a photograph's DROP SHADOW put a soft modern shadow on a
+  1985 Okidata printout and the skin had no say in it. It now declines them, on
+  grid tiles and carousel slides both. Inset and border thickness still work.
+  Nothing was live — the skin is not launched — so no site changes today.
+
+- **Nine skins released:** AURORA 1.0.49, GAME ON 0.1.35, HEURISTIC 0.1.11,
+  INSTANT CAMERA 1.0.51, JIVE TURKEY 0.1.37, PARADE 1.2.48, SLIDERS 0.1.12,
+  SUDDEN IMPACT 1.0.17, THE GRID 1.3.52. They have to be packaged and sent out
+  through SYSTEM UPDATES like any skin update.
+
+- **Still waiting on one answer, so the rules gate has not moved yet.** The
+  border colour and background colour are the only two frame settings that are
+  not a dropdown — they are full colour pickers, so there is no fixed list of
+  choices to pass through. RULES.md says to stop and ask rather than cut a free
+  choice down to a short list, because that would change photographs that are
+  already published. Those two are now the only thing left in the style
+  attribute. Until they are settled the inline-style count stays at 28.
+
+
 - **Opened because 0.7.899D is deployed.** 899D went out to the fleet, so that
   number is frozen and must never move again. Everything from here folds into
   900D until Sean deploys it: the photofri.day repair, and anything else that

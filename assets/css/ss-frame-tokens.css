@@ -1,0 +1,244 @@
+/* SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. */
+/* ==========================================================================
+   FRAME TOKENS — the GRAMOFSMACK per-photograph frame, without CSS in PHP
+   --------------------------------------------------------------------------
+   The owner picks a photograph's inset, border thickness and drop shadow from
+   three dropdowns in the post editor. The CMS used to take those choices,
+   build a CSS declaration string in PHP, and print it on every tile as a
+   style attribute -- two standing rules broken in one line, and the same
+   mechanism that drew the double yellow frame on RATIONAL GEO (OPAUDIT 022).
+
+   Now the CMS passes the owner's bare choice as a number -- data-frame-size,
+   data-frame-border, data-frame-shadow -- and this stylesheet turns it into
+   the custom properties the skins already consume. Nothing about how a frame
+   looks is decided in PHP any more.
+
+   WHY EVERY VALUE IN THE RANGE IS LISTED, not just the six the dropdown
+   offers: the CMS clamps size to 1..100 and border to 0..100, so a value
+   saved by an older build, or by a dropdown that gains an option later, must
+   still render exactly. A token with no rule would silently fall back to the
+   skin default and quietly restyle a photograph -- which is the whole class
+   of fault this change exists to end. Exhaustive is cheap (it compresses to
+   about a kilobyte) and it cannot drift.
+
+   A skin that wants nothing to do with one of these simply overrides it in
+   its own stylesheet: SUDDEN IMPACT refuses drop shadows that way, because
+   it is a 1985 dot-matrix printout and a soft CSS shadow has no business on
+   it. The skin decides, not the CMS.
+
+   Checked by tests/frame-token-contract.php.
+   ========================================================================== */
+
+/* Photograph inset — percentage of the tile the photograph occupies. */
+[data-frame-size="1"]{--tile-img-size:1%}
+[data-frame-size="2"]{--tile-img-size:2%}
+[data-frame-size="3"]{--tile-img-size:3%}
+[data-frame-size="4"]{--tile-img-size:4%}
+[data-frame-size="5"]{--tile-img-size:5%}
+[data-frame-size="6"]{--tile-img-size:6%}
+[data-frame-size="7"]{--tile-img-size:7%}
+[data-frame-size="8"]{--tile-img-size:8%}
+[data-frame-size="9"]{--tile-img-size:9%}
+[data-frame-size="10"]{--tile-img-size:10%}
+[data-frame-size="11"]{--tile-img-size:11%}
+[data-frame-size="12"]{--tile-img-size:12%}
+[data-frame-size="13"]{--tile-img-size:13%}
+[data-frame-size="14"]{--tile-img-size:14%}
+[data-frame-size="15"]{--tile-img-size:15%}
+[data-frame-size="16"]{--tile-img-size:16%}
+[data-frame-size="17"]{--tile-img-size:17%}
+[data-frame-size="18"]{--tile-img-size:18%}
+[data-frame-size="19"]{--tile-img-size:19%}
+[data-frame-size="20"]{--tile-img-size:20%}
+[data-frame-size="21"]{--tile-img-size:21%}
+[data-frame-size="22"]{--tile-img-size:22%}
+[data-frame-size="23"]{--tile-img-size:23%}
+[data-frame-size="24"]{--tile-img-size:24%}
+[data-frame-size="25"]{--tile-img-size:25%}
+[data-frame-size="26"]{--tile-img-size:26%}
+[data-frame-size="27"]{--tile-img-size:27%}
+[data-frame-size="28"]{--tile-img-size:28%}
+[data-frame-size="29"]{--tile-img-size:29%}
+[data-frame-size="30"]{--tile-img-size:30%}
+[data-frame-size="31"]{--tile-img-size:31%}
+[data-frame-size="32"]{--tile-img-size:32%}
+[data-frame-size="33"]{--tile-img-size:33%}
+[data-frame-size="34"]{--tile-img-size:34%}
+[data-frame-size="35"]{--tile-img-size:35%}
+[data-frame-size="36"]{--tile-img-size:36%}
+[data-frame-size="37"]{--tile-img-size:37%}
+[data-frame-size="38"]{--tile-img-size:38%}
+[data-frame-size="39"]{--tile-img-size:39%}
+[data-frame-size="40"]{--tile-img-size:40%}
+[data-frame-size="41"]{--tile-img-size:41%}
+[data-frame-size="42"]{--tile-img-size:42%}
+[data-frame-size="43"]{--tile-img-size:43%}
+[data-frame-size="44"]{--tile-img-size:44%}
+[data-frame-size="45"]{--tile-img-size:45%}
+[data-frame-size="46"]{--tile-img-size:46%}
+[data-frame-size="47"]{--tile-img-size:47%}
+[data-frame-size="48"]{--tile-img-size:48%}
+[data-frame-size="49"]{--tile-img-size:49%}
+[data-frame-size="50"]{--tile-img-size:50%}
+[data-frame-size="51"]{--tile-img-size:51%}
+[data-frame-size="52"]{--tile-img-size:52%}
+[data-frame-size="53"]{--tile-img-size:53%}
+[data-frame-size="54"]{--tile-img-size:54%}
+[data-frame-size="55"]{--tile-img-size:55%}
+[data-frame-size="56"]{--tile-img-size:56%}
+[data-frame-size="57"]{--tile-img-size:57%}
+[data-frame-size="58"]{--tile-img-size:58%}
+[data-frame-size="59"]{--tile-img-size:59%}
+[data-frame-size="60"]{--tile-img-size:60%}
+[data-frame-size="61"]{--tile-img-size:61%}
+[data-frame-size="62"]{--tile-img-size:62%}
+[data-frame-size="63"]{--tile-img-size:63%}
+[data-frame-size="64"]{--tile-img-size:64%}
+[data-frame-size="65"]{--tile-img-size:65%}
+[data-frame-size="66"]{--tile-img-size:66%}
+[data-frame-size="67"]{--tile-img-size:67%}
+[data-frame-size="68"]{--tile-img-size:68%}
+[data-frame-size="69"]{--tile-img-size:69%}
+[data-frame-size="70"]{--tile-img-size:70%}
+[data-frame-size="71"]{--tile-img-size:71%}
+[data-frame-size="72"]{--tile-img-size:72%}
+[data-frame-size="73"]{--tile-img-size:73%}
+[data-frame-size="74"]{--tile-img-size:74%}
+[data-frame-size="75"]{--tile-img-size:75%}
+[data-frame-size="76"]{--tile-img-size:76%}
+[data-frame-size="77"]{--tile-img-size:77%}
+[data-frame-size="78"]{--tile-img-size:78%}
+[data-frame-size="79"]{--tile-img-size:79%}
+[data-frame-size="80"]{--tile-img-size:80%}
+[data-frame-size="81"]{--tile-img-size:81%}
+[data-frame-size="82"]{--tile-img-size:82%}
+[data-frame-size="83"]{--tile-img-size:83%}
+[data-frame-size="84"]{--tile-img-size:84%}
+[data-frame-size="85"]{--tile-img-size:85%}
+[data-frame-size="86"]{--tile-img-size:86%}
+[data-frame-size="87"]{--tile-img-size:87%}
+[data-frame-size="88"]{--tile-img-size:88%}
+[data-frame-size="89"]{--tile-img-size:89%}
+[data-frame-size="90"]{--tile-img-size:90%}
+[data-frame-size="91"]{--tile-img-size:91%}
+[data-frame-size="92"]{--tile-img-size:92%}
+[data-frame-size="93"]{--tile-img-size:93%}
+[data-frame-size="94"]{--tile-img-size:94%}
+[data-frame-size="95"]{--tile-img-size:95%}
+[data-frame-size="96"]{--tile-img-size:96%}
+[data-frame-size="97"]{--tile-img-size:97%}
+[data-frame-size="98"]{--tile-img-size:98%}
+[data-frame-size="99"]{--tile-img-size:99%}
+[data-frame-size="100"]{--tile-img-size:100%}
+
+/* Border thickness, in pixels, hugging the photograph itself. */
+[data-frame-border="0"]{--tile-border-w:0px}
+[data-frame-border="1"]{--tile-border-w:1px}
+[data-frame-border="2"]{--tile-border-w:2px}
+[data-frame-border="3"]{--tile-border-w:3px}
+[data-frame-border="4"]{--tile-border-w:4px}
+[data-frame-border="5"]{--tile-border-w:5px}
+[data-frame-border="6"]{--tile-border-w:6px}
+[data-frame-border="7"]{--tile-border-w:7px}
+[data-frame-border="8"]{--tile-border-w:8px}
+[data-frame-border="9"]{--tile-border-w:9px}
+[data-frame-border="10"]{--tile-border-w:10px}
+[data-frame-border="11"]{--tile-border-w:11px}
+[data-frame-border="12"]{--tile-border-w:12px}
+[data-frame-border="13"]{--tile-border-w:13px}
+[data-frame-border="14"]{--tile-border-w:14px}
+[data-frame-border="15"]{--tile-border-w:15px}
+[data-frame-border="16"]{--tile-border-w:16px}
+[data-frame-border="17"]{--tile-border-w:17px}
+[data-frame-border="18"]{--tile-border-w:18px}
+[data-frame-border="19"]{--tile-border-w:19px}
+[data-frame-border="20"]{--tile-border-w:20px}
+[data-frame-border="21"]{--tile-border-w:21px}
+[data-frame-border="22"]{--tile-border-w:22px}
+[data-frame-border="23"]{--tile-border-w:23px}
+[data-frame-border="24"]{--tile-border-w:24px}
+[data-frame-border="25"]{--tile-border-w:25px}
+[data-frame-border="26"]{--tile-border-w:26px}
+[data-frame-border="27"]{--tile-border-w:27px}
+[data-frame-border="28"]{--tile-border-w:28px}
+[data-frame-border="29"]{--tile-border-w:29px}
+[data-frame-border="30"]{--tile-border-w:30px}
+[data-frame-border="31"]{--tile-border-w:31px}
+[data-frame-border="32"]{--tile-border-w:32px}
+[data-frame-border="33"]{--tile-border-w:33px}
+[data-frame-border="34"]{--tile-border-w:34px}
+[data-frame-border="35"]{--tile-border-w:35px}
+[data-frame-border="36"]{--tile-border-w:36px}
+[data-frame-border="37"]{--tile-border-w:37px}
+[data-frame-border="38"]{--tile-border-w:38px}
+[data-frame-border="39"]{--tile-border-w:39px}
+[data-frame-border="40"]{--tile-border-w:40px}
+[data-frame-border="41"]{--tile-border-w:41px}
+[data-frame-border="42"]{--tile-border-w:42px}
+[data-frame-border="43"]{--tile-border-w:43px}
+[data-frame-border="44"]{--tile-border-w:44px}
+[data-frame-border="45"]{--tile-border-w:45px}
+[data-frame-border="46"]{--tile-border-w:46px}
+[data-frame-border="47"]{--tile-border-w:47px}
+[data-frame-border="48"]{--tile-border-w:48px}
+[data-frame-border="49"]{--tile-border-w:49px}
+[data-frame-border="50"]{--tile-border-w:50px}
+[data-frame-border="51"]{--tile-border-w:51px}
+[data-frame-border="52"]{--tile-border-w:52px}
+[data-frame-border="53"]{--tile-border-w:53px}
+[data-frame-border="54"]{--tile-border-w:54px}
+[data-frame-border="55"]{--tile-border-w:55px}
+[data-frame-border="56"]{--tile-border-w:56px}
+[data-frame-border="57"]{--tile-border-w:57px}
+[data-frame-border="58"]{--tile-border-w:58px}
+[data-frame-border="59"]{--tile-border-w:59px}
+[data-frame-border="60"]{--tile-border-w:60px}
+[data-frame-border="61"]{--tile-border-w:61px}
+[data-frame-border="62"]{--tile-border-w:62px}
+[data-frame-border="63"]{--tile-border-w:63px}
+[data-frame-border="64"]{--tile-border-w:64px}
+[data-frame-border="65"]{--tile-border-w:65px}
+[data-frame-border="66"]{--tile-border-w:66px}
+[data-frame-border="67"]{--tile-border-w:67px}
+[data-frame-border="68"]{--tile-border-w:68px}
+[data-frame-border="69"]{--tile-border-w:69px}
+[data-frame-border="70"]{--tile-border-w:70px}
+[data-frame-border="71"]{--tile-border-w:71px}
+[data-frame-border="72"]{--tile-border-w:72px}
+[data-frame-border="73"]{--tile-border-w:73px}
+[data-frame-border="74"]{--tile-border-w:74px}
+[data-frame-border="75"]{--tile-border-w:75px}
+[data-frame-border="76"]{--tile-border-w:76px}
+[data-frame-border="77"]{--tile-border-w:77px}
+[data-frame-border="78"]{--tile-border-w:78px}
+[data-frame-border="79"]{--tile-border-w:79px}
+[data-frame-border="80"]{--tile-border-w:80px}
+[data-frame-border="81"]{--tile-border-w:81px}
+[data-frame-border="82"]{--tile-border-w:82px}
+[data-frame-border="83"]{--tile-border-w:83px}
+[data-frame-border="84"]{--tile-border-w:84px}
+[data-frame-border="85"]{--tile-border-w:85px}
+[data-frame-border="86"]{--tile-border-w:86px}
+[data-frame-border="87"]{--tile-border-w:87px}
+[data-frame-border="88"]{--tile-border-w:88px}
+[data-frame-border="89"]{--tile-border-w:89px}
+[data-frame-border="90"]{--tile-border-w:90px}
+[data-frame-border="91"]{--tile-border-w:91px}
+[data-frame-border="92"]{--tile-border-w:92px}
+[data-frame-border="93"]{--tile-border-w:93px}
+[data-frame-border="94"]{--tile-border-w:94px}
+[data-frame-border="95"]{--tile-border-w:95px}
+[data-frame-border="96"]{--tile-border-w:96px}
+[data-frame-border="97"]{--tile-border-w:97px}
+[data-frame-border="98"]{--tile-border-w:98px}
+[data-frame-border="99"]{--tile-border-w:99px}
+[data-frame-border="100"]{--tile-border-w:100px}
+
+/* Drop shadow. Four named steps, exactly as the DROP SHADOW dropdown offers
+   them. These four values are the ones the CMS used to assemble in PHP. */
+[data-frame-shadow="0"]{--tile-shadow:none}
+[data-frame-shadow="1"]{--tile-shadow:3px 3px 8px rgba(0,0,0,.20)}
+[data-frame-shadow="2"]{--tile-shadow:6px 6px 18px rgba(0,0,0,.40)}
+[data-frame-shadow="3"]{--tile-shadow:12px 12px 32px rgba(0,0,0,.60)}
+
+/* ===== SNAPSMACK EOF ===== */

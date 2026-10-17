@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "SLIDERS",
-    "version": "0.1.11",
+    "version": "0.1.12",
     "min_images": 200,
     "author": "Sean McCormick, OpenAI Codex",
     "support": "sean@baddaywithacamera.ca",
@@ -304,5 +304,8 @@
         "collection": "layout.php",
         "not_found": "layout.php",
         "default": "layout.php"
-    }
+    },
+    "require_styles": [
+        "asset:public:ss-frame-tokens"
+    ]
 }
