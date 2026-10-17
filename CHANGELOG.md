@@ -58,6 +58,14 @@
   selected palette stylesheet is emitted. (`core/onyx-page-component.php`,
   `tests/onyx-variant-regression.php`.)
 
+- **IMPACT PRINTER 2.1.10 lays out the two camera photographs side by side.**
+  The Cameras page already contains a valid two-column block. The skin simply
+  failed to declare the existing shared columns component, leaving both columns
+  as ordinary block elements and stacking the photographs. This is a skin
+  manifest repair; the page content and CMS are unchanged.
+  (`skins/impact-printer/manifest.json`,
+  `tests/impact-printer-columns-regression.php`.)
+
 - **Opened because 0.7.899D is deployed.** 899D went out to the fleet, so that
   number is frozen and must never move again. Everything from here folds into
   900D until Sean deploys it: the photofri.day repair, and anything else that
