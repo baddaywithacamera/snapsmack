@@ -333,51 +333,11 @@ function snapsmack_justified_rows(array $items, array $settings, int $page): arr
     ];
 }
 
-/**
- * Does the installed skin understand frame tokens?
- *
- * A skin that declares the frame-token stylesheet also emits data-frame-size,
- * -border and -shadow, because they ship together. A skin that does not is an
- * older copy still installed on a site, and it needs the frame as a CSS
- * declaration the way it always got it.
- *
- * This exists because the CMS and skins arrive through different channels.
- * Measured before it was added: this CMS with the previous PARADE emitted
- * `style="--tile-border-c:#123456;--tile-bg:#abcdef;"` and nothing else, so
- * every photograph lost its inset, border thickness and drop shadow at the
- * moment the CMS was deployed, with no warning. Five live sites run these
- * skins.
- *
- * DELETE WHEN every site running a GRAMOFSMACK skin serves one that declares
- * asset:public:ss-frame-tokens; then this always returns true and the second
- * branch in snapsmack_grid_frame_items() can go with it.
- */
-function snapsmack_skin_reads_frame_tokens(string $skin): bool
-{
-    static $cache = [];
-    $skin = preg_replace('/[^a-z0-9-]/', '', strtolower($skin));
-    if ($skin === '') return false;
-    if (isset($cache[$skin])) return $cache[$skin];
-    $path = dirname(__DIR__) . '/skins/' . $skin . '/manifest.json';
-    $reads = false;
-    if (is_file($path)) {
-        try {
-            $manifest = json_decode((string)file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
-            $reads = in_array('asset:public:ss-frame-tokens',
-                (array)($manifest['require_styles'] ?? []), true);
-        } catch (Throwable $e) {
-            $reads = false;
-        }
-    }
-    return $cache[$skin] = $reads;
-}
-
 function snapsmack_grid_frame_items(array $items, array $settings, string $skin): array
 {
     $prefixes = ['the-grid'=>'tg','aurora'=>'au','sudden-impact'=>'tg','parade'=>'pa','jive-turkey'=>'jt','heuristic'=>'he','instant-camera'=>'ic','game-on'=>'go','sliders'=>'ic'];
     $prefix = $prefixes[$skin] ?? ''; if ($prefix === '') return $items;
     $level = (string)($settings[$prefix.'_customize_level'] ?? 'per_grid');
-    $skinReadsTokens = snapsmack_skin_reads_frame_tokens($skin);
     $shadowMap = ['0'=>'none','1'=>'3px 3px 8px rgba(0,0,0,.20)','2'=>'6px 6px 18px rgba(0,0,0,.40)','3'=>'12px 12px 32px rgba(0,0,0,.60)'];
     foreach ($items as $index => $item) {
         if (!empty($item['is_phantom'])) continue;
@@ -415,15 +375,21 @@ function snapsmack_grid_frame_items(array $items, array $settings, string $skin)
         // RULES.md says to stop and ask rather than quantise a free value and
         // restyle someone's photographs. Until that is decided these two stay as
         // custom properties, and they are the only thing left in this attribute.
-        // COMPATIBILITY -- see snapsmack_skin_reads_frame_tokens().
         // A site can be on this CMS with a skin it has not updated yet. That
         // skin's template carries no data-frame-* attributes and does not load
         // the token stylesheet, so handing it colours alone would strip the
         // inset, border and drop shadow from every photograph, silently. It
         // gets the old declaration instead, exactly as before.
-        $items[$index]['frame_style'] = $skinReadsTokens
-            ? "--tile-border-c:{$color};--tile-bg:{$bg};"
-            : "--tile-img-size:{$size}%;--tile-border-w:{$border}px;--tile-border-c:{$color};--tile-bg:{$bg};--tile-shadow:{$shadow};";
+        // Two keys, and the SKIN decides which it reads -- the CMS does not
+        // look at what is installed. A skin that understands tokens reads
+        // frame_colours and takes its inset, border and shadow from
+        // data-frame-* plus the token stylesheet. A skin that has not been
+        // updated yet reads frame_style and gets exactly what it always got,
+        // so deploying this CMS cannot strip the frames off a site running an
+        // older skin. The old declaration is unchanged from before this work,
+        // which is why no new CSS is assembled in PHP by it.
+        $items[$index]['frame_style']="--tile-img-size:{$size}%;--tile-border-w:{$border}px;--tile-border-c:{$color};--tile-bg:{$bg};--tile-shadow:{$shadow};";
+        $items[$index]['frame_colours']="--tile-border-c:{$color};--tile-bg:{$bg};";
         $items[$index]['is_framed']=empty($item['is_trigram_slice'])&&($size<100||$border>0||$shadow!=='none');
         $orientation = array_key_exists('img_orientation', $item)
             ? filter_var($item['img_orientation'], FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE)

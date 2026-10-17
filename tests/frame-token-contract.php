@@ -52,7 +52,7 @@ $item = ['img_title' => 'P', 'img_slug' => 'p', 'img_file' => '/p.jpg',
          'img_size_pct' => 90, 'img_border_px' => 2, 'img_border_color' => '#123456',
          'img_bg_color' => '#abcdef', 'img_shadow' => '2'];
 $framed = snapsmack_grid_frame_items([$item], ['tg_customize_level' => 'per_image'], 'the-grid');
-$style = (string)($framed[0]['frame_style'] ?? '');
+$style = (string)($framed[0]['frame_colours'] ?? '');
 
 foreach (['--tile-img-size', '--tile-border-w', '--tile-shadow'] as $banned) {
     $check(!str_contains($style, $banned),
@@ -61,6 +61,10 @@ foreach (['--tile-img-size', '--tile-border-w', '--tile-shadow'] as $banned) {
 // A full CSS value such as a box-shadow triple must never be built here.
 $check(!preg_match('/\d+px\s+\d+px/', $style),
     'The CMS is assembling a multi-part CSS value in PHP again: ' . $style);
+// frame_style is deliberately KEPT, unchanged, for skins not yet updated.
+$check(str_contains((string)($framed[0]['frame_style'] ?? ''), '--tile-img-size'),
+    'frame_style no longer carries the full declaration. A site running a grid skin it has '
+    . 'not updated reads that key and would lose the inset, border and shadow on every photograph.');
 
 $check((string)($framed[0]['frame_size'] ?? '') === '90', 'frame_size token not emitted.');
 $check((string)($framed[0]['frame_border'] ?? '') === '2', 'frame_border token not emitted.');
@@ -111,7 +115,7 @@ foreach ($shadowMap as $css) {
 // ---------------------------------------------------------------------------
 foreach ($family as $skin) {
     $layout = (string)file_get_contents($root . '/skins/' . $skin . '/layout.php');
-    $frames = substr_count($layout, "'frame_style'");
+    $frames = substr_count($layout, "'frame_colours'");
     $sizes  = substr_count($layout, 'data-frame-size');
     $check($frames === $sizes,
         strtoupper($skin) . ": {$frames} frame style attribute(s) but {$sizes} token group(s). "
@@ -142,37 +146,30 @@ foreach ((array)($inventory['css'] ?? []) as $entry) {
 $check($registered, 'ss-frame-tokens.css is not a public asset in ASSET-INVENTORY.json, so no site would load it.');
 
 // ---------------------------------------------------------------------------
-// 3b. A site on an older installed skin must keep its frames
+// 3b. The skin chooses which key it reads; the CMS does not sniff
 // ---------------------------------------------------------------------------
 // The CMS and skins ship through different channels, so this CMS will run
-// against skins that have not been updated yet. Such a skin emits no
-// data-frame-* attributes and does not load the token stylesheet, so handing
-// it colours alone strips the inset, border and drop shadow from every
-// photograph, silently. Measured before the branch existed: an older PARADE
-// got style="--tile-border-c:#123456;--tile-bg:#abcdef;" and nothing else.
-$check(function_exists('snapsmack_skin_reads_frame_tokens'),
-    'snapsmack_skin_reads_frame_tokens() is gone. Every site on an older installed skin '
-    . 'now loses the inset, border and shadow on every photograph.');
-
-if (function_exists('snapsmack_skin_reads_frame_tokens')) {
-    // A skin that declares the stylesheet gets tokens; one that does not gets
-    // the old declaration. 'chaplin' stands in for any skin outside the
-    // family: it declares nothing, so it must take the compatibility path.
-    $check(snapsmack_skin_reads_frame_tokens('the-grid') === true,
-        'THE GRID declares the token stylesheet but is not recognised as token-aware.');
-    $check(snapsmack_skin_reads_frame_tokens('no-such-skin-here') === false,
-        'An unknown skin is treated as token-aware, which would strip its frames.');
-
-    $legacy = snapsmack_grid_frame_items(
-        [['img_file' => '/p.jpg', 'img_size_pct' => 90, 'img_border_px' => 10, 'img_shadow' => '1']],
-        ['tg_customize_level' => 'per_image'], 'the-grid');
-    $modern = (string)($legacy[0]['frame_style'] ?? '');
-    // THE GRID is token-aware, so it must NOT be handed the old declaration.
-    foreach (['--tile-img-size', '--tile-border-w', '--tile-shadow'] as $banned) {
-        $check(!str_contains($modern, $banned),
-            "A token-aware skin is still being handed {$banned} in its style attribute.");
-    }
+// against skins that have not been updated. It offers both keys and lets the
+// template decide: an updated skin reads frame_colours and takes the rest
+// from data-frame-* plus the token stylesheet; an older one reads frame_style
+// and gets exactly what it always got.
+//
+// An earlier version had the CMS inspect the installed manifest instead. That
+// worked, but it put the decision in core, and it assembled the declaration a
+// second time -- which raised the CSS-in-PHP count from 21 to 22. A ratchet
+// may only fall, so the design changed rather than the budget.
+foreach ($family as $skin) {
+    $layout = (string)file_get_contents($root . '/skins/' . $skin . '/layout.php');
+    $check(!str_contains($layout, "'frame_style'"),
+        strtoupper($skin) . " still reads frame_style. A skin that emits data-frame-* must read "
+        . 'frame_colours, or the CMS declaration overrides the tokens.');
+    $check(substr_count($layout, "'frame_colours'") === substr_count($layout, 'data-frame-size'),
+        strtoupper($skin) . ' reads frame_colours on a different number of elements than it '
+        . 'emits tokens on.');
 }
+$check(!str_contains((string)file_get_contents($root . '/core/public-controller.php'),
+    'snapsmack_skin_reads_frame_tokens'),
+    'The CMS is inspecting the installed skin again. Which key to read is the skin\'s decision.');
 
 // ---------------------------------------------------------------------------
 // 4. SUDDEN IMPACT refuses drop shadows. Sean, 16 Oct 2026.
