@@ -309,6 +309,19 @@ if (in_array($_snap_page, ['page', 'blog', 'index'])): ?>
 // its photo wall. Was loading unconditionally on every page in every install
 // mode (a cross-mode leak). Mirrors the shortcodes/columns/lightbox guard above.
 if (in_array($_snap_page, ['page', 'blog'], true)): ?>
+<?php // Frame tokens. The CMS emits data-frame-size / -border / -shadow on the
+      // photograph tiles (snapsmack_grid_frame_items), so the CMS ships the stylesheet
+      // that reads them -- a skin does not request this any more than it requests
+      // public-base.css. It is CMS-owned both ends.
+      //
+      // Emitted for every skin on purpose. The rules only match elements carrying those
+      // attributes, which only the grid family emits, so it costs about a kilobyte
+      // compressed on skins that never use it and names no skin in core -- no new
+      // core/skin coupling, and no skin has to be re-packaged when this file changes.
+      // It was briefly declared in nine manifests instead; SMACK CENTRAL's Skin Packager
+      // correctly refused all nine, because a skin may not name a CMS asset the packaging
+      // authority has not heard of. ?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-frame-tokens.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-mosaic.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
 <script src="<?php echo BASE_URL; ?>assets/js/ss-engine-mosaic.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
 <?php // A [mosaic:ID] block can now be Columns, Rows or Square as well as Asymmetric,
