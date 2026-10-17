@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "AURORA",
-    "version": "1.0.48",
+    "version": "1.0.49",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Northern-lights desktop skin. A classic 3-across square grid under a slow aurora that breathes colour behind the photography, with a configurable colour wave rippling across the tile borders. Dark, dramatic, and built so the photos are why you came.",
@@ -1436,5 +1436,8 @@
         "collection": "layout.php",
         "not_found": "layout.php",
         "default": "layout.php"
-    }
+    },
+    "require_styles": [
+        "asset:public:ss-frame-tokens"
+    ]
 }
