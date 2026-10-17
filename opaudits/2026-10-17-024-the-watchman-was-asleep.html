@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 024 - The watchman was asleep</title>
+<link rel="stylesheet" href="_report.css">
+<style>tr { break-inside: avoid; page-break-inside: avoid; }</style>
+</head>
+<body>
+<p class="doc-kicker">SnapSmack Operability Audit - DING DONG BELL</p>
+<h1>OPAUDIT 024 - The watchman was asleep</h1>
+
+<table class="meta">
+<tr><td class="k">Audit ID</td><td>2026-10-17-024</td></tr>
+<tr><td class="k">State</td><td>Open. Diagnosed, not fixed. CRONOMETER is blind and has been for at least thirty-three days; the cause is identified and the repair is not written.</td></tr>
+<tr><td class="k">Scope</td><td>CRONOMETER, the tool that watches whether the fleet's scheduled jobs are running. It shows zero sites while twenty-five site profiles exist on disk, it records nothing about that failure in its own log, and nobody noticed until a different tool was pointed at the logs on its first day of existence.</td></tr>
+<tr><td class="k">Baseline</td><td>Installed build 0.7.12. Source is 0.7.13, committed on 14 September 2026 marked <em>"unbuilt"</em> and never built since. CMS 0.7.901D is deployed; 0.7.902D is open.</td></tr>
+<tr><td class="k">Cost</td><td>Not measurable, and that is the finding. For thirty-three days there was no fleet cron monitoring and no indication that there was none. Whatever happened on the fleet in that window, CRONOMETER would have been the thing to say so, and it said nothing — including about itself.</td></tr>
+</table>
+
+<h2>1. Decision</h2>
+<p>This is a software defect with an operational failure wrapped around it, and the wrapper is the important half.</p>
+<p>CRONOMETER exists for one purpose: to notice when scheduled jobs stop. <strong>It stopped, and nothing noticed.</strong> It is the second time in this project that fleet cron monitoring has silently not worked — OPAUDIT 014 recorded that the fleet cron had never been installed at all, and CRONOMETER is the instrument that was supposed to make that impossible to repeat. The instrument failed the same way the thing it was built to watch had failed, which is not irony, it is an unguarded single point.</p>
+<p>The second finding is the shape of the failure. CRONOMETER does not crash, warn, or log. It opens, finds nothing, draws a tidy screen saying <em>"No fleet sites found"</em> with helpful advice, and writes a log file containing only a header. <strong>A tool that reports its own total failure as a neutral empty state is indistinguishable from a tool with nothing to do.</strong></p>
+
+<h2>2. What the owner experienced</h2>
+<p>Nothing. That is the entire problem.</p>
+<p>Sean opened CRONOMETER on 17 October because this session told him LOG FLOGGER had found it silent. The screen said <em>No fleet sites found</em> and offered sensible-sounding advice — set up a site in SYBU, GYSS or COLD SNAP, or confirm <code>C:\snapsmack\shared_library\profiles</code> exists. Both of those are already true. There are twenty-five profiles in that exact directory, the oldest from 18 September.</p>
+<p>Before that, he had no reason to open it at all, because a monitor that is working and a monitor that is dead look identical from the outside: neither one tells you anything.</p>
+
+<h2>3. Measured</h2>
+<table>
+<tr><th>Fact</th><th>Measurement</th></tr>
+<tr><td>Site profiles on disk</td><td><strong>25</strong>, in <code>C:\snapsmack\shared_library\profiles</code></td></tr>
+<tr><td>Sites CRONOMETER displays</td><td><strong>0</strong></td></tr>
+<tr><td>Does the shared loader work?</td><td><strong>Yes.</strong> Run directly against the same store, <code>snap_profiles.list_profiles()</code> returns all 25 with their URLs. The source is not broken.</td></tr>
+<tr><td>CRONOMETER runs in the last 48 days</td><td>30 August, then three on 14 September, then <strong>nothing until 17 October</strong> — and that one only because it was pointed out.</td></tr>
+<tr><td>Content of today's log</td><td><strong>A header. Nothing else.</strong> Not one line about finding no sites.</td></tr>
+<tr><td>Logs that mention sites or fleet at all</td><td><strong>2 of 25.</strong></td></tr>
+<tr><td>Does <code>C:\snapsmack\_shared</code> exist?</td><td><strong>No. It never has.</strong></td></tr>
+</table>
+
+<h2>4. Cause</h2>
+<p>Two things, and the second is what made the first invisible.</p>
+
+<p><strong>The path contract is fiction.</strong> <code>config.py</code> resolves the shared module directory as <code>&lt;exe dir&gt;/../_shared</code>, commented <em>"C:\snapsmack\_shared at runtime"</em>. The executable lives at <code>C:\snapsmack\cronometer\cronometer.exe</code>, so it looks for <code>C:\snapsmack\_shared</code> — a directory that does not exist and never has. The build bundles the shared modules flat inside the package instead. The helper therefore does nothing, silently, by design:</p>
+<pre>    try:
+        _sd = os.path.join(_base_dir(), '..', '_shared')
+        if os.path.isdir(_sd) and _sd not in sys.path:
+            sys.path.insert(0, _sd)
+    except Exception:
+        pass</pre>
+
+<p><strong>And the failure is swallowed twice.</strong> <code>load_fleet()</code> has two bare handlers that both return an empty list:</p>
+<pre>    try:
+        import snap_profiles
+    except Exception:
+        return []
+    ...
+    except Exception:
+        return []</pre>
+<p>An empty list is also the correct answer when a new install genuinely has no sites. <strong>So "I could not load anything" and "there is nothing to load" are the same value, and the screen cannot tell them apart.</strong> That is the whole bug. The exception is caught, discarded, and replaced with a number that looks fine.</p>
+
+<p><strong>Compounding: the fix may already exist and has never been built.</strong> Source is 0.7.13; the commit that set it is titled <em>"CRONOMETER 0.7.13 icon via iconphoto (unbuilt)"</em>, dated 14 September — the same day as the last run before the silence. The installed build is 0.7.12. The last build artefacts in the repository are from 0.7.9.</p>
+
+<p><strong>A separate, older fault, recorded because the logs carry it:</strong> twenty-five <code>NameError: name 'is_muted' is not defined</code> at <code>cronometer.py:476</code>, all from a single run on 14 September. That one is fixed in source (0.7.11) and is further evidence that what is installed and what is written have drifted apart.</p>
+
+<h2>5. How it was found, which is the one good thing here</h2>
+<p>LOG FLOGGER was built on 17 October, the same day, at Sean's request. On its first run against the real logs it reported:</p>
+<blockquote><em>cronometer has written nothing for 32 days. It normally logs about every 44 minutes, across 24 runs. That is 1076x its usual gap. Either it is not running, or it stopped being able to say so.</em></blockquote>
+<p>It was built deliberately around absences rather than errors, on the grounds that the expensive failures in this project have nearly all been things that stopped happening quietly — the fleet cron that was never installed, the page hits never recorded for a year, PARADE's borders dead for eighteen days, Thomas missing from twenty-eight skins. <strong>The first thing it found was an instance of exactly that class, in the tool whose job that was.</strong></p>
+<p>Said plainly because it cuts both ways: a tool written this morning found in minutes something that had been true for a month, which is less a credit to the tool than a measure of how long nobody looked.</p>
+
+<h2>6. The pattern, which is larger than one tool</h2>
+<p><strong>Twelve desktop tools carry the same shared-path helper</strong> — coldsnap, cronometer, flkr-fckr, hub, shots-fired, smack-up-your-backup, smack-your-mouth, sybu, take-your-shit-with-you, unzucker, and the two written today. Each assumes a sibling <code>_shared</code> directory beside itself at runtime. For CRONOMETER that assumption is provably false in the installed layout.</p>
+<p>Whether it is false for the others has <strong>not</strong> been established and must not be assumed from this one case — each tool's build and install path differs, and several evidently work. But the helper fails silently by construction everywhere it appears, so a tool in which it matters would fail the same invisible way.</p>
+<p><strong>Including the two written today.</strong> The LOG FLOGGER and TICKET WICKET entry points copy the same <code>../_shared</code> pattern. Neither currently imports anything from <code>_shared</code>, so nothing is broken — but the pattern was propagated within hours of this audit's subject being diagnosed, which is worth recording rather than quietly correcting.</p>
+
+<h2>7. Open</h2>
+<ul>
+<li><strong>CRONOMETER is blind right now.</strong> Nothing in this audit fixes it. Until it is repaired and <em>rebuilt</em>, there is no fleet cron monitoring.</li>
+<li><strong>An empty fleet and a failed load must stop being the same value.</strong> The minimum repair: <code>load_fleet()</code> returns a result that distinguishes them, the screen says which it is, and the exception is written to the log instead of discarded. A monitor is not allowed to fail quietly; that is the one behaviour it exists to prevent.</li>
+<li><strong>The shared-path contract needs settling, not patching.</strong> Either <code>C:\snapsmack\_shared</code> is created and the comment becomes true, or the helper is removed as dead code and tools rely on their bundled copies. It must not be left as a line that looks like it works.</li>
+<li><strong>0.7.13 has been sitting unbuilt since 14 September.</strong> Shipping it is owed regardless of this audit. It was already recorded as owed in the continuity notes and was not done.</li>
+<li><strong>Nothing watches the watchman.</strong> CRONOMETER going quiet should itself raise something. Today the only reason anyone knows is that a different tool was built and pointed at the logs. A scheduled LOG FLOGGER silence check over <code>C:\snapsmack\logs</code> would close this specific hole, and is the obvious first job for it.</li>
+<li><strong>The eleven other tools using the same helper are unaudited.</strong> Named in section 6; not checked, and deliberately not assumed broken.</li>
+<li><strong>A small label mismatch, recorded while we are here:</strong> the screen instructs the owner to "press RELOAD FLEET"; the button is labelled "RELOAD SITE LIST".</li>
+</ul>
+
+<h2>8. What this audit does not claim</h2>
+<p>It does not claim anything went wrong on the fleet during the thirty-three days. It claims nobody would have known if it had, which is a different and worse statement. It does not claim the eleven other tools are affected — that was explicitly not tested. And it does not claim CRONOMETER was fixed by writing this: it is diagnosed, measured, and still blind.</p>
+
+<p class="doc-foot">SnapSmack Operability Audit 024 - 17 October 2026</p>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->

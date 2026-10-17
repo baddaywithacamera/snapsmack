@@ -28,7 +28,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 if BASE not in sys.path:
     sys.path.insert(0, BASE)
 
-from logflogger import analyze, gather, probes, report as reportmod, summarize
+from logflogger import agent, analyze, gather, probes, report as reportmod, summarize
 
 
 def _out(args, payload, text):
@@ -217,6 +217,13 @@ def cmd_report(args):
     return 1 if problems else 0
 
 
+def cmd_agent(args):
+    """What Claude and Codex can do here. Refusals first — knowing what the
+    tool will not let you do saves a turn and, twice, prevents harm."""
+    _out(args, agent.sheet(), agent.text())
+    return 0
+
+
 def build_parser():
     p = argparse.ArgumentParser(
         prog="lf", description="LOG FLOGGER — read the logs nobody reads.")
@@ -269,6 +276,18 @@ def build_parser():
     r.add_argument("--php", default="")
     r.add_argument("--out", default="")
     r.set_defaults(func=cmd_report)
+
+    sub.add_parser("agent", help="what Claude and Codex can do here").set_defaults(
+        func=cmd_agent)
+    # --json is documented as working on every command, and an agent will
+    # naturally write it after the subcommand. argparse only accepts a
+    # top-level flag before the subcommand, so mirror it onto each subparser.
+    # SUPPRESS matters: without it the subparser's default would overwrite a
+    # --json given before the subcommand.
+    for _sp in sub.choices.values():
+        _sp.add_argument("--json", action="store_true",
+                         default=argparse.SUPPRESS,
+                         help="machine-readable output")
     return p
 
 

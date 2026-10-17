@@ -13,6 +13,21 @@
 
 ## 0.7.902D - 2026-10-17 - LOG FLOGGER, TICKET WICKET, and static page layout
 
+- **Both new tools can tell Claude and Codex what they can do.** `lf agent` and
+  `tw agent` print a capability sheet — every command, what comes back, and
+  what the tool will refuse to do, with the refusals first because those are
+  what save an agent a wasted turn. A test fails the build if the sheet ever
+  promises a command that does not exist, or hides one that does; the first run
+  of that test caught the sheet telling agents to type `lf gather --json`, which
+  the tool rejected. Both orders work now.
+
+- **CRONOMETER is blind, and has been for at least thirty-three days.** It shows
+  no sites while twenty-five site profiles sit in exactly the folder it says it
+  reads. Diagnosed, not fixed — **OPAUDIT 024, "The watchman was asleep."** It
+  was found by LOG FLOGGER on its first run, which is less a credit to the new
+  tool than a measure of how long nobody looked.
+
+
 - Strict public routes now register the existing static-page, shortcode, and column styles whenever the CMS parses a static page. A valid `[columns]` block no longer collapses into stacked full-width images simply because its skin uses the strict public controller.
 - The existing shared lightbox engine is registered with the same page response; skins still own presentation and page content still owns which images enter a column layout.
 
