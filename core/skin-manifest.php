@@ -108,6 +108,11 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
         'hide_controls', 'options', 'admin_styling', 'css_variables',
         'incompatible', 'modes', 'social_dock', 'cms_media_slots', 'cms_navigation',
         'templates', 'capabilities', 'require_styles',
+        // A skin's own colour packs. They used to be PHP arrays inside
+        // core/skin-presentation.php, which meant a new flag or colourway was
+        // a CMS release and the CMS held 114 hex colours belonging to three
+        // skins. Colour belongs to the skin.
+        'palettes',
     ];
     $boolean_keys = [
         'community_comments', 'community_likes', 'community_reactions',

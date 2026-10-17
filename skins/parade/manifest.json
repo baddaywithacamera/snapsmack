@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "PARADE",
-    "version": "1.2.48",
+    "version": "1.2.49",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "High-key desktop skin — AURORA's daylight twin. A classic 3-across square grid over a full-screen waving identity flag with animated flag-coloured tile borders. A real show of support, built so the photos are still why you came.",
@@ -1465,5 +1465,90 @@
     },
     "require_styles": [
         "asset:public:ss-frame-tokens"
-    ]
+    ],
+    "palettes": {
+        "rainbow": [
+            "#e40303",
+            "#ff8c00",
+            "#ffed00",
+            "#008026",
+            "#004dff",
+            "#750787"
+        ],
+        "trans": [
+            "#5bcffb",
+            "#f5abb9",
+            "#ffffff",
+            "#f5abb9",
+            "#5bcffb"
+        ],
+        "bi": [
+            "#d60270",
+            "#d60270",
+            "#9b4f96",
+            "#0038a8",
+            "#0038a8"
+        ],
+        "nonbinary": [
+            "#fff430",
+            "#ffffff",
+            "#9c59d1",
+            "#000000"
+        ],
+        "pan": [
+            "#ff218c",
+            "#ffd800",
+            "#21b1ff"
+        ],
+        "lesbian": [
+            "#d52d00",
+            "#ef7627",
+            "#ff9a56",
+            "#ffffff",
+            "#d162a4",
+            "#b55690",
+            "#a30262"
+        ],
+        "asexual": [
+            "#000000",
+            "#a3a3a3",
+            "#ffffff",
+            "#800080"
+        ],
+        "aromantic": [
+            "#3da542",
+            "#a7d379",
+            "#ffffff",
+            "#a9a9a9",
+            "#000000"
+        ],
+        "genderfluid": [
+            "#ff75a2",
+            "#ffffff",
+            "#be18d6",
+            "#000000",
+            "#333ebd"
+        ],
+        "genderqueer": [
+            "#b57edc",
+            "#ffffff",
+            "#4a8123"
+        ],
+        "progress": [
+            "#e40303",
+            "#ff8c00",
+            "#ffed00",
+            "#008026",
+            "#004dff",
+            "#750787"
+        ],
+        "two-spirit": [
+            "#e40303",
+            "#ff8c00",
+            "#ffed00",
+            "#008026",
+            "#004dff",
+            "#750787"
+        ]
+    }
 }
