@@ -11,6 +11,23 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.900D - 2026-10-16 - (open build)
+
+- **Opened because 0.7.899D is deployed.** 899D went out to the fleet, so that
+  number is frozen and must never move again. Everything from here folds into
+  900D until Sean deploys it: the photofri.day repair, and anything else that
+  lands today.
+
+- **Note for the 900D deploy: allinthewrist.photoblogs.fyi is still on 0.7.898D.**
+  Measured on the live page. PARADE's colour-shifting borders need two halves,
+  and only one of them travels in a CMS deploy. The CMS half (the tile's grid
+  position, the ring thickness and opacity reaching the stylesheet, the fixed
+  lightness floor) shipped in 899D. The other half is PARADE 1.2.47 itself,
+  which carries the ring element, and skins install by version through the
+  Skin Packager and SYSTEM UPDATES — a CMS deploy leaves the skin where it is.
+  So that site needs 900D deployed to it AND PARADE 1.2.47 packaged. Either
+  one alone leaves the borders missing.
+
 ## 0.7.899D - 2026-10-16 - PARADE gets its colour-shifting borders back
 
 - **PARADE's animated flag-coloured tile rings are back.** The moving ring of
