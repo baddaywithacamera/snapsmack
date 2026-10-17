@@ -16,14 +16,29 @@ function snapsmack_public_parse_page_content(PDO $pdo, array $response): array
 {
     if (($response['kind'] ?? '') !== 'page' || !is_array($response['item'] ?? null)) return $response;
     $source = (string)($response['item']['content'] ?? '');
+    // Strict public skins do not include core/meta.php. Static pages still use
+    // the CMS-owned shortcode parser below, so carry the parser's existing
+    // presentation assets through the registered-asset path. Without these,
+    // [columns] emits the correct grid markup but browsers render it as plain
+    // stacked divs (the failure seen on PIXHELLATED's Cameras page).
+    $response['required_assets']['styles'] = array_values(array_unique(array_merge(
+        (array)($response['required_assets']['styles'] ?? []),
+        ['asset:public:page-static', 'asset:public:shortcodes', 'asset:public:columns']
+    )));
+    $response['required_assets']['scripts'] = array_values(array_unique(array_merge(
+        (array)($response['required_assets']['scripts'] ?? []),
+        ['smack-lightbox']
+    )));
     if (stripos($source, '[board]') !== false || stripos($source, '[prompts]') !== false) {
         // A shortcode may require audited CMS assets, but its generated HTML
         // still passes through the normal sanitizer. Never allow page content
         // to smuggle arbitrary <link> elements into the document.
-        $response['required_assets']['styles'] = [
-            'asset:public:photochallenge-board-layouts',
-            'asset:public:photochallenge-board-embed',
-        ];
+        $response['required_assets']['styles'] = array_values(array_unique(array_merge(
+            $response['required_assets']['styles'], [
+                'asset:public:photochallenge-board-layouts',
+                'asset:public:photochallenge-board-embed',
+            ]
+        )));
     }
     $parser = new SnapSmack($pdo);
     $response['item']['content'] = $parser->parseContent($source);

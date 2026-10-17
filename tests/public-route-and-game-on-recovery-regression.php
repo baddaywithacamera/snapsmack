@@ -95,23 +95,31 @@ recovery_check(
         && !str_contains((string)($parsedPage['item']['content'] ?? ''), '[img:1|full|center]'),
     'Strict static pages print legacy image shortcodes instead of expanding them through the CMS parser.'
 );
+foreach (['asset:public:page-static', 'asset:public:shortcodes', 'asset:public:columns'] as $requiredStyle) {
+    recovery_check(
+        in_array($requiredStyle, $parsedPage['required_assets']['styles'] ?? [], true),
+        "Strict static pages no longer declare {$requiredStyle}."
+    );
+}
+recovery_check(
+    in_array('smack-lightbox', $parsedPage['required_assets']['scripts'] ?? [], true),
+    'Strict static pages no longer declare the shared lightbox engine.'
+);
 
 $boardPage = snapsmack_public_parse_page_content(new RecoveryPageParserPDO(), [
     'kind' => 'page',
     'item' => ['content' => '<h1>The Board</h1>[board]'],
 ]);
-recovery_check(
-    ($boardPage['required_assets']['styles'] ?? []) === [
-        'asset:public:photochallenge-board-layouts',
-        'asset:public:photochallenge-board-embed',
-    ],
-    'The Board shortcode no longer declares its audited CMS styles at the strict runtime boundary.'
-);
+foreach (['asset:public:photochallenge-board-layouts', 'asset:public:photochallenge-board-embed'] as $boardStyle) {
+    recovery_check(
+        in_array($boardStyle, $boardPage['required_assets']['styles'] ?? [], true),
+        "The Board shortcode no longer declares {$boardStyle} at the strict runtime boundary."
+    );
+}
 $boardAssets = snapsmack_merge_registered_assets([], $boardPage['required_assets'] ?? []);
 recovery_check(
-    count($boardAssets['styles'] ?? []) === 2
-        && str_contains((string)$boardAssets['styles'][0], 'photochallenge-board-layouts.css')
-        && str_contains((string)$boardAssets['styles'][1], 'photochallenge-board-embed.css'),
+    count(array_filter($boardAssets['styles'] ?? [], static fn($url) => str_contains((string)$url, 'photochallenge-board-layouts.css'))) === 1
+        && count(array_filter($boardAssets['styles'] ?? [], static fn($url) => str_contains((string)$url, 'photochallenge-board-embed.css'))) === 1,
     'The strict page renderer no longer attaches both Board stylesheets.'
 );
 
