@@ -166,9 +166,19 @@ $check(str_contains((string)file_get_contents($root . '/core/meta.php'), 'ss-fra
 // may only fall, so the design changed rather than the budget.
 foreach ($family as $skin) {
     $layout = (string)file_get_contents($root . '/skins/' . $skin . '/layout.php');
-    $check(!str_contains($layout, "'frame_style'"),
-        strtoupper($skin) . " still reads frame_style. A skin that emits data-frame-* must read "
-        . 'frame_colours, or the CMS declaration overrides the tokens.');
+    // frame_colours FIRST, frame_style only as the fallback. A packaged skin can land
+    // on a site whose CMS has not been deployed yet -- the registry is fleet-wide and
+    // a site updates when it chooses. Measured without this: CMS 0.7.898D + the new
+    // PARADE rendered style="" and every photograph lost its inset, border, shadow
+    // AND colours. The fallback makes the skin correct on both, so no human has to
+    // get a deploy order right.
+    $check(str_contains($layout, "'frame_colours'] ?? \$item['frame_style']")
+        || str_contains($layout, "'frame_colours'] ?? \$photograph['frame_style']"),
+        strtoupper($skin) . ' does not fall back to frame_style. Installed on a site still '
+        . 'on an older CMS it would render no frame at all.');
+    $check(!preg_match("/snap_escape_attr\(\$(item|photograph)\['frame_style'\] \?\? ''\)/", $layout),
+        strtoupper($skin) . ' reads frame_style FIRST. The CMS declaration would override the '
+        . 'tokens on a current CMS.');
     $check(substr_count($layout, "'frame_colours'") === substr_count($layout, 'data-frame-size'),
         strtoupper($skin) . ' reads frame_colours on a different number of elements than it '
         . 'emits tokens on.');

@@ -13,6 +13,17 @@
 
 ## 0.7.900D - 2026-10-16 - (open build)
 
+- **A grid skin keeps its photograph frames even on a site that has not been updated yet.**
+  Caught before any site pulled it. The nine skins packaged a moment earlier would have
+  stripped the inset, border, shadow AND colours from every photograph if they landed on a
+  site still running the older CMS — and the skin registry is fleet-wide, so a site updates
+  when it chooses, not when Sean is watching. Each skin now takes the new way when the site
+  can provide it and the old way when it cannot, so there is no order to get right. Nine
+  skins re-released: PARADE 1.2.50, AURORA 1.0.51, JIVE TURKEY 0.1.39, GAME ON 0.1.36,
+  HEURISTIC 0.1.12, INSTANT CAMERA 1.0.52, SLIDERS 0.1.13, SUDDEN IMPACT 1.0.18, THE GRID
+  1.3.53. **Package these, not the previous set.**
+
+
 - **The skin packager stopped blocking nine skins.** The frame stylesheet was briefly listed
   in each skin's own manifest, and SMACK CENTRAL refused all nine — correctly. A skin is not
   allowed to name a CMS file the packager has never heard of, and the packager runs an older
