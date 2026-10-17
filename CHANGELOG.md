@@ -13,6 +13,14 @@
 
 ## 0.7.901D - 2026-10-17 - The dead-control check was passing everything
 
+- **Thomas the Bear reaches every skin.** 900D shipped with him declared by three skins out of
+  thirty-one, which is why the shortcut does nothing on JIVE TURKEY, THE GRID, AURORA and ONYX
+  — he was never on them. The CMS ships him now, so every skin has him, including skins nobody
+  has written yet. The three skins that always declared him still do, and the engine has a
+  guard so loading him twice is harmless. There is no order to get right: he survives any
+  combination of CMS and skin.
+
+
 - **The render comparator's interaction pass can report a dead control again.** Pointed at a live site it found none, which was wrong: the click helper scrolled to the element first, and scrolling moves the page, so every bounding box changed and every control read as having done something. The scroll was never needed -- a synthetic DOM click takes no coordinates. The test fixture's dead button now sits below 2400px of filler so the same mistake fails the fixture instead of shipping.
 
 - **Photograph tiles are no longer counted as controls.** 27 of the 29 clickable things found on a live photoblog were tile images inside links, which crowded the real buttons out of the pass.
