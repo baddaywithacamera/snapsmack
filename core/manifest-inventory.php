@@ -849,6 +849,22 @@ $inventory = [
         'smack-aurora-wave' => [
             'label'        => 'AURORA Layer 2 tile border colour wave',
             'path'         => 'assets/js/ss-engine-aurora-wave.js',
+            // What the engine needs in the page for the ring to appear at all.
+            // {P} is the skin's own prefix. Every line here is an early return
+            // inside the engine: miss any one and it draws nothing, silently,
+            // with the stylesheet and all the owner's settings still correct.
+            // PARADE lost per_tile and tile_attrs in v0.7.773D and shipped a
+            // plain grid for eighteen days (OPAUDIT 023). Checked against
+            // RENDERED output by tests/skin-engine-markup-contract.php.
+            'requires_markup' => [
+                // derivePrefix(): the engine gives up unless one of these
+                // tells it which skin it is running in.
+                'prefix_source' => ['nav[class*="-sticky-nav"]', '.{P}-aurora-bg', '.{P}-parade-bg'],
+                'carrier'       => '[data-{P}-palette]',
+                'tiles'         => '.{P}-grid .{P}-tile',
+                'per_tile'      => ['.{P}-ring'],
+                'tile_attrs'    => ['data-row', 'data-col'],
+            ],
             'has_settings' => false,
         ],
         'smack-jive-turkey-bg' => [
@@ -859,6 +875,15 @@ $inventory = [
         'smack-jive-border' => [
             'label'        => 'JIVE TURKEY Layer 2 tile border shrink/expand colour wave',
             'path'         => 'assets/js/ss-engine-jive-border.js',
+            // This engine takes every input off its own carrier and works out
+            // tile positions itself, so it needs no data-row/data-col. It does
+            // need the ring element on each tile.
+            'requires_markup' => [
+                'carrier'    => '.{P}-jive-turkey-bg',
+                'tiles'      => '.{P}-tile',
+                'per_tile'   => ['.{P}-ring'],
+                'tile_attrs' => [],
+            ],
             'has_settings' => false,
         ],
         'smack-progressive-reveal' => [
@@ -888,6 +913,10 @@ $inventory = [
         'smack-flag-wave' => [
             'label'        => 'Flag Wave (full-viewport waving flag background, canvas; data-driven flags)',
             'path'         => 'assets/js/ss-engine-flag-wave.js',
+            // Mounts on one container; no per-tile markup.
+            'requires_markup' => [
+                'carrier' => '[data-flag-wave]',
+            ],
             'has_settings' => false,
         ],
         'smack-heuristic' => [

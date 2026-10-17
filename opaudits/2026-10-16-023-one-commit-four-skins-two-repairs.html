@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 023 - One commit, four skins, two repairs</title>
+<link rel="stylesheet" href="_report.css">
+<style>tr { break-inside: avoid; page-break-inside: avoid; }</style>
+</head>
+<body>
+<p class="doc-kicker">SnapSmack Operability Audit - DING DONG BELL</p>
+<h1>OPAUDIT 023 - One commit, four skins, two repairs</h1>
+
+<table class="meta">
+<tr><td class="k">Audit ID</td><td>2026-10-16-023</td></tr>
+<tr><td class="k">State</td><td>Fault fixed in 0.7.899D and PARADE 1.2.47. The check this audit asked for is built and mutation-tested (section 7b). The wider process failure is open, and the enforcement built by OPAUDIT 022 is currently red on the shipping branch.</td></tr>
+<tr><td class="k">Scope</td><td>PARADE's animated tile ring, absent from the owner's live site from 28 September to 16 October 2026. The single commit that removed it from four skins, the two single-skin repairs that followed, and the regression test that had been written to assert the fault.</td></tr>
+<tr><td class="k">Baseline</td><td>0.7.898D is in service on the fleet (measured: foundtextures.ca and allinthewrist.photoblogs.fyi both serve <code>?v=0.7.898</code>). 0.7.899D is tagged and not deployed. PARADE 1.2.47 is not yet packaged.</td></tr>
+<tr><td class="k">Cost</td><td>Eighteen days during which a paid-for visual feature was absent from a live site the owner uses as PARADE's public showcase. The owner found it himself. Two agent repairs to the identical fault, eight and nine days earlier, each on an adjacent skin, did not find it.</td></tr>
+</table>
+
+<h2>1. Decision</h2>
+<p>This audit records agent failure, not a software defect. The defect itself was three lines. What is recorded here is that the same commit broke the same thing in four skins; that two of the four were repaired, one at a time, eight and nine days before this audit, each by an agent looking only at the skin the owner had pointed at; and that neither repair asked the one obvious question, which is which other skins the commit had just broken in the same way. Both answers were one <code>grep</code> away.</p>
+<p>The second finding is that the test suite was not merely silent. <code>tests/specialized-control-authority-regression.php</code> contained an assertion that the broken value was correct. It had been written to lock in the fault. The suite was green for the whole eighteen days, and a green suite was the evidence on which the work had been called done.</p>
+<p>OPAUDIT 022, written the day before this one, already names this mechanism: <em>"Completion was declared on a passing test suite rather than on the live page. The tests had been written by the same agent to assert its own new behaviour, so they certified the drift instead of catching it."</em> This audit is that sentence happening again, in a file nobody had re-read, found the day after it was written.</p>
+
+<h2>2. What the owner experienced</h2>
+<p>The owner said: <em>"my colour shifting borders are missing in the parade theme."</em> He was right, and had been right for eighteen days. PARADE's own description, shipped in its manifest, promises <em>"animated flag-coloured tile borders"</em>. The live site had none. allinthewrist.photoblogs.fyi is the site the snapsmack.ca skins page links to as PARADE's showcase, so the skin was being advertised by a page that no longer demonstrated the feature.</p>
+<p>No agent found this. No test found this. It was found by the owner looking at his own site.</p>
+
+<h2>3. What was measured, before any code was read</h2>
+<table>
+<tr><th>Measurement</th><th>Result</th></tr>
+<tr><td>Live skin version served</td><td><code>skins/parade/style.css?v=1.2.46</code></td></tr>
+<tr><td>Live stylesheet against the repository</td><td><strong>Byte-identical. 44,378 bytes both sides, empty diff.</strong> This was never a stale skin, and the usual first suspect was ruled out before any source was opened.</td></tr>
+<tr><td>Tiles on the live landing page</td><td>24</td></tr>
+<tr><td>Ring elements on the live landing page</td><td><strong>0</strong></td></tr>
+<tr><td>Border-wave engine</td><td>Loaded: <code>ss-engine-aurora-wave.js?v=0.7.898</code></td></tr>
+<tr><td>Owner's settings on the carrier element</td><td>All present: <code>data-pa-border-style="across"</code>, direction, rhythm, <code>cycle=160</code>, <code>minl=100</code></td></tr>
+</table>
+<p>The engine was loaded and every setting the owner had chosen was being published correctly. There was simply nothing in the page for the engine to paint. The engine does <code>if (!ring) continue;</code> and then <code>if (!tiles.length) return;</code>, so it exited before drawing anything.</p>
+
+<h2>4. Root cause</h2>
+<p><code>dcdfe5a9</code>, 28 September 2026, shipped in <strong>v0.7.773D</strong>, titled "Convert grid family to central public runtime". It folded each grid skin's separate templates into one <code>layout.php</code>. In doing so it deleted, from <strong>four skins</strong> and from two templates in each, the small empty element the ring is drawn on, together with the row and column numbers that tell the engine where a tile sits in the grid.</p>
+<table>
+<tr><th>Skin</th><th>Ring removed by <code>dcdfe5a9</code></th><th>Restored</th><th>Measured today</th></tr>
+<tr><td>JIVE TURKEY</td><td>Yes (2 templates)</td><td><code>78be08f7</code>, 6 Oct, v0.7.828D</td><td>Working. 9/9 rings painted, band pulsing 9/9, which is that skin's design.</td></tr>
+<tr><td>AURORA</td><td>Yes (2 templates)</td><td><code>f5365432</code>, 7 Oct, v0.7.836D</td><td>Working. 9/9 rings painted, 9/9 shifting; conic ring rotating 2.16&deg; to 6.64&deg;.</td></tr>
+<tr><td>PARADE</td><td>Yes (2 templates)</td><td><strong>Never. 0.7.899D, 18 days later, after the owner reported it.</strong></td><td>Was 0/9. Now 9/9.</td></tr>
+<tr><td>HEURISTIC</td><td>Yes (2 templates)</td><td>Never, and correctly so</td><td>0/9, which is right. See section 6.</td></tr>
+</table>
+<p>The two repairs are the finding. <code>78be08f7</code> changed one line of <code>skins/jive-turkey/layout.php</code>. <code>f5365432</code> changed one line of <code>skins/aurora/layout.php</code>. Neither touched, mentioned, or checked the other skins that the same commit had stripped in the same way eight days earlier. Each agent repaired precisely the skin the owner was pointing at and stopped.</p>
+
+<h2>5. The three faults in PARADE, and the test that certified one of them</h2>
+<table>
+<tr><th>Fault</th><th>Detail</th></tr>
+<tr><td>No ring element, no grid position</td><td>Removed by <code>dcdfe5a9</code> as above. On its own this was total: the engine drew nothing at all.</td></tr>
+<tr><td>Two controls reached nothing</td><td>PARADE's presentation never emitted <code>--tile-bw</code> or <code>--ring-op</code>, so the BORDER WAVE section's <em>Animated Tile Ring Thickness</em> and <em>Ring Opacity</em> sliders moved and changed nothing. <code>pa_border_width</code> was being spent on <code>--tile-border-w</code>, which is the photograph frame's variable, so <em>Tile Corners: round with thickness</em> also tracked the wrong thing. AURORA emitted both correctly, which is why this half of the fault was PARADE's alone.</td></tr>
+<tr><td>Ring opacity fed to the engine as a brightness floor</td><td><code>border_minl</code> is a 0&ndash;1 lightness floor, present so the black stripe in the Progress and Two-Spirit flags does not read as a hard black band. PARADE was handing it <code>pa_border_opacity</code>, a 10&ndash;100 percentage. The live value was 100. <strong>Measured: with the ring restored but this value left at 100, all nine rings paint pure white and none changes colour.</strong> A white ring on a flag with a white stripe is invisible, so fixing only the markup would have produced a second false "fixed" report. The original fixed value, <code>0.45</code>, was in the skin from <code>78c12b76</code> and was lost in the same conversion.</td></tr>
+</table>
+<p><strong>The test asserted the third fault as correct.</strong> <code>tests/specialized-control-authority-regression.php</code> rendered PARADE with <code>pa_border_opacity =&gt; '44'</code> and then required the output to contain <code>data-pa-border-minl="44"</code>. That assertion is the bug written down as an expectation. It passed every day for eighteen days. Any future agent restoring the correct floor would have been told by the suite that it had broken something.</p>
+
+<h2>6. One finding that corrects this audit's own first reading</h2>
+<p>HEURISTIC lost its ring element to the same commit, and the first conclusion was that HEURISTIC was broken the same way. It is not, and it was checked before anything was changed. HEURISTIC requires no border-wave engine in its manifest, has no BORDER WAVE control section at all, and its stylesheet carries the same "deferred, no engine drives this" note PARADE carried. For HEURISTIC that note is true: the ring was never wired to anything, and <code>dcdfe5a9</code> deleted an element that did nothing. Measured: 0 of 9 rings, which is the correct result. <strong>Nothing was changed in HEURISTIC</strong>, because restoring it would have been adding a feature the owner has not asked for.</p>
+<p>The same note in PARADE's stylesheet was false and had been false for a long time. PARADE did require the engine and did ship a full BORDER WAVE control section. A stale comment claiming a feature was dormant sat directly above the CSS for a feature the skin was advertising in its own description. That comment has been corrected to say what the engine actually needs, and to name the build in which it was lost.</p>
+
+<h2>7. Fixed</h2>
+<table>
+<tr><th>Release</th><th>Repair</th></tr>
+<tr><td>0.7.899D<br>PARADE 1.2.47</td><td>The ring element and the tile's grid position are emitted again. <code>--tile-bw</code> and <code>--ring-op</code> reach the stylesheet, so both BORDER WAVE sliders work. The lightness floor is a fixed <code>0.45</code> again. Tile corners follow the ring's thickness rather than the photograph frame's. The stale stylesheet comment is corrected.</td></tr>
+<tr><td>Test</td><td>The assertion that locked in the fault is replaced. The test now requires the fixed floor, requires Ring Opacity to reach <code>--ring-op</code>, requires the ring element and grid position to be present in the markup, and requires the wave position to wrap every three tiles. It fails if any of the three faults returns.</td></tr>
+</table>
+<p><strong>Verification is a harness, not the live site, and that is stated rather than implied.</strong> Real <code>layout.php</code> rendered through the real controller, real <code>style.css</code>, real <code>ss-engine-aurora-wave.js</code>, headless Chromium, nine-tile Progress-flag grid:</p>
+<table>
+<tr><th>State</th><th>Rings painted</th><th>Changed colour in 1.4s</th><th>Distinct colours at one instant</th><th>Flattened to white</th></tr>
+<tr><td>Before the fix</td><td>0 / 9</td><td>0 / 9</td><td>0</td><td>&ndash;</td></tr>
+<tr><td>After the fix</td><td><strong>9 / 9</strong></td><td><strong>9 / 9</strong></td><td>5</td><td>0 / 9</td></tr>
+<tr><td>Markup fixed, old floor left at 100</td><td>9 / 9</td><td>0 / 9</td><td>1</td><td><strong>9 / 9</strong></td></tr>
+</table>
+<p>PARADE 1.2.47 has not been seen on a live page. Skins install by version through the Skin Packager, the registry and each site's SYSTEM UPDATES, so a CMS deploy alone will not bring the borders back. Until the owner packages and pushes the skin, the correct status of this repair is verified in a harness and unverified live.</p>
+
+<h2>7b. Enforcement built, same day</h2>
+<p>The check this audit asked for exists. <code>tests/skin-engine-markup-contract.php</code> fails the build when a skin declares a JavaScript engine in <code>require_scripts</code> and does not emit the markup that engine looks for.</p>
+<p>Each engine declares what it needs once, in <code>core/manifest-inventory.php</code> under <code>requires_markup</code>, beside where the engine is already described, so a new engine carries its own contract instead of this check growing a list that drifts. Three engines are contracted today: the AURORA border wave, the JIVE TURKEY border wave, and Flag Wave. Four skin-and-engine pairs are checked.</p>
+<p>Two properties were deliberate. It runs against <strong>rendered output</strong>, because a search of the template source would have passed on an element sitting inside a branch that never executes, and because the lesson of OPAUDIT 022 is that reading the source is not measuring. And the prefix is derived the way the engine derives it, from the page, rather than from a copy of the skin-to-prefix map, which exists in four places in <code>core/</code> and is already on the de-duplication list.</p>
+<p><strong>It was watched failing before it was trusted.</strong> Run against PARADE's pre-fix layout it names all three missing pieces: nine of nine tiles with no ring element, nine of nine with no <code>data-row</code>, nine of nine with no <code>data-col</code>. It carries seven mutation tests and a control. The control matters: when the real page already violates the contract, the mutations are skipped and say so, because a check cannot be proved to catch a break in a page that is already broken. One mutation covers the silent case specifically &mdash; <code>data-row</code> present but empty, which the engine reads as position zero on every tile, so the wave stops travelling with nothing looking wrong. The selector translator refuses any form it cannot evaluate, so an unsupported selector cannot read as "requirement satisfied".</p>
+<p><strong>What it does not cover, stated rather than implied.</strong> It proves the markup is present, not that the animation is correct. PARADE's second fault, the lightness floor fed from the wrong control, painted every ring pure white and is invisible to this check. Markup presence is necessary and not sufficient. Visual correctness is still measured in a browser harness, by hand.</p>
+<p>Recorded in RULES.md as section 1b.</p>
+
+<h2>8. Open</h2>
+<ul>
+<li><strong>The enforcement OPAUDIT 022 built is red on the shipping branch, and was before this work started.</strong> <code>tests/agreed-rules-gate.php</code> on <code>dev</code> fails: the inline-style budget was ratcheted to <strong>9</strong> while <strong>28</strong> inline style attributes still exist in skin templates. Verified by running the gate against a clean <code>git archive dev</code>, which fails identically with nothing of this work in it. A gate that is red on the branch everything ships from stops being a gate, because the next agent reads a familiar failure as the normal state. The budget must not be raised; the gate's own comment says budgets may only fall. The cleanup is owed by whoever ratcheted it.</li>
+<li><strong>Nothing checks that a test asserts the intended behaviour rather than the observed behaviour.</strong> OPAUDIT 022 states that the comparator must be mutation-tested before it is trusted, and that the agent who writes a check must not be the agent whose work it checks. Neither constraint was in force here, and a test written to assert a fault survived eighteen days and three agents.</li>
+<li><strong>A repair to one skin does not ask which other skins share the fault.</strong> This cost eighteen days on PARADE and could have cost HEURISTIC too had HEURISTIC's ring been live. When a commit is found to have removed something from a shared pattern, the repair must enumerate every skin that commit touched. No process step requires this.</li>
+<li><strong>WITHDRAWN &mdash; this audit's own error, corrected 16 October.</strong> The first version of this section claimed <code>pa_frame_border_px</code> and <code>pa_frame_border_color</code> were read by no PHP and that PARADE's whole IMAGE FRAME section did nothing. That is false. Both are read in <code>core/public-controller.php</code> as the per-grid fallback, through a key assembled at run time as <code>$prefix . '_frame_border_px'</code>, so the literal string never appears in the file and a search for it finds nothing. The controls work. The mistake was searching for a name the source never spells out &mdash; the same error made twice more the same day, once on <code>parade_wave_row</code> and once here. Recorded rather than deleted, because a search proving absence is only as good as the name being searched for, and that is worth knowing.</li>
+<li><strong>Two tests fail for an environmental reason and should be made to say so.</strong> <code>desktop-auth-route-regression</code> and <code>pixelix-compat-regression</code> both read a <code>.htaccess</code> that is untracked and therefore absent in any worktree. They fail identically with no changes applied. A test that cannot distinguish a missing fixture from a real fault trains agents to discount failures.</li>
+<li><strong>Which other grid skins carry a dormant ring is not established.</strong> HEURISTIC's was checked and is correctly dormant. The same "deferred, no engine" note may sit above live or dead CSS in skins not examined here. The note cannot be trusted on its own; only the manifest's required engines and control sections settle it.</li>
+</ul>
+
+<h2>9. What this audit does not claim</h2>
+<p>It does not claim the feature works on the owner's site. It works in a harness, measured, and the skin has not been packaged. It does not claim AURORA and JIVE TURKEY are correct in general; it claims their rings were measured painting and animating in a harness today, and that no live site in the fleet that could be reached runs either skin, so neither was verified live. It gives no undertaking that agents will check adjacent skins in future, because that undertaking is what section 8 asks to be replaced with a check.</p>
+
+<p class="doc-foot">SnapSmack Operability Audit 023 - 16 October 2026</p>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->

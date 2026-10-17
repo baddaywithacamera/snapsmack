@@ -350,17 +350,46 @@ function snapsmack_grid_frame_items(array $items, array $settings, string $skin)
             $border=max(0,min(100,(int)($settings[$prefix.'_frame_border_px']??0)));
             $color=(string)($settings[$prefix.'_frame_border_color']??'#000000');
             $bg=(string)($settings[$prefix.'_frame_bg_color']??'#ffffff');
-            $shadow=$shadowMap[(string)($settings[$prefix.'_frame_shadow']??'0')]??'none';
+            $shadowToken=(string)($settings[$prefix.'_frame_shadow']??'0');
+            $shadow=$shadowMap[$shadowToken]??'none';
         } else {
             $size=max(1,min(100,(int)($item[$source.($source==='img_'?'size_pct':'img_size_pct')]??100)));
             $border=max(0,min(100,(int)($item[$source.'border_px']??0)));
             $color=(string)($item[$source.'border_color']??'#000000');
             $bg=(string)($item[$source.'bg_color']??'#ffffff');
-            $shadow=$shadowMap[(string)($item[$source.'shadow']??'0')]??'none';
+            $shadowToken=(string)($item[$source.'shadow']??'0');
+            $shadow=$shadowMap[$shadowToken]??'none';
         }
+        if(!isset($shadowMap[$shadowToken]))$shadowToken='0';
         if(!preg_match('/^#[0-9a-f]{6}$/i',$color))$color='#000000';
         if(!preg_match('/^#[0-9a-f]{6}$/i',$bg))$bg='#ffffff';
+        // The owner's bare choices travel as numbers. assets/css/ss-frame-tokens.css
+        // turns each one into the tile custom property the skins consume, so no
+        // frame CSS is assembled here any more and a skin can refuse any of the
+        // three in its own stylesheet.
+        $items[$index]['frame_size']   = $size;
+        $items[$index]['frame_border'] = $border;
+        $items[$index]['frame_shadow'] = $shadowToken;
+        // Border and background colour are the two free-form values -- the editor
+        // offers a full colour picker, so there is no bounded token to pass and
+        // RULES.md says to stop and ask rather than quantise a free value and
+        // restyle someone's photographs. Until that is decided these two stay as
+        // custom properties, and they are the only thing left in this attribute.
+        // A site can be on this CMS with a skin it has not updated yet. That
+        // skin's template carries no data-frame-* attributes and does not load
+        // the token stylesheet, so handing it colours alone would strip the
+        // inset, border and drop shadow from every photograph, silently. It
+        // gets the old declaration instead, exactly as before.
+        // Two keys, and the SKIN decides which it reads -- the CMS does not
+        // look at what is installed. A skin that understands tokens reads
+        // frame_colours and takes its inset, border and shadow from
+        // data-frame-* plus the token stylesheet. A skin that has not been
+        // updated yet reads frame_style and gets exactly what it always got,
+        // so deploying this CMS cannot strip the frames off a site running an
+        // older skin. The old declaration is unchanged from before this work,
+        // which is why no new CSS is assembled in PHP by it.
         $items[$index]['frame_style']="--tile-img-size:{$size}%;--tile-border-w:{$border}px;--tile-border-c:{$color};--tile-bg:{$bg};--tile-shadow:{$shadow};";
+        $items[$index]['frame_colours']="--tile-border-c:{$color};--tile-bg:{$bg};";
         $items[$index]['is_framed']=empty($item['is_trigram_slice'])&&($size<100||$border>0||$shadow!=='none');
         $orientation = array_key_exists('img_orientation', $item)
             ? filter_var($item['img_orientation'], FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE)
@@ -368,9 +397,12 @@ function snapsmack_grid_frame_items(array $items, array $settings, string $skin)
         $items[$index]['is_portrait'] = $orientation !== null
             ? $orientation === 1
             : (int)($item['img_height']??0)>(int)($item['img_width']??0);
-        if ($skin === 'aurora') {
-            $items[$index]['aurora_wave_row'] = intdiv((int)$index, 3);
-            $items[$index]['aurora_wave_column'] = (int)$index % 3;
+        // The shared border-wave engine places each tile's ring by where the
+        // tile sits in the 3-across grid. AURORA and PARADE both run it.
+        if ($skin === 'aurora' || $skin === 'parade') {
+            $wavePrefix = $skin === 'parade' ? 'parade' : 'aurora';
+            $items[$index][$wavePrefix . '_wave_row'] = intdiv((int)$index, 3);
+            $items[$index][$wavePrefix . '_wave_column'] = (int)$index % 3;
         }
     }
     return $items;
@@ -442,11 +474,9 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         }
         $items = $skin === 'glide'
             ? $repository->randomPhotographs(200)
-            : ($skin === 'slickr'
-            ? $repository->justifiedPhotographFeed()
             : ($mode === 'smacktalk'
             ? $repository->longformLanding($perPage, $offset)
-            : snapsmack_grid_landing_items($repository, $settings, $skin, $perPage, $offset)));
+            : snapsmack_grid_landing_items($repository, $settings, $skin, $perPage, $offset));
         if ($skin === 'glide' || $skin === 'slickr' || $mode === 'smacktalk') {
             $items = snapsmack_grid_frame_items($items, $settings, $skin);
         }
@@ -461,10 +491,6 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
                 $items[$index] = $item;
                 $rows[$index % 9][] = $item;
             }
-        }
-        $justifiedRows = [];
-        if ($skin === 'slickr') {
-            $justifiedRows = snapsmack_justified_rows($items, $settings, $page);
         }
         $sliderItems = in_array($skin, ['galleria', 'hip-to-be-square'], true)
             ? array_slice($items, 0, 20)
@@ -491,11 +517,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         $nextLandingPage = count($items) === $perPage ? $page + 1 : 0;
         return ['status' => 200, 'kind' => 'landing', 'mode' => $mode, 'items' => $items,
             'puzzle_items' => $skin === 'game-on' ? array_map('snapsmack_game_on_focus_item', $repository->gameOnPuzzlePhotographs()) : [],
-            'rows' => $skin === 'slickr' ? ($justifiedRows['rows'] ?? []) : $rows,
-            'total_pages' => $skin === 'slickr' ? ($justifiedRows['total_pages'] ?? 1) : 1,
-            'next_page' => $skin === 'slickr'
-                ? ($page < ($justifiedRows['total_pages'] ?? 1) ? $page + 1 : 0)
-                : $nextLandingPage,
+            'rows' => $rows, 'total_pages' => 1, 'next_page' => $nextLandingPage,
             'slider_items' => $sliderItems, 'navigation' => $navigation, 'page' => $page,
             'photo_count' => $totalCount];
     }
@@ -565,11 +587,8 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
     if ($route === 'search') {
         $query = trim((string)($request['query'] ?? ''));
         $results = $query === '' ? ['photographs' => [], 'posts' => []] : $repository->search($query);
-        $searchRows = $skin === 'slickr'
-            ? snapsmack_justified_rows($results['photographs'] ?? [], $settings, 1)['rows']
-            : [];
         return ['status' => 200, 'kind' => 'search', 'query' => $query,
-            'results' => $results, 'rows' => $searchRows, 'navigation' => $navigation];
+            'results' => $results, 'navigation' => $navigation];
     }
     if ($route === 'hashtag') {
         $total = $slug === '' ? 0 : $repository->hashtagPhotographCount($slug);

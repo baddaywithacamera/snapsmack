@@ -51,12 +51,19 @@
   text-decoration: none; overflow: hidden;
   transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
+/* public-base removes border-bottom from image links. A prompt card is a
+   bordered component, not an inline image link, so restore its fourth edge. */
+.pc-prompt-card:has(img) { border-bottom: 1px solid rgba(0,0,0,.18) !important; }
 .pc-prompt-card:hover,
 .pc-prompt-card:focus-visible {
   transform: translateY(-2px); border-color: #D40000;
   box-shadow: 0 8px 24px rgba(0,0,0,.14); outline: none;
 }
+.pc-prompt-card:hover:has(img),
+.pc-prompt-card:focus-visible:has(img),
+.pc-prompt-card.is-current:has(img) { border-bottom-color: #D40000 !important; }
 .pc-prompt-card.is-current { border-width: 2px; border-color: #D40000; }
+.pc-prompt-card.is-current:has(img) { border-bottom-width: 2px !important; }
 .pc-prompt-card img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
 .pc-prompt-copy { display: grid; gap: 4px; padding: 12px; }
 .pc-prompt-copy strong { font-size: 1rem; }
@@ -65,4 +72,8 @@
 
 @media (prefers-color-scheme: dark) {
   .pc-prompt-card { background: rgba(16,16,16,.78); border-color: rgba(255,255,255,.2); }
+  .pc-prompt-card:has(img) { border-bottom-color: rgba(255,255,255,.2) !important; }
+  .pc-prompt-card:hover:has(img),
+  .pc-prompt-card:focus-visible:has(img),
+  .pc-prompt-card.is-current:has(img) { border-bottom-color: #D40000 !important; }
 }

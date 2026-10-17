@@ -17,8 +17,8 @@
         <tr><td class="k">First observed</td><td>2026-09-07 (a recurrence — &ldquo;cron is fucked again&rdquo;); last good federation run ~2 days prior. Fleet on 0.7.656D.</td></tr>
         <tr><td class="k">Theme</td><td>&ldquo;Registered&rdquo; is not &ldquo;running.&rdquo;</td></tr>
         <tr><td class="k">Surfaces</td><td>Federation delivery, new-follow catalogue backfill, and version-check cron across the hub and all 24 spokes.</td></tr>
-        <tr><td class="k">State</td><td><span class="state-chip chip-confirm">Fixed — confirming</span> &nbsp; Live repair watched working; the permanent self-heal shipped as v0.7.657D but is not yet deployed fleet-wide.</td></tr>
-        <tr><td class="k">Watched live?</td><td><strong>Yes, for the repair</strong> — a detached hub federation run completed <code>ok</code> at 2026-09-07 19:06:44, and backfill was proven end to end (see §6). The permanent fix awaits deployment + fleet re-verify.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-watched">Watched working</span> &nbsp; Superseded and closed by the fleet-wide scheduler repair in 0.7.714D (OPAUDIT 014).</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes.</strong> The original repair completed and backfill was proven end to end. On 2026-09-14, 0.7.714D was then deployed fleet-wide and the scheduler-only monitor read 25 of 25 sites green on all three jobs, hub included.</td></tr>
         <tr><td class="k">Reporter</td><td>Sean (observed and reported the outage) + Codex (diagnosed the command-path drift, ran the bounded fleet repair, shipped the fix).</td></tr>
         <tr><td class="k">Related</td><td>OPAUDIT 003 (all paced work lives in the CLI cron — so if cron is dead, delivery is dead); OPAUDIT 012 (the follow-mesh gap this outage exposed); OPAUDIT 006 (the stale relay row seen alongside).</td></tr>
         <tr><td class="k">Publication</td><td>Public. Operability/availability post-mortem, no exploitable detail.</td></tr>
@@ -65,16 +65,15 @@
     2026-09-07 19:06:44 (it did not run inside a browser request &mdash; see OPAUDIT 003). A controlled
     backfill test using two peers (one and two posts respectively) confirmed their accounts and
     historical posts appeared in FoundTextures&rsquo; home feed &mdash; proving the whole chain works
-    once cron is alive. The permanent self-heal is shipped in source as tag <code>v0.7.657D</code>
-    (&ldquo;NO MORE ISLANDS&rdquo;) but is <em>not yet built and deployed fleet-wide</em>, so this stays
-    <span class="state-chip chip-confirm">Fixed — confirming</span> until every site is on 657D and
-    reports its exact command registered.</p>
+    once cron is alive.</p>
+    <p><strong>Resolution update, 2026-09-14:</strong> the first repair did not remain fleet-wide because
+    each site reused the same crontab tag and replaced the previous site&rsquo;s entry. OPAUDIT 014 records
+    the complete replacement: 0.7.714D deployed to the fleet, scheduler-only heartbeats, and 25 of 25
+    sites green on all three jobs, hub included. This audit is closed by that later evidence.</p>
 
     <h2>7. Eyeball next</h2>
-    <p>After 657D is deployed, confirm all 25 sites report the exact command as registered. Build a
-    fleet cron report that distinguishes <em>absent</em>, <em>wrong-command</em>, <em>stale</em>,
-    <em>running</em>, and <em>healthy</em> per job per node &mdash; so a wrong command can never again
-    hide behind &ldquo;present.&rdquo;</p>
+    <p>Completed by OPAUDIT 014: the fleet report now judges the scheduler&rsquo;s own heartbeat rather than
+    a page-hit fallback, and the deployment gate waits for the job&rsquo;s real interval before judging it.</p>
 
     <h2>8. The doctrine this incident created</h2>
     <div class="doctrine">
