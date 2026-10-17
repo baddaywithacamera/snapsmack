@@ -137,7 +137,13 @@ CONTROLS_JS = r"""
   // <a href> that navigates is doing its job, and clicking it would only
   // measure a different page.
   const cursory = Array.from(document.querySelectorAll('*')).filter((el) => {
-    if (el.matches('a[href]:not([href^="#"])')) return false;
+    // Anything inside a real link, not just the link itself. Every tile on a
+    // photoblog is an <img> inside an <a href>, and clicking the image
+    // navigates exactly as clicking the anchor does. Those are not controls,
+    // they are the feed, and with a cap on how many things get clicked they
+    // would crowd out the menu and the filter button -- 27 of the 29 things
+    // discovered on craptasti.ca were tile images.
+    if (el.closest('a[href]:not([href^="#"])')) return false;
     const c = getComputedStyle(el).cursor;
     return c === 'pointer' || c === 'zoom-in' || c === 'zoom-out';
   });
@@ -180,7 +186,11 @@ CLICK_JS = r"""
   };
   for (const el of document.querySelectorAll('*')) {
     if (path(el) !== want) continue;
-    el.scrollIntoView({ block: 'center' });
+    // DO NOT scroll to the element. el.click() is a synthetic DOM click and
+    // needs no coordinates, but scrollIntoView moves the page, which changes
+    // every bounding box on it -- so every control, dead or alive, would be
+    // recorded as having changed something. The first version of this file
+    // did scroll, and reported zero dead controls on a page that has one.
     el.click();
     return true;
   }
@@ -636,8 +646,9 @@ def selftest():
 <ul class="menu"><li>One</li><li>Two</li></ul>
 <p class="note">Note</p><img src="x.svg" width="80" height="60">
 <button class="live" aria-controls="panel">Filter</button>
-<button class="dead">Looks Clickable</button>
-<div id="panel" class="panel">Panel</div></div>
+<div id="panel" class="panel">Panel</div>
+<div class="tall">tall</div>
+<button class="dead">Looks Clickable</button></div>
 <script src="app.js"></script></body></html>"""
     base = """.wrap{padding:20px;max-width:600px}
 .title{color:#1a1a1a;font-size:28px}
@@ -647,6 +658,11 @@ def selftest():
 .live,.dead{cursor:pointer;font:14px sans-serif;padding:6px 10px}
 .panel{display:none;height:40px;background:#eee}
 .panel.open{display:block}
+/* The dead button sits BELOW THE FOLD on purpose. The first version of the
+   click helper called scrollIntoView first, which moves the page and so
+   changes every bounding box on it -- making a dead control look alive. With
+   the page this tall, that mistake fails this fixture instead of shipping. */
+.tall{height:2400px}
 @media (max-width:400px){.title{font-size:18px}}"""
     # One control that does something and one that only looks like it does.
     # The dead button is the SCROLL FILTER bug and the GRAMOFSMACK avatar
