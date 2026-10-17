@@ -583,6 +583,52 @@ body.archive-page #scroll-stage {
     margin: 40px auto;
 }
 
+/* The dedicated archive-view route emits the generic .archive-grid markup.
+   Keep it on the same fixed-width thumbnail geometry as this skin's proven
+   square/cropped archive instead of stretching cards to equal fractions. */
+#browse-grid.archive-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
+    gap: var(--grid-gap, 80px);
+    max-width: 95%;
+    margin: 60px auto;
+    padding: 0 20px;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.archive-grid .thumb-container,
+.archive-grid .thumb-link {
+    width: 100%;
+}
+
+.archive-grid .thumb-link {
+    display: block;
+}
+
+.archive-grid .ip-ascii-frame img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.archive-grid .thumb-container h2 {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    #browse-grid.archive-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    #browse-grid.archive-grid {
+        grid-template-columns: 1fr;
+        padding: 0 12px;
+    }
+}
+
 /* T/M/C controls: let alignDockedControls() calculate the right offset so
    the buttons track the right edge of the masonry grid (now 95% wide with
    auto margins). No !important override — the JS inline style wins.        */

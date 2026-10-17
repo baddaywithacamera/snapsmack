@@ -11,7 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.902D - 2026-10-17 - LOG FLOGGER and TICKET WICKET
+## 0.7.902D - 2026-10-17 - LOG FLOGGER, TICKET WICKET, and static page layout
+
+- Strict public routes now register the existing static-page, shortcode, and column styles whenever the CMS parses a static page. A valid `[columns]` block no longer collapses into stacked full-width images simply because its skin uses the strict public controller.
+- The existing shared lightbox engine is registered with the same page response; skins still own presentation and page content still owns which images enter a column layout.
 
 - **Opened because 0.7.901D is deployed.** Measured against the live fleet.
 
@@ -39,7 +42,6 @@
   **Neither can send and neither can delete.** Replies queue for a separate
   armed sender that holds the only credential, and tickets close, withdraw or
   merge but never vanish.
-
 
 ## 0.7.901D - 2026-10-17 - The dead-control check was passing everything
 
