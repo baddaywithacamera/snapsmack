@@ -583,26 +583,22 @@ body.archive-page #scroll-stage {
     margin: 40px auto;
 }
 
-/* The dedicated archive-view route emits .archive-grid rather than one of
-   the interactive archive-layout classes. Give that skin-owned markup the
-   same compact, configurable presentation instead of full-width cards. */
+/* The dedicated archive-view route emits the generic .archive-grid markup.
+   Keep it on the same fixed-width thumbnail geometry as this skin's proven
+   square/cropped archive instead of stretching cards to equal fractions. */
 #browse-grid.archive-grid {
     display: grid;
-    grid-template-columns: repeat(var(--grid-cols, 4), minmax(0, 1fr));
-    gap: 36px 28px;
-    width: 100%;
+    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
+    gap: var(--grid-gap, 80px);
     max-width: 95%;
-    margin: 40px auto;
+    margin: 60px auto;
     padding: 0 20px;
-    align-items: start;
-    box-sizing: border-box;
+    justify-content: center;
     flex: 0 0 auto;
 }
 
 .archive-grid .thumb-container,
-.archive-grid .thumb-link,
-.archive-grid .ip-ascii-frame {
-    min-width: 0;
+.archive-grid .thumb-link {
     width: 100%;
 }
 
@@ -617,9 +613,7 @@ body.archive-page #scroll-stage {
 }
 
 .archive-grid .thumb-container h2 {
-    margin: 12px 0 0;
-    font-size: clamp(0.9rem, 1.25vw, 1.2rem);
-    line-height: 1.25;
+    display: none;
 }
 
 @media (max-width: 900px) {
