@@ -125,17 +125,20 @@ foreach ($family as $skin) {
             strtoupper($skin) . " is missing {$attr} on at least one framed element.");
     }
     $manifest = json_decode((string)file_get_contents($root . '/skins/' . $skin . '/manifest.json'), true);
-    // require_styles is how a skin declares a stylesheet it does not own.
-    // It was first written here as a CSS-only entry in the engine registry,
-    // which was the wrong pattern: require_scripts entries are expected to
-    // resolve to a script, and declared-engine-reaches-skin-regression
-    // correctly reported the handle as silently dropped.
-    $check(in_array('asset:public:ss-frame-tokens', (array)($manifest['require_styles'] ?? []), true),
-        strtoupper($skin) . ' does not declare asset:public:ss-frame-tokens in require_styles, '
-        . 'so nothing defines its frame properties and every frame disappears.');
+    // A skin must NOT name this asset. Two wrong turns got here: first a CSS-only
+    // entry in the engine registry (declared-engine-reaches-skin-regression caught
+    // it as a silently-dropped handle), then require_styles -- which SMACK CENTRAL's
+    // Skin Packager refused on all nine skins at once, correctly: a skin may not name
+    // a CMS asset the packaging authority has not heard of, and the authority runs an
+    // older CMS than the one the asset was added to. The stylesheet is CMS-owned at
+    // both ends now and core/meta.php ships it.
+    $check(!in_array('asset:public:ss-frame-tokens', (array)($manifest['require_styles'] ?? []), true),
+        strtoupper($skin) . ' names ss-frame-tokens in its manifest again. The Skin Packager '
+        . 'will block it. The CMS ships that stylesheet; a skin does not ask for it.');
 }
 
-// The stylesheet has to be a registered public asset or it is never served.
+// The stylesheet has to be a registered public asset, and the CMS has to actually
+// emit it, or every frame silently falls back to the skin default.
 $inventory = json_decode((string)file_get_contents($root . '/assets/ASSET-INVENTORY.json'), true);
 $registered = false;
 foreach ((array)($inventory['css'] ?? []) as $entry) {
@@ -143,7 +146,10 @@ foreach ((array)($inventory['css'] ?? []) as $entry) {
         $registered = ($entry['scope'] ?? '') === 'public';
     }
 }
-$check($registered, 'ss-frame-tokens.css is not a public asset in ASSET-INVENTORY.json, so no site would load it.');
+$check($registered, 'ss-frame-tokens.css is not a public asset in ASSET-INVENTORY.json.');
+$check(str_contains((string)file_get_contents($root . '/core/meta.php'), 'ss-frame-tokens.css'),
+    'core/meta.php no longer ships ss-frame-tokens.css. Nothing else does, so every '
+    . 'photograph on every grid skin would lose its inset, border and shadow.');
 
 // ---------------------------------------------------------------------------
 // 3b. The skin chooses which key it reads; the CMS does not sniff

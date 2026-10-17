@@ -1437,9 +1437,6 @@
         "not_found": "layout.php",
         "default": "layout.php"
     },
-    "require_styles": [
-        "asset:public:ss-frame-tokens"
-    ],
     "palettes": {
         "aurora": [
             "#56e86a",
