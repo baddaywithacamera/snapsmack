@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "JIVE TURKEY",
-    "version": "0.1.37",
+    "version": "0.1.38",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Deliberately loud 70s GRAMOFSMACK skin. A 3-across square grid over an animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — that never sits still, with SURPRISE rolling a fresh look every visit and a colour border cycling across the tiles. Maximalist on purpose; the photos still win.",
@@ -1343,5 +1343,47 @@
     },
     "require_styles": [
         "asset:public:ss-frame-tokens"
-    ]
+    ],
+    "palettes": {
+        "BARF": {
+            "cream": "#efe7cf",
+            "colors": [
+                "#c9b23a",
+                "#6e7f39",
+                "#6b4a2a"
+            ],
+            "centre": "#c9b23a",
+            "dark": "#40301c"
+        },
+        "BLECH": {
+            "cream": "#efe3cd",
+            "colors": [
+                "#6a3b86",
+                "#dd7328",
+                "#c39a3f"
+            ],
+            "centre": "#c39a3f",
+            "dark": "#33223e"
+        },
+        "GROOVY": {
+            "cream": "#f2e7d6",
+            "colors": [
+                "#7b3f9e",
+                "#e368a4",
+                "#3f7cc4"
+            ],
+            "centre": "#e368a4",
+            "dark": "#2b2340"
+        },
+        "HARVEST": {
+            "cream": "#f2e2c0",
+            "colors": [
+                "#d99a2b",
+                "#bd4e1f",
+                "#6b3f24"
+            ],
+            "centre": "#d99a2b",
+            "dark": "#38220f"
+        }
+    }
 }
