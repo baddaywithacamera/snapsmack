@@ -13,6 +13,17 @@
 
 ## 0.7.900D - 2026-10-16 - (open build)
 
+- **Thomas the Bear is on every skin now.** Ctrl+Shift+Y spawns him, Ctrl+Shift+Z tells the
+  story of Noah and Thomas. He was never broken — he was never *there*. He was asked for by
+  each skin individually, and only three skins out of thirty-one ever asked: GAME ON,
+  HEURISTIC and PARADE. On every other skin the shortcut had never done anything, on any
+  install, ever. Sean found that himself across his own sites.
+  The CMS ships him now, to every skin, including skins nobody has written yet. He cannot be
+  lost again by somebody forgetting a line when they make a new skin, and
+  `tests/thomas-the-bear-reaches-every-skin.php` fails the build if he is — or if either
+  shortcut or the dedication to Noah Grey is removed. He is what THE THOMAS CLAUSE is about.
+
+
 - **A grid skin keeps its photograph frames even on a site that has not been updated yet.**
   Caught before any site pulled it. The nine skins packaged a moment earlier would have
   stripped the inset, border, shadow AND colours from every photograph if they landed on a

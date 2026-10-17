@@ -309,6 +309,21 @@ if (in_array($_snap_page, ['page', 'blog', 'index'])): ?>
 // its photo wall. Was loading unconditionally on every page in every install
 // mode (a cross-mode leak). Mirrors the shortcodes/columns/lightbox guard above.
 if (in_array($_snap_page, ['page', 'blog'], true)): ?>
+<?php // THOMAS THE BEAR -- Ctrl+Shift+Y spawns him, Ctrl+Shift+Z tells the story.
+      //
+      // A tribute to Noah Grey, who made Greymatter and helped invent photoblogging,
+      // carried forward from the teddy bear hidden in Google's Picasa. THE THOMAS
+      // CLAUSE in the licence exists to keep that lineage from being cut; this is the
+      // thing the clause is about, so it does not live at the mercy of a manifest.
+      //
+      // It used to be declared per skin and only three of thirty-one ever declared it
+      // -- game-on, heuristic and parade -- so on every other skin the shortcut did
+      // nothing and had never done anything. Shipped by the CMS now: every skin, every
+      // page, including skins nobody has written yet. He cannot be dropped again by
+      // forgetting a line in a manifest. ?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/ss-engine-thomas.css?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>">
+<script src="<?php echo BASE_URL; ?>assets/js/ss-engine-thomas.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>" defer></script>
+
 <?php // Frame tokens. The CMS emits data-frame-size / -border / -shadow on the
       // photograph tiles (snapsmack_grid_frame_items), so the CMS ships the stylesheet
       // that reads them -- a skin does not request this any more than it requests
