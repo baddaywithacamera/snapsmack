@@ -13,6 +13,17 @@
 
 ## 0.7.900D - 2026-10-16 - (open build)
 
+- **A site on an older grid skin keeps its photograph frames.** Caught before
+  deploying, not after. The frame change above would have stripped the inset,
+  border and drop shadow from every photograph on any site that took this CMS
+  while still running a grid skin it had not updated — the skin's template has
+  no idea the choices now arrive as numbers, so it had nothing to draw. That is
+  five live sites, including the one where per-photograph framing is the whole
+  point of the skin. The CMS now checks whether the installed skin understands
+  the new way and hands an older one exactly what it always got. Measured both
+  ways.
+
+
 - **Three skins own their own colours again.** PARADE's twelve flags, AURORA's
   three colour packs and JIVE TURKEY's four colourways were written into the
   CMS as lists of colour codes — 114 of them. That meant adding a flag or a
