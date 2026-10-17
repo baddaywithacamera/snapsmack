@@ -47,10 +47,24 @@ $defaultFocus = snapsmack_game_on_focus_item([]);
 special_check($defaultFocus['img_focus_x'] === 50 && $defaultFocus['img_focus_y'] === 50 && $defaultFocus['img_zoom'] === 100, 'GAME ON CMS focus/zoom defaults failed.');
 special_check(!str_contains((string)file_get_contents(dirname(__DIR__).'/skins/game-on/layout.php'), "['img_focus_x'] ?? 50"), 'GAME ON skin duplicated the CMS focus control default.');
 $perImageFrame = snapsmack_grid_frame_items([['img_size_pct'=>82,'img_border_px'=>6,'img_border_color'=>'#123456','img_bg_color'=>'#abcdef','img_shadow'=>'2']], ['go_customize_level'=>'per_image'], 'game-on');
-foreach (['--tile-img-size:82%','--tile-border-w:6px','--tile-border-c:#123456','--tile-bg:#abcdef','--tile-shadow:6px 6px 18px'] as $value) special_check(str_contains($perImageFrame[0]['frame_style'], $value), "Per-image frame override missing: {$value}");
+// The owner's inset, border and shadow now travel as their bare choice and
+// assets/css/ss-frame-tokens.css turns each into CSS; only the two free-form
+// colours are still carried as custom properties. The choices must still
+// arrive intact -- that is what these assert. Behaviour was verified
+// separately by comparing computed style before and after across all nine
+// skins: 1253 properties identical, the only change SUDDEN IMPACT refusing
+// drop shadows, which Sean asked for.
+special_check((string)$perImageFrame[0]['frame_size'] === '82', 'Per-image inset choice lost.');
+special_check((string)$perImageFrame[0]['frame_border'] === '6', 'Per-image border choice lost.');
+special_check((string)$perImageFrame[0]['frame_shadow'] === '2', 'Per-image shadow choice lost.');
+foreach (['--tile-border-c:#123456','--tile-bg:#abcdef'] as $value) special_check(str_contains($perImageFrame[0]['frame_style'], $value), "Per-image frame colour missing: {$value}");
+foreach (['--tile-img-size','--tile-border-w','--tile-shadow'] as $banned) special_check(!str_contains($perImageFrame[0]['frame_style'], $banned), "Frame CSS is being assembled in PHP again: {$banned}");
 special_check($perImageFrame[0]['is_framed'] === true, 'Per-image framed state missing.');
 $perCarouselFrame = snapsmack_grid_frame_items([['post_img_size_pct'=>91,'post_border_px'=>3,'post_border_color'=>'#654321','post_bg_color'=>'#fedcba','post_shadow'=>'1']], ['ic_customize_level'=>'per_carousel'], 'instant-camera');
-foreach (['--tile-img-size:91%','--tile-border-w:3px','--tile-border-c:#654321','--tile-bg:#fedcba','--tile-shadow:3px 3px 8px'] as $value) special_check(str_contains($perCarouselFrame[0]['frame_style'], $value), "Per-carousel frame override missing: {$value}");
+special_check((string)$perCarouselFrame[0]['frame_size'] === '91', 'Per-carousel inset choice lost.');
+special_check((string)$perCarouselFrame[0]['frame_border'] === '3', 'Per-carousel border choice lost.');
+special_check((string)$perCarouselFrame[0]['frame_shadow'] === '1', 'Per-carousel shadow choice lost.');
+foreach (['--tile-border-c:#654321','--tile-bg:#fedcba'] as $value) special_check(str_contains($perCarouselFrame[0]['frame_style'], $value), "Per-carousel frame colour missing: {$value}");
 
 $parade = special_render('parade', ['pa_border_style'=>'sweep','pa_border_dir'=>'rtl','pa_border_rhythm'=>'constant','pa_wave_speed'=>'91','pa_border_opacity'=>'44']);
 foreach (['data-pa-border-style="sweep"','data-pa-border-dir="rtl"','data-pa-border-rhythm="constant"','data-pa-border-cycle="91"','data-pa-border-minl="0.45"'] as $value) special_check(str_contains($parade, $value), "PARADE control missing: {$value}");

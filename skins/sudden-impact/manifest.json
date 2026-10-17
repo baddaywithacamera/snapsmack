@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "SUDDEN IMPACT",
-    "version": "1.0.16",
+    "version": "1.0.17",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Instagram in dot matrix. The Grid's 3-column carousel feed rendered as a 1985 Okidata 192 thermal printout — DotMatrix type throughout, dithered halftone photos on plain continuous-feed paper, dashed dot-matrix double-rule nav and footer. An abomination, on purpose. GramOfSmack mode.",
@@ -910,5 +910,8 @@
         "collection": "layout.php",
         "not_found": "layout.php",
         "default": "layout.php"
-    }
+    },
+    "require_styles": [
+        "asset:public:ss-frame-tokens"
+    ]
 }

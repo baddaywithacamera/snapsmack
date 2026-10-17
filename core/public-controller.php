@@ -350,17 +350,32 @@ function snapsmack_grid_frame_items(array $items, array $settings, string $skin)
             $border=max(0,min(100,(int)($settings[$prefix.'_frame_border_px']??0)));
             $color=(string)($settings[$prefix.'_frame_border_color']??'#000000');
             $bg=(string)($settings[$prefix.'_frame_bg_color']??'#ffffff');
-            $shadow=$shadowMap[(string)($settings[$prefix.'_frame_shadow']??'0')]??'none';
+            $shadowToken=(string)($settings[$prefix.'_frame_shadow']??'0');
+            $shadow=$shadowMap[$shadowToken]??'none';
         } else {
             $size=max(1,min(100,(int)($item[$source.($source==='img_'?'size_pct':'img_size_pct')]??100)));
             $border=max(0,min(100,(int)($item[$source.'border_px']??0)));
             $color=(string)($item[$source.'border_color']??'#000000');
             $bg=(string)($item[$source.'bg_color']??'#ffffff');
-            $shadow=$shadowMap[(string)($item[$source.'shadow']??'0')]??'none';
+            $shadowToken=(string)($item[$source.'shadow']??'0');
+            $shadow=$shadowMap[$shadowToken]??'none';
         }
+        if(!isset($shadowMap[$shadowToken]))$shadowToken='0';
         if(!preg_match('/^#[0-9a-f]{6}$/i',$color))$color='#000000';
         if(!preg_match('/^#[0-9a-f]{6}$/i',$bg))$bg='#ffffff';
-        $items[$index]['frame_style']="--tile-img-size:{$size}%;--tile-border-w:{$border}px;--tile-border-c:{$color};--tile-bg:{$bg};--tile-shadow:{$shadow};";
+        // The owner's bare choices travel as numbers. assets/css/ss-frame-tokens.css
+        // turns each one into the tile custom property the skins consume, so no
+        // frame CSS is assembled here any more and a skin can refuse any of the
+        // three in its own stylesheet.
+        $items[$index]['frame_size']   = $size;
+        $items[$index]['frame_border'] = $border;
+        $items[$index]['frame_shadow'] = $shadowToken;
+        // Border and background colour are the two free-form values -- the editor
+        // offers a full colour picker, so there is no bounded token to pass and
+        // RULES.md says to stop and ask rather than quantise a free value and
+        // restyle someone's photographs. Until that is decided these two stay as
+        // custom properties, and they are the only thing left in this attribute.
+        $items[$index]['frame_style']="--tile-border-c:{$color};--tile-bg:{$bg};";
         $items[$index]['is_framed']=empty($item['is_trigram_slice'])&&($size<100||$border>0||$shadow!=='none');
         $orientation = array_key_exists('img_orientation', $item)
             ? filter_var($item['img_orientation'], FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE)
