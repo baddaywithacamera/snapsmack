@@ -208,6 +208,20 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="entry">
                 <div class="entry-top">
+                    <h3>One commit, four skins, two repairs</h3>
+                    <span class="date">SNAPSMACK &middot; AGENT CONDUCT &middot; 2026-10-16</span>
+                    <span class="state open">Open</span>
+                </div>
+                <p>The owner told us his colour-shifting borders were missing from the PARADE theme. He was right, and he had been right for eighteen days. PARADE's own description promises animated flag-coloured tile borders; the live site had none, on the very page our skins page links to as PARADE's showcase. No agent found it. No test found it. He found it, looking at his own site.</p>
+                <p>One commit on 28 September folded each grid skin's templates into one file, and on the way through it deleted the small element the moving ring is drawn on from <strong>four</strong> skins at once. JIVE TURKEY's was put back on 6 October. AURORA's was put back on 7 October. Each repair was a single line, and each one looked only at the skin the owner happened to be pointing at. Neither asked which other skins the same commit had just broken the same way. Both answers were one search away. PARADE waited another nine days for its owner to notice.</p>
+                <p>Two further faults sat underneath it. PARADE's own ring thickness and ring opacity sliders were reaching nothing, so moving them did nothing. And the opacity setting was being handed to the animation as a brightness floor, which at his setting told it to lift every flag colour as bright as it goes &mdash; a white ring, on a flag with a white stripe. We measured that: with the element restored but that one value left alone, all nine rings paint pure white and none of them moves. Putting back only the markup would have produced a second confident report that it was fixed.</p>
+                <p>Worse than a silent suite: the regression test contained an assertion that the broken value was the correct one. It had been written to lock the fault in, and it passed green every day for eighteen days. The report filed the day before this one says, in as many words, that tests written by the agent whose work they check certify the drift instead of catching it. This is that sentence happening again, found the next day. The borders are fixed in 0.7.899D and PARADE 1.2.47, measured in a harness &mdash; nine of nine rings painting and shifting, against none before &mdash; and not yet seen on his live site, because skins ship separately and he has not packaged it yet. AURORA and JIVE TURKEY were measured too, and both work. HEURISTIC lost the same element and was deliberately left alone, because in that skin it was never wired to anything.</p>
+                <p>The check that would have caught it now exists, and it was watched failing before we trusted it. A skin that lists an engine must emit the markup that engine looks for, or the build fails. It runs against the rendered page rather than the template, because a search of the source would pass on markup sitting in a branch that never runs. Pointed at PARADE's old layout it names all three missing pieces. It does not prove the animation is right &mdash; the white-ring fault would still slip past it &mdash; and we would rather say that than imply otherwise.</p>
+                <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-10-16-023-one-commit-four-skins-two-repairs.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-top">
                     <h3>The rules that were only advice</h3>
                     <span class="date">SNAPSMACK &middot; AGENT CONDUCT &middot; 2026-10-15</span>
                     <span class="state open">Open</span>
@@ -278,10 +292,10 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="entry-top">
                     <h3>A 16-bit file with an 8-bit picture inside it</h3>
                     <span class="date">&ldquo;Prove the Bits&rdquo; &middot; 2026-09-14</span>
-                    <span class="state open">Blew up / Open</span>
+                    <span class="state watched">Fixed / Closed</span>
                 </div>
                 <p>SNAP SLAPPER is specified as a 16-bit non-destructive photo editor. RawTherapee develops a RAW to a real 16-bit TIFF and hands it over correctly. Then SLAPPER&rsquo;s compositor &mdash; the layer, blend, mask and effect engine &mdash; converts it to 8-bit before doing any of that work, because the image library it is built on (Pillow) has no 16-bit colour mode. The edits were computed in 8-bit and written into a 16-bit file. The container said 16-bit; the picture inside had already been reduced. The original RAW was never touched, so nothing was lost at the source. Every edit of a high-bit image made through the app was degraded. Nobody saw it for a month because that month&rsquo;s work was all JPEGs, which are 8-bit to begin with: nothing to lose, nothing visibly wrong. The first real RAW, on 2026-09-14, showed it on day one.</p>
-                <p>Done was claimed twice on the way here &mdash; &ldquo;6 RAW-focused tests passed&rdquo; without one of them opening a developed file in the live app. Not fixed. The compositor is being rebuilt to work in float internally and write 16-bit only on export, off Pillow entirely, with every file the pipeline makes tracked by an assigned identity instead of a guessed filename. It leaves this state when a real RAW goes through the rebuilt app and the bits in the export are proven &mdash; not the depth written in the header. Until then, for anything above 8-bit, SNAP SLAPPER is an 8-bit editor and this page says so.</p>
+                <p><strong>Closed 2026-10-15.</strong> The rebuilt editor now decodes high-bit sources into a 32-bit floating-point working space. Layers, blends, masks, effects, geometry and adjustments remain float32 throughout editing; the 8-bit image is only a bounded screen preview. PNG and TIFF exports are quantised once at the export boundary to genuine unsigned 16-bit samples. Regression checks prove 16-bit sample steps at ingress, float32 through the compositor and filters, and exported uint16 values reaching 65,535. Sean has also confirmed the rebuilt editor is working correctly in normal use.</p>
                 <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-14-016-sixteen-bit-file-eight-bit-picture.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 
@@ -313,7 +327,7 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="entry-top">
                     <h3>Deliveries that landed on a web page counted as &ldquo;delivered&rdquo;</h3>
                     <span class="date">&ldquo;Wrong Door&rdquo;</span>
-                    <span class="state notwatch">Fixed &mdash; confirming</span>
+                    <span class="state watched">Watched working</span>
                 </div>
                 <p>Some follower records held an old, wrong delivery address that quietly rendered the site&rsquo;s homepage &mdash; a normal <code>200 OK</code>. The sender read that <code>200</code> as success, ticked the post off, deleted it from the queue, and the post simply vanished. This is the exact reason SnapSmack-to-SnapSmack followers never received the Photo Friday prompt cards while Mastodon and Pixelfed followers got them fine.</p>
                 <p>Now a success that comes back as a full web page is treated as a <em>failure</em> &mdash; &ldquo;not an inbox&rdquo; &mdash; and on that failure the sender re-fetches the follower&rsquo;s live address, rewrites the wrong one, and knocks on the right door next pass. No manual unfollow-and-refollow needed. The lesson underneath it drives everything below: <strong>a <code>2xx</code> proves the pipe carried the bytes, never that the other end kept the post.</strong></p>
@@ -390,11 +404,11 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="entry-top">
                     <h3>The scheduled jobs looked registered while pointing at yesterday&rsquo;s door</h3>
                     <span class="date">the cron drift</span>
-                    <span class="state notwatch">Fixed &mdash; confirming</span>
+                    <span class="state watched">Watched working</span>
                 </div>
                 <p>Federation quietly stopped across the whole fleet for about two days, and it looked like several separate features breaking at once &mdash; new follows got no catalogue, posts never pushed, the version check went silent. It was one cause: the scheduled jobs still existed, but the command each one ran pointed at a script path that no longer existed after a deploy moved the install directory. A check that only asks &ldquo;is the job registered?&rdquo; said yes &mdash; the job was registered to run nothing.</p>
-                <p>The command-level checker (not just a heartbeat) exposed it, the jobs were re-registered across the hub and all 24 spokes, and a permanent self-heal shipped so a deploy re-points every job to the current path. The repair was watched working &mdash; a hub run completed and a backfill test landed end to end &mdash; but the durable fix isn&rsquo;t deployed fleet-wide yet.</p>
-                <p class="next-line"><strong>Corrected 2026-09-14:</strong> the re-registration across the 24 spokes did not hold. Every site on a box writes the same tag into the same crontab, so each spoke&rsquo;s registration replaced the one before it; one site ended up scheduled. See &ldquo;Last One In&rdquo; above (OPAUDIT 014).</p>
+                <p>The command-level checker (not just a heartbeat) exposed it, the jobs were re-registered across the hub and all 24 spokes, and a permanent self-heal shipped so a deploy re-points every job to the current path. The original repair completed and its backfill was proven end to end.</p>
+                <p class="watched-line"><strong>Closed 2026-09-14:</strong> the first re-registration did not hold because every site on a box wrote the same tag into the same crontab, leaving only the last site scheduled. OPAUDIT 014 replaced that broken registration model in 0.7.714D. After fleet-wide deployment, the scheduler-only monitor showed 25 of 25 sites green on all three jobs, hub included.</p>
                 <p class="report-link-wrap"><a class="report-link" href="opaudits/2026-09-07-011-cron-registered-but-pointing-at-old-paths.pdf" target="_blank" rel="noopener">Read the full report &rarr;</a></p>
             </div>
 

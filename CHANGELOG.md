@@ -11,7 +11,211 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.900D - 2026-10-16 - (open build)
+
+- **A grid skin keeps its photograph frames even on a site that has not been updated yet.**
+  Caught before any site pulled it. The nine skins packaged a moment earlier would have
+  stripped the inset, border, shadow AND colours from every photograph if they landed on a
+  site still running the older CMS — and the skin registry is fleet-wide, so a site updates
+  when it chooses, not when Sean is watching. Each skin now takes the new way when the site
+  can provide it and the old way when it cannot, so there is no order to get right. Nine
+  skins re-released: PARADE 1.2.50, AURORA 1.0.51, JIVE TURKEY 0.1.39, GAME ON 0.1.36,
+  HEURISTIC 0.1.12, INSTANT CAMERA 1.0.52, SLIDERS 0.1.13, SUDDEN IMPACT 1.0.18, THE GRID
+  1.3.53. **Package these, not the previous set.**
+
+
+- **The skin packager stopped blocking nine skins.** The frame stylesheet was briefly listed
+  in each skin's own manifest, and SMACK CENTRAL refused all nine — correctly. A skin is not
+  allowed to name a CMS file the packager has never heard of, and the packager runs an older
+  CMS than the one that file was added to. The CMS now ships that stylesheet itself, on every
+  page, which is where it always belonged: the CMS is what writes the frame settings onto each
+  photograph, so the CMS provides the file that reads them. A skin no longer asks for it, and
+  nothing has to be re-packaged when it changes.
+
+
+- **A site on an older grid skin keeps its photograph frames.** Caught before
+  deploying, not after. The frame change above would have stripped the inset,
+  border and drop shadow from every photograph on any site that took this CMS
+  while still running a grid skin it had not updated — the skin's template has
+  no idea the choices now arrive as numbers, so it had nothing to draw. That is
+  five live sites, including the one where per-photograph framing is the whole
+  point of the skin. The CMS now checks whether the installed skin understands
+  the new way and hands an older one exactly what it always got. Measured both
+  ways.
+
+
+- **Three skins own their own colours again.** PARADE's twelve flags, AURORA's
+  three colour packs and JIVE TURKEY's four colourways were written into the
+  CMS as lists of colour codes — 114 of them. That meant adding a flag or a
+  colourway was a whole CMS release, and the colours of a skin were being
+  decided somewhere the skin could not see. They now live in each skin's own
+  file, where colour belongs, and adding one is a skin release.
+
+  **Nothing renders differently.** Every one of the nineteen colour packs was
+  rendered before and after: the colours handed to each skin's engine are
+  byte-for-byte the same, and all nineteen pages come out byte-for-byte the
+  same.
+
+- **A site on an older skin keeps its colour.** This change nearly broke every
+  one of those sites. A site running the new CMS with a skin it had not updated
+  yet would have published an empty colour list and rendered its flags and
+  colourways with no colour at all, silently, until someone packaged the skin —
+  measured, not guessed. Since the CMS and skins arrive through different
+  channels, and a site can sit on an old skin for days, the CMS keeps a copy of
+  the old colours purely as a safety net. The skin always wins where it has
+  them. The copy is marked for deletion once every site is on the new skins.
+
+- **Three skins released:** PARADE 1.2.49, AURORA 1.0.50, JIVE TURKEY 0.1.38.
+
+
+- **The CMS stops deciding what a photograph's frame looks like.** When you set
+  a photograph's inset, border thickness or drop shadow, the CMS used to take
+  your choice from the dropdown, write it out as real CSS, and glue that CSS
+  onto every photograph in the page. Every tile carried it, even photographs
+  where you had customised nothing. Now the CMS passes your choice as the bare
+  number you picked and a stylesheet turns it into the frame, so no part of how
+  a frame looks is decided in PHP any more. This is the same mechanism that
+  drew the double yellow frame round every RATIONAL GEO photograph, where the
+  CMS drew one frame and the skin drew another.
+
+  **Nothing on your sites looks different.** Measured, not reasoned: all nine
+  GRAMOFSMACK skins were rendered before and after against every frame
+  combination in use on the fleet plus the extremes of each dropdown, and the
+  browser's own computed style was compared property by property —
+  **1253 identical, 7 changed, and all 7 are the one change asked for below.**
+
+- **SUDDEN IMPACT refuses drop shadows, because it is a dot-matrix print.** The
+  dot-matrix skin had inherited its shadow line from THE GRID when it was
+  forked, so setting a photograph's DROP SHADOW put a soft modern shadow on a
+  1985 Okidata printout and the skin had no say in it. It now declines them, on
+  grid tiles and carousel slides both. Inset and border thickness still work.
+  Nothing was live — the skin is not launched — so no site changes today.
+
+- **Nine skins released:** AURORA 1.0.49, GAME ON 0.1.35, HEURISTIC 0.1.11,
+  INSTANT CAMERA 1.0.51, JIVE TURKEY 0.1.37, PARADE 1.2.48, SLIDERS 0.1.12,
+  SUDDEN IMPACT 1.0.17, THE GRID 1.3.52. They have to be packaged and sent out
+  through SYSTEM UPDATES like any skin update.
+
+- **Still waiting on one answer, so the rules gate has not moved yet.** The
+  border colour and background colour are the only two frame settings that are
+  not a dropdown — they are full colour pickers, so there is no fixed list of
+  choices to pass through. RULES.md says to stop and ask rather than cut a free
+  choice down to a short list, because that would change photographs that are
+  already published. Those two are now the only thing left in the style
+  attribute. Until they are settled the inline-style count stays at 28.
+
+- **ONYX now uses the palette selected by the site owner.** The strict ONYX
+  renderer loaded the base stylesheet but omitted the saved variant stylesheet,
+  so Garnet red always won even when a site selected Topaz, Emerald, Amethyst,
+  Aquamarine, or Sapphire. PHOTOFRI.DAY can remain Garnet while Mirror Project
+  uses its selected Topaz/amber palette. The separate Glow Strength setting is
+  unchanged and can still be set to zero. A renderer regression proves that the
+  selected palette stylesheet is emitted. (`core/onyx-page-component.php`,
+  `tests/onyx-variant-regression.php`.)
+
+- **IMPACT PRINTER 2.1.10 lays out the two camera photographs side by side.**
+  The Cameras page already contains a valid two-column block. The skin simply
+  failed to declare the existing shared columns component, leaving both columns
+  as ordinary block elements and stacking the photographs. This is a skin
+  manifest repair; the page content and CMS are unchanged.
+  (`skins/impact-printer/manifest.json`,
+  `tests/impact-printer-columns-regression.php`.)
+
+- **Opened because 0.7.899D is deployed.** 899D went out to the fleet, so that
+  number is frozen and must never move again. Everything from here folds into
+  900D until Sean deploys it: the photofri.day repair, and anything else that
+  lands today.
+
+- **Note for the 900D deploy: allinthewrist.photoblogs.fyi is still on 0.7.898D.**
+  Measured on the live page. PARADE's colour-shifting borders need two halves,
+  and only one of them travels in a CMS deploy. The CMS half (the tile's grid
+  position, the ring thickness and opacity reaching the stylesheet, the fixed
+  lightness floor) shipped in 899D. The other half is PARADE 1.2.47 itself,
+  which carries the ring element, and skins install by version through the
+  Skin Packager and SYSTEM UPDATES — a CMS deploy leaves the skin where it is.
+  So that site needs 900D deployed to it AND PARADE 1.2.47 packaged. Either
+  one alone leaves the borders missing.
+
+## 0.7.899D - 2026-10-16 - PARADE gets its colour-shifting borders back
+
+- **PARADE's animated flag-coloured tile rings are back.** The moving ring of
+  flag colour around each square grid tile disappeared in 0.7.837D and PARADE
+  has been showing plain tiles ever since. Three things were wrong at once.
+  The ring is a small empty element sitting on top of each tile, and when the
+  nine grid skins were converted to one shared template that element was left
+  out, along with the row and column numbers that tell the ring where it sits
+  in the grid. The engine looks for those, finds nothing and stops, so there
+  was no animation at all. Second, the BORDER WAVE section's own Animated Tile
+  Ring Thickness and Ring Opacity sliders were not reaching the stylesheet, so
+  moving them did nothing. Third, Ring Opacity was being handed to the engine
+  as a brightness floor — a setting of 100% told the engine to lift every flag
+  colour as bright as it goes, which turns the whole ring white, so even a
+  restored ring would have been an invisible white band on the flag's white
+  stripe. That floor is a fixed value again, the one PARADE shipped with, there
+  to stop the black stripe in the Progress and Two-Spirit flags reading as a
+  hard black band. Tile Corners set to "Round with thickness" now follows the
+  ring's thickness rather than the photograph frame's. PARADE is released as
+  1.2.47.
+
+  Measured in an offline harness with the real template, the real stylesheet
+  and the real engine, on a nine-tile Progress-flag grid: before, none of the
+  nine tiles had a ring; after, all nine are painted and all nine change colour
+  as the wave travels, five different colours across the grid at once, and none
+  white. Not yet seen on the live site — the skin has to be packaged and sent
+  out through SYSTEM UPDATES first.
+
+- **AURORA and JIVE TURKEY were checked too, and both work.** The same commit
+  took the ring element out of four skins, not one. JIVE TURKEY's was put back
+  on 6 October and AURORA's on 7 October, each as a single line, each looking
+  only at the skin that had been reported. Measured today in the same harness:
+  AURORA paints and rotates all nine rings, JIVE TURKEY paints all nine and
+  pulses the band, which is that skin's own design. Neither needed a change.
+  HEURISTIC lost the same element and is deliberately left alone: it loads no
+  border engine and has no BORDER WAVE controls, so in that skin the ring was
+  never wired to anything and putting it back would be adding a feature nobody
+  asked for.
+
+- **A skin can no longer advertise an engine it does not feed.** This is the
+  check OPAUDIT 023 asked for, built the same day. If a skin lists a
+  JavaScript engine and does not emit the markup that engine looks for, the
+  build fails instead of the site quietly losing the feature. That is the whole
+  fault above: the engine loaded, every setting was published, the stylesheet
+  was correct, and the one element it paints on was missing, so it gave up
+  without a word. Each engine now states what it needs once, beside where the
+  engine is already described, so a new engine brings its own contract. Three
+  engines are covered today, four skin-and-engine pairs checked. It reads the
+  rendered page rather than the template, because searching the template would
+  pass on markup sitting in a branch that never runs. Pointed at PARADE's old
+  layout it names all three missing pieces, and it ships with seven mutation
+  tests and a control so it has been seen to fail before being trusted. It
+  does not prove the animation looks right — the white-ring fault would still
+  get past it, and that is said in the check itself rather than left implied.
+  `tests/skin-engine-markup-contract.php`, RULES.md section 1b.
+
+- **Recorded as OPAUDIT 023, "One commit, four skins, two repairs."** Eighteen
+  days with the feature missing from the site that advertises it, found by the
+  owner rather than by us or by the tests. The regression test had been written
+  to assert the broken value as correct, so the suite passed green throughout.
+  The audit also records that `tests/agreed-rules-gate.php` is already failing
+  on `dev` before this work — the inline-style budget was ratcheted to 9 while
+  28 inline styles remain — and asks for a check that a skin cannot advertise
+  an engine whose markup it does not emit. On the DING DONG BELL page.
+
+## 0.7.898D - 2026-10-16 - PixelDroid can connect
+
+- **PixelDroid can now connect to a SnapSmack site.** PixelDroid asks for the Mastodon scopes `read write follow push` when it registers itself, and the site refused the whole registration because it only understands `read` and `write` — PixelDroid showed "Could not register the application with this server", while Pixelix, which asks only for `read write`, connected fine. The site now accepts the full Mastodon scope vocabulary (including the granular `read:…` / `write:…` forms) and grants only the read and write it actually implements. The out-of-band redirect `urn:ietf:wg:oauth:2.0:oob` used by desktop and command-line clients is accepted too, and shows the authorization code on screen to copy. The ALLOW and RETURN screens now say the name of the app that is connecting instead of always saying Pixelix.
+
+## 0.7.897D - 2026-10-16 - SLICKR wall presentation controls
+
+- **SLICKR can hide hover titles and no longer flashes its unsized wall.** Skin Admin now places the row height, archive layout, and new Photo Titles on Hover control together under ARCHIVE & LANDING. The photograph wall remains hidden only until the CMS row engine applies its geometry, preventing full-size images from appearing before they settle into rows. SLICKR is released as 1.0.38.
+
 ## 0.7.896D - 2026-10-16 - Six hard-coded styles out of the templates
+
+- **SLICKR moves off FJGallery and onto SnapSmack's row wall.** Its landing, archive, hashtag, and search photograph walls now use the CMS-owned `smack-rows` engine: native-aspect, uncropped, justified rows with endless loading on bounded batches. The existing row-height control now feeds the shared engine. SLICKR is released as 1.0.37.
+
+- **TILEZ restores its endless landing feed using SCROLL's exact wall contract.** The visible `1 / 2` pager is removed. TILEZ now emits SCROLL's sentinel and its already-declared CMS columns engine loads subsequent post batches automatically while retaining TILEZ's existing masonry presentation. TILEZ is released as 0.2.65.
+
+- **Automatic three-photo mosaics do not repeat the immediately preceding arrangement.** Explicitly selected arrangements remain untouched; automatic triplets retain their chosen arrangement across resize reflows.
 
 - **Three skins stop carrying styling inside their HTML.** SLICKR's two album grids were each repeating `--justified-gap:4px;--justified-row-height:240px` in the tag itself, the exact values its own stylesheet already sets, so removing them changes nothing on screen. 50 SHADES and ONYX hid their inactive archive pane with `style="display:none"`; the pane is now marked `data-pane-hidden="1"` and each skin's own stylesheet decides what that means, which is the rule that skins own their presentation. SLICKR is released as 1.0.36, 50 SHADES as 1.7.2, ONYX as 0.1.22.
 

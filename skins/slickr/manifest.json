@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "SLICKR",
-    "version": "1.0.36",
+    "version": "1.0.38",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "Flickr, the way it was. Justified masonry archive, classic solo view with EXIF sidebar, albums directory. Built for migrated Flickr archives — includes an optional Flickr provenance badge on imported images.",
@@ -29,9 +29,7 @@
         "smack-image-fade-load",
         "smack-lazyload",
         "smack-progressive-reveal",
-        "smack-tag-infinite",
-        "smack-justified-lib",
-        "smack-justified",
+        "smack-rows",
         "smack-community",
         "smack-keyboard",
         "smack-archive-toggle",
@@ -63,18 +61,36 @@
             "unit": "px"
         },
         "justified_row_height": {
-            "section": "LAYOUT",
+            "section": "ARCHIVE & LANDING",
             "type": "range",
             "label": "Justified Row Height (px)",
             "default": "240",
             "min": "120",
             "max": "480",
-            "selector": ":root",
-            "property": "--justified-row-height",
+            "selector": "#justified-grid",
+            "property": "--ss-row-height",
             "unit": "px"
         },
+        "show_wall_titles": {
+            "section": "ARCHIVE & LANDING",
+            "type": "select",
+            "label": "Photo Titles on Hover",
+            "default": "1",
+            "selector": "#justified-grid.ss-scroll-wall .ss-masonry-item::after",
+            "property": "custom-wall-titles",
+            "options": {
+                "1": {
+                    "label": "Show",
+                    "css": ""
+                },
+                "0": {
+                    "label": "Hide",
+                    "css": "display: none;"
+                }
+            }
+        },
         "archive_layout": {
-            "section": "LAYOUT",
+            "section": "ARCHIVE & LANDING",
             "type": "select",
             "label": "Default Archive Layout",
             "default": "justified",

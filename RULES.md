@@ -4,7 +4,7 @@ Sean's rules, written down because agents kept breaking them from memory.
 Several of these were agreed, broken, re-agreed, and broken again. Where a
 machine can check a rule, the check is named. Where it cannot, that is said.
 
-Last updated: 2026-10-15
+Last updated: 2026-10-16
 
 ---
 
@@ -18,7 +18,44 @@ to add."*
 Do not build a new shared mechanism to solve a per-skin problem. Do not
 extend a shared stylesheet to fix one skin.
 
+## 1b. A skin may not declare an engine it does not feed
+
+A skin that lists a JavaScript engine in `require_scripts` **must emit the
+markup that engine looks for.** Every shared engine gives up quietly when the
+markup is missing: no console error, no failed test, no visible clue. The
+stylesheet still looks right, Skin Admin still shows the controls, and the
+feature is simply not there.
+
+This is not hypothetical. PARADE declared the border-wave engine, shipped a
+full BORDER WAVE control section, advertised *"animated flag-coloured tile
+borders"* in its own description, and emitted no ring element and no tile
+position for **eighteen days**. The engine loaded. Every setting Sean had
+chosen was published correctly. The stylesheet was byte-identical to the
+repository. Sean found it himself, on his own site. OPAUDIT 023.
+
+Each engine declares what it needs once, in `core/manifest-inventory.php`
+under `requires_markup`, next to where the engine is already described. A new
+engine adds its own contract there; nothing has to be remembered elsewhere.
+
+The check is `tests/skin-engine-markup-contract.php`. It runs against
+**rendered output**, not template source — a grep would pass on an element
+sitting inside a branch that never executes. It carries 7 mutation tests plus
+a control, because a check nobody has watched fail is not a check: it was run
+against PARADE's pre-fix layout and names all three missing pieces.
+
+What it does **not** cover, said plainly: it proves the markup is present, not
+that the animation is right. PARADE's second fault — a lightness floor fed
+from the wrong control, which painted every ring pure white — is invisible to
+it. Markup presence is necessary, not sufficient; visual correctness is
+measured in a browser harness.
+
 ## 2. No CSS in PHP. No inline styles. No JS in PHP.
+
+**Exactly two bootstrap exceptions:** `fedup.php` and `setup.php`. Each is a
+one-file installer intended to be uploaded by itself into an empty directory,
+so each may carry the CSS required to render its own installation screen.
+This exception does not extend to `install.php`, ordinary CMS PHP, project
+sites, skins, or any other file.
 
 - No `style="..."` in any template, static or generated.
 - No CSS declarations assembled in PHP strings.

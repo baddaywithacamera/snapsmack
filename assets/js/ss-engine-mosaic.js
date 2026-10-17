@@ -20,11 +20,34 @@
     var MAX_SECTION_HEIGHT = 900;
     var mosaicContainers = [];
     var resizeBound = false;
+    var lastAutomaticTripletTemplate = '';
 
     function imageAR(image) {
         var width  = Number(image.width) || 0;
         var height = Number(image.height) || 0;
         return width > 0 && height > 0 ? width / height : 1.5;
+    }
+
+    function automaticTripletTemplate(images, container) {
+        /* Keep an automatic run editorial: adjacent three-photo mosaics must not
+           repeat the same composition. Cache the decision on the container so a
+           resize reflows the existing arrangement instead of choosing a new one. */
+        var cached = container.getAttribute('data-auto-triplet-template') || '';
+        if (cached) return cached;
+
+        var preferred = imageAR(images[0]) < 1.15 ? 'one-left' : 'three-across';
+        var alternatives = preferred === 'three-across'
+            ? ['one-left', 'one-right', 'one-top']
+            : ['three-across', 'one-right', 'one-top'];
+        var chosen = preferred;
+        if (chosen === lastAutomaticTripletTemplate) {
+            chosen = alternatives.find(function (candidate) {
+                return candidate !== lastAutomaticTripletTemplate;
+            }) || preferred;
+        }
+        container.setAttribute('data-auto-triplet-template', chosen);
+        lastAutomaticTripletTemplate = chosen;
+        return chosen;
     }
 
     function focalValue(value) {
@@ -389,6 +412,9 @@
         var gap = parseInt(container.getAttribute('data-gap') || '4', 10);
         var emphasis = container.getAttribute('data-emphasis') || 'natural';
         var template = container.getAttribute('data-template') || '';
+        if (!template && images.length === 3) {
+            template = automaticTripletTemplate(images, container);
+        }
         var width = container.clientWidth || container.offsetWidth;
         if (width <= 0) return;
 

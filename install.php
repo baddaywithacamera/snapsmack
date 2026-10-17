@@ -75,6 +75,39 @@ if (!function_exists('snap_is_https')) {
 // --- SESSION INIT ---
 session_start();
 
+// Some reverse-proxy/PHP combinations fail to return the installer session
+// cookie on the next POST. Keep installer state server-side so a successful
+// schema step cannot strand the following admin-user step. The file is
+// executable PHP (not web-readable JSON/INI), owner-only, expires quickly,
+// and is deleted when installation completes.
+$installer_state_path = __DIR__ . '/core/.snapsmack-installer-state.php';
+if (is_file($installer_state_path)) {
+    if ((int)@filemtime($installer_state_path) < time() - 21600) {
+        @unlink($installer_state_path);
+    } else {
+        $installer_db_state = @include $installer_state_path;
+        if (is_array($installer_db_state)) {
+            foreach ($installer_db_state as $installer_db_key => $installer_db_value) {
+                if (!array_key_exists($installer_db_key, $_SESSION)) {
+                    $_SESSION[$installer_db_key] = $installer_db_value;
+                }
+            }
+        }
+        unset($installer_db_state, $installer_db_key, $installer_db_value);
+    }
+}
+register_shutdown_function(static function () use ($installer_state_path): void {
+    // Successful completion self-deletes install.php and explicitly removes the
+    // state file; do not recreate it during shutdown in that case.
+    if (!is_file(__FILE__)) return;
+    $installer_state_php = "<?php\n// Temporary installer state. Deleted automatically on completion.\nreturn "
+        . var_export($_SESSION, true)
+        . ";\n";
+    if (@file_put_contents($installer_state_path, $installer_state_php, LOCK_EX) !== false) {
+        @chmod($installer_state_path, 0600);
+    }
+});
+
 // --- CODEBASE CHECK ---
 // The installer configures an existing codebase — it doesn't deploy one.
 // If key files are missing, redirect to setup.php (the bootstrap deployer).
@@ -225,7 +258,7 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
         // screens back and dead-ends the FEDISTRUCTURE install.
         if ($installer_is_fedistructure) {
             $profile = (string)($_POST['distribution_profile'] ?? $_SESSION['distribution_profile'] ?? '');
-            if (!in_array($profile, ['photo-challenge', 'daily-photo', 'smackcast'], true)) {
+            if (!in_array($profile, ['photo-challenge', 'daily-photo', 'mirror-project', 'smackcast'], true)) {
                 $errors[] = 'Choose a FEDISTRUCTURE service profile.';
                 $step = 2;
             } else {
@@ -279,9 +312,23 @@ if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST' && empty($errors)) {
                 $_SESSION['db_user']   = $db_user;
                 $_SESSION['db_pass']   = $db_pass;
                 $_SESSION['db_prefix'] = $db_prefix;
+                $installer_state_php = "<?php\n// Temporary installer state. Deleted automatically on completion.\nreturn "
+                    . var_export([
+                        'db_host'   => $db_host,
+                        'db_name'   => $db_name,
+                        'db_user'   => $db_user,
+                        'db_pass'   => $db_pass,
+                        'db_prefix' => $db_prefix,
+                    ], true)
+                    . ";\n";
+                if (@file_put_contents($installer_state_path, $installer_state_php, LOCK_EX) === false) {
+                    throw new RuntimeException('Could not preserve installer database state. Check that core/ is writable.');
+                }
+                @chmod($installer_state_path, 0600);
+                unset($installer_state_php);
                 $_SESSION['db_attempts'] = 0;
                 $step = 3;
-            } catch (PDOException $e) {
+            } catch (Throwable $e) {
                 $_SESSION['db_attempts']++;
                 if ($_SESSION['db_attempts'] >= 5) {
                     $_SESSION['db_lockout_until'] = time() + 60;
@@ -1302,10 +1349,13 @@ if (PHP_SAPI !== \'cli\' && !headers_sent()) {
                 'active_skin_variant'       => $default_variant,
                 'active_theme'              => 'midnight-lime',
                 'fediverse_enabled'        => $installer_is_fedistructure ? '1' : '0',
-                'photochallenge_enabled'    => in_array($install_profile, ['photo-challenge', 'daily-photo'], true) ? '1' : '0',
-                'photochallenge_tag'        => $install_profile === 'daily-photo' ? 'aphotoeveryday' : 'photofri',
-                'photochallenge_window_mode'=> $install_profile === 'daily-photo' ? 'daily' : 'weekly',
-                'photochallenge_boost_enabled'=> in_array($install_profile, ['photo-challenge', 'daily-photo'], true) ? '1' : '0',
+                'photochallenge_enabled'    => in_array($install_profile, ['photo-challenge', 'daily-photo', 'mirror-project'], true) ? '1' : '0',
+                'photochallenge_tag'        => $install_profile === 'daily-photo' ? 'aphotoeveryday' : ($install_profile === 'mirror-project' ? 'mirrorproject' : 'photofri'),
+                'photochallenge_window_mode'=> $install_profile === 'daily-photo' ? 'daily' : ($install_profile === 'mirror-project' ? 'open' : 'weekly'),
+                'photochallenge_open_since' => $install_profile === 'mirror-project' ? gmdate('Y-m-d H:i:s') : '',
+                'photochallenge_open_week_key'=> $install_profile === 'mirror-project' ? 'mirror-project' : '',
+                'photochallenge_entry_limit'=> $install_profile === 'mirror-project' ? '0' : '5',
+                'photochallenge_boost_enabled'=> in_array($install_profile, ['photo-challenge', 'daily-photo', 'mirror-project'], true) ? '1' : '0',
                 'smackcast_inbox_policy'     => $install_profile === 'smackcast' ? 'relay' : 'standard',
                 'smackcast_relay_enabled'    => '0',
                 'smackcast_admission_mode'   => 'allowlist',
@@ -1798,6 +1848,7 @@ HTACCESS;
     // --- SELF-DELETE ---
     $self_deleted = false;
     if (empty($errors)) {
+        @unlink($installer_state_path);
         $self_deleted = @unlink(__FILE__);
     }
 
@@ -2435,6 +2486,16 @@ if ($recovery_mode && $step === 'r4' && $_SERVER['REQUEST_METHOD'] === 'POST' &&
                         <div class="install-mode-body">
                             <div class="install-mode-name">APHOTOEVERY.DAY</div>
                             <div class="install-mode-desc">A daily photo-discovery actor with configurable qualifying tags, boost cadence, entry limits, and public feed pages.</div>
+                        </div>
+                    </div>
+                </label>
+                <label class="install-mode-card">
+                    <input type="radio" name="distribution_profile" value="mirror-project">
+                    <div class="install-mode-card-inner">
+                        <div class="install-mode-version">SPOKE</div>
+                        <div class="install-mode-body">
+                            <div class="install-mode-name">MIRRORPROJECT.FYI</div>
+                            <div class="install-mode-desc">A Fediverse-only revival of the original Mirror Project. Share photographs of yourself—or anything else—captured in a reflective surface. Contributions are unlimited, with occasional themed challenges. The project actor discovers and boosts qualifying posts into followers' feeds.</div>
                         </div>
                     </div>
                 </label>

@@ -65,12 +65,22 @@ $check(str_contains($out, 'href="/ok"'), 'an ordinary link still works');
 
 // --- the auto-built menu does not link Home twice ------------------------
 $model = (string)@file_get_contents($root . '/core/skin-view-model.php');
+$boardCss = (string)@file_get_contents($root . '/assets/css/photochallenge-board-embed.css');
 $check(str_contains($model, "if (\$slug === 'home' || \$slug === 'blogroll') continue;"),
     'the auto-built menu must skip a page the CMS has already linked');
 $at = strpos($model, "['type' => 'home', 'label' => 'Home']");
 $skip = strpos($model, "if (\$slug === 'home' || \$slug === 'blogroll') continue;");
 $check($at !== false && $skip !== false && $skip > $at,
     'the skip belongs in the page loop that follows the Home and Blogroll entries');
+
+// public-base deliberately removes border-bottom from linked images. Prompt
+// cards are image links but also bordered components, so their own stylesheet
+// must explicitly restore the fourth edge with equal !important authority.
+$check(str_contains($boardCss, '.pc-prompt-card:has(img)')
+    && str_contains($boardCss, 'border-bottom: 1px solid rgba(0,0,0,.18) !important;')
+    && str_contains($boardCss, '.pc-prompt-card.is-current:has(img)')
+    && str_contains($boardCss, 'border-bottom-width: 2px !important;'),
+    'prompt cards must keep their bottom border against the base image-link reset');
 
 printf("board index: nav and card classes survive, scripts and javascript: urls do not; menu adds Home once.\n");
 

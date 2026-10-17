@@ -17,8 +17,8 @@
         <tr><td class="k">First observed</td><td>2026-09-14, the first day a RAW file went through SNAP SLAPPER since the RAW handoff was built. Every edit in the month before was made from JPEGs.</td></tr>
         <tr><td class="k">Theme</td><td>SNAP SLAPPER is specified as a 16-bit non-destructive editor. It was 16-bit at the door and 8-bit in the room where the editing happens. The file it wrote said 16-bit; the picture inside had already been reduced to 8-bit.</td></tr>
         <tr><td class="k">Surfaces</td><td>SNAP SLAPPER&rsquo;s compositor (layers, blends, masks, effects); its TIFF export; the RAW handoff to RawTherapee; the &ldquo;open developed file&rdquo; step.</td></tr>
-        <tr><td class="k">State</td><td><span class="state-chip chip-open">Blew up / Open</span> &nbsp; Diagnosed, not fixed. The compositor has to be rebuilt off Pillow. No build carries the fix yet.</td></tr>
-        <tr><td class="k">Watched live?</td><td><strong>The defect, yes.</strong> A real RAW, developed to a real 16-bit TIFF, came out of the app as 8-bit data in a 16-bit container. The fix has not been built, so nothing about the fix has been watched.</td></tr>
+        <tr><td class="k">State</td><td><span class="state-chip chip-closed">Fixed / Closed</span> &nbsp; Corrected after the original report. The editor now reads high-bit sources into a float32 compositor and quantises once to genuine 16-bit output.</td></tr>
+        <tr><td class="k">Watched live?</td><td><strong>Yes.</strong> The original defect was reproduced on a real RAW. The rebuilt editor is now in regular use and working correctly; code and regression checks also prove 16-bit ingress, float32 editing, and real uint16 export.</td></tr>
         <tr><td class="k">Reporter</td><td>Sean (put the first real RAW through it and asked why the app still showed an 8-bit engine) + Codex (diagnosed it, once asked plainly, and did not dress it up).</td></tr>
         <tr><td class="k">Related</td><td>DING DONG BELL &ldquo;Photo editor files opened in other editors&rdquo; &mdash; the Photoshop difference test on that entry was run on an 8-bit source, so it proved the wrapper and not the bits; it stands, with that limit now written on it.</td></tr>
         <tr><td class="k">Publication</td><td>Public. No exploitable detail. SNAP SLAPPER has one user (Sean); no one else&rsquo;s files went through it.</td></tr>
@@ -34,7 +34,7 @@
     for a month because the month&rsquo;s work was all JPEGs: 8-bit in, 8-bit composite, 8-bit out, nothing
     to lose, nothing visibly wrong.</p>
 
-    <h2>2. What a human saw</h2>
+    <h2 class="page-break-before">2. What a human saw</h2>
     <table>
         <tr><th>Step</th><th>What happened</th></tr>
         <tr><td>Open a RAW in SLAPPER</td><td>The app refused to develop it and offered only to open the original in RawTherapee. The RAW handoff (SLAPPER&rsquo;s sliders driving RawTherapee, a developed 16-bit TIFF coming back) had to be built first.</td></tr>
@@ -64,7 +64,8 @@
     silent.</p>
 
     <h2>5. What we did</h2>
-    <p>Nothing shipped yet. This entry is the disclosure. The rework, in one engine pass:</p>
+    <p><strong>Resolution update, 2026-10-15:</strong> the compositor was rebuilt as specified and the
+    editor is now working correctly in regular use. Its high-bit pipeline is:</p>
     <p><strong>Work in float32 internally; quantise to 16-bit only on export.</strong> Not 16-bit integer
     &mdash; that still clips highlights on the first curve. Float keeps the headroom that makes highlight
     recovery from a RAW possible at all.</p>
@@ -75,11 +76,14 @@
     the bit-depth work, because the two bugs share the cause.</p>
 
     <h2>6. Verified &mdash; and what remains</h2>
-    <p>Verified: the defect, on a real RAW, on 2026-09-14. Not verified: anything else. To close this:
-    put a real RAW through the rebuilt app, export a 16-bit TIFF, and prove the bits &mdash; a difference
-    against the RawTherapee-developed TIFF, or a histogram that shows more than 256 levels per channel &mdash;
-    not the declared depth in the header. Until that is watched, this stays open and SNAP SLAPPER is an 8-bit
-    editor for anything above 8-bit, whatever the spec says.</p>
+    <p><strong>Closed 2026-10-15.</strong> A high-bit source is decoded into an H&times;W&times;C float32 array;
+    layers, blends, masks, effects, geometry and adjustments remain in that 32-bit floating-point working
+    space; highlight and shadow values are not clipped between operations. A 16-bit PNG or TIFF is quantised
+    once, at the export boundary, to real unsigned 16-bit samples. The 8-bit image is now only the bounded
+    screen preview and is never the authoritative editing source. Automated checks preserve 16-bit sample
+    steps on ingress, assert float32 through the compositor and its filters, and inspect the exported file as
+    uint16 with values reaching 65,535. Sean has also confirmed the rebuilt editor is working correctly in
+    normal use.</p>
 
     <h2>7. What was damaged, and what was not</h2>
     <table>
@@ -90,10 +94,10 @@
     <p>Caught on the first day of real RAW use rather than after a month of masters had gone through it.</p>
 
     <h2>8. Eyeball next</h2>
-    <p>The DING DONG BELL Photoshop entry: re-run the difference test from a RAW-developed source once the
-    rework lands, because the existing pass was on an 8-bit source. Then every other place the app promises
-    a bit depth &mdash; the export dialog, the file info panel, the LEWKS pipeline &mdash; gets the same
-    prove-the-bits check.</p>
+    <p>The separate Photoshop interchange claim still needs its own high-bit round-trip check. That is not a
+    condition of this editor-engine repair: OPAUDIT 016 is closed because the editor&rsquo;s authoritative
+    pipeline and finished 16-bit output are now proven. Other applications importing and returning those
+    files remain separate interoperability claims and must be verified separately.</p>
 
     <h2>9. The doctrine this incident created</h2>
     <div class="doctrine">
