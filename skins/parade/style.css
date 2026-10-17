@@ -402,10 +402,14 @@ img { display: block; max-width: 100%; }
    of dumping all posts to full height at once. */
 .pa-grid .pa-tile.pa-fold { display: none; }
 
-/* DORMANT Layer-2 ring overlay — DEFERRED in PARADE v1.0.0 (spec v0.2 §8).
-   No engine drives this in v1; with no background set it renders invisible, so
-   PARADE ships clean tiles. The CSS + the .pa-ring divs in the templates are
-   left in place, ready to wire up if/when Layer 2 is approved. */
+/* Layer-2 ring overlay — the animated flag-colour ring round each tile.
+   ss-engine-aurora-wave.js finds one .pa-ring per .pa-grid .pa-tile and drives
+   its background; the two-layer mask punches out the centre so only the
+   padding-width band shows. Thickness (--tile-bw), corner radius
+   (--tile-radius) and opacity (--ring-op) come from the BORDER WAVE controls
+   via skin-presentation.php. The engine needs the .pa-ring div AND the tile's
+   data-row/data-col to be in the markup -- drop either and it bails out and
+   the grid goes to plain tiles, which is how the ring vanished in 0.7.837D. */
 .pa-ring {
     position:      absolute;
     inset:         0;

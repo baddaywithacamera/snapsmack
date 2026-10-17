@@ -34,13 +34,14 @@ $check = static function (bool $ok, string $what) use (&$failures): void {
  * NEVER inline CSS. "no static style=... ever; geometry -> master CSS,
  * colour -> theme files." Raised repeatedly; broken in RATIONAL GEO, which
  * drew a second yellow frame around every photograph for days.
- * Dynamic PHP styles are the only exception Sean has ever allowed, and the
- * count below is the known debt on the day this gate was written. */
+ * The only file exceptions are the self-contained, one-file bootstrap
+ * installers fedup.php and setup.php. Neither is part of the skin/template
+ * scan below. The count is the known presentation debt in actual templates. */
 // 36 on 15 Oct 2026, measured by this gate. Codex counted 27 because he
 // scanned skins/ only; the three CMS renderers that draw skins hold the rest.
 // A budget set to a hoped-for number is a gate that gets switched off, so this
 // is the truth on the day, and it may only ever go down.
-$INLINE_STYLE_BUDGET = 30;
+$INLINE_STYLE_BUDGET = 9;
 
 $templates = array_merge(
     glob($root . '/skins/*/layout.php') ?: [],

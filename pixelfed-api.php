@@ -53,8 +53,13 @@ function px_budget(PDO $pdo): void {
     catch(RuntimeException $e){px_json(['error'=>$e->getMessage()],$e->getCode()===429?429:500);}
 }
 function px_scopes(string $raw): string {
-    $asked=array_values(array_unique(array_filter(preg_split('/\s+/',trim($raw))?:[])));$unknown=array_diff($asked,['read','write']);
-    if($unknown)px_json(['error'=>'Unsupported OAuth scope'],422);$allowed=array_values(array_intersect(['read','write'],$asked));return implode(' ',$allowed?:['read']);
+    // Mastodon clients (PixelDroid etc.) ask for the full vocabulary - follow, push, granular
+    // read:x / write:x. We only implement read and write, so tolerate the rest and narrow the
+    // grant down instead of refusing registration outright.
+    $asked=array_values(array_unique(array_filter(preg_split('/\s+/',trim($raw))?:[])));
+    foreach($asked as $a){if(!preg_match('/^(read|write)(:[a-z_]+)?$|^(follow|push)$/',$a))px_json(['error'=>'Unsupported OAuth scope'],422);}
+    $allowed=[];foreach(['read','write'] as $g){foreach($asked as $a){if($a===$g||str_starts_with($a,$g.':')){$allowed[]=$g;break;}}}
+    return implode(' ',$allowed?:['read']);
 }
 function px_require_scope(array $token, string $scope): void {
     $scopes=preg_split('/\s+/',trim((string)($token['scopes']??'')))?:[];
@@ -215,7 +220,8 @@ catch (Throwable $e) { error_log('Pixelix lifecycle maintenance failed: '.$e->ge
 if ($route==='api/v1/apps' && $method==='POST') {
     $name=trim((string)($_REQUEST['client_name']??'Pixelix'));$redirect=trim((string)($_REQUEST['redirect_uris']??''));
     if($name===''||strlen($name)>150)px_json(['error'=>'client_name must be between 1 and 150 bytes'],422);
-    if($redirect===''||strlen($redirect)>1000||!preg_match('/^[a-z][a-z0-9+.-]*:\/\//i',$redirect))px_json(['error'=>'redirect_uris must be one valid URI of at most 1000 bytes'],422);
+    $oob=$redirect==='urn:ietf:wg:oauth:2.0:oob'; // Mastodon's out-of-band redirect, used by desktop/CLI clients
+    if($redirect===''||strlen($redirect)>1000||(!$oob&&!preg_match('/^[a-z][a-z0-9+.-]*:\/\//i',$redirect)))px_json(['error'=>'redirect_uris must be one valid URI of at most 1000 bytes'],422);
     try{px_registration_budget($pdo);}catch(RuntimeException $e){px_json(['error'=>$e->getMessage()],$e->getCode()===429?429:500);}
     $cid=bin2hex(random_bytes(32)); $secret=bin2hex(random_bytes(32));
     $s=$pdo->prepare('INSERT INTO snap_oauth_apps(client_id,client_secret_hash,name,redirect_uri,scopes) VALUES(?,?,?,?,?)');
@@ -231,13 +237,19 @@ if ($route==='oauth/authorize') {
         $code=bin2hex(random_bytes(32));
         $i=$pdo->prepare('INSERT INTO snap_oauth_tokens(app_id,user_id,authorization_code_hash,redirect_uri,scopes,code_expires_at) VALUES(?,?,?,?,?,DATE_ADD(NOW(),INTERVAL 10 MINUTE))');
         $i->execute([$app['id'],$_SESSION['user_id']??null,hash('sha256',$code),$redirect,$app['scopes']]);
+        $appName=htmlspecialchars((string)$app['name'],ENT_QUOTES,'UTF-8');
+        header('Content-Type: text/html; charset=utf-8');
+        $style='<style>body{font:16px system-ui;background:#111;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}.c{max-width:430px;padding:32px;border:1px solid #444;border-radius:18px;background:#191919}.return{display:block;width:100%;box-sizing:border-box;padding:14px;border:0;border-radius:999px;background:#fff;color:#111;text-align:center;text-decoration:none;font-weight:800}code{display:block;word-break:break-all;padding:14px;border-radius:12px;background:#000;font:14px ui-monospace,monospace}</style>';
+        if($redirect==='urn:ietf:wg:oauth:2.0:oob'){ // out-of-band: the app can't be called back, so show the code to copy
+            echo '<!doctype html><meta name="viewport" content="width=device-width"><title>Authorization code</title>'.$style.'<main class="c"><h1>'.$appName.' is allowed</h1><p>Copy this code into '.$appName.' to finish connecting this site.</p><code>'.htmlspecialchars($code,ENT_QUOTES,'UTF-8').'</code></main>';
+            exit;
+        }
         $callback=$redirect.(strpos($redirect,'?')===false?'?':'&').'code='.rawurlencode($code).'&state='.rawurlencode($state);
         $safeCallback=htmlspecialchars($callback,ENT_QUOTES,'UTF-8');
-        header('Content-Type: text/html; charset=utf-8');
-        echo '<!doctype html><meta name="viewport" content="width=device-width"><title>Return to Pixelix</title><style>body{font:16px system-ui;background:#111;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}.c{max-width:430px;padding:32px;border:1px solid #444;border-radius:18px;background:#191919}.return{display:block;width:100%;box-sizing:border-box;padding:14px;border:0;border-radius:999px;background:#fff;color:#111;text-align:center;text-decoration:none;font-weight:800}</style><main class="c"><h1>Pixelix is allowed</h1><p>Return to Pixelix to finish connecting this site.</p><a class="return" href="'.$safeCallback.'">RETURN TO PIXELIX</a></main>';
+        echo '<!doctype html><meta name="viewport" content="width=device-width"><title>Return to '.$appName.'</title>'.$style.'<main class="c"><h1>'.$appName.' is allowed</h1><p>Return to '.$appName.' to finish connecting this site.</p><a class="return" href="'.$safeCallback.'">RETURN TO '.strtoupper($appName).'</a></main>';
         exit;
     }
-    header('Content-Type: text/html; charset=utf-8'); echo '<!doctype html><meta name="viewport" content="width=device-width"><title>Connect Pixelix</title><style>body{font:16px system-ui;background:#111;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}.c{max-width:430px;padding:32px;border:1px solid #444;border-radius:18px;background:#191919}button{width:100%;padding:14px;border:0;border-radius:999px;font-weight:800}</style><form class="c" method="post" action="/oauth/authorize"><h1>Connect '.htmlspecialchars($app['name']).'?</h1><p>This app will be able to read your SnapSmack profile and Fediverse posts. Publishing is available when this site&rsquo;s mode and Offline Posting settings support it.</p><input type="hidden" name="client_id" value="'.htmlspecialchars($cid).'"><input type="hidden" name="redirect_uri" value="'.htmlspecialchars($redirect).'"><input type="hidden" name="state" value="'.htmlspecialchars($state).'"><input type="hidden" name="csrf_token" value="'.htmlspecialchars(csrf_token()).'"><button type="submit">ALLOW PIXELIX</button></form>';exit;
+    header('Content-Type: text/html; charset=utf-8'); echo '<!doctype html><meta name="viewport" content="width=device-width"><title>Connect '.htmlspecialchars($app['name']).'</title><style>body{font:16px system-ui;background:#111;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}.c{max-width:430px;padding:32px;border:1px solid #444;border-radius:18px;background:#191919}button{width:100%;padding:14px;border:0;border-radius:999px;font-weight:800}</style><form class="c" method="post" action="/oauth/authorize"><h1>Connect '.htmlspecialchars($app['name']).'?</h1><p>This app will be able to read your SnapSmack profile and Fediverse posts. Publishing is available when this site&rsquo;s mode and Offline Posting settings support it.</p><input type="hidden" name="client_id" value="'.htmlspecialchars($cid).'"><input type="hidden" name="redirect_uri" value="'.htmlspecialchars($redirect).'"><input type="hidden" name="state" value="'.htmlspecialchars($state).'"><input type="hidden" name="csrf_token" value="'.htmlspecialchars(csrf_token()).'"><button type="submit">ALLOW '.strtoupper(htmlspecialchars($app['name'])).'</button></form>';exit;
 }
 if ($route==='oauth/token' && $method==='POST') {
     $cid=(string)($_POST['client_id']??'');$secret=(string)($_POST['client_secret']??'');$code=(string)($_POST['code']??'');$redirect=(string)($_POST['redirect_uri']??'');

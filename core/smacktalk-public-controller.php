@@ -303,7 +303,9 @@ function snapsmack_smacktalk_feed(PDO $pdo, array $settings, string $base, int $
         }
     }
     unset($post);
-    return ['posts' => $posts, 'page' => $page, 'total_pages' => (int)ceil($total / $per_page),
+    $totalPages = (int)ceil($total / $per_page);
+    return ['posts' => $posts, 'page' => $page, 'total_pages' => $totalPages,
+        'next_page' => $page < $totalPages ? $page + 1 : 0,
         'show_titles' => ($settings['show_post_titles'] ?? '0') === '1'];
 }
 

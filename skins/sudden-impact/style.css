@@ -447,7 +447,16 @@ img { display: block; max-width: 100%; }
     /* The border belongs only on the image edge. Colouring the content box
        turns object-fit space beside portrait images into thick side bars. */
     background-color: transparent;
-    box-shadow:   var(--tile-shadow, none);
+    /* SUDDEN IMPACT REFUSES DROP SHADOWS. This is a 1985 Okidata 192 dot-matrix
+       printout: dithered halftone ink on continuous-feed paper. A soft CSS drop
+       shadow has no business on it, and nothing in the look is animated.
+       The line this replaces was inherited when the skin was forked from THE
+       GRID, and it meant the CMS could put a modern drop shadow on the print
+       whenever a photograph's DROP SHADOW dropdown was set -- the skin had no
+       say. Now the owner's choice arrives as data-frame-shadow and this skin
+       declines it. Inset and border thickness are still honoured; only the
+       shadow is refused. Sean, 16 Oct 2026. */
+    box-shadow:   none;
     box-sizing:   border-box;
     transition:   opacity 0.2s;
 }
@@ -753,7 +762,9 @@ img { display: block; max-width: 100%; }
     max-height: 80vh !important;
     object-fit: contain !important;
     border:     var(--slide-border-w, 0px) solid var(--slide-border-c, transparent) !important;
-    box-shadow: var(--slide-shadow, none) !important;
+    /* No drop shadow on a carousel slide either -- see the note on the grid
+       tile above. "Refuse shadows" means the whole skin, not just the grid. */
+    box-shadow: none !important;
     box-sizing: border-box !important;
     background: transparent !important;
 }

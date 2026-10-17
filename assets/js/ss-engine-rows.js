@@ -90,7 +90,10 @@
         // Target row height derived from the columns control so the existing
         // "Columns Across" slider still means something sensible for rows:
         // roughly `cols` landscape (3:2) tiles per row.
-        var targetH = Math.max(80, (W / cols) / FALLBACK_ASPECT);
+        var requestedRowH = cssNum(cs, '--ss-row-height', 0);
+        var targetH = requestedRowH > 0
+            ? Math.max(80, requestedRowH)
+            : Math.max(80, (W / cols) / FALLBACK_ASPECT);
 
         var y = 0, row = [], sumAsp = 0, i, anyProvisional = false;
 
@@ -149,6 +152,7 @@
         grid.style.position = 'relative';
         grid.style.display = 'block';
         grid.style.height = total + 'px';
+        grid.setAttribute('data-ss-rows-ready', '1');
 
         if (anyProvisional) grid.dataset.ssProvisional = '1';
         else if (grid.dataset.ssProvisional) delete grid.dataset.ssProvisional;
