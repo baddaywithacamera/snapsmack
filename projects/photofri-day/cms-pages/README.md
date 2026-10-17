@@ -6,7 +6,7 @@
   Missing or different = truncated/corrupted. Restore before saving.
 -->
 
-# photofri.day — the four pages, as CMS page bodies
+# photofri.day — the CMS page bodies
 
 These are the bodies of the four static pages, converted to paste straight into
 **Pages** in the PHOTOFRI.DAY CMS admin. They are the same copy as
@@ -27,6 +27,7 @@ For each file, in **Pages → Add New**:
 | `how-it-works.html` | `HOW IT WORKS` | `how-it-works` | 1 |
 | `faq.html` | `WHUT THE WHUT` | `faq` | 2 |
 | `join.html` | `JOIN THE PARTY` | `join` | 3 |
+| `prompts.html` | `PROMPTS` | `prompts` | 5 |
 
 Paste the file contents into the body. Then:
 
