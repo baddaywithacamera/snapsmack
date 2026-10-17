@@ -13,6 +13,30 @@
 
 ## 0.7.900D - 2026-10-16 - (open build)
 
+- **Three skins own their own colours again.** PARADE's twelve flags, AURORA's
+  three colour packs and JIVE TURKEY's four colourways were written into the
+  CMS as lists of colour codes — 114 of them. That meant adding a flag or a
+  colourway was a whole CMS release, and the colours of a skin were being
+  decided somewhere the skin could not see. They now live in each skin's own
+  file, where colour belongs, and adding one is a skin release.
+
+  **Nothing renders differently.** Every one of the nineteen colour packs was
+  rendered before and after: the colours handed to each skin's engine are
+  byte-for-byte the same, and all nineteen pages come out byte-for-byte the
+  same.
+
+- **A site on an older skin keeps its colour.** This change nearly broke every
+  one of those sites. A site running the new CMS with a skin it had not updated
+  yet would have published an empty colour list and rendered its flags and
+  colourways with no colour at all, silently, until someone packaged the skin —
+  measured, not guessed. Since the CMS and skins arrive through different
+  channels, and a site can sit on an old skin for days, the CMS keeps a copy of
+  the old colours purely as a safety net. The skin always wins where it has
+  them. The copy is marked for deletion once every site is on the new skins.
+
+- **Three skins released:** PARADE 1.2.49, AURORA 1.0.50, JIVE TURKEY 0.1.38.
+
+
 - **The CMS stops deciding what a photograph's frame looks like.** When you set
   a photograph's inset, border thickness or drop shadow, the CMS used to take
   your choice from the dropdown, write it out as real CSS, and glue that CSS

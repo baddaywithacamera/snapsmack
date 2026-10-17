@@ -88,6 +88,104 @@ function snapsmack_declared_media_url(array $options, string $key): string
  * discarded, strings are bounded, colours are validated, numbers are clamped,
  * and selects cannot escape their manifest choices.
  */
+/**
+ * A skin's own colour packs, read from its manifest.
+ *
+ * These were PHP arrays inside this file: 59 hex colours for PARADE's twelve
+ * flags, 27 for AURORA, 24 for JIVE TURKEY's four colourways. That put 114 of
+ * a skin's colours in CMS core, against the rule that colour belongs to the
+ * skin, and it meant adding a flag or a colourway was a CMS release rather
+ * than a skin release.
+ *
+ * Returns [] for a skin that declares none, which is the same thing an
+ * unknown pack name produced before: the caller's own fallback applies.
+ */
+/**
+ * COMPATIBILITY SHIM -- DELETE WHEN THE FLEET'S SKINS ARE UPDATED.
+ *
+ * These three skins now carry their own colour packs in their manifests, and
+ * the manifest always wins. This copy exists for one reason: a site running
+ * the new CMS with an older installed skin would otherwise publish an empty
+ * palette and render its flags, auroras and colourways with NO COLOUR AT ALL,
+ * silently, until someone packaged the skin.
+ *
+ * That is precisely the fault OPAUDIT 023 is about -- the CMS and the skin
+ * ship through different channels, a site can sit on CMS 0.7.898D with skin
+ * 1.2.46 for days, and nothing warns anyone. Measured before this was added:
+ * new CMS + old PARADE published "[]" to the flag engine.
+ *
+ * REMOVAL TEST: when every site running PARADE, AURORA or JIVE TURKEY serves a
+ * skin version at or above PARADE 1.2.49 / AURORA 1.0.50 / JIVE TURKEY 0.1.38,
+ * delete this function and the branch that calls it, and lower the colour
+ * budget in tests/skin-owns-its-colour.php to what is left.
+ */
+function snapsmack_legacy_skin_palettes(string $skinSlug): array
+{
+    $legacy = [
+        'parade' => [
+            'rainbow'=>['#e40303','#ff8c00','#ffed00','#008026','#004dff','#750787'],
+            'trans'=>['#5bcffb','#f5abb9','#ffffff','#f5abb9','#5bcffb'],
+            'bi'=>['#d60270','#d60270','#9b4f96','#0038a8','#0038a8'],
+            'nonbinary'=>['#fff430','#ffffff','#9c59d1','#000000'],
+            'pan'=>['#ff218c','#ffd800','#21b1ff'],
+            'lesbian'=>['#d52d00','#ef7627','#ff9a56','#ffffff','#d162a4','#b55690','#a30262'],
+            'asexual'=>['#000000','#a3a3a3','#ffffff','#800080'],
+            'aromantic'=>['#3da542','#a7d379','#ffffff','#a9a9a9','#000000'],
+            'genderfluid'=>['#ff75a2','#ffffff','#be18d6','#000000','#333ebd'],
+            'genderqueer'=>['#b57edc','#ffffff','#4a8123'],
+            'progress'=>['#e40303','#ff8c00','#ffed00','#008026','#004dff','#750787'],
+            'two-spirit'=>['#e40303','#ff8c00','#ffed00','#008026','#004dff','#750787'],
+        ],
+        'aurora' => [
+            'aurora'=>['#56e86a','#7df06a','#56e86a','#2fe6a0','#56e86a','#39b6f0','#56e86a','#9bf25a','#56e86a','#2f7fe0','#56e86a','#f2d24a','#56e86a','#ff5566','#56e86a','#46c0c0'],
+            'borealis-ice'=>['#7cffcb','#00cec9','#4899f0','#9bd7ff','#7cffcb'],
+            'solar'=>['#61e96e','#d6f15a','#f0b429','#f0653e','#d6336c','#61e96e'],
+        ],
+        'jive-turkey' => [
+            'BARF'=>['cream'=>'#efe7cf','colors'=>['#c9b23a','#6e7f39','#6b4a2a'],'centre'=>'#c9b23a','dark'=>'#40301c'],
+            'BLECH'=>['cream'=>'#efe3cd','colors'=>['#6a3b86','#dd7328','#c39a3f'],'centre'=>'#c39a3f','dark'=>'#33223e'],
+            'GROOVY'=>['cream'=>'#f2e7d6','colors'=>['#7b3f9e','#e368a4','#3f7cc4'],'centre'=>'#e368a4','dark'=>'#2b2340'],
+            'HARVEST'=>['cream'=>'#f2e2c0','colors'=>['#d99a2b','#bd4e1f','#6b3f24'],'centre'=>'#d99a2b','dark'=>'#38220f'],
+        ],
+    ];
+    return $legacy[$skinSlug] ?? [];
+}
+
+function snapsmack_skin_palettes(string $skinSlug): array
+{
+    $skinSlug = preg_replace('/[^a-z0-9-]/', '', strtolower($skinSlug));
+    if ($skinSlug === '') return [];
+    $path = dirname(__DIR__) . '/skins/' . $skinSlug . '/manifest.json';
+    if (!is_file($path)) return [];
+    try {
+        $manifest = json_decode((string)file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+    } catch (Throwable $e) {
+        return [];
+    }
+    $palettes = $manifest['palettes'] ?? null;
+    if (!is_array($palettes)) $palettes = snapsmack_legacy_skin_palettes($skinSlug);
+    if (!is_array($palettes) || $palettes === []) return [];
+    // Bounded: a pack is a list of #rrggbb, or a named group of them. Anything
+    // else is dropped rather than reaching a stylesheet or an engine.
+    $clean = static function ($value) use (&$clean) {
+        if (is_string($value)) return preg_match('/^#[0-9a-f]{6}$/i', $value) ? strtolower($value) : null;
+        if (!is_array($value)) return null;
+        $out = [];
+        foreach ($value as $k => $v) {
+            $c = $clean($v);
+            if ($c !== null) $out[$k] = $c;
+        }
+        return $out === [] ? null : $out;
+    };
+    $out = [];
+    foreach ($palettes as $name => $pack) {
+        if (!is_string($name)) continue;
+        $c = $clean($pack);
+        if ($c !== null) $out[$name] = $c;
+    }
+    return $out;
+}
+
 function snapsmack_declared_skin_options(array $settings, string $skinSlug): array
 {
     $skinSlug = preg_replace('/[^a-z0-9-]/', '', strtolower($skinSlug));
@@ -475,11 +573,8 @@ function snapsmack_presentation_style(array &$presentation, string $id, array $v
 
 function snapsmack_aurora_presentation(array $options): array
 {
-    $palettes = [
-        'aurora'=>['#56e86a','#7df06a','#56e86a','#2fe6a0','#56e86a','#39b6f0','#56e86a','#9bf25a','#56e86a','#2f7fe0','#56e86a','#f2d24a','#56e86a','#ff5566','#56e86a','#46c0c0'],
-        'borealis-ice'=>['#7cffcb','#00cec9','#4899f0','#9bd7ff','#7cffcb'],
-        'solar'=>['#61e96e','#d6f15a','#f0b429','#f0653e','#d6336c','#61e96e'],
-    ];
+    // AURORA's colour packs live in skins/aurora/manifest.json.
+    $palettes = snapsmack_skin_palettes('aurora');
     $key = (string)($options['au_palette'] ?? '');
     $panelOpacity = snapsmack_declared_option_int($options, 'au_panel_opacity', 0, 100);
     $navOpacity = snapsmack_declared_option_int($options, 'au_navbar_opacity', 0, 100);
@@ -523,12 +618,8 @@ function snapsmack_aurora_presentation(array $options): array
 
 function snapsmack_jive_turkey_presentation(array $options): array
 {
-    $colourways = [
-        'BARF'=>['cream'=>'#efe7cf','colors'=>['#c9b23a','#6e7f39','#6b4a2a'],'centre'=>'#c9b23a','dark'=>'#40301c'],
-        'BLECH'=>['cream'=>'#efe3cd','colors'=>['#6a3b86','#dd7328','#c39a3f'],'centre'=>'#c39a3f','dark'=>'#33223e'],
-        'GROOVY'=>['cream'=>'#f2e7d6','colors'=>['#7b3f9e','#e368a4','#3f7cc4'],'centre'=>'#e368a4','dark'=>'#2b2340'],
-        'HARVEST'=>['cream'=>'#f2e2c0','colors'=>['#d99a2b','#bd4e1f','#6b3f24'],'centre'=>'#d99a2b','dark'=>'#38220f'],
-    ];
+    // The colourways live in skins/jive-turkey/manifest.json.
+    $colourways = snapsmack_skin_palettes('jive-turkey');
     $key = strtoupper((string)($options['jt_palette'] ?? ''));
     $active = $colourways[$key] ?? ['cream'=>'transparent','colors'=>[]];
     $panelOpacity = snapsmack_declared_option_int($options, 'jt_panel_opacity', 0, 100);
@@ -659,20 +750,8 @@ function snapsmack_grid_frame_presentation(array $options, string $prefix): stri
 /** CMS-owned interpretation of PARADE controls and inert flag geometry. */
 function snapsmack_parade_presentation(array $options): array
 {
-    $palettes = [
-        'rainbow'=>['#e40303','#ff8c00','#ffed00','#008026','#004dff','#750787'],
-        'trans'=>['#5bcffb','#f5abb9','#ffffff','#f5abb9','#5bcffb'],
-        'bi'=>['#d60270','#d60270','#9b4f96','#0038a8','#0038a8'],
-        'nonbinary'=>['#fff430','#ffffff','#9c59d1','#000000'],
-        'pan'=>['#ff218c','#ffd800','#21b1ff'],
-        'lesbian'=>['#d52d00','#ef7627','#ff9a56','#ffffff','#d162a4','#b55690','#a30262'],
-        'asexual'=>['#000000','#a3a3a3','#ffffff','#800080'],
-        'aromantic'=>['#3da542','#a7d379','#ffffff','#a9a9a9','#000000'],
-        'genderfluid'=>['#ff75a2','#ffffff','#be18d6','#000000','#333ebd'],
-        'genderqueer'=>['#b57edc','#ffffff','#4a8123'],
-        'progress'=>['#e40303','#ff8c00','#ffed00','#008026','#004dff','#750787'],
-        'two-spirit'=>['#e40303','#ff8c00','#ffed00','#008026','#004dff','#750787'],
-    ];
+    // The flags live in skins/parade/manifest.json. Adding one is a PARADE release.
+    $palettes = snapsmack_skin_palettes('parade');
     $paletteKey = (string)($options['pa_palette'] ?? '');
     $colors = $palettes[$paletteKey] ?? [];
     $panelOpacity = snapsmack_declared_option_int($options, 'pa_panel_opacity', 0, 100);
