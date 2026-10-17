@@ -13,6 +13,15 @@
 
 ## 0.7.900D - 2026-10-16 - (open build)
 
+- **The skin packager stopped blocking nine skins.** The frame stylesheet was briefly listed
+  in each skin's own manifest, and SMACK CENTRAL refused all nine — correctly. A skin is not
+  allowed to name a CMS file the packager has never heard of, and the packager runs an older
+  CMS than the one that file was added to. The CMS now ships that stylesheet itself, on every
+  page, which is where it always belonged: the CMS is what writes the frame settings onto each
+  photograph, so the CMS provides the file that reads them. A skin no longer asks for it, and
+  nothing has to be re-packaged when it changes.
+
+
 - **A site on an older grid skin keeps its photograph frames.** Caught before
   deploying, not after. The frame change above would have stripped the inset,
   border and drop shadow from every photograph on any site that took this CMS

@@ -304,8 +304,5 @@
         "collection": "layout.php",
         "not_found": "layout.php",
         "default": "layout.php"
-    },
-    "require_styles": [
-        "asset:public:ss-frame-tokens"
-    ]
+    }
 }
