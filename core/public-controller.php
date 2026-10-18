@@ -613,7 +613,9 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         return ['status' => 200, 'kind' => 'albums', 'items' => $items, 'navigation' => $navigation];
     }
     if ($route === 'collections') {
-        $items = $repository->publicCollections();
+        $sort = (string)($request['sort'] ?? '');
+        if (!in_array($sort, ['manual', 'alphabetical', 'newest', 'oldest'], true)) $sort = 'manual';
+        $items = $repository->publicCollections($sort);
         if ($skin === 'slickr') {
             foreach ($items as &$item) {
                 $count = max(0, (int)($item['photograph_count'] ?? 0));
@@ -623,7 +625,11 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             }
             unset($item);
         }
-        return ['status' => 200, 'kind' => 'collections', 'items' => $items, 'navigation' => $navigation];
+        return ['status' => 200, 'kind' => 'collections', 'items' => $items,
+            'sort' => $sort,
+            'sort_options' => ['manual' => 'Manual', 'alphabetical' => 'A → Z',
+                               'newest' => 'Newest', 'oldest' => 'Oldest'],
+            'navigation' => $navigation];
     }
     if ($route === 'collection') {
         $collections = array_values(array_filter($repository->publicCollections(), static fn(array $row): bool => ($row['slug'] ?? '') === $slug));

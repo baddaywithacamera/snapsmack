@@ -514,7 +514,16 @@ final class SnapPublicRepository
         );
     }
 
-    public function publicCollections(): array {
+    /** The four sorts collections.php has offered since 0.7.79. Carried over
+     *  verbatim rather than reinvented: a visitor who bookmarked ?sort=oldest
+     *  must get the same order from the skin-rendered page. */
+    public function publicCollections(string $sort = 'manual'): array {
+        $order = match ($sort) {
+            'alphabetical' => 'c.title ASC',
+            'newest'       => 'c.created_at DESC',
+            'oldest'       => 'c.created_at ASC',
+            default        => 'c.sort_order ASC, c.id ASC',
+        };
         return $this->all(
             "SELECT c.id,c.title,c.slug,c.description,c.default_display,c.cover_image_id,c.sort_order,
                     COUNT(DISTINCT i.id) AS photograph_count,MAX(i.img_date) AS latest_date,
@@ -527,7 +536,7 @@ final class SnapPublicRepository
              WHERE c.published=1
              GROUP BY c.id,c.title,c.slug,c.description,c.default_display,c.cover_image_id,c.sort_order,
                       cover.img_thumb_aspect,cover.img_file
-             ORDER BY c.sort_order ASC,c.id ASC"
+             ORDER BY " . $order
         );
     }
 

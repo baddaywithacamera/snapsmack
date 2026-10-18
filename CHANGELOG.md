@@ -13,6 +13,28 @@
 
 ## 0.7.903D - 2026-10-17 - PULLING RANK
 
+- **The collections page renders in the skin now.** It was being served by
+  legacy `collections.php`, which emits a document with no doctype and one
+  stylesheet, `public-facing.css`. Every class that page uses —
+  `collections-canvas`, `collections-series`, `series-row`, `alt-btn` — is
+  styled in `assets/css/page-collection.css`, which only the skin-rendered
+  pages load. So the page arrived in plain serif with blue underlined links.
+  That old page also builds its own menu from the legacy branch, which is where
+  foreverphotograph.ing's phantom **ARCHIVE VIEW** link came from: that site's
+  real menu has no archive item, and the link pointed at a 404.
+
+  The controller has owned a `collections` route all along and nothing pointed
+  at it, because `core/skin-view-model.php` was the one route in its list with
+  no strict-controller branch — `albums`, `blogroll` and `image_archive` all
+  had one. It has one now, and `collections.php` hands off the same way
+  `archive.php` has since 0.7.870D.
+
+  The visitor's sort — Manual, A to Z, Newest, Oldest — came with it rather
+  than being dropped: the controller and repository take it, the skin draws the
+  toggle with the same classes so the existing stylesheet covers it, and a
+  bookmarked `?sort=oldest` still answers in that order. SLICKR 1.0.39, which
+  needs packaging and a per-site skin update.
+
 - **RATIONAL GEO's masonry wall gets room to breathe.** The wall sat hard
   against the header above it and the footer below. 25px more at both ends,
   which is the gap Sean asked for. RATIONAL GEO 2.1.29 — it needs packaging and
