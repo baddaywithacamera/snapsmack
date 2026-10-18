@@ -23,8 +23,11 @@ room from the native TROLL BOOTH window.
 
 The authenticated `/mcp` endpoint implements MCP initialization, tool listing,
 and tool calls. Only approved application builds appear in Claude's tool list.
-The endpoint remains local until its Cloudflare Tunnel is explicitly installed
-and enabled.
+For Claude Web, CT106 hosts the public MCP frontend and the local booth connects
+outward to it over HTTPS. The existing OptiPlex Cloudflare Tunnel publishes the
+CT106 frontend; the workstation does not run `cloudflared` or accept inbound
+connections. The device token is held only in memory and must be entered again
+after TROLL BOOTH restarts.
 
 ```powershell
 python tb.py apps --json
