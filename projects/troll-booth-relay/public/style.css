@@ -1,0 +1,9 @@
+/* SNAPSMACK_EOF_HEADER */
+:root { color-scheme: dark; font-family: Consolas, "Courier New", monospace; }
+body { margin: 0; background: #090d0a; color: #d8e1d8; }
+main { width: min(920px, calc(100% - 40px)); margin: 7vh auto; }
+h1 { color: #65ff48; letter-spacing: .08em; }
+.panel { border: 1px solid #29452d; background: #111a13; padding: 20px; margin: 18px 0; }
+.status { color: #65ff48; }
+code { color: #ffd766; }
+/* ===== SNAPSMACK EOF ===== */

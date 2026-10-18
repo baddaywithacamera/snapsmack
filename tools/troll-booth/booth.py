@@ -9,6 +9,7 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 from troll_booth.auth import AuthError, generate_totp_secret, totp
+from troll_booth.relay_client import RelayClient, RelayError
 from troll_booth.service import BoothService
 
 
@@ -23,10 +24,16 @@ class BoothWindow:
         self.token = ""
         self.pair_actor = tk.StringVar(value="codex")
         self.pair_code = tk.StringVar(value="")
+        self.relay_url = tk.StringVar(value="https://trollbooth.photoblogs.fyi")
+        self.device_id = tk.StringVar(value="sean-workstation")
+        self.device_token = tk.StringVar(value="")
+        self.relay_status = tk.StringVar(value="Relay disconnected")
+        self.relay_client = None
+        self.relay_thread = None
 
         root.title("TROLL BOOTH — Nobody crosses without papers")
-        root.geometry("620x430")
-        root.minsize(560, 390)
+        root.geometry("700x720")
+        root.minsize(620, 600)
         root.protocol("WM_DELETE_WINDOW", self.close)
         self.main = ttk.Frame(root, padding=24)
         self.main.pack(fill="both", expand=True)
@@ -97,6 +104,25 @@ class BoothWindow:
             code.pack(fill="x", pady=(0, 8))
             ttk.Button(self.main, text="COPY PAIRING CODE",
                        command=self.copy_pairing).pack(anchor="e")
+        ttk.Label(self.main, text="Claude Web relay",
+                  font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(16, 4))
+        relay = ttk.Frame(self.main)
+        relay.pack(fill="x")
+        ttk.Entry(relay, textvariable=self.relay_url).grid(
+            row=0, column=0, columnspan=2, sticky="ew")
+        ttk.Entry(relay, textvariable=self.device_id, width=24).grid(
+            row=1, column=0, sticky="ew", pady=4)
+        ttk.Entry(relay, textvariable=self.device_token, show="•").grid(
+            row=1, column=1, sticky="ew", padx=(6, 0), pady=4)
+        relay.columnconfigure(0, weight=1)
+        relay.columnconfigure(1, weight=2)
+        buttons = ttk.Frame(self.main)
+        buttons.pack(fill="x")
+        ttk.Button(buttons, text="CONNECT RELAY",
+                   command=self.connect_relay).pack(side="left")
+        ttk.Button(buttons, text="DISCONNECT",
+                   command=self.disconnect_relay).pack(side="left", padx=6)
+        ttk.Label(buttons, textvariable=self.relay_status).pack(side="left", padx=8)
         ttk.Label(self.main, text="Approved applications",
                   font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(20, 4))
         for app in self.service.broker.list_apps():
@@ -137,6 +163,37 @@ class BoothWindow:
     def open_room(self) -> None:
         RoomWindow(self.root, self.service)
 
+    def relay_message(self, message: str) -> None:
+        self.root.after(0, lambda: self.relay_status.set(message))
+
+    def relay_authorized(self) -> bool:
+        try:
+            self.service.auth.authenticate(self.token)
+            return True
+        except AuthError:
+            return False
+
+    def connect_relay(self) -> None:
+        self.disconnect_relay()
+        try:
+            client = RelayClient(
+                self.service.broker, self.relay_url.get(), self.device_id.get(),
+                self.device_token.get(), self.relay_message, self.relay_authorized)
+        except RelayError as exc:
+            messagebox.showerror("TROLL BOOTH", str(exc))
+            return
+        self.relay_client = client
+        self.relay_thread = threading.Thread(target=client.run, daemon=True)
+        self.relay_thread.start()
+        self.relay_status.set("Connecting…")
+
+    def disconnect_relay(self) -> None:
+        if self.relay_client is not None:
+            self.relay_client.stop()
+        self.relay_client = None
+        self.relay_thread = None
+        self.relay_status.set("Relay disconnected")
+
     def setup(self) -> None:
         if self.password.get() != self.confirm.get():
             messagebox.showerror("TROLL BOOTH", "The passwords do not match.")
@@ -162,12 +219,14 @@ class BoothWindow:
         self.render()
 
     def lock(self) -> None:
+        self.disconnect_relay()
         self.service.auth.lock()
         self.token = ""
         self.pair_code.set("")
         self.render()
 
     def close(self) -> None:
+        self.disconnect_relay()
         self.service.auth.lock()
         self.service.server.shutdown()
         self.service.close()
