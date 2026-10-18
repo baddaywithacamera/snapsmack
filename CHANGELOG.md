@@ -13,6 +13,11 @@
 
 ## 0.7.903D - 2026-10-17 - PULLING RANK
 
+- **RATIONAL GEO's masonry wall gets room to breathe.** The wall sat hard
+  against the header above it and the footer below. 25px more at both ends,
+  which is the gap Sean asked for. RATIONAL GEO 2.1.29 — it needs packaging and
+  a per-site skin update before it shows up anywhere.
+
 - **A fleet check for which skin each site is actually running.**
   `tools/_build/installed-skins.sh` asks every live site which skin build it is
   serving and compares it to this repo, the way `deployed-version.sh` already

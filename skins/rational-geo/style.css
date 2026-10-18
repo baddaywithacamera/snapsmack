@@ -857,7 +857,9 @@ body[data-frame="none"]   { --rg-hero-colour: transparent; }
   max-width: var(--rg-canvas-width, 1400px);
   width: 100%;
   margin: 0 auto;
-  padding: 30px 0;
+  /* 30 + 25. Sean, 17 Oct 2026: the wall sat against the header above and the
+     footer below. The 25px is the gap he asked for, not a round number. */
+  padding: 55px 0;
   box-sizing: border-box;
   flex: 1 0 auto;
   --ss-cols: var(--grid-cols, 4);
