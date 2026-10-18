@@ -53,6 +53,40 @@ if (snapsmack_is_mobile() && is_dir(__DIR__ . '/skins/' . SNAPSMACK_MOBILE_SKIN)
 snapsmack_apply_skin_settings($settings, $active_skin);
 $skin_view = snapsmack_prepare_skin_view($pdo, $settings, $active_skin);
 
+// A legacy collections.php link must not drop a strict skin into the old
+// unstyled document. That document loads one stylesheet -- public-facing.css --
+// and every class this page uses (collections-canvas, collections-series,
+// series-row, alt-btn) is styled in assets/css/page-collection.css, which only
+// the skin-rendered pages load. It also builds its own menu from the legacy
+// branch, which is where foreverphotograph.ing's phantom "ARCHIVE VIEW" came
+// from: that site's real menu has no archive item at all.
+//
+// The controller has owned a collections route since before this; nothing
+// pointed at it. Same shape as archive.php's handoff.
+require_once __DIR__ . '/core/skin-manifest.php';
+$_collections_manifest = load_skin_manifest($active_skin);
+if (in_array((string)($_collections_manifest['cms_controller'] ?? ''), ['smacktalk', 'public'], true)) {
+    $_collections_target = snapsmack_public_route_url(
+        BASE_URL,
+        $skin_view['route_aliases'] ?? [],
+        'collections',
+        'collections'
+    );
+    $_collections_query = ltrim(trim((string)($_SERVER['QUERY_STRING'] ?? '')), '?&');
+    if ($_collections_query !== '') {
+        $_collections_target .= '?' . $_collections_query;   // keep ?sort=
+    }
+    // Never redirect to the address we were just asked for. Where the server
+    // resolves /collections to this file, the guard holds and the visitor gets
+    // the old page rather than a redirect loop -- no worse than today.
+    $_collections_here = strtok((string)($_SERVER['REQUEST_URI'] ?? ''), '?');
+    $_collections_there = parse_url($_collections_target, PHP_URL_PATH);
+    if (rtrim((string)$_collections_there, '/') !== rtrim((string)$_collections_here, '/')) {
+        header('Location: ' . $_collections_target, true, 302);
+        exit;
+    }
+}
+
 // Sort resolution: URL → cookie → admin setting → 'manual'.
 $valid_sorts = ['manual', 'alphabetical', 'newest', 'oldest'];
 $sort = $_GET['sort'] ?? '';

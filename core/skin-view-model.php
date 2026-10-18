@@ -302,7 +302,7 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
             case 'categories': $url = $strict_smacktalk ? snapsmack_public_route_url($base, $route_aliases, 'categories', 'categories') : $base . 'archive.php'; break;
             case 'image_archive': $url = $strict_controller ? snapsmack_public_route_url($base, $route_aliases, 'archive', 'images') : $base . 'archive.php'; break;
             case 'albums': $url = $strict_smacktalk ? snapsmack_public_route_url($base, $route_aliases, 'albums', 'albums') : $base . 'albums.php'; break;
-            case 'collections': $url = $base . 'collections.php'; break;
+            case 'collections': $url = $strict_controller ? snapsmack_public_route_url($base, $route_aliases, 'collections', 'collections') : $base . 'collections.php'; break;
             case 'wall': $url = $base . 'gallery-wall.php'; break;
             case 'blogroll': $url = $strict_controller ? snapsmack_public_route_url($base, $route_aliases, 'blogroll', 'blogroll') : $base . 'blogroll.php'; break;
             case 'blog': $url = $base . 'blog.php'; break;

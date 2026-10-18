@@ -331,6 +331,7 @@ try {
             'page' => $_GET['c'] ?? ($_GET['page'] ?? ($_GET['p'] ?? 1)),
             'category_id' => $_GET['category'] ?? ($_GET['cat'] ?? 0),
             'album_id' => $_GET['album'] ?? 0,
+            'sort' => $_GET['sort'] ?? '',
             'fragment' => !empty($_GET['modal']),
             'route_aliases' => $skin_view['route_aliases'] ?? [],
         ], $_public_settings);
