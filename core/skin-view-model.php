@@ -582,4 +582,33 @@ function snapsmack_skin_wants_profile(string $slug, array $manifest): bool
     return $seen[$slug];
 }
 
+/**
+ * The avatar a strict skin shows in its masthead.
+ *
+ * Lived inside index.php, which meant it existed only for pages the front
+ * controller rendered. collections.php renders the skin itself and had no
+ * such function, so avatar_url came back empty and SLICKR drew its initials
+ * placeholder beside a perfectly good cover photograph.
+ *
+ * Guarded: index.php defines its own copy behind the same guard, so whichever
+ * file is reached first wins and neither redeclares.
+ */
+if (!function_exists('snapsmack_public_avatar_url')) {
+    function snapsmack_public_avatar_url(array $settings): string {
+        $skin = (string)($settings['active_skin'] ?? '');
+        $file = '';
+        foreach ([$settings['skin_avatar'] ?? '',
+                  $skin !== '' ? ($settings[$skin . '__skin_avatar'] ?? '') : '',
+                  $settings['header_logo_url'] ?? '',
+                  $settings['site_logo'] ?? '',
+                  $settings['favicon_url'] ?? ''] as $candidate) {
+            $candidate = trim((string)$candidate);
+            if ($candidate !== '') { $file = $candidate; break; }
+        }
+        if ($file === '') return '';
+        if (preg_match('#^https?://#i', $file)) return $file;
+        return (defined('BASE_URL') ? BASE_URL : '/') . ltrim($file, '/');
+    }
+}
+
 // ===== SNAPSMACK EOF =====

@@ -542,18 +542,39 @@ final class SnapPublicRepository
             'oldest'       => 'c.created_at ASC',
             default        => 'c.sort_order ASC, c.id ASC',
         };
+        // snap_collection_items is POLYMORPHIC -- item_type/item_id/sort_order --
+        // since the collection-items migration. This query still joined
+        // ci.image_id and ordered by ci.position, so every count came back 0
+        // and foreverphotograph.ing showed "0 IMAGES" under collections
+        // holding twenty photographs each. collections.php has carried the
+        // correct shape in its own SQL since that migration; this is that
+        // shape, not a second attempt at it.
         return $this->all(
             "SELECT c.id,c.title,c.slug,c.description,c.default_display,c.cover_image_id,c.sort_order,
-                    COUNT(DISTINCT i.id) AS photograph_count,MAX(i.img_date) AS latest_date,
-                    COALESCE(cover.img_thumb_aspect,cover.img_file,
-                        SUBSTRING_INDEX(GROUP_CONCAT(COALESCE(i.img_thumb_aspect,i.img_file) ORDER BY ci.position ASC,ci.id ASC SEPARATOR '\n'),'\n',1)) AS cover_path
+                    (SELECT COUNT(*) FROM snap_collection_items WHERE collection_id=c.id) AS photograph_count,
+                    (SELECT MAX(i.img_date)
+                       FROM snap_collection_items cid
+                       JOIN snap_images i ON i.id=cid.item_id AND i.img_status='published' AND i.img_date <= NOW()
+                      WHERE cid.collection_id=c.id AND cid.item_type='image') AS latest_date,
+                    COALESCE(
+                      (SELECT i.img_thumb_aspect FROM snap_images i
+                        WHERE i.id=c.cover_image_id AND i.img_status='published' AND i.img_date <= NOW() LIMIT 1),
+                      (SELECT i.img_file FROM snap_images i
+                        WHERE i.id=c.cover_image_id AND i.img_status='published' AND i.img_date <= NOW() LIMIT 1),
+                      (SELECT COALESCE(i.img_thumb_aspect,i.img_file)
+                         FROM snap_collection_items ci3
+                         JOIN snap_images i ON i.id=ci3.item_id AND i.img_status='published' AND i.img_date <= NOW()
+                        WHERE ci3.collection_id=c.id AND ci3.item_type='image'
+                        ORDER BY ci3.sort_order ASC LIMIT 1),
+                      (SELECT COALESCE(i.img_thumb_aspect,i.img_file)
+                         FROM snap_collection_items ci2
+                         JOIN snap_post_images pim ON pim.post_id=ci2.item_id
+                         JOIN snap_images i ON i.id=pim.image_id AND i.img_status='published' AND i.img_date <= NOW()
+                        WHERE ci2.collection_id=c.id AND ci2.item_type='post'
+                        ORDER BY ci2.sort_order ASC,pim.sort_position ASC LIMIT 1)
+                    ) AS cover_path
              FROM snap_collections c
-             LEFT JOIN snap_collection_items ci ON ci.collection_id=c.id
-             LEFT JOIN snap_images i ON i.id=ci.image_id AND i.img_status='published' AND i.img_date <= NOW()
-             LEFT JOIN snap_images cover ON cover.id=c.cover_image_id AND cover.img_status='published' AND cover.img_date <= NOW()
              WHERE c.published=1
-             GROUP BY c.id,c.title,c.slug,c.description,c.default_display,c.cover_image_id,c.sort_order,
-                      cover.img_thumb_aspect,cover.img_file
              ORDER BY " . $order
         );
     }
