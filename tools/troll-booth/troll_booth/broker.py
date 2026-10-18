@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from .policy import AppPolicy, PolicyError, builtin_policies, resolve_app_directory
+from .trust import TrustError, TrustStore
 
 
 class BrokerError(RuntimeError):
@@ -42,12 +43,15 @@ class DiscoveredApp:
 
 class Broker:
     def __init__(self, tool_root: Path, audit_path: Path | None = None,
-                 timeout: float = 15.0, max_output: int = 2_000_000):
+                 timeout: float = 15.0, max_output: int = 2_000_000,
+                 trust_path: Path | None = None, require_trust: bool = False):
         self.tool_root = tool_root.resolve()
         self.policies = builtin_policies()
         self.audit_path = (audit_path or self.tool_root / "state" / "audit.jsonl").resolve()
         self.timeout = timeout
         self.max_output = max_output
+        self.trust_store = TrustStore(trust_path) if trust_path else None
+        self.require_trust = require_trust
 
     def _base_command(self, app: DiscoveredApp, actor: str | None = None,
                       discovery: bool = False) -> list[str]:
@@ -107,9 +111,11 @@ class Broker:
                 rows.append({
                     "id": app_id, "name": app.policy.display_name, "healthy": True,
                     "executable_sha256": app.executable_hash,
+                    "trusted": bool(self.trust_store and self.trust_store.is_approved(
+                        app_id, app.executable_hash)),
                     "capabilities": sorted(app.policy.capabilities),
                 })
-            except (BrokerError, PolicyError) as exc:
+            except (BrokerError, PolicyError, TrustError) as exc:
                 rows.append({"id": app_id, "name": self.policies[app_id].display_name,
                              "healthy": False, "error": str(exc), "capabilities": []})
         return rows
@@ -121,6 +127,9 @@ class Broker:
         result_record: dict[str, Any]
         try:
             app = self.discover(app_id)
+            if self.require_trust and (self.trust_store is None or not
+                    self.trust_store.is_approved(app_id, app.executable_hash)):
+                raise PolicyError("application executable has not been approved")
             capability = app.policy.capabilities.get(capability_name)
             if capability is None:
                 raise PolicyError(f"capability is not granted: {capability_name}")
@@ -136,7 +145,7 @@ class Broker:
                 "exit_code": result.returncode, "result": output,
                 "diagnostic": result.stderr[-4000:] if result.stderr else "",
             }
-        except (BrokerError, PolicyError) as exc:
+        except (BrokerError, PolicyError, TrustError) as exc:
             result_record = {"operation_id": operation_id, "ok": False,
                              "exit_code": 1, "error": str(exc)}
         self._audit({

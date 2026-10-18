@@ -15,7 +15,11 @@ from .broker import Broker
 class BoothService:
     def __init__(self, tool_root: Path, port: int = 0):
         self.tool_root = tool_root.resolve()
-        self.broker = Broker(self.tool_root)
+        self.broker = Broker(
+            self.tool_root,
+            trust_path=self.tool_root / "state" / "trusted-apps.json",
+            require_trust=True,
+        )
         self.auth = AuthManager(self.tool_root / "state" / "credentials.json")
         self.server = ThreadingHTTPServer(("127.0.0.1", port), self._handler())
 
