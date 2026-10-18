@@ -547,13 +547,39 @@ function snapsmack_public_presentation(PDO $pdo, array $settings, string $active
             ? snapsmack_owner_custom_code($settings) : '',
         'registered_assets' => $registered_assets,
         'footer' => snapsmack_prepare_public_footer($settings, $manifest),
-        // Asked of the manifest, not of a slug list in core. A skin that wants
-        // the profile masthead says so with features.profile_header; core has
-        // no business holding a list of which skins those are.
-        'slickr_profile' => !empty($manifest['features']['profile_header'])
+        // Asked of the skin, not of a slug list in core.
+        //
+        // features.profile_header is the contract, but a manifest key only
+        // answers for skins new enough to carry it, and an installed skin can
+        // be many releases behind this repo -- foreverphotograph.ing was on
+        // SLICKR 1.0.38 when the key landed in 1.0.42, so the gate said no and
+        // the masthead rendered its empty defaults: no cover, no stats, and
+        // initials where the avatar should be. Falling back to what the skin's
+        // own layout actually draws keeps the decision in the skin and answers
+        // for every build of it, old or new.
+        'slickr_profile' => snapsmack_skin_wants_profile($active_skin, $manifest)
             ? snapsmack_prepare_slickr_profile($pdo, $settings, $navigation) : [],
         'crop_circles' => snapsmack_prepare_crop_circles($pdo, $settings, $manifest, $navigation),
     ];
+}
+
+/**
+ * Does this skin draw the profile masthead?
+ *
+ * The manifest is asked first. A build too old to declare it is asked the only
+ * other way that does not put a skin's name in core: whether its layout
+ * renders the masthead at all. Cached per request -- this is a file read on a
+ * public page.
+ */
+function snapsmack_skin_wants_profile(string $slug, array $manifest): bool
+{
+    if (!empty($manifest['features']['profile_header'])) return true;
+    static $seen = [];
+    if (array_key_exists($slug, $seen)) return $seen[$slug];
+    $layout = dirname(__DIR__) . '/skins/' . $slug . '/layout.php';
+    $seen[$slug] = is_file($layout)
+        && str_contains((string)@file_get_contents($layout), 'sl-cover-profile');
+    return $seen[$slug];
 }
 
 // ===== SNAPSMACK EOF =====

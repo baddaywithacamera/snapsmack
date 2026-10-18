@@ -91,7 +91,13 @@ if (in_array((string)($_collections_manifest['cms_controller'] ?? ''), ['smackta
             'route_aliases' => $skin_view['route_aliases'] ?? [],
         ], $settings);
 
-        if (!empty($skin_view['navigation']) && is_array($skin_view['navigation'])) {
+        // The controller builds the menu every other strict page shows. An
+        // earlier version replaced it with $skin_view['navigation'] here and
+        // the page came back with three items where /albums has six --
+        // Blogroll, Flkr Fckr and About all gone. Only fill it in if the
+        // controller gave nothing.
+        if (empty($_c_response['navigation']) && !empty($skin_view['navigation'])
+                && is_array($skin_view['navigation'])) {
             $_c_response['navigation'] = $skin_view['navigation'];
         }
 
