@@ -252,7 +252,7 @@
         var sentinel = document.querySelector('.scroll-wall-sentinel');
         // Square mode uses native CSS Grid for geometry but shares this bounded
         // paging transport with Columns. It needs no JS relayout after append.
-        var grid = document.querySelector('.ss-masonry, .ss-square-wall');
+        var grid = document.querySelector('.ss-masonry, .ss-square-wall, #browse-grid.archive-grid');
         if (!sentinel || !grid) return;
 
         var loading = false, fails = 0, MAX_FAILS = 4;
@@ -277,7 +277,9 @@
                     if (!html) { stop(); return; }
                     fails = 0;
                     var doc = new DOMParser().parseFromString(html, 'text/html');
-                    var incoming = doc.querySelectorAll('.scroll-wall .ss-masonry-item');
+                    var incoming = grid.matches('#browse-grid.archive-grid')
+                        ? doc.querySelectorAll('#browse-grid.archive-grid .thumb-container')
+                        : doc.querySelectorAll('.ss-masonry-item');
                     if (!incoming.length) { stop(); return; }
                     var added = [], i;
                     for (i = 0; i < incoming.length; i++) {
