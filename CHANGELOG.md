@@ -13,6 +13,26 @@
 
 ## 0.7.903D - 2026-10-17 - PULLING RANK
 
+- **A fleet check for which skin each site is actually running.**
+  `tools/_build/installed-skins.sh` asks every live site which skin build it is
+  serving and compares it to this repo, the way `deployed-version.sh` already
+  does for the CMS. It exists because core and skins ship on different rails —
+  core goes out as a release, skins go out through the Skin Packager and each
+  site's SYSTEM UPDATES — so a site can run current core and a skin from months
+  ago, and everyone keeps checking the repo and calling things fixed.
+
+  First run, 17 October: **10 of 12 sites current, 2 stale.**
+  - `foundtextures.ca` — TRUE GRIT **1.3.2** against 1.3.13. That build predates
+    the `cms_controller` manifest key, so `archive.php` cannot hand off to the
+    paginated archive route and the page renders **all 1,592 images at once**.
+  - `photofri.day` — ONYX **0.1.21** against 0.1.22.
+
+  It reports a version gap and refuses to say how many releases it represents:
+  version numbers do not record how many packages were cut between two of them,
+  and a made-up count is the guessing this script replaces. Not wired into
+  agreed-rules-gate.php — a stale skin is no reason to refuse a commit, and the
+  gate must not need the network to answer.
+
 - **IMPACT PRINTER's thumbnail archive no longer stops after the first page.**
   The endless-paging sentinel was only written for the masonry layout, so the
   square and cropped thumbnail archives had no transport and ended wherever
