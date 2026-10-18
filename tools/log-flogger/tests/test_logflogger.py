@@ -164,6 +164,24 @@ def test_probe_sources_are_counted_never_recorded():
     rep = probes.scan_access_log(SHARP_LOG)
     assert rep.distinct_sources == 1
     assert "9.9.9.9" not in repr(rep.sources)   # hashed, not stored
+    assert "snapsmack-probe" not in repr(rep.sources)
+
+
+def test_probe_source_digests_do_not_survive_the_report():
+    """The key is per-report and random, so the same address gives a different
+    digest in a different report. A constant salt made the digests a lookup
+    table anyone with the repo could reverse."""
+    one = probes.scan_access_log(SHARP_LOG)
+    two = probes.scan_access_log(SHARP_LOG)
+    assert set(one.sources) != set(two.sources)
+
+
+def test_probe_sources_count_one_address_once_across_files():
+    """Same report, two log files: the key has to be stable for the run or the
+    distinct-source count inflates."""
+    rep = probes.scan_access_log(SHARP_LOG)
+    rep = probes.scan_access_log(SHARP_LOG, rep)
+    assert rep.distinct_sources == 1
 
 
 # ── summarize + clean: the destructive half ──────────────────────────────────

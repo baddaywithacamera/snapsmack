@@ -19,7 +19,7 @@ stamps it on everything. Everyone signs as themselves; nobody signs as another.
     tw merge SS-1042 --into SS-1037
     tw stale                      what is past the clock for its band
     tw outbox                     what is waiting to go out
-    tw mod-check                  does my forum key actually moderate?
+    tw mod-check                  does my forum key have the role it needs?
 
 THERE IS NO `tw send`. The CLI queues; a separate armed sender delivers. A
 compromised CLI — or a Claude talked into something by a malicious support
@@ -260,20 +260,24 @@ def cmd_outbox(args):
 
 
 def cmd_mod_check(args):
-    """Can my key moderate? Asked rather than assumed."""
+    """Can my key do the job? Asked rather than assumed."""
     if not args.forum_url:
         print("--forum-url needed.", file=sys.stderr); return 2
     f = forummod.Forum(args.forum_url, args.forum_key)
     try:
-        ok = f.am_i_mod()
+        ok = f.am_i_admin()
         boards = [c.get("name") for c in f.categories()]
     except forummod.ForumError as exc:
-        _out(args, {"mod": False, "error": str(exc)}, f"Could not ask: {exc}")
+        _out(args, {"admin": False, "error": str(exc)}, f"Could not ask: {exc}")
         return 1
-    _out(args, {"mod": ok, "boards": boards},
-         ("This key MODERATES. It can create the Tickets board, post, lock and pin."
+    _out(args, {"admin": ok, "boards": boards},
+         ("This key is ADMIN (role 3). It can create the Tickets board, post, "
+          "lock and pin — everything this tool needs."
           if ok else
-          "This key does NOT moderate. Sean grants it with "
+          "This key is NOT admin (role 3), so it cannot create the Tickets "
+          "board. It may still be a moderator (role 2) and able to post, lock "
+          "and pin: no endpoint reports your own role, so that cannot be "
+          "checked from here. Sean grants role with "
           "PATCH installs/{id}/role in the forum admin.")
          + f"\nBoards: {', '.join(b for b in boards if b) or '(none)'}")
     return 0

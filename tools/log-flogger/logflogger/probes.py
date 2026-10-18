@@ -27,9 +27,23 @@ something happens.
 # Last non-empty line must be the Python SNAPSMACK EOF marker.
 """
 
+import hashlib
 import re
+import secrets
 from collections import Counter
 from dataclasses import dataclass, field
+
+
+def _new_salt() -> bytes:
+    """A fresh random key per report, held in memory and never written down.
+
+    The constant this replaced was not a salt. It sat in the repo, so anybody
+    with a copy could hash all 4.3 billion IPv4 addresses and read the digests
+    straight back — minutes on a GPU, and far less for one suspected range. A
+    keyed digest with a key nobody has, not even us after the process exits,
+    is what makes "counted, never recorded" true rather than decorative.
+    """
+    return secrets.token_bytes(16)
 
 # Generic scanner traffic. Present on every server on the internet, means nothing.
 GENERIC = re.compile(
@@ -74,6 +88,19 @@ class ProbeReport:
     first_seen: str = ""
     last_seen: str = ""
 
+    # Keyed-digest key for this report. One report accumulates across several
+    # log files, so it has to be stable for the run and useless after it: kept
+    # out of repr() and out of equality so it cannot leak through either.
+    _salt: bytes = field(default_factory=_new_salt, repr=False, compare=False)
+
+    def hash_source(self, ip: str) -> str:
+        """Sources are counted, never recorded. We need 'how many', never
+        'who' — and an IP in a report is a visitor's identity, not the
+        attacker's alone. Same width as before: 12 hex characters."""
+        return hashlib.blake2b(
+            ip.encode("utf-8"), key=self._salt, digest_size=6
+        ).hexdigest()
+
     @property
     def sharpening(self) -> bool:
         """The binary question: has anyone started probing SnapSmack ITSELF?"""
@@ -112,14 +139,6 @@ class ProbeReport:
         )
 
 
-def _hash_source(ip: str) -> str:
-    """Sources are counted, never recorded. We need 'how many', never 'who' — and
-    an IP in a report is a visitor's identity, not the attacker's alone."""
-    import hashlib
-
-    return hashlib.sha256(("snapsmack-probe:" + ip).encode("utf-8")).hexdigest()[:12]
-
-
 def scan_access_log(text: str, report: ProbeReport | None = None) -> ProbeReport:
     """Read an access log and answer the sharpening question."""
     rep = report or ProbeReport()
@@ -137,7 +156,7 @@ def scan_access_log(text: str, report: ProbeReport | None = None) -> ProbeReport
         if SNAPSMACK.search(path):
             rep.snapsmack_hits += 1
             rep.paths[path.split("?")[0]] += 1
-            rep.sources[_hash_source(m.group("ip"))] += 1
+            rep.sources[rep.hash_source(m.group("ip"))] += 1
             if SENSITIVE.search(path):
                 rep.sensitive_hits += 1
             stamp = _stamp(raw)

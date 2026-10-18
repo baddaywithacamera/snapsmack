@@ -90,11 +90,12 @@ COMMANDS = [
      "returns": "queued rows", "args": ["--state queued|sent"],
      "example": ENTRY + " outbox --json",
      "notes": "Nothing here has been sent. A separate armed sender delivers."},
-    {"name": "mod-check", "does": "Does my forum key actually moderate?",
-     "returns": "mod (bool), boards", "args": [],
+    {"name": "mod-check", "does": "Does my forum key have the role it needs?",
+     "returns": "admin (bool), boards", "args": [],
      "example": ENTRY + " mod-check --json",
-     "notes": "Ask this before assuming you can post. Sean grants mod through "
-              "the forum admin."},
+     "notes": "Ask this before assuming you can post. Tests role >= 3 (admin), "
+              "which is what creating the Tickets board needs; role 2 cannot be "
+              "detected read-only. Sean grants role through the forum admin."},
 ]
 
 REFUSALS = [

@@ -58,8 +58,9 @@ class ForumError(RuntimeError):
 
 
 class Forum:
-    """Thin client. Read methods work with any key; posting and moderating need
-    a mod key, which Sean grants via PATCH installs/{id}/role."""
+    """Thin client. Read methods work with any key. Posting, locking and
+    pinning need role >= 2; creating the Tickets board needs role >= 3, which is
+    what this tool must have. Sean grants both via PATCH installs/{id}/role."""
 
     def __init__(self, base_url: str, api_key: str, timeout: int = 20):
         self.base = (base_url or "").rstrip("/")
@@ -139,14 +140,29 @@ class Forum:
         self._call("PATCH", f"threads/{thread_id}", {"flag": flag})
 
     def lock(self, thread_id: int, locked: bool = True) -> None:
-        self._call("PATCH", f"threads/{thread_id}", {"locked": bool(locked)})
+        # The field is is_locked. PATCH threads/{id} reads body, flag, is_pinned
+        # and is_locked, and anything else falls through every branch to a 400
+        # MISSING_FIELDS — so "locked" here failed every single time.
+        self._call("PATCH", f"threads/{thread_id}", {"is_locked": bool(locked)})
 
     def follow(self, thread_id: int) -> None:
         self._call("POST", f"threads/{thread_id}/follow", {})
 
-    def am_i_mod(self) -> bool:
-        """Can this key moderate? Asked by trying to list installs, which the
-        API gates to admin/god. Cheap, read-only, and a clear answer."""
+    def am_i_admin(self) -> bool:
+        """Can this key administer? Asked by trying to list installs.
+
+        This probe tests role >= 3 (admin), NOT role >= 2 (moderator) — the two
+        are different gates in the API and this used to be called am_i_mod,
+        which told a working moderator key that it was not one.
+
+        Admin is the honest question for this tool anyway: ensure_board() calls
+        POST categories, which is_install_admin() gates at role 3. A role-2 key
+        can post, lock and pin but cannot create the Tickets board.
+
+        Role 2 cannot be detected read-only — no endpoint tells a caller its own
+        role, and every moderator gate is a write. Naming that rather than
+        guessing at it.
+        """
         try:
             self._call("GET", "installs")
             return True
