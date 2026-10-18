@@ -52,9 +52,13 @@ function snapsmack_public_runtime_request(array $input): array
     if (trim((string)($input['tag'] ?? '')) !== '') return ['route' => 'hashtag', 'slug' => $input['tag'], 'page' => $input['page'] ?? 1];
     $view = strtolower(trim((string)($input['view'] ?? '')));
     $routes = ['archive', 'albums', 'collections', 'collection', 'photo', 'post', 'page', 'blogroll'];
+    // 'sort' belongs here with the rest. index.php has been passing it since
+    // 0.7.903D and this function dropped it on the floor, so the collections
+    // sort a visitor picked never reached the controller that honours it.
     if (in_array($view, $routes, true)) return ['route' => $view, 'slug' => $input['slug'] ?? '', 'id' => $input['id'] ?? 0,
         'page' => $input['page'] ?? 1, 'category_id' => $input['category_id'] ?? 0,
-        'album_id' => $input['album_id'] ?? 0, 'fragment' => $input['fragment'] ?? false];
+        'album_id' => $input['album_id'] ?? 0, 'sort' => $input['sort'] ?? '',
+        'fragment' => $input['fragment'] ?? false];
     $slug = trim((string)($input['slug'] ?? ''));
     $aliases = is_array($input['route_aliases'] ?? null) ? $input['route_aliases'] : [];
     if ($slug !== '' && isset($aliases[$slug]) && in_array($aliases[$slug], $routes, true)) {

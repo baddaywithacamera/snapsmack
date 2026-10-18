@@ -30,8 +30,19 @@ $missing = snapsmack_public_parse_request(['route' => 'made-up']);
 if ($missing['route'] !== 'not_found') throw new RuntimeException('Unknown route did not become not_found.');
 $valid = snapsmack_public_parse_request(['route' => 'post', 'slug' => 'hello-world', 'id' => '7', 'page' => '2']);
 if ($valid !== ['route' => 'post', 'slug' => 'hello-world', 'id' => 7, 'page' => 2,
-    'category_id' => 0, 'album_id' => 0, 'query' => '']) {
+    'category_id' => 0, 'album_id' => 0, 'query' => '', 'sort' => '']) {
     throw new RuntimeException('Valid request normalization changed unexpectedly.');
+}
+// 'sort' joined the request in 0.7.904D for the collections route. It is
+// validated against a fixed list at the boundary like everything else here,
+// so anything unrecognised must come out empty rather than reach a query.
+$sorted = snapsmack_public_parse_request(['route' => 'collections', 'sort' => 'newest']);
+if (($sorted['sort'] ?? null) !== 'newest') {
+    throw new RuntimeException('A known sort did not survive request parsing.');
+}
+$junk = snapsmack_public_parse_request(['route' => 'collections', 'sort' => "'; DROP TABLE"]);
+if (($junk['sort'] ?? null) !== '') {
+    throw new RuntimeException('An unknown sort was not discarded at the boundary.');
 }
 $entry = (string)file_get_contents(dirname(__DIR__) . '/index.php');
 if (!str_contains($entry, "'/style.css?v=' . rawurlencode(\$_active_skin_version)")) {
