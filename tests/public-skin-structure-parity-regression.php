@@ -31,6 +31,8 @@ foreach ($contracts as $skin => $needles) {
     // rendered-output check at the end proves it reaches the page.
     if (isset($cmsComponents[$skin])) {
         $source .= (string) file_get_contents(dirname(__DIR__) . '/core/skin-render-helpers.php');
+        $skinLayout = dirname(__DIR__) . '/skins/' . $skin . '/layout.php';
+        if (is_file($skinLayout)) $source .= (string)file_get_contents($skinLayout);
     }
     foreach ($needles as $needle) {
         if (!str_contains($source, $needle)) {
