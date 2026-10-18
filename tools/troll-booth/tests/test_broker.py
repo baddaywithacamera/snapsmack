@@ -1,3 +1,4 @@
+# SNAPSMACK_EOF_HEADER
 """TROLL BOOTH broker policy and real discovery tests."""
 
 import json

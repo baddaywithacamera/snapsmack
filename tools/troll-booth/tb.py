@@ -1,3 +1,4 @@
+# SNAPSMACK_EOF_HEADER
 """TROLL BOOTH command-line feasibility harness."""
 
 from __future__ import annotations
