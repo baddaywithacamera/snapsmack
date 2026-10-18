@@ -43,7 +43,7 @@ looks equally like neglect, the warnings become noise, and they get ignored.
     tw escalate SS-1042 --why "security report"
     tw stale
     tw outbox
-    tw mod-check                        # does my forum key actually moderate?
+    tw mod-check                        # does my forum key have the role it needs?
 
 Everyone signs as themselves. The store stamps who is driving; a caller cannot
 claim to be someone else.

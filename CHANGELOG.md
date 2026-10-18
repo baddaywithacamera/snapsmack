@@ -13,6 +13,24 @@
 
 ## 0.7.902D - 2026-10-17 - LOG FLOGGER, TICKET WICKET, and static page layout
 
+- **LOG FLOGGER's probe report no longer pretends to anonymise anybody.** Source
+  addresses were hashed with a fixed string that lives in the repo, which is not
+  a salt: all four billion IPv4 addresses hash in minutes, so the digests read
+  straight back to the addresses. They are now keyed with a random key made
+  fresh for each report, held in memory and never written down. The report still
+  answers "how many distinct sources", which is the only thing it ever used.
+
+- **TICKET WICKET could never lock a ticket.** It sent `locked` where the forum
+  API reads `is_locked`, so every lock fell through to a 400 and failed, every
+  time. One word.
+
+- **TICKET WICKET's key check asked the wrong question.** It tested for admin
+  (role 3) while reporting the answer as "can this key moderate" (role 2) —
+  so a working moderator key was told it was not one. It now says plainly which
+  role it found, and that role 2 cannot be checked from outside because no
+  endpoint tells a caller its own role. The tool needs **role 3**: creating the
+  Tickets board is an admin action.
+
 - **Both new tools can tell Claude and Codex what they can do.** `lf agent` and
   `tw agent` print a capability sheet — every command, what comes back, and
   what the tool will refuse to do, with the refusals first because those are
