@@ -10,6 +10,7 @@ from typing import Any
 
 from .auth import AuthError, AuthManager
 from .broker import Broker
+from .room import Room, RoomError
 
 
 class BoothService:
@@ -21,6 +22,7 @@ class BoothService:
             require_trust=True,
         )
         self.auth = AuthManager(self.tool_root / "state" / "credentials.json")
+        self.room = Room(self.tool_root / "state" / "room.jsonl")
         self.server = ThreadingHTTPServer(("127.0.0.1", port), self._handler())
 
     @property
@@ -77,6 +79,8 @@ class BoothService:
                     return
                 if self.path == "/v1/apps":
                     self._json(200, {"ok": True, "apps": service.broker.list_apps()})
+                elif self.path == "/v1/room":
+                    self._json(200, {"ok": True, "messages": service.room.recent()})
                 else:
                     self._json(404, {"ok": False, "error": "not found"})
 
@@ -106,6 +110,16 @@ class BoothService:
                 if self.path == "/v1/lock":
                     service.auth.lock()
                     self._json(200, {"ok": True, "locked": True})
+                    return
+                if self.path == "/v1/room/message":
+                    try:
+                        message = service.room.add(
+                            session.actor, body.get("text", ""),
+                            body.get("recipient", "all"), body.get("kind", "message"))
+                    except RoomError as exc:
+                        self._json(400, {"ok": False, "error": str(exc)})
+                        return
+                    self._json(200, {"ok": True, "message": message})
                     return
                 if self.path != "/v1/invoke":
                     self._json(404, {"ok": False, "error": "not found"})

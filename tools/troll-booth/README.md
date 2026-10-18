@@ -17,6 +17,10 @@ ten-minute actor sessions, and provides an emergency lock. An unlocked owner
 can create a two-minute, actor-scoped, single-use pairing code. The browser
 connector that submits that code is not yet complete.
 
+Paired actors share a persistent collaboration room. Every message carries its
+actor, intended recipient, kind, and timestamp. Sean can read and post in the
+room from the native TROLL BOOTH window.
+
 ```powershell
 python tb.py apps --json
 python tb.py capabilities log-flogger --json

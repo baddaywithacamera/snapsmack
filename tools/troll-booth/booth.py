@@ -83,6 +83,8 @@ class BoothWindow:
                   font=("Segoe UI", 13, "bold")).pack(anchor="w", pady=(20, 0))
         ttk.Label(self.main, text="The local broker is accepting authenticated, policy-approved requests only.", wraplength=540).pack(anchor="w", pady=(4, 16))
         ttk.Button(self.main, text="EMERGENCY LOCK", command=self.lock).pack(anchor="w")
+        ttk.Button(self.main, text="OPEN COLLABORATION ROOM",
+                   command=self.open_room).pack(anchor="w", pady=(6, 0))
         pair = ttk.Frame(self.main)
         pair.pack(fill="x", pady=(16, 6))
         ttk.Label(pair, text="Browser actor").pack(side="left")
@@ -132,6 +134,9 @@ class BoothWindow:
         self.root.clipboard_clear()
         self.root.clipboard_append(self.pair_code.get())
 
+    def open_room(self) -> None:
+        RoomWindow(self.root, self.service)
+
     def setup(self) -> None:
         if self.password.get() != self.confirm.get():
             messagebox.showerror("TROLL BOOTH", "The passwords do not match.")
@@ -173,6 +178,47 @@ def main() -> None:
     root = tk.Tk()
     BoothWindow(root)
     root.mainloop()
+
+
+class RoomWindow:
+    def __init__(self, parent: tk.Tk, service: BoothService):
+        self.service = service
+        self.window = tk.Toplevel(parent)
+        self.window.title("TROLL BOOTH — Collaboration room")
+        self.window.geometry("760x520")
+        frame = ttk.Frame(self.window, padding=16)
+        frame.pack(fill="both", expand=True)
+        self.history = tk.Text(frame, state="disabled", wrap="word")
+        self.history.pack(fill="both", expand=True)
+        compose = ttk.Frame(frame)
+        compose.pack(fill="x", pady=(10, 0))
+        self.text = ttk.Entry(compose)
+        self.text.pack(side="left", fill="x", expand=True)
+        self.text.bind("<Return>", lambda _event: self.send())
+        ttk.Button(compose, text="SEND AS SEAN", command=self.send).pack(side="left", padx=(8, 0))
+        self.refresh()
+
+    def refresh(self) -> None:
+        if not self.window.winfo_exists():
+            return
+        messages = self.service.room.recent()
+        lines = [f"{item.get('actor')} → {item.get('recipient')}: {item.get('text')}"
+                 for item in messages]
+        self.history.configure(state="normal")
+        self.history.delete("1.0", "end")
+        self.history.insert("end", "\n\n".join(lines))
+        self.history.see("end")
+        self.history.configure(state="disabled")
+        self.window.after(2000, self.refresh)
+
+    def send(self) -> None:
+        try:
+            self.service.room.add("sean", self.text.get())
+        except Exception as exc:
+            messagebox.showerror("TROLL BOOTH", str(exc))
+            return
+        self.text.delete(0, "end")
+        self.refresh()
 
 
 if __name__ == "__main__":
