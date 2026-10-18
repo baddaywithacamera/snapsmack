@@ -544,7 +544,22 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         $categoryId = max(0, (int)($request['category_id'] ?? 0));
         $albumId = max(0, (int)($request['album_id'] ?? 0));
         $total = $repository->archivePhotographCount($categoryId, $albumId);
-        return ['status' => 200, 'kind' => 'archive',
+        $album = null;
+        if ($albumId > 0) {
+            $row = $repository->publicAlbum($albumId);
+            if ($row) {
+                $photos = max(0, (int)($row['photograph_count'] ?? 0));
+                $views  = max(0, (int)($row['view_count'] ?? 0));
+                $album = [
+                    'name' => (string)($row['album_name'] ?? ''),
+                    'photo_count' => $photos,
+                    'view_count' => $views,
+                    'photo_count_display' => number_format($photos) . ($photos === 1 ? ' photo' : ' photos'),
+                    'view_count_display' => number_format($views) . ($views === 1 ? ' view' : ' views'),
+                ];
+            }
+        }
+        return ['status' => 200, 'kind' => 'archive', 'album' => $album,
             'items' => $repository->archivePhotographs($perPage, $offset, $categoryId, $albumId),
             'navigation' => $navigation, 'page' => $page, 'per_page' => $perPage,
             'taxonomy' => ['category_id' => $categoryId, 'album_id' => $albumId],
