@@ -431,7 +431,7 @@ function snapsmack_skin_validate_staged_package(string $source): ?string {
         ? 'Skin install refused: package violates the skin security policy.' : null;
 }
 
-function skin_registry_install(string $slug, string $download_url, string $signature = '', string $public_key = ''): array {
+function skin_registry_install(string $slug, string $download_url, string $signature = '', string $public_key = '', int $expected_size = 0): array {
 
     // Sanitize slug — alphanumeric, hyphens, underscores only
     if (!preg_match('/^[a-zA-Z0-9_-]+$/', $slug)) {
@@ -442,7 +442,15 @@ function skin_registry_install(string $slug, string $download_url, string $signa
     $tmp_zip    = sys_get_temp_dir() . '/snapsmack-skin-' . $slug . '-' . time() . '.zip';
 
     // --- DOWNLOAD ---
-    $zip_data = false;
+    // The failure here used to report one cause for every case: "check that
+    // this server can reach the skin registry." On 18 October three spokes
+    // failed to take RATIONAL GEO and SLICKR minutes after those two packages
+    // were published, while every other skin on the same spokes installed --
+    // so the registry was plainly reachable and the message sent the owner
+    // looking at his firewall. Say which of the four things actually happened.
+    $zip_data  = false;
+    $http_code = 0;
+    $curl_err  = '';
 
     if (function_exists('curl_init')) {
         $ch = curl_init($download_url);
@@ -453,16 +461,41 @@ function skin_registry_install(string $slug, string $download_url, string $signa
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_USERAGENT      => 'SnapSmack/' . (SNAPSMACK_VERSION_SHORT ?? '0.7'),
         ]);
-        $zip_data = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $zip_data  = curl_exec($ch);
+        $http_code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_err  = (string)curl_error($ch);
         curl_close($ch);
         if ($http_code !== 200) $zip_data = false;
     } elseif (ini_get('allow_url_fopen')) {
         $zip_data = @file_get_contents($download_url);
+    } else {
+        return ['success' => false, 'message' => 'Skin install refused: this server has neither cURL nor allow_url_fopen, so it cannot fetch a package at all.'];
     }
 
-    if ($zip_data === false || strlen($zip_data) < 500) {
+    if ($zip_data === false) {
+        if ($curl_err !== '') {
+            return ['success' => false, 'message' => 'Download failed before any data arrived: ' . $curl_err . '. The registry may be unreachable from this server.'];
+        }
+        if ($http_code === 404) {
+            return ['success' => false, 'message' => 'Download failed: the registry lists this version but the package is not there yet (404). If it was just published, give the upload a minute and try again.'];
+        }
+        if ($http_code > 0) {
+            return ['success' => false, 'message' => 'Download failed: the registry answered HTTP ' . $http_code . ' for this package.'];
+        }
         return ['success' => false, 'message' => 'Download failed. Check that this server can reach the skin registry.'];
+    }
+
+    $got = strlen($zip_data);
+    if ($got < 500) {
+        return ['success' => false, 'message' => 'Download failed: the registry returned ' . $got . ' bytes, which is not a skin package. A publish that is still in progress looks exactly like this.'];
+    }
+
+    // The registry states download_size for every entry and nothing read it.
+    // A half-uploaded package answers 200 with a short body, which is the one
+    // failure that looks identical to success until the signature check.
+    if ($expected_size > 0 && $got !== $expected_size) {
+        return ['success' => false, 'message' => 'Download failed: expected ' . number_format($expected_size)
+            . ' bytes, received ' . number_format($got) . '. The package is incomplete -- usually a publish still in progress. Try again shortly.'];
     }
 
     // --- SIGNATURE VERIFICATION (mandatory: skins contain executable templates) ---

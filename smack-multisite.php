@@ -833,6 +833,9 @@ if (isset($_POST['push_all_skins_all_spokes'])) {
                         'skin_slug'    => $slug,
                         'download_url' => $rskin['download_url'],
                         'signature'    => $rskin['signature'] ?? '',
+                        // Carried so a spoke can tell a half-published
+                        // package from a network fault it does not have.
+                        'download_size' => (int)($rskin['download_size'] ?? 0),
                     ];
                 }
 
@@ -906,6 +909,7 @@ if (isset($_POST['push_skin']) || isset($_POST['push_skin_all'])) {
         $skin_slug    = trim($_POST['skin_slug']    ?? '');
         $download_url = trim($_POST['download_url'] ?? '');
         $signature    = trim($_POST['signature']    ?? '');
+        $download_size = (int)($_POST['download_size'] ?? 0);
 
         if (!$skin_slug || !$download_url) {
             $err = "Skin slug and download URL are required.";
@@ -978,7 +982,7 @@ if (isset($_POST['push_skin']) || isset($_POST['push_skin_all'])) {
                 curl_setopt_array($ch, [
                     CURLOPT_URL            => rtrim($tn['site_url'], '/') . '/api.php?route=multisite/skins/reinstall',
                     CURLOPT_POST           => true,
-                    CURLOPT_POSTFIELDS     => json_encode(['skin_slug' => $skin_slug, 'download_url' => $download_url, 'signature' => $signature]),
+                    CURLOPT_POSTFIELDS     => json_encode(['skin_slug' => $skin_slug, 'download_url' => $download_url, 'signature' => $signature, 'download_size' => $download_size]),
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_SSL_VERIFYPEER => true,
                     CURLOPT_TIMEOUT        => 120,
@@ -1277,6 +1281,7 @@ $skin_status_for_node = function (array $node) use ($registry_skins) {
             'is_active' => ($active !== '' && $active === $slug),
             'url'       => $reg['download_url'] ?? '',
             'sig'       => $reg['signature']    ?? '',
+            'size'      => (int)($reg['download_size'] ?? 0),
         ];
     }
     // Active skin first, then update-ready, then current, then custom.
@@ -1942,12 +1947,13 @@ include 'core/sidebar.php';
             <form method="POST" id="push-skin-form" class="skin-deploy-form">
                 <label>SKIN</label>
                 <select name="skin_slug" id="push-skin-select" required
-                        onchange="(function(s){var o=s.options[s.selectedIndex];document.getElementById('push-skin-url').value=o.getAttribute('data-url')||'';document.getElementById('push-skin-sig').value=o.getAttribute('data-sig')||'';})(this)">
+                        onchange="(function(s){var o=s.options[s.selectedIndex];document.getElementById('push-skin-url').value=o.getAttribute('data-url')||'';document.getElementById('push-skin-sig').value=o.getAttribute('data-sig')||'';document.getElementById('push-skin-size').value=o.getAttribute('data-size')||'';})(this)">
                     <option value="">-- choose a skin --</option>
                     <?php foreach ($registry_skins as $rslug => $rskin): ?>
                         <?php if (empty($rskin['download_url'])) continue; ?>
                         <option value="<?php echo htmlspecialchars($rslug); ?>"
                                 data-url="<?php echo htmlspecialchars($rskin['download_url']); ?>"
+                                data-size="<?php echo (int)($rskin['download_size'] ?? 0); ?>"
                                 data-sig="<?php echo htmlspecialchars($rskin['signature'] ?? ''); ?>">
                             <?php echo htmlspecialchars($rskin['name'] ?? $rslug); ?><?php echo !empty($rskin['version']) ? ' v' . htmlspecialchars($rskin['version']) : ''; ?>
                         </option>
@@ -1955,6 +1961,7 @@ include 'core/sidebar.php';
                 </select>
                 <input type="hidden" name="download_url" id="push-skin-url">
                 <input type="hidden" name="signature"    id="push-skin-sig">
+                <input type="hidden" name="download_size" id="push-skin-size">
 
                 <label>TARGET SPOKE</label>
                 <select name="spoke_id">
@@ -2033,6 +2040,7 @@ include 'core/sidebar.php';
                         <input type="hidden" name="skin_slug"    value="<?php echo htmlspecialchars($fslug); ?>">
                         <input type="hidden" name="download_url" value="<?php echo htmlspecialchars($fu['url']); ?>">
                         <input type="hidden" name="signature"    value="<?php echo htmlspecialchars($fu['sig']); ?>">
+                        <input type="hidden" name="download_size" value="<?php echo (int)($fu['size'] ?? 0); ?>">
                         <input type="hidden" name="skin_version" value="<?php echo htmlspecialchars($fu['latest']); ?>">
                         <input type="hidden" name="only_stale"   value="1">
                         <button type="submit" name="push_skin_all" class="btn-smack"
@@ -2102,6 +2110,7 @@ include 'core/sidebar.php';
                                             <input type="hidden" name="skin_slug"    value="<?php echo htmlspecialchars($sk['slug']); ?>">
                                             <input type="hidden" name="download_url" value="<?php echo htmlspecialchars($sk['url']); ?>">
                                             <input type="hidden" name="signature"    value="<?php echo htmlspecialchars($sk['sig']); ?>">
+                                            <input type="hidden" name="download_size" value="<?php echo (int)($sk['size'] ?? 0); ?>">
                                             <button type="submit" name="push_skin" class="btn-smack"
                                                     style="width:auto;height:auto;margin-top:0;padding:4px 12px;font-size:0.75rem;">
                                                 UPDATE

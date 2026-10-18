@@ -13,6 +13,24 @@
 
 ## 0.7.904D - 2026-10-18 - WHO GOES THERE
 
+- **A failed skin download says which thing failed.** Three spokes refused
+  RATIONAL GEO and SLICKR minutes after those two packages were published,
+  each reporting *"Download failed. Check that this server can reach the skin
+  registry."* Every other skin installed on the same spokes in the same run,
+  so the registry was plainly reachable and the message sent the owner to look
+  at a firewall that was fine. A 404 now says the package is not there yet, a
+  non-200 reports its status, a short body says how many bytes arrived, and a
+  transport error quotes cURL. The old sentence survives as the last resort
+  only, for when nothing else is known.
+
+  The registry has stated `download_size` for every entry all along and
+  nothing read it. The hub now carries it to the spoke and the spoke checks
+  it, because a publish still in progress answers 200 with a short body —
+  the one failure that looks like success until the signature check rejects
+  it. Measured while diagnosing: all four packages fetch complete and
+  correctly sized from snapsmack.ca, so those three spokes were reading files
+  that were still going up.
+
 - **The forum has a command line.** `tools/forum-cli` — `fc` — works the
   forum without a browser: boards, threads, posting, replying, reacting,
   following, locking, pinning, moving, search and notifications, each in plain
