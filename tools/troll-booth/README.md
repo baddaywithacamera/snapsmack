@@ -13,8 +13,9 @@ It never accepts a shell command.
 This first implementation slice provides the broker core and command-line
 feasibility harness. The native `booth.py` window now owns first-run password
 and TOTP setup, starts a dynamically assigned loopback-only service, issues
-ten-minute actor sessions, and provides an emergency lock. Browser pairing is
-not yet complete.
+ten-minute actor sessions, and provides an emergency lock. An unlocked owner
+can create a two-minute, actor-scoped, single-use pairing code. The browser
+connector that submits that code is not yet complete.
 
 ```powershell
 python tb.py apps --json

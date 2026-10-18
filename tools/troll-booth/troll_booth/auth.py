@@ -45,11 +45,18 @@ class Session:
     expires_at: float
 
 
+@dataclass
+class Pairing:
+    actor: str
+    expires_at: float
+
+
 class AuthManager:
     def __init__(self, credential_path: Path, session_seconds: int = 600):
         self.credential_path = credential_path.resolve()
         self.session_seconds = session_seconds
         self._sessions: dict[str, Session] = {}
+        self._pairings: dict[str, Pairing] = {}
 
     @property
     def configured(self) -> bool:
@@ -122,7 +129,27 @@ class AuthManager:
             raise AuthError("session is missing or expired")
         return session
 
+    def create_pairing(self, owner_token: str, actor: str,
+                       lifetime: int = 120) -> tuple[str, float]:
+        self.authenticate(owner_token)
+        if actor not in {"sean", "codex", "claude", "assistant"}:
+            raise AuthError("unrecognized actor")
+        code = secrets.token_urlsafe(18)
+        expires = time.time() + max(30, min(lifetime, 300))
+        self._pairings[code] = Pairing(actor, expires)
+        return code, expires
+
+    def consume_pairing(self, code: str) -> tuple[str, Session]:
+        pairing = self._pairings.pop(code, None)
+        if pairing is None or pairing.expires_at <= time.time():
+            raise AuthError("pairing code is missing, expired, or already used")
+        token = secrets.token_urlsafe(32)
+        session = Session(pairing.actor, time.time() + self.session_seconds)
+        self._sessions[token] = session
+        return token, session
+
     def lock(self) -> None:
         self._sessions.clear()
+        self._pairings.clear()
 
 # ===== SNAPSMACK EOF =====
