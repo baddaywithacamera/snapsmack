@@ -602,6 +602,37 @@ body.archive-page #scroll-stage {
     flex: 0 0 auto;
 }
 
+/* Compatibility with SnapSmack through 0.7.901D. Those releases emit the
+   generic archive-grid shell before the CMS-owned archive mode renderer was
+   restored. Keep the installed skin usable while the site follows the normal
+   CMS update path. Newer CMS releases use .square-grid or .cropped-grid above. */
+#browse-grid.archive-grid:not(.square-grid):not(.cropped-grid) {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 4), var(--thumb-width, 200px));
+    gap: var(--grid-gap, 80px);
+    max-width: 95%;
+    margin: 60px auto;
+    padding: 0 20px;
+    justify-content: center;
+    align-items: start;
+    flex: 0 0 auto;
+}
+
+#browse-grid.archive-grid:not(.square-grid):not(.cropped-grid) .thumb-container,
+#browse-grid.archive-grid:not(.square-grid):not(.cropped-grid) .thumb-link,
+#browse-grid.archive-grid:not(.square-grid):not(.cropped-grid) .ip-ascii-frame {
+    min-width: 0;
+    width: 100%;
+}
+
+#browse-grid.archive-grid:not(.square-grid):not(.cropped-grid) .thumb-container {
+    margin: 0;
+}
+
+#browse-grid.archive-grid:not(.square-grid):not(.cropped-grid) .thumb-container h2 {
+    display: none;
+}
+
 /* --- SQUARE GRID --- */
 .square-grid .thumb-container {
     margin: 0 auto;
