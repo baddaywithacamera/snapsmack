@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "IMPACT PRINTER",
-  "version": "2.1.12",
+    "version": "2.1.13",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Designed for photographers who enjoy using instant printer cameras that output on thermal paper. Continuous-feed tractor-feed paper textures, ASCII character borders, dithered halftone image rendering, faded ribbon ink. Two paper stocks: green-bar ledger and plain white.",
@@ -66,10 +66,15 @@
         "smack-image-fade-load",
         "smack-lightbox",
         "smack-columns",
+        "smack-rows",
         "smack-keyboard",
         "smack-community"
     ],
     "options": {
+        "archive_thumb_style": {
+            "type": "hidden",
+            "default": "cropped"
+        },
         "main_canvas_width": {
             "section": "PAPER MARGINS",
             "type": "range",
