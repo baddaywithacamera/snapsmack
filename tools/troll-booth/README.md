@@ -21,6 +21,11 @@ Paired actors share a persistent collaboration room. Every message carries its
 actor, intended recipient, kind, and timestamp. Sean can read and post in the
 room from the native TROLL BOOTH window.
 
+The authenticated `/mcp` endpoint implements MCP initialization, tool listing,
+and tool calls. Only approved application builds appear in Claude's tool list.
+The endpoint remains local until its Cloudflare Tunnel is explicitly installed
+and enabled.
+
 ```powershell
 python tb.py apps --json
 python tb.py capabilities log-flogger --json
