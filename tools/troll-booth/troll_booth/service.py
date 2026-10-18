@@ -81,6 +81,21 @@ class BoothService:
                     self._json(404, {"ok": False, "error": "not found"})
 
             def do_POST(self) -> None:
+                if self.path == "/v1/pair":
+                    try:
+                        body = self._body()
+                        code = body.get("code")
+                        if not isinstance(code, str) or len(code) > 64:
+                            raise ValueError("invalid pairing code")
+                        token, session = service.auth.consume_pairing(code)
+                    except (AuthError, ValueError, json.JSONDecodeError) as exc:
+                        self._json(401 if isinstance(exc, AuthError) else 400,
+                                   {"ok": False, "error": str(exc)})
+                        return
+                    self._json(200, {"ok": True, "token": token,
+                                     "actor": session.actor,
+                                     "expires_at": session.expires_at})
+                    return
                 try:
                     session = self._session()
                     body = self._body()

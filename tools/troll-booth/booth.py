@@ -21,6 +21,8 @@ class BoothWindow:
         self.thread.start()
         self.pending_secret = generate_totp_secret()
         self.token = ""
+        self.pair_actor = tk.StringVar(value="codex")
+        self.pair_code = tk.StringVar(value="")
 
         root.title("TROLL BOOTH — Nobody crosses without papers")
         root.geometry("620x430")
@@ -81,6 +83,18 @@ class BoothWindow:
                   font=("Segoe UI", 13, "bold")).pack(anchor="w", pady=(20, 0))
         ttk.Label(self.main, text="The local broker is accepting authenticated, policy-approved requests only.", wraplength=540).pack(anchor="w", pady=(4, 16))
         ttk.Button(self.main, text="EMERGENCY LOCK", command=self.lock).pack(anchor="w")
+        pair = ttk.Frame(self.main)
+        pair.pack(fill="x", pady=(16, 6))
+        ttk.Label(pair, text="Browser actor").pack(side="left")
+        ttk.Combobox(pair, textvariable=self.pair_actor, state="readonly", width=12,
+                     values=("codex", "claude", "assistant", "sean")).pack(side="left", padx=8)
+        ttk.Button(pair, text="CREATE ONE-TIME PAIRING CODE",
+                   command=self.create_pairing).pack(side="left")
+        if self.pair_code.get():
+            code = ttk.Entry(self.main, textvariable=self.pair_code, state="readonly")
+            code.pack(fill="x", pady=(0, 8))
+            ttk.Button(self.main, text="COPY PAIRING CODE",
+                       command=self.copy_pairing).pack(anchor="e")
         ttk.Label(self.main, text="Approved applications",
                   font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(20, 4))
         for app in self.service.broker.list_apps():
@@ -104,6 +118,19 @@ class BoothWindow:
             messagebox.showerror("TROLL BOOTH", str(exc))
             return
         self.render()
+
+    def create_pairing(self) -> None:
+        try:
+            code, _ = self.service.auth.create_pairing(self.token, self.pair_actor.get())
+        except AuthError as exc:
+            messagebox.showerror("TROLL BOOTH", str(exc))
+            return
+        self.pair_code.set(code)
+        self.render()
+
+    def copy_pairing(self) -> None:
+        self.root.clipboard_clear()
+        self.root.clipboard_append(self.pair_code.get())
 
     def setup(self) -> None:
         if self.password.get() != self.confirm.get():
@@ -132,6 +159,7 @@ class BoothWindow:
     def lock(self) -> None:
         self.service.auth.lock()
         self.token = ""
+        self.pair_code.set("")
         self.render()
 
     def close(self) -> None:

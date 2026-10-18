@@ -37,6 +37,18 @@ class TestAuthentication(unittest.TestCase):
             with self.assertRaises(AuthError):
                 manager.unlock("sean", "correct horse battery", "000000", now=0)
 
+    def test_pairing_is_actor_scoped_and_single_use(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = AuthManager(Path(directory) / "credentials.json")
+            secret = manager.configure("correct horse battery", generate_totp_secret())
+            owner, _ = manager.unlock("sean", "correct horse battery", totp(secret))
+            code, _ = manager.create_pairing(owner, "claude")
+            token, session = manager.consume_pairing(code)
+            self.assertEqual(session.actor, "claude")
+            self.assertEqual(manager.authenticate(token).actor, "claude")
+            with self.assertRaises(AuthError):
+                manager.consume_pairing(code)
+
 
 class TestLoopbackService(unittest.TestCase):
     def test_service_is_loopback_locked_and_can_be_emergency_locked(self):
@@ -69,6 +81,33 @@ class TestLoopbackService(unittest.TestCase):
                     self.assertTrue(json.load(response)["locked"])
                 with self.assertRaises(AuthError):
                     service.auth.authenticate(token)
+            finally:
+                service.server.shutdown()
+                service.close()
+                thread.join(timeout=2)
+
+    def test_http_pairing_issues_scoped_session(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            service = BoothService(HERE, port=0)
+            service.auth = AuthManager(root / "credentials.json")
+            secret = service.auth.configure("correct horse battery", generate_totp_secret())
+            owner, _ = service.auth.unlock("sean", "correct horse battery", totp(secret))
+            code, _ = service.auth.create_pairing(owner, "codex")
+            thread = threading.Thread(target=service.serve, daemon=True)
+            thread.start()
+            base = f"http://{service.address[0]}:{service.address[1]}"
+            try:
+                request = urllib.request.Request(
+                    base + "/v1/pair", data=json.dumps({"code": code}).encode(),
+                    method="POST", headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(request, timeout=2) as response:
+                    paired = json.load(response)
+                self.assertEqual(paired["actor"], "codex")
+                self.assertEqual(service.auth.authenticate(paired["token"]).actor, "codex")
+                with self.assertRaises(urllib.error.HTTPError) as reused:
+                    urllib.request.urlopen(request, timeout=2)
+                self.assertEqual(reused.exception.code, 401)
             finally:
                 service.server.shutdown()
                 service.close()
