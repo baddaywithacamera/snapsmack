@@ -11,7 +11,21 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.902D - 2026-10-17 - LOG FLOGGER, TICKET WICKET, and static page layout
+## 0.7.903D - 2026-10-17 - PULLING RANK
+
+- **Promoting a blog in the forum admin did nothing at all.** The Promote
+  button wrote `is_moderator` and stopped there. Since the v4 role ladder
+  landed, the API reads `role` first and `is_moderator` is only a mirror of it,
+  so a blog promoted from Smack Central came out with role 0 — a moderator
+  badge on screen and no moderator powers anywhere. The installs table now sets
+  the rung itself: Member, Power, Moderator, Admin, with the mirror kept
+  consistent. Admin asks for confirmation first, because that rung can create
+  boards and change other blogs' roles. **This is the only place Admin can be
+  granted** — the API's own role endpoint refuses to set a role at or above the
+  caller's own, so an admin cannot make another admin.
+
+- The forum canonical schema gained the `role` column, so Schema Check can add
+  it to a hub still on v3 instead of the page failing on a missing column.
 
 - **LOG FLOGGER's probe report no longer pretends to anonymise anybody.** Source
   addresses were hashed with a fixed string that lives in the repo, which is not
@@ -30,6 +44,12 @@
   role it found, and that role 2 cannot be checked from outside because no
   endpoint tells a caller its own role. The tool needs **role 3**: creating the
   Tickets board is an admin action.
+
+- **Opened because 0.7.902D is deployed.** Verified against the live fleet with
+  `tools/_build/deployed-version.sh`, not assumed — the three tool fixes above
+  were first written into 902D's section by mistake and belong here.
+
+## 0.7.902D - 2026-10-17 - LOG FLOGGER, TICKET WICKET, and static page layout
 
 - **Both new tools can tell Claude and Codex what they can do.** `lf agent` and
   `tw agent` print a capability sheet — every command, what comes back, and

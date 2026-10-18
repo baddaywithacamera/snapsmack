@@ -1,8 +1,8 @@
 /**
  * SMACK CENTRAL — Forum JS
  *
- * Shared utilities for sc-forum.php: emoji insertion and inline install
- * name editing. No dependencies — runs after DOM is ready.
+ * Shared utilities for sc-forum.php: emoji insertion, the role-change guard,
+ * and inline install name editing. No dependencies — runs after DOM is ready.
  */
 
 /**
@@ -28,6 +28,18 @@ function scfInsertEmoji(btn, emoji) {
     ta.value   = ta.value.substring(0, start) + emoji + ta.value.substring(end);
     ta.selectionStart = ta.selectionEnd = start + emoji.length;
     ta.focus();
+}
+
+/**
+ * Guard the one rung that matters. Member, Power and Moderator are reversible
+ * in the same two clicks; Admin can create boards and set other blogs' roles,
+ * so it asks first. A dropdown is easy to land on by accident.
+ */
+function scfConfirmRole(form) {
+    if (!form.role || form.role.value !== '3') return true;
+    return confirm('Make ' + (form.dataset.domain || 'this blog')
+        + ' a forum ADMIN?\n\n'
+        + "Admins can create boards and change other blogs' roles.");
 }
 
 /**

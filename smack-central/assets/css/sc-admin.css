@@ -292,6 +292,9 @@ textarea.sc-textarea:focus {
 .sc-btn--danger { border-color: var(--sc-danger); color: var(--sc-danger); }
 .sc-btn--danger:hover { background: var(--sc-danger-bg); }
 .sc-btn--sm { height: 28px; padding: 0 12px; font-size: 0.65rem; }
+/* In-row select: pairs with .sc-btn--sm inside a table action cell, where the
+   full-width .sc-select would push the row apart. */
+select.sc-select--sm { width: auto; height: 28px; padding: 0 8px; font-size: 0.65rem; }
 .sc-btn-row { display: flex; gap: 10px; align-items: center; }
 
 /* ── Alerts & notices ────────────────────────────────────────────────────── */
