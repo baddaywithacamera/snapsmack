@@ -11,13 +11,16 @@ with a typed local policy, and invokes only the resulting read-only capability.
 It never accepts a shell command.
 
 This first implementation slice provides the broker core and command-line
-feasibility harness. It deliberately does not yet open a network listener or
-claim browser pairing is complete.
+feasibility harness. The native `booth.py` window now owns first-run password
+and TOTP setup, starts a dynamically assigned loopback-only service, issues
+ten-minute actor sessions, and provides an emergency lock. Browser pairing is
+not yet complete.
 
 ```powershell
 python tb.py apps --json
 python tb.py capabilities log-flogger --json
 python tb.py invoke log-flogger analyze --args '{"quiet_days":14}' --actor codex --json
+python booth.py
 ```
 
 The initial policy exposes:
