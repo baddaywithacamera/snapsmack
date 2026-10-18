@@ -1343,4 +1343,41 @@ time.dt-published,
     color: inherit;
     text-decoration-color: currentColor;
 }
+
+/* --- Archive grid sizing ------------------------------------------------
+   The owner's column count and thumbnail size used to arrive as --grid-cols
+   and --thumb-width in a style attribute, which archive.php still emits. The
+   controller-rendered archive emitted neither, so this stylesheet fell
+   through to its own defaults and every tile came out 200px wide with an
+   80px gap whatever the owner had chosen -- measured on pixhellated.ca,
+   where --thumb-width resolved to nothing at all.
+
+   The markup names the choice and the lengths live here, which keeps the
+   inline-style ratchet where it is and puts the size table somewhere a
+   stylesheet can be read. The numbers are archive.php's own map: cropped
+   runs about a quarter larger than square to hold the same visual weight. */
+.archive-grid.archive-cols-1 { --grid-cols: 1; }
+.archive-grid.archive-cols-2 { --grid-cols: 2; }
+.archive-grid.archive-cols-3 { --grid-cols: 3; }
+.archive-grid.archive-cols-4 { --grid-cols: 4; }
+.archive-grid.archive-cols-5 { --grid-cols: 5; }
+.archive-grid.archive-cols-6 { --grid-cols: 6; }
+.archive-grid.archive-cols-7 { --grid-cols: 7; }
+.archive-grid.archive-cols-8 { --grid-cols: 8; }
+.archive-grid.archive-cols-9 { --grid-cols: 9; }
+.archive-grid.archive-cols-10 { --grid-cols: 10; }
+.archive-grid.archive-cols-11 { --grid-cols: 11; }
+.archive-grid.archive-cols-12 { --grid-cols: 12; }
+
+.square-grid.archive-thumbs-xs { --thumb-width: 120px; }
+.square-grid.archive-thumbs-s { --thumb-width: 150px; }
+.square-grid.archive-thumbs-m { --thumb-width: 200px; }
+.square-grid.archive-thumbs-l { --thumb-width: 250px; }
+.square-grid.archive-thumbs-xl { --thumb-width: 300px; }
+.cropped-grid.archive-thumbs-xs { --thumb-width: 150px; }
+.cropped-grid.archive-thumbs-s { --thumb-width: 190px; }
+.cropped-grid.archive-thumbs-m { --thumb-width: 250px; }
+.cropped-grid.archive-thumbs-l { --thumb-width: 310px; }
+.cropped-grid.archive-thumbs-xl { --thumb-width: 375px; }
+
 /* ===== SNAPSMACK EOF ===== */

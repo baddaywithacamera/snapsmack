@@ -11,6 +11,33 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.906D - 2026-10-18 - RIGHT WAY UP
+
+- **Every archive thumbnail was landscape, including the portraits.** All 24
+  tiles on pixhellated.ca came back `orient-landscape`, so a portrait
+  photograph was squeezed into a 3:2 box and the skin's own `orient-portrait`
+  and `orient-square` rules could never fire.
+  `SnapPublicRepository::archivePhotographs()` selected `img_width` and
+  `img_height` but never `img_orientation`, so the component read a missing
+  value, defaulted it to 0, and called everything landscape. It is selected
+  now, and a row whose orientation was never computed has it derived from the
+  width and height it already knows.
+
+- **The archive ignored the owner's column count and thumbnail size.** Those
+  reach the stylesheet as `--grid-cols` and `--thumb-width`, which
+  `archive.php` emits and the controller-rendered archive did not — so the
+  grid fell through to its own defaults: 200px tiles with an 80px gap,
+  whatever the setting said. Measured on pixhellated.ca, `--thumb-width`
+  resolved to nothing at all.
+
+  The markup names the choice (`archive-cols-5`, `archive-thumbs-l`) and the
+  lengths live in the skin's stylesheet, so the inline-style ratchet stays
+  where it is and the size table sits somewhere a stylesheet can be read. The
+  numbers are `archive.php`'s own map, shared through
+  `snapsmack_archive_grid_metrics()` rather than copied — two size tables
+  disagree eventually, and the one that drifts is the one nobody is looking
+  at. IMPACT PRINTER 2.1.15.
+
 ## 0.7.905D - 2026-10-18 - SAME ROOM
 
 - **Collections said "0 IMAGES" under collections holding twenty.**

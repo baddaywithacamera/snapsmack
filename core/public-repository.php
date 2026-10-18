@@ -333,8 +333,21 @@ final class SnapPublicRepository
         $params[] = max(1, min(5000, $limit));
         $params[] = max(0, $offset);
         return $this->all(
+            // img_orientation decides which shape a thumbnail tile takes, and
+            // this query never selected it. Every archive tile reached the skin
+            // with no orientation, defaulted to landscape, and a portrait
+            // photograph was squeezed into a 3:2 box -- all 24 tiles on
+            // pixhellated.ca came back orient-landscape. COALESCE on the
+            // dimensions as well, because a row whose orientation was never
+            // computed still knows its own width and height.
             "SELECT i.id,i.img_title,i.img_slug,i.img_alt,i.img_file,i.img_width,i.img_height,
-                    i.img_thumb_square,i.img_thumb_aspect
+                    i.img_thumb_square,i.img_thumb_aspect,
+                    CASE
+                      WHEN COALESCE(NULLIF(i.img_orientation,0),0) <> 0 THEN i.img_orientation
+                      WHEN i.img_height > i.img_width THEN 1
+                      WHEN i.img_height = i.img_width AND i.img_width > 0 THEN 2
+                      ELSE 0
+                    END AS img_orientation
              FROM snap_images i
              WHERE i.img_status='published' AND i.img_date <= NOW()
                AND NOT EXISTS (
