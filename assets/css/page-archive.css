@@ -390,4 +390,32 @@
     margin-top: var(--archive-grid-gap, 32px);
 }
 
+
+/* --- Archive paging --------------------------------------------------------
+   archive.php printed every published photograph in one document until
+   0.7.907D -- 1,592 of them on foundtextures.ca, in 1.18 MB. It carries
+   links now. Deliberately plain: this page is served under thirty-one
+   different skins and the row has to sit quietly under all of them, so it
+   inherits its colour and borrows .alt-btn, which the archive already uses
+   for its layout controls. */
+.archive-paging {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 18px;
+    padding: 36px 20px 48px;
+    color: inherit;
+}
+
+.archive-paging-count {
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    opacity: 0.7;
+}
+
+@media (max-width: 480px) {
+    .archive-paging { gap: 12px; padding: 28px 16px 36px; }
+}
+
 /* ===== SNAPSMACK EOF ===== */

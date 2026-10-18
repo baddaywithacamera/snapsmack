@@ -11,6 +11,25 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.907D - 2026-10-18 - ONE PAGE AT A TIME
+
+- **archive.php has never had paging. It does now.** The page selected every
+  published photograph and printed all of them: foundtextures.ca answered
+  `/archive.php` with **1,592 images in a single 1.18 MB document**, and would
+  have done the same at ten thousand. Not a regression — measured at tag
+  `v0.7.603D` and the query had no `LIMIT` there either.
+
+  It takes one page at a time now, with Newer/Older links and a count. The
+  size comes from `archive_per_page`, falling back to `posts_per_page`, then
+  120, clamped to 12–500. Links are the right transport here: the filter
+  panel, the calendar and the T/M toggle all already work by reloading with
+  query parameters — none of them filters the DOM in place — and this page
+  loads no paging engine to hand a sentinel to. Every link carries the whole
+  query string, so a filtered or searched archive stays filtered on page two.
+
+  The count uses `COUNT(DISTINCT i.id)`, because the filter joins multiply
+  rows — which is why the listing itself has always selected `DISTINCT`.
+
 ## 0.7.906D - 2026-10-18 - RIGHT WAY UP
 
 - **Every archive thumbnail was landscape, including the portraits.** All 24

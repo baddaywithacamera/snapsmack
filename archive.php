@@ -463,11 +463,48 @@ try {
     }
 
     $sql .= " WHERE " . implode(" AND ", $where_clauses);
+
+    // ── PAGING ──────────────────────────────────────────────────────────────
+    // This page has never had any. It selected every published photograph and
+    // printed all of them: foundtextures.ca answered /archive.php with 1,592
+    // images in a single 1.18 MB document, and would have done the same at
+    // ten thousand. The filters, the calendar and the layout toggle all
+    // already work by reloading with query parameters -- none of them filters
+    // the DOM in place -- so links are a transport this page can carry without
+    // a JS engine it does not load.
+    $per_page = (int)($settings['archive_per_page'] ?? $settings['posts_per_page'] ?? 120);
+    $per_page = max(12, min(500, $per_page));
+
+    // COUNT(DISTINCT i.id), not COUNT(*): the filter joins can multiply rows,
+    // which is why the listing itself selects DISTINCT.
+    $count_sql = preg_replace('/^SELECT DISTINCT i\.\*/', 'SELECT COUNT(DISTINCT i.id)', $sql, 1);
+    $count_stmt = $pdo->prepare($count_sql);
+    $count_stmt->execute($params);
+    $total_images = (int)$count_stmt->fetchColumn();
+
+    $total_pages = max(1, (int)ceil($total_images / $per_page));
+    $page_num = max(1, (int)($_GET['page'] ?? $_GET['p'] ?? 1));
+    if ($page_num > $total_pages) $page_num = $total_pages;
+    $offset = ($page_num - 1) * $per_page;
+
     $sql .= " ORDER BY i.sort_order ASC, i.id DESC";
+    $sql .= " LIMIT " . (int)$per_page . " OFFSET " . (int)$offset;
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $images = $stmt->fetchAll();
+
+    // Links keep every filter, the search term, the layout and the calendar
+    // state -- they travel in the query string and dropping them would send a
+    // reader back to the unfiltered archive on page two.
+    $archive_page_url = static function (int $n): string {
+        $qs = $_GET;
+        unset($qs['p']);
+        if ($n <= 1) unset($qs['page']); else $qs['page'] = $n;
+        $query = http_build_query($qs);
+        return htmlspecialchars(strtok((string)($_SERVER['REQUEST_URI'] ?? 'archive.php'), '?')
+            . ($query !== '' ? '?' . $query : ''), ENT_QUOTES);
+    };
 
     // --- METADATA FOR FILTERS ---
     // Fetch all categories, albums, and collections for the unified filter panel.
@@ -924,6 +961,21 @@ if (file_exists(__DIR__ . '/' . $skin_path . '/skin-meta.php')) {
             if (file_exists($footer_file)) include $footer_file;
             ?>
         </div>
+
+        <?php if ($total_pages > 1): ?>
+        <nav class="archive-paging" aria-label="Archive pages">
+            <?php if ($page_num > 1): ?>
+            <a class="alt-btn archive-paging-prev" href="<?php echo $archive_page_url($page_num - 1); ?>" rel="prev">&larr; Newer</a>
+            <?php endif; ?>
+            <span class="archive-paging-count">
+                Page <?php echo (int)$page_num; ?> of <?php echo (int)$total_pages; ?>
+                &middot; <?php echo number_format($total_images); ?> photographs
+            </span>
+            <?php if ($page_num < $total_pages): ?>
+            <a class="alt-btn archive-paging-next" href="<?php echo $archive_page_url($page_num + 1); ?>" rel="next">Older &rarr;</a>
+            <?php endif; ?>
+        </nav>
+        <?php endif; ?>
     </div>
 
     <?php if ($skin_show_archive_filter): ?>
