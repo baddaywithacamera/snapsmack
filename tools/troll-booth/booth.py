@@ -81,6 +81,29 @@ class BoothWindow:
                   font=("Segoe UI", 13, "bold")).pack(anchor="w", pady=(20, 0))
         ttk.Label(self.main, text="The local broker is accepting authenticated, policy-approved requests only.", wraplength=540).pack(anchor="w", pady=(4, 16))
         ttk.Button(self.main, text="EMERGENCY LOCK", command=self.lock).pack(anchor="w")
+        ttk.Label(self.main, text="Approved applications",
+                  font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(20, 4))
+        for app in self.service.broker.list_apps():
+            row = ttk.Frame(self.main)
+            row.pack(fill="x", pady=2)
+            ttk.Label(row, text=app["name"]).pack(side="left")
+            if not app.get("healthy"):
+                ttk.Label(row, text="UNAVAILABLE").pack(side="right")
+            elif app.get("trusted"):
+                ttk.Label(row, text="APPROVED").pack(side="right")
+            else:
+                ttk.Button(row, text="APPROVE THIS BUILD",
+                           command=lambda app_id=app["id"]: self.approve(app_id)).pack(side="right")
+
+    def approve(self, app_id: str) -> None:
+        try:
+            app = self.service.broker.discover(app_id)
+            assert self.service.broker.trust_store is not None
+            self.service.broker.trust_store.approve(app_id, app.executable_hash, "sean")
+        except Exception as exc:
+            messagebox.showerror("TROLL BOOTH", str(exc))
+            return
+        self.render()
 
     def setup(self) -> None:
         if self.password.get() != self.confirm.get():
