@@ -13,6 +13,14 @@
 
 ## 0.7.903D - 2026-10-17 - PULLING RANK
 
+- **An album archive says which album it is.** `?album=N&view=archive` went
+  from the menu straight into the grid with nothing naming it. The album's
+  title now sits above the wall at reading size, with its photograph count and
+  view tally on the right in the quiet size, sharing a baseline. The count is
+  recomputed from the join rather than read from a stored column, so the header
+  agrees with the grid underneath it. A plain archive, a hashtag page or a
+  category view grows no empty bar. SLICKR 1.0.40.
+
 - **The collections page renders in the skin now.** It was being served by
   legacy `collections.php`, which emits a document with no doctype and one
   stylesheet, `public-facing.css`. Every class that page uses —

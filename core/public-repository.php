@@ -500,6 +500,24 @@ final class SnapPublicRepository
         );
     }
 
+    /** The album an ?album=N archive view is showing: its name, how many
+     *  published photographs it holds, and its view tally. The count is
+     *  recomputed from the join rather than trusted to a stored column,
+     *  because the header must agree with the grid underneath it. */
+    public function publicAlbum(int $albumId): ?array {
+        if ($albumId <= 0) return null;
+        return $this->one(
+            "SELECT a.id,a.album_name,a.view_count,
+                    COUNT(DISTINCT i.id) AS photograph_count
+             FROM snap_albums a
+             LEFT JOIN snap_image_album_map m ON m.album_id=a.id
+             LEFT JOIN snap_images i ON i.id=m.image_id AND i.img_status='published' AND i.img_date <= NOW()
+             WHERE a.id=?
+             GROUP BY a.id,a.album_name,a.view_count",
+            [$albumId]
+        );
+    }
+
     public function publicAlbums(): array {
         return $this->all(
             "SELECT a.id,a.album_name,a.album_description,a.cover_image_id,a.featured_post_id,

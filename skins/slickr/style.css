@@ -960,4 +960,37 @@ a:hover { color: var(--sl-link-hover); }
     color: var(--sl-header-border);
     cursor: default;
 }
+
+/* ─── Album header ───────────────────────────────────────────────────────────
+   An ?album=N archive opened straight onto the grid with nothing saying which
+   album it was. Title on the left at reading size, counts on the right in the
+   quiet size, sharing a baseline so the two read as one line. Wraps to two
+   lines on a narrow screen rather than squeezing the title. */
+.sl-album-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+    padding: 24px 0 14px;
+}
+
+.sl-album-title {
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.sl-album-meta {
+    margin: 0;
+    font-size: 0.8125rem;
+    opacity: 0.72;
+    white-space: nowrap;
+}
+
+.sl-album-dot {
+    padding: 0 7px;
+}
+
 /* ===== SNAPSMACK EOF ===== */
