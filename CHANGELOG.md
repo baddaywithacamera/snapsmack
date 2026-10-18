@@ -11,6 +11,27 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.905D - 2026-10-18 - SAME ROOM
+
+- **The collections page looked nothing like the rest of the site.** It
+  rendered through the skin at last, and then rendered it wrong: no cover
+  photograph, no stats row, initials where the avatar belongs, and three menu
+  items where `/albums` has six. Both faults were introduced by last night's
+  change.
+
+  The masthead was mine twice over. `features.profile_header` is the right
+  contract — core should not hold a list of which skins draw a profile — but a
+  manifest key only answers for a skin new enough to carry it. The key landed
+  in SLICKR **1.0.42**; foreverphotograph.ing runs **1.0.38**, so the gate said
+  no and the skin drew its empty defaults: cover position 50% 50% instead of
+  the saved 51% 47%, one `sl-stat` instead of seven. The manifest is still
+  asked first, and a build too old to answer is asked the only other way that
+  keeps a skin's name out of core: whether its own layout draws the masthead.
+
+  The menu was simpler. `collections.php` replaced the controller's navigation
+  with a shorter one from the skin view, losing Blogroll, Flkr Fckr and About.
+  It only fills that in now when the controller gives nothing.
+
 ## 0.7.904D - 2026-10-18 - WHO GOES THERE
 
 - **The collections page renders the skin itself now.** 903D tried to fix it
