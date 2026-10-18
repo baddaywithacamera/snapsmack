@@ -482,6 +482,17 @@ a:hover { color: var(--sl-link-hover); }
 .sl-albums-view { background: var(--sl-bg); }
 
 .sl-album-grid-container { max-width: var(--sl-canvas-width); margin: 0 auto; padding: 28px 24px; }
+
+/* Sean, 18 October 2026: "make Albums font 60% of current size." The shared
+   .static-page-title in assets/css/page-static.css is
+   clamp(1.8rem, 4vw, 2.6rem); this is that same clamp at 60% throughout, so
+   the heading still scales with the viewport instead of freezing at whatever
+   one width happened to measure. Verified on the live page at 1440px:
+   41.6px -> 24.96px. Scoped to the albums page -- Collections and the static
+   pages share the class and were not asked about. */
+.sl-album-grid-container > .static-page-title {
+  font-size: clamp(1.08rem, 2.4vw, 1.56rem);
+}
 .sl-album-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

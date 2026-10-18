@@ -61,29 +61,56 @@ $skin_view = snapsmack_prepare_skin_view($pdo, $settings, $active_skin);
 // branch, which is where foreverphotograph.ing's phantom "ARCHIVE VIEW" came
 // from: that site's real menu has no archive item at all.
 //
-// The controller has owned a collections route since before this; nothing
-// pointed at it. Same shape as archive.php's handoff.
+// 0.7.903D tried to fix this with a redirect, the way archive.php does, and it
+// could not work. Apache MultiViews resolves /collections to this file before
+// any rewrite runs, so the target address IS this address and the loop guard
+// correctly declined. Measured 18 October on foreverphotograph.ing:
+// /collectionszz reaches index.php and renders a skinned 404 with thirteen
+// stylesheets; /collections renders this file with one.
+//
+// So render the skin here instead of asking somebody else to. Any failure
+// falls through to the legacy page below rather than showing a visitor an
+// error: a plain page is worse than a styled one and better than nothing.
 require_once __DIR__ . '/core/skin-manifest.php';
 $_collections_manifest = load_skin_manifest($active_skin);
 if (in_array((string)($_collections_manifest['cms_controller'] ?? ''), ['smacktalk', 'public'], true)) {
-    $_collections_target = snapsmack_public_route_url(
-        BASE_URL,
-        $skin_view['route_aliases'] ?? [],
-        'collections',
-        'collections'
-    );
-    $_collections_query = ltrim(trim((string)($_SERVER['QUERY_STRING'] ?? '')), '?&');
-    if ($_collections_query !== '') {
-        $_collections_target .= '?' . $_collections_query;   // keep ?sort=
-    }
-    // Never redirect to the address we were just asked for. Where the server
-    // resolves /collections to this file, the guard holds and the visitor gets
-    // the old page rather than a redirect loop -- no worse than today.
-    $_collections_here = strtok((string)($_SERVER['REQUEST_URI'] ?? ''), '?');
-    $_collections_there = parse_url($_collections_target, PHP_URL_PATH);
-    if (rtrim((string)$_collections_there, '/') !== rtrim((string)$_collections_here, '/')) {
-        header('Location: ' . $_collections_target, true, 302);
-        exit;
+    try {
+        require_once __DIR__ . '/core/public-repository.php';
+        require_once __DIR__ . '/core/public-controller.php';
+        require_once __DIR__ . '/core/public-runtime.php';
+        require_once __DIR__ . '/core/skin-view-contract.php';
+        require_once __DIR__ . '/core/skin-render-helpers.php';
+        require_once __DIR__ . '/core/trusted-html.php';
+        require_once __DIR__ . '/core/asset-registry.php';
+        require_once __DIR__ . '/core/skin-presentation.php';
+        require_once __DIR__ . '/core/custom-code-policy.php';
+
+        $_c_response = snapsmack_public_runtime($pdo, [
+            'view' => 'collections',
+            'sort' => $_GET['sort'] ?? '',
+            'route_aliases' => $skin_view['route_aliases'] ?? [],
+        ], $settings);
+
+        if (!empty($skin_view['navigation']) && is_array($skin_view['navigation'])) {
+            $_c_response['navigation'] = $skin_view['navigation'];
+        }
+
+        $_c_layout = __DIR__ . '/skins/' . $active_skin . '/layout.php';
+        if ((int)($_c_response['status'] ?? 0) === 200 && is_file($_c_layout)) {
+            $view = snapsmack_build_skin_view($_c_response, snapsmack_public_presentation(
+                $pdo, $settings, (string)$active_skin, $_collections_manifest,
+                $_c_response['navigation'] ?? [],
+                snapsmack_skin_declared_assets($_collections_manifest)
+            ));
+            if (!defined('SNAPSMACK_SKIN_RENDER')) define('SNAPSMACK_SKIN_RENDER', true);
+            include $_c_layout;
+            exit;
+        }
+    } catch (Throwable $_c_err) {
+        // Fall through to the legacy page. Logged, not shown.
+        if (function_exists('error_log')) {
+            error_log('collections.php skin render failed: ' . $_c_err->getMessage());
+        }
     }
 }
 

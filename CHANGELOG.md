@@ -13,6 +13,41 @@
 
 ## 0.7.904D - 2026-10-18 - WHO GOES THERE
 
+- **The collections page renders the skin itself now.** 903D tried to fix it
+  with a redirect and could not: Apache MultiViews resolves `/collections` to
+  `collections.php` before any rewrite runs, so the target address *is* the
+  current address and the loop guard correctly declined. Measured on
+  foreverphotograph.ing — `/collectionszz` reaches `index.php` and renders a
+  skinned 404 with **thirteen** stylesheets, while `/collections` renders the
+  legacy document with **one**. So the legacy page builds the view and
+  includes the skin layout in place, and any failure falls through to the old
+  page rather than showing a visitor an error.
+
+  That needed the presentation array the front controller assembles inline,
+  which is now `snapsmack_public_presentation()` in `core/skin-view-model.php`.
+  `index.php` still builds its own copy; converging the two is a change to the
+  front controller and wants daylight.
+
+- **The collections sort never reached the controller.** 903D passed `sort`
+  from `index.php` and two layers in between dropped it on the floor —
+  `snapsmack_public_runtime_request()` did not carry it, and
+  `snapsmack_public_parse_request()` did not keep it. Both do now, with the
+  value validated against the four known sorts at the boundary like everything
+  else there, so anything unrecognised comes out empty rather than reaching a
+  query.
+
+- **Which skin wants the profile masthead is a manifest question.** The new
+  presentation builder briefly asked `$active_skin === 'slickr'`, which pushed
+  core's skin-slug count past its ratchet. SLICKR declares
+  `features.profile_header` instead; core holds no list.
+
+- **The Albums heading at 60%.** Sean: *"make Albums font 60% of current
+  size."* The shared `.static-page-title` is `clamp(1.8rem, 4vw, 2.6rem)`; the
+  albums page gets that same clamp at 60% throughout, so it still scales with
+  the viewport instead of freezing at one width's answer. Verified live at
+  1440px: 41.6px to 24.96px. Scoped to the albums page — Collections and the
+  static pages share the class and were not asked about. SLICKR 1.0.42.
+
 - **A failed skin download says which thing failed.** Three spokes refused
   RATIONAL GEO and SLICKR minutes after those two packages were published,
   each reporting *"Download failed. Check that this server can reach the skin

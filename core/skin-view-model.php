@@ -483,4 +483,77 @@ function snapsmack_initialize_skin_media_slots(PDO $pdo, array &$settings, strin
     }
 }
 
+/**
+ * The presentation half of a strict skin view, built once.
+ *
+ * index.php assembles this inline before every controller render. The legacy
+ * standalone pages -- collections.php and its siblings -- never could, which
+ * is why they fell back to their own document with one stylesheet and a menu
+ * of their own invention. foreverphotograph.ing/collections was that document
+ * for its whole life, and the handoff added in 0.7.903D could not save it:
+ * Apache MultiViews resolves /collections to collections.php before any
+ * rewrite runs, so the redirect's loop guard correctly declined to send the
+ * address back to itself. Measured 18 October: /collectionszz reaches
+ * index.php and renders a skinned 404 with thirteen stylesheets, while
+ * /collections renders the legacy page with one.
+ *
+ * So a legacy page has to render the skin ITSELF, and to do that it needs
+ * exactly this array. index.php still builds its own copy; converging the two
+ * is a change to the front controller and wants its own daylight.
+ */
+function snapsmack_public_presentation(PDO $pdo, array $settings, string $active_skin,
+                                       array $manifest, array $navigation,
+                                       array $registered_assets = []): array
+{
+    $base = defined('BASE_URL') ? BASE_URL : '/';
+    $version = preg_replace('/[^A-Za-z0-9._-]/', '', (string)($manifest['version'] ?? ''));
+    if ($version === '') $version = defined('SNAPSMACK_VERSION_SHORT') ? SNAPSMACK_VERSION_SHORT : '1';
+
+    $base_style = $base . 'assets/css/public-base.css'
+        . (defined('SNAPSMACK_VERSION_SHORT') ? '?v=' . rawurlencode(SNAPSMACK_VERSION_SHORT) : '');
+    $skin_style = $base . 'skins/' . rawurlencode($active_skin) . '/style.css?v=' . rawurlencode($version);
+
+    $variant = preg_replace('/[^a-z0-9_-]/', '', strtolower((string)($settings['active_skin_variant'] ?? '')));
+    $variant_url = '';
+    if ($variant !== '' && array_key_exists($variant, $manifest['variants'] ?? [])
+        && is_file(dirname(__DIR__) . '/skins/' . $active_skin . '/variant-' . $variant . '.css')) {
+        $variant_url = $base . 'skins/' . rawurlencode($active_skin)
+            . '/variant-' . rawurlencode($variant) . '.css?v=' . rawurlencode($version);
+    }
+
+    return [
+        'site_name' => (string)($settings['site_name'] ?? ''),
+        'tagline' => (string)($settings['site_tagline'] ?? ''),
+        'base_url' => $base,
+        'language' => 'en',
+        'direction' => 'ltr',
+        'owner_name' => (string)($settings['site_author'] ?? ''),
+        'site_description' => strip_tags((string)($settings['site_description'] ?? '')),
+        'avatar_url' => function_exists('snapsmack_public_avatar_url')
+            ? snapsmack_public_avatar_url($settings) : '',
+        'skin_slug' => $active_skin,
+        'skin_style_url' => $skin_style,
+        'base_style_url' => $base_style,
+        'skin_variant_url' => $variant_url,
+        'skin_custom_style' => function_exists('snapsmack_skin_custom_style')
+            ? snapsmack_skin_custom_style($settings) : '',
+        'skin_presentation' => function_exists('snapsmack_skin_presentation')
+            ? snapsmack_skin_presentation($settings, $active_skin) : [],
+        'archive_layout' => (string)($settings['archive_layout'] ?? 'square'),
+        'archive_thumb_style' => (string)($settings['archive_thumb_style'] ?? 'cropped'),
+        'search_dock' => function_exists('snapsmack_gram_search_dock_presentation')
+            ? snapsmack_gram_search_dock_presentation($settings) : [],
+        'owner_custom_code' => function_exists('snapsmack_owner_custom_code')
+            ? snapsmack_owner_custom_code($settings) : '',
+        'registered_assets' => $registered_assets,
+        'footer' => snapsmack_prepare_public_footer($settings, $manifest),
+        // Asked of the manifest, not of a slug list in core. A skin that wants
+        // the profile masthead says so with features.profile_header; core has
+        // no business holding a list of which skins those are.
+        'slickr_profile' => !empty($manifest['features']['profile_header'])
+            ? snapsmack_prepare_slickr_profile($pdo, $settings, $navigation) : [],
+        'crop_circles' => snapsmack_prepare_crop_circles($pdo, $settings, $manifest, $navigation),
+    ];
+}
+
 // ===== SNAPSMACK EOF =====

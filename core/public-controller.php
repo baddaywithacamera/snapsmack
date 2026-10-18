@@ -28,6 +28,10 @@ function snapsmack_public_parse_request(array $input): array
         'category_id' => max(0, (int)($input['category_id'] ?? 0)),
         'album_id' => max(0, (int)($input['album_id'] ?? 0)),
         'query' => $query,
+        // Validated here rather than trusted: the collections route is the
+        // only consumer, and an unknown value falls back to 'manual' there.
+        'sort' => in_array((string)($input['sort'] ?? ''), ['manual', 'alphabetical', 'newest', 'oldest'], true)
+            ? (string)$input['sort'] : '',
     ];
     if (array_key_exists('fragment', $input)) $request['fragment'] = !empty($input['fragment']);
     return $request;
