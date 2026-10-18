@@ -984,6 +984,11 @@ a:hover { color: var(--sl-link-hover); }
 
 .sl-album-meta {
     margin: 0;
+    /* Measured on the live album page at 1440px: without this the paragraph
+       inherits the site's body line-height and stands 40px tall beside a 31px
+       title, which drops the counts below the title's line instead of beside
+       it. Matching the title's 1.2 puts them back on one line. */
+    line-height: 1.2;
     font-size: 0.8125rem;
     opacity: 0.72;
     white-space: nowrap;

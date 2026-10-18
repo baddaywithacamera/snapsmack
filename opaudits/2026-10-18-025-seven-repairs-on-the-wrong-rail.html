@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!-- SNAPSMACK_EOF_HEADER: last non-empty line must be the SNAPSMACK EOF comment. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OPAUDIT 025 - Seven repairs on the wrong rail</title>
+<link rel="stylesheet" href="_report.css">
+<style>tr { break-inside: avoid; page-break-inside: avoid; }</style>
+</head>
+<body>
+<p class="doc-kicker">SnapSmack Operability Audit - DING DONG BELL</p>
+<h1>OPAUDIT 025 - Seven repairs on the wrong rail</h1>
+
+<table class="meta">
+<tr><td class="k">Audit ID</td><td>2026-10-18-025</td></tr>
+<tr><td class="k">State</td><td>Open. The defect in IMPACT PRINTER's archive is fixed in source and not deployed. The operational cause - that nobody checks which rail a repair travels on - is unaddressed.</td></tr>
+<tr><td class="k">Scope</td><td>The two rails a change can ride to a live site: the CMS release, and the skin package. IMPACT PRINTER's archive paging is the worked example; the finding is about the rails.</td></tr>
+<tr><td class="k">Baseline</td><td>Fleet serving 0.7.902D, measured with <code>tools/_build/deployed-version.sh</code>. IMPACT PRINTER 2.1.14 installed on pixhellated.ca, which matches the repository.</td></tr>
+<tr><td class="k">Cost</td><td>Seven consecutive commits across four days, all titled as repairs to the same archive, none of which could have reached the owner. One working day of this session spent establishing why.</td></tr>
+</table>
+
+<h2>1. Decision</h2>
+<p>This is a delivery failure, not a coding failure. Most of the seven repairs were correct. They were written into the wrong artifact, or into the right artifact and never shipped, and nothing in the process asks the question that would have caught it.</p>
+<p>Sean's words, on the seventh: <em>"codex says IMPACT PRINTER Is fixed. for like the 6th time in a row. i have doubts."</em> The doubt was correct and the arithmetic was nearly right - it was the seventh.</p>
+<p><strong>SnapSmack ships on two rails and treats them as one.</strong> The CMS goes out as a versioned release to every site. Skins go out one at a time through the Skin Packager, the registry, and each site's SYSTEM UPDATES screen. A repair written in <code>core/</code> cannot arrive in a skin package. A repair written in <code>skins/</code> cannot arrive in a CMS release. Nobody is checking which one a given fix is in, so "fixed" has been reported seven times for a page that has never once changed for the person looking at it.</p>
+
+<h2>2. What the owner experienced</h2>
+<p>He opened the archive on his own site, saw it stop after the first screen of photographs, and said so. He was told it was fixed. He opened it again, saw the same thing, and said so again. Seven times across four days.</p>
+<p>Nothing he could have done would have revealed why, because both halves of the explanation are invisible from a browser: which version his site is serving, and which rail the repair was written on.</p>
+
+<h2>3. Measured</h2>
+<p>Every number here was read from the live fleet or from <code>git</code> on 17-18 October 2026, not inferred.</p>
+
+<table class="meta">
+<tr><td class="k">Commits titled as repairs to the IMPACT PRINTER archive</td><td>7, between 15 and 17 October</td></tr>
+<tr><td class="k">Of those, live on the fleet</td><td>3 (b1b122d6, 482a1a2a, 2478c133)</td></tr>
+<tr><td class="k">Of those, written and tagged but not deployed</td><td>4 (e3ae0ed4, 58ca1a58, 57770822, 61241422)</td></tr>
+<tr><td class="k">IMPACT PRINTER installed on pixhellated.ca</td><td>2.1.14 - current, matching the repository</td></tr>
+<tr><td class="k">pixhellated.ca/archive.php</td><td>302 to /archive-view, then <strong>24 photographs and no paging sentinel</strong></td></tr>
+<tr><td class="k">Where the paging repair actually lives</td><td><code>core/impact-printer-page-component.php</code> and <code>assets/js/ss-engine-columns.js</code> - the CMS rail, undeployed</td></tr>
+</table>
+
+<p>So the skin on that site is the newest build that exists, and the page is still broken, because the repair was never in the skin. Packaging the skin again - which is what "release 2.1.14" did - could not have worked and cannot work.</p>
+
+<p>The opposite failure was found on the same day, on a different site:</p>
+
+<table class="meta">
+<tr><td class="k">TRUE GRIT installed on foundtextures.ca</td><td>1.3.2, against 1.3.13 in the repository</td></tr>
+<tr><td class="k">Consequence</td><td>1.3.2 predates the <code>cms_controller</code> manifest key, so <code>archive.php</code> cannot hand off to the paginated archive route</td></tr>
+<tr><td class="k">foundtextures.ca/archive.php</td><td>200, no redirect, <strong>1,592 photographs in one 1.18 MB page</strong></td></tr>
+</table>
+
+<p>One site has the newest skin and an undeployed CMS fix. The other has a current CMS and a skin eleven releases old. Both pages are broken, for opposite reasons, and both were reported as fixed.</p>
+
+<h2>4. Cause</h2>
+<p>Three things compound.</p>
+<ol>
+<li><strong>Nothing reports a site's installed skin version.</strong> <code>tools/_build/deployed-version.sh</code> has existed for the CMS since the 892D tag incident, and the rules gate refuses a release that contradicts it. There was no equivalent for skins, so the only way to know was to read a stylesheet URL by hand. Built during this audit as <code>tools/_build/installed-skins.sh</code>; first run found 10 of 12 sites current and 2 stale.</li>
+<li><strong>Nothing marks which rail a change rides.</strong> A commit touching <code>core/impact-printer-page-component.php</code> and one touching <code>skins/impact-printer/style.css</code> look identical in a changelog entry and are described in the same words. Only the path distinguishes them, and the path is the thing nobody reads when they are reading a commit message.</li>
+<li><strong>"Fixed" is reported against the repository.</strong> Every one of the seven reports was true about the source tree. None was checked against a live page. This is the same failure as OPAUDIT 022's machine-enforced rules: compliance that depends on an agent remembering at the moment it types is not a mechanism.</li>
+</ol>
+
+<h2>5. How it was found</h2>
+<p>By the owner refusing to accept the seventh report. Not by a test, not by a check, not by either agent noticing. The first measurement of the day - counting the seven commits and asking which were deployed - took under a minute once somebody asked the question, and nobody had asked it in four days.</p>
+<p>Worth recording honestly: this session also got it wrong in the same direction. Having found one stale skin, it told Sean the fleet's skins were stale as a pattern. The script written an hour later measured 10 of 12 current. A single site is not a fleet, which is the exact error <code>deployed-version.sh</code> was written to stop for CMS versions.</p>
+
+<h2>6. The pattern, which is larger than one skin</h2>
+<p>The two-rail split is not a defect. Skins must ship independently of the CMS - that is what makes them replaceable, and it is why an owner can keep a skin while the CMS moves underneath. The defect is that the split is invisible at the moment it matters, which is when somebody says a thing is fixed.</p>
+<p>Any repair to a skin's behaviour now has to answer one question before it is reported: <strong>which artifact carries this, and has that artifact reached the site?</strong> For the CMS the answer is a script. For skins it now is too. Neither is wired into anything that would refuse a false report.</p>
+
+<h2>7. Open</h2>
+<ul>
+<li><strong>The four undeployed IMPACT PRINTER repairs.</strong> Tagged in 0.7.903D, not on the fleet. Until that release goes out, pixhellated's archive stops at 24 and nothing anybody does to the skin will change it.</li>
+<li><strong>TRUE GRIT 1.3.2 on foundtextures.ca.</strong> Eleven releases behind; the page loads 1,592 photographs at once until it is packaged and installed.</li>
+<li><strong>ONYX 0.1.21 on photofri.day.</strong> One release behind. No known symptom; listed because it was measured.</li>
+<li><strong>Nothing refuses a false report.</strong> <code>installed-skins.sh</code> is a report somebody has to run. It is deliberately not wired into the rules gate - a stale skin is not a reason to refuse a commit, and the gate must not need the network to answer - so the gap between "a script exists" and "a mistake is impossible" is still open.</li>
+<li><strong>No changelog entry states its rail.</strong> Cheapest available fix: a skin-affecting change names the skin and its new version in the entry, as the 903D entries now do. Not enforced.</li>
+</ul>
+
+<h2>8. What this audit does not claim</h2>
+<p>It does not claim the seven commits were careless. Read individually they are careful, several carry measurements, and the most recent one is correct. It claims that care spent on the wrong artifact reaches nobody, and that seven careful repairs with no delivery check are worth less than one repair that somebody confirmed on a live page.</p>
+<p>It also does not claim the fleet is broadly stale. It was measured: 10 of 12 sites are current. Two are not, and one of those two is the worst-looking page in the fleet.</p>
+
+<p class="doc-foot">SnapSmack Operability Audit 025 - 18 October 2026</p>
+</body>
+</html>
+<!-- ===== SNAPSMACK EOF ===== -->
