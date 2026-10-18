@@ -13,6 +13,24 @@
 
 ## 0.7.905D - 2026-10-18 - SAME ROOM
 
+- **Collections said "0 IMAGES" under collections holding twenty.**
+  `snap_collection_items` has been polymorphic — `item_type` / `item_id` /
+  `sort_order` — since the collection-items migration, and the repository's
+  query still joined `ci.image_id` and ordered by `ci.position`. Those columns
+  carry nothing for a polymorphic row, so every count came back zero and the
+  cover fell through to whatever the explicit override happened to be.
+  `collections.php` has carried the correct shape in its own SQL since that
+  migration, with a comment explaining why; this is that shape, not a second
+  attempt at it. Counts are right and a collection with no explicit cover
+  finds one through either member type again.
+
+- **The avatar was a placeholder beside a perfectly good cover photograph.**
+  `snapsmack_public_avatar_url()` was defined inside `index.php`, so it existed
+  only for pages the front controller rendered. `collections.php` renders the
+  skin itself, found no such function, and SLICKR drew its initials circle. The
+  helper moved to `core/skin-view-model.php` behind the same guard index.php
+  already used, so whichever file is reached first wins and neither redeclares.
+
 - **The collections page looked nothing like the rest of the site.** It
   rendered through the skin at last, and then rendered it wrong: no cover
   photograph, no stats row, initials where the avatar belongs, and three menu
