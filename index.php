@@ -361,6 +361,8 @@ try {
             'skin_presentation' => snapsmack_skin_presentation($settings, (string)$active_skin),
             'archive_layout' => (string)($settings['archive_layout'] ?? 'square'),
             'archive_thumb_style' => (string)($settings['archive_thumb_style'] ?? 'cropped'),
+            'archive_grid' => snapsmack_archive_grid_metrics(
+                $settings, (string)($settings['archive_thumb_style'] ?? 'cropped')),
             'search_dock' => snapsmack_gram_search_dock_presentation($settings),
             'owner_custom_code' => snapsmack_owner_custom_code($settings),
             'registered_assets' => $_registered_skin_assets,

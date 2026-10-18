@@ -541,6 +541,8 @@ function snapsmack_public_presentation(PDO $pdo, array $settings, string $active
             ? snapsmack_skin_presentation($settings, $active_skin) : [],
         'archive_layout' => (string)($settings['archive_layout'] ?? 'square'),
         'archive_thumb_style' => (string)($settings['archive_thumb_style'] ?? 'cropped'),
+        'archive_grid' => snapsmack_archive_grid_metrics(
+            $settings, (string)($settings['archive_thumb_style'] ?? 'cropped')),
         'search_dock' => function_exists('snapsmack_gram_search_dock_presentation')
             ? snapsmack_gram_search_dock_presentation($settings) : [],
         'owner_custom_code' => function_exists('snapsmack_owner_custom_code')
@@ -609,6 +611,44 @@ if (!function_exists('snapsmack_public_avatar_url')) {
         if (preg_match('#^https?://#i', $file)) return $file;
         return (defined('BASE_URL') ? BASE_URL : '/') . ltrim($file, '/');
     }
+}
+
+/**
+ * How wide a thumbnail tile is, and how many fit a row.
+ *
+ * archive.php has emitted these as --grid-cols and --thumb-width since the
+ * 0.7.79 layout model; the controller-rendered archive emitted neither, so the
+ * stylesheet fell through to its own defaults -- 200px tiles with an 80px gap,
+ * whatever the owner had chosen. Measured on pixhellated.ca: --thumb-width
+ * resolved to nothing and every tile came out 200px wide.
+ *
+ * The map and the legacy numeric fallback are archive.php's, unchanged. Two
+ * copies of a size table disagree eventually, and the one that drifts is the
+ * one nobody is looking at.
+ */
+function snapsmack_archive_grid_metrics(array $settings, string $grid_layout): array
+{
+    $map = [
+        'square'  => ['xs' => 120, 's' => 150, 'm' => 200, 'l' => 250, 'xl' => 300],
+        'cropped' => ['xs' => 150, 's' => 190, 'm' => 250, 'l' => 310, 'xl' => 375],
+    ];
+    $step = $settings['thumb_size'] ?? 'm';
+    if (is_numeric($step)) {
+        $px = (int)$step;
+        if ($px <= 130)      $step = 'xs';
+        elseif ($px <= 170)  $step = 's';
+        elseif ($px <= 230)  $step = 'm';
+        elseif ($px <= 290)  $step = 'l';
+        else                 $step = 'xl';
+    }
+    if (!in_array($step, ['xs', 's', 'm', 'l', 'xl'], true)) $step = 'm';
+    if (!isset($map[$grid_layout])) $grid_layout = 'square';
+
+    return [
+        'cols' => max(1, min(12, (int)($settings['browse_cols'] ?? 4))),
+        'step' => $step,
+        'thumb_width' => $map[$grid_layout][$step] ?? $map['square']['m'],
+    ];
 }
 
 // ===== SNAPSMACK EOF =====
