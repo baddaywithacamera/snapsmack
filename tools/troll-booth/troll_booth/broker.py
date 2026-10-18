@@ -1,3 +1,4 @@
+# SNAPSMACK_EOF_HEADER
 """Discovery, invocation, and audit for TROLL BOOTH."""
 
 from __future__ import annotations

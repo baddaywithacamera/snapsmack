@@ -32,4 +32,19 @@ command from becoming remotely callable by accident.
 Every invocation is appended to a local JSON-lines audit log. Arguments are
 recorded only after validation and secret-bearing argument names are rejected.
 
+## Desktop app contracts still needed
+
+TROLL BOOTH can use an app only after that app exposes a typed `agent --json`
+contract. The next useful contracts are:
+
+- SMACK UP YOUR BACKUP: list sites; show the latest successfully verified
+  backup for each site; distinguish a failed latest attempt from the last good
+  copy; list recovery points. “Never backed up” must be an explicit state.
+- CRONOMETER: list jobs, current health, and recent runs.
+- SYBU/GYSS: inspect an image job and submit an explicitly approved enrichment
+  job under the owner's existing account plan.
+
+The SUYB desktop list should show the last verified backup beside every blog.
+It must not label a failed or merely started attempt as a backup.
+
 <!-- SNAPSMACK_EOF -->

@@ -1,3 +1,4 @@
+# SNAPSMACK_EOF_HEADER
 """Typed, read-only capability policy for the first TROLL BOOTH build."""
 
 from __future__ import annotations
