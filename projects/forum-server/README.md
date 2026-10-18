@@ -109,7 +109,7 @@ Content-Type: application/json
 | GET | `/threads?cat=N&page=N&tag=slug` | Install key | Thread listing — pinned first, then by activity. Includes excerpt, last-reply author, solved state, unread flag, tag list |
 | GET | `/threads/{id}` | Install key | Full thread + replies + reactions + tags + read state. Increments view count. |
 | POST | `/threads` | Install key | Create a thread (rate-limited: 3/hour) |
-| PATCH | `/threads/{id}` | Own or mod | Edit body (own/mod) or toggle pin/lock flags (mod only) |
+| PATCH | `/threads/{id}` | Own or mod | Edit body (own/mod), set the author flag (own/mod), move to another board with `category_id` (mod), or toggle pin/lock flags (mod). The thread keeps its id on a move, so followers keep it, and both boards' counters move with it. |
 | DELETE | `/threads/{id}` | Own or mod | Soft-delete a thread |
 | POST | `/threads/{id}/replies` | Install key | Add a reply (rate-limited: 10/hour). Triggers notifications. |
 | PATCH | `/replies/{id}` | Own or mod | Edit reply body. Saves previous body to edit history. |
@@ -128,6 +128,7 @@ Content-Type: application/json
 | GET | `/notifications?page=N` | Install key | Get notifications (replies to your threads/watched threads). Includes unread count. |
 | POST | `/notifications/read` | Install key | Mark notifications as read. Body: `{"ids":[1,2]}` or `{"all":true}` |
 | PATCH | `/installs/me` | Install key | Update display name when blog name changes |
+| GET | `/me` | Install key or mod key | Who is this key: install, role (0-4), role_name, and `can{post,moderate,administer}`. The only read-only way to ask your own rank — every other gate is a write, so a client probing `GET /installs` (admin) was told a moderator key could not moderate. |
 
 ### Moderator actions
 

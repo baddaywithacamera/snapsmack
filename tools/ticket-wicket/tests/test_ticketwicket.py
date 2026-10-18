@@ -240,11 +240,47 @@ def test_the_client_refuses_to_run_without_a_key():
         f.categories()
 
 
-def test_the_two_missing_endpoints_say_so_rather_than_faking_it():
+def test_the_endpoint_that_is_still_missing_says_so_rather_than_faking_it():
+    """move_thread was built -- PATCH threads/{id} {category_id}. Breadcrumbs
+    were not, and a method that quietly did nothing would be worse than one
+    that refuses out loud."""
     f = forummod.Forum("https://x", "k")
-    with pytest.raises(NotImplementedError, match="no move endpoint"):
-        f.move_thread(1, 2)
     with pytest.raises(NotImplementedError, match="Breadcrumbs do not exist"):
         f.leave_breadcrumb(1, "t", 2)
+
+
+def test_moving_a_thread_patches_rather_than_reposting():
+    """Re-posting elsewhere would leave every follower behind. The thread keeps
+    its id; only its board changes."""
+    f = forummod.Forum("https://x", "k")
+    seen = {}
+
+    def fake_call(method, path, payload=None):
+        seen.update(method=method, path=path, payload=payload)
+        return {"status": "moved", "category_id": 7}
+
+    f._call = fake_call
+    assert f.move_thread(31, 7)["status"] == "moved"
+    assert seen["method"] == "PATCH"
+    assert seen["path"] == "threads/31"
+    assert seen["payload"] == {"category_id": 7}
+
+
+def test_the_role_question_is_asked_not_inferred_from_a_403():
+    """am_i_admin used to probe GET /installs and read the refusal, which is
+    gated at admin -- so a working moderator key was told it was not one."""
+    f = forummod.Forum("https://x", "k")
+    asked = []
+
+    def fake_call(method, path, payload=None):
+        asked.append((method, path))
+        return {"role": 2, "role_name": "moderator",
+                "can": {"post": True, "moderate": True, "administer": False}}
+
+    f._call = fake_call
+    assert f.role() == 2
+    assert f.can_moderate() is True
+    assert f.am_i_admin() is False
+    assert asked and asked[0] == ("GET", "me")
 
 # ===== SNAPSMACK EOF =====

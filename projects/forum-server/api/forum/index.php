@@ -1065,7 +1065,40 @@ if ($method === 'PATCH' && count($parts) === 2 && $parts[0] === 'threads' && cty
         respond(['status' => 'updated', 'is_pinned' => (bool)$pinned, 'is_locked' => (bool)$locked]);
     }
 
-    api_error(400, 'MISSING_FIELDS', 'Provide body (edit content), flag (post type), or is_pinned/is_locked (mod flags).');
+    // ── Mod: move the thread to another board ───────────────────────────────
+    // Re-posting it elsewhere would leave every follower behind, so the thread
+    // keeps its id and only its category changes. The counters on both boards
+    // move with it or the listings drift apart.
+    if (isset($b['category_id'])) {
+        if (!is_install_mod($install)) {
+            api_error(403, 'FORBIDDEN', 'Only moderators can move threads.');
+        }
+        $to = (int)$b['category_id'];
+        $from = (int)$thread['category_id'];
+        if ($to === $from) respond(['status' => 'unchanged', 'category_id' => $to]);
+
+        $cat = $pdo->prepare("SELECT id FROM ss_forum_categories WHERE id = ? AND is_active = 1 LIMIT 1");
+        $cat->execute([$to]);
+        if (!$cat->fetch()) api_error(400, 'INVALID_CATEGORY', 'Target board not found or inactive.');
+
+        $replies = (int)($thread['reply_count'] ?? 0);
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare("UPDATE ss_forum_threads SET category_id = ? WHERE id = ?")
+                ->execute([$to, $thread_id]);
+            $pdo->prepare("UPDATE ss_forum_categories SET thread_count = GREATEST(thread_count - 1, 0), reply_count = GREATEST(reply_count - ?, 0) WHERE id = ?")
+                ->execute([$replies, $from]);
+            $pdo->prepare("UPDATE ss_forum_categories SET thread_count = thread_count + 1, reply_count = reply_count + ? WHERE id = ?")
+                ->execute([$replies, $to]);
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            api_error(500, 'SERVER_ERROR', 'Failed to move thread.');
+        }
+        respond(['status' => 'moved', 'category_id' => $to, 'moved_from' => $from]);
+    }
+
+    api_error(400, 'MISSING_FIELDS', 'Provide body (edit content), flag (post type), category_id (move), or is_pinned/is_locked (mod flags).');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1783,6 +1816,50 @@ if (count($parts) === 3 && $parts[0] === 'threads' && ctype_digit($parts[1]) && 
         )->execute([$install['id'], $thread_id]);
         respond(['status' => 'unfollowed']);
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /me — who is this key, and what may it do?
+//
+// Every other way to learn your own rank was a write. A client that wanted to
+// know whether it could moderate had to try GET /installs, which is gated at
+// ADMIN (role 3), so a working moderator key was told it was not one. Any
+// tool driving this API from a command line needs to ask before it acts, and
+// this is the only question it cannot answer by reading anything else.
+//
+// `can` is the answer in the form a caller actually uses: not a number to
+// compare against gates it has to know about, but the three questions it asks.
+// ─────────────────────────────────────────────────────────────────────────────
+if ($method === 'GET' && $path === 'me') {
+    $names = [0 => 'member', 1 => 'power', 2 => 'moderator', 3 => 'admin', 4 => 'god'];
+
+    // The God key is not an install. It answers as itself rather than 404ing.
+    if (is_mod()) {
+        respond([
+            'install'   => null,
+            'role'      => 4,
+            'role_name' => $names[4],
+            'can'       => ['post' => true, 'moderate' => true, 'administer' => true],
+        ]);
+    }
+
+    $install = require_auth();
+    $role    = install_role($install);
+    respond([
+        'install' => [
+            'id'           => (int)$install['id'],
+            'domain'       => $install['domain'],
+            'display_name' => $install['display_name'],
+            'ss_version'   => $install['ss_version'],
+        ],
+        'role'      => $role,
+        'role_name' => $names[$role] ?? $names[0],
+        'can'       => [
+            'post'       => true,          // any unbanned key may post
+            'moderate'   => $role >= 2,    // pin, lock, tag, edit and delete others
+            'administer' => $role >= 3,    // create boards, set roles below your own
+        ],
+    ]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -11,6 +11,54 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.904D - 2026-10-18 - WHO GOES THERE
+
+- **The forum has a command line.** `tools/forum-cli` — `fc` — works the
+  forum without a browser: boards, threads, posting, replying, reacting,
+  following, locking, pinning, moving, search and notifications, each in plain
+  text or `--json`. Built so the desktop tools, Claude and Codex all drive the
+  forum through one client instead of each growing its own. `fc agent` prints
+  the capability sheet, refusals first, and two tests compare that sheet
+  against the real command list in both directions — a sheet that promises a
+  command which does not exist, or hides one that does, fails the build.
+
+- **`GET /me` — the question the API could not answer.** Every gate near the
+  top of the forum was a write, so a client asking "may I moderate?" had to
+  probe `GET /installs`, which sits at **admin**. A working moderator key was
+  told it could not moderate. `/me` returns the install, the role number, its
+  name, and `can{post,moderate,administer}`, so a caller never has to know
+  which numeric gate is checked where. TICKET WICKET asks it now instead of
+  reading a 403.
+
+- **A thread can be moved between boards.** `PATCH /threads/{id}` takes
+  `category_id`. The column and its listing filter already existed; only the
+  endpoint was missing, and the client said so in a raised `NotImplementedError`
+  rather than faking it. The thread keeps its id, so everyone following it
+  keeps it, and both boards' counters move with it. Breadcrumbs when a thread
+  moves still do not exist, and still say so.
+
+- **One forum client, not two.** It moved to `tools/_shared/snap_forum.py`;
+  `ticketwicket/forum.py` is a re-export, so nothing that imported it changed.
+  Two copies of an HTTP client drift apart, and the copy that drifts is always
+  the one nobody is reading.
+
+- **A harness that lets a browser measure a skin before it ships.**
+  `tools/_build/skin-harness.php` renders a skin's page to a standalone file
+  with its real stylesheet. It immediately earned itself: measured at 1440px,
+  SLICKR's new album meta line inherited the site's body line-height, stood
+  40px tall beside a 31px title, and dropped the counts below the title
+  instead of beside it. Fixed with one declaration, measured again, and the
+  counts sit on the title's line. SLICKR 1.0.41.
+
+- **OPAUDIT 025 — "Seven repairs on the wrong rail."** Seven consecutive
+  commits across four days titled as repairs to the IMPACT PRINTER archive,
+  none of which could have reached the owner: three shipped in the CMS while
+  the skin was already current, four are tagged and undeployed, and the repair
+  itself lives in core rather than in the skin that kept being packaged.
+  Meanwhile foundtextures.ca runs TRUE GRIT eleven releases behind and serves
+  1,592 photographs in one page. Two opposite failures, one cause: SnapSmack
+  ships on two rails and nobody checks which one a fix is on.
+
 ## 0.7.903D - 2026-10-17 - PULLING RANK
 
 - **An album archive says which album it is.** `?album=N&view=archive` went
