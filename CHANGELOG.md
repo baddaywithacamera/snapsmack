@@ -11,7 +11,7 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.907D - 2026-10-18 - ONE PAGE AT A TIME
+## 0.7.906D - 2026-10-18 - RIGHT WAY UP
 
 - **archive.php has never had paging. It does now.** The page selected every
   published photograph and printed all of them: foundtextures.ca answered
@@ -29,8 +29,6 @@
 
   The count uses `COUNT(DISTINCT i.id)`, because the filter joins multiply
   rows — which is why the listing itself has always selected `DISTINCT`.
-
-## 0.7.906D - 2026-10-18 - RIGHT WAY UP
 
 - **Every archive thumbnail was landscape, including the portraits.** All 24
   tiles on pixhellated.ca came back `orient-landscape`, so a portrait
