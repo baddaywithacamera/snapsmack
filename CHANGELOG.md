@@ -13,6 +13,25 @@
 
 ## 0.7.903D - 2026-10-17 - PULLING RANK
 
+- **IMPACT PRINTER's thumbnail archive no longer stops after the first page.**
+  The endless-paging sentinel was only written for the masonry layout, so the
+  square and cropped thumbnail archives had no transport and ended wherever
+  page one ended. The sentinel now renders for every archive layout and the
+  columns engine knows how to append to the thumbnail grid. IMPACT PRINTER
+  2.1.14. (Codex.)
+
+- **The archive thumbnail style is read as the global setting it is.** The skin
+  was pulling `archive_thumb_style` out of its own per-skin presentation bag,
+  which core/skin-settings.php lists as global precisely so a stale per-skin
+  copy cannot override it. It now comes through the skin view contract from the
+  one place it is set. (Codex.)
+
+- **A regression test had been failing silently for four releases.** The IMPACT
+  PRINTER columns check pinned the manifest to exactly 2.1.10, so every later
+  version failed it — and a test that always fails stops being read. It now
+  treats 2.1.10 as the floor and checks what it was written to check: that the
+  skin declares the shared columns component.
+
 - **Promoting a blog in the forum admin did nothing at all.** The Promote
   button wrote `is_moderator` and stopped there. Since the v4 role ladder
   landed, the API reads `role` first and `is_moderator` is only a mirror of it,
