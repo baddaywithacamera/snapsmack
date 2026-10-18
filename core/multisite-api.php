@@ -2075,6 +2075,9 @@ if ($resource === 'skins' && $sub_action === 'reinstall' && $method === 'POST') 
     $slug         = trim($body['skin_slug']    ?? '');
     $download_url = trim($body['download_url'] ?? '');
     $signature    = trim($body['signature']    ?? '');
+    // The registry states download_size for every package. Passing it on is
+    // what lets the spoke tell a half-published package from a network fault.
+    $download_size = (int)($body['download_size'] ?? 0);
 
     if (!$slug || !$download_url)                         ms_err('skin_slug and download_url required');
     if (!preg_match('/^[a-zA-Z0-9_-]+$/', $slug))        ms_err('Invalid skin slug');
@@ -2085,7 +2088,7 @@ if ($resource === 'skins' && $sub_action === 'reinstall' && $method === 'POST') 
     require_once __DIR__ . '/release-pubkey.php';
 
     $public_key = defined('SNAPSMACK_RELEASE_PUBKEY') ? SNAPSMACK_RELEASE_PUBKEY : '';
-    $result     = skin_registry_install($slug, $download_url, $signature, $public_key);
+    $result     = skin_registry_install($slug, $download_url, $signature, $public_key, $download_size);
 
     if ($result['success']) ms_ok(['skin' => $slug, 'message' => $result['message']]);
     ms_err($result['message']);
@@ -2118,6 +2121,7 @@ if ($resource === 'skins' && $sub_action === 'reinstall-all' && $method === 'POS
         $slug         = trim((string)($package['skin_slug'] ?? ''));
         $download_url = trim((string)($package['download_url'] ?? ''));
         $signature    = trim((string)($package['signature'] ?? ''));
+        $download_size = (int)($package['download_size'] ?? 0);
 
         if (!$slug || !preg_match('/^[a-zA-Z0-9_-]+$/', $slug)) {
             $results[] = ['skin' => $slug, 'ok' => false, 'message' => 'Invalid skin slug'];
@@ -2130,7 +2134,7 @@ if ($resource === 'skins' && $sub_action === 'reinstall-all' && $method === 'POS
             continue;
         }
 
-        $result = skin_registry_install($slug, $download_url, $signature, $public_key);
+        $result = skin_registry_install($slug, $download_url, $signature, $public_key, $download_size);
         $ok     = !empty($result['success']);
         $results[] = ['skin' => $slug, 'ok' => $ok, 'message' => $result['message'] ?? ''];
         if ($ok) $installed++; else $failed++;
