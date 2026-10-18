@@ -11,6 +11,7 @@ from typing import Any
 from .auth import AuthError, AuthManager
 from .broker import Broker
 from .room import Room, RoomError
+from .mcp import McpAdapter
 
 
 class BoothService:
@@ -23,6 +24,7 @@ class BoothService:
         )
         self.auth = AuthManager(self.tool_root / "state" / "credentials.json")
         self.room = Room(self.tool_root / "state" / "room.jsonl")
+        self.mcp = McpAdapter(self.broker)
         self.server = ThreadingHTTPServer(("127.0.0.1", port), self._handler())
 
     @property
@@ -40,6 +42,11 @@ class BoothService:
                 return
 
             def _json(self, status: int, body: Any) -> None:
+                if body is None:
+                    self.send_response(status)
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    return
                 encoded = json.dumps(body, ensure_ascii=False).encode("utf-8")
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -106,6 +113,10 @@ class BoothService:
                 except (AuthError, ValueError, json.JSONDecodeError) as exc:
                     self._json(401 if isinstance(exc, AuthError) else 400,
                                {"ok": False, "error": str(exc)})
+                    return
+                if self.path == "/mcp":
+                    status, response = service.mcp.handle(body, session.actor)
+                    self._json(status, response)
                     return
                 if self.path == "/v1/lock":
                     service.auth.lock()
