@@ -6,11 +6,13 @@ import json
 import os
 from pathlib import Path
 from urllib.parse import parse_qs
+from urllib.parse import urlparse
 
 import uvicorn
 from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
 from mcp.server.mcpserver import MCPServer
+from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import AnyHttpUrl
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -150,7 +152,14 @@ async def worker_result(request: Request) -> JSONResponse:
     return JSONResponse({"ok": ok}, status_code=200 if ok else 409)
 
 
-app = mcp.streamable_http_app()
+public_host = urlparse(PUBLIC_URL).netloc
+app = mcp.streamable_http_app(
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[public_host, "127.0.0.1:*", "localhost:*"],
+        allowed_origins=["https://claude.ai", "https://www.claude.ai", PUBLIC_URL],
+    )
+)
 
 
 def main() -> None:
