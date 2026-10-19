@@ -112,6 +112,12 @@ if ($lastTag !== '') {
     }
     foreach ($touched as $slug => $files) {
         if (in_array('manifest.json', $files, true)) continue;   // version may have moved
+        // A directory with no manifest.json is not a shippable skin -- the
+        // packager skips it and the registry has nowhere to list it, so
+        // "bump its version" is advice with nothing to bump. skins/beatbox
+        // has no manifest and was flagged for two fleet-wide security
+        // commits from 29 September that touched every skin at once.
+        if (!is_file($root . '/skins/' . $slug . '/manifest.json')) continue;
         $check(false, $slug . ' has changed files since ' . $lastTag . ' ('
             . implode(', ', $files) . ') but its manifest.json was not touched. '
             . 'Skins install by version: without a bump this change reaches no site.');

@@ -62,6 +62,25 @@
 .ss-scroll-wall .ss-masonry-item:hover .scroll-item-title,
 .ss-scroll-wall .ss-masonry-item:focus-visible .scroll-item-title { opacity: 1; }
 /* Infinite-scroll tripwire — the engine observes it and appends the next page. */
-.ss-scroll-wall + .scroll-wall-sentinel,
-.scroll-wall .scroll-wall-sentinel { height: 1px; width: 100%; }
+/* The sentinel must have AREA. An IntersectionObserver never reports a
+   zero-height target as intersecting, so a sentinel with no height silently
+   switches endless scroll off -- measured on pixhellated.ca, where the archive
+   stopped at 24 of 93 photographs and an observer built with the engine's own
+   settings also reported "not intersecting" on a target sitting 791px down a
+   900px viewport.
+
+   This used to apply only next to .ss-scroll-wall or inside .scroll-wall, so a
+   grid with neither class -- the archive's #browse-grid -- got nothing, and the
+   skins that work (ONYX, RATIONAL GEO, SCROLL) each carry their own copy of
+   this rule. The engine's own contract belongs with the engine.
+
+   flex-shrink:0 matters as much as the height: inside a flex column whose
+   content overflows, a 1px child is shrunk back to 0 and the observer goes
+   quiet again. */
+.scroll-wall-sentinel {
+    height: 1px;
+    min-height: 1px;
+    width: 100%;
+    flex: 0 0 1px;
+}
 /* ===== SNAPSMACK EOF ===== */

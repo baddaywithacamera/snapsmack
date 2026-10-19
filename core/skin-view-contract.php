@@ -14,6 +14,10 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     if ($kind === 'page' && !empty($item['slug'])) {
         $bodyClasses[] = 'page-slug-' . preg_replace('/[^a-z0-9_-]/i', '-', (string)$item['slug']);
     }
+    // Skin stylesheets key archive-only rules off this -- IMPACT PRINTER's
+    // site footer is hidden except under .archive-page, and nothing was
+    // setting it, so the archive rendered a footer zero pixels tall.
+    if ($kind === 'archive' || $kind === 'hashtag') $bodyClasses[] = 'archive-page';
     if ($kind === 'blogroll') $bodyClasses[] = 'is-blogroll';
     if ($kind === 'photo') $bodyClasses[] = 'is-photo-page';
     $presentation['body_class'] = implode(' ', $bodyClasses);
