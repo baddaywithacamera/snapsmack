@@ -11,6 +11,8 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.912D - 2026-10-19 - PIXEL DIPLOMACY
+
 - **Pixelfed 0.15 compatibility without abandoning older peers.** Activity
   object references now accept both URI and embedded-object forms for likes,
   boosts, undo and delete. Direct messages retain context, conversation,
