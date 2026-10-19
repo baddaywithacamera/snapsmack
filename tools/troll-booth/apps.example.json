@@ -1,0 +1,15 @@
+{
+  "apps": [
+    {
+      "slug": "log-flogger",
+      "name": "LOG FLOGGER",
+      "capabilities_command": ["python", "C:/path/to/log-flogger/lf.py", "agent", "--json"]
+    },
+    {
+      "slug": "ticket-wicket",
+      "name": "TICKET WICKET",
+      "capabilities_command": ["python", "C:/path/to/ticket-wicket/tw.py", "agent", "--json"]
+    }
+  ]
+}
+

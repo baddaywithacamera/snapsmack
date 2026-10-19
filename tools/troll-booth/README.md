@@ -5,62 +5,116 @@
 
 **Nobody crosses without papers.**
 
-TROLL BOOTH is the local capability broker for SnapSmack desktop applications.
-It discovers an application's live `agent --json` sheet, intersects that sheet
-with a typed local policy, and invokes only the resulting read-only capability.
-It never accepts a shell command.
+TROLL BOOTH is SnapSmack's local, loopback-only capability broker and agent
+collaboration room. It lets an explicitly paired Claude Web or ChatGPT Web
+session discover and use the supported CLI surfaces of installed SnapSmack
+desktop applications without exposing a shell or a public network service.
 
-This first implementation slice provides the broker core and command-line
-feasibility harness. The native `booth.py` window now owns first-run password
-and TOTP setup, starts a dynamically assigned loopback-only service, issues
-ten-minute actor sessions, and provides an emergency lock. An unlocked owner
-can create a two-minute, actor-scoped, single-use pairing code. The browser
-connector that submits that code is not yet complete.
+Sean unlocks the native application with password plus TOTP. The native window
+shows connected agents, available apps, active tasks, conversations, plans,
+approvals, evidence, and audit receipts. It also provides per-agent pause,
+session revocation, bridge lock, and emergency stop.
 
-Paired actors share a persistent collaboration room. Every message carries its
-actor, intended recipient, kind, and timestamp. Sean can read and post in the
-room from the native TROLL BOOTH window.
+## First build boundary
 
-The authenticated `/mcp` endpoint implements MCP initialization, tool listing,
-and tool calls. Only approved application builds appear in Claude's tool list.
-For Claude Web, CT106 hosts the public MCP frontend and the local booth connects
-outward to it over HTTPS. The existing OptiPlex Cloudflare Tunnel publishes the
-CT106 frontend; the workstation does not run `cloudflared` or accept inbound
-connections. The device token is held only in memory and must be entered again
-after TROLL BOOTH restarts.
+The original v0.1 build was deliberately read-only:
 
-```powershell
-python tb.py apps --json
-python tb.py capabilities log-flogger --json
-python tb.py invoke log-flogger analyze --args '{"quiet_days":14}' --actor codex --json
-python booth.py
+1. Bind only to loopback.
+2. Start locked.
+3. Unlock in the native window through the existing SnapSmack step-up system.
+4. Pair Claude Web and ChatGPT Web with separate short-lived sessions.
+5. Discover installed apps through their `agent --json` or
+   `capabilities --json` contract.
+6. Invoke only declared read-only capabilities through structured arguments.
+7. Record actor, reason, ticket, command, result, and receipt.
+8. Provide the collaboration room and Sean's control window.
+
+No shell, arbitrary executable, production write, reply delivery, moderation,
+cleanup, restore, deletion, or deployment belongs in the first build.
+
+## Implementation status
+
+The experimental v0.1.3 collaboration slice is implemented in `troll_booth/`:
+
+- OAuth-protected Streamable HTTP MCP endpoint;
+- short-lived, single-use owner pairing codes;
+- outbound-only local worker connection;
+- SQLite job queue and audit ledger;
+- append-only local conversation history with SQLite FTS5 search and per-room hash chaining;
+- `booth_status`, `list_apps`, and `app_capabilities` read-only tools;
+- `list_conversations`, `conversation_messages`, and `search_conversation` local-history tools;
+- authenticated room posting with a separate `booth:write` pairing grant;
+- expiring file and subsystem claims that reject overlapping agents;
+- loopback-only owner console for rooms, search, posting, working agreement, and validated app configuration;
+- read-only sessions remain unable to post or claim work;
+- exact argv capability discovery with `shell=False`;
+- systemd and Apache deployment templates.
+- credential-free Windows owner-console installer and a recovery runbook.
+
+OAuth sessions are intentionally revoked whenever the remote service restarts
+in this first build. This is safer than persisting bearer and refresh tokens
+before the owner-facing revocation UI exists.
+
+The pairing code is the owner's explicit step-up decision. A normal code grants
+read-only access. A code issued with `--write` adds collaboration write access
+to that session even when a browser MCP client reuses a registration that asks
+only for its original read scope.
+
+Conversation bodies are stored in the central MariaDB service. The local
+`~/.troll-booth/history.sqlite3` file is only a clearly labelled offline queue;
+it is not a second source of truth. Conversation history is not stored in Cloudflare or in the
+public MCP adapter. The public service queues bounded read requests; the
+outbound worker performs the search locally and returns only the requested
+results. A returned payload is single-consumption and is removed from the relay
+database as soon as the requesting session receives it. Messages are
+append-only and hash-chained per room. Attachments are references, not copied
+blobs.
+
+The production design uses the existing central MariaDB service on
+CT110 the authoritative, full-text-searchable conversation and audit store.
+SQLite becomes an optional encrypted offline cache and spool that can be
+rebuilt from MariaDB. The existing rclone backup path must transport a
+transaction-consistent MariaDB dump or physical backup; copying live database
+files is not considered a recoverable backup. The desktop app, CLI and worker
+all use MariaDB through the same conversation-store contract.
+
+## Local development
+
+```text
+python -m venv .venv
+.venv/Scripts/python -m pip install -e .
+set TROLL_BOOTH_WORKER_TOKEN=replace-with-a-long-random-value
+.venv/Scripts/troll-booth-server
+.venv/Scripts/troll-booth-owner
 ```
 
-The initial policy exposes:
+The owner console binds only to `127.0.0.1:8766`, uses a random local token,
+and never displays worker credentials. It keeps a previous copy when the
+working agreement or app capability configuration is changed.
 
-- LOG FLOGGER: `gather`, `analyze`
-- TICKET WICKET: `queue`, public `show`, `stale`
+For a clean Windows installation or disaster recovery, run
+`deploy/windows/install-owner-console.ps1`. See `RECOVERY.md` for the complete
+source-versus-secret boundary and rebuild procedure.
 
-The policy contains argument types and bounds. Discovery proves the installed
-application still declares the command; the policy prevents a newly added app
-command from becoming remotely callable by accident.
+The production endpoint is `/mcp`. `/health` discloses only service name,
+version, and health. The worker endpoints require a separate random bearer
+credential that is never granted to Claude.
 
-Every invocation is appended to a local JSON-lines audit log. Arguments are
-recorded only after validation and secret-bearing argument names are rejected.
+Create a browser pairing code on the remote adapter host:
 
-## Desktop app contracts still needed
+```text
+troll-booth pair-code --actor claude
+```
 
-TROLL BOOTH can use an app only after that app exposes a typed `agent --json`
-contract. The next useful contracts are:
+The code expires in five minutes and is invalid immediately after one use.
 
-- SMACK UP YOUR BACKUP: list sites; show the latest successfully verified
-  backup for each site; distinguish a failed latest attempt from the last good
-  copy; list recovery points. “Never backed up” must be an explicit state.
-- CRONOMETER: list jobs, current health, and recent runs.
-- SYBU/GYSS: inspect an image job and submit an explicitly approved enrichment
-  job under the owner's existing account plan.
+## Canonical specification
 
-The SUYB desktop list should show the last verified backup beside every blog.
-It must not label a failed or merely started attempt as a backup.
+The complete authority, protocol, security, collaboration, and acceptance-test
+contract is section 15 of:
+
+`docs/support-operations-agent-cli-spec.md`
+
+That document controls when this README and implementation disagree.
 
 <!-- SNAPSMACK_EOF -->
