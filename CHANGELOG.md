@@ -13,7 +13,30 @@
 
 ## 0.7.909D - 2026-10-19 - FEWER LINES
 
-**Skin only. No CMS deploy needed — package 50 SHADES 1.7.4 and push it.**
+**Needs a CMS deploy AND 50 SHADES 1.7.4 packaged.**
+
+- **GALLERIA's solo page has its filmstrip back.** The strip along the
+  bottom stopped being emitted at the strict conversion, and
+  `skins/galleria/style.css` has carried **14 rules** for `.htbs-filmstrip`
+  ever since, waiting for markup that no longer existed. The photo response
+  carries the strip again — the most recent published photographs, newest
+  first, honouring `htbs_show_filmstrip` exactly as the old layout read it —
+  and the component draws it with the current photograph marked active, which
+  is what `ss-engine-overlay.js` scrolls to.
+
+- **A check that finds the rest of them.** `tools/_build/dead-skin-css.py`
+  asks, for every class a skin's stylesheet styles, whether anything still
+  emits it. Sean has been finding these one at a time by eye on live sites
+  for thirteen days — the filmstrip, CHAPLIN's EXIF table, SLICKR's byline,
+  RATIONAL GEO's archive grid — and every one had this exact shape.
+
+  First run: **894 dead rules across 29 skins**, clustered by feature because
+  thirty rules named `*-comment-*` across five skins is one missing feature,
+  not thirty. The largest clusters are **archive** headers (18 skins),
+  **comments** (7 skins), **EXIF** (5 skins), **search** (5 skins) and **back
+  links** (10 skins). That is the map of what the conversion left behind.
+
+  A report, not a gate: a ratchet that starts at 894 means nothing.
 
 - **The blogroll's separator lines are gone.** `.blogroll-peer` drew a
   `border-bottom` under every entry, and in two columns that rule is only as
