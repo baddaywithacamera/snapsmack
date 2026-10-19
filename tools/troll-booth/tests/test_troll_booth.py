@@ -16,7 +16,7 @@ from troll_booth.oauth import BoothOAuthProvider
 from troll_booth.history import ConversationStore
 from troll_booth.store import BoothStore
 from troll_booth.worker import CapabilityRegistry
-from troll_booth.attachments import import_image, read_image
+from troll_booth.attachments import import_image, import_image_bytes, read_image
 
 
 class StoreTests(unittest.TestCase):
@@ -44,6 +44,14 @@ class StoreTests(unittest.TestCase):
 
 
 class ConversationTests(unittest.TestCase):
+    def test_clipboard_image_bytes_are_managed_and_verified(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            attachment = import_image_bytes(b"clipboard-png", root, "pasted-screenshot.png")
+            self.assertEqual(attachment["name"], "pasted-screenshot.png")
+            recovered = read_image(attachment, root)
+            self.assertEqual(base64.b64decode(recovered["base64"]), b"clipboard-png")
+
     def test_screenshot_is_copied_verified_and_attached(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
