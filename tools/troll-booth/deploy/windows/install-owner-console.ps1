@@ -31,4 +31,3 @@ Write-Host "TROLL BOOTH owner console installed and started."
 Write-Host "Source: $InstallRoot"
 Write-Host "Launcher: $launcher"
 Write-Host "Startup entry: $startupLauncher"
-
