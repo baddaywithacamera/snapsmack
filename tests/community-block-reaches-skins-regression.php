@@ -87,18 +87,24 @@ $check(str_contains($runtime, "\$response['community'] = \$_community"),
 $check(str_contains($runtime, "!empty(\$response['comments_enabled'])"),
     'the community block ignores comments_enabled, so switching comments off leaves the form');
 
-// ── and no skin had to change for it ───────────────────────────────────────
-// This is the delivery half (OPAUDIT 025). A fix that needed 26 skin packages
-// built, published and installed per site would have reached almost nobody.
-$touched = [];
-foreach (glob($root . '/skins/*/layout.php') as $layout) {
-    if (str_contains((string)file_get_contents($layout), "'community'")) {
-        $touched[] = basename(dirname($layout));
-    }
-}
-$check($touched === [],
-    'a skin now reads the community key, which means a manifest bump and a '
-    . 'per-site skin update before anyone sees comments: ' . implode(', ', $touched));
+// ── and a skin that does nothing still gets comments ───────────────────────
+// This is the delivery half (OPAUDIT 025). The guarantee is that the shared
+// comments component reads the block itself, so the comment system arrives on
+// a CMS deploy alone -- no manifest bump, no package, no per-site skin update.
+//
+// A skin MAY also name the key, and seven do: 0.7.911D had to open each solo
+// page's `if (!empty(...comments))` wrapper, which hid the form until somebody
+// had already commented, and that conditional only exists in the template. No
+// CMS change can open it. Those skins need packaging, and
+// tests/first-comment-gate-regression.php is what holds that line. What must
+// never happen is the block reaching skins ONLY by that route.
+$helpers = (string)file_get_contents($root . '/core/skin-render-helpers.php');
+$check(str_contains($helpers, 'snap_community_block()'),
+    'the comments component no longer reads the block itself, so every skin '
+    . 'would need repackaging before anyone could comment');
+$check(!str_contains($helpers, "\$data['community']"),
+    'the component takes the block as data again, which means each skin has to '
+    . 'pass it -- 26 packages before the feature arrives');
 
 if ($fail) {
     fwrite(STDERR, "FAIL: the community block does not reach the skins\n  - " . implode("\n  - ", $fail) . "\n");

@@ -11,6 +11,49 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.911D - 2026-10-19 - FIRST COMMENT
+
+**Needs a CMS deploy AND seven skins packaged:** GAME ON 0.1.37,
+HIP TO BE SQUARE 1.3.14, INSTANT CAMERA 1.0.53, NEW HORIZON 1.3.18,
+SCROLL 0.1.68, SHOW N TELL 1.2.11, SLICKR 1.0.45.
+
+- **The comment form was hidden until somebody had already commented.** 910D
+  put the comment system back; measured straight afterwards on nine live
+  sites, four showed the form and five did not. Three of the five were this:
+
+  ```php
+  <?php if (!empty($view['response']['comments'])): ?>
+  ```
+
+  Ten solo pages wrapped the whole comments region in that. It is sound for a
+  thread and fatal for a form: no comments means no region, no region means no
+  form, no form means nobody can leave the first one. **The gate guarantees
+  its own condition stays false forever.** Every one of them now also opens on
+  a community block.
+
+  Affected and fixed: acolourlesslife (CHAPLIN), foreverphotograph (SLICKR),
+  theschoolofhardnocks (GAME ON). CHAPLIN, GALLERIA and ONYX are CMS page
+  components and ride the deploy; the other seven are skin files, which is why
+  this release has packages.
+
+  `tests/first-comment-gate-regression.php` holds the line — all ten gates,
+  plus the PHP one in the GRAMOFSMACK modal fragment.
+
+- **Correcting yesterday's count: four sites, not two.** THE GRID and JIVE
+  TURKEY were reported as having no comment markup at all. They were fine. I
+  had fetched the plain photo URL, and those skins deliberately render the
+  grid there and the photograph in a modal — `?modal=1` returns the fragment,
+  and the form is in it. unzucked and craptasti have had working comments
+  since the 910D deploy. Measuring the wrong route is not evidence.
+
+- **Still open, and it is a database question, not a code one.** pixhellated
+  (IMPACT PRINTER) and fauxlaroid (INSTANT CAMERA) render the comments region
+  and get an empty block back, which means `core/community-component.php`
+  returned at one of its own guards: `community_enabled` not `1` in
+  `snap_settings`, or `snap_community_ready()` false because
+  `snap_community_sessions` was never created on those two installs. Nothing
+  in this release changes that, and nothing in it can.
+
 ## 0.7.910D - 2026-10-19 - STYLED FOR NOBODY
 
 **Needs a CMS deploy AND SLICKR 1.0.44 packaged.** The comments item below
