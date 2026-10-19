@@ -1369,6 +1369,8 @@ CREATE TABLE IF NOT EXISTS `snap_ap_dms` (
   `is_group`         tinyint(1) NOT NULL DEFAULT 0,
   `recipients_json`  mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `body`             text         COLLATE utf8mb4_unicode_ci,
+  `summary`          text         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sensitive`        tinyint(1)   NOT NULL DEFAULT 0,
   `media_url`        varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_request`       tinyint(1)   NOT NULL DEFAULT 0,
   `is_read`          tinyint(1)   NOT NULL DEFAULT 0,
@@ -1388,10 +1390,17 @@ CREATE TABLE IF NOT EXISTS `snap_ap_timeline` (
   `actor_url`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
   `actor_handle` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `content`      mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `summary`      text         COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                 COMMENT 'ActivityStreams content warning / spoiler text',
+  `visibility`   varchar(20)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'public',
+  `audience_json` mediumtext  COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                 COMMENT 'Bounded normalized to/cc/bto/bcc/audience URI list',
   `media_json`   mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                  COMMENT 'JSON array of image URLs',
   `media_video_json` mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL
                  COMMENT 'Inbound federated video: JSON array of {url,type} (consume-not-produce, 0.7.523)',
+  `attachments_json` mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                 COMMENT 'Canonical attachment metadata including alt text, dimensions, blurhash and focal point',
   `tags_json`    mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                  COMMENT 'JSON array of normalized ActivityPub Hashtag names',
   `url`          varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
