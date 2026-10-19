@@ -49,6 +49,7 @@ The experimental v0.1.3 collaboration slice is implemented in `troll_booth/`:
 - read-only sessions remain unable to post or claim work;
 - exact argv capability discovery with `shell=False`;
 - systemd and Apache deployment templates.
+- credential-free Windows owner-console installer and a recovery runbook.
 
 OAuth sessions are intentionally revoked whenever the remote service restarts
 in this first build. This is safer than persisting bearer and refresh tokens
@@ -89,6 +90,10 @@ set TROLL_BOOTH_WORKER_TOKEN=replace-with-a-long-random-value
 The owner console binds only to `127.0.0.1:8766`, uses a random local token,
 and never displays worker credentials. It keeps a previous copy when the
 working agreement or app capability configuration is changed.
+
+For a clean Windows installation or disaster recovery, run
+`deploy/windows/install-owner-console.ps1`. See `RECOVERY.md` for the complete
+source-versus-secret boundary and rebuild procedure.
 
 The production endpoint is `/mcp`. `/health` discloses only service name,
 version, and health. The worker endpoints require a separate random bearer
