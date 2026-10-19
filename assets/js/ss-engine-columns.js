@@ -306,6 +306,26 @@
                 .then(function () { loading = false; });
         }
 
+        // The nearest ancestor that actually scrolls. On most skins that is the
+        // page; on IMPACT PRINTER it is #scroll-stage, a flex child inside a
+        // height:100vh wrapper, and the window never scrolls at all. The old
+        // fallback below measured window.scrollY against document.body, which
+        // on such a skin is two numbers that never change.
+        function scroller(el) {
+            for (var n = el.parentElement; n && n !== document.body; n = n.parentElement) {
+                var oy = getComputedStyle(n).overflowY;
+                if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight + 1) return n;
+            }
+            return null;
+        }
+
+        function nearEnd() {
+            var box = scroller(sentinel);
+            if (box) return box.scrollTop + box.clientHeight >= box.scrollHeight - 1200;
+            var de = document.scrollingElement || document.documentElement;
+            return window.innerHeight + (window.scrollY || de.scrollTop) >= de.scrollHeight - 1200;
+        }
+
         var io = null;
         if (typeof IntersectionObserver !== 'undefined') {
             io = new IntersectionObserver(function (entries) {
@@ -313,11 +333,22 @@
                 for (i = 0; i < entries.length; i++) if (entries[i].isIntersecting) { loadNext(); break; }
             }, { rootMargin: '1200px 0px' });   // ~a screen of lead before the seam
             io.observe(sentinel);
-        } else {
-            window.addEventListener('scroll', function () {
-                if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 1200) loadNext();
-            }, { passive: true });
         }
+
+        // Belt as well as braces, and the belt is what held on pixhellated.ca:
+        // the observer is built at DOMContentLoaded, when a sentinel that has
+        // not been given a height yet has no area to intersect with, and it
+        // stays quiet afterwards. A scroll listener on the box that actually
+        // scrolls cannot be fooled that way. loadNext() guards itself against
+        // running twice, so the two triggers cannot double-load.
+        var onScroll = function () { if (nearEnd()) loadNext(); };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        var box = scroller(sentinel);
+        if (box) box.addEventListener('scroll', onScroll, { passive: true });
+
+        // A short archive can end above the fold, in which case nothing ever
+        // scrolls and nothing would ever ask for page two.
+        if (nearEnd()) loadNext();
     }
 
     window.SSColumns = {

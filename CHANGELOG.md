@@ -11,6 +11,37 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.907D - 2026-10-19 - ALL NINETY THREE
+
+- **The archive stopped at 24 of 93 and had no footer.** Both measured on
+  pixhellated.ca, and the server was never at fault: pages 1-4 answer with
+  24+24+24+21 tiles and a correctly chained sentinel. Driving the engine's own
+  fetch loop by hand reached all 93. Only the *trigger* was broken, in two
+  independent ways.
+
+  **The sentinel had no area.** An IntersectionObserver never reports a
+  zero-height target as intersecting, so endless scroll was switched off in
+  silence. An observer built with the engine's own settings agreed — "not
+  intersecting" for a target sitting 791px down a 900px viewport. The shared
+  rule only gave the sentinel height next to `.ss-scroll-wall` or inside
+  `.scroll-wall`; the archive's `#browse-grid` has neither, which is why ONYX,
+  RATIONAL GEO and SCROLL each carry a private copy of the same rule. It is
+  unconditional now, with `flex: 0 0 1px` — inside a flex column whose content
+  overflows, a 1px child is shrunk straight back to nothing.
+
+  **The engine watched the wrong box.** Its only non-observer fallback measured
+  `window.scrollY` against `document.body`. IMPACT PRINTER scrolls
+  `#scroll-stage`, a flex child inside a `height:100vh` wrapper, and the window
+  never moves — two numbers that never change. The engine now finds the nearest
+  ancestor that actually scrolls and listens to that as well, and asks once on
+  init in case a short archive ends above the fold.
+
+- **The archive page says it is one.** `skins/impact-printer/style.css` hides
+  `#system-footer` except under `.archive-page`, and nothing ever set that
+  class — so the footer was in the markup and zero pixels tall. The component
+  sets it, and the skin view contract sets it for every skin, so the next one
+  converted gets it without finding out the hard way.
+
 ## 0.7.906D - 2026-10-18 - RIGHT WAY UP
 
 - **archive.php has never had paging. It does now.** The page selected every

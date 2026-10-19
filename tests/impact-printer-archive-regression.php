@@ -51,6 +51,18 @@ if (($counts['portrait'] ?? 0) !== 1 || ($counts['square'] ?? 0) !== 1 || ($coun
         . json_encode($counts));
 }
 
+// ── The archive marks itself ────────────────────────────────────────────────
+// skins/impact-printer/style.css hides #system-footer except under
+// .archive-page, and nothing ever set that class, so the archive rendered a
+// footer that was present in the markup and zero pixels tall. Sean, looking at
+// pixhellated.ca: "where is footer?"
+if (!str_contains($mixedHtml, 'class="impact-printer-v2 archive-page"')) {
+    throw new RuntimeException('IMPACT PRINTER archive does not mark its body as an archive page.');
+}
+if (!str_contains($mixedHtml, 'system-footer')) {
+    throw new RuntimeException('IMPACT PRINTER archive lost its site footer entirely.');
+}
+
 // ── Grid sizing ─────────────────────────────────────────────────────────────
 // The owner's column count and thumbnail step reach the stylesheet as classes.
 // They used to arrive as --grid-cols/--thumb-width in a style attribute and
