@@ -1,6 +1,4 @@
-# SNAPSMACK_EOF_HEADER
-"""TROLL BOOTH local capability broker core."""
+"""TROLL BOOTH: authenticated capability broker for SnapSmack tools."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.3"
 
-# ===== SNAPSMACK EOF =====
