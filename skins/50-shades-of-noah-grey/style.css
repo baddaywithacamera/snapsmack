@@ -1114,8 +1114,18 @@ body.archive-page #system-footer {
    BLOGROLL
    ========================================================================== */
 
+/* .static-transmission wins against assets/css/page-blogroll.css, which loads
+   AFTER this file and whose bare .blogroll-canvas was overriding the 900px
+   below with its own 800px -- the skin was losing to the shared sheet on its
+   own page. Measured on photowalk.ing at 1440px: an 800px canvas in two
+   columns gave 340px of text at 14.4px, about 47 characters a line. Readable
+   prose wants 60-75; below that the eye returns too often and the paragraph
+   reads as a stack of fragments. Sean: "don't know where all the extra short
+   line breaks in 50 shades came from for blogroll. they are distracting."
+   1100px gives roughly 72. */
+.static-transmission .blogroll-canvas,
 .blogroll-canvas {
-    max-width: 900px;
+    max-width: 1100px;
     margin: 40px auto 0 auto;
     padding: 0 20px;
     box-sizing: border-box;

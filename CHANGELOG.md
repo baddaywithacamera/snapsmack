@@ -11,6 +11,34 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.908D - 2026-10-19 - PLAIN ADDRESSES
+
+- **Endless scroll only ever worked for skins that name their tiles
+  `.thumb-container`.** The engine fetched the next page and looked for that
+  one class — archive.php's name, and IMPACT PRINTER's. 50 SHADES calls them
+  `.fsog-archive-item`, GALLERIA `.htbs-archive-item`. Finding nothing it
+  recognised, it switched itself off. Measured on photowalk.ing: 48 tiles, the
+  sentinel armed, and `data-has-more` flipping to 0 on the very first fetch.
+  It now takes the children of the *same grid* out of the fetched page, by id,
+  so a skin can call its tiles whatever it likes.
+
+- **The `?view=archive` fallback stays, for now, and here is why.** Sean:
+  *"no goddamn slugs. they're bad for usability for visitors."* He is right,
+  and the one-line change was wrong: `tests/legacy-archive-redirect-loop-regression.php`
+  refused it, because a bare `/archive` is exactly what put **six** live sites
+  into an endless 301 loop — the rewrite hands `/archive` back to `archive.php`,
+  which redirects to `/archive` again. Clean archive addresses need the
+  `^archive$ archive.php` rewrite dropped so `/archive` reaches the front
+  controller, which is a change to each site's `.htaccess`, not to one line of
+  PHP. Noted, not attempted.
+
+- **50 SHADES' blogroll read as a stack of fragments.** Its own stylesheet
+  asks for a 900px canvas and `assets/css/page-blogroll.css` — which loads
+  after it — was overriding that with 800px, so the skin lost to the shared
+  sheet on its own page. Two columns of an 800px canvas give 340px of 14.4px
+  text: about **47 characters a line**, where readable prose wants 60–75.
+  Now 1100px, roughly 72, and the skin's rule wins. 50 SHADES 1.7.3.
+
 ## 0.7.907D - 2026-10-19 - ALL NINETY THREE
 
 - **The archive stopped at 24 of 93 and had no footer.** Both measured on

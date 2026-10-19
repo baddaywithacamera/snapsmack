@@ -277,9 +277,22 @@
                     if (!html) { stop(); return; }
                     fails = 0;
                     var doc = new DOMParser().parseFromString(html, 'text/html');
-                    var incoming = grid.matches('#browse-grid.archive-grid')
-                        ? doc.querySelectorAll('#browse-grid.archive-grid .thumb-container')
-                        : doc.querySelectorAll('.ss-masonry-item');
+                    // Take the SAME grid's own children out of the fetched page
+                    // rather than guessing at an item class. The archive branch
+                    // used to look for .thumb-container, which is archive.php's
+                    // and IMPACT PRINTER's name for a tile; 50 SHADES calls them
+                    // .fsog-archive-item and GALLERIA .htbs-archive-item, so the
+                    // engine fetched page two, recognised nothing in it, and shut
+                    // itself off. Measured on photowalk.ing: 48 tiles, sentinel
+                    // armed, and data-has-more flipped to 0 on the first fetch.
+                    // Every skin names its tiles whatever it likes; none of them
+                    // gets to be wrong about it.
+                    var incoming = null;
+                    if (grid.id) {
+                        var sameGrid = doc.getElementById(grid.id);
+                        if (sameGrid && sameGrid.children.length) incoming = sameGrid.children;
+                    }
+                    if (!incoming) incoming = doc.querySelectorAll('.ss-masonry-item');
                     if (!incoming.length) { stop(); return; }
                     var added = [], i;
                     for (i = 0; i < incoming.length; i++) {
