@@ -178,13 +178,16 @@
     var booster = p.boosted_by || {};
     var img0 = (p.images && p.images[0]) || "";
     var vid0 = (p.videos && p.videos[0] && p.videos[0].url) || "";
+    var attachment0 = (p.attachments && p.attachments[0]) || {};
+    var alt0 = attachment0.description || "";
     var multi = (p.count || (p.images ? p.images.length : 0)) > 1;
     // Prefer the image; a video-only post gets a click-to-play player. We never
     // autoplay an untrusted remote file — scheme-checked, and preload="none" so it
     // costs no bandwidth until the reader hits play (consume-not-produce).
     var mediaInner = img0
-      ? '<img src="' + esc(img0) + '" alt="" loading="lazy">'
+      ? '<img src="' + esc(img0) + '" alt="' + esc(alt0) + '" loading="lazy">'
       : (vid0 ? '<video src="' + esc(safeUrl(vid0)) + '" controls preload="none" playsinline></video>' : "");
+    if (p.sensitive) mediaInner += '<button type="button" class="sx-reveal">Show sensitive media</button>';
     var card = node('<article class="sx-card"></article>');
     card.innerHTML =
       '<div class="sx-card-head">' +
@@ -197,7 +200,8 @@
       "</div>" +
       (p.is_boost ? '<div class="sx-boostline">' + BOOST + " Boosted" +
         (booster.handle || booster.name ? ' by <a href="#" data-search="' + esc(booster.handle || booster.id) + '">' + esc(booster.handle || booster.name) + '</a>' : '') + "</div>" : "") +
-      '<div class="sx-media' + (multi ? " sx-multi" : "") + '">' + mediaInner + "</div>" +
+      (p.summary ? '<div class="sx-cw">Content warning: ' + esc(p.summary) + '</div>' : '') +
+      '<div class="sx-media' + (multi ? " sx-multi" : "") + (p.sensitive ? " sx-sensitive" : "") + '">' + mediaInner + "</div>" +
       '<div class="sx-actions">' +
         '<button class="sx-act sx-like"><span class="sx-ic">' + HEART + "</span> Like</button>" +
         '<button class="sx-act sx-comment"><span class="sx-ic">' + CHAT + "</span> Comment</button>" +
@@ -207,7 +211,14 @@
       (p.text ? '<div class="sx-caption">' + linkifyCaption(p.text) + "</div>" : "") +
       '<div class="sx-comments sx-hide"></div>';
 
-    $(".sx-media img", card).addEventListener("click", function () { openLightbox(img0); });
+    var cardImage = $(".sx-media img", card);
+    if (cardImage) cardImage.addEventListener("click", function () { openLightbox(img0); });
+    var reveal = $(".sx-reveal", card);
+    if (reveal) reveal.addEventListener("click", function () {
+      var media = reveal.closest(".sx-media");
+      media.classList.remove("sx-sensitive");
+      reveal.remove();
+    });
 
     var likeBtn = $(".sx-like", card);
     likeBtn.addEventListener("click", function () {
