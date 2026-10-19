@@ -11,6 +11,61 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.910D - 2026-10-19 - STYLED FOR NOBODY
+
+**Needs a CMS deploy AND SLICKR 1.0.44 packaged.**
+
+- **The arrow keys work, and I checked them by pressing them.** Sean:
+  *"are you able to verify accurately? i mean actually look."* Fair question --
+  909D's claim rested on a string match and a PHP test, neither of which can
+  tell you a key does anything.
+
+  So: all eight SMACKONEOUT solo pages rendered through
+  `tools/_build/skin-harness.php` with their own stylesheets, served over
+  HTTP, loaded in a real browser with the real `ss-engine-comms.js`, and the
+  arrow key pressed. **All eight navigated** -- GALLERIA's ArrowLeft to the
+  `rel="prev"` href, the other seven's ArrowRight to `rel="next"`. Measured,
+  not reasoned about.
+
+- **And looking is why this entry exists.** The same measurement found the
+  nav bar on GALLERIA, CHAPLIN and SLICKR rendering **unstyled** -- 21, 9 and
+  9 stylesheet rules that matched nothing, because every one of them is
+  written `#infobox .nav-links` and none of those three skins emits an
+  `#infobox` around its nav any more.
+
+  `#infobox` is the navigation bar's wrapper. CHAPLIN's own layout at
+  v0.7.603D says so in a comment: `<!-- INFOBOX (core navigation bar) -->`,
+  and eleven other skins did the same. At the strict conversion, GALLERIA's
+  and CHAPLIN's page components gave that id to the **description** instead,
+  and SLICKR stopped emitting it at all. Three skins, one misread id.
+
+  - **CHAPLIN** gets its bar back: 50px tall, 1px top border, nav 672x49 at
+    16px. The description moves to `.chap-description`, which
+    `skins/chaplin/style.css` has styled at line 689 all along, waiting.
+  - **SLICKR** gets its bar back: 44px, 1px border, nav 482x31. 1.0.44.
+  - **GALLERIA** gets the opposite, which is also what it had.
+    `.htbs-single #infobox { display: none }` is why that skin never drew a
+    text nav bar -- its solo navigation is the filmstrip and the overlay. The
+    links exist for `smack-keyboard` to read and are not shown, exactly as at
+    v0.7.603D. Verified: hidden, 0x0, and ArrowLeft still navigates.
+
+  Both solo stage classes were also gone: nothing emitted `htbs-single` or
+  `rg-single`, so that geometry was dead too. Restored for photo, post and
+  collection.
+
+- **A test that asserted the wrong thing.**
+  `tests/specialized-control-authority-regression.php` checked that CHAPLIN
+  emits no `id="infobox"` when the description is switched off, under the
+  name "CHAPLIN description visibility control". It conflated the nav bar's
+  wrapper with the description, and it is what stopped me restoring the
+  wrapper earlier in this stretch. It now asserts the description in both
+  directions -- absent when off, present when on -- plus the presence of the
+  nav wrapper, which is strictly more than it tested before.
+
+- Known failing, unrelated and pre-existing: `pixelix-compat-regression`,
+  `reconstruction-boundary-regression`, and `desktop-auth-route-regression`
+  (that last one only in a worktree, which has no root `.htaccess`).
+
 ## 0.7.909D - 2026-10-19 - FEWER LINES
 
 **Needs a CMS deploy AND 50 SHADES 1.7.4 packaged.**
