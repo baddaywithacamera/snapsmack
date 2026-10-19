@@ -18,7 +18,7 @@ if (-not (Test-Path -LiteralPath $venvPython)) {
 $launcherDir = Join-Path $env:LOCALAPPDATA "SnapSmack\TrollBooth"
 New-Item -ItemType Directory -Force -Path $launcherDir | Out-Null
 $launcher = Join-Path $launcherDir "run-owner.cmd"
-$launcherBody = "@echo off`r`n`"$venvPythonw`" -m troll_booth.owner`r`n"
+$launcherBody = "@echo off`r`n`"$venvPythonw`" -m troll_booth.desktop`r`n"
 Set-Content -LiteralPath $launcher -Value $launcherBody -Encoding Ascii -NoNewline
 
 $startupDir = [Environment]::GetFolderPath("Startup")
@@ -26,8 +26,8 @@ $startupLauncher = Join-Path $startupDir "TROLL BOOTH Owner Console.cmd"
 $startupBody = "@echo off`r`nstart `"`" /b `"$launcher`"`r`n"
 Set-Content -LiteralPath $startupLauncher -Value $startupBody -Encoding Ascii -NoNewline
 
-Start-Process -FilePath $venvPythonw -ArgumentList "-m", "troll_booth.owner" -WindowStyle Hidden
-Write-Host "TROLL BOOTH owner console installed and started."
+Start-Process -FilePath $venvPythonw -ArgumentList "-m", "troll_booth.desktop" -WindowStyle Hidden
+Write-Host "TROLL BOOTH desktop application installed and started."
 Write-Host "Source: $InstallRoot"
 Write-Host "Launcher: $launcher"
 Write-Host "Startup entry: $startupLauncher"
