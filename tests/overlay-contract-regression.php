@@ -80,6 +80,31 @@ $comms = (string)file_get_contents($root . '/assets/js/ss-engine-comms.js');
 $check(str_contains($comms, "e.key === '1'") && str_contains($comms, "e.key === '2'"),
     'the 1 and 2 hotkeys are gone, leaving GALLERIA with no way to open the overlay');
 
+// ── a solo page is never left with no navigation at all ────────────────────
+// `.htbs-single #infobox { display: none }` hides the navigation bar, which
+// is only correct while the filmstrip is there to replace it. 0.7.910D
+// emitted that class unconditionally. On hekeepsdroningon.ca, where the
+// filmstrip is switched off, the result was a photograph with no navigation
+// of any kind: bar hidden, no filmstrip, and no overlay either. Measured on
+// the live page before this was fixed.
+foreach ($surfaces as $name => $where) {
+    $src = (string)file_get_contents($root . $where['src']);
+    // Every place the class is EMITTED must be guarded by the filmstrip. The
+    // name also appears in prose above it, so each occurrence is judged on
+    // whether a filmstrip test sits within reach of it, and at least one
+    // guarded occurrence must exist.
+    $guarded = 0; $bare = 0; $at = 0;
+    while (($at = strpos($src, 'htbs-single', $at)) !== false) {
+        $window = substr($src, max(0, $at - 460), 500);
+        if (str_contains($window, "\$view['response']['filmstrip']")) $guarded++;
+        elseif (str_contains($window, 'class="public-content')) $bare++;
+        $at += 11;
+    }
+    $check($guarded > 0, $name . ' no longer emits the solo stage class behind a filmstrip test');
+    $check($bare === 0, $name . ' hides the navigation bar without checking there is a filmstrip '
+        . 'to replace it, which can leave a solo page with no navigation at all');
+}
+
 if ($fail) {
     fwrite(STDERR, "FAIL: the overlay engine drives nothing\n  - " . implode("\n  - ", $fail) . "\n");
     exit(1);
