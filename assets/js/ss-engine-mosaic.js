@@ -35,10 +35,12 @@
         var cached = container.getAttribute('data-auto-triplet-template') || '';
         if (cached) return cached;
 
-        var preferred = imageAR(images[0]) < 1.15 ? 'one-left' : 'three-across';
-        var alternatives = preferred === 'three-across'
-            ? ['one-left', 'one-right', 'one-top']
-            : ['three-across', 'one-right', 'one-top'];
+        /* A flat three-across strip is available when an author explicitly asks
+           for it, but it is deliberately never the automatic composition. */
+        var preferred = imageAR(images[0]) < 1.15 ? 'one-left' : 'one-top';
+        var alternatives = preferred === 'one-top'
+            ? ['one-left', 'one-right']
+            : ['one-top', 'one-right'];
         var chosen = preferred;
         if (chosen === lastAutomaticTripletTemplate) {
             chosen = alternatives.find(function (candidate) {
