@@ -26,11 +26,19 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
         'page_title', 'rendered_content', 'signature', 'previous', 'next', 'categories',
         'albums', 'categories_label', 'albums_label', 'author', 'colophon', 'photo_count', 'photo_count_display', 'comment_count', 'comment_count_display', 'like_count', 'like_count_display', 'word_count', 'comments_enabled',
         'show_titles', 'blogroll_groups', 'taxonomy', 'groups', 'puzzle_items', 'fragment', 'autoopen',
-        'first', 'last', 'next_page', 'is_homepage', 'sort', 'sort_options', 'album', 'filmstrip'];
+        'first', 'last', 'next_page', 'is_homepage', 'sort', 'sort_options', 'album', 'filmstrip', 'community'];
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
         'skin_style_url', 'base_style_url', 'skin_variant_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',
         'favicon_url', 'footer', 'slickr_profile', 'crop_circles', 'archive_layout', 'archive_thumb_style', 'archive_grid', 'body_class'];
+    // Hand the CMS-rendered community block to the comments component. It
+    // travels outside the view because every skin already renders that
+    // component in the right place, which makes this a CMS-only change: no
+    // skin edit, no manifest bump, no per-site skin update.
+    snap_community_block(
+        ($response['community'] ?? null) instanceof SnapTrustedHtml ? $response['community'] : null,
+        true
+    );
     return [
         'model' => 'snapsmack.public',
         'version' => SNAPSMACK_SKIN_VIEW_MODEL_VERSION,

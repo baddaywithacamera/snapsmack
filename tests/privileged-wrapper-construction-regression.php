@@ -124,6 +124,16 @@ $approved = [
     'core/skin-presentation.php|snapsmack_presentation_style|SnapTrustedHtml::factory' => 1,
     'core/skin-presentation.php|snapsmack_skin_presentation|SnapTrustedHtml::factory' => 4,
     'core/skin-render-helpers.php|snap_render_component|SnapTrustedHtml::factory' => 1,
+    // The comment system. core/community-component.php escapes every value it
+    // prints with htmlspecialchars() -- that is what
+    // tests/api-input-safety-regression.php pins -- so what is wrapped here is
+    // CMS-rendered markup, not rich text and not anything a visitor typed
+    // unescaped. It is wrapped rather than passed through
+    // snapsmack_trusted_html() because that function is a rich-text tag
+    // allowlist and would strip the form, the inputs and the buttons, which
+    // IS the feature. Added 19 October 2026, when the measurement showed no
+    // comment form on any photo page on nine live sites.
+    'core/public-runtime.php|snapsmack_public_community_block|SnapTrustedHtml::factory' => 1,
 ];
 ksort($approved);
 $actual = [];

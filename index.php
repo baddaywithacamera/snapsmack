@@ -334,6 +334,10 @@ try {
             'sort' => $_GET['sort'] ?? '',
             'fragment' => !empty($_GET['modal']),
             'route_aliases' => $skin_view['route_aliases'] ?? [],
+            // The community component reads community_comments / _likes /
+            // _reactions from the skin manifest before falling back to the
+            // global settings, so the manifest has to reach it.
+            'skin_manifest' => is_array($_active_manifest) ? $_active_manifest : [],
         ], $_public_settings);
         if (!empty($skin_view['navigation']) && is_array($skin_view['navigation'])) {
             $_public['navigation'] = $skin_view['navigation'];

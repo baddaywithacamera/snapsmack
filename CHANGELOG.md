@@ -13,7 +13,62 @@
 
 ## 0.7.910D - 2026-10-19 - STYLED FOR NOBODY
 
-**Needs a CMS deploy AND SLICKR 1.0.44 packaged.**
+**Needs a CMS deploy AND SLICKR 1.0.44 packaged.** The comments item below
+landed in this same number after the tag was first pushed and before the
+fleet took it — one version until deployed. If 0.7.910D was already deployed
+from the earlier commit, deploy it again.
+
+- **Nobody could comment on anything, on any site.** Sean asked me to start
+  on the dead-CSS map at the comments cluster. The cluster turned out to be a
+  symptom.
+
+  `core/community-component.php` is the whole comment system — thread, form,
+  guest fields, avatars, likes, reactions, moderation state, fediverse
+  replies, 463 lines. **24 skins included it at v0.7.603D. None does today,
+  and nothing else calls it.** A strict template runs inside a closure holding
+  only `$view`, so the include reaches the component's own
+  `empty($img['id'])` guard and returns in silence. What skins render instead
+  is a stub: `<ol class="snap-comments">`, author and text, no date, no form.
+
+  Measured on nine live sites, strict skins and legacy alike — wateronthebrain,
+  acolourlesslife, pixhellated, photowalk.ing, foreverphotograph.ing, unzucked,
+  theschoolofhardnocks, craptasti, fauxlaroid: **zero comment forms**, and
+  `assets/css/ss-community.css` loading on every single one. Complete code
+  that nothing called, for two weeks, emitting no error.
+
+  The include is still on `core/skin-security-policy.php`'s approved list,
+  alongside meta and footer. That allowlist entry is how we know it was meant
+  to stay — it now permits an include that can no longer work.
+
+  Fixed by rendering the block where the database handle and settings are, in
+  `snapsmack_public_community_block()`, and handing it to the comments
+  component through `snap_community_block()`. The component file is untouched.
+
+- **No skin changed, on purpose.** My first version passed the block through
+  each skin's `layout.php`, and the rules gate refused it: 26 skins would each
+  have needed a manifest bump, a package, a publish and a per-site update
+  before anybody saw a comment form. That is OPAUDIT 025 exactly — a careful
+  repair on a rail that reaches nobody. Every skin already calls the comments
+  component where its own stylesheet puts comments, so reading the block there
+  restores the feature in all 26 of them. **A CMS deploy is the whole
+  delivery.**
+
+- **Gated by the same switch as the COMMENTS link**, so a site with comments
+  off does not grow a form. `tests/community-block-reaches-skins-regression.php`
+  pins the path end to end without a database, including that a skin cannot
+  forge a block — only the opaque trusted-HTML type is accepted, and a skin
+  cannot construct it. The new construction site is declared in
+  `tests/privileged-wrapper-construction-regression.php` with its reasoning:
+  the component escapes every value it prints, and `snapsmack_trusted_html()`
+  could not be used because that function is a rich-text allowlist and would
+  strip the form.
+
+  Not yet seen on a live page — it needs the deploy. The 123 dead
+  comment-markup rules the report counted are a separate, older layer: those
+  classes (`rg-comment-*`, `htbs-comment-*`, `signals-*`) were already dead at
+  the Oct 4 baseline, superseded by the shared `ss-comment-*` system long
+  before the conversion. Worth deleting, but they are not why comments
+  stopped.
 
 - **The arrow keys work, and I checked them by pressing them.** Sean:
   *"are you able to verify accurately? i mean actually look."* Fair question --

@@ -183,7 +183,11 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         }
         if ($rows !== '') $html .= '<div id="' . $prefix . '-exif-panel" class="' . $prefix . '-exif-panel">' . $rows . '</div>';
         $html .= '<div class="' . $prefix . '-community-wrap">';
-        if ($comments !== []) $html .= (string)snap_render_component('comments', ['items' => $comments]);
+        // The community block is the whole feature, so an empty comment list
+        // is no longer a reason to render nothing -- the form lives in it.
+        if (snap_community_block() !== null || $comments !== []) {
+            $html .= (string)snap_render_component('comments', ['items' => $comments]);
+        }
         $html .= '</div></div><div class="' . $prefix . '-post-ig-actions"><div class="' . $prefix . '-post-ig-action-icons">'
             . '<button type="button" class="' . $prefix . '-action-btn" aria-label="Comment" data-ss-action="scroll-to" data-ss-target=".' . $prefix . '-community-wrap"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>'
             . '<button type="button" class="' . $prefix . '-action-btn ' . $prefix . '-action-bookmark" aria-label="Save"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button></div>';
@@ -490,6 +494,24 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             . ($height !== false && $height > 0 ? ' data-h="' . $height . '"' : '')
             . ' loading="lazy">';
     } elseif ($name === 'comments') {
+        // The real comment system -- thread, form, guest fields, likes,
+        // reactions, moderation state, fediverse replies -- is
+        // core/community-component.php, rendered on the CMS side of the
+        // boundary and read here from snap_community_block().
+        //
+        // It is read rather than passed as $data on purpose. Every skin
+        // already calls this component where its own stylesheet puts
+        // comments, so reading it here restores the feature in all 26 of
+        // them with no change to any skin -- and therefore no manifest bump,
+        // no repackaging, and no per-site skin update. A CMS deploy is the
+        // whole delivery. The rails matter (OPAUDIT 025): a fix that needed
+        // 26 skin packages installed would have reached almost nobody.
+        //
+        // The list below is the fallback when there is no community block:
+        // comments switched off for the site or the post, or the community
+        // migration not yet run. Author and text, which is all it ever was.
+        $community = snap_community_block();
+        if ($community !== null) return $community;
         $html = '<ol class="snap-comments">';
         foreach (($data['items'] ?? []) as $comment) {
             if (!is_array($comment)) continue;
