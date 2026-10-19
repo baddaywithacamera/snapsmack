@@ -345,6 +345,11 @@ function sv_ensure_tables(PDO $pdo): void {
         `direction`        enum('in','out') COLLATE utf8mb4_unicode_ci NOT NULL,
         `note_id`          varchar(600) COLLATE utf8mb4_unicode_ci NOT NULL,
         `in_reply_to`      varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `context_uri`      varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `conversation_uri` varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `thread_key`       varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `is_group`         tinyint(1) NOT NULL DEFAULT 0,
+        `recipients_json`  mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `body`             text         COLLATE utf8mb4_unicode_ci,
         `media_url`        varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `is_request`       tinyint(1)   NOT NULL DEFAULT 0,
@@ -355,13 +360,42 @@ function sv_ensure_tables(PDO $pdo): void {
         UNIQUE KEY `uq_dm_note` (`note_id`(191)),
         KEY `idx_dm_thread` (`remote_actor_url`(191), `created_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    foreach ([
+        "context_uri varchar(600) DEFAULT NULL",
+        "conversation_uri varchar(600) DEFAULT NULL",
+        "thread_key varchar(190) DEFAULT NULL",
+        "is_group tinyint(1) NOT NULL DEFAULT 0",
+        "recipients_json mediumtext DEFAULT NULL",
+    ] as $_col) {
+        try { $pdo->exec("ALTER TABLE snap_ap_dms ADD COLUMN IF NOT EXISTS {$_col}"); }
+        catch (Exception $e) { /* additive compatibility columns; old data remains valid */ }
+    }
     // Notifications gain a 'dm' type (defensive MODIFY — CREATE IF NOT EXISTS
     // cannot widen an existing enum).
     try {
         $pdo->exec("ALTER TABLE snap_ap_notifications MODIFY `ntype`
             enum('follow','like','reply','mention','boost','dm')
             COLLATE utf8mb4_unicode_ci NOT NULL");
-    } catch (Exception $e) { /* table may lag on a fresh install */ }
+    } catch (Exception $e) {
+        // Rolling-update fallback: old schema keeps the actor cache useful and
+        // simply ignores migration metadata until the additive columns land.
+        try {
+            $pdo->prepare(
+                "INSERT INTO snap_ap_actors
+                    (actor_url, handle, name, avatar_url, inbox_url, shared_inbox_url, summary, profile_url, fetched_at)
+                 VALUES (?,?,?,?,?,?,?,?,NOW())
+                 ON DUPLICATE KEY UPDATE handle=VALUES(handle), name=VALUES(name), avatar_url=VALUES(avatar_url),
+                     inbox_url=VALUES(inbox_url), shared_inbox_url=VALUES(shared_inbox_url),
+                     summary=VALUES(summary), profile_url=VALUES(profile_url), fetched_at=NOW()"
+            )->execute([
+                substr($url, 0, 500), substr($handle, 0, 190),
+                substr((string)($actor_doc['name'] ?? $user), 0, 255), substr($avatar, 0, 600),
+                substr((string)($actor_doc['inbox'] ?? ''), 0, 500),
+                $shared ? substr((string)$shared, 0, 500) : null,
+                (string)($actor_doc['summary'] ?? ''), substr((string)($actor_doc['url'] ?? $url), 0, 600),
+            ]);
+        } catch (Exception $ignored) { /* table may lag on a fresh install */ }
+    }
     foreach ([
         "ap_source enum('local','fediverse') NOT NULL DEFAULT 'local'",
         "ap_actor_url varchar(500) DEFAULT NULL",
@@ -436,10 +470,19 @@ function sv_ensure_tables(PDO $pdo): void {
         `shared_inbox_url` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `summary`          text         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `profile_url`      varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `moved_to`         varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+        `also_known_as_json` mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL,
         `fetched_at`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`),
         UNIQUE KEY `uq_ap_actor_cache` (`actor_url`(191))
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    foreach ([
+        "moved_to varchar(600) DEFAULT NULL",
+        "also_known_as_json mediumtext DEFAULT NULL",
+    ] as $_col) {
+        try { $pdo->exec("ALTER TABLE snap_ap_actors ADD COLUMN IF NOT EXISTS {$_col}"); }
+        catch (Exception $e) { /* additive compatibility columns */ }
+    }
     $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_ap_notifications` (
         `id`           int unsigned NOT NULL AUTO_INCREMENT,
         `ntype`        enum('follow','like','reply','mention','boost') COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -2307,14 +2350,23 @@ function sv_cache_actor(PDO $pdo, array $actor_doc): void {
     if (is_array($icon))      $avatar = (string)($icon['url'] ?? ($icon[0]['url'] ?? ''));
     elseif (is_string($icon)) $avatar = $icon;
     $shared = $actor_doc['endpoints']['sharedInbox'] ?? null;
+    $moved_to = sv_activity_object_uri($actor_doc['movedTo'] ?? null);
+    $aliases = $actor_doc['alsoKnownAs'] ?? [];
+    if (is_string($aliases)) $aliases = [$aliases];
+    if (!is_array($aliases)) $aliases = [];
+    $aliases = array_values(array_slice(array_filter(array_map(
+        static fn($alias) => sv_activity_object_uri($alias), $aliases
+    )), 0, 50));
     try {
         $pdo->prepare(
             "INSERT INTO snap_ap_actors
-                (actor_url, handle, name, avatar_url, inbox_url, shared_inbox_url, summary, profile_url, fetched_at)
-             VALUES (?,?,?,?,?,?,?,?,NOW())
+                (actor_url, handle, name, avatar_url, inbox_url, shared_inbox_url, summary, profile_url,
+                 moved_to, also_known_as_json, fetched_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,NOW())
              ON DUPLICATE KEY UPDATE handle=VALUES(handle), name=VALUES(name), avatar_url=VALUES(avatar_url),
                  inbox_url=VALUES(inbox_url), shared_inbox_url=VALUES(shared_inbox_url),
-                 summary=VALUES(summary), profile_url=VALUES(profile_url), fetched_at=NOW()"
+                 summary=VALUES(summary), profile_url=VALUES(profile_url), moved_to=VALUES(moved_to),
+                 also_known_as_json=VALUES(also_known_as_json), fetched_at=NOW()"
         )->execute([
             substr($url, 0, 500), substr($handle, 0, 190),
             substr((string)($actor_doc['name'] ?? $user), 0, 255), substr($avatar, 0, 600),
@@ -2322,8 +2374,39 @@ function sv_cache_actor(PDO $pdo, array $actor_doc): void {
             $shared ? substr((string)$shared, 0, 500) : null,
             (string)($actor_doc['summary'] ?? ''),
             substr((string)($actor_doc['url'] ?? $url), 0, 600),
+            $moved_to !== '' ? substr($moved_to, 0, 600) : null,
+            json_encode($aliases, JSON_UNESCAPED_SLASHES),
         ]);
-    } catch (Exception $e) { /* table may lag on a fresh install */ }
+    } catch (Exception $e) {
+        // Rolling-update fallback: old schema keeps the actor cache useful and
+        // simply ignores migration metadata until the additive columns land.
+        try {
+            $pdo->prepare(
+                "INSERT INTO snap_ap_actors
+                    (actor_url, handle, name, avatar_url, inbox_url, shared_inbox_url, summary, profile_url, fetched_at)
+                 VALUES (?,?,?,?,?,?,?,?,NOW())
+                 ON DUPLICATE KEY UPDATE handle=VALUES(handle), name=VALUES(name), avatar_url=VALUES(avatar_url),
+                     inbox_url=VALUES(inbox_url), shared_inbox_url=VALUES(shared_inbox_url),
+                     summary=VALUES(summary), profile_url=VALUES(profile_url), fetched_at=NOW()"
+            )->execute([
+                substr($url, 0, 500), substr($handle, 0, 190),
+                substr((string)($actor_doc['name'] ?? $user), 0, 255), substr($avatar, 0, 600),
+                substr((string)($actor_doc['inbox'] ?? ''), 0, 500),
+                $shared ? substr((string)$shared, 0, 500) : null,
+                (string)($actor_doc['summary'] ?? ''), substr((string)($actor_doc['url'] ?? $url), 0, 600),
+            ]);
+        } catch (Exception $ignored) { /* table may lag on a fresh install */ }
+    }
+}
+
+/** Normalize the common ActivityPub object forms to one safe HTTP(S) URI. */
+function sv_activity_object_uri($object): string {
+    if (is_array($object)) $object = $object['id'] ?? '';
+    if (!is_string($object)) return '';
+    $uri = trim($object);
+    if ($uri === '' || strlen($uri) > 2000 || filter_var($uri, FILTER_VALIDATE_URL) === false) return '';
+    $scheme = strtolower((string)(parse_url($uri, PHP_URL_SCHEME) ?: ''));
+    return in_array($scheme, ['http', 'https'], true) ? $uri : '';
 }
 
 /** Best truthful handle available when an old timeline row stored none. */
@@ -2414,6 +2497,42 @@ function sv_is_direct(array $activity, array $obj, array $settings): bool {
     return false;
 }
 
+/** Derive durable DM threading metadata without fetching an untrusted parent. */
+function sv_dm_thread_metadata(PDO $pdo, array $obj, string $actor_id): array {
+    $context = sv_activity_object_uri($obj['context'] ?? null);
+    $conversation = sv_activity_object_uri($obj['conversation'] ?? null);
+    $in_reply_to = sv_activity_object_uri($obj['inReplyTo'] ?? null);
+    $thread_source = $context !== '' ? $context : $conversation;
+    if ($thread_source === '' && $in_reply_to !== '') {
+        try {
+            $parent = $pdo->prepare(
+                "SELECT thread_key FROM snap_ap_dms WHERE note_id = ? AND thread_key IS NOT NULL LIMIT 1"
+            );
+            $parent->execute([$in_reply_to]);
+            $known = (string)($parent->fetchColumn() ?: '');
+            if ($known !== '') return [$context, $conversation, $in_reply_to, $known];
+        } catch (Exception $e) { /* old schema: actor fallback remains valid */ }
+    }
+    $thread_key = ($thread_source !== '' ? 'context:' : 'actor:')
+        . hash('sha256', $thread_source !== '' ? $thread_source : $actor_id);
+    return [$context, $conversation, $in_reply_to, $thread_key];
+}
+
+/** Return a bounded, normalized recipient set from an ActivityStreams Note. */
+function sv_dm_recipients(array $obj): array {
+    $recipients = [];
+    foreach ([$obj['to'] ?? [], $obj['cc'] ?? [], $obj['bto'] ?? [], $obj['bcc'] ?? []] as $set) {
+        if (is_string($set)) $set = [$set];
+        if (!is_array($set)) continue;
+        foreach ($set as $recipient) {
+            $uri = sv_activity_object_uri($recipient);
+            if ($uri !== '') $recipients[$uri] = true;
+            if (count($recipients) >= 50) break 2;
+        }
+    }
+    return array_keys($recipients);
+}
+
 /** Store an inbound DM (idempotent by note id), flag request-status, notify. */
 function sv_capture_dm(PDO $pdo, array $settings, array $obj, string $actor_id, string $handle): void {
     $note_id = (string)($obj['id'] ?? '');
@@ -2427,17 +2546,43 @@ function sv_capture_dm(PDO $pdo, array $settings, array $obj, string $actor_id, 
             $media = substr((string)$att['url'], 0, 600); break;
         }
     }
-    $in_reply   = is_string($obj['inReplyTo'] ?? null) ? substr((string)$obj['inReplyTo'], 0, 600) : null;
+    [$context, $conversation, $in_reply, $thread_key] = sv_dm_thread_metadata($pdo, $obj, $actor_id);
+    $recipients = sv_dm_recipients($obj);
+    $other_recipients = array_values(array_diff($recipients, [$actor_id]));
+    $is_group = count($other_recipients) > 1 ? 1 : 0;
     $is_request = sv_is_following($pdo, $actor_id) ? 0 : 1;
     try {
         $pdo->prepare(
             "INSERT INTO snap_ap_dms
-                (remote_actor_url, remote_handle, direction, note_id, in_reply_to, body, media_url, is_request)
-             VALUES (?, ?, 'in', ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE body = VALUES(body), media_url = VALUES(media_url)"
-        )->execute([$actor_id, substr($handle, 0, 190), $note_id, $in_reply, $text, $media, $is_request]);
+                (remote_actor_url, remote_handle, direction, note_id, in_reply_to, context_uri,
+                 conversation_uri, thread_key, is_group, recipients_json, body, media_url, is_request)
+             VALUES (?, ?, 'in', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE body = VALUES(body), media_url = VALUES(media_url),
+                 context_uri = VALUES(context_uri), conversation_uri = VALUES(conversation_uri),
+                 thread_key = VALUES(thread_key), is_group = VALUES(is_group),
+                 recipients_json = VALUES(recipients_json)"
+        )->execute([
+            $actor_id, substr($handle, 0, 190), $note_id, $in_reply !== '' ? substr($in_reply, 0, 600) : null,
+            $context !== '' ? substr($context, 0, 600) : null,
+            $conversation !== '' ? substr($conversation, 0, 600) : null,
+            substr($thread_key, 0, 190), $is_group, json_encode($recipients, JSON_UNESCAPED_SLASHES),
+            $text, $media, $is_request,
+        ]);
         sv_notify($pdo, 'dm', $actor_id, $handle, $note_id, sv_actor_url($settings), $text);
-    } catch (Exception $e) { /* table may lag on a fresh install */ }
+    } catch (Exception $e) {
+        // Old-schema fallback keeps the private message; only the new thread
+        // metadata waits for the additive migration.
+        try {
+            $pdo->prepare(
+                "INSERT INTO snap_ap_dms
+                    (remote_actor_url, remote_handle, direction, note_id, in_reply_to, body, media_url, is_request)
+                 VALUES (?, ?, 'in', ?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE body = VALUES(body), media_url = VALUES(media_url)"
+            )->execute([$actor_id, substr($handle, 0, 190), $note_id,
+                $in_reply !== '' ? substr($in_reply, 0, 600) : null, $text, $media, $is_request]);
+            sv_notify($pdo, 'dm', $actor_id, $handle, $note_id, sv_actor_url($settings), $text);
+        } catch (Exception $ignored) { /* table may lag on a fresh install */ }
+    }
 }
 
 /** Does snap_ap_timeline carry the inbound-video column yet? Cached per request. */
@@ -2674,8 +2819,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
     }
 
     if ($type === 'Follow') {
-        $object = is_array($activity['object'] ?? null)
-            ? ($activity['object']['id'] ?? '') : ($activity['object'] ?? '');
+        $object = sv_activity_object_uri($activity['object'] ?? null);
         // GoToSocial's Mastodon-compatible account record can expose only the
         // human profile URL (no `uri` field), so its Follow object may be our
         // public profile URL rather than the AP actor id. Both URLs identify
@@ -2787,7 +2931,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
         // our Follow activity id, fall back to the actor when servers echo a
         // bare object id instead of the full Follow.
         $obj = $activity['object'] ?? [];
-        $fid = is_array($obj) ? (string)($obj['id'] ?? '') : (string)$obj;
+        $fid = sv_activity_object_uri($obj);
         $new_state = ($type === 'Accept') ? 'accepted' : 'rejected';
         try {
             $upd = $pdo->prepare(
@@ -2881,8 +3025,8 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
 
     if ($type === 'Like') {
         // A remote actor liked one of our posts → federated like (combined tally).
-        $obj = is_array($activity['object'] ?? null) ? ($activity['object']['id'] ?? '') : ($activity['object'] ?? '');
-        $obj_s = is_string($obj) ? $obj : '';
+        $obj = sv_activity_object_uri($activity['object'] ?? null);
+        $obj_s = $obj;
         $t = (is_string($obj) && sv_url_is_ours($obj, $settings)) ? sv_resolve_target($obj, $pdo) : null;
         if ($t && $t['type'] === 'reply') {
             // Like on the blog's OWN outbound reply. There's no photo to add it
@@ -3107,8 +3251,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
     if ($type === 'Delete') {
         // Remote actor deleting itself → drop from followers; deleting a Note →
         // remove the federated comment it produced.
-        $obj = is_array($activity['object'] ?? null)
-            ? ($activity['object']['id'] ?? '') : ($activity['object'] ?? '');
+        $obj = sv_activity_object_uri($activity['object'] ?? null);
         if (function_exists('sc_relay_is_hub') && sc_relay_is_hub($settings)) {
             if ($obj === $actor_id) {
                 $q = $pdo->prepare("SELECT object_id FROM snap_relay_intake WHERE origin_actor_url=? LIMIT 500");
@@ -3154,7 +3297,7 @@ function sv_handle_inbox(PDO $pdo, array &$settings, array $activity, array $act
     if ($type === 'Announce') {
         // A boost (reblog). $object is the boosted post (usually a URL).
         $obj    = $activity['object'] ?? '';
-        $obj_id = is_array($obj) ? (string)($obj['id'] ?? '') : (string)$obj;
+        $obj_id = sv_activity_object_uri($obj);
         if ($obj_id !== '') {
             if (function_exists('sc_relay_receive_announce')
                 && sc_relay_receive_announce($pdo, $settings, $actor_id, $obj_id,
@@ -3795,7 +3938,12 @@ function sv_send_dm(PDO $pdo, array $settings, string $target, string $body,
         'content'      => $content,
         'tag'          => [['type' => 'Mention', 'href' => $actor_url, 'name' => '@' . $handle]],
     ];
-    if ($in_reply_to !== null && $in_reply_to !== '') $note['inReplyTo'] = $in_reply_to;
+    $thread_obj = [];
+    if ($in_reply_to !== null && $in_reply_to !== '') $thread_obj['inReplyTo'] = $in_reply_to;
+    [$context, $conversation, $normalized_reply, $thread_key] = sv_dm_thread_metadata($pdo, $thread_obj, $actor_url);
+    if ($normalized_reply !== '') $note['inReplyTo'] = $normalized_reply;
+    if ($context !== '') $note['context'] = $context;
+    if ($conversation !== '') $note['conversation'] = $conversation;
     if ($media_url !== null && $media_url !== '') {
         $note['attachment'] = [[
             'type'      => 'Document',
@@ -3819,10 +3967,27 @@ function sv_send_dm(PDO $pdo, array $settings, string $target, string $body,
     try {
         $pdo->prepare(
             "INSERT INTO snap_ap_dms
-                (remote_actor_url, remote_handle, direction, note_id, in_reply_to, body, media_url, is_request, is_read)
-             VALUES (?, ?, 'out', ?, ?, ?, ?, 0, 1)"
-        )->execute([$actor_url, substr($handle, 0, 190), $note_id, $in_reply_to, mb_substr($body, 0, 5000), $media_url]);
-    } catch (Exception $e) { /* table may lag */ }
+                (remote_actor_url, remote_handle, direction, note_id, in_reply_to, context_uri,
+                 conversation_uri, thread_key, is_group, recipients_json, body, media_url, is_request, is_read)
+             VALUES (?, ?, 'out', ?, ?, ?, ?, ?, 0, ?, ?, ?, 0, 1)"
+        )->execute([
+            $actor_url, substr($handle, 0, 190), $note_id,
+            $normalized_reply !== '' ? substr($normalized_reply, 0, 600) : null,
+            $context !== '' ? substr($context, 0, 600) : null,
+            $conversation !== '' ? substr($conversation, 0, 600) : null,
+            substr($thread_key, 0, 190), json_encode([$actor_url], JSON_UNESCAPED_SLASHES),
+            mb_substr($body, 0, 5000), $media_url,
+        ]);
+    } catch (Exception $e) {
+        try {
+            $pdo->prepare(
+                "INSERT INTO snap_ap_dms
+                    (remote_actor_url, remote_handle, direction, note_id, in_reply_to, body, media_url, is_request, is_read)
+                 VALUES (?, ?, 'out', ?, ?, ?, ?, 0, 1)"
+            )->execute([$actor_url, substr($handle, 0, 190), $note_id,
+                $normalized_reply !== '' ? $normalized_reply : null, mb_substr($body, 0, 5000), $media_url]);
+        } catch (Exception $ignored) { /* table may lag */ }
+    }
 
     return [true, 'Message sent to ' . $handle . '.'];
 }
@@ -3987,6 +4152,12 @@ function sv_follow_actor(PDO $pdo, array $settings, string $target): array {
     $doc = sv_fetch_ap($actor_url);
     if (!is_array($doc) || empty($doc['inbox']) || empty($doc['id'])) {
         return [false, 'Fetched the actor but it has no usable inbox — server may be blocking or down.'];
+    }
+    sv_cache_actor($pdo, $doc);
+    $moved_to = sv_activity_object_uri($doc['movedTo'] ?? null);
+    if ($moved_to !== '') {
+        return [false, 'That account has moved to ' . $moved_to
+            . '. SnapSmack did not transfer the follow automatically; inspect and follow the replacement explicitly.'];
     }
     $inbox = (string)$doc['inbox'];
     if (!sv_url_is_public($inbox)) return [false, 'Actor inbox is not a public URL.'];
