@@ -254,3 +254,7 @@ _harness/
 tools/coldsnap/export_cache/
 tools/smackpress/smackpress.db
 .skin-marks/
+# Private agent-to-agent operational handoffs. Keep locally and in encrypted
+# backup storage; never publish them with application source.
+handoffs/
+
