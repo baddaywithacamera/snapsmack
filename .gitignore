@@ -246,3 +246,7 @@ _harness/
 # COLD SNAP runtime export-derivative cache (size-capped/sharpened upload copies).
 # Regenerated on demand next to the module/exe; never source.
 tools/coldsnap/export_cache/
+# Private agent-to-agent operational handoffs. Keep locally and in encrypted
+# backup storage; never publish them with application source.
+handoffs/
+
