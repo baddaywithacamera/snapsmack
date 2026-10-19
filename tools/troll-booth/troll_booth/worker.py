@@ -68,7 +68,7 @@ class CapabilityRegistry:
             raise RuntimeError("capability response must be a JSON object")
         return result
 
-    def execute(self, capability: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    def execute(self, capability: str, arguments: dict[str, Any], actor: str = "local-agent") -> dict[str, Any]:
         if capability == "apps.list":
             return {"apps": self.summary()}
         if capability == "apps.capabilities":
@@ -91,7 +91,29 @@ class CapabilityRegistry:
                     int(arguments.get("limit", 50)),
                 )
             }
-        raise ValueError("capability is not available in the read-only first build")
+        if capability == "conversation.post" and self.history:
+            message_id = self.history.append(
+                str(arguments.get("room_id", "")),
+                actor,
+                str(arguments.get("body", "")),
+                title=str(arguments["title"]) if arguments.get("title") else None,
+                ticket_id=str(arguments["ticket_id"]) if arguments.get("ticket_id") else None,
+                task_id=str(arguments["task_id"]) if arguments.get("task_id") else None,
+            )
+            return {"posted": True, "message_id": message_id, "sender": actor}
+        if capability == "scope.list" and self.history:
+            return {"claims": self.history.scopes()}
+        if capability == "scope.claim" and self.history:
+            return self.history.claim_scope(
+                str(arguments.get("scope", "")),
+                actor,
+                task_id=str(arguments["task_id"]) if arguments.get("task_id") else None,
+                note=str(arguments["note"]) if arguments.get("note") else None,
+                ttl=int(arguments.get("ttl", 3600)),
+            )
+        if capability == "scope.release" and self.history:
+            return self.history.release_scope(str(arguments.get("scope", "")), actor)
+        raise ValueError("capability is not available to this TROLL BOOTH worker")
 
 
 def run(base: str, token: str, config: Path, history: Path, worker_id: str, once: bool = False) -> None:
@@ -103,7 +125,7 @@ def run(base: str, token: str, config: Path, history: Path, worker_id: str, once
             job = response.get("job")
             if job:
                 try:
-                    result = registry.execute(job["capability"], job.get("arguments", {}))
+                    result = registry.execute(job["capability"], job.get("arguments", {}), str(job.get("actor", "agent")))
                     _request(base, token, "/worker/result", {"job_id": job["id"], "result": result})
                 except Exception as exc:
                     _request(base, token, "/worker/result", {"job_id": job["id"], "error": str(exc)[:1000]})
