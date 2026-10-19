@@ -11,6 +11,84 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.913D - 2026-10-19 - DOOR THAT WAS NOT THERE
+
+**Needs a CMS deploy only.** No skin package.
+
+- **GALLERIA's INFO and SIGNALS went nowhere.** Its manifest has listed
+  `smack-overlay` in `require_scripts` the whole time, and
+  `assets/js/ss-engine-overlay.js` states its contract in its own header:
+  `.htbs-tab[data-pane]` and `.htbs-pane#htbs-pane-{name}`. The strict
+  conversion stopped emitting all of it. So the engine loaded on every photo
+  page and bound nothing, **21 stylesheet rules matched nothing**, and
+  `#show-details` / `#show-comments` opened an empty drawer — GALLERIA emits
+  `id="footer"` with no `#pane-info` or `#pane-comments` inside it.
+
+  The description, the EXIF table and the entire comment thread were behind a
+  door that was no longer there. Nothing failed, because a missing feature
+  emits no error. Same shape as the comment system in 910D and the filmstrip
+  in 909D.
+
+  `skins/galleria/style.css` states where this belongs, at line 1166:
+  *"(Info & comments now rendered inside .htbs-overlay-box)"*.
+
+- **This one is mine twice over.** In 0.7.910D I hid GALLERIA's nav bar,
+  faithfully restoring `.htbs-single #infobox { display: none }` from
+  v0.7.603D, and wrote that its navigation is "the filmstrip and the
+  overlay". The filmstrip was true — I had restored it in 909D. The overlay
+  was not: it had not existed since the conversion. So I removed the last
+  visible route to INFO and comments and recorded a reason that was only half
+  checked. Restoring the old behaviour without checking that its other half
+  still exists is the same mistake as rewriting a file without reading it.
+
+- **Measured, not reasoned about.** Rendered through
+  `tools/_build/skin-harness.php` with GALLERIA's own stylesheet and the real
+  `ss-engine-overlay.js`, served over HTTP, in a browser at 1280x860: key `1`
+  opens the overlay, the box lays out **595x195 centred**, the INFO tab is
+  active, key `2` switches the active pane to `htbs-pane-comments` and the
+  SIGNALS tab with it, key `1` again closes it. Title and date populate.
+  Screenshotted, because a computed opacity read mid-transition is not
+  evidence that anybody can see it.
+
+  `tests/overlay-contract-regression.php` pins the whole contract: the
+  engine's hooks, both panes, the EXIF table, the comments call, the
+  description appearing exactly once, the manifest still loading the engine,
+  and the `1` / `2` hotkeys that are GALLERIA's only way in.
+
+- **HIP TO BE SQUARE too — and it was worse.** Sean: *"hiptobesquare is a
+  fork of gallerie"*. I had called its photo branch a different shape and
+  parked it; looking properly, it is the same article, the same `h1`, the
+  same `htbs-gallery-room`, and the same `.htbs-single #infobox {
+  display: none }`. **1.3.15.**
+
+  Porting the overlay exposed three more faults in the fork, each found by a
+  test rather than by me:
+
+  - It still had the **0.7.910D bug**: its description wore `id="infobox"`,
+    the navigation bar's wrapper. I fixed that in GALLERIA, CHAPLIN and
+    SLICKR and never looked at the fork.
+  - It emitted **no `photo-navigation` at all** — so no prev/next for the
+    arrow keys, and no `#show-details` / `#show-comments`, which are the only
+    way to open the overlay. `tests/hotkey-navigation-regression.php` had it
+    on the known-broken list; it comes off. **17 skins pass, 13 known broken**
+    (was 16 and 14).
+  - My first port rendered the overlay on **every** page kind, EXIF table and
+    all. `tests/every-skin-every-page-regression.php` caught it on `page` and
+    `blogroll`.
+
+  And twice the skin security policy refused my code — `in_array` and a
+  `(string)` cast are not in the template grammar. GALLERIA could use both
+  because it renders from a core file; a skin template cannot. Rewritten to
+  comparisons, and the casts dropped on both sides so the two copies stay
+  identical. `snap_escape_html` takes `mixed`, so nothing was lost.
+
+- **Worth knowing, not changed:** with the nav bar hidden on solo pages —
+  which is what both stylesheets have always said — the overlay opens by the
+  `1` and `2` keys only. That is exactly v0.7.603D's behaviour, so it is
+  restored rather than introduced, but it does mean a mouse-only visitor
+  cannot reach INFO or comments on these two skins. Say the word and the
+  openers can be surfaced.
+
 ## 0.7.911D - 2026-10-19 - FIRST COMMENT
 
 **Needs a CMS deploy AND seven skins packaged:** GAME ON 0.1.37,
