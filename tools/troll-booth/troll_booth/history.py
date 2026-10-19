@@ -57,6 +57,15 @@ class ConversationStore:
                     task_id,
                     tokenize='unicode61'
                 );
+                CREATE TABLE IF NOT EXISTS scope_claims (
+                    scope TEXT PRIMARY KEY,
+                    actor TEXT NOT NULL,
+                    task_id TEXT,
+                    note TEXT,
+                    claimed_at INTEGER NOT NULL,
+                    expires_at INTEGER NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS scope_claims_expiry ON scope_claims(expires_at);
                 """
             )
 
@@ -184,6 +193,65 @@ class ConversationStore:
         with self._connect() as db:
             rows = db.execute(sql, params).fetchall()
         return [self._message_dict(row) for row in rows]
+
+    def claim_scope(
+        self,
+        scope: str,
+        actor: str,
+        *,
+        task_id: str | None = None,
+        note: str | None = None,
+        ttl: int = 3600,
+    ) -> dict[str, Any]:
+        scope = scope.strip().replace("\\", "/")
+        actor = actor.strip()
+        if not scope or not actor:
+            raise ValueError("scope and actor are required")
+        now = int(time.time())
+        expires_at = now + max(300, min(int(ttl), 43200))
+        with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("DELETE FROM scope_claims WHERE expires_at<=?", (now,))
+            existing = db.execute("SELECT * FROM scope_claims WHERE scope=?", (scope,)).fetchone()
+            if existing and existing["actor"] != actor:
+                db.commit()
+                return {"claimed": False, "conflict": dict(existing)}
+            db.execute(
+                "INSERT INTO scope_claims(scope,actor,task_id,note,claimed_at,expires_at) VALUES(?,?,?,?,?,?) "
+                "ON CONFLICT(scope) DO UPDATE SET task_id=excluded.task_id,note=excluded.note,"
+                "claimed_at=excluded.claimed_at,expires_at=excluded.expires_at",
+                (scope, actor, task_id, note, now, expires_at),
+            )
+            db.commit()
+        return {
+            "claimed": True,
+            "claim": {
+                "scope": scope,
+                "actor": actor,
+                "task_id": task_id,
+                "note": note,
+                "claimed_at": now,
+                "expires_at": expires_at,
+            },
+        }
+
+    def release_scope(self, scope: str, actor: str) -> dict[str, Any]:
+        scope = scope.strip().replace("\\", "/")
+        with self._connect() as db:
+            existing = db.execute("SELECT * FROM scope_claims WHERE scope=?", (scope,)).fetchone()
+            if not existing:
+                return {"released": False, "reason": "not claimed"}
+            if existing["actor"] != actor:
+                return {"released": False, "reason": "claimed by another actor", "claim": dict(existing)}
+            db.execute("DELETE FROM scope_claims WHERE scope=? AND actor=?", (scope, actor))
+        return {"released": True, "scope": scope}
+
+    def scopes(self) -> list[dict[str, Any]]:
+        now = int(time.time())
+        with self._connect() as db:
+            db.execute("DELETE FROM scope_claims WHERE expires_at<=?", (now,))
+            rows = db.execute("SELECT * FROM scope_claims ORDER BY scope").fetchall()
+        return [dict(row) for row in rows]
 
     @staticmethod
     def _message_dict(row: sqlite3.Row) -> dict[str, Any]:

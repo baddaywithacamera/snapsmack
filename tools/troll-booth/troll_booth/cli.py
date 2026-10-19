@@ -19,6 +19,7 @@ def main() -> None:
     pair = commands.add_parser("pair-code", help="Issue a short-lived, single-use browser pairing code")
     pair.add_argument("--actor", default="claude")
     pair.add_argument("--ttl", type=int, default=300)
+    pair.add_argument("--write", action="store_true", help="Also grant collaboration write access")
     commands.add_parser("status", help="Show remote broker and worker status")
     history = commands.add_parser("history", help="Manage the append-only local collaboration history")
     history.add_argument("--history-database", type=Path, default=Path.home() / ".troll-booth" / "history.sqlite3")
@@ -35,10 +36,15 @@ def main() -> None:
     search.add_argument("--room")
     search.add_argument("--limit", type=int, default=50)
     history_commands.add_parser("rooms", help="List rooms")
+    messages = history_commands.add_parser("messages", help="Read one room")
+    messages.add_argument("--room", required=True)
+    messages.add_argument("--limit", type=int, default=200)
+    scopes = history_commands.add_parser("scopes", help="List active work-scope claims")
     args = parser.parse_args()
     store = BoothStore(args.database)
     if args.command == "pair-code":
-        print(store.issue_pair_code(args.actor, ["booth:read"], max(60, min(args.ttl, 900))))
+        scopes = ["booth:read", "booth:write"] if args.write else ["booth:read"]
+        print(store.issue_pair_code(args.actor, scopes, max(60, min(args.ttl, 900))))
     elif args.command == "status":
         print(json.dumps(store.status(), indent=2))
     elif args.command == "history":
@@ -58,6 +64,10 @@ def main() -> None:
             print(json.dumps(messages.search(args.query, args.room, args.limit), indent=2))
         elif args.history_command == "rooms":
             print(json.dumps(messages.rooms(), indent=2))
+        elif args.history_command == "messages":
+            print(json.dumps(messages.messages(args.room, args.limit), indent=2))
+        elif args.history_command == "scopes":
+            print(json.dumps(messages.scopes(), indent=2))
 
 
 if __name__ == "__main__":

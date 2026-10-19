@@ -33,7 +33,9 @@ auth = AuthSettings(
     resource_server_url=AnyHttpUrl(f"{PUBLIC_URL}/mcp"),
     required_scopes=["booth:read"],
     client_registration_options=ClientRegistrationOptions(
-        enabled=True, valid_scopes=["booth:read"], default_scopes=["booth:read"]
+        enabled=True,
+        valid_scopes=["booth:read", "booth:write"],
+        default_scopes=["booth:read", "booth:write"],
     ),
     validate_token_resource=True,
 )
@@ -43,6 +45,13 @@ mcp = MCPServer("TROLL BOOTH", version=__version__, auth=auth, auth_server_provi
 def _actor() -> str:
     token = get_access_token()
     return token.subject if token and token.subject else "authenticated-agent"
+
+
+def _require_scope(scope: str) -> None:
+    token = get_access_token()
+    scopes = set(token.scopes if token else [])
+    if scope not in scopes:
+        raise PermissionError(f"This paired session requires the {scope} permission.")
 
 
 async def _queued(capability: str, arguments: dict, reason: str, ticket_id: str | None = None) -> dict:
@@ -93,6 +102,49 @@ async def search_conversation(
     )
 
 
+@mcp.tool(description="Post an authenticated message to a collaboration room. The sender is taken from the paired identity.")
+async def post_message(
+    room_id: str,
+    body: str,
+    title: str | None = None,
+    ticket_id: str | None = None,
+    task_id: str | None = None,
+    reason: str = "Collaborate in TROLL BOOTH",
+) -> dict:
+    _require_scope("booth:write")
+    return await _queued(
+        "conversation.post",
+        {"room_id": room_id, "body": body, "title": title, "ticket_id": ticket_id, "task_id": task_id},
+        reason,
+        ticket_id,
+    )
+
+
+@mcp.tool(description="List active file or subsystem claims so agents avoid editing the same scope.")
+async def list_work_scopes(reason: str = "Check active work scopes") -> dict:
+    return await _queued("scope.list", {}, reason)
+
+
+@mcp.tool(description="Claim a file, directory, or subsystem before editing it. Conflicting claims are rejected.")
+async def claim_work_scope(
+    scope: str,
+    task_id: str | None = None,
+    note: str | None = None,
+    ttl: int = 3600,
+    reason: str = "Prevent overlapping edits",
+) -> dict:
+    _require_scope("booth:write")
+    return await _queued(
+        "scope.claim", {"scope": scope, "task_id": task_id, "note": note, "ttl": ttl}, reason, task_id
+    )
+
+
+@mcp.tool(description="Release a work scope previously claimed by this paired identity.")
+async def release_work_scope(scope: str, reason: str = "Work scope completed") -> dict:
+    _require_scope("booth:write")
+    return await _queued("scope.release", {"scope": scope}, reason)
+
+
 def _worker_authorized(request: Request) -> bool:
     if not WORKER_TOKEN:
         return False
@@ -117,7 +169,7 @@ async def approve(request: Request):
             "<h1>TROLL BOOTH</h1><p>Nobody crosses without papers.</p>"
             "<p>Enter the short-lived code shown by the local TROLL BOOTH application. Never enter your password or TOTP here.</p>"
             f"<form method=post action='/approve?request={safe_id}'><input name=code autocomplete=one-time-code required>"
-            "<button>Pair read-only Claude session</button></form>"
+            "<button>Pair this agent session</button></form>"
         )
     body = parse_qs((await request.body()).decode("utf-8", "replace"))
     code = body.get("code", [""])[0]
