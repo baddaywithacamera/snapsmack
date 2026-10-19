@@ -36,6 +36,18 @@ for base in ("core", "skins", "assets/js"):
                 emit.append(open(os.path.join(dp, fn), encoding="utf-8", errors="replace").read())
 EMIT = "\n".join(emit)
 
+# A class built by concatenation is still emitted. The shared grid components
+# write `$prefix . '-exif-panel'`, so the literal "au-exif-panel" appears
+# nowhere in the source while the markup carries it on every GRAMOFSMACK page.
+# Searching for the literal called live rules dead across exactly the biggest
+# clusters this report prints -- tile, post, exif, archive, back, topbar,
+# carousel. Expand them before asking what is dead, or this report recommends
+# deleting CSS that is in use.
+_sfx = set(re.findall(r"\$prefix \. '(-[a-z0-9-]+)", EMIT))
+_pfx = set(re.findall(r"'prefix' *=> *'([a-z0-9-]+)'", EMIT))
+if _sfx and _pfx:
+    EMIT += chr(10) + chr(10).join(_p + _s for _p in _pfx for _s in _sfx)
+
 # Noise: editor/content utilities authors type into posts, and numbered variants
 # where the renderer only ever emits the one that applies.
 NOISE = re.compile(r"^(align|asset-|wp-|has-|is-|cycle-|archive-cols-\d|archive-thumbs-)")

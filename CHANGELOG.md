@@ -46,6 +46,31 @@ SCROLL 0.1.68, SHOW N TELL 1.2.11, SLICKR 1.0.45.
   and the form is in it. unzucked and craptasti have had working comments
   since the 910D deploy. Measuring the wrong route is not evidence.
 
+- **The dead-CSS report was wrong by 84 classes, and I nearly acted on it.**
+  `tools/_build/dead-skin-css.py` asked whether a class literal appears
+  anywhere in the source. The shared grid components build their classes by
+  concatenation — `'<div class="' . $prefix . '-exif-panel">'` — so
+  `au-exif-panel` appears nowhere in the source and is on every GRAMOFSMACK
+  page. 40 suffixes are built that way, across six prefixes.
+
+  So the report called live CSS dead in exactly the clusters it ranked
+  highest: **the whole `exif` cluster (16 rules, 4 skins) and the whole
+  `post` cluster (45 rules, 8 skins) were false, every one**, and `tile` and
+  `archive` were overstated. Measured: **820 dead classes before the fix,
+  736 after**. The scanner now expands the concatenation first.
+
+  Worth saying plainly: I wrote that report yesterday, called it "the map of
+  what the conversion left behind", and the next thing anyone would have done
+  with it is delete CSS that is in use.
+
+- **EXIF renders on no site in the fleet** — checked on nine, both the page
+  and the `?modal=1` route. The runtime does populate `item['exif']`, gated
+  on `exif_display_enabled`, so this is either that switch being off
+  everywhere (correct behaviour, nothing to fix) or a real loss. Not
+  guessable from here; it is in the database check below. CHAPLIN, GALLERIA
+  and HIP TO BE SQUARE additionally carry EXIF styling and emit no EXIF
+  markup at all — worth fixing only once the switch is known.
+
 - **Still open, and it is a database question, not a code one.** pixhellated
   (IMPACT PRINTER) and fauxlaroid (INSTANT CAMERA) render the comments region
   and get an empty block back, which means `core/community-component.php`
