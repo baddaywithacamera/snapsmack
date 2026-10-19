@@ -11,6 +11,20 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.909D - 2026-10-19 - FEWER LINES
+
+**Skin only. No CMS deploy needed — package 50 SHADES 1.7.4 and push it.**
+
+- **The blogroll's separator lines are gone.** `.blogroll-peer` drew a
+  `border-bottom` under every entry, and in two columns that rule is only as
+  wide as its column — so 25 entries drew **25 short dashes** scattered down
+  the page. Sean, twice, and I fixed the wrong thing twice: *"LOOK AT THE
+  EXTRA SHORT SEPARATOR LINES BETWEEN POSTS. IT IS TOO BUSY DESIGN WISE."*
+  Measured after removing it: 25 horizontal rules on the page become **7**,
+  and the ones left are the category headings, which run full width and mean
+  something. The 24px of padding stays, so the vertical rhythm is unchanged —
+  only the line goes. 50 SHADES 1.7.4.
+
 ## 0.7.908D - 2026-10-19 - PLAIN ADDRESSES
 
 - **Endless scroll only ever worked for skins that name their tiles

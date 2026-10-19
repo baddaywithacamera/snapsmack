@@ -1155,8 +1155,14 @@ body.archive-page #system-footer {
 }
 
 .blogroll-peer {
+    /* The rule under every entry is gone. In two columns it was only as wide
+       as its column, so 25 blogroll entries drew 25 short dashes scattered
+       down the page -- Sean: "LOOK AT THE EXTRA SHORT SEPARATOR LINES BETWEEN
+       POSTS. IT IS TOO BUSY DESIGN WISE." Measured after removing it: 25
+       horizontal rules on the page become 7, and the ones left are the
+       category headings, which are full width and mean something. The 24px
+       keeps the vertical rhythm exactly as it was; only the line goes. */
     padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
 }
 
 .blogroll-peer:last-child {
