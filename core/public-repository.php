@@ -531,6 +531,22 @@ final class SnapPublicRepository
         );
     }
 
+    /** The filmstrip along the bottom of a solo page: the most recent
+     *  published photographs, newest first. GALLERIA drew this until the
+     *  strict conversion; its stylesheet has carried 14 rules for
+     *  .htbs-filmstrip ever since, waiting for markup nothing emitted.
+     *  Query copied from the layout that used to run it, limit and order
+     *  unchanged. */
+    public function filmstripPhotographs(int $limit = 50): array {
+        return $this->all(
+            "SELECT i.id,i.img_slug,i.img_file,i.img_thumb_square,i.img_title
+             FROM snap_images i
+             WHERE i.img_status='published' AND i.img_date <= NOW()
+             ORDER BY i.sort_order ASC,i.id DESC
+             LIMIT " . max(1, min(200, $limit))
+        );
+    }
+
     public function publicAlbums(): array {
         return $this->all(
             "SELECT a.id,a.album_name,a.album_description,a.cover_image_id,a.featured_post_id,

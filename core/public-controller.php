@@ -529,13 +529,20 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         $item = $slug !== '' ? $repository->photographBySlug($slug) : $repository->photographById($id);
         if ($item === null) return ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation];
         $gridModalSkins = ['the-grid', 'aurora', 'sudden-impact', 'parade', 'jive-turkey', 'heuristic', 'sliders'];
+        // GALLERIA's solo page has a filmstrip along the bottom. The owner's
+        // switch is htbs_show_filmstrip, default on, exactly as the pre-strict
+        // layout read it.
+        $filmstrip = ($settings['htbs_show_filmstrip'] ?? '1') === '1'
+            ? $repository->filmstripPhotographs()
+            : [];
         return $skin === 'game-on'
             ? snapsmack_game_on_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment)
             : ($skin === 'instant-camera'
             ? snapsmack_instant_camera_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment)
             : (in_array($skin, $gridModalSkins, true)
             ? snapsmack_grid_modal_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment, $skin)
-            : snapsmack_photo_response($repository, snapsmack_game_on_focus_item($item), $navigation)));
+            : (snapsmack_photo_response($repository, snapsmack_game_on_focus_item($item), $navigation)
+                + ['filmstrip' => $filmstrip])));
     }
     if ($route === 'post') {
         $item = $slug !== '' ? $repository->postBySlug($slug) : $repository->postById($id);
