@@ -42,7 +42,7 @@ $expectedCalls = [
     'unserialize' => [],
     'var_export' => [
         'core/fediverse.php' => 1,
-        'install.php' => 8,
+        'install.php' => 10,
         'tools/_build/generate-skin-visibility-baseline.php' => 1,
     ],
 ];
