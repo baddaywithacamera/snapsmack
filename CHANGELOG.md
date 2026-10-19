@@ -15,6 +15,32 @@
 
 **Needs a CMS deploy AND 50 SHADES 1.7.4 packaged.**
 
+- **The arrow keys were dead on three of the eight SMACKONEOUT skins.** Sean:
+  *"key commands are a blindspot."* They were. `ss-engine-comms.js` — the
+  hotkey engine every one of them loads as `smack-keyboard` — finds its
+  destinations with `querySelector('a[rel="prev"][href]')`. No link, no arrow
+  keys, and nothing says so: the engine loads, binds, and quietly does
+  nothing.
+
+  Measured live: 50 SHADES, IMPACT PRINTER and RATIONAL GEO had the links.
+  **GALLERIA, CHAPLIN and SLICKR had none** — on solo pages whose stylesheets
+  carry 21, 9 and 9 rules for `.nav-links`. Styled for markup they were never
+  given, the same shape as the filmstrip. All eight work now. SLICKR 1.0.43.
+
+- **And a ratchet so it cannot happen quietly again.**
+  `tests/hotkey-navigation-regression.php` renders the solo page of every skin
+  that declares `smack-keyboard` and fails if the arrow keys have nowhere to
+  go. It caught one of my own mistakes while being written — GALLERIA's nav
+  tucked inside the filmstrip's `if`, so it only appeared when a filmstrip
+  did.
+
+  **16 skins pass; 14 are known broken and listed.** The list may only shrink.
+  Nine of the fourteen are the GRAMOFSMACK family, whose solo view is a modal,
+  so where those links belong is a design question rather than a line to
+  paste. Checked before writing it down: `grid-modal`, `grid-lightbox` and
+  `carousel-view` bind no arrow keys between them, so those really are dead
+  keys and not navigation handled elsewhere.
+
 - **GALLERIA's solo page has its filmstrip back.** The strip along the
   bottom stopped being emitted at the strict conversion, and
   `skins/galleria/style.css` has carried **14 rules** for `.htbs-filmstrip`
