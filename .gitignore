@@ -258,3 +258,7 @@ tools/smackpress/smackpress.db
 # LOG FLOGGER / TICKET WICKET: pytest scratch, never shipped
 tools/log-flogger/build/
 tools/ticket-wicket/build/
+# Private agent-to-agent operational handoffs. Keep locally and in encrypted
+# backup storage; never publish them with application source.
+handoffs/
+
