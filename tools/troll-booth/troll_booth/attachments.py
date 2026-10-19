@@ -4,6 +4,7 @@ import base64
 import hashlib
 import mimetypes
 import shutil
+import time
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +39,25 @@ def import_image(source: str | Path, root: Path) -> dict[str, Any]:
         "name": source_path.name,
         "mime": mime,
         "size": size,
+        "path": str(destination),
+    }
+
+
+def import_image_bytes(data: bytes, root: Path, name: str = "pasted-screenshot.png", mime: str = "image/png") -> dict[str, Any]:
+    if mime not in ALLOWED_TYPES:
+        raise ValueError("Only PNG, JPEG, GIF, and WebP screenshots are supported.")
+    if not data or len(data) > MAX_ATTACHMENT_BYTES:
+        raise ValueError("Screenshots must be between 1 byte and 10 MiB.")
+    digest = hashlib.sha256(data).hexdigest()
+    extension = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp"}[mime]
+    destination = attachment_root(root) / f"{digest}{extension}"
+    if not destination.exists():
+        destination.write_bytes(data)
+    return {
+        "id": digest,
+        "name": name or f"pasted-screenshot-{int(time.time())}{extension}",
+        "mime": mime,
+        "size": len(data),
         "path": str(destination),
     }
 

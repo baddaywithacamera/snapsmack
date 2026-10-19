@@ -7,8 +7,8 @@ from html import escape
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, Qt, Signal
-from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPixmap
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QTimer, Qt, Signal
+from PySide6.QtGui import QAction, QColor, QFont, QIcon, QKeySequence, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
 )
 
 from .history import open_conversation_store
-from .attachments import import_image
+from .attachments import import_image, import_image_bytes
 from .secret_config import public_mariadb_settings, save_mariadb_settings
 
 
@@ -87,6 +87,25 @@ class NewRoomDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         form.addRow(buttons)
+
+
+class ScreenshotComposer(QPlainTextEdit):
+    imagePasted = Signal(object)
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        if event.matches(QKeySequence.StandardKey.Paste):
+            mime = QApplication.clipboard().mimeData()
+            if mime.hasImage():
+                self.imagePasted.emit(QApplication.clipboard().image())
+                event.accept()
+                return
+            if mime.hasUrls():
+                paths = [url.toLocalFile() for url in mime.urls() if url.isLocalFile()]
+                if paths:
+                    self.imagePasted.emit(paths)
+                    event.accept()
+                    return
+        super().keyPressEvent(event)
 
 
 class BoothWindow(QMainWindow):
@@ -167,8 +186,9 @@ class BoothWindow(QMainWindow):
         self.transcript = QTextBrowser()
         self.transcript.setOpenExternalLinks(False)
         box.addWidget(self.transcript, 1)
-        self.composer = QPlainTextEdit()
-        self.composer.setPlaceholderText("Write a request or message…")
+        self.composer = ScreenshotComposer()
+        self.composer.setPlaceholderText("Write a request or message…  Paste screenshots with Ctrl+V")
+        self.composer.imagePasted.connect(self.paste_screenshot)
         self.composer.setMaximumHeight(110)
         box.addWidget(self.composer)
         actions = QHBoxLayout()
@@ -361,6 +381,26 @@ class BoothWindow(QMainWindow):
             QMessageBox.warning(self, "Cannot attach screenshot", str(exc))
             return
         self.attachment_label.setText(", ".join(item["name"] for item in self.pending_attachments))
+
+    def paste_screenshot(self, pasted: object) -> None:
+        try:
+            if isinstance(pasted, list):
+                attachments = [import_image(path, ROOT) for path in pasted]
+            else:
+                payload = QByteArray()
+                buffer = QBuffer(payload)
+                buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+                if not pasted.save(buffer, "PNG"):
+                    raise ValueError("The clipboard image could not be converted to PNG.")
+                buffer.close()
+                stamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+                attachments = [import_image_bytes(bytes(payload), ROOT, f"pasted-screenshot-{stamp}.png")]
+            self.pending_attachments.extend(attachments)
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Cannot paste screenshot", str(exc))
+            return
+        self.attachment_label.setText(", ".join(item["name"] for item in self.pending_attachments))
+        self.statusBar().showMessage("Screenshot attached from clipboard", 3000)
 
     def create_room(self) -> None:
         dialog = NewRoomDialog(self)
