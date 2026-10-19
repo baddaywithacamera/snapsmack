@@ -64,24 +64,51 @@ $check(snapsmack_legacy_archive_target($base, $aliases_archive) === $base . '/ar
     'a site that really has /archive keeps its pretty URL');
 $check(snapsmack_legacy_archive_target($base, $aliases_images) === $base . '/images',
     'a site that labelled it Images is sent to /images');
-$check(snapsmack_legacy_archive_target($base, $aliases_none) === $base . '/?view=archive',
-    'a site with no archive route is sent to the supported view parameter');
+// 0.7.908D: the fallback is the plain address again, and this is only safe
+// because BOTH halves below now hold. Sean: "no goddamn slugs. they're bad
+// for usability for visitors." He is right; a query string is a poor thing to
+// hand a reader who may bookmark or share the page.
+$check(snapsmack_legacy_archive_target($base, $aliases_none) === $base . '/archive',
+    'a site with no archive menu item still gets a plain address');
 $check(snapsmack_legacy_archive_target($base, $aliases_images, 'carousel') === $base,
     'a carousel landing page is its own archive');
-$check(snapsmack_legacy_archive_target($base, [], '') === $base . '/?view=archive',
-    'an empty alias table never yields a bare /archive');
+$check(snapsmack_legacy_archive_target($base, [], '') === $base . '/archive',
+    'an empty alias table also gets the plain address');
 
-// Whatever the table says, the target is a registered route or ?view=archive.
+// Whatever the table says, the target must be an address the CMS can answer:
+// either a slug this site registered, or a bare route name, which the front
+// controller now resolves by name whether or not a menu item created an alias.
+require_once dirname(__DIR__) . '/core/public-runtime.php';
 foreach ([$aliases_images, $aliases_archive, $aliases_none, []] as $index => $aliases) {
     $target = snapsmack_legacy_archive_target($base, $aliases);
     $path = trim((string)parse_url($target, PHP_URL_PATH), '/');
-    $query = (string)parse_url($target, PHP_URL_QUERY);
-    $check($query === 'view=archive' || isset($aliases[$path]),
-        'target for case ' . $index . ' must be registered or ?view=archive, got ' . $target);
+    $resolved = snapsmack_public_runtime_request(['slug' => $path, 'route_aliases' => $aliases]);
+    $check(isset($aliases[$path]) || ($resolved['route'] ?? '') === 'archive',
+        'target for case ' . $index . ' must be an address the CMS answers, got ' . $target);
 }
 
-// --- ?view=archive must actually render the archive -----------------------
-require_once dirname(__DIR__) . '/core/public-runtime.php';
+// THE FIRST HALF of what makes a plain /archive safe: the front controller
+// answers it. The loop happened because nothing did -- the alias table is
+// built from the menu, so a site with no archive item had no /archive, and
+// the rewrite handed it straight back to archive.php.
+$check((snapsmack_public_runtime_request(['slug' => 'archive'])['route'] ?? '') === 'archive',
+    'a bare /archive must resolve to the archive route with no alias at all');
+foreach (['blogroll', 'albums', 'collections'] as $name) {
+    $check((snapsmack_public_runtime_request(['slug' => $name])['route'] ?? '') === $name,
+        'a bare /' . $name . ' must resolve to its own route');
+}
+
+// THE SECOND HALF: archive.php still refuses to redirect to the address it
+// was asked for. With the ^archive$ rewrite still present on an existing
+// site, /archive reaches archive.php, the target is /archive, the guard
+// declines, and the legacy archive renders. No bounce. install.php no longer
+// writes that rewrite, so a new install gets the controller archive instead.
+$check(!str_contains((string)file_get_contents(dirname(__DIR__) . '/install.php'),
+        "
+RewriteRule ^archive$ archive.php"),
+    'install.php must not send /archive back to the legacy file');
+
+// --- ?view=archive must KEEP working: old links and bookmarks exist -------
 $request = snapsmack_public_runtime_request(['view' => 'archive']);
 $check(($request['route'] ?? '') === 'archive',
     'the public controller must accept view=archive as the archive route');
@@ -108,20 +135,25 @@ $check(str_contains($archive, "QUERY_STRING"),
 $carried = snapsmack_legacy_archive_target('https://example.test/', [], '', 'album=232');
 parse_str((string)parse_url($carried, PHP_URL_QUERY), $q);
 $check(($q['album'] ?? '') === '232', 'an album must survive the redirect');
-$check(($q['view'] ?? '') === 'archive', 'and the view must still be the archive');
+// The destination is the archive because of the PATH now, not a view
+// parameter, so there is nothing for a crafted ?view= to displace.
+$check(trim((string)parse_url($carried, PHP_URL_PATH), '/') === 'archive',
+    'and the destination must still be the archive');
 
 $aliased = snapsmack_legacy_archive_target('https://example.test/', ['images' => 'archive'], '', 'album=232');
 $check($aliased === 'https://example.test/images?album=232',
     'a site with a real archive slug keeps the album too, got ' . $aliased);
 
-// The target's own parameters win, so a crafted query cannot redirect the
-// reader somewhere other than the archive.
+// A crafted query cannot send the reader anywhere else: the archive is in
+// the path, and a stray ?view= in the query cannot move it.
 $hostile = snapsmack_legacy_archive_target('https://example.test/', [], '', 'view=elsewhere&album=7');
+$check(trim((string)parse_url($hostile, PHP_URL_PATH), '/') === 'archive',
+    'an incoming view must not displace the archive destination');
 parse_str((string)parse_url($hostile, PHP_URL_QUERY), $hq);
-$check(($hq['view'] ?? '') === 'archive', 'an incoming view must not displace the archive view');
+$check(($hq['album'] ?? '') === '7', 'and the rest of the query still rides along');
 
 $check(snapsmack_legacy_archive_target('https://example.test/', [], '', '')
-    === 'https://example.test/?view=archive', 'no query, no change');
+    === 'https://example.test/archive', 'no query, no stray question mark');
 $check(snapsmack_legacy_archive_target('https://example.test/', ['images' => 'archive'], '', '')
     === 'https://example.test/images', 'no query and a real slug, no stray question mark');
 

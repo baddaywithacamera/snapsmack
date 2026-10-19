@@ -61,6 +61,18 @@ function snapsmack_public_runtime_request(array $input): array
         'fragment' => $input['fragment'] ?? false];
     $slug = trim((string)($input['slug'] ?? ''));
     $aliases = is_array($input['route_aliases'] ?? null) ? $input['route_aliases'] : [];
+    // A bare path that IS the name of a route is that route, alias or no alias.
+    // The alias table is built from the site's menu, so a site with no archive
+    // item had nothing mapping /archive to the archive -- which is why the
+    // address fell back to a query string. The route names are a fixed, closed
+    // list above; honouring them costs nothing and gives every site the plain
+    // address. A real page whose slug collides keeps winning, because 'resolve'
+    // below still runs for anything not in that list.
+    if ($slug !== '' && in_array(strtolower($slug), $routes, true)) {
+        return ['route' => strtolower($slug), 'page' => $input['page'] ?? 1,
+            'category_id' => $input['category_id'] ?? 0, 'album_id' => $input['album_id'] ?? 0,
+            'sort' => $input['sort'] ?? '', 'fragment' => $input['fragment'] ?? false];
+    }
     if ($slug !== '' && isset($aliases[$slug]) && in_array($aliases[$slug], $routes, true)) {
         return ['route' => $aliases[$slug], 'page' => $input['page'] ?? 1,
             'category_id' => $input['category_id'] ?? 0, 'album_id' => $input['album_id'] ?? 0,
