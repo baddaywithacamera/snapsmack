@@ -199,6 +199,11 @@ class BoothWindow(QMainWindow):
         actions.addWidget(attach)
         actions.addWidget(self.attachment_label, 1)
         box.addLayout(actions)
+        self.attachment_preview = QLabel("")
+        self.attachment_preview.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.attachment_preview.setMaximumHeight(180)
+        self.attachment_preview.hide()
+        box.addWidget(self.attachment_preview)
         send = QPushButton("POST AS SEAN")
         send.clicked.connect(self.post_message)
         box.addWidget(send, 0, Qt.AlignmentFlag.AlignRight)
@@ -363,6 +368,8 @@ class BoothWindow(QMainWindow):
         self.composer.clear()
         self.pending_attachments = []
         self.attachment_label.clear()
+        self.attachment_preview.clear()
+        self.attachment_preview.hide()
         self.refresh_rooms(preserve=True)
         self.refresh_messages()
 
@@ -380,7 +387,7 @@ class BoothWindow(QMainWindow):
         except ValueError as exc:
             QMessageBox.warning(self, "Cannot attach screenshot", str(exc))
             return
-        self.attachment_label.setText(", ".join(item["name"] for item in self.pending_attachments))
+        self._refresh_attachment_preview()
 
     def paste_screenshot(self, pasted: object) -> None:
         try:
@@ -399,8 +406,29 @@ class BoothWindow(QMainWindow):
         except (OSError, ValueError) as exc:
             QMessageBox.warning(self, "Cannot paste screenshot", str(exc))
             return
-        self.attachment_label.setText(", ".join(item["name"] for item in self.pending_attachments))
+        self._refresh_attachment_preview()
         self.statusBar().showMessage("Screenshot attached from clipboard", 3000)
+
+    def _refresh_attachment_preview(self) -> None:
+        self.attachment_label.setText(", ".join(item["name"] for item in self.pending_attachments))
+        if not self.pending_attachments:
+            self.attachment_preview.clear()
+            self.attachment_preview.hide()
+            return
+        path = Path(str(self.pending_attachments[-1].get("path") or ""))
+        pixmap = QPixmap(str(path))
+        if pixmap.isNull():
+            self.attachment_preview.setText("Screenshot attached; preview unavailable.")
+        else:
+            self.attachment_preview.setPixmap(
+                pixmap.scaled(
+                    520,
+                    170,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+            )
+        self.attachment_preview.show()
 
     def create_room(self) -> None:
         dialog = NewRoomDialog(self)
