@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import sys
 import tempfile
@@ -15,6 +16,7 @@ from troll_booth.oauth import BoothOAuthProvider
 from troll_booth.history import ConversationStore
 from troll_booth.store import BoothStore
 from troll_booth.worker import CapabilityRegistry
+from troll_booth.attachments import import_image, read_image
 
 
 class StoreTests(unittest.TestCase):
@@ -42,6 +44,28 @@ class StoreTests(unittest.TestCase):
 
 
 class ConversationTests(unittest.TestCase):
+    def test_screenshot_is_copied_verified_and_attached(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "error.png"
+            source.write_bytes(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="))
+            attachment = import_image(source, root / "booth")
+            store = ConversationStore(root / "history.sqlite3")
+            message_id = store.append("errors", "sean", "This is broken", attachments=[attachment])
+            saved = store.message(message_id)
+            self.assertEqual(saved["attachments"][0]["name"], "error.png")
+            recovered = read_image(saved["attachments"][0], root / "booth")
+            self.assertEqual(recovered["mime"], "image/png")
+            self.assertEqual(base64.b64decode(recovered["base64"]), source.read_bytes())
+
+    def test_attachment_reader_rejects_arbitrary_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            outside = root / "private.png"
+            outside.write_bytes(b"not an image")
+            with self.assertRaises(ValueError):
+                read_image({"id": "bad", "path": str(outside)}, root / "booth")
+
     def test_history_is_searchable_and_hash_chained(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store = ConversationStore(Path(directory) / "history.sqlite3")

@@ -178,6 +178,11 @@ class ConversationStore:
         results.reverse()
         return results
 
+    def message(self, message_id: str) -> dict[str, Any] | None:
+        with self._connect() as db:
+            row = db.execute("SELECT * FROM messages WHERE id=?", (message_id,)).fetchone()
+        return self._message_dict(row) if row else None
+
     def search(self, query: str, room_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         if not query.strip():
             return []
@@ -368,6 +373,13 @@ class MariaConversationStore:
                 cursor.execute(sql, params); rows = list(cursor.fetchall())
         rows.reverse()
         return [self._message_dict(row) for row in rows]
+
+    def message(self, message_id: str) -> dict[str, Any] | None:
+        with self._connect() as db:
+            with db.cursor() as cursor:
+                cursor.execute("SELECT * FROM troll_messages WHERE id=%s", (message_id,))
+                row = cursor.fetchone()
+        return self._message_dict(row) if row else None
 
     def search(self, query: str, room_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         if not query.strip(): return []
