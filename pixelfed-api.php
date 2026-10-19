@@ -177,7 +177,7 @@ function px_dm_status(PDO $pdo, array $dm): array {
     $remote=px_remote_account((string)$dm['remote_actor_url'],(string)($dm['remote_handle']??''));$mine=$dm['direction']==='out';$author=$mine?px_actor($pdo):$remote;$mentioned=$mine?$remote:px_actor($pdo);
     $plain=(string)($dm['body']??'');$media=[];if(!empty($dm['media_url'])){$url=(string)$dm['media_url'];$media[]=['id'=>'dm-'.(string)$dm['id'].'-media','type'=>'image','url'=>$url,'preview_url'=>$url,'remote_url'=>$url,'text_url'=>null,'meta'=>[],'description'=>null,'blurhash'=>null];}
     return ['id'=>'dm-'.(string)$dm['id'],'created_at'=>gmdate('Y-m-d\TH:i:s.000\Z',strtotime((string)$dm['created_at'])),'in_reply_to_id'=>$dm['in_reply_to']?:null,
-      'in_reply_to_account_id'=>$mentioned['id'],'sensitive'=>false,'spoiler_text'=>'','visibility'=>'direct','language'=>null,'uri'=>(string)$dm['note_id'],'url'=>null,
+      'in_reply_to_account_id'=>$mentioned['id'],'sensitive'=>(bool)($dm['sensitive']??false),'spoiler_text'=>(string)($dm['summary']??''),'visibility'=>'direct','language'=>null,'uri'=>(string)$dm['note_id'],'url'=>null,
       'replies_count'=>0,'reblogs_count'=>0,'favourites_count'=>0,'favourited'=>false,'reblogged'=>false,'muted'=>false,'bookmarked'=>false,
       'content'=>nl2br(htmlspecialchars($plain,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8')),'content_text'=>$plain,'reblog'=>null,'application'=>['name'=>'SnapSmack','website'=>'https://snapsmack.ca/'],
       'account'=>$author,'media_attachments'=>$media,'mentions'=>[['id'=>$mentioned['id'],'username'=>$mentioned['username'],'url'=>$mentioned['url'],'acct'=>$mentioned['acct']]],'tags'=>[],'emojis'=>[],'card'=>null,'poll'=>null];
