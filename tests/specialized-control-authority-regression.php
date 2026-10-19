@@ -114,7 +114,16 @@ $chaplin = snapsmack_skin_presentation(['chap_line_count'=>'3','chap_line_1_widt
 foreach (['--chap-frame-total:19px','--chap-grain-opacity:0.07','--chap-frame-stripes:linear-gradient'] as $value) special_check(str_contains((string)$chaplin['style'], $value), "CHAPLIN control missing: {$value}");
 $chaplinHtml = special_render('chaplin', ['chap_line_count'=>'3','chap_ornament_style'=>'D','chap_corner_ornaments'=>'1','chap_title_position'=>'below_photo','chap_card_style'=>'minimal','single_show_description'=>'0'], 'photo');
 foreach (['data-chap-card="minimal"','class="p-name photo-title-footer"','class="chap-frame-deco"','/skins/chaplin/assets/svg/D-corner.svg','class="chap-frame-lines"'] as $value) special_check(str_contains($chaplinHtml, $value), "CHAPLIN presentation missing: {$value}");
-special_check(!str_contains($chaplinHtml, 'id="infobox"'), 'CHAPLIN description visibility control was ignored.');
+// The control gates the DESCRIPTION, not the navigation bar. This asserted the
+// absence of id="infobox", which is the nav bar's wrapper in every skin that
+// has one -- `<!-- INFOBOX (core navigation bar) -->` in CHAPLIN's own layout
+// at v0.7.603D. Reading it as the description's id cost CHAPLIN and SLICKR
+// their styled nav bar, because `#infobox .nav-links` then matched nothing.
+// Assert the description itself, in both directions.
+special_check(!str_contains($chaplinHtml, 'chap-description'), 'CHAPLIN description visibility control was ignored.');
+$chaplinShown = special_render('chaplin', ['single_show_description'=>'1'], 'photo');
+special_check(str_contains($chaplinShown, 'chap-description'), 'CHAPLIN description does not appear when the control is on.');
+special_check(str_contains($chaplinShown, 'id="infobox"'), 'CHAPLIN lost the navigation bar wrapper its stylesheet draws.');
 
 $slidersMin = snapsmack_skin_presentation(['sl_opacity'=>'0','sl_layer_color'=>'#123456','sl_wall_opacity'=>'15','sl_flow_axis'=>'horizontal','sl_travel'=>'0.2'], 'sliders');
 $slidersMax = snapsmack_skin_presentation(['sl_opacity'=>'95','sl_layer_color'=>'#abcdef','sl_wall_opacity'=>'100','sl_flow_axis'=>'vertical','sl_travel'=>'1.5'], 'sliders');
