@@ -12,6 +12,7 @@ from typing import Any
 
 from . import __version__
 from .history import ConversationStore, open_conversation_store
+from .attachments import read_image
 
 
 def _request(base: str, token: str, path: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -106,6 +107,15 @@ class CapabilityRegistry:
                 task_id=str(arguments["task_id"]) if arguments.get("task_id") else None,
             )
             return {"posted": True, "message_id": message_id, "sender": actor}
+        if capability == "conversation.attachment" and self.history:
+            message = self.history.message(str(arguments.get("message_id", "")))
+            if not message:
+                raise ValueError("message not found")
+            attachment_id = str(arguments.get("attachment_id", ""))
+            attachment = next((item for item in message.get("attachments", []) if item.get("id") == attachment_id), None)
+            if not attachment:
+                raise ValueError("attachment is not part of that message")
+            return {"attachment": read_image(attachment, Path.home() / ".troll-booth")}
         if capability == "scope.list" and self.history:
             return {"claims": self.history.scopes()}
         if capability == "scope.claim" and self.history:

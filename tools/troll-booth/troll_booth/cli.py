@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from .history import ConversationStore, open_conversation_store
+from .attachments import import_image, read_image
 from .store import BoothStore
 
 
@@ -31,6 +32,7 @@ def main() -> None:
     add.add_argument("--title")
     add.add_argument("--ticket")
     add.add_argument("--task")
+    add.add_argument("--attach", action="append", default=[], help="Attach a PNG, JPEG, GIF, or WebP screenshot")
     search = history_commands.add_parser("search", help="Search local message text")
     search.add_argument("query")
     search.add_argument("--room")
@@ -39,6 +41,9 @@ def main() -> None:
     messages = history_commands.add_parser("messages", help="Read one room")
     messages.add_argument("--room", required=True)
     messages.add_argument("--limit", type=int, default=200)
+    attachment = history_commands.add_parser("attachment", help="Read a screenshot attached to a message")
+    attachment.add_argument("--message", required=True)
+    attachment.add_argument("--id", required=True)
     scopes = history_commands.add_parser("scopes", help="List active work-scope claims")
     args = parser.parse_args()
     store = BoothStore(args.database)
@@ -50,6 +55,7 @@ def main() -> None:
     elif args.command == "history":
         messages = ConversationStore(args.history_database) if args.history_database else open_conversation_store()[0]
         if args.history_command == "add":
+            attachments = [import_image(path, Path.home() / ".troll-booth") for path in args.attach]
             print(
                 messages.append(
                     args.room,
@@ -58,6 +64,7 @@ def main() -> None:
                     title=args.title,
                     ticket_id=args.ticket,
                     task_id=args.task,
+                    attachments=attachments,
                 )
             )
         elif args.history_command == "search":
@@ -66,6 +73,14 @@ def main() -> None:
             print(json.dumps(messages.rooms(), indent=2))
         elif args.history_command == "messages":
             print(json.dumps(messages.messages(args.room, args.limit), indent=2))
+        elif args.history_command == "attachment":
+            message = messages.message(args.message)
+            if not message:
+                parser.error("message not found")
+            item = next((item for item in message.get("attachments", []) if item.get("id") == args.id), None)
+            if not item:
+                parser.error("attachment not found on that message")
+            print(json.dumps(read_image(item, Path.home() / ".troll-booth"), indent=2))
         elif args.history_command == "scopes":
             print(json.dumps(messages.scopes(), indent=2))
 

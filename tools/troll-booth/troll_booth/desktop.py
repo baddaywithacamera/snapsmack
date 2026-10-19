@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from html import escape
 from datetime import datetime
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QFrame,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -34,6 +36,7 @@ from PySide6.QtWidgets import (
 )
 
 from .history import open_conversation_store
+from .attachments import import_image
 from .secret_config import public_mariadb_settings, save_mariadb_settings
 
 
@@ -92,6 +95,7 @@ class BoothWindow(QMainWindow):
         ROOT.mkdir(parents=True, exist_ok=True)
         self.store, self.storage_label = open_conversation_store()
         self.current_room = ""
+        self.pending_attachments: list[dict] = []
         self.setWindowTitle("TROLL BOOTH")
         self.setWindowIcon(_icon())
         self.resize(1320, 820)
@@ -167,6 +171,14 @@ class BoothWindow(QMainWindow):
         self.composer.setPlaceholderText("Write a request or message…")
         self.composer.setMaximumHeight(110)
         box.addWidget(self.composer)
+        actions = QHBoxLayout()
+        attach = QPushButton("ATTACH SCREENSHOT")
+        attach.clicked.connect(self.attach_screenshot)
+        self.attachment_label = QLabel("")
+        self.attachment_label.setWordWrap(True)
+        actions.addWidget(attach)
+        actions.addWidget(self.attachment_label, 1)
+        box.addLayout(actions)
         send = QPushButton("POST AS SEAN")
         send.clicked.connect(self.post_message)
         box.addWidget(send, 0, Qt.AlignmentFlag.AlignRight)
@@ -300,20 +312,55 @@ class BoothWindow(QMainWindow):
             stamp = datetime.fromtimestamp(message["created_at"]).strftime("%Y-%m-%d %H:%M")
             body = (message["body"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>"))
             sender = message["sender"].replace("&", "&amp;").replace("<", "&lt;")
-            chunks.append(f"<div class='message'><b>{sender}</b><span>{stamp}</span><p>{body}</p></div>")
+            attachments = []
+            for attachment in message.get("attachments", []):
+                name = escape(str(attachment.get("name") or "screenshot"))
+                path = Path(str(attachment.get("path") or ""))
+                if path.is_file():
+                    attachments.append(
+                        f"<div><img src='{path.as_uri()}' style='max-width:520px;max-height:320px;border:1px solid #29432e'>"
+                        f"<br><small>{name}</small></div>"
+                    )
+                else:
+                    attachments.append(f"<div><small>Attachment: {name} (not available on this machine)</small></div>")
+            chunks.append(f"<div class='message'><b>{sender}</b><span>{stamp}</span><p>{body}</p>{''.join(attachments)}</div>")
         self.transcript.setHtml("".join(chunks) or "<p>No messages here yet.</p>")
         self.transcript.verticalScrollBar().setValue(self.transcript.verticalScrollBar().maximum())
 
     def post_message(self) -> None:
         body = self.composer.toPlainText().strip()
-        if not body:
+        if not body and not self.pending_attachments:
             return
         if not self.current_room:
             self.current_room = "general"
-        self.store.append(self.current_room, "sean", body, title=self.current_room)
+        self.store.append(
+            self.current_room,
+            "sean",
+            body or "Screenshot attached.",
+            title=self.current_room,
+            attachments=self.pending_attachments,
+        )
         self.composer.clear()
+        self.pending_attachments = []
+        self.attachment_label.clear()
         self.refresh_rooms(preserve=True)
         self.refresh_messages()
+
+    def attach_screenshot(self) -> None:
+        paths, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Attach screenshots",
+            str(Path.home()),
+            "Images (*.png *.jpg *.jpeg *.gif *.webp)",
+        )
+        if not paths:
+            return
+        try:
+            self.pending_attachments.extend(import_image(path, ROOT) for path in paths)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Cannot attach screenshot", str(exc))
+            return
+        self.attachment_label.setText(", ".join(item["name"] for item in self.pending_attachments))
 
     def create_room(self) -> None:
         dialog = NewRoomDialog(self)

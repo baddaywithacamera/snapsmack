@@ -93,6 +93,17 @@ async def conversation_messages(
     )
 
 
+@mcp.tool(description="Read one screenshot attached to a TROLL BOOTH message. Returns verified image bytes as base64.")
+async def conversation_attachment(
+    message_id: str, attachment_id: str, reason: str = "Inspect an attached screenshot"
+) -> dict:
+    return await _queued(
+        "conversation.attachment",
+        {"message_id": message_id, "attachment_id": attachment_id},
+        reason,
+    )
+
+
 @mcp.tool(description="Full-text search locally stored collaboration history, optionally within one room.")
 async def search_conversation(
     query: str, room_id: str | None = None, limit: int = 50, reason: str = "Search collaboration history"
