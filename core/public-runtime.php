@@ -83,6 +83,36 @@ function snapsmack_public_runtime_request(array $input): array
     return ['route' => 'landing', 'page' => $input['page'] ?? 1];
 }
 
+/**
+ * The comment system, rendered on the CMS side of the strict boundary.
+ *
+ * core/community-component.php is the real thing: thread, form, guest fields,
+ * avatars, likes, reactions, moderation state, fediverse replies. 24 skins
+ * included it at v0.7.603D and none does today -- a strict template runs in a
+ * closure holding only $view, so the include hits the component's own
+ * `empty($img['id'])` guard and returns in silence. The include is still on
+ * core/skin-security-policy.php's approved list, which is how we know it was
+ * meant to stay.
+ *
+ * Measured 19 October 2026 across nine live sites, strict skins and legacy
+ * alike: zero comment forms, and assets/css/ss-community.css loading on every
+ * one of them. Complete code that nothing called.
+ *
+ * Rendered here because this is where the database handle and the settings
+ * are, and handed to the comments component through snap_community_block().
+ * The component file itself is untouched.
+ */
+function snapsmack_public_community_block(PDO $pdo, array $settings, array $item, array $skin_manifest): ?SnapTrustedHtml
+{
+    if (empty($item['id'])) return null;
+    $html = (static function (PDO $pdo, array $settings, array $img, array $skin_manifest): string {
+        ob_start();
+        include __DIR__ . '/community-component.php';
+        return (string)ob_get_clean();
+    })($pdo, $settings, $item, $skin_manifest);
+    return trim($html) === '' ? null : SnapTrustedHtml::__snapsmackCmsOnly($html);
+}
+
 function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): array
 {
     $request = snapsmack_public_parse_request(snapsmack_public_runtime_request($input));
@@ -102,6 +132,21 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
         $response['comments_enabled'] = (($settings['global_comments_enabled'] ?? '1') === '1')
             && (($settings['community_comments_enabled'] ?? '1') === '1')
             && (($response['item']['allow_comments'] ?? '1') == '1');
+    }
+    // The community block rides along with that gate: same three kinds, same
+    // response. A skin renders it wherever its own stylesheet already puts
+    // comments, so this reaches all 26 of them without a skin edit -- and so
+    // without a manifest bump, a repackage, or a per-site skin update. A CMS
+    // deploy is the whole delivery. That is deliberate (OPAUDIT 025): a fix
+    // needing 26 skin packages installed would have reached almost nobody.
+    if (in_array(($response['kind'] ?? ''), ['photo', 'post', 'collection'], true)
+        && !empty($response['comments_enabled'])) {
+        $_community = snapsmack_public_community_block(
+            $pdo, $settings,
+            is_array($response['item'] ?? null) ? $response['item'] : [],
+            is_array($input['skin_manifest'] ?? null) ? $input['skin_manifest'] : []
+        );
+        if ($_community !== null) $response['community'] = $_community;
     }
     // Profile chrome is shared across every strict public page, not just the
     // landing response. GAME ON also needs its puzzle field on About,

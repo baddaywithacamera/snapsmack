@@ -21,6 +21,25 @@ final class SnapTrustedHtml
     public function __toString(): string { return $this->html; }
 }
 
+/**
+ * The CMS-rendered community block for the photograph on screen, or null.
+ *
+ * core/community-component.php needs a database handle, the settings and the
+ * image row. A strict template runs in a closure holding only $view, so the
+ * block is rendered on the CMS side of the boundary and left here for the
+ * comments component to pick up. snapsmack_build_skin_view() is the only
+ * caller that sets it, once per request, from the validated response.
+ *
+ * It lives beside the trusted-HTML type because that is all it can carry: a
+ * skin cannot construct that type, so nothing a skin forged can arrive here.
+ */
+function snap_community_block(?SnapTrustedHtml $block = null, bool $set = false): ?SnapTrustedHtml
+{
+    static $current = null;
+    if ($set) $current = $block;
+    return $current;
+}
+
 /** Sanitize CMS-rendered rich text into the only trusted HTML type. */
 function snapsmack_trusted_html(string $html): SnapTrustedHtml
 {
