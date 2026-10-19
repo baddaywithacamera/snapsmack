@@ -66,7 +66,14 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
             return None
         params = pending.params
         requested = params.scopes or ["booth:read"]
+        # The short-lived owner code is the step-up decision. Some browser MCP
+        # clients request only their original read scope even after the server
+        # advertises an optional write scope, so an explicitly write-enabled
+        # pairing code may add booth:write to that one session. A normal code
+        # can never gain it.
         allowed = [scope for scope in requested if scope in identity["scopes"]]
+        if "booth:write" in identity["scopes"] and "booth:write" not in allowed:
+            allowed.append("booth:write")
         if "booth:read" not in allowed:
             return None
         code_value = f"code_{secrets.token_urlsafe(24)}"
