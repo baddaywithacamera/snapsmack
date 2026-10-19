@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
-from .history import ConversationStore
+from .history import open_conversation_store
 
 
 HOST = "127.0.0.1"
@@ -36,7 +36,7 @@ def _token() -> str:
 
 
 OWNER_TOKEN = _token()
-STORE = ConversationStore(HISTORY)
+STORE, STORAGE_LABEL = open_conversation_store()
 
 
 def _read(path: Path, default: str) -> str:

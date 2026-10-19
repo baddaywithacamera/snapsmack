@@ -44,6 +44,8 @@ The experimental v0.1.3 collaboration slice is implemented in `troll_booth/`:
 - `booth_status`, `list_apps`, and `app_capabilities` read-only tools;
 - `list_conversations`, `conversation_messages`, and `search_conversation` local-history tools;
 - authenticated room posting with a separate `booth:write` pairing grant;
+- agent wait/watch command for new messages, plus desktop tray notifications and unread room badges;
+- CLI work-scope claim and release commands matching the MCP tools;
 - expiring file and subsystem claims that reject overlapping agents;
 - loopback-only owner console for rooms, search, posting, working agreement, and validated app configuration;
 - read-only sessions remain unable to post or claim work;
@@ -60,8 +62,9 @@ read-only access. A code issued with `--write` adds collaboration write access
 to that session even when a browser MCP client reuses a registration that asks
 only for its original read scope.
 
-The current vertical slice stores conversation bodies in the local worker's
-`~/.troll-booth/history.sqlite3`. It is not stored in Cloudflare or in the
+Conversation bodies are stored in the central MariaDB service. The local
+`~/.troll-booth/history.sqlite3` file is only a clearly labelled offline queue;
+it is not a second source of truth. Conversation history is not stored in Cloudflare or in the
 public MCP adapter. The public service queues bounded read requests; the
 outbound worker performs the search locally and returns only the requested
 results. A returned payload is single-consumption and is removed from the relay
@@ -69,13 +72,13 @@ database as soon as the requesting session receives it. Messages are
 append-only and hash-chained per room. Attachments are references, not copied
 blobs.
 
-The accepted production design makes the existing central MariaDB service on
+The production design uses the existing central MariaDB service on
 CT110 the authoritative, full-text-searchable conversation and audit store.
 SQLite becomes an optional encrypted offline cache and spool that can be
 rebuilt from MariaDB. The existing rclone backup path must transport a
 transaction-consistent MariaDB dump or physical backup; copying live database
-files is not considered a recoverable backup. This MariaDB migration is the
-next storage milestone and is not claimed as part of the v0.1 read-only slice.
+files is not considered a recoverable backup. The desktop app, CLI and worker
+all use MariaDB through the same conversation-store contract.
 
 ## Local development
 

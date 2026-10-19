@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
-from .history import ConversationStore
+from .history import ConversationStore, open_conversation_store
 
 
 def _request(base: str, token: str, path: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -29,7 +29,12 @@ class CapabilityRegistry:
     def __init__(self, config_path: Path, history_path: Path | None = None):
         self.config_path = config_path
         self.apps = self._load()
-        self.history = ConversationStore(history_path) if history_path else None
+        if history_path:
+            self.history = ConversationStore(history_path)
+        else:
+            # The shared MariaDB configuration may come from the environment or
+            # from the Windows DPAPI-protected desktop configuration.
+            self.history, _ = open_conversation_store(allow_offline_cache=False)
 
     def _load(self) -> dict[str, dict[str, Any]]:
         if not self.config_path.exists():
@@ -143,7 +148,11 @@ def main() -> None:
     parser.add_argument("--token", default=os.environ.get("TROLL_BOOTH_WORKER_TOKEN", ""))
     parser.add_argument("--token-file", type=Path)
     parser.add_argument("--config", type=Path, default=Path.home() / ".troll-booth" / "apps.json")
-    parser.add_argument("--history", type=Path, default=Path.home() / ".troll-booth" / "history.sqlite3")
+    parser.add_argument(
+        "--history",
+        type=Path,
+        help="Explicit offline/test store. Production uses the configured MariaDB database.",
+    )
     parser.add_argument("--worker-id", default=os.environ.get("COMPUTERNAME", "local-worker").lower())
     parser.add_argument("--once", action="store_true")
     args = parser.parse_args()
