@@ -6,7 +6,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, Qt, Signal
+from PySide6.QtCore import QLockFile, QTimer, Qt, Signal
 from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -464,6 +464,16 @@ def main() -> None:
     app = QApplication(sys.argv)
     app.setApplicationName("TROLL BOOTH")
     app.setQuitOnLastWindowClosed(False)
+    ROOT.mkdir(parents=True, exist_ok=True)
+    instance_lock = QLockFile(str(ROOT / "desktop.lock"))
+    instance_lock.setStaleLockTime(0)
+    if not instance_lock.tryLock(100):
+        QMessageBox.information(
+            None,
+            "TROLL BOOTH is already running",
+            "TROLL BOOTH is already open or waiting in the notification area.",
+        )
+        return
     window = BoothWindow()
     window.show()
     raise SystemExit(app.exec())
