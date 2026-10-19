@@ -1540,7 +1540,14 @@ RewriteBase /
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
-RewriteRule ^archive$ archive.php [L,QSA]
+# /archive belongs to the front controller, which resolves it by name.
+# This rule used to hand it to archive.php, and when archive.php's own
+# redirect target was also /archive the two bounced off each other --
+# six live sites answered archive.php with an endless 301 in October.
+# archive.php has refused to redirect to its own address since 0.7.870D,
+# so an existing site that still has this line is safe; it just keeps
+# serving the legacy archive at /archive instead of the controller one.
+# RewriteRule ^archive$ archive.php [L,QSA]
 RewriteRule ^sitemap\.xml$ sitemap.php [L,QSA]
 RewriteRule ^rss$ rss.php [L,QSA]
 RewriteRule ^feed$ rss.php [L,QSA]

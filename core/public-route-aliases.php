@@ -133,7 +133,7 @@ function snapsmack_legacy_archive_target(string $base, array $aliases, string $s
     $slug = array_search('archive', $aliases, true);
     $target = (is_string($slug) && $slug !== '')
         ? rtrim($base, '/') . '/' . rawurlencode($slug)
-        : rtrim($base, '/') . '/?view=archive';
+        : rtrim($base, '/') . '/archive';
 
     // CARRY THE QUESTION. An album card links to /archive?album=232, and a
     // redirect that keeps only the path answers with the whole archive

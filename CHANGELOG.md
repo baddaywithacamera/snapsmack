@@ -22,15 +22,31 @@
   It now takes the children of the *same grid* out of the fetched page, by id,
   so a skin can call its tiles whatever it likes.
 
-- **The `?view=archive` fallback stays, for now, and here is why.** Sean:
-  *"no goddamn slugs. they're bad for usability for visitors."* He is right,
-  and the one-line change was wrong: `tests/legacy-archive-redirect-loop-regression.php`
-  refused it, because a bare `/archive` is exactly what put **six** live sites
-  into an endless 301 loop — the rewrite hands `/archive` back to `archive.php`,
-  which redirects to `/archive` again. Clean archive addresses need the
-  `^archive$ archive.php` rewrite dropped so `/archive` reaches the front
-  controller, which is a change to each site's `.htaccess`, not to one line of
-  PHP. Noted, not attempted.
+- **Plain addresses. No `?view=archive`.** Sean: *"no goddamn slugs. they're
+  bad for usability for visitors."*
+
+  The query string was scar tissue: a bare `/archive` once put **six** live
+  sites into an endless 301 loop, because the alias table is built from each
+  site's menu, so a site with no archive item had no `/archive` for the CMS to
+  answer — and the rewrite handed it straight back to `archive.php`. The
+  fallback was changed to a query string rather than fixing why the address
+  did not exist.
+
+  It exists now. The front controller resolves a bare path that **is** a route
+  name — `/archive`, `/blogroll`, `/albums`, `/collections` — with or without
+  a menu item to create the alias. A real page whose slug collides still wins,
+  because unknown paths go on to the resolver as before.
+
+  Two things make it safe to go back. `archive.php` has refused to redirect to
+  the address it was asked for since 0.7.870D, so an existing site that still
+  carries the `^archive$` rewrite simply renders the legacy archive at
+  `/archive` — no bounce. And `install.php` no longer writes that rewrite, so
+  a new install gets the controller archive there instead.
+
+  The regression test keeps the loop conditions asserted and now pins both
+  halves: that a bare `/archive` resolves with an empty alias table, and that
+  `install.php` does not send it back to the legacy file. Old `?view=archive`
+  links keep working.
 
 - **50 SHADES' blogroll read as a stack of fragments.** Its own stylesheet
   asks for a 900px canvas and `assets/css/page-blogroll.css` — which loads
