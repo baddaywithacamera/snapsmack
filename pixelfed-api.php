@@ -35,6 +35,11 @@ function px_setting(PDO $pdo, string $key, string $fallback = ''): string {
     $s=$pdo->prepare('SELECT setting_val FROM snap_settings WHERE setting_key=? LIMIT 1'); $s->execute([$key]);
     $v=$s->fetchColumn(); return $v === false ? $fallback : (string)$v;
 }
+function px_has_column(PDO $pdo, string $table, string $column): bool {
+    static $known=[];$key=$table.'.'.$column;if(array_key_exists($key,$known))return $known[$key];
+    try{$s=$pdo->prepare('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=? LIMIT 1');$s->execute([$table,$column]);return $known[$key]=(bool)$s->fetchColumn();}
+    catch(Throwable $e){return $known[$key]=false;}
+}
 function px_base(): string {
     $https=(!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off')||($_SERVER['HTTP_X_FORWARDED_PROTO']??'')==='https';
     return ($https?'https':'http').'://'.($_SERVER['HTTP_HOST']??'localhost').'/';
@@ -177,13 +182,19 @@ function px_dm_status(PDO $pdo, array $dm): array {
       'content'=>nl2br(htmlspecialchars($plain,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8')),'content_text'=>$plain,'reblog'=>null,'application'=>['name'=>'SnapSmack','website'=>'https://snapsmack.ca/'],
       'account'=>$author,'media_attachments'=>$media,'mentions'=>[['id'=>$mentioned['id'],'username'=>$mentioned['username'],'url'=>$mentioned['url'],'acct'=>$mentioned['acct']]],'tags'=>[],'emojis'=>[],'card'=>null,'poll'=>null];
 }
-function px_conversation_id(string $actorUrl): string { return substr(hash('sha256',$actorUrl),0,24); }
+function px_conversation_id(string $threadIdentity): string { return substr(hash('sha256',$threadIdentity),0,24); }
 function px_conversations(PDO $pdo): array {
-    $limit=max(1,min(40,(int)($_GET['limit']??20)));$q=$pdo->query("SELECT remote_actor_url,MAX(id) latest_id,MAX(CASE WHEN direction='in' AND is_read=0 THEN 1 ELSE 0 END) unread FROM snap_ap_dms WHERE is_deleted=0 GROUP BY remote_actor_url ORDER BY latest_id DESC LIMIT ".(int)$limit);
-    $out=[];foreach($q->fetchAll(PDO::FETCH_ASSOC) as$thread){$s=$pdo->prepare('SELECT * FROM snap_ap_dms WHERE id=? AND is_deleted=0 LIMIT 1');$s->execute([(int)$thread['latest_id']]);$last=$s->fetch(PDO::FETCH_ASSOC);if(!$last)continue;$remote=px_remote_account((string)$last['remote_actor_url'],(string)($last['remote_handle']??''));$out[]=['id'=>px_conversation_id((string)$last['remote_actor_url']),'unread'=>(bool)$thread['unread'],'accounts'=>[$remote],'last_status'=>px_dm_status($pdo,$last)];}return $out;
+    $limit=max(1,min(40,(int)($_GET['limit']??20)));$identity=px_has_column($pdo,'snap_ap_dms','thread_key')?"COALESCE(NULLIF(thread_key,''),remote_actor_url)":"remote_actor_url";$q=$pdo->query("SELECT {$identity} thread_identity,MAX(id) latest_id,MAX(CASE WHEN direction='in' AND is_read=0 THEN 1 ELSE 0 END) unread FROM snap_ap_dms WHERE is_deleted=0 GROUP BY thread_identity ORDER BY latest_id DESC LIMIT ".(int)$limit);
+    $out=[];foreach($q->fetchAll(PDO::FETCH_ASSOC) as$thread){$s=$pdo->prepare('SELECT * FROM snap_ap_dms WHERE id=? AND is_deleted=0 LIMIT 1');$s->execute([(int)$thread['latest_id']]);$last=$s->fetch(PDO::FETCH_ASSOC);if(!$last)continue;$remote=px_remote_account((string)$last['remote_actor_url'],(string)($last['remote_handle']??''));$out[]=['id'=>px_conversation_id((string)$thread['thread_identity']),'unread'=>(bool)$thread['unread'],'accounts'=>[$remote],'last_status'=>px_dm_status($pdo,$last)];}return $out;
 }
-function px_conversation_actor(PDO $pdo, string $conversationId): ?string {
-    $q=$pdo->query('SELECT DISTINCT remote_actor_url FROM snap_ap_dms WHERE is_deleted=0');foreach($q->fetchAll(PDO::FETCH_COLUMN) as$actor){if(hash_equals(px_conversation_id((string)$actor),$conversationId))return (string)$actor;}return null;
+function px_conversation_thread(PDO $pdo, string $conversationId): ?array {
+    $identity=px_has_column($pdo,'snap_ap_dms','thread_key')?"COALESCE(NULLIF(thread_key,''),remote_actor_url)":"remote_actor_url";$q=$pdo->query("SELECT DISTINCT {$identity} thread_identity,remote_actor_url FROM snap_ap_dms WHERE is_deleted=0");foreach($q->fetchAll(PDO::FETCH_ASSOC) as$row){if(hash_equals(px_conversation_id((string)$row['thread_identity']),$conversationId))return $row;}return null;
+}
+function px_dm_context(PDO $pdo, int $dmId): array {
+    $s=$pdo->prepare('SELECT * FROM snap_ap_dms WHERE id=? AND is_deleted=0 LIMIT 1');$s->execute([$dmId]);$current=$s->fetch(PDO::FETCH_ASSOC);if(!$current)return ['ancestors'=>[],'descendants'=>[]];
+    $ancestors=[];$seen=[];$parent=(string)($current['in_reply_to']??'');
+    while($parent!==''&&count($ancestors)<40&&!isset($seen[$parent])){$seen[$parent]=true;$q=$pdo->prepare('SELECT * FROM snap_ap_dms WHERE note_id=? AND is_deleted=0 LIMIT 1');$q->execute([$parent]);$row=$q->fetch(PDO::FETCH_ASSOC);if(!$row)break;array_unshift($ancestors,px_dm_status($pdo,$row));$parent=(string)($row['in_reply_to']??'');}
+    $descendants=[];$front=[(string)$current['note_id']];$seen=[];while($front&&count($descendants)<80){$parent=array_shift($front);if(isset($seen[$parent]))continue;$seen[$parent]=true;$q=$pdo->prepare('SELECT * FROM snap_ap_dms WHERE in_reply_to=? AND is_deleted=0 ORDER BY created_at,id LIMIT 40');$q->execute([$parent]);foreach($q->fetchAll(PDO::FETCH_ASSOC) as$row){$descendants[]=px_dm_status($pdo,$row);$front[]=(string)$row['note_id'];if(count($descendants)>=80)break;}}return ['ancestors'=>$ancestors,'descendants'=>$descendants];
 }
 
 /** Delete one GRAM post only when every attached image belongs to this OAuth authorization. */
@@ -370,11 +381,12 @@ if (preg_match('#^api/v1/statuses/(\d+)$#',$route,$m) && $method==='DELETE') {
 }
 if (preg_match('#^api/v1/statuses/(\d+)$#',$route,$m) && $method==='GET') { px_require_scope($token,'read');$s=px_status($pdo,(int)$m[1]);if(!$s)px_json(['error'=>'Record not found'],404);px_json($s); }
 if (preg_match('#^api/v1/statuses/(\d+)/context$#',$route) && $method==='GET') { px_require_scope($token,'read');px_json(['ancestors'=>[],'descendants'=>[]]); }
+if (preg_match('#^api/v1/statuses/dm-(\d+)/context$#',$route,$m) && $method==='GET') { px_require_scope($token,'read');px_json(px_dm_context($pdo,(int)$m[1])); }
 if (($route==='api/v1/timelines/home'||preg_match('#^api/v1/accounts/1/statuses$#',$route)) && $method==='GET') { px_require_scope($token,'read');px_json(px_timeline($pdo)); }
 if ($route==='api/v1/conversations' && $method==='GET') { px_require_scope($token,'read');px_json(px_conversations($pdo)); }
 if (preg_match('#^api/v1/conversations/([a-f0-9]{24})/read$#',$route,$m) && $method==='POST') {
-    px_require_scope($token,'write');$actor=px_conversation_actor($pdo,$m[1]);if($actor===null)px_json(['error'=>'Record not found'],404);
-    $pdo->prepare("UPDATE snap_ap_dms SET is_read=1 WHERE remote_actor_url=? AND direction='in' AND is_deleted=0")->execute([$actor]);px_json([]);
+    px_require_scope($token,'write');$thread=px_conversation_thread($pdo,$m[1]);if($thread===null)px_json(['error'=>'Record not found'],404);
+    $identity=px_has_column($pdo,'snap_ap_dms','thread_key')?"COALESCE(NULLIF(thread_key,''),remote_actor_url)":"remote_actor_url";$pdo->prepare("UPDATE snap_ap_dms SET is_read=1 WHERE {$identity}=? AND direction='in' AND is_deleted=0")->execute([(string)$thread['thread_identity']]);px_json([]);
 }
 if ($method==='GET' && in_array($route,['api/v1/notifications','api/v1/favourites','api/v1/bookmarks','api/v1/follow_requests','api/v1/mutes','api/v1/blocks'],true)) { px_require_scope($token,'read');px_json([]); }
 if ($route==='api/v1/timelines/public' && $method==='GET') { px_require_scope($token,'read');px_json(px_timeline($pdo)); }
