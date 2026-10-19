@@ -53,4 +53,3 @@ does not create, read, print, or embed production credentials.
 - Confirm the public adapter exposes no shell capability.
 - Confirm read-only browser sessions cannot post or claim work.
 - Confirm database backup restoration before declaring recovery complete.
-
