@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import atexit
+import ctypes
 import json
 import os
+import re
 import subprocess
 import time
 import urllib.error
@@ -12,6 +15,69 @@ from typing import Any
 
 from . import __version__
 from .history import ConversationStore, open_conversation_store
+
+
+class WorkerInstanceLock:
+    """One outbound worker per worker ID, with automatic stale-lock recovery."""
+
+    def __init__(self, worker_id: str) -> None:
+        safe_id = re.sub(r"[^A-Za-z0-9_.-]+", "-", worker_id).strip("-") or "local-worker"
+        self.path = Path.home() / ".troll-booth" / f"worker-{safe_id}.lock"
+        self.owned = False
+
+    @staticmethod
+    def _process_is_alive(pid: int) -> bool:
+        if pid <= 0:
+            return False
+        if os.name == "nt":
+            process_query_limited_information = 0x1000
+            handle = ctypes.windll.kernel32.OpenProcess(process_query_limited_information, False, pid)
+            if not handle:
+                return False
+            ctypes.windll.kernel32.CloseHandle(handle)
+            return True
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except (PermissionError, OSError):
+            return True
+        return True
+
+    def acquire(self) -> bool:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        for _attempt in range(2):
+            try:
+                descriptor = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            except FileExistsError:
+                try:
+                    existing_pid = int(self.path.read_text(encoding="ascii").strip())
+                except (OSError, ValueError):
+                    existing_pid = 0
+                if self._process_is_alive(existing_pid):
+                    return False
+                try:
+                    self.path.unlink()
+                except FileNotFoundError:
+                    pass
+                continue
+            with os.fdopen(descriptor, "w", encoding="ascii") as stream:
+                stream.write(str(os.getpid()))
+            self.owned = True
+            atexit.register(self.release)
+            return True
+        return False
+
+    def release(self) -> None:
+        if not self.owned:
+            return
+        try:
+            if self.path.read_text(encoding="ascii").strip() == str(os.getpid()):
+                self.path.unlink()
+        except FileNotFoundError:
+            pass
+        finally:
+            self.owned = False
 
 
 def _request(base: str, token: str, path: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -161,6 +227,9 @@ def main() -> None:
         token = args.token_file.read_text(encoding="utf-8").strip()
     if not args.server or not token:
         parser.error("--server and --token (or matching environment variables) are required")
+    instance_lock = WorkerInstanceLock(args.worker_id)
+    if not instance_lock.acquire():
+        parser.error(f"worker {args.worker_id!r} is already running")
     run(args.server, token, args.config, args.history, args.worker_id, args.once)
 
 
