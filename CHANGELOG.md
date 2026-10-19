@@ -13,7 +13,7 @@
 
 ## 0.7.913D - 2026-10-19 - DOOR THAT WAS NOT THERE
 
-**Needs a CMS deploy only.** No skin package.
+**Needs a CMS deploy AND HIP TO BE SQUARE 1.3.16 packaged.**
 
 - **GALLERIA's INFO and SIGNALS went nowhere.** Its manifest has listed
   `smack-overlay` in `require_scripts` the whole time, and
@@ -31,6 +31,32 @@
 
   `skins/galleria/style.css` states where this belongs, at line 1166:
   *"(Info & comments now rendered inside .htbs-overlay-box)"*.
+
+- **And GALLERIA's solo page was left with no navigation at all.** Sean:
+  *"galleria still has broken solo page."* He was right, and 913D as first
+  written would not have fixed it.
+
+  Measured on **hekeepsdroningon.ca** (GALLERIA 1.3.15, serving 912D):
+  `htbs-single` present, so the navigation bar hidden; **`htbs-filmstrip`
+  absent**; overlay absent. A photograph with no way off it.
+
+  `.htbs-single #infobox { display: none }` is correct only while the
+  filmstrip is there to replace the bar. 0.7.910D emitted that class
+  unconditionally, so on any site with `htbs_show_filmstrip` switched off it
+  hid the only navigation there was. The class now depends on the filmstrip
+  actually being in the response — no filmstrip, visible bar. Measured both
+  ways in the harness: with a filmstrip, `htbs-single` emitted and the bar
+  hidden; without one, no class and the bar renders **521x31**, reading
+  "« PREV | FIRST | INFO | COMMENTS | LAST | NEXT »".
+
+  This also fixes the fork, which has no filmstrip at all and whose bar I had
+  therefore hidden outright an hour earlier. `skin-harness.php` gained a
+  `HARNESS_NO_FILMSTRIP` switch so the empty case can be rendered on demand.
+
+  **Still worth checking on that site:** `htbs_show_filmstrip`. The filmstrip
+  query is sound and the response carries it, so the likeliest reason it is
+  empty is that the setting is off — in which case nothing is broken about
+  the filmstrip and the navigation bar is simply the right UI there.
 
 - **This one is mine twice over.** In 0.7.910D I hid GALLERIA's nav bar,
   faithfully restoring `.htbs-single #infobox { display: none }` from

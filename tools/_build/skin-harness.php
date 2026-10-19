@@ -85,11 +85,11 @@ $responses = [
         'next'     => ['url' => 'newer', 'img_title' => 'Newer', 'img_slug' => 'newer'],
         'first'    => ['url' => 'first', 'img_title' => 'First', 'img_slug' => 'first'],
         'last'     => ['url' => 'last',  'img_title' => 'Last',  'img_slug' => 'last'],
-        'filmstrip' => array_map(static fn(int $n): array => [
+        'filmstrip' => (getenv('HARNESS_NO_FILMSTRIP') ? [] : array_map(static fn(int $n): array => [
             'id' => $n, 'img_slug' => 'photo-' . $n, 'img_title' => 'Photograph ' . $n,
             'img_thumb_square' => 'https://placehold.co/200x200/555/fff?text=' . $n,
             'img_file' => 'https://placehold.co/200x200/555/fff?text=' . $n,
-        ], range(1, 12)),
+        ], range(1, 12))),
     ],
     'collections' => [
         'status' => 200, 'kind' => 'collections', 'navigation' => [],
