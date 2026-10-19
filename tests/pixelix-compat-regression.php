@@ -41,7 +41,7 @@ $checks = [
     'standard invalid-token challenge' => "WWW-Authenticate: Bearer realm=\"SnapSmack\", error=\"invalid_token\"",
     'machine-readable invalid token' => "'error_code'=>'invalid_token'",
     'explicit OAuth consent action' => 'action="/oauth/authorize"',
-    'manual Pixelix callback fallback' => 'RETURN TO PIXELIX',
+    'manual client callback fallback' => "RETURN TO '.strtoupper(\$appName)",
     'absolute refresh expiry'  => "refresh_expires_at>NOW()",
     'media ownership'          => "JOIN snap_oauth_media",
     'scope enforcement'        => "px_require_scope",

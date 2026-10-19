@@ -1327,6 +1327,8 @@ CREATE TABLE IF NOT EXISTS `snap_ap_actors` (
   `shared_inbox_url` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `summary`          text         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `profile_url`      varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `moved_to`         varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `also_known_as_json` mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `fetched_at`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_ap_actor_cache` (`actor_url`(191))
@@ -1361,7 +1363,14 @@ CREATE TABLE IF NOT EXISTS `snap_ap_dms` (
   `direction`        enum('in','out') COLLATE utf8mb4_unicode_ci NOT NULL,
   `note_id`          varchar(600) COLLATE utf8mb4_unicode_ci NOT NULL,
   `in_reply_to`      varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `context_uri`      varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `conversation_uri` varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `thread_key`       varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_group`         tinyint(1) NOT NULL DEFAULT 0,
+  `recipients_json`  mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `body`             text         COLLATE utf8mb4_unicode_ci,
+  `summary`          text         COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sensitive`        tinyint(1)   NOT NULL DEFAULT 0,
   `media_url`        varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_request`       tinyint(1)   NOT NULL DEFAULT 0,
   `is_read`          tinyint(1)   NOT NULL DEFAULT 0,
@@ -1381,10 +1390,17 @@ CREATE TABLE IF NOT EXISTS `snap_ap_timeline` (
   `actor_url`    varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
   `actor_handle` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `content`      mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `summary`      text         COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                 COMMENT 'ActivityStreams content warning / spoiler text',
+  `visibility`   varchar(20)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'public',
+  `audience_json` mediumtext  COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                 COMMENT 'Bounded normalized to/cc/bto/bcc/audience URI list',
   `media_json`   mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                  COMMENT 'JSON array of image URLs',
   `media_video_json` mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL
                  COMMENT 'Inbound federated video: JSON array of {url,type} (consume-not-produce, 0.7.523)',
+  `attachments_json` mediumtext COLLATE utf8mb4_unicode_ci DEFAULT NULL
+                 COMMENT 'Canonical attachment metadata including alt text, dimensions, blurhash and focal point',
   `tags_json`    mediumtext   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                  COMMENT 'JSON array of normalized ActivityPub Hashtag names',
   `url`          varchar(600) COLLATE utf8mb4_unicode_ci DEFAULT NULL,

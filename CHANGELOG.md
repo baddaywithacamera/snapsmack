@@ -88,6 +88,22 @@
   restored rather than introduced, but it does mean a mouse-only visitor
   cannot reach INFO or comments on these two skins. Say the word and the
   openers can be surfaced.
+## 0.7.912D - 2026-10-19 - PIXEL DIPLOMACY
+
+- **Pixelfed 0.15 compatibility without abandoning older peers.** Activity
+  object references now accept both URI and embedded-object forms for likes,
+  boosts, undo and delete. Direct messages retain context, conversation,
+  recipient and group-thread metadata while old actor-based conversation IDs
+  remain readable. Actor migration metadata (`movedTo` / `alsoKnownAs`) is
+  cached and blind follows to clearly moved accounts are refused.
+- **Federated edits no longer erase omitted metadata.** Content warnings,
+  sensitive flags, audience/visibility and media metadata survive partial
+  updates. Alt text, MIME type, dimensions, blurhash and focal data are retained;
+  the reader presents warnings and conceals sensitive media until revealed.
+- **Compatibility remains additive.** Existing database rows and OAuth clients
+  continue to work during rolling schema mismatches. Unknown ActivityStreams
+  extension fields remain tolerated, and no Pixelfed behaviour was put in a
+  skin. The complete 18-program federation/Pixel regression group passes.
 
 ## 0.7.911D - 2026-10-19 - FIRST COMMENT
 
