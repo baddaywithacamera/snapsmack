@@ -58,6 +58,15 @@
   to the newest message only when already there, or when the room changed,
   and otherwise holds your place. 18 tests pass.
 
+- **The build specs pointed at one fixed folder.** Found while rebuilding:
+  both specs opened with
+  `Analysis(['C:/dev/snapsmack/tools/troll-booth/desktop_entry.py'])` — an
+  absolute path. Run the spec from any other checkout and it still compiled
+  **that** tree's source, so a rebuild reported success and shipped the old
+  code. Caught only because the rebuilt exe was opened and checked: the fix
+  was not in it. Both specs now resolve the entry script and `pathex` from
+  `SPECPATH`.
+
 - **One address in that list was not ours.** I built it by scraping
   `skins.php` for domains, which caught `www.serenity.ca` — a funeral home in
   Edmonton, linked from the page as an obituary for Raymond A. Vanderwoning,
