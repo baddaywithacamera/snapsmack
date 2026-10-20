@@ -21,6 +21,7 @@
  *   [newest_post]                    — date of most recent post
  *   [oldest_post]                    — date of first post
  *   [embed:key]                      — named HTML embed from Smack Your Scripts Up!
+ *   Bare YouTube URLs                — privacy-enhanced inline video player
  *   [fedi_handle]                    — blog's own fediverse @handle as a follow link (blank if federation off)
  *   [pc_prompt which="next|current" field="prompt|tag|drop|open|close|friday" format="" empty=""]
  *                                    — live PHOTO CHALLENGE schedule read from the prompt queue
@@ -117,6 +118,10 @@ class SnapSmack {
         // Convert double newlines to <p> tags for any remaining top-level text.
         $content = $this->autoParagraph($content);
 
+        // WordPress migrations commonly leave a YouTube URL on its own line.
+        // Convert only standalone URLs; ordinary links in prose stay links.
+        $content = $this->parseYouTubeEmbeds($content);
+
         // --- PHASE 3: DROPCAP ---
         $content = $this->parseDropcap($content);
 
@@ -181,6 +186,24 @@ class SnapSmack {
         $content = $this->parseGameScores($content);
 
         return $content;
+    }
+
+    /** Convert standalone YouTube URLs to privacy-enhanced players. */
+    private function parseYouTubeEmbeds(string $content): string {
+        $url = '(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?(?:[^<>&]*&amp;)*v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[^<\s]*)?';
+        $render = static function (array $match): string {
+            $id = $match[1];
+            return '<div class="snap-video snap-video--youtube"><iframe src="https://www.youtube-nocookie.com/embed/' . $id . '" title="YouTube video player" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>';
+        };
+
+        $content = preg_replace_callback(
+            '~<figure(?:\s+[^>]*)?>\s*(?:<p>\s*)?' . $url . '(?:\s*</p>)?\s*(<figcaption(?:\s+[^>]*)?>.*?</figcaption>)?\s*</figure>~is',
+            static function (array $match) use ($render): string {
+                return '<figure class="snap-video-figure">' . $render($match) . ($match[2] ?? '') . '</figure>';
+            },
+            $content
+        );
+        return preg_replace_callback('~<p>\s*' . $url . '\s*</p>~i', $render, $content);
     }
 
     // =========================================================================
