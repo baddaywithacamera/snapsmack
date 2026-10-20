@@ -64,7 +64,10 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         // `class` is inert and style/event attributes remain forbidden.
         'blockquote' => [], 'ul' => ['class'], 'ol' => ['class'], 'li' => ['class'], 'code' => [], 'pre' => [],
         'h1' => [], 'h2' => [], 'h3' => [], 'h4' => [], 'h5' => [], 'h6' => [],
-        'div' => ['class', 'id', 'data-mosaic'],
+        // Mosaic geometry is CMS-generated inert data consumed by the shared
+        // compositor. Stripping these attributes silently turns every saved
+        // three-photo composition back into the engine's generic fallback.
+        'div' => ['class', 'id', 'data-mosaic', 'data-gap', 'data-emphasis', 'data-template'],
         'span' => ['class', 'data-cd', 'data-cd-caption', 'data-cd-clock', 'aria-hidden'],
         'section' => ['class', 'id', 'aria-label'],
         'time' => ['class', 'datetime', 'data-cd-date'],

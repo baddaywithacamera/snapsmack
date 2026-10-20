@@ -128,7 +128,7 @@ class RewriteTests(unittest.TestCase):
             '</div><!-- /wp:column --></div><!-- /wp:columns -->'
         ) % (WP, WP, WP)
         body, ordered = wp_source.rewrite_body(content, POST["images"])
-        self.assertIn("[mosaic=1,2,3 layout=asymmetric]", body)
+        self.assertIn("[mosaic=1,2,3 layout=one-left]", body)
         self.assertNotIn("[img:bucket:", body)
         self.assertEqual(ordered[-1]["url"], f"{WP}/third.png")
 
