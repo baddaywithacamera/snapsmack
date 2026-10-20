@@ -1,9 +1,15 @@
+# The entry script is resolved from this spec's own location.
+# It was an absolute path into C:/dev/snapsmack, so running this
+# spec from any other checkout still built THAT tree's source --
+# a rebuild appeared to succeed and silently shipped the old code.
+from pathlib import Path
+
 # -*- mode: python ; coding: utf-8 -*-
 
 
 a = Analysis(
-    ['C:/dev/snapsmack/tools/troll-booth/desktop_entry.py'],
-    pathex=[],
+    [str(Path(SPECPATH).parent / 'desktop_entry.py')],
+    pathex=[str(Path(SPECPATH).parent)],
     binaries=[],
     datas=[],
     hiddenimports=['pymysql', 'win32crypt'],
