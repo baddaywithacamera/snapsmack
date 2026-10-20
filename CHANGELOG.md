@@ -11,6 +11,18 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.914D - 2026-10-19 - TUBE SOCK
+
+**Needs a CMS deploy only.**
+
+- Standalone YouTube and youtu.be URLs in migrated posts now render as
+  responsive, privacy-enhanced inline players. Migrated figure captions are
+  preserved, while YouTube links inside ordinary prose remain links.
+- The trusted-HTML boundary accepts only the exact
+  `youtube-nocookie.com/embed/{11-character-id}` form. Arbitrary iframes are
+  still removed, and the public Content Security Policy permits only that
+  frame origin.
+
 ## 0.7.913D - 2026-10-19 - DOOR THAT WAS NOT THERE
 
 **Needs a CMS deploy AND HIP TO BE SQUARE 1.3.16 packaged.**
