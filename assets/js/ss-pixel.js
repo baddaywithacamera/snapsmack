@@ -23,6 +23,7 @@
     handle:  app.getAttribute("data-actor") || "",
     avatar:  app.getAttribute("data-avatar") || "",
     enabled: app.getAttribute("data-enabled") === "1",
+    readerStyle: app.getAttribute("data-reader-style") || "pixelfed",
     csrf:    (document.querySelector('meta[name="csrf-token"]') || {}).content || ""
   };
   var FIXTURE = window.SX_FIXTURE || null;
@@ -188,7 +189,17 @@
       ? '<img src="' + esc(img0) + '" alt="' + esc(alt0) + '" loading="lazy">'
       : (vid0 ? '<video src="' + esc(safeUrl(vid0)) + '" controls preload="none" playsinline></video>' : "");
     if (p.sensitive) mediaInner += '<button type="button" class="sx-reveal">Show sensitive media</button>';
-    var card = node('<article class="sx-card"></article>');
+    var isMastodon = CFG.readerStyle === "mastodon";
+    var actions = isMastodon
+      ? '<button class="sx-act sx-comment"><span class="sx-ic">' + CHAT + '</span> Reply</button>' +
+        '<button class="sx-act sx-boost" title="Boost" aria-label="Boost"><span class="sx-ic">' + BOOST + '</span> Boost</button>' +
+        '<button class="sx-act sx-like"><span class="sx-ic">' + HEART + '</span> Favourite</button>' +
+        '<span class="sx-act-sp"></span>'
+      : '<button class="sx-act sx-like"><span class="sx-ic">' + HEART + '</span> Like</button>' +
+        '<button class="sx-act sx-comment"><span class="sx-ic">' + CHAT + '</span> Comment</button>' +
+        '<span class="sx-act-sp"></span>' +
+        '<button class="sx-act sx-boost" title="Boost" aria-label="Boost"><span class="sx-ic">' + BOOST + '</span></button>';
+    var card = node('<article class="sx-card' + (isMastodon ? ' sx-card-mastodon' : '') + '"></article>');
     card.innerHTML =
       '<div class="sx-card-head">' +
         '<img class="sx-av" src="' + avatar(a.avatar) + '" alt="">' +
@@ -202,12 +213,7 @@
         (booster.handle || booster.name ? ' by <a href="#" data-search="' + esc(booster.handle || booster.id) + '">' + esc(booster.handle || booster.name) + '</a>' : '') + "</div>" : "") +
       (p.summary ? '<div class="sx-cw">Content warning: ' + esc(p.summary) + '</div>' : '') +
       '<div class="sx-media' + (multi ? " sx-multi" : "") + (p.sensitive ? " sx-sensitive" : "") + '">' + mediaInner + "</div>" +
-      '<div class="sx-actions">' +
-        '<button class="sx-act sx-like"><span class="sx-ic">' + HEART + "</span> Like</button>" +
-        '<button class="sx-act sx-comment"><span class="sx-ic">' + CHAT + "</span> Comment</button>" +
-        '<span class="sx-act-sp"></span>' +
-        '<button class="sx-act sx-boost" title="Boost" aria-label="Boost"><span class="sx-ic">' + BOOST + "</span></button>" +
-      "</div>" +
+      '<div class="sx-actions">' + actions + "</div>" +
       (p.text ? '<div class="sx-caption">' + linkifyCaption(p.text) + "</div>" : "") +
       '<div class="sx-comments sx-hide"></div>';
 
