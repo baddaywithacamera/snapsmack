@@ -80,29 +80,34 @@ $comms = (string)file_get_contents($root . '/assets/js/ss-engine-comms.js');
 $check(str_contains($comms, "e.key === '1'") && str_contains($comms, "e.key === '2'"),
     'the 1 and 2 hotkeys are gone, leaving GALLERIA with no way to open the overlay');
 
-// ── a solo page is never left with no navigation at all ────────────────────
-// `.htbs-single #infobox { display: none }` hides the navigation bar, which
-// is only correct while the filmstrip is there to replace it. 0.7.910D
-// emitted that class unconditionally. On hekeepsdroningon.ca, where the
-// filmstrip is switched off, the result was a photograph with no navigation
-// of any kind: bar hidden, no filmstrip, and no overlay either. Measured on
-// the live page before this was fixed.
+// ── a solo page is one screen, and never without navigation ────────────────
+// .htbs-single IS the single-screen layout -- the main region sized to what
+// is left of the viewport, overflow hidden, footer at the bottom. 0.7.913D
+// tied it to the filmstrip, so a site with htbs_show_filmstrip off lost the
+// whole layout and the page began to scroll. Sean: "it used to all fit in a
+// page without scrolling."
+//
+// The class is unconditional now. What must stay guarded is the rule that
+// HIDES the navigation bar: that is only correct when a filmstrip is there
+// to replace it.
 foreach ($surfaces as $name => $where) {
     $src = (string)file_get_contents($root . $where['src']);
-    // Every place the class is EMITTED must be guarded by the filmstrip. The
-    // name also appears in prose above it, so each occurrence is judged on
-    // whether a filmstrip test sits within reach of it, and at least one
-    // guarded occurrence must exist.
-    $guarded = 0; $bare = 0; $at = 0;
-    while (($at = strpos($src, 'htbs-single', $at)) !== false) {
-        $window = substr($src, max(0, $at - 460), 500);
-        if (str_contains($window, "\$view['response']['filmstrip']")) $guarded++;
-        elseif (str_contains($window, 'class="public-content')) $bare++;
-        $at += 11;
-    }
-    $check($guarded > 0, $name . ' no longer emits the solo stage class behind a filmstrip test');
-    $check($bare === 0, $name . ' hides the navigation bar without checking there is a filmstrip '
-        . 'to replace it, which can leave a solo page with no navigation at all');
+    $check(str_contains($src, 'htbs-single'), $name . ' no longer emits the single-screen stage class');
+    $check(str_contains($src, 'has-filmstrip'),
+        $name . ' does not mark whether a filmstrip is present, so the navigation '
+        . 'bar cannot be hidden only when one replaces it');
+}
+foreach (['galleria', 'hip-to-be-square'] as $skin) {
+    $css = (string)file_get_contents($root . '/skins/' . $skin . '/style.css');
+    $check(!preg_match('/\.htbs-single\s+#infobox\s*\{[^}]*display:\s*none/', $css),
+        $skin . ' hides the navigation bar on every solo page, including those '
+        . 'with no filmstrip to replace it');
+    $check(preg_match('/\.htbs-single\.has-filmstrip\s+#infobox\s*\{[^}]*display:\s*none/', $css) === 1,
+        $skin . ' no longer steps the navigation bar aside for the filmstrip');
+    // And the view has to be capped, or the column grows past the fold.
+    $check(str_contains($css, 'body:has(.htbs-single)'),
+        $skin . ' does not cap the single view to one screen, so it scrolls by '
+        . 'the height of the header and footer');
 }
 
 if ($fail) {

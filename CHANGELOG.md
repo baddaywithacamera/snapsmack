@@ -11,6 +11,46 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.919D - 2026-10-20 - ONE SCREEN
+
+**Needs a CMS deploy AND GALLERIA 1.3.17 + HIP TO BE SQUARE 1.3.18 packaged.**
+
+- **The solo page scrolled, and the comment form broke out of the frame.**
+  Sean: *"it used to all fit in a page without scrolling. it worked before
+  the code got yoinked and i don't understand why the old presentation just
+  could not be used."* Both faults are mine, from 0.7.911D and 0.7.913D.
+
+  **The comment form twice over.** 911D opened every skin's comments gate to
+  `comments || community`. GALLERIA shows comments in its overlay, so that
+  added a *second* copy at page level — measured on the live page:
+  `class="ss-community"` at offset 4964 **and** 7474. The page-level render
+  is gone; the overlay keeps it.
+
+  **The layout.** `.htbs-single` is not a rule that hides the navigation bar
+  — it **is** the single-screen view: main region sized to what is left,
+  `overflow: hidden`, footer at the bottom. 913D tied the class to the
+  filmstrip, so a site with `htbs_show_filmstrip` off lost the entire layout
+  and the page started scrolling. The class is unconditional again, and a
+  separate `has-filmstrip` marker decides whether the navigation bar steps
+  aside — which is the thing that always should have been conditional.
+
+  **And one more underneath it.** `body` is a flex column with
+  `min-height: 100dvh`, so it grows with its content and the main region has
+  no fixed size to take a share of. `height: 100dvh` on `.htbs-single` then
+  made that region a full viewport tall *in addition to* the header and
+  footer: **60 + 860 + 41 = 961 on an 860 screen**, which is exactly the
+  scroll. Capped with `body:has(.htbs-single)`.
+
+  Measured at 1280x860, both ways. No filmstrip: page height **860, no
+  scroll** — header 0–60, frame 137–724, navigation 765–796, footer 819–860,
+  and **zero** comment forms on the page. With a filmstrip: still 860 and no
+  scroll, filmstrip at 708–808, navigation hidden as the design intends.
+
+- `tests/overlay-contract-regression.php` was holding me to the 913D mistake
+  — it asserted the stage class must be filmstrip-gated. It now pins what is
+  actually true: the class is unconditional, the CSS rule that hides the
+  navigation bar is gated, and the view is capped to one screen.
+
 ## 0.7.918D - 2026-10-20 - WORDS BEFORE PICTURES
 
 **Needs a CMS deploy and a HIP TO BE SQUARE skin update.**
