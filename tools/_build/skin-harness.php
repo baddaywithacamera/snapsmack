@@ -74,7 +74,14 @@ $responses = [
         'next_page' => 2,
     ],
     'photo' => [
-        'status' => 200, 'kind' => 'photo', 'navigation' => [], 'comments' => [],
+        'status' => 200, 'kind' => 'photo', 'comments' => [],
+        // A real masthead, so the harness can show how the nav reads.
+        'navigation' => [
+            ['label' => 'Home', 'url' => '/'],
+            ['label' => 'Archive View', 'url' => '/archive'],
+            ['label' => 'Blogroll', 'url' => '/blogroll'],
+            ['label' => 'The Photographer', 'url' => '/photographer'],
+        ],
         'comments_enabled' => true,
         'item' => ['id' => 2, 'img_title' => 'Middle photograph', 'img_slug' => 'middle',
                    'img_file' => 'https://placehold.co/1600x1067/444/fff?text=MIDDLE',

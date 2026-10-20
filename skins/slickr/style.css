@@ -1008,5 +1008,15 @@ a:hover { color: var(--sl-link-hover); }
 .sl-album-dot {
     padding: 0 7px;
 }
+/* The navigation reads in capitals. Until the strict conversion the labels
+   arrived already capitalised -- core/header.php printed HOME, ARCHIVE VIEW,
+   BLOGROLL and strtoupper()'d page titles -- so this skin never needed the
+   rule. The Menu Manager model carries natural-case labels, which left the
+   masthead reading "Home | Blogroll" in a face chosen for capitals. Five
+   sibling skins already state it in CSS; these two were the ones relying on
+   the old markup. */
+.nav-menu a {
+    text-transform: uppercase;
+}
 
 /* ===== SNAPSMACK EOF ===== */
