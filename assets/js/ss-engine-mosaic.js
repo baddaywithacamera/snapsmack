@@ -35,10 +35,12 @@
         var cached = container.getAttribute('data-auto-triplet-template') || '';
         if (cached) return cached;
 
-        var preferred = imageAR(images[0]) < 1.15 ? 'one-left' : 'three-across';
-        var alternatives = preferred === 'three-across'
-            ? ['one-left', 'one-right', 'one-top']
-            : ['three-across', 'one-right', 'one-top'];
+        /* A row of three equal thumbnails is technically tidy and editorially
+           dead. Automatic layouts always choose a hero composition; the
+           three-across template remains available only when an editor saves it
+           explicitly in data-template. */
+        var preferred = 'one-left';
+        var alternatives = ['one-right', 'one-top'];
         var chosen = preferred;
         if (chosen === lastAutomaticTripletTemplate) {
             chosen = alternatives.find(function (candidate) {

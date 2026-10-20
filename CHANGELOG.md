@@ -30,6 +30,11 @@
   groups of other sizes retain the asymmetric default. The choice remains
   editable in the CMS.
 
+- **Legacy three-photo mosaics now choose a hero layout too.** Unsaved automatic
+  triplets no longer become three equal thumbnails merely because their first
+  photograph is landscape. Three-across remains available when deliberately
+  selected by an editor.
+
 - **GALLERIA and HIP TO BE SQUARE no longer print metadata over solo photos.**
   The semantic title, date and author remain in the document for feeds,
   microformats and assistive technology, but are visually hidden while the
