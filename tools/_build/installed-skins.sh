@@ -33,7 +33,9 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 # Same roster as deployed-version.sh. Keep the two in step.
 SITES="wateronthebrain.ca theschoolofhardnocks.ca pixhellated.ca craptasti.ca
 baddaywithacamera.ca foreverphotograph.ing fauxlaroid.fyi photofri.day
-foundtextures.ca unzucked.ca photowalk.ing acolourlesslife.ca"
+foundtextures.ca unzucked.ca photowalk.ing acolourlesslife.ca
+hekeepsdroningon.ca lightafterdark.ca allinthewrist.photoblogs.fyi
+usedcarparts.photoblogs.fyi"
 
 # Cloudflare 1010-blocks anything that does not look like a browser.
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"

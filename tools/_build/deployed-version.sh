@@ -8,7 +8,9 @@
 set -u
 SITES="wateronthebrain.ca theschoolofhardnocks.ca pixhellated.ca craptasti.ca
 baddaywithacamera.ca foreverphotograph.ing fauxlaroid.fyi photofri.day
-foundtextures.ca unzucked.ca photowalk.ing acolourlesslife.ca"
+foundtextures.ca unzucked.ca photowalk.ing acolourlesslife.ca
+hekeepsdroningon.ca lightafterdark.ca allinthewrist.photoblogs.fyi
+usedcarparts.photoblogs.fyi"
 HIGHEST=""
 for s in $SITES; do
   v=$(curl -s -m 8 "https://$s/?cb=$RANDOM" 2>/dev/null | grep -oE '0\.7\.[0-9]+D' | head -1)
