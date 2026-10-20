@@ -111,7 +111,42 @@ class CapabilityRegistry:
             slug = str(entry.get("slug", ""))
             command = entry.get("capabilities_command", [])
             if slug and isinstance(command, list) and command and all(isinstance(item, str) for item in command):
-                apps[slug] = {"slug": slug, "name": str(entry.get("name", slug)), "command": command}
+                actions = {}
+                for action_name, action in entry.get("actions", {}).items():
+                    if not isinstance(action_name, str) or not isinstance(action, dict):
+                        continue
+                    argv = action.get("argv", [])
+                    access = action.get("access", "read")
+                    options = action.get("options", {})
+                    max_positionals = action.get("max_positionals", 0)
+                    if (
+                        action_name
+                        and isinstance(argv, list)
+                        and argv
+                        and all(isinstance(item, str) and item for item in argv)
+                        and access in {"read", "write"}
+                        and isinstance(options, dict)
+                        and all(
+                            isinstance(option, str)
+                            and option.startswith("--")
+                            and kind in {"flag", "value"}
+                            for option, kind in options.items()
+                        )
+                        and isinstance(max_positionals, int)
+                        and 0 <= max_positionals <= 8
+                    ):
+                        actions[action_name] = {
+                            "argv": argv,
+                            "access": access,
+                            "options": options,
+                            "max_positionals": max_positionals,
+                        }
+                apps[slug] = {
+                    "slug": slug,
+                    "name": str(entry.get("name", slug)),
+                    "command": command,
+                    "actions": actions,
+                }
         return apps
 
     def summary(self) -> list[dict[str, str]]:
@@ -139,11 +174,85 @@ class CapabilityRegistry:
             raise RuntimeError("capability response must be a JSON object")
         return result
 
+    @staticmethod
+    def _child_env() -> dict[str, str]:
+        return {
+            key: os.environ[key]
+            for key in ("PATH", "SystemRoot", "WINDIR", "TEMP", "TMP", "LANG")
+            if key in os.environ
+        }
+
+    def run_action(self, slug: str, action_name: str, extra_argv: list[str], allow_write: bool) -> dict[str, Any]:
+        app = self.apps.get(slug)
+        if not app:
+            raise ValueError("unknown or disabled app")
+        action = app["actions"].get(action_name)
+        if not action:
+            raise ValueError("action is not declared for this app")
+        if action["access"] == "write" and not allow_write:
+            raise PermissionError("write action requires booth:write and explicit confirmation")
+        if len(extra_argv) > 32 or any(not isinstance(item, str) or len(item) > 4096 for item in extra_argv):
+            raise ValueError("action arguments exceed the bounded argv contract")
+        positionals = 0
+        index = 0
+        while index < len(extra_argv):
+            item = extra_argv[index]
+            if item.startswith("--"):
+                kind = action["options"].get(item)
+                if not kind:
+                    raise ValueError(f"argument is not declared for this action: {item}")
+                if kind == "value":
+                    index += 1
+                    if index >= len(extra_argv) or extra_argv[index].startswith("--"):
+                        raise ValueError(f"argument requires a value: {item}")
+            else:
+                positionals += 1
+                if positionals > action["max_positionals"]:
+                    raise ValueError("too many positional arguments for this action")
+            index += 1
+        base = app["command"][:-2] if app["command"][-2:] == ["agent", "--json"] else app["command"]
+        command = [*base, *action["argv"], *extra_argv]
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            shell=False,
+            check=False,
+            env=self._child_env(),
+        )
+        if len(completed.stdout) > 262144 or len(completed.stderr) > 65536:
+            raise RuntimeError("app response exceeded the bounded output contract")
+        parsed: Any = None
+        if completed.stdout.strip():
+            try:
+                parsed = json.loads(completed.stdout)
+            except json.JSONDecodeError:
+                parsed = completed.stdout
+        return {
+            "app": slug,
+            "action": action_name,
+            "access": action["access"],
+            "exit_code": completed.returncode,
+            "result": parsed,
+            "stderr": completed.stderr or None,
+        }
+
     def execute(self, capability: str, arguments: dict[str, Any], actor: str = "local-agent") -> dict[str, Any]:
         if capability == "apps.list":
             return {"apps": self.summary()}
         if capability == "apps.capabilities":
             return self.capabilities(str(arguments.get("app", "")))
+        if capability == "apps.run":
+            extra_argv = arguments.get("argv", [])
+            if not isinstance(extra_argv, list):
+                raise ValueError("argv must be a list")
+            return self.run_action(
+                str(arguments.get("app", "")),
+                str(arguments.get("action", "")),
+                extra_argv,
+                bool(arguments.get("allow_write", False)),
+            )
         if capability == "conversation.rooms" and self.history:
             return {"rooms": self.history.rooms(int(arguments.get("limit", 100)))}
         if capability == "conversation.messages" and self.history:

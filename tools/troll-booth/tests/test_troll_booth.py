@@ -228,6 +228,77 @@ class WorkerTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 registry.execute("shell", {"command": "whoami"})
 
+    def test_declared_read_action_runs_but_undeclared_action_does_not(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            helper = root / "app.py"
+            helper.write_text(
+                "import json,sys\nprint(json.dumps({'argv': sys.argv[1:]}))\n",
+                encoding="utf-8",
+            )
+            config = root / "apps.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "apps": [
+                            {
+                                "slug": "test-app",
+                                "name": "Test App",
+                                "capabilities_command": [sys.executable, str(helper), "agent", "--json"],
+                                "actions": {
+                                    "status": {
+                                        "access": "read",
+                                        "argv": ["status", "--json"],
+                                        "options": {"--limit": "value"},
+                                    }
+                                },
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            registry = CapabilityRegistry(config)
+            result = registry.execute(
+                "apps.run", {"app": "test-app", "action": "status", "argv": ["--limit", "2"]}
+            )
+            self.assertEqual(result["result"]["argv"], ["status", "--json", "--limit", "2"])
+            with self.assertRaises(ValueError):
+                registry.execute("apps.run", {"app": "test-app", "action": "delete", "argv": []})
+            with self.assertRaises(ValueError):
+                registry.execute(
+                    "apps.run", {"app": "test-app", "action": "status", "argv": ["--delete"]}
+                )
+
+    def test_declared_write_action_requires_explicit_confirmation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            helper = root / "app.py"
+            helper.write_text("print('{}')\n", encoding="utf-8")
+            config = root / "apps.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "apps": [
+                            {
+                                "slug": "test-app",
+                                "name": "Test App",
+                                "capabilities_command": [sys.executable, str(helper), "agent", "--json"],
+                                "actions": {"update": {"access": "write", "argv": ["update", "--json"]}},
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            registry = CapabilityRegistry(config)
+            with self.assertRaises(PermissionError):
+                registry.execute("apps.run", {"app": "test-app", "action": "update"})
+            result = registry.execute(
+                "apps.run", {"app": "test-app", "action": "update", "allow_write": True}
+            )
+            self.assertEqual(result["access"], "write")
+
 
 if __name__ == "__main__":
     unittest.main()

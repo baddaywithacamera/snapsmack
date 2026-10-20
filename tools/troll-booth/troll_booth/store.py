@@ -138,12 +138,27 @@ class BoothStore:
         now = int(time.time())
         status = "failed" if error else "complete"
         with self._connect() as db:
+            job = db.execute(
+                "SELECT actor,capability,arguments_json,reason,ticket_id FROM jobs WHERE id=? AND status='claimed'",
+                (job_id,),
+            ).fetchone()
             changed = db.execute(
                 "UPDATE jobs SET status=?,finished_at=?,result_json=?,error=? WHERE id=? AND status='claimed'",
                 (status, now, json.dumps(result) if result is not None else None, error, job_id),
             ).rowcount
         if changed:
-            self.audit("worker", f"job.{status}", {"job_id": job_id})
+            self.audit(
+                str(job["actor"]) if job else "worker",
+                f"job.{status}",
+                {
+                    "job_id": job_id,
+                    "capability": str(job["capability"]) if job else None,
+                    "arguments": json.loads(job["arguments_json"]) if job else None,
+                    "reason": str(job["reason"]) if job else None,
+                    "ticket_id": job["ticket_id"] if job else None,
+                    "error": error,
+                },
+            )
         return changed == 1
 
     def job(self, job_id: str) -> dict[str, Any] | None:

@@ -3,12 +3,20 @@
     {
       "slug": "log-flogger",
       "name": "LOG FLOGGER",
-      "capabilities_command": ["python", "C:/path/to/log-flogger/lf.py", "agent", "--json"]
+      "capabilities_command": ["python", "C:/path/to/log-flogger/lf.py", "agent", "--json"],
+      "actions": {
+        "gather": {"access": "read", "argv": ["gather", "--json"], "options": {"--root": "value", "--days": "value"}},
+        "analyze": {"access": "read", "argv": ["analyze", "--json"]}
+      }
     },
     {
       "slug": "ticket-wicket",
       "name": "TICKET WICKET",
-      "capabilities_command": ["python", "C:/path/to/ticket-wicket/tw.py", "agent", "--json"]
+      "capabilities_command": ["python", "C:/path/to/ticket-wicket/tw.py", "agent", "--json"],
+      "actions": {
+        "queue": {"access": "read", "argv": ["queue", "--json"]},
+        "new": {"access": "write", "argv": ["new", "--json"]}
+      }
     }
   ]
 }
