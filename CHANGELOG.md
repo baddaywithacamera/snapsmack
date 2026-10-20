@@ -35,10 +35,6 @@
   photograph is landscape. Three-across remains available when deliberately
   selected by an editor.
 
-- **Two landscape photographs stack vertically.** Wide image pairs no longer
-  shrink into shallow side-by-side strips; portrait pairs retain the useful
-  side-by-side arrangement.
-
 - **GALLERIA and HIP TO BE SQUARE no longer print metadata over solo photos.**
   The semantic title, date and author remain in the document for feeds,
   microformats and assistive technology, but are visually hidden while the
