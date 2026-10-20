@@ -228,10 +228,33 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
     // static pages in their chosen order. The CMS resolves these destinations;
     // skins only render the bounded navigation model they receive.
     if (!$items) {
-        $items = [
-            ['type' => 'home', 'label' => 'Home'],
-            ['type' => 'blogroll', 'label' => 'Blogroll'],
-        ];
+        // The pre-conversion contract, from core/header.php at v0.7.603D. That
+        // fallback built HOME | BLOG? | ARCHIVE VIEW | ALBUMS? | FLOATING
+        // GALLERY? | BLOGROLL | FEED? | pages, each gated on its own setting.
+        // The rewrite of 6 October 2026 replaced the whole list with Home and
+        // Blogroll, so every site without a saved Menu Manager configuration
+        // silently lost its Archive View link -- and Albums, the wall, Blog
+        // and Feed with it. Sean, on hekeepsdroningon.ca: "archive link is
+        // missing". Each line below is the old gate, unchanged.
+        $items = [['type' => 'home', 'label' => 'Home']];
+        if ((string)($settings['homepage_mode'] ?? '') === 'static_page') {
+            $items[] = ['type' => 'blog', 'label' => 'Blog'];
+        }
+        if ((string)($settings['archive_layout'] ?? 'square') !== 'none') {
+            $items[] = ['type' => 'image_archive', 'label' => 'Archive View'];
+        }
+        if ((string)($settings['albums_link_enabled'] ?? '0') === '1') {
+            $items[] = ['type' => 'albums', 'label' => 'Albums'];
+        }
+        if ((string)($settings['show_wall_link'] ?? '0') === '1') {
+            $items[] = ['type' => 'wall', 'label' => 'Floating Gallery'];
+        }
+        // Blogroll carries no gate here: $blogroll_enabled drops it below,
+        // which is the same setting the old fallback read.
+        $items[] = ['type' => 'blogroll', 'label' => 'Blogroll'];
+        if ((string)($settings['photochallenge_feed_enabled'] ?? '0') === '1') {
+            $items[] = ['type' => 'challenge_feed', 'label' => 'Feed'];
+        }
         try {
             $pages = $pdo->query('SELECT id, title, slug FROM snap_pages WHERE is_active = 1 ORDER BY menu_order ASC')->fetchAll(PDO::FETCH_ASSOC);
             foreach ($pages as $page) {
@@ -300,7 +323,12 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
                     : $base . 'archive.php';
                 break;
             case 'categories': $url = $strict_smacktalk ? snapsmack_public_route_url($base, $route_aliases, 'categories', 'categories') : $base . 'archive.php'; break;
-            case 'image_archive': $url = $strict_controller ? snapsmack_public_route_url($base, $route_aliases, 'archive', 'images') : $base . 'archive.php'; break;
+            // The fallback was 'images', which is not a route this CMS answers:
+            // measured on hekeepsdroningon.ca, /images and /archive-view are
+            // both 404 while /archive is 200. A site with a saved alias still
+            // gets its alias; a site without one now gets the plain address
+            // Sean asked for in 0.7.908D instead of a dead link.
+            case 'image_archive': $url = $strict_controller ? snapsmack_public_route_url($base, $route_aliases, 'archive', 'archive') : $base . 'archive.php'; break;
             case 'albums': $url = $strict_smacktalk ? snapsmack_public_route_url($base, $route_aliases, 'albums', 'albums') : $base . 'albums.php'; break;
             case 'collections': $url = $strict_controller ? snapsmack_public_route_url($base, $route_aliases, 'collections', 'collections') : $base . 'collections.php'; break;
             case 'wall': $url = $base . 'gallery-wall.php'; break;
