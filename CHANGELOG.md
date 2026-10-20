@@ -11,6 +11,14 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.916D - 2026-10-19 - CLOSE CAPTION
+
+**Needs a CMS deploy only.**
+
+- YouTube captions now sit directly beneath their player. The video component
+  no longer contributes its generic bottom margin when it is already inside a
+  captioned figure.
+
 ## 0.7.915D - 2026-10-19 - ARCHIVE VIEW
 
 **Needs a CMS deploy AND GALLERIA 1.3.16 + SLICKR 1.0.46 packaged.**
