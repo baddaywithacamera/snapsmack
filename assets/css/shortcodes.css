@@ -173,6 +173,15 @@
     height: 100%;
     border: 0;
 }
+.snap-video-figure {
+    margin: 1.5em 0;
+}
+.snap-video-figure .snap-video {
+    margin: 0;
+}
+.snap-video-figure figcaption {
+    margin-top: 0.35em;
+}
 
 /* A standalone SMACKTALK photograph should be visible as one composition.
    The [img:] wrapper is separate from .snap-mosaic and .snap-mosaic-wall, so

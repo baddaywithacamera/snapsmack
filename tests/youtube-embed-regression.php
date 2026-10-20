@@ -38,4 +38,9 @@ if (!str_contains($csp, 'frame-src https://www.youtube-nocookie.com')) {
     fwrite(STDERR, "Public CSP does not permit the approved player origin.\n"); exit(1);
 }
 
+$css = file_get_contents(__DIR__ . '/../assets/css/shortcodes.css');
+if (!is_string($css) || !str_contains($css, '.snap-video-figure .snap-video') || !str_contains($css, 'margin: 0;')) {
+    fwrite(STDERR, "Captioned player spacing contract is missing.\n"); exit(1);
+}
+
 echo "YouTube embed regression passed.\n";
