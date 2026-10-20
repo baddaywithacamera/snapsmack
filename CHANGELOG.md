@@ -58,6 +58,25 @@
   to the newest message only when already there, or when the room changed,
   and otherwise holds your place. 18 tests pass.
 
+- **Adding an app connection meant knowing the schema.** Sean: *"I have no
+  idea how to add an app connection. you did not make it intuitive, let's
+  just say."* He is right. EDIT APP CONNECTIONS opened a blank editor holding
+  `{"apps": []}`, labelled "Declared CLI capability connections (JSON)", with
+  no example and no hint of the three fields it wanted.
+
+  There is now an **ADD AN APP…** button: choose the tool's script, give it a
+  name, and the entry is written for you — slug derived from the name, and
+  the command built as `<interpreter> <script> agent --json`, or just
+  `<script> agent --json` for an `.exe`/`.cmd`/`.bat`. Adding the same tool
+  twice replaces its entry instead of duplicating it. The JSON editor stays
+  for anyone who wants it. 22 tests pass.
+
+  Worth recording for whoever wires this up: LOG FLOGGER, TICKET WICKET and
+  the forum CLI all answer `agent --json` today, so all three can be
+  connected — but they live on `dev` and `C:\dev\snapsmack` is checked out
+  on `dev-local-working`, where none of them exist. That checkout is also
+  what made me report twice that these tools were missing.
+
 - **The build specs pointed at one fixed folder.** Found while rebuilding:
   both specs opened with
   `Analysis(['C:/dev/snapsmack/tools/troll-booth/desktop_entry.py'])` — an
