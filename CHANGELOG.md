@@ -11,6 +11,73 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.915D - 2026-10-19 - ARCHIVE VIEW
+
+**Needs a CMS deploy AND GALLERIA 1.3.16 + SLICKR 1.0.46 packaged.**
+
+- **Every site without a saved menu lost its Archive View link.** Sean, with
+  two screenshots: *"what is the reason that you won't correct my upper right
+  navbar back to what i had before?"* He had asked once already, on the 17th;
+  I measured half of it and moved on. There was no reason.
+
+  It is not a setting, which was his next question. `core/header.php` at
+  v0.7.603D built the fallback masthead as **HOME | BLOG? | ARCHIVE VIEW |
+  ALBUMS? | FLOATING GALLERY? | BLOGROLL | FEED? | pages**, each item gated on
+  its own setting, with `ARCHIVE VIEW` on whenever `archive_layout !== 'none'`.
+  The rewrite of **6 October 2026** (`118c761c`) replaced the whole list with
+  Home and Blogroll. Four built-in destinations stopped appearing on every
+  site that had never opened the Menu Manager, and nothing said so.
+
+  Restored line for line, same order, same gates. Measured:
+
+  | settings | masthead |
+  |---|---|
+  | defaults | Home / Archive View / Blogroll |
+  | `archive_layout=none` | Home / Blogroll |
+  | `albums_link_enabled`, `show_wall_link` | Home / Archive View / Albums / Floating Gallery / Blogroll |
+  | `homepage_mode=static_page` | Home / Blog / Archive View / Blogroll |
+  | carousel | Home / Blogroll |
+
+- **And the archive link it emitted was a 404.** The `image_archive` route
+  fell back to `images` when a site had no alias saved. Measured on
+  hekeepsdroningon.ca: **`/images` 404, `/archive-view` 404, `/archive` 200**.
+  The fallback is now `archive` — a site with a saved alias still gets its
+  alias; a site without one gets the plain address asked for in 0.7.908D
+  instead of a dead link.
+
+- **GALLERIA and SLICKR render their navigation in capitals again.** The old
+  markup printed `HOME` and `ARCHIVE VIEW` as literals and `strtoupper()`'d
+  page titles, so neither skin ever needed a CSS rule. The Menu Manager model
+  carries natural-case labels, which left both mastheads reading "Home |
+  Blogroll" in a face chosen for capitals. RATIONAL GEO, TRUE GRIT, CHAPLIN,
+  IMPACT PRINTER and 50 SHADES already state `text-transform: uppercase` in
+  CSS; these were the two relying on the old markup. **GALLERIA 1.3.16,
+  SLICKR 1.0.46.**
+
+  Measured in the harness, which now carries a real masthead so this can be
+  looked at: four links, `text-transform: uppercase`, 12px, 1px letter
+  spacing, `|` separators — "HOME | ARCHIVE VIEW | BLOGROLL | THE
+  PHOTOGRAPHER".
+
+- `tests/default-navigation-regression.php` holds all of it: the default
+  masthead, each item against the setting that has always gated it, the
+  carousel exemption, the archive URL, and the uppercase rule across six
+  skins. `tests/galleria-landing-flow-regression.php` pinned GALLERIA at
+  *exactly* 1.3.15, so every later package broke a test about the landing
+  flow; it is now a floor.
+
+## 0.7.914D - 2026-10-19 - TUBE SOCK
+
+**Needs a CMS deploy only.**
+
+- Standalone YouTube and youtu.be URLs in migrated posts now render as
+  responsive, privacy-enhanced inline players. Migrated figure captions are
+  preserved, while YouTube links inside ordinary prose remain links.
+- The trusted-HTML boundary accepts only the exact
+  `youtube-nocookie.com/embed/{11-character-id}` form. Arbitrary iframes are
+  still removed, and the public Content Security Policy permits only that
+  frame origin.
+
 ## 0.7.913D - 2026-10-19 - DOOR THAT WAS NOT THERE
 
 **Needs a CMS deploy AND HIP TO BE SQUARE 1.3.16 packaged.**

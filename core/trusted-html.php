@@ -69,6 +69,9 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         'section' => ['class', 'id', 'aria-label'],
         'time' => ['class', 'datetime', 'data-cd-date'],
         'figure' => ['class'], 'figcaption' => ['class'],
+        // Frames are accepted only for the CMS-generated YouTube player. The
+        // exact privacy-enhanced origin and inert video id are checked below.
+        'iframe' => ['src', 'title', 'class', 'loading', 'allow', 'allowfullscreen'],
         // Native, script-free disclosure controls used by CMS-authored FAQs.
         'details' => ['class'], 'summary' => ['class'],
         // nav, and class on a. THE BOARD's prompt index is a <nav> of linked
@@ -123,6 +126,15 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
                     $node->removeAttribute($name);
                 }
             }
+        }
+        if ($tag === 'iframe') {
+            $src = trim((string)$node->getAttribute('src'));
+            if (!preg_match('~^https://www\.youtube-nocookie\.com/embed/[A-Za-z0-9_-]{11}$~D', $src)) {
+                $node->parentNode?->removeChild($node);
+                continue;
+            }
+            $node->setAttribute('loading', 'lazy');
+            $node->setAttribute('allowfullscreen', '');
         }
         if ($tag === 'a' && $node->hasAttribute('href')) $node->setAttribute('rel', 'noopener noreferrer');
         if ($tag === 'img') $node->setAttribute('loading', 'lazy');
