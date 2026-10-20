@@ -44,7 +44,9 @@ mcp = MCPServer("TROLL BOOTH", version=__version__, auth=auth, auth_server_provi
 
 def _actor() -> str:
     token = get_access_token()
-    return token.subject if token and token.subject else "authenticated-agent"
+    actor = token.subject if token and token.subject else "authenticated-agent"
+    store.agent_heartbeat(actor)
+    return actor
 
 
 def _require_scope(scope: str) -> None:
@@ -66,6 +68,7 @@ async def _queued(capability: str, arguments: dict, reason: str, ticket_id: str 
 
 @mcp.tool(description="Report TROLL BOOTH health, connected local workers, and queued read-only work.")
 def booth_status() -> dict:
+    _actor()
     return store.status()
 
 
@@ -169,6 +172,13 @@ def _worker_authorized(request: Request) -> bool:
 @mcp.custom_route("/health", methods=["GET"])
 async def health(_: Request) -> JSONResponse:
     return JSONResponse({"status": "ok", "service": "troll-booth", "version": __version__})
+
+
+@mcp.custom_route("/owner/status", methods=["GET"])
+async def owner_status(request: Request) -> JSONResponse:
+    if not _worker_authorized(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    return JSONResponse(store.status())
 
 
 @mcp.custom_route("/approve", methods=["GET", "POST"])

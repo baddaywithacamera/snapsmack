@@ -189,7 +189,7 @@ class BoothWindow(QMainWindow):
         panel = QWidget()
         box = QVBoxLayout(panel)
         tabs = QComboBox()
-        tabs.addItems(["CONNECTED APPS", "WORKING AGREEMENT", "AGENT / CLI ACCESS"])
+        tabs.addItems(["CONNECTED APPS", "LIVE AGENTS", "WORKING AGREEMENT", "AGENT / CLI ACCESS"])
         self.control_stack = QStackedWidget()
         tabs.currentIndexChanged.connect(self.control_stack.setCurrentIndex)
         box.addWidget(tabs)
@@ -205,6 +205,14 @@ class BoothWindow(QMainWindow):
         database.clicked.connect(self.configure_database)
         apps_box.addWidget(database)
         self.control_stack.addWidget(apps_page)
+
+        agents_page = QWidget()
+        agents_box = QVBoxLayout(agents_page)
+        agents_box.addWidget(QLabel("Authenticated agent activity"))
+        self.agents_list = QListWidget()
+        agents_box.addWidget(self.agents_list, 1)
+        agents_box.addWidget(QLabel("LIVE means the agent used TROLL BOOTH within the last 90 seconds."))
+        self.control_stack.addWidget(agents_page)
 
         agreement_page = QWidget()
         agreement_box = QVBoxLayout(agreement_page)
@@ -322,7 +330,29 @@ class BoothWindow(QMainWindow):
 
     def refresh_status(self) -> None:
         count = sum(item["message_count"] for item in self.store.rooms())
-        self.status.setText(f"{self.storage_label} · READY · {count} MESSAGES")
+        agents = self._remote_agents()
+        live = [agent["actor"] for agent in agents if agent.get("online")]
+        suffix = f" · LIVE: {', '.join(live)}" if live else " · NO LIVE AGENTS"
+        self.status.setText(f"{self.storage_label} · READY · {count} MESSAGES{suffix}")
+        if hasattr(self, "agents_list"):
+            self.agents_list.clear()
+            if not agents:
+                self.agents_list.addItem("No authenticated agent activity yet")
+            for agent in agents:
+                state = "LIVE" if agent.get("online") else "AWAY"
+                age = int(agent.get("age_seconds", 0))
+                self.agents_list.addItem(f'{agent["actor"]}\n{state} · last activity {age}s ago')
+
+    def _remote_agents(self) -> list[dict]:
+        try:
+            token = WORKER_TOKEN.read_text(encoding="utf-8").strip()
+            request = urllib.request.Request(
+                f"{SERVER}/owner/status", headers={"Authorization": f"Bearer {token}"}
+            )
+            with urllib.request.urlopen(request, timeout=2) as response:
+                return list(json.loads(response.read().decode("utf-8")).get("agents", []))
+        except Exception:
+            return []
 
     def refresh_rooms(self, *_args, preserve: bool = False) -> None:
         selected = self.current_room if preserve else (self.current_room or "")
