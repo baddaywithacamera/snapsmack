@@ -37,8 +37,10 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
         self.clients: dict[str, OAuthClientInformationFull] = {}
         self.pending: dict[str, PendingApproval] = {}
         self.codes: dict[str, AuthorizationCode] = {}
+        self.code_subjects: dict[str, str] = {}
         self.tokens: dict[str, AccessToken] = {}
         self.refresh_tokens: dict[str, RefreshToken] = {}
+        self.refresh_subjects: dict[str, str] = {}
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         return self.clients.get(client_id)
@@ -88,6 +90,7 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
             resource=params.resource,
         )
         self.codes[code_value] = code
+        self.code_subjects[code_value] = identity["actor"]
         self.store.audit(identity["actor"], "oauth.approved", {"client_id": client_id, "scopes": allowed})
         return construct_redirect_uri(str(params.redirect_uri), code=code_value, state=params.state)
 
@@ -97,6 +100,7 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
 
     async def exchange_authorization_code(self, client: OAuthClientInformationFull, authorization_code: AuthorizationCode) -> OAuthToken:
         self.codes.pop(authorization_code.code, None)
+        subject = self.code_subjects.pop(authorization_code.code, "authenticated-agent")
         access_value = f"access_{secrets.token_urlsafe(32)}"
         refresh_value = f"refresh_{secrets.token_urlsafe(32)}"
         access = AccessToken(
@@ -105,7 +109,7 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
             scopes=authorization_code.scopes,
             expires_at=int(time.time()) + 3600,
             resource=authorization_code.resource,
-            subject="claude",
+            subject=subject,
         )
         refresh = RefreshToken(
             token=refresh_value,
@@ -116,6 +120,7 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
         )
         self.tokens[access_value] = access
         self.refresh_tokens[refresh_value] = refresh
+        self.refresh_subjects[refresh_value] = subject
         return OAuthToken(
             access_token=access_value,
             token_type="Bearer",
@@ -146,7 +151,7 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
             scopes=granted,
             expires_at=int(time.time()) + 3600,
             resource=refresh_token.resource,
-            subject="claude",
+            subject=self.refresh_subjects.get(refresh_token.token, "authenticated-agent"),
         )
         self.tokens[access_value] = access
         return OAuthToken(access_token=access_value, token_type="Bearer", expires_in=3600, scope=" ".join(granted))
@@ -154,4 +159,5 @@ class BoothOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, Ref
     async def revoke_token(self, token: AccessToken | RefreshToken) -> None:
         self.tokens.pop(token.token, None)
         self.refresh_tokens.pop(token.token, None)
+        self.refresh_subjects.pop(token.token, None)
 
