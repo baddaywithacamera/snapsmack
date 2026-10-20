@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import atexit
+import ctypes
 import json
 import os
+import re
 import subprocess
 import time
 import urllib.error
@@ -11,7 +14,70 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
-from .history import ConversationStore
+from .history import ConversationStore, open_conversation_store
+
+
+class WorkerInstanceLock:
+    """One outbound worker per worker ID, with automatic stale-lock recovery."""
+
+    def __init__(self, worker_id: str) -> None:
+        safe_id = re.sub(r"[^A-Za-z0-9_.-]+", "-", worker_id).strip("-") or "local-worker"
+        self.path = Path.home() / ".troll-booth" / f"worker-{safe_id}.lock"
+        self.owned = False
+
+    @staticmethod
+    def _process_is_alive(pid: int) -> bool:
+        if pid <= 0:
+            return False
+        if os.name == "nt":
+            process_query_limited_information = 0x1000
+            handle = ctypes.windll.kernel32.OpenProcess(process_query_limited_information, False, pid)
+            if not handle:
+                return False
+            ctypes.windll.kernel32.CloseHandle(handle)
+            return True
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except (PermissionError, OSError):
+            return True
+        return True
+
+    def acquire(self) -> bool:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        for _attempt in range(2):
+            try:
+                descriptor = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            except FileExistsError:
+                try:
+                    existing_pid = int(self.path.read_text(encoding="ascii").strip())
+                except (OSError, ValueError):
+                    existing_pid = 0
+                if self._process_is_alive(existing_pid):
+                    return False
+                try:
+                    self.path.unlink()
+                except FileNotFoundError:
+                    pass
+                continue
+            with os.fdopen(descriptor, "w", encoding="ascii") as stream:
+                stream.write(str(os.getpid()))
+            self.owned = True
+            atexit.register(self.release)
+            return True
+        return False
+
+    def release(self) -> None:
+        if not self.owned:
+            return
+        try:
+            if self.path.read_text(encoding="ascii").strip() == str(os.getpid()):
+                self.path.unlink()
+        except FileNotFoundError:
+            pass
+        finally:
+            self.owned = False
 
 
 def _request(base: str, token: str, path: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -29,7 +95,12 @@ class CapabilityRegistry:
     def __init__(self, config_path: Path, history_path: Path | None = None):
         self.config_path = config_path
         self.apps = self._load()
-        self.history = ConversationStore(history_path) if history_path else None
+        if history_path:
+            self.history = ConversationStore(history_path)
+        else:
+            # The shared MariaDB configuration may come from the environment or
+            # from the Windows DPAPI-protected desktop configuration.
+            self.history, _ = open_conversation_store(allow_offline_cache=False)
 
     def _load(self) -> dict[str, dict[str, Any]]:
         if not self.config_path.exists():
@@ -68,7 +139,7 @@ class CapabilityRegistry:
             raise RuntimeError("capability response must be a JSON object")
         return result
 
-    def execute(self, capability: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    def execute(self, capability: str, arguments: dict[str, Any], actor: str = "local-agent") -> dict[str, Any]:
         if capability == "apps.list":
             return {"apps": self.summary()}
         if capability == "apps.capabilities":
@@ -91,7 +162,29 @@ class CapabilityRegistry:
                     int(arguments.get("limit", 50)),
                 )
             }
-        raise ValueError("capability is not available in the read-only first build")
+        if capability == "conversation.post" and self.history:
+            message_id = self.history.append(
+                str(arguments.get("room_id", "")),
+                actor,
+                str(arguments.get("body", "")),
+                title=str(arguments["title"]) if arguments.get("title") else None,
+                ticket_id=str(arguments["ticket_id"]) if arguments.get("ticket_id") else None,
+                task_id=str(arguments["task_id"]) if arguments.get("task_id") else None,
+            )
+            return {"posted": True, "message_id": message_id, "sender": actor}
+        if capability == "scope.list" and self.history:
+            return {"claims": self.history.scopes()}
+        if capability == "scope.claim" and self.history:
+            return self.history.claim_scope(
+                str(arguments.get("scope", "")),
+                actor,
+                task_id=str(arguments["task_id"]) if arguments.get("task_id") else None,
+                note=str(arguments["note"]) if arguments.get("note") else None,
+                ttl=int(arguments.get("ttl", 3600)),
+            )
+        if capability == "scope.release" and self.history:
+            return self.history.release_scope(str(arguments.get("scope", "")), actor)
+        raise ValueError("capability is not available to this TROLL BOOTH worker")
 
 
 def run(base: str, token: str, config: Path, history: Path, worker_id: str, once: bool = False) -> None:
@@ -103,7 +196,7 @@ def run(base: str, token: str, config: Path, history: Path, worker_id: str, once
             job = response.get("job")
             if job:
                 try:
-                    result = registry.execute(job["capability"], job.get("arguments", {}))
+                    result = registry.execute(job["capability"], job.get("arguments", {}), str(job.get("actor", "agent")))
                     _request(base, token, "/worker/result", {"job_id": job["id"], "result": result})
                 except Exception as exc:
                     _request(base, token, "/worker/result", {"job_id": job["id"], "error": str(exc)[:1000]})
@@ -121,7 +214,11 @@ def main() -> None:
     parser.add_argument("--token", default=os.environ.get("TROLL_BOOTH_WORKER_TOKEN", ""))
     parser.add_argument("--token-file", type=Path)
     parser.add_argument("--config", type=Path, default=Path.home() / ".troll-booth" / "apps.json")
-    parser.add_argument("--history", type=Path, default=Path.home() / ".troll-booth" / "history.sqlite3")
+    parser.add_argument(
+        "--history",
+        type=Path,
+        help="Explicit offline/test store. Production uses the configured MariaDB database.",
+    )
     parser.add_argument("--worker-id", default=os.environ.get("COMPUTERNAME", "local-worker").lower())
     parser.add_argument("--once", action="store_true")
     args = parser.parse_args()
@@ -130,6 +227,9 @@ def main() -> None:
         token = args.token_file.read_text(encoding="utf-8").strip()
     if not args.server or not token:
         parser.error("--server and --token (or matching environment variables) are required")
+    instance_lock = WorkerInstanceLock(args.worker_id)
+    if not instance_lock.acquire():
+        parser.error(f"worker {args.worker_id!r} is already running")
     run(args.server, token, args.config, args.history, args.worker_id, args.once)
 
 

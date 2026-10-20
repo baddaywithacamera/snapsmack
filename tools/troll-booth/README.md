@@ -17,7 +17,7 @@ session revocation, bridge lock, and emergency stop.
 
 ## First build boundary
 
-The first build is deliberately read-only:
+The original v0.1 build was deliberately read-only:
 
 1. Bind only to loopback.
 2. Start locked.
@@ -34,7 +34,7 @@ cleanup, restore, deletion, or deployment belongs in the first build.
 
 ## Implementation status
 
-The v0.1 vertical slice is implemented in `troll_booth/`:
+The experimental v0.1.3 collaboration slice is implemented in `troll_booth/`:
 
 - OAuth-protected Streamable HTTP MCP endpoint;
 - short-lived, single-use owner pairing codes;
@@ -43,31 +43,60 @@ The v0.1 vertical slice is implemented in `troll_booth/`:
 - append-only local conversation history with SQLite FTS5 search and per-room hash chaining;
 - `booth_status`, `list_apps`, and `app_capabilities` read-only tools;
 - `list_conversations`, `conversation_messages`, and `search_conversation` local-history tools;
+- authenticated room posting with a separate `booth:write` pairing grant;
+- agent wait/watch command for new messages, plus desktop tray notifications and unread room badges;
+- CLI work-scope claim and release commands matching the MCP tools;
+- expiring file and subsystem claims that reject overlapping agents;
+- loopback-only owner console for rooms, search, posting, working agreement, and validated app configuration;
+- read-only sessions remain unable to post or claim work;
 - exact argv capability discovery with `shell=False`;
 - systemd and Apache deployment templates.
+- credential-free Windows owner-console installer and a recovery runbook.
 
 OAuth sessions are intentionally revoked whenever the remote service restarts
 in this first build. This is safer than persisting bearer and refresh tokens
 before the owner-facing revocation UI exists.
 
-Conversation bodies are stored in the local worker's
-`~/.troll-booth/history.sqlite3`, not in Cloudflare and not in the public MCP
-adapter. The public service queues bounded read requests; the outbound worker
-performs the search locally and returns only the requested results. A returned
-payload is single-consumption and is removed from the relay database as soon
-as the requesting session receives it. Messages
-are append-only and hash-chained per room. Attachments are references, not
-copied blobs. A later encrypted relay will carry new messages between agents;
-it is not claimed as part of this read-only build.
+The pairing code is the owner's explicit step-up decision. A normal code grants
+read-only access. A code issued with `--write` adds collaboration write access
+to that session even when a browser MCP client reuses a registration that asks
+only for its original read scope.
+
+Conversation bodies are stored in the central MariaDB service. The local
+`~/.troll-booth/history.sqlite3` file is only a clearly labelled offline queue;
+it is not a second source of truth. Conversation history is not stored in Cloudflare or in the
+public MCP adapter. The public service queues bounded read requests; the
+outbound worker performs the search locally and returns only the requested
+results. A returned payload is single-consumption and is removed from the relay
+database as soon as the requesting session receives it. Messages are
+append-only and hash-chained per room. Attachments are references, not copied
+blobs.
+
+The production design uses the existing central MariaDB service on
+CT110 the authoritative, full-text-searchable conversation and audit store.
+SQLite becomes an optional encrypted offline cache and spool that can be
+rebuilt from MariaDB. The existing rclone backup path must transport a
+transaction-consistent MariaDB dump or physical backup; copying live database
+files is not considered a recoverable backup. The desktop app, CLI and worker
+all use MariaDB through the same conversation-store contract.
 
 ## Local development
 
 ```text
 python -m venv .venv
 .venv/Scripts/python -m pip install -e .
-set TROLL_BOOTH_WORKER_TOKEN=a-long-random-value
+set TROLL_BOOTH_WORKER_TOKEN=replace-with-a-long-random-value
 .venv/Scripts/troll-booth-server
+.venv/Scripts/troll-booth-owner
 ```
+
+The owner console binds only to `127.0.0.1:8766`, uses a random local token,
+and never displays worker credentials. It keeps a previous copy when the
+working agreement or app capability configuration is changed.
+
+For a clean Windows installation or disaster recovery, run
+`deploy/windows/install-owner-console.ps1`. See `RECOVERY.md` for the complete
+source-versus-secret boundary and rebuild procedure.
 
 The production endpoint is `/mcp`. `/health` discloses only service name,
 version, and health. The worker endpoints require a separate random bearer
