@@ -11,6 +11,35 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.917D - 2026-10-19 - FIVE BLIND SITES
+
+**Tooling only. No skin package; the CMS is unchanged.**
+
+- **The fleet scripts were watching 12 sites. There are 16.**
+  `tools/_build/deployed-version.sh` is the authority this repo uses to decide
+  whether a version may be tagged, and the rules gate refuses a release that
+  contradicts it. It was sampling **four live sites short**:
+  `hekeepsdroningon.ca`, `lightafterdark.ca`, `allinthewrist.photoblogs.fyi`
+  and `usedcarparts.photoblogs.fyi`. `installed-skins.sh` had the same list.
+
+  That is the exact failure `deployed-version.sh` was written to stop. On
+  15 October a single-site sample let `v0.7.892D` be force-moved while twelve
+  other sites were already serving it; a list missing four sites can do the
+  same thing again. It also explains why I kept telling Sean GALLERIA was on
+  no live site: the site running it was not in the list.
+
+  Both scripts now read 16. First full run: **9 current, 7 stale.** The two
+  that only became visible now are `hekeepsdroningon.ca` on GALLERIA 1.3.15
+  against 1.3.16, and `usedcarparts.photoblogs.fyi` on SCROLL 0.1.67 against
+  the 0.1.68 packaged in 0.7.911D and never installed.
+
+- **One address in that list was not ours.** I built it by scraping
+  `skins.php` for domains, which caught `www.serenity.ca` — a funeral home in
+  Edmonton, linked from the page as an obituary for Raymond A. Vanderwoning,
+  photographer and friend. Removed. A monitoring script should never have
+  been pointed at a third party's site, and a regex over a page is not a
+  roster; the list is now written out by hand.
+
 ## 0.7.916D - 2026-10-19 - CLOSE CAPTION
 
 **Needs a CMS deploy only.**
