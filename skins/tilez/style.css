@@ -2513,9 +2513,9 @@ body.blog, body.single, body.archive { background: #fff; }
     margin-top: 2.6em;
     margin-bottom: 2.6em;
 }
-/* Consecutive standalone photographs are promoted by ss-engine-mosaic.js into
-   one exact-packed asymmetric composition. A single image remains a normal
-   framed block. */
+/* Standalone photographs remain individual block-level frames, including when
+   authors place several consecutively. Explicit MOSAIC shortcodes keep their
+   own packed layout. */
 .entry-content > .snap-mosaic,
 .entry-content > .snap-mosaic-wall {
     width: 100%;
