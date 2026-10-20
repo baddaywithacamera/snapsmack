@@ -42,6 +42,13 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(self.store.take_job(job_id)["result"], {"apps": []})
         self.assertIsNone(self.store.job(job_id))
 
+    def test_agent_presence_tracks_recent_authenticated_activity(self) -> None:
+        self.store.agent_heartbeat("claude-code")
+        agents = self.store.status()["agents"]
+        self.assertEqual(agents[0]["actor"], "claude-code")
+        self.assertTrue(agents[0]["online"])
+        self.assertLessEqual(agents[0]["age_seconds"], 1)
+
 
 class ConversationTests(unittest.TestCase):
     def test_history_is_searchable_and_hash_chained(self) -> None:

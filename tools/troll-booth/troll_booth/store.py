@@ -60,6 +60,10 @@ class BoothStore:
                     version TEXT NOT NULL,
                     apps_json TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS agents (
+                    actor TEXT PRIMARY KEY,
+                    last_seen INTEGER NOT NULL
+                );
                 """
             )
 
@@ -207,15 +211,29 @@ class BoothStore:
                 (worker_id, now, version, json.dumps(apps)),
             )
 
+    def agent_heartbeat(self, actor: str) -> None:
+        now = int(time.time())
+        with self._connect() as db:
+            db.execute(
+                "INSERT INTO agents(actor,last_seen) VALUES(?,?) "
+                "ON CONFLICT(actor) DO UPDATE SET last_seen=excluded.last_seen",
+                (actor, now),
+            )
+
     def status(self) -> dict[str, Any]:
         now = int(time.time())
         with self._connect() as db:
             workers = [dict(row) for row in db.execute("SELECT * FROM workers ORDER BY worker_id")]
+            agents = [dict(row) for row in db.execute("SELECT * FROM agents ORDER BY actor")]
             queued = db.execute("SELECT COUNT(*) FROM jobs WHERE status='queued'").fetchone()[0]
         for worker in workers:
             worker["online"] = now - worker["last_seen"] <= 30
             worker["apps"] = json.loads(worker.pop("apps_json"))
-        return {"workers": workers, "queued_jobs": queued, "server_time": now}
+        for agent in agents:
+            age = max(0, now - agent["last_seen"])
+            agent["age_seconds"] = age
+            agent["online"] = age <= 90
+        return {"workers": workers, "agents": agents, "queued_jobs": queued, "server_time": now}
 
     def audit(self, actor: str, event: str, detail: dict[str, Any]) -> None:
         with self._connect() as db:
