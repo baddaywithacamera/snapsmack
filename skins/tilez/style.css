@@ -2515,7 +2515,7 @@ body.blog, body.single, body.archive { background: #fff; }
 }
 /* Consecutive standalone photos are a sequence, not separate text sections. */
 .entry-content > .snap-inline-frame:has(+ .snap-inline-frame) {
-    margin-bottom: 12px;
+    margin-bottom: 4px;
 }
 .entry-content > .snap-inline-frame + .snap-inline-frame {
     margin-top: 0;
