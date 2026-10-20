@@ -63,6 +63,13 @@ foreach (['<ol class="pfd-steps">', '<li class="pfd-step">'] as $safe) {
 foreach (['style=', 'onclick='] as $unsafe) {
     if (str_contains($styledList, $unsafe)) throw new RuntimeException("Trusted list HTML retained {$unsafe}");
 }
+$mosaic = (string)snapsmack_trusted_html(
+    '<div class="snap-mosaic" data-mosaic="[]" data-gap="4" data-emphasis="landscape" data-template="one-left" onclick="steal()"></div>'
+);
+foreach (['data-mosaic="[]"', 'data-gap="4"', 'data-emphasis="landscape"', 'data-template="one-left"'] as $safe) {
+    if (!str_contains($mosaic, $safe)) throw new RuntimeException("Trusted HTML lost mosaic geometry: {$safe}");
+}
+if (str_contains($mosaic, 'onclick=')) throw new RuntimeException('Trusted mosaic HTML retained an event handler.');
 $reflection = new ReflectionClass(SnapTrustedHtml::class);
 if (!$reflection->getConstructor()?->isPrivate()) throw new RuntimeException('Trusted HTML constructor is public.');
 
