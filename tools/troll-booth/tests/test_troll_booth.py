@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from mcp.server.auth.provider import AuthorizationParams
@@ -298,6 +300,32 @@ class WorkerTests(unittest.TestCase):
                 "apps.run", {"app": "test-app", "action": "update", "allow_write": True}
             )
             self.assertEqual(result["access"], "write")
+
+    def test_action_receives_only_declared_environment_variables(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            helper = root / "app.py"
+            helper.write_text(
+                "import json,os\nprint(json.dumps({'allowed': os.getenv('TEST_ALLOWED'), 'secret': os.getenv('TEST_SECRET')}))\n",
+                encoding="utf-8",
+            )
+            config = root / "apps.json"
+            config.write_text(
+                json.dumps({"apps": [{
+                    "slug": "test-app", "name": "Test App",
+                    "capabilities_command": [sys.executable, str(helper), "agent", "--json"],
+                    "env": ["TEST_ALLOWED", "lowercase-rejected"],
+                    "actions": {"status": {"access": "read", "argv": ["status", "--json"]}},
+                }]}),
+                encoding="utf-8",
+            )
+            with mock.patch.dict(
+                os.environ, {"TEST_ALLOWED": "yes", "TEST_SECRET": "must-not-cross"}
+            ):
+                result = CapabilityRegistry(config).execute(
+                    "apps.run", {"app": "test-app", "action": "status", "argv": []}
+                )
+            self.assertEqual(result["result"], {"allowed": "yes", "secret": None})
 
 
 if __name__ == "__main__":
