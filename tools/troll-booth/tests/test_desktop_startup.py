@@ -128,5 +128,29 @@ class TranscriptScrollTests(unittest.TestCase):
         self.assertIn("_rendered_room", DESKTOP)
 
 
+class AppConnectionTests(unittest.TestCase):
+    """Adding an app must not require knowing the JSON schema.
+
+    Sean: "I have no idea how to add an app connection. you did not make it
+    intuitive, let's just say." The dialog was a blank editor holding
+    {"apps": []} with no example and no hint of the three fields it wanted.
+    """
+
+    def test_there_is_a_way_in_that_is_not_typing_json(self) -> None:
+        self.assertIn("ADD AN APP", DESKTOP)
+        self.assertIn("QFileDialog.getOpenFileName", DESKTOP)
+
+    def test_the_entry_is_written_for_you(self) -> None:
+        self.assertIn("capabilities_command", DESKTOP)
+        self.assertIn('"agent", "--json"', DESKTOP)
+
+    def test_adding_the_same_app_twice_replaces_it(self) -> None:
+        self.assertIn('if a.get("slug") != slug', DESKTOP)
+
+    def test_a_script_is_launched_with_an_interpreter_but_an_exe_is_not(self) -> None:
+        self.assertIn("sys.executable", DESKTOP)
+        self.assertIn('".exe", ".cmd", ".bat"', DESKTOP)
+
+
 if __name__ == "__main__":
     unittest.main()

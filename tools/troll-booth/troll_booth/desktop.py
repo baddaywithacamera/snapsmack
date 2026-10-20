@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +14,8 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QFileDialog,
+    QInputDialog,
     QFormLayout,
     QFrame,
     QHBoxLayout,
@@ -436,12 +439,52 @@ class BoothWindow(QMainWindow):
         dialog.setWindowTitle("App connections")
         dialog.resize(720, 540)
         box = QVBoxLayout(dialog)
-        box.addWidget(QLabel("Declared CLI capability connections (JSON). No passwords or tokens."))
+        box.addWidget(QLabel(
+            "Apps TROLL BOOTH can ask about themselves. Each one is a command"
+            " that answers `agent --json` and describes what that tool can do."
+            "  No passwords or tokens belong in here."
+        ))
+        # Sean: "I have no idea how to add an app connection. you did not
+        # make it intuitive, let's just say." It was a blank JSON box holding
+        # {"apps": []} and no example, so you had to already know the schema.
+        # Pick the script instead and the entry gets written for you.
+        add_button = QPushButton("ADD AN APP…")
+        box.addWidget(add_button)
         editor = QPlainTextEdit(_read(APPS, '{\n  "apps": []\n}\n'))
         box.addWidget(editor, 1)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         box.addWidget(buttons)
         buttons.rejected.connect(dialog.reject)
+
+        def add_app() -> None:
+            script, _chosen = QFileDialog.getOpenFileName(
+                dialog, "Choose the tool\'s script", str(Path.home()),
+                "Tools (*.py *.exe *.cmd *.bat);;All files (*)")
+            if not script:
+                return
+            stem = Path(script).stem
+            name, chose = QInputDialog.getText(
+                dialog, "Name this app", "What is this tool called?",
+                text=stem.replace("-", " ").replace("_", " ").upper())
+            if not chose or not name.strip():
+                return
+            slug = re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-") or stem
+            launcher = [script] if script.lower().endswith((".exe", ".cmd", ".bat")) else [sys.executable, script]
+            try:
+                current = json.loads(editor.toPlainText() or "{\"apps\": []}")
+                if not isinstance(current.get("apps"), list):
+                    raise ValueError
+            except (ValueError, json.JSONDecodeError):
+                current = {"apps": []}
+            current["apps"] = [a for a in current["apps"] if a.get("slug") != slug]
+            current["apps"].append({
+                "slug": slug,
+                "name": name.strip(),
+                "capabilities_command": launcher + ["agent", "--json"],
+            })
+            editor.setPlainText(json.dumps(current, indent=2, ensure_ascii=False) + chr(10))
+
+        add_button.clicked.connect(add_app)
 
         def save() -> None:
             try:
