@@ -460,7 +460,12 @@ a:hover {
     --footer-bar-height: 52px;
     padding-top: var(--header-height, 7vh);
     padding-bottom: calc(100px + var(--footer-bar-height));
-    height: 100dvh;
+    /* body is a flex column of 100dvh. A height of 100dvh here made the
+       main region a full viewport tall IN ADDITION to the header and
+       footer -- 60 + 860 + 41 = 961 on an 860 screen, which is the
+       scroll Sean saw. A basis of 0 takes exactly what is left, and
+       nothing is added below the fold. */
+    flex: 1 1 0;
     overflow: hidden;
     box-sizing: border-box;
     display: flex;
@@ -477,7 +482,10 @@ a:hover {
     z-index: 70;
 }
 
-.htbs-single #infobox {
+/* The navigation bar steps aside only when the filmstrip is there to
+   replace it. Without one -- htbs_show_filmstrip off -- this hid the
+   only way off the photograph. */
+.htbs-single.has-filmstrip #infobox {
     display: none;
 }
 
@@ -2133,6 +2141,16 @@ a.logo-area,
    the old markup. */
 .nav-menu a {
     text-transform: uppercase;
+}
+
+/* The single image view is one screen, not a document. body is a flex column
+   with min-height: 100dvh, so it GROWS with its content and the main region
+   has no fixed size to take a share of -- which is why the page scrolled by
+   exactly the header plus the footer. Capping the column here, only on a
+   page that has a .htbs-single region, is what makes it fit again. */
+body:has(.htbs-single) {
+    height: 100dvh;
+    overflow: hidden;
 }
 
 /* ===== SNAPSMACK EOF ===== */
