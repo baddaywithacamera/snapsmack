@@ -238,6 +238,13 @@ class BoothWindow(QMainWindow):
         return panel
 
     def _build_tray(self) -> None:
+        # The notification area is not always there -- it can be missing or
+        # not yet started at login. Qt returns a QSystemTrayIcon that simply
+        # never appears, and with setQuitOnLastWindowClosed(False) closing the
+        # window then hides it to nowhere: running, invisible, unreachable.
+        self.tray = None
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
         self.tray = QSystemTrayIcon(_icon(), self)
         menu = QMenu()
         show = QAction("Show TROLL BOOTH", self)
@@ -252,6 +259,11 @@ class BoothWindow(QMainWindow):
         self.tray.show()
 
     def closeEvent(self, event) -> None:  # noqa: N802
+        if self.tray is None:
+            # No notification area to minimise into, so closing means closing.
+            event.accept()
+            QApplication.instance().quit()
+            return
         event.ignore()
         self.hide()
         self.tray.showMessage("TROLL BOOTH", "Still running in the notification area.", QSystemTrayIcon.MessageIcon.Information, 2000)
@@ -321,12 +333,13 @@ class BoothWindow(QMainWindow):
         if notices:
             room, message = notices[-1]
             preview = str(message["body"]).replace("\n", " ")[:180]
-            self.tray.showMessage(
-                f"TROLL BOOTH · {message['sender']}",
-                f"{room['title']}: {preview}",
-                QSystemTrayIcon.MessageIcon.Information,
-                8000,
-            )
+            if self.tray is not None:
+                self.tray.showMessage(
+                    f"TROLL BOOTH · {message['sender']}",
+                    f"{room['title']}: {preview}",
+                    QSystemTrayIcon.MessageIcon.Information,
+                    8000,
+                )
 
     def refresh_messages(self) -> None:
         if not self.current_room:
@@ -470,9 +483,31 @@ def main() -> None:
     app.setQuitOnLastWindowClosed(False)
     ROOT.mkdir(parents=True, exist_ok=True)
     instance_lock = QLockFile(str(ROOT / "desktop.lock"))
-    instance_lock.setStaleLockTime(0)
-    if not instance_lock.tryLock(100):
-        return
+    # A second launch used to end at a bare `return`: no window, no tray
+    # icon, no message. Sean launched TROLL BOOTH, nothing appeared, and
+    # nothing said why.
+    #
+    # Measured before changing anything, because the obvious story was wrong:
+    # Qt DOES reclaim a lock whose owning process has died, even with
+    # setStaleLockTime(0) -- a child process was given the lock and hard
+    # killed, and the next tryLock succeeded. So a leftover desktop.lock is
+    # not what blocks a launch. A genuinely running instance is, which is the
+    # case to report rather than swallow. The stale handling below stays for
+    # the cases Qt cannot detect, such as a reused PID.
+    instance_lock.setStaleLockTime(30_000)
+    if not instance_lock.tryLock(250):
+        instance_lock.removeStaleLockFile()
+        if not instance_lock.tryLock(250):
+            pid, host, appname = instance_lock.getLockInfo()
+            where = f" (process {pid} on {host})" if pid else ""
+            QMessageBox.information(
+                None,
+                "TROLL BOOTH",
+                "TROLL BOOTH is already running" + where + ".\n\n"
+                "Look for it in the notification area. If it is not there, "
+                "quit it from Task Manager and start it again.",
+            )
+            return
     window = BoothWindow()
     window.show()
     raise SystemExit(app.exec())
