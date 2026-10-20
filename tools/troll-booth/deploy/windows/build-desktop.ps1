@@ -12,5 +12,9 @@ $Build = Join-Path $Project 'build'
 & $Python -m PyInstaller --noconfirm --clean --windowed --name 'SMACK DEALER' `
   --distpath $Dist --workpath $Build --specpath $Build `
   (Join-Path $Project 'dealer_entry.py')
+& $Python -m PyInstaller --noconfirm --clean --onefile --windowed --name 'TROLL BOOTH WORKER' `
+  --hidden-import pymysql --hidden-import win32crypt `
+  --distpath (Join-Path $Dist 'TROLL BOOTH') --workpath $Build --specpath $Build `
+  (Join-Path $Project 'worker_entry.py')
 
 Write-Host "Built native applications in $Dist"

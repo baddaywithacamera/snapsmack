@@ -204,6 +204,20 @@ async def worker_result(request: Request) -> JSONResponse:
     return JSONResponse({"ok": ok}, status_code=200 if ok else 409)
 
 
+@mcp.custom_route("/owner/pair-code", methods=["POST"])
+async def owner_pair_code(request: Request) -> JSONResponse:
+    """Issue a code only to the authenticated local worker/owner application."""
+    if not _worker_authorized(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    data = await request.json()
+    actor = str(data.get("actor", "")).strip().lower()
+    if actor not in {"claude", "codex"}:
+        return JSONResponse({"error": "actor must be claude or codex"}, status_code=400)
+    scopes = ["booth:read", "booth:write"] if bool(data.get("write", True)) else ["booth:read"]
+    code = store.issue_pair_code(actor, scopes, ttl=300)
+    return JSONResponse({"actor": actor, "code": code, "expires_in": 300, "scopes": scopes})
+
+
 public_host = urlparse(PUBLIC_URL).netloc
 app = mcp.streamable_http_app(
     transport_security=TransportSecuritySettings(

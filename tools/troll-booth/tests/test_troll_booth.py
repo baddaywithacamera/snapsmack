@@ -179,6 +179,27 @@ class OAuthTests(unittest.TestCase):
             issued = next(iter(provider.codes.values()))
             self.assertEqual(issued.scopes, ["booth:read", "booth:write"])
 
+    def test_paired_actor_survives_token_exchange(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = BoothStore(Path(directory) / "booth.sqlite3")
+            provider = BoothOAuthProvider(store, "https://booth.example")
+            client = OAuthClientInformationFull(
+                client_id="codex-test", redirect_uris=[AnyUrl("http://127.0.0.1/callback")],
+                token_endpoint_auth_method="none", grant_types=["authorization_code", "refresh_token"],
+                response_types=["code"], scope="booth:read booth:write",
+            )
+            params = AuthorizationParams(
+                state="state", scopes=["booth:read", "booth:write"], code_challenge="challenge",
+                redirect_uri=AnyUrl("http://127.0.0.1/callback"), redirect_uri_provided_explicitly=True,
+                resource="https://booth.example/mcp",
+            )
+            request_id = asyncio.run(provider.authorize(client, params)).rsplit("=", 1)[1]
+            pair_code = store.issue_pair_code("codex", ["booth:read", "booth:write"], ttl=60)
+            provider.approve(request_id, pair_code)
+            authorization_code = next(iter(provider.codes.values()))
+            token = asyncio.run(provider.exchange_authorization_code(client, authorization_code))
+            self.assertEqual(asyncio.run(provider.load_access_token(token.access_token)).subject, "codex")
+
 
 class WorkerTests(unittest.TestCase):
     def test_only_declared_capability_command_runs(self) -> None:

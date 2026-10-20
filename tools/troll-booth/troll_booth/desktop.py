@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+import socket
+import subprocess
 import sys
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 
@@ -40,6 +43,8 @@ from .secret_config import public_mariadb_settings, save_mariadb_settings
 ROOT = Path(os.environ.get("TROLL_BOOTH_HOME", Path.home() / ".troll-booth"))
 AGREEMENT = Path(os.environ.get("TROLL_BOOTH_AGREEMENT", ROOT / "working-agreement.md"))
 APPS = Path(os.environ.get("TROLL_BOOTH_APPS", ROOT / "apps.json"))
+SERVER = os.environ.get("TROLL_BOOTH_SERVER", "https://trollbooth.photoblogs.fyi").rstrip("/")
+WORKER_TOKEN = ROOT / "worker-token"
 
 
 def _icon() -> QIcon:
@@ -100,6 +105,7 @@ class BoothWindow(QMainWindow):
         self.setMinimumSize(960, 620)
         self._build_ui()
         self._build_tray()
+        self._ensure_worker()
         self._prime_message_notifications()
         self.refresh_rooms()
         self.refresh_apps()
@@ -229,6 +235,17 @@ class BoothWindow(QMainWindow):
             "The CLI and MCP broker use declared capabilities only. No general shell is exposed."
         )
         access_box.addWidget(cli, 1)
+        self.pairing_code = QLineEdit()
+        self.pairing_code.setReadOnly(True)
+        self.pairing_code.setPlaceholderText("Choose an agent to create a five-minute pairing code")
+        access_box.addWidget(self.pairing_code)
+        pair_buttons = QHBoxLayout()
+        pair_codex = QPushButton("CONNECT CODEX")
+        pair_claude = QPushButton("CONNECT CLAUDE")
+        pair_codex.clicked.connect(lambda: self.issue_pair_code("codex"))
+        pair_claude.clicked.connect(lambda: self.issue_pair_code("claude"))
+        pair_buttons.addWidget(pair_codex); pair_buttons.addWidget(pair_claude)
+        access_box.addLayout(pair_buttons)
         open_data = QPushButton("OPEN LOCAL DATA FOLDER")
         open_data.clicked.connect(lambda: os.startfile(ROOT))
         access_box.addWidget(open_data)
@@ -236,6 +253,41 @@ class BoothWindow(QMainWindow):
 
         box.addWidget(self.control_stack, 1)
         return panel
+
+    def _ensure_worker(self) -> None:
+        if not WORKER_TOKEN.exists():
+            return
+        worker_id = f"{socket.gethostname().lower()}-desktop"
+        packaged = Path(sys.executable).with_name("TROLL BOOTH WORKER.exe")
+        if packaged.exists():
+            command = [str(packaged)]
+        else:
+            command = [sys.executable, "-m", "troll_booth.worker"]
+        command += ["--server", SERVER, "--token-file", str(WORKER_TOKEN), "--config", str(APPS), "--worker-id", worker_id]
+        flags = 0
+        if os.name == "nt":
+            flags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
+        try:
+            subprocess.Popen(command, close_fds=True, creationflags=flags)
+        except OSError as exc:
+            self.statusBar().showMessage(f"Worker could not start: {exc}", 8000)
+
+    def issue_pair_code(self, actor: str) -> None:
+        try:
+            token = WORKER_TOKEN.read_text(encoding="utf-8").strip()
+            payload = json.dumps({"actor": actor, "write": True}).encode("utf-8")
+            request = urllib.request.Request(
+                f"{SERVER}/owner/pair-code", data=payload,
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}, method="POST",
+            )
+            with urllib.request.urlopen(request, timeout=15) as response:
+                result = json.loads(response.read().decode("utf-8"))
+            code = str(result["code"])
+            self.pairing_code.setText(code)
+            QApplication.clipboard().setText(code)
+            self.statusBar().showMessage(f"{actor.title()} pairing code copied; it expires in five minutes", 8000)
+        except Exception as exc:
+            QMessageBox.critical(self, "Pairing failed", str(exc))
 
     def _build_tray(self) -> None:
         self.tray = QSystemTrayIcon(_icon(), self)
