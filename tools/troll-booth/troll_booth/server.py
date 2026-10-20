@@ -79,6 +79,21 @@ async def app_capabilities(app: str, reason: str = "Inspect app capabilities") -
     return await _queued("apps.capabilities", {"app": app}, reason)
 
 
+@mcp.tool(description="Run one explicitly declared app action. Read actions are automatic; write actions require booth:write and confirmed=true.")
+async def run_app_action(
+    app: str,
+    action: str,
+    argv: list[str] | None = None,
+    confirmed: bool = False,
+    reason: str = "Run a declared SnapSmack app action",
+) -> dict:
+    worker_arguments = {"app": app, "action": action, "argv": argv or [], "allow_write": False}
+    if confirmed:
+        _require_scope("booth:write")
+        worker_arguments["allow_write"] = True
+    return await _queued("apps.run", worker_arguments, reason)
+
+
 @mcp.tool(description="List locally stored collaboration rooms without exposing the history database publicly.")
 async def list_conversations(limit: int = 100, reason: str = "List collaboration rooms") -> dict:
     return await _queued("conversation.rooms", {"limit": limit}, reason)

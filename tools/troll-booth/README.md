@@ -17,7 +17,8 @@ session revocation, bridge lock, and emergency stop.
 
 ## First build boundary
 
-The original v0.1 build was deliberately read-only:
+The original v0.1 build was deliberately read-only. Version 0.1.6 adds a
+bounded driver without adding a shell:
 
 1. Bind only to loopback.
 2. Start locked.
@@ -25,12 +26,14 @@ The original v0.1 build was deliberately read-only:
 4. Pair Claude Web and ChatGPT Web with separate short-lived sessions.
 5. Discover installed apps through their `agent --json` or
    `capabilities --json` contract.
-6. Invoke only declared read-only capabilities through structured arguments.
+6. Invoke only explicitly declared app actions through structured arguments.
 7. Record actor, reason, ticket, command, result, and receipt.
 8. Provide the collaboration room and Sean's control window.
 
-No shell, arbitrary executable, production write, reply delivery, moderation,
-cleanup, restore, deletion, or deployment belongs in the first build.
+There is still no shell or arbitrary executable. Each runnable action is an
+exact argv prefix in `apps.json`. Read actions run with `booth:read`; an action
+declared as `write` also requires a `booth:write` session and `confirmed=true`.
+Every invocation and its declared reason is written to the audit ledger.
 
 ## Implementation status
 
