@@ -27,8 +27,11 @@ if (!preg_match('/\.htbs-slider-landing\s*\{[^}]*flex:\s*1\s+1\s+auto\s*;[^}]*mi
 if (preg_match('/\.htbs-slider-landing\s*\{[^}]*(?:height:\s*100d?vh|padding-top:\s*var\(--header-height)/s', $css)) {
     throw new RuntimeException('GALLERIA landing still duplicates viewport or header height.');
 }
-if (($manifest['version'] ?? '') !== '1.3.15') {
-    throw new RuntimeException('GALLERIA package version was not advanced to 1.3.15.');
+// At least 1.3.15, not exactly: an equality check here means every later
+// GALLERIA package breaks this test, which says nothing about the landing
+// flow it exists to guard. What matters is that the fix shipped.
+if (version_compare((string)($manifest['version'] ?? '0'), '1.3.15', '<')) {
+    throw new RuntimeException('GALLERIA package version is behind 1.3.15, which carried this fix.');
 }
 if (preg_match('/<style\b|\bstyle\s*=/i', $component)) {
     throw new RuntimeException('GALLERIA component contains inline CSS.');

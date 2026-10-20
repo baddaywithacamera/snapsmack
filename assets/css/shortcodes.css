@@ -157,6 +157,23 @@
    LAYOUT SHORTCODES
    ========================================================================= */
 
+/* Bare YouTube URLs in imported longform posts become responsive players. */
+.snap-video {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    margin: 1.5em 0;
+    overflow: hidden;
+    background: #000;
+}
+.snap-video iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
 /* A standalone SMACKTALK photograph should be visible as one composition.
    The [img:] wrapper is separate from .snap-mosaic and .snap-mosaic-wall, so
    MOSAIC keeps complete control of its own tile geometry. The wrapper retains
