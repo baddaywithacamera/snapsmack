@@ -185,6 +185,7 @@ button{ font-family:inherit; cursor:pointer; }
 .sx-panel{ display:none; }
 .sx-panel.active{ display:block; }
 .sx-page-title{ font-size:1.9rem; font-weight:800; margin:2px 0 18px; color:var(--fg-2); letter-spacing:-.02em; }
+.sx-home-title{ display:none; }
 .sx-note{ color:var(--muted); text-align:center; padding:48px 20px; }
 .sx-spin{ width:26px; height:26px; margin:40px auto; border-radius:999px;
   border:3px solid var(--line); border-top-color:var(--accent); animation:sx-rot .8s linear infinite; }
@@ -215,6 +216,77 @@ button{ font-family:inherit; cursor:pointer; }
 .sx-act-sp{ flex:1; }
 .sx-caption{ padding:2px 14px 14px; font-size:.93rem; color:var(--fg); overflow-wrap:anywhere; }
 .sx-caption a{ color:var(--accent); }
+
+/* ---- SMACKTALK reader ----------------------------------------------------
+ * The words-first install gets a Mastodon-like home timeline. Photography
+ * installs retain the image-led Pixelfed presentation above. This is an
+ * original implementation based on the familiar rendered interaction model;
+ * it does not use Mastodon source, assets or class names. */
+.sx-reader-mastodon{
+  --accent:#8c8dff; --accent-strong:#6364ff; --active:#8c8dff;
+  --bg:#191b22; --page:#191b22; --card:#282c37; --rail:#282c37;
+  --line:#3b404d; --line-soft:#343945; --pill:#313543; --hover:#313543;
+}
+.sx-reader-mastodon .sx-top{ background:#191b22; }
+.sx-reader-mastodon .sx-top-in,
+.sx-reader-mastodon .sx-app{ max-width:1180px; }
+.sx-reader-mastodon .sx-app{
+  grid-template-columns:240px minmax(0,620px) 280px;
+  gap:20px; padding-top:0;
+}
+.sx-reader-mastodon .sx-col-center{
+  background:var(--card); border-left:1px solid var(--line);
+  border-right:1px solid var(--line); min-height:calc(100vh - 62px);
+}
+.sx-reader-mastodon .sx-home-title{
+  display:block; position:sticky; top:62px; z-index:8; padding:14px 18px;
+  background:rgba(40,44,55,.94); border-bottom:1px solid var(--line);
+  backdrop-filter:blur(10px); font-size:1.1rem; font-weight:800;
+}
+.sx-reader-mastodon .sx-card{
+  display:flex; flex-direction:column; margin:0; padding:0 16px 12px;
+  border-bottom:1px solid var(--line); background:var(--card);
+}
+.sx-reader-mastodon .sx-card:hover{ background:#2b303c; }
+.sx-reader-mastodon .sx-card-head{ order:1; padding:14px 0 5px; align-items:flex-start; }
+.sx-reader-mastodon .sx-card-head .sx-av{ width:46px; height:46px; }
+.sx-reader-mastodon .sx-ch-h{ font-size:.96rem; }
+.sx-reader-mastodon .sx-ch-sub{ font-size:.78rem; }
+.sx-reader-mastodon .sx-boostline{ order:0; padding:10px 0 0 58px; }
+.sx-reader-mastodon .sx-cw{ order:2; margin:6px 0 6px 58px; }
+.sx-reader-mastodon .sx-caption{
+  order:3; padding:2px 0 10px 58px; font-size:1rem; line-height:1.52;
+}
+.sx-reader-mastodon .sx-media{
+  order:4; margin-left:58px; border:1px solid var(--line); border-radius:12px;
+}
+.sx-reader-mastodon .sx-media img,
+.sx-reader-mastodon .sx-media video{ max-height:520px; }
+.sx-reader-mastodon .sx-actions{
+  order:5; margin-left:50px; padding:8px 0 0; justify-content:space-between;
+}
+.sx-reader-mastodon .sx-act{
+  color:var(--muted-2); font-size:.8rem; font-weight:500; padding:6px 8px;
+}
+.sx-reader-mastodon .sx-act-sp{ display:none; }
+.sx-reader-mastodon .sx-comments{ order:6; margin-left:58px; }
+.sx-reader-mastodon .sx-idcard,
+.sx-reader-mastodon .sx-nav,
+.sx-reader-mastodon .sx-railcard{ border-radius:8px; }
+.sx-reader-mastodon .sx-create{ border-radius:4px; }
+
+@media (max-width:1000px){
+  .sx-reader-mastodon .sx-app{ grid-template-columns:1fr; padding:0; }
+  .sx-reader-mastodon .sx-col-center{ border-left:0; border-right:0; }
+  .sx-reader-mastodon .sx-home-title{ top:110px; }
+}
+@media (max-width:600px){
+  .sx-reader-mastodon .sx-card{ padding-left:12px; padding-right:12px; }
+  .sx-reader-mastodon .sx-caption,
+  .sx-reader-mastodon .sx-media,
+  .sx-reader-mastodon .sx-actions,
+  .sx-reader-mastodon .sx-comments{ margin-left:0; padding-left:0; }
+}
 
 /* comments (inline) */
 .sx-comments{ border-top:1px solid var(--line-soft); padding:6px 14px 10px; }

@@ -11,6 +11,13 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.919D - 2026-10-20 - WORDS BEFORE PICTURES
+
+- **SMACKTALK now gets a words-first Fediverse home.** Its interaction page
+  uses a compact Mastodon-like timeline: author, post text, attached media,
+  then Reply, Boost and Favourite. The photography and carousel installs keep
+  their existing image-led Pixelfed-style interface.
+
 ## 0.7.918D - 2026-10-20 - NO MORE THREE ACROSS
 
 **Needs a CMS deploy and a HIP TO BE SQUARE skin update.**

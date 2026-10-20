@@ -1,6 +1,6 @@
 <?php
 /**
- * SNAPSMACK — FEDIVERSE : Standalone Pixelfed-compatible client  (pixel.php)
+ * SNAPSMACK — FEDIVERSE : Standalone mode-aware client  (pixel.php)
  *
  * A STANDALONE page (no admin header/sidebar/footer) that opens from SnapSmack
  * and works like a real Pixelfed instance — follow / like / comment / boost /
@@ -28,6 +28,9 @@ $sv_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                    ->fetchAll(PDO::FETCH_KEY_PAIR);
 sv_ensure_tables($pdo);
 $sv_on = sv_enabled($sv_settings);
+$sv_reader_style = (($sv_settings['site_mode'] ?? 'photoblog') === 'smacktalk')
+    ? 'mastodon'
+    : 'pixelfed';
 
 /* ── POST interactions (JSON) — CSRF already enforced by auth-smack ───────── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sspf_action'])) {
@@ -222,12 +225,12 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fediverse — Pixelfed</title>
+<title>Fediverse — <?php echo $sv_reader_style === 'mastodon' ? 'SMACKTALK' : 'Photos'; ?></title>
 <?php if (function_exists('csrf_meta_tag')) csrf_meta_tag(); ?>
 <script>try{var _t=localStorage.getItem('pixel-theme')||'dark';document.documentElement.setAttribute('data-theme',_t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
 <link rel="stylesheet" href="assets/css/ss-pixel.css?v=<?php echo px_e($ver); ?>">
 </head>
-<body>
+<body class="sx-reader-<?php echo px_e($sv_reader_style); ?>">
 
 <header class="sx-top">
   <div class="sx-top-in">
@@ -305,6 +308,7 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
      data-actor="<?php echo px_e($sv_handle); ?>"
      data-avatar="<?php echo px_e($sv_avatar); ?>"
      data-enabled="<?php echo $sv_on ? '1' : '0'; ?>"
+     data-reader-style="<?php echo px_e($sv_reader_style); ?>"
      data-unread="<?php echo (int)$sv_unread; ?>"
      data-default-panel="<?php echo px_e(in_array($_GET['panel'] ?? '', ['home','local','global','notifications','direct','profile','discover'], true) ? (string)$_GET['panel'] : 'home'); ?>">
 
@@ -342,7 +346,7 @@ function px_e($s) { return htmlspecialchars((string)$s, ENT_QUOTES); }
 
   <!-- CENTER -->
   <main class="sx-col-center">
-    <section class="sx-panel active" data-panel="home"><div class="sx-panel-body"></div></section>
+    <section class="sx-panel active" data-panel="home"><div class="sx-home-title">Home</div><div class="sx-panel-body"></div></section>
     <section class="sx-panel" data-panel="local"><div class="sx-page-title">Local</div><div class="sx-panel-body"></div></section>
     <section class="sx-panel" data-panel="global"><div class="sx-page-title">Global</div><div class="sx-panel-body"></div></section>
     <section class="sx-panel" data-panel="discover"><div class="sx-page-title">Discover</div><div class="sx-panel-body"><div class="sx-note">Discover lights up once search + trending are wired.</div></div></section>
