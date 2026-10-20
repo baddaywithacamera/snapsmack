@@ -75,7 +75,12 @@
         var cells = images.map(function (image, index) { return leaf(image, index); });
 
         if (cells.length === 1) return cells[0];
-        if (cells.length === 2) return group('horizontal', cells);
+        /* Two wide photographs become illegible strips when forced beside one
+           another. Stack landscape pairs; keep portrait pairs side by side. */
+        if (cells.length === 2) {
+            var bothLandscape = cells.every(function (cell) { return cell.ar >= 1.15; });
+            return group(bothLandscape ? 'vertical' : 'horizontal', cells);
+        }
 
         if (cells.length === 3) {
             if (template === 'one-left') return group('horizontal', [cells[0], group('vertical', cells.slice(1))]);
