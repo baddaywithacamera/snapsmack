@@ -8,7 +8,7 @@ $layout = file_get_contents(__DIR__ . '/../skins/tilez/layout.php');
 if (!is_string($css) || !is_string($mosaic) || !is_string($layout)
     || str_contains($layout, 'data-merge-adjacent-mosaics')
     || !str_contains($css, '.snap-inline-frame:has(+ .snap-inline-frame)')
-    || !str_contains($css, 'margin-bottom: 12px;')
+    || substr_count($css, 'margin-bottom: 4px;') < 3
     || str_contains($css, 'width: calc(50% - 10px) !important;')) {
     throw new RuntimeException('TILEZ standalone post photographs must remain tightly stacked as separate blocks.');
 }
