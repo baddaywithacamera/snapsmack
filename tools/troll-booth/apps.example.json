@@ -13,6 +13,7 @@
       "slug": "ticket-wicket",
       "name": "TICKET WICKET",
       "capabilities_command": ["python", "C:/path/to/ticket-wicket/tw.py", "agent", "--json"],
+      "env": ["SNAPSMACK_FORUM_URL", "SNAPSMACK_FORUM_KEY"],
       "actions": {
         "queue": {"access": "read", "argv": ["queue", "--json"]},
         "new": {"access": "write", "argv": ["new", "--json"]}

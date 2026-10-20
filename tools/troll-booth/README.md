@@ -34,6 +34,9 @@ There is still no shell or arbitrary executable. Each runnable action is an
 exact argv prefix in `apps.json`. Read actions run with `booth:read`; an action
 declared as `write` also requires a `booth:write` session and `confirmed=true`.
 Every invocation and its declared reason is written to the audit ledger.
+An app may declare a bounded `env` list; only those named variables plus the
+minimal process environment cross into its action subprocess. Undeclared
+credentials remain unavailable.
 
 ## Implementation status
 

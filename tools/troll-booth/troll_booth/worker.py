@@ -145,6 +145,13 @@ class CapabilityRegistry:
                     "slug": slug,
                     "name": str(entry.get("name", slug)),
                     "command": command,
+                    "env": [
+                        name for name in entry.get("env", [])
+                        if isinstance(name, str)
+                        and name.replace("_", "A").isalnum()
+                        and name.upper() == name
+                        and len(name) <= 128
+                    ][:16],
                     "actions": actions,
                 }
         return apps
@@ -175,12 +182,16 @@ class CapabilityRegistry:
         return result
 
     @staticmethod
-    def _child_env() -> dict[str, str]:
-        return {
+    def _child_env(app: dict[str, Any]) -> dict[str, str]:
+        child = {
             key: os.environ[key]
             for key in ("PATH", "SystemRoot", "WINDIR", "TEMP", "TMP", "LANG")
             if key in os.environ
         }
+        for key in app.get("env", []):
+            if key in os.environ:
+                child[key] = os.environ[key]
+        return child
 
     def run_action(self, slug: str, action_name: str, extra_argv: list[str], allow_write: bool) -> dict[str, Any]:
         app = self.apps.get(slug)
@@ -219,7 +230,7 @@ class CapabilityRegistry:
             timeout=30,
             shell=False,
             check=False,
-            env=self._child_env(),
+            env=self._child_env(app),
         )
         if len(completed.stdout) > 262144 or len(completed.stderr) > 65536:
             raise RuntimeError("app response exceeded the bounded output contract")

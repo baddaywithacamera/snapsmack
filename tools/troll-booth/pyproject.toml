@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "snapsmack-troll-booth"
-version = "0.1.6"
+version = "0.1.7"
 description = "SnapSmack's authenticated MCP capability broker"
 requires-python = ">=3.10"
 dependencies = [
