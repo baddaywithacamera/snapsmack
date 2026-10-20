@@ -33,6 +33,22 @@
   against 1.3.16, and `usedcarparts.photoblogs.fyi` on SCROLL 0.1.67 against
   the 0.1.68 packaged in 0.7.911D and never installed.
 
+- **GALLERIA's solo page had the title and date dumped at the top left.**
+  Sean, on the sixth asking. They are raw unstyled browser text because
+  `skins/galleria/style.css` has **no rule at all** for `.photo-title-footer`
+  or `.dt-published` — it never needed one, because v0.7.603D did not put
+  them on the page. The title and date belong in the INFO overlay, and that
+  is the only place the design ever showed them.
+
+  They are microformat properties of the `h-entry`, so removing them would
+  cost the page its `p-name` and `dt-published`. They are now `sr-only` —
+  present for parsers and screen readers, measured at 1x1 and not drawn. The
+  gallery frame starts directly under the masthead again, as in the
+  reference. Same three elements, same fix, in HIP TO BE SQUARE (1.3.17).
+
+  **GALLERIA needs no package for this** — it renders from
+  `core/galleria-page-component.php`, so the CMS deploy carries it.
+
 - **TROLL BOOTH now lives in the repo.** Sean: *"troll booth belongs in the
   git repo."* `dev` carried an early copy — the server, worker, store and CLI
   — while the whole desktop half lived only on `codex/pixelfed-015-compat`:
