@@ -4,18 +4,23 @@ build-backend = "hatchling.build"
 
 [project]
 name = "snapsmack-troll-booth"
-version = "0.1.2"
+version = "0.1.4"
 description = "SnapSmack's authenticated MCP capability broker"
 requires-python = ">=3.10"
 dependencies = [
   "mcp[cli]==2.3.0",
   "pydantic>=2.11,<3",
   "uvicorn>=0.35,<1",
+  "PySide6>=6.8,<7",
+  "PyMySQL>=1.1,<2",
 ]
 
 [project.scripts]
 troll-booth-server = "troll_booth.server:main"
 troll-booth-worker = "troll_booth.worker:main"
+troll-booth-owner = "troll_booth.owner:main"
+troll-booth-desktop = "troll_booth.desktop:main"
+smack-dealer = "troll_booth.dealer:main"
 troll-booth = "troll_booth.cli:main"
 
 [tool.hatch.build.targets.wheel]

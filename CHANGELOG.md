@@ -33,6 +33,31 @@
   against 1.3.16, and `usedcarparts.photoblogs.fyi` on SCROLL 0.1.67 against
   the 0.1.68 packaged in 0.7.911D and never installed.
 
+- **TROLL BOOTH now lives in the repo.** Sean: *"troll booth belongs in the
+  git repo."* `dev` carried an early copy — the server, worker, store and CLI
+  — while the whole desktop half lived only on `codex/pixelfed-015-compat`:
+  `desktop.py`, `dealer.py`, `owner.py`, `secret_config.py`, both entry
+  points, the Windows install and build scripts, and `RECOVERY.md`. **15
+  files missing and 1,778 lines of difference.** Checked before moving it:
+  the package imports nothing outside itself and no path reaches out of
+  `tools/troll-booth`, so it travels whole.
+
+  The PyInstaller specs came with it, into `tools/troll-booth/_build/` with a
+  `.gitignore` exception. They had been sitting in `build/`, which
+  `tools/*/build/` excludes — the same untracked-spec trap that shipped the
+  retired Tk SYBU window as 0.7.67 in September.
+
+- **And its message pane starts at the newest message.** Sean: *"can it stay
+  at the bottom by default? i have to keep scrolling down."* The code did
+  set the scrollbar to its maximum — on the line straight after `setHtml()`,
+  which lays out asynchronously, so the value read belonged to the previous
+  document and the view stayed at the top. Deferred past the layout.
+
+  It also refreshes every 2.5 seconds while visible, so forcing the bottom
+  each time would drag the page away from anyone reading back. It now sticks
+  to the newest message only when already there, or when the room changed,
+  and otherwise holds your place. 18 tests pass.
+
 - **One address in that list was not ours.** I built it by scraping
   `skins.php` for domains, which caught `www.serenity.ca` — a funeral home in
   Edmonton, linked from the page as an obituary for Raymond A. Vanderwoning,

@@ -126,6 +126,8 @@ tools/*/dist-*/
 # PyInstaller build recipes (tools/<tool>/<tool>.spec) are CODE and are tracked (Sean, 2026-09-15:
 # "if it is necessary for building it goes on git"). Only the old per-version clones are junk.
 tools/*/*-[0-9]*.[0-9]*.spec
+!tools/troll-booth/_build/
+!tools/troll-booth/_build/*.spec
 !tools/hub/hub.spec
 !tools/hub/snap_slapper.spec
 tools/oh-snap/src-tauri/target/
