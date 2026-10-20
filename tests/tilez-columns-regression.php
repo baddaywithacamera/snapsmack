@@ -7,8 +7,10 @@ $mosaic = file_get_contents(__DIR__ . '/../assets/js/ss-engine-mosaic.js');
 $layout = file_get_contents(__DIR__ . '/../skins/tilez/layout.php');
 if (!is_string($css) || !is_string($mosaic) || !is_string($layout)
     || str_contains($layout, 'data-merge-adjacent-mosaics')
+    || !str_contains($css, '.snap-inline-frame:has(+ .snap-inline-frame)')
+    || !str_contains($css, 'margin-bottom: 12px;')
     || str_contains($css, 'width: calc(50% - 10px) !important;')) {
-    throw new RuntimeException('TILEZ standalone post photographs must remain separate stacked blocks.');
+    throw new RuntimeException('TILEZ standalone post photographs must remain tightly stacked as separate blocks.');
 }
 $manifest = json_decode((string) file_get_contents(__DIR__ . '/../skins/tilez/manifest.json'), true);
 // A FLOOR, not a pin. Pinning the exact version made every legitimate

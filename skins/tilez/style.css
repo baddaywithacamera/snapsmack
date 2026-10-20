@@ -2513,6 +2513,13 @@ body.blog, body.single, body.archive { background: #fff; }
     margin-top: 2.6em;
     margin-bottom: 2.6em;
 }
+/* Consecutive standalone photos are a sequence, not separate text sections. */
+.entry-content > .snap-inline-frame:has(+ .snap-inline-frame) {
+    margin-bottom: 12px;
+}
+.entry-content > .snap-inline-frame + .snap-inline-frame {
+    margin-top: 0;
+}
 /* Standalone photographs remain individual block-level frames, including when
    authors place several consecutively. Explicit MOSAIC shortcodes keep their
    own packed layout. */
