@@ -11,6 +11,37 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.921D - 2026-10-20 - WRONG ROAD
+
+**Needs a CMS deploy only.** No skin package.
+
+- **GALLERIA's filmstrip: I fixed the branch nobody uses.** Three builds in a
+  row — 909D added the filmstrip, 919D reworked the solo page, 920D fixed the
+  switch — and Sean still opened hekeepsdroningon.ca to no filmstrip, four
+  times. The filmstrip was wired to the controller's `photo` route. Every photo
+  link on every site is a bare root slug, which routes to `resolve`, a separate
+  branch with its own copy of the same code. `photo` is reached only by
+  `?view=photo` or a numeric id, and nothing links to either. The page he
+  actually opens never went through the code I kept fixing.
+
+  Measured live before and after: `hekeepsdroningon.ca` on 0.7.920D served
+  `<main id="scroll-stage" class="public-content htbs-single">` with no
+  `has-filmstrip` and no `.htbs-filmstrip`, while the page's own
+  `--show-filmstrip:1` proved the owner's switch was on and the homepage proved
+  the rows existed. The setting was never the problem, and neither was the
+  delivery chain I was about to go asking the box about.
+
+- The gate is now one function, `snapsmack_filmstrip_for()`, used by all three
+  routes that can serve a solo page: `resolve`, `photo`, and a latest-post
+  homepage on a skin with no landing of its own. It cannot be fixed on one
+  route again.
+
+- `filmstrip-reaches-both-solo-routes-regression` asserts what no grep for
+  "filmstrip" could: that a bare slug really routes to `resolve`, and that
+  every plain solo-page response unions the filmstrip in. Against the shipped
+  920D controller it finds 3 call sites and 2 with no filmstrip. The older
+  tests passed because the union was there — on the branch nobody uses.
+
 ## 0.7.920D - 2026-10-20 - YES MEANS YES
 
 **Needs a CMS deploy only.** No skin package.

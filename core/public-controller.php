@@ -416,6 +416,24 @@ function snapsmack_grid_frame_items(array $items, array $settings, string $skin)
  * CMS-owned public routing and response modelling. It never emits headers or
  * markup and never reads globals; the entry point applies the returned status.
  */
+/** GALLERIA's solo page carries a filmstrip along the bottom. The owner's
+ *  switch is htbs_show_filmstrip, default on, exactly as the pre-strict layout
+ *  read it: off only when the owner explicitly said 0.
+ *
+ *  This lives in a function because the solo page is reached by TWO routes and
+ *  I wired only one. Every photo link on every site is a bare root slug --
+ *  public-route-and-game-on-recovery-regression asserts exactly that -- so the
+ *  live path is 'resolve', and the 'photo' branch I fixed in 909D and again in
+ *  920D is reached only by ?view=photo or a numeric id, which nothing links to.
+ *  Sean reported no filmstrip four times across three builds while I measured
+ *  the branch nobody uses and told him the setting was his. */
+function snapsmack_filmstrip_for(SnapPublicRepository $repository, array $settings): array
+{
+    return (string)($settings['htbs_show_filmstrip'] ?? '1') !== '0'
+        ? $repository->filmstripPhotographs()
+        : [];
+}
+
 function snapsmack_public_controller(SnapPublicRepository $repository, array $request, array $settings = []): array
 {
     $route = (string)($request['route'] ?? 'not_found');
@@ -446,7 +464,8 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             ? snapsmack_instant_camera_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment)
             : (in_array($skin, $gridModalSkins, true)
             ? snapsmack_grid_modal_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment, $skin)
-            : snapsmack_photo_response($repository, $item, $navigation)));
+            : (snapsmack_photo_response($repository, $item, $navigation)
+                + ['filmstrip' => snapsmack_filmstrip_for($repository, $settings)])));
         $pageItem = $slug !== '' ? $repository->activePageBySlug($slug) : null;
         return $pageItem === null
             ? ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation]
@@ -473,7 +492,10 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             $latestId = (int)($latest[0]['id'] ?? 0);
             $item = $latestId > 0 ? $repository->photographById($latestId) : null;
             if ($item !== null) {
-                return snapsmack_photo_response($repository, $item, $navigation);
+                // A latest-post homepage IS the solo page, so it gets the
+                // filmstrip on the same owner switch as the other two routes.
+                return snapsmack_photo_response($repository, $item, $navigation)
+                    + ['filmstrip' => snapsmack_filmstrip_for($repository, $settings)];
             }
         }
         $items = $skin === 'glide'
@@ -529,20 +551,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         $item = $slug !== '' ? $repository->photographBySlug($slug) : $repository->photographById($id);
         if ($item === null) return ['status' => 404, 'kind' => 'not_found', 'navigation' => $navigation];
         $gridModalSkins = ['the-grid', 'aurora', 'sudden-impact', 'parade', 'jive-turkey', 'heuristic', 'sliders'];
-        // GALLERIA's solo page has a filmstrip along the bottom. The owner's
-        // switch is htbs_show_filmstrip, default on, exactly as the pre-strict
-        // layout read it.
-        //
-        // Off only when the owner explicitly said 0. This read `=== '1'`, which
-        // means ANY other stored value — including an empty string — switched
-        // the filmstrip off while Smooth Your Skin went on showing "Yes",
-        // because a <select> whose options are 1 and 0 finds no match for ''
-        // and falls back to displaying the first one. Sean had it set to Yes on
-        // hekeepsdroningon.ca and no filmstrip on the page, and I twice told him
-        // it was his setting. A control that reads Yes has to behave as Yes.
-        $filmstrip = (string)($settings['htbs_show_filmstrip'] ?? '1') !== '0'
-            ? $repository->filmstripPhotographs()
-            : [];
+        $filmstrip = snapsmack_filmstrip_for($repository, $settings);
         return $skin === 'game-on'
             ? snapsmack_game_on_photo_response($repository, $item, $settings, $navigation, $perPage, $fragment)
             : ($skin === 'instant-camera'
