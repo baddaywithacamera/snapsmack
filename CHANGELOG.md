@@ -16,6 +16,33 @@
 **Needs a CMS deploy.** Three skin packages ship alongside it on the registry
 rail: NEW HORIZON 1.3.19, TRUE GRIT 1.3.14, RATIONAL GEO 2.1.30.
 
+- **Page two of the archive redirected to page two of the archive.**
+  `archive.php` guards its legacy redirect against looping, and the guard
+  compared paths only, then redirected anyway whenever the target carried a
+  query string. `snapsmack_legacy_archive_target()` carries the incoming query
+  through on purpose so an album card keeps its `?album=232` — so
+  `/archive?page=2` produced the target `/archive?page=2`: same path, has a
+  query, redirect, to the address the reader was already standing on.
+
+  Measured live on 0.7.921D: `/archive?page=2` answered 302 with `Location`
+  equal to the request URL on baddaywithacamera.ca, hekeepsdroningon.ca,
+  wateronthebrain.ca and pixhellated.ca — four of the seven sites checked. curl
+  gives up after 50 hops; a browser shows ERR_TOO_MANY_REDIRECTS. Page one
+  rendered, which is why this held: the archive looked fine until somebody
+  tried to go past the first screenful. Only skins whose manifest
+  `cms_controller` is `smacktalk` or `public` enter that block, which is why
+  foundtextures.ca and photoblogs.fyi were unaffected.
+
+  The guard now compares the whole address, path and query, order-insensitively
+  (`snapsmack_is_same_address()`), and redirects only when the target really
+  differs. A renamed archive menu item still carries the reader to its clean
+  address, with its query intact. `archive-pagination-loop-regression` pins it,
+  including the album, category, search, layout and combined-query cases that
+  all travel the same road.
+
+  Found while trying to enumerate posts for the badday review batch; the broken
+  pagination is why only 20 of the requested 30 could be reached.
+
 - **The long-form editor listed roughly 200 unrelated drafts under the post you
   were editing.** `smack-post-long.php` rendered a hard-coded `LIMIT 200`
   site-wide draft list beneath the editor, which read as though those drafts

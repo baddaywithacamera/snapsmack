@@ -126,6 +126,30 @@ function snapsmack_public_route_url(string $base, array $aliases, string $view, 
  * already accepts and renders through the strict controller in the site's own
  * skin. Never a slug that is not in the table.
  */
+/** Is this redirect target the very address we were just asked for?
+ *
+ *  archive.php guards its legacy redirect against looping, and the guard
+ *  compared PATHS only, then redirected anyway whenever the target carried a
+ *  query string. snapsmack_legacy_archive_target() carries the incoming query
+ *  through on purpose, so /archive?page=2 produced the target /archive?page=2:
+ *  same path, has a query, redirect -- to itself, forever. Page one of the
+ *  archive rendered and page two was unreachable on every site whose skin
+ *  enters that block; four of seven I measured were looping.
+ *
+ *  Order-insensitive on the query, because the target's is rebuilt by
+ *  http_build_query() and need not come back in the order it arrived. */
+function snapsmack_is_same_address(string $target, string $here_path, string $here_query): bool
+{
+    if (rtrim((string)parse_url($target, PHP_URL_PATH), '/') !== rtrim($here_path, '/')) {
+        return false;
+    }
+    parse_str((string)(parse_url($target, PHP_URL_QUERY) ?? ''), $there);
+    parse_str(ltrim(trim($here_query), '?&'), $mine);
+    ksort($there);
+    ksort($mine);
+    return $there === $mine;
+}
+
 function snapsmack_legacy_archive_target(string $base, array $aliases, string $site_mode = '', string $query = ''): string
 {
     // A carousel landing page already IS its archive.
