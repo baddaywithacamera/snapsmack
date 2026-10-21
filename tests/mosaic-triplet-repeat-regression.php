@@ -11,7 +11,8 @@ foreach (['lastAutomaticTripletTemplate', 'automaticTripletTemplate', 'data-auto
 }
 if (!str_contains($source, "chosen === lastAutomaticTripletTemplate")) throw new RuntimeException('Mosaic engine no longer prevents an immediate automatic triplet repeat.');
 if (!str_contains($source, "container.getAttribute('data-template')")) throw new RuntimeException('Mosaic engine lost explicit template selection.');
-if (!str_contains($source, "var preferred = 'one-left'")) throw new RuntimeException('Automatic triplets no longer default to a hero composition.');
+if (!str_contains($source, 'stableTripletSide(images)')) throw new RuntimeException('The first automatic triplet no longer varies its hero side between pages.');
+if (!str_contains($source, "? 'one-left' : 'one-right'")) throw new RuntimeException('Automatic triplets no longer choose between left- and right-led hero compositions.');
 if (str_contains($source, "var preferred = imageAR(images[0]) < 1.15 ? 'one-left' : 'three-across'")) throw new RuntimeException('Landscape triplets still default to three-across.');
 
 echo "mosaic triplet repeat regression: ok\n";
