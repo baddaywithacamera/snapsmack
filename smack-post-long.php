@@ -394,13 +394,6 @@ if (isset($_GET['edit'])) {
 // --- DATA ---
 $all_cats   = $pdo->query("SELECT * FROM snap_categories ORDER BY cat_name ASC")->fetchAll();
 $all_albums = $pdo->query("SELECT * FROM snap_albums ORDER BY album_name ASC")->fetchAll();
-$all_posts  = $pdo->query(
-    "SELECT p.id, p.title, p.status, p.created_at, p.slug
-     FROM snap_posts p
-     WHERE p.post_type = 'longform'
-     ORDER BY p.id DESC
-     LIMIT 200"
-)->fetchAll();
 
 // Fetch the cover image (from the Gallery / snap_images) for edit mode.
 // Covers are POST content, so they live in the Gallery — NOT the reusable-asset
@@ -846,31 +839,6 @@ include 'core/sidebar.php';
         </div>
 
     </form>
-
-    <!-- EXISTING LONGFORM POSTS LIST -->
-    <?php if (!empty($all_posts)): ?>
-    <div class="box mt-20">
-        <h3>LONGFORM POSTS</h3>
-        <?php foreach ($all_posts as $lp): ?>
-            <div class="recent-item">
-                <div class="item-details">
-                    <div class="item-text">
-                        <strong><?php echo htmlspecialchars($lp['title']); ?></strong>
-                        <?php if ($lp['status'] === 'draft'): ?>
-                            <code class="slug-display" style="color:var(--danger, #c0392b);">DRAFT</code>
-                        <?php endif; ?>
-                        <code class="slug-display"><?php echo htmlspecialchars($lp['slug']); ?></code>
-                        <span class="dim" style="font-size:0.8em;"><?php echo date('M j, Y', strtotime($lp['created_at'])); ?></span>
-                    </div>
-                </div>
-                <div class="item-actions">
-                    <a href="<?php echo htmlspecialchars(BASE_URL . '?id=' . $lp['id']); ?>" class="action-view" target="_blank" rel="noopener">VIEW</a>
-                    <a href="?edit=<?php echo (int)$lp['id']; ?>" class="action-edit">EDIT</a>
-                </div>
-            </div>
-        <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
 
 </div>
 
