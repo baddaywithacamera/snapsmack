@@ -1629,9 +1629,7 @@ function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40,
     foreach ($rows as $row) {
         if (!is_array($row)) continue;
         $published = !empty($row['published']) ? date('Y-m-d H:i:s',strtotime((string)$row['published'])) : '';
-        if ($published === '' || $published < $win['start'] || $published >= $win['end']) {
-            pc_log_entry_failure($pdo,$row,'outside_window','', 'open',$run_token); $out['outside']++; continue;
-        }
+        $outside_window = $published === '' || $published < $win['start'] || $published >= $win['end'];
         $object = is_array($row['__object'] ?? null) ? $row['__object'] : null;
         foreach (array_unique([(string)($row['id'] ?? ''),(string)($row['url'] ?? '')]) as $candidate) {
             if ($object === null && $candidate !== '' && function_exists('sv_fetch_ap')) { $object=sv_fetch_ap($candidate,$settings); if (is_array($object)) break; }
@@ -1639,6 +1637,13 @@ function pc_recover_tagged_entries(PDO $pdo, array $settings, int $limit = 40,
         if (is_array($object) && ($object['type'] ?? '') === 'Create' && is_array($object['object'] ?? null)) $object=$object['object'];
         if (!is_array($object) || empty($object['id'])) {
             pc_log_entry_failure($pdo,$row,'object_fetch_failed','The origin did not return an ActivityPub object.','open',$run_token); $out['failed']++; continue;
+        }
+        // The live admission path deliberately allows #horsconcours outside the
+        // competitive window. Recovery used to reject on the timestamp before
+        // fetching the object, so it could never see that exception. Read the
+        // authoritative Note first and apply the same exhibition-entry rule.
+        if ($outside_window && !pc_note_has_tag($object, 'horsconcours')) {
+            pc_log_entry_failure($pdo,$row,'outside_window','', 'open',$run_token); $out['outside']++; continue;
         }
         $actor = is_array($object['attributedTo'] ?? null) ? (string)($object['attributedTo']['id'] ?? '') : (string)($object['attributedTo'] ?? '');
         if ($actor === '') { pc_log_entry_failure($pdo,$row,'missing_actor','','open',$run_token); $out['failed']++; continue; }
