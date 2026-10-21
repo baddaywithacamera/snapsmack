@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "SLICKR",
-    "version": "1.0.46",
+    "version": "1.0.47",
     "author": "Sean McCormick",
     "author_email": "sean@baddaywithacamera.ca",
     "description": "Flickr, the way it was. Justified masonry archive, classic solo view with EXIF sidebar, albums directory. Built for migrated Flickr archives — includes an optional Flickr provenance badge on imported images.",
@@ -23,7 +23,7 @@
             "justified"
         ],
         "archive_filter": false,
-  "profile_header": true
+        "profile_header": true
     },
     "require_scripts": [
         "smack-footer",
@@ -117,7 +117,8 @@
                     "css": "height: auto;"
                 }
             },
-            "hint": "A photo smaller than the stage is enlarged to fill it (soft on very small scans). Choose never-enlarged to show small photos at their own pixel size."
+            "hint": "A photo smaller than the stage is enlarged to fill it (soft on very small scans). Choose never-enlarged to show small photos at their own pixel size.",
+            "admin_page": "solo"
         },
         "solo_bg_color": {
             "section": "SINGLE IMAGE",
@@ -125,7 +126,8 @@
             "label": "Image Background Colour",
             "default": "#1a1a1a",
             "selector": "#sl-photobox",
-            "property": "background-color"
+            "property": "background-color",
+            "admin_page": "solo"
         },
         "single_show_description": {
             "section": "SINGLE IMAGE",
@@ -135,7 +137,8 @@
             "options": {
                 "1": "Enabled",
                 "0": "Disabled"
-            }
+            },
+            "admin_page": "solo"
         },
         "show_exif_panel": {
             "section": "SINGLE IMAGE",
@@ -145,7 +148,8 @@
             "options": {
                 "1": "Enabled",
                 "0": "Disabled"
-            }
+            },
+            "admin_page": "solo"
         },
         "show_geo_link": {
             "section": "SINGLE IMAGE",
@@ -155,7 +159,8 @@
             "options": {
                 "1": "Enabled",
                 "0": "Disabled"
-            }
+            },
+            "admin_page": "solo"
         },
         "show_provenance_footer": {
             "section": "SINGLE IMAGE",
@@ -165,7 +170,8 @@
             "options": {
                 "1": "Show on Flickr-imported images",
                 "0": "Hidden"
-            }
+            },
+            "admin_page": "solo"
         },
         "blogroll_columns": {
             "section": "BLOGROLL",

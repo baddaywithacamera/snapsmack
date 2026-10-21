@@ -1,0 +1,25 @@
+{
+    "skin_name": "SCROLL",
+    "topics": [
+        {
+            "title": "SCROLL",
+            "body": "<h3>SCROLL</h3>\n<p>SCROLL is a solo photoblog skin with a large typographic landing page and a\nfour-column photo wall. Select a photograph to open its normal solo page; select\nthe photograph again there to use the standard lightbox.</p>\n<p>The whole car is somebody else's problem.</p>",
+            "icon": "&#x2193;"
+        },
+        {
+            "title": "Masthead and Navigation",
+            "body": "<h3>Masthead and Navigation</h3>\n<p>Use a vertical bar (<code>|</code>) in the masthead setting to choose your\nown line breaks. Its size is adjustable from 3–8 percent of the viewport\nwidth, and it may be tilted up to 40 degrees counterclockwise. Its typeface and\ncolour are independent of the rest of the site text. Solo and static pages use\nthe same colour and type family for their compact headings.</p>\n<p>On the landing page, the photographer sits at left, the masthead is centred,\nand navigation with Social Dock links sits at right in one visible header row.\nAfter the masthead scrolls away, that navigation becomes a compact sticky bar.\nStatic pages, the blogroll and individual photo pages now carry the SAME masthead\nheader as the landing, so every page shares one header.</p>",
+            "icon": "&#x2197;"
+        },
+        {
+            "title": "The Photo Wall",
+            "body": "<h3>The Photo Wall</h3>\n<p>The landing wall offers four layouts. <strong>Columns</strong> preserves every photograph&rsquo;s\nshape and lets portraits stand tallest. <strong>Rows</strong> preserves shape while landscapes\nlead. <strong>Asymmetric</strong> builds a MOSAIC quilt. <strong>Square</strong> crops photographs\ninto an even grid; choose 3&ndash;5 squares across and SCROLL divides the usable wall width after\ntile gaps and borders are accounted for.</p>\n<p>The wall <strong>loads as you scroll</strong> rather than all at once.\n<strong>Images Loaded Per Scroll</strong> sets how many photographs each page adds; new\npages flow into the existing columns with no gap or jump. <strong>Wall Width (% of window)</strong>\nsizes the wall to the browser (any resolution), and <strong>Space Between Tiles</strong> is the gutter.</p>",
+            "icon": "&#x25A6;"
+        },
+        {
+            "title": "Solo & Page Layout, Type",
+            "body": "<h3>Solo &amp; Page Layout, Type</h3>\n<p>These live in <strong>Pimp Your Ride &rarr; Smooth Your Skin</strong>, grouped by section.</p>\n<p><strong>SOLO PAGE</strong> — <em>Whitespace Above &amp; Below Photo</em> sets the breathing room over and\nunder a single photograph (equal top and bottom, so the photo stays vertically centred).\n<em>Text Column Width</em> sets how wide the title and description block runs beneath the photo.</p>\n<p><strong>STATIC &amp; BLOG</strong> — <em>Text Column Width</em> sets the reading width of static pages\n(About, etc.) and the blogroll. <em>Top Divider Line Colour</em> is the thin line that sits level with\nwhere the landing photo wall begins (set it near the background colour to hide it). The blogroll has\nits own controls too: <em>Blogroll Columns</em> (1–3), <em>Blogroll Gap</em>, and show/hide toggles for\n<em>Descriptions</em> and <em>URLs</em> — URLs are hidden by default because the blog name is already a\nlink.</p>\n<p><strong>TYPOGRAPHY</strong> — the fonts are independent by design: <em>Masthead Font</em> styles the big\nlanding masthead ONLY; <em>Page Title Font</em> styles static and photo page titles; <em>Body / Metadata\nFont</em> and <em>Solo Header Font</em> cover the rest. Changing one never changes the others.</p>\n<p>The <strong>single-photo page</strong> is a deliberately minimal, full-window lightbox: the photo fills\nthe window with the title top-left and navigation top-right, and the page itself never scrolls. The\ntitle/caption and comments live in a <strong>drawer</strong> that only opens when you click INFO or\nCOMMENTS in the bottom bar — nothing below the photo until you ask for it.</p>",
+            "icon": "&#x25A4;"
+        }
+    ]
+}

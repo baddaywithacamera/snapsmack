@@ -1,0 +1,13 @@
+{
+    "skin_name": "HEURISTIC",
+    "topics": [
+        {
+            "title": "Post Viewer Backdrop",
+            "body": "When a post opens in the viewer, a full-screen layer sits between it and the page. Under POST VIEWER you choose the colour of that layer and how solid it is. Black at 80% is the default; white at 100% gives a high-key viewer, and a lower opacity lets the page show through behind the photograph."
+        },
+        {
+            "title": "Heuristic",
+            "body": "<p>I am a HEURISTIC photographic presentation system. I display a conventional\n   three-column GRAMOFSMACK grid because needless alarm would interfere with\n   the book audit.</p>\n\n<h3>Logic Memory Centre</h3>\n<p>The red optical-memory bank brightens while photographs are being served.\n   <strong>System Activity</strong> can leave it live, quiet it, or make the\n   presentation static.</p>\n\n<h3>Infomatic screens</h3>\n<p>A visible photograph may briefly become an infomatic display and then return.\n   Classic automatic screens are supplied. Your own screens can be associated\n   with a category slug or a specific post.</p>\n\n<p>Enter rules in <strong>Category and Post Screens</strong>, separated by\n   semicolons:</p>\n<pre>clive-cussler=CUS|CONTAMINATION|fault|total;\nlarry-niven=NIV|KNOWN SPACE|blue|ordinal;\npost:42=COM|PRIORITY MESSAGE|calm|images</pre>\n\n<p>Each rule is <code>target=CODE|LABEL|colour|counter</code>. Colours may be\n   <code>calm</code>, <code>fault</code>, <code>blue</code>, or\n   <code>violet</code>. Counters may be <code>total</code>,\n   <code>ordinal</code>, <code>images</code>, <code>post</code>,\n   <code>none</code>, or a short literal value.</p>\n\n<h3>Accessibility and motion</h3>\n<p>Infomatics use slow pulses below the three-flashes-per-second threshold.\n   They do not run on phones or for visitors who request reduced motion.\n   The effects are decorative and hidden from assistive technology; links\n   and image alternatives remain ordinary page content.</p>\n\n<p>No cookies are used by this skin. No sound is produced. Dave has been\n   advised that all systems are functioning normally.</p>"
+        }
+    ]
+}

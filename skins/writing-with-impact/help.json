@@ -1,0 +1,20 @@
+{
+    "skin_name": "WRITING WITH IMPACT",
+    "topics": [
+        {
+            "title": "WRITING WITH IMPACT",
+            "body": "<h3>WRITING WITH IMPACT</h3>\n<p>WRITING WITH IMPACT puts STANLEY's longform geometry through the print head from\nIMPACT PRINTER and SUDDEN IMPACT. It is a SMACKTALK skin for photographs and serious\nwriting presented as continuous tractor-feed output: perforated paper, dot-matrix type\nand unapologetically mechanical image frames.</p>\n\n<h4>Best Fit</h4>\n<p>Use it when the post is the destination. It supports longform posts and comments,\nbut deliberately omits the calendar tray, masonry view and carousel.</p>",
+            "icon": "&#x270E;"
+        },
+        {
+            "title": "Paper, Type and Ink",
+            "body": "<h3>Paper, Type and Ink</h3>\n<ul>\n    <li><strong>Paper Stock</strong> &mdash; choose plain continuous paper or green-bar\n    ledger paper in Smooth Your Skin.</li>\n    <li><strong>Ribbon Ink</strong> &mdash; changes the printed text, links and rules.</li>\n    <li><strong>Header and Body Type</strong> &mdash; choose from the Tiny5 and complete\n    DotMatrix family shared with IMPACT PRINTER and SUDDEN IMPACT.</li>\n    <li><strong>Optional Masthead</strong> &mdash; upload a header image or logo, or leave\n    both blank for the pure dot-matrix nameplate.</li>\n</ul>",
+            "icon": "&#x2399;"
+        },
+        {
+            "title": "Frames, Layout and Archive",
+            "body": "<h3>Frames, Layout and Archive</h3>\n<p>Image borders can be printed as ASCII box, plus, equals or slash treatments, with\nseparate controls for border weight and padding. Choose Raw Print to remove the frame.</p>\n<p>The optional sidebar and reading-width control follow STANLEY's geometry. The archive\nuses each post's featured image and links to the post. Square and cropped thumbnails are\navailable; cropped images are constrained between 2:3 and 3:2. On tablets and phones the\npaper and columns collapse without requiring a separate mobile skin.</p>",
+            "icon": "&#x25A6;"
+        }
+    ]
+}

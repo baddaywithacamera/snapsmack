@@ -11,6 +11,56 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.926D - 2026-10-21 - THE MANUAL THAT LOST ITS SKINS
+
+**Needs a CMS deploy and 26 skin packages.** Both halves, or the help arrives
+with nothing to read: the hook is CMS, the content ships on the registry rail.
+
+- **Every skin's help was deleted on 28 September and nothing replaced it.**
+  Thirty skins shipped a `help.php` that the User Manual merged into its own
+  topics. The strict-runtime conversion removed all thirty — `b61fa6aa`,
+  `510b001b`, `6673a1e3`, the same commits that took GALLERIA's filmstrip — and
+  put nothing in their place. `smack-help.php`'s skin hook has been looking for
+  a file that existed nowhere for 23 days. A missing help topic reports nothing;
+  it looks exactly like a skin that never had any.
+
+  It could not simply be put back. `core/skin-security-policy.php` refuses any
+  `.php` in a skin package that is not a manifest-declared presentation
+  template, and declaring it makes it a template, held to a grammar that emits
+  through `snap_render_*` and cannot return an array. Either way the gate
+  rejects it, which is presumably why the conversion deleted them rather than
+  porting them.
+
+  The help is now `skins/<slug>/help.json` — data. The policy's file loop does
+  not examine JSON at all, and `tools/_build/package-skin.php` already zips the
+  whole skin directory, so it ships with no change to either. Verified by
+  running the gate, not by reading it: GALLERIA, TRUE GRIT, ONYX and SLICKR
+  each report zero findings with a `help.json` present.
+
+  **183 topics across 26 skins**, recovered from git and converted. The four
+  remaining skins that had help — a-grey-reckoning, kiosk, picasa-web-albums,
+  pocket-rocket — are no longer in the repo and were left alone.
+
+  `help.php` is still read when no `help.json` is present, so a site packaged
+  before the sweep does not lose its skin's help over how we store it.
+
+- **21 skin controls were on the wrong admin screen.** Controls that govern the
+  solo page — GALLERIA's Show Filmstrip and Plaque Style, JIVE TURKEY's backdrop
+  and scrim, SLICKR's stage settings — carried no `admin_page`, so they sat
+  under Smooth Your Skin instead of Solo Page Appearance. Sean asked about Show
+  Filmstrip specifically. This work was finished earlier and never shipped; it
+  rides with the version bump these skins need anyway.
+
+- **The Fediverse help was split into two sections by capitalisation.**
+  `$sections` is keyed on the exact string, so `'FEDIVERSE'` (5 topics) and
+  `'Fediverse'` (1 topic — the Directory) drew two separate sidebar headings,
+  with Directory stranded alone under the second.
+
+Known and not addressed here: the core manual's last substantive edit was
+2026-09-15 at 0.7.719D, 200 releases ago. Light Table, Hall of Fame, Break
+Glass, Preflight, Slicer, PixelDroid, LOG FLOGGER and TICKET WICKET have admin
+screens and no help topic at all. That is a writing job, not a plumbing one.
+
 ## 0.7.925D - 2026-10-21 - THE ARROWS WERE STILL THERE
 
 - Restores previous/next arrow-key navigation on Gram of Smack solo pages when the keyboard engine loads after `DOMContentLoaded`. The engine now reads the CMS-owned navigation metadata at key time, so skin load order cannot strand valid destinations.

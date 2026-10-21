@@ -3642,7 +3642,7 @@ HTML
 ];
 
 $help_topics['directory'] = [
-    'section'  => 'Fediverse',
+    'section'  => 'FEDIVERSE',
     'title'    => 'Directory — list on photoblogs.fyi',
     'icon'     => '&#x1F4D2;',
     'role'     => 'admin',
@@ -4221,53 +4221,81 @@ HTML
 //  SKIN HELP HOOK
 // =========================================================================
 
-// Active skin can provide a help.php file that returns an array of additional topics
-// in the same format as above, with section set to the skin name.
+// The active skin ships its own help as skins/<slug>/help.json, a data file:
+//
+//   { "skin_name": "GALLERIA", "topics": [ { "title": "...", "body": "..." } ] }
+//
+// It used to be a help.php that returned the same array, and 30 skins had one.
+// The strict-runtime conversion on 2026-09-28 deleted every single one and put
+// nothing in their place, so this hook spent 23 days looking for a file that no
+// longer existed anywhere -- and a missing skin help, like a missing filmstrip,
+// reports nothing.
+//
+// It cannot go back to PHP. core/skin-security-policy.php refuses any .php in a
+// skin package that is not a manifest-declared presentation template, and a
+// declared template is then held to the strict template grammar, which emits
+// through snap_render_* and cannot return an array. Either way the gate rejects
+// it, which is presumably why the conversion deleted them rather than porting
+// them. JSON is data: the policy's file loop does not examine it at all, and
+// tools/_build/package-skin.php already zips the whole skin directory, so a
+// help.json ships with no change to either.
+//
+// help.php is still read when no help.json is present. Sites packaged before
+// the sweep may still have one on disk, and their owners should not lose their
+// skin's help because of how we store it.
 if (!empty($settings['active_skin'])) {
     $_help_skin_slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $settings['active_skin']);
-    $_help_skin_path = "skins/{$_help_skin_slug}/help.php";
-    if (file_exists($_help_skin_path)) {
-        $skin_help = include $_help_skin_path;
-        if (is_array($skin_help)) {
-            // Skins ship help in one of two shapes. Normalise BOTH, and skip any
-            // malformed entry, so a single non-conforming skin file can no longer
-            // fatal the entire help page (a bare string merged in here was being
-            // indexed as $topic['section'] below → "offset of type string on string").
-            if (isset($skin_help['topics']) && is_array($skin_help['topics'])) {
-                // Shape A: ['skin_name' => 'X', 'topics' => [ ['title'=>,'body'=>], ... ]]
-                $_sec = (string)($skin_help['skin_name'] ?? $_help_skin_slug);
-                $_n   = 0;
-                foreach ($skin_help['topics'] as $_t) {
-                    if (!is_array($_t) || empty($_t['title'])) continue;
-                    $help_topics[$_help_skin_slug . '-' . (++$_n)] = [
-                        'section' => $_sec,
-                        'title'   => $_t['title'],
-                        'icon'    => $_t['icon']    ?? '',
-                        'role'    => $_t['role']    ?? '',
-                        'content' => $_t['content'] ?? $_t['body'] ?? '',
-                    ];
-                }
-            } else {
-                // Shape B: flat map of slug => topic-array. Merge every well-formed
-                // entry (an array with a title); default a missing 'section' to the
-                // skin slug so skins that ship topics without one still show up.
-                // (Previously the isset('section') gate SILENTLY DROPPED the help
-                //  from chaplin/heuristic/rational-geo/slickr/sliders — ARCH-04.)
-                $_n = 0;
-                foreach ($skin_help as $_k => $_t) {
-                    if (!is_array($_t) || empty($_t['title'])) continue;
-                    // Normalise to the canonical topic shape (same as Shape A):
-                    // default the section to the skin slug and map body -> content,
-                    // so skins that ship topics without a 'section' or using 'body'
-                    // are no longer silently dropped or rendered blank (ARCH-04).
-                    $help_topics[$_help_skin_slug . '-b-' . (++$_n)] = [
-                        'section' => (string)($_t['section'] ?? $_help_skin_slug),
-                        'title'   => $_t['title'],
-                        'icon'    => $_t['icon']    ?? '',
-                        'role'    => $_t['role']    ?? '',
-                        'content' => $_t['content'] ?? $_t['body'] ?? '',
-                    ];
-                }
+    $_help_json_path = "skins/{$_help_skin_slug}/help.json";
+    $_help_php_path  = "skins/{$_help_skin_slug}/help.php";
+
+    $skin_help = null;
+    if (is_file($_help_json_path)) {
+        // A skin's own file must never be able to take the help page down with
+        // it: bad JSON yields null and this hook simply adds nothing.
+        $skin_help = json_decode((string)@file_get_contents($_help_json_path), true);
+    } elseif (is_file($_help_php_path)) {
+        $skin_help = include $_help_php_path;
+    }
+
+    if (is_array($skin_help)) {
+        // Skins ship help in one of two shapes. Normalise BOTH, and skip any
+        // malformed entry, so a single non-conforming skin file can no longer
+        // fatal the entire help page (a bare string merged in here was being
+        // indexed as $topic['section'] below -> "offset of type string on string").
+        if (isset($skin_help['topics']) && is_array($skin_help['topics'])) {
+            // Shape A: ['skin_name' => 'X', 'topics' => [ ['title'=>,'body'=>], ... ]]
+            $_sec = (string)($skin_help['skin_name'] ?? $_help_skin_slug);
+            $_n   = 0;
+            foreach ($skin_help['topics'] as $_t) {
+                if (!is_array($_t) || empty($_t['title'])) continue;
+                $help_topics[$_help_skin_slug . '-' . (++$_n)] = [
+                    'section' => $_sec,
+                    'title'   => $_t['title'],
+                    'icon'    => $_t['icon']    ?? '',
+                    'role'    => $_t['role']    ?? '',
+                    'content' => $_t['content'] ?? $_t['body'] ?? '',
+                ];
+            }
+        } else {
+            // Shape B: flat map of slug => topic-array. Merge every well-formed
+            // entry (an array with a title); default a missing 'section' to the
+            // skin slug so skins that ship topics without one still show up.
+            // (Previously the isset('section') gate SILENTLY DROPPED the help
+            //  from chaplin/heuristic/rational-geo/slickr/sliders -- ARCH-04.)
+            $_n = 0;
+            foreach ($skin_help as $_k => $_t) {
+                if (!is_array($_t) || empty($_t['title'])) continue;
+                // Normalise to the canonical topic shape (same as Shape A):
+                // default the section to the skin slug and map body -> content,
+                // so skins that ship topics without a 'section' or using 'body'
+                // are no longer silently dropped or rendered blank (ARCH-04).
+                $help_topics[$_help_skin_slug . '-b-' . (++$_n)] = [
+                    'section' => (string)($_t['section'] ?? $_help_skin_slug),
+                    'title'   => $_t['title'],
+                    'icon'    => $_t['icon']    ?? '',
+                    'role'    => $_t['role']    ?? '',
+                    'content' => $_t['content'] ?? $_t['body'] ?? '',
+                ];
             }
         }
     }

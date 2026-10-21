@@ -1,0 +1,20 @@
+{
+    "skin_name": "STANLEY",
+    "topics": [
+        {
+            "title": "STANLEY",
+            "body": "<h3>STANLEY</h3>\n<p>STANLEY is a love letter to Michael Heilemann's Kubrick: the landmark WordPress\ntheme that gave early blogging a recognisable home. It recreates the visual language,\nnot the original code. The fixed white page, blue masthead, compact reading column and\nright sidebar have been rebuilt for SMACKTALK with responsive and accessibility support.</p>\n<p>STANLEY 2024 honours <a href=\"https://roughpixels.ch/themes/kubrick-2024/\"\nrel=\"external\">KUBRICK 2024 by Rough Pixels</a>, the contemporary reinterpretation\nthat showed how Kubrick's visual lineage could move forward. SnapSmack uses neither\ntheme's WordPress code; both developers are credited for the designs that inspired it.</p>\n\n<h4>Best Fit</h4>\n<p>Use STANLEY for a writing-led photoblog where posts, captions and longer stories\nmatter as much as the photographs. It supports SMACKTALK longform posts and comments.\nIt deliberately does not include the calendar tray, masonry view or carousel.</p>\n\n<h4>Choose Your Reality</h4>\n<ul>\n    <li><strong>STANLEY &mdash; THE OTHER SIDE</strong> is the faithful retro design.\n    Roughly every half hour it may briefly glimpse STANLEY 2024 before returning.</li>\n    <li><strong>STANLEY &mdash; Stable</strong> keeps the retro design fixed.</li>\n    <li><strong>STANLEY 2024 &mdash; THE OTHER SIDE</strong> uses the modern design and\n    may briefly glimpse retro STANLEY.</li>\n    <li><strong>STANLEY 2024 &mdash; Stable</strong> keeps the modern design fixed.</li>\n</ul>\n<p>The crossings are decorative, never change content or navigation, pause while the\ntab is hidden, and are disabled when the visitor requests reduced motion.</p>\n<p><strong>Crossing Test Mode</strong> is available under THE OTHER SIDE in Smooth\nYour Skin. Turn it on to perform one real crossing shortly after each page load, with\nany of the four variants. Turn it off again for normal timing.</p>\n<p><strong>STANLEY 2024 Hero Image</strong> opens the existing Asset Repository picker.\nIf you have not selected one, STANLEY chooses the newest image already in your library\nthe first time it renders, saves that choice, and keeps using it until you change it.</p>",
+            "icon": "&#x270E;"
+        },
+        {
+            "title": "Layout and Archive",
+            "body": "<h3>Layout and Archive</h3>\n<ul>\n    <li><strong>Sidebar</strong> &mdash; shows site navigation, the site description and\n    recent posts. Disable it in Smooth Your Skin for a single reading column.</li>\n    <li><strong>Reading Column Width</strong> &mdash; controls the longform text width on\n    desktop. The layout collapses automatically on tablets and phones.</li>\n    <li><strong>Archive</strong> &mdash; uses each post's featured image as the thumbnail\n    and links the thumbnail to the full post, not directly to the image.</li>\n    <li><strong>Square / Cropped</strong> &mdash; choose uniform square thumbnails or\n    aspect-aware crops. Cropped thumbnails are constrained between 2:3 and 3:2.</li>\n</ul>",
+            "icon": "&#x25A6;"
+        },
+        {
+            "title": "Masthead and Colours",
+            "body": "<h3>Masthead and Colours</h3>\n<p>The classic blue masthead is the default. In Smooth Your Skin you can replace it\nwith a header photograph, replace the title with a logo, hide the tagline, or choose\nnew top and bottom colours for the gradient.</p>\n<p>Unvisited, visited, hover/focus and active links each have a separate colour control.\nKeeping a visible focus colour and reasonable contrast makes keyboard navigation easier\nto follow.</p>",
+            "icon": "&#x25C9;"
+        }
+    ]
+}
