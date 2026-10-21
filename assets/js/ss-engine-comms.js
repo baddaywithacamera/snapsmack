@@ -113,8 +113,15 @@ document.addEventListener('keydown', function(e) {
             var el = document.querySelector('a[rel="' + rel + '"][href]');
             return el ? el.getAttribute('href') : '';
         };
-        var prevUrl = (window.SNAP_DATA && window.SNAP_DATA.prevUrl) || relLink('prev');
-        var nextUrl = (window.SNAP_DATA && window.SNAP_DATA.nextUrl) || relLink('next');
+        // Some skins load this engine after DOMContentLoaded. In that case the
+        // initializer above never ran, but the CMS navigation element is still
+        // authoritative and already present. Read it at key time as a durable
+        // fallback so solo-page arrows work regardless of script load order.
+        var navEl = document.getElementById('snap-nav-data');
+        var prevUrl = (window.SNAP_DATA && window.SNAP_DATA.prevUrl)
+            || (navEl && navEl.getAttribute('data-prev')) || relLink('prev');
+        var nextUrl = (window.SNAP_DATA && window.SNAP_DATA.nextUrl)
+            || (navEl && navEl.getAttribute('data-next')) || relLink('next');
 
         if (e.key === 'ArrowLeft' && prevUrl) {
             window.location.href = prevUrl;

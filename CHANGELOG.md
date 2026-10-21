@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.925D - 2026-10-21 - THE ARROWS WERE STILL THERE
+
+- Restores previous/next arrow-key navigation on Gram of Smack solo pages when the keyboard engine loads after `DOMContentLoaded`. The engine now reads the CMS-owned navigation metadata at key time, so skin load order cannot strand valid destinations.
+
 ## 0.7.924D - 2026-10-21 - TRUE GRIT IS HEAVY
 
 - Raises the aggregate signed-skin archive ceiling from 25 MB to 40 MB so the audited 29.9 MB TRUE GRIT texture set can install. Per-file, path traversal, symlink, entry-count, signature, and staged security-policy checks remain enforced.
