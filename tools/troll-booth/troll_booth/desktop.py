@@ -99,6 +99,7 @@ class BoothWindow(QMainWindow):
         self.current_room = ""
         self.seen_message_ids: set[str] = set()
         self.unread_by_room: dict[str, int] = {}
+        self._transcript_render_key: tuple[str, str, str] | None = None
         self.setWindowTitle("TROLL BOOTH")
         self.setWindowIcon(_icon())
         self.resize(1320, 820)
@@ -412,13 +413,13 @@ class BoothWindow(QMainWindow):
 
     def refresh_messages(self) -> None:
         if not self.current_room:
-            self.transcript.setHtml("<p>No room selected.</p>")
+            self._render_transcript("", "", "<p>No room selected.</p>")
             return
         query = self.message_search.text().strip()
         try:
             messages = self.store.search(query, self.current_room, 200) if query else self.store.messages(self.current_room, 500)
         except Exception as exc:
-            self.transcript.setHtml(f"<p>Search error: {str(exc)}</p>")
+            self._render_transcript(self.current_room, query, f"<p>Search error: {str(exc)}</p>")
             return
         chunks = []
         for message in messages:
@@ -426,8 +427,21 @@ class BoothWindow(QMainWindow):
             body = (message["body"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>"))
             sender = message["sender"].replace("&", "&amp;").replace("<", "&lt;")
             chunks.append(f"<div class='message'><b>{sender}</b><span>{stamp}</span><p>{body}</p></div>")
-        self.transcript.setHtml("".join(chunks) or "<p>No messages here yet.</p>")
-        self.transcript.verticalScrollBar().setValue(self.transcript.verticalScrollBar().maximum())
+        self._render_transcript(self.current_room, query, "".join(chunks) or "<p>No messages here yet.</p>")
+
+    def _render_transcript(self, room_id: str, query: str, html: str) -> None:
+        render_key = (room_id, query, html)
+        if render_key == self._transcript_render_key:
+            return
+
+        scrollbar = self.transcript.verticalScrollBar()
+        old_value = scrollbar.value()
+        was_at_bottom = self._transcript_render_key is None or scrollbar.maximum() - old_value <= 8
+
+        self.transcript.setHtml(html)
+        self._transcript_render_key = render_key
+        scrollbar = self.transcript.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum() if was_at_bottom else min(old_value, scrollbar.maximum()))
 
     def post_message(self) -> None:
         body = self.composer.toPlainText().strip()
