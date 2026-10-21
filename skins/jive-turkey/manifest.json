@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "JIVE TURKEY",
-    "version": "0.1.39",
+    "version": "0.1.40",
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
     "description": "Deliberately loud 70s GRAMOFSMACK skin. A 3-across square grid over an animated flat-graphic background — kaleidoscope, flower field, racing-stripe ribbons, sunburst daisy, Bauhaus shuffle — that never sits still, with SURPRISE rolling a fresh look every visit and a colour border cycling across the tiles. Maximalist on purpose; the photos still win.",
@@ -1105,7 +1105,8 @@
                 "skin": "Skin — the animated background shows through",
                 "image": "Image — your own background image"
             },
-            "hint": "What sits behind the open post. The Scrim (below) tints or covers it."
+            "hint": "What sits behind the open post. The Scrim (below) tints or covers it.",
+            "admin_page": "solo"
         },
         "jt_solo_backdrop_image": {
             "section": "SOLO IMAGE",
@@ -1115,7 +1116,8 @@
             "accept": "image/jpeg,image/png,image/webp",
             "min_width": 1920,
             "min_height": 1080,
-            "hint": "Used when Backdrop Source = Image. Minimum 1920×1080px."
+            "hint": "Used when Backdrop Source = Image. Minimum 1920×1080px.",
+            "admin_page": "solo"
         },
         "jt_solo_backdrop_image_pos": {
             "section": "SOLO IMAGE",
@@ -1126,14 +1128,16 @@
                 "center": "Centre",
                 "top": "Snap to top",
                 "bottom": "Snap to bottom"
-            }
+            },
+            "admin_page": "solo"
         },
         "jt_solo_scrim_color": {
             "section": "SOLO IMAGE",
             "type": "color",
             "label": "Scrim Colour",
             "default": "#000000",
-            "hint": "The colour layer over the backdrop. Pair with Scrim Opacity."
+            "hint": "The colour layer over the backdrop. Pair with Scrim Opacity.",
+            "admin_page": "solo"
         },
         "jt_solo_scrim_opacity": {
             "section": "SOLO IMAGE",
@@ -1144,14 +1148,16 @@
             "max": "100",
             "step": "5",
             "unit": "%",
-            "hint": "0 = backdrop fully visible; 100 = solid Scrim Colour behind the photo. Default 80%."
+            "hint": "0 = backdrop fully visible; 100 = solid Scrim Colour behind the photo. Default 80%.",
+            "admin_page": "solo"
         },
         "jt_solo_card_color": {
             "section": "SOLO IMAGE",
             "type": "color",
             "label": "Card Colour",
             "default": "",
-            "hint": "The modal colour around the image and behind the caption panel. Blank = follow Image Page Background."
+            "hint": "The modal colour around the image and behind the caption panel. Blank = follow Image Page Background.",
+            "admin_page": "solo"
         },
         "jt_solo_pad": {
             "section": "SOLO IMAGE",
@@ -1162,21 +1168,24 @@
             "max": "120",
             "step": "4",
             "unit": "px",
-            "hint": "Space around the image inside the card. The caption panel reflows to fit."
+            "hint": "Space around the image inside the card. The caption panel reflows to fit.",
+            "admin_page": "solo"
         },
         "jt_solo_text_color": {
             "section": "SOLO IMAGE",
             "type": "color",
             "label": "Card Text — Primary",
             "default": "",
-            "hint": "Caption, username, EXIF values. Blank = follow Primary Text."
+            "hint": "Caption, username, EXIF values. Blank = follow Primary Text.",
+            "admin_page": "solo"
         },
         "jt_solo_text_secondary_color": {
             "section": "SOLO IMAGE",
             "type": "color",
             "label": "Card Text — Secondary",
             "default": "",
-            "hint": "EXIF labels, date, meta. Blank = follow Secondary Text."
+            "hint": "EXIF labels, date, meta. Blank = follow Secondary Text.",
+            "admin_page": "solo"
         },
         "jt_glow_color": {
             "section": "TEXT GLOW",

@@ -3,124 +3,124 @@
     "purpose": "One published skin version must mean exactly one set of files. A site installs a skin BY VERSION, so if two different file-states ship under one number, the sites that took the first are frozen on it and no CMS release can move them. That is what left photowalk.ing running the 0.7.850D 50 SHADES layout while reporting the same 1.5.2 as the repaired one. Change any skin file and change its version in the same commit, then regenerate this file.",
     "skins": {
         "50-shades-of-noah-grey": {
-            "version": "1.7.1",
-            "files_sha256": "1899a6101774420c5bb5f3bbbc6d9215e5192e2324cc07a9395e1c5ddd01ed8f"
+            "version": "1.7.5",
+            "files_sha256": "57b01bc502d8b4ef1ef2670e0507c01216fe377a60ecd5ef2290d8e549ab0564"
         },
         "52-card-pickup": {
-            "version": "1.4.11",
-            "files_sha256": "47022751362eccfe9a636755c3fe73b163d1500dd67ac35960d603844663566b"
+            "version": "1.4.13",
+            "files_sha256": "82615576e9faa20c0acfecf0670e503f93786e1309f88ade15baab8e07e09fc5"
         },
         "alfred": {
-            "version": "1.0.8",
-            "files_sha256": "bb080f8c40551bf0003d05fddac90cd5e28c22324bdea038dba8b9ba917d7cf7"
+            "version": "1.0.9",
+            "files_sha256": "fc083272b45598b7a59f52efc18a588531b150d1a6ed4662c7a8f3a8707e7085"
         },
         "aurora": {
-            "version": "1.0.47",
-            "files_sha256": "b265f73dfeb2ba642f8fa328403b0e0b91f357120570fc0d89206a1c9fb0767c"
+            "version": "1.0.52",
+            "files_sha256": "df720857f201e058a05aa510a3b32c5f58f89d457a012a30625aa56ae3e1d6a3"
         },
         "chaplin": {
-            "version": "0.2.18",
-            "files_sha256": "64da24b0a6ad65d6e30d36a3435a0b98b8d53c94b64d0474dafd159cc178cf21"
+            "version": "0.2.19",
+            "files_sha256": "8455aeb72aab135ae26cee48e3e79905cc2a685d04d25927d690a7441b1bfbae"
         },
         "full-monty": {
-            "version": "0.1.7",
-            "files_sha256": "9e260e3c8b891584c0e1fbb3fb9b65cf443d4a611c2d76872146305e3049f99d"
+            "version": "0.1.9",
+            "files_sha256": "a8f62a7e14c62f81512384c5b194305f868d9d4112a40652903b2038c80f6356"
         },
         "galleria": {
-            "version": "1.3.14",
-            "files_sha256": "b5609df042c36af0b30ffb8754191bbd7246b8e1fbc61c32e73faebcb022b440"
+            "version": "1.3.18",
+            "files_sha256": "cc28f42a9af5dc1fd75376ea45fb1ef82d4436eec064e4b0d9ec26e39d65bbae"
         },
         "game-on": {
-            "version": "0.1.32",
-            "files_sha256": "2edca0e22e2be5e6dce9a8668d7cffd04c5c5058e40a857fe0753fcdd40adad1"
+            "version": "0.1.38",
+            "files_sha256": "5cc706208dac0a532bd4cb5db3d8cf243bb9184641dd97ca766f9ce30296fb60"
         },
         "glide": {
-            "version": "0.1.10",
-            "files_sha256": "a357b6221f2ff63dcfc9cdf0aa053d7db15965bf444e57d37db9ae9b910e10a7"
+            "version": "0.1.11",
+            "files_sha256": "77020c642df88aabceabad6248bdfe5fafcbffbd475214c05f43e6a15942648c"
         },
         "heuristic": {
-            "version": "0.1.9",
-            "files_sha256": "647ac55b031c0bb49d0d329daef057e7bc421ee275dc69e07369f1fbe0c47258"
+            "version": "0.1.13",
+            "files_sha256": "c08e2376b48ff7dcbb5ccb78332c83ed0a7ee67f52fa312945f02297c061abb4"
         },
         "hip-to-be-square": {
-            "version": "1.3.12",
-            "files_sha256": "53f4eda3488e545843678e6d0c7cf4dad3a5b6006ea4369f8dfb7f7ee7399ea2"
+            "version": "1.3.19",
+            "files_sha256": "0de2f0dc50ac7a93b198419c1d2eb89f31053ababddf9b92ed8e68694c863ebf"
         },
         "impact-printer": {
-            "version": "2.1.9",
-            "files_sha256": "188d18102ff1c236c9b82a2a750a0199f2b7abb737d96540755429520704f2e6"
+            "version": "2.1.16",
+            "files_sha256": "cdf382c555e1f63e083b995c1fb244e0e3e385947e9b2dce0f099bef49553869"
         },
         "instant-camera": {
-            "version": "1.0.49",
-            "files_sha256": "b333698e643cac4b1bb2503ad90fd58d85546825c3f0025577739408402af5f4"
+            "version": "1.0.54",
+            "files_sha256": "305d231b2578cd405682a1562a10d6e4fb8b2cd463b0663c05ee5b377240a301"
         },
         "jive-turkey": {
-            "version": "0.1.35",
-            "files_sha256": "8d35000348bf8cc2186492bd484b930acd3c8b8094d2b21a1c5a70aeb393157d"
+            "version": "0.1.40",
+            "files_sha256": "4a1f63a680a4a6c3537863181bd1d3f3e7fbc91950406577fd3b338ac8ce9014"
         },
         "new-horizon": {
-            "version": "1.3.16",
-            "files_sha256": "192c14aed0167ffa2eabe4c3e6a80384a4f9bdc38c84c77250d8000ddec89857"
+            "version": "1.3.20",
+            "files_sha256": "24a2e6f8b52d1261b433dde0286e7f58e71d82d344149df53ddea10ff3809dcd"
         },
         "onyx": {
-            "version": "0.1.18",
-            "files_sha256": "8e435bb246a15b5d7d6dced3798bffe4711f0f2e3e3de9403ece9780e59a0a22"
+            "version": "0.1.23",
+            "files_sha256": "00fce344d3718210863dbaa6c2feec394575b8589100c50b884402e5a41ee96a"
         },
         "parade": {
-            "version": "1.2.45",
-            "files_sha256": "cea76f3cbfd64ac51218b161be0357420bb12e9d967840918523b35a36289a77"
+            "version": "1.2.51",
+            "files_sha256": "82765f9974682824c82b53f56332f81f4c6658db93c7164d5f21e9140d40d775"
         },
         "photogram": {
-            "version": "2.0.22",
-            "files_sha256": "0653432578c4c73ddb8911b5e41567efc028530b4eb280885decaccd8f6a98fa"
+            "version": "2.0.26",
+            "files_sha256": "45f371ecc5f408ddbe914c2dc30fc16d6104dbd20478bec5f553c090ca87befa"
         },
         "rational-geo": {
-            "version": "2.1.18",
-            "files_sha256": "1b7e303b450133cc0f20b8e1876aabce83d051b6e620bf074ddf6bfac025d3fa"
+            "version": "2.1.34",
+            "files_sha256": "8bad3339cd89e71a61d6a440b962d8d7c65d53635406b0ba993c9cecba944ea3"
         },
         "scroll": {
-            "version": "0.1.64",
-            "files_sha256": "9c98dd15002251d86006c41507a477dd2f142298e8747569e65e11efd3c775f2"
+            "version": "0.1.69",
+            "files_sha256": "4d177dbcb7a4fa3a0323b404d2b8bf1e8389e0253fc370decbf258788ad6c6d5"
         },
         "show-n-tell": {
-            "version": "1.2.9",
-            "files_sha256": "ed55a5a79662eb05be8d8f32603cefcd5436a1ef743d295141b7ca21a423865c"
+            "version": "1.2.12",
+            "files_sha256": "1af21128c20fd36b4cdb81957d36678d54d97e7d679642042417ec45f8e93688"
         },
         "slickr": {
-            "version": "1.0.34",
-            "files_sha256": "6c2ebb172a3721c6ec3a69440193236b4a875276ce8c2e8351a25de36b44fb6a"
+            "version": "1.0.47",
+            "files_sha256": "eecb8de43ddf405860fd1805a44020a75eb28d967832d0be5c5f6d93373ebb4a"
         },
         "sliders": {
-            "version": "0.1.10",
-            "files_sha256": "f6bf75698c167d6214b7dbc76092788ca33241cc3046362c9cc81f939b6465c6"
+            "version": "0.1.14",
+            "files_sha256": "553766c61a20c41d4ba77b7bd8ac5ee6bcf21ce831124b0bceb8b36e80efef0c"
         },
         "stanley": {
-            "version": "1.1.7",
-            "files_sha256": "f3d1e3045cb760a4c1589f596237e6f350b64cfd80abd6b9de9a9487069947ec"
+            "version": "1.1.9",
+            "files_sha256": "6688946afd5726b917bcbc0470f97a4927ba1a0827b631d7a72b8bf127057f75"
         },
         "sudden-impact": {
-            "version": "1.0.15",
-            "files_sha256": "23494ca8e982e79df94f29e8f8ca73b521b47dcb1cd4f35a217e187ebf42c838"
+            "version": "1.0.19",
+            "files_sha256": "ea6bb82318b50d6ac4ae4959abbebfcba04c30eaaf6eab5f1b530687db2e3fa9"
         },
         "telegram": {
-            "version": "0.1.5",
-            "files_sha256": "40c176aea8793acd259f0456b153d1aa89566d40d4173ec213a23ab9e1845961"
+            "version": "0.1.6",
+            "files_sha256": "9a1eac2e05a99d5cad1573234d3b3ebb286ccc8de16516b4b60cbad729252b2d"
         },
         "the-grid": {
-            "version": "1.3.50",
-            "files_sha256": "cc430dd40aa490122ac52499dba5e77918a3f2b2ff9aad5e5b8ac844b6d2e08b"
+            "version": "1.3.54",
+            "files_sha256": "c8d9a9df4b6c9c2781a4be3d9634a946ddf8e52435319658c63baad1868a8fd1"
         },
         "tilez": {
-            "version": "0.2.63",
-            "files_sha256": "138caa14f6eb3e144e972e1a6427e783b5420ddb0260070747771ec157dd92ff"
+            "version": "0.2.70",
+            "files_sha256": "b1f1a6b536b1cd0183a2dd858cb757517dea48b3e01de6b5eb6afce11220c93b"
         },
         "true-grit": {
-            "version": "1.3.12",
-            "files_sha256": "b6da8c0c149cde3dc6732a27e6abff5c0d93506c5d9850ba6acc472aa942650c"
+            "version": "1.3.15",
+            "files_sha256": "2bd711bba6725604dec6fcfeabab3a1b4547643dcb6602ebd73e2a2140bfde74"
         },
         "writing-with-impact": {
-            "version": "1.1.6",
-            "files_sha256": "1601eb164ba059718b95082af2a2922b923e5ce730e4c98f6bbbf94c04eebd8a"
+            "version": "1.1.8",
+            "files_sha256": "5697746cace86c26aa2b219a4c3b13e2b81cd8d18521c685fc407672effa5f37"
         }
     }
 }

@@ -1,0 +1,13 @@
+{
+    "skin_name": "SLIDERS",
+    "topics": [
+        {
+            "title": "Post Viewer Backdrop",
+            "body": "When a post opens in the viewer, a full-screen layer sits between it and the page. Under POST VIEWER you choose the colour of that layer and how solid it is. Black at 80% is the default; white at 100% gives a high-key viewer, and a lower opacity lets the page show through behind the photograph."
+        },
+        {
+            "title": "Sliders",
+            "body": "<p>SLIDERS keeps the normal GRAMOFSMACK three-across grid, carousels and post pages. Behind them, GLIDE moves a second wall made from your published photographs.</p>\n<h3>Opacity Layer</h3>\n<p>This is the main readability control. Raise it to quiet the moving wall; lower it to let the background photographs speak. Its colour is configurable independently.</p>\n<h3>Normal Tiles</h3>\n<p>Foreground tiles are square and use the normal generated square thumbnails. SLIDERS deliberately has no customizable print or tile aspect.</p>\n<h3>Motion</h3>\n<p>Flow orientation, fine angle, blur and travel sensitivity affect only the background. Visitors who request reduced motion receive a stationary wall.</p>"
+        }
+    ]
+}

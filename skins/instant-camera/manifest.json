@@ -1,7 +1,7 @@
 {
     "schema_version": 2,
     "name": "INSTANT CAMERA",
-    "version": "1.0.53",
+    "version": "1.0.54",
     "min_images": 200,
     "author": "Sean McCormick",
     "support": "sean@baddaywithacamera.ca",
@@ -663,7 +663,8 @@
             "type": "color",
             "label": "Solo Background Colour",
             "default": "#000000",
-            "hint": "Backdrop colour behind the photo on the single-post view. PHP-handled → --post-bg."
+            "hint": "Backdrop colour behind the photo on the single-post view. PHP-handled → --post-bg.",
+            "admin_page": "solo"
         },
         "ic_solo_bg_opacity": {
             "section": "SOLO PAGE",
@@ -674,7 +675,8 @@
             "max": "100",
             "step": "5",
             "unit": "%",
-            "hint": "100 = solid. Lower it to let the drifting tabletop show through behind the print."
+            "hint": "100 = solid. Lower it to let the drifting tabletop show through behind the print.",
+            "admin_page": "solo"
         },
         "ic_gap": {
             "section": "GRID",

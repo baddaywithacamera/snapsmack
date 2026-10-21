@@ -1,0 +1,20 @@
+{
+    "skin_name": "PHOTOGRAM",
+    "topics": [
+        {
+            "title": "Skin Overview",
+            "body": "<h3>Photogram</h3>\n<p>A phone-native photo blog that looks and feels like a classic photo-sharing app.\nWorks on every device — desktop shows a centred phone column, mobile fills the screen.</p>\n\n<h4>Using Photogram</h4>\n<ul>\n    <li>The <strong>home screen</strong> shows your profile and a 3-column grid of all your photos.</li>\n    <li>Tap any photo to open the full post view.</li>\n    <li><strong>Double-tap the photo</strong> to like it.</li>\n    <li>Tap the <strong>speech bubble</strong> to open comments.</li>\n    <li>The <strong>Discover tab</strong> shows your local tags and recent photos.</li>\n</ul>\n\n<h4>Skin Options</h4>\n<ul>\n    <li><strong>Grid Gap</strong> — controls the space between grid cells (none, hairline, or small).</li>\n    <li><strong>Avatar Shape</strong> — circle or rounded square.</li>\n    <li><strong>Accent Colour</strong> — used for links, active tab indicator, and interactive elements.</li>\n    <li><strong>Sheet Speed</strong> — how fast the comment sheet slides in.</li>\n    <li><strong>Show Discover Tab</strong> — toggle the Discover tab on or off from Skin Admin.</li>\n    <li><strong>Post Viewer Backdrop Colour / Opacity</strong> — the full-screen layer behind an opened photo. Black at 90% is the default; white at 100% gives a high-key viewer.</li>\n</ul>",
+            "icon": "&#x25A3;"
+        },
+        {
+            "title": "Hashtags & Search",
+            "body": "<h3>Hashtags</h3>\n<p>Add <strong>#hashtags</strong> to any image description or use the Tags field on the\npost/edit page. They become tappable archive links. Tapping a tag opens a filtered grid\nof all photos sharing that tag. Tags are extracted automatically when you save or post.</p>\n\n<h3>Search</h3>\n<p>Site-wide search is off by default. Enable it in <strong>Admin &gt; Configuration &gt;\nArchitecture &amp; Interaction &rarr; Site-Wide Search</strong>. Once on, a search tab\nappears in the bottom nav. Search looks through photo titles, descriptions, and hashtags.\nQueries starting with <code>#</code> redirect to the tag archive. Matching tags appear as\ntappable pill chips above the image results.</p>",
+            "icon": "&#x0023;"
+        },
+        {
+            "title": "Community Accounts",
+            "body": "<h3>Community Features</h3>\n<p>Likes and reactions work without an account. To leave a comment, visitors create a free\ncommunity account directly on your site — no third-party login required. Manage accounts\nin Admin &gt; Community Users.</p>\n<p>Configure community features globally in <strong>Admin &gt; Community Settings</strong>:\ntoggle likes, reactions, and comments on or off; choose the active reaction set; set rate\nlimits; and configure email notifications for new comments.</p>",
+            "icon": "&#x2665;"
+        }
+    ]
+}
