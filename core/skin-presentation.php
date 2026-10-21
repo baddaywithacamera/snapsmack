@@ -297,8 +297,8 @@ function snapsmack_skin_presentation(array $settings, string $skinSlug): array
             'initial_count' => snapsmack_skin_int($settings, 'mayhem_initial_count', 120, 40, 400),
             'max_width' => snapsmack_skin_int($settings, 'mayhem_max_width', 300, 120, 500),
             'overlap_max' => number_format(snapsmack_skin_int($settings, 'mayhem_overlap_max', 85, 40, 95) / 100, 2, '.', ''),
-            'drift' => (($settings['mayhem_drift'] ?? '1') === '1') ? '1' : '0',
-            'warp' => (($settings['mayhem_warp'] ?? '1') === '1') ? '1' : '0',
+            'drift' => ((string)($settings['mayhem_drift'] ?? '1') !== '0') ? '1' : '0',
+            'warp' => ((string)($settings['mayhem_warp'] ?? '1') !== '0') ? '1' : '0',
         ];
     }
     $framePrefixes = ['the-grid'=>'tg','sudden-impact'=>'tg','instant-camera'=>'ic','sliders'=>'ic',
@@ -844,8 +844,8 @@ function snapsmack_instant_camera_presentation(array $options, array $settings =
         'mayhem_initial_count' => snapsmack_skin_int($settings, 'mayhem_initial_count', 120, 40, 400),
         'mayhem_max_width' => snapsmack_skin_int($settings, 'mayhem_max_width', 300, 120, 500),
         'mayhem_overlap_max' => number_format(snapsmack_skin_int($settings, 'mayhem_overlap_max', 85, 40, 95) / 100, 2, '.', ''),
-        'mayhem_drift' => (($settings['mayhem_drift'] ?? '1') === '1'),
-        'mayhem_warp' => (($settings['mayhem_warp'] ?? '1') === '1'),
+        'mayhem_drift' => ((string)($settings['mayhem_drift'] ?? '1') !== '0'),
+        'mayhem_warp' => ((string)($settings['mayhem_warp'] ?? '1') !== '0'),
     ];
 }
 

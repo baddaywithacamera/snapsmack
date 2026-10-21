@@ -345,7 +345,7 @@ function snapsmack_log_hit($pdo, $settings, $meta = []) {
     if (($settings['stats_enabled'] ?? '1') !== '1') return 0;
 
     // Exclude logged-in admin if configured
-    if (($settings['stats_exclude_admin'] ?? '1') === '1') {
+    if ((string)($settings['stats_exclude_admin'] ?? '1') !== '0') {
         if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['user_login'])) {
             return 0;
         }
