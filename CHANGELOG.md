@@ -11,6 +11,11 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.923D - 2026-10-21 - THE WHOLE DAMN PATCH
+
+- Reissues the completed 0.7.922D repair set from a fresh immutable identifier so the archive-pagination repair that landed immediately after the 922D tag is included in the signed fleet package.
+- Includes the long-form editor cleanup, GALLERIA solo-route filmstrip repair, and the completed archive paging fix.
+
 ## 0.7.922D - 2026-10-21 - NOT YOUR DRAFTS
 
 **Needs a CMS deploy.** Three skin packages ship alongside it on the registry
