@@ -2074,8 +2074,8 @@ input[type="reset"]:active {
   color: var(--rg-text-dim);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin: 0 auto var(--space-xl);
-  text-align: left;
+  margin: var(--space-xl) auto 0;
+  text-align: center;
 }
 
 .rg-comment-form-row {
