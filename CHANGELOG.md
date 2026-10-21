@@ -11,6 +11,37 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.922D - 2026-10-21 - NOT YOUR DRAFTS
+
+**Needs a CMS deploy.** Three skin packages ship alongside it on the registry
+rail: NEW HORIZON 1.3.19, TRUE GRIT 1.3.14, RATIONAL GEO 2.1.30.
+
+- **The long-form editor listed roughly 200 unrelated drafts under the post you
+  were editing.** `smack-post-long.php` rendered a hard-coded `LIMIT 200`
+  site-wide draft list beneath the editor, which read as though those drafts
+  belonged to the open post and made the screen unusable. Removed; Manage
+  Archive is the listing screen. Codex, `c658f722`.
+
+  This is core code, so it needed a CMS number. It arrived without one and
+  would have shipped a fix that left every site still reporting 921D. It would
+  have folded into 921D under the one-number rule, but 921D is deployed —
+  measured, not assumed — so a deployed tag does not move and this takes the
+  next number.
+
+Shipping on the registry rail in the same run, no CMS number of their own:
+
+- **NEW HORIZON drew every page in white.** The strict layout omitted
+  `site.skin_variant_url`, so `variant-dark.css` never loaded and every
+  `--bg-*` / `--text-*` token was undefined. Codex, `5710ba43`, 1.3.19.
+- **TRUE GRIT's archive stopped scrolling after the first appended page.** The
+  server-rendered stream carried none of the post markers the endless-scroll
+  engine advances from, and had no end-of-page sentinel. Codex, `8c999341`,
+  1.3.14.
+- **RATIONAL GEO's info tray crushed the photograph to nothing.** The drawer
+  took part in the locked-height flex calculation; it is now a bounded
+  scrollable overlay pinned above the navigation, with the image intact behind
+  it. Codex, `10ef3ed7`, 2.1.30.
+
 ## 0.7.921D - 2026-10-20 - WRONG ROAD
 
 **Needs a CMS deploy only.** No skin package.
