@@ -192,6 +192,9 @@ pc_test(str_contains($installer, "'photo-challenge', 'daily-photo', 'mirror-proj
 pc_test(str_contains($photo, "if (!\$win['open'] && !\$hc)")
     && str_contains($photo, "if (!\$hc && (\$published < \$win['start'] || \$published >= \$win['end']))"),
     'hors-concours posts must remain admissible after the competitive window closes');
+pc_test(str_contains($photo, "\$outside_window && !pc_note_has_tag(\$object, 'horsconcours')")
+    && strpos($photo, "pc_note_has_tag(\$object, 'horsconcours')") > strpos($photo, "if (!is_array(\$object) || empty(\$object['id']))"),
+    'recovery rejects late hors-concours posts before reading their authoritative tags');
 pc_test(str_contains($photo, "JOIN pc_participants p ON p.actor_url=t.actor_url")
     && str_contains($photo, "p.state='active'"),
     'board admission is not restricted to active participants');
