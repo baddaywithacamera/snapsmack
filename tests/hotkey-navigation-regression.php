@@ -95,7 +95,6 @@ $known_broken = [
     'game-on',
     'glide',
     'heuristic',
-    'instant-camera',
     'jive-turkey',
     'parade',
     'show-n-tell',

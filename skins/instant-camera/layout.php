@@ -23,7 +23,13 @@
 <?php echo snap_render_html($view['site']['skin_presentation']['style'] ?? ''); ?>
 </head>
 <body class="instant-camera-v2" data-carousel-indicator="<?php echo snap_escape_attr($view['site']['skin_presentation']['grid']['carousel_indicator'] ?? ''); ?>" data-hover-overlay="<?php echo snap_escape_attr($view['site']['skin_presentation']['grid']['hover_overlay'] ?? ''); ?>" data-nav-line-mode="<?php echo snap_escape_attr($view['site']['skin_presentation']['grid']['nav_line_mode'] ?? ''); ?>">
-<?php if (($view['response']['kind'] ?? '') === 'photo'): ?><div id="snap-nav-data" hidden data-prev="<?php echo snap_escape_url($view['response']['previous']['url'] ?? ''); ?>" data-next="<?php echo snap_escape_url($view['response']['next']['url'] ?? ''); ?>" data-first="<?php echo snap_escape_url($view['response']['first']['url'] ?? ''); ?>" data-last="<?php echo snap_escape_url($view['response']['last']['url'] ?? ''); ?>"></div><?php endif; ?>
+<?php if (($view['response']['kind'] ?? '') === 'photo'): ?>
+<?php $previousUrl = (string) ($view['response']['previous']['url'] ?? ''); $nextUrl = (string) ($view['response']['next']['url'] ?? ''); ?>
+<div id="snap-nav-data" hidden data-prev="<?php echo snap_escape_url($previousUrl); ?>" data-next="<?php echo snap_escape_url($nextUrl); ?>" data-first="<?php echo snap_escape_url($view['response']['first']['url'] ?? ''); ?>" data-last="<?php echo snap_escape_url($view['response']['last']['url'] ?? ''); ?>">
+    <?php if ($previousUrl !== ''): ?><a rel="prev" href="<?php echo snap_escape_url($previousUrl); ?>"></a><?php endif; ?>
+    <?php if ($nextUrl !== ''): ?><a rel="next" href="<?php echo snap_escape_url($nextUrl); ?>"></a><?php endif; ?>
+</div>
+<?php endif; ?>
 <?php if (!empty($view['site']['skin_presentation']['treatment']['enabled'])): ?><div class="tg-treatment-bg" aria-hidden="true"></div><div class="tg-treatment-overlay" aria-hidden="true"></div><?php endif; ?>
 <?php if (($view['site']['skin_presentation']['background']['mode'] ?? '') === 'mayhem'): ?>
 <div id="organized-mayhem" class="ic-bg ic-bg-mayhem" aria-hidden="true" data-mayhem data-api-url="?ajax=mayhem" data-pan="0" data-ambient="1" data-initial-count="<?php echo snap_escape_attr($view['site']['skin_presentation']['background']['initial_count']); ?>" data-max-width="<?php echo snap_escape_attr($view['site']['skin_presentation']['background']['max_width']); ?>" data-overlap-max="<?php echo snap_escape_attr($view['site']['skin_presentation']['background']['overlap_max']); ?>" data-drift="<?php echo snap_escape_attr($view['site']['skin_presentation']['background']['drift']); ?>" data-warp="<?php echo snap_escape_attr($view['site']['skin_presentation']['background']['warp']); ?>"></div>
