@@ -405,6 +405,48 @@ small,
   box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.35);
 }
 
+/* The shared footer engine supplies plain panes. Give the RATIONAL GEO info
+   tray its own breathing room so the nav does not collide with the title. */
+.rg-single #pane-info {
+  padding: var(--space-xl) var(--space-xl) calc(var(--space-xl) + 0.5rem);
+  box-sizing: border-box;
+}
+
+.rg-single .photo-title-footer {
+  margin: 0 auto var(--space-xl);
+  padding: 0 0 var(--space-lg);
+  max-width: 1200px;
+  border-bottom: 1px solid var(--rg-border-light);
+}
+
+/* Hashtags are navigation, not an unbroken tail of body text. */
+.rg-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-sm);
+  max-width: 800px;
+  margin: var(--space-xl) auto 0;
+}
+
+.rg-tag {
+  display: inline-block;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--rg-accent);
+  color: var(--rg-accent);
+  font-family: 'DM Mono', monospace;
+  font-size: var(--font-scale-sm);
+  line-height: 1.2;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.rg-tag:hover,
+.rg-tag:focus-visible {
+  background: var(--rg-accent);
+  color: #000;
+}
+
 #rg-photobox {
   display: flex;
   justify-content: center;
