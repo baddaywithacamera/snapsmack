@@ -4217,6 +4217,224 @@ HTML
 ];
 
 
+
+// -- THE EIGHT THAT HAD NO PAGE -------------------------------------------
+// Written 2026-10-21. These features shipped with admin screens and no help
+// topic at all; the manual's last substantive edit was 0.7.719D, 200 releases
+// earlier. Each was written from the screen's own code, not from a changelog.
+
+$help_topics['light-table'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Light Table',
+    'icon'     => '&#x25A6;',
+    'content'  => <<<'HTML'
+<h3>Filing a lot of photographs at once</h3>
+<p>The Light Table is a drag-and-drop workbench for putting photographs into
+<strong>Albums</strong>, <strong>Categories</strong> and <strong>Collections</strong> in bulk.
+Editing one photograph at a time on its own page is fine for one; it is miserable for forty.
+Here you drag them where they belong.</p>
+
+<h4>It is a desktop screen, deliberately</h4>
+<p>Below 1024px wide, or on a touch pointer, the Light Table shows a block screen instead of
+the workbench. This is not an oversight. Precise drag-and-drop onto small targets is exactly
+the interaction that goes wrong on a phone, and a mis-drop here files a photograph somewhere
+you did not intend without saying so. Use it on a desktop or laptop.</p>
+
+<h4>What it does not do</h4>
+<p>It files photographs. It does not edit them, retitle them, or change whether they are
+published &mdash; those stay on Manage Archive and the Edit Transmission page.</p>
+HTML
+];
+
+$help_topics['preflight'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Preflight Check',
+    'icon'     => '&#x25B3;',
+    'content'  => <<<'HTML'
+<h3>Reading a photograph before you commit to it</h3>
+<p>Preflight looks at an image <em>before</em> it becomes a post and tells you what the file
+already knows about itself, so the post can be filled in from the photograph rather than typed
+from memory.</p>
+
+<h4>What it reads</h4>
+<ul>
+    <li><strong>A suggested title</strong> from the filename. Underscores and hyphens become
+    spaces and repeated spaces are tidied, so <em>old_barn-sunrise.jpg</em> offers
+    <em>old barn sunrise</em>. A starting point to edit, not a decision.</li>
+    <li><strong>EXIF</strong> &mdash; aperture, focal length, and the camera make and model,
+    read straight from the file.</li>
+</ul>
+
+<h4>Why it exists</h4>
+<p>Consistency. When titles and technical details come from the file, forty posts made over six
+months describe themselves the same way, instead of however you happened to be typing that
+evening.</p>
+HTML
+];
+
+$help_topics['panorama-slicer'] = [
+    'section'  => 'The Good Shit',
+    'title'    => 'Panorama Slicer',
+    'icon'     => '&#x25A4;',
+    'content'  => <<<'HTML'
+<h3>One wide photograph, three squares</h3>
+<p>A GRAMOFSMACK-mode tool. Drop in one wide (or tall) image, set two cut points &mdash; even
+thirds by default &mdash; and the Slicer cuts it into three square images, so that a row of the
+grid reads as one panorama.</p>
+
+<h4>Two modes, chosen at the top of the page</h4>
+<ul>
+    <li><strong>Triptych</strong> &mdash; makes three NEW draft single-image posts. Each square
+    is both the post image and its grid cover. Arrange them in the Grid Light Table, then
+    publish, and the row reads as one picture.</li>
+    <li><strong>Cover Slices (Trigram)</strong> &mdash; the slices become grid COVERS for three
+    posts you already have. Those posts keep their own images; only what the grid shows
+    changes.</li>
+</ul>
+
+<h4>Order matters</h4>
+<p>Three squares only read as one panorama if they sit next to each other, in the right order,
+on the same row. Check the arrangement in the Grid Light Table before publishing, because a
+grid that reflows later will break the picture.</p>
+HTML
+];
+
+$help_topics['break-glass'] = [
+    'section'  => 'Boring Ass Stuff',
+    'title'    => 'Break-Glass Recovery Card',
+    'icon'     => '&#x26A0;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>The way back in when everything else is gone</h3>
+<p>The Break-Glass Card is a file you download and keep somewhere safe. It gets you back into
+your own site after a total lockout &mdash; password gone, two-factor device gone, recovery
+codes gone.</p>
+
+<h4>What the card is</h4>
+<p>A signed file named <code>BREAK-GLASS-CARD.sbc</code>. Each card gets a fresh Ed25519
+keypair. The secret signing key exists only long enough to sign the card you download and is
+then gone; what stays on the site is the public key and a hash of the card ID. The site can
+therefore <em>check</em> a card but cannot <em>produce</em> one, so a stolen copy of your
+site's database does not hand anybody a way in.</p>
+
+<h4>Site-bound and single-use</h4>
+<p>A card works for one site, once. After it is used it is spent, so generate a new one
+immediately. <strong>Rotate Card</strong> on this screen replaces the current card and
+invalidates the old one &mdash; which is what you do if you ever think a copy has gone
+astray.</p>
+
+<h4>Making one requires proof it is you</h4>
+<p>Creating a card needs your password <em>and</em> your authenticator code. That is the point:
+somebody who reached your already-logged-in browser still cannot mint themselves a permanent
+key to your site.</p>
+
+<h4>Keep it off the machine it unlocks</h4>
+<p>A recovery card stored on the computer you log in from, or inside the site's own backups, is
+not a recovery card. Print it, or keep it on something that is not plugged in.</p>
+HTML
+];
+
+$help_topics['pixeldroid'] = [
+    'section'  => 'FEDIVERSE',
+    'title'    => 'PixelDroid and other Mastodon-API apps',
+    'icon'     => '&#x25C6;',
+    'content'  => <<<'HTML'
+<h3>Posting to your site from a phone app</h3>
+<p>Your site speaks enough of the Mastodon API for third-party apps to connect to it.
+<strong>PixelDroid</strong> (Android) and <strong>Pixelix</strong> both work.</p>
+
+<h4>Connecting</h4>
+<p>Point the app at your own site's address and sign in. The ALLOW screen names the app that is
+asking, so you can see what you are approving. Desktop and command-line clients that cannot
+catch a redirect are handled too: they are shown an authorization code on screen to copy into
+the app.</p>
+
+<h4>What an app may do</h4>
+<p>Read and write. Apps commonly ask for more than that &mdash; PixelDroid asks for
+<code>read write follow push</code> &mdash; and the site accepts the request while granting
+only the read and write it actually implements. Follow and push are not quietly enabled by
+asking for them.</p>
+
+<h4>If an app says it cannot register</h4>
+<p>That message means the site refused the app's scope request. Sites on 0.7.898D and later
+accept the full Mastodon scope vocabulary; before that, an app asking for anything beyond
+<code>read write</code> was turned away outright. Check your version first.</p>
+HTML
+];
+
+$help_topics['hall-of-fame'] = [
+    'section'  => 'Challenge Me',
+    'title'    => 'Hall of Fame',
+    'icon'     => '&#x2605;',
+    'content'  => <<<'HTML'
+<h3>The record of past winners</h3>
+<p>The Hall of Fame is the kept record of who won each past challenge, on the challenge profile
+(photofri.day / artfri.day).</p>
+
+<h4>It is a list of links, and that is deliberate</h4>
+<p>No images, ever. The winning photographs stay on their makers' own sites and the Hall of
+Fame points back to them, so a winner's traffic and audience go to the winner. A gallery here
+would quietly take both.</p>
+
+<h4>It appears only when the challenge is on</h4>
+<p>The page returns 404 unless the challenge profile is enabled, so a site not running a
+challenge does not advertise an empty hall.</p>
+HTML
+];
+
+$help_topics['log-flogger'] = [
+    'section'  => 'Desktop Tools',
+    'title'    => 'LOG FLOGGER',
+    'icon'     => '&#x25A7;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>Reads the logs nobody reads</h3>
+<p>LOG FLOGGER gathers your logs, sorts them by app and kind, analyses them, summarises what it
+found, and clears out what is not needed.</p>
+
+<h4>It looks for silences, not errors</h4>
+<p>Almost every expensive failure here has been something that <em>stopped happening</em>
+rather than something that threw an error: a fleet cron that was never installed; page hits
+that went unrecorded for a year; a skin's borders dead for eighteen days. None of those
+errored, and none would be found by searching logs for the word "error". LOG FLOGGER watches
+for the gap instead &mdash; something that wrote every forty minutes and has now written
+nothing for a month.</p>
+<p>On its first run against the real logs it found that CRONOMETER had written nothing for 32
+days, against a normal gap of 44 minutes.</p>
+
+<h4>Two more things it does</h4>
+<ul>
+    <li>Tells you whether anyone has started probing <em>SnapSmack specifically</em>, as
+    distinct from the constant background noise every site on the internet receives.</li>
+    <li>Sends an anonymous report, so an owner can pass on what they are seeing without putting
+    their name to it.</li>
+</ul>
+HTML
+];
+
+$help_topics['ticket-wicket'] = [
+    'section'  => 'Desktop Tools',
+    'title'    => 'TICKET WICKET',
+    'icon'     => '&#x25A5;',
+    'role'     => 'admin',
+    'content'  => <<<'HTML'
+<h3>One home and one honest history per issue</h3>
+<p>TICKET WICKET turns a real problem into a numbered, tracked thing &mdash; posted publicly,
+carrying nobody's name.</p>
+
+<h4>Every ticket is public</h4>
+<p>Whatever channel a report arrives on, the ticket goes on the tickets board on the forum.
+Email does not make a private ticket; it makes a ticket, posted like any other. People can see
+what is known and what is being done about it.</p>
+
+<h4>No ticket identifies who reported it</h4>
+<p>The reporter, the channel they used and their original message stay in the store and never
+travel. The ticket is written <em>about the problem</em>, never as a reprint of what somebody
+sent you. Someone can report a problem without that becoming a public post carrying their name
+and their words.</p>
+HTML
+];
+
 // =========================================================================
 //  SKIN HELP HOOK
 // =========================================================================

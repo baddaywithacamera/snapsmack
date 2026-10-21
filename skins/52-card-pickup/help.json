@@ -7,11 +7,11 @@
         },
         {
             "title": "Frame Styles",
-            "body": "Four frame styles are available: Polaroid (white border, wider at bottom), Standard Print (thin even white border), Borderless (no frame, subtle dog-ear corner), and Slide Mount (black border with inner highlight). Configure which styles are in the random pool under Skin Admin > FRAME STYLES. If only one is enabled, all images use that style."
+            "body": "The four frame styles this skin was built around — Polaroid, Standard Print, Borderless and Slide Mount — are not currently applied. Their CSS is still in the skin, but the landing page is now drawn by the shared ORGANIZED MAYHEM engine, which renders its own cards and does not assign the frame classes, and there is no frame control in Skin Admin. Photographs appear unframed. If you want the frames back, say so — the styling survives and it is the wiring that is missing, not the design."
         },
         {
             "title": "Pile Settings",
-            "body": "Pile Size controls how many images appear (10-30). Scatter Radius sets how far images spread from centre (tight, medium, wide). Max Rotation sets the tilt angle. Max Image Width caps the display size. All configurable in Skin Admin under THE PILE."
+            "body": "The scattered landing page is drawn by ORGANIZED MAYHEM, the shared engine that also drives other scatter layouts, rather than by controls belonging to this skin. How many photographs are dealt, how far they spread, how much they overlap and how much they drift and warp are site-wide settings (mayhem_initial_count, mayhem_max_width, mayhem_overlap_max, mayhem_drift and mayhem_warp), not entries in Skin Admin. Note that they currently have no admin screen of their own, so they are not adjustable from the CMS as it stands.\n\nWhat this skin's own Skin Admin does control is colour and type: Canvas Background, the header and footer colours, Primary and Secondary Text, Accent Colour, and the title and body fonts, sizes and case."
         },
         {
             "title": "Reshuffle",
