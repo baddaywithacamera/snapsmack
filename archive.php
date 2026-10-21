@@ -82,12 +82,18 @@ try {
             (string)($settings['site_mode'] ?? ''),
             (string)($_SERVER['QUERY_STRING'] ?? '')
         );
-        // Belt and braces: never 301 to the address we were just asked for,
+        // Belt and braces: never redirect to the address we were just asked for,
         // whatever a future alias table says. A loop is worse than a plain page.
-        $_archive_here = strtok((string)($_SERVER['REQUEST_URI'] ?? ''), '?');
-        $_archive_there = parse_url($_archive_target, PHP_URL_PATH);
-        if (rtrim((string)$_archive_there, '/') !== rtrim((string)$_archive_here, '/')
-                || parse_url($_archive_target, PHP_URL_QUERY)) {
+        //
+        // This compared paths only and then redirected anyway if the target had
+        // a query at all -- and the target carries the incoming query through by
+        // design, so /archive?page=2 redirected to /archive?page=2 and page two
+        // of the archive was unreachable on four of the seven sites I measured.
+        // The whole address has to be compared, not half of it.
+        if (!snapsmack_is_same_address(
+                $_archive_target,
+                strtok((string)($_SERVER['REQUEST_URI'] ?? ''), '?'),
+                (string)($_SERVER['QUERY_STRING'] ?? ''))) {
             // 302, not 301: this address is derived from the site's menu and
             // changes when the owner renames an item, and a 301 that a reader
             // has already cached cannot be taken back.
