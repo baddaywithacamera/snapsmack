@@ -58,7 +58,7 @@ if (!snap_community_ready()) return;
 $manifest_data = $skin_manifest ?? [];
 
 $show_comments  = (string)($manifest_data['community_comments']  ?? $settings['community_comments_enabled']  ?? '1') === '1';
-$show_likes     = (string)($manifest_data['community_likes']     ?? $settings['community_likes_enabled']     ?? '1') === '1';
+$show_likes     = (string)($manifest_data['community_likes']     ?? $settings['community_likes_enabled']     ?? '1') !== '0';
 $show_reactions = (string)($manifest_data['community_reactions'] ?? $settings['community_reactions_enabled'] ?? '0') === '1';
 
 // If the community dock is active (migration has run), it handles likes and reactions.

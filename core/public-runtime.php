@@ -129,8 +129,8 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
     // It also only answered for a photograph. A post and a collection carry
     // the same navigation bar and were never gated at all.
     if (in_array(($response['kind'] ?? ''), ['photo', 'post', 'collection'], true)) {
-        $response['comments_enabled'] = (($settings['global_comments_enabled'] ?? '1') === '1')
-            && (($settings['community_comments_enabled'] ?? '1') === '1')
+        $response['comments_enabled'] = ((string)($settings['global_comments_enabled'] ?? '1') !== '0')
+            && ((string)($settings['community_comments_enabled'] ?? '1') !== '0')
             && (($response['item']['allow_comments'] ?? '1') == '1');
     }
     // The community block rides along with that gate: same three kinds, same

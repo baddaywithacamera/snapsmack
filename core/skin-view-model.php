@@ -287,7 +287,7 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
     $strict_smacktalk = $controller === 'smacktalk';
     $is_carousel = (($settings['site_mode'] ?? '') === 'carousel');
     $route_aliases = snapsmack_public_route_aliases($settings, $manifest);
-    $blogroll_enabled = (($settings['blogroll_enabled'] ?? '1') === '1');
+    $blogroll_enabled = ((string)($settings['blogroll_enabled'] ?? '1') !== '0');
     $resolve = function (array $item) use (&$resolve, $pdo, $base, $strict_controller, $strict_smacktalk, $is_carousel, $route_aliases, $blogroll_enabled): ?array {
         if (isset($item['active']) && !$item['active']) return null;
         $type = (string)($item['type'] ?? 'custom');

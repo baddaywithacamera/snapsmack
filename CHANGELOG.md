@@ -11,6 +11,50 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.920D - 2026-10-20 - YES MEANS YES
+
+**Needs a CMS deploy only.** No skin package.
+
+- **A switch that read "Yes" behaved as No.** Sean had GALLERIA's Show
+  Filmstrip set to **Yes** on hekeepsdroningon.ca and no filmstrip on the
+  page. I told him twice it was his setting. It was not, and he had to send a
+  screenshot of the admin screen to prove it.
+
+  The controller asked `($settings['htbs_show_filmstrip'] ?? '1') === '1'` —
+  true for the exact string `"1"` and nothing else. So **any** other stored
+  value switched the feature off, an empty string included. Meanwhile Smooth
+  Your Skin renders a `<select>` whose options are `1` and `0`: given `''` it
+  matches neither, so the browser shows the **first** option, which is "Yes".
+  The admin said Yes, the site behaved as No, and nothing reconciled them.
+
+  A default-on switch is now off **only** when the owner explicitly chose `0`.
+
+- **The same shape was in ten more switches**, found by grepping for the
+  pattern rather than trusting that this one was special:
+
+  | file | switch |
+  |---|---|
+  | `public-runtime.php` | `global_comments_enabled`, `community_comments_enabled` |
+  | `community-component.php` | `community_comments`, `community_likes` |
+  | `skin-presentation.php` | `mayhem_drift`, `mayhem_warp` (x2 each) |
+  | `public-controller.php` | `htbs_slider_enabled` |
+  | `skin-view-model.php` | `blogroll_enabled` |
+  | `social-dock.php` | `social_dock_shadow` |
+  | `stats-logger.php` | `stats_exclude_admin` |
+
+  The first two gate the comment system. **That is a candidate explanation for
+  pixhellated and fauxlaroid showing no comment form while their settings look
+  correct** — the open question from earlier in the day. Not confirmed: it
+  needs a look at those rows, which I cannot see from here.
+
+  `community_reactions` is left strict on purpose: it defaults to `0`, so the
+  exact test is the correct one there.
+
+- `tests/default-on-switch-regression.php` pins the semantics — unset, `1`,
+  empty and unexpected all mean on; only `0` means off — and fails if any
+  default-on switch is read with a strict `=== '1'` again. It found
+  `stats_exclude_admin`, which I had missed.
+
 ## 0.7.919D - 2026-10-20 - ONE SCREEN
 
 **Needs a CMS deploy AND GALLERIA 1.3.17 + HIP TO BE SQUARE 1.3.18 packaged.**

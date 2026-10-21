@@ -499,7 +499,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         $sliderItems = in_array($skin, ['galleria', 'hip-to-be-square'], true)
             ? array_slice($items, 0, 20)
             : [];
-        if ($skin === 'show-n-tell' && (($settings['htbs_slider_enabled'] ?? '1') === '1')) {
+        if ($skin === 'show-n-tell' && ((string)($settings['htbs_slider_enabled'] ?? '1') !== '0')) {
             $assetIds = json_decode((string)($settings['htbs_slider_assets'] ?? '[]'), true);
             $sliderMax = max(1, min(30, (int)($settings['htbs_slider_max'] ?? 10)));
             $assets = $repository->publicAssetsByIds(is_array($assetIds) ? array_slice($assetIds, 0, $sliderMax) : []);
@@ -532,7 +532,15 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
         // GALLERIA's solo page has a filmstrip along the bottom. The owner's
         // switch is htbs_show_filmstrip, default on, exactly as the pre-strict
         // layout read it.
-        $filmstrip = ($settings['htbs_show_filmstrip'] ?? '1') === '1'
+        //
+        // Off only when the owner explicitly said 0. This read `=== '1'`, which
+        // means ANY other stored value — including an empty string — switched
+        // the filmstrip off while Smooth Your Skin went on showing "Yes",
+        // because a <select> whose options are 1 and 0 finds no match for ''
+        // and falls back to displaying the first one. Sean had it set to Yes on
+        // hekeepsdroningon.ca and no filmstrip on the page, and I twice told him
+        // it was his setting. A control that reads Yes has to behave as Yes.
+        $filmstrip = (string)($settings['htbs_show_filmstrip'] ?? '1') !== '0'
             ? $repository->filmstripPhotographs()
             : [];
         return $skin === 'game-on'

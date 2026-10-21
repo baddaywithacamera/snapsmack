@@ -241,7 +241,7 @@ $_dock_color_dark  = $_dock_ovr['color_dark']  ?? ($settings['social_dock_color_
 $_dock_color_mode  = (($_dock_ovr['color_mode'] ?? ($settings['social_dock_color_mode'] ?? 'light')) === 'dark') ? 'dark' : 'light';
 $_dock_shadow      = isset($_dock_ovr['shadow'])
     ? filter_var($_dock_ovr['shadow'], FILTER_VALIDATE_BOOLEAN)
-    : (($settings['social_dock_shadow'] ?? '1') === '1');
+    : ((string)($settings['social_dock_shadow'] ?? '1') !== '0');
 $_dock_opacity     = max(0, min(100, (int)($_dock_ovr['opacity'] ?? ($settings['social_dock_opacity'] ?? 50))));
 
 // Active colour based on mode
