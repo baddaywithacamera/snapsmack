@@ -388,6 +388,23 @@ small,
   flex-shrink: 0;
 }
 
+/* The solo information panel is a tray over the photograph, not another
+   flex child competing with it for the locked viewport height. Long captions
+   used to shrink #rg-photobox to zero when smack-footer displayed #footer.
+   IMPACT PRINTER keeps its photograph from shrinking; RATIONAL GEO goes one
+   step further and pins the scrollable tray above the always-visible nav. */
+.rg-single > #footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--infobox-height, 50px);
+  z-index: var(--z-drawer);
+  max-height: min(68%, calc(100% - var(--infobox-height, 50px)));
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.35);
+}
+
 #rg-photobox {
   display: flex;
   justify-content: center;
