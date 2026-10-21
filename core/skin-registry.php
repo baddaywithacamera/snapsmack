@@ -408,7 +408,10 @@ function snapsmack_skin_zip_safety_findings(ZipArchive $zip): array {
         if($zip->getExternalAttributesIndex($i,$opsys,$attr)&&(($attr>>16)&0170000)===0120000)$findings[]="symbolic link: {$entry}";
     }
     if($zip->numFiles>1000)$findings[]='too many files';
-    if($total>25000000)$findings[]='package is too large';
+    /* Texture-led skins legitimately exceed the old 25 MB aggregate ceiling
+       (TRUE GRIT is 29.9 MB unpacked). Keep the per-member and entry-count
+       bomb guards, but leave enough aggregate room for the audited texture set. */
+    if($total>40000000)$findings[]='package is too large';
     return $findings;
 }
 

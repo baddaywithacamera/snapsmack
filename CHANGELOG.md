@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.924D - 2026-10-21 - TRUE GRIT IS HEAVY
+
+- Raises the aggregate signed-skin archive ceiling from 25 MB to 40 MB so the audited 29.9 MB TRUE GRIT texture set can install. Per-file, path traversal, symlink, entry-count, signature, and staged security-policy checks remain enforced.
+
 ## 0.7.923D - 2026-10-21 - THE WHOLE DAMN PATCH
 
 - Reissues the completed 0.7.922D repair set from a fresh immutable identifier so the archive-pagination repair that landed immediately after the 922D tag is included in the signed fleet package.
