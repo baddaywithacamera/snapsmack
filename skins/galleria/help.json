@@ -11,7 +11,7 @@
         },
         {
             "title": "Colour Palette",
-            "body": "When you upload an image, SnapSmack automatically extracts 5 dominant colours from the photograph. These appear as clickable swatches on the Edit Transmission page, making it easy to choose a frame or mat colour that complements the image. Run php tools/backfill-palettes.php to generate palettes for existing images."
+            "body": "When you upload an image, SnapSmack automatically extracts 5 dominant colours from the photograph. These appear as clickable swatches on the Edit Transmission page, making it easy to choose a frame or mat colour that complements the image. To generate palettes for images you already had, run php tools/_build/backfill-palettes.php."
         },
         {
             "title": "Slider Settings",

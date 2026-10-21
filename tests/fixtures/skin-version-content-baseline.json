@@ -7,8 +7,8 @@
             "files_sha256": "57b01bc502d8b4ef1ef2670e0507c01216fe377a60ecd5ef2290d8e549ab0564"
         },
         "52-card-pickup": {
-            "version": "1.4.13",
-            "files_sha256": "82615576e9faa20c0acfecf0670e503f93786e1309f88ade15baab8e07e09fc5"
+            "version": "1.4.14",
+            "files_sha256": "ef597fb431f6113a29edc894955fce806e6c5f4a5afe8da20bb94dabe0632c16"
         },
         "alfred": {
             "version": "1.0.9",
@@ -27,8 +27,8 @@
             "files_sha256": "a8f62a7e14c62f81512384c5b194305f868d9d4112a40652903b2038c80f6356"
         },
         "galleria": {
-            "version": "1.3.18",
-            "files_sha256": "cc28f42a9af5dc1fd75376ea45fb1ef82d4436eec064e4b0d9ec26e39d65bbae"
+            "version": "1.3.19",
+            "files_sha256": "c0f6c2c12086f1fee6e8cf559199c2f467bf730a1fd7be9fa9f651a5b388840d"
         },
         "game-on": {
             "version": "0.1.38",
@@ -55,12 +55,12 @@
             "files_sha256": "305d231b2578cd405682a1562a10d6e4fb8b2cd463b0663c05ee5b377240a301"
         },
         "jive-turkey": {
-            "version": "0.1.40",
-            "files_sha256": "4a1f63a680a4a6c3537863181bd1d3f3e7fbc91950406577fd3b338ac8ce9014"
+            "version": "0.1.41",
+            "files_sha256": "6974290bfdcc8975443fc3f2c9a0293823a57b4947e8002196a7f2aefbb20e09"
         },
         "new-horizon": {
-            "version": "1.3.20",
-            "files_sha256": "24a2e6f8b52d1261b433dde0286e7f58e71d82d344149df53ddea10ff3809dcd"
+            "version": "1.3.21",
+            "files_sha256": "882211f650a8155201178a45ef68d0f0ae6a39032146e2d26755a97e0fa9154c"
         },
         "onyx": {
             "version": "0.1.23",

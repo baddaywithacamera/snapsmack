@@ -11,6 +11,65 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.927D - 2026-10-21 - CHECKED AGAINST THE CONTROLS
+
+**Needs a CMS deploy and 4 skin packages** (52-card-pickup 1.4.14, galleria
+1.3.19, jive-turkey 0.1.41, new-horizon 1.3.21). It stacks on 926D, which has
+not deployed either.
+
+Sean asked me to check that the help restored in 926D is actually accurate. It
+was not, in six places. Each one below was checked against the skin's own
+manifest and code, not against the old text.
+
+- **GALLERIA** pointed at `tools/backfill-palettes.php`. The tool is at
+  `tools/_build/backfill-palettes.php`, so anyone who followed that instruction
+  got "file not found".
+
+- **JIVE TURKEY's border wave** was wrong in five ways at once: it named a
+  section called BORDER WAVE (it is TILE BORDER), offered a style picker with
+  four named styles (there is none), described the rhythm as a two-way choice
+  (it is Wave Stagger, 0–100), gave the border width as 1–10px (it is 5–15),
+  and listed a border-opacity and a tile-corner control (neither exists).
+  Rewritten against the six controls that are actually there.
+
+- **JIVE TURKEY's profile header** said it was under LAYOUT. It is under
+  PROFILE HEADER, alongside the Profile Avatar it also needs.
+
+- **NEW HORIZON's framing** said "Smooth Your Skin under Vertical Locks". It is
+  under FRAMING; VERTICAL LOCKS is the spacing-lock section. The five frame
+  styles were also listed under invented names ("Classic White", "Gallery
+  Mat"), so none of them matched what the dropdown says. They do now.
+
+- **52 CARD PICKUP** described four frame styles and a panel of pile controls.
+  The pile CSS is still in the skin but nothing applies it: the landing page is
+  drawn by the shared ORGANIZED MAYHEM engine, which renders its own cards, and
+  the skin has no frame or pile controls at all — its 14 controls are colour
+  and type. Both topics now say what the skin does, and say plainly that the
+  frames are not currently wired up.
+
+Checked and found correct, so left alone: ONYX's six birthstone palettes (they
+match the variant files and the manifest exactly), CHAPLIN's INFO/SIGNALS
+intertitle overlay, and NEW HORIZON's floating-gallery settings, which really
+do live in Global Vibe.
+
+Also in this build, the eight features that had an admin screen and no manual
+page at all. Each was written from the screen's own code:
+
+- **Light Table** — bulk drag-and-drop filing into albums, categories and
+  collections, and why it refuses to run on a phone.
+- **Preflight Check** — what it reads out of a file before it becomes a post.
+- **Panorama Slicer** — the two modes, and why the grid order matters.
+- **Break-Glass Recovery Card** — what the card is, that it is single-use and
+  site-bound, and why it must not live on the machine it unlocks.
+- **PixelDroid and other Mastodon-API apps** — connecting, what scopes are
+  actually granted, and what "could not register" means.
+- **Hall of Fame** — and why it is a list of links and never a gallery.
+- **LOG FLOGGER** — that it hunts silences rather than errors.
+- **TICKET WICKET** — public tickets that never carry the reporter's name.
+
+The manual is now 91 topics. Its last substantive edit before 926D was
+0.7.719D, 200 releases ago.
+
 ## 0.7.926D - 2026-10-21 - THE MANUAL THAT LOST ITS SKINS
 
 **Needs a CMS deploy and 26 skin packages.** Both halves, or the help arrives

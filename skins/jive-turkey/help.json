@@ -11,7 +11,7 @@
         },
         {
             "title": "The Border Wave",
-            "body": "Each tile carries an animated colour border drawn from the JIVE TURKEY palette. Pick the style in Skin Admin under BORDER WAVE: Circle each tile, Circle + sweep across, Wave across grid, or Scatter pulse. You also control the direction (including the two diagonals), the wave rhythm (a slow–fast–slow breath, or constant slow), the border width (1–10 px), the border opacity, and the tile corners. The border shares the JIVE TURKEY palette, so changing the palette restyles both the background and the borders at once."
+            "body": "Each tile carries an animated colour border drawn from the JIVE TURKEY palette. The controls are in Skin Admin under TILE BORDER: Tile Borders turns them on or off, Border Width sets the thickness (5–15 px), Colour-Change Speed sets how quickly each border cycles through the palette, Wave Stagger sets how far apart neighbouring tiles start so the change travels across the grid as a wave, and Transition Length sets how long each colour takes to blend into the next. Wave Direction chooses the way it travels: left to right, right to left, top to bottom, bottom to top, or either diagonal. The border shares the JIVE TURKEY palette, so changing the palette restyles both the background and the borders at once."
         },
         {
             "title": "Motion & Accessibility",
@@ -35,7 +35,7 @@
         },
         {
             "title": "Profile Header",
-            "body": "An optional profile header can be enabled in Skin Admin under LAYOUT. When on, it shows your site name, avatar initials (or a custom avatar image), total post count, and site description as a bio — displayed above the grid on the landing page. Toggle it off for a pure-grid look."
+            "body": "An optional profile header can be enabled in Skin Admin under PROFILE HEADER: set Show Profile Header to Enabled. When on, it shows your site name, avatar initials (or the Profile Avatar image set in the same section), total post count, and site description as a bio — displayed above the grid on the landing page. Set it to Disabled for a pure-grid look."
         },
         {
             "title": "Categories and Albums",
