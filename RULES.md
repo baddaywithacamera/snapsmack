@@ -79,10 +79,23 @@ A tag that has been packaged or deployed **anywhere on the fleet** must never
 move. An undeployed number may absorb fixes — that is the fold rule — but
 "undeployed" means undeployed *everywhere*.
 
-Check with `bash tools/_build/deployed-version.sh`, which polls twelve live
-sites and returns the highest version in service. **A single-site check is not
-enough**: on 15 Oct a guard sampled one site on 891D and force-moved v0.7.892D
-while twelve sites were already serving it.
+Check with `bash tools/_build/deployed-version.sh`, which polls every site on
+`tools/_build/fleet-sites.txt` and returns the highest version in service.
+**A single-site check is not enough**: on 15 Oct a guard sampled one site on
+891D and force-moved v0.7.892D while twelve sites were already serving it.
+
+The highest version answers whether a tag may move. It does NOT answer whether
+the fleet is up to date, and reading it as if it did hid three stragglers on
+21 Oct — photofri.day on 917D, photoblogs.fyi on 916D, mirrorproject.fyi on
+899D — while the script said 927D and the fleet updater said "25 updated, 0
+failed". The bare call now warns on stderr when any site is behind, and
+`--report` lists every site and exits 1 on a straggler.
+
+**The roster is the weak point.** Nothing discovers a site on its own. All
+three of those installations were outside every list we had, and a site that
+is merely old looks completely normal from outside. When a site is built, add
+it to `fleet-sites.txt`; periodically probe for strays rather than trusting
+the file.
 
 This has been broken at least five times. The only real control is
 server-side tag protection, which does not exist yet.

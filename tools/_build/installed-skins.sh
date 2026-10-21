@@ -30,12 +30,16 @@ set -u
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
-# Same roster as deployed-version.sh. Keep the two in step.
-SITES="wateronthebrain.ca theschoolofhardnocks.ca pixhellated.ca craptasti.ca
-baddaywithacamera.ca foreverphotograph.ing fauxlaroid.fyi photofri.day
-foundtextures.ca unzucked.ca photowalk.ing acolourlesslife.ca
-hekeepsdroningon.ca lightafterdark.ca allinthewrist.photoblogs.fyi
-usedcarparts.photoblogs.fyi"
+# One roster, shared with deployed-version.sh. This used to be a second
+# hand-kept copy with a comment saying "keep the two in step", which is not a
+# mechanism: both copies were missing photoblogs.fyi, snapsmack.ca and
+# mirrorproject.fyi on 21 Oct 2026.
+ROSTER="$ROOT/tools/_build/fleet-sites.txt"
+if [ ! -f "$ROSTER" ]; then
+  echo "installed-skins: roster missing at $ROSTER" >&2
+  exit 1
+fi
+SITES="$(grep -vE '^\s*(#|$)' "$ROSTER")"
 
 # Cloudflare 1010-blocks anything that does not look like a browser.
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
