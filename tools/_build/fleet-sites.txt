@@ -1,0 +1,43 @@
+# SNAPSMACK_EOF_HEADER
+# Last non-empty line of this file MUST be: # ===== SNAPSMACK EOF =====
+# Missing or different = truncated/corrupted. Restore before saving.
+#
+# EVERY SnapSmack installation we know of. One roster, read by
+# deployed-version.sh and installed-skins.sh, because two hand-kept copies
+# drifted and the comment telling us to keep them in step did not prevent it.
+#
+# THE LIST IS THE WEAK POINT. On 21 Oct 2026 the fleet updater reported
+# "25 updated, 0 failed" and was believed, while three installations sat
+# outside every roster: photofri.day on 917D, photoblogs.fyi on 916D, and
+# mirrorproject.fyi on 899D -- twenty-eight versions behind. A site that is
+# merely old looks completely normal from outside, and a roster that cannot
+# see it reports success. Nothing here discovers a site on its own; when one
+# is built, it must be added by hand, and that is the part that will go wrong
+# again. Probe for strays periodically rather than trusting this file.
+#
+# One hostname per line. Blank lines and # comments ignored.
+
+wateronthebrain.ca
+theschoolofhardnocks.ca
+pixhellated.ca
+craptasti.ca
+baddaywithacamera.ca
+foreverphotograph.ing
+fauxlaroid.fyi
+photofri.day
+foundtextures.ca
+unzucked.ca
+photowalk.ing
+acolourlesslife.ca
+hekeepsdroningon.ca
+lightafterdark.ca
+allinthewrist.photoblogs.fyi
+usedcarparts.photoblogs.fyi
+
+# Added 21 Oct 2026. All three were live SnapSmack installations that no
+# roster listed, found by probing rather than by any tool reporting them.
+photoblogs.fyi
+snapsmack.ca
+mirrorproject.fyi
+
+# ===== SNAPSMACK EOF =====

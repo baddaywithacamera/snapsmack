@@ -11,6 +11,58 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.928D - 2026-10-21 - A MAXIMUM CANNOT SEE A STRAGGLER
+
+**Build tooling only.** No site change, no skin package. Nothing in this
+release reaches a visitor.
+
+- **The fleet check reported the highest version and called that an answer.**
+  `deployed-version.sh` polled the roster and printed the largest number it
+  found. That is the right answer to "may this tag move" and tells you nothing
+  about whether the fleet is up to date — and we read it as if it did.
+
+  On 21 October it printed `0.7.927D` while three installations sat behind:
+  photofri.day on 917D, **photoblogs.fyi — the relay and FLEET hub — on 916D**,
+  and **mirrorproject.fyi on 899D, twenty-eight versions behind**. The fleet
+  updater reported "25 updated, 0 failed" in the same hour. Both were telling
+  the truth about what they looked at. Neither looked at the whole fleet.
+
+  A site that is merely old looks completely normal from outside: it serves, it
+  renders, nothing errors. It just runs last month's code, security fixes
+  included.
+
+- The bare call still prints one version on stdout, because
+  `tests/agreed-rules-gate.php` parses exactly that and the tag guard depends
+  on it. It now also **warns on stderr** when any site is behind, naming each
+  one and how far. The gate redirects stderr away and is unaffected; a person
+  or an agent running the command sees the straggler without having to know a
+  second command existed.
+
+- `--report` prints every site with its version and state and exits 1 if
+  anything is behind or unreadable.
+
+- **One roster.** `tools/_build/fleet-sites.txt` replaces the two hand-kept
+  copies in `deployed-version.sh` and `installed-skins.sh`, which carried the
+  comment "keep the two in step" — not a mechanism, and both were missing the
+  same three sites. The roster now lists 19 installations, including
+  photoblogs.fyi, snapsmack.ca and mirrorproject.fyi, none of which appeared on
+  any list before today. They were found by probing for strays, not by any tool
+  reporting them.
+
+- The straggler warning dropped its own last line on the first run, because
+  `$(...)` strips the trailing newline and `printf '%s'` then left the final
+  entry without one for `read` — so mirrorproject.fyi was missing from the
+  report built to catch it. Fixed, and pinned by a test.
+
+- `fleet-roster-regression` checks the roster parses, lists at least 19 bare
+  hostnames with no duplicates, still names the three that were invisible, that
+  neither script carries an inline list again, that the one-line stdout
+  contract and the stderr warning both survive, and that the newline bug cannot
+  come back. It is offline, so it runs in the commit gate.
+
+Still true and not fixed here: nothing discovers a site on its own. The roster
+is maintained by hand and that is where this will go wrong again.
+
 ## 0.7.927D - 2026-10-21 - CHECKED AGAINST THE CONTROLS
 
 **Needs a CMS deploy and 4 skin packages** (52-card-pickup 1.4.14, galleria
