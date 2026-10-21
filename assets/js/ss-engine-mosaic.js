@@ -22,6 +22,17 @@
     var resizeBound = false;
     var lastAutomaticTripletTemplate = '';
 
+    function stableTripletSide(images) {
+        /* A page with only one triptych used to restart on one-left every time,
+           so the site-wide rhythm still looked repetitive even though multiple
+           triptychs on one page alternated. Seed the first side from the page
+           and lead photograph, then continue alternating in document order. */
+        var seed = (window.location.pathname || '') + '|' + ((images[0] && images[0].src) || '');
+        var hash = 0;
+        for (var i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+        return (hash & 1) === 0 ? 'one-left' : 'one-right';
+    }
+
     function imageAR(image) {
         var width  = Number(image.width) || 0;
         var height = Number(image.height) || 0;
@@ -39,8 +50,8 @@
            dead. Automatic layouts always choose a hero composition; the
            three-across template remains available only when an editor saves it
            explicitly in data-template. */
-        var preferred = 'one-left';
-        var alternatives = ['one-right', 'one-top'];
+        var preferred = stableTripletSide(images);
+        var alternatives = preferred === 'one-left' ? ['one-right', 'one-top'] : ['one-left', 'one-top'];
         var chosen = preferred;
         if (chosen === lastAutomaticTripletTemplate) {
             chosen = alternatives.find(function (candidate) {
