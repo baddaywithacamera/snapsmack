@@ -71,7 +71,9 @@ foreach (glob(dirname(__DIR__) . '/skins/*/manifest.json') as $manifestPath) {
     }
 
     foreach (['prev', 'next'] as $rel) {
-        if (!preg_match('/<a[^>]+rel="' . $rel . '"[^>]*href=|href=[^>]*rel="' . $rel . '"/', $html)) {
+        $hasRelLink = preg_match('/<a[^>]+rel="' . $rel . '"[^>]*href=|href=[^>]*rel="' . $rel . '"/', $html);
+        $hasNavData = preg_match('/id="snap-nav-data"[^>]*data-' . $rel . '="[^"]+"/', $html);
+        if (!$hasRelLink && !$hasNavData) {
             $failures[] = $slug . ' declares smack-keyboard but renders no rel="' . $rel . '" link, '
                 . 'so the arrow keys do nothing on its solo page';
         }
@@ -92,7 +94,6 @@ $known_broken = [
     '52-card-pickup',
     'aurora',
     'full-monty',
-    'game-on',
     'glide',
     'heuristic',
     'jive-turkey',
