@@ -21,12 +21,35 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
     if ($kind === 'blogroll') $bodyClasses[] = 'is-blogroll';
     if ($kind === 'photo') $bodyClasses[] = 'is-photo-page';
     $presentation['body_class'] = implode(' ', $bodyClasses);
+    // MOSAIC is an audited CMS compositor.  Skins receive only display-ready
+    // block data; they never assemble JSON or run layout logic themselves.
+    $response['mosaic_blocks'] = [];
+    foreach (array_chunk(is_array($response['items'] ?? null) ? $response['items'] : [], 6) as $block) {
+        $tiles = [];
+        foreach ($block as $tile) {
+            if (!is_array($tile)) continue;
+            $tiles[] = [
+                'src' => (string)($tile['img_thumb_aspect'] ?? $tile['img_file'] ?? ''),
+                'full' => (string)($tile['img_file'] ?? $tile['img_thumb_aspect'] ?? ''),
+                'href' => (string)($tile['url'] ?? ''),
+                'alt' => (string)($tile['img_alt'] ?? $tile['img_title'] ?? ''),
+                'id' => (int)($tile['id'] ?? $tile['img_id'] ?? 0),
+                'width' => max(1, (int)($tile['presentation_width'] ?? $tile['img_width'] ?? 1)),
+                'height' => max(1, (int)($tile['presentation_height'] ?? $tile['img_height'] ?? 1)),
+                'focusX' => (float)($tile['img_focus_x'] ?? 50),
+                'focusY' => (float)($tile['img_focus_y'] ?? 50),
+            ];
+        }
+        $response['mosaic_blocks'][] = [
+            'json' => json_encode($tiles, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '[]',
+        ];
+    }
     $allowedResponse = ['status', 'kind', 'mode', 'item', 'items', 'post', 'posts', 'tiles', 'rows', 'slider_items', 'photographs',
         'comments', 'navigation', 'results', 'query', 'slug', 'page', 'total_pages',
         'page_title', 'rendered_content', 'signature', 'previous', 'next', 'categories',
         'albums', 'categories_label', 'albums_label', 'author', 'colophon', 'photo_count', 'photo_count_display', 'comment_count', 'comment_count_display', 'like_count', 'like_count_display', 'word_count', 'comments_enabled',
         'show_titles', 'blogroll_groups', 'taxonomy', 'groups', 'puzzle_items', 'fragment', 'autoopen',
-        'first', 'last', 'next_page', 'is_homepage', 'sort', 'sort_options', 'album', 'filmstrip', 'community'];
+        'first', 'last', 'next_page', 'is_homepage', 'sort', 'sort_options', 'album', 'filmstrip', 'community', 'mosaic_blocks'];
     $allowedPresentation = ['site_name', 'tagline', 'site_url', 'base_url', 'language',
         'direction', 'brand_logo', 'owner_name', 'site_description', 'avatar_url', 'skin_slug',
         'skin_style_url', 'base_style_url', 'skin_variant_url', 'skin_custom_style', 'skin_presentation', 'search_dock', 'owner_custom_code', 'registered_assets',

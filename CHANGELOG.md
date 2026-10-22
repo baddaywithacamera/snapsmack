@@ -11,6 +11,14 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.934D - 2026-10-22 - PRESENTATION MEANS PRESENTATION
+
+- Moves SCROLL mosaic block construction into the audited CMS view model. The
+  skin now consumes display-ready JSON and contains no data-building code.
+
+- SCROLL 0.1.72 passes the skin authority gate while preserving the restored
+  pre-October asymmetric MOSAIC presentation and CMS-owned infinite loader.
+
 ## 0.7.933D - 2026-10-22 - THE MOSAIC WAS ALREADY THERE
 
 - Restores SCROLL's pre-October Asymmetric presentation: six-photograph
