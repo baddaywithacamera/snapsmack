@@ -841,6 +841,11 @@ $inventory = [
             'css'          => 'assets/css/ss-engine-scroll-wall.css',
             'has_settings' => false,
         ],
+        'smack-masonry' => [
+            'label'        => 'Asymmetric dense-pack photo wall',
+            'path'         => 'assets/js/ss-engine-masonry.js',
+            'has_settings' => false,
+        ],
         'smack-aurora-bg' => [
             'label'        => 'AURORA Layer 1 background curtains (canvas)',
             'path'         => 'assets/js/ss-engine-aurora-bg.js',

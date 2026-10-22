@@ -11,6 +11,24 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.932D - 2026-10-22 - THE WALL REFUSES COLUMNS
+
+- **SCROLL's Asymmetric choice is asymmetric again.** The control continued to
+  offer a MOSAIC quilt after its dedicated client engine had disappeared, so
+  the template fell through to the ordinary fixed-column wall. The shared CMS
+  now owns a reviewed `smack-masonry` engine that dense-packs native-aspect
+  photographs and reflows appended pages without forcing them into rows or
+  columns.
+
+- SCROLL 0.1.70 maps all four saved choices to distinct wall classes, requests
+  the shared rows and masonry engines it uses, and preserves the owner's wall
+  width across columns, rows, squares, and asymmetric mode.
+
+- The new executable is registered in the CMS inventory, pinned to its exact
+  same-origin network review, and covered by an offline render-and-append
+  regression. It is delivered through the signed CMS and skin update paths;
+  no installed site needs a hand-edited file.
+
 ## 0.7.931D - 2026-10-22 - COUNTING WHAT IS NOT THERE
 
 **Forum server only.** `projects/forum-server/` is a separate deployable: it is
