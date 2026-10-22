@@ -11,6 +11,7 @@
 
 require_once __DIR__ . '/sc-auth.php';
 require_once __DIR__ . '/sc-release-sequence.php';
+$sc_release_csrf = $_SESSION['sc_release_csrf'] ??= bin2hex(random_bytes(32));
 $sc_active_nav = 'sc-release.php';
 $sc_page_title = 'Release Packager';
 
@@ -240,6 +241,77 @@ function sc_record_release_identifier(string $track, string $version, string $ta
     if (!is_string($json) || file_put_contents($tmp,$json,LOCK_EX)===false) return false;
     if (!@rename($tmp,$path)) { @unlink($tmp); return false; }
     return true;
+}
+
+/**
+ * Remove superseded packages for one release track while preserving its current
+ * manifest target. The immutable identifier ledger and Git tags are never
+ * changed, so deleted version numbers remain permanently retired.
+ *
+ * @return array{ok:bool,deleted:int,msg:string}
+ */
+function sc_delete_older_release_versions(PDO $db, string $track): array {
+    if (!in_array($track, ['stable', 'dev'], true)) {
+        return ['ok' => false, 'deleted' => 0, 'msg' => 'Unknown release track.'];
+    }
+
+    $table = $track === 'dev' ? 'sc_dev_builds' : 'sc_releases';
+    $manifest_name = $track === 'dev' ? 'latest-dev.json' : 'latest.json';
+    $order = $track === 'dev' ? 'id DESC' : 'is_latest DESC, id DESC';
+    $rows = $db->query("SELECT id, version, download_url FROM {$table} ORDER BY {$order}")
+        ->fetchAll(PDO::FETCH_ASSOC);
+    if (!$rows) {
+        return ['ok' => false, 'deleted' => 0, 'msg' => 'No release exists to preserve.'];
+    }
+
+    $keep = $rows[0];
+    $keep_file = basename((string)$keep['download_url']);
+    $manifest_path = rtrim(RELEASES_DIR, '/') . '/' . $manifest_name;
+    $manifest = is_file($manifest_path)
+        ? json_decode((string)file_get_contents($manifest_path), true)
+        : null;
+    $manifest_file = is_array($manifest) ? basename((string)($manifest['download_url'] ?? '')) : '';
+    if ($keep_file === '' || $manifest_file === '' || !hash_equals($keep_file, $manifest_file)) {
+        return [
+            'ok' => false,
+            'deleted' => 0,
+            'msg' => "Cleanup refused: {$manifest_name} does not match the newest {$track} history row.",
+        ];
+    }
+
+    $delete_files = [];
+    foreach (array_slice($rows, 1) as $row) {
+        $name = basename((string)$row['download_url']);
+        if ($name !== '' && $name !== $keep_file) $delete_files[$name] = true;
+    }
+
+    // History is intentionally capped, so include older packages that no longer
+    // have a visible/database row. Only exact CMS version package names qualify.
+    foreach (glob(rtrim(RELEASES_DIR, '/') . '/snapsmack-*.zip') ?: [] as $path) {
+        $name = basename($path);
+        if (!preg_match('/^snapsmack-(\d+\.\d+\.\d+)(D)?\.zip$/i', $name, $m)) continue;
+        $is_dev = !empty($m[2]);
+        if (($track === 'dev') !== $is_dev || $name === $keep_file) continue;
+        $delete_files[$name] = true;
+    }
+
+    foreach (array_keys($delete_files) as $name) {
+        $path = rtrim(RELEASES_DIR, '/') . '/' . $name;
+        if (is_file($path) && !@unlink($path)) {
+            return ['ok' => false, 'deleted' => 0, 'msg' => "Could not delete {$name}; history was left intact."];
+        }
+    }
+
+    $keep_id = (int)$keep['id'];
+    $stmt = $db->prepare("DELETE FROM {$table} WHERE id <> ?");
+    $stmt->execute([$keep_id]);
+    return [
+        'ok' => true,
+        'deleted' => count($delete_files),
+        'msg' => count($delete_files)
+            ? 'Deleted ' . count($delete_files) . " older {$track} package(s); kept {$keep_file}."
+            : "No older {$track} packages were present; kept {$keep_file}.",
+    ];
 }
 
 /**
@@ -989,6 +1061,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     exit;
 }
 
+// ── POST: Delete every older version on one track ────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_older_versions') {
+    $track = (string)($_POST['track'] ?? '');
+    $submitted_csrf = (string)($_POST['csrf'] ?? '');
+    if ($submitted_csrf === '' || !hash_equals($sc_release_csrf, $submitted_csrf)) {
+        $_SESSION['sc_release_cleanup'] = [
+            'ok' => false,
+            'deleted' => 0,
+            'msg' => 'Cleanup refused: the form expired. Reload the page and try again.',
+        ];
+    } else try {
+        $_SESSION['sc_release_cleanup'] = sc_delete_older_release_versions(sc_db(), $track);
+    } catch (Throwable $e) {
+        $_SESSION['sc_release_cleanup'] = [
+            'ok' => false,
+            'deleted' => 0,
+            'msg' => 'Cleanup failed: ' . $e->getMessage(),
+        ];
+    }
+    header('Location: sc-release.php');
+    exit;
+}
+
 // ── POST: Build release ───────────────────────────────────────────────────────
 // ── AJAX: fetch and parse CHANGELOG.md for a given tag ───────────────────────
 // Called by the packager JS instead of hitting raw.githubusercontent.com directly.
@@ -1121,6 +1216,7 @@ $dev_build_error  = '';
 $dev_build_notice = '';
 $dev_build_log    = [];
 $dev_build_result = null;
+$cleanup_result   = null;
 
 // Retrieve flash results from session after redirect.
 if (isset($_SESSION['sc_release_built'])) {
@@ -1130,6 +1226,10 @@ if (isset($_SESSION['sc_release_built'])) {
 if (isset($_SESSION['sc_dev_built'])) {
     $dev_build_result = $_SESSION['sc_dev_built'];
     unset($_SESSION['sc_dev_built']);
+}
+if (isset($_SESSION['sc_release_cleanup'])) {
+    $cleanup_result = $_SESSION['sc_release_cleanup'];
+    unset($_SESSION['sc_release_cleanup']);
 }
 
 if ($action === 'build' && $preflight_ok) {
@@ -1758,6 +1858,12 @@ require __DIR__ . '/sc-layout-top.php';
 </div>
 <?php endforeach; ?>
 
+<?php if ($cleanup_result): ?>
+<div class="sc-alert sc-alert--<?php echo !empty($cleanup_result['ok']) ? 'success' : 'error'; ?>">
+  <?php echo htmlspecialchars((string)$cleanup_result['msg']); ?>
+</div>
+<?php endif; ?>
+
 <?php if ($build_result): ?>
 <!-- ── Stable build success result ──────────────────────────────────────── -->
 <div class="sc-alert sc-alert--success">
@@ -2063,7 +2169,17 @@ require __DIR__ . '/sc-layout-top.php';
     <div class="sc-box">
       <div class="sc-box-header">
         <span class="sc-box-title">Release History</span>
-        <span style="font-size:var(--sc-size-label);color:var(--sc-text-dim);text-transform:uppercase;letter-spacing:.5px;">BORING TRACK</span>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:var(--sc-size-label);color:var(--sc-text-dim);text-transform:uppercase;letter-spacing:.5px;">BORING TRACK</span>
+          <?php if (!empty($releases)): ?>
+          <form method="post" onsubmit="return confirm('Delete every older stable package and history row? The newest stable release will be kept. Git tags and the permanent identifier ledger will not be changed.');">
+            <input type="hidden" name="action" value="delete_older_versions">
+            <input type="hidden" name="track" value="stable">
+            <input type="hidden" name="csrf" value="<?php echo htmlspecialchars($sc_release_csrf); ?>">
+            <button class="sc-btn sc-btn--sm sc-btn--danger">Delete all older</button>
+          </form>
+          <?php endif; ?>
+        </div>
       </div>
       <div class="sc-box-body">
         <?php if (empty($releases)): ?>
@@ -2117,7 +2233,17 @@ require __DIR__ . '/sc-layout-top.php';
     <div class="sc-box" style="margin-top:20px;">
       <div class="sc-box-header">
         <span class="sc-box-title">Dev Build History</span>
-        <span style="font-size:var(--sc-size-label);color:var(--sc-warn);text-transform:uppercase;letter-spacing:.5px;">BITCHIN' track</span>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:var(--sc-size-label);color:var(--sc-warn);text-transform:uppercase;letter-spacing:.5px;">BITCHIN' track</span>
+          <?php if (!empty($dev_builds)): ?>
+          <form method="post" onsubmit="return confirm('Delete every older development package and history row? The newest development release will be kept. Git tags and the permanent identifier ledger will not be changed.');">
+            <input type="hidden" name="action" value="delete_older_versions">
+            <input type="hidden" name="track" value="dev">
+            <input type="hidden" name="csrf" value="<?php echo htmlspecialchars($sc_release_csrf); ?>">
+            <button class="sc-btn sc-btn--sm sc-btn--danger">Delete all older</button>
+          </form>
+          <?php endif; ?>
+        </div>
       </div>
       <div class="sc-box-body">
         <?php if (empty($dev_builds)): ?>
